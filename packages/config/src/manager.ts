@@ -52,8 +52,7 @@ export class RemoteConfigManager {
 		return this.snapshot?.entries ?? {};
 	}
 
-	// Force an immediate refresh
-	private async refresh(): Promise<void> {
+	async refresh(): Promise<void> {
 		try {
 			const rows = await this.store.query<{
 				key:         string

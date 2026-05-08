@@ -4,7 +4,7 @@ export interface IConfigEntry {
 	environment: string
 	description: string | null
 	active:      boolean
-	updatedAt:   Date
+	updatedAt:   string
 }
 
 export interface IConfigSnapshot {
