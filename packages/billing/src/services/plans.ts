@@ -50,18 +50,115 @@ export async function syncPlansToDB(
 	);
 }
 
+const SELECT_PLAN = `
+	SELECT
+		id,
+		name,
+		seats,
+		trial_days        AS "trialDays",
+		monthly_amount    AS "monthlyAmount",
+		monthly_price_id  AS "monthlyPriceId",
+		yearly_amount     AS "yearlyAmount",
+		yearly_price_id   AS "yearlyPriceId"
+	FROM fonderie_plans`
+
 export async function getDBPlans(store: IStoreAdapter): Promise<IPlan[]> {
 	return store.query<IPlan>(
-		`SELECT
-			id,
-			name,
-			seats,
+		`${SELECT_PLAN} ORDER BY monthly_amount ASC NULLS LAST`,
+	);
+}
+
+export async function getPlanById(id: string, store: IStoreAdapter): Promise<IPlan | null> {
+	const [row] = await store.query<IPlan>(
+		`${SELECT_PLAN} WHERE id = $1`,
+		[id],
+	)
+	return row ?? null
+}
+
+export async function createPlan(
+	data: {
+		name:           string
+		seats?:         number | null
+		trialDays?:     number
+		monthlyAmount?:  number | null
+		monthlyPriceId?: string | null
+		yearlyAmount?:   number | null
+		yearlyPriceId?:  string | null
+	},
+	store: IStoreAdapter,
+): Promise<IPlan> {
+	const [row] = await store.query<IPlan>(
+		`INSERT INTO fonderie_plans
+			(name, seats, trial_days, monthly_amount, monthly_price_id, yearly_amount, yearly_price_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING
+			id, name, seats,
 			trial_days        AS "trialDays",
 			monthly_amount    AS "monthlyAmount",
 			monthly_price_id  AS "monthlyPriceId",
 			yearly_amount     AS "yearlyAmount",
-			yearly_price_id   AS "yearlyPriceId"
-		FROM fonderie_plans
-		ORDER BY monthly_amount ASC NULLS LAST`,
-	);
+			yearly_price_id   AS "yearlyPriceId"`,
+		[
+			data.name,
+			data.seats          ?? null,
+			data.trialDays      ?? 0,
+			data.monthlyAmount  ?? null,
+			data.monthlyPriceId ?? null,
+			data.yearlyAmount   ?? null,
+			data.yearlyPriceId  ?? null,
+		],
+	)
+	if (!row) throw new Error('Failed to create plan')
+	return row
+}
+
+export async function updatePlan(
+	id:    string,
+	data:  Partial<Omit<IPlan, 'id'>>,
+	store: IStoreAdapter,
+): Promise<IPlan | null> {
+	const fieldMap: Record<string, string> = {
+		name:           'name',
+		seats:          'seats',
+		trialDays:      'trial_days',
+		monthlyAmount:  'monthly_amount',
+		monthlyPriceId: 'monthly_price_id',
+		yearlyAmount:   'yearly_amount',
+		yearlyPriceId:  'yearly_price_id',
+	}
+
+	const setClauses: string[] = []
+	const params: unknown[]    = [id]
+
+	for (const [key, col] of Object.entries(fieldMap)) {
+		if (key in data) {
+			params.push((data as Record<string, unknown>)[key])
+			setClauses.push(`${col} = $${params.length}`)
+		}
+	}
+
+	if (setClauses.length === 0) return getPlanById(id, store)
+
+	const [row] = await store.query<IPlan>(
+		`UPDATE fonderie_plans SET ${setClauses.join(', ')}
+		WHERE id = $1
+		RETURNING
+			id, name, seats,
+			trial_days        AS "trialDays",
+			monthly_amount    AS "monthlyAmount",
+			monthly_price_id  AS "monthlyPriceId",
+			yearly_amount     AS "yearlyAmount",
+			yearly_price_id   AS "yearlyPriceId"`,
+		params,
+	)
+	return row ?? null
+}
+
+export async function deletePlan(id: string, store: IStoreAdapter): Promise<boolean> {
+	const rows = await store.query<{ id: string }>(
+		`DELETE FROM fonderie_plans WHERE id = $1 RETURNING id`,
+		[id],
+	)
+	return rows.length > 0
 }

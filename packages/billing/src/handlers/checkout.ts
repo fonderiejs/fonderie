@@ -48,14 +48,16 @@ export function createCheckoutHandler(store: IStoreAdapter, config: IBillingConf
 			userId:      ctx.user.id,
 		});
 
-		const { url } = await config.provider.createCheckoutSession({
+		const sessionOpts: Parameters<typeof config.provider.createCheckoutSession>[0] = {
 			customerId,
 			priceId:    pricing.priceId,
 			workspaceId,
-			trialDays:  plan.trialDays,
 			successUrl: config.successUrl,
 			cancelUrl:  config.cancelUrl,
-		});
+		}
+		if (plan.trialDays !== undefined) sessionOpts.trialDays = plan.trialDays
+
+		const { url } = await config.provider.createCheckoutSession(sessionOpts);
 
 		await upsertSubscription(
 			{
