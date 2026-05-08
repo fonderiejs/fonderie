@@ -7,6 +7,7 @@
 		"predev":  "npm run build --prefix ../.. --if-present",
 		"dev":     "node --env-file=.env --experimental-strip-types index.ts",
 		"migrate": "node --env-file=.env --experimental-strip-types ./migrations/index.ts",
+		"migrate:reset": "npm run build --prefix ../.. --if-present && node --env-file=.env --experimental-strip-types ./migrations/reset.ts && npm run migrate",
 		"setup":   "cp -n .env.example .env || true",
 		"test":    "echo \"Error: no test specified\" && exit 1"
 	},

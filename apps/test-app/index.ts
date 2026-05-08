@@ -1,6 +1,3 @@
-import { fileURLToPath } from 'node:url';
-import { join }          from 'node:path';
-
 import {
 	FonderieApp,
 	defineConfig,
@@ -20,15 +17,23 @@ import {
 	OPERATIONS,
 } from '@fonderie-js/permissions'
 import {
-	WorkspacesModule, 
+	WorkspacesModule,
 	workspaceContextMiddleware,
 } from '@fonderie-js/workspaces';
 
-import { CourierModule }                                    from '@fonderie-js/courier';
+import { CourierModule }                               from '@fonderie-js/courier';
+import { BillingModule, StripeProvider, requirePlan }  from '@fonderie-js/billing';
+import { RemoteConfigModule, getConfig }               from '@fonderie-js/config';
 
-import { BillingModule, StripeProvider, requirePlan }      from '@fonderie-js/billing';
+import { fileURLToPath } from 'node:url';
+import { join }          from 'node:path';
 
-import { RemoteConfigModule, getConfig }                   from '@fonderie-js/config';
+import { getMigrationsPath as authMigrations }        from '@fonderie-js/auth/migrations';
+import { getMigrationsPath as permissionsMigrations } from '@fonderie-js/permissions/migrations';
+import { getMigrationsPath as workspacesMigrations }  from '@fonderie-js/workspaces/migrations';
+import { getMigrationsPath as billingMigrations }     from '@fonderie-js/billing/migrations';
+import { getMigrationsPath as configMigrations }      from '@fonderie-js/config/migrations';
+import { getMigrationsPath as courierMigrations }     from '@fonderie-js/courier/migrations';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -52,8 +57,16 @@ const store = new PGAdapter(config.db.url)
 
 // ── Migrations ────────────────────────────────────────────────────
 
-const migrations = new MigrationRunner(store, join(__dirname, 'migrations/sql'))
-await migrations.run()
+for (const dir of [
+	authMigrations(),
+	permissionsMigrations(),
+	workspacesMigrations(),
+	billingMigrations(),
+	configMigrations(),
+	courierMigrations(),
+]) {
+	await new MigrationRunner(store, dir).run()
+}
 
 // ── Modules ───────────────────────────────────────────────────────
 
