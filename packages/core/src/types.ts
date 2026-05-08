@@ -15,9 +15,8 @@ export interface IAuthUser {
 }
 
 export interface IWorkspace {
-	id:       string;
-	name:     string;
-	tenantId: string;
+	id:   string;
+	name: string;
 }
 
 // ── Courier contract — lives in core because auth + workspaces emit

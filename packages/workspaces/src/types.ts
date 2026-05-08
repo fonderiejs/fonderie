@@ -1,20 +1,36 @@
+export type WorkspaceType = 'ORGANIZATION' | 'PERSONAL' | 'TEAM' | 'COMMUNITY' | 'VENDOR'
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED'
+
 export interface IWorkspace {
 	id:          string
 	name:        string
 	slug:        string
+	type:        WorkspaceType
+	description: string | null
 	plan:        string
 	ownerId:     string
-	archivedAt:  Date | null
-	createdAt:   Date
+	archivedAt:  string | null
+	archivedBy:  string | null
+	createdAt:   string
+	updatedAt:   string | null
+}
+
+export interface IRole {
+	id:          string
+	name:        string
+	isSystem:    boolean
+	active:      boolean
+	description: string | null
+	workspaceId: string | null
 }
 
 export interface IMember {
-	id:          string
 	userId:      string
 	workspaceId: string
 	roleId:      string
 	roleName:    string
-	createdAt:   Date
+	confirmed:   boolean
+	createdAt:   string
 }
 
 export interface IInvitation {
@@ -22,13 +38,17 @@ export interface IInvitation {
 	workspaceId: string
 	email:       string
 	roleId:      string
-	pin:         string
-	expiresAt:   Date
-	createdAt:   Date
+	token:       string
+	pin:         string | null
+	status:      InvitationStatus
+	expiresAt:   string
+	createdAt:   string
 }
 
-export interface IRole {
-	id:          string
-	name:        string
-	workspaceId: string
+export interface IWorkspaceSettings {
+	locale:     string
+	timezone:   string
+	currency:   string
+	dateFormat: string
+	timeFormat: string
 }
