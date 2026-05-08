@@ -164,3 +164,60 @@ test('PermissionsModule: satisfies IFonderieModule interface', async () => {
 	assert.ok(typeof mod.install  === 'function')
 	assert.ok(mod.engine instanceof PermissionsEngine)
 })
+
+// ── requirePermission middleware ──────────────────────────────────
+
+test('requirePermission: 401 when no user on ctx', async () => {
+	const { requirePermission } = await import('../middlewares/require-permission')
+	const middleware = requirePermission('read', 'JOBS')
+	const ctx        = { user: null, workspace: null, tenant: null, meta: {}, request: new Request('http://localhost/') }
+	const response   = await middleware(ctx as any, async () => Response.json({}))
+	assert.equal(response.status, 401)
+})
+
+test('requirePermission: 500 when permissions engine not installed', async () => {
+	const { requirePermission } = await import('../middlewares/require-permission')
+	const middleware = requirePermission('read', 'JOBS')
+	const ctx = {
+		user:      { id: USER, email: 'a@b.com' },
+		workspace: { id: WORKSPACE },
+		tenant:    null,
+		meta:      {},   // no engine in meta
+		request:   new Request('http://localhost/'),
+	}
+	const response = await middleware(ctx as any, async () => Response.json({}))
+	assert.equal(response.status, 500)
+})
+
+test('requirePermission: 403 when permission denied', async () => {
+	const { requirePermission }  = await import('../middlewares/require-permission')
+	const { PERMISSIONS_ENGINE_KEY } = await import('../module')
+	const engine     = new PermissionsEngine(makeStore({ membership: MEM, hasPermission: false }))
+	const middleware = requirePermission('delete', 'JOBS')
+	const ctx = {
+		user:      { id: USER, email: 'a@b.com' },
+		workspace: { id: WORKSPACE },
+		tenant:    null,
+		meta:      { [PERMISSIONS_ENGINE_KEY]: engine },
+		request:   new Request('http://localhost/'),
+	}
+	const response = await middleware(ctx as any, async () => Response.json({}))
+	assert.equal(response.status, 403)
+})
+
+test('requirePermission: calls next when permission granted', async () => {
+	const { requirePermission }  = await import('../middlewares/require-permission')
+	const { PERMISSIONS_ENGINE_KEY } = await import('../module')
+	const engine     = new PermissionsEngine(makeStore({ membership: MEM, hasPermission: true }))
+	const middleware = requirePermission('read', 'JOBS')
+	const ctx = {
+		user:      { id: USER, email: 'a@b.com' },
+		workspace: { id: WORKSPACE },
+		tenant:    null,
+		meta:      { [PERMISSIONS_ENGINE_KEY]: engine },
+		request:   new Request('http://localhost/'),
+	}
+	let called = false
+	await middleware(ctx as any, async () => { called = true; return Response.json({}) })
+	assert.ok(called)
+})
