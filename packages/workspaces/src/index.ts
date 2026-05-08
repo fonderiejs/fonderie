@@ -12,4 +12,3 @@ export {
 }                                                     from './dtos/workspace';
 export { workspaceContextMiddleware }                 from './middlewares/workspace-context';
 export { requireWorkspace }                           from './middlewares/require-workspace';
-export { getMigrationsPath }                          from './migrations/index';
