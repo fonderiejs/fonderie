@@ -1,3 +1,22 @@
+export interface IUserSkill {
+	id:          string;
+	name:        string;
+	proficiency: number;
+	verified:    boolean;
+}
+
+export interface IUserPreferences {
+	notifications: {
+		email: boolean;
+		inApp: boolean;
+		sms:   boolean;
+		push:  boolean;
+	};
+	emailDigest: string;
+	dateFormat?: string;
+	timeFormat?: string;
+}
+
 // Concrete types — fulfill the stubs in @fonderie-js/core
 export interface IUser {
 	id:              string;
@@ -8,7 +27,13 @@ export interface IUser {
 	profileImageUrl: string | null;
 	locale:          string;
 	timezone:        string;
+	isActive:        boolean;
+	lastLogin:       Date | null;
+	skills:          IUserSkill[];
+	preferences:     IUserPreferences;
 	suspended:       boolean;
+	whitelist:       boolean;
+	ipWhitelist:     string[];
 	deletedAt:       Date | null;
 	createdAt:       Date;
 	updatedAt:       Date;
