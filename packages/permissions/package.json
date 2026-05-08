@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie-js/permissions",
 	"version": "0.0.1",
-	"description": "RBAC engine with wildcard permissions and super-role bypass",
+	"description": "RBAC engine with CRUD-bit permissions and BOOL_OR aggregation",
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": { "node": ">=20" },
@@ -25,13 +25,18 @@
 			"types":   "./dist/middlewares/index.d.ts",
 			"import":  "./dist/middlewares/index.js",
 			"require": "./dist/middlewares/index.cjs"
+		},
+		"./migrations": {
+			"types":   "./dist/migrations/index.d.ts",
+			"import":  "./dist/migrations/index.js",
+			"require": "./dist/migrations/index.cjs"
 		}
 	},
 	"main":   "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"types":  "./dist/index.d.ts",
 	"scripts": {
-		"build":     "tsup",
+		"build":     "tsup && node -e \"require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})\"",
 		"dev":       "tsup --watch",
 		"typecheck": "tsc --noEmit",
 		"test":      "tsx --test src/__tests__/*.test.ts",

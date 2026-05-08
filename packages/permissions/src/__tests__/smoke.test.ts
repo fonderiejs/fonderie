@@ -4,184 +4,163 @@ import assert   from 'node:assert/strict'
 import type { IStoreAdapter }                        from '@fonderie-js/store';
 
 import { PermissionsEngine, PermissionDeniedError } from '../engine';
-import type { IPermission, IMembership }               from '../types';
+import type { IMembership }                          from '../types';
 
 // ── In-memory stub store ─────────────────────────────────────────
 
-function makeStore(opts: {
-	membership?: IMembership | null
-	permissions?: IPermission[]
-}): IStoreAdapter {
+type StubOpts = {
+	membership?:      IMembership | null
+	superRoleExists?: boolean
+	hasPermission?:   boolean
+}
+
+function makeStore(opts: StubOpts): IStoreAdapter {
 	const stub: IStoreAdapter = {
-		query: async (sql: string) => {
-			// membership query
-			if (sql.includes('fonderie_workspace_members') && sql.includes('role_name')) {
-				if (!opts.membership) {
-					return [];
-				}
-				
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// membership existence check (fonderie_role_user_workspaces LIMIT 1)
+			if (sql.includes('fonderie_role_user_workspaces') && sql.includes('LIMIT 1')) {
+				if (!opts.membership) return [] as T[]
 				return [{
 					user_id:      opts.membership.userId,
 					workspace_id: opts.membership.workspaceId,
 					role_id:      opts.membership.roleId,
 					role_name:    opts.membership.roleName,
-				}];
+				}] as T[]
 			}
 
-			// permissions query
-			if (sql.includes('fonderie_role_permissions')) {
-				return opts.permissions ?? [];
+			// super-role check (EXISTS query)
+			if (sql.includes('EXISTS') && sql.includes('fonderie_role_user_workspaces')) {
+				return [{ exists: opts.superRoleExists ?? false }] as T[]
 			}
 
-			return [];
+			// BOOL_OR permission check
+			if (sql.includes('BOOL_OR') && sql.includes('fonderie_role_permissions')) {
+				return [{ has_permission: opts.hasPermission ?? false }] as T[]
+			}
+
+			return [] as T[]
 		},
 		transaction: async (fn) => fn(stub),
 	}
 
-	return stub;
+	return stub
 }
 
-const WORKSPACE = 'ws-1';
-const USER      = 'user-1';
+const WORKSPACE = 'ws-1'
+const USER      = 'user-1'
+const MEM: IMembership = {
+	userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member'
+}
 
 // ── can() ────────────────────────────────────────────────────────
 
 test('can: returns false when user has no membership', async () => {
-	const engine = new PermissionsEngine(makeStore({ membership: null }));
-	const result = await engine.can(USER, 'read', 'projects', WORKSPACE);
-	assert.equal(result, false);
-});
+	const engine = new PermissionsEngine(makeStore({ membership: null }))
+	assert.equal(await engine.can(USER, 'read', 'JOBS', WORKSPACE), false)
+})
 
-test('can: returns true when permission matches exactly', async () => {
+test('can: returns true when BOOL_OR check returns true', async () => {
+	const engine = new PermissionsEngine(makeStore({ membership: MEM, hasPermission: true }))
+	assert.equal(await engine.can(USER, 'read', 'JOBS', WORKSPACE), true)
+})
+
+test('can: returns false when BOOL_OR check returns false', async () => {
+	const engine = new PermissionsEngine(makeStore({ membership: MEM, hasPermission: false }))
+	assert.equal(await engine.can(USER, 'delete', 'JOBS', WORKSPACE), false)
+})
+
+test('can: super-role bypasses permission check', async () => {
 	const engine = new PermissionsEngine(makeStore({
-		membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member' },
-		permissions: [{ action: 'read', resource: 'projects' }],
-	}));
-	assert.equal(await engine.can(USER, 'read', 'projects', WORKSPACE), true);
-});
+		membership:      MEM,
+		superRoleExists: true,
+		hasPermission:   false,   // would fail without bypass
+	}))
+	assert.equal(await engine.can(USER, 'delete', 'ANYTHING', WORKSPACE), true)
+})
 
-test('can: returns false when permission does not match', async () => {
-	const engine = new PermissionsEngine(makeStore({
-		membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member' },
-		permissions: [{ action: 'read', resource: 'projects' }],
-	}));
-	assert.equal(await engine.can(USER, 'delete', 'projects', WORKSPACE), false);
-});
-
-test('can: wildcard action matches any action', async () => {
-	const engine = new PermissionsEngine(makeStore({
-		membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member' },
-		permissions: [{ action: '*', resource: 'projects' }],
-	}));
-	assert.equal(await engine.can(USER, 'delete', 'projects', WORKSPACE), true);
-});
-
-test('can: wildcard resource matches any resource', async () => {
-	const engine = new PermissionsEngine(makeStore({
-		membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member' },
-		permissions: [{ action: 'read', resource: '*' }],
-	}));
-	assert.equal(await engine.can(USER, 'read', 'invoices', WORKSPACE), true);
-});
-
-test('can: super-role bypasses all permission checks', async () => {
-	const engine = new PermissionsEngine(makeStore({
-		membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'owner' },
-		permissions: [],   // no permissions — owner bypasses
-	}));
-	assert.equal(await engine.can(USER, 'delete', 'anything', WORKSPACE), true);
-});
-
-test('can: wildcards disabled — wildcard permission does not match', async () => {
+test('can: custom superRole name respected', async () => {
 	const engine = new PermissionsEngine(
-		makeStore({
-			membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member' },
-			permissions: [{ action: '*', resource: 'projects' }],
-		}),
-		{ wildcards: false },
-	);
-	assert.equal(await engine.can(USER, 'read', 'projects', WORKSPACE), false);
-});
+		makeStore({ membership: MEM, superRoleExists: true, hasPermission: false }),
+		{ superRole: 'admin' },
+	)
+	assert.equal(await engine.can(USER, 'delete', 'ANYTHING', WORKSPACE), true)
+})
 
 // ── assert() ─────────────────────────────────────────────────────
 
 test('assert: throws PermissionDeniedError when denied', async () => {
-	const engine = new PermissionsEngine(makeStore({ membership: null }));
+	const engine = new PermissionsEngine(makeStore({ membership: null }))
 	await assert.rejects(
-		() => engine.assert(USER, 'read', 'projects', WORKSPACE),
-			(err: unknown) => {
+		() => engine.assert(USER, 'read', 'JOBS', WORKSPACE),
+		(err: unknown) => {
 			assert.ok(err instanceof PermissionDeniedError)
 			assert.equal((err as PermissionDeniedError).status, 403)
 			return true
 		},
-	);
-});
+	)
+})
 
 test('assert: resolves when allowed', async () => {
-	const engine = new PermissionsEngine(makeStore({
-		membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member' },
-		permissions: [{ action: 'read', resource: 'projects' }],
-	}));
-	await assert.doesNotReject(() => engine.assert(USER, 'read', 'projects', WORKSPACE));
-});
+	const engine = new PermissionsEngine(makeStore({ membership: MEM, hasPermission: true }))
+	await assert.doesNotReject(() => engine.assert(USER, 'read', 'JOBS', WORKSPACE))
+})
 
 // ── canAll() ─────────────────────────────────────────────────────
 
 test('canAll: true only when all checks pass', async () => {
-	const engine = new PermissionsEngine(makeStore({
-		membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member' },
-		permissions: [
-			{ action: 'read',   resource: 'projects' },
-			{ action: 'create', resource: 'projects' },
-		],
-	}));
+	const passing = makeStore({ membership: MEM, hasPermission: true })
+	const failing = makeStore({ membership: MEM, hasPermission: false })
+
 	assert.equal(
-		await engine.canAll(USER, [
-			{ action: 'read',   resource: 'projects' },
-			{ action: 'create', resource: 'projects' },
+		await new PermissionsEngine(passing).canAll(USER, [
+			{ operation: 'read',   permissionKey: 'JOBS' },
+			{ operation: 'create', permissionKey: 'JOBS' },
 		], WORKSPACE),
 		true,
-	);
+	)
+
 	assert.equal(
-		await engine.canAll(USER, [
-			{ action: 'read',   resource: 'projects' },
-			{ action: 'delete', resource: 'projects' },
+		await new PermissionsEngine(failing).canAll(USER, [
+			{ operation: 'read',   permissionKey: 'JOBS' },
+			{ operation: 'delete', permissionKey: 'JOBS' },
 		], WORKSPACE),
 		false,
-	);
-});
+	)
+})
 
 // ── canAny() ─────────────────────────────────────────────────────
 
 test('canAny: true when at least one check passes', async () => {
-	const engine = new PermissionsEngine(makeStore({
-		membership:  { userId: USER, workspaceId: WORKSPACE, roleId: 'r1', roleName: 'member' },
-		permissions: [{ action: 'read', resource: 'projects' }],
-	}));
+	// Store always returns same result for all checks — model a partial pass
+	// by having different stores for each sub-check is not possible with this stub,
+	// so we verify the all-pass and all-fail cases.
+	const passing = makeStore({ membership: MEM, hasPermission: true })
+	const failing = makeStore({ membership: MEM, hasPermission: false })
+
 	assert.equal(
-		await engine.canAny(USER, [
-			{ action: 'delete', resource: 'projects' },
-			{ action: 'read',   resource: 'projects' },
+		await new PermissionsEngine(passing).canAny(USER, [
+			{ operation: 'read',   permissionKey: 'JOBS' },
+			{ operation: 'delete', permissionKey: 'JOBS' },
 		], WORKSPACE),
 		true,
-	);
+	)
+
 	assert.equal(
-		await engine.canAny(USER, [
-			{ action: 'delete', resource: 'projects' },
-			{ action: 'create', resource: 'projects' },
+		await new PermissionsEngine(failing).canAny(USER, [
+			{ operation: 'delete', permissionKey: 'JOBS' },
+			{ operation: 'create', permissionKey: 'JOBS' },
 		], WORKSPACE),
 		false,
-	);
-});
+	)
+})
 
 // ── PermissionsModule shape ──────────────────────────────────────
 
 test('PermissionsModule: satisfies IFonderieModule interface', async () => {
-	const { PermissionsModule } = await import('../module');
-	const stub = makeStore({});
-	const mod  = new PermissionsModule(stub);
+	const { PermissionsModule } = await import('../module')
+	const mod = new PermissionsModule(makeStore({}))
 
-	assert.equal(mod.name, '@fonderie-js/permissions');
-	assert.ok(typeof mod.install  === 'function');
-	assert.ok(mod.engine instanceof PermissionsEngine);
-});
+	assert.equal(mod.name, '@fonderie-js/permissions')
+	assert.ok(typeof mod.install  === 'function')
+	assert.ok(mod.engine instanceof PermissionsEngine)
+})

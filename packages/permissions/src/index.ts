@@ -1,8 +1,7 @@
-// ── Public API ───────────────────────────────────────────────────
 export type {
+	Operation,
+	PermissionKey,
 	IRole,
-	Action,
-	Resource,
 	IPermission,
 	IMembership,
 	IRoleWithPermissions,
@@ -10,9 +9,8 @@ export type {
 export { PermissionsModule }                         from './module';
 export { PermissionsEngine, PermissionDeniedError }  from './engine';
 export type { IPermissionsConfig }                   from './config';
-export type { PermissionAction }                     from './constants';
 
-// Middleware — imported directly for use in route definitions
-export { PERMISSIONS }       from './constants';
-export { requireRole }       from './middlewares/require-role';
-export { requirePermission } from './middlewares/require-permission';
+export { OPERATIONS, PERMISSION_COLUMN }             from './constants';
+export { requireRole }                               from './middlewares/require-role';
+export { requirePermission }                         from './middlewares/require-permission';
+export { getMigrationsPath }                         from './migrations/index';

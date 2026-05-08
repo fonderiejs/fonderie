@@ -1,3 +1,3 @@
 export { getRoleWithPermissions, listWorkspaceRoles } from './roles';
-export { getMembership }                               from './membership';
-export { getPermissionsForUser }                       from './permissions';
+export { getMembership, hasRole }                     from './membership';
+export { checkPermission }                            from './permissions';

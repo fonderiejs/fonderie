@@ -1,19 +1,17 @@
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import type { IPermission }       from './types';
+import type { Operation }         from './types';
 import type { IPermissionsConfig } from './config';
-import { getMembership }          from './services/membership';
-import { getPermissionsForUser }  from './services/permissions';
+import { getMembership, hasRole } from './services/membership';
+import { checkPermission }        from './services/permissions';
 
 export class PermissionsEngine {
-	private wildcards: boolean
 	private superRole: string
 
 	constructor(
 		private store: IStoreAdapter,
 		config: IPermissionsConfig = {},
 	) {
-		this.wildcards = config.wildcards ?? true
 		this.superRole = config.superRole ?? 'owner'
 	}
 
@@ -21,92 +19,70 @@ export class PermissionsEngine {
 		return getMembership(userId, workspaceId, this.store)
 	}
 
-	// Primary check — the one method every handler calls
 	async can(
-		userId:      string,
-		action:      string,
-		resource:    string,
-		workspaceId: string,
+		userId:        string,
+		operation:     Operation,
+		permissionKey: string,
+		workspaceId:   string,
 	): Promise<boolean> {
-		const membership = await this.getMembership(userId, workspaceId);
-		if (!membership) {
-			return false;
-		}
+		const isMember = await getMembership(userId, workspaceId, this.store)
+		if (!isMember) return false
 
-		// Super-role bypasses all permission checks
-		if (membership.roleName === this.superRole) {
-			return true;
-		}
+		if (await hasRole(userId, workspaceId, this.superRole, this.store)) return true
 
-		const permissions = await getPermissionsForUser(userId, workspaceId, this.store);
-		return this.matches(permissions, action, resource);
+		return checkPermission(userId, workspaceId, permissionKey, operation, this.store)
 	}
 
-	// Convenience — throws 403 instead of returning false
 	async assert(
-		userId:      string,
-		action:      string,
-		resource:    string,
-		workspaceId: string,
+		userId:        string,
+		operation:     Operation,
+		permissionKey: string,
+		workspaceId:   string,
 	): Promise<void> {
-		const allowed = await this.can(userId, action, resource, workspaceId);
+		const allowed = await this.can(userId, operation, permissionKey, workspaceId)
 		if (!allowed) {
-			throw new PermissionDeniedError(action, resource);
+			throw new PermissionDeniedError(operation, permissionKey)
 		}
 	}
 
-	// Check multiple permissions at once — all must pass
 	async canAll(
 		userId:      string,
-		checks:      Array<{ action: string; resource: string }>,
+		checks:      Array<{ operation: Operation; permissionKey: string }>,
 		workspaceId: string,
 	): Promise<boolean> {
-		const membership = await this.getMembership(userId, workspaceId);
-		if (!membership) {
-			return false;
-		}
+		const isMember = await getMembership(userId, workspaceId, this.store)
+		if (!isMember) return false
 
-		if (membership.roleName === this.superRole) {
-			return true;
-		}
+		if (await hasRole(userId, workspaceId, this.superRole, this.store)) return true
 
-		const permissions = await getPermissionsForUser(userId, workspaceId, this.store);
-		return checks.every(c => this.matches(permissions, c.action, c.resource));
+		const results = await Promise.all(
+			checks.map(c => checkPermission(userId, workspaceId, c.permissionKey, c.operation, this.store))
+		)
+		return results.every(Boolean)
 	}
 
-	// Check multiple permissions — at least one must pass
 	async canAny(
 		userId:      string,
-		checks:      Array<{ action: string; resource: string }>,
+		checks:      Array<{ operation: Operation; permissionKey: string }>,
 		workspaceId: string,
 	): Promise<boolean> {
-		const membership = await this.getMembership(userId, workspaceId);
-		if (!membership) {
-			return false;
-		}
+		const isMember = await getMembership(userId, workspaceId, this.store)
+		if (!isMember) return false
 
-		if (membership.roleName === this.superRole) {
-			return true;
-		}
+		if (await hasRole(userId, workspaceId, this.superRole, this.store)) return true
 
-		const permissions = await getPermissionsForUser(userId, workspaceId, this.store);
-		return checks.some(c => this.matches(permissions, c.action, c.resource));
-	}
-
-	private matches(permissions: IPermission[], action: string, resource: string): boolean {
-		return permissions.some(p => {
-			const actionMatch    = p.action   === action   || (this.wildcards && p.action   === '*');
-			const resourceMatch  = p.resource === resource || (this.wildcards && p.resource === '*');
-			return actionMatch && resourceMatch;
-		});
+		const results = await Promise.all(
+			checks.map(c => checkPermission(userId, workspaceId, c.permissionKey, c.operation, this.store))
+		)
+		return results.some(Boolean)
 	}
 }
 
 export class PermissionDeniedError extends Error {
 	readonly status = 403;
 
-	constructor(action: string, resource: string) {
-		super(`Permission denied: ${action}:${resource}`);
-		this.name = 'PermissionDeniedError';
+	constructor(operation: string, permissionKey: string) {
+		super(`Permission denied: ${operation}:${permissionKey}`)
+		this.name = 'PermissionDeniedError'
 	}
 }

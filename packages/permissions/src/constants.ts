@@ -1,9 +1,15 @@
-export const PERMISSIONS = {
+import type { Operation } from './types'
+
+export const OPERATIONS = {
 	CREATE: 'create',
 	READ:   'read',
 	UPDATE: 'update',
 	DELETE: 'delete',
-	ALL:    '*',
-} as const
+} as const satisfies Record<string, Operation>
 
-export type PermissionAction = typeof PERMISSIONS[keyof typeof PERMISSIONS]
+export const PERMISSION_COLUMN: Record<Operation, string> = {
+	create: 'can_create',
+	read:   'can_read',
+	update: 'can_update',
+	delete: 'can_delete',
+}

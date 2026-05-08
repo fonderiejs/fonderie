@@ -1,15 +1,19 @@
-export type Action   = string   // 'create' | 'read' | 'update' | 'delete' | '*'
-export type Resource = string   // 'projects' | 'invoices' | '*'
+export type Operation    = 'create' | 'read' | 'update' | 'delete'
+export type PermissionKey = string
 
 export interface IPermission {
-	action:   Action
-	resource: Resource
+	permissionKey: PermissionKey
+	canCreate:     boolean
+	canRead:       boolean
+	canUpdate:     boolean
+	canDelete:     boolean
 }
 
 export interface IRole {
 	id:          string
 	name:        string
-	workspaceId: string
+	isSystem:    boolean
+	workspaceId: string | null
 }
 
 export interface IRoleWithPermissions extends IRole {
