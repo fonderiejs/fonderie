@@ -22,7 +22,7 @@ export function meHandler(store: IStoreAdapter) {
 	}
 }
 
-const UPDATABLE_FIELDS = ['first_name', 'last_name', 'phone', 'profile_image_url', 'locale', 'timezone'] as const;
+const UPDATABLE_FIELDS = ['first_name', 'last_name', 'phone', 'profile_image_url', 'locale', 'timezone', 'preferences'] as const;
 
 export function updateMeHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
@@ -42,6 +42,7 @@ export function updateMeHandler(store: IStoreAdapter) {
 			avatarUrl:   'profile_image_url',
 			locale:      'locale',
 			timezone:    'timezone',
+			preferences: 'preferences',
 		};
 
 		for (const [key, col] of Object.entries(fieldMap)) {

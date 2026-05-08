@@ -96,7 +96,18 @@ const BASE_USER: IUser = {
 	profileImageUrl: 'https://cdn.example.com/avatar.jpg',
 	locale:          'en-US',
 	timezone:        'UTC',
+	isActive:        true,
+	lastLogin:       null,
+	skills:          [],
+	preferences:     {
+		notifications: { email: true, inApp: true, sms: false, push: false },
+		emailDigest:   'immediate',
+		dateFormat:    'MM/DD/YYYY',
+		timeFormat:    'hh:mm A',
+	},
 	suspended:       false,
+	whitelist:       false,
+	ipWhitelist:     [],
 	deletedAt:       null,
 	createdAt:       new Date('2024-01-01T00:00:00Z'),
 	updatedAt:       new Date('2024-01-01T00:00:00Z'),
@@ -167,16 +178,48 @@ function makeCtx(opts: {
 
 // ── toUserDTO ─────────────────────────────────────────────────────
 
-test('toUserDTO: maps profileImageUrl to avatarUrl', async () => {
+test('toUserDTO: maps all fields correctly', async () => {
 	const { toUserDTO } = await import('../dtos/user');
 	const dto = toUserDTO(BASE_USER);
+
 	assert.equal(dto.avatarUrl,       'https://cdn.example.com/avatar.jpg');
 	assert.equal(dto.phone,           '+1234567890');
 	assert.equal(dto.isEmailVerified, true);
 	assert.equal(dto.firstName,       'Jane');
 	assert.equal(dto.lastName,        'Doe');
 	assert.equal(dto.mfaEnabled,      false);
-	assert.ok(typeof (dto as any).profileImageUrl === 'undefined', 'profileImageUrl should not appear in DTO');
+	assert.equal(dto.isActive,        true);
+	assert.equal(dto.lastLogin,       '');
+	assert.deepEqual(dto.skills,      []);
+	assert.equal(dto.suspended,       false);
+	assert.equal(dto.whitelist,       false);
+	assert.deepEqual(dto.ipWhitelist, []);
+	assert.equal(dto.preferences.emailDigest,              'immediate');
+	assert.equal(dto.preferences.notifications.email,      true);
+	assert.equal(dto.preferences.notifications.sms,        false);
+	assert.ok(typeof (dto as any).profileImageUrl === 'undefined', 'profileImageUrl must not leak into DTO');
+});
+
+test('toUserDTO: skills and ipWhitelist are passed through', async () => {
+	const { toUserDTO } = await import('../dtos/user');
+	const user = {
+		...BASE_USER,
+		skills:      [{ id: 'skill-1', name: 'plumbing', proficiency: 5, verified: true }],
+		ipWhitelist: ['192.168.1.1'],
+		lastLogin:   new Date('2024-06-01T12:00:00Z'),
+	};
+	const dto = toUserDTO(user);
+	assert.equal(dto.skills.length,   1);
+	assert.equal(dto.skills[0]!.name, 'plumbing');
+	assert.equal(dto.ipWhitelist[0],  '192.168.1.1');
+	assert.ok(dto.lastLogin.startsWith('2024-06-01'));
+});
+
+test('toUserDTO: falls back to defaults when preferences is null', async () => {
+	const { toUserDTO } = await import('../dtos/user');
+	const dto = toUserDTO({ ...BASE_USER, preferences: null as any });
+	assert.equal(dto.preferences.emailDigest,         'immediate');
+	assert.equal(dto.preferences.notifications.email, true);
 });
 
 // ── requireAuth middleware ────────────────────────────────────────
