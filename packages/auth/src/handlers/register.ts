@@ -2,7 +2,7 @@ import { randomBytes }          from 'node:crypto';
 
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
-import type { ICourierMessage }   from '@fonderie-js/courier';
+import type { ICourierMessage }   from '@fonderie-js/core';
 
 import type { IAuthConfig }      from '../config';
 

@@ -2,19 +2,23 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
 
 import {
+	meHandler,
 	loginHandler,
 	logoutHandler,
 	refreshHandler,
 	registerHandler,
+	updateMeHandler,
+	deleteMeHandler,
 	mfaEnableHandler,
 	mfaVerifyHandler,
+	mfaDisableHandler,
 	googleInitHandler,
 	verifyEmailHandler,
 	resetPasswordHandler,
 	forgotPasswordHandler,
 	googleCallbackHandler,
 } from './handlers';
-import type { IAuthConfig }    from './config';
+import type { IAuthConfig } from './config';
 
 type RouteDefinition = [string, string, Middleware]
 
@@ -23,15 +27,24 @@ export function buildAuthRoutes(
 	config: IAuthConfig,
 ): RouteDefinition[] {
 	const routes: RouteDefinition[] = [
+		// Public
 		['POST', '/auth/register',        registerHandler(store, config)],
 		['POST', '/auth/login',           loginHandler(store, config)],
-		['POST', '/auth/logout',          logoutHandler()],
 		['POST', '/auth/refresh',         refreshHandler(store, config)],
 		['POST', '/auth/verify-email',    verifyEmailHandler(store)],
 		['POST', '/auth/forgot-password', forgotPasswordHandler(store)],
 		['POST', '/auth/reset-password',  resetPasswordHandler(store)],
-		['POST', '/auth/mfa/enable',      mfaEnableHandler(store, config.google?.clientId ?? 'Fonderie')],
-		['POST', '/auth/mfa/verify',      mfaVerifyHandler(store, config)],
+
+		// Authenticated
+		['POST',   '/auth/logout',     logoutHandler()],
+		['GET',    '/auth/me',         meHandler(store)],
+		['PATCH',  '/auth/me',         updateMeHandler(store)],
+		['DELETE', '/auth/me',         deleteMeHandler(store)],
+
+		// MFA
+		['POST', '/auth/mfa/enable',   mfaEnableHandler(store, config.google?.clientId ?? 'Fonderie')],
+		['POST', '/auth/mfa/verify',   mfaVerifyHandler(store, config)],
+		['POST', '/auth/mfa/disable',  mfaDisableHandler(store)],
 	];
 
 	if (config.providers.includes('google')) {

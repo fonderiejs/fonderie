@@ -1,7 +1,14 @@
 // ── Public API ───────────────────────────────────────────────────
-export type { IUser, ISession } from './types';
-export { AuthModule }           from './module';
-export type { IAuthConfig }     from './config';
+export type { IUser, ISession, IMfaChallenge } from './types';
+export { AuthModule }                          from './module';
+export type { IAuthConfig }                    from './config';
+
+// DTOs
+export type { IUserDTO }  from './dtos/user';
+export { toUserDTO }      from './dtos/user';
+
+// Migrations
+export { getMigrationsPath } from './migrations';
 
 // Guards — used by other modules and user route handlers
 export { sessionMiddleware }    from './middlewares/session';

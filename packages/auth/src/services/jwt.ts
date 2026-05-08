@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import type { IAuthConfig } from '../config';
 
@@ -29,7 +29,7 @@ export function issueTokenPair(userId: string, config: IAuthConfig): TokenPair {
 	const refreshToken = jwt.sign(
 		{ sub: userId, type: 'refresh' } satisfies IRefreshPayload,
 		config.jwtSecret,
-		{ expiresIn: duration },
+		{ expiresIn: duration } as SignOptions,
 	)
 
 	return { accessToken, refreshToken }

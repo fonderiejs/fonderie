@@ -18,10 +18,11 @@ export function mfaVerifyHandler(store: IStoreAdapter, config: IAuthConfig) {
 			return Response.json({ error: 'token is required' }, { status: 422 });
 		}
 
-		const [{ mfa_secret: secret }] = await store.query<{ mfa_secret: string }>(
+		const [row] = await store.query<{ mfa_secret: string | null }>(
 			`SELECT mfa_secret FROM fonderie_users WHERE id = $1`,
 			[ctx.user.id],
 		);
+		const secret = row?.mfa_secret;
 
 		if (!secret) {
 			return Response.json({ error: 'MFA not configured' }, { status: 400 });
