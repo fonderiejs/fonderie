@@ -188,32 +188,57 @@ app.addRoute('GET', '/users/:id', async (ctx) => {
 // Routes registered automatically by modules:
 //
 // AuthModule:
-//   POST /auth/register
-//   POST /auth/login
-//   POST /auth/logout
-//   POST /auth/refresh
-//   POST /auth/verify-email
-//   POST /auth/forgot-password
-//   POST /auth/reset-password
-//   POST /auth/mfa/enable
-//   POST /auth/mfa/verify
+//   POST   /auth/register
+//   POST   /auth/login
+//   POST   /auth/logout
+//   POST   /auth/refresh
+//   POST   /auth/verify-email
+//   POST   /auth/forgot-password
+//   POST   /auth/reset-password
+//   POST   /auth/mfa/enable
+//   POST   /auth/mfa/verify
+//   POST   /auth/mfa/disable
+//   GET    /users/me
+//   PATCH  /users/me
+//   DELETE /users/me
 //
-// WorkspacesModule:
-//   GET    /workspaces
+// WorkspacesModule:  (workspace resolved from X-Workspace-ID header unless noted)
 //   POST   /workspaces
-//   GET    /workspaces/:workspaceId
-//   GET    /workspaces/:workspaceId/members
-//   DELETE /workspaces/:workspaceId/members/:userId
-//   POST   /workspaces/:workspaceId/invitations
-//   POST   /invitations/accept
+//   GET    /workspaces
+//   GET    /workspaces/:id                         (path-based)
+//   PUT    /workspaces/:id                         (path-based)
+//   POST   /workspaces/archive
+//   POST   /workspaces/restore
+//   GET    /workspaces/settings
+//   PUT    /workspaces/settings
+//   GET    /workspaces/members
+//   DELETE /workspaces/members/:userId
+//   GET    /workspaces/members/:userId/roles
+//   POST   /workspaces/members/:userId/roles
+//   DELETE /workspaces/members/:userId/roles/:roleId
+//   GET    /workspaces/invitations
+//   POST   /workspaces/invitations
+//   DELETE /workspaces/invitations/:inviteId
+//   POST   /workspaces/invitations/accept          (no workspace context)
+//   POST   /workspaces/roles
+//   GET    /workspaces/roles
+//   GET    /workspaces/roles/:roleId
+//   PUT    /workspaces/roles/:roleId
+//   DELETE /workspaces/roles/:roleId
+//   POST   /workspaces/roles/:roleId/permissions
 //
 // BillingModule:
-//   GET  /billing/plans
-//   POST /workspaces/:workspaceId/billing/checkout
-//   POST /workspaces/:workspaceId/billing/portal
-//   POST /billing/webhook
-//   POST /workspaces/:workspaceId/billing/usage
-//   GET  /workspaces/:workspaceId/billing/usage/:metric
+//   GET    /billing/plans
+//   POST   /billing/plans
+//   GET    /billing/plans/:planId
+//   PUT    /billing/plans/:planId
+//   DELETE /billing/plans/:planId
+//   POST   /billing/webhook
+//   GET    /workspaces/:workspaceId/billing/subscription
+//   POST   /workspaces/:workspaceId/billing/checkout
+//   POST   /workspaces/:workspaceId/billing/portal
+//   POST   /workspaces/:workspaceId/billing/usage
+//   GET    /workspaces/:workspaceId/billing/usage/:metric
 
 // ── Boot ──────────────────────────────────────────────────────────
 
