@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert   from 'node:assert/strict';
 
 import type { IStoreAdapter }  from '@fonderie-js/store';
+import type { IConfigEntry }   from '../types';
 
 import { RemoteConfigManager } from '../manager';
 
@@ -9,7 +10,7 @@ import { RemoteConfigManager } from '../manager';
 
 function makeStore(entries: Array<{ key: string; value: string; environment: string }> = []): IStoreAdapter {
 	const stub: IStoreAdapter = {
-		query: async () => entries,
+		query: async <T = unknown>(): Promise<T[]> => entries as unknown as T[],
 		transaction: async (fn) => fn(stub),
 	}
 
@@ -123,4 +124,79 @@ test('getConfig: returns fallback when manager not in ctx', async () => {
 	const { getConfig } = await import('../middlewares/config-context');
 	const ctx = { meta: {} };
 	assert.equal(getConfig(ctx, 'any.key', 'fallback'), 'fallback');
+});
+
+// ── Config admin services ─────────────────────────────────────────
+
+function makeWriteStore(returnEntry?: IConfigEntry): IStoreAdapter {
+	const stub: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (returnEntry && (sql.includes('INSERT') || sql.includes('SELECT'))) {
+				return [returnEntry] as unknown as T[]
+			}
+			if (sql.includes('DELETE') && returnEntry) {
+				return [{ key: returnEntry.key }] as unknown as T[]
+			}
+			return [] as T[]
+		},
+		transaction: async (fn) => fn(stub),
+	}
+	return stub
+}
+
+const baseEntry: IConfigEntry = {
+	key:         'feature.dark-mode',
+	value:       'true',
+	environment: 'all',
+	description: 'Enable dark mode',
+	active:      true,
+	updatedAt:   '2026-05-08T00:00:00.000Z',
+}
+
+test('setConfigEntry: upserts and returns entry', async () => {
+	const { setConfigEntry } = await import('../services/config');
+	const store  = makeWriteStore(baseEntry);
+	const result = await setConfigEntry(
+		{ key: 'feature.dark-mode', value: true, description: 'Enable dark mode' },
+		store,
+	)
+	assert.equal(result.key,         'feature.dark-mode');
+	assert.equal(result.environment, 'all');
+});
+
+test('getConfigEntry: returns entry when found', async () => {
+	const { getConfigEntry } = await import('../services/config');
+	const store  = makeWriteStore(baseEntry);
+	const result = await getConfigEntry('feature.dark-mode', 'all', store);
+	assert.equal(result?.key, 'feature.dark-mode');
+});
+
+test('getConfigEntry: returns null when not found', async () => {
+	const { getConfigEntry } = await import('../services/config');
+	const store  = makeWriteStore(undefined);
+	const result = await getConfigEntry('missing', 'all', store);
+	assert.equal(result, null);
+});
+
+test('deleteConfigEntry: returns true when deleted', async () => {
+	const { deleteConfigEntry } = await import('../services/config');
+	const store   = makeWriteStore(baseEntry);
+	const deleted = await deleteConfigEntry('feature.dark-mode', 'all', store);
+	assert.ok(deleted);
+});
+
+test('deleteConfigEntry: returns false when not found', async () => {
+	const { deleteConfigEntry } = await import('../services/config');
+	const store   = makeWriteStore(undefined);
+	const deleted = await deleteConfigEntry('missing', 'all', store);
+	assert.ok(!deleted);
+});
+
+// ── getMigrationsPath ─────────────────────────────────────────────
+
+test('getMigrationsPath: returns a string path', async () => {
+	const { getMigrationsPath } = await import('../migrations/index');
+	const path = getMigrationsPath();
+	assert.ok(typeof path === 'string');
+	assert.ok(path.includes('migrations'));
 });
