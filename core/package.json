@@ -1,0 +1,58 @@
+{
+	"name": "@fonderie-js/core",
+	"version": "0.0.1",
+	"description": "Request lifecycle, middleware pipeline, and framework adapters",
+	"license": "UNLICENSED",
+	"type": "module",
+	"engines": { "node": ">=20" },
+	"exports": {
+		".": {
+			"types":   "./dist/index.d.ts",
+			"import":  "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./config": {
+			"types":   "./dist/config.d.ts",
+			"import":  "./dist/config.js",
+			"require": "./dist/config.cjs"
+		},
+		"./types": {
+			"types":   "./dist/types.d.ts",
+			"import":  "./dist/types.js",
+			"require": "./dist/types.cjs"
+		},
+		"./middleware": {
+			"types":   "./dist/middlewares/index.d.ts",
+			"import":  "./dist/middlewares/index.js",
+			"require": "./dist/middlewares/index.cjs"
+		},
+		"./parser": {
+			"types":   "./dist/parser.d.ts",
+			"import":  "./dist/parser.js",
+			"require": "./dist/parser.cjs"
+		},
+		"./response": {
+			"types":   "./dist/response.d.ts",
+			"import":  "./dist/response.js",
+			"require": "./dist/response.cjs"
+		}
+	},
+	"main":   "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types":  "./dist/index.d.ts",
+	"scripts": {
+		"build":     "tsup",
+		"dev":       "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test":      "tsx --test src/__tests__/*.test.ts",
+		"lint":      "biome lint src",
+		"format":    "biome format --write src",
+		"check":     "biome check --write src"
+	},
+	"devDependencies": {
+		"@types/node": "^25.6.0",
+		"tsup":        "^8.5.1",
+		"tsx":         "^4.21.0",
+		"typescript":  "^6.0.3"
+	}
+}

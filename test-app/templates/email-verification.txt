@@ -1,0 +1,1 @@
+Click the link to verify your email: https://app.example.com/verify?token={{token}}

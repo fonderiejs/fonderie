@@ -1,0 +1,1 @@
+Your invitation PIN is: {{pin}}

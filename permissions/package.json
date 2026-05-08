@@ -1,0 +1,54 @@
+{
+	"name": "@fonderie-js/permissions",
+	"version": "0.0.1",
+	"description": "RBAC engine with wildcard permissions and super-role bypass",
+	"license": "UNLICENSED",
+	"type": "module",
+	"engines": { "node": ">=20" },
+	"exports": {
+		".": {
+			"types":   "./dist/index.d.ts",
+			"import":  "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./config": {
+			"types":   "./dist/config.d.ts",
+			"import":  "./dist/config.js",
+			"require": "./dist/config.cjs"
+		},
+		"./types": {
+			"types":   "./dist/types.d.ts",
+			"import":  "./dist/types.js",
+			"require": "./dist/types.cjs"
+		},
+		"./middleware": {
+			"types":   "./dist/middlewares/index.d.ts",
+			"import":  "./dist/middlewares/index.js",
+			"require": "./dist/middlewares/index.cjs"
+		}
+	},
+	"main":   "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types":  "./dist/index.d.ts",
+	"scripts": {
+		"build":     "tsup",
+		"dev":       "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test":      "tsx --test src/__tests__/*.test.ts",
+		"lint":      "biome lint src",
+		"format":    "biome format --write src",
+		"check":     "biome check --write src"
+	},
+	"peerDependencies": {
+		"@fonderie-js/core":  "^0.0.1",
+		"@fonderie-js/store": "^0.0.1"
+	},
+	"devDependencies": {
+		"@fonderie-js/core":  "../core",
+		"@fonderie-js/store": "../store",
+		"@types/node":        "^25.6.0",
+		"tsup":               "^8.5.1",
+		"tsx":                "^4.21.0",
+		"typescript":         "^6.0.3"
+	}
+}
