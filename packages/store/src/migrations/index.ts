@@ -1,1 +1,2 @@
-export { MigrationRunner } from './runner';
+export { MigrationRunner }     from './runner';
+export { createMigrationsPath } from './path';

@@ -1,16 +1,25 @@
 import pg from 'pg';
-import type { IStoreAdapter } from '../types';
+import type { IStoreAdapter, IPoolConfig } from '../types';
 
 export class PGAdapter implements IStoreAdapter {
 	private pool: pg.Pool;
 
-	constructor(connectionString: string) {
-		this.pool = new pg.Pool({ connectionString });
+	constructor(config: IPoolConfig | string) {
+		const options = typeof config === 'string' ? { connectionString: config } : config;
+		this.pool = new pg.Pool(options);
 
-		// Prevent unhandled rejection on idle client errors
 		this.pool.on('error', (err) => {
 			console.error('[store] idle client error', err.message);
 		});
+	}
+
+	async testConnection(): Promise<boolean> {
+		try {
+			await this.pool.query('SELECT 1');
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
@@ -24,7 +33,6 @@ export class PGAdapter implements IStoreAdapter {
 		try {
 			await client.query('BEGIN');
 
-			// tx wraps the client — same connection, so SET LOCAL / RLS context persists
 			const tx: IStoreAdapter = {
 				query: async <U = unknown>(sql: string, params?: unknown[]) => {
 					const result = await client.query(sql, params);
@@ -33,9 +41,9 @@ export class PGAdapter implements IStoreAdapter {
 				transaction: <V>(nested: (tx: IStoreAdapter) => Promise<V>) => nested(tx),
 			}
 
-				const result = await fn(tx);
-				await client.query('COMMIT');
-				return result;
+			const result = await fn(tx);
+			await client.query('COMMIT');
+			return result;
 		} catch (err) {
 			await client.query('ROLLBACK');
 			throw err;
@@ -44,7 +52,6 @@ export class PGAdapter implements IStoreAdapter {
 		}
 	}
 
-	// Called on shutdown — drains the pool cleanly
 	async end(): Promise<void> {
 		await this.pool.end();
 	}

@@ -39,16 +39,46 @@ test('sql: numeric zero is a valid param', () => {
 // No real DB in unit tests — verify the adapter satisfies the interface
 // by building a minimal in-memory stub and type-checking it.
 
-import type { IStoreAdapter } from '../types';
+import type { IStoreAdapter, IPoolConfig } from '../types';
+import { createMigrationsPath }            from '../migrations';
 
 test('IStoreAdapter: stub satisfies interface at compile time', () => {
 	const rows: unknown[] = [];
 
 	const stub: IStoreAdapter = {
-		query: async (_sql, _params) => rows,
+		query: async <T = unknown>(_sql: string, _params?: unknown[]) => rows as T[],
 		transaction: async (fn) => fn(stub),
 	}
 
 	assert.ok(typeof stub.query === 'function');
 	assert.ok(typeof stub.transaction === 'function');
+});
+
+// ── IPoolConfig ───────────────────────────────────────────────────
+
+test('IPoolConfig: accepts connection string form', () => {
+	const config: IPoolConfig = { connectionString: 'postgres://localhost/test' };
+	assert.equal(config.connectionString, 'postgres://localhost/test');
+});
+
+test('IPoolConfig: accepts individual field form with tuning knobs', () => {
+	const config: IPoolConfig = {
+		host:                    'localhost',
+		port:                    5432,
+		database:                'test',
+		user:                    'postgres',
+		password:                'secret',
+		max:                     10,
+		idleTimeoutMillis:       30_000,
+		connectionTimeoutMillis: 5_000,
+	};
+	assert.equal(config.host, 'localhost');
+	assert.equal(config.max, 10);
+});
+
+// ── createMigrationsPath ──────────────────────────────────────────
+
+test('createMigrationsPath: returns absolute path ending in migrations/sql', () => {
+	const result = createMigrationsPath(import.meta.url);
+	assert.ok(result.endsWith('migrations/sql') || result.endsWith('migrations\\sql'));
 });
