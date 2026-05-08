@@ -3,9 +3,9 @@ import assert   from 'node:assert/strict';
 
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import type { ISubscription }    from '../types';
-import type { IBillingConfig }   from '../config';
-import type { IBillingProvider, IBillingEvent } from '../providers/types';
+import type { IPlan, ISubscription }              from '../types';
+import type { IBillingConfig }                    from '../config';
+import type { IBillingProvider, IBillingEvent }   from '../providers/types';
 
 // ── Stub provider ─────────────────────────────────────────────────
 
@@ -36,7 +36,9 @@ function makeProvider(overrides: Partial<IBillingProvider> = {}): IBillingProvid
 // ── Config ────────────────────────────────────────────────────────
 
 const config: IBillingConfig = {
-	provider: makeProvider(),
+	provider:   makeProvider(),
+	successUrl: 'https://app.example.com/success',
+	cancelUrl:  'https://app.example.com/cancel',
 	plans: [
 		{
 			name:  'free',
@@ -65,18 +67,30 @@ const config: IBillingConfig = {
 
 // ── Stub store ────────────────────────────────────────────────────
 
-function makeStore(subscription?: ISubscription | null): IStoreAdapter {
+function makeStore(opts: {
+	subscription?: ISubscription | null
+	plan?:         IPlan | null
+} = {}): IStoreAdapter {
 	const stub: IStoreAdapter = {
-		query: async (sql: string) => {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
 			if (sql.includes('fonderie_subscriptions') && sql.includes('SELECT')) {
-				if (!subscription) {
-					return [];
-				}
-				
-				return [subscription];
+				return (opts.subscription ? [opts.subscription] : []) as unknown as T[]
 			}
-
-			return [];
+			if (sql.includes('fonderie_plans') && sql.includes('SELECT') && opts.plan !== undefined) {
+				return (opts.plan ? [opts.plan] : []) as unknown as T[]
+			}
+			if (sql.includes('INSERT INTO fonderie_plans') || sql.includes('UPDATE fonderie_plans')) {
+				const plan: IPlan = opts.plan ?? {
+					id: 'plan-1', name: 'test', seats: null, trialDays: 0,
+					monthlyAmount: null, monthlyPriceId: null,
+					yearlyAmount: null, yearlyPriceId: null,
+				}
+				return [plan] as unknown as T[]
+			}
+			if (sql.includes('DELETE FROM fonderie_plans')) {
+				return (opts.plan ? [{ id: opts.plan.id }] : []) as unknown as T[]
+			}
+			return [] as T[]
 		},
 		transaction: async (fn) => fn(stub),
 	}
@@ -85,20 +99,32 @@ function makeStore(subscription?: ISubscription | null): IStoreAdapter {
 }
 
 const baseSubscription: ISubscription = {
-	id:                    'sub-1',
-	workspaceId:           'ws-1',
-	plan:                  'pro',
-	status:                'active',
-	providerCustomerId:    'cus_123',
+	id:                     'sub-1',
+	workspaceId:            'ws-1',
+	plan:                   'pro',
+	interval:               'month',
+	status:                 'active',
+	providerCustomerId:     'cus_123',
 	providerSubscriptionId: 'sub_provider_123',
-	currentPeriodStart:    new Date(),
-	currentPeriodEnd:      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-	cancelAtPeriodEnd:     false,
-	trialEndsAt:           null,
-	createdAt:             new Date(),
+	currentPeriodStart:     '2026-05-01T00:00:00.000Z',
+	currentPeriodEnd:       '2026-06-01T00:00:00.000Z',
+	cancelAtPeriodEnd:      false,
+	trialEndsAt:            null,
+	createdAt:              '2026-05-01T00:00:00.000Z',
 }
 
-// ── plans ─────────────────────────────────────────────────────────
+const basePlan: IPlan = {
+	id:             'plan-1',
+	name:           'pro',
+	seats:          20,
+	trialDays:      0,
+	monthlyAmount:  149,
+	monthlyPriceId: 'price_pro_monthly',
+	yearlyAmount:   1490,
+	yearlyPriceId:  'price_pro_yearly',
+}
+
+// ── plans (config) ────────────────────────────────────────────────
 
 test('getPlans: returns all plans from config', async () => {
 	const { getPlans } = await import('../services/plans');
@@ -118,11 +144,57 @@ test('getPlanByName: returns null for unknown plan', async () => {
 	assert.equal(plan, null);
 });
 
+// ── plans (DB CRUD) ───────────────────────────────────────────────
+
+test('getPlanById: returns plan when found', async () => {
+	const { getPlanById } = await import('../services/plans');
+	const store = makeStore({ plan: basePlan });
+	const plan  = await getPlanById('plan-1', store);
+	assert.equal(plan?.name, 'pro');
+	assert.equal(plan?.monthlyAmount, 149);
+});
+
+test('getPlanById: returns null when not found', async () => {
+	const { getPlanById } = await import('../services/plans');
+	const store = makeStore({ plan: null });
+	const plan  = await getPlanById('missing', store);
+	assert.equal(plan, null);
+});
+
+test('createPlan: returns created plan', async () => {
+	const { createPlan } = await import('../services/plans');
+	const store = makeStore({ plan: basePlan });
+	const plan  = await createPlan({ name: 'pro', seats: 20, monthlyAmount: 149 }, store);
+	assert.equal(plan.name, 'pro');
+});
+
+test('updatePlan: returns updated plan', async () => {
+	const { updatePlan } = await import('../services/plans');
+	const updated = { ...basePlan, monthlyAmount: 199 };
+	const store   = makeStore({ plan: updated });
+	const plan    = await updatePlan('plan-1', { monthlyAmount: 199 }, store);
+	assert.equal(plan?.monthlyAmount, 199);
+});
+
+test('deletePlan: returns true when deleted', async () => {
+	const { deletePlan } = await import('../services/plans');
+	const store   = makeStore({ plan: basePlan });
+	const deleted = await deletePlan('plan-1', store);
+	assert.ok(deleted);
+});
+
+test('deletePlan: returns false when not found', async () => {
+	const { deletePlan } = await import('../services/plans');
+	const store   = makeStore({ plan: null });
+	const deleted = await deletePlan('missing', store);
+	assert.ok(!deleted);
+});
+
 // ── subscriptions ─────────────────────────────────────────────────
 
 test('getSubscription: returns subscription when found', async () => {
 	const { getSubscription } = await import('../services/subscriptions');
-	const store  = makeStore(baseSubscription);
+	const store  = makeStore({ subscription: baseSubscription });
 	const result = await getSubscription('ws-1', store);
 	assert.equal(result?.plan,   'pro');
 	assert.equal(result?.status, 'active');
@@ -130,16 +202,38 @@ test('getSubscription: returns subscription when found', async () => {
 
 test('getSubscription: returns null when not found', async () => {
 	const { getSubscription } = await import('../services/subscriptions');
-	const store  = makeStore(null);
+	const store  = makeStore({ subscription: null });
 	const result = await getSubscription('ws-missing', store);
 	assert.equal(result, null);
+});
+
+// ── DTOs ──────────────────────────────────────────────────────────
+
+test('toPlanDTO: maps all plan fields', async () => {
+	const { toPlanDTO } = await import('../dtos/billing');
+	const dto = toPlanDTO(basePlan);
+	assert.equal(dto.id,             basePlan.id);
+	assert.equal(dto.name,           basePlan.name);
+	assert.equal(dto.seats,          basePlan.seats);
+	assert.equal(dto.monthlyAmount,  basePlan.monthlyAmount);
+	assert.equal(dto.monthlyPriceId, basePlan.monthlyPriceId);
+});
+
+test('toSubscriptionDTO: maps all subscription fields', async () => {
+	const { toSubscriptionDTO } = await import('../dtos/billing');
+	const dto = toSubscriptionDTO(baseSubscription);
+	assert.equal(dto.id,          baseSubscription.id);
+	assert.equal(dto.plan,        baseSubscription.plan);
+	assert.equal(dto.status,      baseSubscription.status);
+	assert.equal(dto.interval,    baseSubscription.interval);
+	assert.equal(dto.createdAt,   baseSubscription.createdAt);
 });
 
 // ── requirePlan middleware ─────────────────────────────────────────
 
 test('requirePlan: allows request when plan matches', async () => {
 	const { requirePlan } = await import('../middlewares/require-plan');
-	const store      = makeStore(baseSubscription);
+	const store      = makeStore({ subscription: baseSubscription });
 	const middleware = requirePlan('pro', store);
 	let nextCalled   = false;
 
@@ -161,7 +255,7 @@ test('requirePlan: allows request when plan matches', async () => {
 
 test('requirePlan: blocks request when plan does not match', async () => {
 	const { requirePlan } = await import('../middlewares/require-plan');
-	const store      = makeStore({ ...baseSubscription, plan: 'free' });
+	const store      = makeStore({ subscription: { ...baseSubscription, plan: 'free' } });
 	const middleware = requirePlan(['pro', 'enterprise'], store);
 	let nextCalled   = false;
 
@@ -184,7 +278,7 @@ test('requirePlan: blocks request when plan does not match', async () => {
 
 test('requirePlan: blocks when subscription status is not active', async () => {
 	const { requirePlan } = await import('../middlewares/require-plan');
-	const store      = makeStore({ ...baseSubscription, plan: 'pro', status: 'past_due' });
+	const store      = makeStore({ subscription: { ...baseSubscription, plan: 'pro', status: 'past_due' } });
 	const middleware = requirePlan('pro', store);
 
 	const ctx = {
@@ -201,7 +295,7 @@ test('requirePlan: blocks when subscription status is not active', async () => {
 
 test('requirePlan: allows trialing subscription', async () => {
 	const { requirePlan } = await import('../middlewares/require-plan');
-	const store      = makeStore({ ...baseSubscription, plan: 'pro', status: 'trialing' });
+	const store      = makeStore({ subscription: { ...baseSubscription, plan: 'pro', status: 'trialing' } });
 	const middleware = requirePlan('pro', store);
 	let nextCalled   = false;
 
@@ -264,4 +358,13 @@ test('BillingModule: satisfies IFonderieModule interface', async () => {
 
 	assert.equal(mod.name, '@fonderie-js/billing');
 	assert.ok(typeof mod.install === 'function');
+});
+
+// ── getMigrationsPath ─────────────────────────────────────────────
+
+test('getMigrationsPath: returns a string path', async () => {
+	const { getMigrationsPath } = await import('../migrations/index');
+	const path = getMigrationsPath();
+	assert.ok(typeof path === 'string');
+	assert.ok(path.includes('migrations'));
 });
