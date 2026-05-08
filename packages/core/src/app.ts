@@ -39,11 +39,7 @@ export class FonderieApp {
 
 		createServer(async (req, res) => {
 			const host    = req.headers.host ?? 'localhost';
-			const parsed  = new URL(`http://${host}${req.url ?? '/'}`);
-			if (this.prefix) {
-				parsed.pathname = parsed.pathname.replace(new RegExp(`^${this.prefix}`), '') || '/';
-			}
-			const url     = parsed.toString();
+			const url     = `http://${host}${req.url ?? '/'}`;
 			const headers = new Headers();
 
 			for (const [key, value] of Object.entries(req.headers)) {
