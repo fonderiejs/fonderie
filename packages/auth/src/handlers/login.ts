@@ -1,10 +1,11 @@
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import type { IAuthConfig }       from '../config';
-import { issueTokenPair }        from '../services/jwt';
-import { findUserByEmail }       from '../services/session';
-import { verifyPassword }        from '../services/password';
+import type { IAuthConfig }                    from '../config';
+import { issueTokenPair, refreshTokenExpiry }  from '../services/jwt';
+import { findUserByEmail, createSession }      from '../services/session';
+import { verifyPassword }                      from '../services/password';
+import { toUserDTO }                           from '../dtos/user';
 
 const LoginSchema = {
 	parse(body: unknown): { email: string; password: string } {
@@ -52,11 +53,10 @@ export function loginHandler(store: IStoreAdapter, config: IAuthConfig) {
 
 		const { accessToken, refreshToken } = issueTokenPair(user.id, config);
 
+		await createSession(user.id, refreshToken, refreshTokenExpiry(refreshToken), store);
+
 		return Response.json(
-			{
-				user: { id: user.id, email: user.email },
-				accessToken,
-			},
+			{ user: toUserDTO(user), accessToken, refreshToken },
 			{
 				status: 200,
 				headers: {
