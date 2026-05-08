@@ -35,6 +35,13 @@ export function issueTokenPair(userId: string, config: IAuthConfig): TokenPair {
 	return { accessToken, refreshToken }
 }
 
+export function refreshTokenExpiry(token: string): Date {
+	const decoded = jwt.decode(token) as { exp?: number } | null
+	return decoded?.exp
+		? new Date(decoded.exp * 1000)
+		: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+}
+
 export function verifyToken(
 	token: string,
 	config: IAuthConfig,
