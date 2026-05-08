@@ -88,9 +88,9 @@ const courier     = new CourierModule(
 			provider: 'smtp',
 			from:     'Fonderie Dev <noreply@fonderie.dev>',
 			smtp: {
-				host:   'smtp.ethereal.email',
-				port:   587,
-				secure: false,
+				host:   process.env['SMTP_HOST'] ?? 'smtp.ethereal.email',
+				port:   Number(process.env['SMTP_PORT'] ?? 587),
+				secure: process.env['SMTP_SECURE'] === 'true',
 				user:   process.env['SMTP_USER'] ?? '',
 				pass:   process.env['SMTP_PASS'] ?? '',
 			},
