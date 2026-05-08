@@ -1,0 +1,15 @@
+# Build output
+**/dist/
+
+# Dependencies
+**/node_modules/
+
+# TypeScript incremental build
+**/*.tsbuildinfo
+
+# OS
+**/.DS_Store
+
+# Local env files
+**/.env
+**/.env.local

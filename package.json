@@ -1,0 +1,27 @@
+{
+	"name": "@fonderie-js/packages",
+	"private": true,
+	"workspaces": [
+		"auth",
+		"billing",
+		"config",
+		"core",
+		"courier",
+		"permissions",
+		"store",
+		"workspaces",
+		"test-app"
+	],
+	"scripts": {
+		"build":     "npm run build --workspaces --if-present",
+		"dev":       "npm run dev --workspaces --if-present",
+		"typecheck": "npm run typecheck --workspaces --if-present",
+		"test":      "npm run test --workspaces --if-present",
+		"lint":      "biome lint .",
+		"format":    "biome format --write .",
+		"check":     "biome check --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.0.0"
+	}
+}
