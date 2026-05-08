@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie-js/courier",
 	"version": "0.0.1",
-	"description": "Email, SMS, and push notification dispatch",
+	"description": "Email, SMS, and push dispatch with locale-aware templates and message log",
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": { "node": ">=20" },
@@ -15,13 +15,18 @@
 			"types":   "./dist/types.d.ts",
 			"import":  "./dist/types.js",
 			"require": "./dist/types.cjs"
+		},
+		"./migrations": {
+			"types":   "./dist/migrations/index.d.ts",
+			"import":  "./dist/migrations/index.js",
+			"require": "./dist/migrations/index.cjs"
 		}
 	},
 	"main":   "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"types":  "./dist/index.d.ts",
 	"scripts": {
-		"build":     "tsup",
+		"build":     "tsup && node -e \"require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})\"",
 		"dev":       "tsup --watch",
 		"typecheck": "tsc --noEmit",
 		"test":      "tsx --test src/__tests__/*.test.ts",

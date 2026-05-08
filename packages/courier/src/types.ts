@@ -14,5 +14,11 @@ export interface IRenderedTemplate {
 }
 
 export interface ITemplateResolver {
-	resolve(type: string, data: Record<string, unknown>): Promise<IRenderedTemplate>
+	resolve(
+		type:    string,
+		data:    Record<string, unknown>,
+		locale?: string,
+	): Promise<IRenderedTemplate>
 }
+
+export type { IMessageLog, MessageLogStatus } from './log';

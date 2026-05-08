@@ -6,5 +6,6 @@ export default defineConfig({
 	entry: [
 		'src/index.ts',
 		'src/types.ts',
+		'src/migrations/index.ts',
 	],
 })
