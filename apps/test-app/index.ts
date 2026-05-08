@@ -35,6 +35,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 // ── Config ────────────────────────────────────────────────────────
 
 const config = defineConfig({
+	basePath: '/v1',
 	db: {
 		url: process.env['DATABASE_URL'] ?? 'postgres://localhost/fonderie_test',
 	},

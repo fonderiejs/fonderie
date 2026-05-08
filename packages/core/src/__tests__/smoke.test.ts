@@ -132,6 +132,73 @@ test('body parser puts parsed json on ctx.meta.body', async () => {
 	assert.equal(body.name, 'fonderie');
 });
 
+test('basePath: prefixed route matches, unprefixed returns 404', async () => {
+	const app = new FonderieApp(defineConfig({
+		basePath: '/v1',
+		db: { url: 'postgres://localhost/test' },
+	}));
+
+	app.addRoute('GET', '/health', async () => Response.json({ ok: true }));
+	await app.boot();
+
+	const hit  = await app.handle(makeRequest('GET', '/v1/health'));
+	const miss = await app.handle(makeRequest('GET', '/health'));
+
+	assert.equal(hit.status, 200);
+	assert.equal(miss.status, 404);
+});
+
+test('basePath: params still extracted under prefix', async () => {
+	const app = new FonderieApp(defineConfig({
+		basePath: '/v1',
+		db: { url: 'postgres://localhost/test' },
+	}));
+
+	app.addRoute('GET', '/users/:id', async (ctx) => {
+		const params = ctx.meta['params'] as { id: string };
+		return Response.json({ id: params.id });
+	});
+	await app.boot();
+
+	const res  = await app.handle(makeRequest('GET', '/v1/users/99'));
+	const body = await res.json() as { id: string };
+
+	assert.equal(res.status, 200);
+	assert.equal(body.id, '99');
+});
+
+test('basePath: module routes are registered under prefix', async () => {
+	const mod: IFonderieModule = {
+		name: 'test',
+		install(app) {
+			app.addRoute('GET', '/ping', async () => Response.json({ pong: true }));
+		},
+	};
+
+	const app = await new FonderieApp(defineConfig({
+		basePath: '/v1',
+		db: { url: 'postgres://localhost/test' },
+	})).register(mod).boot();
+
+	const hit  = await app.handle(makeRequest('GET', '/v1/ping'));
+	const miss = await app.handle(makeRequest('GET', '/ping'));
+
+	assert.equal(hit.status, 200);
+	assert.equal(miss.status, 404);
+});
+
+test('basePath: defaults to empty — existing routes unaffected', async () => {
+	const app = new FonderieApp(defineConfig({
+		db: { url: 'postgres://localhost/test' },
+	}));
+
+	app.addRoute('GET', '/health', async () => Response.json({ ok: true }));
+	await app.boot();
+
+	const res = await app.handle(makeRequest('GET', '/health'));
+	assert.equal(res.status, 200);
+});
+
 test('onError config is called on handler throw', async () => {
 	const app = new FonderieApp({
 		...config,
