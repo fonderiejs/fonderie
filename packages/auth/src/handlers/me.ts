@@ -36,12 +36,12 @@ export function updateMeHandler(store: IStoreAdapter) {
 		const values: unknown[] = [];
 
 		const fieldMap: Record<string, string> = {
-			firstName:       'first_name',
-			lastName:        'last_name',
-			phone:           'phone',
-			profileImageUrl: 'profile_image_url',
-			locale:          'locale',
-			timezone:        'timezone',
+			firstName:   'first_name',
+			lastName:    'last_name',
+			phoneNumber: 'phone',
+			avatarUrl:   'profile_image_url',
+			locale:      'locale',
+			timezone:    'timezone',
 		};
 
 		for (const [key, col] of Object.entries(fieldMap)) {

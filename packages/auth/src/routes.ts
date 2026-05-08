@@ -36,10 +36,10 @@ export function buildAuthRoutes(
 		['POST', '/auth/reset-password',  resetPasswordHandler(store)],
 
 		// Authenticated
-		['POST',   '/auth/logout',     logoutHandler()],
-		['GET',    '/auth/me',         meHandler(store)],
-		['PATCH',  '/auth/me',         updateMeHandler(store)],
-		['DELETE', '/auth/me',         deleteMeHandler(store)],
+		['POST',   '/auth/logout',     logoutHandler(store)],
+		['GET',    '/users/me',        meHandler(store)],
+		['PATCH',  '/users/me',        updateMeHandler(store)],
+		['DELETE', '/users/me',        deleteMeHandler(store)],
 
 		// MFA
 		['POST', '/auth/mfa/enable',   mfaEnableHandler(store, config.google?.clientId ?? 'Fonderie')],

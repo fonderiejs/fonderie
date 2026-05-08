@@ -6,11 +6,11 @@ import { hashPassword }          from '../services/password';
 export function resetPasswordHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const body     = ctx.meta['body'] as Record<string, unknown> | undefined
-		const token    = body?.['token'];
+		const token    = body?.['resetToken'] ?? body?.['token'];
 		const password = body?.['password'];
 
 		if (typeof token !== 'string' || typeof password !== 'string') {
-			return Response.json({ error: 'token and password are required' }, { status: 422 });
+			return Response.json({ error: 'resetToken and password are required' }, { status: 422 });
 		}
 
 		if (password.length < 8) {
