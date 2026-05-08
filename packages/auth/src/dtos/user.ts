@@ -8,7 +8,7 @@ export interface IUserDTO {
 	firstName:       string
 	lastName:        string
 	phone:           string
-	profileImageUrl: string
+	avatarUrl:       string
 	locale:          string
 	timezone:        string
 	isEmailVerified: boolean
@@ -25,7 +25,7 @@ export function toUserDTO(user: IUser): IUserDTO {
 		firstName:       stringOrEmpty(user.firstName),
 		lastName:        stringOrEmpty(user.lastName),
 		phone:           stringOrEmpty(user.phone),
-		profileImageUrl: stringOrEmpty(user.profileImageUrl),
+		avatarUrl:       stringOrEmpty(user.profileImageUrl),
 		locale:          user.locale || 'en-US',
 		timezone:        user.timezone || 'UTC',
 		isEmailVerified: user.emailVerifiedAt !== null,

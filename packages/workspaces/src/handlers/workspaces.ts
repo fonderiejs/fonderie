@@ -6,8 +6,9 @@ import {
 	updateWorkspace, archiveWorkspace, restoreWorkspace,
 	getWorkspaceSettings, updateWorkspaceSettings,
 } from '../services/workspaces';
-import { addMember }  from '../services/members';
-import { createRole } from '../services/roles';
+import { addMember }     from '../services/members';
+import { createRole }    from '../services/roles';
+import type { IWorkspace } from '../types';
 import { toWorkspaceDTO, toSettingsDTO } from '../dtos/workspace';
 
 export function listWorkspacesHandler(store: IStoreAdapter) {
@@ -64,7 +65,7 @@ export function createWorkspaceHandler(store: IStoreAdapter, defaultRole: string
 export function getWorkspaceHandler() {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
-		return Response.json({ workspace: ctx.workspace })
+		return Response.json({ workspace: toWorkspaceDTO(ctx.workspace as IWorkspace) })
 	}
 }
 
