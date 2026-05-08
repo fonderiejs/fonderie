@@ -17,7 +17,7 @@ import {
 import {
 	PermissionsModule,
 	requirePermission,
-	PERMISSIONS
+	OPERATIONS,
 } from '@fonderie-js/permissions'
 import {
 	WorkspacesModule, 
@@ -149,7 +149,7 @@ app.addRoute('GET', '/health', async (ctx) => {
 app.addRoute('GET', '/workspaces/:workspaceId/projects',
 	requireAuth(),
 	workspaceContextMiddleware(store),   // resolves ctx.workspace, validates membership
-	requirePermission(PERMISSIONS.READ, 'projects'),
+	requirePermission(OPERATIONS.READ, 'projects'),
 	async (ctx) => Response.json({
 		workspaceId: ctx.workspace?.id,
 		projects:    [],
@@ -159,7 +159,7 @@ app.addRoute('GET', '/workspaces/:workspaceId/projects',
 app.addRoute('POST', '/workspaces/:workspaceId/projects',
 	requireAuth(),
 	workspaceContextMiddleware(store),
-	requirePermission(PERMISSIONS.CREATE, 'projects'),
+	requirePermission(OPERATIONS.CREATE, 'projects'),
 	async (ctx) => Response.json({ created: true }, { status: 201 })
 );
 
@@ -177,12 +177,6 @@ app.addRoute('GET', '/config', requireAuth(), async (ctx) => {
 	}
 
 	return Response.json({ config: remoteConfig.manager.all() });
-});
-
-// Public param route
-app.addRoute('GET', '/users/:id', async (ctx) => {
-	const params = ctx.meta['params'] as { id: string };
-	return Response.json({ userId: params.id });
 });
 
 // Routes registered automatically by modules:
