@@ -6,11 +6,11 @@ export interface ISubscription {
 	status:                SubscriptionStatus
 	providerCustomerId:    string | null
 	providerSubscriptionId: string | null
-	currentPeriodStart:    Date | null
-	currentPeriodEnd:      Date | null
+	currentPeriodStart:    string | null
+	currentPeriodEnd:      string | null
 	cancelAtPeriodEnd:     boolean
-	trialEndsAt:           Date | null
-	createdAt:             Date
+	trialEndsAt:           string | null
+	createdAt:             string
 }
 
 export type SubscriptionStatus =
@@ -37,5 +37,5 @@ export interface IUsageRecord {
 	workspaceId: string
 	metric:      string
 	quantity:    number
-	recordedAt:  Date
+	recordedAt:  string
 }
