@@ -2,8 +2,6 @@
 export { BillingModule }                              from './module';
 export { StripeProvider }                             from './providers/stripe';
 export { requirePlan }                                from './middlewares/require-plan';
-export { getMigrationsPath }                          from './migrations/index';
-
 export type { IBillingConfig, IBillingPlan }          from './config';
 export type { IBillingProvider, IBillingEvent }       from './providers/types';
 export type { IPlan, ISubscription, IUsageRecord,

@@ -7,3 +7,14 @@ export const baseConfig = {
 	sourcemap: true,
 	splitting: false,
 }
+
+// getMigrationsPath() uses import.meta.url which is ESM-only.
+// Append this as a second config entry in any package that exports migrations/.
+export const migrationsConfig = {
+	entry:     ['src/migrations/index.ts'],
+	format:    ['esm'] as Array<'esm' | 'cjs'>,
+	dts:       true,
+	clean:     false,   // don't wipe the main build
+	sourcemap: true,
+	splitting: false,
+}

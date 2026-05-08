@@ -2,8 +2,6 @@
 export { RemoteConfigModule }                        from './module';
 export { RemoteConfigManager, CONFIG_MANAGER_KEY }   from './manager';
 export { configContextMiddleware, getConfig }        from './middlewares/config-context';
-export { getMigrationsPath }                         from './migrations/index';
-
 export { listConfigEntries, getConfigEntry,
          setConfigEntry, deleteConfigEntry }         from './services/config';
 

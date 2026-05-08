@@ -13,4 +13,3 @@ export type { IPermissionsConfig }                   from './config';
 export { OPERATIONS, PERMISSION_COLUMN }             from './constants';
 export { requireRole }                               from './middlewares/require-role';
 export { requirePermission }                         from './middlewares/require-permission';
-export { getMigrationsPath }                         from './migrations/index';

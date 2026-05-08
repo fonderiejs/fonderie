@@ -7,9 +7,6 @@ export type { IAuthConfig }                    from './config';
 export type { IUserDTO }  from './dtos/user';
 export { toUserDTO }      from './dtos/user';
 
-// Migrations
-export { getMigrationsPath } from './migrations';
-
 // Guards — used by other modules and user route handlers
 export { sessionMiddleware }    from './middlewares/session';
 export { requireAuth }          from './middlewares/require-auth';
