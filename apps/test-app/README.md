@@ -15,7 +15,7 @@ createdb fonderie_dev
 # 3. Run migrations
 npm run migrate
 
-# 4. Start the server
+# 4. Start the server  (builds all SDK packages automatically first)
 npm run dev
 # → Fonderie listening on http://localhost:3000
 ```
