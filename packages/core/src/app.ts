@@ -18,12 +18,14 @@ import { expressRequestToWeb, webResponseToExpress } from './adapters/express';
 
 export class FonderieApp {
 	private config: FonderieConfig;
+	private prefix: string;
 	private router: Router = new Router();
 	private middlewares: Middleware[] = [];
 	private modules: Map<string, IFonderieModule> = new Map();
 
 	constructor(config: FonderieConfig) {
 		this.config = config;
+		this.prefix = (config.basePath ?? '').replace(/\/$/, '');
 	}
 
 	listen(port: number, options: {
@@ -36,8 +38,12 @@ export class FonderieApp {
 		} = options;
 
 		createServer(async (req, res) => {
-			const host = req.headers.host ?? 'localhost';
-			const url = `http://${host}${req.url ?? '/'}`;
+			const host    = req.headers.host ?? 'localhost';
+			const parsed  = new URL(`http://${host}${req.url ?? '/'}`);
+			if (this.prefix) {
+				parsed.pathname = parsed.pathname.replace(new RegExp(`^${this.prefix}`), '') || '/';
+			}
+			const url     = parsed.toString();
 			const headers = new Headers();
 
 			for (const [key, value] of Object.entries(req.headers)) {
@@ -107,7 +113,7 @@ export class FonderieApp {
 
 	// Modules call this to register their routes
 	addRoute(method: string, path: string, ...handlers: Middleware[]): void {
-		this.router.add(method, path, compose(handlers));
+		this.router.add(method, this.prefix + path, compose(handlers));
 	}
 
 	// ─── The core handler ──────────────────────────────────

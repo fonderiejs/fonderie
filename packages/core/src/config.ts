@@ -15,6 +15,8 @@ export interface ISMTPConfig {
 }
 
 export interface FonderieConfig {
+	basePath?: string   // e.g. '/v1' — prefixes all routes; defaults to ''
+
 	db: {
 		url: string       // Standard postgres:// connection string
 		// Future: adapter pattern for other vendors
