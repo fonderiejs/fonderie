@@ -2,13 +2,12 @@
 	"$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
 	"files": {
 		"include": [
-			"*/src/**"
+			"packages/*/src/**",
+			"apps/*/src/**"
 		],
 		"ignore": [
 			"**/node_modules/**",
-			"**/dist/**",
-			"test-app/**",
-			"packages/**"
+			"**/dist/**"
 		]
 	},
 	"formatter": {

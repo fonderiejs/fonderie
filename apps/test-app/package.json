@@ -1,0 +1,25 @@
+{
+	"name": "test-app",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"dev": "node --experimental-strip-types index.ts",
+		"migrate": "node --experimental-strip-types ./migrations/index.ts",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"type": "module",
+	"dependencies": {
+		"@fonderie-js/auth":        "../../packages/auth",
+		"@fonderie-js/billing":     "../../packages/billing",
+		"@fonderie-js/config":      "../../packages/config",
+		"@fonderie-js/core":        "../../packages/core",
+		"@fonderie-js/courier":     "../../packages/courier",
+		"@fonderie-js/permissions": "../../packages/permissions",
+		"@fonderie-js/store":       "../../packages/store",
+		"@fonderie-js/workspaces":  "../../packages/workspaces"
+	}
+}

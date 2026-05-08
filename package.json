@@ -1,16 +1,9 @@
 {
-	"name": "@fonderie-js/packages",
+	"name": "@fonderie-js/sdk",
 	"private": true,
 	"workspaces": [
-		"auth",
-		"billing",
-		"config",
-		"core",
-		"courier",
-		"permissions",
-		"store",
-		"workspaces",
-		"test-app"
+		"packages/*",
+		"apps/*"
 	],
 	"scripts": {
 		"build":     "npm run build --workspaces --if-present",
