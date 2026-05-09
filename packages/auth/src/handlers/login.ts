@@ -48,7 +48,7 @@ export function loginHandler(store: IStoreAdapter, config: IAuthConfig) {
 		}
 
 		if (user.mfaEnabled) {
-			return setErrorResponse('MFA_REQUIRED', 'Multi-factor authentication required', 200);
+			return setErrorResponse('MFA_REQUIRED', 'Multi-factor authentication required', 202);
 		}
 
 		const { accessToken, refreshToken } = issueTokenPair(user.id, config);
