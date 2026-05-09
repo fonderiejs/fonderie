@@ -7,6 +7,7 @@ export { mfaEnableHandler }                        from './mfa/enable';
 export { mfaVerifyHandler }                        from './mfa/verify';
 export { mfaDisableHandler }                       from './mfa/disable';
 export { verifyEmailHandler }                      from './verify-email';
+export { resendVerificationHandler }               from './resend-verification';
 export { resetPasswordHandler }                    from './reset-password';
 export { forgotPasswordHandler }                   from './forgot-password';
 export { googleInitHandler, googleCallbackHandler } from './oauth/google';
