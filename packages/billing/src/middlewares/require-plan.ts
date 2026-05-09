@@ -1,5 +1,6 @@
-import type { Middleware }    from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import { setErrorResponse }    from '@fonderie-js/core';
+import type { Middleware }     from '@fonderie-js/core';
+import type { IStoreAdapter }  from '@fonderie-js/store';
 
 import { getSubscription }    from '../services/subscriptions';
 
@@ -14,33 +15,33 @@ export function requirePlan(
 
 	return async (ctx, next) => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		const workspaceId = ctx.workspace?.id ??
 			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId']
 
 		if (!workspaceId) {
-			return Response.json({ error: 'Workspace context required' }, { status: 400 });
+			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
 		}
 
 		const subscription = await getSubscription(workspaceId, store);
 
 		if (!subscription || !allowed.includes(subscription.plan)) {
-			return Response.json(
-				{
-					error:    'Plan upgrade required',
-					required: allowed,
-					current:  subscription?.plan ?? 'none',
-				},
-				{ status: 402 },
+			return setErrorResponse(
+				'PLAN_UPGRADE_REQUIRED',
+				'Plan upgrade required',
+				402,
+				{ required: allowed, current: subscription?.plan ?? 'none' },
 			);
 		}
 
 		if (subscription.status !== 'active' && subscription.status !== 'trialing') {
-			return Response.json(
-				{ error: 'Subscription is not active', status: subscription.status },
-				{ status: 402 },
+			return setErrorResponse(
+				'SUBSCRIPTION_INACTIVE',
+				'Subscription is not active',
+				402,
+				{ status: subscription.status },
 			);
 		}
 

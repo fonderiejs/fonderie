@@ -1,4 +1,5 @@
-import type { Middleware } from '../types';
+import type { Middleware }    from '../types';
+import { setErrorResponse }   from '../response';
 
 export function bodyParserMiddleware(): Middleware {
 	return async (ctx, next) => {
@@ -20,7 +21,7 @@ export function bodyParserMiddleware(): Middleware {
 			}
 			// multipart/form-data left to the handler — no dep-free way to parse it
 		} catch {
-			return Response.json({ error: 'Invalid request body' }, { status: 400 })
+			return setErrorResponse('INVALID_REQUEST', 'Invalid request body', 400)
 		}
 
 		return next()

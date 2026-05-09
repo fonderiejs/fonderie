@@ -1,5 +1,6 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
+import { setErrorResponse }         from '@fonderie-js/core';
+import type { IFonderieContext }     from '@fonderie-js/core';
+import type { IStoreAdapter }        from '@fonderie-js/store';
 
 import type { IAuthConfig }                    from '../config';
 import { issueTokenPair, refreshTokenExpiry }  from '../services/jwt';
@@ -29,26 +30,25 @@ export function loginHandler(store: IStoreAdapter, config: IAuthConfig) {
 		try {
 			parsed = LoginSchema.parse(body);
 		} catch {
-			return Response.json({ error: 'email and password are required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'email and password are required', 422);
 		}
 
 		const user = await findUserByEmail(parsed.email, store);
 		if (!user || !user.passwordHash) {
-			return Response.json({ error: 'Invalid credentials' }, { status: 401 });
+			return setErrorResponse('INVALID_CREDENTIALS', 'Invalid credentials', 401);
 		}
 
 		const valid = await verifyPassword(parsed.password, user.passwordHash);
 		if (!valid) {
-			return Response.json({ error: 'Invalid credentials' }, { status: 401 });
+			return setErrorResponse('INVALID_CREDENTIALS', 'Invalid credentials', 401);
 		}
 
 		if (user.suspended) {
-			return Response.json({ error: 'Account suspended' }, { status: 403 });
+			return setErrorResponse('ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.', 403);
 		}
 
 		if (user.mfaEnabled) {
-			// Issue a short-lived MFA challenge token instead of full access
-			return Response.json({ mfaRequired: true }, { status: 200 });
+			return setErrorResponse('MFA_REQUIRED', 'Multi-factor authentication required', 200);
 		}
 
 		const { accessToken, refreshToken } = issueTokenPair(user.id, config);

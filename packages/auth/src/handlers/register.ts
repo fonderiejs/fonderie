@@ -1,15 +1,15 @@
 import { randomBytes }          from 'node:crypto';
 
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
-import type { ICourierMessage }   from '@fonderie-js/core';
+import { setErrorResponse }         from '@fonderie-js/core';
+import type { IFonderieContext }     from '@fonderie-js/core';
+import type { IStoreAdapter }        from '@fonderie-js/store';
+import type { ICourierMessage }      from '@fonderie-js/core';
 
-import type { IAuthConfig }      from '../config';
-
+import type { IAuthConfig }          from '../config';
 import { issueTokenPair, refreshTokenExpiry }        from '../services/jwt';
 import { findUserByEmail, findUserById, createSession } from '../services/session';
-import { hashPassword }                               from '../services/password';
-import { toUserDTO }                                  from '../dtos/user';
+import { hashPassword }              from '../services/password';
+import { toUserDTO }                 from '../dtos/user';
 
 export function registerHandler(store: IStoreAdapter, config: IAuthConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
@@ -21,16 +21,16 @@ export function registerHandler(store: IStoreAdapter, config: IAuthConfig) {
 		const lastName  = typeof body?.['lastName']  === 'string' ? body['lastName']  as string : null;
 
 		if (typeof email !== 'string' || typeof password !== 'string') {
-			return Response.json({ error: 'email and password are required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'email and password are required', 422);
 		}
 
 		if (password.length < 8) {
-			return Response.json({ error: 'password must be at least 8 characters' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'password must be at least 8 characters', 422);
 		}
 
 		const existing = await findUserByEmail(email, store);
 		if (existing) {
-			return Response.json({ error: 'Email already registered' }, { status: 409 });
+			return setErrorResponse('USER_ALREADY_EXISTS', 'Email already registered', 409);
 		}
 
 		const passwordHash = await hashPassword(password);
@@ -43,7 +43,7 @@ export function registerHandler(store: IStoreAdapter, config: IAuthConfig) {
 		);
 
 		if (!row) {
-			return Response.json({ error: 'Registration failed' }, { status: 500 });
+			return setErrorResponse('SERVER_ERROR', 'Registration failed', 500);
 		}
 
 		const verificationToken = randomBytes(32).toString('hex')
@@ -62,7 +62,7 @@ export function registerHandler(store: IStoreAdapter, config: IAuthConfig) {
 
 		const user = await findUserById(row.id, store);
 		if (!user) {
-			return Response.json({ error: 'Registration failed' }, { status: 500 });
+			return setErrorResponse('SERVER_ERROR', 'Registration failed', 500);
 		}
 
 		const { accessToken, refreshToken } = issueTokenPair(user.id, config);

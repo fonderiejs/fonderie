@@ -1,5 +1,6 @@
-import type { Middleware }    from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import { setErrorResponse }   from '@fonderie-js/core';
+import type { Middleware }     from '@fonderie-js/core';
+import type { IStoreAdapter }  from '@fonderie-js/store';
 
 import { getMember }          from '../services/members';
 import { findWorkspaceById }  from '../services/workspaces';
@@ -23,13 +24,13 @@ export function workspaceContextMiddleware(store: IStoreAdapter): Middleware {
 
 		const workspace = await findWorkspaceById(workspaceId, store)
 		if (!workspace) {
-			return Response.json({ error: 'Workspace not found' }, { status: 404 })
+			return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 		}
 
 		if (ctx.user) {
 			const member = await getMember(ctx.user.id, workspaceId, store)
 			if (!member) {
-				return Response.json({ error: 'Not a member of this workspace' }, { status: 403 })
+				return setErrorResponse('FORBIDDEN', 'Not a member of this workspace', 403)
 			}
 		}
 
