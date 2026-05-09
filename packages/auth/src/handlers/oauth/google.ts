@@ -2,8 +2,9 @@ import { setErrorResponse }    from '@fonderie-js/core'
 import type { IFonderieContext } from '@fonderie-js/core'
 import type { IStoreAdapter }    from '@fonderie-js/store'
 
-import type { IAuthConfig }       from '../../config'
-import { issueTokenPair }        from '../../services/jwt'
+import type { IAuthConfig }                   from '../../config'
+import { issueTokenPair, refreshTokenExpiry } from '../../services/jwt'
+import { createSession }                      from '../../services/session'
 
 export function googleInitHandler(config: IAuthConfig) {
 	return async (_ctx: IFonderieContext): Promise<Response> => {
@@ -82,6 +83,7 @@ export function googleCallbackHandler(store: IStoreAdapter, config: IAuthConfig)
 		}
 
 		const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+		await createSession(user.id, refreshToken, refreshTokenExpiry(refreshToken), store);
 
 		return Response.json(
 			{

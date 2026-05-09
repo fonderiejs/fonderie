@@ -497,10 +497,10 @@ test('me: 200 with user DTO including profileImageUrl', async () => {
 	const response = await handler(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                  'USER_FETCHED');
-	assert.equal(body.result.email,           'jane@example.com');
-	assert.equal(body.result.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
-	assert.equal(body.result.phone,           '+1234567890');
+	assert.equal(body.reason,                        'USER_FETCHED');
+	assert.equal(body.result.user.email,           'jane@example.com');
+	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
+	assert.equal(body.result.user.phone,           '+1234567890');
 });
 
 // ── updateMeHandler ───────────────────────────────────────────────
@@ -526,7 +526,7 @@ test('updateMe: 200 with updated DTO after phoneNumber and avatarUrl', async () 
 	}));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                  'ACCOUNT_UPDATED');
-	assert.equal(body.result.phone,           '+9999999999');
-	assert.equal(body.result.profileImageUrl, 'https://cdn.example.com/new.jpg');
+	assert.equal(body.reason,                        'ACCOUNT_UPDATED');
+	assert.equal(body.result.user.phone,           '+9999999999');
+	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/new.jpg');
 });

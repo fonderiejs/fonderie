@@ -1,13 +1,11 @@
-import { randomBytes }           from 'node:crypto';
+import { randomBytes }                       from 'node:crypto';
 
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
-import type { ICourierMessage }  from '@fonderie-js/core';
+import { setApiResponse, setErrorResponse }  from '@fonderie-js/core';
+import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IStoreAdapter }               from '@fonderie-js/store';
+import type { ICourierMessage }             from '@fonderie-js/core';
 
-import { setErrorResponse }      from '@fonderie-js/core';
 import { findUserByEmail }       from '../services/session';
-
-const SENT = { reason: 'PASSWORD_RESET_EMAIL_SENT', explanation: 'Password reset email sent (if account exists).' };
 
 export function forgotPasswordHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
@@ -21,7 +19,7 @@ export function forgotPasswordHandler(store: IStoreAdapter) {
 		// Always return 200 — don't leak whether email exists
 		const user = await findUserByEmail(email, store);
 		if (!user) {
-			return Response.json(SENT, { status: 200 });
+			return setApiResponse('PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 		}
 
 		const token     = randomBytes(32).toString('hex');
@@ -42,6 +40,6 @@ export function forgotPasswordHandler(store: IStoreAdapter) {
 			data:      { token },
 		} satisfies ICourierMessage
 
-		return Response.json(SENT, { status: 200 });
+		return setApiResponse('PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 	}
 }

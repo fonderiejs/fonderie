@@ -18,7 +18,7 @@ export function meHandler(store: IStoreAdapter) {
 			return setErrorResponse('NOT_FOUND', 'User not found', 404);
 		}
 
-		return setApiResponse('USER_FETCHED', 'User successfully fetched.', toUserDTO(user));
+		return setApiResponse('USER_FETCHED', 'User successfully fetched.', { user: toUserDTO(user) });
 	}
 }
 
@@ -65,7 +65,7 @@ export function updateMeHandler(store: IStoreAdapter) {
 		}
 
 		const updated = await findUserById(ctx.user.id, store);
-		return setApiResponse('ACCOUNT_UPDATED', 'Account successfully updated.', toUserDTO(updated as IUser));
+		return setApiResponse('ACCOUNT_UPDATED', 'Account successfully updated.', { user: toUserDTO(updated as IUser) });
 	}
 }
 

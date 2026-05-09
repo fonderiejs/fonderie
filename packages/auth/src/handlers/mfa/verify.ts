@@ -2,9 +2,11 @@ import { setErrorResponse }  from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import type { IAuthConfig }       from '../../config';
-import { verifyTotpToken }       from '../../services/mfa';
-import { issueTokenPair }        from '../../services/jwt';
+import type { IAuthConfig }                          from '../../config';
+import { verifyTotpToken }                           from '../../services/mfa';
+import { issueTokenPair, refreshTokenExpiry }        from '../../services/jwt';
+import { createSession }                             from '../../services/session';
+import { toUserDTO }                                 from '../../dtos/user';
 
 export function mfaVerifyHandler(store: IStoreAdapter, config: IAuthConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
@@ -42,9 +44,17 @@ export function mfaVerifyHandler(store: IStoreAdapter, config: IAuthConfig) {
 		}
 
 		const { accessToken, refreshToken } = issueTokenPair(ctx.user.id, config);
+		await createSession(ctx.user.id, refreshToken, refreshTokenExpiry(refreshToken), store);
 
 		return Response.json(
-			{ reason: 'MFA_ENABLED', explanation: 'MFA enabled successfully.' },
+			{
+				reason:      'MFA_ENABLED',
+				explanation: 'MFA enabled successfully.',
+				result: {
+					tokens: { access: accessToken, refresh: refreshToken },
+					user:   toUserDTO(ctx.user),
+				},
+			},
 			{
 				status: 200,
 				headers: {
