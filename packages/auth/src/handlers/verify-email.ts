@@ -9,25 +9,25 @@ import { toUserDTO }                                from '../dtos/user';
 
 export function verifyEmailHandler(store: IStoreAdapter, config: IAuthConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		const body  = ctx.meta['body'] as Record<string, unknown> | undefined
-		const token = body?.['token'];
+		const body = ctx.meta['body'] as Record<string, unknown> | undefined
+		const pin  = body?.['pin'];
 
-		if (typeof token !== 'string') {
-			return setErrorResponse('INVALID_PARAMETER', 'token is required', 422);
+		if (typeof pin !== 'string') {
+			return setErrorResponse('INVALID_PARAMETER', 'pin is required', 422);
 		}
 
 		const [row] = await store.query<{ user_id: string; expires_at: Date }>(
 			`SELECT user_id, expires_at FROM fonderie_email_verifications
 			WHERE token = $1`,
-			[token],
+			[pin],
 		);
 
 		if (!row) {
-			return setErrorResponse('EMAIL_VERIFICATION_FAILED', 'Invalid or expired token', 400);
+			return setErrorResponse('EMAIL_VERIFICATION_FAILED', 'Invalid or expired pin', 400);
 		}
 
 		if (new Date() > new Date(row.expires_at)) {
-			return setErrorResponse('EMAIL_VERIFICATION_FAILED', 'Token expired', 400);
+			return setErrorResponse('EMAIL_VERIFICATION_FAILED', 'Pin expired', 400);
 		}
 
 		await store.transaction(async tx => {
@@ -38,7 +38,7 @@ export function verifyEmailHandler(store: IStoreAdapter, config: IAuthConfig) {
 				),
 				tx.query(
 					`DELETE FROM fonderie_email_verifications WHERE token = $1`,
-					[token],
+					[pin],
 				),
 			]);
 		});
