@@ -88,7 +88,7 @@ export function googleCallbackHandler(store: IStoreAdapter, config: IAuthConfig)
 				reason:      'GOOGLE_AUTH_SUCCESS',
 				explanation: 'Google authentication successful.',
 				result: {
-					tokens: { accessToken, refreshToken },
+					tokens: { access: accessToken, refresh: refreshToken },
 					user:   { id: user.id, email: payload.email },
 				},
 			},

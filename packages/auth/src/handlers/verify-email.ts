@@ -56,7 +56,7 @@ export function verifyEmailHandler(store: IStoreAdapter, config: IAuthConfig) {
 				reason:      'EMAIL_VERIFIED',
 				explanation: 'Email verified successfully.',
 				result: {
-					tokens: { accessToken, refreshToken },
+					tokens: { access: accessToken, refresh: refreshToken },
 					user:   toUserDTO(user),
 				},
 			},

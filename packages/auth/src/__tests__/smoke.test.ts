@@ -265,7 +265,7 @@ test('register: 409 when email already registered', async () => {
 	assert.equal(response.status, 409);
 });
 
-test('register: 201 with user DTO, accessToken and refreshToken', async () => {
+test('register: 201 with user DTO, access and refresh tokens', async () => {
 	const { registerHandler } = await import('../handlers/register');
 	const store   = makeStore({ insertedId: 'user-1', userById: BASE_USER });
 	const handler = registerHandler(store, config);
@@ -278,8 +278,8 @@ test('register: 201 with user DTO, accessToken and refreshToken', async () => {
 	assert.ok(body.result?.user);
 	assert.equal(body.result.user.email,     'jane@example.com');
 	assert.equal(body.result.user.firstName, 'Jane');
-	assert.ok(typeof body.result.tokens.accessToken  === 'string');
-	assert.ok(typeof body.result.tokens.refreshToken === 'string');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
 	assert.ok(response.headers.get('set-cookie')?.includes('access_token='));
 });
 
@@ -325,8 +325,8 @@ test('login: 200 with user DTO and tokens', async () => {
 	assert.equal(body.reason,                        'ACCOUNT_LOGIN');
 	assert.equal(body.result.user.email,             'jane@example.com');
 	assert.equal(body.result.user.profileImageUrl,   'https://cdn.example.com/avatar.jpg');
-	assert.ok(typeof body.result.tokens.accessToken  === 'string');
-	assert.ok(typeof body.result.tokens.refreshToken === 'string');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
 });
 
 // ── logoutHandler ─────────────────────────────────────────────────
@@ -374,8 +374,8 @@ test('refresh: 200 with new tokens when session is valid', async () => {
 	const body = await response.json() as any;
 	assert.equal(body.reason,                        'TOKENS_REFRESHED');
 	assert.equal(body.result.user.email,             'jane@example.com');
-	assert.ok(typeof body.result.tokens.accessToken  === 'string');
-	assert.ok(typeof body.result.tokens.refreshToken === 'string');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
 });
 
 // ── forgotPasswordHandler ─────────────────────────────────────────
@@ -447,8 +447,8 @@ test('verifyEmail: 200 with EMAIL_VERIFIED and user+tokens on valid token', asyn
 	const body = await response.json() as any;
 	assert.equal(body.reason,                        'EMAIL_VERIFIED');
 	assert.equal(body.result.user.email,             'jane@example.com');
-	assert.ok(typeof body.result.tokens.accessToken  === 'string');
-	assert.ok(typeof body.result.tokens.refreshToken === 'string');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
 });
 
 // ── meHandler ─────────────────────────────────────────────────────

@@ -60,7 +60,7 @@ export function loginHandler(store: IStoreAdapter, config: IAuthConfig) {
 				reason:      'ACCOUNT_LOGIN',
 				explanation: 'Login successful.',
 				result: {
-					tokens: { accessToken, refreshToken },
+					tokens: { access: accessToken, refresh: refreshToken },
 					user:   toUserDTO(user),
 				},
 			},
