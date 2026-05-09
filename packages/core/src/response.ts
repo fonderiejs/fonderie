@@ -44,23 +44,3 @@ export function setApiResponse<T>(
 	}
 	return Response.json(body, { status });
 }
-
-/** @deprecated Use setApiResponse with HTTP constants instead */
-export function setSuccessResponse<T>(
-	status:      number,
-	reason:      string,
-	explanation: string,
-	result?:     T,
-): Response {
-	return setApiResponse(status, reason, explanation, result);
-}
-
-/** @deprecated Use setApiResponse with HTTP constants instead */
-export function setErrorResponse(
-	status:      number,
-	reason:      string,
-	explanation: string,
-	details?:    unknown,
-): Response {
-	return setApiResponse(status, reason, explanation, details);
-}
