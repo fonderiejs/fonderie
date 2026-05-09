@@ -15,8 +15,6 @@ export function buildBillingRoutes(
 	store:  IStoreAdapter,
 	config: IBillingConfig,
 ): RouteDefinition[] {
-	const auth = requireAuth()
-
 	const plan         = planController(store, config)
 	const subscription = subscriptionController(store)
 	const checkout     = checkoutController(store, config)
@@ -28,25 +26,25 @@ export function buildBillingRoutes(
 		['GET',    '/billing/plans',              plan.list],
 
 		// Plans — admin CRUD
-		['POST',   '/billing/plans',              auth, plan.create],
-		['GET',    '/billing/plans/:planId',      auth, plan.get],
-		['PUT',    '/billing/plans/:planId',      auth, plan.update],
-		['DELETE', '/billing/plans/:planId',      auth, plan.remove],
+		['POST',   '/billing/plans',              requireAuth,plan.create],
+		['GET',    '/billing/plans/:planId',      requireAuth,plan.get],
+		['PUT',    '/billing/plans/:planId',      requireAuth,plan.update],
+		['DELETE', '/billing/plans/:planId',      requireAuth,plan.remove],
 
 		// Subscription — read
-		['GET',    '/workspaces/:workspaceId/billing/subscription', auth, subscription.get],
+		['GET',    '/workspaces/:workspaceId/billing/subscription', requireAuth,subscription.get],
 
 		// Checkout — creates Stripe session
-		['POST',   '/workspaces/:workspaceId/billing/checkout',     auth, checkout.createSession],
+		['POST',   '/workspaces/:workspaceId/billing/checkout',     requireAuth,checkout.createSession],
 
 		// Portal — manage existing subscription
-		['POST',   '/workspaces/:workspaceId/billing/portal',       auth, checkout.createPortal],
+		['POST',   '/workspaces/:workspaceId/billing/portal',       requireAuth,checkout.createPortal],
 
-		// Webhook — no auth, signature verified internally
+		// Webhook — no requireAuth,signature verified internally
 		['POST',   '/billing/webhook',            webhook.handle],
 
 		// Usage metering
-		['POST',   '/workspaces/:workspaceId/billing/usage',        auth, usage.record],
-		['GET',    '/workspaces/:workspaceId/billing/usage/:metric', auth, usage.get],
+		['POST',   '/workspaces/:workspaceId/billing/usage',        requireAuth,usage.record],
+		['GET',    '/workspaces/:workspaceId/billing/usage/:metric', requireAuth,usage.get],
 	]
 }

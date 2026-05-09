@@ -5,8 +5,8 @@ import { authController }  from './controllers/auth.controller';
 import { userController }  from './controllers/user.controller';
 import { mfaController }   from './controllers/mfa.controller';
 import { oauthController } from './controllers/oauth.controller';
-import middlewares          from './middlewares';
-import type { IAuthConfig } from './config';
+import { requireAuth, requireVerifiedEmail } from '@fonderie-js/core/middlewares';
+import type { IAuthConfig }                  from './config';
 
 type RouteDefinition = [string, string, ...Middleware[]]
 
@@ -35,18 +35,18 @@ export function buildAuthRoutes(
 		['POST', '/auth/verify-email',              auth.verifyEmail],
 
 		// Account Management (Protected)
-		['POST', '/auth/logout',                    middlewares.requireAuth, auth.logout],
-		['POST', '/auth/send-verification-email',   middlewares.requireAuth, auth.sendVerificationEmail],
+		['POST', '/auth/logout',                    requireAuth, auth.logout],
+		['POST', '/auth/send-verification-email',   requireAuth, auth.sendVerificationEmail],
 
 		// User Profile (Protected + Verified)
-		['GET',    '/users',        middlewares.requireAuth, middlewares.requireVerifiedEmail, user.me],
-		['PUT',    '/users/update', middlewares.requireAuth, middlewares.requireVerifiedEmail, user.updateMe],
-		['DELETE', '/users',        middlewares.requireAuth, middlewares.requireVerifiedEmail, user.deleteMe],
+		['GET',    '/users',        requireAuth, requireVerifiedEmail, user.me],
+		['PUT',    '/users/update', requireAuth, requireVerifiedEmail, user.updateMe],
+		['DELETE', '/users',        requireAuth, requireVerifiedEmail, user.deleteMe],
 
 		// MFA (Protected)
-		['POST', '/auth/mfa/setup',   middlewares.requireAuth, mfa.setup],
-		['POST', '/auth/mfa/verify',  middlewares.requireAuth, mfa.verify],
-		['POST', '/auth/mfa/disable', middlewares.requireAuth, mfa.disable],
+		['POST', '/auth/mfa/setup',   requireAuth, mfa.setup],
+		['POST', '/auth/mfa/verify',  requireAuth, mfa.verify],
+		['POST', '/auth/mfa/disable', requireAuth, mfa.disable],
 	];
 
 	if (config.providers.includes('google')) {

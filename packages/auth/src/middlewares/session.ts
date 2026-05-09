@@ -7,7 +7,7 @@ import { UserModel }        from '../models/user.model';
 
 // Reads the Bearer token or session cookie, populates ctx.user
 // Does NOT reject — anonymous requests pass through
-export function sessionMiddleware(
+export function withSession(
 	store:  IStoreAdapter,
 	config: IAuthConfig,
 ): Middleware {

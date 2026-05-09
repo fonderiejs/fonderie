@@ -151,11 +151,11 @@ function makeCtx(opts: {
 	}
 }
 
-// ── workspaceContextMiddleware ────────────────────────────────────
+// ── withWorkspace ────────────────────────────────────
 
 test('workspaceContext: calls next when no workspace ID in request', async () => {
-	const { workspaceContextMiddleware } = await import('../middlewares/workspace-context')
-	const middleware = workspaceContextMiddleware(makeStore({ workspace: WS }))
+	const { withWorkspace } = await import('../middlewares/workspace-context')
+	const middleware = withWorkspace(makeStore({ workspace: WS }))
 	let called = false
 	await middleware(makeCtx({ user: { id: 'user-1', email: 'a@b.com' } }), async () => {
 		called = true
@@ -165,8 +165,8 @@ test('workspaceContext: calls next when no workspace ID in request', async () =>
 })
 
 test('workspaceContext: 404 when workspace not found', async () => {
-	const { workspaceContextMiddleware } = await import('../middlewares/workspace-context')
-	const middleware = workspaceContextMiddleware(makeStore({ workspace: null }))
+	const { withWorkspace } = await import('../middlewares/workspace-context')
+	const middleware = withWorkspace(makeStore({ workspace: null }))
 	const response   = await middleware(
 		makeCtx({ header: { 'x-workspace-id': 'ws-missing' }, user: { id: 'user-1', email: 'a@b.com' } }),
 		async () => Response.json({}),
@@ -175,8 +175,8 @@ test('workspaceContext: 404 when workspace not found', async () => {
 })
 
 test('workspaceContext: 403 when user is not a member', async () => {
-	const { workspaceContextMiddleware } = await import('../middlewares/workspace-context')
-	const middleware = workspaceContextMiddleware(makeStore({ workspace: WS, member: null }))
+	const { withWorkspace } = await import('../middlewares/workspace-context')
+	const middleware = withWorkspace(makeStore({ workspace: WS, member: null }))
 	const response   = await middleware(
 		makeCtx({ header: { 'x-workspace-id': 'ws-1' }, user: { id: 'stranger', email: 'x@b.com' } }),
 		async () => Response.json({}),
@@ -185,8 +185,8 @@ test('workspaceContext: 403 when user is not a member', async () => {
 })
 
 test('workspaceContext: resolves workspace and calls next when member found', async () => {
-	const { workspaceContextMiddleware } = await import('../middlewares/workspace-context')
-	const middleware = workspaceContextMiddleware(makeStore({ workspace: WS, member: MEMBER }))
+	const { withWorkspace } = await import('../middlewares/workspace-context')
+	const middleware = withWorkspace(makeStore({ workspace: WS, member: MEMBER }))
 	let   called     = false
 	await middleware(
 		makeCtx({ header: { 'x-workspace-id': 'ws-1' }, user: { id: 'user-1', email: 'a@b.com' } }),

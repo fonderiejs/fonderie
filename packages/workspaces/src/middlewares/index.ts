@@ -1,2 +1,2 @@
-export { requireWorkspace }           from './require-workspace';
-export { workspaceContextMiddleware } from './workspace-context';
+export { requireWorkspace } from './require-workspace';
+export { withWorkspace }    from './workspace-context';

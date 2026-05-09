@@ -1,16 +1,16 @@
 import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { Middleware }     from '@fonderie-js/core';
+import type { Middleware }      from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }  from '@fonderie-js/store';
+import type { IStoreAdapter }   from '@fonderie-js/store';
 
-import { getMember }          from '../services/members';
-import { findWorkspaceById }  from '../services/workspaces';
+import { getMember }         from '../services/members';
+import { findWorkspaceById } from '../services/workspaces';
 
 // Resolves ctx.workspace from:
 //   1. Route param :workspaceId or :id (path-based admin routes)
 //   2. X-Workspace-ID request header (standard resource routes)
 // Validates the current user is an active member.
-// Must run after auth middleware.
+// Must run after withSession.
 
 function makeHandler(store: IStoreAdapter): Middleware {
 	return async (ctx, next) => {
@@ -40,9 +40,9 @@ function makeHandler(store: IStoreAdapter): Middleware {
 	}
 }
 
-export function workspaceContextMiddleware(store: IStoreAdapter): Middleware
-export function workspaceContextMiddleware(store: IStoreAdapter, ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
-export function workspaceContextMiddleware(
+export function withWorkspace(store: IStoreAdapter): Middleware
+export function withWorkspace(store: IStoreAdapter, ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
+export function withWorkspace(
 	store: IStoreAdapter,
 	ctx?:  IFonderieContext,
 	next?: () => Promise<Response>,
