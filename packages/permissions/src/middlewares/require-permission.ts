@@ -1,14 +1,12 @@
 import { setErrorResponse }    from '@fonderie-js/core';
 import type { Middleware }      from '@fonderie-js/core';
+import type { IFonderieContext } from '@fonderie-js/core';
 
 import type { Operation }        from '../types';
 import { PermissionsEngine }     from '../engine';
 import { PERMISSIONS_ENGINE_KEY } from '../module';
 
-export function requirePermission(
-	operation:     Operation,
-	permissionKey: string,
-): Middleware {
+function makeHandler(operation: Operation, permissionKey: string): Middleware {
 	return async (ctx, next) => {
 		if (!ctx.user) {
 			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
@@ -26,11 +24,24 @@ export function requirePermission(
 
 		const allowed = await engine.can(ctx.user.id, operation, permissionKey, workspaceId)
 		if (!allowed) {
-			return setErrorResponse('FORBIDDEN', `Permission denied: ${operation}:${permissionKey}`, 403);
+			return setErrorResponse(403, 'FORBIDDEN', `Permission denied: ${operation}:${permissionKey}`);
 		}
 
 		return next()
 	}
+}
+
+export function requirePermission(operation: Operation, permissionKey: string): Middleware
+export function requirePermission(operation: Operation, permissionKey: string, ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
+export function requirePermission(
+	operation:     Operation,
+	permissionKey: string,
+	ctx?:          IFonderieContext,
+	next?:         () => Promise<Response>,
+): Middleware | Promise<Response> {
+	const handler = makeHandler(operation, permissionKey)
+	if (ctx !== undefined && next !== undefined) return handler(ctx, next)
+	return handler
 }
 
 function resolveWorkspaceId(

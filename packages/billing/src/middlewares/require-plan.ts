@@ -1,5 +1,6 @@
 import { setErrorResponse }    from '@fonderie-js/core';
 import type { Middleware }     from '@fonderie-js/core';
+import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }  from '@fonderie-js/store';
 
 import { getSubscription }    from '../services/subscriptions';
@@ -7,10 +8,7 @@ import { getSubscription }    from '../services/subscriptions';
 // Gates a route behind a minimum plan
 // Usage: requirePlan(['pro', 'enterprise'], store)
 
-export function requirePlan(
-	plans: string | string[],
-	store: IStoreAdapter,
-): Middleware {
+function makeHandler(plans: string | string[], store: IStoreAdapter): Middleware {
 	const allowed = Array.isArray(plans) ? plans : [plans];
 
 	return async (ctx, next) => {
@@ -47,4 +45,17 @@ export function requirePlan(
 
 		return next();
 	}
+}
+
+export function requirePlan(plans: string | string[], store: IStoreAdapter): Middleware
+export function requirePlan(plans: string | string[], store: IStoreAdapter, ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
+export function requirePlan(
+	plans: string | string[],
+	store: IStoreAdapter,
+	ctx?:  IFonderieContext,
+	next?: () => Promise<Response>,
+): Middleware | Promise<Response> {
+	const handler = makeHandler(plans, store)
+	if (ctx !== undefined && next !== undefined) return handler(ctx, next)
+	return handler
 }

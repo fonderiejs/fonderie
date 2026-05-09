@@ -195,19 +195,19 @@ test('workspaceContext: resolves workspace and calls next when member found', as
 	assert.ok(called)
 })
 
-// ── listWorkspacesHandler ─────────────────────────────────────────
+// ── workspaceController ───────────────────────────────────────────
 
 test('listWorkspaces: 401 when not authenticated', async () => {
-	const { listWorkspacesHandler } = await import('../handlers/workspaces')
-	const handler  = listWorkspacesHandler(makeStore({ workspaces: [WS] }))
-	const response = await handler(makeCtx({ user: null }))
+	const { workspaceController } = await import('../controllers/workspace.controller')
+	const ctrl     = workspaceController(makeStore({ workspaces: [WS] }), {})
+	const response = await ctrl.list(makeCtx({ user: null }))
 	assert.equal(response.status, 401)
 })
 
 test('listWorkspaces: 200 with workspaces array', async () => {
-	const { listWorkspacesHandler } = await import('../handlers/workspaces')
-	const handler  = listWorkspacesHandler(makeStore({ workspaces: [WS] }))
-	const response = await handler(makeCtx({ user: { id: 'user-1', email: 'a@b.com' } }))
+	const { workspaceController } = await import('../controllers/workspace.controller')
+	const ctrl     = workspaceController(makeStore({ workspaces: [WS] }), {})
+	const response = await ctrl.list(makeCtx({ user: { id: 'user-1', email: 'a@b.com' } }))
 	assert.equal(response.status, 200)
 	const body = await response.json() as any
 	assert.equal(body.reason, 'WORKSPACES_FETCHED')
@@ -216,19 +216,17 @@ test('listWorkspaces: 200 with workspaces array', async () => {
 	assert.equal(body.result.workspaces[0].id, 'ws-1')
 })
 
-// ── createWorkspaceHandler ────────────────────────────────────────
-
 test('createWorkspace: 422 when name is missing', async () => {
-	const { createWorkspaceHandler } = await import('../handlers/workspaces')
-	const handler  = createWorkspaceHandler(makeStore({ workspace: WS }), 'member')
-	const response = await handler(makeCtx({ user: { id: 'user-1', email: 'a@b.com' }, body: {} }))
+	const { workspaceController } = await import('../controllers/workspace.controller')
+	const ctrl     = workspaceController(makeStore({ workspace: WS }), {})
+	const response = await ctrl.create(makeCtx({ user: { id: 'user-1', email: 'a@b.com' }, body: {} }))
 	assert.equal(response.status, 422)
 })
 
 test('createWorkspace: 201 with workspace DTO', async () => {
-	const { createWorkspaceHandler } = await import('../handlers/workspaces')
-	const handler  = createWorkspaceHandler(makeStore({ workspace: WS }), 'member')
-	const response = await handler(makeCtx({
+	const { workspaceController } = await import('../controllers/workspace.controller')
+	const ctrl     = workspaceController(makeStore({ workspace: WS }), {})
+	const response = await ctrl.create(makeCtx({
 		user: { id: 'user-1', email: 'a@b.com' },
 		body: { name: 'Acme Corp' },
 	}))
@@ -241,13 +239,11 @@ test('createWorkspace: 201 with workspace DTO', async () => {
 	assert.ok(typeof body.result.workspace.isArchived === 'boolean')
 })
 
-// ── updateWorkspaceHandler ────────────────────────────────────────
-
 test('updateWorkspace: 200 with updated workspace DTO', async () => {
-	const { updateWorkspaceHandler } = await import('../handlers/workspaces')
+	const { workspaceController } = await import('../controllers/workspace.controller')
 	const updated  = { ...WS, name: 'Acme Updated' }
-	const handler  = updateWorkspaceHandler(makeStore({ workspace: updated }))
-	const response = await handler(makeCtx({
+	const ctrl     = workspaceController(makeStore({ workspace: updated }), {})
+	const response = await ctrl.update(makeCtx({
 		workspace: WS,
 		body:      { name: 'Acme Updated' },
 	}))
@@ -258,19 +254,17 @@ test('updateWorkspace: 200 with updated workspace DTO', async () => {
 	assert.ok(typeof body.result.workspace.isArchived === 'boolean')
 })
 
-// ── getWorkspaceHandler ───────────────────────────────────────────
-
 test('getWorkspace: 404 when workspace not on ctx', async () => {
-	const { getWorkspaceHandler } = await import('../handlers/workspaces')
-	const handler  = getWorkspaceHandler()
-	const response = await handler(makeCtx({ workspace: null }))
+	const { workspaceController } = await import('../controllers/workspace.controller')
+	const ctrl     = workspaceController(makeStore(), {})
+	const response = await ctrl.get(makeCtx({ workspace: null }))
 	assert.equal(response.status, 404)
 })
 
 test('getWorkspace: 200 with workspace DTO', async () => {
-	const { getWorkspaceHandler } = await import('../handlers/workspaces')
-	const handler  = getWorkspaceHandler()
-	const response = await handler(makeCtx({ workspace: WS }))
+	const { workspaceController } = await import('../controllers/workspace.controller')
+	const ctrl     = workspaceController(makeStore(), {})
+	const response = await ctrl.get(makeCtx({ workspace: WS }))
 	assert.equal(response.status, 200)
 	const body = await response.json() as any
 	assert.equal(body.reason, 'WORKSPACE_FETCHED')

@@ -1,5 +1,6 @@
 import { setErrorResponse }   from '@fonderie-js/core';
 import type { Middleware }     from '@fonderie-js/core';
+import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }  from '@fonderie-js/store';
 
 import { getMember }          from '../services/members';
@@ -11,7 +12,7 @@ import { findWorkspaceById }  from '../services/workspaces';
 // Validates the current user is an active member.
 // Must run after auth middleware.
 
-export function workspaceContextMiddleware(store: IStoreAdapter): Middleware {
+function makeHandler(store: IStoreAdapter): Middleware {
 	return async (ctx, next) => {
 		const params      = ctx.meta['params'] as Record<string, string> | undefined
 		const workspaceId =
@@ -37,4 +38,16 @@ export function workspaceContextMiddleware(store: IStoreAdapter): Middleware {
 		Object.assign(ctx, { workspace })
 		return next()
 	}
+}
+
+export function workspaceContextMiddleware(store: IStoreAdapter): Middleware
+export function workspaceContextMiddleware(store: IStoreAdapter, ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
+export function workspaceContextMiddleware(
+	store: IStoreAdapter,
+	ctx?:  IFonderieContext,
+	next?: () => Promise<Response>,
+): Middleware | Promise<Response> {
+	const handler = makeHandler(store)
+	if (ctx !== undefined && next !== undefined) return handler(ctx, next)
+	return handler
 }

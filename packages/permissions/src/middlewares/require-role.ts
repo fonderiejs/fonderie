@@ -1,15 +1,13 @@
 import { setErrorResponse }    from '@fonderie-js/core';
 import type { Middleware }      from '@fonderie-js/core';
+import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }   from '@fonderie-js/store';
 
 import { PermissionsEngine }      from '../engine';
 import { PERMISSIONS_ENGINE_KEY } from '../module';
 import { getMembership }          from '../services/membership';
 
-export function requireRole(
-	roleName: string | string[],
-	store:    IStoreAdapter,
-): Middleware {
+function makeHandler(roleName: string | string[], store: IStoreAdapter): Middleware {
 	const allowed = Array.isArray(roleName) ? roleName : [roleName];
 
 	return async (ctx, next) => {
@@ -36,4 +34,17 @@ export function requireRole(
 
 		return next();
 	}
+}
+
+export function requireRole(roleName: string | string[], store: IStoreAdapter): Middleware
+export function requireRole(roleName: string | string[], store: IStoreAdapter, ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
+export function requireRole(
+	roleName: string | string[],
+	store:    IStoreAdapter,
+	ctx?:     IFonderieContext,
+	next?:    () => Promise<Response>,
+): Middleware | Promise<Response> {
+	const handler = makeHandler(roleName, store)
+	if (ctx !== undefined && next !== undefined) return handler(ctx, next)
+	return handler
 }
