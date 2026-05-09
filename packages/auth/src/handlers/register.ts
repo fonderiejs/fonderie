@@ -74,7 +74,7 @@ export function registerHandler(store: IStoreAdapter, config: IAuthConfig) {
 				reason:      'USER_REGISTERED',
 				explanation: 'User registered successfully. Check your email for a verification code.',
 				result: {
-					tokens: { accessToken, refreshToken },
+					tokens: { access: accessToken, refresh: refreshToken },
 					user:   toUserDTO(user),
 				},
 			},
