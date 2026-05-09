@@ -17,6 +17,7 @@ import {
 	resetPasswordHandler,
 	forgotPasswordHandler,
 	googleCallbackHandler,
+	resendVerificationHandler,
 } from './handlers';
 import type { IAuthConfig } from './config';
 
@@ -31,7 +32,8 @@ export function buildAuthRoutes(
 		['POST', '/auth/register',        registerHandler(store, config)],
 		['POST', '/auth/login',           loginHandler(store, config)],
 		['POST', '/auth/refresh',         refreshHandler(store, config)],
-		['POST', '/auth/verify-email',    verifyEmailHandler(store)],
+		['POST', '/auth/verify-email',          verifyEmailHandler(store)],
+		['POST', '/auth/resend-verification',   resendVerificationHandler(store)],
 		['POST', '/auth/forgot-password', forgotPasswordHandler(store)],
 		['POST', '/auth/reset-password',  resetPasswordHandler(store)],
 

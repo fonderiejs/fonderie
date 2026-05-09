@@ -449,6 +449,39 @@ test('verifyEmail: 200 with verified and email on valid pin', async () => {
 	assert.equal(body.result.email,    'jane@example.com');
 });
 
+// ── resendVerificationHandler ─────────────────────────────────────
+
+test('resendVerification: 401 when not authenticated', async () => {
+	const { resendVerificationHandler } = await import('../handlers/resend-verification');
+	const handler  = resendVerificationHandler(makeStore());
+	const response = await handler(makeCtx({ user: null }));
+	assert.equal(response.status, 401);
+});
+
+test('resendVerification: 400 when email already verified', async () => {
+	const { resendVerificationHandler } = await import('../handlers/resend-verification');
+	const verifiedUser = { ...BASE_USER, emailVerifiedAt: new Date() };
+	const handler  = resendVerificationHandler(makeStore());
+	const response = await handler(makeCtx({ user: verifiedUser }));
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'EMAIL_ALREADY_VERIFIED');
+});
+
+test('resendVerification: 200 with token, expiresAt and email', async () => {
+	const { resendVerificationHandler } = await import('../handlers/resend-verification');
+	const unverifiedUser = { ...BASE_USER, emailVerifiedAt: null };
+	const handler  = resendVerificationHandler(makeStore());
+	const response = await handler(makeCtx({ user: unverifiedUser }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,               'VERIFICATION_EMAIL_SENT');
+	assert.equal(body.result.stat,          'success');
+	assert.ok(typeof body.result.data.token     === 'string');
+	assert.ok(typeof body.result.data.expiresAt === 'string');
+	assert.equal(body.result.data.email,    'jane@example.com');
+});
+
 // ── meHandler ─────────────────────────────────────────────────────
 
 test('me: 401 when not authenticated', async () => {
