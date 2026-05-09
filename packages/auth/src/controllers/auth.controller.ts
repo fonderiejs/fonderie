@@ -3,8 +3,6 @@ import { randomInt, randomBytes }                       from 'node:crypto';
 import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
 import type { IStoreAdapter }                           from '@fonderie-js/store';
-import jwt                                              from 'jsonwebtoken';
-
 import type { IAuthConfig }                             from '../config';
 import { issueTokenPair, verifyToken, refreshTokenExpiry } from '../services/jwt';
 import { hashPassword, verifyPassword }                 from '../services/password';
@@ -194,14 +192,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
 			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
-			const decoded   = jwt.decode(accessToken) as { exp?: number } | null;
-			const expiresIn = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 900;
-
 			return Response.json(
 				{
 					reason:      'TOKENS_REFRESHED',
 					explanation: 'Tokens refreshed successfully.',
-					result: { token: accessToken, expiresIn },
+					result: { tokens: { access: accessToken, refresh: refreshToken } },
 				},
 				{
 					status: 200,
