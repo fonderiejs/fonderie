@@ -1,20 +1,12 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
 
-import {
-	webhookHandler,
-	getUsageHandler,
-	listPlansHandler,
-	getPlanHandler,
-	createPlanHandler,
-	updatePlanHandler,
-	deletePlanHandler,
-	recordUsageHandler,
-	createPortalHandler,
-	createCheckoutHandler,
-	getSubscriptionHandler,
-} from './handlers';
-import type { IBillingConfig } from './config';
+import type { IBillingConfig }  from './config';
+import { planController }         from './controllers/plan.controller';
+import { subscriptionController } from './controllers/subscription.controller';
+import { checkoutController }     from './controllers/checkout.controller';
+import { usageController }        from './controllers/usage.controller';
+import { webhookController }      from './controllers/webhook.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]]
 
@@ -22,30 +14,36 @@ export function buildBillingRoutes(
 	store:  IStoreAdapter,
 	config: IBillingConfig,
 ): RouteDefinition[] {
+	const plan         = planController(store, config)
+	const subscription = subscriptionController(store)
+	const checkout     = checkoutController(store, config)
+	const usage        = usageController(store)
+	const webhook      = webhookController(store, config)
+
 	return [
 		// Plans — public list
-		['GET',    '/billing/plans',              listPlansHandler(store, config)],
+		['GET',    '/billing/plans',              plan.list],
 
 		// Plans — admin CRUD
-		['POST',   '/billing/plans',              createPlanHandler(store)],
-		['GET',    '/billing/plans/:planId',      getPlanHandler(store)],
-		['PUT',    '/billing/plans/:planId',      updatePlanHandler(store)],
-		['DELETE', '/billing/plans/:planId',      deletePlanHandler(store)],
+		['POST',   '/billing/plans',              plan.create],
+		['GET',    '/billing/plans/:planId',      plan.get],
+		['PUT',    '/billing/plans/:planId',      plan.update],
+		['DELETE', '/billing/plans/:planId',      plan.remove],
 
 		// Subscription — read
-		['GET',    '/workspaces/:workspaceId/billing/subscription', getSubscriptionHandler(store)],
+		['GET',    '/workspaces/:workspaceId/billing/subscription', subscription.get],
 
 		// Checkout — creates Stripe session
-		['POST',   '/workspaces/:workspaceId/billing/checkout',     createCheckoutHandler(store, config)],
+		['POST',   '/workspaces/:workspaceId/billing/checkout',     checkout.createSession],
 
 		// Portal — manage existing subscription
-		['POST',   '/workspaces/:workspaceId/billing/portal',       createPortalHandler(store, config)],
+		['POST',   '/workspaces/:workspaceId/billing/portal',       checkout.createPortal],
 
 		// Webhook — no auth, signature verified internally
-		['POST',   '/billing/webhook',            webhookHandler(store, config)],
+		['POST',   '/billing/webhook',            webhook.handle],
 
 		// Usage metering
-		['POST',   '/workspaces/:workspaceId/billing/usage',        recordUsageHandler(store)],
-		['GET',    '/workspaces/:workspaceId/billing/usage/:metric', getUsageHandler(store)],
-	];
+		['POST',   '/workspaces/:workspaceId/billing/usage',        usage.record],
+		['GET',    '/workspaces/:workspaceId/billing/usage/:metric', usage.get],
+	]
 }

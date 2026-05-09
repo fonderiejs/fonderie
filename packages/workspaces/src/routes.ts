@@ -1,26 +1,13 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
 
-import type { IWorkspacesConfig }        from './config';
-import { workspaceContextMiddleware }    from './middlewares/workspace-context';
+import type { IWorkspacesConfig } from './config';
+import { workspaceContextMiddleware } from './middlewares/workspace-context';
 
-import {
-	listWorkspacesHandler, createWorkspaceHandler, getWorkspaceHandler,
-	updateWorkspaceHandler, archiveWorkspaceHandler, restoreWorkspaceHandler,
-	getSettingsHandler, updateSettingsHandler,
-} from './handlers/workspaces';
-import {
-	listMembersHandler, removeMemberHandler,
-	getUserRolesHandler, addRoleToMemberHandler, removeRoleFromMemberHandler,
-} from './handlers/members';
-import {
-	listInvitationsHandler, inviteMemberHandler,
-	cancelInvitationHandler, acceptInvitationHandler,
-} from './handlers/invitations';
-import {
-	createRoleHandler, listRolesHandler, getRoleHandler,
-	updateRoleHandler, deleteRoleHandler, setRolePermissionsHandler,
-} from './handlers/roles';
+import { workspaceController }  from './controllers/workspace.controller';
+import { memberController }     from './controllers/member.controller';
+import { roleController }       from './controllers/role.controller';
+import { invitationController } from './controllers/invitation.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]]
 
@@ -28,44 +15,48 @@ export function buildWorkspaceRoutes(
 	store:  IStoreAdapter,
 	config: IWorkspacesConfig,
 ): RouteDefinition[] {
-	const ttl         = config.invitationTtl ?? '7d'
-	const defaultRole = config.defaultRole   ?? 'member'
-	const wsCtx       = workspaceContextMiddleware(store)
+	const ttl  = config.invitationTtl ?? '7d'
+	const wsCtx = workspaceContextMiddleware(store)
+
+	const workspace  = workspaceController(store, config)
+	const member     = memberController(store)
+	const role       = roleController(store)
+	const invitation = invitationController(store, ttl)
 
 	return [
 		// ── Workspace creation + listing (no workspace context required)
-		['POST', '/workspaces',     createWorkspaceHandler(store, defaultRole)],
-		['GET',  '/workspaces',     listWorkspacesHandler(store)],
+		['POST', '/workspaces',     workspace.create],
+		['GET',  '/workspaces',     workspace.list],
 
 		// ── Members (workspace resolved from X-Workspace-ID header)
-		['GET',    '/workspaces/members',                            wsCtx, listMembersHandler(store)],
-		['DELETE', '/workspaces/members/:userId',                    wsCtx, removeMemberHandler(store)],
-		['GET',    '/workspaces/members/:userId/roles',              wsCtx, getUserRolesHandler(store)],
-		['POST',   '/workspaces/members/:userId/roles',              wsCtx, addRoleToMemberHandler(store)],
-		['DELETE', '/workspaces/members/:userId/roles/:roleId',      wsCtx, removeRoleFromMemberHandler(store)],
+		['GET',    '/workspaces/members',                            wsCtx, member.list],
+		['DELETE', '/workspaces/members/:userId',                    wsCtx, member.remove],
+		['GET',    '/workspaces/members/:userId/roles',              wsCtx, member.getUserRoles],
+		['POST',   '/workspaces/members/:userId/roles',              wsCtx, member.addRole],
+		['DELETE', '/workspaces/members/:userId/roles/:roleId',      wsCtx, member.removeRole],
 
 		// ── Invitations
-		['GET',    '/workspaces/invitations',                        wsCtx, listInvitationsHandler(store)],
-		['POST',   '/workspaces/invitations',                        wsCtx, inviteMemberHandler(store, ttl)],
-		['DELETE', '/workspaces/invitations/:inviteId',              wsCtx, cancelInvitationHandler(store)],
-		['POST',   '/workspaces/invitations/accept',                       acceptInvitationHandler(store)],
+		['GET',    '/workspaces/invitations',                        wsCtx, invitation.list],
+		['POST',   '/workspaces/invitations',                        wsCtx, invitation.invite],
+		['DELETE', '/workspaces/invitations/:inviteId',              wsCtx, invitation.cancel],
+		['POST',   '/workspaces/invitations/accept',                       invitation.accept],
 
 		// ── Roles
-		['POST',   '/workspaces/roles',                              wsCtx, createRoleHandler(store)],
-		['GET',    '/workspaces/roles',                              wsCtx, listRolesHandler(store)],
-		['GET',    '/workspaces/roles/:roleId',                      wsCtx, getRoleHandler(store)],
-		['PUT',    '/workspaces/roles/:roleId',                      wsCtx, updateRoleHandler(store)],
-		['DELETE', '/workspaces/roles/:roleId',                      wsCtx, deleteRoleHandler(store)],
-		['POST',   '/workspaces/roles/:roleId/permissions',          wsCtx, setRolePermissionsHandler(store)],
+		['POST',   '/workspaces/roles',                              wsCtx, role.create],
+		['GET',    '/workspaces/roles',                              wsCtx, role.list],
+		['GET',    '/workspaces/roles/:roleId',                      wsCtx, role.get],
+		['PUT',    '/workspaces/roles/:roleId',                      wsCtx, role.update],
+		['DELETE', '/workspaces/roles/:roleId',                      wsCtx, role.remove],
+		['POST',   '/workspaces/roles/:roleId/permissions',          wsCtx, role.setPermissions],
 
 		// ── Workspace lifecycle
-		['POST',   '/workspaces/archive',                            wsCtx, archiveWorkspaceHandler(store)],
-		['POST',   '/workspaces/restore',                            wsCtx, restoreWorkspaceHandler(store)],
-		['GET',    '/workspaces/settings',                           wsCtx, getSettingsHandler(store)],
-		['PUT',    '/workspaces/settings',                           wsCtx, updateSettingsHandler(store)],
+		['POST',   '/workspaces/archive',                            wsCtx, workspace.archive],
+		['POST',   '/workspaces/restore',                            wsCtx, workspace.restore],
+		['GET',    '/workspaces/settings',                           wsCtx, workspace.getSettings],
+		['PUT',    '/workspaces/settings',                           wsCtx, workspace.updateSettings],
 
 		// ── Path-based admin routes — MUST be last to avoid shadowing specific routes above
-		['GET',  '/workspaces/:id', wsCtx, getWorkspaceHandler()],
-		['PUT',  '/workspaces/:id', wsCtx, updateWorkspaceHandler(store)],
+		['GET',  '/workspaces/:id', wsCtx, workspace.get],
+		['PUT',  '/workspaces/:id', wsCtx, workspace.update],
 	]
 }
