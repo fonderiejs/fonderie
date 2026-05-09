@@ -122,7 +122,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				return setErrorResponse(403, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
 			}
 			if (user.mfaEnabled) {
-				return setErrorResponse(202, 'MFA_REQUIRED', 'Multi-factor authentication required');
+				return setSuccessResponse(200, 'MFA_REQUIRED', 'Multi-factor authentication required');
 			}
 
 			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
