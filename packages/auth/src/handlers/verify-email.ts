@@ -1,13 +1,10 @@
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import { setErrorResponse }                         from '@fonderie-js/core';
-import type { IAuthConfig }                         from '../config';
-import { issueTokenPair, refreshTokenExpiry }       from '../services/jwt';
-import { findUserById, createSession }              from '../services/session';
-import { toUserDTO }                                from '../dtos/user';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { findUserById }                     from '../services/session';
 
-export function verifyEmailHandler(store: IStoreAdapter, config: IAuthConfig) {
+export function verifyEmailHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const body = ctx.meta['body'] as Record<string, unknown> | undefined
 		const pin  = body?.['pin'];
@@ -48,27 +45,9 @@ export function verifyEmailHandler(store: IStoreAdapter, config: IAuthConfig) {
 			return setErrorResponse('NOT_FOUND', 'User not found', 404);
 		}
 
-		const { accessToken, refreshToken } = issueTokenPair(user.id, config);
-		await createSession(user.id, refreshToken, refreshTokenExpiry(refreshToken), store);
-
-		return Response.json(
-			{
-				reason:      'EMAIL_VERIFIED',
-				explanation: 'Email verified successfully.',
-				result: {
-					tokens: { access: accessToken, refresh: refreshToken },
-					user:   toUserDTO(user),
-				},
-			},
-			{
-				status: 200,
-				headers: {
-					'Set-Cookie': [
-						`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-						`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-					].join(', '),
-				},
-			},
-		);
+		return setApiResponse('EMAIL_VERIFIED', 'Email verified successfully.', {
+			verified: true,
+			email:    user.email,
+		});
 	}
 }
