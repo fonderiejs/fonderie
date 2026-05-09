@@ -56,7 +56,14 @@ export function loginHandler(store: IStoreAdapter, config: IAuthConfig) {
 		await createSession(user.id, refreshToken, refreshTokenExpiry(refreshToken), store);
 
 		return Response.json(
-			{ user: toUserDTO(user), accessToken, refreshToken },
+			{
+				reason:      'USER_LOGGED_IN',
+				explanation: 'User logged in successfully.',
+				result: {
+					tokens: { accessToken, refreshToken },
+					user:   toUserDTO(user),
+				},
+			},
 			{
 				status: 200,
 				headers: {

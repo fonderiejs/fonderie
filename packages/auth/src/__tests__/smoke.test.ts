@@ -100,6 +100,8 @@ const BASE_USER: IUser = {
 	lastLogin:       null,
 	skills:          [],
 	preferences:     {
+		locale:        'en-US',
+		timezone:      'UTC',
 		notifications: { email: true, inApp: true, sms: false, push: false },
 		emailDigest:   'immediate',
 		dateFormat:    'MM/DD/YYYY',
@@ -182,7 +184,7 @@ test('toUserDTO: maps all fields correctly', async () => {
 	const { toUserDTO } = await import('../dtos/user');
 	const dto = toUserDTO(BASE_USER);
 
-	assert.equal(dto.avatarUrl,       'https://cdn.example.com/avatar.jpg');
+	assert.equal(dto.profileImageUrl,  'https://cdn.example.com/avatar.jpg');
 	assert.equal(dto.phone,           '+1234567890');
 	assert.equal(dto.isEmailVerified, true);
 	assert.equal(dto.firstName,       'Jane');
@@ -194,10 +196,11 @@ test('toUserDTO: maps all fields correctly', async () => {
 	assert.equal(dto.suspended,       false);
 	assert.equal(dto.whitelist,       false);
 	assert.deepEqual(dto.ipWhitelist, []);
+	assert.equal(dto.preferences.locale,                   'en-US');
+	assert.equal(dto.preferences.timezone,                 'UTC');
 	assert.equal(dto.preferences.emailDigest,              'immediate');
 	assert.equal(dto.preferences.notifications.email,      true);
 	assert.equal(dto.preferences.notifications.sms,        false);
-	assert.ok(typeof (dto as any).profileImageUrl === 'undefined', 'profileImageUrl must not leak into DTO');
 });
 
 test('toUserDTO: skills and ipWhitelist are passed through', async () => {
@@ -271,11 +274,12 @@ test('register: 201 with user DTO, accessToken and refreshToken', async () => {
 	}));
 	assert.equal(response.status, 201);
 	const body = await response.json() as any;
-	assert.ok(body.user);
-	assert.equal(body.user.email,     'jane@example.com');
-	assert.equal(body.user.firstName, 'Jane');
-	assert.ok(typeof body.accessToken  === 'string');
-	assert.ok(typeof body.refreshToken === 'string');
+	assert.equal(body.reason,                'USER_REGISTERED');
+	assert.ok(body.result?.user);
+	assert.equal(body.result.user.email,     'jane@example.com');
+	assert.equal(body.result.user.firstName, 'Jane');
+	assert.ok(typeof body.result.tokens.accessToken  === 'string');
+	assert.ok(typeof body.result.tokens.refreshToken === 'string');
 	assert.ok(response.headers.get('set-cookie')?.includes('access_token='));
 });
 
@@ -318,10 +322,11 @@ test('login: 200 with user DTO and tokens', async () => {
 	const response = await handler(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.user.email,    'jane@example.com');
-	assert.equal(body.user.avatarUrl,'https://cdn.example.com/avatar.jpg');
-	assert.ok(typeof body.accessToken  === 'string');
-	assert.ok(typeof body.refreshToken === 'string');
+	assert.equal(body.reason,                        'USER_LOGGED_IN');
+	assert.equal(body.result.user.email,             'jane@example.com');
+	assert.equal(body.result.user.profileImageUrl,   'https://cdn.example.com/avatar.jpg');
+	assert.ok(typeof body.result.tokens.accessToken  === 'string');
+	assert.ok(typeof body.result.tokens.refreshToken === 'string');
 });
 
 // ── logoutHandler ─────────────────────────────────────────────────
@@ -367,9 +372,10 @@ test('refresh: 200 with new tokens when session is valid', async () => {
 	const response = await handler(makeCtx({ body: { refreshToken: VALID_RT } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.user.email, 'jane@example.com');
-	assert.ok(typeof body.accessToken  === 'string');
-	assert.ok(typeof body.refreshToken === 'string');
+	assert.equal(body.reason,                        'TOKEN_REFRESHED');
+	assert.equal(body.result.user.email,             'jane@example.com');
+	assert.ok(typeof body.result.tokens.accessToken  === 'string');
+	assert.ok(typeof body.result.tokens.refreshToken === 'string');
 });
 
 // ── forgotPasswordHandler ─────────────────────────────────────────
@@ -451,15 +457,15 @@ test('me: 401 when not authenticated', async () => {
 	assert.equal(response.status, 401);
 });
 
-test('me: 200 with user DTO including avatarUrl', async () => {
+test('me: 200 with user DTO including profileImageUrl', async () => {
 	const { meHandler } = await import('../handlers/me');
 	const handler  = meHandler(makeStore({ userById: BASE_USER }));
 	const response = await handler(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.email,     'jane@example.com');
-	assert.equal(body.avatarUrl, 'https://cdn.example.com/avatar.jpg');
-	assert.equal(body.phone,     '+1234567890');
+	assert.equal(body.email,           'jane@example.com');
+	assert.equal(body.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
+	assert.equal(body.phone,           '+1234567890');
 });
 
 // ── updateMeHandler ───────────────────────────────────────────────
@@ -485,6 +491,6 @@ test('updateMe: 200 with updated DTO after phoneNumber and avatarUrl', async () 
 	}));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.phone,     '+9999999999');
-	assert.equal(body.avatarUrl, 'https://cdn.example.com/new.jpg');
+	assert.equal(body.phone,           '+9999999999');
+	assert.equal(body.profileImageUrl, 'https://cdn.example.com/new.jpg');
 });
