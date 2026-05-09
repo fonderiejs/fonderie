@@ -1,4 +1,4 @@
-import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -9,7 +9,7 @@ export function usageController(store: IStoreAdapter) {
 
 	return {
 		async record(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			const body     = ctx.meta['body'] as Record<string, unknown> | undefined
 			const metric   = body?.['metric']
@@ -19,25 +19,25 @@ export function usageController(store: IStoreAdapter) {
 				(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId']
 
 			if (!workspaceId) {
-				return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required')
+				return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required')
 			}
 			if (typeof metric !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'metric is required')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'metric is required')
 			}
 
 			await usage.record({ workspaceId, metric, quantity: typeof quantity === 'number' ? quantity : 1 })
-			return setSuccessResponse(200, 'USAGE_RECORDED', 'Usage recorded successfully.')
+			return setApiResponse(HTTP.OK, 'USAGE_RECORDED', 'Usage recorded successfully.')
 		},
 
 		async get(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			const params      = ctx.meta['params'] as Record<string, string> | undefined
 			const workspaceId = ctx.workspace?.id ?? params?.['workspaceId']
 			const metric      = params?.['metric']
 
 			if (!workspaceId || !metric) {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'workspaceId and metric are required')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'workspaceId and metric are required')
 			}
 
 			const since = new Date()
@@ -45,7 +45,7 @@ export function usageController(store: IStoreAdapter) {
 			since.setHours(0, 0, 0, 0)
 
 			const total = await usage.get(workspaceId, metric, since)
-			return setSuccessResponse(200, 'USAGE_FETCHED', 'Usage retrieved successfully.', { metric, total, since })
+			return setApiResponse(HTTP.OK, 'USAGE_FETCHED', 'Usage retrieved successfully.', { metric, total, since })
 		},
 	}
 }

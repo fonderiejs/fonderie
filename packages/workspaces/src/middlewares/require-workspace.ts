@@ -1,4 +1,4 @@
-import { setErrorResponse }    from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { Middleware }      from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 
@@ -6,7 +6,7 @@ import type { IFonderieContext } from '@fonderie-js/core';
 
 const handler: Middleware = async (ctx, next) => {
 	if (!ctx.workspace) {
-		return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
+		return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required');
 	}
 	return next();
 }

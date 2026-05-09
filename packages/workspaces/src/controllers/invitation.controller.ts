@@ -1,4 +1,4 @@
-import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { ICourierMessage }              from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
@@ -11,23 +11,23 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 
 			const list = await invitations.list(ctx.workspace.id)
-			return setSuccessResponse(200, 'INVITATIONS_FETCHED', 'Invitations retrieved successfully.', {
+			return setApiResponse(HTTP.OK, 'INVITATIONS_FETCHED', 'Invitations retrieved successfully.', {
 				invitations: list.map(toInvitationDTO),
 			})
 		},
 
 		async invite(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 
 			const body   = ctx.meta['body'] as Record<string, unknown> | undefined
 			const email  = body?.['email']
 			const roleId = body?.['roleId'] as string | undefined
 
 			if (typeof email !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'email is required')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required')
 			}
 
 			let resolvedRoleId = roleId
@@ -41,7 +41,7 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 			}
 
 			if (!resolvedRoleId) {
-				return setErrorResponse(500, 'SERVER_ERROR', 'Default role not found')
+				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Default role not found')
 			}
 
 			const invitation = await invitations.create(
@@ -54,39 +54,39 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 				data:      { token: invitation.token, pin: invitation.pin },
 			} satisfies ICourierMessage
 
-			return setSuccessResponse(201, 'INVITATION_SENT', 'Invitation sent successfully.', {
+			return setApiResponse(HTTP.CREATED, 'INVITATION_SENT', 'Invitation sent successfully.', {
 				invitationId: invitation.id,
 			})
 		},
 
 		async cancel(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 
 			const params       = ctx.meta['params'] as Record<string, string> | undefined
 			const invitationId = params?.['inviteId']
 
-			if (!invitationId) return setErrorResponse(422, 'INVALID_PARAMETER', 'inviteId is required')
+			if (!invitationId) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'inviteId is required')
 
 			await invitations.cancel(invitationId, ctx.workspace.id)
-			return setSuccessResponse(200, 'INVITATION_CANCELLED', 'Invitation cancelled successfully.')
+			return setApiResponse(HTTP.OK, 'INVITATION_CANCELLED', 'Invitation cancelled successfully.')
 		},
 
 		async accept(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined
 			const pin  = body?.['pin']
 
 			if (typeof pin !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'pin is required')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin is required')
 			}
 
 			try {
 				const { workspaceId } = await invitations.acceptByPin({ pin, userId: ctx.user.id })
-				return setSuccessResponse(200, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', { workspaceId })
+				return setApiResponse(HTTP.OK, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', { workspaceId })
 			} catch (err) {
 				const message = err instanceof Error ? err.message : 'Invalid invitation'
-				return setErrorResponse(400, 'INVITATION_FAILED', message)
+				return setApiResponse(HTTP.BAD_REQUEST, 'INVITATION_FAILED', message)
 			}
 		},
 	}

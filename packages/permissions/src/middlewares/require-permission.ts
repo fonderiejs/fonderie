@@ -1,4 +1,4 @@
-import { setErrorResponse }    from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { Middleware }      from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 
@@ -9,22 +9,22 @@ import { PERMISSIONS_ENGINE_KEY } from '../module';
 function makeHandler(operation: Operation, permissionKey: string): Middleware {
 	return async (ctx, next) => {
 		if (!ctx.user) {
-			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+			return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
 		const engine = ctx.meta[PERMISSIONS_ENGINE_KEY]
 		if (!(engine instanceof PermissionsEngine)) {
-			return setErrorResponse(500, 'SERVER_ERROR', 'Permissions module not installed');
+			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Permissions module not installed');
 		}
 
 		const workspaceId = resolveWorkspaceId(ctx)
 		if (!workspaceId) {
-			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
+			return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
 		const allowed = await engine.can(ctx.user.id, operation, permissionKey, workspaceId)
 		if (!allowed) {
-			return setErrorResponse(403, 'FORBIDDEN', `Permission denied: ${operation}:${permissionKey}`);
+			return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', `Permission denied: ${operation}:${permissionKey}`);
 		}
 
 		return next()

@@ -1,4 +1,4 @@
-import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -17,16 +17,16 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			const list = await workspaces.findByUserId(ctx.user.id)
-			return setSuccessResponse(200, 'WORKSPACES_FETCHED', 'Workspaces retrieved successfully.', {
+			return setApiResponse(HTTP.OK, 'WORKSPACES_FETCHED', 'Workspaces retrieved successfully.', {
 				workspaces: list.map(toWorkspaceDTO),
 			})
 		},
 
 		async create(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			const body        = ctx.meta['body'] as Record<string, unknown> | undefined
 			const name        = body?.['name']
@@ -34,7 +34,7 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			const type        = body?.['type']
 
 			if (typeof name !== 'string' || name.trim().length === 0) {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'name is required')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'name is required')
 			}
 
 			const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -64,20 +64,20 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 				return ws
 			})
 
-			return setSuccessResponse(201, 'WORKSPACE_CREATED', 'Workspace created successfully.', {
+			return setApiResponse(HTTP.CREATED, 'WORKSPACE_CREATED', 'Workspace created successfully.', {
 				workspace: toWorkspaceDTO(workspace),
 			})
 		},
 
 		async get(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
-			return setSuccessResponse(200, 'WORKSPACE_FETCHED', 'Workspace retrieved successfully.', {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
+			return setApiResponse(HTTP.OK, 'WORKSPACE_FETCHED', 'Workspace retrieved successfully.', {
 				workspace: toWorkspaceDTO(ctx.workspace as IWorkspace),
 			})
 		},
 
 		async update(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined
 			const opts: { name?: string; description?: string | null } = {}
@@ -90,43 +90,43 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			}
 
 			const workspace = await workspaces.update(ctx.workspace.id, opts)
-			if (!workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			if (!workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 
-			return setSuccessResponse(200, 'WORKSPACE_UPDATED', 'Workspace updated successfully.', {
+			return setApiResponse(HTTP.OK, 'WORKSPACE_UPDATED', 'Workspace updated successfully.', {
 				workspace: toWorkspaceDTO(workspace),
 			})
 		},
 
 		async archive(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
-			if (!ctx.user)      return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
+			if (!ctx.user)      return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			await workspaces.archive(ctx.workspace.id, ctx.user.id)
-			return setSuccessResponse(200, 'WORKSPACE_ARCHIVED', 'Workspace archived successfully.')
+			return setApiResponse(HTTP.OK, 'WORKSPACE_ARCHIVED', 'Workspace archived successfully.')
 		},
 
 		async restore(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 
 			await workspaces.restore(ctx.workspace.id)
-			return setSuccessResponse(200, 'WORKSPACE_RESTORED', 'Workspace restored successfully.')
+			return setApiResponse(HTTP.OK, 'WORKSPACE_RESTORED', 'Workspace restored successfully.')
 		},
 
 		async getSettings(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 
 			const settings = await workspaces.getSettings(ctx.workspace.id)
-			return setSuccessResponse(200, 'SETTINGS_FETCHED', 'Workspace settings retrieved successfully.', {
+			return setApiResponse(HTTP.OK, 'SETTINGS_FETCHED', 'Workspace settings retrieved successfully.', {
 				settings: toSettingsDTO(settings),
 			})
 		},
 
 		async updateSettings(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined
 			if (!body || Object.keys(body).length === 0) {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'No settings provided')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'No settings provided')
 			}
 
 			const patch: Record<string, string> = {}
@@ -135,7 +135,7 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			}
 
 			const settings = await workspaces.updateSettings(ctx.workspace.id, patch)
-			return setSuccessResponse(200, 'SETTINGS_UPDATED', 'Workspace settings updated successfully.', {
+			return setApiResponse(HTTP.OK, 'SETTINGS_UPDATED', 'Workspace settings updated successfully.', {
 				settings: toSettingsDTO(settings),
 			})
 		},

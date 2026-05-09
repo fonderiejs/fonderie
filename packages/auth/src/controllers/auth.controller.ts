@@ -1,6 +1,6 @@
 import { randomInt, randomBytes }                       from 'node:crypto';
 
-import { setSuccessResponse, setErrorResponse }             from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
 import type { IStoreAdapter }                           from '@fonderie-js/store';
 import jwt                                              from 'jsonwebtoken';
@@ -34,15 +34,15 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			const { email, password, firstName = null, lastName = null } = body ?? {};
 
 			if (typeof email !== 'string' || typeof password !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'email and password are required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email and password are required');
 			}
 			if (password.length < 8) {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'password must be at least 8 characters');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
 			}
 
 			const existing = await users.findByEmail(email);
 			if (existing) {
-				return setErrorResponse(409, 'USER_ALREADY_EXISTS', 'Email already registered');
+				return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Email already registered');
 			}
 
 			const passwordHash = await hashPassword(password);
@@ -53,7 +53,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				lastName  as string | null,
 			);
 			if (!row) {
-				return setErrorResponse(500, 'SERVER_ERROR', 'Registration failed');
+				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 			}
 
 			const pin       = randomInt(100000, 1000000).toString();
@@ -68,7 +68,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			const user = await users.findById(row.id);
 			if (!user) {
-				return setErrorResponse(500, 'SERVER_ERROR', 'Registration failed');
+				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 			}
 
 			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
@@ -103,26 +103,26 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				typeof (body as Record<string, unknown>)['email']    !== 'string' ||
 				typeof (body as Record<string, unknown>)['password'] !== 'string'
 			) {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'email and password are required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email and password are required');
 			}
 
 			const { email, password } = body as { email: string; password: string };
 
 			const user = await users.findByEmail(email);
 			if (!user || !user.passwordHash) {
-				return setErrorResponse(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 			}
 
 			const valid = await verifyPassword(password, user.passwordHash);
 			if (!valid) {
-				return setErrorResponse(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 			}
 
 			if (user.suspended) {
-				return setErrorResponse(403, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+				return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
 			}
 			if (user.mfaEnabled) {
-				return setSuccessResponse(200, 'MFA_REQUIRED', 'Multi-factor authentication required');
+				return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required');
 			}
 
 			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
@@ -172,22 +172,22 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 		refresh: async (ctx: IFonderieContext): Promise<Response> => {
 			const token = extractRefreshToken(ctx);
 			if (!token) {
-				return setErrorResponse(401, 'INVALID_PARAMETER', 'No refresh token provided');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_PARAMETER', 'No refresh token provided');
 			}
 
 			const payload = verifyToken(token, config);
 			if (!payload || payload.type !== 'refresh') {
-				return setErrorResponse(401, 'TOKEN_REFRESH_FAILED', 'Invalid refresh token');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Invalid refresh token');
 			}
 
 			const valid = await sessions.exists(token);
 			if (!valid) {
-				return setErrorResponse(401, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
 			}
 
 			const user = await users.findById(payload.sub);
 			if (!user || user.suspended || user.deletedAt) {
-				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			}
 
 			await sessions.delete(token);
@@ -220,12 +220,12 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			const email = body?.['email'];
 
 			if (typeof email !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'email is required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required');
 			}
 
 			const user = await users.findByEmail(email);
 			if (!user) {
-				return setSuccessResponse(200, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
+				return setApiResponse(HTTP.OK, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 			}
 
 			const token     = randomBytes(32).toString('hex');
@@ -238,7 +238,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				data:      { token },
 			} satisfies ICourierMessage;
 
-			return setSuccessResponse(200, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
+			return setApiResponse(HTTP.OK, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 		},
 
 		resetPassword: async (ctx: IFonderieContext): Promise<Response> => {
@@ -247,15 +247,15 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			const password = body?.['password'];
 
 			if (typeof token !== 'string' || typeof password !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'resetToken and password are required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'resetToken and password are required');
 			}
 			if (password.length < 8) {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'password must be at least 8 characters');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
 			}
 
 			const row = await passwordReset.find(token);
 			if (!row || new Date() > row.expiresAt) {
-				return setErrorResponse(400, 'PASSWORD_RESET_FAILED', 'Invalid or expired token');
+				return setApiResponse(HTTP.BAD_REQUEST, 'PASSWORD_RESET_FAILED', 'Invalid or expired token');
 			}
 
 			const passwordHash = await hashPassword(password);
@@ -266,7 +266,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				]);
 			});
 
-			return setSuccessResponse(200, 'PASSWORD_RESET_SUCCESSFUL', 'Password reset successfully.');
+			return setApiResponse(HTTP.OK, 'PASSWORD_RESET_SUCCESSFUL', 'Password reset successfully.');
 		},
 
 		verifyEmail: async (ctx: IFonderieContext): Promise<Response> => {
@@ -274,15 +274,15 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			const pin  = body?.['pin'];
 
 			if (typeof pin !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'pin is required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin is required');
 			}
 
 			const row = await emailVerif.find(pin);
 			if (!row) {
-				return setErrorResponse(400, 'EMAIL_VERIFICATION_FAILED', 'Invalid or expired pin');
+				return setApiResponse(HTTP.BAD_REQUEST, 'EMAIL_VERIFICATION_FAILED', 'Invalid or expired pin');
 			}
 			if (new Date() > row.expiresAt) {
-				return setErrorResponse(400, 'EMAIL_VERIFICATION_FAILED', 'Pin expired');
+				return setApiResponse(HTTP.BAD_REQUEST, 'EMAIL_VERIFICATION_FAILED', 'Pin expired');
 			}
 
 			await store.transaction(async tx => {
@@ -294,10 +294,10 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			const user = await users.findById(row.userId);
 			if (!user) {
-				return setErrorResponse(404, 'NOT_FOUND', 'User not found');
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
 			}
 
-			return setSuccessResponse(200, 'EMAIL_VERIFIED', 'Email verified successfully.', {
+			return setApiResponse(HTTP.OK, 'EMAIL_VERIFIED', 'Email verified successfully.', {
 				verified: true,
 				email:    user.email,
 			});
@@ -305,11 +305,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 		sendVerificationEmail: async (ctx: IFonderieContext): Promise<Response> => {
 			if (!ctx.user) {
-				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			}
 			if (ctx.user.emailVerifiedAt) {
-				return setErrorResponse(
-					400,
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
 					'EMAIL_ALREADY_VERIFIED',
 					'Your email address has already been verified. No further action is needed.',
 				);
@@ -325,7 +325,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				data:      { pin, firstName: ctx.user.firstName ?? '' },
 			} satisfies ICourierMessage;
 
-			return setSuccessResponse(200, 'VERIFICATION_EMAIL_SENT', 'Verification email sent', {
+			return setApiResponse(HTTP.OK, 'VERIFICATION_EMAIL_SENT', 'Verification email sent', {
 				stat:    'success',
 				message: 'Verification email sent',
 				data: {
