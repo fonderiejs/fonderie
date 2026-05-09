@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -21,7 +21,7 @@ export function userController(store: IStoreAdapter) {
 				return setErrorResponse(404, 'NOT_FOUND', 'User not found');
 			}
 
-			return setApiResponse(200, 'USER_FETCHED', 'User successfully fetched.', { user: toUserDTO(user) });
+			return setSuccessResponse(200, 'USER_FETCHED', 'User successfully fetched.', { user: toUserDTO(user) });
 		},
 
 		updateMe: async (ctx: IFonderieContext): Promise<Response> => {
@@ -52,7 +52,7 @@ export function userController(store: IStoreAdapter) {
 			}
 
 			const updated = await users.findById(ctx.user.id);
-			return setApiResponse(200, 'ACCOUNT_UPDATED', 'Account successfully updated.', {
+			return setSuccessResponse(200, 'ACCOUNT_UPDATED', 'Account successfully updated.', {
 				user: toUserDTO(updated as IUser),
 			});
 		},

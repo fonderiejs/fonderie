@@ -1,6 +1,6 @@
 import { randomInt, randomBytes }                       from 'node:crypto';
 
-import { setApiResponse, setErrorResponse }             from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse }             from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
 import type { IStoreAdapter }                           from '@fonderie-js/store';
 import jwt                                              from 'jsonwebtoken';
@@ -225,7 +225,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			const user = await users.findByEmail(email);
 			if (!user) {
-				return setApiResponse(200, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
+				return setSuccessResponse(200, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 			}
 
 			const token     = randomBytes(32).toString('hex');
@@ -238,7 +238,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				data:      { token },
 			} satisfies ICourierMessage;
 
-			return setApiResponse(200, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
+			return setSuccessResponse(200, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 		},
 
 		resetPassword: async (ctx: IFonderieContext): Promise<Response> => {
@@ -266,7 +266,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				]);
 			});
 
-			return setApiResponse(200, 'PASSWORD_RESET_SUCCESSFUL', 'Password reset successfully.');
+			return setSuccessResponse(200, 'PASSWORD_RESET_SUCCESSFUL', 'Password reset successfully.');
 		},
 
 		verifyEmail: async (ctx: IFonderieContext): Promise<Response> => {
@@ -297,7 +297,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				return setErrorResponse(404, 'NOT_FOUND', 'User not found');
 			}
 
-			return setApiResponse(200, 'EMAIL_VERIFIED', 'Email verified successfully.', {
+			return setSuccessResponse(200, 'EMAIL_VERIFIED', 'Email verified successfully.', {
 				verified: true,
 				email:    user.email,
 			});
@@ -325,7 +325,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				data:      { pin, firstName: ctx.user.firstName ?? '' },
 			} satisfies ICourierMessage;
 
-			return setApiResponse(200, 'VERIFICATION_EMAIL_SENT', 'Verification email sent', {
+			return setSuccessResponse(200, 'VERIFICATION_EMAIL_SENT', 'Verification email sent', {
 				stat:    'success',
 				message: 'Verification email sent',
 				data: {

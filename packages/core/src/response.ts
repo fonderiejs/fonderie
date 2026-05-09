@@ -10,7 +10,7 @@ export interface IApiError {
 	details?:    unknown
 }
 
-export function setApiResponse<T>(
+export function setSuccessResponse<T>(
 	status:      number,
 	reason:      string,
 	explanation: string,

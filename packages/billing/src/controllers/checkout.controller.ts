@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -64,7 +64,7 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				providerCustomerId: customerId,
 			})
 
-			return setApiResponse(200, 'CHECKOUT_URL', 'Checkout session created.', { url })
+			return setSuccessResponse(200, 'CHECKOUT_URL', 'Checkout session created.', { url })
 		},
 
 		async createPortal(ctx: IFonderieContext): Promise<Response> {
@@ -85,7 +85,7 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				returnUrl:  config.successUrl,
 			})
 
-			return setApiResponse(200, 'PORTAL_URL', 'Portal session created.', { url })
+			return setSuccessResponse(200, 'PORTAL_URL', 'Portal session created.', { url })
 		},
 	}
 }

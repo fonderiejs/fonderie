@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -26,7 +26,7 @@ export function usageController(store: IStoreAdapter) {
 			}
 
 			await usage.record({ workspaceId, metric, quantity: typeof quantity === 'number' ? quantity : 1 })
-			return setApiResponse(200, 'USAGE_RECORDED', 'Usage recorded successfully.')
+			return setSuccessResponse(200, 'USAGE_RECORDED', 'Usage recorded successfully.')
 		},
 
 		async get(ctx: IFonderieContext): Promise<Response> {
@@ -45,7 +45,7 @@ export function usageController(store: IStoreAdapter) {
 			since.setHours(0, 0, 0, 0)
 
 			const total = await usage.get(workspaceId, metric, since)
-			return setApiResponse(200, 'USAGE_FETCHED', 'Usage retrieved successfully.', { metric, total, since })
+			return setSuccessResponse(200, 'USAGE_FETCHED', 'Usage retrieved successfully.', { metric, total, since })
 		},
 	}
 }

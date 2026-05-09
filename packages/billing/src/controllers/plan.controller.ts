@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -12,7 +12,7 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 	return {
 		async list(_ctx: IFonderieContext): Promise<Response> {
 			const list = await plans.list()
-			return setApiResponse(200, 'PLANS_FETCHED', 'Plans retrieved successfully.', {
+			return setSuccessResponse(200, 'PLANS_FETCHED', 'Plans retrieved successfully.', {
 				plans: list.map(toPlanDTO),
 			})
 		},
@@ -25,7 +25,7 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 			const plan = await plans.findById(id)
 			if (!plan) return setErrorResponse(404, 'NOT_FOUND', 'Plan not found')
 
-			return setApiResponse(200, 'PLAN_FETCHED', 'Plan retrieved successfully.', { plan: toPlanDTO(plan) })
+			return setSuccessResponse(200, 'PLAN_FETCHED', 'Plan retrieved successfully.', { plan: toPlanDTO(plan) })
 		},
 
 		async create(ctx: IFonderieContext): Promise<Response> {
@@ -46,7 +46,7 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 			if ('yearlyPriceId'  in (body ?? {})) data.yearlyPriceId  = typeof body?.['yearlyPriceId']  === 'string' ? body['yearlyPriceId']  as string : null
 
 			const plan = await plans.create(data)
-			return setApiResponse(201, 'PLAN_CREATED', 'Plan created successfully.', { plan: toPlanDTO(plan) })
+			return setSuccessResponse(201, 'PLAN_CREATED', 'Plan created successfully.', { plan: toPlanDTO(plan) })
 		},
 
 		async update(ctx: IFonderieContext): Promise<Response> {
@@ -69,7 +69,7 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 			const plan = await plans.update(id, data)
 			if (!plan) return setErrorResponse(404, 'NOT_FOUND', 'Plan not found')
 
-			return setApiResponse(200, 'PLAN_UPDATED', 'Plan updated successfully.', { plan: toPlanDTO(plan) })
+			return setSuccessResponse(200, 'PLAN_UPDATED', 'Plan updated successfully.', { plan: toPlanDTO(plan) })
 		},
 
 		async remove(ctx: IFonderieContext): Promise<Response> {
@@ -80,7 +80,7 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 			const deleted = await plans.delete(id)
 			if (!deleted) return setErrorResponse(404, 'NOT_FOUND', 'Plan not found')
 
-			return setApiResponse(200, 'PLAN_DELETED', 'Plan deleted successfully.')
+			return setSuccessResponse(200, 'PLAN_DELETED', 'Plan deleted successfully.')
 		},
 	}
 }

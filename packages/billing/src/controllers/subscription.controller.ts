@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -22,7 +22,7 @@ export function subscriptionController(store: IStoreAdapter) {
 			const subscription = await subscriptions.get(workspaceId)
 			if (!subscription) return setErrorResponse(404, 'NOT_FOUND', 'No active subscription')
 
-			return setApiResponse(200, 'SUBSCRIPTION_FETCHED', 'Subscription retrieved successfully.', {
+			return setSuccessResponse(200, 'SUBSCRIPTION_FETCHED', 'Subscription retrieved successfully.', {
 				subscription: toSubscriptionDTO(subscription),
 			})
 		},

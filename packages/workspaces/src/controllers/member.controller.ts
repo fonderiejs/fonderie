@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -13,7 +13,7 @@ export function memberController(store: IStoreAdapter) {
 			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 			const list = await members.list(ctx.workspace.id)
-			return setApiResponse(200, 'MEMBERS_FETCHED', 'Members retrieved successfully.', {
+			return setSuccessResponse(200, 'MEMBERS_FETCHED', 'Members retrieved successfully.', {
 				members: list.map(toMemberDTO),
 			})
 		},
@@ -30,7 +30,7 @@ export function memberController(store: IStoreAdapter) {
 			}
 
 			await members.remove(userId, ctx.workspace.id)
-			return setApiResponse(200, 'MEMBER_REMOVED', 'Member removed successfully.')
+			return setSuccessResponse(200, 'MEMBER_REMOVED', 'Member removed successfully.')
 		},
 
 		async getUserRoles(ctx: IFonderieContext): Promise<Response> {
@@ -41,7 +41,7 @@ export function memberController(store: IStoreAdapter) {
 			if (!userId) return setErrorResponse(422, 'INVALID_PARAMETER', 'userId is required')
 
 			const roles = await members.getUserRoles(userId, ctx.workspace.id)
-			return setApiResponse(200, 'ROLES_FETCHED', 'Member roles retrieved successfully.', {
+			return setSuccessResponse(200, 'ROLES_FETCHED', 'Member roles retrieved successfully.', {
 				roles: roles.map(toRoleDTO),
 			})
 		},
@@ -58,7 +58,7 @@ export function memberController(store: IStoreAdapter) {
 			if (!roleId) return setErrorResponse(422, 'INVALID_PARAMETER', 'roleId is required')
 
 			await members.addRole(userId, ctx.workspace.id, roleId)
-			return setApiResponse(200, 'ROLE_ASSIGNED', 'Role assigned successfully.')
+			return setSuccessResponse(200, 'ROLE_ASSIGNED', 'Role assigned successfully.')
 		},
 
 		async removeRole(ctx: IFonderieContext): Promise<Response> {
@@ -73,7 +73,7 @@ export function memberController(store: IStoreAdapter) {
 
 			try {
 				await members.removeRole(userId, ctx.workspace.id, roleId)
-				return setApiResponse(200, 'ROLE_REMOVED', 'Role removed successfully.')
+				return setSuccessResponse(200, 'ROLE_REMOVED', 'Role removed successfully.')
 			} catch (err) {
 				const message = err instanceof Error ? err.message : 'Failed'
 				return setErrorResponse(400, 'OPERATION_FAILED', message)
