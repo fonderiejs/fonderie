@@ -27,7 +27,7 @@ export { stringOrEmpty, booleanOrFalse, arrayOrEmpty, numberOrZero } from './par
 
 // Response helpers
 export type { IApiError, HttpStatus }                              from './response';
-export { HTTP, setApiResponse, setSuccessResponse, setErrorResponse } from './response';
+export { HTTP, setApiResponse } from './response';
 
 // NOT exported: adapters/, router internals, error-handler, not-found
 // Those are consumed by FonderieApp, never by users directly
