@@ -57,8 +57,8 @@ export function loginHandler(store: IStoreAdapter, config: IAuthConfig) {
 
 		return Response.json(
 			{
-				reason:      'USER_LOGGED_IN',
-				explanation: 'User logged in successfully.',
+				reason:      'ACCOUNT_LOGIN',
+				explanation: 'Login successful.',
 				result: {
 					tokens: { accessToken, refreshToken },
 					user:   toUserDTO(user),

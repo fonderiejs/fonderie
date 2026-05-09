@@ -1,3 +1,4 @@
+import { setErrorResponse }  from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
@@ -8,14 +9,14 @@ import { issueTokenPair }        from '../../services/jwt';
 export function mfaVerifyHandler(store: IStoreAdapter, config: IAuthConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		const body  = ctx.meta['body'] as Record<string, unknown> | undefined
 		const token = body?.['token'];
 
 		if (typeof token !== 'string') {
-			return Response.json({ error: 'token is required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'token is required', 422);
 		}
 
 		const [row] = await store.query<{ mfa_secret: string | null }>(
@@ -25,11 +26,11 @@ export function mfaVerifyHandler(store: IStoreAdapter, config: IAuthConfig) {
 		const secret = row?.mfa_secret;
 
 		if (!secret) {
-			return Response.json({ error: 'MFA not configured' }, { status: 400 });
+			return setErrorResponse('MFA_NOT_CONFIGURED', 'MFA not configured', 400);
 		}
 
 		if (!verifyTotpToken(token, secret)) {
-			return Response.json({ error: 'Invalid MFA token' }, { status: 401 });
+			return setErrorResponse('INVALID_CODE', 'Invalid MFA token', 401);
 		}
 
 		// First verify — mark MFA as enabled
@@ -43,7 +44,7 @@ export function mfaVerifyHandler(store: IStoreAdapter, config: IAuthConfig) {
 		const { accessToken, refreshToken } = issueTokenPair(ctx.user.id, config);
 
 		return Response.json(
-			{ ok: true },
+			{ reason: 'MFA_ENABLED', explanation: 'MFA enabled successfully.' },
 			{
 				status: 200,
 				headers: {

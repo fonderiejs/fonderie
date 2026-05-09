@@ -1,13 +1,19 @@
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
-export function verifyEmailHandler(store: IStoreAdapter) {
+import { setErrorResponse }                         from '@fonderie-js/core';
+import type { IAuthConfig }                         from '../config';
+import { issueTokenPair, refreshTokenExpiry }       from '../services/jwt';
+import { findUserById, createSession }              from '../services/session';
+import { toUserDTO }                                from '../dtos/user';
+
+export function verifyEmailHandler(store: IStoreAdapter, config: IAuthConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const body  = ctx.meta['body'] as Record<string, unknown> | undefined
 		const token = body?.['token'];
 
 		if (typeof token !== 'string') {
-			return Response.json({ error: 'token is required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'token is required', 422);
 		}
 
 		const [row] = await store.query<{ user_id: string; expires_at: Date }>(
@@ -17,11 +23,11 @@ export function verifyEmailHandler(store: IStoreAdapter) {
 		);
 
 		if (!row) {
-			return Response.json({ error: 'Invalid or expired token' }, { status: 400 });
+			return setErrorResponse('EMAIL_VERIFICATION_FAILED', 'Invalid or expired token', 400);
 		}
 
 		if (new Date() > new Date(row.expires_at)) {
-			return Response.json({ error: 'Token expired' }, { status: 400 });
+			return setErrorResponse('EMAIL_VERIFICATION_FAILED', 'Token expired', 400);
 		}
 
 		await store.transaction(async tx => {
@@ -37,6 +43,32 @@ export function verifyEmailHandler(store: IStoreAdapter) {
 			]);
 		});
 
-		return Response.json({ ok: true }, { status: 200 });
+		const user = await findUserById(row.user_id, store);
+		if (!user) {
+			return setErrorResponse('NOT_FOUND', 'User not found', 404);
+		}
+
+		const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+		await createSession(user.id, refreshToken, refreshTokenExpiry(refreshToken), store);
+
+		return Response.json(
+			{
+				reason:      'EMAIL_VERIFIED',
+				explanation: 'Email verified successfully.',
+				result: {
+					tokens: { accessToken, refreshToken },
+					user:   toUserDTO(user),
+				},
+			},
+			{
+				status: 200,
+				headers: {
+					'Set-Cookie': [
+						`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+						`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+					].join(', '),
+				},
+			},
+		);
 	}
 }

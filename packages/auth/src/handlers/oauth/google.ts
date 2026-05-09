@@ -1,3 +1,4 @@
+import { setErrorResponse }    from '@fonderie-js/core'
 import type { IFonderieContext } from '@fonderie-js/core'
 import type { IStoreAdapter }    from '@fonderie-js/store'
 
@@ -8,7 +9,7 @@ export function googleInitHandler(config: IAuthConfig) {
 	return async (_ctx: IFonderieContext): Promise<Response> => {
 		const google = config.google
 		if (!google) {
-			return Response.json({ error: 'Google OAuth not configured' }, { status: 501 });
+			return setErrorResponse('NOT_CONFIGURED', 'Google OAuth not configured', 501);
 		}
 
 		const params = new URLSearchParams({
@@ -29,14 +30,14 @@ export function googleCallbackHandler(store: IStoreAdapter, config: IAuthConfig)
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const google = config.google;
 		if (!google) {
-			return Response.json({ error: 'Google OAuth not configured' }, { status: 501 });
+			return setErrorResponse('NOT_CONFIGURED', 'Google OAuth not configured', 501);
 		}
 
 		const url  = new URL(ctx.request.url);
 		const code = url.searchParams.get('code');
 
 		if (!code) {
-			return Response.json({ error: 'Missing code' }, { status: 400 });
+			return setErrorResponse('INVALID_PARAMETER', 'Missing code', 400);
 		}
 
 		// Exchange code for tokens
@@ -54,7 +55,7 @@ export function googleCallbackHandler(store: IStoreAdapter, config: IAuthConfig)
 
 		const tokenData = await tokenRes.json() as { id_token?: string }
 		if (!tokenData.id_token) {
-			return Response.json({ error: 'OAuth failed' }, { status: 400 });
+			return setErrorResponse('GOOGLE_AUTH_FAILED', 'OAuth token exchange failed', 400);
 		}
 
 		// Decode id_token to get email (no signature check needed — came from Google directly)
@@ -63,7 +64,7 @@ export function googleCallbackHandler(store: IStoreAdapter, config: IAuthConfig)
 		) as { email?: string; sub?: string }
 
 		if (!payload.email) {
-			return Response.json({ error: 'No email in OAuth response' }, { status: 400 });
+			return setErrorResponse('GOOGLE_AUTH_FAILED', 'No email in OAuth response', 400);
 		}
 
 		// Upsert user
@@ -77,13 +78,20 @@ export function googleCallbackHandler(store: IStoreAdapter, config: IAuthConfig)
 		);
 
 		if (!user) {
-			return Response.json({ error: 'OAuth login failed' }, { status: 500 });
+			return setErrorResponse('SERVER_ERROR', 'OAuth login failed', 500);
 		}
 
 		const { accessToken, refreshToken } = issueTokenPair(user.id, config);
 
 		return Response.json(
-			{ user: { id: user.id, email: payload.email } },
+			{
+				reason:      'GOOGLE_AUTH_SUCCESS',
+				explanation: 'Google authentication successful.',
+				result: {
+					tokens: { accessToken, refreshToken },
+					user:   { id: user.id, email: payload.email },
+				},
+			},
 			{
 				status: 200,
 				headers: {

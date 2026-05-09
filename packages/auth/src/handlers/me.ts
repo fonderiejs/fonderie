@@ -18,7 +18,7 @@ export function meHandler(store: IStoreAdapter) {
 			return setErrorResponse('NOT_FOUND', 'User not found', 404);
 		}
 
-		return setApiResponse(toUserDTO(user));
+		return setApiResponse('USER_FETCHED', 'User successfully fetched.', toUserDTO(user));
 	}
 }
 
@@ -65,7 +65,7 @@ export function updateMeHandler(store: IStoreAdapter) {
 		}
 
 		const updated = await findUserById(ctx.user.id, store);
-		return setApiResponse(toUserDTO(updated as IUser));
+		return setApiResponse('ACCOUNT_UPDATED', 'Account successfully updated.', toUserDTO(updated as IUser));
 	}
 }
 
@@ -80,14 +80,17 @@ export function deleteMeHandler(store: IStoreAdapter) {
 			[ctx.user.id],
 		);
 
-		return new Response(null, {
-			status: 204,
-			headers: {
-				'Set-Cookie': [
-					'access_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0',
-					'refresh_token=; HttpOnly; SameSite=Strict; Path=/auth/refresh; Max-Age=0',
-				].join(', '),
+		return Response.json(
+			{ reason: 'ACCOUNT_DELETED', explanation: 'Account successfully deleted.' },
+			{
+				status: 200,
+				headers: {
+					'Set-Cookie': [
+						'access_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0',
+						'refresh_token=; HttpOnly; SameSite=Strict; Path=/auth/refresh; Max-Age=0',
+					].join(', '),
+				},
 			},
-		});
+		);
 	}
 }

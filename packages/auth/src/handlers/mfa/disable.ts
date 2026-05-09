@@ -15,7 +15,7 @@ export function mfaDisableHandler(store: IStoreAdapter) {
 		const code = body?.['code'];
 
 		if (typeof code !== 'string') {
-			return setErrorResponse('MISSING_CODE', 'TOTP code is required', 422);
+			return setErrorResponse('INVALID_PARAMETER', 'TOTP code is required', 422);
 		}
 
 		const user = await findUserById(ctx.user.id, store);
@@ -33,6 +33,6 @@ export function mfaDisableHandler(store: IStoreAdapter) {
 			[ctx.user.id],
 		);
 
-		return setApiResponse({ ok: true });
+		return setApiResponse('MFA_DISABLED', 'MFA disabled successfully.');
 	}
 }

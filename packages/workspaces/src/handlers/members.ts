@@ -1,5 +1,6 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import {
 	listMembers, removeMember,
@@ -9,77 +10,81 @@ import { toMemberDTO, toRoleDTO } from '../dtos/workspace';
 
 export function listMembersHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		const members = await listMembers(ctx.workspace.id, store)
-		return Response.json({ members: members.map(toMemberDTO) })
+		return setApiResponse('MEMBERS_FETCHED', 'Members retrieved successfully.', {
+			members: members.map(toMemberDTO),
+		})
 	}
 }
 
 export function removeMemberHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const userId = params?.['userId']
 
-		if (!userId) return Response.json({ error: 'userId is required' }, { status: 422 })
+		if (!userId) return setErrorResponse('INVALID_PARAMETER', 'userId is required', 422)
 		if (userId === ctx.user?.id) {
-			return Response.json({ error: 'Cannot remove yourself' }, { status: 400 })
+			return setErrorResponse('INVALID_OPERATION', 'Cannot remove yourself', 400)
 		}
 
 		await removeMember(userId, ctx.workspace.id, store)
-		return Response.json({ ok: true })
+		return setApiResponse('MEMBER_REMOVED', 'Member removed successfully.')
 	}
 }
 
 export function getUserRolesHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const userId = params?.['userId']
-		if (!userId) return Response.json({ error: 'userId is required' }, { status: 422 })
+		if (!userId) return setErrorResponse('INVALID_PARAMETER', 'userId is required', 422)
 
 		const roles = await getUserRoles(userId, ctx.workspace.id, store)
-		return Response.json({ roles: roles.map(toRoleDTO) })
+		return setApiResponse('ROLES_FETCHED', 'Member roles retrieved successfully.', {
+			roles: roles.map(toRoleDTO),
+		})
 	}
 }
 
 export function addRoleToMemberHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const body   = ctx.meta['body']   as Record<string, unknown> | undefined
 		const userId = params?.['userId']
 		const roleId = (body?.['roleId'] ?? params?.['roleId']) as string | undefined
 
-		if (!userId) return Response.json({ error: 'userId is required' }, { status: 422 })
-		if (!roleId) return Response.json({ error: 'roleId is required' }, { status: 422 })
+		if (!userId) return setErrorResponse('INVALID_PARAMETER', 'userId is required', 422)
+		if (!roleId) return setErrorResponse('INVALID_PARAMETER', 'roleId is required', 422)
 
 		await addRoleToMember(userId, ctx.workspace.id, roleId, store)
-		return Response.json({ ok: true })
+		return setApiResponse('ROLE_ASSIGNED', 'Role assigned successfully.')
 	}
 }
 
 export function removeRoleFromMemberHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const userId = params?.['userId']
 		const roleId = params?.['roleId']
 
-		if (!userId) return Response.json({ error: 'userId is required' }, { status: 422 })
-		if (!roleId) return Response.json({ error: 'roleId is required' }, { status: 422 })
+		if (!userId) return setErrorResponse('INVALID_PARAMETER', 'userId is required', 422)
+		if (!roleId) return setErrorResponse('INVALID_PARAMETER', 'roleId is required', 422)
 
 		try {
 			await removeRoleFromMember(userId, ctx.workspace.id, roleId, store)
-			return Response.json({ ok: true })
+			return setApiResponse('ROLE_REMOVED', 'Role removed successfully.')
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed'
-			return Response.json({ error: message }, { status: 400 })
+			return setErrorResponse('OPERATION_FAILED', message, 400)
 		}
 	}
 }

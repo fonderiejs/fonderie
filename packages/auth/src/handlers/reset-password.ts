@@ -1,7 +1,8 @@
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import { hashPassword }          from '../services/password';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { hashPassword }                     from '../services/password';
 
 export function resetPasswordHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
@@ -10,11 +11,11 @@ export function resetPasswordHandler(store: IStoreAdapter) {
 		const password = body?.['password'];
 
 		if (typeof token !== 'string' || typeof password !== 'string') {
-			return Response.json({ error: 'resetToken and password are required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'resetToken and password are required', 422);
 		}
 
 		if (password.length < 8) {
-			return Response.json({ error: 'password must be at least 8 characters' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'password must be at least 8 characters', 422);
 		}
 
 		const [row] = await store.query<{ user_id: string; expires_at: Date }>(
@@ -23,7 +24,7 @@ export function resetPasswordHandler(store: IStoreAdapter) {
 		);
 
 		if (!row || new Date() > new Date(row.expires_at)) {
-			return Response.json({ error: 'Invalid or expired token' }, { status: 400 });
+			return setErrorResponse('PASSWORD_RESET_FAILED', 'Invalid or expired token', 400);
 		}
 
 		const passwordHash = await hashPassword(password);
@@ -41,6 +42,6 @@ export function resetPasswordHandler(store: IStoreAdapter) {
 			]);
 		});
 
-		return Response.json({ ok: true }, { status: 200 });
+		return setApiResponse('PASSWORD_RESET_SUCCESSFUL', 'Password reset successfully.');
 	}
 }
