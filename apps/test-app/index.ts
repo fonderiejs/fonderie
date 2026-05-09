@@ -1,16 +1,13 @@
 import {
 	FonderieApp,
 	defineConfig,
-	bodyParserMiddleware
 } from '@fonderie-js/core'
+import { bodyParserMiddleware, requireAuth } from '@fonderie-js/core/middlewares'
 import {
 	PGAdapter,
 	MigrationRunner,
 } from '@fonderie-js/store'
-import {
-	AuthModule,
-	requireAuth
-} from '@fonderie-js/auth'
+import { AuthModule } from '@fonderie-js/auth'
 import {
 	PermissionsModule,
 	requirePermission,
