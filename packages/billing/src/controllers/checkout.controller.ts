@@ -12,8 +12,6 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 
 	return {
 		async createSession(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
-
 			const body        = ctx.meta['body'] as Record<string, unknown> | undefined
 			const planName    = body?.['plan']
 			const interval    = (body?.['interval'] ?? 'month') as 'month' | 'year'
@@ -40,9 +38,9 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			}
 
 			const { customerId } = await config.provider.createCustomer({
-				email:       ctx.user.email,
+				email:       ctx.user!.email,
 				workspaceId,
-				userId:      ctx.user.id,
+				userId:      ctx.user!.id,
 			})
 
 			const sessionOpts: Parameters<typeof config.provider.createCheckoutSession>[0] = {
@@ -68,8 +66,6 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 		},
 
 		async createPortal(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
-
 			const workspaceId = resolveWorkspaceId(ctx)
 			if (!workspaceId) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required')

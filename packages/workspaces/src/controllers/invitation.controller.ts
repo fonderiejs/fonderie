@@ -72,8 +72,6 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 		},
 
 		async accept(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
-
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined
 			const pin  = body?.['pin']
 
@@ -82,7 +80,7 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 			}
 
 			try {
-				const { workspaceId } = await invitations.acceptByPin({ pin, userId: ctx.user.id })
+				const { workspaceId } = await invitations.acceptByPin({ pin, userId: ctx.user!.id })
 				return setApiResponse(HTTP.OK, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', { workspaceId })
 			} catch (err) {
 				const message = err instanceof Error ? err.message : 'Invalid invitation'

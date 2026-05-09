@@ -304,10 +304,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 		},
 
 		sendVerificationEmail: async (ctx: IFonderieContext): Promise<Response> => {
-			if (!ctx.user) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
-			}
-			if (ctx.user.emailVerifiedAt) {
+			if (ctx.user!.emailVerifiedAt) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
 					'EMAIL_ALREADY_VERIFIED',
@@ -317,12 +314,12 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			const pin       = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-			await emailVerif.replace(ctx.user.id, pin, expiresAt);
+			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
 
 			ctx.meta['message'] = {
 				type:      'email-verification',
-				recipient: { email: ctx.user.email, phone: null, deviceToken: null },
-				data:      { pin, firstName: ctx.user.firstName ?? '' },
+				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
+				data:      { pin, firstName: ctx.user!.firstName ?? '' },
 			} satisfies ICourierMessage;
 
 			return setApiResponse(HTTP.OK, 'VERIFICATION_EMAIL_SENT', 'Verification email sent', {
@@ -331,7 +328,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				data: {
 					token:     pin,
 					expiresAt: expiresAt.toISOString(),
-					email:     ctx.user.email,
+					email:     ctx.user!.email,
 				},
 			});
 		},

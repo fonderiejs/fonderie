@@ -10,8 +10,6 @@ export function subscriptionController(store: IStoreAdapter) {
 
 	return {
 		async get(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
-
 			const params      = ctx.meta['params'] as Record<string, string> | undefined
 			const workspaceId = ctx.workspace?.id ?? params?.['workspaceId']
 
