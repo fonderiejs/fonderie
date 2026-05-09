@@ -10,7 +10,7 @@ import { toPlanDTO }                          from '../dtos/billing';
 export function listPlansHandler(store: IStoreAdapter, _config: IBillingConfig) {
 	return async (_ctx: IFonderieContext): Promise<Response> => {
 		const plans = await getDBPlans(store);
-		return setApiResponse('PLANS_FETCHED', 'Plans retrieved successfully.', { plans: plans.map(toPlanDTO) });
+		return setApiResponse(200, 'PLANS_FETCHED', 'Plans retrieved successfully.', { plans: plans.map(toPlanDTO) });
 	}
 }
 
@@ -18,12 +18,12 @@ export function getPlanHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const id     = params?.['planId']
-		if (!id) return setErrorResponse('INVALID_PARAMETER', 'Plan ID required', 400)
+		if (!id) return setErrorResponse(400, 'INVALID_PARAMETER', 'Plan ID required')
 
 		const plan = await getPlanById(id, store)
-		if (!plan) return setErrorResponse('NOT_FOUND', 'Plan not found', 404)
+		if (!plan) return setErrorResponse(404, 'NOT_FOUND', 'Plan not found')
 
-		return setApiResponse('PLAN_FETCHED', 'Plan retrieved successfully.', { plan: toPlanDTO(plan) })
+		return setApiResponse(200, 'PLAN_FETCHED', 'Plan retrieved successfully.', { plan: toPlanDTO(plan) })
 	}
 }
 
@@ -33,7 +33,7 @@ export function createPlanHandler(store: IStoreAdapter) {
 
 		const name = body?.['name']
 		if (typeof name !== 'string' || !name.trim()) {
-			return setErrorResponse('INVALID_PARAMETER', 'name is required', 422)
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'name is required')
 		}
 
 		const data: Parameters<typeof createPlan>[0] = { name: name.trim() }
@@ -46,7 +46,7 @@ export function createPlanHandler(store: IStoreAdapter) {
 		if ('yearlyPriceId'  in (body ?? {})) data.yearlyPriceId  = typeof body?.['yearlyPriceId']  === 'string' ? body['yearlyPriceId']  as string  : null
 
 		const plan = await createPlan(data, store)
-		return setApiResponse('PLAN_CREATED', 'Plan created successfully.', { plan: toPlanDTO(plan) }, 201)
+		return setApiResponse(201, 'PLAN_CREATED', 'Plan created successfully.', { plan: toPlanDTO(plan) })
 	}
 }
 
@@ -54,7 +54,7 @@ export function updatePlanHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const id     = params?.['planId']
-		if (!id) return setErrorResponse('INVALID_PARAMETER', 'Plan ID required', 400)
+		if (!id) return setErrorResponse(400, 'INVALID_PARAMETER', 'Plan ID required')
 
 		const body = ctx.meta['body'] as Record<string, unknown> | undefined
 		const data: Partial<Omit<import('../types').IPlan, 'id'>> = {}
@@ -69,9 +69,9 @@ export function updatePlanHandler(store: IStoreAdapter) {
 		if ('yearlyPriceId'  in b) data.yearlyPriceId  = typeof b['yearlyPriceId']  === 'string' ? b['yearlyPriceId']  as string  : null
 
 		const plan = await updatePlan(id, data, store)
-		if (!plan) return setErrorResponse('NOT_FOUND', 'Plan not found', 404)
+		if (!plan) return setErrorResponse(404, 'NOT_FOUND', 'Plan not found')
 
-		return setApiResponse('PLAN_UPDATED', 'Plan updated successfully.', { plan: toPlanDTO(plan) })
+		return setApiResponse(200, 'PLAN_UPDATED', 'Plan updated successfully.', { plan: toPlanDTO(plan) })
 	}
 }
 
@@ -79,11 +79,11 @@ export function deletePlanHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const id     = params?.['planId']
-		if (!id) return setErrorResponse('INVALID_PARAMETER', 'Plan ID required', 400)
+		if (!id) return setErrorResponse(400, 'INVALID_PARAMETER', 'Plan ID required')
 
 		const deleted = await deletePlan(id, store)
-		if (!deleted) return setErrorResponse('NOT_FOUND', 'Plan not found', 404)
+		if (!deleted) return setErrorResponse(404, 'NOT_FOUND', 'Plan not found')
 
-		return setApiResponse('PLAN_DELETED', 'Plan deleted successfully.')
+		return setApiResponse(200, 'PLAN_DELETED', 'Plan deleted successfully.')
 	}
 }

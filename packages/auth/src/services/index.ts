@@ -4,7 +4,6 @@ export {
 	generateTotpSecret,
 	generateBackupCodes,
 } from './mfa';
-export { issueTokenPair, verifyToken } from './jwt';
-export { findUserById, findUserByEmail } from './session';
-export { hashPassword, verifyPassword }  from './password';
+export { issueTokenPair, verifyToken }  from './jwt';
+export { hashPassword, verifyPassword } from './password';
 export type { TokenPair, IAccessPayload, IRefreshPayload } from './jwt';

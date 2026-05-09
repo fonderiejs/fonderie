@@ -24,13 +24,13 @@ export function workspaceContextMiddleware(store: IStoreAdapter): Middleware {
 
 		const workspace = await findWorkspaceById(workspaceId, store)
 		if (!workspace) {
-			return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+			return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 		}
 
 		if (ctx.user) {
 			const member = await getMember(ctx.user.id, workspaceId, store)
 			if (!member) {
-				return setErrorResponse('FORBIDDEN', 'Not a member of this workspace', 403)
+				return setErrorResponse(403, 'FORBIDDEN', 'Not a member of this workspace')
 			}
 		}
 

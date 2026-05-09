@@ -14,24 +14,24 @@ export function requireRole(
 
 	return async (ctx, next) => {
 		if (!ctx.user) {
-			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
+			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
 		const engine = ctx.meta[PERMISSIONS_ENGINE_KEY];
 		if (!(engine instanceof PermissionsEngine)) {
-			return setErrorResponse('SERVER_ERROR', 'Permissions module not installed', 500);
+			return setErrorResponse(500, 'SERVER_ERROR', 'Permissions module not installed');
 		}
 
 		const workspaceId = ctx.workspace?.id ??
 			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId'];
 
 		if (!workspaceId) {
-			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
+			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
 		const membership = await getMembership(ctx.user.id, workspaceId, store);
 		if (!membership || !allowed.includes(membership.roleName)) {
-			return setErrorResponse('FORBIDDEN', 'Insufficient role', 403);
+			return setErrorResponse(403, 'FORBIDDEN', 'Insufficient role');
 		}
 
 		return next();

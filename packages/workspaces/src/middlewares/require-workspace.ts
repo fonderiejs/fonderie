@@ -6,7 +6,7 @@ import type { Middleware }    from '@fonderie-js/core';
 export function requireWorkspace(): Middleware {
 	return async (ctx, next) => {
 		if (!ctx.workspace) {
-			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
+			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
 		return next();

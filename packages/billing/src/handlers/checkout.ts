@@ -9,7 +9,7 @@ import { upsertSubscription }               from '../services/subscriptions';
 export function createCheckoutHandler(store: IStoreAdapter, config: IBillingConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
+			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
 		const body        = ctx.meta['body'] as Record<string, unknown> | undefined
@@ -18,15 +18,15 @@ export function createCheckoutHandler(store: IStoreAdapter, config: IBillingConf
 		const workspaceId = resolveWorkspaceId(ctx);
 
 		if (typeof planName !== 'string') {
-			return setErrorResponse('INVALID_PARAMETER', 'plan is required', 422);
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'plan is required');
 		}
 
 		if (interval !== 'month' && interval !== 'year') {
-			return setErrorResponse('INVALID_PARAMETER', 'interval must be month or year', 422);
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'interval must be month or year');
 		}
 
 		if (!workspaceId) {
-			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
+			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
 		const plan = getPlanByName(planName, config);
@@ -67,7 +67,7 @@ export function createCheckoutHandler(store: IStoreAdapter, config: IBillingConf
 			store,
 		);
 
-		return setApiResponse('CHECKOUT_URL', 'Checkout session created.', { url });
+		return setApiResponse(200, 'CHECKOUT_URL', 'Checkout session created.', { url });
 	}
 }
 

@@ -1,16 +1,18 @@
 import type { Middleware }    from '@fonderie-js/core';
 import type { IStoreAdapter } from '@fonderie-js/store';
 
-import type { IAuthConfig }    from '../config';
-import { verifyToken }        from '../services/jwt';
-import { findUserById }       from '../services/session';
+import type { IAuthConfig } from '../config';
+import { verifyToken }      from '../services/jwt';
+import { UserModel }        from '../models/user.model';
 
 // Reads the Bearer token or session cookie, populates ctx.user
 // Does NOT reject — anonymous requests pass through
 export function sessionMiddleware(
-	store: IStoreAdapter,
+	store:  IStoreAdapter,
 	config: IAuthConfig,
 ): Middleware {
+	const users = new UserModel(store);
+
 	return async (ctx, next) => {
 		const token = extractToken(ctx.request);
 		if (!token) {
@@ -22,7 +24,7 @@ export function sessionMiddleware(
 			return next();
 		}
 
-		const user = await findUserById(payload.sub, store);
+		const user = await users.findById(payload.sub);
 		if (!user || user.suspended || user.deletedAt) {
 			return next();
 		}
@@ -39,7 +41,6 @@ function extractToken(request: Request): string | null {
 		return auth.slice(7);
 	}
 
-	// Cookie fallback: access_token=<jwt>
 	const cookie = request.headers.get('cookie') ?? '';
 	const match  = cookie.match(/(?:^|;\s*)access_token=([^;]+)/);
 	return match?.[1] ?? null;

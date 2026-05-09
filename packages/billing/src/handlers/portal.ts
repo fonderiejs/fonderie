@@ -9,7 +9,7 @@ import { getSubscription }       from '../services/subscriptions';
 export function createPortalHandler(store: IStoreAdapter, config: IBillingConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
+			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
 		const workspaceId = ctx.workspace?.id ??
@@ -17,12 +17,12 @@ export function createPortalHandler(store: IStoreAdapter, config: IBillingConfig
 			ctx.request.headers.get('x-workspace-id');
 
 		if (!workspaceId) {
-			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
+			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
 		const subscription = await getSubscription(workspaceId, store);
 		if (!subscription?.providerCustomerId) {
-			return setErrorResponse('NOT_FOUND', 'No active subscription', 404);
+			return setErrorResponse(404, 'NOT_FOUND', 'No active subscription');
 		}
 
 		const { url } = await config.provider.createPortalSession({
@@ -30,6 +30,6 @@ export function createPortalHandler(store: IStoreAdapter, config: IBillingConfig
 			returnUrl:  config.successUrl,
 		});
 
-		return setApiResponse('PORTAL_URL', 'Portal session created.', { url });
+		return setApiResponse(200, 'PORTAL_URL', 'Portal session created.', { url });
 	}
 }

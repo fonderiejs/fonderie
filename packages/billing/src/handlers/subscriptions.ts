@@ -8,21 +8,21 @@ import { toSubscriptionDTO } from '../dtos/billing';
 export function getSubscriptionHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401)
+			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
 		}
 
 		const params      = ctx.meta['params'] as Record<string, string> | undefined
 		const workspaceId = ctx.workspace?.id ?? params?.['workspaceId']
 
 		if (!workspaceId) {
-			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400)
+			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required')
 		}
 
 		const subscription = await getSubscription(workspaceId, store)
 		if (!subscription) {
-			return setErrorResponse('NOT_FOUND', 'No active subscription', 404)
+			return setErrorResponse(404, 'NOT_FOUND', 'No active subscription')
 		}
 
-		return setApiResponse('SUBSCRIPTION_FETCHED', 'Subscription retrieved successfully.', { subscription: toSubscriptionDTO(subscription) })
+		return setApiResponse(200, 'SUBSCRIPTION_FETCHED', 'Subscription retrieved successfully.', { subscription: toSubscriptionDTO(subscription) })
 	}
 }
