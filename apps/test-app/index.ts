@@ -2,7 +2,7 @@ import {
 	FonderieApp,
 	defineConfig,
 } from '@fonderie-js/core'
-import { bodyParserMiddleware, requireAuth } from '@fonderie-js/core/middlewares'
+import { withBody, requireAuth } from '@fonderie-js/core/middlewares'
 import {
 	PGAdapter,
 	MigrationRunner,
@@ -15,7 +15,7 @@ import {
 } from '@fonderie-js/permissions'
 import {
 	WorkspacesModule,
-	workspaceContextMiddleware,
+	withWorkspace,
 } from '@fonderie-js/workspaces';
 
 import { CourierModule }                               from '@fonderie-js/courier';
@@ -136,7 +136,7 @@ const remoteConfig = new RemoteConfigModule(store, {
 // ── App ───────────────────────────────────────────────────────────
 
 const app = new FonderieApp(config)
-  .use(bodyParserMiddleware())
+  .use(withBody)
   .register(remoteConfig) 
   .register(auth)        // populates ctx.user
   .register(permissions) // populates ctx.meta[PERMISSIONS_ENGINE_KEY]
@@ -158,8 +158,8 @@ app.addRoute('GET', '/health', async (ctx) => {
 
 // Workspace-scoped + permission-gated
 app.addRoute('GET', '/workspaces/:workspaceId/projects',
-	requireAuth(),
-	workspaceContextMiddleware(store),   // resolves ctx.workspace, validates membership
+	requireAuth,
+	withWorkspace(store),   // resolves ctx.workspace, validates membership
 	requirePermission(OPERATIONS.READ, 'projects'),
 	async (ctx) => Response.json({
 		workspaceId: ctx.workspace?.id,
@@ -168,8 +168,8 @@ app.addRoute('GET', '/workspaces/:workspaceId/projects',
 );
 
 app.addRoute('POST', '/workspaces/:workspaceId/projects',
-	requireAuth(),
-	workspaceContextMiddleware(store),
+	requireAuth,
+	withWorkspace(store),
 	requirePermission(OPERATIONS.CREATE, 'projects'),
 	async (ctx) => Response.json({ created: true }, { status: 201 })
 );
@@ -181,7 +181,7 @@ app.addRoute('GET', '/users/:id', async (ctx) => {
 });
 
 // Config inspection (dev only)
-app.addRoute('GET', '/config', requireAuth(), async (ctx) => {
+app.addRoute('GET', '/config', requireAuth, async (ctx) => {
 	const env = process.env['NODE_ENV'] ?? 'development';
 	if (env === 'production') {
 		return Response.json({ error: 'Not available in production' }, { status: 403 });

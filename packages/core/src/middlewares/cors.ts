@@ -6,7 +6,7 @@ export interface CorsOptions {
 	origin?:  string | ((requestOrigin: string) => boolean);
 }
 
-export function corsMiddleware(options: CorsOptions = {}): Middleware {
+export function withCors(options: CorsOptions = {}): Middleware {
 	const {
 		origin  = '*',
 		headers = ['Content-Type', 'Authorization'],

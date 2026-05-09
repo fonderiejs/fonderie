@@ -239,7 +239,7 @@ test('toUserDTO: falls back to defaults when preferences is null', async () => {
 test('requireAuth: returns 401 when ctx.user is null', async () => {
 	const { requireAuth } = await import('../middlewares/require-auth');
 	const ctx      = makeCtx({ user: null });
-	const response = await requireAuth()(ctx, async () => Response.json({ ok: true }));
+	const response = await requireAuth(ctx, async () => Response.json({ ok: true }));
 	assert.equal(response.status, 401);
 });
 
@@ -247,7 +247,7 @@ test('requireAuth: calls next when ctx.user is set', async () => {
 	const { requireAuth } = await import('../middlewares/require-auth');
 	const ctx      = makeCtx({ user: { id: 'user-1', email: 'a@b.com' } });
 	let   called   = false;
-	await requireAuth()(ctx, async () => { called = true; return Response.json({}); });
+	await requireAuth(ctx, async () => { called = true; return Response.json({}); });
 	assert.ok(called);
 });
 

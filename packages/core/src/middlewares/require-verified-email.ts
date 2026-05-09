@@ -1,7 +1,7 @@
 import { setApiResponse, HTTP } from '../response';
-import type { IFonderieContext, Middleware } from '../types';
+import type { Middleware } from '../types';
 
-const handler: Middleware = async (ctx: IFonderieContext, next) => {
+export const requireVerifiedEmail: Middleware = async (ctx, next) => {
 	if (!ctx.user) {
 		return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 	}
@@ -9,11 +9,4 @@ const handler: Middleware = async (ctx: IFonderieContext, next) => {
 		return setApiResponse(HTTP.FORBIDDEN, 'EMAIL_NOT_VERIFIED', 'Email address has not been verified');
 	}
 	return next();
-}
-
-export function requireVerifiedEmail(): Middleware
-export function requireVerifiedEmail(ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
-export function requireVerifiedEmail(ctx?: IFonderieContext, next?: () => Promise<Response>): Middleware | Promise<Response> {
-	if (ctx !== undefined && next !== undefined) return handler(ctx, next)
-	return handler
 }

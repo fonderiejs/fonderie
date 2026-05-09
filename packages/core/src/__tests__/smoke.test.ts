@@ -5,7 +5,7 @@ import assert   from 'node:assert/strict';
 import { FonderieApp }          from '../app';
 import { defineConfig }         from '../config';
 import type { IFonderieModule }   from '../types';
-import { bodyParserMiddleware }  from '../middlewares/body-parser';
+import { withBody }  from '../middlewares/body-parser';
 
 // ── minimal config — no real DB needed for core tests ───────────
 const config = defineConfig({
@@ -119,7 +119,7 @@ test('route params are extracted into ctx.meta.params', async () => {
 test('body parser puts parsed json on ctx.meta.body', async () => {
 	const app = new FonderieApp(config);
 
-	app.use(bodyParserMiddleware());
+	app.use(withBody);
 	app.addRoute('POST', '/echo', async (ctx) =>
 		Response.json(ctx.meta['body'])
 	);
