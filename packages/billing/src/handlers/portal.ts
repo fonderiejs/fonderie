@@ -1,5 +1,6 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import type { IBillingConfig }   from '../config';
 
@@ -8,7 +9,7 @@ import { getSubscription }       from '../services/subscriptions';
 export function createPortalHandler(store: IStoreAdapter, config: IBillingConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		const workspaceId = ctx.workspace?.id ??
@@ -16,12 +17,12 @@ export function createPortalHandler(store: IStoreAdapter, config: IBillingConfig
 			ctx.request.headers.get('x-workspace-id');
 
 		if (!workspaceId) {
-			return Response.json({ error: 'Workspace context required' }, { status: 400 });
+			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
 		}
 
 		const subscription = await getSubscription(workspaceId, store);
 		if (!subscription?.providerCustomerId) {
-			return Response.json({ error: 'No active subscription' }, { status: 404 });
+			return setErrorResponse('NOT_FOUND', 'No active subscription', 404);
 		}
 
 		const { url } = await config.provider.createPortalSession({
@@ -29,6 +30,6 @@ export function createPortalHandler(store: IStoreAdapter, config: IBillingConfig
 			returnUrl:  config.successUrl,
 		});
 
-		return Response.json({ url }, { status: 200 });
+		return setApiResponse('PORTAL_URL', 'Portal session created.', { url });
 	}
 }

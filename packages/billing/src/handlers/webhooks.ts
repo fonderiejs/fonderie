@@ -1,3 +1,4 @@
+import { setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
@@ -8,15 +9,15 @@ import { upsertSubscription }    from '../services/subscriptions';
 export function webhookHandler(store: IStoreAdapter, config: IBillingConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!config.webhookSecret) {
-			return Response.json({ error: 'Webhook secret not configured' }, { status: 500 });
+			return setErrorResponse('SERVER_ERROR', 'Webhook secret not configured', 500);
 		}
 
 		const signature = ctx.request.headers.get('stripe-signature')
-			?? ctx.request.headers.get('paypal-auth-algo')  // PayPal uses a different header
+			?? ctx.request.headers.get('paypal-auth-algo')
 			?? '';
 
 		if (!signature) {
-			return Response.json({ error: 'Missing webhook signature' }, { status: 400 });
+			return setErrorResponse('INVALID_REQUEST', 'Missing webhook signature', 400);
 		}
 
 		const payload = await ctx.request.text();
@@ -29,7 +30,7 @@ export function webhookHandler(store: IStoreAdapter, config: IBillingConfig) {
 				secret: config.webhookSecret,
 			});
 		} catch {
-			return Response.json({ error: 'Invalid webhook signature' }, { status: 400 });
+			return setErrorResponse('INVALID_REQUEST', 'Invalid webhook signature', 400);
 		}
 
 		if (event.subscription) {

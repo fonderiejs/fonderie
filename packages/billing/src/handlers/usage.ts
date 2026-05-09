@@ -1,12 +1,13 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import { recordUsage, getUsage } from '../services/usage';
 
 export function recordUsageHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		const body     = ctx.meta['body'] as Record<string, unknown> | undefined
@@ -17,25 +18,25 @@ export function recordUsageHandler(store: IStoreAdapter) {
 			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId']
 
 		if (!workspaceId) {
-			return Response.json({ error: 'Workspace context required' }, { status: 400 });
+			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
 		}
 
 		if (typeof metric !== 'string') {
-			return Response.json({ error: 'metric is required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'metric is required', 422);
 		}
 
 		const qty = typeof quantity === 'number' ? quantity : 1;
 
 		await recordUsage({ workspaceId, metric, quantity: qty }, store);
 
-		return Response.json({ ok: true });
+		return setApiResponse('USAGE_RECORDED', 'Usage recorded successfully.');
 	}
 }
 
 export function getUsageHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		const params      = ctx.meta['params'] as Record<string, string> | undefined
@@ -43,14 +44,14 @@ export function getUsageHandler(store: IStoreAdapter) {
 		const metric      = params?.['metric']
 
 		if (!workspaceId || !metric) {
-			return Response.json({ error: 'workspaceId and metric are required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'workspaceId and metric are required', 422);
 		}
 
 		const since = new Date();
-		since.setDate(1);  // start of current month
+		since.setDate(1);
 		since.setHours(0, 0, 0, 0);
 
 		const total = await getUsage(workspaceId, metric, since, store);
-		return Response.json({ metric, total, since });
+		return setApiResponse('USAGE_FETCHED', 'Usage retrieved successfully.', { metric, total, since });
 	}
 }

@@ -1,13 +1,14 @@
-import type { Middleware } from '@fonderie-js/core';
+import { setErrorResponse }  from '@fonderie-js/core';
+import type { Middleware }    from '@fonderie-js/core';
 
 export function requireVerifiedEmail(): Middleware {
 	return async (ctx, next) => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		if (!ctx.user.emailVerifiedAt) {
-			return Response.json({ error: 'Email not verified' }, { status: 403 });
+			return setErrorResponse('EMAIL_NOT_VERIFIED', 'Email address has not been verified', 403);
 		}
 
 		return next();

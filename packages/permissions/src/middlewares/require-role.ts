@@ -1,9 +1,10 @@
-import type { Middleware }    from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import { setErrorResponse }    from '@fonderie-js/core';
+import type { Middleware }      from '@fonderie-js/core';
+import type { IStoreAdapter }   from '@fonderie-js/store';
 
-import { PermissionsEngine }   from '../engine';
+import { PermissionsEngine }      from '../engine';
 import { PERMISSIONS_ENGINE_KEY } from '../module';
-import { getMembership }      from '../services/membership';
+import { getMembership }          from '../services/membership';
 
 export function requireRole(
 	roleName: string | string[],
@@ -13,25 +14,24 @@ export function requireRole(
 
 	return async (ctx, next) => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		const engine = ctx.meta[PERMISSIONS_ENGINE_KEY];
-		const isPermissionEngine = engine instanceof PermissionsEngine;
-		if (!isPermissionEngine) {
-			return Response.json({ error: 'Permissions module not installed' }, { status: 500 });
+		if (!(engine instanceof PermissionsEngine)) {
+			return setErrorResponse('SERVER_ERROR', 'Permissions module not installed', 500);
 		}
 
 		const workspaceId = ctx.workspace?.id ??
 			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId'];
 
 		if (!workspaceId) {
-			return Response.json({ error: 'Workspace context required' }, { status: 400 });
+			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
 		}
 
 		const membership = await getMembership(ctx.user.id, workspaceId, store);
 		if (!membership || !allowed.includes(membership.roleName)) {
-			return Response.json({ error: 'Insufficient role' }, { status: 403 });
+			return setErrorResponse('FORBIDDEN', 'Insufficient role', 403);
 		}
 
 		return next();

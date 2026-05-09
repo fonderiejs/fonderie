@@ -1,5 +1,6 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import type { IBillingConfig }                from '../config';
 import { getDBPlans, getPlanById, createPlan,
@@ -9,7 +10,7 @@ import { toPlanDTO }                          from '../dtos/billing';
 export function listPlansHandler(store: IStoreAdapter, _config: IBillingConfig) {
 	return async (_ctx: IFonderieContext): Promise<Response> => {
 		const plans = await getDBPlans(store);
-		return Response.json({ plans: plans.map(toPlanDTO) });
+		return setApiResponse('PLANS_FETCHED', 'Plans retrieved successfully.', { plans: plans.map(toPlanDTO) });
 	}
 }
 
@@ -17,12 +18,12 @@ export function getPlanHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const id     = params?.['planId']
-		if (!id) return Response.json({ error: 'Plan ID required' }, { status: 400 })
+		if (!id) return setErrorResponse('INVALID_PARAMETER', 'Plan ID required', 400)
 
 		const plan = await getPlanById(id, store)
-		if (!plan) return Response.json({ error: 'Plan not found' }, { status: 404 })
+		if (!plan) return setErrorResponse('NOT_FOUND', 'Plan not found', 404)
 
-		return Response.json({ plan: toPlanDTO(plan) })
+		return setApiResponse('PLAN_FETCHED', 'Plan retrieved successfully.', { plan: toPlanDTO(plan) })
 	}
 }
 
@@ -32,7 +33,7 @@ export function createPlanHandler(store: IStoreAdapter) {
 
 		const name = body?.['name']
 		if (typeof name !== 'string' || !name.trim()) {
-			return Response.json({ error: 'name is required' }, { status: 422 })
+			return setErrorResponse('INVALID_PARAMETER', 'name is required', 422)
 		}
 
 		const data: Parameters<typeof createPlan>[0] = { name: name.trim() }
@@ -45,7 +46,7 @@ export function createPlanHandler(store: IStoreAdapter) {
 		if ('yearlyPriceId'  in (body ?? {})) data.yearlyPriceId  = typeof body?.['yearlyPriceId']  === 'string' ? body['yearlyPriceId']  as string  : null
 
 		const plan = await createPlan(data, store)
-		return Response.json({ plan: toPlanDTO(plan) }, { status: 201 })
+		return setApiResponse('PLAN_CREATED', 'Plan created successfully.', { plan: toPlanDTO(plan) }, 201)
 	}
 }
 
@@ -53,7 +54,7 @@ export function updatePlanHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const id     = params?.['planId']
-		if (!id) return Response.json({ error: 'Plan ID required' }, { status: 400 })
+		if (!id) return setErrorResponse('INVALID_PARAMETER', 'Plan ID required', 400)
 
 		const body = ctx.meta['body'] as Record<string, unknown> | undefined
 		const data: Partial<Omit<import('../types').IPlan, 'id'>> = {}
@@ -68,9 +69,9 @@ export function updatePlanHandler(store: IStoreAdapter) {
 		if ('yearlyPriceId'  in b) data.yearlyPriceId  = typeof b['yearlyPriceId']  === 'string' ? b['yearlyPriceId']  as string  : null
 
 		const plan = await updatePlan(id, data, store)
-		if (!plan) return Response.json({ error: 'Plan not found' }, { status: 404 })
+		if (!plan) return setErrorResponse('NOT_FOUND', 'Plan not found', 404)
 
-		return Response.json({ plan: toPlanDTO(plan) })
+		return setApiResponse('PLAN_UPDATED', 'Plan updated successfully.', { plan: toPlanDTO(plan) })
 	}
 }
 
@@ -78,11 +79,11 @@ export function deletePlanHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const id     = params?.['planId']
-		if (!id) return Response.json({ error: 'Plan ID required' }, { status: 400 })
+		if (!id) return setErrorResponse('INVALID_PARAMETER', 'Plan ID required', 400)
 
 		const deleted = await deletePlan(id, store)
-		if (!deleted) return Response.json({ error: 'Plan not found' }, { status: 404 })
+		if (!deleted) return setErrorResponse('NOT_FOUND', 'Plan not found', 404)
 
-		return Response.json({ ok: true })
+		return setApiResponse('PLAN_DELETED', 'Plan deleted successfully.')
 	}
 }

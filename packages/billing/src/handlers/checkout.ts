@@ -1,15 +1,15 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IStoreAdapter }               from '@fonderie-js/store';
 
-import type { IBillingConfig }   from '../config';
-
-import { getPlanByName }         from '../services/plans';
-import { upsertSubscription }    from '../services/subscriptions';
+import type { IBillingConfig }              from '../config';
+import { getPlanByName }                    from '../services/plans';
+import { upsertSubscription }               from '../services/subscriptions';
 
 export function createCheckoutHandler(store: IStoreAdapter, config: IBillingConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		const body        = ctx.meta['body'] as Record<string, unknown> | undefined
@@ -18,28 +18,25 @@ export function createCheckoutHandler(store: IStoreAdapter, config: IBillingConf
 		const workspaceId = resolveWorkspaceId(ctx);
 
 		if (typeof planName !== 'string') {
-			return Response.json({ error: 'plan is required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'plan is required', 422);
 		}
 
 		if (interval !== 'month' && interval !== 'year') {
-			return Response.json({ error: 'interval must be month or year' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'interval must be month or year', 422);
 		}
 
 		if (!workspaceId) {
-			return Response.json({ error: 'Workspace context required' }, { status: 400 });
+			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
 		}
 
 		const plan = getPlanByName(planName, config);
 		if (!plan) {
-			return Response.json({ error: `Unknown plan: ${planName}` }, { status: 422 })
+			return setErrorResponse('INVALID_PARAMETER', `Unknown plan: ${planName}`, 422);
 		}
 
 		const pricing = interval === 'year' ? plan.yearly : plan.monthly
 		if (!pricing?.priceId) {
-			return Response.json(
-				{ error: `Plan ${planName} does not support ${interval} billing` },
-				{ status: 422 },
-			);
+			return setErrorResponse('INVALID_PARAMETER', `Plan ${planName} does not support ${interval} billing`, 422);
 		}
 
 		const { customerId } = await config.provider.createCustomer({
@@ -70,19 +67,15 @@ export function createCheckoutHandler(store: IStoreAdapter, config: IBillingConf
 			store,
 		);
 
-		return Response.json({ url }, { status: 200 });
+		return setApiResponse('CHECKOUT_URL', 'Checkout session created.', { url });
 	}
 }
 
 function resolveWorkspaceId(ctx: IFonderieContext): string | null {
-	if (ctx.workspace?.id) {
-		return ctx.workspace.id;
-	}
+	if (ctx.workspace?.id) return ctx.workspace.id
 
 	const params = ctx.meta['params'] as Record<string, string> | undefined
-	if (params?.['workspaceId']) {
-		return params['workspaceId'];
-	}
+	if (params?.['workspaceId']) return params['workspaceId']
 
 	return ctx.request.headers.get('x-workspace-id');
 }
