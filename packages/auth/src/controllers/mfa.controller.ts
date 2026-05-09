@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -24,7 +24,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 			await users.saveMfaSecret(ctx.user.id, secret);
 
-			return setApiResponse(200, 'MFA_SETUP', 'Scan the QR code with your authenticator app.', { secret, uri });
+			return setSuccessResponse(200, 'MFA_SETUP', 'Scan the QR code with your authenticator app.', { secret, uri });
 		},
 
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
@@ -100,7 +100,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 			await users.disableMfa(ctx.user.id);
 
-			return setApiResponse(200, 'MFA_DISABLED', 'MFA disabled successfully.');
+			return setSuccessResponse(200, 'MFA_DISABLED', 'MFA disabled successfully.');
 		},
 	};
 }

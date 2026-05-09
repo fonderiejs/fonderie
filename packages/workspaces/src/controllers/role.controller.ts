@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -28,7 +28,7 @@ export function roleController(store: IStoreAdapter) {
 				if (typeof description === 'string') opts.description = description
 
 				const role = await roles.create(opts)
-				return setApiResponse(201, 'ROLE_CREATED', 'Role created successfully.', { role: toRoleDTO(role) })
+				return setSuccessResponse(201, 'ROLE_CREATED', 'Role created successfully.', { role: toRoleDTO(role) })
 			} catch (err) {
 				const message = err instanceof Error ? err.message : 'Failed to create role'
 				return setErrorResponse(400, 'OPERATION_FAILED', message)
@@ -39,7 +39,7 @@ export function roleController(store: IStoreAdapter) {
 			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 			const list = await roles.list(ctx.workspace.id)
-			return setApiResponse(200, 'ROLES_FETCHED', 'Roles retrieved successfully.', {
+			return setSuccessResponse(200, 'ROLES_FETCHED', 'Roles retrieved successfully.', {
 				roles: list.map(toRoleDTO),
 			})
 		},
@@ -54,7 +54,7 @@ export function roleController(store: IStoreAdapter) {
 			const role = await roles.findById(roleId)
 			if (!role) return setErrorResponse(404, 'NOT_FOUND', 'Role not found')
 
-			return setApiResponse(200, 'ROLE_FETCHED', 'Role retrieved successfully.', { role: toRoleDTO(role) })
+			return setSuccessResponse(200, 'ROLE_FETCHED', 'Role retrieved successfully.', { role: toRoleDTO(role) })
 		},
 
 		async update(ctx: IFonderieContext): Promise<Response> {
@@ -74,7 +74,7 @@ export function roleController(store: IStoreAdapter) {
 			const role = await roles.update(roleId, opts)
 			if (!role) return setErrorResponse(404, 'NOT_FOUND', 'Role not found or is a system role')
 
-			return setApiResponse(200, 'ROLE_UPDATED', 'Role updated successfully.', { role: toRoleDTO(role) })
+			return setSuccessResponse(200, 'ROLE_UPDATED', 'Role updated successfully.', { role: toRoleDTO(role) })
 		},
 
 		async remove(ctx: IFonderieContext): Promise<Response> {
@@ -85,7 +85,7 @@ export function roleController(store: IStoreAdapter) {
 			if (!roleId) return setErrorResponse(422, 'INVALID_PARAMETER', 'roleId is required')
 
 			await roles.delete(roleId, ctx.workspace.id)
-			return setApiResponse(200, 'ROLE_DELETED', 'Role deleted successfully.')
+			return setSuccessResponse(200, 'ROLE_DELETED', 'Role deleted successfully.')
 		},
 
 		async setPermissions(ctx: IFonderieContext): Promise<Response> {
@@ -113,7 +113,7 @@ export function roleController(store: IStoreAdapter) {
 			}).filter(p => p.permissionKey.length > 0)
 
 			await roles.setPermissions(roleId, ctx.workspace.id, normalized)
-			return setApiResponse(200, 'PERMISSIONS_SET', 'Role permissions updated successfully.')
+			return setSuccessResponse(200, 'PERMISSIONS_SET', 'Role permissions updated successfully.')
 		},
 	}
 }

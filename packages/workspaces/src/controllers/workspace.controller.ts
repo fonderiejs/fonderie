@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -20,7 +20,7 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
 
 			const list = await workspaces.findByUserId(ctx.user.id)
-			return setApiResponse(200, 'WORKSPACES_FETCHED', 'Workspaces retrieved successfully.', {
+			return setSuccessResponse(200, 'WORKSPACES_FETCHED', 'Workspaces retrieved successfully.', {
 				workspaces: list.map(toWorkspaceDTO),
 			})
 		},
@@ -64,14 +64,14 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 				return ws
 			})
 
-			return setApiResponse(201, 'WORKSPACE_CREATED', 'Workspace created successfully.', {
+			return setSuccessResponse(201, 'WORKSPACE_CREATED', 'Workspace created successfully.', {
 				workspace: toWorkspaceDTO(workspace),
 			})
 		},
 
 		async get(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
-			return setApiResponse(200, 'WORKSPACE_FETCHED', 'Workspace retrieved successfully.', {
+			return setSuccessResponse(200, 'WORKSPACE_FETCHED', 'Workspace retrieved successfully.', {
 				workspace: toWorkspaceDTO(ctx.workspace as IWorkspace),
 			})
 		},
@@ -92,7 +92,7 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			const workspace = await workspaces.update(ctx.workspace.id, opts)
 			if (!workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
-			return setApiResponse(200, 'WORKSPACE_UPDATED', 'Workspace updated successfully.', {
+			return setSuccessResponse(200, 'WORKSPACE_UPDATED', 'Workspace updated successfully.', {
 				workspace: toWorkspaceDTO(workspace),
 			})
 		},
@@ -102,21 +102,21 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			if (!ctx.user)      return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
 
 			await workspaces.archive(ctx.workspace.id, ctx.user.id)
-			return setApiResponse(200, 'WORKSPACE_ARCHIVED', 'Workspace archived successfully.')
+			return setSuccessResponse(200, 'WORKSPACE_ARCHIVED', 'Workspace archived successfully.')
 		},
 
 		async restore(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 			await workspaces.restore(ctx.workspace.id)
-			return setApiResponse(200, 'WORKSPACE_RESTORED', 'Workspace restored successfully.')
+			return setSuccessResponse(200, 'WORKSPACE_RESTORED', 'Workspace restored successfully.')
 		},
 
 		async getSettings(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 			const settings = await workspaces.getSettings(ctx.workspace.id)
-			return setApiResponse(200, 'SETTINGS_FETCHED', 'Workspace settings retrieved successfully.', {
+			return setSuccessResponse(200, 'SETTINGS_FETCHED', 'Workspace settings retrieved successfully.', {
 				settings: toSettingsDTO(settings),
 			})
 		},
@@ -135,7 +135,7 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			}
 
 			const settings = await workspaces.updateSettings(ctx.workspace.id, patch)
-			return setApiResponse(200, 'SETTINGS_UPDATED', 'Workspace settings updated successfully.', {
+			return setSuccessResponse(200, 'SETTINGS_UPDATED', 'Workspace settings updated successfully.', {
 				settings: toSettingsDTO(settings),
 			})
 		},

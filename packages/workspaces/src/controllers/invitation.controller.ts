@@ -1,4 +1,4 @@
-import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { ICourierMessage }              from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
@@ -14,7 +14,7 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 			if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 			const list = await invitations.list(ctx.workspace.id)
-			return setApiResponse(200, 'INVITATIONS_FETCHED', 'Invitations retrieved successfully.', {
+			return setSuccessResponse(200, 'INVITATIONS_FETCHED', 'Invitations retrieved successfully.', {
 				invitations: list.map(toInvitationDTO),
 			})
 		},
@@ -54,7 +54,7 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 				data:      { token: invitation.token, pin: invitation.pin },
 			} satisfies ICourierMessage
 
-			return setApiResponse(201, 'INVITATION_SENT', 'Invitation sent successfully.', {
+			return setSuccessResponse(201, 'INVITATION_SENT', 'Invitation sent successfully.', {
 				invitationId: invitation.id,
 			})
 		},
@@ -68,7 +68,7 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 			if (!invitationId) return setErrorResponse(422, 'INVALID_PARAMETER', 'inviteId is required')
 
 			await invitations.cancel(invitationId, ctx.workspace.id)
-			return setApiResponse(200, 'INVITATION_CANCELLED', 'Invitation cancelled successfully.')
+			return setSuccessResponse(200, 'INVITATION_CANCELLED', 'Invitation cancelled successfully.')
 		},
 
 		async accept(ctx: IFonderieContext): Promise<Response> {
@@ -83,7 +83,7 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 
 			try {
 				const { workspaceId } = await invitations.acceptByPin({ pin, userId: ctx.user.id })
-				return setApiResponse(200, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', { workspaceId })
+				return setSuccessResponse(200, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', { workspaceId })
 			} catch (err) {
 				const message = err instanceof Error ? err.message : 'Invalid invitation'
 				return setErrorResponse(400, 'INVITATION_FAILED', message)
