@@ -6,6 +6,8 @@ export interface IUserSkill {
 }
 
 export interface IUserPreferences {
+	locale:    string;
+	timezone:  string;
 	notifications: {
 		email: boolean;
 		inApp: boolean;

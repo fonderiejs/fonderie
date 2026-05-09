@@ -48,7 +48,14 @@ export function refreshHandler(store: IStoreAdapter, config: IAuthConfig) {
 		await createSession(user.id, refreshToken, refreshTokenExpiry(refreshToken), store);
 
 		return Response.json(
-			{ user: toUserDTO(user), accessToken, refreshToken },
+			{
+				reason:      'TOKEN_REFRESHED',
+				explanation: 'Access token refreshed successfully.',
+				result: {
+					tokens: { accessToken, refreshToken },
+					user:   toUserDTO(user),
+				},
+			},
 			{
 				status: 200,
 				headers: {
