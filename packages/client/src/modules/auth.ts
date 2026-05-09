@@ -30,7 +30,7 @@ export interface IResetPasswordInput {
 	password:   string
 }
 
-export interface IUpdateMeInput {
+export interface IUpdateUserInput {
 	firstName?:   string
 	lastName?:    string
 	phoneNumber?: string
@@ -48,10 +48,10 @@ class MfaClient {
 		private token: () => string | undefined,
 	) {}
 
-	enable() {
+	setup() {
 		return this.http.request<IApiResponse<IMfaSetupResult>>({
 			method: 'POST',
-			path:   '/auth/mfa/enable',
+			path:   '/auth/mfa/setup',
 			token:  this.token(),
 		})
 	}
@@ -84,10 +84,11 @@ export class AuthClient {
 		this.mfa = new MfaClient(http, () => this.accessToken)
 	}
 
-	// Call after login/register to store the access token for subsequent requests
 	setAccessToken(token: string | undefined) {
 		this.accessToken = token
 	}
+
+	// ── Public ─────────────────────────────────────────────────────────────────
 
 	register(input: IRegisterInput) {
 		return this.http.request<IApiResponse<IRegisterResult>>({
@@ -105,19 +106,10 @@ export class AuthClient {
 		})
 	}
 
-	logout(refreshToken?: string) {
-		return this.http.request<IApiResponse<undefined>>({
-			method: 'POST',
-			path:   '/auth/logout',
-			body:   refreshToken ? { refreshToken } : undefined,
-			token:  this.accessToken,
-		})
-	}
-
-	refresh(refreshToken?: string) {
+	refreshTokens(refreshToken?: string) {
 		return this.http.request<IApiResponse<IRefreshResult>>({
 			method: 'POST',
-			path:   '/auth/refresh',
+			path:   '/auth/refresh-tokens',
 			body:   refreshToken ? { refreshToken } : undefined,
 		})
 	}
@@ -146,35 +138,48 @@ export class AuthClient {
 		})
 	}
 
-	resendVerification() {
+	// ── Protected ──────────────────────────────────────────────────────────────
+
+	logout(refreshToken?: string) {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'POST',
+			path:   '/auth/logout',
+			body:   refreshToken ? { refreshToken } : undefined,
+			token:  this.accessToken,
+		})
+	}
+
+	sendVerificationEmail() {
 		return this.http.request<IApiResponse<IResendVerificationResult>>({
 			method: 'POST',
-			path:   '/auth/resend-verification',
+			path:   '/auth/send-verification-email',
 			token:  this.accessToken,
 		})
 	}
 
-	me() {
+	// ── Protected + Verified ───────────────────────────────────────────────────
+
+	getUser() {
 		return this.http.request<IApiResponse<IMeResult>>({
 			method: 'GET',
-			path:   '/users/me',
+			path:   '/users',
 			token:  this.accessToken,
 		})
 	}
 
-	updateMe(input: IUpdateMeInput) {
+	updateUser(input: IUpdateUserInput) {
 		return this.http.request<IApiResponse<IMeResult>>({
-			method: 'PATCH',
-			path:   '/users/me',
+			method: 'PUT',
+			path:   '/users/update',
 			body:   input,
 			token:  this.accessToken,
 		})
 	}
 
-	deleteMe() {
+	deleteUser() {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path:   '/users/me',
+			path:   '/users',
 			token:  this.accessToken,
 		})
 	}

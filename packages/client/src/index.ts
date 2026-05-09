@@ -6,7 +6,7 @@ export type {
 	IRegisterInput,
 	ILoginInput,
 	IResetPasswordInput,
-	IUpdateMeInput,
+	IUpdateUserInput,
 } from './modules/auth'
 export type {
 	IApiResponse,
