@@ -4,7 +4,10 @@ import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 import type { ICourierMessage }  from '@fonderie-js/core';
 
+import { setErrorResponse }      from '@fonderie-js/core';
 import { findUserByEmail }       from '../services/session';
+
+const SENT = { reason: 'PASSWORD_RESET_EMAIL_SENT', explanation: 'Password reset email sent (if account exists).' };
 
 export function forgotPasswordHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
@@ -12,13 +15,13 @@ export function forgotPasswordHandler(store: IStoreAdapter) {
 		const email = body?.['email'];
 
 		if (typeof email !== 'string') {
-			return Response.json({ error: 'email is required' }, { status: 422 });
+			return setErrorResponse('INVALID_PARAMETER', 'email is required', 422);
 		}
 
 		// Always return 200 — don't leak whether email exists
 		const user = await findUserByEmail(email, store);
 		if (!user) {
-			return Response.json({ ok: true }, { status: 200 });
+			return Response.json(SENT, { status: 200 });
 		}
 
 		const token     = randomBytes(32).toString('hex');
@@ -39,6 +42,6 @@ export function forgotPasswordHandler(store: IStoreAdapter) {
 			data:      { token },
 		} satisfies ICourierMessage
 
-		return Response.json({ ok: true }, { status: 200 });
+		return Response.json(SENT, { status: 200 });
 	}
 }

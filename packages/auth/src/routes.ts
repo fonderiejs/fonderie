@@ -31,7 +31,7 @@ export function buildAuthRoutes(
 		['POST', '/auth/register',        registerHandler(store, config)],
 		['POST', '/auth/login',           loginHandler(store, config)],
 		['POST', '/auth/refresh',         refreshHandler(store, config)],
-		['POST', '/auth/verify-email',    verifyEmailHandler(store)],
+		['POST', '/auth/verify-email',    verifyEmailHandler(store, config)],
 		['POST', '/auth/forgot-password', forgotPasswordHandler(store)],
 		['POST', '/auth/reset-password',  resetPasswordHandler(store)],
 

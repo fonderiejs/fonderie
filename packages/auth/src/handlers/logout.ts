@@ -22,7 +22,7 @@ export function logoutHandler(store: IStoreAdapter) {
 		}
 
 		return Response.json(
-			{ ok: true },
+			{ reason: 'USER_LOGOUT', explanation: 'Logged out successfully.' },
 			{
 				status: 200,
 				headers: {

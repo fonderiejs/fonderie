@@ -322,7 +322,7 @@ test('login: 200 with user DTO and tokens', async () => {
 	const response = await handler(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                        'USER_LOGGED_IN');
+	assert.equal(body.reason,                        'ACCOUNT_LOGIN');
 	assert.equal(body.result.user.email,             'jane@example.com');
 	assert.equal(body.result.user.profileImageUrl,   'https://cdn.example.com/avatar.jpg');
 	assert.ok(typeof body.result.tokens.accessToken  === 'string');
@@ -331,13 +331,13 @@ test('login: 200 with user DTO and tokens', async () => {
 
 // ── logoutHandler ─────────────────────────────────────────────────
 
-test('logout: 200 with ok:true (even without a token)', async () => {
+test('logout: 200 with USER_LOGOUT reason', async () => {
 	const { logoutHandler } = await import('../handlers/logout');
 	const handler  = logoutHandler(makeStore());
 	const response = await handler(makeCtx());
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.ok, true);
+	assert.equal(body.reason, 'USER_LOGOUT');
 });
 
 test('logout: clears access_token and refresh_token cookies', async () => {
@@ -372,7 +372,7 @@ test('refresh: 200 with new tokens when session is valid', async () => {
 	const response = await handler(makeCtx({ body: { refreshToken: VALID_RT } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                        'TOKEN_REFRESHED');
+	assert.equal(body.reason,                        'TOKENS_REFRESHED');
 	assert.equal(body.result.user.email,             'jane@example.com');
 	assert.ok(typeof body.result.tokens.accessToken  === 'string');
 	assert.ok(typeof body.result.tokens.refreshToken === 'string');
@@ -387,13 +387,13 @@ test('forgotPassword: 422 when email missing', async () => {
 	assert.equal(response.status, 422);
 });
 
-test('forgotPassword: 200 ok:true even when email not found', async () => {
+test('forgotPassword: 200 with PASSWORD_RESET_EMAIL_SENT even when email not found', async () => {
 	const { forgotPasswordHandler } = await import('../handlers/forgot-password');
 	const handler  = forgotPasswordHandler(makeStore({ userByEmail: null }));
 	const response = await handler(makeCtx({ body: { email: 'ghost@example.com' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.ok, true);
+	assert.equal(body.reason, 'PASSWORD_RESET_EMAIL_SENT');
 });
 
 // ── resetPasswordHandler ──────────────────────────────────────────
@@ -412,40 +412,43 @@ test('resetPassword: 400 when token is invalid or expired', async () => {
 	assert.equal(response.status, 400);
 });
 
-test('resetPassword: 200 ok:true on valid token', async () => {
+test('resetPassword: 200 with PASSWORD_RESET_SUCCESSFUL on valid token', async () => {
 	const { resetPasswordHandler } = await import('../handlers/reset-password');
 	const store   = makeStore({ resetRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) } });
 	const handler = resetPasswordHandler(store);
 	const response = await handler(makeCtx({ body: { resetToken: 'valid-tok', password: 'newpass123' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.ok, true);
+	assert.equal(body.reason, 'PASSWORD_RESET_SUCCESSFUL');
 });
 
 // ── verifyEmailHandler ────────────────────────────────────────────
 
 test('verifyEmail: 422 when token missing', async () => {
 	const { verifyEmailHandler } = await import('../handlers/verify-email');
-	const handler  = verifyEmailHandler(makeStore());
+	const handler  = verifyEmailHandler(makeStore(), config);
 	const response = await handler(makeCtx({ body: {} }));
 	assert.equal(response.status, 422);
 });
 
 test('verifyEmail: 400 when token not found', async () => {
 	const { verifyEmailHandler } = await import('../handlers/verify-email');
-	const handler  = verifyEmailHandler(makeStore({ verifyRow: null }));
+	const handler  = verifyEmailHandler(makeStore({ verifyRow: null }), config);
 	const response = await handler(makeCtx({ body: { token: 'bad-token' } }));
 	assert.equal(response.status, 400);
 });
 
-test('verifyEmail: 200 ok:true on valid token', async () => {
+test('verifyEmail: 200 with EMAIL_VERIFIED and user+tokens on valid token', async () => {
 	const { verifyEmailHandler } = await import('../handlers/verify-email');
-	const store   = makeStore({ verifyRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) } });
-	const handler = verifyEmailHandler(store);
+	const store   = makeStore({ verifyRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) }, userById: BASE_USER });
+	const handler = verifyEmailHandler(store, config);
 	const response = await handler(makeCtx({ body: { token: 'valid-tok' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.ok, true);
+	assert.equal(body.reason,                        'EMAIL_VERIFIED');
+	assert.equal(body.result.user.email,             'jane@example.com');
+	assert.ok(typeof body.result.tokens.accessToken  === 'string');
+	assert.ok(typeof body.result.tokens.refreshToken === 'string');
 });
 
 // ── meHandler ─────────────────────────────────────────────────────
@@ -463,9 +466,10 @@ test('me: 200 with user DTO including profileImageUrl', async () => {
 	const response = await handler(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.email,           'jane@example.com');
-	assert.equal(body.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
-	assert.equal(body.phone,           '+1234567890');
+	assert.equal(body.reason,                  'USER_FETCHED');
+	assert.equal(body.result.email,           'jane@example.com');
+	assert.equal(body.result.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
+	assert.equal(body.result.phone,           '+1234567890');
 });
 
 // ── updateMeHandler ───────────────────────────────────────────────
@@ -491,6 +495,7 @@ test('updateMe: 200 with updated DTO after phoneNumber and avatarUrl', async () 
 	}));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.phone,           '+9999999999');
-	assert.equal(body.profileImageUrl, 'https://cdn.example.com/new.jpg');
+	assert.equal(body.reason,                  'ACCOUNT_UPDATED');
+	assert.equal(body.result.phone,           '+9999999999');
+	assert.equal(body.result.profileImageUrl, 'https://cdn.example.com/new.jpg');
 });

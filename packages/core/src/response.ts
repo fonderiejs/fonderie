@@ -1,21 +1,33 @@
-export interface IApiError {
-	code:     string
-	message:  string
-	details?: unknown
+export interface IApiEnvelope {
+	reason:      string
+	explanation: string
+	result?:     unknown
 }
 
-export function setApiResponse<T>(data: T, status = 200): Response {
-	return Response.json(data, { status });
+export interface IApiError {
+	reason:      string
+	explanation: string
+	details?:    unknown
+}
+
+export function setApiResponse<T>(
+	reason:      string,
+	explanation: string,
+	result?:     T,
+	status = 200,
+): Response {
+	const body: Record<string, unknown> = { reason, explanation };
+	if (result !== undefined) body['result'] = result;
+	return Response.json(body, { status });
 }
 
 export function setErrorResponse(
-	code:     string,
-	message:  string,
-	status  = 400,
+	reason:      string,
+	explanation: string,
+	status = 400,
 	details?: unknown,
 ): Response {
-	const body: IApiError = details !== undefined
-		? { code, message, details }
-		: { code, message };
+	const body: Record<string, unknown> = { reason, explanation };
+	if (details !== undefined) body['details'] = details;
 	return Response.json(body, { status });
 }

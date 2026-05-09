@@ -1,12 +1,13 @@
-import type { IFonderieContext }          from '@fonderie-js/core';
-import type { IStoreAdapter }             from '@fonderie-js/store';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import { generateTotpSecret, generateTotpUri } from '../../services/mfa';
 
 export function mfaEnableHandler(store: IStoreAdapter, issuer: string) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
 		}
 
 		const secret = generateTotpSecret();
@@ -17,6 +18,6 @@ export function mfaEnableHandler(store: IStoreAdapter, issuer: string) {
 			[secret, ctx.user.id],
 		);
 
-		return Response.json({ secret, uri }, { status: 200 });
+		return setApiResponse('MFA_SETUP', 'Scan the QR code with your authenticator app.', { secret, uri });
 	}
 }

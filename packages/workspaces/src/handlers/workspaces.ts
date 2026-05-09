@@ -1,5 +1,6 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }    from '@fonderie-js/store';
+import { setApiResponse, setErrorResponse } from '@fonderie-js/core';
+import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import {
 	createWorkspace, findWorkspacesByUserId,
@@ -13,16 +14,18 @@ import { toWorkspaceDTO, toSettingsDTO } from '../dtos/workspace';
 
 export function listWorkspacesHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+		if (!ctx.user) return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401)
 
 		const workspaces = await findWorkspacesByUserId(ctx.user.id, store)
-		return Response.json({ workspaces: workspaces.map(toWorkspaceDTO) })
+		return setApiResponse('WORKSPACES_FETCHED', 'Workspaces retrieved successfully.', {
+			workspaces: workspaces.map(toWorkspaceDTO),
+		})
 	}
 }
 
 export function createWorkspaceHandler(store: IStoreAdapter, defaultRole: string) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+		if (!ctx.user) return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401)
 
 		const body        = ctx.meta['body'] as Record<string, unknown> | undefined
 		const name        = body?.['name']
@@ -30,7 +33,7 @@ export function createWorkspaceHandler(store: IStoreAdapter, defaultRole: string
 		const type        = body?.['type']
 
 		if (typeof name !== 'string' || name.trim().length === 0) {
-			return Response.json({ error: 'name is required' }, { status: 422 })
+			return setErrorResponse('INVALID_PARAMETER', 'name is required', 422)
 		}
 
 		const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -58,20 +61,24 @@ export function createWorkspaceHandler(store: IStoreAdapter, defaultRole: string
 			return ws
 		})
 
-		return Response.json({ workspace: toWorkspaceDTO(workspace) }, { status: 201 })
+		return setApiResponse('WORKSPACE_CREATED', 'Workspace created successfully.', {
+			workspace: toWorkspaceDTO(workspace),
+		}, 201)
 	}
 }
 
 export function getWorkspaceHandler() {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
-		return Response.json({ workspace: toWorkspaceDTO(ctx.workspace as IWorkspace) })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		return setApiResponse('WORKSPACE_FETCHED', 'Workspace retrieved successfully.', {
+			workspace: toWorkspaceDTO(ctx.workspace as IWorkspace),
+		})
 	}
 }
 
 export function updateWorkspaceHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		const body = ctx.meta['body'] as Record<string, unknown> | undefined
 		const opts: { name?: string; description?: string | null } = {}
@@ -84,47 +91,51 @@ export function updateWorkspaceHandler(store: IStoreAdapter) {
 		}
 
 		const workspace = await updateWorkspace(ctx.workspace.id, opts, store)
-		if (!workspace) return Response.json({ error: 'Not found' }, { status: 404 })
+		if (!workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
-		return Response.json({ workspace: toWorkspaceDTO(workspace) })
+		return setApiResponse('WORKSPACE_UPDATED', 'Workspace updated successfully.', {
+			workspace: toWorkspaceDTO(workspace),
+		})
 	}
 }
 
 export function archiveWorkspaceHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
-		if (!ctx.user)      return Response.json({ error: 'Unauthorized' },         { status: 401 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.user)      return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401)
 
 		await archiveWorkspace(ctx.workspace.id, ctx.user.id, store)
-		return Response.json({ ok: true })
+		return setApiResponse('WORKSPACE_ARCHIVED', 'Workspace archived successfully.')
 	}
 }
 
 export function restoreWorkspaceHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		await restoreWorkspace(ctx.workspace.id, store)
-		return Response.json({ ok: true })
+		return setApiResponse('WORKSPACE_RESTORED', 'Workspace restored successfully.')
 	}
 }
 
 export function getSettingsHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		const settings = await getWorkspaceSettings(ctx.workspace.id, store)
-		return Response.json({ settings: toSettingsDTO(settings) })
+		return setApiResponse('SETTINGS_FETCHED', 'Workspace settings retrieved successfully.', {
+			settings: toSettingsDTO(settings),
+		})
 	}
 }
 
 export function updateSettingsHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return Response.json({ error: 'Workspace not found' }, { status: 404 })
+		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
 
 		const body = ctx.meta['body'] as Record<string, unknown> | undefined
 		if (!body || Object.keys(body).length === 0) {
-			return Response.json({ error: 'No settings provided' }, { status: 422 })
+			return setErrorResponse('INVALID_PARAMETER', 'No settings provided', 422)
 		}
 
 		const patch: Record<string, string> = {}
@@ -133,6 +144,8 @@ export function updateSettingsHandler(store: IStoreAdapter) {
 		}
 
 		const settings = await updateWorkspaceSettings(ctx.workspace.id, patch, store)
-		return Response.json({ settings: toSettingsDTO(settings) })
+		return setApiResponse('SETTINGS_UPDATED', 'Workspace settings updated successfully.', {
+			settings: toSettingsDTO(settings),
+		})
 	}
 }

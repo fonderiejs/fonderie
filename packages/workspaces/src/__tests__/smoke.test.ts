@@ -210,9 +210,10 @@ test('listWorkspaces: 200 with workspaces array', async () => {
 	const response = await handler(makeCtx({ user: { id: 'user-1', email: 'a@b.com' } }))
 	assert.equal(response.status, 200)
 	const body = await response.json() as any
-	assert.ok(Array.isArray(body.workspaces))
-	assert.equal(body.workspaces.length, 1)
-	assert.equal(body.workspaces[0].id, 'ws-1')
+	assert.equal(body.reason, 'WORKSPACES_FETCHED')
+	assert.ok(Array.isArray(body.result.workspaces))
+	assert.equal(body.result.workspaces.length, 1)
+	assert.equal(body.result.workspaces[0].id, 'ws-1')
 })
 
 // ── createWorkspaceHandler ────────────────────────────────────────
@@ -233,10 +234,11 @@ test('createWorkspace: 201 with workspace DTO', async () => {
 	}))
 	assert.equal(response.status, 201)
 	const body = await response.json() as any
-	assert.ok(body.workspace)
-	assert.equal(body.workspace.id,   'ws-1')
-	assert.equal(body.workspace.name, 'Acme')
-	assert.ok(typeof body.workspace.isArchived === 'boolean')
+	assert.equal(body.reason, 'WORKSPACE_CREATED')
+	assert.ok(body.result.workspace)
+	assert.equal(body.result.workspace.id,   'ws-1')
+	assert.equal(body.result.workspace.name, 'Acme')
+	assert.ok(typeof body.result.workspace.isArchived === 'boolean')
 })
 
 // ── updateWorkspaceHandler ────────────────────────────────────────
@@ -251,8 +253,9 @@ test('updateWorkspace: 200 with updated workspace DTO', async () => {
 	}))
 	assert.equal(response.status, 200)
 	const body = await response.json() as any
-	assert.equal(body.workspace.name, 'Acme Updated')
-	assert.ok(typeof body.workspace.isArchived === 'boolean')
+	assert.equal(body.reason, 'WORKSPACE_UPDATED')
+	assert.equal(body.result.workspace.name, 'Acme Updated')
+	assert.ok(typeof body.result.workspace.isArchived === 'boolean')
 })
 
 // ── getWorkspaceHandler ───────────────────────────────────────────
@@ -270,6 +273,7 @@ test('getWorkspace: 200 with workspace DTO', async () => {
 	const response = await handler(makeCtx({ workspace: WS }))
 	assert.equal(response.status, 200)
 	const body = await response.json() as any
-	assert.equal(body.workspace.id,         'ws-1')
-	assert.equal(body.workspace.isArchived, false)
+	assert.equal(body.reason, 'WORKSPACE_FETCHED')
+	assert.equal(body.result.workspace.id,         'ws-1')
+	assert.equal(body.result.workspace.isArchived, false)
 })

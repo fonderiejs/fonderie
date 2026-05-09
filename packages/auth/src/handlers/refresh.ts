@@ -49,8 +49,8 @@ export function refreshHandler(store: IStoreAdapter, config: IAuthConfig) {
 
 		return Response.json(
 			{
-				reason:      'TOKEN_REFRESHED',
-				explanation: 'Access token refreshed successfully.',
+				reason:      'TOKENS_REFRESHED',
+				explanation: 'Tokens refreshed successfully.',
 				result: {
 					tokens: { accessToken, refreshToken },
 					user:   toUserDTO(user),
