@@ -1,1 +1,7 @@
-Click the link to verify your email: https://app.example.com/verify?token={{token}}
+Hi {{firstName}},
+
+Your email verification code is: {{pin}}
+
+Enter this code to complete your registration. It expires in 24 hours.
+
+If you did not create an account, you can safely ignore this email.
