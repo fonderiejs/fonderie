@@ -1,4 +1,4 @@
-import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -16,7 +16,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 	return {
 		setup: async (ctx: IFonderieContext): Promise<Response> => {
 			if (!ctx.user) {
-				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			}
 
 			const secret = generateTotpSecret();
@@ -24,28 +24,28 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 			await users.saveMfaSecret(ctx.user.id, secret);
 
-			return setSuccessResponse(200, 'MFA_SETUP', 'Scan the QR code with your authenticator app.', { secret, uri });
+			return setApiResponse(HTTP.OK, 'MFA_SETUP', 'Scan the QR code with your authenticator app.', { secret, uri });
 		},
 
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
 			if (!ctx.user) {
-				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			}
 
 			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const token = body?.['token'];
 
 			if (typeof token !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'token is required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'token is required');
 			}
 
 			const secret = await users.getMfaSecret(ctx.user.id);
 			if (!secret) {
-				return setErrorResponse(400, 'MFA_NOT_CONFIGURED', 'MFA not configured');
+				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
 			}
 
 			if (!verifyTotpToken(token, secret)) {
-				return setErrorResponse(401, 'INVALID_CODE', 'Invalid MFA token');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
 			}
 
 			if (!ctx.user.mfaEnabled) {
@@ -78,29 +78,29 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 		disable: async (ctx: IFonderieContext): Promise<Response> => {
 			if (!ctx.user) {
-				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			}
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const code = body?.['code'];
 
 			if (typeof code !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'TOTP code is required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'TOTP code is required');
 			}
 
 			const user = await users.findById(ctx.user.id);
 			if (!user || !user.mfaEnabled) {
-				return setErrorResponse(400, 'MFA_NOT_ENABLED', 'MFA is not enabled');
+				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_ENABLED', 'MFA is not enabled');
 			}
 
 			const secret = (user as unknown as { mfaSecret: string | null }).mfaSecret;
 			if (!secret || !verifyTotpToken(code, secret)) {
-				return setErrorResponse(401, 'INVALID_CODE', 'Invalid TOTP code');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
 			}
 
 			await users.disableMfa(ctx.user.id);
 
-			return setSuccessResponse(200, 'MFA_DISABLED', 'MFA disabled successfully.');
+			return setApiResponse(HTTP.OK, 'MFA_DISABLED', 'MFA disabled successfully.');
 		},
 	};
 }

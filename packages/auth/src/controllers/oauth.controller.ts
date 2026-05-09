@@ -1,4 +1,4 @@
-import { setErrorResponse }    from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
@@ -15,7 +15,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 		googleInit: async (_ctx: IFonderieContext): Promise<Response> => {
 			const google = config.google;
 			if (!google) {
-				return setErrorResponse(501, 'NOT_CONFIGURED', 'Google OAuth not configured');
+				return setApiResponse(HTTP.NOT_IMPLEMENTED, 'NOT_CONFIGURED', 'Google OAuth not configured');
 			}
 
 			const params = new URLSearchParams({
@@ -31,14 +31,14 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 		googleCallback: async (ctx: IFonderieContext): Promise<Response> => {
 			const google = config.google;
 			if (!google) {
-				return setErrorResponse(501, 'NOT_CONFIGURED', 'Google OAuth not configured');
+				return setApiResponse(HTTP.NOT_IMPLEMENTED, 'NOT_CONFIGURED', 'Google OAuth not configured');
 			}
 
 			const url  = new URL(ctx.request.url);
 			const code = url.searchParams.get('code');
 
 			if (!code) {
-				return setErrorResponse(400, 'INVALID_PARAMETER', 'Missing code');
+				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_PARAMETER', 'Missing code');
 			}
 
 			const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -55,7 +55,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 
 			const tokenData = await tokenRes.json() as { id_token?: string };
 			if (!tokenData.id_token) {
-				return setErrorResponse(400, 'GOOGLE_AUTH_FAILED', 'OAuth token exchange failed');
+				return setApiResponse(HTTP.BAD_REQUEST, 'GOOGLE_AUTH_FAILED', 'OAuth token exchange failed');
 			}
 
 			const payload = JSON.parse(
@@ -63,12 +63,12 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 			) as { email?: string; sub?: string };
 
 			if (!payload.email) {
-				return setErrorResponse(400, 'GOOGLE_AUTH_FAILED', 'No email in OAuth response');
+				return setApiResponse(HTTP.BAD_REQUEST, 'GOOGLE_AUTH_FAILED', 'No email in OAuth response');
 			}
 
 			const user = await users.upsertByProvider(payload.email, 'google', payload.sub ?? '');
 			if (!user) {
-				return setErrorResponse(500, 'SERVER_ERROR', 'OAuth login failed');
+				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
 			}
 
 			const { accessToken, refreshToken } = issueTokenPair(user.id, config);

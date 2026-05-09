@@ -1,4 +1,4 @@
-import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -12,7 +12,7 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 
 	return {
 		async createSession(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			const body        = ctx.meta['body'] as Record<string, unknown> | undefined
 			const planName    = body?.['plan']
@@ -20,23 +20,23 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			const workspaceId = resolveWorkspaceId(ctx)
 
 			if (typeof planName !== 'string') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'plan is required')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'plan is required')
 			}
 			if (interval !== 'month' && interval !== 'year') {
-				return setErrorResponse(422, 'INVALID_PARAMETER', 'interval must be month or year')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'interval must be month or year')
 			}
 			if (!workspaceId) {
-				return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required')
+				return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required')
 			}
 
 			const plan = plans.findByNameInConfig(planName, config)
 			if (!plan) {
-				return setErrorResponse(422, 'INVALID_PARAMETER', `Unknown plan: ${planName}`)
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', `Unknown plan: ${planName}`)
 			}
 
 			const pricing = interval === 'year' ? plan.yearly : plan.monthly
 			if (!pricing?.priceId) {
-				return setErrorResponse(422, 'INVALID_PARAMETER', `Plan ${planName} does not support ${interval} billing`)
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', `Plan ${planName} does not support ${interval} billing`)
 			}
 
 			const { customerId } = await config.provider.createCustomer({
@@ -64,20 +64,20 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				providerCustomerId: customerId,
 			})
 
-			return setSuccessResponse(200, 'CHECKOUT_URL', 'Checkout session created.', { url })
+			return setApiResponse(HTTP.OK, 'CHECKOUT_URL', 'Checkout session created.', { url })
 		},
 
 		async createPortal(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			const workspaceId = resolveWorkspaceId(ctx)
 			if (!workspaceId) {
-				return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required')
+				return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required')
 			}
 
 			const subscription = await subscriptions.get(workspaceId)
 			if (!subscription?.providerCustomerId) {
-				return setErrorResponse(404, 'NOT_FOUND', 'No active subscription')
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No active subscription')
 			}
 
 			const { url } = await config.provider.createPortalSession({
@@ -85,7 +85,7 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				returnUrl:  config.successUrl,
 			})
 
-			return setSuccessResponse(200, 'PORTAL_URL', 'Portal session created.', { url })
+			return setApiResponse(HTTP.OK, 'PORTAL_URL', 'Portal session created.', { url })
 		},
 	}
 }

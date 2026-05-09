@@ -1,4 +1,4 @@
-import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -13,20 +13,20 @@ export function userController(store: IStoreAdapter) {
 	return {
 		me: async (ctx: IFonderieContext): Promise<Response> => {
 			if (!ctx.user) {
-				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			}
 
 			const user = await users.findById(ctx.user.id);
 			if (!user) {
-				return setErrorResponse(404, 'NOT_FOUND', 'User not found');
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
 			}
 
-			return setSuccessResponse(200, 'USER_FETCHED', 'User successfully fetched.', { user: toUserDTO(user) });
+			return setApiResponse(HTTP.OK, 'USER_FETCHED', 'User successfully fetched.', { user: toUserDTO(user) });
 		},
 
 		updateMe: async (ctx: IFonderieContext): Promise<Response> => {
 			if (!ctx.user) {
-				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			}
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
@@ -43,23 +43,23 @@ export function userController(store: IStoreAdapter) {
 			}
 
 			if (Object.keys(fields).length === 0) {
-				return setErrorResponse(422, 'NO_FIELDS', 'No updatable fields provided');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'NO_FIELDS', 'No updatable fields provided');
 			}
 
 			const row = await users.update(ctx.user.id, fields);
 			if (!row) {
-				return setErrorResponse(404, 'NOT_FOUND', 'User not found');
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
 			}
 
 			const updated = await users.findById(ctx.user.id);
-			return setSuccessResponse(200, 'ACCOUNT_UPDATED', 'Account successfully updated.', {
+			return setApiResponse(HTTP.OK, 'ACCOUNT_UPDATED', 'Account successfully updated.', {
 				user: toUserDTO(updated as IUser),
 			});
 		},
 
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
 			if (!ctx.user) {
-				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			}
 
 			await users.softDelete(ctx.user.id);

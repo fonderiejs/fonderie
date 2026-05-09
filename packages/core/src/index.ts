@@ -26,8 +26,8 @@ export { loggerMiddleware, corsMiddleware, bodyParserMiddleware } from './middle
 export { stringOrEmpty, booleanOrFalse, arrayOrEmpty, numberOrZero } from './parser';
 
 // Response helpers
-export type { IApiError }                          from './response';
-export { setSuccessResponse, setErrorResponse }        from './response';
+export type { IApiError, HttpStatus }                              from './response';
+export { HTTP, setApiResponse, setSuccessResponse, setErrorResponse } from './response';
 
 // NOT exported: adapters/, router internals, error-handler, not-found
 // Those are consumed by FonderieApp, never by users directly

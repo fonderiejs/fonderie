@@ -1,4 +1,4 @@
-import { setErrorResponse }    from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { Middleware }     from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }  from '@fonderie-js/store';
@@ -13,21 +13,21 @@ function makeHandler(plans: string | string[], store: IStoreAdapter): Middleware
 
 	return async (ctx, next) => {
 		if (!ctx.user) {
-			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+			return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
 		const workspaceId = ctx.workspace?.id ??
 			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId']
 
 		if (!workspaceId) {
-			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
+			return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
 		const subscription = await getSubscription(workspaceId, store);
 
 		if (!subscription || !allowed.includes(subscription.plan)) {
-			return setErrorResponse(
-				402,
+			return setApiResponse(
+				HTTP.PAYMENT_REQUIRED,
 				'PLAN_UPGRADE_REQUIRED',
 				'Plan upgrade required',
 				{ required: allowed, current: subscription?.plan ?? 'none' },
@@ -35,8 +35,8 @@ function makeHandler(plans: string | string[], store: IStoreAdapter): Middleware
 		}
 
 		if (subscription.status !== 'active' && subscription.status !== 'trialing') {
-			return setErrorResponse(
-				402,
+			return setApiResponse(
+				HTTP.PAYMENT_REQUIRED,
 				'SUBSCRIPTION_INACTIVE',
 				'Subscription is not active',
 				{ status: subscription.status },

@@ -1,4 +1,4 @@
-import { setSuccessResponse, setErrorResponse } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
@@ -10,19 +10,19 @@ export function subscriptionController(store: IStoreAdapter) {
 
 	return {
 		async get(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
 			const params      = ctx.meta['params'] as Record<string, string> | undefined
 			const workspaceId = ctx.workspace?.id ?? params?.['workspaceId']
 
 			if (!workspaceId) {
-				return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required')
+				return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required')
 			}
 
 			const subscription = await subscriptions.get(workspaceId)
-			if (!subscription) return setErrorResponse(404, 'NOT_FOUND', 'No active subscription')
+			if (!subscription) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No active subscription')
 
-			return setSuccessResponse(200, 'SUBSCRIPTION_FETCHED', 'Subscription retrieved successfully.', {
+			return setApiResponse(HTTP.OK, 'SUBSCRIPTION_FETCHED', 'Subscription retrieved successfully.', {
 				subscription: toSubscriptionDTO(subscription),
 			})
 		},

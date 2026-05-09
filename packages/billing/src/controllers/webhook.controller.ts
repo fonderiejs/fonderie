@@ -1,4 +1,4 @@
-import { setErrorResponse } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
@@ -11,7 +11,7 @@ export function webhookController(store: IStoreAdapter, config: IBillingConfig) 
 	return {
 		async handle(ctx: IFonderieContext): Promise<Response> {
 			if (!config.webhookSecret) {
-				return setErrorResponse(500, 'SERVER_ERROR', 'Webhook secret not configured')
+				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Webhook secret not configured')
 			}
 
 			const signature = ctx.request.headers.get('stripe-signature')
@@ -19,7 +19,7 @@ export function webhookController(store: IStoreAdapter, config: IBillingConfig) 
 				?? ''
 
 			if (!signature) {
-				return setErrorResponse(400, 'INVALID_REQUEST', 'Missing webhook signature')
+				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Missing webhook signature')
 			}
 
 			const payload = await ctx.request.text()
@@ -32,7 +32,7 @@ export function webhookController(store: IStoreAdapter, config: IBillingConfig) 
 					secret: config.webhookSecret,
 				})
 			} catch {
-				return setErrorResponse(400, 'INVALID_REQUEST', 'Invalid webhook signature')
+				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Invalid webhook signature')
 			}
 
 			if (event.subscription) {

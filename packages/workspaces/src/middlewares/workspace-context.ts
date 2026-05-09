@@ -1,4 +1,4 @@
-import { setErrorResponse }   from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { Middleware }     from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }  from '@fonderie-js/store';
@@ -25,13 +25,13 @@ function makeHandler(store: IStoreAdapter): Middleware {
 
 		const workspace = await findWorkspaceById(workspaceId, store)
 		if (!workspace) {
-			return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
+			return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
 		}
 
 		if (ctx.user) {
 			const member = await getMember(ctx.user.id, workspaceId, store)
 			if (!member) {
-				return setErrorResponse(403, 'FORBIDDEN', 'Not a member of this workspace')
+				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Not a member of this workspace')
 			}
 		}
 
