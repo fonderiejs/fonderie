@@ -372,10 +372,9 @@ test('refresh: 200 with new tokens when session is valid', async () => {
 	const response = await handler(makeCtx({ body: { refreshToken: VALID_RT } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                        'TOKENS_REFRESHED');
-	assert.equal(body.result.user.email,             'jane@example.com');
-	assert.ok(typeof body.result.tokens.access  === 'string');
-	assert.ok(typeof body.result.tokens.refresh === 'string');
+	assert.equal(body.reason,                   'TOKENS_REFRESHED');
+	assert.ok(typeof body.result.token      === 'string');
+	assert.ok(typeof body.result.expiresIn  === 'number');
 });
 
 // ── forgotPasswordHandler ─────────────────────────────────────────

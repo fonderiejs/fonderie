@@ -1,4 +1,4 @@
-import { setErrorResponse }                     from '@fonderie-js/core';
+import { setErrorResponse }                       from '@fonderie-js/core';
 import type { IFonderieContext }                 from '@fonderie-js/core';
 import type { IStoreAdapter }                    from '@fonderie-js/store';
 
@@ -7,7 +7,7 @@ import { findUserById, deleteSession,
          createSession, sessionExists }          from '../services/session';
 import { verifyToken, issueTokenPair,
          refreshTokenExpiry }                    from '../services/jwt';
-import { toUserDTO }                             from '../dtos/user';
+import jwt                                       from 'jsonwebtoken';
 
 function resolveRefreshToken(ctx: IFonderieContext): string | null {
 	// Mobile: token in request body
@@ -48,14 +48,14 @@ export function refreshHandler(store: IStoreAdapter, config: IAuthConfig) {
 		const { accessToken, refreshToken } = issueTokenPair(user.id, config);
 		await createSession(user.id, refreshToken, refreshTokenExpiry(refreshToken), store);
 
+		const decoded   = jwt.decode(accessToken) as { exp?: number } | null
+		const expiresIn = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 900
+
 		return Response.json(
 			{
 				reason:      'TOKENS_REFRESHED',
 				explanation: 'Tokens refreshed successfully.',
-				result: {
-					tokens: { access: accessToken, refresh: refreshToken },
-					user:   toUserDTO(user),
-				},
+				result: { token: accessToken, expiresIn },
 			},
 			{
 				status: 200,
