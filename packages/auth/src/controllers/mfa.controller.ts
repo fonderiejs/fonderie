@@ -15,23 +15,15 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 	return {
 		setup: async (ctx: IFonderieContext): Promise<Response> => {
-			if (!ctx.user) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
-			}
-
 			const secret = generateTotpSecret();
-			const uri    = generateTotpUri(ctx.user.email, secret, issuer);
+			const uri    = generateTotpUri(ctx.user!.email, secret, issuer);
 
-			await users.saveMfaSecret(ctx.user.id, secret);
+			await users.saveMfaSecret(ctx.user!.id, secret);
 
 			return setApiResponse(HTTP.OK, 'MFA_SETUP', 'Scan the QR code with your authenticator app.', { secret, uri });
 		},
 
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
-			if (!ctx.user) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
-			}
-
 			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const token = body?.['token'];
 
@@ -39,7 +31,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'token is required');
 			}
 
-			const secret = await users.getMfaSecret(ctx.user.id);
+			const secret = await users.getMfaSecret(ctx.user!.id);
 			if (!secret) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
 			}
@@ -48,12 +40,12 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
 			}
 
-			if (!ctx.user.mfaEnabled) {
-				await users.enableMfa(ctx.user.id);
+			if (!ctx.user!.mfaEnabled) {
+				await users.enableMfa(ctx.user!.id);
 			}
 
-			const { accessToken, refreshToken } = issueTokenPair(ctx.user.id, config);
-			await sessions.create(ctx.user.id, refreshToken, refreshTokenExpiry(refreshToken));
+			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config);
+			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 			return Response.json(
 				{
@@ -61,7 +53,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 					explanation: 'MFA enabled successfully.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
-						user:   toUserDTO(ctx.user),
+						user:   toUserDTO(ctx.user!),
 					},
 				},
 				{
@@ -77,10 +69,6 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 		},
 
 		disable: async (ctx: IFonderieContext): Promise<Response> => {
-			if (!ctx.user) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
-			}
-
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const code = body?.['code'];
 
@@ -88,7 +76,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'TOTP code is required');
 			}
 
-			const user = await users.findById(ctx.user.id);
+			const user = await users.findById(ctx.user!.id);
 			if (!user || !user.mfaEnabled) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_ENABLED', 'MFA is not enabled');
 			}
@@ -98,7 +86,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
 			}
 
-			await users.disableMfa(ctx.user.id);
+			await users.disableMfa(ctx.user!.id);
 
 			return setApiResponse(HTTP.OK, 'MFA_DISABLED', 'MFA disabled successfully.');
 		},

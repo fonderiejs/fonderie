@@ -18,9 +18,7 @@ export { defineConfig } from './config';
 export { compose }      from './compose';
 export type { FonderieConfig }  from './config';
 
-// Built-in middleware (user-facing)
-export type { CorsOptions } from './middlewares';
-export { loggerMiddleware, corsMiddleware, bodyParserMiddleware } from './middlewares';
+// Built-in middleware — import from '@fonderie-js/core/middlewares', not the root barrel
 
 // Parser utilities
 export { stringOrEmpty, booleanOrFalse, arrayOrEmpty, numberOrZero } from './parser';

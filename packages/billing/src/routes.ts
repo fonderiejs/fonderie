@@ -1,5 +1,6 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
+import { requireAuth }         from '@fonderie-js/core/middlewares';
 
 import type { IBillingConfig }  from './config';
 import { planController }         from './controllers/plan.controller';
@@ -14,6 +15,8 @@ export function buildBillingRoutes(
 	store:  IStoreAdapter,
 	config: IBillingConfig,
 ): RouteDefinition[] {
+	const auth = requireAuth()
+
 	const plan         = planController(store, config)
 	const subscription = subscriptionController(store)
 	const checkout     = checkoutController(store, config)
@@ -25,25 +28,25 @@ export function buildBillingRoutes(
 		['GET',    '/billing/plans',              plan.list],
 
 		// Plans — admin CRUD
-		['POST',   '/billing/plans',              plan.create],
-		['GET',    '/billing/plans/:planId',      plan.get],
-		['PUT',    '/billing/plans/:planId',      plan.update],
-		['DELETE', '/billing/plans/:planId',      plan.remove],
+		['POST',   '/billing/plans',              auth, plan.create],
+		['GET',    '/billing/plans/:planId',      auth, plan.get],
+		['PUT',    '/billing/plans/:planId',      auth, plan.update],
+		['DELETE', '/billing/plans/:planId',      auth, plan.remove],
 
 		// Subscription — read
-		['GET',    '/workspaces/:workspaceId/billing/subscription', subscription.get],
+		['GET',    '/workspaces/:workspaceId/billing/subscription', auth, subscription.get],
 
 		// Checkout — creates Stripe session
-		['POST',   '/workspaces/:workspaceId/billing/checkout',     checkout.createSession],
+		['POST',   '/workspaces/:workspaceId/billing/checkout',     auth, checkout.createSession],
 
 		// Portal — manage existing subscription
-		['POST',   '/workspaces/:workspaceId/billing/portal',       checkout.createPortal],
+		['POST',   '/workspaces/:workspaceId/billing/portal',       auth, checkout.createPortal],
 
 		// Webhook — no auth, signature verified internally
 		['POST',   '/billing/webhook',            webhook.handle],
 
 		// Usage metering
-		['POST',   '/workspaces/:workspaceId/billing/usage',        usage.record],
-		['GET',    '/workspaces/:workspaceId/billing/usage/:metric', usage.get],
+		['POST',   '/workspaces/:workspaceId/billing/usage',        auth, usage.record],
+		['GET',    '/workspaces/:workspaceId/billing/usage/:metric', auth, usage.get],
 	]
 }

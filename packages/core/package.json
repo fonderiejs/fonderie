@@ -21,7 +21,7 @@
 			"import":  "./dist/types.js",
 			"require": "./dist/types.cjs"
 		},
-		"./middleware": {
+		"./middlewares": {
 			"types":   "./dist/middlewares/index.d.ts",
 			"import":  "./dist/middlewares/index.js",
 			"require": "./dist/middlewares/index.cjs"

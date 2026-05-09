@@ -12,10 +12,6 @@ export function userController(store: IStoreAdapter) {
 
 	return {
 		me: async (ctx: IFonderieContext): Promise<Response> => {
-			if (!ctx.user) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
-			}
-
 			const user = await users.findById(ctx.user.id);
 			if (!user) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
@@ -25,10 +21,6 @@ export function userController(store: IStoreAdapter) {
 		},
 
 		updateMe: async (ctx: IFonderieContext): Promise<Response> => {
-			if (!ctx.user) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
-			}
-
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 
 			const fields: IUserUpdateFields = {};
@@ -58,10 +50,6 @@ export function userController(store: IStoreAdapter) {
 		},
 
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
-			if (!ctx.user) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
-			}
-
 			await users.softDelete(ctx.user.id);
 
 			return Response.json(

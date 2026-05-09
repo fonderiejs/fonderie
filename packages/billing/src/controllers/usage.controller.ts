@@ -9,8 +9,6 @@ export function usageController(store: IStoreAdapter) {
 
 	return {
 		async record(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
-
 			const body     = ctx.meta['body'] as Record<string, unknown> | undefined
 			const metric   = body?.['metric']
 			const quantity = body?.['quantity']
@@ -30,8 +28,6 @@ export function usageController(store: IStoreAdapter) {
 		},
 
 		async get(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
-
 			const params      = ctx.meta['params'] as Record<string, string> | undefined
 			const workspaceId = ctx.workspace?.id ?? params?.['workspaceId']
 			const metric      = params?.['metric']

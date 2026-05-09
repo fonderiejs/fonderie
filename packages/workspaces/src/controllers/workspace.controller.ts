@@ -17,17 +17,13 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
-
-			const list = await workspaces.findByUserId(ctx.user.id)
+			const list = await workspaces.findByUserId(ctx.user!.id)
 			return setApiResponse(HTTP.OK, 'WORKSPACES_FETCHED', 'Workspaces retrieved successfully.', {
 				workspaces: list.map(toWorkspaceDTO),
 			})
 		},
 
 		async create(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
-
 			const body        = ctx.meta['body'] as Record<string, unknown> | undefined
 			const name        = body?.['name']
 			const description = body?.['description']
@@ -99,9 +95,8 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 
 		async archive(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
-			if (!ctx.user)      return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 
-			await workspaces.archive(ctx.workspace.id, ctx.user.id)
+			await workspaces.archive(ctx.workspace.id, ctx.user!.id)
 			return setApiResponse(HTTP.OK, 'WORKSPACE_ARCHIVED', 'Workspace archived successfully.')
 		},
 
