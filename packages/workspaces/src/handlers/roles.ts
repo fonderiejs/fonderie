@@ -10,14 +10,14 @@ import { toRoleDTO } from '../dtos/workspace';
 
 export function createRoleHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const body        = ctx.meta['body'] as Record<string, unknown> | undefined
 		const name        = body?.['name']
 		const description = body?.['description']
 
 		if (typeof name !== 'string' || name.trim().length === 0) {
-			return setErrorResponse('INVALID_PARAMETER', 'name is required', 422)
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'name is required')
 		}
 
 		try {
@@ -28,7 +28,7 @@ export function createRoleHandler(store: IStoreAdapter) {
 			if (typeof description === 'string') opts.description = description
 
 			const role = await createRole(opts, store)
-			return setApiResponse('ROLE_CREATED', 'Role created successfully.', { role: toRoleDTO(role) }, 201)
+			return setApiResponse(201, 'ROLE_CREATED', 'Role created successfully.', { role: toRoleDTO(role) })
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to create role'
 			return setErrorResponse('OPERATION_FAILED', message, 400)
@@ -38,10 +38,10 @@ export function createRoleHandler(store: IStoreAdapter) {
 
 export function listRolesHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const roles = await listWorkspaceRoles(ctx.workspace.id, store)
-		return setApiResponse('ROLES_FETCHED', 'Roles retrieved successfully.', {
+		return setApiResponse(200, 'ROLES_FETCHED', 'Roles retrieved successfully.', {
 			roles: roles.map(toRoleDTO),
 		})
 	}
@@ -49,27 +49,27 @@ export function listRolesHandler(store: IStoreAdapter) {
 
 export function getRoleHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const roleId = params?.['roleId']
-		if (!roleId) return setErrorResponse('INVALID_PARAMETER', 'roleId is required', 422)
+		if (!roleId) return setErrorResponse(422, 'INVALID_PARAMETER', 'roleId is required')
 
 		const role = await getRoleById(roleId, store)
-		if (!role) return setErrorResponse('NOT_FOUND', 'Role not found', 404)
+		if (!role) return setErrorResponse(404, 'NOT_FOUND', 'Role not found')
 
-		return setApiResponse('ROLE_FETCHED', 'Role retrieved successfully.', { role: toRoleDTO(role) })
+		return setApiResponse(200, 'ROLE_FETCHED', 'Role retrieved successfully.', { role: toRoleDTO(role) })
 	}
 }
 
 export function updateRoleHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const body   = ctx.meta['body']   as Record<string, unknown> | undefined
 		const roleId = params?.['roleId']
-		if (!roleId) return setErrorResponse('INVALID_PARAMETER', 'roleId is required', 422)
+		if (!roleId) return setErrorResponse(422, 'INVALID_PARAMETER', 'roleId is required')
 
 		const opts: { name?: string; description?: string | null; active?: boolean } = {}
 		if (typeof body?.['name']        === 'string')  opts.name        = body['name']
@@ -78,37 +78,37 @@ export function updateRoleHandler(store: IStoreAdapter) {
 		if (typeof body?.['active']      === 'boolean') opts.active      = body['active']
 
 		const role = await updateRole(roleId, opts, store)
-		if (!role) return setErrorResponse('NOT_FOUND', 'Role not found or is a system role', 404)
+		if (!role) return setErrorResponse(404, 'NOT_FOUND', 'Role not found or is a system role')
 
-		return setApiResponse('ROLE_UPDATED', 'Role updated successfully.', { role: toRoleDTO(role) })
+		return setApiResponse(200, 'ROLE_UPDATED', 'Role updated successfully.', { role: toRoleDTO(role) })
 	}
 }
 
 export function deleteRoleHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const roleId = params?.['roleId']
-		if (!roleId) return setErrorResponse('INVALID_PARAMETER', 'roleId is required', 422)
+		if (!roleId) return setErrorResponse(422, 'INVALID_PARAMETER', 'roleId is required')
 
 		await deleteRole(roleId, ctx.workspace.id, store)
-		return setApiResponse('ROLE_DELETED', 'Role deleted successfully.')
+		return setApiResponse(200, 'ROLE_DELETED', 'Role deleted successfully.')
 	}
 }
 
 export function setRolePermissionsHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined
 		const body   = ctx.meta['body']   as Record<string, unknown> | undefined
 		const roleId = params?.['roleId']
-		if (!roleId) return setErrorResponse('INVALID_PARAMETER', 'roleId is required', 422)
+		if (!roleId) return setErrorResponse(422, 'INVALID_PARAMETER', 'roleId is required')
 
 		const perms = body?.['permissions']
 		if (!Array.isArray(perms)) {
-			return setErrorResponse('INVALID_PARAMETER', 'permissions array is required', 422)
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'permissions array is required')
 		}
 
 		const normalized = perms.map((p: unknown) => {
@@ -123,6 +123,6 @@ export function setRolePermissionsHandler(store: IStoreAdapter) {
 		}).filter(p => p.permissionKey.length > 0)
 
 		await setRolePermissions(roleId, ctx.workspace.id, normalized, store)
-		return setApiResponse('PERMISSIONS_SET', 'Role permissions updated successfully.')
+		return setApiResponse(200, 'PERMISSIONS_SET', 'Role permissions updated successfully.')
 	}
 }

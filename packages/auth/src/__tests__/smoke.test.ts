@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import assert   from 'node:assert/strict';
 
-import type { IStoreAdapter }                  from '@fonderie-js/store';
-
-import type { IAuthConfig }                    from '../config';
-import type { IUser }                          from '../types';
-import { issueTokenPair, verifyToken }         from '../services/jwt';
-import { generateTotpSecret }                  from '../services/mfa';
-import { hashPassword, verifyPassword }        from '../services/password';
+import type { IStoreAdapter }         from '@fonderie-js/store';
+import type { IAuthConfig }           from '../config';
+import type { IUser }                 from '../types';
+import { issueTokenPair, verifyToken } from '../services/jwt';
+import { generateTotpSecret }         from '../services/mfa';
+import { hashPassword, verifyPassword } from '../services/password';
+import { authController } from '../controllers/auth.controller';
+import { userController } from '../controllers/user.controller';
 
 const config: IAuthConfig = {
 	jwtSecret:       'test-secret-min-32-chars-long-here',
@@ -26,7 +27,7 @@ test('password: hash and verify round-trip', async () => {
 test('password: different passwords produce different hashes', async () => {
 	const a = await hashPassword('password1');
 	const b = await hashPassword('password1');
-	assert.notEqual(a, b);   // bcrypt salts — same input, different hash
+	assert.notEqual(a, b);
 });
 
 // ── jwt ─────────────────────────────────────────────────────────
@@ -121,13 +122,13 @@ const BASE_USER: IUser = {
 const { refreshToken: VALID_RT } = issueTokenPair('user-1', config);
 
 type AuthStoreOpts = {
-	userByEmail?:  IUser | null
-	userById?:     IUser | null
-	insertedId?:   string
+	userByEmail?:   IUser | null
+	userById?:      IUser | null
+	insertedId?:    string
 	sessionExists?: boolean
-	resetRow?:     { user_id: string; expires_at: Date } | null
-	verifyRow?:    { user_id: string; expires_at: Date } | null
-	updateRow?:    { id: string } | null
+	resetRow?:      { user_id: string; expires_at: Date } | null
+	verifyRow?:     { user_id: string; expires_at: Date } | null
+	updateRow?:     { id: string } | null
 }
 
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
@@ -162,10 +163,10 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 }
 
 function makeCtx(opts: {
-	user?:     { id: string; email: string } | null
-	body?:     Record<string, unknown>
+	user?:      { id: string; email: string; [key: string]: unknown } | null
+	body?:      Record<string, unknown>
 	workspace?: { id: string } | null
-	cookie?:   string
+	cookie?:    string
 } = {}): any {
 	return {
 		user:      'user'      in opts ? opts.user      : null,
@@ -176,6 +177,14 @@ function makeCtx(opts: {
 			headers: opts.cookie ? { cookie: opts.cookie } : {},
 		}),
 	}
+}
+
+function makeAuth(storeOpts: AuthStoreOpts = {}) {
+	return authController(makeStore(storeOpts), config)
+}
+
+function makeUser(storeOpts: AuthStoreOpts = {}) {
+	return userController(makeStore(storeOpts))
 }
 
 // ── toUserDTO ─────────────────────────────────────────────────────
@@ -242,34 +251,29 @@ test('requireAuth: calls next when ctx.user is set', async () => {
 	assert.ok(called);
 });
 
-// ── registerHandler ───────────────────────────────────────────────
+// ── AuthController.register ───────────────────────────────────────
 
 test('register: 422 when email or password missing', async () => {
-	const { registerHandler } = await import('../handlers/register');
-	const handler  = registerHandler(makeStore(), config);
-	const response = await handler(makeCtx({ body: { email: 'a@b.com' } }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.register(makeCtx({ body: { email: 'a@b.com' } }));
 	assert.equal(response.status, 422);
 });
 
 test('register: 422 when password is too short', async () => {
-	const { registerHandler } = await import('../handlers/register');
-	const handler  = registerHandler(makeStore(), config);
-	const response = await handler(makeCtx({ body: { email: 'a@b.com', password: 'short' } }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.register(makeCtx({ body: { email: 'a@b.com', password: 'short' } }));
 	assert.equal(response.status, 422);
 });
 
 test('register: 409 when email already registered', async () => {
-	const { registerHandler } = await import('../handlers/register');
-	const handler  = registerHandler(makeStore({ userByEmail: BASE_USER }), config);
-	const response = await handler(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
+	const ctrl     = makeAuth({ userByEmail: BASE_USER });
+	const response = await ctrl.register(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
 	assert.equal(response.status, 409);
 });
 
 test('register: 201 with user DTO, access and refresh tokens', async () => {
-	const { registerHandler } = await import('../handlers/register');
-	const store   = makeStore({ insertedId: 'user-1', userById: BASE_USER });
-	const handler = registerHandler(store, config);
-	const response = await handler(makeCtx({
+	const ctrl     = makeAuth({ insertedId: 'user-1', userById: BASE_USER });
+	const response = await ctrl.register(makeCtx({
 		body: { email: 'jane@example.com', password: 'password123', firstName: 'Jane', lastName: 'Doe' },
 	}));
 	assert.equal(response.status, 201);
@@ -283,165 +287,144 @@ test('register: 201 with user DTO, access and refresh tokens', async () => {
 	assert.ok(response.headers.get('set-cookie')?.includes('access_token='));
 });
 
-// ── loginHandler ──────────────────────────────────────────────────
+// ── AuthController.login ──────────────────────────────────────────
 
 test('login: 422 when body is invalid', async () => {
-	const { loginHandler } = await import('../handlers/login');
-	const handler  = loginHandler(makeStore(), config);
-	const response = await handler(makeCtx({ body: { email: 'a@b.com' } }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.login(makeCtx({ body: { email: 'a@b.com' } }));
 	assert.equal(response.status, 422);
 });
 
 test('login: 401 when user not found', async () => {
-	const { loginHandler } = await import('../handlers/login');
-	const handler  = loginHandler(makeStore({ userByEmail: null }), config);
-	const response = await handler(makeCtx({ body: { email: 'no@one.com', password: 'password123' } }));
+	const ctrl     = makeAuth({ userByEmail: null });
+	const response = await ctrl.login(makeCtx({ body: { email: 'no@one.com', password: 'password123' } }));
 	assert.equal(response.status, 401);
 });
 
 test('login: 401 when password is wrong', async () => {
-	const { loginHandler } = await import('../handlers/login');
-	const user    = { ...BASE_USER, passwordHash: HASHED_PW };
-	const handler = loginHandler(makeStore({ userByEmail: user }), config);
-	const response = await handler(makeCtx({ body: { email: 'jane@example.com', password: 'wrongpass' } }));
+	const ctrl     = makeAuth({ userByEmail: { ...BASE_USER, passwordHash: HASHED_PW } });
+	const response = await ctrl.login(makeCtx({ body: { email: 'jane@example.com', password: 'wrongpass' } }));
 	assert.equal(response.status, 401);
 });
 
 test('login: 403 when account is suspended', async () => {
-	const { loginHandler } = await import('../handlers/login');
-	const user    = { ...BASE_USER, passwordHash: HASHED_PW, suspended: true };
-	const handler = loginHandler(makeStore({ userByEmail: user }), config);
-	const response = await handler(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
+	const ctrl     = makeAuth({ userByEmail: { ...BASE_USER, passwordHash: HASHED_PW, suspended: true } });
+	const response = await ctrl.login(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
 	assert.equal(response.status, 403);
 });
 
 test('login: 200 with user DTO and tokens', async () => {
-	const { loginHandler } = await import('../handlers/login');
-	const user    = { ...BASE_USER, passwordHash: HASHED_PW };
-	const handler = loginHandler(makeStore({ userByEmail: user }), config);
-	const response = await handler(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
+	const ctrl     = makeAuth({ userByEmail: { ...BASE_USER, passwordHash: HASHED_PW } });
+	const response = await ctrl.login(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                        'ACCOUNT_LOGIN');
-	assert.equal(body.result.user.email,             'jane@example.com');
-	assert.equal(body.result.user.profileImageUrl,   'https://cdn.example.com/avatar.jpg');
+	assert.equal(body.reason,                       'ACCOUNT_LOGIN');
+	assert.equal(body.result.user.email,            'jane@example.com');
+	assert.equal(body.result.user.profileImageUrl,  'https://cdn.example.com/avatar.jpg');
 	assert.ok(typeof body.result.tokens.access  === 'string');
 	assert.ok(typeof body.result.tokens.refresh === 'string');
 });
 
-// ── logoutHandler ─────────────────────────────────────────────────
+// ── AuthController.logout ─────────────────────────────────────────
 
 test('logout: 200 with USER_LOGOUT reason', async () => {
-	const { logoutHandler } = await import('../handlers/logout');
-	const handler  = logoutHandler(makeStore());
-	const response = await handler(makeCtx());
+	const ctrl     = makeAuth();
+	const response = await ctrl.logout(makeCtx());
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'USER_LOGOUT');
 });
 
 test('logout: clears access_token and refresh_token cookies', async () => {
-	const { logoutHandler } = await import('../handlers/logout');
-	const handler  = logoutHandler(makeStore());
-	const response = await handler(makeCtx({ body: { refreshToken: VALID_RT } }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.logout(makeCtx({ body: { refreshToken: VALID_RT } }));
 	const cookie   = response.headers.get('set-cookie') ?? '';
 	assert.ok(cookie.includes('access_token=;'));
 	assert.ok(cookie.includes('Max-Age=0'));
 });
 
-// ── refreshHandler ────────────────────────────────────────────────
+// ── AuthController.refresh ────────────────────────────────────────
 
 test('refresh: 401 when no refresh token provided', async () => {
-	const { refreshHandler } = await import('../handlers/refresh');
-	const handler  = refreshHandler(makeStore(), config);
-	const response = await handler(makeCtx());
+	const ctrl     = makeAuth();
+	const response = await ctrl.refresh(makeCtx());
 	assert.equal(response.status, 401);
 });
 
 test('refresh: 401 when session does not exist', async () => {
-	const { refreshHandler } = await import('../handlers/refresh');
-	const handler  = refreshHandler(makeStore({ sessionExists: false }), config);
-	const response = await handler(makeCtx({ body: { refreshToken: VALID_RT } }));
+	const ctrl     = makeAuth({ sessionExists: false });
+	const response = await ctrl.refresh(makeCtx({ body: { refreshToken: VALID_RT } }));
 	assert.equal(response.status, 401);
 });
 
 test('refresh: 200 with new tokens when session is valid', async () => {
-	const { refreshHandler } = await import('../handlers/refresh');
-	const store   = makeStore({ sessionExists: true, userById: BASE_USER });
-	const handler = refreshHandler(store, config);
-	const response = await handler(makeCtx({ body: { refreshToken: VALID_RT } }));
+	const ctrl     = makeAuth({ sessionExists: true, userById: BASE_USER });
+	const response = await ctrl.refresh(makeCtx({ body: { refreshToken: VALID_RT } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                   'TOKENS_REFRESHED');
-	assert.ok(typeof body.result.token      === 'string');
-	assert.ok(typeof body.result.expiresIn  === 'number');
+	assert.equal(body.reason,                 'TOKENS_REFRESHED');
+	assert.ok(typeof body.result.token     === 'string');
+	assert.ok(typeof body.result.expiresIn === 'number');
 });
 
-// ── forgotPasswordHandler ─────────────────────────────────────────
+// ── AuthController.forgotPassword ────────────────────────────────
 
 test('forgotPassword: 422 when email missing', async () => {
-	const { forgotPasswordHandler } = await import('../handlers/forgot-password');
-	const handler  = forgotPasswordHandler(makeStore());
-	const response = await handler(makeCtx({ body: {} }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.forgotPassword(makeCtx({ body: {} }));
 	assert.equal(response.status, 422);
 });
 
 test('forgotPassword: 200 with PASSWORD_RESET_EMAIL_SENT even when email not found', async () => {
-	const { forgotPasswordHandler } = await import('../handlers/forgot-password');
-	const handler  = forgotPasswordHandler(makeStore({ userByEmail: null }));
-	const response = await handler(makeCtx({ body: { email: 'ghost@example.com' } }));
+	const ctrl     = makeAuth({ userByEmail: null });
+	const response = await ctrl.forgotPassword(makeCtx({ body: { email: 'ghost@example.com' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'PASSWORD_RESET_EMAIL_SENT');
 });
 
-// ── resetPasswordHandler ──────────────────────────────────────────
+// ── AuthController.resetPassword ─────────────────────────────────
 
 test('resetPassword: 422 when resetToken or password missing', async () => {
-	const { resetPasswordHandler } = await import('../handlers/reset-password');
-	const handler  = resetPasswordHandler(makeStore());
-	const response = await handler(makeCtx({ body: { resetToken: 'tok' } }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.resetPassword(makeCtx({ body: { resetToken: 'tok' } }));
 	assert.equal(response.status, 422);
 });
 
 test('resetPassword: 400 when token is invalid or expired', async () => {
-	const { resetPasswordHandler } = await import('../handlers/reset-password');
-	const handler  = resetPasswordHandler(makeStore({ resetRow: null }));
-	const response = await handler(makeCtx({ body: { resetToken: 'bad-token', password: 'newpass123' } }));
+	const ctrl     = makeAuth({ resetRow: null });
+	const response = await ctrl.resetPassword(makeCtx({ body: { resetToken: 'bad-token', password: 'newpass123' } }));
 	assert.equal(response.status, 400);
 });
 
 test('resetPassword: 200 with PASSWORD_RESET_SUCCESSFUL on valid token', async () => {
-	const { resetPasswordHandler } = await import('../handlers/reset-password');
-	const store   = makeStore({ resetRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) } });
-	const handler = resetPasswordHandler(store);
-	const response = await handler(makeCtx({ body: { resetToken: 'valid-tok', password: 'newpass123' } }));
+	const ctrl     = makeAuth({ resetRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) } });
+	const response = await ctrl.resetPassword(makeCtx({ body: { resetToken: 'valid-tok', password: 'newpass123' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'PASSWORD_RESET_SUCCESSFUL');
 });
 
-// ── verifyEmailHandler ────────────────────────────────────────────
+// ── AuthController.verifyEmail ────────────────────────────────────
 
 test('verifyEmail: 422 when pin missing', async () => {
-	const { verifyEmailHandler } = await import('../handlers/verify-email');
-	const handler  = verifyEmailHandler(makeStore());
-	const response = await handler(makeCtx({ body: {} }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.verifyEmail(makeCtx({ body: {} }));
 	assert.equal(response.status, 422);
 });
 
 test('verifyEmail: 400 when pin not found', async () => {
-	const { verifyEmailHandler } = await import('../handlers/verify-email');
-	const handler  = verifyEmailHandler(makeStore({ verifyRow: null }));
-	const response = await handler(makeCtx({ body: { pin: '000000' } }));
+	const ctrl     = makeAuth({ verifyRow: null });
+	const response = await ctrl.verifyEmail(makeCtx({ body: { pin: '000000' } }));
 	assert.equal(response.status, 400);
 });
 
 test('verifyEmail: 200 with verified and email on valid pin', async () => {
-	const { verifyEmailHandler } = await import('../handlers/verify-email');
-	const store   = makeStore({ verifyRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) }, userById: BASE_USER });
-	const handler = verifyEmailHandler(store);
-	const response = await handler(makeCtx({ body: { pin: '123456' } }));
+	const ctrl     = makeAuth({
+		verifyRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) },
+		userById:  BASE_USER,
+	});
+	const response = await ctrl.verifyEmail(makeCtx({ body: { pin: '123456' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason,          'EMAIL_VERIFIED');
@@ -449,66 +432,60 @@ test('verifyEmail: 200 with verified and email on valid pin', async () => {
 	assert.equal(body.result.email,    'jane@example.com');
 });
 
-// ── resendVerificationHandler ─────────────────────────────────────
+// ── AuthController.sendVerificationEmail ─────────────────────────
 
 test('resendVerification: 401 when not authenticated', async () => {
-	const { resendVerificationHandler } = await import('../handlers/resend-verification');
-	const handler  = resendVerificationHandler(makeStore());
-	const response = await handler(makeCtx({ user: null }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.sendVerificationEmail(makeCtx({ user: null }));
 	assert.equal(response.status, 401);
 });
 
 test('resendVerification: 400 when email already verified', async () => {
-	const { resendVerificationHandler } = await import('../handlers/resend-verification');
-	const verifiedUser = { ...BASE_USER, emailVerifiedAt: new Date() };
-	const handler  = resendVerificationHandler(makeStore());
-	const response = await handler(makeCtx({ user: verifiedUser }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.sendVerificationEmail(makeCtx({ user: { ...BASE_USER } }));
 	assert.equal(response.status, 400);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'EMAIL_ALREADY_VERIFIED');
 });
 
 test('resendVerification: 200 with token, expiresAt and email', async () => {
-	const { resendVerificationHandler } = await import('../handlers/resend-verification');
-	const unverifiedUser = { ...BASE_USER, emailVerifiedAt: null };
-	const handler  = resendVerificationHandler(makeStore());
-	const response = await handler(makeCtx({ user: unverifiedUser }));
+	const ctrl     = makeAuth();
+	const response = await ctrl.sendVerificationEmail(makeCtx({
+		user: { ...BASE_USER, emailVerifiedAt: null },
+	}));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,               'VERIFICATION_EMAIL_SENT');
-	assert.equal(body.result.stat,          'success');
+	assert.equal(body.reason,            'VERIFICATION_EMAIL_SENT');
+	assert.equal(body.result.stat,       'success');
 	assert.ok(typeof body.result.data.token     === 'string');
 	assert.ok(typeof body.result.data.expiresAt === 'string');
-	assert.equal(body.result.data.email,    'jane@example.com');
+	assert.equal(body.result.data.email, 'jane@example.com');
 });
 
-// ── meHandler ─────────────────────────────────────────────────────
+// ── UserController.me ─────────────────────────────────────────────
 
 test('me: 401 when not authenticated', async () => {
-	const { meHandler } = await import('../handlers/me');
-	const handler  = meHandler(makeStore());
-	const response = await handler(makeCtx({ user: null }));
+	const ctrl     = makeUser();
+	const response = await ctrl.me(makeCtx({ user: null }));
 	assert.equal(response.status, 401);
 });
 
 test('me: 200 with user DTO including profileImageUrl', async () => {
-	const { meHandler } = await import('../handlers/me');
-	const handler  = meHandler(makeStore({ userById: BASE_USER }));
-	const response = await handler(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	const ctrl     = makeUser({ userById: BASE_USER });
+	const response = await ctrl.me(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                        'USER_FETCHED');
+	assert.equal(body.reason,                       'USER_FETCHED');
 	assert.equal(body.result.user.email,           'jane@example.com');
 	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
 	assert.equal(body.result.user.phone,           '+1234567890');
 });
 
-// ── updateMeHandler ───────────────────────────────────────────────
+// ── UserController.updateMe ───────────────────────────────────────
 
 test('updateMe: 422 when no updatable fields provided', async () => {
-	const { updateMeHandler } = await import('../handlers/me');
-	const handler  = updateMeHandler(makeStore());
-	const response = await handler(makeCtx({
+	const ctrl     = makeUser();
+	const response = await ctrl.updateMe(makeCtx({
 		user: { id: 'user-1', email: 'jane@example.com' },
 		body: { unknownField: 'value' },
 	}));
@@ -516,17 +493,15 @@ test('updateMe: 422 when no updatable fields provided', async () => {
 });
 
 test('updateMe: 200 with updated DTO after phoneNumber and avatarUrl', async () => {
-	const { updateMeHandler } = await import('../handlers/me');
-	const updated = { ...BASE_USER, phone: '+9999999999', profileImageUrl: 'https://cdn.example.com/new.jpg' };
-	const store   = makeStore({ updateRow: { id: 'user-1' }, userById: updated });
-	const handler = updateMeHandler(store);
-	const response = await handler(makeCtx({
+	const updated  = { ...BASE_USER, phone: '+9999999999', profileImageUrl: 'https://cdn.example.com/new.jpg' };
+	const ctrl     = makeUser({ updateRow: { id: 'user-1' }, userById: updated });
+	const response = await ctrl.updateMe(makeCtx({
 		user: { id: 'user-1', email: 'jane@example.com' },
 		body: { phoneNumber: '+9999999999', avatarUrl: 'https://cdn.example.com/new.jpg' },
 	}));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                        'ACCOUNT_UPDATED');
+	assert.equal(body.reason,                       'ACCOUNT_UPDATED');
 	assert.equal(body.result.user.phone,           '+9999999999');
 	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/new.jpg');
 });

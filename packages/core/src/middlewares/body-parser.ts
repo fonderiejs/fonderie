@@ -21,7 +21,7 @@ export function bodyParserMiddleware(): Middleware {
 			}
 			// multipart/form-data left to the handler — no dep-free way to parse it
 		} catch {
-			return setErrorResponse('INVALID_REQUEST', 'Invalid request body', 400)
+			return setErrorResponse(400, 'INVALID_REQUEST', 'Invalid request body')
 		}
 
 		return next()

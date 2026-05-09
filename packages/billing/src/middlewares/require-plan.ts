@@ -15,32 +15,32 @@ export function requirePlan(
 
 	return async (ctx, next) => {
 		if (!ctx.user) {
-			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
+			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
 		const workspaceId = ctx.workspace?.id ??
 			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId']
 
 		if (!workspaceId) {
-			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
+			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
 		const subscription = await getSubscription(workspaceId, store);
 
 		if (!subscription || !allowed.includes(subscription.plan)) {
 			return setErrorResponse(
+				402,
 				'PLAN_UPGRADE_REQUIRED',
 				'Plan upgrade required',
-				402,
 				{ required: allowed, current: subscription?.plan ?? 'none' },
 			);
 		}
 
 		if (subscription.status !== 'active' && subscription.status !== 'trialing') {
 			return setErrorResponse(
+				402,
 				'SUBSCRIPTION_INACTIVE',
 				'Subscription is not active',
-				402,
 				{ status: subscription.status },
 			);
 		}

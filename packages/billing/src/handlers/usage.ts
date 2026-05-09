@@ -7,7 +7,7 @@ import { recordUsage, getUsage } from '../services/usage';
 export function recordUsageHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
+			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
 		const body     = ctx.meta['body'] as Record<string, unknown> | undefined
@@ -18,25 +18,25 @@ export function recordUsageHandler(store: IStoreAdapter) {
 			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId']
 
 		if (!workspaceId) {
-			return setErrorResponse('WORKSPACE_REQUIRED', 'Workspace context required', 400);
+			return setErrorResponse(400, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
 		if (typeof metric !== 'string') {
-			return setErrorResponse('INVALID_PARAMETER', 'metric is required', 422);
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'metric is required');
 		}
 
 		const qty = typeof quantity === 'number' ? quantity : 1;
 
 		await recordUsage({ workspaceId, metric, quantity: qty }, store);
 
-		return setApiResponse('USAGE_RECORDED', 'Usage recorded successfully.');
+		return setApiResponse(200, 'USAGE_RECORDED', 'Usage recorded successfully.');
 	}
 }
 
 export function getUsageHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!ctx.user) {
-			return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401);
+			return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
 		const params      = ctx.meta['params'] as Record<string, string> | undefined
@@ -44,7 +44,7 @@ export function getUsageHandler(store: IStoreAdapter) {
 		const metric      = params?.['metric']
 
 		if (!workspaceId || !metric) {
-			return setErrorResponse('INVALID_PARAMETER', 'workspaceId and metric are required', 422);
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'workspaceId and metric are required');
 		}
 
 		const since = new Date();
@@ -52,6 +52,6 @@ export function getUsageHandler(store: IStoreAdapter) {
 		since.setHours(0, 0, 0, 0);
 
 		const total = await getUsage(workspaceId, metric, since, store);
-		return setApiResponse('USAGE_FETCHED', 'Usage retrieved successfully.', { metric, total, since });
+		return setApiResponse(200, 'USAGE_FETCHED', 'Usage retrieved successfully.', { metric, total, since });
 	}
 }

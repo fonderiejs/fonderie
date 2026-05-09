@@ -6,12 +6,12 @@ export function defaultErrorHandler(err: unknown): Response {
 	if (err instanceof Error) {
 		console.error('[fonderie]', err.message, err.stack)
 		return setErrorResponse(
+			500,
 			'SERVER_ERROR',
 			dev ? err.message : 'Internal server error',
-			500,
 		)
 	}
 
 	console.error('[fonderie] unknown error', err)
-	return setErrorResponse('SERVER_ERROR', 'Internal server error', 500)
+	return setErrorResponse(500, 'SERVER_ERROR', 'Internal server error')
 }

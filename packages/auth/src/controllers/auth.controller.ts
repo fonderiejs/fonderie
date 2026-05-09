@@ -1,0 +1,339 @@
+import { randomInt, randomBytes }                       from 'node:crypto';
+
+import { setApiResponse, setErrorResponse }             from '@fonderie-js/core';
+import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
+import type { IStoreAdapter }                           from '@fonderie-js/store';
+import jwt                                              from 'jsonwebtoken';
+
+import type { IAuthConfig }                             from '../config';
+import { issueTokenPair, verifyToken, refreshTokenExpiry } from '../services/jwt';
+import { hashPassword, verifyPassword }                 from '../services/password';
+import { toUserDTO }                                    from '../dtos/user';
+import { UserModel }              from '../models/user.model';
+import { SessionModel }           from '../models/session.model';
+import { EmailVerificationModel } from '../models/email-verification.model';
+import { PasswordResetModel }     from '../models/password-reset.model';
+
+function extractRefreshToken(ctx: IFonderieContext): string | null {
+	const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+	if (typeof body?.['refreshToken'] === 'string') return body['refreshToken'] as string;
+	const cookie = ctx.request.headers.get('cookie') ?? '';
+	const match  = cookie.match(/(?:^|;\s*)refresh_token=([^;]+)/);
+	return match?.[1] ?? null;
+}
+
+export function authController(store: IStoreAdapter, config: IAuthConfig) {
+	const users         = new UserModel(store);
+	const sessions      = new SessionModel(store);
+	const emailVerif    = new EmailVerificationModel(store);
+	const passwordReset = new PasswordResetModel(store);
+
+	return {
+		register: async (ctx: IFonderieContext): Promise<Response> => {
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const { email, password, firstName = null, lastName = null } = body ?? {};
+
+			if (typeof email !== 'string' || typeof password !== 'string') {
+				return setErrorResponse(422, 'INVALID_PARAMETER', 'email and password are required');
+			}
+			if (password.length < 8) {
+				return setErrorResponse(422, 'INVALID_PARAMETER', 'password must be at least 8 characters');
+			}
+
+			const existing = await users.findByEmail(email);
+			if (existing) {
+				return setErrorResponse(409, 'USER_ALREADY_EXISTS', 'Email already registered');
+			}
+
+			const passwordHash = await hashPassword(password);
+			const row = await users.create(
+				email,
+				passwordHash,
+				firstName as string | null,
+				lastName  as string | null,
+			);
+			if (!row) {
+				return setErrorResponse(500, 'SERVER_ERROR', 'Registration failed');
+			}
+
+			const pin       = randomInt(100000, 1000000).toString();
+			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
+			await emailVerif.create(row.id, pin, expiresAt);
+
+			ctx.meta['message'] = {
+				type:      'email-verification',
+				recipient: { email, phone: null, deviceToken: null },
+				data:      { pin, firstName: firstName ?? '' },
+			} satisfies ICourierMessage;
+
+			const user = await users.findById(row.id);
+			if (!user) {
+				return setErrorResponse(500, 'SERVER_ERROR', 'Registration failed');
+			}
+
+			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+			return Response.json(
+				{
+					reason:      'USER_REGISTERED',
+					explanation: 'User registered successfully. Check your email for a verification code.',
+					result: {
+						tokens: { access: accessToken, refresh: refreshToken },
+						user:   toUserDTO(user),
+					},
+				},
+				{
+					status: 201,
+					headers: {
+						'Set-Cookie': [
+							`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+							`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+						].join(', '),
+					},
+				},
+			);
+		},
+
+		login: async (ctx: IFonderieContext): Promise<Response> => {
+			const body = ctx.meta['body'];
+
+			if (
+				typeof body !== 'object' || body === null ||
+				typeof (body as Record<string, unknown>)['email']    !== 'string' ||
+				typeof (body as Record<string, unknown>)['password'] !== 'string'
+			) {
+				return setErrorResponse(422, 'INVALID_PARAMETER', 'email and password are required');
+			}
+
+			const { email, password } = body as { email: string; password: string };
+
+			const user = await users.findByEmail(email);
+			if (!user || !user.passwordHash) {
+				return setErrorResponse(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+			}
+
+			const valid = await verifyPassword(password, user.passwordHash);
+			if (!valid) {
+				return setErrorResponse(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+			}
+
+			if (user.suspended) {
+				return setErrorResponse(403, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+			}
+			if (user.mfaEnabled) {
+				return setErrorResponse(202, 'MFA_REQUIRED', 'Multi-factor authentication required');
+			}
+
+			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+			return Response.json(
+				{
+					reason:      'ACCOUNT_LOGIN',
+					explanation: 'Login successful.',
+					result: {
+						tokens: { access: accessToken, refresh: refreshToken },
+						user:   toUserDTO(user),
+					},
+				},
+				{
+					status: 200,
+					headers: {
+						'Set-Cookie': [
+							`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+							`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+						].join(', '),
+					},
+				},
+			);
+		},
+
+		logout: async (ctx: IFonderieContext): Promise<Response> => {
+			const token = extractRefreshToken(ctx);
+			if (token) {
+				await sessions.delete(token).catch(() => undefined);
+			}
+
+			return Response.json(
+				{ reason: 'USER_LOGOUT', explanation: 'Logged out successfully.' },
+				{
+					status: 200,
+					headers: {
+						'Set-Cookie': [
+							'access_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0',
+							'refresh_token=; HttpOnly; SameSite=Strict; Path=/auth/refresh; Max-Age=0',
+						].join(', '),
+					},
+				},
+			);
+		},
+
+		refresh: async (ctx: IFonderieContext): Promise<Response> => {
+			const token = extractRefreshToken(ctx);
+			if (!token) {
+				return setErrorResponse(401, 'INVALID_PARAMETER', 'No refresh token provided');
+			}
+
+			const payload = verifyToken(token, config);
+			if (!payload || payload.type !== 'refresh') {
+				return setErrorResponse(401, 'TOKEN_REFRESH_FAILED', 'Invalid refresh token');
+			}
+
+			const valid = await sessions.exists(token);
+			if (!valid) {
+				return setErrorResponse(401, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
+			}
+
+			const user = await users.findById(payload.sub);
+			if (!user || user.suspended || user.deletedAt) {
+				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+			}
+
+			await sessions.delete(token);
+			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+			const decoded   = jwt.decode(accessToken) as { exp?: number } | null;
+			const expiresIn = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 900;
+
+			return Response.json(
+				{
+					reason:      'TOKENS_REFRESHED',
+					explanation: 'Tokens refreshed successfully.',
+					result: { token: accessToken, expiresIn },
+				},
+				{
+					status: 200,
+					headers: {
+						'Set-Cookie': [
+							`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+							`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+						].join(', '),
+					},
+				},
+			);
+		},
+
+		forgotPassword: async (ctx: IFonderieContext): Promise<Response> => {
+			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const email = body?.['email'];
+
+			if (typeof email !== 'string') {
+				return setErrorResponse(422, 'INVALID_PARAMETER', 'email is required');
+			}
+
+			const user = await users.findByEmail(email);
+			if (!user) {
+				return setApiResponse(200, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
+			}
+
+			const token     = randomBytes(32).toString('hex');
+			const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+			await passwordReset.create(user.id, token, expiresAt);
+
+			ctx.meta['message'] = {
+				type:      'password-reset',
+				recipient: { email, phone: null, deviceToken: null },
+				data:      { token },
+			} satisfies ICourierMessage;
+
+			return setApiResponse(200, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
+		},
+
+		resetPassword: async (ctx: IFonderieContext): Promise<Response> => {
+			const body     = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const token    = body?.['resetToken'] ?? body?.['token'];
+			const password = body?.['password'];
+
+			if (typeof token !== 'string' || typeof password !== 'string') {
+				return setErrorResponse(422, 'INVALID_PARAMETER', 'resetToken and password are required');
+			}
+			if (password.length < 8) {
+				return setErrorResponse(422, 'INVALID_PARAMETER', 'password must be at least 8 characters');
+			}
+
+			const row = await passwordReset.find(token);
+			if (!row || new Date() > row.expiresAt) {
+				return setErrorResponse(400, 'PASSWORD_RESET_FAILED', 'Invalid or expired token');
+			}
+
+			const passwordHash = await hashPassword(password);
+			await store.transaction(async tx => {
+				await Promise.all([
+					tx.query(`UPDATE fonderie_users SET password_hash = $1 WHERE id = $2`, [passwordHash, row.userId]),
+					tx.query(`DELETE FROM fonderie_password_resets WHERE token = $1`, [token]),
+				]);
+			});
+
+			return setApiResponse(200, 'PASSWORD_RESET_SUCCESSFUL', 'Password reset successfully.');
+		},
+
+		verifyEmail: async (ctx: IFonderieContext): Promise<Response> => {
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const pin  = body?.['pin'];
+
+			if (typeof pin !== 'string') {
+				return setErrorResponse(422, 'INVALID_PARAMETER', 'pin is required');
+			}
+
+			const row = await emailVerif.find(pin);
+			if (!row) {
+				return setErrorResponse(400, 'EMAIL_VERIFICATION_FAILED', 'Invalid or expired pin');
+			}
+			if (new Date() > row.expiresAt) {
+				return setErrorResponse(400, 'EMAIL_VERIFICATION_FAILED', 'Pin expired');
+			}
+
+			await store.transaction(async tx => {
+				await Promise.all([
+					tx.query(`UPDATE fonderie_users SET email_verified_at = now(), updated_at = now() WHERE id = $1`, [row.userId]),
+					tx.query(`DELETE FROM fonderie_email_verifications WHERE token = $1`, [pin]),
+				]);
+			});
+
+			const user = await users.findById(row.userId);
+			if (!user) {
+				return setErrorResponse(404, 'NOT_FOUND', 'User not found');
+			}
+
+			return setApiResponse(200, 'EMAIL_VERIFIED', 'Email verified successfully.', {
+				verified: true,
+				email:    user.email,
+			});
+		},
+
+		sendVerificationEmail: async (ctx: IFonderieContext): Promise<Response> => {
+			if (!ctx.user) {
+				return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized');
+			}
+			if (ctx.user.emailVerifiedAt) {
+				return setErrorResponse(
+					400,
+					'EMAIL_ALREADY_VERIFIED',
+					'Your email address has already been verified. No further action is needed.',
+				);
+			}
+
+			const pin       = randomInt(100000, 1000000).toString();
+			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
+			await emailVerif.replace(ctx.user.id, pin, expiresAt);
+
+			ctx.meta['message'] = {
+				type:      'email-verification',
+				recipient: { email: ctx.user.email, phone: null, deviceToken: null },
+				data:      { pin, firstName: ctx.user.firstName ?? '' },
+			} satisfies ICourierMessage;
+
+			return setApiResponse(200, 'VERIFICATION_EMAIL_SENT', 'Verification email sent', {
+				stat:    'success',
+				message: 'Verification email sent',
+				data: {
+					token:     pin,
+					expiresAt: expiresAt.toISOString(),
+					email:     ctx.user.email,
+				},
+			});
+		},
+	};
+}

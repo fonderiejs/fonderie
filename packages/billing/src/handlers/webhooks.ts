@@ -9,7 +9,7 @@ import { upsertSubscription }    from '../services/subscriptions';
 export function webhookHandler(store: IStoreAdapter, config: IBillingConfig) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
 		if (!config.webhookSecret) {
-			return setErrorResponse('SERVER_ERROR', 'Webhook secret not configured', 500);
+			return setErrorResponse(500, 'SERVER_ERROR', 'Webhook secret not configured');
 		}
 
 		const signature = ctx.request.headers.get('stripe-signature')
@@ -17,7 +17,7 @@ export function webhookHandler(store: IStoreAdapter, config: IBillingConfig) {
 			?? '';
 
 		if (!signature) {
-			return setErrorResponse('INVALID_REQUEST', 'Missing webhook signature', 400);
+			return setErrorResponse(400, 'INVALID_REQUEST', 'Missing webhook signature');
 		}
 
 		const payload = await ctx.request.text();
@@ -30,7 +30,7 @@ export function webhookHandler(store: IStoreAdapter, config: IBillingConfig) {
 				secret: config.webhookSecret,
 			});
 		} catch {
-			return setErrorResponse('INVALID_REQUEST', 'Invalid webhook signature', 400);
+			return setErrorResponse(400, 'INVALID_REQUEST', 'Invalid webhook signature');
 		}
 
 		if (event.subscription) {

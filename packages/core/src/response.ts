@@ -11,10 +11,10 @@ export interface IApiError {
 }
 
 export function setApiResponse<T>(
+	status:      number,
 	reason:      string,
 	explanation: string,
 	result?:     T,
-	status = 200,
 ): Response {
 	const body: Record<string, unknown> = { reason, explanation };
 	if (result !== undefined) body['result'] = result;
@@ -22,10 +22,10 @@ export function setApiResponse<T>(
 }
 
 export function setErrorResponse(
+	status:      number,
 	reason:      string,
 	explanation: string,
-	status = 400,
-	details?: unknown,
+	details?:    unknown,
 ): Response {
 	const body: Record<string, unknown> = { reason, explanation };
 	if (details !== undefined) body['details'] = details;

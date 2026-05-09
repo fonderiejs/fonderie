@@ -11,10 +11,10 @@ import { toInvitationDTO } from '../dtos/workspace';
 
 export function listInvitationsHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const invitations = await listInvitations(ctx.workspace.id, store)
-		return setApiResponse('INVITATIONS_FETCHED', 'Invitations retrieved successfully.', {
+		return setApiResponse(200, 'INVITATIONS_FETCHED', 'Invitations retrieved successfully.', {
 			invitations: invitations.map(toInvitationDTO),
 		})
 	}
@@ -22,14 +22,14 @@ export function listInvitationsHandler(store: IStoreAdapter) {
 
 export function inviteMemberHandler(store: IStoreAdapter, ttl: string) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const body   = ctx.meta['body'] as Record<string, unknown> | undefined
 		const email  = body?.['email']
 		const roleId = body?.['roleId'] as string | undefined
 
 		if (typeof email !== 'string') {
-			return setErrorResponse('INVALID_PARAMETER', 'email is required', 422)
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'email is required')
 		}
 
 		let resolvedRoleId = roleId
@@ -43,7 +43,7 @@ export function inviteMemberHandler(store: IStoreAdapter, ttl: string) {
 		}
 
 		if (!resolvedRoleId) {
-			return setErrorResponse('SERVER_ERROR', 'Default role not found', 500)
+			return setErrorResponse(500, 'SERVER_ERROR', 'Default role not found')
 		}
 
 		const invitation = await createInvitation(
@@ -57,7 +57,7 @@ export function inviteMemberHandler(store: IStoreAdapter, ttl: string) {
 			data:      { token: invitation.token, pin: invitation.pin },
 		} satisfies ICourierMessage
 
-		return setApiResponse('INVITATION_SENT', 'Invitation sent successfully.', {
+		return setApiResponse(200, 'INVITATION_SENT', 'Invitation sent successfully.', {
 			invitationId: invitation.id,
 		}, 201)
 	}
@@ -65,32 +65,32 @@ export function inviteMemberHandler(store: IStoreAdapter, ttl: string) {
 
 export function cancelInvitationHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.workspace) return setErrorResponse('NOT_FOUND', 'Workspace not found', 404)
+		if (!ctx.workspace) return setErrorResponse(404, 'NOT_FOUND', 'Workspace not found')
 
 		const params       = ctx.meta['params'] as Record<string, string> | undefined
 		const invitationId = params?.['inviteId']
 
-		if (!invitationId) return setErrorResponse('INVALID_PARAMETER', 'inviteId is required', 422)
+		if (!invitationId) return setErrorResponse(422, 'INVALID_PARAMETER', 'inviteId is required')
 
 		await cancelInvitation(invitationId, ctx.workspace.id, store)
-		return setApiResponse('INVITATION_CANCELLED', 'Invitation cancelled successfully.')
+		return setApiResponse(200, 'INVITATION_CANCELLED', 'Invitation cancelled successfully.')
 	}
 }
 
 export function acceptInvitationHandler(store: IStoreAdapter) {
 	return async (ctx: IFonderieContext): Promise<Response> => {
-		if (!ctx.user) return setErrorResponse('UNAUTHORIZED', 'Unauthorized', 401)
+		if (!ctx.user) return setErrorResponse(401, 'UNAUTHORIZED', 'Unauthorized')
 
 		const body = ctx.meta['body'] as Record<string, unknown> | undefined
 		const pin  = body?.['pin']
 
 		if (typeof pin !== 'string') {
-			return setErrorResponse('INVALID_PARAMETER', 'pin is required', 422)
+			return setErrorResponse(422, 'INVALID_PARAMETER', 'pin is required')
 		}
 
 		try {
 			const { workspaceId } = await acceptInvitationByPin({ pin, userId: ctx.user.id }, store)
-			return setApiResponse('INVITATION_ACCEPTED', 'Invitation accepted successfully.', { workspaceId })
+			return setApiResponse(200, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', { workspaceId })
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Invalid invitation'
 			return setErrorResponse('INVITATION_FAILED', message, 400)
