@@ -19,8 +19,8 @@ export class AuthModule implements IFonderieModule {
 
 		// 2. Register auth routes
 		const routes = buildAuthRoutes(this.store, this.config);
-		for (const [method, path, handler] of routes) {
-			app.addRoute(method, path, handler);
+		for (const [method, path, ...handlers] of routes) {
+			app.addRoute(method, path, ...handlers);
 		}
 	}
 }
