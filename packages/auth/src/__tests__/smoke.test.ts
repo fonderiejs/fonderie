@@ -424,25 +424,25 @@ test('resetPassword: 200 with PASSWORD_RESET_SUCCESSFUL on valid token', async (
 
 // ── verifyEmailHandler ────────────────────────────────────────────
 
-test('verifyEmail: 422 when token missing', async () => {
+test('verifyEmail: 422 when pin missing', async () => {
 	const { verifyEmailHandler } = await import('../handlers/verify-email');
 	const handler  = verifyEmailHandler(makeStore(), config);
 	const response = await handler(makeCtx({ body: {} }));
 	assert.equal(response.status, 422);
 });
 
-test('verifyEmail: 400 when token not found', async () => {
+test('verifyEmail: 400 when pin not found', async () => {
 	const { verifyEmailHandler } = await import('../handlers/verify-email');
 	const handler  = verifyEmailHandler(makeStore({ verifyRow: null }), config);
-	const response = await handler(makeCtx({ body: { token: 'bad-token' } }));
+	const response = await handler(makeCtx({ body: { pin: '000000' } }));
 	assert.equal(response.status, 400);
 });
 
-test('verifyEmail: 200 with EMAIL_VERIFIED and user+tokens on valid token', async () => {
+test('verifyEmail: 200 with EMAIL_VERIFIED and user+tokens on valid pin', async () => {
 	const { verifyEmailHandler } = await import('../handlers/verify-email');
 	const store   = makeStore({ verifyRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) }, userById: BASE_USER });
 	const handler = verifyEmailHandler(store, config);
-	const response = await handler(makeCtx({ body: { token: 'valid-tok' } }));
+	const response = await handler(makeCtx({ body: { pin: '123456' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason,                        'EMAIL_VERIFIED');

@@ -1,4 +1,4 @@
-import { randomBytes }          from 'node:crypto';
+import { randomInt }            from 'node:crypto';
 
 import { setErrorResponse }         from '@fonderie-js/core';
 import type { IFonderieContext }     from '@fonderie-js/core';
@@ -46,18 +46,18 @@ export function registerHandler(store: IStoreAdapter, config: IAuthConfig) {
 			return setErrorResponse('SERVER_ERROR', 'Registration failed', 500);
 		}
 
-		const verificationToken = randomBytes(32).toString('hex')
+		const verificationPin = randomInt(100000, 1000000).toString()
 
 		await store.query(
 			`INSERT INTO fonderie_email_verifications (token, user_id, expires_at)
 			VALUES ($1, $2, $3)`,
-			[verificationToken, row.id, new Date(Date.now() + 1000 * 60 * 60 * 24)],
+			[verificationPin, row.id, new Date(Date.now() + 1000 * 60 * 60 * 24)],
 		);
 
 		ctx.meta['message'] = {
 			type:      'email-verification',
 			recipient: { email, phone: null, deviceToken: null },
-			data:      { token: verificationToken, firstName: firstName ?? '' },
+			data:      { pin: verificationPin, firstName: firstName ?? '' },
 		} satisfies ICourierMessage
 
 		const user = await findUserById(row.id, store);
