@@ -62,7 +62,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					recipient: { email: null, phone: phone.trim(), deviceToken: null },
 				} satisfies ICourierMessage;
 
-				return setApiResponse(HTTP.ACCEPTED, 'OTP_SENT', 'A verification code has been sent to your phone.');
+				return setApiResponse(HTTP.ACCEPTED, 'USER_PHONE_REGISTERED', 'Account created. A verification code has been sent to your phone.');
 			}
 
 			// ── Email registration branch ─────────────────────────────
@@ -111,8 +111,8 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			return Response.json(
 				{
-					reason:      'USER_REGISTERED',
-					explanation: 'User registered successfully. Check your email for a verification code.',
+					reason:      'USER_EMAIL_REGISTERED',
+					explanation: 'Account created. Check your email for a verification code.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
 						user:   toUserDTO(user),

@@ -279,7 +279,7 @@ test('register: 201 with user DTO, access and refresh tokens', async () => {
 	}));
 	assert.equal(response.status, 201);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                'USER_REGISTERED');
+	assert.equal(body.reason,                'USER_EMAIL_REGISTERED');
 	assert.ok(body.result?.user);
 	assert.equal(body.result.user.email,     'jane@example.com');
 	assert.equal(body.result.user.firstName, 'Jane');
