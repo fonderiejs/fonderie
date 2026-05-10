@@ -120,7 +120,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 				const otp       = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-				await phoneVerif.upsert(phone.trim(), otp, expiresAt);
+				await phoneVerif.upsert(id, phone.trim(), otp, expiresAt);
 
 				ctx.meta['message'] = {
 					type:      'phone-otp',
@@ -222,7 +222,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 				const otp       = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-				await phoneVerif.upsert(phone.trim(), otp, expiresAt);
+				await phoneVerif.upsert(user.id, phone.trim(), otp, expiresAt);
 
 				ctx.meta['message'] = {
 					type:      'phone-otp',
@@ -361,7 +361,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin is required');
 			}
 
-			const row = await emailVerif.find(pin);
+			const row = await emailVerif.findByUser(ctx.user!.id, pin);
 			if (!row) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'EMAIL_VERIFICATION_FAILED', 'Invalid or expired pin');
 			}
@@ -372,19 +372,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			await store.transaction(async tx => {
 				await Promise.all([
-					tx.query(`UPDATE fonderie_users SET email_verified_at = now(), updated_at = now() WHERE id = $1`, [row.userId]),
-					tx.query(`DELETE FROM fonderie_email_verifications WHERE token = $1`, [pin]),
+					tx.query(`UPDATE fonderie_users SET email_verified_at = now(), updated_at = now() WHERE id = $1`, [ctx.user!.id]),
+					tx.query(`DELETE FROM fonderie_email_verifications WHERE user_id = $1 AND token = $2`, [ctx.user!.id, pin]),
 				]);
 			});
 
-			const user = await users.findById(row.userId);
-			if (!user) {
-				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
-			}
-
 			return setApiResponse(HTTP.OK, 'EMAIL_VERIFIED', 'Email verified successfully.', {
 				verified: true,
-				email:    user.email,
+				email:    ctx.user!.email,
 			});
 		},
 
