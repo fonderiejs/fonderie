@@ -73,7 +73,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				await emailVerif.create(row.id, pin, expiresAt);
 
 				ctx.meta['message'] = {
-					type:      'email-verification',
+					type:      'email-registration',
 					data:      { pin, firstName: firstName ?? '' },
 					recipient: { email, phone: null, deviceToken: null },
 				} satisfies ICourierMessage;
