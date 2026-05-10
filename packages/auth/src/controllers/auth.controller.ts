@@ -4,6 +4,7 @@ import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
 import type { IStoreAdapter }                           from '@fonderie-js/store';
 import type { IAuthConfig }                             from '../config';
+import { DEFAULT_VERIFICATION_COOLDOWN }                from '../config';
 import { issueTokenPair, verifyToken, refreshTokenExpiry } from '../services/jwt';
 import { hashPassword, verifyPassword }                 from '../services/password';
 import { toUserDTO }                                    from '../dtos/user';
@@ -462,10 +463,22 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 		},
 
 		sendVerification: async (ctx: IFonderieContext): Promise<Response> => {
+			const cooldown = config.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
+
 			if (ctx.user!.loginMethod === 'phone') {
 				const phone = ctx.user!.phone;
 				if (!phone) {
 					return setApiResponse(HTTP.BAD_REQUEST, 'NO_PHONE_ON_ACCOUNT', 'No phone number associated with this account');
+				}
+
+				const lastSentAt = await phoneVerif.findLastSentAt(ctx.user!.id);
+				if (lastSentAt) {
+					const remaining = cooldown - (Date.now() - lastSentAt.getTime());
+					if (remaining > 0) {
+						return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new code.', {
+							retryAfter: Math.ceil(remaining / 1000),
+						});
+					}
 				}
 
 				const otp       = randomInt(100000, 1000000).toString();
@@ -490,6 +503,16 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					verified: true,
 					email:    ctx.user!.email,
 				});
+			}
+
+			const lastSentAt = await emailVerif.findLastSentAt(ctx.user!.id);
+			if (lastSentAt) {
+				const remaining = cooldown - (Date.now() - lastSentAt.getTime());
+				if (remaining > 0) {
+					return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new code.', {
+						retryAfter: Math.ceil(remaining / 1000),
+					});
+				}
 			}
 
 			const pin       = randomInt(100000, 1000000).toString();
