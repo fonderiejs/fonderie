@@ -2,6 +2,7 @@ import {
 	FonderieApp,
 	defineConfig,
 } from '@fonderie-js/core'
+import type { IFonderieContext } from '@fonderie-js/core'
 import { withBody, requireAuth } from '@fonderie-js/core/middlewares'
 import {
 	PGAdapter,
@@ -155,7 +156,7 @@ const app = new FonderieApp(config)
 
 // ── Routes ────────────────────────────────────────────────────────
 
-app.addRoute('GET', '/health', async (ctx) => {
+app.addRoute('GET', '/health', async (ctx: IFonderieContext) => {
 	const maintenance = getConfig(ctx, 'maintenance.mode', false);
 	if (maintenance) {
 		return Response.json({ error: 'Service temporarily unavailable' }, { status: 503 });
@@ -164,13 +165,12 @@ app.addRoute('GET', '/health', async (ctx) => {
 	return Response.json({ ok: true, ts: new Date().toISOString(), version: '0.0.1' });
 });
 
-
 // Workspace-scoped + permission-gated
 app.addRoute('GET', '/workspaces/:workspaceId/projects',
 	requireAuth,
 	withWorkspace(store),   // resolves ctx.workspace, validates membership
 	requirePermission(OPERATIONS.READ, 'projects'),
-	async (ctx) => Response.json({
+	async (ctx: IFonderieContext) => Response.json({
 		workspaceId: ctx.workspace?.id,
 		projects:    [],
 	})
@@ -180,11 +180,11 @@ app.addRoute('POST', '/workspaces/:workspaceId/projects',
 	requireAuth,
 	withWorkspace(store),
 	requirePermission(OPERATIONS.CREATE, 'projects'),
-	async (ctx) => Response.json({ created: true }, { status: 201 })
+	async (ctx: IFonderieContext) => Response.json({ created: true }, { status: 201 })
 );
 
 // Config inspection (dev only)
-app.addRoute('GET', '/config', requireAuth, async (ctx) => {
+app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 	const env = process.env['NODE_ENV'] ?? 'development';
 	if (env === 'production') {
 		return Response.json({ error: 'Not available in production' }, { status: 403 });
