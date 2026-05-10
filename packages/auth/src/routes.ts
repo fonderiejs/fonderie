@@ -2,7 +2,7 @@ import type { IStoreAdapter }  from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
 import type { IAuthConfig }    from './config';
 
-import { requireAuth, requireVerifiedEmail } from '@fonderie-js/core/middlewares';
+import { requireAuth, requireVerified } from '@fonderie-js/core/middlewares';
 
 import { mfaController }   from './controllers/mfa.controller';
 import { authController }  from './controllers/auth.controller';
@@ -42,9 +42,9 @@ export function buildAuthRoutes(
 		['POST', '/auth/email/send-verification',   requireAuth, auth.sendVerificationEmail],
 
 		// User Profile (Protected + Verified)
-		['GET',    '/users',        requireAuth, requireVerifiedEmail, user.me],
-		['PUT',    '/users/update', requireAuth, requireVerifiedEmail, user.updateMe],
-		['DELETE', '/users',        requireAuth, requireVerifiedEmail, user.deleteMe],
+		['GET',    '/users',        requireAuth, requireVerified, user.me],
+		['PUT',    '/users/update', requireAuth, requireVerified, user.updateMe],
+		['DELETE', '/users',        requireAuth, requireVerified, user.deleteMe],
 
 		// MFA (Protected)
 		['POST', '/auth/mfa/setup',   requireAuth, mfa.setup],

@@ -164,7 +164,7 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 }
 
 function makeCtx(opts: {
-	user?:      { id: string; email: string | null; [key: string]: unknown } | null
+	user?:      { id: string; email: string | null; phoneVerified?: boolean; [key: string]: unknown } | null
 	body?:      Record<string, unknown>
 	workspace?: { id: string } | null
 	cookie?:    string
