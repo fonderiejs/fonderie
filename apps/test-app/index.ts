@@ -82,6 +82,7 @@ const workspaces  = new WorkspacesModule(store);
 const courier     = new CourierModule(
 	{
 		channels: {
+			'email-registration':   ['email'],
 			'email-verification':   ['email'],
 			'password-reset':       ['email'],
 			'workspace-invitation': ['email'],

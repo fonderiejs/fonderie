@@ -1,0 +1,7 @@
+Hi {{firstName}},
+
+Welcome! Your email verification code is: {{pin}}
+
+Enter this code to activate your account. It expires in 24 hours.
+
+If you did not create this account, you can safely ignore this email.
