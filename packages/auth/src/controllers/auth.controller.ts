@@ -230,7 +230,28 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					recipient: { email: null, phone: phone.trim(), deviceToken: null },
 				} satisfies ICourierMessage;
 
-				return setApiResponse(HTTP.ACCEPTED, 'USER_PHONE_OTP_SENT', 'A verification code has been sent to your phone.');
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+				return Response.json(
+					{
+						reason:      'USER_PHONE_OTP_SENT',
+						explanation: 'A verification code has been sent to your phone.',
+						result: {
+							tokens: { access: accessToken, refresh: refreshToken },
+							user:   toUserDTO(user),
+						},
+					},
+					{
+						status: 202,
+						headers: {
+							'Set-Cookie': [
+								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+							].join(', '),
+						},
+					},
+				);
 			}
 
 			return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
