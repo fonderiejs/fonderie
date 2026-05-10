@@ -628,16 +628,15 @@ test('verify: 200 VERIFIED with new tokens and isPhoneVerified: true on valid ph
 
 // ── AuthController.sendVerification (unified) ────────────────────
 
-test('sendVerification: 200 VERIFICATION_SENT with pin for email user', async () => {
+test('sendVerification: 200 VERIFICATION_SENT with email for email user', async () => {
 	const ctrl       = makeAuth();
 	const unverified = { ...BASE_USER, emailVerifiedAt: null };
 	const response   = await ctrl.sendVerification(makeCtx({ user: unverified }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                       'VERIFICATION_SENT');
-	assert.ok(typeof body.result.data.token     === 'string');
-	assert.ok(typeof body.result.data.expiresAt === 'string');
-	assert.equal(body.result.data.email,            'jane@example.com');
+	assert.equal(body.reason,        'VERIFICATION_SENT');
+	assert.equal(body.result.email,  'jane@example.com');
+	assert.equal(body.result.token,  undefined);
 });
 
 test('sendVerification: 200 EMAIL_VERIFIED (idempotent) when email already verified', async () => {
