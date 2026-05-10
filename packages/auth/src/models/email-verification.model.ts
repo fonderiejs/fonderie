@@ -5,9 +5,10 @@ export class EmailVerificationModel {
 
 	async create(userId: string, pin: string, expiresAt: Date): Promise<void> {
 		await this.store.query(
-			`INSERT INTO fonderie_email_verifications (token, user_id, expires_at)
-			VALUES ($1, $2, $3)`,
-			[pin, userId, expiresAt],
+			`INSERT INTO fonderie_email_verifications (user_id, token, expires_at)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (user_id) DO UPDATE SET token = $2, expires_at = $3`,
+			[userId, pin, expiresAt],
 		);
 	}
 

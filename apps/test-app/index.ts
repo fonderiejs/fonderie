@@ -174,12 +174,6 @@ app.addRoute('POST', '/workspaces/:workspaceId/projects',
 	async (ctx) => Response.json({ created: true }, { status: 201 })
 );
 
-// Public param route
-app.addRoute('GET', '/users/:id', async (ctx) => {
-	const params = ctx.meta['params'] as { id: string }
-	return Response.json({ userId: params.id });
-});
-
 // Config inspection (dev only)
 app.addRoute('GET', '/config', requireAuth, async (ctx) => {
 	const env = process.env['NODE_ENV'] ?? 'development';

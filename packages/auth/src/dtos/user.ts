@@ -32,7 +32,7 @@ const DEFAULT_PREFERENCES: IUserPreferences = {
 	timeFormat:    'hh:mm A',
 }
 
-export function toUserDTO(user: IUser): IUserDTO {
+export function toUserDTO(user: IUser, phoneVerified = false): IUserDTO {
 	const prefs = user.preferences ?? {} as IUserPreferences
 	return {
 		id:              stringOrEmpty(user.id),
@@ -51,7 +51,7 @@ export function toUserDTO(user: IUser): IUserDTO {
 			timezone: user.timezone || prefs.timezone  || 'UTC',
 		},
 		isEmailVerified: user.emailVerifiedAt !== null,
-		isPhoneVerified: user.phoneVerifiedAt !== null,
+		isPhoneVerified: phoneVerified,
 		mfaEnabled:      booleanOrFalse(user.mfaEnabled),
 		suspended:       booleanOrFalse(user.suspended),
 		whitelist:       booleanOrFalse(user.whitelist),

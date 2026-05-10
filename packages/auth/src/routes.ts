@@ -9,7 +9,6 @@ import { mfaController }   from './controllers/mfa.controller';
 import { authController }  from './controllers/auth.controller';
 import { userController }  from './controllers/user.controller';
 import { oauthController } from './controllers/oauth.controller';
-import { phoneController } from './controllers/phone.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]]
 
@@ -21,7 +20,6 @@ export function buildAuthRoutes(
 	const auth  = authController(store, config);
 	const oauth = oauthController(store, config);
 	const mfa   = mfaController(store, config, config.google?.clientId ?? 'Fonderie');
-	const phone = phoneController(store, config);
 
 	const routes: RouteDefinition[] = [
 		// Registration & Login (Public)
@@ -35,12 +33,12 @@ export function buildAuthRoutes(
 		['POST', '/auth/email/forgot',              auth.forgotPassword],
 		['POST', '/auth/email/reset',               auth.resetPassword],
 
-		// Email — Verification (Protected)
-		['POST', '/auth/email/verify',              requireAuth, auth.verifyEmail],
+		// Verification (Protected — email or phone, determined by loginMethod)
+		['POST', '/auth/verify',             requireAuth, auth.verify],
+		['GET',  '/auth/send-verification',  requireAuth, auth.sendVerification],
 
 		// Account Management (Protected)
-		['POST', '/auth/logout',                    requireAuth, auth.logout],
-		['POST', '/auth/email/send-verification',   requireAuth, auth.sendVerificationEmail],
+		['POST', '/auth/logout',              requireAuth, auth.logout],
 
 		// User Profile (Protected + Verified)
 		['GET',    '/users',        requireAuth, requireVerified, user.me],
@@ -52,13 +50,6 @@ export function buildAuthRoutes(
 		['POST', '/auth/mfa/verify',  requireAuth, requireEmailLogin, mfa.verify],
 		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, mfa.disable],
 	];
-
-	if (config.providers.includes('phone')) {
-		routes.push(
-			['POST', '/auth/phone/send-verification', requireAuth, phone.sendOtp],
-			['POST', '/auth/phone/verify',            requireAuth, phone.verify],
-		);
-	}
 
 	if (config.providers.includes('google')) {
 		routes.push(

@@ -17,7 +17,7 @@ export function userController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
 			}
 
-			return setApiResponse(HTTP.OK, 'USER_FETCHED', 'User successfully fetched.', { user: toUserDTO(user) });
+			return setApiResponse(HTTP.OK, 'USER_ACCOUNT_FETCHED', 'User account fetched successful.', { user: toUserDTO(user, ctx.user!.phoneVerified) });
 		},
 
 		updateMe: async (ctx: IFonderieContext): Promise<Response> => {
@@ -45,7 +45,7 @@ export function userController(store: IStoreAdapter) {
 
 			const updated = await users.findById(ctx.user?.id!);
 			return setApiResponse(HTTP.OK, 'ACCOUNT_UPDATED', 'Account successfully updated.', {
-				user: toUserDTO(updated as IUser),
+				user: toUserDTO(updated as IUser, ctx.user!.phoneVerified),
 			});
 		},
 

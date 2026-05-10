@@ -220,8 +220,6 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
 				}
 
-				await users.resetPhoneVerification(user.id);
-
 				const otp       = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(user.id, phone.trim(), otp, expiresAt);
@@ -241,7 +239,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 						explanation: 'A verification code has been sent to your phone.',
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
-							user:   toUserDTO({ ...user, phoneVerifiedAt: null }),
+							user:   toUserDTO(user, false),
 						},
 					},
 					{
@@ -379,21 +377,75 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			return setApiResponse(HTTP.OK, 'PASSWORD_RESET_SUCCESSFUL', 'Password reset successfully.');
 		},
 
-		verifyEmail: async (ctx: IFonderieContext): Promise<Response> => {
-			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const pin  = body?.['pin'];
-
-			if (typeof pin !== 'string') {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin is required');
+		verify: async (ctx: IFonderieContext): Promise<Response> => {
+			// ── Email early-exit: no pin needed if already verified ──
+			if (ctx.user!.loginMethod !== 'phone' && ctx.user!.emailVerifiedAt) {
+				return setApiResponse(HTTP.OK, 'VERIFIED', 'Email verified successfully.', {
+					verified: true,
+					email:    ctx.user!.email,
+				});
 			}
 
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const raw  = body?.['pin'];
+
+			if (typeof raw !== 'string' || !/^\d{6}$/.test(raw.trim())) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin must be a 6-digit code');
+			}
+
+			const pin = raw.trim();
+
+			// ── Phone branch ─────────────────────────────────────────
+			if (ctx.user!.loginMethod === 'phone') {
+				const record = await phoneVerif.findByUser(ctx.user!.id, pin);
+				if (!record) {
+					return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Invalid or expired pin');
+				}
+				if (new Date() > record.expiresAt) {
+					await phoneVerif.deleteByUser(ctx.user!.id);
+					return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Verification code expired');
+				}
+				await phoneVerif.deleteByUser(ctx.user!.id);
+
+				const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, { loginMethod: 'phone', phoneVerified: true });
+				await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+				const verifiedUser = await users.findById(ctx.user!.id);
+				if (!verifiedUser) {
+					return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
+				}
+				if (verifiedUser.suspended) {
+					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+				}
+
+				return Response.json(
+					{
+						reason:      'VERIFIED',
+						explanation: 'Phone verified successfully.',
+						result: {
+							tokens: { access: accessToken, refresh: refreshToken },
+							user:   toUserDTO(verifiedUser, true),
+						},
+					},
+					{
+						status: 200,
+						headers: {
+							'Set-Cookie': [
+								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+							].join(', '),
+						},
+					},
+				);
+			}
+
+			// ── Email branch ─────────────────────────────────────────
 			const row = await emailVerif.findByUser(ctx.user!.id, pin);
 			if (!row) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'EMAIL_VERIFICATION_FAILED', 'Invalid or expired pin');
+				return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Invalid or expired pin');
 			}
-
 			if (new Date() > row.expiresAt) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'EMAIL_VERIFICATION_FAILED', 'Pin expired');
+				return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Pin expired');
 			}
 
 			await store.transaction(async tx => {
@@ -403,23 +455,41 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				]);
 			});
 
-			return setApiResponse(HTTP.OK, 'EMAIL_VERIFIED', 'Email verified successfully.', {
+			return setApiResponse(HTTP.OK, 'VERIFIED', 'Email verified successfully.', {
 				verified: true,
 				email:    ctx.user!.email,
 			});
 		},
 
-		sendVerificationEmail: async (ctx: IFonderieContext): Promise<Response> => {
+		sendVerification: async (ctx: IFonderieContext): Promise<Response> => {
+			if (ctx.user!.loginMethod === 'phone') {
+				const phone = ctx.user!.phone;
+				if (!phone) {
+					return setApiResponse(HTTP.BAD_REQUEST, 'NO_PHONE_ON_ACCOUNT', 'No phone number associated with this account');
+				}
+
+				const otp       = randomInt(100000, 1000000).toString();
+				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+				await phoneVerif.upsert(ctx.user!.id, phone, otp, expiresAt);
+
+				ctx.meta['message'] = {
+					type:      'phone-otp',
+					data:      { otp },
+					recipient: { email: null, phone, deviceToken: null },
+				} satisfies ICourierMessage;
+
+				return setApiResponse(HTTP.OK, 'VERIFICATION_SENT', 'A verification code has been sent to your phone.');
+			}
+
 			if (!ctx.user!.email) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'NO_EMAIL_ON_ACCOUNT', 'No email address associated with this account');
 			}
 
 			if (ctx.user!.emailVerifiedAt) {
-				return setApiResponse(
-					HTTP.BAD_REQUEST,
-					'EMAIL_ALREADY_VERIFIED',
-					'Your email address has already been verified. No further action is needed.',
-				);
+				return setApiResponse(HTTP.OK, 'EMAIL_VERIFIED', 'Email already verified.', {
+					verified: true,
+					email:    ctx.user!.email,
+				});
 			}
 
 			const pin       = randomInt(100000, 1000000).toString();
@@ -432,9 +502,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				data:      { pin },
 			} satisfies ICourierMessage;
 
-			return setApiResponse(HTTP.OK, 'VERIFICATION_EMAIL_SENT', 'Verification email sent', {
-				stat:    'success',
-				message: 'Verification email sent',
+			return setApiResponse(HTTP.OK, 'VERIFICATION_SENT', 'Verification email sent.', {
 				data: {
 					token:     pin,
 					expiresAt: expiresAt.toISOString(),

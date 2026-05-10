@@ -31,7 +31,6 @@ const USER_COLUMNS = `
 	mfa_enabled        AS "mfaEnabled",
 	mfa_secret         AS "mfaSecret",
 	email_verified_at  AS "emailVerifiedAt",
-	phone_verified_at  AS "phoneVerifiedAt",
 	deleted_at         AS "deletedAt",
 	created_at         AS "createdAt",
 	updated_at         AS "updatedAt"
@@ -80,20 +79,6 @@ export class UserModel {
 			[phone, firstName, lastName],
 		);
 		return row!;
-	}
-
-	async markPhoneVerified(id: string): Promise<void> {
-		await this.store.query(
-			`UPDATE fonderie_users SET phone_verified_at = now(), updated_at = now() WHERE id = $1`,
-			[id],
-		);
-	}
-
-	async resetPhoneVerification(id: string): Promise<void> {
-		await this.store.query(
-			`UPDATE fonderie_users SET phone_verified_at = NULL, updated_at = now() WHERE id = $1`,
-			[id],
-		);
 	}
 
 	async create(
