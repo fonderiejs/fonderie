@@ -2,7 +2,8 @@ import type { IStoreAdapter }  from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
 import type { IAuthConfig }    from './config';
 
-import { requireAuth, requireVerified } from '@fonderie-js/core/middlewares';
+import { requireAuth, requireVerified }  from '@fonderie-js/core/middlewares';
+import { requireEmailLogin }             from './middlewares/require-email-login';
 
 import { mfaController }   from './controllers/mfa.controller';
 import { authController }  from './controllers/auth.controller';
@@ -46,10 +47,10 @@ export function buildAuthRoutes(
 		['PUT',    '/users/update', requireAuth, requireVerified, user.updateMe],
 		['DELETE', '/users',        requireAuth, requireVerified, user.deleteMe],
 
-		// MFA (Protected)
-		['POST', '/auth/mfa/setup',   requireAuth, mfa.setup],
-		['POST', '/auth/mfa/verify',  requireAuth, mfa.verify],
-		['POST', '/auth/mfa/disable', requireAuth, mfa.disable],
+		// MFA (email sessions only — OTP is the phone auth factor)
+		['POST', '/auth/mfa/setup',   requireAuth, requireEmailLogin, mfa.setup],
+		['POST', '/auth/mfa/verify',  requireAuth, requireEmailLogin, mfa.verify],
+		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, mfa.disable],
 	];
 
 	if (config.providers.includes('phone')) {
