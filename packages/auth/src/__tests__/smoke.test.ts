@@ -433,12 +433,12 @@ test('login: 202 with tokens and isPhoneVerified: false on phone login', async (
 	assert.equal(body.result.user.isPhoneVerified, false);
 });
 
-test('login: 200 MFA_REQUIRED when phone account has MFA enabled', async () => {
+test('login: 202 with tokens even when phone account has MFA enabled (OTP is sufficient factor)', async () => {
 	const ctrl     = makeAuth({ userByPhone: { ...PHONE_USER, mfaEnabled: true } });
 	const response = await ctrl.login(makeCtx({ body: { phone: '+15141234567' } }));
-	assert.equal(response.status, 200);
+	assert.equal(response.status, 202);
 	const body = await response.json() as any;
-	assert.equal(body.reason, 'MFA_REQUIRED');
+	assert.equal(body.reason, 'USER_PHONE_OTP_SENT');
 });
 
 test('login: email branch takes priority when both email+password and phone are present', async () => {
