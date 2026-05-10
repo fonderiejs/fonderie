@@ -27,5 +27,5 @@ export const AUTH_CONFIG_KEYS: Record<keyof IAuthRuntimeConfig, string> = {
 
 export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	providers: ('email' | 'phone' | 'google' | 'github')[];
-	resolve?:  (ctx: unknown) => Partial<IAuthRuntimeConfig>;
+	resolve?:  (ctx: { meta: Record<string, unknown> }) => Partial<IAuthRuntimeConfig>;
 }
