@@ -161,7 +161,7 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 			if (sql.includes('fonderie_sessions') && sql.includes('SELECT id'))
 				return (opts.sessionExists ? [{ id: 'sess-1' }] : []) as unknown as T[]
 
-			if (sql.includes('fonderie_password_resets') && sql.includes('SELECT user_id'))
+			if (sql.includes('fonderie_password_resets') && sql.includes('WHERE pin'))
 				return (opts.resetRow != null ? [opts.resetRow] : []) as unknown as T[]
 
 			if (sql.includes('fonderie_email_verifications') && sql.includes('AND token'))
@@ -536,21 +536,27 @@ test('forgotPassword: 200 with PASSWORD_RESET_EMAIL_SENT even when email not fou
 
 // ── AuthController.resetPassword ─────────────────────────────────
 
-test('resetPassword: 422 when resetToken or password missing', async () => {
+test('resetPassword: 422 when pin or password missing', async () => {
 	const ctrl     = makeAuth();
-	const response = await ctrl.resetPassword(makeCtx({ body: { resetToken: 'tok' } }));
+	const response = await ctrl.resetPassword(makeCtx({ body: { pin: '123456' } }));
 	assert.equal(response.status, 422);
 });
 
-test('resetPassword: 400 when token is invalid or expired', async () => {
+test('resetPassword: 422 when pin is not a 6-digit code', async () => {
+	const ctrl     = makeAuth();
+	const response = await ctrl.resetPassword(makeCtx({ body: { pin: 'abcdef', password: 'newpass123' } }));
+	assert.equal(response.status, 422);
+});
+
+test('resetPassword: 400 when pin is invalid or expired', async () => {
 	const ctrl     = makeAuth({ resetRow: null });
-	const response = await ctrl.resetPassword(makeCtx({ body: { resetToken: 'bad-token', password: 'newpass123' } }));
+	const response = await ctrl.resetPassword(makeCtx({ body: { pin: '000000', password: 'newpass123' } }));
 	assert.equal(response.status, 400);
 });
 
-test('resetPassword: 200 with PASSWORD_RESET_SUCCESSFUL on valid token', async () => {
+test('resetPassword: 200 with PASSWORD_RESET_SUCCESSFUL on valid pin', async () => {
 	const ctrl     = makeAuth({ resetRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) } });
-	const response = await ctrl.resetPassword(makeCtx({ body: { resetToken: 'valid-tok', password: 'newpass123' } }));
+	const response = await ctrl.resetPassword(makeCtx({ body: { pin: '123456', password: 'newpass123' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'PASSWORD_RESET_SUCCESSFUL');
