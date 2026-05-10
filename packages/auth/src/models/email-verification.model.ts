@@ -27,6 +27,15 @@ export class EmailVerificationModel {
 		);
 	}
 
+	async findByUser(userId: string, pin: string): Promise<{ expiresAt: Date } | null> {
+		const [row] = await this.store.query<{ expires_at: Date }>(
+			`SELECT expires_at FROM fonderie_email_verifications WHERE user_id = $1 AND token = $2`,
+			[userId, pin],
+		);
+		if (!row) return null;
+		return { expiresAt: new Date(row.expires_at) };
+	}
+
 	async replace(userId: string, pin: string, expiresAt: Date): Promise<void> {
 		await this.store.transaction(async tx => {
 			await tx.query(

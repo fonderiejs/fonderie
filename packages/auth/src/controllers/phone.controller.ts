@@ -33,7 +33,7 @@ export function phoneController(store: IStoreAdapter, config: IAuthConfig) {
 			const otp       = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-			await phoneVerif.upsert(phone.trim(), otp, expiresAt);
+			await phoneVerif.upsert(ctx.user!.id, phone.trim(), otp, expiresAt);
 
 			ctx.meta['message'] = {
 				type:      'phone-otp',
@@ -45,46 +45,35 @@ export function phoneController(store: IStoreAdapter, config: IAuthConfig) {
 		},
 
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
-			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const phone = body?.['phone'];
-			const otp   = body?.['otp'];
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const pin  = body?.['pin'];
 
-			if (!isValidPhone(phone)) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'A valid phone number is required');
-			}
-			if (typeof otp !== 'string' || !/^\d{6}$/.test(otp)) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'otp must be a 6-digit code');
+			if (typeof pin !== 'string' || !/^\d{6}$/.test(pin)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin must be a 6-digit code');
 			}
 
-			const record = await phoneVerif.find(phone.trim());
+			const record = await phoneVerif.findByUser(ctx.user!.id, pin);
 			if (!record) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'PHONE_VERIFICATION_FAILED', 'No pending verification for this number');
+				return setApiResponse(HTTP.BAD_REQUEST, 'PHONE_VERIFICATION_FAILED', 'Invalid or expired pin');
 			}
 			if (new Date() > record.expiresAt) {
-				await phoneVerif.delete(phone.trim());
+				await phoneVerif.deleteByUser(ctx.user!.id);
 				return setApiResponse(HTTP.BAD_REQUEST, 'PHONE_VERIFICATION_FAILED', 'Verification code expired');
 			}
-			if (record.otp !== otp) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'PHONE_VERIFICATION_FAILED', 'Invalid verification code');
+
+			await phoneVerif.deleteByUser(ctx.user!.id);
+			await users.markPhoneVerified(ctx.user!.id);
+
+			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config);
+			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+			const verifiedUser = await users.findById(ctx.user!.id);
+			if (!verifiedUser) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
 			}
-
-			await phoneVerif.delete(phone.trim());
-
-			const user = await users.findByPhone(phone.trim());
-			if (!user) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'PHONE_VERIFICATION_FAILED', 'No account found for this number');
-			}
-
-			if (user.suspended) {
+			if (verifiedUser.suspended) {
 				return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
 			}
-
-			await users.markPhoneVerified(user.id);
-
-			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
-			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
-
-			const verifiedUser = await users.findById(user.id);
 
 			return Response.json(
 				{
@@ -92,7 +81,7 @@ export function phoneController(store: IStoreAdapter, config: IAuthConfig) {
 					explanation: 'Phone verified successfully.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
-						user:   toUserDTO(verifiedUser!),
+						user:   toUserDTO(verifiedUser),
 					},
 				},
 				{

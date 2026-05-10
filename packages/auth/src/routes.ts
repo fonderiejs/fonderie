@@ -34,8 +34,8 @@ export function buildAuthRoutes(
 		['POST', '/auth/email/forgot',              auth.forgotPassword],
 		['POST', '/auth/email/reset',               auth.resetPassword],
 
-		// Email — Verification (Public)
-		['POST', '/auth/email/verify',              auth.verifyEmail],
+		// Email — Verification (Protected)
+		['POST', '/auth/email/verify',              requireAuth, auth.verifyEmail],
 
 		// Account Management (Protected)
 		['POST', '/auth/logout',                    requireAuth, auth.logout],
@@ -54,8 +54,8 @@ export function buildAuthRoutes(
 
 	if (config.providers.includes('phone')) {
 		routes.push(
-			['POST', '/auth/phone/send-verification', phone.sendOtp],
-			['POST', '/auth/phone/verify',            phone.verify],
+			['POST', '/auth/phone/send-verification', requireAuth, phone.sendOtp],
+			['POST', '/auth/phone/verify',            requireAuth, phone.verify],
 		);
 	}
 

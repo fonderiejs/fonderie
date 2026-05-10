@@ -128,7 +128,7 @@ type AuthStoreOpts = {
 	insertedId?:    string
 	sessionExists?: boolean
 	resetRow?:      { user_id: string; expires_at: Date } | null
-	verifyRow?:     { user_id: string; expires_at: Date } | null
+	verifyRow?:     { expires_at: Date } | null
 	updateRow?:     { id: string } | null
 }
 
@@ -150,7 +150,7 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 			if (sql.includes('fonderie_password_resets') && sql.includes('SELECT user_id'))
 				return (opts.resetRow != null ? [opts.resetRow] : []) as unknown as T[]
 
-			if (sql.includes('fonderie_email_verifications') && sql.includes('SELECT user_id'))
+			if (sql.includes('fonderie_email_verifications') && sql.includes('WHERE user_id'))
 				return (opts.verifyRow != null ? [opts.verifyRow] : []) as unknown as T[]
 
 			if (sql.includes('UPDATE fonderie_users') && sql.includes('RETURNING id'))
@@ -416,16 +416,15 @@ test('verifyEmail: 422 when pin missing', async () => {
 
 test('verifyEmail: 400 when pin not found', async () => {
 	const ctrl     = makeAuth({ verifyRow: null });
-	const response = await ctrl.verifyEmail(makeCtx({ body: { pin: '000000' } }));
+	const response = await ctrl.verifyEmail(makeCtx({ user: { ...BASE_USER }, body: { pin: '000000' } }));
 	assert.equal(response.status, 400);
 });
 
 test('verifyEmail: 200 with verified and email on valid pin', async () => {
 	const ctrl     = makeAuth({
-		verifyRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) },
-		userById:  BASE_USER,
+		verifyRow: { expires_at: new Date(Date.now() + 60_000) },
 	});
-	const response = await ctrl.verifyEmail(makeCtx({ body: { pin: '123456' } }));
+	const response = await ctrl.verifyEmail(makeCtx({ user: { ...BASE_USER }, body: { pin: '123456' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason,          'EMAIL_VERIFIED');
