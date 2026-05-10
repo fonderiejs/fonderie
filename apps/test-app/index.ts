@@ -199,8 +199,8 @@ app.addRoute('GET', '/config', requireAuth, async (ctx) => {
 //   POST   /auth/refresh
 //   POST   /auth/email/verify
 //   POST   /auth/email/send-verification
-//   POST   /auth/email/forgot-password
-//   POST   /auth/email/reset-password
+//   POST   /auth/email/forgot
+//   POST   /auth/email/reset
 //   POST   /auth/phone/send-verification
 //   POST   /auth/phone/verify
 //   POST   /auth/mfa/setup
@@ -252,7 +252,7 @@ app.addRoute('GET', '/config', requireAuth, async (ctx) => {
 
 await app.boot()
 
-app.listen(3000, {
+app.listen(4000, {
 	name: 'Fonderie',
 	version: '0.0.1',
 	env: 'development'
