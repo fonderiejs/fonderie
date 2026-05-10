@@ -410,6 +410,10 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 		},
 
 		sendVerificationEmail: async (ctx: IFonderieContext): Promise<Response> => {
+			if (!ctx.user!.email) {
+				return setApiResponse(HTTP.BAD_REQUEST, 'NO_EMAIL_ON_ACCOUNT', 'No email address associated with this account');
+			}
+
 			if (ctx.user!.emailVerifiedAt) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
