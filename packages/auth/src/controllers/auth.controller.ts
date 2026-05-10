@@ -45,6 +45,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			// ── Phone registration branch ─────────────────────────────
 			if (isValidPhone(phone)) {
+				const existing = await users.findByPhone(phone.trim());
+				if (existing) {
+					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'An account with this phone number already exists');
+				}
+
 				const { id } = await users.findOrCreateByPhone(
 					phone.trim(),
 					(firstName as string | null) ?? null,
