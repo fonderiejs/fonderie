@@ -45,16 +45,15 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			// ── Phone registration branch ─────────────────────────────
 			if (isValidPhone(phone)) {
-				const otp       = String(100000 + Math.floor(Math.random() * 900000));
-				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-
-				await phoneVerif.upsert(
+				const { id } = await users.findOrCreateByPhone(
 					phone.trim(),
-					otp,
-					expiresAt,
 					(firstName as string | null) ?? null,
 					(lastName  as string | null) ?? null,
 				);
+
+				const otp       = String(100000 + Math.floor(Math.random() * 900000));
+				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+				await phoneVerif.upsert(phone.trim(), otp, expiresAt);
 
 				ctx.meta['message'] = {
 					type:      'phone-otp',
@@ -62,7 +61,33 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					recipient: { email: null, phone: phone.trim(), deviceToken: null },
 				} satisfies ICourierMessage;
 
-				return setApiResponse(HTTP.ACCEPTED, 'USER_PHONE_REGISTERED', 'Account created. A verification code has been sent to your phone.');
+				const user = await users.findById(id);
+				if (!user) {
+					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
+				}
+
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+				return Response.json(
+					{
+						reason:      'USER_PHONE_REGISTERED',
+						explanation: 'Account created. A verification code has been sent to your phone.',
+						result: {
+							tokens: { access: accessToken, refresh: refreshToken },
+							user:   toUserDTO(user),
+						},
+					},
+					{
+						status: 202,
+						headers: {
+							'Set-Cookie': [
+								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+							].join(', '),
+						},
+					},
+				);
 			}
 
 			// ── Email registration branch ─────────────────────────────

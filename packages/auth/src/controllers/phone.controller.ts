@@ -69,19 +69,22 @@ export function phoneController(store: IStoreAdapter, config: IAuthConfig) {
 			}
 
 			await phoneVerif.delete(phone.trim());
-			const { id } = await users.upsertByPhone(phone.trim(), record.firstName, record.lastName);
 
-			const user = await users.findById(id);
+			const user = await users.findByPhone(phone.trim());
 			if (!user) {
-				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Authentication failed');
+				return setApiResponse(HTTP.BAD_REQUEST, 'PHONE_VERIFICATION_FAILED', 'No account found for this number');
 			}
 
 			if (user.suspended) {
 				return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
 			}
 
+			await users.markPhoneVerified(user.id);
+
 			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
 			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+			const verifiedUser = await users.findById(user.id);
 
 			return Response.json(
 				{
@@ -89,7 +92,7 @@ export function phoneController(store: IStoreAdapter, config: IAuthConfig) {
 					explanation: 'Phone verified successfully.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
-						user:   toUserDTO(user),
+						user:   toUserDTO(verifiedUser!),
 					},
 				},
 				{
