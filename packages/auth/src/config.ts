@@ -1,7 +1,7 @@
 export interface IAuthConfig {
 	jwtSecret:        string;
 	sessionDuration?: string ;                         // default '7d'
-	providers:        ('email' | 'google' | 'github')[];
+	providers:        ('email' | 'phone' | 'google' | 'github')[];
 	mfa?:             boolean;
 	google?: {
 		clientId:     string;

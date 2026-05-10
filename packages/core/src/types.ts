@@ -6,12 +6,14 @@ export interface ITenant {
 }
 
 export interface IAuthUser {
-	id:              string;
-	email:           string;
-	suspended:       boolean;
-	mfaEnabled:      boolean;
-	deletedAt:       Date | null;
-	emailVerifiedAt: Date | null;
+	id:               string;
+	email:            string | null;
+	phone:            string | null;
+	suspended:        boolean;
+	mfaEnabled:       boolean;
+	deletedAt:        Date | null;
+	emailVerifiedAt:  Date | null;
+	phoneVerifiedAt:  Date | null;
 }
 
 export interface IWorkspace {

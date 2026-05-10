@@ -47,13 +47,18 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config);
 			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
 
+			const fullUser = await users.findById(ctx.user!.id);
+			if (!fullUser) {
+				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'User not found after MFA enable');
+			}
+
 			return Response.json(
 				{
 					reason:      'MFA_ENABLED',
 					explanation: 'MFA enabled successfully.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
-						user:   toUserDTO(ctx.user!),
+						user:   toUserDTO(fullUser),
 					},
 				},
 				{

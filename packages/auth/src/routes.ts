@@ -5,6 +5,7 @@ import { authController }  from './controllers/auth.controller';
 import { userController }  from './controllers/user.controller';
 import { mfaController }   from './controllers/mfa.controller';
 import { oauthController } from './controllers/oauth.controller';
+import { phoneController } from './controllers/phone.controller';
 import { requireAuth, requireVerifiedEmail } from '@fonderie-js/core/middlewares';
 import type { IAuthConfig }                  from './config';
 
@@ -14,10 +15,11 @@ export function buildAuthRoutes(
 	store:  IStoreAdapter,
 	config: IAuthConfig,
 ): RouteDefinition[] {
-	const auth  = authController(store, config);
 	const user  = userController(store);
-	const mfa   = mfaController(store, config, config.google?.clientId ?? 'Fonderie');
+	const auth  = authController(store, config);
 	const oauth = oauthController(store, config);
+	const mfa   = mfaController(store, config, config.google?.clientId ?? 'Fonderie');
+	const phone = phoneController(store, config);
 
 	const routes: RouteDefinition[] = [
 		// Registration & Login (Public)
@@ -25,7 +27,7 @@ export function buildAuthRoutes(
 		['POST', '/auth/login',                     auth.login],
 
 		// Token Management (Public)
-		['POST', '/auth/refresh-tokens',            auth.refresh],
+		['POST', '/auth/refresh',                   auth.refresh],
 
 		// Password Recovery (Public)
 		['POST', '/auth/forgot-password',           auth.forgotPassword],
@@ -36,7 +38,7 @@ export function buildAuthRoutes(
 
 		// Account Management (Protected)
 		['POST', '/auth/logout',                    requireAuth, auth.logout],
-		['POST', '/auth/send-verification-email',   requireAuth, auth.sendVerificationEmail],
+		['POST', '/auth/resend-verification',       requireAuth, auth.sendVerificationEmail],
 
 		// User Profile (Protected + Verified)
 		['GET',    '/users',        requireAuth, requireVerifiedEmail, user.me],
@@ -48,6 +50,13 @@ export function buildAuthRoutes(
 		['POST', '/auth/mfa/verify',  requireAuth, mfa.verify],
 		['POST', '/auth/mfa/disable', requireAuth, mfa.disable],
 	];
+
+	if (config.providers.includes('phone')) {
+		routes.push(
+			['POST', '/auth/phone/send-otp', phone.sendOtp],
+			['POST', '/auth/phone/verify',   phone.verify],
+		);
+	}
 
 	if (config.providers.includes('google')) {
 		routes.push(

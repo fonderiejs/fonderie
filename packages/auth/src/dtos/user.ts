@@ -14,6 +14,7 @@ export interface IUserDTO {
 	skills:          IUserSkill[]
 	preferences:     IUserPreferences
 	isEmailVerified: boolean
+	isPhoneVerified: boolean
 	mfaEnabled:      boolean
 	suspended:       boolean
 	whitelist:       boolean
@@ -50,6 +51,7 @@ export function toUserDTO(user: IUser): IUserDTO {
 			timezone: user.timezone || prefs.timezone  || 'UTC',
 		},
 		isEmailVerified: user.emailVerifiedAt !== null,
+		isPhoneVerified: user.phoneVerifiedAt !== null,
 		mfaEnabled:      booleanOrFalse(user.mfaEnabled),
 		suspended:       booleanOrFalse(user.suspended),
 		whitelist:       booleanOrFalse(user.whitelist),
