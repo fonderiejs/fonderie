@@ -56,7 +56,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					(lastName  as string | null) ?? null,
 				);
 
-				const otp       = String(100000 + Math.floor(Math.random() * 900000));
+				const otp       = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(phone.trim(), otp, expiresAt);
 
@@ -161,14 +161,39 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 		},
 
 		login: async (ctx: IFonderieContext): Promise<Response> => {
-			const body = ctx.meta['body'];
+			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const phone = body?.['phone'];
 
+			// ── Phone login branch ────────────────────────────────────
+			if (isValidPhone(phone)) {
+				const user = await users.findByPhone(phone.trim());
+				if (!user) {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
+				}
+				if (user.suspended) {
+					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+				}
+
+				const otp       = randomInt(100000, 1000000).toString();
+				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+				await phoneVerif.upsert(phone.trim(), otp, expiresAt);
+
+				ctx.meta['message'] = {
+					type:      'phone-otp',
+					data:      { otp },
+					recipient: { email: null, phone: phone.trim(), deviceToken: null },
+				} satisfies ICourierMessage;
+
+				return setApiResponse(HTTP.ACCEPTED, 'OTP_SENT', 'A verification code has been sent to your phone.');
+			}
+
+			// ── Email login branch ────────────────────────────────────
 			if (
 				typeof body !== 'object' || body === null ||
-				typeof (body as Record<string, unknown>)['email']    !== 'string' ||
-				typeof (body as Record<string, unknown>)['password'] !== 'string'
+				typeof body['email']    !== 'string' ||
+				typeof body['password'] !== 'string'
 			) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email and password are required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
 			}
 
 			const { email, password } = body as { email: string; password: string };
