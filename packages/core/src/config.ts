@@ -23,13 +23,6 @@ export interface FonderieConfig {
 		// adapter?: 'pg' | 'mysql2' | 'oracledb'  ← v2 concern
 	}
 
-	auth?: {
-		mfa?: boolean
-		jwtSecret: string
-		sessionDuration?: string  // '7d', '30d'
-		providers: ('email' | 'google' | 'github')[]
-	}
-
 	billing?: {
 		provider: 'stripe'
 		plans: IBillingPlan[]

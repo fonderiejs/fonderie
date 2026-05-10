@@ -8,6 +8,7 @@ import {
 	MigrationRunner,
 } from '@fonderie-js/store'
 import { AuthModule, AUTH_CONFIG_KEYS } from '@fonderie-js/auth'
+import type { IAuthConfig }             from '@fonderie-js/auth'
 import {
 	PermissionsModule,
 	requirePermission,
@@ -41,12 +42,18 @@ const config = defineConfig({
 	db: {
 		url: process.env['DATABASE_URL'] ?? 'postgres://localhost/fonderie_test',
 	},
-	auth: {
-		jwtSecret: process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
-		sessionDuration: '7d',
-		providers: ['email', 'phone'],
-	},
 })
+
+const authConfig: IAuthConfig = {
+	jwtSecret:       process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
+	sessionDuration: '7d',
+	providers:       ['email', 'phone'],
+	resolve: (ctx) => ({
+		verificationCooldown: Number(getConfig(ctx, AUTH_CONFIG_KEYS.verificationCooldown)) || undefined,
+		sessionDuration:      String(getConfig(ctx, AUTH_CONFIG_KEYS.sessionDuration))      || undefined,
+		mfa:                  Boolean(getConfig(ctx, AUTH_CONFIG_KEYS.mfa))                 || undefined,
+	}),
+}
 
 // ── Store ─────────────────────────────────────────────────────────
 
@@ -67,14 +74,8 @@ for (const dir of [
 
 // ── Modules ───────────────────────────────────────────────────────
 
-const auth        = new AuthModule(store, {
-	...config.auth!,
-	resolve: (ctx) => ({
-		verificationCooldown: Number(getConfig(ctx, AUTH_CONFIG_KEYS.verificationCooldown)) || undefined,
-		sessionDuration:      String(getConfig(ctx, AUTH_CONFIG_KEYS.sessionDuration))      || undefined,
-		mfa:                  Boolean(getConfig(ctx, AUTH_CONFIG_KEYS.mfa))                 || undefined,
-	}),
-});
+const auth        = new AuthModule(store, authConfig);
+
 const permissions = new PermissionsModule(store);
 const workspaces  = new WorkspacesModule(store);
 const courier     = new CourierModule(
