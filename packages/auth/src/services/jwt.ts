@@ -10,31 +10,35 @@ export interface TokenPair {
 export interface IAccessPayload {
 	sub:           string;  // userId
 	type:          'access';
+	loginMethod:   'email' | 'phone';
 	phoneVerified: boolean;
 }
 
 export interface IRefreshPayload {
 	sub:           string;
 	type:          'refresh';
+	loginMethod:   'email' | 'phone';
 	phoneVerified: boolean;
 }
 
 export interface ITokenOptions {
+	loginMethod?:   'email' | 'phone';
 	phoneVerified?: boolean;
 }
 
 export function issueTokenPair(userId: string, config: IAuthConfig, options: ITokenOptions = {}): TokenPair {
 	const duration      = config.sessionDuration ?? '7d'
+	const loginMethod   = options.loginMethod   ?? 'email'
 	const phoneVerified = options.phoneVerified ?? false
 
 	const accessToken = jwt.sign(
-		{ sub: userId, type: 'access', phoneVerified } satisfies IAccessPayload,
+		{ sub: userId, type: 'access', loginMethod, phoneVerified } satisfies IAccessPayload,
 		config.jwtSecret,
 		{ expiresIn: '15m' },
 	)
 
 	const refreshToken = jwt.sign(
-		{ sub: userId, type: 'refresh', phoneVerified } satisfies IRefreshPayload,
+		{ sub: userId, type: 'refresh', loginMethod, phoneVerified } satisfies IRefreshPayload,
 		config.jwtSecret,
 		{ expiresIn: duration } as SignOptions,
 	)

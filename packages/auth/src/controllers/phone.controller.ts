@@ -64,7 +64,7 @@ export function phoneController(store: IStoreAdapter, config: IAuthConfig) {
 			await phoneVerif.deleteByUser(ctx.user!.id);
 			await users.markPhoneVerified(ctx.user!.id);
 
-			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, { phoneVerified: true });
+			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, { loginMethod: 'phone', phoneVerified: true });
 			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 			const verifiedUser = await users.findById(ctx.user!.id);

@@ -81,7 +81,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				return Response.json(
@@ -133,7 +133,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'phone' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				return Response.json(
@@ -185,7 +185,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required');
 				}
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				return Response.json(
@@ -232,7 +232,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					recipient: { email: null, phone: phone.trim(), deviceToken: null },
 				} satisfies ICourierMessage;
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'phone' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				return Response.json(
@@ -302,6 +302,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			await sessions.delete(token);
 			const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+				loginMethod:   payload.loginMethod   ?? 'email',
 				phoneVerified: payload.phoneVerified ?? false,
 			});
 			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
