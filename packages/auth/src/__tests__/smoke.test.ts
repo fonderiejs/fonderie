@@ -33,7 +33,7 @@ test('password: different passwords produce different hashes', async () => {
 // ── jwt ─────────────────────────────────────────────────────────
 
 test('jwt: access token round-trip', () => {
-	const { accessToken } = issueTokenPair('user-123', config);
+	const { accessToken } = issueTokenPair('user-123', config, { loginMethod: 'email' });
 	const payload         = verifyToken(accessToken, config);
 	assert.ok(payload);
 	assert.equal(payload?.sub,  'user-123');
@@ -41,7 +41,7 @@ test('jwt: access token round-trip', () => {
 });
 
 test('jwt: refresh token round-trip', () => {
-	const { refreshToken } = issueTokenPair('user-456', config);
+	const { refreshToken } = issueTokenPair('user-456', config, { loginMethod: 'email' });
 	const payload          = verifyToken(refreshToken, config);
 	assert.ok(payload);
 	assert.equal(payload?.sub,  'user-456');
@@ -49,14 +49,14 @@ test('jwt: refresh token round-trip', () => {
 });
 
 test('jwt: tampered token is rejected', () => {
-	const { accessToken } = issueTokenPair('user-789', config);
+	const { accessToken } = issueTokenPair('user-789', config, { loginMethod: 'email' });
 	const tampered        = accessToken.slice(0, -4) + 'xxxx';
 	const payload         = verifyToken(tampered, config);
 	assert.equal(payload, null);
 });
 
 test('jwt: token signed with wrong secret is rejected', () => {
-	const other   = issueTokenPair('user-000', { ...config, jwtSecret: 'other-secret-min-32-chars-long!!' });
+	const other   = issueTokenPair('user-000', { ...config, jwtSecret: 'other-secret-min-32-chars-long!!' }, { loginMethod: 'email' });
 	const payload = verifyToken(other.accessToken, config);
 	assert.equal(payload, null);
 });
@@ -120,7 +120,7 @@ const BASE_USER: IUser = {
 	phoneVerifiedAt: null,
 };
 
-const { refreshToken: VALID_RT } = issueTokenPair('user-1', config);
+const { refreshToken: VALID_RT } = issueTokenPair('user-1', config, { loginMethod: 'email' });
 
 const PHONE_USER: IUser = {
 	...BASE_USER,
@@ -431,6 +431,14 @@ test('login: 202 with tokens and isPhoneVerified: false on phone login', async (
 	assert.ok(typeof body.result.tokens.access  === 'string');
 	assert.ok(typeof body.result.tokens.refresh === 'string');
 	assert.equal(body.result.user.isPhoneVerified, false);
+});
+
+test('login: 200 MFA_REQUIRED when phone account has MFA enabled', async () => {
+	const ctrl     = makeAuth({ userByPhone: { ...PHONE_USER, mfaEnabled: true } });
+	const response = await ctrl.login(makeCtx({ body: { phone: '+15141234567' } }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_REQUIRED');
 });
 
 test('login: email branch takes priority when both email+password and phone are present', async () => {
