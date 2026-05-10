@@ -22,13 +22,13 @@ export interface IRefreshPayload {
 }
 
 export interface ITokenOptions {
-	loginMethod?:   'email' | 'phone';
+	loginMethod:    'email' | 'phone';
 	phoneVerified?: boolean;
 }
 
-export function issueTokenPair(userId: string, config: IAuthConfig, options: ITokenOptions = {}): TokenPair {
+export function issueTokenPair(userId: string, config: IAuthConfig, options: ITokenOptions): TokenPair {
 	const duration      = config.sessionDuration ?? '7d'
-	const loginMethod   = options.loginMethod   ?? 'email'
+	const loginMethod   = options.loginMethod
 	const phoneVerified = options.phoneVerified ?? false
 
 	const accessToken = jwt.sign(

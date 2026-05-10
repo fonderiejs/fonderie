@@ -220,6 +220,10 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
 				}
 
+				if (user.mfaEnabled) {
+					return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required');
+				}
+
 				await users.resetPhoneVerification(user.id);
 
 				const otp       = randomInt(100000, 1000000).toString();
