@@ -69,7 +69,7 @@ export function phoneController(store: IStoreAdapter, config: IAuthConfig) {
 			}
 
 			await phoneVerif.delete(phone.trim());
-			const { id } = await users.upsertByPhone(phone.trim());
+			const { id } = await users.upsertByPhone(phone.trim(), record.firstName, record.lastName);
 
 			const user = await users.findById(id);
 			if (!user) {

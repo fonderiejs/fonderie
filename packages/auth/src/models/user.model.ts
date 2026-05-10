@@ -64,14 +64,18 @@ export class UserModel {
 		return row ?? null;
 	}
 
-	async upsertByPhone(phone: string): Promise<{ id: string }> {
+	async upsertByPhone(
+		phone:     string,
+		firstName: string | null = null,
+		lastName:  string | null = null,
+	): Promise<{ id: string }> {
 		const [row] = await this.store.query<{ id: string }>(
-			`INSERT INTO fonderie_users (phone, phone_verified_at)
-			VALUES ($1, now())
+			`INSERT INTO fonderie_users (phone, phone_verified_at, first_name, last_name)
+			VALUES ($1, now(), $2, $3)
 			ON CONFLICT (phone) DO UPDATE
 			SET phone_verified_at = now(), updated_at = now()
 			RETURNING id`,
-			[phone],
+			[phone, firstName, lastName],
 		);
 		return row!;
 	}

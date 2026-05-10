@@ -7,10 +7,15 @@ import type { IAuthConfig }                             from '../config';
 import { issueTokenPair, verifyToken, refreshTokenExpiry } from '../services/jwt';
 import { hashPassword, verifyPassword }                 from '../services/password';
 import { toUserDTO }                                    from '../dtos/user';
-import { UserModel }              from '../models/user.model';
-import { SessionModel }           from '../models/session.model';
-import { EmailVerificationModel } from '../models/email-verification.model';
-import { PasswordResetModel }     from '../models/password-reset.model';
+import { UserModel }                 from '../models/user.model';
+import { SessionModel }              from '../models/session.model';
+import { EmailVerificationModel }    from '../models/email-verification.model';
+import { PasswordResetModel }        from '../models/password-reset.model';
+import { PhoneVerificationModel }    from '../models/phone-verification.model';
+
+function isValidPhone(phone: unknown): phone is string {
+	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(phone.trim());
+}
 
 function extractRefreshToken(ctx: IFonderieContext): string | null {
 	const body = ctx.meta['body'] as Record<string, unknown> | undefined;
@@ -29,14 +34,40 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 	const sessions      = new SessionModel(store);
 	const passwordReset = new PasswordResetModel(store);
 	const emailVerif    = new EmailVerificationModel(store);
+	const phoneVerif    = new PhoneVerificationModel(store);
+
+	const OTP_TTL_MS = 10 * 60 * 1000;
 
 	return {
 		register: async (ctx: IFonderieContext): Promise<Response> => {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const { email, password, firstName = null, lastName = null } = body ?? {};
+			const { email, password, phone, firstName = null, lastName = null } = body ?? {};
 
+			// ── Phone registration branch ─────────────────────────────
+			if (isValidPhone(phone)) {
+				const otp       = String(100000 + Math.floor(Math.random() * 900000));
+				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+				await phoneVerif.upsert(
+					phone.trim(),
+					otp,
+					expiresAt,
+					(firstName as string | null) ?? null,
+					(lastName  as string | null) ?? null,
+				);
+
+				ctx.meta['message'] = {
+					type:      'phone-otp',
+					data:      { otp },
+					recipient: { email: null, phone: phone.trim(), deviceToken: null },
+				} satisfies ICourierMessage;
+
+				return setApiResponse(HTTP.ACCEPTED, 'OTP_SENT', 'A verification code has been sent to your phone.');
+			}
+
+			// ── Email registration branch ─────────────────────────────
 			if (typeof email !== 'string' || typeof password !== 'string') {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email and password are required');
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
 			}
 
 			if (password.length < 8) {

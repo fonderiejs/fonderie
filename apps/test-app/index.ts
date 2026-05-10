@@ -44,7 +44,7 @@ const config = defineConfig({
 	auth: {
 		jwtSecret: process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
 		sessionDuration: '7d',
-		providers: ['email'],
+		providers: ['email', 'phone'],
 	},
 })
 
