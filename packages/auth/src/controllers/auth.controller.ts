@@ -43,7 +43,69 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const { email, password, phone, firstName = null, lastName = null } = body ?? {};
 
-			// ── Phone registration branch ─────────────────────────────
+			// ── Email branch takes priority (cheaper than SMS) ───────
+			if (typeof email === 'string' && typeof password === 'string') {
+				if (password.length < 8) {
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
+				}
+
+				const existing = await users.findByEmail(email);
+				if (existing) {
+					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Email already registered');
+				}
+
+				const passwordHash = await hashPassword(password);
+				const row = await users.create(
+					email,
+					passwordHash,
+					firstName as string | null,
+					lastName  as string | null,
+				);
+
+				if (!row) {
+					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
+				}
+
+				const pin       = randomInt(100000, 1000000).toString();
+				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
+				await emailVerif.create(row.id, pin, expiresAt);
+
+				ctx.meta['message'] = {
+					type:      'email-verification',
+					data:      { pin, firstName: firstName ?? '' },
+					recipient: { email, phone: null, deviceToken: null },
+				} satisfies ICourierMessage;
+
+				const user = await users.findById(row.id);
+				if (!user) {
+					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
+				}
+
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+				return Response.json(
+					{
+						reason:      'USER_EMAIL_REGISTERED',
+						explanation: 'Account created. Check your email for a verification code.',
+						result: {
+							tokens: { access: accessToken, refresh: refreshToken },
+							user:   toUserDTO(user),
+						},
+					},
+					{
+						status: 201,
+						headers: {
+							'Set-Cookie': [
+								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+							].join(', '),
+						},
+					},
+				);
+			}
+
+			// ── Phone branch ──────────────────────────────────────────
 			if (isValidPhone(phone)) {
 				const existing = await users.findByPhone(phone.trim());
 				if (existing) {
@@ -95,76 +157,60 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				);
 			}
 
-			// ── Email registration branch ─────────────────────────────
-			if (typeof email !== 'string' || typeof password !== 'string') {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
-			}
-
-			if (password.length < 8) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
-			}
-
-			const existing = await users.findByEmail(email);
-			if (existing) {
-				return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Email already registered');
-			}
-
-			const passwordHash = await hashPassword(password);
-			const row = await users.create(
-				email,
-				passwordHash,
-				firstName as string | null,
-				lastName  as string | null,
-			);
-
-			if (!row) {
-				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
-			}
-
-			const pin       = randomInt(100000, 1000000).toString();
-			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-			await emailVerif.create(row.id, pin, expiresAt);
-
-			ctx.meta['message'] = {
-				type:      'email-verification',
-				data:      { pin, firstName: firstName ?? '' },
-				recipient: { email, phone: null, deviceToken: null },
-			} satisfies ICourierMessage;
-
-			const user = await users.findById(row.id);
-			if (!user) {
-				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
-			}
-
-			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
-			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
-
-			return Response.json(
-				{
-					reason:      'USER_EMAIL_REGISTERED',
-					explanation: 'Account created. Check your email for a verification code.',
-					result: {
-						tokens: { access: accessToken, refresh: refreshToken },
-						user:   toUserDTO(user),
-					},
-				},
-				{
-					status: 201,
-					headers: {
-						'Set-Cookie': [
-							`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-							`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-						].join(', '),
-					},
-				},
-			);
+			return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
 		},
 
 		login: async (ctx: IFonderieContext): Promise<Response> => {
-			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const phone = body?.['phone'];
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 
-			// ── Phone login branch ────────────────────────────────────
+			// ── Email branch takes priority (cheaper than SMS) ────────
+			if (typeof body?.['email'] === 'string' && typeof body?.['password'] === 'string') {
+				const { email, password } = body as { email: string; password: string };
+
+				const user = await users.findByEmail(email);
+				if (!user || !user.passwordHash) {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
+				}
+
+				const valid = await verifyPassword(password, user.passwordHash);
+				if (!valid) {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
+				}
+
+				if (user.suspended) {
+					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+				}
+
+				if (user.mfaEnabled) {
+					return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required');
+				}
+
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+
+				return Response.json(
+					{
+						reason:      'USER_EMAIL_LOGIN',
+						explanation: 'Login successful.',
+						result: {
+							tokens: { access: accessToken, refresh: refreshToken },
+							user:   toUserDTO(user),
+						},
+					},
+					{
+						status: 200,
+						headers: {
+							'Set-Cookie': [
+								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
+								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
+							].join(', '),
+						},
+					},
+				);
+			}
+
+			// ── Phone branch ──────────────────────────────────────────
+			const phone = body?.['phone'];
 			if (isValidPhone(phone)) {
 				const user = await users.findByPhone(phone.trim());
 				if (!user) {
@@ -187,57 +233,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.ACCEPTED, 'USER_PHONE_OTP_SENT', 'A verification code has been sent to your phone.');
 			}
 
-			// ── Email login branch ────────────────────────────────────
-			if (
-				typeof body !== 'object' || body === null ||
-				typeof body['email']    !== 'string' ||
-				typeof body['password'] !== 'string'
-			) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
-			}
-
-			const { email, password } = body as { email: string; password: string };
-
-			const user = await users.findByEmail(email);
-			if (!user || !user.passwordHash) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
-			}
-
-			const valid = await verifyPassword(password, user.passwordHash);
-			if (!valid) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
-			}
-
-			if (user.suspended) {
-				return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
-			}
-
-			if (user.mfaEnabled) {
-				return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required');
-			}
-
-			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
-			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
-
-			return Response.json(
-				{
-					reason:      'USER_EMAIL_LOGIN',
-					explanation: 'Login successful.',
-					result: {
-						tokens: { access: accessToken, refresh: refreshToken },
-						user:   toUserDTO(user),
-					},
-				},
-				{
-					status: 200,
-					headers: {
-						'Set-Cookie': [
-							`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-							`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-						].join(', '),
-					},
-				},
-			);
+			return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
 		},
 
 		logout: async (ctx: IFonderieContext): Promise<Response> => {
