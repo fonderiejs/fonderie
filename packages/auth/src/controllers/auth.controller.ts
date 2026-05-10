@@ -6,6 +6,7 @@ import type { IStoreAdapter }                           from '@fonderie-js/store
 import type { IAuthConfig }                             from '../config';
 import { DEFAULT_VERIFICATION_COOLDOWN }                from '../config';
 import { issueTokenPair, verifyToken, refreshTokenExpiry } from '../services/jwt';
+import { checkCooldown } from '../services/cooldown';
 import { hashPassword, verifyPassword }                 from '../services/password';
 import { toUserDTO }                                    from '../dtos/user';
 import { UserModel }                 from '../models/user.model';
@@ -337,6 +338,15 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.OK, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 			}
 
+			const resolved  = { ...config, ...config.resolve?.(ctx) };
+			const cooldown  = resolved.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
+			const remaining = checkCooldown(await passwordReset.findLastSentAt(user.id), cooldown);
+			if (remaining > 0) {
+				return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new password reset code.', {
+					retryAfter: Math.ceil(remaining / 1000),
+				});
+			}
+
 			const pin       = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
 			await passwordReset.create(user.id, pin, expiresAt);
@@ -476,14 +486,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					return setApiResponse(HTTP.BAD_REQUEST, 'NO_PHONE_ON_ACCOUNT', 'No phone number associated with this account');
 				}
 
-				const lastSentAt = await phoneVerif.findLastSentAt(ctx.user!.id);
-				if (lastSentAt) {
-					const remaining = cooldown - (Date.now() - lastSentAt.getTime());
-					if (remaining > 0) {
-						return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new code.', {
-							retryAfter: Math.ceil(remaining / 1000),
-						});
-					}
+				const remaining = checkCooldown(await phoneVerif.findLastSentAt(ctx.user!.id), cooldown);
+				if (remaining > 0) {
+					return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new code.', {
+						retryAfter: Math.ceil(remaining / 1000),
+					});
 				}
 
 				const otp       = randomInt(100000, 1000000).toString();
@@ -510,14 +517,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				});
 			}
 
-			const lastSentAt = await emailVerif.findLastSentAt(ctx.user!.id);
-			if (lastSentAt) {
-				const remaining = cooldown - (Date.now() - lastSentAt.getTime());
-				if (remaining > 0) {
-					return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new code.', {
-						retryAfter: Math.ceil(remaining / 1000),
-					});
-				}
+			const remaining = checkCooldown(await emailVerif.findLastSentAt(ctx.user!.id), cooldown);
+			if (remaining > 0) {
+				return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new code.', {
+					retryAfter: Math.ceil(remaining / 1000),
+				});
 			}
 
 			const pin       = randomInt(100000, 1000000).toString();
