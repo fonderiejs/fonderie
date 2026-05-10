@@ -139,6 +139,7 @@ type AuthStoreOpts = {
 	resetRow?:       { user_id: string; expires_at: Date } | null
 	verifyRow?:      { expires_at: Date } | null
 	phoneVerifRow?:  { phone: string; expires_at: Date } | null
+	lastSentAt?:     Date | null
 	updateRow?:      { id: string } | null
 }
 
@@ -163,8 +164,11 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 			if (sql.includes('fonderie_password_resets') && sql.includes('SELECT user_id'))
 				return (opts.resetRow != null ? [opts.resetRow] : []) as unknown as T[]
 
-			if (sql.includes('fonderie_email_verifications') && sql.includes('WHERE user_id'))
+			if (sql.includes('fonderie_email_verifications') && sql.includes('AND token'))
 				return (opts.verifyRow != null ? [opts.verifyRow] : []) as unknown as T[]
+
+			if (sql.includes('SELECT created_at') && sql.includes('WHERE user_id'))
+				return (opts.lastSentAt != null ? [{ created_at: opts.lastSentAt }] : []) as unknown as T[]
 
 			if (sql.includes('fonderie_phone_verifications') && sql.includes('WHERE user_id'))
 				return (opts.phoneVerifRow != null ? [opts.phoneVerifRow] : []) as unknown as T[]
@@ -675,6 +679,45 @@ test('sendVerification: 400 NO_PHONE_ON_ACCOUNT when phone user has no phone in 
 	assert.equal(response.status, 400);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'NO_PHONE_ON_ACCOUNT');
+});
+
+test('sendVerification: 429 VERIFICATION_COOLDOWN when email code was sent recently', async () => {
+	const ctrl     = makeAuth({ lastSentAt: new Date(Date.now() - 60_000) }); // 1 min ago
+	const unverified = { ...BASE_USER, emailVerifiedAt: null };
+	const response = await ctrl.sendVerification(makeCtx({ user: unverified }));
+	assert.equal(response.status, 429);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'VERIFICATION_COOLDOWN');
+	assert.ok(typeof body.details.retryAfter === 'number');
+	assert.ok(body.details.retryAfter > 0);
+});
+
+test('sendVerification: 200 VERIFICATION_SENT when cooldown has passed for email', async () => {
+	const ctrl     = makeAuth({ lastSentAt: new Date(Date.now() - 6 * 60_000) }); // 6 min ago
+	const unverified = { ...BASE_USER, emailVerifiedAt: null };
+	const response = await ctrl.sendVerification(makeCtx({ user: unverified }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'VERIFICATION_SENT');
+});
+
+test('sendVerification: 429 VERIFICATION_COOLDOWN when phone OTP was sent recently', async () => {
+	const ctrl     = makeAuth({ lastSentAt: new Date(Date.now() - 60_000) }); // 1 min ago
+	const response = await ctrl.sendVerification(makeCtx({
+		user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
+	}));
+	assert.equal(response.status, 429);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'VERIFICATION_COOLDOWN');
+});
+
+test('sendVerification: respects custom verificationCooldown from config', async () => {
+	const shortConfig = { ...config, verificationCooldown: 30_000 }; // 30s
+	const ctrl        = authController(makeStore({ lastSentAt: new Date(Date.now() - 60_000) }), shortConfig);
+	const unverified  = { ...BASE_USER, emailVerifiedAt: null };
+	const response    = await ctrl.sendVerification(makeCtx({ user: unverified }));
+	// 60s elapsed > 30s cooldown → should pass
+	assert.equal(response.status, 200);
 });
 
 // ── UserController.me ─────────────────────────────────────────────

@@ -37,6 +37,15 @@ export class EmailVerificationModel {
 		return { expiresAt: new Date(row.expires_at) };
 	}
 
+	async findLastSentAt(userId: string): Promise<Date | null> {
+		const [row] = await this.store.query<{ created_at: Date }>(
+			`SELECT created_at FROM fonderie_email_verifications WHERE user_id = $1`,
+			[userId],
+		);
+		if (!row) return null;
+		return new Date(row.created_at);
+	}
+
 	async replace(userId: string, pin: string, expiresAt: Date): Promise<void> {
 		await this.store.transaction(async tx => {
 			await tx.query(
