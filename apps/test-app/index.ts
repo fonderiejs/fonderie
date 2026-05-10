@@ -197,15 +197,18 @@ app.addRoute('GET', '/config', requireAuth, async (ctx) => {
 //   POST   /auth/login
 //   POST   /auth/logout
 //   POST   /auth/refresh
-//   POST   /auth/verify-email
-//   POST   /auth/forgot-password
-//   POST   /auth/reset-password
-//   POST   /auth/mfa/enable
+//   POST   /auth/email/verify
+//   POST   /auth/email/send-verification
+//   POST   /auth/email/forgot-password
+//   POST   /auth/email/reset-password
+//   POST   /auth/phone/send-verification
+//   POST   /auth/phone/verify
+//   POST   /auth/mfa/setup
 //   POST   /auth/mfa/verify
 //   POST   /auth/mfa/disable
-//   GET    /users/me
-//   PATCH  /users/me
-//   DELETE /users/me
+//   GET    /users
+//   PUT    /users/update
+//   DELETE /users
 //
 // WorkspacesModule:  (workspace resolved from X-Workspace-ID header unless noted)
 //   POST   /workspaces

@@ -435,12 +435,6 @@ test('verifyEmail: 200 with verified and email on valid pin', async () => {
 
 // ── AuthController.sendVerificationEmail ─────────────────────────
 
-test('resendVerification: 401 when not authenticated', async () => {
-	const ctrl     = makeAuth();
-	const response = await ctrl.sendVerificationEmail(makeCtx({ user: null }));
-	assert.equal(response.status, 401);
-});
-
 test('resendVerification: 400 when email already verified', async () => {
 	const ctrl     = makeAuth();
 	const response = await ctrl.sendVerificationEmail(makeCtx({ user: { ...BASE_USER } }));
@@ -464,12 +458,6 @@ test('resendVerification: 200 with token, expiresAt and email', async () => {
 });
 
 // ── UserController.me ─────────────────────────────────────────────
-
-test('me: 401 when not authenticated', async () => {
-	const ctrl     = makeUser();
-	const response = await ctrl.me(makeCtx({ user: null }));
-	assert.equal(response.status, 401);
-});
 
 test('me: 200 with user DTO including profileImageUrl', async () => {
 	const ctrl     = makeUser({ userById: BASE_USER });

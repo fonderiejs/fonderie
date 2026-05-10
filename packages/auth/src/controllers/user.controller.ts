@@ -12,8 +12,7 @@ export function userController(store: IStoreAdapter) {
 
 	return {
 		me: async (ctx: IFonderieContext): Promise<Response> => {
-			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
-			const user = await users.findById(ctx.user.id);
+			const user = await users.findById(ctx.user!.id);
 			if (!user) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
 			}
