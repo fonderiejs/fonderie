@@ -12,6 +12,7 @@ export function userController(store: IStoreAdapter) {
 
 	return {
 		me: async (ctx: IFonderieContext): Promise<Response> => {
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			const user = await users.findById(ctx.user.id);
 			if (!user) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
@@ -38,19 +39,19 @@ export function userController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'NO_FIELDS', 'No updatable fields provided');
 			}
 
-			const row = await users.update(ctx.user.id, fields);
+			const row = await users.update(ctx.user?.id!, fields);
 			if (!row) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
 			}
 
-			const updated = await users.findById(ctx.user.id);
+			const updated = await users.findById(ctx.user?.id!);
 			return setApiResponse(HTTP.OK, 'ACCOUNT_UPDATED', 'Account successfully updated.', {
 				user: toUserDTO(updated as IUser),
 			});
 		},
 
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
-			await users.softDelete(ctx.user.id);
+			await users.softDelete(ctx.user?.id!);
 
 			return Response.json(
 				{ reason: 'ACCOUNT_DELETED', explanation: 'Account successfully deleted.' },

@@ -31,6 +31,7 @@ const USER_COLUMNS = `
 	mfa_enabled        AS "mfaEnabled",
 	mfa_secret         AS "mfaSecret",
 	email_verified_at  AS "emailVerifiedAt",
+	phone_verified_at  AS "phoneVerifiedAt",
 	deleted_at         AS "deletedAt",
 	created_at         AS "createdAt",
 	updated_at         AS "updatedAt"
@@ -53,6 +54,33 @@ export class UserModel {
 			[email],
 		);
 		return row ?? null;
+	}
+
+	async findByPhone(phone: string): Promise<IUser | null> {
+		const [row] = await this.store.query<IUser>(
+			`SELECT ${USER_COLUMNS} FROM fonderie_users WHERE phone = $1 AND deleted_at IS NULL`,
+			[phone],
+		);
+		return row ?? null;
+	}
+
+	async upsertByPhone(phone: string): Promise<{ id: string }> {
+		const [row] = await this.store.query<{ id: string }>(
+			`INSERT INTO fonderie_users (phone, phone_verified_at)
+			VALUES ($1, now())
+			ON CONFLICT (phone) DO UPDATE
+			SET phone_verified_at = now(), updated_at = now()
+			RETURNING id`,
+			[phone],
+		);
+		return row!;
+	}
+
+	async markPhoneVerified(id: string): Promise<void> {
+		await this.store.query(
+			`UPDATE fonderie_users SET phone_verified_at = now(), updated_at = now() WHERE id = $1`,
+			[id],
+		);
 	}
 
 	async create(

@@ -22,7 +22,7 @@ export interface IUserPreferences {
 // Concrete types — fulfill the stubs in @fonderie-js/core
 export interface IUser {
 	id:              string;
-	email:           string;
+	email:           string | null;
 	firstName:       string | null;
 	lastName:        string | null;
 	phone:           string | null;
@@ -42,6 +42,7 @@ export interface IUser {
 	mfaEnabled:      boolean;
 	passwordHash:    string | null;
 	emailVerifiedAt: Date | null;
+	phoneVerifiedAt: Date | null;
 }
 
 export interface ISession {

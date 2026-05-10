@@ -14,17 +14,21 @@ import { PasswordResetModel }     from '../models/password-reset.model';
 
 function extractRefreshToken(ctx: IFonderieContext): string | null {
 	const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-	if (typeof body?.['refreshToken'] === 'string') return body['refreshToken'] as string;
+	if (typeof body?.['refreshToken'] === 'string') {
+		return body['refreshToken'] as string;
+	}
+
 	const cookie = ctx.request.headers.get('cookie') ?? '';
 	const match  = cookie.match(/(?:^|;\s*)refresh_token=([^;]+)/);
+
 	return match?.[1] ?? null;
 }
 
 export function authController(store: IStoreAdapter, config: IAuthConfig) {
 	const users         = new UserModel(store);
 	const sessions      = new SessionModel(store);
-	const emailVerif    = new EmailVerificationModel(store);
 	const passwordReset = new PasswordResetModel(store);
+	const emailVerif    = new EmailVerificationModel(store);
 
 	return {
 		register: async (ctx: IFonderieContext): Promise<Response> => {
@@ -34,6 +38,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			if (typeof email !== 'string' || typeof password !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email and password are required');
 			}
+
 			if (password.length < 8) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
 			}
@@ -50,6 +55,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				firstName as string | null,
 				lastName  as string | null,
 			);
+
 			if (!row) {
 				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 			}
@@ -60,8 +66,8 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			ctx.meta['message'] = {
 				type:      'email-verification',
-				recipient: { email, phone: null, deviceToken: null },
 				data:      { pin, firstName: firstName ?? '' },
+				recipient: { email, phone: null, deviceToken: null },
 			} satisfies ICourierMessage;
 
 			const user = await users.findById(row.id);
@@ -119,6 +125,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			if (user.suspended) {
 				return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
 			}
+
 			if (user.mfaEnabled) {
 				return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required');
 			}
@@ -276,6 +283,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			if (!row) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'EMAIL_VERIFICATION_FAILED', 'Invalid or expired pin');
 			}
+
 			if (new Date() > row.expiresAt) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'EMAIL_VERIFICATION_FAILED', 'Pin expired');
 			}
@@ -299,7 +307,8 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 		},
 
 		sendVerificationEmail: async (ctx: IFonderieContext): Promise<Response> => {
-			if (ctx.user!.emailVerifiedAt) {
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
+			if (ctx.user.emailVerifiedAt) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
 					'EMAIL_ALREADY_VERIFIED',
@@ -309,12 +318,12 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			const pin       = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
+			await emailVerif.replace(ctx.user.id, pin, expiresAt);
 
 			ctx.meta['message'] = {
 				type:      'email-verification',
-				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-				data:      { pin, firstName: ctx.user!.firstName ?? '' },
+				recipient: { email: ctx.user.email, phone: null, deviceToken: null },
+				data:      { pin },
 			} satisfies ICourierMessage;
 
 			return setApiResponse(HTTP.OK, 'VERIFICATION_EMAIL_SENT', 'Verification email sent', {
@@ -323,7 +332,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				data: {
 					token:     pin,
 					expiresAt: expiresAt.toISOString(),
-					email:     ctx.user!.email,
+					email:     ctx.user.email,
 				},
 			});
 		},

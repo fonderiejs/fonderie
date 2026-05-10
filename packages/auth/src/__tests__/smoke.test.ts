@@ -117,6 +117,7 @@ const BASE_USER: IUser = {
 	mfaEnabled:      false,
 	passwordHash:    null,
 	emailVerifiedAt: new Date('2024-01-02T00:00:00Z'),
+	phoneVerifiedAt: null,
 };
 
 const { refreshToken: VALID_RT } = issueTokenPair('user-1', config);
@@ -163,7 +164,7 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 }
 
 function makeCtx(opts: {
-	user?:      { id: string; email: string; [key: string]: unknown } | null
+	user?:      { id: string; email: string | null; [key: string]: unknown } | null
 	body?:      Record<string, unknown>
 	workspace?: { id: string } | null
 	cookie?:    string
@@ -362,9 +363,9 @@ test('refresh: 200 with new tokens when session is valid', async () => {
 	const response = await ctrl.refresh(makeCtx({ body: { refreshToken: VALID_RT } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                 'TOKENS_REFRESHED');
-	assert.ok(typeof body.result.token     === 'string');
-	assert.ok(typeof body.result.expiresIn === 'number');
+	assert.equal(body.reason,                          'TOKENS_REFRESHED');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
 });
 
 // ── AuthController.forgotPassword ────────────────────────────────
