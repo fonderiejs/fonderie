@@ -368,9 +368,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			if (typeof raw !== 'string' || typeof password !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin and password are required');
 			}
+
 			if (!/^\d{6}$/.test(raw.trim())) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin must be a 6-digit code');
 			}
+
 			if (password.length < 8) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
 			}
