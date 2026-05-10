@@ -1,7 +1,8 @@
 // ── Public API ───────────────────────────────────────────────────
 export type { IUser, ISession, IMfaChallenge } from './types';
 export { AuthModule }                          from './module';
-export type { IAuthConfig }                    from './config';
+export type { IAuthConfig, IAuthSecrets, IAuthRuntimeConfig } from './config';
+export { AUTH_CONFIG_KEYS }                                   from './config';
 
 // DTOs
 export type { IUserDTO }  from './dtos/user';
