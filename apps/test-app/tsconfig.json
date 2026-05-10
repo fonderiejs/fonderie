@@ -1,11 +1,30 @@
 {
 	"compilerOptions": {
-		"target":          "ES2022",
-		"module":          "NodeNext",
+		"target":           "ES2022",
+		"module":           "NodeNext",
 		"moduleResolution": "NodeNext",
-		"strict":          true,
-		"skipLibCheck":    true,
-		"types":           ["node"]
+		"strict":           true,
+		"skipLibCheck":     true,
+		"types":            ["node"],
+		"baseUrl":          ".",
+		"paths": {
+			"@fonderie-js/auth":                    ["../../packages/auth/src/index.ts"],
+			"@fonderie-js/auth/migrations":         ["../../packages/auth/src/migrations/index.ts"],
+			"@fonderie-js/auth/types":              ["../../packages/auth/src/types.ts"],
+			"@fonderie-js/billing":                 ["../../packages/billing/src/index.ts"],
+			"@fonderie-js/billing/migrations":      ["../../packages/billing/src/migrations/index.ts"],
+			"@fonderie-js/config":                  ["../../packages/config/src/index.ts"],
+			"@fonderie-js/config/migrations":       ["../../packages/config/src/migrations/index.ts"],
+			"@fonderie-js/core":                    ["../../packages/core/src/index.ts"],
+			"@fonderie-js/core/middlewares":        ["../../packages/core/src/middlewares/index.ts"],
+			"@fonderie-js/courier":                 ["../../packages/courier/src/index.ts"],
+			"@fonderie-js/courier/migrations":      ["../../packages/courier/src/migrations/index.ts"],
+			"@fonderie-js/permissions":             ["../../packages/permissions/src/index.ts"],
+			"@fonderie-js/permissions/migrations":  ["../../packages/permissions/src/migrations/index.ts"],
+			"@fonderie-js/store":                   ["../../packages/store/src/index.ts"],
+			"@fonderie-js/workspaces":              ["../../packages/workspaces/src/index.ts"],
+			"@fonderie-js/workspaces/migrations":   ["../../packages/workspaces/src/migrations/index.ts"]
+		}
 	},
 	"include": ["./**/*.ts"]
 }
