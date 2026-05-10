@@ -463,7 +463,8 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 		},
 
 		sendVerification: async (ctx: IFonderieContext): Promise<Response> => {
-			const cooldown = config.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
+			const resolved = { ...config, ...config.resolve?.(ctx) };
+			const cooldown = resolved.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
 
 			if (ctx.user!.loginMethod === 'phone') {
 				const phone = ctx.user!.phone;

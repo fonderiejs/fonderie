@@ -7,7 +7,7 @@ import {
 	PGAdapter,
 	MigrationRunner,
 } from '@fonderie-js/store'
-import { AuthModule } from '@fonderie-js/auth'
+import { AuthModule, AUTH_CONFIG_KEYS } from '@fonderie-js/auth'
 import {
 	PermissionsModule,
 	requirePermission,
@@ -67,7 +67,14 @@ for (const dir of [
 
 // ── Modules ───────────────────────────────────────────────────────
 
-const auth        = new AuthModule(store, config.auth!);
+const auth        = new AuthModule(store, {
+	...config.auth!,
+	resolve: (ctx) => ({
+		verificationCooldown: Number(getConfig(ctx, AUTH_CONFIG_KEYS.verificationCooldown)) || undefined,
+		sessionDuration:      String(getConfig(ctx, AUTH_CONFIG_KEYS.sessionDuration))      || undefined,
+		mfa:                  Boolean(getConfig(ctx, AUTH_CONFIG_KEYS.mfa))                 || undefined,
+	}),
+});
 const permissions = new PermissionsModule(store);
 const workspaces  = new WorkspacesModule(store);
 const courier     = new CourierModule(
@@ -76,6 +83,7 @@ const courier     = new CourierModule(
 			'email-verification':   ['email'],
 			'password-reset':       ['email'],
 			'workspace-invitation': ['email'],
+			'phone-otp':            ['sms'],
 		},
 		templates: {
 			source: 'fs', 
@@ -191,15 +199,13 @@ app.addRoute('GET', '/config', requireAuth, async (ctx) => {
 //   POST   /auth/login
 //   POST   /auth/logout
 //   POST   /auth/refresh
-//   POST   /auth/email/verify
-//   POST   /auth/email/send-verification
 //   POST   /auth/email/forgot
 //   POST   /auth/email/reset
-//   POST   /auth/phone/send-verification
-//   POST   /auth/phone/verify
-//   POST   /auth/mfa/setup
-//   POST   /auth/mfa/verify
-//   POST   /auth/mfa/disable
+//   GET    /auth/send-verification       (email or phone — determined by loginMethod in JWT)
+//   POST   /auth/verify                  (email or phone — determined by loginMethod in JWT)
+//   POST   /auth/mfa/setup               (email sessions only)
+//   POST   /auth/mfa/verify              (email sessions only)
+//   POST   /auth/mfa/disable             (email sessions only)
 //   GET    /users
 //   PUT    /users/update
 //   DELETE /users
