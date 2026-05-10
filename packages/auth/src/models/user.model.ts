@@ -73,7 +73,9 @@ export class UserModel {
 			`INSERT INTO fonderie_users (phone, first_name, last_name)
 			VALUES ($1, $2, $3)
 			ON CONFLICT (phone) DO UPDATE
-			SET updated_at = now()
+			SET first_name = COALESCE(EXCLUDED.first_name, fonderie_users.first_name),
+			    last_name  = COALESCE(EXCLUDED.last_name,  fonderie_users.last_name),
+			    updated_at = now()
 			RETURNING id`,
 			[phone, firstName, lastName],
 		);
