@@ -14,6 +14,7 @@ export interface IAuthUser {
 	deletedAt:        Date | null;
 	emailVerifiedAt:  Date | null;
 	phoneVerifiedAt:  Date | null;
+	phoneVerified:    boolean;  // per-session, sourced from JWT payload
 }
 
 export interface IWorkspace {

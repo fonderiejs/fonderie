@@ -301,7 +301,9 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			}
 
 			await sessions.delete(token);
-			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+			const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+				phoneVerified: payload.phoneVerified ?? false,
+			});
 			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 			return Response.json(

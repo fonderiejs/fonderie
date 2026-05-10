@@ -29,7 +29,7 @@ export function withSession(
 			return next();
 		}
 
-		Object.assign(ctx, { user });
+		Object.assign(ctx, { user: { ...user, phoneVerified: payload.phoneVerified ?? false } });
 
 		return next();
 	}

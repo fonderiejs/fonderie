@@ -8,26 +8,33 @@ export interface TokenPair {
 }
 
 export interface IAccessPayload {
-	sub:  string;           // userId
-	type: 'access';
+	sub:           string;  // userId
+	type:          'access';
+	phoneVerified: boolean;
 }
 
 export interface IRefreshPayload {
-	sub:  string;
-	type: 'refresh';
+	sub:           string;
+	type:          'refresh';
+	phoneVerified: boolean;
 }
 
-export function issueTokenPair(userId: string, config: IAuthConfig): TokenPair {
-	const duration = config.sessionDuration ?? '7d'
+export interface ITokenOptions {
+	phoneVerified?: boolean;
+}
+
+export function issueTokenPair(userId: string, config: IAuthConfig, options: ITokenOptions = {}): TokenPair {
+	const duration      = config.sessionDuration ?? '7d'
+	const phoneVerified = options.phoneVerified ?? false
 
 	const accessToken = jwt.sign(
-		{ sub: userId, type: 'access' } satisfies IAccessPayload,
+		{ sub: userId, type: 'access', phoneVerified } satisfies IAccessPayload,
 		config.jwtSecret,
 		{ expiresIn: '15m' },
 	)
 
 	const refreshToken = jwt.sign(
-		{ sub: userId, type: 'refresh' } satisfies IRefreshPayload,
+		{ sub: userId, type: 'refresh', phoneVerified } satisfies IRefreshPayload,
 		config.jwtSecret,
 		{ expiresIn: duration } as SignOptions,
 	)
