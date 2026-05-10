@@ -42,7 +42,6 @@ export interface IUser {
 	mfaEnabled:      boolean;
 	passwordHash:    string | null;
 	emailVerifiedAt: Date | null;
-	phoneVerifiedAt: Date | null;
 }
 
 export interface ISession {

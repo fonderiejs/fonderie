@@ -13,7 +13,6 @@ export interface IAuthUser {
 	mfaEnabled:       boolean;
 	deletedAt:        Date | null;
 	emailVerifiedAt:  Date | null;
-	phoneVerifiedAt:  Date | null;
 	loginMethod:      'email' | 'phone';  // sourced from JWT payload
 	phoneVerified:    boolean;            // per-session, sourced from JWT payload
 }

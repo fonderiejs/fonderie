@@ -117,7 +117,6 @@ const BASE_USER: IUser = {
 	mfaEnabled:      false,
 	passwordHash:    null,
 	emailVerifiedAt: new Date('2024-01-02T00:00:00Z'),
-	phoneVerifiedAt: null,
 };
 
 const { refreshToken: VALID_RT } = issueTokenPair('user-1', config, { loginMethod: 'email' });
@@ -129,18 +128,18 @@ const PHONE_USER: IUser = {
 	passwordHash:    null,
 	phone:           '+15141234567',
 	emailVerifiedAt: null,
-	phoneVerifiedAt: null,
 }
 
 type AuthStoreOpts = {
-	userByEmail?:   IUser | null
-	userByPhone?:   IUser | null
-	userById?:      IUser | null
-	insertedId?:    string
-	sessionExists?: boolean
-	resetRow?:      { user_id: string; expires_at: Date } | null
-	verifyRow?:     { expires_at: Date } | null
-	updateRow?:     { id: string } | null
+	userByEmail?:    IUser | null
+	userByPhone?:    IUser | null
+	userById?:       IUser | null
+	insertedId?:     string
+	sessionExists?:  boolean
+	resetRow?:       { user_id: string; expires_at: Date } | null
+	verifyRow?:      { expires_at: Date } | null
+	phoneVerifRow?:  { phone: string; expires_at: Date } | null
+	updateRow?:      { id: string } | null
 }
 
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
@@ -166,6 +165,9 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 
 			if (sql.includes('fonderie_email_verifications') && sql.includes('WHERE user_id'))
 				return (opts.verifyRow != null ? [opts.verifyRow] : []) as unknown as T[]
+
+			if (sql.includes('fonderie_phone_verifications') && sql.includes('WHERE user_id'))
+				return (opts.phoneVerifRow != null ? [opts.phoneVerifRow] : []) as unknown as T[]
 
 			if (sql.includes('UPDATE fonderie_users') && sql.includes('RETURNING id'))
 				return (opts.updateRow != null ? [opts.updateRow] : []) as unknown as T[]
@@ -550,64 +552,130 @@ test('resetPassword: 200 with PASSWORD_RESET_SUCCESSFUL on valid token', async (
 	assert.equal(body.reason, 'PASSWORD_RESET_SUCCESSFUL');
 });
 
-// ── AuthController.verifyEmail ────────────────────────────────────
+// ── AuthController.verify (unified) ──────────────────────────────
 
-test('verifyEmail: 422 when pin missing', async () => {
+test('verify: 200 VERIFIED (idempotent) when email user is already verified', async () => {
 	const ctrl     = makeAuth();
-	const response = await ctrl.verifyEmail(makeCtx({ body: {} }));
-	assert.equal(response.status, 422);
-});
-
-test('verifyEmail: 400 when pin not found', async () => {
-	const ctrl     = makeAuth({ verifyRow: null });
-	const response = await ctrl.verifyEmail(makeCtx({ user: { ...BASE_USER }, body: { pin: '000000' } }));
-	assert.equal(response.status, 400);
-});
-
-test('verifyEmail: 200 with verified and email on valid pin', async () => {
-	const ctrl     = makeAuth({
-		verifyRow: { expires_at: new Date(Date.now() + 60_000) },
-	});
-	const response = await ctrl.verifyEmail(makeCtx({ user: { ...BASE_USER }, body: { pin: '123456' } }));
+	const response = await ctrl.verify(makeCtx({ user: { ...BASE_USER, loginMethod: 'email' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,          'EMAIL_VERIFIED');
+	assert.equal(body.reason, 'VERIFIED');
+	assert.equal(body.result.verified, true);
+});
+
+test('verify: 422 when pin missing or non-numeric', async () => {
+	const ctrl       = makeAuth();
+	const unverified = { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' as const };
+	assert.equal((await ctrl.verify(makeCtx({ user: unverified, body: {} }))).status, 422);
+	assert.equal((await ctrl.verify(makeCtx({ user: unverified, body: { pin: 'abcdef' } }))).status, 422);
+	assert.equal((await ctrl.verify(makeCtx({ user: unverified, body: { pin: ' 12345 ' } }))).status, 422);
+});
+
+test('verify: 400 VERIFICATION_FAILED when email pin not found', async () => {
+	const ctrl       = makeAuth({ verifyRow: null });
+	const unverified = { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' as const };
+	const response   = await ctrl.verify(makeCtx({ user: unverified, body: { pin: '000000' } }));
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'VERIFICATION_FAILED');
+});
+
+test('verify: 200 VERIFIED with verified and email on valid email pin', async () => {
+	const ctrl       = makeAuth({ verifyRow: { expires_at: new Date(Date.now() + 60_000) } });
+	const unverified = { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' as const };
+	const response   = await ctrl.verify(makeCtx({ user: unverified, body: { pin: '123456' } }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,          'VERIFIED');
 	assert.equal(body.result.verified, true);
 	assert.equal(body.result.email,    'jane@example.com');
 });
 
-// ── AuthController.sendVerificationEmail ─────────────────────────
-
-test('resendVerification: 400 when email already verified', async () => {
-	const ctrl     = makeAuth();
-	const response = await ctrl.sendVerificationEmail(makeCtx({ user: { ...BASE_USER } }));
-	assert.equal(response.status, 400);
-	const body = await response.json() as any;
-	assert.equal(body.reason, 'EMAIL_ALREADY_VERIFIED');
+test('verify: 200 when email pin has surrounding whitespace (trimmed before lookup)', async () => {
+	const ctrl       = makeAuth({ verifyRow: { expires_at: new Date(Date.now() + 60_000) } });
+	const unverified = { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' as const };
+	const response   = await ctrl.verify(makeCtx({ user: unverified, body: { pin: '  123456  ' } }));
+	assert.equal(response.status, 200);
 });
 
-test('resendVerification: 200 with token, expiresAt and email', async () => {
-	const ctrl     = makeAuth();
-	const response = await ctrl.sendVerificationEmail(makeCtx({
-		user: { ...BASE_USER, emailVerifiedAt: null },
+test('verify: 400 VERIFICATION_FAILED when phone OTP not found', async () => {
+	const ctrl     = makeAuth({ phoneVerifRow: null });
+	const response = await ctrl.verify(makeCtx({
+		user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
+		body: { pin: '000000' },
+	}));
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'VERIFICATION_FAILED');
+});
+
+test('verify: 200 VERIFIED with new tokens and isPhoneVerified: true on valid phone OTP', async () => {
+	const ctrl     = makeAuth({
+		phoneVerifRow: { phone: '+15141234567', expires_at: new Date(Date.now() + 60_000) },
+		userById:      PHONE_USER,
+	});
+	const response = await ctrl.verify(makeCtx({
+		user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
+		body: { pin: '123456' },
 	}));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,            'VERIFICATION_EMAIL_SENT');
-	assert.equal(body.result.stat,       'success');
-	assert.ok(typeof body.result.data.token     === 'string');
-	assert.ok(typeof body.result.data.expiresAt === 'string');
-	assert.equal(body.result.data.email, 'jane@example.com');
+	assert.equal(body.reason,                    'VERIFIED');
+	assert.equal(body.result.user.isPhoneVerified, true);
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
 });
 
-test('sendVerificationEmail: 400 NO_EMAIL_ON_ACCOUNT for phone-only user', async () => {
+// ── AuthController.sendVerification (unified) ────────────────────
+
+test('sendVerification: 200 VERIFICATION_SENT with pin for email user', async () => {
+	const ctrl       = makeAuth();
+	const unverified = { ...BASE_USER, emailVerifiedAt: null };
+	const response   = await ctrl.sendVerification(makeCtx({ user: unverified }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,                       'VERIFICATION_SENT');
+	assert.ok(typeof body.result.data.token     === 'string');
+	assert.ok(typeof body.result.data.expiresAt === 'string');
+	assert.equal(body.result.data.email,            'jane@example.com');
+});
+
+test('sendVerification: 200 EMAIL_VERIFIED (idempotent) when email already verified', async () => {
 	const ctrl     = makeAuth();
-	const response = await ctrl.sendVerificationEmail(makeCtx({
-		user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: true },
+	const response = await ctrl.sendVerification(makeCtx({ user: { ...BASE_USER } }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'EMAIL_VERIFIED');
+});
+
+test('sendVerification: 400 NO_EMAIL_ON_ACCOUNT for phone-only email session', async () => {
+	const ctrl     = makeAuth();
+	const response = await ctrl.sendVerification(makeCtx({
+		user: { ...PHONE_USER, loginMethod: 'email', phoneVerified: false },
 	}));
 	assert.equal(response.status, 400);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'NO_EMAIL_ON_ACCOUNT');
+});
+
+test('sendVerification: 200 VERIFICATION_SENT for phone user (uses phone from session)', async () => {
+	const ctrl     = makeAuth();
+	const response = await ctrl.sendVerification(makeCtx({
+		user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
+	}));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'VERIFICATION_SENT');
+});
+
+test('sendVerification: 400 NO_PHONE_ON_ACCOUNT when phone user has no phone in session', async () => {
+	const ctrl     = makeAuth();
+	const response = await ctrl.sendVerification(makeCtx({
+		user: { ...PHONE_USER, phone: null, loginMethod: 'phone', phoneVerified: false },
+	}));
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'NO_PHONE_ON_ACCOUNT');
 });
 
 // ── UserController.me ─────────────────────────────────────────────
@@ -617,7 +685,7 @@ test('me: 200 with user DTO including profileImageUrl', async () => {
 	const response = await ctrl.me(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                       'USER_FETCHED');
+	assert.equal(body.reason,                       'USER_ACCOUNT_FETCHED');
 	assert.equal(body.result.user.email,           'jane@example.com');
 	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
 	assert.equal(body.result.user.phone,           '+1234567890');
