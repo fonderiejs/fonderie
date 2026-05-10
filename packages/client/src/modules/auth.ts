@@ -9,6 +9,7 @@ import type {
 	IMeResult,
 	IMfaSetupResult,
 	IMfaEnabledResult,
+	IPhoneVerifyResult,
 } from '../types'
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
@@ -38,6 +39,28 @@ export interface IUpdateUserInput {
 	locale?:      string
 	timezone?:    string
 	preferences?: Record<string, unknown>
+}
+
+// ── Phone sub-client ─────────────────────────────────────────────────────────
+
+class PhoneClient {
+	constructor(private http: HttpClient) {}
+
+	sendVerification(phone: string) {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'POST',
+			path:   '/auth/phone/send-verification',
+			body:   { phone },
+		})
+	}
+
+	verify(phone: string, otp: string) {
+		return this.http.request<IApiResponse<IPhoneVerifyResult>>({
+			method: 'POST',
+			path:   '/auth/phone/verify',
+			body:   { phone, otp },
+		})
+	}
 }
 
 // ── MFA sub-client ───────────────────────────────────────────────────────────
@@ -78,10 +101,12 @@ class MfaClient {
 // ── Auth client ──────────────────────────────────────────────────────────────
 
 export class AuthClient {
-	readonly mfa: MfaClient
+	readonly phone: PhoneClient
+	readonly mfa:   MfaClient
 
 	constructor(private http: HttpClient, private accessToken?: string) {
-		this.mfa = new MfaClient(http, () => this.accessToken)
+		this.phone = new PhoneClient(http)
+		this.mfa   = new MfaClient(http, () => this.accessToken)
 	}
 
 	setAccessToken(token: string | undefined) {
@@ -109,7 +134,7 @@ export class AuthClient {
 	refreshTokens(refreshToken?: string) {
 		return this.http.request<IApiResponse<IRefreshResult>>({
 			method: 'POST',
-			path:   '/auth/refresh-tokens',
+			path:   '/auth/refresh',
 			body:   refreshToken ? { refreshToken } : undefined,
 		})
 	}
@@ -117,7 +142,7 @@ export class AuthClient {
 	forgotPassword(email: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path:   '/auth/forgot-password',
+			path:   '/auth/email/forgot-password',
 			body:   { email },
 		})
 	}
@@ -125,7 +150,7 @@ export class AuthClient {
 	resetPassword(input: IResetPasswordInput) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path:   '/auth/reset-password',
+			path:   '/auth/email/reset-password',
 			body:   input,
 		})
 	}
@@ -133,7 +158,7 @@ export class AuthClient {
 	verifyEmail(pin: string) {
 		return this.http.request<IApiResponse<IVerifyEmailResult>>({
 			method: 'POST',
-			path:   '/auth/verify-email',
+			path:   '/auth/email/verify',
 			body:   { pin },
 		})
 	}
@@ -152,7 +177,7 @@ export class AuthClient {
 	sendVerificationEmail() {
 		return this.http.request<IApiResponse<IResendVerificationResult>>({
 			method: 'POST',
-			path:   '/auth/send-verification-email',
+			path:   '/auth/email/send-verification',
 			token:  this.accessToken,
 		})
 	}

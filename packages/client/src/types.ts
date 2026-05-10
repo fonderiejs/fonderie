@@ -66,8 +66,7 @@ export interface ILoginResult {
 }
 
 export interface IRefreshResult {
-	token:     string
-	expiresIn: number
+	tokens: ITokens
 }
 
 export interface IVerifyEmailResult {
@@ -95,6 +94,11 @@ export interface IMfaSetupResult {
 }
 
 export interface IMfaEnabledResult {
+	tokens: ITokens
+	user:   IUserDTO
+}
+
+export interface IPhoneVerifyResult {
 	tokens: ITokens
 	user:   IUserDTO
 }

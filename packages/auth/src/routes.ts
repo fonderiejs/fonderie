@@ -29,16 +29,16 @@ export function buildAuthRoutes(
 		// Token Management (Public)
 		['POST', '/auth/refresh',                   auth.refresh],
 
-		// Password Recovery (Public)
-		['POST', '/auth/forgot-password',           auth.forgotPassword],
-		['POST', '/auth/reset-password',            auth.resetPassword],
+		// Email — Password Recovery (Public)
+		['POST', '/auth/email/forgot-password',     auth.forgotPassword],
+		['POST', '/auth/email/reset-password',      auth.resetPassword],
 
-		// Email Verification (Public)
-		['POST', '/auth/verify-email',              auth.verifyEmail],
+		// Email — Verification (Public)
+		['POST', '/auth/email/verify',              auth.verifyEmail],
 
 		// Account Management (Protected)
 		['POST', '/auth/logout',                    requireAuth, auth.logout],
-		['POST', '/auth/resend-verification',       requireAuth, auth.sendVerificationEmail],
+		['POST', '/auth/email/send-verification',   requireAuth, auth.sendVerificationEmail],
 
 		// User Profile (Protected + Verified)
 		['GET',    '/users',        requireAuth, requireVerifiedEmail, user.me],
@@ -53,8 +53,8 @@ export function buildAuthRoutes(
 
 	if (config.providers.includes('phone')) {
 		routes.push(
-			['POST', '/auth/phone/send-otp', phone.sendOtp],
-			['POST', '/auth/phone/verify',   phone.verify],
+			['POST', '/auth/phone/send-verification', phone.sendOtp],
+			['POST', '/auth/phone/verify',            phone.verify],
 		);
 	}
 
