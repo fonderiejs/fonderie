@@ -5,8 +5,18 @@ import type { IEmailChannelConfig }                                  from '../co
 
 export class EmailChannel implements ICourierChannel {
 	readonly name = 'email';
+	private transport: ReturnType<typeof nodemailer.createTransport> | null = null;
 
-	constructor(private config: IEmailChannelConfig) {}
+	constructor(private config: IEmailChannelConfig) {
+		if (config.provider === 'smtp' && config.smtp) {
+			this.transport = nodemailer.createTransport({
+				host:   config.smtp.host,
+				port:   config.smtp.port,
+				secure: config.smtp.secure,
+				auth:   { user: config.smtp.user, pass: config.smtp.pass },
+			});
+		}
+	}
 
 	async send(message: ICourierMessage, template: IRenderedTemplate): Promise<void> {
 		const to = message.recipient.email;
@@ -51,19 +61,11 @@ export class EmailChannel implements ICourierChannel {
 	}
 
 	private async sendViaSMTP(to: string, template: IRenderedTemplate): Promise<void> {
-		const smtp = this.config.smtp
-		if (!smtp) {
-			throw new Error('SMTP config is required');
+		if (!this.transport) {
+			throw new Error('SMTP transport not initialised — check smtp config');
 		}
 
-		const transport = nodemailer.createTransport({
-			host:   smtp.host,
-			port:   smtp.port,
-			secure: smtp.secure,
-			auth:   { user: smtp.user, pass: smtp.pass },
-		})
-
-		await transport.sendMail({
+		await this.transport.sendMail({
 			from:    this.config.from,
 			to,
 			subject: template.subject ?? '(no subject)',
