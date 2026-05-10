@@ -1,4 +1,4 @@
-import { randomInt, randomBytes }                       from 'node:crypto';
+import { randomInt }                                    from 'node:crypto';
 
 import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
@@ -337,14 +337,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.OK, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 			}
 
-			const token     = randomBytes(32).toString('hex');
+			const pin       = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
-			await passwordReset.create(user.id, token, expiresAt);
+			await passwordReset.create(user.id, pin, expiresAt);
 
 			ctx.meta['message'] = {
 				type:      'password-reset',
 				recipient: { email, phone: null, deviceToken: null },
-				data:      { token },
+				data:      { pin },
 			} satisfies ICourierMessage;
 
 			return setApiResponse(HTTP.OK, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
@@ -352,26 +352,30 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 		resetPassword: async (ctx: IFonderieContext): Promise<Response> => {
 			const body     = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const token    = body?.['resetToken'] ?? body?.['token'];
+			const raw      = body?.['pin'];
 			const password = body?.['password'];
 
-			if (typeof token !== 'string' || typeof password !== 'string') {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'resetToken and password are required');
+			if (typeof raw !== 'string' || typeof password !== 'string') {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin and password are required');
+			}
+			if (!/^\d{6}$/.test(raw.trim())) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin must be a 6-digit code');
 			}
 			if (password.length < 8) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
 			}
 
-			const row = await passwordReset.find(token);
+			const pin = raw.trim();
+			const row = await passwordReset.findByPin(pin);
 			if (!row || new Date() > row.expiresAt) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'PASSWORD_RESET_FAILED', 'Invalid or expired token');
+				return setApiResponse(HTTP.BAD_REQUEST, 'PASSWORD_RESET_FAILED', 'Invalid or expired pin');
 			}
 
 			const passwordHash = await hashPassword(password);
 			await store.transaction(async tx => {
 				await Promise.all([
 					tx.query(`UPDATE fonderie_users SET password_hash = $1 WHERE id = $2`, [passwordHash, row.userId]),
-					tx.query(`DELETE FROM fonderie_password_resets WHERE token = $1`, [token]),
+					tx.query(`DELETE FROM fonderie_password_resets WHERE user_id = $1`, [row.userId]),
 				]);
 			});
 
