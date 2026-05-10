@@ -7,8 +7,8 @@ import {
 	PGAdapter,
 	MigrationRunner,
 } from '@fonderie-js/store'
-import { AuthModule, AUTH_CONFIG_KEYS } from '@fonderie-js/auth'
-import type { IAuthConfig }             from '@fonderie-js/auth'
+import { AuthModule, AUTH_CONFIG_KEYS }           from '@fonderie-js/auth'
+import type { IAuthConfig, IAuthRuntimeConfig }   from '@fonderie-js/auth'
 import {
 	PermissionsModule,
 	requirePermission,
@@ -48,7 +48,7 @@ const authConfig: IAuthConfig = {
 	jwtSecret:       process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
 	sessionDuration: '7d',
 	providers:       ['email', 'phone'],
-	resolve: (ctx) => ({
+	resolve: (ctx: { meta: Record<string, unknown> }): Partial<IAuthRuntimeConfig> => ({
 		verificationCooldown: Number(getConfig(ctx, AUTH_CONFIG_KEYS.verificationCooldown)) || undefined,
 		sessionDuration:      String(getConfig(ctx, AUTH_CONFIG_KEYS.sessionDuration))      || undefined,
 		mfa:                  Boolean(getConfig(ctx, AUTH_CONFIG_KEYS.mfa))                 || undefined,
