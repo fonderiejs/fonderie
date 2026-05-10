@@ -319,7 +319,7 @@ test('login: 200 with user DTO and tokens', async () => {
 	const response = await ctrl.login(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                       'ACCOUNT_LOGIN');
+	assert.equal(body.reason,                       'USER_EMAIL_LOGIN');
 	assert.equal(body.result.user.email,            'jane@example.com');
 	assert.equal(body.result.user.profileImageUrl,  'https://cdn.example.com/avatar.jpg');
 	assert.ok(typeof body.result.tokens.access  === 'string');
