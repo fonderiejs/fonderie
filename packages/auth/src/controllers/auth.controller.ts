@@ -503,11 +503,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			} satisfies ICourierMessage;
 
 			return setApiResponse(HTTP.OK, 'VERIFICATION_SENT', 'Verification email sent.', {
-				data: {
-					token:     pin,
-					expiresAt: expiresAt.toISOString(),
-					email:     ctx.user!.email,
-				},
+				email: ctx.user!.email,
 			});
 		},
 	};
