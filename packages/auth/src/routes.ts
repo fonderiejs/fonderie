@@ -1,13 +1,14 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter }  from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
+import type { IAuthConfig }    from './config';
 
+import { requireAuth, requireVerifiedEmail } from '@fonderie-js/core/middlewares';
+
+import { mfaController }   from './controllers/mfa.controller';
 import { authController }  from './controllers/auth.controller';
 import { userController }  from './controllers/user.controller';
-import { mfaController }   from './controllers/mfa.controller';
 import { oauthController } from './controllers/oauth.controller';
 import { phoneController } from './controllers/phone.controller';
-import { requireAuth, requireVerifiedEmail } from '@fonderie-js/core/middlewares';
-import type { IAuthConfig }                  from './config';
 
 type RouteDefinition = [string, string, ...Middleware[]]
 
