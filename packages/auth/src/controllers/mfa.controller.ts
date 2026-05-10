@@ -16,7 +16,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 	return {
 		setup: async (ctx: IFonderieContext): Promise<Response> => {
 			const secret = generateTotpSecret();
-			const uri    = generateTotpUri(ctx.user!.email, secret, issuer);
+			const uri    = generateTotpUri(ctx.user!.email ?? ctx.user!.id, secret, issuer);
 
 			await users.saveMfaSecret(ctx.user!.id, secret);
 

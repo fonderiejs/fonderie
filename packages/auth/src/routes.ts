@@ -30,8 +30,8 @@ export function buildAuthRoutes(
 		['POST', '/auth/refresh',                   auth.refresh],
 
 		// Email — Password Recovery (Public)
-		['POST', '/auth/email/forgot-password',     auth.forgotPassword],
-		['POST', '/auth/email/reset-password',      auth.resetPassword],
+		['POST', '/auth/email/forgot',              auth.forgotPassword],
+		['POST', '/auth/email/reset',               auth.resetPassword],
 
 		// Email — Verification (Public)
 		['POST', '/auth/email/verify',              auth.verifyEmail],

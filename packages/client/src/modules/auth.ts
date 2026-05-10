@@ -142,7 +142,7 @@ export class AuthClient {
 	forgotPassword(email: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path:   '/auth/email/forgot-password',
+			path:   '/auth/email/forgot',
 			body:   { email },
 		})
 	}
@@ -150,7 +150,7 @@ export class AuthClient {
 	resetPassword(input: IResetPasswordInput) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path:   '/auth/email/reset-password',
+			path:   '/auth/email/reset',
 			body:   input,
 		})
 	}
