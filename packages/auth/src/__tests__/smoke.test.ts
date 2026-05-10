@@ -122,8 +122,19 @@ const BASE_USER: IUser = {
 
 const { refreshToken: VALID_RT } = issueTokenPair('user-1', config);
 
+const PHONE_USER: IUser = {
+	...BASE_USER,
+	id:              'user-2',
+	email:           null,
+	passwordHash:    null,
+	phone:           '+15141234567',
+	emailVerifiedAt: null,
+	phoneVerifiedAt: null,
+}
+
 type AuthStoreOpts = {
 	userByEmail?:   IUser | null
+	userByPhone?:   IUser | null
 	userById?:      IUser | null
 	insertedId?:    string
 	sessionExists?: boolean
@@ -137,6 +148,9 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
 			if (sql.includes('fonderie_users') && sql.includes('WHERE email = $1'))
 				return (opts.userByEmail != null ? [opts.userByEmail] : []) as unknown as T[]
+
+			if (sql.includes('fonderie_users') && sql.includes('WHERE phone = $1'))
+				return (opts.userByPhone != null ? [opts.userByPhone] : []) as unknown as T[]
 
 			if (sql.includes('fonderie_users') && sql.includes('WHERE id = $1') && sql.includes('deleted_at IS NULL'))
 				return (opts.userById != null ? [opts.userById] : []) as unknown as T[]
@@ -164,7 +178,7 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 }
 
 function makeCtx(opts: {
-	user?:      { id: string; email: string | null; phoneVerified?: boolean; [key: string]: unknown } | null
+	user?:      { id: string; email: string | null; loginMethod?: 'email' | 'phone'; phoneVerified?: boolean; [key: string]: unknown } | null
 	body?:      Record<string, unknown>
 	workspace?: { id: string } | null
 	cookie?:    string
@@ -252,6 +266,52 @@ test('requireAuth: calls next when ctx.user is set', async () => {
 	assert.ok(called);
 });
 
+// ── requireVerified middleware ────────────────────────────────────
+
+test('requireVerified: passes email user with verified email', async () => {
+	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const ctx    = makeCtx({ user: { ...BASE_USER, loginMethod: 'email', phoneVerified: false } });
+	let   called = false;
+	await requireVerified(ctx, async () => { called = true; return Response.json({}); });
+	assert.ok(called);
+});
+
+test('requireVerified: 403 EMAIL_NOT_VERIFIED when email user has unverified email', async () => {
+	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const ctx      = makeCtx({ user: { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email', phoneVerified: false } });
+	const response = await requireVerified(ctx, async () => Response.json({ ok: true }));
+	assert.equal(response.status, 403);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'EMAIL_NOT_VERIFIED');
+});
+
+test('requireVerified: passes phone user with phoneVerified: true in JWT', async () => {
+	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const ctx    = makeCtx({ user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: true } });
+	let   called = false;
+	await requireVerified(ctx, async () => { called = true; return Response.json({}); });
+	assert.ok(called);
+});
+
+test('requireVerified: 403 PHONE_NOT_VERIFIED when phone user has phoneVerified: false', async () => {
+	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const ctx      = makeCtx({ user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false } });
+	const response = await requireVerified(ctx, async () => Response.json({ ok: true }));
+	assert.equal(response.status, 403);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'PHONE_NOT_VERIFIED');
+});
+
+test('requireVerified: uses phone gate for email+phone user who logged in via phone', async () => {
+	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	// email is set and verified — but loginMethod is phone so phone gate applies
+	const ctx      = makeCtx({ user: { ...BASE_USER, loginMethod: 'phone', phoneVerified: false } });
+	const response = await requireVerified(ctx, async () => Response.json({ ok: true }));
+	assert.equal(response.status, 403);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'PHONE_NOT_VERIFIED');
+});
+
 // ── AuthController.register ───────────────────────────────────────
 
 test('register: 422 when email or password missing', async () => {
@@ -285,6 +345,28 @@ test('register: 201 with user DTO, access and refresh tokens', async () => {
 	assert.equal(body.result.user.firstName, 'Jane');
 	assert.ok(typeof body.result.tokens.access  === 'string');
 	assert.ok(typeof body.result.tokens.refresh === 'string');
+	assert.ok(response.headers.get('set-cookie')?.includes('access_token='));
+});
+
+// ── AuthController.register (phone) ──────────────────────────────
+
+test('register: 409 when phone already registered', async () => {
+	const ctrl     = makeAuth({ userByPhone: PHONE_USER });
+	const response = await ctrl.register(makeCtx({ body: { phone: '+15141234567' } }));
+	assert.equal(response.status, 409);
+});
+
+test('register: 202 with tokens and isPhoneVerified: false on phone registration', async () => {
+	const ctrl     = makeAuth({ insertedId: 'user-2', userById: PHONE_USER });
+	const response = await ctrl.register(makeCtx({
+		body: { phone: '+15141234567', firstName: 'Jane', lastName: 'Doe' },
+	}));
+	assert.equal(response.status, 202);
+	const body = await response.json() as any;
+	assert.equal(body.reason,                    'USER_PHONE_REGISTERED');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
+	assert.equal(body.result.user.isPhoneVerified, false);
 	assert.ok(response.headers.get('set-cookie')?.includes('access_token='));
 });
 
@@ -324,6 +406,41 @@ test('login: 200 with user DTO and tokens', async () => {
 	assert.equal(body.result.user.profileImageUrl,  'https://cdn.example.com/avatar.jpg');
 	assert.ok(typeof body.result.tokens.access  === 'string');
 	assert.ok(typeof body.result.tokens.refresh === 'string');
+});
+
+// ── AuthController.login (phone) ─────────────────────────────────
+
+test('login: 401 when phone not found', async () => {
+	const ctrl     = makeAuth({ userByPhone: null });
+	const response = await ctrl.login(makeCtx({ body: { phone: '+15141234567' } }));
+	assert.equal(response.status, 401);
+});
+
+test('login: 403 when phone account is suspended', async () => {
+	const ctrl     = makeAuth({ userByPhone: { ...PHONE_USER, suspended: true } });
+	const response = await ctrl.login(makeCtx({ body: { phone: '+15141234567' } }));
+	assert.equal(response.status, 403);
+});
+
+test('login: 202 with tokens and isPhoneVerified: false on phone login', async () => {
+	const ctrl     = makeAuth({ userByPhone: PHONE_USER });
+	const response = await ctrl.login(makeCtx({ body: { phone: '+15141234567' } }));
+	assert.equal(response.status, 202);
+	const body = await response.json() as any;
+	assert.equal(body.reason,                    'USER_PHONE_OTP_SENT');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
+	assert.equal(body.result.user.isPhoneVerified, false);
+});
+
+test('login: email branch takes priority when both email+password and phone are present', async () => {
+	const ctrl     = makeAuth({ userByEmail: { ...BASE_USER, passwordHash: HASHED_PW } });
+	const response = await ctrl.login(makeCtx({
+		body: { email: 'jane@example.com', password: 'password123', phone: '+15141234567' },
+	}));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'USER_EMAIL_LOGIN');
 });
 
 // ── AuthController.logout ─────────────────────────────────────────
@@ -454,6 +571,16 @@ test('resendVerification: 200 with token, expiresAt and email', async () => {
 	assert.ok(typeof body.result.data.token     === 'string');
 	assert.ok(typeof body.result.data.expiresAt === 'string');
 	assert.equal(body.result.data.email, 'jane@example.com');
+});
+
+test('sendVerificationEmail: 400 NO_EMAIL_ON_ACCOUNT for phone-only user', async () => {
+	const ctrl     = makeAuth();
+	const response = await ctrl.sendVerificationEmail(makeCtx({
+		user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: true },
+	}));
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'NO_EMAIL_ON_ACCOUNT');
 });
 
 // ── UserController.me ─────────────────────────────────────────────
