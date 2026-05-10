@@ -89,6 +89,13 @@ export class UserModel {
 		);
 	}
 
+	async resetPhoneVerification(id: string): Promise<void> {
+		await this.store.query(
+			`UPDATE fonderie_users SET phone_verified_at = NULL, updated_at = now() WHERE id = $1`,
+			[id],
+		);
+	}
+
 	async create(
 		email:        string,
 		passwordHash: string,

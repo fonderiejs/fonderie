@@ -220,6 +220,8 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
 				}
 
+				await users.resetPhoneVerification(user.id);
+
 				const otp       = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(user.id, phone.trim(), otp, expiresAt);
@@ -239,7 +241,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 						explanation: 'A verification code has been sent to your phone.',
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
-							user:   toUserDTO(user),
+							user:   toUserDTO({ ...user, phoneVerifiedAt: null }),
 						},
 					},
 					{
