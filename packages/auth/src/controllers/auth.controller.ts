@@ -184,7 +184,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 					recipient: { email: null, phone: phone.trim(), deviceToken: null },
 				} satisfies ICourierMessage;
 
-				return setApiResponse(HTTP.ACCEPTED, 'OTP_SENT', 'A verification code has been sent to your phone.');
+				return setApiResponse(HTTP.ACCEPTED, 'USER_PHONE_OTP_SENT', 'A verification code has been sent to your phone.');
 			}
 
 			// ── Email login branch ────────────────────────────────────
@@ -221,7 +221,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 
 			return Response.json(
 				{
-					reason:      'ACCOUNT_LOGIN',
+					reason:      'USER_EMAIL_LOGIN',
 					explanation: 'Login successful.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
