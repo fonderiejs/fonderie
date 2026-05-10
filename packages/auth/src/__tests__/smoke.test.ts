@@ -312,6 +312,25 @@ test('requireVerified: uses phone gate for email+phone user who logged in via ph
 	assert.equal(body.reason, 'PHONE_NOT_VERIFIED');
 });
 
+// ── requireEmailLogin middleware ──────────────────────────────────
+
+test('requireEmailLogin: passes for email session', async () => {
+	const { requireEmailLogin } = await import('../middlewares/require-email-login');
+	const ctx    = makeCtx({ user: { ...BASE_USER, loginMethod: 'email', phoneVerified: false } });
+	let   called = false;
+	await requireEmailLogin(ctx, async () => { called = true; return Response.json({}); });
+	assert.ok(called);
+});
+
+test('requireEmailLogin: 403 EMAIL_LOGIN_REQUIRED for phone session', async () => {
+	const { requireEmailLogin } = await import('../middlewares/require-email-login');
+	const ctx      = makeCtx({ user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: true } });
+	const response = await requireEmailLogin(ctx, async () => Response.json({ ok: true }));
+	assert.equal(response.status, 403);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'EMAIL_LOGIN_REQUIRED');
+});
+
 // ── AuthController.register ───────────────────────────────────────
 
 test('register: 422 when email or password missing', async () => {
