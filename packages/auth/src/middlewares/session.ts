@@ -29,7 +29,11 @@ export function withSession(
 			return next();
 		}
 
-		Object.assign(ctx, { user: { ...user, phoneVerified: payload.phoneVerified ?? false } });
+		Object.assign(ctx, { user: {
+			...user,
+			loginMethod:   payload.loginMethod   ?? 'email',
+			phoneVerified: payload.phoneVerified ?? false,
+		} });
 
 		return next();
 	}

@@ -44,7 +44,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				await users.enableMfa(ctx.user!.id);
 			}
 
-			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config);
+			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, { loginMethod: ctx.user!.loginMethod });
 			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 			const fullUser = await users.findById(ctx.user!.id);

@@ -71,7 +71,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
 			}
 
-			const { accessToken, refreshToken } = issueTokenPair(user.id, config);
+			const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });
 			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 			return Response.json(
