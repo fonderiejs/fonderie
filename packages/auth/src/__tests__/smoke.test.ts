@@ -131,16 +131,17 @@ const PHONE_USER: IUser = {
 }
 
 type AuthStoreOpts = {
-	userByEmail?:    IUser | null
-	userByPhone?:    IUser | null
-	userById?:       IUser | null
-	insertedId?:     string
-	sessionExists?:  boolean
-	resetRow?:       { user_id: string; expires_at: Date } | null
-	verifyRow?:      { expires_at: Date } | null
-	phoneVerifRow?:  { phone: string; expires_at: Date } | null
-	lastSentAt?:     Date | null
-	updateRow?:      { id: string } | null
+	userByEmail?:      IUser | null
+	userByPhone?:      IUser | null
+	userById?:         IUser | null
+	insertedId?:       string
+	sessionExists?:    boolean
+	resetRow?:         { user_id: string; expires_at: Date } | null
+	resetLastSentAt?:  Date | null
+	verifyRow?:        { expires_at: Date } | null
+	phoneVerifRow?:    { phone: string; expires_at: Date } | null
+	lastSentAt?:       Date | null
+	updateRow?:        { id: string } | null
 }
 
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
@@ -160,6 +161,9 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 
 			if (sql.includes('fonderie_sessions') && sql.includes('SELECT id'))
 				return (opts.sessionExists ? [{ id: 'sess-1' }] : []) as unknown as T[]
+
+			if (sql.includes('fonderie_password_resets') && sql.includes('SELECT created_at'))
+				return (opts.resetLastSentAt != null ? [{ created_at: opts.resetLastSentAt }] : []) as unknown as T[]
 
 			if (sql.includes('fonderie_password_resets') && sql.includes('WHERE pin'))
 				return (opts.resetRow != null ? [opts.resetRow] : []) as unknown as T[]
@@ -529,6 +533,24 @@ test('forgotPassword: 422 when email missing', async () => {
 test('forgotPassword: 200 with PASSWORD_RESET_EMAIL_SENT even when email not found', async () => {
 	const ctrl     = makeAuth({ userByEmail: null });
 	const response = await ctrl.forgotPassword(makeCtx({ body: { email: 'ghost@example.com' } }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'PASSWORD_RESET_EMAIL_SENT');
+});
+
+test('forgotPassword: 429 VERIFICATION_COOLDOWN when reset was requested recently', async () => {
+	const ctrl     = makeAuth({ userByEmail: BASE_USER, resetLastSentAt: new Date(Date.now() - 60_000) }); // 1 min ago
+	const response = await ctrl.forgotPassword(makeCtx({ body: { email: 'jane@example.com' } }));
+	assert.equal(response.status, 429);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'VERIFICATION_COOLDOWN');
+	assert.ok(typeof body.details.retryAfter === 'number');
+	assert.ok(body.details.retryAfter > 0);
+});
+
+test('forgotPassword: 200 PASSWORD_RESET_EMAIL_SENT when cooldown has passed', async () => {
+	const ctrl     = makeAuth({ userByEmail: BASE_USER, resetLastSentAt: new Date(Date.now() - 6 * 60_000) }); // 6 min ago
+	const response = await ctrl.forgotPassword(makeCtx({ body: { email: 'jane@example.com' } }));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'PASSWORD_RESET_EMAIL_SENT');

@@ -5,12 +5,21 @@ export class PasswordResetModel {
 
 	async create(userId: string, pin: string, expiresAt: Date): Promise<void> {
 		await this.store.query(
-			`INSERT INTO fonderie_password_resets (user_id, pin, expires_at)
-			VALUES ($1, $2, $3)
+			`INSERT INTO fonderie_password_resets (user_id, pin, expires_at, created_at)
+			VALUES ($1, $2, $3, now())
 			ON CONFLICT (user_id) DO UPDATE
-			SET pin = $2, expires_at = $3`,
+			SET pin = $2, expires_at = $3, created_at = now()`,
 			[userId, pin, expiresAt],
 		);
+	}
+
+	async findLastSentAt(userId: string): Promise<Date | null> {
+		const [row] = await this.store.query<{ created_at: Date }>(
+			`SELECT created_at FROM fonderie_password_resets WHERE user_id = $1`,
+			[userId],
+		);
+		if (!row) return null;
+		return new Date(row.created_at);
 	}
 
 	async findByPin(pin: string): Promise<{ userId: string; expiresAt: Date } | null> {
