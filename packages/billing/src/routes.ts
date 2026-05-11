@@ -23,13 +23,13 @@ export function buildBillingRoutes(
 
 	return [
 		// Plans — public
-		['GET',    '/billing/plans',              plan.list],
-		['GET',    '/billing/plans/:planId',      plan.get],
+		['GET',    '/plans',              plan.list],
+		['GET',    '/plans/:planId',      plan.get],
 
 		// Plans — admin CRUD
-		['POST',   '/billing/plans',              requireAuth, plan.create],
-		['PUT',    '/billing/plans/:planId',      requireAuth,plan.update],
-		['DELETE', '/billing/plans/:planId',      requireAuth,plan.remove],
+		['POST',   '/plans',              requireAuth, plan.create],
+		['PUT',    '/plans/:planId',      requireAuth, plan.update],
+		['DELETE', '/plans/:planId',      requireAuth, plan.remove],
 
 		// Subscription — read
 		['GET',    '/workspaces/:workspaceId/billing/subscription', requireAuth,subscription.get],
