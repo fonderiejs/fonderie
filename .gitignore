@@ -13,3 +13,6 @@
 # Local env files
 **/.env
 **/.env.local
+
+# Local scripts
+**/scripts
