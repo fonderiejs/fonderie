@@ -12,6 +12,7 @@ export interface IAccessPayload {
 	type:          'access';
 	loginMethod:   'email' | 'phone';
 	phoneVerified: boolean;
+	mfaPending?:   boolean;
 }
 
 export interface IRefreshPayload {
@@ -24,6 +25,14 @@ export interface IRefreshPayload {
 export interface ITokenOptions {
 	loginMethod:    'email' | 'phone';
 	phoneVerified?: boolean;
+}
+
+export function issueMfaPendingToken(userId: string, config: IAuthConfig, loginMethod: 'email' | 'phone'): string {
+	return jwt.sign(
+		{ sub: userId, type: 'access', loginMethod, phoneVerified: false, mfaPending: true } satisfies IAccessPayload,
+		config.jwtSecret,
+		{ expiresIn: '5m' },
+	)
 }
 
 export function issueTokenPair(userId: string, config: IAuthConfig, options: ITokenOptions): TokenPair {

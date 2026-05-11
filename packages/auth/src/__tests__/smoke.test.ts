@@ -4,10 +4,11 @@ import assert   from 'node:assert/strict';
 import type { IStoreAdapter }         from '@fonderie-js/store';
 import type { IAuthConfig }           from '../config';
 import type { IUser }                 from '../types';
-import { issueTokenPair, verifyToken } from '../services/jwt';
-import { generateTotpSecret }         from '../services/mfa';
+import { issueTokenPair, issueMfaPendingToken, verifyToken } from '../services/jwt';
+import { generateTotpSecret, generateTotpCode, generateBackupCodes } from '../services/mfa';
 import { hashPassword, verifyPassword } from '../services/password';
 import { authController } from '../controllers/auth.controller';
+import { mfaController }  from '../controllers/mfa.controller';
 import { userController } from '../controllers/user.controller';
 
 const config: IAuthConfig = {
@@ -142,6 +143,10 @@ type AuthStoreOpts = {
 	phoneVerifRow?:    { phone: string; expires_at: Date } | null
 	lastSentAt?:       Date | null
 	updateRow?:        { id: string } | null
+	// MFA-specific
+	mfaPendingSecret?: string
+	mfaSecret?:        string
+	backupCodeRows?:   { id: string; code_hash: string }[]
 }
 
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
@@ -180,6 +185,19 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 			if (sql.includes('UPDATE fonderie_users') && sql.includes('RETURNING id'))
 				return (opts.updateRow != null ? [opts.updateRow] : []) as unknown as T[]
 
+			if (sql.includes('fonderie_users') && sql.includes('mfa_secret_pending'))
+				return (typeof opts.mfaPendingSecret === 'string'
+					? [{ mfa_secret_pending: opts.mfaPendingSecret }]
+					: []) as unknown as T[]
+
+			if (sql.includes('fonderie_users') && sql.includes('mfa_secret') && !sql.includes('mfa_secret_pending'))
+				return (typeof opts.mfaSecret === 'string'
+					? [{ mfa_secret: opts.mfaSecret }]
+					: []) as unknown as T[]
+
+			if (sql.includes('fonderie_mfa_backup_codes') && sql.includes('used_at IS NULL'))
+				return (opts.backupCodeRows ?? []) as unknown as T[]
+
 			return [] as unknown as T[]
 		},
 		transaction: async (fn) => fn(stub),
@@ -210,6 +228,10 @@ function makeAuth(storeOpts: AuthStoreOpts = {}) {
 
 function makeUser(storeOpts: AuthStoreOpts = {}) {
 	return userController(makeStore(storeOpts))
+}
+
+function makeMfa(storeOpts: AuthStoreOpts = {}) {
+	return mfaController(makeStore(storeOpts), config, 'TestApp')
 }
 
 // ── toUserDTO ─────────────────────────────────────────────────────
@@ -478,6 +500,29 @@ test('login: email branch takes priority when both email+password and phone are 
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'USER_EMAIL_LOGIN');
+});
+
+test('login: 200 MFA_REQUIRED with mfaToken when email user has MFA enabled', async () => {
+	const ctrl     = makeAuth({ userByEmail: { ...BASE_USER, passwordHash: HASHED_PW, mfaEnabled: true } });
+	const response = await ctrl.login(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_REQUIRED');
+	assert.ok(typeof body.result.mfaToken === 'string', 'mfaToken must be present');
+	// verify it is a valid access token with mfaPending: true
+	const payload = verifyToken(body.result.mfaToken, config) as any;
+	assert.ok(payload);
+	assert.equal(payload.type,       'access');
+	assert.equal(payload.mfaPending, true);
+});
+
+test('jwt: issueMfaPendingToken produces access token with mfaPending: true', () => {
+	const token   = issueMfaPendingToken('user-1', config, 'email');
+	const payload = verifyToken(token, config) as any;
+	assert.ok(payload);
+	assert.equal(payload.type,       'access');
+	assert.equal(payload.mfaPending, true);
+	assert.equal(payload.sub,        'user-1');
 });
 
 // ── AuthController.logout ─────────────────────────────────────────
@@ -784,4 +829,155 @@ test('updateMe: 200 with updated DTO after phoneNumber and avatarUrl', async () 
 	assert.equal(body.reason,                       'ACCOUNT_UPDATED');
 	assert.equal(body.result.user.phone,           '+9999999999');
 	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/new.jpg');
+});
+
+// ── MfaController.verify ─────────────────────────────────────────
+
+const MFA_USER = { ...BASE_USER, mfaEnabled: true, loginMethod: 'email' as const };
+
+test('mfa.verify: 422 when token is missing', async () => {
+	const ctrl     = makeMfa();
+	const response = await ctrl.verify(makeCtx({ user: { ...MFA_USER, mfaPending: true }, body: {} }));
+	assert.equal(response.status, 422);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'INVALID_PARAMETER');
+});
+
+// ── TOTP login branch ─────────────────────────────────────────────
+
+test('mfa.verify: 403 MFA_NOT_PENDING when called with full-auth token (TOTP branch)', async () => {
+	const ctrl     = makeMfa();
+	const response = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER, mfaPending: false },
+		body: { token: '123456' },
+	}));
+	assert.equal(response.status, 403);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_NOT_PENDING');
+});
+
+test('mfa.verify: 400 MFA_NOT_CONFIGURED when TOTP secret not in DB', async () => {
+	const ctrl     = makeMfa(); // mfaSecret undefined → empty row → null
+	const response = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER, mfaPending: true },
+		body: { token: '123456' },
+	}));
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_NOT_CONFIGURED');
+});
+
+test('mfa.verify: 401 INVALID_CODE for wrong TOTP code', async () => {
+	const secret   = generateTotpSecret();
+	const ctrl     = makeMfa({ mfaSecret: secret });
+	const response = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER, mfaPending: true },
+		body: { token: '000000' },
+	}));
+	assert.equal(response.status, 401);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'INVALID_CODE');
+});
+
+test('mfa.verify: 200 MFA_VERIFIED with access+refresh tokens on valid TOTP', async () => {
+	const secret   = generateTotpSecret();
+	const code     = generateTotpCode(secret);
+	const ctrl     = makeMfa({ mfaSecret: secret, userById: MFA_USER });
+	const response = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER, mfaPending: true },
+		body: { token: code },
+	}));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_VERIFIED');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
+	assert.ok(body.result.user);
+	const access = verifyToken(body.result.tokens.access, config) as any;
+	assert.equal(access?.mfaPending, undefined); // full-auth token — no mfaPending flag
+	assert.ok(response.headers.get('set-cookie')?.includes('access_token='));
+});
+
+// ── Backup code branch ────────────────────────────────────────────
+
+test('mfa.verify: 403 MFA_NOT_PENDING when called with full-auth token (backup code branch)', async () => {
+	const ctrl     = makeMfa();
+	const response = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER, mfaPending: false },
+		body: { token: 'ABCDEFGH' }, // 8-char alphanumeric → backup code branch
+	}));
+	assert.equal(response.status, 403);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_NOT_PENDING');
+});
+
+test('mfa.verify: 400 MFA_NOT_CONFIGURED when mfaEnabled is false (backup code branch)', async () => {
+	const ctrl     = makeMfa();
+	const response = await ctrl.verify(makeCtx({
+		user: { ...BASE_USER, mfaEnabled: false, mfaPending: true, loginMethod: 'email' },
+		body: { token: 'ABCDEFGH' },
+	}));
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_NOT_CONFIGURED');
+});
+
+test('mfa.verify: 401 INVALID_CODE when backup code has no match', async () => {
+	const hash     = await hashPassword('ABCD1234');
+	const ctrl     = makeMfa({ backupCodeRows: [{ id: 'bc-1', code_hash: hash }] });
+	const response = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER, mfaPending: true },
+		body: { token: 'ZZZZZZZZ' },
+	}));
+	assert.equal(response.status, 401);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'INVALID_CODE');
+});
+
+test('mfa.verify: 200 MFA_VERIFIED with tokens on valid backup code', async () => {
+	const plainCode = generateBackupCodes(1)[0]!;
+	const hash      = await hashPassword(plainCode);
+	const ctrl      = makeMfa({
+		backupCodeRows: [{ id: 'bc-1', code_hash: hash }],
+		userById:       MFA_USER,
+	});
+	const response  = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER, mfaPending: true },
+		body: { token: plainCode },
+	}));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_VERIFIED');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
+});
+
+// ── Setup confirmation branch (user already logged in, confirming setup) ──
+
+test('mfa.verify: 401 INVALID_CODE for wrong TOTP during setup confirmation', async () => {
+	const secret   = generateTotpSecret();
+	const ctrl     = makeMfa({ mfaPendingSecret: secret });
+	const response = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER },
+		body: { token: '000000' },
+	}));
+	assert.equal(response.status, 401);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'INVALID_CODE');
+});
+
+test('mfa.verify: 200 MFA_VERIFIED with tokens on valid TOTP during setup confirmation', async () => {
+	const secret   = generateTotpSecret();
+	const code     = generateTotpCode(secret);
+	const ctrl     = makeMfa({ mfaPendingSecret: secret, userById: MFA_USER });
+	const response = await ctrl.verify(makeCtx({
+		user: { ...MFA_USER },
+		body: { token: code },
+	}));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_VERIFIED');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
+	assert.ok(body.result.user);
 });
