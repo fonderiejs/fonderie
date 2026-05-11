@@ -17,9 +17,6 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 			return setApiResponse(HTTP.OK, 'PLAN_LIST', `Retrieved ${list.length} workspace plans`, {
 				plans: dtos,
 				count: dtos.length,
-				tiers: [...dtos]
-					.sort((a, b) => a.tier - b.tier)
-					.map(p => ({ id: p.id, tier: p.tier, name: p.name })),
 			})
 		},
 

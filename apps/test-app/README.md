@@ -237,8 +237,7 @@ Plans are publicly readable so your marketing/pricing pages don't need an auth t
 curl -s $BASE/plans | jq .
 # → {
 #     "plans": [ { id, planId, name, tier, seats, trialDays, pricing, features, metadata }, ... ],
-#     "count": 4,
-#     "tiers": [ { id, tier, name }, ... ]   ← sorted ascending by tier
+#     "count": 4
 #   }
 ```
 
