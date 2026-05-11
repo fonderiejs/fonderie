@@ -5,7 +5,7 @@ import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core
 import type { IStoreAdapter }                           from '@fonderie-js/store';
 import type { IAuthConfig }                             from '../config';
 import { DEFAULT_VERIFICATION_COOLDOWN }                from '../config';
-import { issueTokenPair, verifyToken, refreshTokenExpiry } from '../services/jwt';
+import { issueTokenPair, issueMfaPendingToken, verifyToken, refreshTokenExpiry } from '../services/jwt';
 import { checkCooldown } from '../services/cooldown';
 import { hashPassword, verifyPassword }                 from '../services/password';
 import { toUserDTO }                                    from '../dtos/user';
@@ -184,7 +184,8 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				}
 
 				if (user.mfaEnabled) {
-					return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required');
+					const mfaToken = issueMfaPendingToken(user.id, config, 'email');
+					return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required', { mfaToken });
 				}
 
 				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });

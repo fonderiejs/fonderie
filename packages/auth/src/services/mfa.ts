@@ -109,6 +109,10 @@ export function verifyTotpToken(token: string, secret: string): boolean {
 	return false;
 }
 
+export function generateTotpCode(secret: string): string {
+	return hotp(secret, timeCounter());
+}
+
 export function generateBackupCodes(count = 8): string[] {
 	return Array.from({ length: count }, () =>
 		randomBytes(4).toString('hex').toUpperCase()

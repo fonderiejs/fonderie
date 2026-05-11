@@ -1,8 +1,9 @@
 import type { Middleware }    from '@fonderie-js/core';
 import type { IStoreAdapter } from '@fonderie-js/store';
 
-import type { IAuthConfig } from '../config';
-import { verifyToken }      from '../services/jwt';
+import type { IAuthConfig }   from '../config';
+import { verifyToken }         from '../services/jwt';
+import type { IAccessPayload } from '../services/jwt';
 import { UserModel }        from '../models/user.model';
 
 // Reads the Bearer token or session cookie, populates ctx.user
@@ -33,6 +34,7 @@ export function withSession(
 			...user,
 			loginMethod:   payload.loginMethod   ?? 'email',
 			phoneVerified: payload.phoneVerified ?? false,
+			mfaPending:    (payload as IAccessPayload).mfaPending ?? false,
 		} });
 
 		return next();

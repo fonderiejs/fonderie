@@ -15,6 +15,7 @@ export interface IAuthUser {
 	emailVerifiedAt:  Date | null;
 	loginMethod:      'email' | 'phone';  // sourced from JWT payload
 	phoneVerified:    boolean;            // per-session, sourced from JWT payload
+	mfaPending?:      boolean;            // true on the short-lived pre-auth token issued during MFA login
 }
 
 export interface IWorkspace {

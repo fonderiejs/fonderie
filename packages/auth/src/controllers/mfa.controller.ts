@@ -36,6 +36,8 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 			return setApiResponse(HTTP.OK, 'MFA_SETUP_INITIATED', 'Scan the QR code with your authenticator app.', {
 				qr,
+				// uri — expose when adding a "manual entry" flow in the UI (otpauth:// URI lets
+				// users add the credential by typing the secret instead of scanning the QR code)
 				backupCodes: plainCodes,
 			});
 		},
@@ -60,6 +62,9 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 			} else if (/^[A-Z0-9]{8}$/i.test(token)) {
 				// ── Backup code consumption ────────────────────────────────────────────
+				if (!ctx.user!.mfaPending) {
+					return setApiResponse(HTTP.FORBIDDEN, 'MFA_NOT_PENDING', 'Use the mfaToken from the login response');
+				}
 				if (!ctx.user!.mfaEnabled) {
 					return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
 				}
@@ -81,6 +86,9 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 			} else {
 				// ── TOTP login verification ───────────────────────────────────────────
+				if (!ctx.user!.mfaPending) {
+					return setApiResponse(HTTP.FORBIDDEN, 'MFA_NOT_PENDING', 'Use the mfaToken from the login response');
+				}
 				const secret = await users.getMfaSecret(ctx.user!.id);
 				if (!secret) {
 					return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
