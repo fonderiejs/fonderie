@@ -131,7 +131,34 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			);
 		},
 
-		// ── 3. Disable ─────────────────────────────────────────────
+		// ── 3. Regenerate backup codes ────────────────────────────
+		regenerateBackupCodes: async (ctx: IFonderieContext): Promise<Response> => {
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const token = body?.['token'];
+
+			if (typeof token !== 'string') {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'TOTP token is required');
+			}
+
+			if (!ctx.user!.mfaEnabled) {
+				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_ENABLED', 'MFA is not enabled');
+			}
+
+			const secret = await users.getMfaSecret(ctx.user!.id);
+			if (!secret || !verifyTotpToken(token, secret)) {
+				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
+			}
+
+			const plainCodes = generateBackupCodes();
+			const codeHashes = await Promise.all(plainCodes.map(c => hashPassword(c)));
+			await backupCodes.replace(ctx.user!.id, codeHashes);
+
+			return setApiResponse(HTTP.OK, 'BACKUP_CODES_REGENERATED', 'Backup codes regenerated.', {
+				backupCodes: plainCodes,
+			});
+		},
+
+		// ── 4. Disable ─────────────────────────────────────────────
 		disable: async (ctx: IFonderieContext): Promise<Response> => {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const code = body?.['code'];

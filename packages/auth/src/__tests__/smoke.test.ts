@@ -831,6 +831,55 @@ test('updateMe: 200 with updated DTO after phoneNumber and avatarUrl', async () 
 	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/new.jpg');
 });
 
+// ── MfaController.regenerateBackupCodes ──────────────────────────
+
+test('mfa.regenerateBackupCodes: 422 when token is missing', async () => {
+	const ctrl     = makeMfa();
+	const response = await ctrl.regenerateBackupCodes(makeCtx({ user: MFA_USER, body: {} }));
+	assert.equal(response.status, 422);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'INVALID_PARAMETER');
+});
+
+test('mfa.regenerateBackupCodes: 400 MFA_NOT_ENABLED when mfaEnabled is false', async () => {
+	const ctrl     = makeMfa();
+	const response = await ctrl.regenerateBackupCodes(makeCtx({
+		user: { ...BASE_USER, mfaEnabled: false, loginMethod: 'email' },
+		body: { token: '123456' },
+	}));
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_NOT_ENABLED');
+});
+
+test('mfa.regenerateBackupCodes: 401 INVALID_CODE when TOTP is wrong', async () => {
+	const secret   = generateTotpSecret();
+	const ctrl     = makeMfa({ mfaSecret: secret });
+	const response = await ctrl.regenerateBackupCodes(makeCtx({
+		user: MFA_USER,
+		body: { token: '000000' },
+	}));
+	assert.equal(response.status, 401);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'INVALID_CODE');
+});
+
+test('mfa.regenerateBackupCodes: 200 with 8 fresh backup codes on valid TOTP', async () => {
+	const secret   = generateTotpSecret();
+	const code     = generateTotpCode(secret);
+	const ctrl     = makeMfa({ mfaSecret: secret });
+	const response = await ctrl.regenerateBackupCodes(makeCtx({
+		user: MFA_USER,
+		body: { token: code },
+	}));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'BACKUP_CODES_REGENERATED');
+	assert.ok(Array.isArray(body.result.backupCodes));
+	assert.equal(body.result.backupCodes.length, 8);
+	assert.ok(body.result.backupCodes.every((c: string) => /^[A-F0-9]{8}$/.test(c)));
+});
+
 // ── MfaController.verify ─────────────────────────────────────────
 
 const MFA_USER = { ...BASE_USER, mfaEnabled: true, loginMethod: 'email' as const };
