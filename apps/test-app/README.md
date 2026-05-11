@@ -17,7 +17,13 @@ npm run migrate
 
 # 4. Start the server  (builds all SDK packages automatically first)
 npm run dev
-# → Fonderie listening on http://localhost:3000
+# → Fonderie listening on http://localhost:4000
+```
+
+> **Base URL:** `http://localhost:4000/v1`  All examples below use `BASE=http://localhost:4000/v1`.
+
+```bash
+BASE=http://localhost:4000/v1
 ```
 
 ---
@@ -26,7 +32,7 @@ npm run dev
 
 ### Register
 ```bash
-curl -s -X POST http://localhost:3000/auth/register \
+curl -s -X POST $BASE/auth/register \
   -H 'content-type: application/json' \
   -d '{"email":"alice@example.com","password":"password123","firstName":"Alice","lastName":"Smith"}' \
   | jq .
@@ -35,14 +41,14 @@ curl -s -X POST http://localhost:3000/auth/register \
 
 ### Login
 ```bash
-curl -s -X POST http://localhost:3000/auth/login \
+curl -s -X POST $BASE/auth/login \
   -H 'content-type: application/json' \
   -d '{"email":"alice@example.com","password":"password123"}' \
   | jq .
 # → { user: {...}, accessToken: "...", refreshToken: "..." }
 
 # Save the token:
-TOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
+TOKEN=$(curl -s -X POST $BASE/auth/login \
   -H 'content-type: application/json' \
   -d '{"email":"alice@example.com","password":"password123"}' \
   | jq -r '.accessToken')
@@ -50,12 +56,12 @@ TOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
 
 ### Refresh
 ```bash
-REFRESH=$(curl -s -X POST http://localhost:3000/auth/login \
+REFRESH=$(curl -s -X POST $BASE/auth/login \
   -H 'content-type: application/json' \
   -d '{"email":"alice@example.com","password":"password123"}' \
   | jq -r '.refreshToken')
 
-curl -s -X POST http://localhost:3000/auth/refresh \
+curl -s -X POST $BASE/auth/refresh \
   -H 'content-type: application/json' \
   -d "{\"refreshToken\":\"$REFRESH\"}" \
   | jq .
@@ -64,7 +70,7 @@ curl -s -X POST http://localhost:3000/auth/refresh \
 
 ### Logout
 ```bash
-curl -s -X POST http://localhost:3000/auth/logout \
+curl -s -X POST $BASE/auth/logout \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
   -d "{\"refreshToken\":\"$REFRESH\"}" \
@@ -74,7 +80,7 @@ curl -s -X POST http://localhost:3000/auth/logout \
 
 ### Forgot password
 ```bash
-curl -s -X POST http://localhost:3000/auth/forgot-password \
+curl -s -X POST $BASE/auth/forgot-password \
   -H 'content-type: application/json' \
   -d '{"email":"alice@example.com"}' \
   | jq .
@@ -84,7 +90,7 @@ curl -s -X POST http://localhost:3000/auth/forgot-password \
 ### Reset password
 ```bash
 # resetToken comes from the password-reset email
-curl -s -X POST http://localhost:3000/auth/reset-password \
+curl -s -X POST $BASE/auth/reset-password \
   -H 'content-type: application/json' \
   -d '{"resetToken":"<token-from-email>","password":"newPassword123"}' \
   | jq .
@@ -94,7 +100,7 @@ curl -s -X POST http://localhost:3000/auth/reset-password \
 ### Verify email
 ```bash
 # token comes from the email-verification email
-curl -s -X POST http://localhost:3000/auth/verify-email \
+curl -s -X POST $BASE/auth/verify-email \
   -H 'content-type: application/json' \
   -d '{"token":"<token-from-email>"}' \
   | jq .
@@ -107,20 +113,58 @@ curl -s -X POST http://localhost:3000/auth/verify-email \
 
 ### Get profile
 ```bash
-curl -s http://localhost:3000/users/me \
+curl -s $BASE/users \
   -H "authorization: Bearer $TOKEN" \
   | jq .
-# → { id, email, firstName, lastName, phone, avatarUrl, locale, ... }
+# → { id, email, firstName, lastName, phone, avatarUrl, locale, timezone, ... }
 ```
 
-### Update profile
+### Update profile  _(requires verified email)_
 ```bash
-curl -s -X PATCH http://localhost:3000/users/me \
+curl -s -X PUT $BASE/users/profile \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
-  -d '{"firstName":"Alicia","phoneNumber":"+15550001234","avatarUrl":"https://i.pravatar.cc/150"}' \
+  -d '{"firstName":"Alicia","lastName":"Smith","avatarUrl":"https://i.pravatar.cc/150"}' \
   | jq .
 # → updated IUserDTO
+```
+
+### Update preferences  _(requires verified email)_
+```bash
+curl -s -X PUT $BASE/users/preferences \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"locale":"fr-CA","timezone":"America/Montreal"}' \
+  | jq .
+# → updated IUserDTO
+```
+
+### Change email  _(requires verified email — sends verification to new address + change alert to old)_
+```bash
+curl -s -X PUT $BASE/users/email \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"email":"alice-new@example.com"}' \
+  | jq .
+# → { ok: true }
+```
+
+### Change phone  _(requires verified email — sends OTP to new number + change alert to email)_
+```bash
+curl -s -X PUT $BASE/users/phone \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"phone":"+15550001234"}' \
+  | jq .
+# → { ok: true }
+```
+
+### Delete account  _(requires verified email)_
+```bash
+curl -s -X DELETE $BASE/users \
+  -H "authorization: Bearer $TOKEN" \
+  | jq .
+# → { ok: true }
 ```
 
 ---
@@ -129,7 +173,7 @@ curl -s -X PATCH http://localhost:3000/users/me \
 
 ### Create workspace
 ```bash
-WS=$(curl -s -X POST http://localhost:3000/workspaces \
+WS=$(curl -s -X POST $BASE/workspaces \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
   -d '{"name":"Acme Corp","description":"Our main workspace"}' \
@@ -140,7 +184,7 @@ echo "Workspace ID: $WS"
 
 ### Get workspace
 ```bash
-curl -s http://localhost:3000/workspaces/$WS \
+curl -s $BASE/workspaces/$WS \
   -H "authorization: Bearer $TOKEN" \
   | jq .
 # → { workspace: { id, name, slug, type, plan, ownerId, isArchived, ... } }
@@ -148,7 +192,7 @@ curl -s http://localhost:3000/workspaces/$WS \
 
 ### Update workspace
 ```bash
-curl -s -X PUT http://localhost:3000/workspaces/$WS \
+curl -s -X PUT $BASE/workspaces/$WS \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
   -H "x-workspace-id: $WS" \
@@ -158,14 +202,14 @@ curl -s -X PUT http://localhost:3000/workspaces/$WS \
 
 ### List workspaces
 ```bash
-curl -s http://localhost:3000/workspaces \
+curl -s $BASE/workspaces \
   -H "authorization: Bearer $TOKEN" \
   | jq .
 ```
 
 ### Invite a member
 ```bash
-curl -s -X POST http://localhost:3000/workspaces/invitations \
+curl -s -X POST $BASE/workspaces/invitations \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
   -H "x-workspace-id: $WS" \
@@ -175,16 +219,148 @@ curl -s -X POST http://localhost:3000/workspaces/invitations \
 
 ---
 
-## Billing
+## Billing — plans  _(public)_
 
-### List plans
+Plans are publicly readable so your marketing/pricing pages don't need an auth token.
+
+### List all plans
 ```bash
-curl -s http://localhost:3000/billing/plans | jq .
+curl -s $BASE/billing/plans | jq .
+# → {
+#     "plans": [ { id, planId, name, tier, seats, trialDays, pricing, features, metadata }, ... ],
+#     "count": 3,
+#     "tiers": [ { id, tier, name }, ... ]   ← sorted ascending by tier
+#   }
 ```
 
-### Get workspace subscription
+### Get a single plan
 ```bash
-curl -s http://localhost:3000/workspaces/$WS/billing/subscription \
+PLAN_ID="<uuid-from-list>"
+
+curl -s $BASE/billing/plans/$PLAN_ID | jq .
+# → { "plan": { id, planId, name, tier, seats, trialDays, pricing, features, metadata } }
+```
+
+### Plan shape
+```json
+{
+  "id":          "uuid",
+  "planId":      "PRO",
+  "name":        "pro",
+  "description": "Everything in Starter, plus advanced features",
+  "tier":        2,
+  "seats":       20,
+  "trialDays":   14,
+  "pricing": {
+    "monthly":  1999,
+    "yearly":   19990,
+    "currency": "USD"
+  },
+  "features": [
+    { "name": "API Access", "description": "Full REST API", "enabled": true, "limit": 10000 }
+  ],
+  "metadata": {}
+}
+```
+
+> Amounts are in **cents** (e.g. `1999` = $19.99).  A `0` amount means the tier is free.
+> `seats: null` means unlimited seats.  `trialDays: 0` means no trial.
+
+---
+
+## Billing — admin plan management  _(requires auth)_
+
+These endpoints are for your admin dashboard to manage plan catalogue without a DB migration.
+
+### Create a plan
+```bash
+curl -s -X POST $BASE/billing/plans \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{
+    "name":        "growth",
+    "description": "For scaling teams",
+    "tier":        3,
+    "seats":       50,
+    "trialDays":   7,
+    "monthlyAmount":  4900,
+    "monthlyPriceId": "price_growth_monthly",
+    "yearlyAmount":   49000,
+    "yearlyPriceId":  "price_growth_yearly",
+    "features": [
+      { "name": "SSO", "description": "SAML single sign-on", "enabled": true }
+    ],
+    "metadata": { "color": "#8B5CF6" }
+  }' \
+  | jq .
+# → { "plan": { id, planId, name, ... } }
+```
+
+### Update a plan
+```bash
+curl -s -X PUT $BASE/billing/plans/$PLAN_ID \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{
+    "monthlyAmount":  5900,
+    "yearlyAmount":   59000,
+    "seats":          75
+  }' \
+  | jq .
+# → { "plan": { ... } }   only provided fields are updated
+```
+
+### Delete a plan
+```bash
+curl -s -X DELETE $BASE/billing/plans/$PLAN_ID \
+  -H "authorization: Bearer $TOKEN" \
+  | jq .
+# → { ok: true }
+```
+
+---
+
+## Billing — workspace subscription
+
+### Get subscription
+```bash
+curl -s $BASE/workspaces/$WS/billing/subscription \
+  -H "authorization: Bearer $TOKEN" \
+  | jq .
+# → { subscription: { id, workspaceId, plan, interval, status, cancelAtPeriodEnd, ... } }
+```
+
+### Create Stripe checkout session
+```bash
+curl -s -X POST $BASE/workspaces/$WS/billing/checkout \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"priceId":"price_pro_monthly","interval":"month"}' \
+  | jq .
+# → { "url": "https://checkout.stripe.com/..." }
+```
+
+### Open Stripe billing portal
+```bash
+curl -s -X POST $BASE/workspaces/$WS/billing/portal \
+  -H "authorization: Bearer $TOKEN" \
+  | jq .
+# → { "url": "https://billing.stripe.com/session/..." }
+```
+
+### Record usage
+```bash
+curl -s -X POST $BASE/workspaces/$WS/billing/usage \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"metric":"api_calls","quantity":1}' \
+  | jq .
+# → { ok: true }
+```
+
+### Get usage for a metric
+```bash
+curl -s $BASE/workspaces/$WS/billing/usage/api_calls \
   -H "authorization: Bearer $TOKEN" \
   | jq .
 ```
@@ -195,13 +371,13 @@ curl -s http://localhost:3000/workspaces/$WS/billing/subscription \
 
 ### Health check
 ```bash
-curl -s http://localhost:3000/health | jq .
+curl -s $BASE/../health | jq .
 # → { ok: true, ts: "...", version: "0.0.1" }
 ```
 
-### Remote config (dev only)
+### Remote config  _(dev only)_
 ```bash
-curl -s http://localhost:3000/config \
+curl -s $BASE/config \
   -H "authorization: Bearer $TOKEN" \
   | jq .
 # → { config: { "maintenance.mode": false, ... } }
@@ -210,7 +386,7 @@ curl -s http://localhost:3000/config \
 ### Permission-gated example route
 ```bash
 # Requires auth + workspace membership + READ permission on 'projects'
-curl -s http://localhost:3000/workspaces/$WS/projects \
+curl -s $BASE/workspaces/$WS/projects \
   -H "authorization: Bearer $TOKEN" \
   | jq .
 ```
@@ -219,7 +395,7 @@ curl -s http://localhost:3000/workspaces/$WS/projects \
 
 ## Response shapes
 
-All user-returning endpoints (`register`, `login`, `refresh`, `GET /users/me`, `PATCH /users/me`) return:
+All user-returning endpoints (`register`, `login`, `refresh`, `GET /users`) return:
 
 ```json
 {
