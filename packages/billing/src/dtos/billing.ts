@@ -6,15 +6,14 @@ export interface IPlanDTO {
 	name:        string
 	description: string
 	tier:        number
+	seats:       number | null
+	trialDays:   number
 	pricing: {
-		monthly:          number
-		yearly:           number
-		currency:         string
-		monthlyFormatted: string
-		yearlyFormatted:  string
+		monthly:  number   // in cents, e.g. 1999 = $19.99
+		yearly:   number   // in cents
+		currency: string   // ISO 4217, e.g. 'USD'
 	}
 	features: IPlanFeature[]
-	limits:   Record<string, number>
 	metadata: Record<string, unknown>
 }
 
@@ -39,11 +38,6 @@ export interface IUsageRecordDTO {
 	recordedAt:  string
 }
 
-function formatPrice(amount: number | null, period: 'month' | 'year'): string {
-	if (!amount) return 'Free'
-	return `$${amount}/${period}`
-}
-
 export function toPlanDTO(plan: IPlan): IPlanDTO {
 	return {
 		id:          plan.id,
@@ -51,15 +45,14 @@ export function toPlanDTO(plan: IPlan): IPlanDTO {
 		name:        plan.name,
 		description: plan.description ?? '',
 		tier:        plan.tier,
+		seats:       plan.seats,
+		trialDays:   plan.trialDays,
 		pricing: {
-			monthly:          plan.monthlyAmount ?? 0,
-			yearly:           plan.yearlyAmount  ?? 0,
-			currency:         'USD',
-			monthlyFormatted: formatPrice(plan.monthlyAmount, 'month'),
-			yearlyFormatted:  formatPrice(plan.yearlyAmount,  'year'),
+			monthly:  plan.monthlyAmount ?? 0,
+			yearly:   plan.yearlyAmount  ?? 0,
+			currency: 'USD',
 		},
 		features: Array.isArray(plan.features) ? plan.features : [],
-		limits:   (plan.limits   && typeof plan.limits   === 'object') ? plan.limits   as Record<string, number>  : {},
 		metadata: (plan.metadata && typeof plan.metadata === 'object') ? plan.metadata as Record<string, unknown> : {},
 	}
 }

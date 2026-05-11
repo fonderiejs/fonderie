@@ -40,7 +40,6 @@ export interface IPlan {
 	description:    string | null
 	tier:           number
 	features:       IPlanFeature[]
-	limits:         Record<string, number>
 	metadata:       Record<string, unknown>
 }
 

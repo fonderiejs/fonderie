@@ -19,8 +19,8 @@ export async function syncPlansToDB(
 	if (plans.length === 0) return;
 
 	const values = plans.map((_, i) => {
-		const b = i * 12;
-		return `($${b+1}, $${b+2}, $${b+3}, $${b+4}, $${b+5}, $${b+6}, $${b+7}, $${b+8}, $${b+9}, $${b+10}::jsonb, $${b+11}::jsonb, $${b+12}::jsonb)`;
+		const b = i * 11;
+		return `($${b+1}, $${b+2}, $${b+3}, $${b+4}, $${b+5}, $${b+6}, $${b+7}, $${b+8}, $${b+9}, $${b+10}::jsonb, $${b+11}::jsonb)`;
 	});
 
 	const params = plans.flatMap(plan => [
@@ -34,7 +34,6 @@ export async function syncPlansToDB(
 		plan.description      ?? null,
 		plan.tier             ?? 0,
 		JSON.stringify(plan.features ?? []),
-		JSON.stringify(plan.limits   ?? {}),
 		JSON.stringify(plan.metadata ?? {}),
 	]);
 
@@ -43,7 +42,7 @@ export async function syncPlansToDB(
 			(name, seats, trial_days,
 			 monthly_amount, monthly_price_id,
 			 yearly_amount,  yearly_price_id,
-			 description, tier, features, limits, metadata)
+			 description, tier, features, metadata)
 		VALUES ${values.join(', ')}
 		ON CONFLICT (name) DO UPDATE SET
 			seats            = EXCLUDED.seats,
@@ -55,7 +54,6 @@ export async function syncPlansToDB(
 			description      = EXCLUDED.description,
 			tier             = EXCLUDED.tier,
 			features         = EXCLUDED.features,
-			limits           = EXCLUDED.limits,
 			metadata         = EXCLUDED.metadata`,
 		params,
 	);
@@ -74,7 +72,6 @@ const SELECT_PLAN = `
 		description,
 		tier,
 		features,
-		limits,
 		metadata
 	FROM fonderie_plans`
 
@@ -100,7 +97,6 @@ export async function createPlan(
 		seats?:          number | null
 		trialDays?:      number
 		features?:       unknown
-		limits?:         unknown
 		metadata?:       unknown
 		monthlyAmount?:  number | null
 		monthlyPriceId?: string | null
@@ -112,8 +108,8 @@ export async function createPlan(
 	const [row] = await store.query<IPlan>(
 		`INSERT INTO fonderie_plans
 			(name, seats, trial_days, monthly_amount, monthly_price_id,
-			 yearly_amount, yearly_price_id, description, tier, features, limits, metadata)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb)
+			 yearly_amount, yearly_price_id, description, tier, features, metadata)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb)
 		RETURNING
 			id, name, seats,
 			trial_days        AS "trialDays",
@@ -121,7 +117,7 @@ export async function createPlan(
 			monthly_price_id  AS "monthlyPriceId",
 			yearly_amount     AS "yearlyAmount",
 			yearly_price_id   AS "yearlyPriceId",
-			description, tier, features, limits, metadata`,
+			description, tier, features, metadata`,
 		[
 			data.name,
 			data.seats          ?? null,
@@ -133,7 +129,6 @@ export async function createPlan(
 			data.description    ?? null,
 			data.tier           ?? 0,
 			JSON.stringify(data.features ?? []),
-			JSON.stringify(data.limits   ?? {}),
 			JSON.stringify(data.metadata ?? {}),
 		],
 	)
@@ -158,7 +153,7 @@ export async function updatePlan(
 		tier:           'tier',
 	}
 
-	const jsonbFields = new Set(['features', 'limits', 'metadata'])
+	const jsonbFields = new Set(['features', 'metadata'])
 	const setClauses: string[] = []
 	const params: unknown[]    = [id]
 
@@ -188,7 +183,7 @@ export async function updatePlan(
 			monthly_price_id  AS "monthlyPriceId",
 			yearly_amount     AS "yearlyAmount",
 			yearly_price_id   AS "yearlyPriceId",
-			description, tier, features, limits, metadata`,
+			description, tier, features, metadata`,
 		params,
 	)
 	return row ?? null
