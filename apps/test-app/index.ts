@@ -20,9 +20,9 @@ import {
 	withWorkspace,
 } from '@fonderie-js/workspaces';
 
-import { CourierModule }                               from '@fonderie-js/courier';
-import { BillingModule, StripeProvider, requirePlan }  from '@fonderie-js/billing';
-import { RemoteConfigModule, getConfig }               from '@fonderie-js/config';
+import { CourierModule }                from '@fonderie-js/courier';
+import { BillingModule, StripeProvider } from '@fonderie-js/billing';
+import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
 
 import { fileURLToPath } from 'node:url';
 import { join }          from 'node:path';
@@ -124,6 +124,11 @@ const courier     = new CourierModule(
 	store,
 );
 
+const remoteConfig = new RemoteConfigModule(store, {
+	ttl:         30_000,
+	environment: process.env['NODE_ENV'] ?? 'development',
+});
+
 const billing = new BillingModule(store, {
 	provider: new StripeProvider(
 		process.env['STRIPE_SECRET_KEY'] ?? 'sk_test_placeholder',
@@ -191,11 +196,6 @@ const billing = new BillingModule(store, {
 	cancelUrl:  'http://localhost:4000/billing/cancel',
 });
 
-const remoteConfig = new RemoteConfigModule(store, {
-	ttl:         30_000,                                    // refresh every 30 seconds
-	environment: process.env['NODE_ENV'] ?? 'development',
-});
-
 // ── App ───────────────────────────────────────────────────────────
 
 const app = new FonderieApp(config)
@@ -255,18 +255,20 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 //   POST   /auth/refresh
 //   POST   /auth/email/forgot
 //   POST   /auth/email/reset
-//   GET    /auth/send-verification       (email or phone — determined by loginMethod in JWT)
-//   POST   /auth/verify                  (email or phone — determined by loginMethod in JWT)
-//   POST   /auth/mfa/setup               (email sessions only)
-//   POST   /auth/mfa/verify              (email sessions only)
-//   POST   /auth/mfa/disable             (email sessions only)
-//   POST   /auth/mfa/backup-codes        (email sessions only)
-//   GET    /users
-//   PUT    /users/profile
-//   PUT    /users/preferences
-//   PUT    /users/email
-//   PUT    /users/phone
-//   DELETE /users
+//   GET    /auth/send-verification       (requires auth — sends to email or phone based on loginMethod)
+//   POST   /auth/verify                  (requires auth — verifies email or phone OTP)
+//   POST   /auth/mfa/setup               (requires auth + verified email + email login)
+//   POST   /auth/mfa/verify              (requires auth + verified email + email login)
+//   POST   /auth/mfa/disable             (requires auth + verified email + email login)
+//   POST   /auth/mfa/backup-codes        (requires auth + verified email + email login)
+//   GET    /auth/google                  (only when GOOGLE_CLIENT_ID is set)
+//   GET    /auth/google/callback         (only when GOOGLE_CLIENT_ID is set)
+//   GET    /users                        (requires auth)
+//   PUT    /users/profile                (requires auth + verified email)
+//   PUT    /users/preferences            (requires auth + verified email)
+//   PUT    /users/email                  (requires auth + verified email)
+//   PUT    /users/phone                  (requires auth + verified email)
+//   DELETE /users                        (requires auth + verified email)
 //
 // WorkspacesModule:  (workspace resolved from X-Workspace-ID header unless noted)
 //   POST   /workspaces

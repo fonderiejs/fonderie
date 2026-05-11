@@ -80,7 +80,7 @@ curl -s -X POST $BASE/auth/logout \
 
 ### Forgot password
 ```bash
-curl -s -X POST $BASE/auth/forgot-password \
+curl -s -X POST $BASE/auth/email/forgot \
   -H 'content-type: application/json' \
   -d '{"email":"alice@example.com"}' \
   | jq .
@@ -90,19 +90,28 @@ curl -s -X POST $BASE/auth/forgot-password \
 ### Reset password
 ```bash
 # resetToken comes from the password-reset email
-curl -s -X POST $BASE/auth/reset-password \
+curl -s -X POST $BASE/auth/email/reset \
   -H 'content-type: application/json' \
   -d '{"resetToken":"<token-from-email>","password":"newPassword123"}' \
   | jq .
 # → { ok: true }
 ```
 
-### Verify email
+### Send verification code
 ```bash
-# token comes from the email-verification email
-curl -s -X POST $BASE/auth/verify-email \
+# Sends OTP to email or phone depending on how the user registered
+curl -s $BASE/auth/send-verification \
+  -H "authorization: Bearer $TOKEN" \
+  | jq .
+# → { ok: true }
+```
+
+### Verify email or phone
+```bash
+curl -s -X POST $BASE/auth/verify \
   -H 'content-type: application/json' \
-  -d '{"token":"<token-from-email>"}' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"token":"<otp-from-email-or-sms>"}' \
   | jq .
 # → { ok: true }
 ```
