@@ -285,11 +285,8 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 //   DELETE /users                        (requires auth + verified email)
 //
 // BillingModule:
-//   GET    /plans
-//   POST   /plans
-//   GET    /plans/:planId
-//   PUT    /plans/:planId
-//   DELETE /plans/:planId
+//   GET    /plans                                      (public)
+//   GET    /plans/:planId                              (public)
 //   POST   /billing/webhook
 //
 // WorkspacesModule:  (workspace resolved from X-Workspace-ID header unless noted)

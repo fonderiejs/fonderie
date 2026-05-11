@@ -1,9 +1,9 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
-import type { Middleware }     from '@fonderie-js/core';
-import { requireAuth }         from '@fonderie-js/core/middlewares';
+import type { Middleware } from '@fonderie-js/core';
+import { requireAuth }    from '@fonderie-js/core/middlewares';
 
-import type { IBillingConfig }  from './config';
-import { planController }         from './controllers/plan.controller';
+import type { IBillingConfig } from './config';
+import { planController }        from './controllers/plan.controller';
 import { subscriptionController } from './controllers/subscription.controller';
 import { checkoutController }     from './controllers/checkout.controller';
 import { usageController }        from './controllers/usage.controller';
@@ -15,21 +15,16 @@ export function buildBillingRoutes(
 	store:  IStoreAdapter,
 	config: IBillingConfig,
 ): RouteDefinition[] {
-	const plan         = planController(store, config)
+	const plan         = planController(store)
 	const subscription = subscriptionController(store)
 	const checkout     = checkoutController(store, config)
 	const usage        = usageController(store)
 	const webhook      = webhookController(store, config)
 
 	return [
-		// Plans — public
-		['GET',    '/plans',              plan.list],
-		['GET',    '/plans/:planId',      plan.get],
-
-		// Plans — admin CRUD
-		['POST',   '/plans',              requireAuth, plan.create],
-		['PUT',    '/plans/:planId',      requireAuth, plan.update],
-		['DELETE', '/plans/:planId',      requireAuth, plan.remove],
+		// Plans — public read-only (config-driven, synced to DB on boot)
+		['GET',    '/plans',         plan.list],
+		['GET',    '/plans/:planId', plan.get],
 
 		// Subscription — read
 		['GET',    '/workspaces/:workspaceId/billing/subscription', requireAuth,subscription.get],

@@ -278,58 +278,6 @@ curl -s $BASE/plans/$PLAN_ID | jq .
 
 ---
 
-## Billing — admin plan management  _(requires auth)_
-
-These endpoints are for your admin dashboard to manage the plan catalogue without a DB migration.
-
-### Create a plan
-```bash
-curl -s -X POST $BASE/plans \
-  -H 'content-type: application/json' \
-  -H "authorization: Bearer $TOKEN" \
-  -d '{
-    "name":           "growth",
-    "description":    "For scaling teams",
-    "tier":           3,
-    "seats":          50,
-    "trialDays":      7,
-    "monthlyAmount":  9900,
-    "monthlyPriceId": "price_growth_monthly",
-    "yearlyAmount":   99000,
-    "yearlyPriceId":  "price_growth_yearly",
-    "features": [
-      { "name": "SSO", "description": "SAML single sign-on", "enabled": true }
-    ],
-    "metadata": { "color": "#8B5CF6" }
-  }' \
-  | jq .
-# → { "plan": { id, planId, name, ... } }
-```
-
-### Update a plan
-```bash
-curl -s -X PUT $BASE/plans/$PLAN_ID \
-  -H 'content-type: application/json' \
-  -H "authorization: Bearer $TOKEN" \
-  -d '{
-    "monthlyAmount": 10900,
-    "yearlyAmount":  109000,
-    "seats":         75
-  }' \
-  | jq .
-# → { "plan": { ... } }   only provided fields are updated
-```
-
-### Delete a plan
-```bash
-curl -s -X DELETE $BASE/plans/$PLAN_ID \
-  -H "authorization: Bearer $TOKEN" \
-  | jq .
-# → { ok: true }
-```
-
----
-
 ## Billing — workspace subscription
 
 ### Get subscription
