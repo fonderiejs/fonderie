@@ -19,7 +19,7 @@ export function buildAuthRoutes(
 	const user  = userController(store);
 	const auth  = authController(store, config);
 	const oauth = oauthController(store, config);
-	const mfa   = mfaController(store, config, config.google?.clientId ?? 'Fonderie');
+	const mfa   = mfaController(store, config, config.appName ?? 'Fonderie');
 
 	const routes: RouteDefinition[] = [
 		// Registration & Login (Public)

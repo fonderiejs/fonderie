@@ -153,6 +153,37 @@ export class UserModel {
 		);
 	}
 
+	async saveMfaPendingSecret(id: string, secret: string): Promise<void> {
+		await this.store.query(
+			`UPDATE fonderie_users
+			 SET mfa_secret_pending = $1, mfa_secret_pending_expires_at = now() + interval '15 minutes'
+			 WHERE id = $2`,
+			[secret, id],
+		);
+	}
+
+	async getMfaPendingSecret(id: string): Promise<string | null> {
+		const [row] = await this.store.query<{ mfa_secret_pending: string | null }>(
+			`SELECT mfa_secret_pending FROM fonderie_users
+			 WHERE id = $1 AND mfa_secret_pending_expires_at > now()`,
+			[id],
+		);
+		return row?.mfa_secret_pending ?? null;
+	}
+
+	async confirmMfaSecret(id: string): Promise<void> {
+		await this.store.query(
+			`UPDATE fonderie_users
+			 SET mfa_secret                    = mfa_secret_pending,
+			     mfa_secret_pending            = NULL,
+			     mfa_secret_pending_expires_at = NULL,
+			     mfa_enabled                   = true,
+			     updated_at                    = now()
+			 WHERE id = $1`,
+			[id],
+		);
+	}
+
 	async enableMfa(id: string): Promise<void> {
 		await this.store.query(
 			`UPDATE fonderie_users SET mfa_enabled = true WHERE id = $1`,
