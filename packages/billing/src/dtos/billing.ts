@@ -1,14 +1,21 @@
-import type { IPlan, ISubscription, IUsageRecord } from '../types';
+import type { IPlan, IPlanFeature, ISubscription, IUsageRecord } from '../types';
 
 export interface IPlanDTO {
-	id:             string
-	name:           string
-	seats:          number | null
-	trialDays:      number
-	monthlyAmount:  number | null
-	monthlyPriceId: string | null
-	yearlyAmount:   number | null
-	yearlyPriceId:  string | null
+	id:          string
+	planId:      string
+	name:        string
+	description: string
+	tier:        number
+	pricing: {
+		monthly:          number
+		yearly:           number
+		currency:         string
+		monthlyFormatted: string
+		yearlyFormatted:  string
+	}
+	features: IPlanFeature[]
+	limits:   Record<string, number>
+	metadata: Record<string, unknown>
 }
 
 export interface ISubscriptionDTO {
@@ -32,16 +39,28 @@ export interface IUsageRecordDTO {
 	recordedAt:  string
 }
 
+function formatPrice(amount: number | null, period: 'month' | 'year'): string {
+	if (!amount) return 'Free'
+	return `$${amount}/${period}`
+}
+
 export function toPlanDTO(plan: IPlan): IPlanDTO {
 	return {
-		id:             plan.id,
-		name:           plan.name,
-		seats:          plan.seats,
-		trialDays:      plan.trialDays,
-		monthlyAmount:  plan.monthlyAmount,
-		monthlyPriceId: plan.monthlyPriceId,
-		yearlyAmount:   plan.yearlyAmount,
-		yearlyPriceId:  plan.yearlyPriceId,
+		id:          plan.id,
+		planId:      plan.name.toUpperCase(),
+		name:        plan.name,
+		description: plan.description ?? '',
+		tier:        plan.tier,
+		pricing: {
+			monthly:          plan.monthlyAmount ?? 0,
+			yearly:           plan.yearlyAmount  ?? 0,
+			currency:         'USD',
+			monthlyFormatted: formatPrice(plan.monthlyAmount, 'month'),
+			yearlyFormatted:  formatPrice(plan.yearlyAmount,  'year'),
+		},
+		features: Array.isArray(plan.features) ? plan.features : [],
+		limits:   (plan.limits   && typeof plan.limits   === 'object') ? plan.limits   as Record<string, number>  : {},
+		metadata: (plan.metadata && typeof plan.metadata === 'object') ? plan.metadata as Record<string, unknown> : {},
 	}
 }
 

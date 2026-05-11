@@ -21,6 +21,13 @@ export type SubscriptionStatus =
 	| 'incomplete'
 	| 'paused'
 
+export interface IPlanFeature {
+	name:        string
+	description: string
+	enabled:     boolean
+	limit?:      number
+}
+
 export interface IPlan {
 	id:             string
 	name:           string
@@ -30,6 +37,11 @@ export interface IPlan {
 	monthlyPriceId: string | null
 	yearlyAmount:   number | null
 	yearlyPriceId:  string | null
+	description:    string | null
+	tier:           number
+	features:       IPlanFeature[]
+	limits:         Record<string, number>
+	metadata:       Record<string, unknown>
 }
 
 export interface IUsageRecord {
