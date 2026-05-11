@@ -225,10 +225,10 @@ Plans are publicly readable so your marketing/pricing pages don't need an auth t
 
 ### List all plans
 ```bash
-curl -s $BASE/billing/plans | jq .
+curl -s $BASE/plans | jq .
 # → {
 #     "plans": [ { id, planId, name, tier, seats, trialDays, pricing, features, metadata }, ... ],
-#     "count": 3,
+#     "count": 4,
 #     "tiers": [ { id, tier, name }, ... ]   ← sorted ascending by tier
 #   }
 ```
@@ -237,7 +237,7 @@ curl -s $BASE/billing/plans | jq .
 ```bash
 PLAN_ID="<uuid-from-list>"
 
-curl -s $BASE/billing/plans/$PLAN_ID | jq .
+curl -s $BASE/plans/$PLAN_ID | jq .
 # → { "plan": { id, planId, name, tier, seats, trialDays, pricing, features, metadata } }
 ```
 
@@ -247,45 +247,48 @@ curl -s $BASE/billing/plans/$PLAN_ID | jq .
   "id":          "uuid",
   "planId":      "PRO",
   "name":        "pro",
-  "description": "Everything in Starter, plus advanced features",
+  "description": "For growing teams who need more power",
   "tier":        2,
   "seats":       20,
-  "trialDays":   14,
+  "trialDays":   0,
   "pricing": {
-    "monthly":  1999,
-    "yearly":   19990,
+    "monthly":  7900,
+    "yearly":   79000,
     "currency": "USD"
   },
   "features": [
-    { "name": "API Access", "description": "Full REST API", "enabled": true, "limit": 10000 }
+    { "name": "Projects",   "description": "Unlimited projects",    "enabled": true              },
+    { "name": "Storage",    "description": "100 GB storage",        "enabled": true, "limit": 100 },
+    { "name": "API access", "description": "Up to 100 000 req/day", "enabled": true, "limit": 100000 },
+    { "name": "SSO",        "description": "SAML single sign-on",   "enabled": false             }
   ],
   "metadata": {}
 }
 ```
 
-> Amounts are in **cents** (e.g. `1999` = $19.99).  A `0` amount means the tier is free.
+> Amounts are in **cents** (e.g. `7900` = $79.00).  A `0` amount means the tier is free.
 > `seats: null` means unlimited seats.  `trialDays: 0` means no trial.
 
 ---
 
 ## Billing — admin plan management  _(requires auth)_
 
-These endpoints are for your admin dashboard to manage plan catalogue without a DB migration.
+These endpoints are for your admin dashboard to manage the plan catalogue without a DB migration.
 
 ### Create a plan
 ```bash
-curl -s -X POST $BASE/billing/plans \
+curl -s -X POST $BASE/plans \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
   -d '{
-    "name":        "growth",
-    "description": "For scaling teams",
-    "tier":        3,
-    "seats":       50,
-    "trialDays":   7,
-    "monthlyAmount":  4900,
+    "name":           "growth",
+    "description":    "For scaling teams",
+    "tier":           3,
+    "seats":          50,
+    "trialDays":      7,
+    "monthlyAmount":  9900,
     "monthlyPriceId": "price_growth_monthly",
-    "yearlyAmount":   49000,
+    "yearlyAmount":   99000,
     "yearlyPriceId":  "price_growth_yearly",
     "features": [
       { "name": "SSO", "description": "SAML single sign-on", "enabled": true }
@@ -298,13 +301,13 @@ curl -s -X POST $BASE/billing/plans \
 
 ### Update a plan
 ```bash
-curl -s -X PUT $BASE/billing/plans/$PLAN_ID \
+curl -s -X PUT $BASE/plans/$PLAN_ID \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
   -d '{
-    "monthlyAmount":  5900,
-    "yearlyAmount":   59000,
-    "seats":          75
+    "monthlyAmount": 10900,
+    "yearlyAmount":  109000,
+    "seats":         75
   }' \
   | jq .
 # → { "plan": { ... } }   only provided fields are updated
@@ -312,7 +315,7 @@ curl -s -X PUT $BASE/billing/plans/$PLAN_ID \
 
 ### Delete a plan
 ```bash
-curl -s -X DELETE $BASE/billing/plans/$PLAN_ID \
+curl -s -X DELETE $BASE/plans/$PLAN_ID \
   -H "authorization: Bearer $TOKEN" \
   | jq .
 # → { ok: true }

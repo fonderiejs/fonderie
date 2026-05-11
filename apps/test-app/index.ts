@@ -131,29 +131,64 @@ const billing = new BillingModule(store, {
 	),
 	plans: [
 		{
-			name:  'free',
-			seats: 1,
+			name:        'free',
+			description: 'Get started at no cost',
+			tier:        0,
+			seats:       1,
+			features: [
+				{ name: 'Projects',   description: 'Up to 3 projects',    enabled: true, limit: 3    },
+				{ name: 'Storage',    description: '1 GB storage',         enabled: true, limit: 1    },
+				{ name: 'API access', description: 'Up to 1 000 req/day',  enabled: true, limit: 1000 },
+			],
 		},
 		{
-			name:      'starter',
-			seats:     5,
-			trialDays: 14,
-			monthly:   { amount: 49,  priceId: process.env['STRIPE_STARTER_MONTHLY'] ?? '' },
-			yearly:    { amount: 490, priceId: process.env['STRIPE_STARTER_YEARLY']  ?? '' },
+			name:        'starter',
+			description: 'For small teams getting started',
+			tier:        1,
+			seats:       5,
+			trialDays:   14,
+			monthly:     { amount: 2900,  priceId: process.env['STRIPE_STARTER_MONTHLY'] ?? '' },
+			yearly:      { amount: 29000, priceId: process.env['STRIPE_STARTER_YEARLY']  ?? '' },
+			features: [
+				{ name: 'Projects',   description: 'Up to 10 projects',    enabled: true, limit: 10    },
+				{ name: 'Storage',    description: '10 GB storage',         enabled: true, limit: 10    },
+				{ name: 'API access', description: 'Up to 10 000 req/day',  enabled: true, limit: 10000 },
+				{ name: 'Analytics',  description: 'Basic analytics',       enabled: true               },
+			],
 		},
 		{
-			name:    'pro',
-			seats:   20,
-			monthly: { amount: 149,  priceId: process.env['STRIPE_PRO_MONTHLY'] ?? '' },
-			yearly:  { amount: 1490, priceId: process.env['STRIPE_PRO_YEARLY']  ?? '' },
+			name:        'pro',
+			description: 'For growing teams who need more power',
+			tier:        2,
+			seats:       20,
+			monthly:     { amount: 7900,  priceId: process.env['STRIPE_PRO_MONTHLY'] ?? '' },
+			yearly:      { amount: 79000, priceId: process.env['STRIPE_PRO_YEARLY']  ?? '' },
+			features: [
+				{ name: 'Projects',   description: 'Unlimited projects',    enabled: true                 },
+				{ name: 'Storage',    description: '100 GB storage',        enabled: true, limit: 100     },
+				{ name: 'API access', description: 'Up to 100 000 req/day', enabled: true, limit: 100000  },
+				{ name: 'Analytics',  description: 'Advanced analytics',    enabled: true                 },
+				{ name: 'SSO',        description: 'SAML single sign-on',   enabled: false                },
+			],
 		},
 		{
-			name:  'enterprise',
-			seats: null,
+			name:        'enterprise',
+			description: 'Custom contracts for large organisations',
+			tier:        3,
+			seats:       null,
+			features: [
+				{ name: 'Projects',   description: 'Unlimited projects',    enabled: true },
+				{ name: 'Storage',    description: 'Unlimited storage',     enabled: true },
+				{ name: 'API access', description: 'Unlimited requests',    enabled: true },
+				{ name: 'Analytics',  description: 'Custom analytics',      enabled: true },
+				{ name: 'SSO',        description: 'SAML single sign-on',   enabled: true },
+				{ name: 'SLA',        description: '99.9 % uptime SLA',     enabled: true },
+				{ name: 'Support',    description: 'Dedicated support',     enabled: true },
+			],
 		},
 	],
-	successUrl: 'http://localhost:3000/billing/success',
-	cancelUrl:  'http://localhost:3000/billing/cancel',
+	successUrl: 'http://localhost:4000/billing/success',
+	cancelUrl:  'http://localhost:4000/billing/cancel',
 });
 
 const remoteConfig = new RemoteConfigModule(store, {
@@ -259,11 +294,11 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 //   POST   /workspaces/roles/:roleId/permissions
 //
 // BillingModule:
-//   GET    /billing/plans
-//   POST   /billing/plans
-//   GET    /billing/plans/:planId
-//   PUT    /billing/plans/:planId
-//   DELETE /billing/plans/:planId
+//   GET    /plans
+//   POST   /plans
+//   GET    /plans/:planId
+//   PUT    /plans/:planId
+//   DELETE /plans/:planId
 //   POST   /billing/webhook
 //   GET    /workspaces/:workspaceId/billing/subscription
 //   POST   /workspaces/:workspaceId/billing/checkout
