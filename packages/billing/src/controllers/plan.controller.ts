@@ -16,7 +16,6 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 			const dtos = list.map(toPlanDTO)
 			return setApiResponse(HTTP.OK, 'PLAN_LIST', `Retrieved ${list.length} workspace plans`, {
 				plans: dtos,
-				count: dtos.length,
 			})
 		},
 
