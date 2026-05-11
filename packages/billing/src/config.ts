@@ -13,7 +13,6 @@ export interface IBillingPlan {
 	seats?:       number | null
 	trialDays?:   number
 	features?:    IPlanFeature[]
-	limits?:      Record<string, number>
 	metadata?:    Record<string, unknown>
 	monthly?:     IBillingPlanPrice
 	yearly?:      IBillingPlanPrice

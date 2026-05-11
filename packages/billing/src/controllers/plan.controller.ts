@@ -53,9 +53,8 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 			if ('monthlyPriceId' in b) data.monthlyPriceId = typeof b['monthlyPriceId'] === 'string' ? b['monthlyPriceId'] as string  : null
 			if ('yearlyAmount'   in b) data.yearlyAmount   = typeof b['yearlyAmount']   === 'number' ? b['yearlyAmount']   as number  : null
 			if ('yearlyPriceId'  in b) data.yearlyPriceId  = typeof b['yearlyPriceId']  === 'string' ? b['yearlyPriceId']  as string  : null
-			if ('features'       in b && Array.isArray(b['features']))        data.features = b['features']
-			if ('limits'         in b && b['limits']   && typeof b['limits']   === 'object') data.limits   = b['limits']
-			if ('metadata'       in b && b['metadata'] && typeof b['metadata'] === 'object') data.metadata = b['metadata']
+			if ('features' in b && Array.isArray(b['features']))                            data.features = b['features']
+			if ('metadata' in b && b['metadata'] && typeof b['metadata'] === 'object')     data.metadata = b['metadata']
 
 			const plan = await plans.create(data)
 			return setApiResponse(HTTP.CREATED, 'PLAN_CREATED', 'Plan created successfully.', { plan: toPlanDTO(plan) })
@@ -79,9 +78,8 @@ export function planController(store: IStoreAdapter, _config: IBillingConfig) {
 			if ('monthlyPriceId' in b) data.monthlyPriceId = typeof b['monthlyPriceId'] === 'string' ? b['monthlyPriceId'] as string : null
 			if ('yearlyAmount'   in b) data.yearlyAmount   = typeof b['yearlyAmount']   === 'number' ? b['yearlyAmount']   as number : null
 			if ('yearlyPriceId'  in b) data.yearlyPriceId  = typeof b['yearlyPriceId']  === 'string' ? b['yearlyPriceId']  as string : null
-			if ('features'       in b && Array.isArray(b['features']))        data.features = b['features'] as IPlan['features']
-			if ('limits'         in b && b['limits']   && typeof b['limits']   === 'object') data.limits   = b['limits'] as IPlan['limits']
-			if ('metadata'       in b && b['metadata'] && typeof b['metadata'] === 'object') data.metadata = b['metadata'] as IPlan['metadata']
+			if ('features' in b && Array.isArray(b['features']))                            data.features = b['features'] as IPlan['features']
+			if ('metadata' in b && b['metadata'] && typeof b['metadata'] === 'object')     data.metadata = b['metadata'] as IPlan['metadata']
 
 			const plan = await plans.update(id, data)
 			if (!plan) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Plan not found')
