@@ -102,6 +102,8 @@ const courier     = new CourierModule(
 			'mfa-enabled':                    ['email'],
 			'mfa-disabled':                   ['email'],
 			'mfa-backup-codes-regenerated':   ['email'],
+			'email-changed':                  ['email'],
+			'phone-changed':                  ['email'],
 		},
 		templates: {
 			source: 'fs', 
@@ -225,7 +227,10 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 //   POST   /auth/mfa/disable             (email sessions only)
 //   POST   /auth/mfa/backup-codes        (email sessions only)
 //   GET    /users
-//   PUT    /users/update
+//   PUT    /users/profile
+//   PUT    /users/preferences
+//   PUT    /users/email
+//   PUT    /users/phone
 //   DELETE /users
 //
 // WorkspacesModule:  (workspace resolved from X-Workspace-ID header unless noted)

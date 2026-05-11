@@ -215,3 +215,21 @@ test('onError config is called on handler throw', async () => {
 	assert.equal(res.status, 500);
 	assert.equal(body.custom, true);
 });
+
+test('router: trailing slash on request matches registered path', async () => {
+	const app = new FonderieApp(config);
+	app.addRoute('GET', '/users', async () => Response.json({ ok: true }));
+	await app.boot();
+
+	const res = await app.handle(makeRequest('GET', '/users/'));
+	assert.equal(res.status, 200);
+});
+
+test('router: root path / still matches after trailing-slash normalisation', async () => {
+	const app = new FonderieApp(config);
+	app.addRoute('GET', '/', async () => Response.json({ ok: true }));
+	await app.boot();
+
+	const res = await app.handle(makeRequest('GET', '/'));
+	assert.equal(res.status, 200);
+});

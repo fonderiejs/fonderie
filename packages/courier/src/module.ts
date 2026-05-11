@@ -34,9 +34,16 @@ export class CourierModule implements IFonderieModule {
 		const courierMiddleware: Middleware = async (ctx, next) => {
 			const response = await next()
 
-			const message = ctx.meta['message'] as ICourierMessage | undefined
-			if (message) {
-				dispatcher.dispatch(message).catch(err =>
+			const single   = ctx.meta['message']  as ICourierMessage | undefined
+			const multiple = ctx.meta['messages'] as ICourierMessage[] | undefined
+
+			const all: ICourierMessage[] = [
+				...(single   ? [single]   : []),
+				...(Array.isArray(multiple) ? multiple : []),
+			]
+
+			for (const msg of all) {
+				dispatcher.dispatch(msg).catch(err =>
 					console.error('[courier] dispatch error:', err)
 				)
 			}

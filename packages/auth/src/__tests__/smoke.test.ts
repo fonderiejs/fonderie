@@ -807,29 +807,164 @@ test('me: 200 with user DTO including profileImageUrl', async () => {
 	assert.equal(body.result.user.phone,           '+1234567890');
 });
 
-// ── UserController.updateMe ───────────────────────────────────────
+test('me: 200 for unverified email user (GET /users does not require verification)', async () => {
+	const unverified = { ...BASE_USER, emailVerifiedAt: null };
+	const ctrl       = makeUser({ userById: unverified });
+	const response   = await ctrl.me(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,                   'USER_ACCOUNT_FETCHED');
+	assert.equal(body.result.user.isEmailVerified, false);
+});
 
-test('updateMe: 422 when no updatable fields provided', async () => {
+// ── UserController.updateProfile ─────────────────────────────────
+
+test('updateProfile: 422 when no profile fields provided', async () => {
 	const ctrl     = makeUser();
-	const response = await ctrl.updateMe(makeCtx({
+	const response = await ctrl.updateProfile(makeCtx({
 		user: { id: 'user-1', email: 'jane@example.com' },
 		body: { unknownField: 'value' },
 	}));
 	assert.equal(response.status, 422);
 });
 
-test('updateMe: 200 with updated DTO after phoneNumber and avatarUrl', async () => {
-	const updated  = { ...BASE_USER, phone: '+9999999999', profileImageUrl: 'https://cdn.example.com/new.jpg' };
+test('updateProfile: 200 with updated DTO', async () => {
+	const updated  = { ...BASE_USER, firstName: 'Janet', profileImageUrl: 'https://cdn.example.com/new.jpg' };
 	const ctrl     = makeUser({ updateRow: { id: 'user-1' }, userById: updated });
-	const response = await ctrl.updateMe(makeCtx({
+	const response = await ctrl.updateProfile(makeCtx({
 		user: { id: 'user-1', email: 'jane@example.com' },
-		body: { phoneNumber: '+9999999999', avatarUrl: 'https://cdn.example.com/new.jpg' },
+		body: { firstName: 'Janet', avatarUrl: 'https://cdn.example.com/new.jpg' },
 	}));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason,                       'ACCOUNT_UPDATED');
-	assert.equal(body.result.user.phone,           '+9999999999');
-	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/new.jpg');
+	assert.equal(body.reason,                       'PROFILE_UPDATED');
+	assert.equal(body.result.user.firstName,        'Janet');
+	assert.equal(body.result.user.profileImageUrl,  'https://cdn.example.com/new.jpg');
+});
+
+// ── UserController.updatePreferences ─────────────────────────────
+
+test('updatePreferences: 422 when no preference fields provided', async () => {
+	const ctrl     = makeUser();
+	const response = await ctrl.updatePreferences(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: {},
+	}));
+	assert.equal(response.status, 422);
+});
+
+test('updatePreferences: 200 with updated locale and timezone', async () => {
+	const updated  = { ...BASE_USER, locale: 'fr-FR', timezone: 'America/Montreal' };
+	const ctrl     = makeUser({ updateRow: { id: 'user-1' }, userById: updated });
+	const response = await ctrl.updatePreferences(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: { locale: 'fr-FR', timezone: 'America/Montreal' },
+	}));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,                        'PREFERENCES_UPDATED');
+	assert.equal(body.result.user.preferences.locale,   'fr-FR');
+	assert.equal(body.result.user.preferences.timezone, 'America/Montreal');
+});
+
+test('updatePreferences: 200 with notification sub-fields patched', async () => {
+	const updated  = { ...BASE_USER, preferences: { ...BASE_USER.preferences, emailDigest: 'weekly' } };
+	const ctrl     = makeUser({ updateRow: { id: 'user-1' }, userById: updated });
+	const response = await ctrl.updatePreferences(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: { emailDigest: 'weekly' },
+	}));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,                              'PREFERENCES_UPDATED');
+	assert.equal(body.result.user.preferences.emailDigest, 'weekly');
+});
+
+// ── UserController.updateEmail ────────────────────────────────────
+
+test('updateEmail: 422 when email is missing', async () => {
+	const ctrl     = makeUser();
+	const response = await ctrl.updateEmail(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: {},
+	}));
+	assert.equal(response.status, 422);
+});
+
+test('updateEmail: 422 when new email is same as current', async () => {
+	const ctrl     = makeUser();
+	const response = await ctrl.updateEmail(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: { email: 'jane@example.com' },
+	}));
+	assert.equal(response.status, 422);
+});
+
+test('updateEmail: 409 when email is already in use by another account', async () => {
+	const ctrl     = makeUser({ userByEmail: { ...BASE_USER, id: 'user-2' } });
+	const response = await ctrl.updateEmail(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: { email: 'other@example.com' },
+	}));
+	assert.equal(response.status, 409);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'EMAIL_IN_USE');
+});
+
+test('updateEmail: 200 EMAIL_UPDATED, sends verification to new address and alert to old', async () => {
+	const ctrl     = makeUser();
+	const ctx      = makeCtx({ user: { id: 'user-1', email: 'jane@example.com' }, body: { email: 'new@example.com' } });
+	const response = await ctrl.updateEmail(ctx);
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,       'EMAIL_UPDATED');
+	assert.equal(body.result.email, 'new@example.com');
+	const msgs = ctx.meta['messages'] as any[];
+	assert.equal(msgs.length, 2);
+	const verification = msgs.find((m: any) => m.type === 'email-verification');
+	const alert        = msgs.find((m: any) => m.type === 'email-changed');
+	assert.equal(verification?.recipient?.email, 'new@example.com');
+	assert.ok(typeof verification?.data?.pin === 'string');
+	assert.equal(alert?.recipient?.email, 'jane@example.com');
+});
+
+// ── UserController.updatePhone ────────────────────────────────────
+
+test('updatePhone: 422 when phone is missing or invalid', async () => {
+	const ctrl     = makeUser();
+	const response = await ctrl.updatePhone(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: { phone: 'not-a-phone' },
+	}));
+	assert.equal(response.status, 422);
+});
+
+test('updatePhone: 409 when phone is already in use', async () => {
+	const ctrl     = makeUser({ userByPhone: { ...BASE_USER, id: 'user-2' } });
+	const response = await ctrl.updatePhone(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: { phone: '+15141234567' },
+	}));
+	assert.equal(response.status, 409);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'PHONE_IN_USE');
+});
+
+test('updatePhone: 200 PHONE_UPDATED, sends OTP to new number and alert to email', async () => {
+	const ctrl     = makeUser();
+	const ctx      = makeCtx({ user: { id: 'user-1', email: 'jane@example.com' }, body: { phone: '+15141234567' } });
+	const response = await ctrl.updatePhone(ctx);
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,       'PHONE_UPDATED');
+	assert.equal(body.result.phone, '+15141234567');
+	const msgs = ctx.meta['messages'] as any[];
+	assert.equal(msgs.length, 2);
+	const otp   = msgs.find((m: any) => m.type === 'phone-otp');
+	const alert = msgs.find((m: any) => m.type === 'phone-changed');
+	assert.equal(otp?.recipient?.phone, '+15141234567');
+	assert.ok(typeof otp?.data?.otp === 'string');
+	assert.equal(alert?.recipient?.email, 'jane@example.com');
 });
 
 // ── MfaController.regenerateBackupCodes ──────────────────────────

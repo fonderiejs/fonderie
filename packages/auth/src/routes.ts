@@ -40,10 +40,13 @@ export function buildAuthRoutes(
 		// Account Management (Protected)
 		['POST', '/auth/logout',              requireAuth, auth.logout],
 
-		// User Profile (Protected + Verified)
-		['GET',    '/users',        requireAuth, requireVerified, user.me],
-		['PUT',    '/users/update', requireAuth, requireVerified, user.updateMe],
-		['DELETE', '/users',        requireAuth, requireVerified, user.deleteMe],
+		// User Profile (Protected; writes also require verified)
+		['GET',    '/users',             requireAuth,                  user.me],
+		['PUT',    '/users/profile',     requireAuth, requireVerified, user.updateProfile],
+		['PUT',    '/users/preferences', requireAuth, requireVerified, user.updatePreferences],
+		['PUT',    '/users/email',       requireAuth, requireVerified, user.updateEmail],
+		['PUT',    '/users/phone',       requireAuth, requireVerified, user.updatePhone],
+		['DELETE', '/users',             requireAuth, requireVerified, user.deleteMe],
 
 		// MFA (email sessions only — OTP is the phone auth factor; email must be verified)
 		['POST', '/auth/mfa/setup',         requireAuth, requireEmailLogin, requireVerified, mfa.setup],

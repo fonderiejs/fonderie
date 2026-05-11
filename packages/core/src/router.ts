@@ -24,7 +24,7 @@ export class Router implements IRouter {
 // Segment-by-segment match with :param extraction
 // /users/:id matches /users/42 → { id: '42' }
 function matchPath(pattern: string, path: string): Record<string, string> | null {
-	const clean = path.split('?')[0] ?? path  // strip query string
+	const clean = (path.split('?')[0] ?? path).replace(/\/$/, '') || '/'  // strip query string and trailing slash
 	const pp = pattern.split('/')
 	const vp = clean.split('/')
 

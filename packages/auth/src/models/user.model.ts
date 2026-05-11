@@ -198,6 +198,59 @@ export class UserModel {
 		);
 	}
 
+	async updateEmail(id: string, email: string): Promise<void> {
+		await this.store.transaction(async tx => {
+			await Promise.all([
+				tx.query(
+					`UPDATE fonderie_users SET email = $1, email_verified_at = NULL, updated_at = now() WHERE id = $2`,
+					[email.toLowerCase().trim(), id],
+				),
+				tx.query(
+					`DELETE FROM fonderie_email_verifications WHERE user_id = $1`,
+					[id],
+				),
+			]);
+		});
+	}
+
+	async updatePhone(id: string, phone: string): Promise<void> {
+		await this.store.query(
+			`UPDATE fonderie_users SET phone = $1, updated_at = now() WHERE id = $2`,
+			[phone, id],
+		);
+	}
+
+	async updatePreferences(id: string, fields: {
+		locale?:   string;
+		timezone?: string;
+		patch?:    Record<string, unknown>;
+	}): Promise<{ id: string } | null> {
+		const sets:   string[]  = [];
+		const values: unknown[] = [];
+
+		if (fields.locale !== undefined) {
+			values.push(fields.locale);
+			sets.push(`locale = $${values.length}`);
+		}
+		if (fields.timezone !== undefined) {
+			values.push(fields.timezone);
+			sets.push(`timezone = $${values.length}`);
+		}
+		if (fields.patch && Object.keys(fields.patch).length > 0) {
+			values.push(JSON.stringify(fields.patch));
+			sets.push(`preferences = preferences || $${values.length}::jsonb`);
+		}
+
+		if (sets.length === 0) return null;
+
+		values.push(id);
+		const [row] = await this.store.query<{ id: string }>(
+			`UPDATE fonderie_users SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length} AND deleted_at IS NULL RETURNING id`,
+			values,
+		);
+		return row ?? null;
+	}
+
 	async getMfaSecret(id: string): Promise<string | null> {
 		const [row] = await this.store.query<{ mfa_secret: string | null }>(
 			`SELECT mfa_secret FROM fonderie_users WHERE id = $1`,
