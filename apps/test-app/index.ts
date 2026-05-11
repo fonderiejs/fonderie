@@ -141,9 +141,13 @@ const billing = new BillingModule(store, {
 			tier:        0,
 			seats:       1,
 			features: [
-				{ name: 'Projects',   description: 'Up to 3 projects',    enabled: true, limit: 3    },
-				{ name: 'Storage',    description: '1 GB storage',         enabled: true, limit: 1    },
-				{ name: 'API access', description: 'Up to 1 000 req/day',  enabled: true, limit: 1000 },
+				{ name: 'Projects',   description: 'Up to 3 projects',    enabled: true,  limit: 3    },
+				{ name: 'Storage',    description: '1 GB storage',         enabled: true,  limit: 1    },
+				{ name: 'API access', description: 'Up to 1 000 req/day',  enabled: true,  limit: 1000 },
+				{ name: 'Analytics',  description: 'Basic analytics',      enabled: false              },
+				{ name: 'SSO',        description: 'SAML single sign-on',  enabled: false              },
+				{ name: 'SLA',        description: '99.9 % uptime SLA',    enabled: false              },
+				{ name: 'Support',    description: 'Dedicated support',    enabled: false              },
 			],
 		},
 		{
@@ -155,10 +159,13 @@ const billing = new BillingModule(store, {
 			monthly:     { amount: 2900,  priceId: process.env['STRIPE_STARTER_MONTHLY'] ?? '' },
 			yearly:      { amount: 29000, priceId: process.env['STRIPE_STARTER_YEARLY']  ?? '' },
 			features: [
-				{ name: 'Projects',   description: 'Up to 10 projects',    enabled: true, limit: 10    },
-				{ name: 'Storage',    description: '10 GB storage',         enabled: true, limit: 10    },
-				{ name: 'API access', description: 'Up to 10 000 req/day',  enabled: true, limit: 10000 },
+				{ name: 'Projects',   description: 'Up to 10 projects',    enabled: true,  limit: 10    },
+				{ name: 'Storage',    description: '10 GB storage',         enabled: true,  limit: 10    },
+				{ name: 'API access', description: 'Up to 10 000 req/day',  enabled: true,  limit: 10000 },
 				{ name: 'Analytics',  description: 'Basic analytics',       enabled: true               },
+				{ name: 'SSO',        description: 'SAML single sign-on',   enabled: false              },
+				{ name: 'SLA',        description: '99.9 % uptime SLA',     enabled: false              },
+				{ name: 'Support',    description: 'Dedicated support',     enabled: false              },
 			],
 		},
 		{
@@ -170,10 +177,12 @@ const billing = new BillingModule(store, {
 			yearly:      { amount: 79000, priceId: process.env['STRIPE_PRO_YEARLY']  ?? '' },
 			features: [
 				{ name: 'Projects',   description: 'Unlimited projects',    enabled: true                 },
-				{ name: 'Storage',    description: '100 GB storage',        enabled: true, limit: 100     },
-				{ name: 'API access', description: 'Up to 100 000 req/day', enabled: true, limit: 100000  },
+				{ name: 'Storage',    description: '100 GB storage',        enabled: true,  limit: 100    },
+				{ name: 'API access', description: 'Up to 100 000 req/day', enabled: true,  limit: 100000 },
 				{ name: 'Analytics',  description: 'Advanced analytics',    enabled: true                 },
 				{ name: 'SSO',        description: 'SAML single sign-on',   enabled: false                },
+				{ name: 'SLA',        description: '99.9 % uptime SLA',     enabled: false                },
+				{ name: 'Support',    description: 'Dedicated support',     enabled: false                },
 			],
 		},
 		{
@@ -182,13 +191,13 @@ const billing = new BillingModule(store, {
 			tier:        3,
 			seats:       null,
 			features: [
-				{ name: 'Projects',   description: 'Unlimited projects',    enabled: true },
-				{ name: 'Storage',    description: 'Unlimited storage',     enabled: true },
-				{ name: 'API access', description: 'Unlimited requests',    enabled: true },
-				{ name: 'Analytics',  description: 'Custom analytics',      enabled: true },
-				{ name: 'SSO',        description: 'SAML single sign-on',   enabled: true },
-				{ name: 'SLA',        description: '99.9 % uptime SLA',     enabled: true },
-				{ name: 'Support',    description: 'Dedicated support',     enabled: true },
+				{ name: 'Projects',   description: 'Unlimited projects',   enabled: true },
+				{ name: 'Storage',    description: 'Unlimited storage',    enabled: true },
+				{ name: 'API access', description: 'Unlimited requests',   enabled: true },
+				{ name: 'Analytics',  description: 'Custom analytics',     enabled: true },
+				{ name: 'SSO',        description: 'SAML single sign-on',  enabled: true },
+				{ name: 'SLA',        description: '99.9 % uptime SLA',    enabled: true },
+				{ name: 'Support',    description: 'Dedicated support',    enabled: true },
 			],
 		},
 	],
@@ -253,22 +262,35 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 //   POST   /auth/login
 //   POST   /auth/logout
 //   POST   /auth/refresh
+//
 //   POST   /auth/email/forgot
 //   POST   /auth/email/reset
+//
 //   GET    /auth/send-verification       (requires auth — sends to email or phone based on loginMethod)
 //   POST   /auth/verify                  (requires auth — verifies email or phone OTP)
+//
 //   POST   /auth/mfa/setup               (requires auth + verified email + email login)
 //   POST   /auth/mfa/verify              (requires auth + verified email + email login)
 //   POST   /auth/mfa/disable             (requires auth + verified email + email login)
 //   POST   /auth/mfa/backup-codes        (requires auth + verified email + email login)
+//
 //   GET    /auth/google                  (only when GOOGLE_CLIENT_ID is set)
 //   GET    /auth/google/callback         (only when GOOGLE_CLIENT_ID is set)
+//
 //   GET    /users                        (requires auth)
 //   PUT    /users/profile                (requires auth + verified email)
 //   PUT    /users/preferences            (requires auth + verified email)
 //   PUT    /users/email                  (requires auth + verified email)
 //   PUT    /users/phone                  (requires auth + verified email)
 //   DELETE /users                        (requires auth + verified email)
+//
+// BillingModule:
+//   GET    /plans
+//   POST   /plans
+//   GET    /plans/:planId
+//   PUT    /plans/:planId
+//   DELETE /plans/:planId
+//   POST   /billing/webhook
 //
 // WorkspacesModule:  (workspace resolved from X-Workspace-ID header unless noted)
 //   POST   /workspaces
@@ -279,15 +301,18 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 //   POST   /workspaces/restore
 //   GET    /workspaces/settings
 //   PUT    /workspaces/settings
+//
 //   GET    /workspaces/members
 //   DELETE /workspaces/members/:userId
 //   GET    /workspaces/members/:userId/roles
 //   POST   /workspaces/members/:userId/roles
 //   DELETE /workspaces/members/:userId/roles/:roleId
+//
 //   GET    /workspaces/invitations
 //   POST   /workspaces/invitations
 //   DELETE /workspaces/invitations/:inviteId
 //   POST   /workspaces/invitations/accept          (no workspace context)
+//
 //   POST   /workspaces/roles
 //   GET    /workspaces/roles
 //   GET    /workspaces/roles/:roleId
@@ -295,13 +320,6 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 //   DELETE /workspaces/roles/:roleId
 //   POST   /workspaces/roles/:roleId/permissions
 //
-// BillingModule:
-//   GET    /plans
-//   POST   /plans
-//   GET    /plans/:planId
-//   PUT    /plans/:planId
-//   DELETE /plans/:planId
-//   POST   /billing/webhook
 //   GET    /workspaces/:workspaceId/billing/subscription
 //   POST   /workspaces/:workspaceId/billing/checkout
 //   POST   /workspaces/:workspaceId/billing/portal
