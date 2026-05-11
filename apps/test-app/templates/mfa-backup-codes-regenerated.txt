@@ -1,0 +1,3 @@
+Your two-factor authentication recovery codes have been regenerated. Your previous codes are no longer valid.
+
+If you did not make this change, please secure your account immediately and contact support.
