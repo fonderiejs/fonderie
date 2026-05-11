@@ -966,18 +966,18 @@ test('mfa.verify: 401 INVALID_CODE for wrong TOTP during setup confirmation', as
 	assert.equal(body.reason, 'INVALID_CODE');
 });
 
-test('mfa.verify: 200 MFA_VERIFIED with tokens on valid TOTP during setup confirmation', async () => {
+test('mfa.verify: 200 MFA_VERIFIED with mfaEnabled: true on valid TOTP during setup confirmation', async () => {
 	const secret   = generateTotpSecret();
 	const code     = generateTotpCode(secret);
-	const ctrl     = makeMfa({ mfaPendingSecret: secret, userById: MFA_USER });
+	const ctrl     = makeMfa({ mfaPendingSecret: secret });
 	const response = await ctrl.verify(makeCtx({
 		user: { ...MFA_USER },
 		body: { token: code },
 	}));
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
-	assert.equal(body.reason, 'MFA_VERIFIED');
-	assert.ok(typeof body.result.tokens.access  === 'string');
-	assert.ok(typeof body.result.tokens.refresh === 'string');
-	assert.ok(body.result.user);
+	assert.equal(body.reason,              'MFA_VERIFIED');
+	assert.equal(body.result.mfaEnabled,   true);
+	assert.equal(body.result.tokens,       undefined);
+	assert.equal(body.result.user,         undefined);
 });

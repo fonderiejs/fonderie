@@ -59,6 +59,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
 				}
 				await users.confirmMfaSecret(ctx.user!.id);
+				return setApiResponse(HTTP.OK, 'MFA_VERIFIED', 'MFA verified successfully.', { mfaEnabled: true });
 
 			} else if (/^[A-Z0-9]{8}$/i.test(token)) {
 				// ── Backup code consumption ────────────────────────────────────────────
