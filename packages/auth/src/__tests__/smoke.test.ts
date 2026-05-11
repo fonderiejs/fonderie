@@ -1,5 +1,5 @@
-import { test } from 'node:test';
-import assert   from 'node:assert/strict';
+import { test, mock } from 'node:test';
+import assert         from 'node:assert/strict';
 
 import type { IStoreAdapter }         from '@fonderie-js/store';
 import type { IAuthConfig }           from '../config';
@@ -8,8 +8,9 @@ import { issueTokenPair, issueMfaPendingToken, verifyToken } from '../services/j
 import { generateTotpSecret, generateTotpCode, generateBackupCodes } from '../services/mfa';
 import { hashPassword, verifyPassword } from '../services/password';
 import { authController } from '../controllers/auth.controller';
-import { mfaController }  from '../controllers/mfa.controller';
-import { userController } from '../controllers/user.controller';
+import { mfaController }   from '../controllers/mfa.controller';
+import { oauthController } from '../controllers/oauth.controller';
+import { userController }  from '../controllers/user.controller';
 
 const config: IAuthConfig = {
 	jwtSecret:       'test-secret-min-32-chars-long-here',
@@ -1029,4 +1030,146 @@ test('mfa.verify: 200 MFA_VERIFIED with mfaEnabled: true on valid TOTP during se
 	assert.equal(body.result.mfaEnabled,   true);
 	assert.equal(body.result.tokens,       undefined);
 	assert.equal(body.result.user,         undefined);
+});
+
+// ── OauthController ───────────────────────────────────────────────
+
+const GOOGLE_CONFIG: IAuthConfig = {
+	...config,
+	providers: ['email', 'google'],
+	google: {
+		clientId:     'test-client-id',
+		clientSecret: 'test-client-secret',
+		redirectUri:  'http://localhost/auth/google/callback',
+	},
+};
+
+function makeOauth(storeOpts: AuthStoreOpts = {}, cfg: IAuthConfig = GOOGLE_CONFIG) {
+	return oauthController(makeStore(storeOpts), cfg);
+}
+
+function fakeIdToken(payload: object): string {
+	const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+	return `header.${encoded}.signature`;
+}
+
+function mockFetch(body: object, status = 200) {
+	return mock.method(globalThis, 'fetch', async () =>
+		new Response(JSON.stringify(body), {
+			status,
+			headers: { 'content-type': 'application/json' },
+		})
+	);
+}
+
+// ── googleInit ────────────────────────────────────────────────────
+
+test('googleInit: 501 NOT_CONFIGURED when google is not in config', async () => {
+	const ctrl     = makeOauth({}, config);
+	const response = await ctrl.googleInit(makeCtx());
+	assert.equal(response.status, 501);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'NOT_CONFIGURED');
+});
+
+test('googleInit: 200 GOOGLE_AUTH_URL with OAuth URL in result', async () => {
+	const ctrl     = makeOauth();
+	const response = await ctrl.googleInit(makeCtx());
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'GOOGLE_AUTH_URL');
+	assert.ok(body.result.url.startsWith('https://accounts.google.com/o/oauth2/v2/auth'));
+	assert.ok(body.result.url.includes('client_id=test-client-id'));
+	assert.ok(body.result.url.includes('redirect_uri='));
+	assert.ok(body.result.url.includes('scope='));
+	assert.ok(body.result.url.includes('response_type=code'));
+});
+
+// ── googleCallback ────────────────────────────────────────────────
+
+test('googleCallback: 501 NOT_CONFIGURED when google is not in config', async () => {
+	const ctrl     = makeOauth({}, config);
+	const response = await ctrl.googleCallback(makeCtx());
+	assert.equal(response.status, 501);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'NOT_CONFIGURED');
+});
+
+test('googleCallback: 400 INVALID_PARAMETER when code is missing', async () => {
+	const ctrl = makeOauth();
+	const ctx  = makeCtx();
+	ctx.request = new Request('http://localhost/auth/google/callback');
+	const response = await ctrl.googleCallback(ctx);
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'INVALID_PARAMETER');
+});
+
+test('googleCallback: 400 GOOGLE_AUTH_FAILED when token exchange returns no id_token', async () => {
+	const fetchMock = mockFetch({});
+	const ctrl      = makeOauth();
+	const ctx       = makeCtx();
+	ctx.request     = new Request('http://localhost/auth/google/callback?code=test-code');
+	const response  = await ctrl.googleCallback(ctx);
+	fetchMock.mock.restore();
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'GOOGLE_AUTH_FAILED');
+});
+
+test('googleCallback: 400 GOOGLE_AUTH_FAILED when id_token has no email', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken({ sub: 'google-123' }) });
+	const ctrl      = makeOauth();
+	const ctx       = makeCtx();
+	ctx.request     = new Request('http://localhost/auth/google/callback?code=test-code');
+	const response  = await ctrl.googleCallback(ctx);
+	fetchMock.mock.restore();
+	assert.equal(response.status, 400);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'GOOGLE_AUTH_FAILED');
+});
+
+test('googleCallback: 500 SERVER_ERROR when upsert returns null', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken({ email: 'jane@example.com', sub: 'google-123' }) });
+	const ctrl      = makeOauth({}); // no insertedId → upsertByProvider returns null
+	const ctx       = makeCtx();
+	ctx.request     = new Request('http://localhost/auth/google/callback?code=test-code');
+	const response  = await ctrl.googleCallback(ctx);
+	fetchMock.mock.restore();
+	assert.equal(response.status, 500);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'SERVER_ERROR');
+});
+
+test('googleCallback: 200 GOOGLE_AUTH_SUCCESS with tokens and user on valid OAuth code', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken({ email: 'jane@example.com', sub: 'google-123' }) });
+	const ctrl      = makeOauth({ insertedId: 'user-1', userById: BASE_USER });
+	const ctx       = makeCtx();
+	ctx.request     = new Request('http://localhost/auth/google/callback?code=test-code');
+	const response  = await ctrl.googleCallback(ctx);
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason,                   'GOOGLE_AUTH_SUCCESS');
+	assert.ok(typeof body.result.tokens.access  === 'string');
+	assert.ok(typeof body.result.tokens.refresh === 'string');
+	assert.equal(body.result.user.id,           'user-1');
+	assert.equal(body.result.user.email,        'jane@example.com');
+	assert.equal(body.result.user.firstName,    'Jane');
+	assert.equal(body.result.user.lastName,     'Doe');
+	assert.equal(body.result.user.isEmailVerified, true);
+	assert.ok(typeof body.result.user.preferences === 'object');
+	assert.ok(response.headers.get('set-cookie')?.includes('access_token='));
+	// Google sessions must carry loginMethod: 'google' so MFA routes reject them
+	const payload = verifyToken(body.result.tokens.access, config) as any;
+	assert.equal(payload?.loginMethod, 'google');
+});
+
+test('requireEmailLogin: 403 EMAIL_LOGIN_REQUIRED for google session', async () => {
+	const { requireEmailLogin } = await import('../middlewares/require-email-login');
+	const ctx      = makeCtx({ user: { ...BASE_USER, loginMethod: 'google' as any } });
+	const response = await requireEmailLogin(ctx, async () => Response.json({ ok: true }));
+	assert.equal(response.status, 403);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'EMAIL_LOGIN_REQUIRED');
 });

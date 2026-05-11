@@ -4,6 +4,7 @@ import type { IStoreAdapter }    from '@fonderie-js/store';
 
 import type { IAuthConfig }                  from '../config';
 import { issueTokenPair, refreshTokenExpiry } from '../services/jwt';
+import { toUserDTO }                         from '../dtos/user';
 import { UserModel }                         from '../models/user.model';
 import { SessionModel }                      from '../models/session.model';
 
@@ -25,7 +26,9 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				scope:         'openid email profile',
 			});
 
-			return Response.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 302);
+			const url = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+
+			return setApiResponse(HTTP.OK, 'GOOGLE_AUTH_URL', 'Redirect the user to the returned URL to begin Google OAuth.', { url });
 		},
 
 		googleCallback: async (ctx: IFonderieContext): Promise<Response> => {
@@ -66,13 +69,18 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'GOOGLE_AUTH_FAILED', 'No email in OAuth response');
 			}
 
-			const user = await users.upsertByProvider(payload.email, 'google', payload.sub ?? '');
-			if (!user) {
+			const upserted = await users.upsertByProvider(payload.email, 'google', payload.sub ?? '');
+			if (!upserted) {
 				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
 			}
 
-			const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });
-			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+			const fullUser = await users.findById(upserted.id);
+			if (!fullUser) {
+				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
+			}
+
+			const { accessToken, refreshToken } = issueTokenPair(upserted.id, config, { loginMethod: 'google' });
+			await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 			return Response.json(
 				{
@@ -80,7 +88,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 					explanation: 'Google authentication successful.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
-						user:   { id: user.id, email: payload.email },
+						user:   toUserDTO(fullUser),
 					},
 				},
 				{
