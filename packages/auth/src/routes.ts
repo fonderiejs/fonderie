@@ -46,9 +46,10 @@ export function buildAuthRoutes(
 		['DELETE', '/users',        requireAuth, requireVerified, user.deleteMe],
 
 		// MFA (email sessions only — OTP is the phone auth factor)
-		['POST', '/auth/mfa/setup',   requireAuth, requireEmailLogin, mfa.setup],
-		['POST', '/auth/mfa/verify',  requireAuth, requireEmailLogin, mfa.verify],
-		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, mfa.disable],
+		['POST', '/auth/mfa/setup',         requireAuth, requireEmailLogin, mfa.setup],
+		['POST', '/auth/mfa/verify',        requireAuth, requireEmailLogin, mfa.verify],
+		['POST', '/auth/mfa/disable',       requireAuth, requireEmailLogin, mfa.disable],
+		['POST', '/auth/mfa/backup-codes',  requireAuth, requireEmailLogin, mfa.regenerateBackupCodes],
 	];
 
 	if (config.providers.includes('google')) {
