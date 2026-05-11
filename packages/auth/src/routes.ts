@@ -45,11 +45,11 @@ export function buildAuthRoutes(
 		['PUT',    '/users/update', requireAuth, requireVerified, user.updateMe],
 		['DELETE', '/users',        requireAuth, requireVerified, user.deleteMe],
 
-		// MFA (email sessions only — OTP is the phone auth factor)
-		['POST', '/auth/mfa/setup',         requireAuth, requireEmailLogin, mfa.setup],
-		['POST', '/auth/mfa/verify',        requireAuth, requireEmailLogin, mfa.verify],
-		['POST', '/auth/mfa/disable',       requireAuth, requireEmailLogin, mfa.disable],
-		['POST', '/auth/mfa/backup-codes',  requireAuth, requireEmailLogin, mfa.regenerateBackupCodes],
+		// MFA (email sessions only — OTP is the phone auth factor; email must be verified)
+		['POST', '/auth/mfa/setup',         requireAuth, requireEmailLogin, requireVerified, mfa.setup],
+		['POST', '/auth/mfa/verify',        requireAuth, requireEmailLogin, requireVerified, mfa.verify],
+		['POST', '/auth/mfa/disable',       requireAuth, requireEmailLogin, requireVerified, mfa.disable],
+		['POST', '/auth/mfa/backup-codes',  requireAuth, requireEmailLogin, requireVerified, mfa.regenerateBackupCodes],
 	];
 
 	if (config.providers.includes('google')) {
