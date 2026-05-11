@@ -23,7 +23,6 @@ const USER_COLUMNS = `
 	timezone,
 	is_active          AS "isActive",
 	last_login         AS "lastLogin",
-	skills,
 	preferences,
 	suspended,
 	whitelist,

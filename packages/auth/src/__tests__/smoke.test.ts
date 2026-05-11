@@ -101,7 +101,6 @@ const BASE_USER: IUser = {
 	timezone:        'UTC',
 	isActive:        true,
 	lastLogin:       null,
-	skills:          [],
 	preferences:     {
 		locale:        'en-US',
 		timezone:      'UTC',
@@ -249,7 +248,6 @@ test('toUserDTO: maps all fields correctly', async () => {
 	assert.equal(dto.mfaEnabled,      false);
 	assert.equal(dto.isActive,        true);
 	assert.equal(dto.lastLogin,       '');
-	assert.deepEqual(dto.skills,      []);
 	assert.equal(dto.suspended,       false);
 	assert.equal(dto.whitelist,       false);
 	assert.deepEqual(dto.ipWhitelist, []);
@@ -260,17 +258,14 @@ test('toUserDTO: maps all fields correctly', async () => {
 	assert.equal(dto.preferences.notifications.sms,        false);
 });
 
-test('toUserDTO: skills and ipWhitelist are passed through', async () => {
+test('toUserDTO: ipWhitelist and lastLogin are passed through', async () => {
 	const { toUserDTO } = await import('../dtos/user');
 	const user = {
 		...BASE_USER,
-		skills:      [{ id: 'skill-1', name: 'plumbing', proficiency: 5, verified: true }],
 		ipWhitelist: ['192.168.1.1'],
 		lastLogin:   new Date('2024-06-01T12:00:00Z'),
 	};
 	const dto = toUserDTO(user);
-	assert.equal(dto.skills.length,   1);
-	assert.equal(dto.skills[0]!.name, 'plumbing');
 	assert.equal(dto.ipWhitelist[0],  '192.168.1.1');
 	assert.ok(dto.lastLogin.startsWith('2024-06-01'));
 });
