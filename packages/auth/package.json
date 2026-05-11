@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie-js/auth",
 	"version": "0.0.1",
-	"description": "Authentication \u2014 JWT, sessions, OAuth, MFA, and password recovery",
+	"description": "Authentication — JWT, sessions, OAuth, MFA, and password recovery",
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": {
@@ -42,7 +42,8 @@
 	},
 	"dependencies": {
 		"bcryptjs": "^3.0.3",
-		"jsonwebtoken": "^9.0.3"
+		"jsonwebtoken": "^9.0.3",
+		"qrcode": "^1.5.4"
 	},
 	"peerDependencies": {
 		"@fonderie-js/core": "^0.0.1",
@@ -54,6 +55,7 @@
 		"@types/bcryptjs": "^2.4.6",
 		"@types/jsonwebtoken": "^9.0.10",
 		"@types/node": "^25.6.0",
+		"@types/qrcode": "^1.5.6",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3"

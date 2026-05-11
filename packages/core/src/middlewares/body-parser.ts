@@ -12,7 +12,8 @@ export const withBody: Middleware = async (ctx, next) => {
 
 	try {
 		if (ct.includes('application/json')) {
-			ctx.meta.body = await ctx.request.clone().json()
+			const text = (await ctx.request.clone().text()).trim()
+			ctx.meta.body = text ? JSON.parse(text) : {}
 		} else if (ct.includes('application/x-www-form-urlencoded')) {
 			const text = await ctx.request.clone().text()
 			ctx.meta.body = Object.fromEntries(new URLSearchParams(text))

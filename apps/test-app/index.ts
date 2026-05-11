@@ -45,10 +45,22 @@ const config = defineConfig({
 	},
 })
 
+const googleClientId     = process.env['GOOGLE_CLIENT_ID'];
+const googleClientSecret = process.env['GOOGLE_CLIENT_SECRET'];
+const googleCallbackUrl  = process.env['GOOGLE_CALLBACK_URL'] ?? 'http://127.0.0.1:4000/v1/auth/google/callback';
+
 const authConfig: IAuthConfig = {
 	jwtSecret:       process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
 	sessionDuration: '7d',
-	providers:       ['email', 'phone'],
+	appName:         'DemoApplication',
+	providers:       ['email', 'phone', ...(googleClientId ? ['google' as const] : [])],
+	...(googleClientId && googleClientSecret ? {
+		google: {
+			clientId:    googleClientId,
+			clientSecret: googleClientSecret,
+			redirectUri:  googleCallbackUrl,
+		},
+	} : {}),
 	resolve: (ctx: { meta: Record<string, unknown> }): Partial<IAuthRuntimeConfig> => ({
 		verificationCooldown: Number(getConfig(ctx, AUTH_CONFIG_KEYS.verificationCooldown)) || undefined,
 		sessionDuration:      String(getConfig(ctx, AUTH_CONFIG_KEYS.sessionDuration))      || undefined,

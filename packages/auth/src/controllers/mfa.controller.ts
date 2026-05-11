@@ -1,28 +1,46 @@
+import QRCode from 'qrcode';
+
 import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import type { IAuthConfig }                                     from '../config';
 import { issueTokenPair, refreshTokenExpiry }                    from '../services/jwt';
-import { generateTotpSecret, generateTotpUri, verifyTotpToken } from '../services/mfa';
+import { generateTotpSecret, generateTotpUri, verifyTotpToken,
+         generateBackupCodes }                                   from '../services/mfa';
+import { hashPassword, verifyPassword }                         from '../services/password';
 import { toUserDTO }                                            from '../dtos/user';
 import { UserModel }                                            from '../models/user.model';
 import { SessionModel }                                         from '../models/session.model';
+import { BackupCodeModel }                                      from '../models/backup-code.model';
 
 export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer: string) {
-	const users    = new UserModel(store);
-	const sessions = new SessionModel(store);
+	const users       = new UserModel(store);
+	const sessions    = new SessionModel(store);
+	const backupCodes = new BackupCodeModel(store);
 
 	return {
+		// ── 1. Setup ───────────────────────────────────────────────
 		setup: async (ctx: IFonderieContext): Promise<Response> => {
-			const secret = generateTotpSecret();
-			const uri    = generateTotpUri(ctx.user!.email ?? ctx.user!.id, secret, issuer);
+			const secret     = generateTotpSecret();
+			const uri        = generateTotpUri(ctx.user!.email ?? ctx.user!.id, secret, issuer);
+			const plainCodes = generateBackupCodes();
+			const codeHashes = await Promise.all(plainCodes.map(c => hashPassword(c)));
 
-			await users.saveMfaSecret(ctx.user!.id, secret);
+			const qr = await QRCode.toDataURL(uri);
 
-			return setApiResponse(HTTP.OK, 'MFA_SETUP', 'Scan the QR code with your authenticator app.', { secret, uri });
+			await Promise.all([
+				users.saveMfaPendingSecret(ctx.user!.id, secret),
+				backupCodes.replace(ctx.user!.id, codeHashes),
+			]);
+
+			return setApiResponse(HTTP.OK, 'MFA_SETUP_INITIATED', 'Scan the QR code with your authenticator app.', {
+				qr,
+				backupCodes: plainCodes,
+			});
 		},
 
+		// ── 2. Verify (setup confirm · TOTP login · backup code login) ──
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
 			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const token = body?.['token'];
@@ -31,17 +49,48 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'token is required');
 			}
 
-			const secret = await users.getMfaSecret(ctx.user!.id);
-			if (!secret) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
-			}
+			const pendingSecret = await users.getMfaPendingSecret(ctx.user!.id);
 
-			if (!verifyTotpToken(token, secret)) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
-			}
+			if (pendingSecret) {
+				// ── Setup confirmation (TOTP only — backup codes cannot confirm setup) ──
+				if (!verifyTotpToken(token, pendingSecret)) {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
+				}
+				await users.confirmMfaSecret(ctx.user!.id);
 
-			if (!ctx.user!.mfaEnabled) {
-				await users.enableMfa(ctx.user!.id);
+			} else if (/^[A-Z0-9]{8}$/i.test(token)) {
+				// ── Backup code consumption ────────────────────────────────────────────
+				if (!ctx.user!.mfaEnabled) {
+					return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
+				}
+
+				const unused = await backupCodes.findUnused(ctx.user!.id);
+				const checks = await Promise.all(
+					unused.map(async row => ({
+						id:    row.id,
+						match: await verifyPassword(token.toUpperCase(), row.codeHash),
+					}))
+				);
+				const matched = checks.find(r => r.match);
+
+				if (!matched) {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid backup code');
+				}
+
+				await backupCodes.consume(matched.id);
+
+			} else {
+				// ── TOTP login verification ───────────────────────────────────────────
+				const secret = await users.getMfaSecret(ctx.user!.id);
+				if (!secret) {
+					return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
+				}
+				if (!verifyTotpToken(token, secret)) {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
+				}
+				if (!ctx.user!.mfaEnabled) {
+					await users.enableMfa(ctx.user!.id);
+				}
 			}
 
 			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, { loginMethod: ctx.user!.loginMethod });
@@ -49,13 +98,13 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 			const fullUser = await users.findById(ctx.user!.id);
 			if (!fullUser) {
-				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'User not found after MFA enable');
+				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'User not found after MFA verify');
 			}
 
 			return Response.json(
 				{
-					reason:      'MFA_ENABLED',
-					explanation: 'MFA enabled successfully.',
+					reason:      'MFA_VERIFIED',
+					explanation: 'MFA verified successfully.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
 						user:   toUserDTO(fullUser),
@@ -73,6 +122,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			);
 		},
 
+		// ── 3. Disable ─────────────────────────────────────────────
 		disable: async (ctx: IFonderieContext): Promise<Response> => {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const code = body?.['code'];
@@ -91,7 +141,10 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
 			}
 
-			await users.disableMfa(ctx.user!.id);
+			await Promise.all([
+				users.disableMfa(ctx.user!.id),
+				backupCodes.deleteByUser(ctx.user!.id),
+			]);
 
 			return setApiResponse(HTTP.OK, 'MFA_DISABLED', 'MFA disabled successfully.');
 		},
