@@ -10,7 +10,7 @@ export interface TokenPair {
 export interface IAccessPayload {
 	sub:           string;  // userId
 	type:          'access';
-	loginMethod:   'email' | 'phone';
+	loginMethod:   'email' | 'phone' | 'google';
 	phoneVerified: boolean;
 	mfaPending?:   boolean;
 }
@@ -18,12 +18,12 @@ export interface IAccessPayload {
 export interface IRefreshPayload {
 	sub:           string;
 	type:          'refresh';
-	loginMethod:   'email' | 'phone';
+	loginMethod:   'email' | 'phone' | 'google';
 	phoneVerified: boolean;
 }
 
 export interface ITokenOptions {
-	loginMethod:    'email' | 'phone';
+	loginMethod:    'email' | 'phone' | 'google';
 	phoneVerified?: boolean;
 }
 

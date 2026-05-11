@@ -13,7 +13,7 @@ export interface IAuthUser {
 	mfaEnabled:       boolean;
 	deletedAt:        Date | null;
 	emailVerifiedAt:  Date | null;
-	loginMethod:      'email' | 'phone';  // sourced from JWT payload
+	loginMethod:      'email' | 'phone' | 'google';  // sourced from JWT payload
 	phoneVerified:    boolean;            // per-session, sourced from JWT payload
 	mfaPending?:      boolean;            // true on the short-lived pre-auth token issued during MFA login
 }
