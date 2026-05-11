@@ -22,12 +22,12 @@ export function buildBillingRoutes(
 	const webhook      = webhookController(store, config)
 
 	return [
-		// Plans — public list
+		// Plans — public
 		['GET',    '/billing/plans',              plan.list],
+		['GET',    '/billing/plans/:planId',      plan.get],
 
 		// Plans — admin CRUD
-		['POST',   '/billing/plans',              requireAuth,plan.create],
-		['GET',    '/billing/plans/:planId',      requireAuth,plan.get],
+		['POST',   '/billing/plans',              requireAuth, plan.create],
 		['PUT',    '/billing/plans/:planId',      requireAuth,plan.update],
 		['DELETE', '/billing/plans/:planId',      requireAuth,plan.remove],
 

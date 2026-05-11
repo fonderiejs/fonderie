@@ -19,8 +19,8 @@ export async function syncPlansToDB(
 	if (plans.length === 0) return;
 
 	const values = plans.map((_, i) => {
-		const b = i * 7;
-		return `($${b+1}, $${b+2}, $${b+3}, $${b+4}, $${b+5}, $${b+6}, $${b+7})`;
+		const b = i * 12;
+		return `($${b+1}, $${b+2}, $${b+3}, $${b+4}, $${b+5}, $${b+6}, $${b+7}, $${b+8}, $${b+9}, $${b+10}::jsonb, $${b+11}::jsonb, $${b+12}::jsonb)`;
 	});
 
 	const params = plans.flatMap(plan => [
@@ -31,13 +31,19 @@ export async function syncPlansToDB(
 		plan.monthly?.priceId ?? null,
 		plan.yearly?.amount   ?? null,
 		plan.yearly?.priceId  ?? null,
+		plan.description      ?? null,
+		plan.tier             ?? 0,
+		JSON.stringify(plan.features ?? []),
+		JSON.stringify(plan.limits   ?? {}),
+		JSON.stringify(plan.metadata ?? {}),
 	]);
 
 	await store.query(
 		`INSERT INTO fonderie_plans
 			(name, seats, trial_days,
 			 monthly_amount, monthly_price_id,
-			 yearly_amount,  yearly_price_id)
+			 yearly_amount,  yearly_price_id,
+			 description, tier, features, limits, metadata)
 		VALUES ${values.join(', ')}
 		ON CONFLICT (name) DO UPDATE SET
 			seats            = EXCLUDED.seats,
@@ -45,7 +51,12 @@ export async function syncPlansToDB(
 			monthly_amount   = EXCLUDED.monthly_amount,
 			monthly_price_id = EXCLUDED.monthly_price_id,
 			yearly_amount    = EXCLUDED.yearly_amount,
-			yearly_price_id  = EXCLUDED.yearly_price_id`,
+			yearly_price_id  = EXCLUDED.yearly_price_id,
+			description      = EXCLUDED.description,
+			tier             = EXCLUDED.tier,
+			features         = EXCLUDED.features,
+			limits           = EXCLUDED.limits,
+			metadata         = EXCLUDED.metadata`,
 		params,
 	);
 }
@@ -59,12 +70,17 @@ const SELECT_PLAN = `
 		monthly_amount    AS "monthlyAmount",
 		monthly_price_id  AS "monthlyPriceId",
 		yearly_amount     AS "yearlyAmount",
-		yearly_price_id   AS "yearlyPriceId"
+		yearly_price_id   AS "yearlyPriceId",
+		description,
+		tier,
+		features,
+		limits,
+		metadata
 	FROM fonderie_plans`
 
 export async function getDBPlans(store: IStoreAdapter): Promise<IPlan[]> {
 	return store.query<IPlan>(
-		`${SELECT_PLAN} ORDER BY monthly_amount ASC NULLS LAST`,
+		`${SELECT_PLAN} WHERE active = true ORDER BY tier ASC, monthly_amount ASC NULLS LAST`,
 	);
 }
 
@@ -78,9 +94,14 @@ export async function getPlanById(id: string, store: IStoreAdapter): Promise<IPl
 
 export async function createPlan(
 	data: {
-		name:           string
-		seats?:         number | null
-		trialDays?:     number
+		name:            string
+		description?:    string | null
+		tier?:           number
+		seats?:          number | null
+		trialDays?:      number
+		features?:       unknown
+		limits?:         unknown
+		metadata?:       unknown
 		monthlyAmount?:  number | null
 		monthlyPriceId?: string | null
 		yearlyAmount?:   number | null
@@ -90,15 +111,17 @@ export async function createPlan(
 ): Promise<IPlan> {
 	const [row] = await store.query<IPlan>(
 		`INSERT INTO fonderie_plans
-			(name, seats, trial_days, monthly_amount, monthly_price_id, yearly_amount, yearly_price_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+			(name, seats, trial_days, monthly_amount, monthly_price_id,
+			 yearly_amount, yearly_price_id, description, tier, features, limits, metadata)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb)
 		RETURNING
 			id, name, seats,
 			trial_days        AS "trialDays",
 			monthly_amount    AS "monthlyAmount",
 			monthly_price_id  AS "monthlyPriceId",
 			yearly_amount     AS "yearlyAmount",
-			yearly_price_id   AS "yearlyPriceId"`,
+			yearly_price_id   AS "yearlyPriceId",
+			description, tier, features, limits, metadata`,
 		[
 			data.name,
 			data.seats          ?? null,
@@ -107,6 +130,11 @@ export async function createPlan(
 			data.monthlyPriceId ?? null,
 			data.yearlyAmount   ?? null,
 			data.yearlyPriceId  ?? null,
+			data.description    ?? null,
+			data.tier           ?? 0,
+			JSON.stringify(data.features ?? []),
+			JSON.stringify(data.limits   ?? {}),
+			JSON.stringify(data.metadata ?? {}),
 		],
 	)
 	if (!row) throw new Error('Failed to create plan')
@@ -126,8 +154,11 @@ export async function updatePlan(
 		monthlyPriceId: 'monthly_price_id',
 		yearlyAmount:   'yearly_amount',
 		yearlyPriceId:  'yearly_price_id',
+		description:    'description',
+		tier:           'tier',
 	}
 
+	const jsonbFields = new Set(['features', 'limits', 'metadata'])
 	const setClauses: string[] = []
 	const params: unknown[]    = [id]
 
@@ -135,6 +166,13 @@ export async function updatePlan(
 		if (key in data) {
 			params.push((data as Record<string, unknown>)[key])
 			setClauses.push(`${col} = $${params.length}`)
+		}
+	}
+
+	for (const key of jsonbFields) {
+		if (key in data) {
+			params.push(JSON.stringify((data as Record<string, unknown>)[key]))
+			setClauses.push(`${key} = $${params.length}::jsonb`)
 		}
 	}
 
@@ -149,7 +187,8 @@ export async function updatePlan(
 			monthly_amount    AS "monthlyAmount",
 			monthly_price_id  AS "monthlyPriceId",
 			yearly_amount     AS "yearlyAmount",
-			yearly_price_id   AS "yearlyPriceId"`,
+			yearly_price_id   AS "yearlyPriceId",
+			description, tier, features, limits, metadata`,
 		params,
 	)
 	return row ?? null

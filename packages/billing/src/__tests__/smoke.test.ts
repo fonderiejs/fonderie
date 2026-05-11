@@ -84,6 +84,7 @@ function makeStore(opts: {
 					id: 'plan-1', name: 'test', seats: null, trialDays: 0,
 					monthlyAmount: null, monthlyPriceId: null,
 					yearlyAmount: null, yearlyPriceId: null,
+					description: null, tier: 0, features: [], limits: {}, metadata: {},
 				}
 				return [plan] as unknown as T[]
 			}
@@ -122,6 +123,11 @@ const basePlan: IPlan = {
 	monthlyPriceId: 'price_pro_monthly',
 	yearlyAmount:   1490,
 	yearlyPriceId:  'price_pro_yearly',
+	description:    'Professional plan',
+	tier:           1,
+	features:       [{ name: 'API Access', description: 'Standard API access', enabled: true, limit: 10000 }],
+	limits:         { teamMembers: 25, storageGB: 50 },
+	metadata:       { color: '#3B82F6' },
 }
 
 // ── plans (config) ────────────────────────────────────────────────
@@ -212,11 +218,28 @@ test('getSubscription: returns null when not found', async () => {
 test('toPlanDTO: maps all plan fields', async () => {
 	const { toPlanDTO } = await import('../dtos/billing');
 	const dto = toPlanDTO(basePlan);
-	assert.equal(dto.id,             basePlan.id);
-	assert.equal(dto.name,           basePlan.name);
-	assert.equal(dto.seats,          basePlan.seats);
-	assert.equal(dto.monthlyAmount,  basePlan.monthlyAmount);
-	assert.equal(dto.monthlyPriceId, basePlan.monthlyPriceId);
+	assert.equal(dto.id,                       basePlan.id);
+	assert.equal(dto.planId,                   'PRO');
+	assert.equal(dto.name,                     basePlan.name);
+	assert.equal(dto.tier,                     1);
+	assert.equal(dto.description,              'Professional plan');
+	assert.equal(dto.pricing.monthly,          149);
+	assert.equal(dto.pricing.yearly,           1490);
+	assert.equal(dto.pricing.monthlyFormatted, '$149/month');
+	assert.equal(dto.pricing.yearlyFormatted,  '$1490/year');
+	assert.equal(dto.pricing.currency,         'USD');
+	assert.equal(dto.features.length,          1);
+	assert.equal(dto.features[0]!.name,        'API Access');
+	assert.equal(dto.limits['teamMembers'],    25);
+	assert.equal(dto.metadata['color'],        '#3B82F6');
+});
+
+test('toPlanDTO: formats free plan pricing correctly', async () => {
+	const { toPlanDTO } = await import('../dtos/billing');
+	const dto = toPlanDTO({ ...basePlan, monthlyAmount: null, yearlyAmount: null });
+	assert.equal(dto.pricing.monthly,          0);
+	assert.equal(dto.pricing.monthlyFormatted, 'Free');
+	assert.equal(dto.pricing.yearlyFormatted,  'Free');
 });
 
 test('toSubscriptionDTO: maps all subscription fields', async () => {
