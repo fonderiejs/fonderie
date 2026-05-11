@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS fonderie_users (
 	provider_id       TEXT,
 	is_active         BOOLEAN     NOT NULL DEFAULT true,
 	last_login        TIMESTAMPTZ,
-	skills            JSONB       NOT NULL DEFAULT '[]',
 	preferences       JSONB       NOT NULL DEFAULT '{"notifications":{"email":true,"inApp":true,"sms":false,"push":false},"emailDigest":"immediate","dateFormat":"MM/DD/YYYY","timeFormat":"hh:mm A"}',
 	suspended         BOOLEAN     NOT NULL DEFAULT false,
 	whitelist         BOOLEAN     NOT NULL DEFAULT false,

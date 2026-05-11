@@ -1,10 +1,3 @@
-export interface IUserSkill {
-	id:          string;
-	name:        string;
-	proficiency: number;
-	verified:    boolean;
-}
-
 export interface IUserPreferences {
 	locale:    string;
 	timezone:  string;
@@ -31,7 +24,6 @@ export interface IUser {
 	timezone:        string;
 	isActive:        boolean;
 	lastLogin:       Date | null;
-	skills:          IUserSkill[];
 	preferences:     IUserPreferences;
 	suspended:       boolean;
 	whitelist:       boolean;

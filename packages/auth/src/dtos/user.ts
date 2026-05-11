@@ -1,6 +1,6 @@
 import { stringOrEmpty, booleanOrFalse } from '@fonderie-js/core';
 
-import type { IUser, IUserSkill, IUserPreferences } from '../types';
+import type { IUser, IUserPreferences } from '../types';
 
 export interface IUserDTO {
 	id:              string
@@ -11,7 +11,6 @@ export interface IUserDTO {
 	profileImageUrl: string
 	isActive:        boolean
 	lastLogin:       string
-	skills:          IUserSkill[]
 	preferences:     IUserPreferences
 	isEmailVerified: boolean
 	isPhoneVerified: boolean
@@ -43,7 +42,6 @@ export function toUserDTO(user: IUser, phoneVerified = false): IUserDTO {
 		profileImageUrl: stringOrEmpty(user.profileImageUrl),
 		isActive:        typeof user.isActive === 'boolean' ? user.isActive : true,
 		lastLogin:       user.lastLogin instanceof Date ? user.lastLogin.toISOString() : '',
-		skills:          Array.isArray(user.skills) ? user.skills : [],
 		preferences:     {
 			...DEFAULT_PREFERENCES,
 			...prefs,
