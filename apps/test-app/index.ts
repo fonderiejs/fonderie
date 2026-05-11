@@ -99,6 +99,9 @@ const courier     = new CourierModule(
 			'password-reset':       ['email'],
 			'workspace-invitation': ['email'],
 			'phone-otp':            ['sms'],
+			'mfa-enabled':                    ['email'],
+			'mfa-disabled':                   ['email'],
+			'mfa-backup-codes-regenerated':   ['email'],
 		},
 		templates: {
 			source: 'fs', 
@@ -220,6 +223,7 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 //   POST   /auth/mfa/setup               (email sessions only)
 //   POST   /auth/mfa/verify              (email sessions only)
 //   POST   /auth/mfa/disable             (email sessions only)
+//   POST   /auth/mfa/backup-codes        (email sessions only)
 //   GET    /users
 //   PUT    /users/update
 //   DELETE /users

@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 
 import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { IFonderieContext }             from '@fonderie-js/core';
+import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import type { IAuthConfig }                                     from '../config';
@@ -59,6 +59,13 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
 				}
 				await users.confirmMfaSecret(ctx.user!.id);
+
+				ctx.meta['message'] = {
+					type:      'mfa-enabled',
+					data:      {},
+					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
+				} satisfies ICourierMessage;
+
 				return setApiResponse(HTTP.OK, 'MFA_VERIFIED', 'MFA verified successfully.', { mfaEnabled: true });
 
 			} else if (/^[A-Z0-9]{8}$/i.test(token)) {
@@ -153,6 +160,12 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			const codeHashes = await Promise.all(plainCodes.map(c => hashPassword(c)));
 			await backupCodes.replace(ctx.user!.id, codeHashes);
 
+			ctx.meta['message'] = {
+				type:      'mfa-backup-codes-regenerated',
+				data:      {},
+				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
+			} satisfies ICourierMessage;
+
 			return setApiResponse(HTTP.OK, 'BACKUP_CODES_REGENERATED', 'Backup codes regenerated.', {
 				backupCodes: plainCodes,
 			});
@@ -160,11 +173,11 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 		// ── 4. Disable ─────────────────────────────────────────────
 		disable: async (ctx: IFonderieContext): Promise<Response> => {
-			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const code = body?.['code'];
+			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const token = body?.['token'];
 
-			if (typeof code !== 'string') {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'TOTP code is required');
+			if (typeof token !== 'string') {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'TOTP token is required');
 			}
 
 			const user = await users.findById(ctx.user!.id);
@@ -173,7 +186,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			}
 
 			const secret = (user as unknown as { mfaSecret: string | null }).mfaSecret;
-			if (!secret || !verifyTotpToken(code, secret)) {
+			if (!secret || !verifyTotpToken(token, secret)) {
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
 			}
 
@@ -181,6 +194,12 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				users.disableMfa(ctx.user!.id),
 				backupCodes.deleteByUser(ctx.user!.id),
 			]);
+
+			ctx.meta['message'] = {
+				type:      'mfa-disabled',
+				data:      {},
+				recipient: { email: user.email, phone: null, deviceToken: null },
+			} satisfies ICourierMessage;
 
 			return setApiResponse(HTTP.OK, 'MFA_DISABLED', 'MFA disabled successfully.');
 		},
