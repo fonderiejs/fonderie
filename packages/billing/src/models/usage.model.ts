@@ -1,4 +1,5 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
+import type { SubscriberType } from '../types';
 
 import { recordUsage, getUsage } from '../services/usage';
 
@@ -9,7 +10,7 @@ export class UsageModel {
 		return recordUsage(opts, this.store)
 	}
 
-	get(workspaceId: string, metric: string, since: Date): Promise<number> {
-		return getUsage(workspaceId, metric, since, this.store)
+	get(subscriberType: SubscriberType, subscriberId: string, metric: string, since: Date): Promise<number> {
+		return getUsage(subscriberType, subscriberId, metric, since, this.store)
 	}
 }

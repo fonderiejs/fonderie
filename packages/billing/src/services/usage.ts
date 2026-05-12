@@ -1,31 +1,32 @@
-import type { IStoreAdapter }  from '@fonderie-js/store';
-
-import type { IUsageRecord }   from '../types';
+import type { IStoreAdapter } from '@fonderie-js/store';
+import type { SubscriberType } from '../types';
 
 export async function recordUsage(
-	opts: { workspaceId: string; metric: string; quantity: number },
+	opts: { subscriberType: SubscriberType; subscriberId: string; metric: string; quantity: number },
 	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
-		`INSERT INTO fonderie_usage_records (workspace_id, metric, quantity)
-		VALUES ($1, $2, $3)`,
-		[opts.workspaceId, opts.metric, opts.quantity],
-	);
+		`INSERT INTO fonderie_usage_records (subscriber_type, subscriber_id, metric, quantity)
+		VALUES ($1, $2, $3, $4)`,
+		[opts.subscriberType, opts.subscriberId, opts.metric, opts.quantity],
+	)
 }
 
 export async function getUsage(
-	workspaceId: string,
-	metric:      string,
-	since:       Date,
-	store:       IStoreAdapter,
+	subscriberType: SubscriberType,
+	subscriberId:   string,
+	metric:         string,
+	since:          Date,
+	store:          IStoreAdapter,
 ): Promise<number> {
 	const rows = await store.query<{ total: string }>(
 		`SELECT COALESCE(SUM(quantity), 0) AS total
 		FROM fonderie_usage_records
-		WHERE workspace_id = $1
-			AND metric       = $2
-			AND recorded_at >= $3`,
-		[workspaceId, metric, since],
+		WHERE subscriber_type = $1
+			AND subscriber_id   = $2
+			AND metric          = $3
+			AND recorded_at    >= $4`,
+		[subscriberType, subscriberId, metric, since],
 	)
 	return parseInt(rows[0]?.total ?? '0', 10)
 }

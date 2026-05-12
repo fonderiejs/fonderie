@@ -48,14 +48,14 @@ const config: IBillingConfig = {
 			name:      'starter',
 			seats:     5,
 			trialDays: 14,
-			monthly:   { amount: 49,  priceId: 'price_starter_monthly' },
-			yearly:    { amount: 490, priceId: 'price_starter_yearly'  },
+			monthly:   { amount: 2900,  priceId: 'price_starter_monthly' },
+			yearly:    { amount: 29000, priceId: 'price_starter_yearly'  },
 		},
 		{
 			name:    'pro',
 			seats:   20,
-			monthly: { amount: 149,  priceId: 'price_pro_monthly' },
-			yearly:  { amount: 1490, priceId: 'price_pro_yearly'  },
+			monthly: { amount: 7900,  priceId: 'price_pro_monthly' },
+			yearly:  { amount: 79000, priceId: 'price_pro_yearly'  },
 		},
 		{
 			name:  'enterprise',
@@ -101,7 +101,8 @@ function makeStore(opts: {
 
 const baseSubscription: ISubscription = {
 	id:                     'sub-1',
-	workspaceId:            'ws-1',
+	subscriberType:         'workspace',
+	subscriberId:           'ws-1',
 	plan:                   'pro',
 	interval:               'month',
 	status:                 'active',
@@ -114,18 +115,25 @@ const baseSubscription: ISubscription = {
 	createdAt:              '2026-05-01T00:00:00.000Z',
 }
 
+const baseUserSubscription: ISubscription = {
+	...baseSubscription,
+	id:             'sub-2',
+	subscriberType: 'user',
+	subscriberId:   'user-1',
+}
+
 const basePlan: IPlan = {
 	id:             'plan-1',
 	name:           'pro',
 	seats:          20,
 	trialDays:      0,
-	monthlyAmount:  149,
+	monthlyAmount:  7900,
 	monthlyPriceId: 'price_pro_monthly',
-	yearlyAmount:   1490,
+	yearlyAmount:   79000,
 	yearlyPriceId:  'price_pro_yearly',
 	description:    'Professional plan',
-	tier:           1,
-	features:       [{ name: 'API Access', description: 'Standard API access', enabled: true, limit: 10000 }],
+	tier:           2,
+	features:       [{ name: 'API Access', description: 'Standard API access', enabled: true, limit: 100000 }],
 	metadata:       { color: '#3B82F6' },
 }
 
@@ -156,7 +164,7 @@ test('getPlanById: returns plan when found', async () => {
 	const store = makeStore({ plan: basePlan });
 	const plan  = await getPlanById('plan-1', store);
 	assert.equal(plan?.name, 'pro');
-	assert.equal(plan?.monthlyAmount, 149);
+	assert.equal(plan?.monthlyAmount, 7900);
 });
 
 test('getPlanById: returns null when not found', async () => {
@@ -169,16 +177,16 @@ test('getPlanById: returns null when not found', async () => {
 test('createPlan: returns created plan', async () => {
 	const { createPlan } = await import('../services/plans');
 	const store = makeStore({ plan: basePlan });
-	const plan  = await createPlan({ name: 'pro', seats: 20, monthlyAmount: 149 }, store);
+	const plan  = await createPlan({ name: 'pro', seats: 20, monthlyAmount: 7900 }, store);
 	assert.equal(plan.name, 'pro');
 });
 
 test('updatePlan: returns updated plan', async () => {
 	const { updatePlan } = await import('../services/plans');
-	const updated = { ...basePlan, monthlyAmount: 199 };
+	const updated = { ...basePlan, monthlyAmount: 9900 };
 	const store   = makeStore({ plan: updated });
-	const plan    = await updatePlan('plan-1', { monthlyAmount: 199 }, store);
-	assert.equal(plan?.monthlyAmount, 199);
+	const plan    = await updatePlan('plan-1', { monthlyAmount: 9900 }, store);
+	assert.equal(plan?.monthlyAmount, 9900);
 });
 
 test('deletePlan: returns true when deleted', async () => {
@@ -197,18 +205,28 @@ test('deletePlan: returns false when not found', async () => {
 
 // ── subscriptions ─────────────────────────────────────────────────
 
-test('getSubscription: returns subscription when found', async () => {
+test('getSubscription: returns workspace subscription when found', async () => {
 	const { getSubscription } = await import('../services/subscriptions');
 	const store  = makeStore({ subscription: baseSubscription });
-	const result = await getSubscription('ws-1', store);
-	assert.equal(result?.plan,   'pro');
-	assert.equal(result?.status, 'active');
+	const result = await getSubscription('workspace', 'ws-1', store);
+	assert.equal(result?.plan,           'pro');
+	assert.equal(result?.status,         'active');
+	assert.equal(result?.subscriberType, 'workspace');
+	assert.equal(result?.subscriberId,   'ws-1');
+});
+
+test('getSubscription: returns user subscription when found', async () => {
+	const { getSubscription } = await import('../services/subscriptions');
+	const store  = makeStore({ subscription: baseUserSubscription });
+	const result = await getSubscription('user', 'user-1', store);
+	assert.equal(result?.subscriberType, 'user');
+	assert.equal(result?.subscriberId,   'user-1');
 });
 
 test('getSubscription: returns null when not found', async () => {
 	const { getSubscription } = await import('../services/subscriptions');
 	const store  = makeStore({ subscription: null });
-	const result = await getSubscription('ws-missing', store);
+	const result = await getSubscription('workspace', 'ws-missing', store);
 	assert.equal(result, null);
 });
 
@@ -217,19 +235,19 @@ test('getSubscription: returns null when not found', async () => {
 test('toPlanDTO: maps all plan fields', async () => {
 	const { toPlanDTO } = await import('../dtos/billing');
 	const dto = toPlanDTO(basePlan);
-	assert.equal(dto.id,              basePlan.id);
-	assert.equal(dto.planId,          'PRO');
-	assert.equal(dto.name,            basePlan.name);
-	assert.equal(dto.tier,            1);
-	assert.equal(dto.seats,           20);
-	assert.equal(dto.trialDays,       0);
-	assert.equal(dto.description,     'Professional plan');
-	assert.equal(dto.pricing.monthly, 149);
-	assert.equal(dto.pricing.yearly,  1490);
-	assert.equal(dto.pricing.currency,'USD');
-	assert.equal(dto.features.length, 1);
-	assert.equal(dto.features[0]!.name, 'API Access');
-	assert.equal(dto.metadata['color'], '#3B82F6');
+	assert.equal(dto.id,               basePlan.id);
+	assert.equal(dto.planId,           'PRO');
+	assert.equal(dto.name,             basePlan.name);
+	assert.equal(dto.tier,             2);
+	assert.equal(dto.seats,            20);
+	assert.equal(dto.trialDays,        0);
+	assert.equal(dto.description,      'Professional plan');
+	assert.equal(dto.pricing.monthly,  7900);
+	assert.equal(dto.pricing.yearly,   79000);
+	assert.equal(dto.pricing.currency, 'USD');
+	assert.equal(dto.features.length,  1);
+	assert.equal(dto.features[0]!.name,  'API Access');
+	assert.equal(dto.metadata['color'],  '#3B82F6');
 });
 
 test('toPlanDTO: free plan amounts default to 0', async () => {
@@ -239,14 +257,23 @@ test('toPlanDTO: free plan amounts default to 0', async () => {
 	assert.equal(dto.pricing.yearly,  0);
 });
 
-test('toSubscriptionDTO: maps all subscription fields', async () => {
+test('toSubscriptionDTO: maps workspace subscription fields', async () => {
 	const { toSubscriptionDTO } = await import('../dtos/billing');
 	const dto = toSubscriptionDTO(baseSubscription);
-	assert.equal(dto.id,          baseSubscription.id);
-	assert.equal(dto.plan,        baseSubscription.plan);
-	assert.equal(dto.status,      baseSubscription.status);
-	assert.equal(dto.interval,    baseSubscription.interval);
-	assert.equal(dto.createdAt,   baseSubscription.createdAt);
+	assert.equal(dto.id,             baseSubscription.id);
+	assert.equal(dto.subscriberType, 'workspace');
+	assert.equal(dto.subscriberId,   'ws-1');
+	assert.equal(dto.plan,           baseSubscription.plan);
+	assert.equal(dto.status,         baseSubscription.status);
+	assert.equal(dto.interval,       baseSubscription.interval);
+	assert.equal(dto.createdAt,      baseSubscription.createdAt);
+});
+
+test('toSubscriptionDTO: maps user subscription fields', async () => {
+	const { toSubscriptionDTO } = await import('../dtos/billing');
+	const dto = toSubscriptionDTO(baseUserSubscription);
+	assert.equal(dto.subscriberType, 'user');
+	assert.equal(dto.subscriberId,   'user-1');
 });
 
 // ── requirePlan middleware ─────────────────────────────────────────
@@ -335,6 +362,28 @@ test('requirePlan: allows trialing subscription', async () => {
 	assert.ok(nextCalled);
 });
 
+test('requirePlan: works with user-level subscription (no workspace)', async () => {
+	const { requirePlan } = await import('../middlewares/require-plan');
+	const store      = makeStore({ subscription: baseUserSubscription });
+	const middleware = requirePlan('pro', store);
+	let nextCalled   = false;
+
+	const ctx = {
+		user:      { id: 'user-1', email: 'a@b.com' },
+		workspace: null,
+		meta:      {},
+		request:   new Request('http://localhost/test'),
+		tenant:    null,
+	} as any
+
+	await middleware(ctx, async () => {
+		nextCalled = true;
+		return Response.json({ ok: true });
+	});
+
+	assert.ok(nextCalled);
+});
+
 // ── IBillingProvider interface ────────────────────────────────────
 
 test('IBillingProvider: stub satisfies interface', () => {
@@ -348,9 +397,10 @@ test('IBillingProvider: stub satisfies interface', () => {
 test('IBillingProvider: createCustomer returns customerId', async () => {
 	const provider = makeProvider();
 	const result   = await provider.createCustomer({
-		email:       'a@b.com',
-		workspaceId: 'ws-1',
-		userId:      'user-1',
+		email:          'a@b.com',
+		subscriberType: 'workspace',
+		subscriberId:   'ws-1',
+		userId:         'user-1',
 	});
 	assert.ok(typeof result.customerId === 'string');
 	assert.ok(result.customerId.length > 0);
@@ -359,11 +409,12 @@ test('IBillingProvider: createCustomer returns customerId', async () => {
 test('IBillingProvider: createCheckoutSession returns url', async () => {
 	const provider = makeProvider();
 	const result   = await provider.createCheckoutSession({
-		customerId:  'cus_123',
-		priceId:     'price_pro',
-		workspaceId: 'ws-1',
-		successUrl:  'https://app.com/success',
-		cancelUrl:   'https://app.com/cancel',
+		customerId:     'cus_123',
+		priceId:        'price_pro',
+		subscriberType: 'workspace',
+		subscriberId:   'ws-1',
+		successUrl:     'https://app.com/success',
+		cancelUrl:      'https://app.com/cancel',
 	});
 	assert.ok(typeof result.url === 'string');
 	assert.ok(result.url.startsWith('https://'));

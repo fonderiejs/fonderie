@@ -1,4 +1,4 @@
-import type { IPlan, IPlanFeature, ISubscription, IUsageRecord } from '../types';
+import type { IPlan, IPlanFeature, ISubscription, IUsageRecord, SubscriberType } from '../types';
 
 export interface IPlanDTO {
 	id:          string
@@ -19,7 +19,8 @@ export interface IPlanDTO {
 
 export interface ISubscriptionDTO {
 	id:                    string
-	workspaceId:           string
+	subscriberType:        SubscriberType
+	subscriberId:          string
 	plan:                  string
 	interval:              string
 	status:                string
@@ -31,11 +32,12 @@ export interface ISubscriptionDTO {
 }
 
 export interface IUsageRecordDTO {
-	id:          string
-	workspaceId: string
-	metric:      string
-	quantity:    number
-	recordedAt:  string
+	id:             string
+	subscriberType: SubscriberType
+	subscriberId:   string
+	metric:         string
+	quantity:       number
+	recordedAt:     string
 }
 
 export function toPlanDTO(plan: IPlan): IPlanDTO {
@@ -60,7 +62,8 @@ export function toPlanDTO(plan: IPlan): IPlanDTO {
 export function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO {
 	return {
 		id:                 sub.id,
-		workspaceId:        sub.workspaceId,
+		subscriberType:     sub.subscriberType,
+		subscriberId:       sub.subscriberId,
 		plan:               sub.plan,
 		interval:           sub.interval,
 		status:             sub.status,
@@ -74,10 +77,11 @@ export function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO {
 
 export function toUsageRecordDTO(record: IUsageRecord): IUsageRecordDTO {
 	return {
-		id:          record.id,
-		workspaceId: record.workspaceId,
-		metric:      record.metric,
-		quantity:    record.quantity,
-		recordedAt:  record.recordedAt,
+		id:             record.id,
+		subscriberType: record.subscriberType,
+		subscriberId:   record.subscriberId,
+		metric:         record.metric,
+		quantity:       record.quantity,
+		recordedAt:     record.recordedAt,
 	}
 }

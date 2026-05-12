@@ -1,16 +1,19 @@
+export type SubscriberType = 'user' | 'workspace'
+
 export interface ISubscription {
-	id:                    string
-	workspaceId:           string
-	plan:                  string
-	interval:              'month' | 'year'
-	status:                SubscriptionStatus
-	providerCustomerId:    string | null
+	id:                     string
+	subscriberType:         SubscriberType
+	subscriberId:           string
+	plan:                   string
+	interval:               'month' | 'year'
+	status:                 SubscriptionStatus
+	providerCustomerId:     string | null
 	providerSubscriptionId: string | null
-	currentPeriodStart:    string | null
-	currentPeriodEnd:      string | null
-	cancelAtPeriodEnd:     boolean
-	trialEndsAt:           string | null
-	createdAt:             string
+	currentPeriodStart:     string | null
+	currentPeriodEnd:       string | null
+	cancelAtPeriodEnd:      boolean
+	trialEndsAt:            string | null
+	createdAt:              string
 }
 
 export type SubscriptionStatus =
@@ -44,9 +47,10 @@ export interface IPlan {
 }
 
 export interface IUsageRecord {
-	id:          string
-	workspaceId: string
-	metric:      string
-	quantity:    number
-	recordedAt:  string
+	id:             string
+	subscriberType: SubscriberType
+	subscriberId:   string
+	metric:         string
+	quantity:       number
+	recordedAt:     string
 }

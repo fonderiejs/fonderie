@@ -1,29 +1,29 @@
 import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { Middleware }     from '@fonderie-js/core';
+import type { Middleware }       from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }  from '@fonderie-js/store';
+import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import { getSubscription }    from '../services/subscriptions';
+import { getSubscription }   from '../services/subscriptions';
+import { resolveSubscriber } from '../utils';
 
-// Gates a route behind a minimum plan
+// Gates a route behind a minimum plan.
+// Works for both user-level and workspace-level subscriptions.
 // Usage: requirePlan(['pro', 'enterprise'], store)
 
 function makeHandler(plans: string | string[], store: IStoreAdapter): Middleware {
-	const allowed = Array.isArray(plans) ? plans : [plans];
+	const allowed = Array.isArray(plans) ? plans : [plans]
 
 	return async (ctx, next) => {
 		if (!ctx.user) {
-			return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
+			return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized')
 		}
 
-		const workspaceId = ctx.workspace?.id ??
-			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId']
-
-		if (!workspaceId) {
-			return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required');
+		const subscriber = resolveSubscriber(ctx)
+		if (!subscriber) {
+			return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required')
 		}
 
-		const subscription = await getSubscription(workspaceId, store);
+		const subscription = await getSubscription(subscriber.type, subscriber.id, store)
 
 		if (!subscription || !allowed.includes(subscription.plan)) {
 			return setApiResponse(
@@ -31,7 +31,7 @@ function makeHandler(plans: string | string[], store: IStoreAdapter): Middleware
 				'PLAN_UPGRADE_REQUIRED',
 				'Plan upgrade required',
 				{ required: allowed, current: subscription?.plan ?? 'none' },
-			);
+			)
 		}
 
 		if (subscription.status !== 'active' && subscription.status !== 'trialing') {
@@ -40,10 +40,10 @@ function makeHandler(plans: string | string[], store: IStoreAdapter): Middleware
 				'SUBSCRIPTION_INACTIVE',
 				'Subscription is not active',
 				{ status: subscription.status },
-			);
+			)
 		}
 
-		return next();
+		return next()
 	}
 }
 

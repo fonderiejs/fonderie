@@ -2,8 +2,8 @@ import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import type { IBillingConfig }   from '../config';
-import { SubscriptionModel }     from '../models/subscription.model';
+import type { IBillingConfig } from '../config';
+import { SubscriptionModel }   from '../models/subscription.model';
 
 export function webhookController(store: IStoreAdapter, config: IBillingConfig) {
 	const subscriptions = new SubscriptionModel(store)
@@ -37,7 +37,8 @@ export function webhookController(store: IStoreAdapter, config: IBillingConfig) 
 
 			if (event.subscription) {
 				await subscriptions.upsert({
-					workspaceId:             event.subscription.workspaceId,
+					subscriberType:          event.subscription.subscriberType,
+					subscriberId:            event.subscription.subscriberId,
 					plan:                    event.subscription.plan,
 					status:                  event.subscription.status,
 					providerCustomerId:      event.subscription.providerCustomerId,
