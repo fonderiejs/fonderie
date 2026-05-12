@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "aae7d606-a3b9-4c49-9375-b5e2068f83f7",
     "name": "Fonderie.js",
-    "description": "API reference for Fonderie.js — a TypeScript SaaS backend framework.\n\nBase URL: `{{base_url}}` (default: `http://localhost:4000/v1`)\n\n**Packages covered:**\n- `@fonderie-js/auth` — registration, login, OAuth, MFA, user profile\n- `@fonderie-js/workspaces` — workspace management, members, invitations, roles\n- `@fonderie-js/billing` — plan catalogue, user + workspace subscriptions, usage metering\n- Platform utilities — health check, remote config\n\n**Authentication:** All protected endpoints require `Authorization: Bearer {{token}}`.\n\n**Collection variables:**\n| Variable | Description |\n|---|---|\n| `base_url` | `http://localhost:4000/v1` |\n| `token` | Access JWT (auto-captured on login/register) |\n| `refresh_token` | Refresh JWT (auto-captured on login/register) |\n| `workspace_id` | Active workspace UUID (auto-captured on create) |\n| `plan_id` | Plan UUID (auto-captured on plan list) |",
+    "description": "API reference for **Fonderie.js** — a modular TypeScript framework that ships the first three months of every SaaS already built.\n\nEach folder maps directly to an `@fonderie-js/*` package. Register only the modules you need — the framework is intentionally composable.\n\n---\n\n**Base URL:** `{{base_url}}` (default `http://localhost:4000/v1`)\n\n**Authentication:** Protected endpoints require `Authorization: Bearer {{token}}`. The `token` variable is auto-captured after login or register.\n\n**Response envelope:** Every application response follows a consistent shape:\n```json\n{\n  \"reason\": \"SNAKE_CASE_CODE\",\n  \"explanation\": \"Human-readable description.\",\n  \"result\": { ... }\n}\n```\nError responses omit `result` and use a `4xx` / `5xx` status code.\n\n**Collection variables (auto-captured):**\n| Variable | Captured by | Purpose |\n|---|---|---|\n| `base_url` | — | Server base URL |\n| `token` | Login / Register | Short-lived access JWT |\n| `refresh_token` | Login / Register | Long-lived refresh token |\n| `workspace_id` | Create Workspace | Active workspace UUID |\n| `plan_id` | List Plans | First plan UUID from catalogue |",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -16,11 +16,12 @@
 
     {
       "name": "Auth  (@fonderie-js/auth)",
-      "description": "Authentication, session management, MFA, and user profile endpoints.",
+      "description": "All authentication, session, and identity management — provided by `@fonderie-js/auth`.\n\n**Three supported login methods:**\n- **Email + password** — register, login, forgot/reset password, TOTP MFA\n- **Phone + OTP** — login via SMS one-time code\n- **Google OAuth** — one-click sign-in (requires `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` env vars)\n\nAll methods return the same pair: `accessToken` (short-lived JWT) and `refreshToken` (long-lived, stored server-side and invalidated on logout).\n\n**Email verification** is a separate step after registration. Several downstream endpoints (profile edits, email/phone changes, account deletion) require `isEmailVerified: true`.",
       "item": [
 
         {
           "name": "Registration & Login",
+          "description": "Core credential flows. None of these endpoints require an `Authorization` header. Tokens returned by login and register are automatically captured into the `{{token}}` and `{{refresh_token}}` collection variables.",
           "item": [
             {
               "name": "Register",
@@ -137,6 +138,7 @@
 
         {
           "name": "Email Verification",
+          "description": "After registration the user's email is unverified (`isEmailVerified: false`). Several endpoints — profile updates, email/phone changes, account deletion — require a verified email.\n\nThe OTP is delivered to email or phone depending on the user's login method. Verification requests are rate-limited; re-sending too quickly returns `429`.",
           "item": [
             {
               "name": "Send Verification Code",
@@ -197,6 +199,7 @@
 
         {
           "name": "Password Reset",
+          "description": "Self-service password reset via email. Two-step flow:\n1. `POST /auth/email/forgot` — user submits their email and receives a reset link\n2. `POST /auth/email/reset` — user submits the token from the link and their new password\n\n`/forgot` always returns `ok: true` regardless of whether the email exists — this prevents email enumeration. The reset token is single-use and expires after a short window.",
           "item": [
             {
               "name": "Forgot Password",
@@ -248,6 +251,7 @@
 
         {
           "name": "Google OAuth",
+          "description": "Server-side Google OAuth 2.0 flow. Only registered when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in the server environment.\n\n**Flow:**\n1. Frontend calls `GET /auth/google` → receives an authorization URL\n2. Redirect the user's browser to that URL\n3. Google redirects back to `GET /auth/google/callback?code=...`\n4. Server exchanges the code for a Google profile, upserts the user account, and returns the standard access + refresh token pair\n\nThe callback URL defaults to `http://127.0.0.1:4000/v1/auth/google/callback` and must match the redirect URI registered in your Google Cloud console.",
           "item": [
             {
               "name": "Initiate Google Login",
@@ -295,7 +299,7 @@
 
         {
           "name": "MFA",
-          "description": "Multi-factor authentication using TOTP (Google Authenticator, Authy, etc.). Only available for email login sessions.",
+          "description": "TOTP-based multi-factor authentication (Google Authenticator, Authy, 1Password, etc.). Only available for email login sessions with a verified email.\n\n**Setup flow:**\n1. `POST /auth/mfa/setup` → returns a QR code image (base64 PNG) and the raw TOTP secret\n2. User scans the QR code in their authenticator app\n3. `POST /auth/mfa/verify` with the first code → activates MFA and returns one-time backup codes\n\n**Login flow (once MFA is enabled):**\n1. `POST /auth/login` returns `{ mfaPending: true, accessToken: \"<short-lived token>\" }` instead of a full session\n2. `POST /auth/mfa/verify` with the TOTP code → exchanges the pending token for full access + refresh tokens\n\nBackup codes can be used in place of a TOTP code everywhere a code is accepted.",
           "item": [
             {
               "name": "Setup MFA",
@@ -400,7 +404,7 @@
 
         {
           "name": "Users",
-          "description": "User profile management. All endpoints require authentication. Profile/preferences/email/phone changes also require a verified email.",
+          "description": "Self-service profile management for the authenticated user. All endpoints require `Authorization: Bearer {{token}}`.\n\nEndpoints that mutate identity-sensitive fields (`/profile`, `/preferences`, `/email`, `/phone`, `DELETE /users`) additionally require a verified email (`isEmailVerified: true`). Changing email or phone triggers a new verification flow before the change takes effect.",
           "item": [
             {
               "name": "Get Current User",
@@ -534,7 +538,7 @@
 
     {
       "name": "Workspaces  (@fonderie-js/workspaces)",
-      "description": "Multi-tenant workspace management. Workspace context is passed via the `X-Workspace-ID` header or the `:id` / `:workspaceId` path parameter.",
+      "description": "Multi-tenant team layer — provided by `@fonderie-js/workspaces`.\n\nA workspace is a shared organizational context (company, team, project). Each workspace has an owner, a slug, a plan tier, and a custom RBAC structure built on top of `@fonderie-js/permissions`.\n\n**Workspace context resolution:**\n- Header-based routes use `X-Workspace-ID: {{workspace_id}}`\n- Path-based routes use `:id` or `:workspaceId` directly in the URL\n\n**Sub-sections:**\n- **Members** — list, remove, and manage role assignments for workspace members\n- **Invitations** — send token-based email invitations and accept them\n- **Roles** — define custom roles and attach CRUD permissions per resource\n- **Settings** — per-workspace key-value configuration (branding, feature toggles)",
       "item": [
 
         {
@@ -669,6 +673,7 @@
 
         {
           "name": "Members",
+          "description": "Manage the members of a workspace. All endpoints require `X-Workspace-ID: {{workspace_id}}`.\n\nMembers can hold multiple roles simultaneously. Their effective permissions are the union (BOOL_OR) of all assigned roles — if any role grants a permission, it is granted.",
           "item": [
             {
               "name": "List Members",
@@ -782,6 +787,7 @@
 
         {
           "name": "Invitations",
+          "description": "Token-based workspace invitations. Sending an invitation triggers a transactional email (via `@fonderie-js/courier`) containing a time-limited acceptance link.\n\n`POST /workspaces/invitations/accept` does **not** require the `X-Workspace-ID` header — the workspace is resolved from the invitation token itself, so unauthenticated users who just registered can accept an invite directly.",
           "item": [
             {
               "name": "Send Invitation",
@@ -882,6 +888,7 @@
 
         {
           "name": "Roles",
+          "description": "Custom RBAC roles scoped to a workspace. Roles group fine-grained permissions (READ / CREATE / UPDATE / DELETE) on named resources.\n\n`POST /workspaces/roles/:roleId/permissions` **replaces** the entire permission set atomically — it is not additive. Send the full desired permission list each time.\n\nTo assign roles to a member, use the endpoints in the **Members** sub-folder.",
           "item": [
             {
               "name": "Create Role",
@@ -1020,6 +1027,7 @@
 
         {
           "name": "Settings",
+          "description": "Per-workspace key-value configuration — branding, locale defaults, feature toggles, or any other workspace-scoped preferences. Settings are stored alongside the workspace record and have no enforced schema.",
           "item": [
             {
               "name": "Get Settings",
@@ -1073,11 +1081,12 @@
 
     {
       "name": "Billing  (@fonderie-js/billing)",
-      "description": "Plan catalogue, subscriptions, checkout, usage metering.\n\nSubscriptions support two scopes:\n- **User-level** (`/billing/*`) — subscriber is the authenticated user. Suitable for individual/consumer SaaS (Netflix-style).\n- **Workspace-level** (`/workspaces/:workspaceId/billing/*`) — subscriber is the workspace. Suitable for team/B2B SaaS (Slack-style).\n\nBoth surfaces share identical controller logic; scope is resolved from the URL.",
+      "description": "Subscription billing and usage metering — provided by `@fonderie-js/billing`.\n\n**Two subscriber scopes** (same controller, different URL prefix):\n| Surface | Routes | Subscriber |\n|---|---|---|\n| User-level | `/billing/*` | Authenticated user (`subscriberType: 'user'`) |\n| Workspace-level | `/workspaces/:workspaceId/billing/*` | Workspace (`subscriberType: 'workspace'`) |\n\nA founder building a consumer product (Spotify-style) only needs user-level billing and does not need to register `@fonderie-js/workspaces`. A B2B product (Slack-style) uses workspace-level billing. Both can coexist in the same app.\n\n**Plan catalogue** is config-driven: plans live in `IBillingConfig.plans`, are synced to the database on every boot, and are exposed as read-only via the API. To change plans, update the config and redeploy.\n\n**Amounts** are in cents (e.g. `7900` = $79.00). `seats: null` = unlimited.",
       "item": [
 
         {
           "name": "Plans  (public)",
+          "description": "Read-only plan catalogue. No authentication required — safe to call from a marketing page or pricing component before the user has signed up.\n\nPlans are **config-driven**: defined in `IBillingConfig.plans` and synced to the database on every server boot via `ON CONFLICT DO UPDATE`. There are no write endpoints — to add, rename, or reprice a plan, change the config and redeploy.",
           "item": [
             {
               "name": "List Plans",
@@ -1128,7 +1137,7 @@
 
         {
           "name": "User Subscription",
-          "description": "Subscription scoped to the authenticated user (`subscriberType: 'user'`). No workspace context required.",
+          "description": "Subscription scoped to the authenticated user (`subscriberType: 'user'`). No workspace context required — suitable for consumer/individual SaaS (Spotify, Netflix-style).\n\nThe subscriber is always resolved as the user in the access token. No `X-Workspace-ID` header is needed.",
           "item": [
             {
               "name": "Get Subscription",
@@ -1240,7 +1249,7 @@
 
         {
           "name": "Workspace Subscription",
-          "description": "Subscription scoped to a workspace (`subscriberType: 'workspace'`). Requires `X-Workspace-ID` header or `:workspaceId` path param.",
+          "description": "Subscription scoped to a workspace (`subscriberType: 'workspace'`). Suitable for team/B2B SaaS (Slack, Linear-style).\n\nThe workspace is resolved from the `:workspaceId` path parameter. The authenticated user must be a member of the workspace.",
           "item": [
             {
               "name": "Get Subscription",
@@ -1345,6 +1354,7 @@
 
         {
           "name": "Webhook",
+          "description": "Stripe webhook receiver — called by Stripe, not by your frontend. Configure this URL in your Stripe Dashboard under **Developers → Webhooks**.\n\nThe `stripe-signature` header is verified against `STRIPE_WEBHOOK_SECRET`. Requests with an invalid or missing signature are rejected with `400`.\n\n**Handled events:**\n- `customer.subscription.created` — creates the subscription record\n- `customer.subscription.updated` — syncs status, billing period, and cancel-at-period-end flag\n- `customer.subscription.deleted` — marks the subscription as cancelled\n\nAll other event types return `{ received: true }` without side effects.",
           "item": [
             {
               "name": "Stripe Webhook",
@@ -1383,7 +1393,7 @@
 
     {
       "name": "Platform",
-      "description": "Utility endpoints available in all Fonderie.js applications.",
+      "description": "Cross-cutting utility endpoints available in every Fonderie.js application.\n\n- **Health check** — liveness probe for load balancers and uptime monitors. Returns `503` when `maintenance.mode` is `true` in remote config.\n- **Remote config** — inspect all active feature flags and runtime config values. Restricted to non-production environments.",
       "item": [
         {
           "name": "Health Check",
