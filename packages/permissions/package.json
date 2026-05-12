@@ -1,7 +1,8 @@
 {
 	"name": "@fonderie-js/permissions",
 	"version": "0.0.1",
-	"description": "RBAC engine with CRUD-bit permissions and BOOL_OR aggregation",
+	"description": "Role-based access control for SaaS — define roles, assign CRUD permissions per resource, and gate any route with requirePermission. Supports multiple roles per user via BOOL_OR aggregation.",
+	"keywords": ["fonderie-js", "rbac", "permissions", "access-control", "roles", "authorization", "saas", "typescript"],
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": {

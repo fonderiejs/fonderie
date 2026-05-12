@@ -1,7 +1,8 @@
 {
 	"name": "@fonderie-js/workspaces",
 	"version": "0.0.1",
-	"description": "Organisation management, member roles, PIN/token invitations, and workspace RBAC",
+	"description": "Multi-tenant team layer — create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
+	"keywords": ["fonderie-js", "workspaces", "multi-tenant", "teams", "organizations", "invitations", "rbac", "saas", "typescript"],
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": {

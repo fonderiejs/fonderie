@@ -1,7 +1,8 @@
 {
 	"name": "@fonderie-js/courier",
 	"version": "0.0.1",
-	"description": "Email, SMS, and push dispatch with locale-aware templates and message log",
+	"description": "Transactional messaging for SaaS — multi-channel delivery (email, SMS, push) with FS or DB templates, per-message-type channel routing, and a persistent message log.",
+	"keywords": ["fonderie-js", "email", "sms", "transactional", "messaging", "notifications", "nodemailer", "templates", "saas", "typescript"],
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": {

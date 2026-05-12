@@ -1,7 +1,8 @@
 {
 	"name": "@fonderie-js/config",
 	"version": "0.0.1",
-	"description": "DB-backed remote config with multi-environment overrides",
+	"description": "DB-backed feature flags and remote config — per-environment overrides, TTL-based hot reload, and a typed getConfig helper usable inside any middleware.",
+	"keywords": ["fonderie-js", "feature-flags", "remote-config", "runtime-config", "saas", "typescript"],
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": {
