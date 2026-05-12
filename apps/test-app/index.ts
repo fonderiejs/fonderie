@@ -287,6 +287,21 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 // BillingModule:
 //   GET    /plans                                      (public)
 //   GET    /plans/:planId                              (public)
+//
+//   — user-level billing (subscriber = authenticated user) —
+//   GET    /billing/subscription
+//   POST   /billing/checkout
+//   POST   /billing/portal
+//   POST   /billing/usage
+//   GET    /billing/usage/:metric
+//
+//   — workspace-level billing (subscriber = workspaceId path param) —
+//   GET    /workspaces/:workspaceId/billing/subscription
+//   POST   /workspaces/:workspaceId/billing/checkout
+//   POST   /workspaces/:workspaceId/billing/portal
+//   POST   /workspaces/:workspaceId/billing/usage
+//   GET    /workspaces/:workspaceId/billing/usage/:metric
+//
 //   POST   /billing/webhook
 //
 // WorkspacesModule:  (workspace resolved from X-Workspace-ID header unless noted)

@@ -1,4 +1,4 @@
-import type { ISubscription } from '../types'
+import type { SubscriberType } from '../types'
 
 // The normalized event shape — provider-agnostic
 export interface IBillingEvent {
@@ -7,15 +7,16 @@ export interface IBillingEvent {
 }
 
 export interface INormalizedSubscription {
-	workspaceId:          string
-	plan:                 string
-	status:               string
-	providerCustomerId:   string
-	providerSubscriptionId: string
-	currentPeriodStart:   Date
-	currentPeriodEnd:     Date
-	cancelAtPeriodEnd:    boolean
-	trialEndsAt:          Date | null
+	subscriberType:          SubscriberType
+	subscriberId:            string
+	plan:                    string
+	status:                  string
+	providerCustomerId:      string
+	providerSubscriptionId:  string
+	currentPeriodStart:      Date
+	currentPeriodEnd:        Date
+	cancelAtPeriodEnd:       boolean
+	trialEndsAt:             Date | null
 }
 
 // The one interface every handler calls
@@ -24,19 +25,21 @@ export interface IBillingProvider {
 
 	// Create or retrieve a customer record with the provider
 	createCustomer(opts: {
-		email:       string
-		workspaceId: string
-		userId:      string
+		email:          string
+		subscriberType: SubscriberType
+		subscriberId:   string
+		userId:         string
 	}): Promise<{ customerId: string }>
 
 	// Generate a hosted checkout URL
 	createCheckoutSession(opts: {
-		customerId:   string
-		priceId:      string
-		workspaceId:  string
-		trialDays?:   number
-		successUrl:   string
-		cancelUrl:    string
+		customerId:     string
+		priceId:        string
+		subscriberType: SubscriberType
+		subscriberId:   string
+		trialDays?:     number
+		successUrl:     string
+		cancelUrl:      string
 	}): Promise<{ url: string }>
 
 	// Generate a hosted billing portal URL

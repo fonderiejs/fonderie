@@ -278,42 +278,87 @@ curl -s $BASE/plans/$PLAN_ID | jq .
 
 ---
 
-## Billing — workspace subscription
+## Billing — subscription
+
+Subscriptions can be scoped to a **user** (e.g. Netflix-style individual plan) or a **workspace** (e.g. Slack-style team plan).  Both surfaces share the same routes — the subscriber is resolved from the URL:
+
+| Surface | Subscriber resolved from |
+|---|---|
+| `/billing/*` | authenticated user (`ctx.user.id`) |
+| `/workspaces/:workspaceId/billing/*` | path param |
+
+The subscription DTO always tells you which was used:
+```json
+{ "subscriberType": "user" | "workspace", "subscriberId": "uuid", ... }
+```
 
 ### Get subscription
 ```bash
+# user-level
+curl -s $BASE/billing/subscription \
+  -H "authorization: Bearer $TOKEN" | jq .
+
+# workspace-level
 curl -s $BASE/workspaces/$WS/billing/subscription \
-  -H "authorization: Bearer $TOKEN" \
-  | jq .
-# → { subscription: { id, workspaceId, plan, interval, status, cancelAtPeriodEnd, ... } }
+  -H "authorization: Bearer $TOKEN" | jq .
+
+# → { subscription: { id, subscriberType, subscriberId, plan, interval, status, ... } }
 ```
 
-### Create Stripe checkout session
+### Start a Stripe checkout session
 ```bash
+# user-level
+curl -s -X POST $BASE/billing/checkout \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"plan":"pro","interval":"month"}' | jq .
+
+# workspace-level
 curl -s -X POST $BASE/workspaces/$WS/billing/checkout \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
-  -d '{"priceId":"price_pro_monthly","interval":"month"}' \
-  | jq .
+  -d '{"plan":"pro","interval":"month"}' | jq .
+
 # → { "url": "https://checkout.stripe.com/..." }
 ```
 
 ### Open Stripe billing portal
 ```bash
+# user-level
+curl -s -X POST $BASE/billing/portal \
+  -H "authorization: Bearer $TOKEN" | jq .
+
+# workspace-level
 curl -s -X POST $BASE/workspaces/$WS/billing/portal \
-  -H "authorization: Bearer $TOKEN" \
-  | jq .
+  -H "authorization: Bearer $TOKEN" | jq .
+
 # → { "url": "https://billing.stripe.com/session/..." }
 ```
 
 ### Record usage
 ```bash
+# user-level
+curl -s -X POST $BASE/billing/usage \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"metric":"api_calls","quantity":1}' | jq .
+
+# workspace-level
 curl -s -X POST $BASE/workspaces/$WS/billing/usage \
   -H 'content-type: application/json' \
   -H "authorization: Bearer $TOKEN" \
-  -d '{"metric":"api_calls","quantity":1}' \
-  | jq .
+  -d '{"metric":"api_calls","quantity":1}' | jq .
+
 # → { ok: true }
+```
+
+### Get usage for a metric
+```bash
+curl -s $BASE/billing/usage/api_calls \
+  -H "authorization: Bearer $TOKEN" | jq .
+
+curl -s $BASE/workspaces/$WS/billing/usage/api_calls \
+  -H "authorization: Bearer $TOKEN" | jq .
 ```
 
 ### Get usage for a metric

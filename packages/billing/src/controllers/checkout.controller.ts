@@ -1,10 +1,11 @@
 import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { IFonderieContext }             from '@fonderie-js/core';
-import type { IStoreAdapter }               from '@fonderie-js/store';
+import type { IFonderieContext } from '@fonderie-js/core';
+import type { IStoreAdapter }    from '@fonderie-js/store';
 
-import type { IBillingConfig }   from '../config';
-import { PlanModel }             from '../models/plan.model';
-import { SubscriptionModel }     from '../models/subscription.model';
+import type { IBillingConfig } from '../config';
+import { PlanModel }           from '../models/plan.model';
+import { SubscriptionModel }   from '../models/subscription.model';
+import { resolveSubscriber }   from '../utils';
 
 export function checkoutController(store: IStoreAdapter, config: IBillingConfig) {
 	const plans         = new PlanModel(store)
@@ -12,10 +13,10 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 
 	return {
 		async createSession(ctx: IFonderieContext): Promise<Response> {
-			const body        = ctx.meta['body'] as Record<string, unknown> | undefined
-			const planName    = body?.['plan']
-			const interval    = (body?.['interval'] ?? 'month') as 'month' | 'year'
-			const workspaceId = resolveWorkspaceId(ctx)
+			const body       = ctx.meta['body'] as Record<string, unknown> | undefined
+			const planName   = body?.['plan']
+			const interval   = (body?.['interval'] ?? 'month') as 'month' | 'year'
+			const subscriber = resolveSubscriber(ctx)
 
 			if (typeof planName !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'plan is required')
@@ -23,8 +24,8 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			if (interval !== 'month' && interval !== 'year') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'interval must be month or year')
 			}
-			if (!workspaceId) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required')
+			if (!subscriber) {
+				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required')
 			}
 
 			const plan = plans.findByNameInConfig(planName, config)
@@ -38,24 +39,27 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			}
 
 			const { customerId } = await config.provider.createCustomer({
-				email:       ctx.user!.email,
-				workspaceId,
-				userId:      ctx.user!.id,
+				email:          ctx.user!.email,
+				subscriberType: subscriber.type,
+				subscriberId:   subscriber.id,
+				userId:         ctx.user!.id,
 			})
 
 			const sessionOpts: Parameters<typeof config.provider.createCheckoutSession>[0] = {
 				customerId,
-				priceId:    pricing.priceId,
-				workspaceId,
-				successUrl: config.successUrl,
-				cancelUrl:  config.cancelUrl,
+				priceId:        pricing.priceId,
+				subscriberType: subscriber.type,
+				subscriberId:   subscriber.id,
+				successUrl:     config.successUrl,
+				cancelUrl:      config.cancelUrl,
 			}
 			if (plan.trialDays !== undefined) sessionOpts.trialDays = plan.trialDays
 
 			const { url } = await config.provider.createCheckoutSession(sessionOpts)
 
 			await subscriptions.upsert({
-				workspaceId,
+				subscriberType:     subscriber.type,
+				subscriberId:       subscriber.id,
 				plan:               planName,
 				interval,
 				status:             'incomplete',
@@ -66,12 +70,12 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 		},
 
 		async createPortal(ctx: IFonderieContext): Promise<Response> {
-			const workspaceId = resolveWorkspaceId(ctx)
-			if (!workspaceId) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required')
+			const subscriber = resolveSubscriber(ctx)
+			if (!subscriber) {
+				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required')
 			}
 
-			const subscription = await subscriptions.get(workspaceId)
+			const subscription = await subscriptions.get(subscriber.type, subscriber.id)
 			if (!subscription?.providerCustomerId) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No active subscription')
 			}
@@ -84,11 +88,4 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			return setApiResponse(HTTP.OK, 'PORTAL_URL', 'Portal session created.', { url })
 		},
 	}
-}
-
-function resolveWorkspaceId(ctx: IFonderieContext): string | null {
-	if (ctx.workspace?.id) return ctx.workspace.id
-	const params = ctx.meta['params'] as Record<string, string> | undefined
-	if (params?.['workspaceId']) return params['workspaceId']
-	return ctx.request.headers.get('x-workspace-id')
 }

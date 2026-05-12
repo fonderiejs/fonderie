@@ -1,9 +1,9 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
-import type { Middleware } from '@fonderie-js/core';
-import { requireAuth }    from '@fonderie-js/core/middlewares';
+import type { Middleware }     from '@fonderie-js/core';
+import { requireAuth }         from '@fonderie-js/core/middlewares';
 
-import type { IBillingConfig } from './config';
-import { planController }        from './controllers/plan.controller';
+import type { IBillingConfig }    from './config';
+import { planController }         from './controllers/plan.controller';
 import { subscriptionController } from './controllers/subscription.controller';
 import { checkoutController }     from './controllers/checkout.controller';
 import { usageController }        from './controllers/usage.controller';
@@ -23,23 +23,24 @@ export function buildBillingRoutes(
 
 	return [
 		// Plans — public read-only (config-driven, synced to DB on boot)
-		['GET',    '/plans',         plan.list],
-		['GET',    '/plans/:planId', plan.get],
+		['GET', '/plans',         plan.list],
+		['GET', '/plans/:planId', plan.get],
 
-		// Subscription — read
-		['GET',    '/workspaces/:workspaceId/billing/subscription', requireAuth,subscription.get],
+		// User-level billing (no workspace required)
+		['GET',  '/billing/subscription',        requireAuth, subscription.get],
+		['POST', '/billing/checkout',            requireAuth, checkout.createSession],
+		['POST', '/billing/portal',              requireAuth, checkout.createPortal],
+		['POST', '/billing/usage',               requireAuth, usage.record],
+		['GET',  '/billing/usage/:metric',       requireAuth, usage.get],
 
-		// Checkout — creates Stripe session
-		['POST',   '/workspaces/:workspaceId/billing/checkout',     requireAuth,checkout.createSession],
+		// Workspace-level billing
+		['GET',  '/workspaces/:workspaceId/billing/subscription', requireAuth, subscription.get],
+		['POST', '/workspaces/:workspaceId/billing/checkout',     requireAuth, checkout.createSession],
+		['POST', '/workspaces/:workspaceId/billing/portal',       requireAuth, checkout.createPortal],
+		['POST', '/workspaces/:workspaceId/billing/usage',        requireAuth, usage.record],
+		['GET',  '/workspaces/:workspaceId/billing/usage/:metric', requireAuth, usage.get],
 
-		// Portal — manage existing subscription
-		['POST',   '/workspaces/:workspaceId/billing/portal',       requireAuth,checkout.createPortal],
-
-		// Webhook — no requireAuth,signature verified internally
-		['POST',   '/billing/webhook',            webhook.handle],
-
-		// Usage metering
-		['POST',   '/workspaces/:workspaceId/billing/usage',        requireAuth,usage.record],
-		['GET',    '/workspaces/:workspaceId/billing/usage/:metric', requireAuth,usage.get],
+		// Webhook — signature verified internally
+		['POST', '/billing/webhook', webhook.handle],
 	]
 }

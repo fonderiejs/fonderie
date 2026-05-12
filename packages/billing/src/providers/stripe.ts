@@ -1,4 +1,5 @@
 import type { IBillingProvider, IBillingEvent, INormalizedSubscription } from './types';
+import type { SubscriberType } from '../types';
 
 interface IStripeSubscriptionRaw {
 	id:                   string
@@ -21,9 +22,7 @@ interface IStripeEventRaw {
 let _client: unknown = null;
 
 async function getClient(secretKey: string): Promise<unknown> {
-	if (_client) {
-		return _client;
-	}
+	if (_client) return _client;
 
 	const pkg = 'stripe';
 
@@ -32,26 +31,23 @@ async function getClient(secretKey: string): Promise<unknown> {
 		throw new Error('[billing:stripe] stripe is required: npm install stripe');
 	});
 
-	// Stripe SDK exports as default in CJS but as .default in ESM
 	const Stripe = mod.default ?? mod;
-
 	_client = new Stripe(secretKey, { apiVersion: '2024-11-20.acacia' });
-
 	return _client;
 }
 
-
 function normalizeSubscription(sub: IStripeSubscriptionRaw): INormalizedSubscription {
 	return {
-		workspaceId:            sub.metadata?.['workspaceId'] ?? '',
-		plan:                   sub.items.data[0]?.price.nickname ?? 'unknown',
-		status:                 sub.status,
-		providerCustomerId:     sub.customer,
-		providerSubscriptionId: sub.id,
-		currentPeriodStart:     new Date(sub.current_period_start * 1000),
-		currentPeriodEnd:       new Date(sub.current_period_end   * 1000),
-		cancelAtPeriodEnd:      sub.cancel_at_period_end,
-		trialEndsAt:            sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+		subscriberType:          (sub.metadata?.['subscriberType'] ?? 'workspace') as SubscriberType,
+		subscriberId:            sub.metadata?.['subscriberId'] ?? '',
+		plan:                    sub.items.data[0]?.price.nickname ?? 'unknown',
+		status:                  sub.status,
+		providerCustomerId:      sub.customer,
+		providerSubscriptionId:  sub.id,
+		currentPeriodStart:      new Date(sub.current_period_start * 1000),
+		currentPeriodEnd:        new Date(sub.current_period_end   * 1000),
+		cancelAtPeriodEnd:       sub.cancel_at_period_end,
+		trialEndsAt:             sub.trial_end ? new Date(sub.trial_end * 1000) : null,
 	}
 }
 
@@ -59,7 +55,7 @@ export class StripeProvider implements IBillingProvider {
 	readonly name = 'stripe'
 
 	constructor(
-		private secretKey:     string,
+		private secretKey:      string,
 		private webhookSecret?: string,
 	) {}
 
@@ -68,26 +64,31 @@ export class StripeProvider implements IBillingProvider {
 	}
 
 	async createCustomer(opts: {
-		email:       string
-		workspaceId: string
-		userId:      string
+		email:          string
+		subscriberType: SubscriberType
+		subscriberId:   string
+		userId:         string
 	}): Promise<{ customerId: string }> {
-		const stripe = await this.client();
+		const stripe   = await this.client();
 		const customer = await stripe.customers.create({
 			email:    opts.email,
-			metadata: { workspaceId: opts.workspaceId, userId: opts.userId },
+			metadata: {
+				subscriberType: opts.subscriberType,
+				subscriberId:   opts.subscriberId,
+				userId:         opts.userId,
+			},
 		});
-
 		return { customerId: customer.id };
 	}
 
 	async createCheckoutSession(opts: {
-		customerId:  string
-		priceId:     string
-		workspaceId: string
-		trialDays?:  number
-		successUrl:  string
-		cancelUrl:   string
+		customerId:     string
+		priceId:        string
+		subscriberType: SubscriberType
+		subscriberId:   string
+		trialDays?:     number
+		successUrl:     string
+		cancelUrl:      string
 	}): Promise<{ url: string }> {
 		const stripe  = await this.client();
 		const session = await stripe.checkout.sessions.create({
@@ -96,11 +97,16 @@ export class StripeProvider implements IBillingProvider {
 			line_items:  [{ price: opts.priceId, quantity: 1 }],
 			success_url: opts.successUrl,
 			cancel_url:  opts.cancelUrl,
-			...(opts.trialDays && opts.trialDays > 0
-				? { subscription_data: { trial_period_days: opts.trialDays } }
-				: {}),
+			subscription_data: {
+				metadata: {
+					subscriberType: opts.subscriberType,
+					subscriberId:   opts.subscriberId,
+				},
+				...(opts.trialDays && opts.trialDays > 0
+					? { trial_period_days: opts.trialDays }
+					: {}),
+			},
 		});
-
 		return { url: session.url ?? '' };
 	}
 
@@ -113,7 +119,6 @@ export class StripeProvider implements IBillingProvider {
 			customer:   opts.customerId,
 			return_url: opts.returnUrl,
 		});
-
 		return { url: session.url };
 	}
 
@@ -146,17 +151,10 @@ export class StripeProvider implements IBillingProvider {
 		if (raw.type === 'customer.subscription.deleted') {
 			return {
 				type:         raw.type,
-				subscription: {
-					...normalizeSubscription(sub),
-					plan:   'free',
-					status: 'canceled',
-				},
+				subscription: { ...normalizeSubscription(sub), plan: 'free', status: 'canceled' },
 			};
 		}
 
-		return {
-			type:         raw.type,
-			subscription: normalizeSubscription(sub),
-		};
+		return { type: raw.type, subscription: normalizeSubscription(sub) };
 	}
 }
