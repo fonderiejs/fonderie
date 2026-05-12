@@ -1,0 +1,1442 @@
+{
+  "info": {
+    "_postman_id": "aae7d606-a3b9-4c49-9375-b5e2068f83f7",
+    "name": "Fonderie.js",
+    "description": "API reference for Fonderie.js — a TypeScript SaaS backend framework.\n\nBase URL: `{{base_url}}` (default: `http://localhost:4000/v1`)\n\n**Packages covered:**\n- `@fonderie-js/auth` — registration, login, OAuth, MFA, user profile\n- `@fonderie-js/workspaces` — workspace management, members, invitations, roles\n- `@fonderie-js/billing` — plan catalogue, user + workspace subscriptions, usage metering\n- Platform utilities — health check, remote config\n\n**Authentication:** All protected endpoints require `Authorization: Bearer {{token}}`.\n\n**Collection variables:**\n| Variable | Description |\n|---|---|\n| `base_url` | `http://localhost:4000/v1` |\n| `token` | Access JWT (auto-captured on login/register) |\n| `refresh_token` | Refresh JWT (auto-captured on login/register) |\n| `workspace_id` | Active workspace UUID (auto-captured on create) |\n| `plan_id` | Plan UUID (auto-captured on plan list) |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",      "value": "http://localhost:4000/v1", "type": "string" },
+    { "key": "token",         "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" },
+    { "key": "workspace_id",  "value": "", "type": "string" },
+    { "key": "plan_id",       "value": "", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "Auth  (@fonderie-js/auth)",
+      "description": "Authentication, session management, MFA, and user profile endpoints.",
+      "item": [
+
+        {
+          "name": "Registration & Login",
+          "item": [
+            {
+              "name": "Register",
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.accessToken){pm.collectionVariables.set('token',r.result.accessToken);pm.collectionVariables.set('refresh_token',r.result.refreshToken);}"], "type": "text/javascript" } }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Alice\",\n  \"lastName\": \"Smith\"\n}" },
+                "url": "{{base_url}}/auth/register",
+                "description": "Create a new user account. Returns access + refresh tokens. Email verification is required before accessing protected endpoints."
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "status": "Created", "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"REGISTERED\",\n  \"explanation\": \"Registration successful.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"alice@example.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"phone\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"timezone\": \"UTC\",\n      \"isEmailVerified\": false,\n      \"mfaEnabled\": false,\n      \"suspended\": false,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                },
+                {
+                  "name": "422 Email already in use",
+                  "status": "Unprocessable Entity", "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"EMAIL_TAKEN\",\n  \"explanation\": \"An account with this email already exists.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Login",
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.accessToken){pm.collectionVariables.set('token',r.result.accessToken);pm.collectionVariables.set('refresh_token',r.result.refreshToken);}"], "type": "text/javascript" } }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\"\n}" },
+                "url": "{{base_url}}/auth/login",
+                "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"LOGIN_SUCCESS\",\n  \"explanation\": \"Login successful.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"alice@example.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"phone\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"timezone\": \"UTC\",\n      \"isEmailVerified\": true,\n      \"mfaEnabled\": false,\n      \"suspended\": false,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                },
+                {
+                  "name": "200 MFA pending",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"MFA_REQUIRED\",\n  \"explanation\": \"MFA verification required.\",\n  \"result\": {\n    \"mfaPending\": true,\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                },
+                {
+                  "name": "401 Invalid credentials",
+                  "status": "Unauthorized", "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVALID_CREDENTIALS\",\n  \"explanation\": \"Invalid email or password.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Refresh Token",
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.accessToken){pm.collectionVariables.set('token',r.result.accessToken);pm.collectionVariables.set('refresh_token',r.result.refreshToken);}"], "type": "text/javascript" } }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}" },
+                "url": "{{base_url}}/auth/refresh",
+                "description": "Exchange a valid refresh token for a new access + refresh token pair. The old refresh token is invalidated."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"TOKEN_REFRESHED\",\n  \"explanation\": \"Token refreshed successfully.\",\n  \"result\": {\n    \"user\": { \"id\": \"a1b2c3d4-...\", \"email\": \"alice@example.com\" },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                },
+                {
+                  "name": "401 Invalid refresh token",
+                  "status": "Unauthorized", "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVALID_TOKEN\",\n  \"explanation\": \"Refresh token is invalid or expired.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}" },
+                "url": "{{base_url}}/auth/logout",
+                "description": "Invalidate the current session. The refresh token is revoked server-side."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"LOGGED_OUT\",\n  \"explanation\": \"Logged out successfully.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Email Verification",
+          "item": [
+            {
+              "name": "Send Verification Code",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/auth/send-verification",
+                "description": "Send a verification OTP to the authenticated user's email or phone depending on their login method. Rate-limited per account."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"VERIFICATION_SENT\",\n  \"explanation\": \"Verification code sent.\",\n  \"result\": { \"ok\": true }\n}"
+                },
+                {
+                  "name": "429 Rate limited",
+                  "status": "Too Many Requests", "code": 429,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"RATE_LIMITED\",\n  \"explanation\": \"Please wait before requesting another code.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Verify Code",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"token\": \"123456\"\n}" },
+                "url": "{{base_url}}/auth/verify",
+                "description": "Submit the OTP received by email or SMS. Marks the account as verified."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"VERIFIED\",\n  \"explanation\": \"Account verified successfully.\",\n  \"result\": { \"ok\": true }\n}"
+                },
+                {
+                  "name": "400 Invalid code",
+                  "status": "Bad Request", "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVALID_TOKEN\",\n  \"explanation\": \"Verification code is invalid or expired.\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Password Reset",
+          "item": [
+            {
+              "name": "Forgot Password",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"email\": \"alice@example.com\"\n}" },
+                "url": "{{base_url}}/auth/email/forgot",
+                "description": "Request a password reset email. Always returns `ok: true` to prevent email enumeration."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"RESET_EMAIL_SENT\",\n  \"explanation\": \"If this email exists, a reset link has been sent.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Reset Password",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"resetToken\": \"<token-from-email>\",\n  \"password\": \"newPassword123\"\n}" },
+                "url": "{{base_url}}/auth/email/reset",
+                "description": "Set a new password using the token received by email. Token is single-use and expires."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PASSWORD_RESET\",\n  \"explanation\": \"Password reset successfully.\",\n  \"result\": { \"ok\": true }\n}"
+                },
+                {
+                  "name": "400 Invalid or expired token",
+                  "status": "Bad Request", "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVALID_TOKEN\",\n  \"explanation\": \"Reset token is invalid or has expired.\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Google OAuth",
+          "item": [
+            {
+              "name": "Initiate Google Login",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/auth/google",
+                "description": "Returns a Google authorization URL. Redirect the user's browser to this URL to begin the OAuth flow.\n\nRequires `GOOGLE_CLIENT_ID` to be set in the server environment."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"GOOGLE_AUTH_URL\",\n  \"explanation\": \"Redirect the user to the returned URL to begin Google OAuth.\",\n  \"result\": {\n    \"url\": \"https://accounts.google.com/o/oauth2/v2/auth?client_id=...\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Google Callback",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/auth/google/callback?code={{google_code}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "google", "callback"],
+                  "query": [{ "key": "code", "value": "{{google_code}}" }]
+                },
+                "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production — included here for testing."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"LOGIN_SUCCESS\",\n  \"explanation\": \"Google login successful.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-...\",\n      \"email\": \"alice@gmail.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"isEmailVerified\": true,\n      \"mfaEnabled\": false\n    },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "MFA",
+          "description": "Multi-factor authentication using TOTP (Google Authenticator, Authy, etc.). Only available for email login sessions.",
+          "item": [
+            {
+              "name": "Setup MFA",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/auth/mfa/setup",
+                "description": "Initiate MFA setup. Returns a QR code image URL and the raw TOTP secret. The secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nRequires: authenticated + verified email + email login method."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"MFA_SETUP_INITIATED\",\n  \"explanation\": \"Scan the QR code with your authenticator app, then verify with a code.\",\n  \"result\": {\n    \"qrCodeUrl\": \"data:image/png;base64,...\",\n    \"secret\": \"JBSWY3DPEHPK3PXP\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Verify & Activate MFA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"code\": \"123456\"\n}" },
+                "url": "{{base_url}}/auth/mfa/verify",
+                "description": "Confirm a TOTP code. On first use (after setup), activates MFA and returns backup codes. On subsequent uses (during login with `mfaPending: true`), exchanges the pending token for a full access token."
+              },
+              "response": [
+                {
+                  "name": "200 OK — MFA activated",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"MFA_ENABLED\",\n  \"explanation\": \"MFA has been enabled. Store your backup codes safely.\",\n  \"result\": {\n    \"backupCodes\": [\"ABCD-1234\", \"EFGH-5678\", \"IJKL-9012\"]\n  }\n}"
+                },
+                {
+                  "name": "200 OK — MFA login complete",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"MFA_VERIFIED\",\n  \"explanation\": \"MFA verification successful.\",\n  \"result\": {\n    \"user\": { \"id\": \"a1b2c3d4-...\", \"email\": \"alice@example.com\" },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                },
+                {
+                  "name": "400 Invalid code",
+                  "status": "Bad Request", "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVALID_MFA_CODE\",\n  \"explanation\": \"The provided MFA code is invalid.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Disable MFA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"code\": \"123456\"\n}" },
+                "url": "{{base_url}}/auth/mfa/disable",
+                "description": "Disable MFA for the current account. Requires a valid TOTP code or backup code to confirm intent."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"MFA_DISABLED\",\n  \"explanation\": \"MFA has been disabled.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Regenerate Backup Codes",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"code\": \"123456\"\n}" },
+                "url": "{{base_url}}/auth/mfa/backup-codes",
+                "description": "Invalidate existing backup codes and generate a new set. Requires a valid TOTP code."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"BACKUP_CODES_REGENERATED\",\n  \"explanation\": \"New backup codes generated. Previous codes are now invalid.\",\n  \"result\": {\n    \"backupCodes\": [\"MNOP-3456\", \"QRST-7890\", \"UVWX-1234\"]\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Users",
+          "description": "User profile management. All endpoints require authentication. Profile/preferences/email/phone changes also require a verified email.",
+          "item": [
+            {
+              "name": "Get Current User",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/users",
+                "description": "Return the full profile of the authenticated user."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"USER_FETCHED\",\n  \"explanation\": \"User retrieved successfully.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"alice@example.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"phone\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"timezone\": \"UTC\",\n      \"isEmailVerified\": true,\n      \"mfaEnabled\": false,\n      \"suspended\": false,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Update Profile",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Alicia\",\n  \"lastName\": \"Smith\",\n  \"avatarUrl\": \"https://i.pravatar.cc/150\"\n}" },
+                "url": "{{base_url}}/users/profile",
+                "description": "Update display name and avatar. Requires verified email.\n\nAccepted fields: `firstName`, `lastName`, `avatarUrl`."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PROFILE_UPDATED\",\n  \"explanation\": \"Profile updated successfully.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-...\",\n      \"firstName\": \"Alicia\",\n      \"lastName\": \"Smith\"\n    }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Update Preferences",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"locale\": \"fr-CA\",\n  \"timezone\": \"America/Montreal\"\n}" },
+                "url": "{{base_url}}/users/preferences",
+                "description": "Update locale and timezone preferences. Requires verified email.\n\nAccepted fields: `locale` (BCP 47 tag, e.g. `en-US`), `timezone` (IANA tz, e.g. `America/Montreal`)."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PREFERENCES_UPDATED\",\n  \"explanation\": \"Preferences updated successfully.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-...\",\n      \"locale\": \"fr-CA\",\n      \"timezone\": \"America/Montreal\"\n    }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Change Email",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"email\": \"alice-new@example.com\"\n}" },
+                "url": "{{base_url}}/users/email",
+                "description": "Update the account email address. Requires verified email.\n\nSide effects:\n- Sends a verification code to the **new** email\n- Sends a change-alert to the **old** email\n- Marks the account as unverified until the new address is confirmed"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"EMAIL_UPDATE_INITIATED\",\n  \"explanation\": \"A verification code has been sent to your new email address.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Change Phone",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"+15550001234\"\n}" },
+                "url": "{{base_url}}/users/phone",
+                "description": "Update the account phone number. Requires verified email.\n\nSide effects:\n- Sends an OTP to the **new** phone number\n- Sends a change-alert email to the account email address"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PHONE_UPDATE_INITIATED\",\n  \"explanation\": \"A verification code has been sent to your new phone number.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Delete Account",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/users",
+                "description": "Permanently delete the authenticated user's account. Requires verified email. This action is irreversible."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ACCOUNT_DELETED\",\n  \"explanation\": \"Account deleted successfully.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "Workspaces  (@fonderie-js/workspaces)",
+      "description": "Multi-tenant workspace management. Workspace context is passed via the `X-Workspace-ID` header or the `:id` / `:workspaceId` path parameter.",
+      "item": [
+
+        {
+          "name": "Create Workspace",
+          "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.workspace?.id){pm.collectionVariables.set('workspace_id',r.result.workspace.id);}"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Acme Corp\",\n  \"description\": \"Our main workspace\"\n}" },
+            "url": "{{base_url}}/workspaces",
+            "description": "Create a new workspace. The authenticated user becomes the owner."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created", "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"reason\": \"WORKSPACE_CREATED\",\n  \"explanation\": \"Workspace created successfully.\",\n  \"result\": {\n    \"workspace\": {\n      \"id\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n      \"name\": \"Acme Corp\",\n      \"slug\": \"acme-corp\",\n      \"type\": \"ORGANIZATION\",\n      \"description\": \"Our main workspace\",\n      \"plan\": \"free\",\n      \"ownerId\": \"a1b2c3d4-...\",\n      \"isArchived\": false,\n      \"archivedAt\": null,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "List Workspaces",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/workspaces",
+            "description": "Return all workspaces the authenticated user is a member of."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"reason\": \"WORKSPACES_LISTED\",\n  \"explanation\": \"Workspaces retrieved successfully.\",\n  \"result\": {\n    \"workspaces\": [\n      { \"id\": \"b2c3d4e5-...\", \"name\": \"Acme Corp\", \"slug\": \"acme-corp\", \"plan\": \"free\" }\n    ]\n  }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "Get Workspace",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/workspaces/{{workspace_id}}",
+            "description": "Return full details for a specific workspace."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"reason\": \"WORKSPACE_FETCHED\",\n  \"explanation\": \"Workspace retrieved successfully.\",\n  \"result\": {\n    \"workspace\": {\n      \"id\": \"b2c3d4e5-...\",\n      \"name\": \"Acme Corp\",\n      \"slug\": \"acme-corp\",\n      \"type\": \"ORGANIZATION\",\n      \"description\": \"Our main workspace\",\n      \"plan\": \"free\",\n      \"ownerId\": \"a1b2c3d4-...\",\n      \"isArchived\": false,\n      \"archivedAt\": null,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "Update Workspace",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Acme Corp (updated)\",\n  \"description\": \"New description\"\n}" },
+            "url": "{{base_url}}/workspaces/{{workspace_id}}",
+            "description": "Update workspace name or description. Requires owner or admin role."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"reason\": \"WORKSPACE_UPDATED\",\n  \"explanation\": \"Workspace updated successfully.\",\n  \"result\": {\n    \"workspace\": { \"id\": \"b2c3d4e5-...\", \"name\": \"Acme Corp (updated)\" }\n  }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "Archive Workspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+            ],
+            "url": "{{base_url}}/workspaces/archive",
+            "description": "Soft-archive the workspace. The workspace remains accessible but is marked as archived. Requires owner role."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"reason\": \"WORKSPACE_ARCHIVED\",\n  \"explanation\": \"Workspace archived successfully.\",\n  \"result\": { \"ok\": true }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "Restore Workspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+            ],
+            "url": "{{base_url}}/workspaces/restore",
+            "description": "Restore a previously archived workspace."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"reason\": \"WORKSPACE_RESTORED\",\n  \"explanation\": \"Workspace restored successfully.\",\n  \"result\": { \"ok\": true }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "Members",
+          "item": [
+            {
+              "name": "List Members",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/members",
+                "description": "Return all members of the current workspace."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"MEMBERS_LISTED\",\n  \"explanation\": \"Members retrieved successfully.\",\n  \"result\": {\n    \"members\": [\n      { \"userId\": \"a1b2c3d4-...\", \"email\": \"alice@example.com\", \"firstName\": \"Alice\", \"roles\": [\"owner\"] }\n    ]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Remove Member",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/members/:userId",
+                "description": "Remove a user from the workspace. Cannot remove the owner."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"MEMBER_REMOVED\",\n  \"explanation\": \"Member removed successfully.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Member Roles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/members/:userId/roles",
+                "description": "Return the roles assigned to a specific member."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"MEMBER_ROLES_FETCHED\",\n  \"explanation\": \"Member roles retrieved successfully.\",\n  \"result\": {\n    \"roles\": [{ \"id\": \"role-uuid\", \"name\": \"admin\" }]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Add Role to Member",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"roleId\": \"<role-uuid>\"\n}" },
+                "url": "{{base_url}}/workspaces/members/:userId/roles",
+                "description": "Assign an additional role to a workspace member."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ROLE_ASSIGNED\",\n  \"explanation\": \"Role assigned to member.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Remove Role from Member",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/members/:userId/roles/:roleId",
+                "description": "Remove a role from a workspace member."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ROLE_REMOVED\",\n  \"explanation\": \"Role removed from member.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Invitations",
+          "item": [
+            {
+              "name": "Send Invitation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"email\": \"bob@example.com\",\n  \"roleId\": \"<role-uuid>\"\n}" },
+                "url": "{{base_url}}/workspaces/invitations",
+                "description": "Invite a user to the workspace by email. Sends a transactional email with an acceptance link."
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "status": "Created", "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVITATION_SENT\",\n  \"explanation\": \"Invitation sent successfully.\",\n  \"result\": {\n    \"invitation\": {\n      \"id\": \"inv-uuid\",\n      \"email\": \"bob@example.com\",\n      \"workspaceId\": \"b2c3d4e5-...\",\n      \"expiresAt\": \"2026-05-19T10:00:00.000Z\"\n    }\n  }\n}"
+                },
+                {
+                  "name": "409 Already invited",
+                  "status": "Conflict", "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ALREADY_INVITED\",\n  \"explanation\": \"This email has already been invited.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "List Invitations",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/invitations",
+                "description": "List all pending invitations for the workspace."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVITATIONS_LISTED\",\n  \"explanation\": \"Invitations retrieved.\",\n  \"result\": {\n    \"invitations\": [\n      { \"id\": \"inv-uuid\", \"email\": \"bob@example.com\", \"expiresAt\": \"2026-05-19T10:00:00.000Z\" }\n    ]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Cancel Invitation",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/invitations/:inviteId",
+                "description": "Cancel a pending invitation."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVITATION_CANCELLED\",\n  \"explanation\": \"Invitation cancelled.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Accept Invitation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"token\": \"<token-from-invitation-email>\"\n}" },
+                "url": "{{base_url}}/workspaces/invitations/accept",
+                "description": "Accept a workspace invitation using the token from the invitation email. No workspace context header required."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVITATION_ACCEPTED\",\n  \"explanation\": \"You have joined the workspace.\",\n  \"result\": {\n    \"workspace\": { \"id\": \"b2c3d4e5-...\", \"name\": \"Acme Corp\" }\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Roles",
+          "item": [
+            {
+              "name": "Create Role",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"editor\",\n  \"description\": \"Can edit content but not manage members\"\n}" },
+                "url": "{{base_url}}/workspaces/roles",
+                "description": "Create a custom role for the workspace."
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "status": "Created", "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ROLE_CREATED\",\n  \"explanation\": \"Role created successfully.\",\n  \"result\": {\n    \"role\": { \"id\": \"role-uuid\", \"name\": \"editor\", \"description\": \"Can edit content but not manage members\" }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "List Roles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/roles",
+                "description": "Return all roles defined for the workspace."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ROLES_LISTED\",\n  \"explanation\": \"Roles retrieved.\",\n  \"result\": {\n    \"roles\": [{ \"id\": \"role-uuid\", \"name\": \"editor\" }]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Role",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/roles/:roleId",
+                "description": "Return a single role with its permissions."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ROLE_FETCHED\",\n  \"explanation\": \"Role retrieved.\",\n  \"result\": {\n    \"role\": { \"id\": \"role-uuid\", \"name\": \"editor\", \"permissions\": [] }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Update Role",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"content-editor\",\n  \"description\": \"Updated description\"\n}" },
+                "url": "{{base_url}}/workspaces/roles/:roleId",
+                "description": "Update a role's name or description."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ROLE_UPDATED\",\n  \"explanation\": \"Role updated.\",\n  \"result\": { \"role\": { \"id\": \"role-uuid\", \"name\": \"content-editor\" } }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Set Role Permissions",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"permissions\": [\n    { \"operation\": \"READ\",   \"resource\": \"projects\" },\n    { \"operation\": \"CREATE\", \"resource\": \"projects\" }\n  ]\n}" },
+                "url": "{{base_url}}/workspaces/roles/:roleId/permissions",
+                "description": "Replace the full permission set for a role. Existing permissions are overwritten."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PERMISSIONS_SET\",\n  \"explanation\": \"Permissions updated.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Delete Role",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/roles/:roleId",
+                "description": "Delete a custom role. Members currently assigned this role lose it."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ROLE_DELETED\",\n  \"explanation\": \"Role deleted.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Settings",
+          "item": [
+            {
+              "name": "Get Settings",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": "{{base_url}}/workspaces/settings",
+                "description": "Return workspace-level settings (branding, feature toggles, etc.)."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"SETTINGS_FETCHED\",\n  \"explanation\": \"Settings retrieved.\",\n  \"result\": { \"settings\": {} }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Update Settings",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"logoUrl\": \"https://example.com/logo.png\"\n}" },
+                "url": "{{base_url}}/workspaces/settings",
+                "description": "Update workspace settings."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"SETTINGS_UPDATED\",\n  \"explanation\": \"Settings updated.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "Billing  (@fonderie-js/billing)",
+      "description": "Plan catalogue, subscriptions, checkout, usage metering.\n\nSubscriptions support two scopes:\n- **User-level** (`/billing/*`) — subscriber is the authenticated user. Suitable for individual/consumer SaaS (Netflix-style).\n- **Workspace-level** (`/workspaces/:workspaceId/billing/*`) — subscriber is the workspace. Suitable for team/B2B SaaS (Slack-style).\n\nBoth surfaces share identical controller logic; scope is resolved from the URL.",
+      "item": [
+
+        {
+          "name": "Plans  (public)",
+          "item": [
+            {
+              "name": "List Plans",
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.plans?.[0]?.id){pm.collectionVariables.set('plan_id',r.result.plans[0].id);}"], "type": "text/javascript" } }],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/plans",
+                "description": "Return all active plans. No authentication required — safe to call from marketing pages or mobile apps before sign-up."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PLAN_LIST\",\n  \"explanation\": \"Retrieved 4 workspace plans\",\n  \"result\": {\n    \"plans\": [\n      {\n        \"id\": \"uuid-free\",\n        \"planId\": \"FREE\",\n        \"name\": \"free\",\n        \"description\": \"Get started at no cost\",\n        \"tier\": 0,\n        \"seats\": 1,\n        \"trialDays\": 0,\n        \"pricing\": { \"monthly\": 0, \"yearly\": 0, \"currency\": \"USD\" },\n        \"features\": [\n          { \"name\": \"Projects\",   \"description\": \"Up to 3 projects\",   \"enabled\": true,  \"limit\": 3    },\n          { \"name\": \"Storage\",    \"description\": \"1 GB storage\",        \"enabled\": true,  \"limit\": 1    },\n          { \"name\": \"API access\", \"description\": \"Up to 1 000 req/day\", \"enabled\": true,  \"limit\": 1000 },\n          { \"name\": \"Analytics\",  \"description\": \"Basic analytics\",     \"enabled\": false              },\n          { \"name\": \"SSO\",        \"description\": \"SAML single sign-on\", \"enabled\": false              },\n          { \"name\": \"SLA\",        \"description\": \"99.9 % uptime SLA\",   \"enabled\": false              },\n          { \"name\": \"Support\",    \"description\": \"Dedicated support\",   \"enabled\": false              }\n        ],\n        \"metadata\": {}\n      },\n      {\n        \"id\": \"uuid-pro\",\n        \"planId\": \"PRO\",\n        \"name\": \"pro\",\n        \"description\": \"For growing teams who need more power\",\n        \"tier\": 2,\n        \"seats\": 20,\n        \"trialDays\": 0,\n        \"pricing\": { \"monthly\": 7900, \"yearly\": 79000, \"currency\": \"USD\" },\n        \"features\": [\n          { \"name\": \"Projects\",   \"description\": \"Unlimited projects\",    \"enabled\": true                 },\n          { \"name\": \"Storage\",    \"description\": \"100 GB storage\",        \"enabled\": true,  \"limit\": 100  },\n          { \"name\": \"API access\", \"description\": \"Up to 100 000 req/day\", \"enabled\": true,  \"limit\": 100000 },\n          { \"name\": \"Analytics\",  \"description\": \"Advanced analytics\",    \"enabled\": true                 },\n          { \"name\": \"SSO\",        \"description\": \"SAML single sign-on\",   \"enabled\": false                },\n          { \"name\": \"SLA\",        \"description\": \"99.9 % uptime SLA\",     \"enabled\": false                },\n          { \"name\": \"Support\",    \"description\": \"Dedicated support\",     \"enabled\": false                }\n        ],\n        \"metadata\": {}\n      }\n    ]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/plans/{{plan_id}}",
+                "description": "Return a single plan by its UUID."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PLAN_FETCHED\",\n  \"explanation\": \"Plan retrieved successfully.\",\n  \"result\": {\n    \"plan\": {\n      \"id\": \"uuid-pro\",\n      \"planId\": \"PRO\",\n      \"name\": \"pro\",\n      \"tier\": 2,\n      \"seats\": 20,\n      \"trialDays\": 0,\n      \"pricing\": { \"monthly\": 7900, \"yearly\": 79000, \"currency\": \"USD\" },\n      \"features\": [],\n      \"metadata\": {}\n    }\n  }\n}"
+                },
+                {
+                  "name": "404 Not found",
+                  "status": "Not Found", "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"NOT_FOUND\",\n  \"explanation\": \"Plan not found.\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "User Subscription",
+          "description": "Subscription scoped to the authenticated user (`subscriberType: 'user'`). No workspace context required.",
+          "item": [
+            {
+              "name": "Get Subscription",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/billing/subscription",
+                "description": "Return the current user's active subscription."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"SUBSCRIPTION_FETCHED\",\n  \"explanation\": \"Subscription retrieved successfully.\",\n  \"result\": {\n    \"subscription\": {\n      \"id\": \"sub-uuid\",\n      \"subscriberType\": \"user\",\n      \"subscriberId\": \"a1b2c3d4-...\",\n      \"plan\": \"pro\",\n      \"interval\": \"month\",\n      \"status\": \"active\",\n      \"cancelAtPeriodEnd\": false,\n      \"currentPeriodStart\": \"2026-05-01T00:00:00.000Z\",\n      \"currentPeriodEnd\": \"2026-06-01T00:00:00.000Z\",\n      \"trialEndsAt\": null,\n      \"createdAt\": \"2026-05-01T00:00:00.000Z\"\n    }\n  }\n}"
+                },
+                {
+                  "name": "404 No subscription",
+                  "status": "Not Found", "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"NOT_FOUND\",\n  \"explanation\": \"No active subscription.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Start Checkout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"plan\": \"pro\",\n  \"interval\": \"month\"\n}" },
+                "url": "{{base_url}}/billing/checkout",
+                "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` — plan name (e.g. `pro`)\n- `interval` — `month` or `year`"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"CHECKOUT_URL\",\n  \"explanation\": \"Checkout session created.\",\n  \"result\": {\n    \"url\": \"https://checkout.stripe.com/pay/cs_test_...\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Open Billing Portal",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/billing/portal",
+                "description": "Generate a Stripe billing portal URL for the current user to manage their subscription, update payment method, or cancel."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PORTAL_URL\",\n  \"explanation\": \"Portal session created.\",\n  \"result\": {\n    \"url\": \"https://billing.stripe.com/session/...\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Record Usage",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"metric\": \"api_calls\",\n  \"quantity\": 1\n}" },
+                "url": "{{base_url}}/billing/usage",
+                "description": "Record a usage event against the current user's subscription. Used for metered billing.\n\n`quantity` defaults to `1` if omitted."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"USAGE_RECORDED\",\n  \"explanation\": \"Usage recorded successfully.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Usage",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/billing/usage/api_calls",
+                "description": "Return the total usage for a given metric since the start of the current billing period."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"USAGE_FETCHED\",\n  \"explanation\": \"Usage retrieved successfully.\",\n  \"result\": {\n    \"metric\": \"api_calls\",\n    \"total\": 342,\n    \"since\": \"2026-05-01T00:00:00.000Z\"\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Workspace Subscription",
+          "description": "Subscription scoped to a workspace (`subscriberType: 'workspace'`). Requires `X-Workspace-ID` header or `:workspaceId` path param.",
+          "item": [
+            {
+              "name": "Get Subscription",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/workspaces/{{workspace_id}}/billing/subscription",
+                "description": "Return the active subscription for the given workspace."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"SUBSCRIPTION_FETCHED\",\n  \"explanation\": \"Subscription retrieved successfully.\",\n  \"result\": {\n    \"subscription\": {\n      \"id\": \"sub-uuid\",\n      \"subscriberType\": \"workspace\",\n      \"subscriberId\": \"b2c3d4e5-...\",\n      \"plan\": \"pro\",\n      \"interval\": \"month\",\n      \"status\": \"active\",\n      \"cancelAtPeriodEnd\": false,\n      \"currentPeriodStart\": \"2026-05-01T00:00:00.000Z\",\n      \"currentPeriodEnd\": \"2026-06-01T00:00:00.000Z\",\n      \"trialEndsAt\": null,\n      \"createdAt\": \"2026-05-01T00:00:00.000Z\"\n    }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Start Checkout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"plan\": \"pro\",\n  \"interval\": \"year\"\n}" },
+                "url": "{{base_url}}/workspaces/{{workspace_id}}/billing/checkout",
+                "description": "Create a Stripe checkout session for the workspace."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"CHECKOUT_URL\",\n  \"explanation\": \"Checkout session created.\",\n  \"result\": { \"url\": \"https://checkout.stripe.com/pay/cs_test_...\" }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Open Billing Portal",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/workspaces/{{workspace_id}}/billing/portal",
+                "description": "Generate a Stripe billing portal URL for the workspace subscription."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"PORTAL_URL\",\n  \"explanation\": \"Portal session created.\",\n  \"result\": { \"url\": \"https://billing.stripe.com/session/...\" }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Record Usage",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"metric\": \"active_seats\",\n  \"quantity\": 1\n}" },
+                "url": "{{base_url}}/workspaces/{{workspace_id}}/billing/usage",
+                "description": "Record a usage event against the workspace subscription."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"USAGE_RECORDED\",\n  \"explanation\": \"Usage recorded successfully.\",\n  \"result\": { \"ok\": true }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Usage",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+                "url": "{{base_url}}/workspaces/{{workspace_id}}/billing/usage/active_seats",
+                "description": "Return the total usage for a metric for this workspace since the start of the billing period."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"USAGE_FETCHED\",\n  \"explanation\": \"Usage retrieved successfully.\",\n  \"result\": {\n    \"metric\": \"active_seats\",\n    \"total\": 8,\n    \"since\": \"2026-05-01T00:00:00.000Z\"\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Webhook",
+          "item": [
+            {
+              "name": "Stripe Webhook",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "stripe-signature", "value": "t=...,v1=..." }
+                ],
+                "body": { "mode": "raw", "raw": "{ \"type\": \"customer.subscription.updated\", \"data\": { \"object\": {} } }" },
+                "url": "{{base_url}}/billing/webhook",
+                "description": "Stripe webhook receiver. The signature is verified internally using `STRIPE_WEBHOOK_SECRET`.\n\nHandled events:\n- `customer.subscription.created`\n- `customer.subscription.updated`\n- `customer.subscription.deleted`\n\nAll other event types return `{ received: true }` without side effects."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{ \"received\": true }"
+                },
+                {
+                  "name": "400 Invalid signature",
+                  "status": "Bad Request", "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVALID_REQUEST\",\n  \"explanation\": \"Invalid webhook signature.\"\n}"
+                }
+              ]
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "Platform",
+      "description": "Utility endpoints available in all Fonderie.js applications.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/../health",
+            "description": "Returns server health status. Returns `503` if `maintenance.mode` is enabled in remote config."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"ts\": \"2026-05-12T10:00:00.000Z\",\n  \"version\": \"0.0.1\"\n}"
+            },
+            {
+              "name": "503 Maintenance mode",
+              "status": "Service Unavailable", "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{ \"error\": \"Service temporarily unavailable\" }"
+            }
+          ]
+        },
+        {
+          "name": "Remote Config  (dev only)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/config",
+            "description": "Return all active remote config flags. Only available when `NODE_ENV !== 'production'`."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"config\": {\n    \"maintenance.mode\": false,\n    \"auth.mfa\": true,\n    \"auth.verificationCooldown\": 60,\n    \"auth.sessionDuration\": \"7d\"\n  }\n}"
+            },
+            {
+              "name": "403 Production",
+              "status": "Forbidden", "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{ \"error\": \"Not available in production\" }"
+            }
+          ]
+        }
+      ]
+    }
+
+  ]
+}
