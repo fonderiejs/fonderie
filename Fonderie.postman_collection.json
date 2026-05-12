@@ -25,7 +25,7 @@
           "item": [
             {
               "name": "Register",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.accessToken){pm.collectionVariables.set('token',r.result.accessToken);pm.collectionVariables.set('refresh_token',r.result.refreshToken);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -39,7 +39,7 @@
                   "status": "Created", "code": 201,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"REGISTERED\",\n  \"explanation\": \"Registration successful.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"alice@example.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"phone\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"timezone\": \"UTC\",\n      \"isEmailVerified\": false,\n      \"mfaEnabled\": false,\n      \"suspended\": false,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                  "body": "{\n  \"reason\": \"USER_EMAIL_REGISTERED\",\n  \"explanation\": \"Account created. Check your email for a verification code.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    },\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"alice@example.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"phone\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"timezone\": \"UTC\",\n      \"isEmailVerified\": false,\n      \"mfaEnabled\": false,\n      \"suspended\": false,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    }\n  }\n}"
                 },
                 {
                   "name": "422 Email already in use",
@@ -52,7 +52,7 @@
             },
             {
               "name": "Login",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.accessToken){pm.collectionVariables.set('token',r.result.accessToken);pm.collectionVariables.set('refresh_token',r.result.refreshToken);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -66,14 +66,14 @@
                   "status": "OK", "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"LOGIN_SUCCESS\",\n  \"explanation\": \"Login successful.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"alice@example.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"phone\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"timezone\": \"UTC\",\n      \"isEmailVerified\": true,\n      \"mfaEnabled\": false,\n      \"suspended\": false,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                  "body": "{\n  \"reason\": \"USER_EMAIL_LOGIN\",\n  \"explanation\": \"Login successful.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    },\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"alice@example.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"phone\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"timezone\": \"UTC\",\n      \"isEmailVerified\": true,\n      \"mfaEnabled\": false,\n      \"suspended\": false,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    }\n  }\n}"
                 },
                 {
                   "name": "200 MFA pending",
                   "status": "OK", "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"MFA_REQUIRED\",\n  \"explanation\": \"MFA verification required.\",\n  \"result\": {\n    \"mfaPending\": true,\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                  "body": "{\n  \"reason\": \"MFA_REQUIRED\",\n  \"explanation\": \"Multi-factor authentication required.\",\n  \"result\": {\n    \"mfaToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
                 },
                 {
                   "name": "401 Invalid credentials",
@@ -86,7 +86,7 @@
             },
             {
               "name": "Refresh Token",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.accessToken){pm.collectionVariables.set('token',r.result.accessToken);pm.collectionVariables.set('refresh_token',r.result.refreshToken);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -100,14 +100,14 @@
                   "status": "OK", "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"TOKEN_REFRESHED\",\n  \"explanation\": \"Token refreshed successfully.\",\n  \"result\": {\n    \"user\": { \"id\": \"a1b2c3d4-...\", \"email\": \"alice@example.com\" },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                  "body": "{\n  \"reason\": \"TOKENS_REFRESHED\",\n  \"explanation\": \"Tokens refreshed successfully.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    }\n  }\n}"
                 },
                 {
                   "name": "401 Invalid refresh token",
                   "status": "Unauthorized", "code": 401,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"INVALID_TOKEN\",\n  \"explanation\": \"Refresh token is invalid or expired.\"\n}"
+                  "body": "{\n  \"reason\": \"TOKEN_REFRESH_FAILED\",\n  \"explanation\": \"Refresh token is invalid or expired.\"\n}"
                 }
               ]
             },
@@ -173,9 +173,9 @@
                   { "key": "Content-Type", "value": "application/json" },
                   { "key": "Authorization", "value": "Bearer {{token}}" }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"token\": \"123456\"\n}" },
+                "body": { "mode": "raw", "raw": "{\n  \"pin\": \"123456\"\n}" },
                 "url": "{{base_url}}/auth/verify",
-                "description": "Submit the OTP received by email or SMS. Marks the account as verified."
+                "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth → Verify Phone OTP** request instead — phone verification returns a new token pair."
               },
               "response": [
                 {
@@ -225,9 +225,9 @@
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"resetToken\": \"<token-from-email>\",\n  \"password\": \"newPassword123\"\n}" },
+                "body": { "mode": "raw", "raw": "{\n  \"pin\": \"123456\",\n  \"password\": \"newPassword123\"\n}" },
                 "url": "{{base_url}}/auth/email/reset",
-                "description": "Set a new password using the token received by email. Token is single-use and expires."
+                "description": "Set a new password using the 6-digit PIN received by email. The PIN is single-use and expires after 1 hour."
               },
               "response": [
                 {
@@ -290,7 +290,105 @@
                   "status": "OK", "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"LOGIN_SUCCESS\",\n  \"explanation\": \"Google login successful.\",\n  \"result\": {\n    \"user\": {\n      \"id\": \"a1b2c3d4-...\",\n      \"email\": \"alice@gmail.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"isEmailVerified\": true,\n      \"mfaEnabled\": false\n    },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                  "body": "{\n  \"reason\": \"USER_GOOGLE_LOGIN\",\n  \"explanation\": \"Google login successful.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    },\n    \"user\": {\n      \"id\": \"a1b2c3d4-...\",\n      \"email\": \"alice@gmail.com\",\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"isEmailVerified\": true,\n      \"mfaEnabled\": false\n    }\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "name": "Phone Auth",
+          "description": "Passwordless phone authentication via SMS OTP. Available when `phone` is listed in `providers` in `IAuthConfig`.\n\n**Register flow:**\n1. `POST /auth/register` with `{ phone }` → creates account, sends OTP, returns a pre-verified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + the token from step 1 → confirms the phone number and issues a verified token pair\n\n**Login flow (returning user):**\n1. `POST /auth/login` with `{ phone }` → sends OTP, returns an unverified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + that token → issues a verified token pair\n\nMFA is not available for phone sessions — the OTP itself is the second factor.",
+          "item": [
+            {
+              "name": "Register with Phone",
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"+15550001234\",\n  \"firstName\": \"Alice\",\n  \"lastName\": \"Smith\"\n}" },
+                "url": "{{base_url}}/auth/register",
+                "description": "Create a new account using a phone number. An OTP is sent to the provided number immediately.\n\nReturns an unverified token pair (status 202). The account must be confirmed via `POST /auth/verify` before accessing endpoints that require a verified session.\n\n`firstName` and `lastName` are optional."
+              },
+              "response": [
+                {
+                  "name": "202 Accepted",
+                  "status": "Accepted", "code": 202,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"USER_PHONE_REGISTERED\",\n  \"explanation\": \"Account created. A verification code has been sent to your phone.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    },\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": null,\n      \"firstName\": \"Alice\",\n      \"lastName\": \"Smith\",\n      \"phone\": \"+15550001234\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"timezone\": \"UTC\",\n      \"isEmailVerified\": false,\n      \"mfaEnabled\": false,\n      \"suspended\": false,\n      \"createdAt\": \"2026-05-12T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-12T10:00:00.000Z\"\n    }\n  }\n}"
+                },
+                {
+                  "name": "409 Phone already registered",
+                  "status": "Conflict", "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"USER_ALREADY_EXISTS\",\n  \"explanation\": \"Phone already registered.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Login with Phone",
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"+15550001234\"\n}" },
+                "url": "{{base_url}}/auth/login",
+                "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+              },
+              "response": [
+                {
+                  "name": "202 OTP sent",
+                  "status": "Accepted", "code": 202,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"USER_PHONE_OTP_SENT\",\n  \"explanation\": \"A verification code has been sent to your phone.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    },\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"phone\": \"+15550001234\",\n      \"isEmailVerified\": false,\n      \"mfaEnabled\": false,\n      \"suspended\": false\n    }\n  }\n}"
+                },
+                {
+                  "name": "401 Phone not registered",
+                  "status": "Unauthorized", "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"INVALID_CREDENTIALS\",\n  \"explanation\": \"Invalid credentials.\"\n}"
+                },
+                {
+                  "name": "403 Suspended",
+                  "status": "Forbidden", "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"ACCOUNT_SUSPENDED\",\n  \"explanation\": \"Account suspended. Please contact support.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Verify Phone OTP",
+              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"pin\": \"123456\"\n}" },
+                "url": "{{base_url}}/auth/verify",
+                "description": "Submit the 6-digit OTP received by SMS. On success, issues a **new verified token pair** which replaces the pre-verification tokens. The `{{token}}` collection variable is updated automatically.\n\nUse the unverified `token` returned by Register or Login as the `Authorization: Bearer` header for this call."
+              },
+              "response": [
+                {
+                  "name": "200 Phone verified",
+                  "status": "OK", "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"VERIFIED\",\n  \"explanation\": \"Phone verified successfully.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    },\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"phone\": \"+15550001234\",\n      \"isEmailVerified\": false,\n      \"mfaEnabled\": false,\n      \"suspended\": false\n    }\n  }\n}"
+                },
+                {
+                  "name": "400 Invalid or expired OTP",
+                  "status": "Bad Request", "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"reason\": \"VERIFICATION_FAILED\",\n  \"explanation\": \"Invalid or expired pin.\"\n}"
                 }
               ]
             }
@@ -307,7 +405,7 @@
                 "method": "POST",
                 "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
                 "url": "{{base_url}}/auth/mfa/setup",
-                "description": "Initiate MFA setup. Returns a QR code image URL and the raw TOTP secret. The secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nRequires: authenticated + verified email + email login method."
+                "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately — they are only shown once.\n\nRequires: authenticated + verified email + email login method."
               },
               "response": [
                 {
@@ -315,7 +413,7 @@
                   "status": "OK", "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"MFA_SETUP_INITIATED\",\n  \"explanation\": \"Scan the QR code with your authenticator app, then verify with a code.\",\n  \"result\": {\n    \"qrCodeUrl\": \"data:image/png;base64,...\",\n    \"secret\": \"JBSWY3DPEHPK3PXP\"\n  }\n}"
+                  "body": "{\n  \"reason\": \"MFA_SETUP_INITIATED\",\n  \"explanation\": \"Scan the QR code with your authenticator app.\",\n  \"result\": {\n    \"qr\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...\",\n    \"backupCodes\": [\"ABCD1234\", \"EFGH5678\", \"IJKL9012\", \"MNOP3456\", \"QRST7890\"]\n  }\n}"
                 }
               ]
             },
@@ -327,9 +425,9 @@
                   { "key": "Content-Type", "value": "application/json" },
                   { "key": "Authorization", "value": "Bearer {{token}}" }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"code\": \"123456\"\n}" },
+                "body": { "mode": "raw", "raw": "{\n  \"token\": \"123456\"\n}" },
                 "url": "{{base_url}}/auth/mfa/verify",
-                "description": "Confirm a TOTP code. On first use (after setup), activates MFA and returns backup codes. On subsequent uses (during login with `mfaPending: true`), exchanges the pending token for a full access token."
+                "description": "Confirm a TOTP `token` from your authenticator app.\n\n**Two contexts:**\n- **Setup confirmation** (when `pendingSecret` exists): activates MFA, returns `{ mfaEnabled: true }`\n- **Login completion** (when called with the `mfaToken` from a login response): issues a full access + refresh token pair\n\nBackup codes (8-character uppercase strings) can be submitted as `token` in place of a TOTP code and will be consumed on use.\n\nUse the `mfaToken` from the login response as the `Authorization: Bearer` token for this call."
               },
               "response": [
                 {
@@ -337,14 +435,14 @@
                   "status": "OK", "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"MFA_ENABLED\",\n  \"explanation\": \"MFA has been enabled. Store your backup codes safely.\",\n  \"result\": {\n    \"backupCodes\": [\"ABCD-1234\", \"EFGH-5678\", \"IJKL-9012\"]\n  }\n}"
+                  "body": "{\n  \"reason\": \"MFA_VERIFIED\",\n  \"explanation\": \"MFA verified successfully.\",\n  \"result\": {\n    \"mfaEnabled\": true\n  }\n}"
                 },
                 {
                   "name": "200 OK — MFA login complete",
                   "status": "OK", "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [{ "key": "Content-Type", "value": "application/json" }],
-                  "body": "{\n  \"reason\": \"MFA_VERIFIED\",\n  \"explanation\": \"MFA verification successful.\",\n  \"result\": {\n    \"user\": { \"id\": \"a1b2c3d4-...\", \"email\": \"alice@example.com\" },\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+                  "body": "{\n  \"reason\": \"MFA_VERIFIED\",\n  \"explanation\": \"MFA verified successfully.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    },\n    \"user\": { \"id\": \"a1b2c3d4-...\", \"email\": \"alice@example.com\", \"mfaEnabled\": true }\n  }\n}"
                 },
                 {
                   "name": "400 Invalid code",
@@ -363,7 +461,7 @@
                   { "key": "Content-Type", "value": "application/json" },
                   { "key": "Authorization", "value": "Bearer {{token}}" }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"code\": \"123456\"\n}" },
+                "body": { "mode": "raw", "raw": "{\n  \"token\": \"123456\"\n}" },
                 "url": "{{base_url}}/auth/mfa/disable",
                 "description": "Disable MFA for the current account. Requires a valid TOTP code or backup code to confirm intent."
               },
@@ -385,7 +483,7 @@
                   { "key": "Content-Type", "value": "application/json" },
                   { "key": "Authorization", "value": "Bearer {{token}}" }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"code\": \"123456\"\n}" },
+                "body": { "mode": "raw", "raw": "{\n  \"token\": \"123456\"\n}" },
                 "url": "{{base_url}}/auth/mfa/backup-codes",
                 "description": "Invalidate existing backup codes and generate a new set. Requires a valid TOTP code."
               },
