@@ -25,7 +25,7 @@
           "item": [
             {
               "name": "Register",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -52,7 +52,7 @@
             },
             {
               "name": "Login",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -86,7 +86,7 @@
             },
             {
               "name": "Refresh Token",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -303,7 +303,7 @@
           "item": [
             {
               "name": "Register with Phone",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -330,7 +330,7 @@
             },
             {
               "name": "Login with Phone",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -364,7 +364,7 @@
             },
             {
               "name": "Verify Phone OTP",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.tokens?.access){pm.collectionVariables.set('token',r.result.tokens.access);pm.collectionVariables.set('refresh_token',r.result.tokens.refresh);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "POST",
                 "header": [
@@ -641,7 +641,7 @@
 
         {
           "name": "Create Workspace",
-          "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.workspace?.id){pm.collectionVariables.set('workspace_id',r.result.workspace.id);}"], "type": "text/javascript" } }],
+          "event": [{ "listen": "test", "script": { "exec": ["const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.workspace?.id){pm.collectionVariables.set('workspace_id',r.result.workspace.id);}"], "type": "text/javascript" } }],
           "request": {
             "method": "POST",
             "header": [
@@ -1188,7 +1188,7 @@
           "item": [
             {
               "name": "List Plans",
-              "event": [{ "listen": "test", "script": { "exec": ["const r=pm.response.json();if(r.result?.plans?.[0]?.id){pm.collectionVariables.set('plan_id',r.result.plans[0].id);}"], "type": "text/javascript" } }],
+              "event": [{ "listen": "test", "script": { "exec": ["const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.plans?.[0]?.id){pm.collectionVariables.set('plan_id',r.result.plans[0].id);}"], "type": "text/javascript" } }],
               "request": {
                 "method": "GET",
                 "header": [],
