@@ -1,7 +1,8 @@
 {
 	"name": "@fonderie-js/client",
 	"version": "0.0.1",
-	"description": "Typed HTTP client for the Fonderie API",
+	"description": "Isomorphic TypeScript client for Fonderie-powered APIs — fully typed request and response shapes, zero runtime dependencies.",
+	"keywords": ["fonderie-js", "client", "http-client", "sdk", "saas", "typescript"],
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": {

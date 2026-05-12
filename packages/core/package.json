@@ -1,7 +1,8 @@
 {
 	"name": "@fonderie-js/core",
 	"version": "0.0.1",
-	"description": "Request lifecycle, middleware pipeline, and framework adapters",
+	"description": "Framework core — request router, middleware pipeline, module system, and shared context types. Every other @fonderie-js package depends on this.",
+	"keywords": ["fonderie-js", "framework", "middleware", "router", "saas", "typescript"],
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": { "node": ">=20" },

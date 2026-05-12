@@ -1,7 +1,8 @@
 {
 	"name": "@fonderie-js/store",
 	"version": "0.0.1",
-	"description": "Database adapter interface, migration runner, and SQL helpers",
+	"description": "Database abstraction layer — IStoreAdapter interface, PostgreSQL driver, sequential migration runner, and SQL tagged-template helpers. The only package every other module depends on.",
+	"keywords": ["fonderie-js", "postgres", "postgresql", "database", "migrations", "adapter", "sql", "saas", "typescript"],
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": {

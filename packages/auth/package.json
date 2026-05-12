@@ -1,7 +1,8 @@
 {
 	"name": "@fonderie-js/auth",
 	"version": "0.0.1",
-	"description": "Authentication — JWT, sessions, OAuth, MFA, and password recovery",
+	"description": "Drop-in auth for SaaS — email/password, phone OTP, Google OAuth, stateless JWT sessions, TOTP-based MFA with backup codes, and self-service password recovery.",
+	"keywords": ["fonderie-js", "auth", "authentication", "jwt", "oauth", "mfa", "totp", "otp", "sessions", "saas", "typescript"],
 	"license": "UNLICENSED",
 	"type": "module",
 	"engines": {
