@@ -198,18 +198,10 @@ export class UserModel {
 	}
 
 	async updateEmail(id: string, email: string): Promise<void> {
-		await this.store.transaction(async tx => {
-			await Promise.all([
-				tx.query(
-					`UPDATE fonderie_users SET email = $1, email_verified_at = NULL, updated_at = now() WHERE id = $2`,
-					[email.toLowerCase().trim(), id],
-				),
-				tx.query(
-					`DELETE FROM fonderie_email_verifications WHERE user_id = $1`,
-					[id],
-				),
-			]);
-		});
+		await this.store.query(
+			`UPDATE fonderie_users SET email = $1, email_verified_at = NULL, updated_at = now() WHERE id = $2`,
+			[email.toLowerCase().trim(), id],
+		);
 	}
 
 	async updatePhone(id: string, phone: string): Promise<void> {
