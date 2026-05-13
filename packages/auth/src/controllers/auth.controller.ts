@@ -4,7 +4,7 @@ import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
 import type { IStoreAdapter }                           from '@fonderie-js/store';
 import type { IAuthConfig }                             from '../config';
-import { DEFAULT_VERIFICATION_COOLDOWN }                from '../config';
+import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
 import { issueTokenPair, issueMfaPendingToken, verifyToken, refreshTokenExpiry } from '../services/jwt';
 import { checkCooldown } from '../services/cooldown';
 import { hashPassword, verifyPassword }                 from '../services/password';
@@ -73,7 +73,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				await emailVerif.create(row.id, pin, expiresAt);
 
 				ctx.meta['message'] = {
-					type:      'email-registration',
+					type:      MESSAGE_KEYS.emailRegistration,
 					data:      { pin, firstName: firstName ?? '' },
 					recipient: { email, phone: null, deviceToken: null },
 				} satisfies ICourierMessage;
@@ -125,7 +125,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				await phoneVerif.upsert(id, phone.trim(), otp, expiresAt);
 
 				ctx.meta['message'] = {
-					type:      'phone-otp',
+					type:      MESSAGE_KEYS.phoneOtp,
 					data:      { otp },
 					recipient: { email: null, phone: phone.trim(), deviceToken: null },
 				} satisfies ICourierMessage;
@@ -228,7 +228,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				await phoneVerif.upsert(user.id, phone.trim(), otp, expiresAt);
 
 				ctx.meta['message'] = {
-					type:      'phone-otp',
+					type:      MESSAGE_KEYS.phoneOtp,
 					data:      { otp },
 					recipient: { email: null, phone: phone.trim(), deviceToken: null },
 				} satisfies ICourierMessage;
@@ -353,7 +353,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			await passwordReset.create(user.id, pin, expiresAt);
 
 			ctx.meta['message'] = {
-				type:      'password-reset',
+				type:      MESSAGE_KEYS.passwordReset,
 				recipient: { email, phone: null, deviceToken: null },
 				data:      { pin },
 			} satisfies ICourierMessage;
@@ -501,7 +501,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				await phoneVerif.upsert(ctx.user!.id, phone, otp, expiresAt);
 
 				ctx.meta['message'] = {
-					type:      'phone-otp',
+					type:      MESSAGE_KEYS.phoneOtp,
 					data:      { otp },
 					recipient: { email: null, phone, deviceToken: null },
 				} satisfies ICourierMessage;
@@ -532,7 +532,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
 
 			ctx.meta['message'] = {
-				type:      'email-verification',
+				type:      MESSAGE_KEYS.emailVerification,
 				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 				data:      { pin },
 			} satisfies ICourierMessage;

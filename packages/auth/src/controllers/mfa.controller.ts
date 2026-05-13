@@ -5,6 +5,7 @@ import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
 import type { IAuthConfig }                                     from '../config';
+import { MESSAGE_KEYS }                                    from '../config';
 import { issueTokenPair, refreshTokenExpiry }                    from '../services/jwt';
 import { generateTotpSecret, generateTotpUri, verifyTotpToken,
          generateBackupCodes }                                   from '../services/mfa';
@@ -61,7 +62,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				await users.confirmMfaSecret(ctx.user!.id);
 
 				ctx.meta['message'] = {
-					type:      'mfa-enabled',
+					type:      MESSAGE_KEYS.mfaEnabled,
 					data:      {},
 					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 				} satisfies ICourierMessage;
@@ -161,7 +162,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			await backupCodes.replace(ctx.user!.id, codeHashes);
 
 			ctx.meta['message'] = {
-				type:      'mfa-backup-codes-regenerated',
+				type:      MESSAGE_KEYS.mfaBackupCodesRegenerated,
 				data:      {},
 				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 			} satisfies ICourierMessage;
@@ -196,7 +197,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			]);
 
 			ctx.meta['message'] = {
-				type:      'mfa-disabled',
+				type:      MESSAGE_KEYS.mfaDisabled,
 				data:      {},
 				recipient: { email: user.email, phone: null, deviceToken: null },
 			} satisfies ICourierMessage;

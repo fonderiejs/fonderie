@@ -25,6 +25,20 @@ export const AUTH_CONFIG_KEYS: Record<keyof IAuthRuntimeConfig, string> = {
 	mfa:                  'auth.mfa.enabled',
 } as const;
 
+export const MESSAGE_KEYS = {
+	emailRegistration:         'email-registration',
+	emailVerification:         'email-verification',
+	passwordReset:             'password-reset',
+	phoneOtp:                  'phone-otp',
+	mfaEnabled:                'mfa-enabled',
+	mfaDisabled:               'mfa-disabled',
+	mfaBackupCodesRegenerated: 'mfa-backup-codes-regenerated',
+	emailChanged:              'email-changed',
+	phoneChanged:              'phone-changed',
+} as const;
+
+export type AuthMessageKey = typeof MESSAGE_KEYS[keyof typeof MESSAGE_KEYS];
+
 export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	providers: ('email' | 'phone' | 'google' | 'github')[];
 	appName?:  string;

@@ -4,6 +4,7 @@ import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
 import type { IStoreAdapter }                     from '@fonderie-js/store';
 
+import { MESSAGE_KEYS }          from '../config';
 import { toUserDTO }                  from '../dtos/user';
 import type { IUser }                 from '../types';
 import { UserModel }                  from '../models/user.model';
@@ -108,14 +109,14 @@ export function userController(store: IStoreAdapter) {
 
 			const messages: ICourierMessage[] = [
 				{
-					type:      'email-verification',
+					type:      MESSAGE_KEYS.emailVerification,
 					data:      { pin },
 					recipient: { email: normalised, phone: null, deviceToken: null },
 				},
 			];
 			if (oldEmail) {
 				messages.push({
-					type:      'email-changed',
+					type:      MESSAGE_KEYS.emailChanged,
 					data:      { newEmail: normalised },
 					recipient: { email: oldEmail, phone: null, deviceToken: null },
 				});
@@ -149,14 +150,14 @@ export function userController(store: IStoreAdapter) {
 
 			const messages: ICourierMessage[] = [
 				{
-					type:      'phone-otp',
+					type:      MESSAGE_KEYS.phoneOtp,
 					data:      { otp },
 					recipient: { email: null, phone: normalised, deviceToken: null },
 				},
 			];
 			if (ctx.user!.email) {
 				messages.push({
-					type:      'phone-changed',
+					type:      MESSAGE_KEYS.phoneChanged,
 					data:      {},
 					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 				});
