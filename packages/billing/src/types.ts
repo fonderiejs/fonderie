@@ -1,5 +1,38 @@
 export type SubscriberType = 'user' | 'workspace'
 
+// ── Policy ────────────────────────────────────────────────────────
+
+export type PolicyEntry =
+	| { enabled: boolean }
+	| {
+		limit:   number | null   // advertised ceiling; null = unlimited
+		buffer?: number          // unadvertised grace on top of limit
+		warnAt?: number          // fraction of limit to trigger warning (0–1)
+		window?: string          // '1d' | '30d' | '1h' — if set, auto rate-limited
+		unit?:   string          // display only, e.g. 'mb', 'requests'
+	  }
+
+export type LimitStatus = 'ok' | 'warning' | 'over_limit' | 'blocked'
+
+export type IPolicyStatus =
+	| { type: 'feature'; enabled: boolean }
+	| {
+		type:     'counter'
+		limit:    number | null   // advertised — safe to send to client
+		used:     number
+		status:   LimitStatus
+		resetsAt: string | null   // ISO string for windowed counters, null otherwise
+	  }
+
+export interface IBillingContext {
+	subscriber: { type: SubscriberType; id: string }
+	plan:       string
+	active:     boolean                          // subscription is active or trialing
+	statuses:   Record<string, IPolicyStatus>
+}
+
+// ── Subscription ──────────────────────────────────────────────────
+
 export interface ISubscription {
 	id:                     string
 	subscriberType:         SubscriberType
@@ -24,12 +57,7 @@ export type SubscriptionStatus =
 	| 'incomplete'
 	| 'paused'
 
-export interface IPlanFeature {
-	name:        string
-	description: string
-	enabled:     boolean
-	limit?:      number
-}
+// ── DB plan (read from fonderie_plans table) ──────────────────────
 
 export interface IPlan {
 	id:             string
@@ -45,6 +73,15 @@ export interface IPlan {
 	features:       IPlanFeature[]
 	metadata:       Record<string, unknown>
 }
+
+export interface IPlanFeature {
+	name:        string
+	description: string
+	enabled:     boolean
+	limit?:      number
+}
+
+// ── Usage ─────────────────────────────────────────────────────────
 
 export interface IUsageRecord {
 	id:             string
