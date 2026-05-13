@@ -1,12 +1,13 @@
 {
 	"compilerOptions": {
-		"target":           "ES2022",
-		"module":           "NodeNext",
-		"moduleResolution": "NodeNext",
-		"strict":           true,
-		"skipLibCheck":     true,
-		"types":            ["node"],
-		"baseUrl":          ".",
+		"target":              "ES2022",
+		"module":              "NodeNext",
+		"moduleResolution":    "NodeNext",
+		"strict":              true,
+		"skipLibCheck":        true,
+		"types":               ["node"],
+		"ignoreDeprecations":  "6.0",
+		"baseUrl":             ".",
 		"paths": {
 			"@fonderie-js/auth":                    ["../../packages/auth/src/index.ts"],
 			"@fonderie-js/auth/migrations":         ["../../packages/auth/src/migrations/index.ts"],
@@ -21,6 +22,7 @@
 			"@fonderie-js/courier/migrations":      ["../../packages/courier/src/migrations/index.ts"],
 			"@fonderie-js/permissions":             ["../../packages/permissions/src/index.ts"],
 			"@fonderie-js/permissions/migrations":  ["../../packages/permissions/src/migrations/index.ts"],
+			"@fonderie-js/logger":                  ["../../packages/logger/src/index.ts"],
 			"@fonderie-js/store":                   ["../../packages/store/src/index.ts"],
 			"@fonderie-js/workspaces":              ["../../packages/workspaces/src/index.ts"],
 			"@fonderie-js/workspaces/migrations":   ["../../packages/workspaces/src/migrations/index.ts"]
