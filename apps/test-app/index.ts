@@ -1,39 +1,30 @@
-import {
-	FonderieApp,
-	defineConfig,
-} from '@fonderie-js/core'
-import type { IFonderieContext } from '@fonderie-js/core'
-import { withBody, requireAuth } from '@fonderie-js/core/middlewares'
-import {
-	PGAdapter,
-	MigrationRunner,
-} from '@fonderie-js/store'
-import { AuthModule, AUTH_CONFIG_KEYS }           from '@fonderie-js/auth'
-import type { IAuthConfig, IAuthRuntimeConfig }   from '@fonderie-js/auth'
-import {
-	PermissionsModule,
-	requirePermission,
-	OPERATIONS,
-} from '@fonderie-js/permissions'
-import {
-	WorkspacesModule,
-	withWorkspace,
-} from '@fonderie-js/workspaces';
-
-import { CourierModule }                from '@fonderie-js/courier';
-import { BillingModule, StripeProvider } from '@fonderie-js/billing';
-import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
-import { LoggerModule }                  from '@fonderie-js/logger';
-
 import { fileURLToPath } from 'node:url';
 import { join }          from 'node:path';
 
+import {
+	FonderieApp,
+	defineConfig,
+} from '@fonderie-js/core';
+
+import type { IFonderieContext } 		 from '@fonderie-js/core';
+import { PGAdapter, MigrationRunner } 	 from '@fonderie-js/store';
+import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
+import { LoggerModule }                  from '@fonderie-js/logger';
+import { CourierModule }                 from '@fonderie-js/courier';
+import { BillingModule, StripeProvider } from '@fonderie-js/billing';
+import { withBody, requireAuth } 		 from '@fonderie-js/core/middlewares';
+
+import { AuthModule, AUTH_CONFIG_KEYS }           			from '@fonderie-js/auth';
+import type { IAuthConfig, IAuthRuntimeConfig }   			from '@fonderie-js/auth';
+import { WorkspacesModule, withWorkspace } 					from '@fonderie-js/workspaces';
+import { PermissionsModule, requirePermission, OPERATIONS } from '@fonderie-js/permissions';
+
 import { getMigrationsPath as authMigrations }        from '@fonderie-js/auth/migrations';
-import { getMigrationsPath as permissionsMigrations } from '@fonderie-js/permissions/migrations';
-import { getMigrationsPath as workspacesMigrations }  from '@fonderie-js/workspaces/migrations';
-import { getMigrationsPath as billingMigrations }     from '@fonderie-js/billing/migrations';
 import { getMigrationsPath as configMigrations }      from '@fonderie-js/config/migrations';
+import { getMigrationsPath as billingMigrations }     from '@fonderie-js/billing/migrations';
 import { getMigrationsPath as courierMigrations }     from '@fonderie-js/courier/migrations';
+import { getMigrationsPath as workspacesMigrations }  from '@fonderie-js/workspaces/migrations';
+import { getMigrationsPath as permissionsMigrations } from '@fonderie-js/permissions/migrations';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -58,8 +49,8 @@ const authConfig: IAuthConfig = {
 	...(googleClientId && googleClientSecret ? {
 		google: {
 			clientId:    googleClientId,
-			clientSecret: googleClientSecret,
 			redirectUri:  googleCallbackUrl,
+			clientSecret: googleClientSecret,
 		},
 	} : {}),
 	resolve: (ctx: { meta: Record<string, unknown> }): Partial<IAuthRuntimeConfig> => ({
