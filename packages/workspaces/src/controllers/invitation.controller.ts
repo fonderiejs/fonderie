@@ -3,9 +3,10 @@ import type { IFonderieContext }             from '@fonderie-js/core';
 import type { ICourierMessage }              from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
-import { MESSAGE_KEYS } from '../config';
-import { InvitationModel }         from '../models/invitation.model';
-import { toInvitationDTO }         from '../dtos/workspace';
+import { getPlanLimit }      from '@fonderie-js/billing'
+import { MESSAGE_KEYS }      from '../config'
+import { InvitationModel }   from '../models/invitation.model'
+import { toInvitationDTO }   from '../dtos/workspace'
 
 export function invitationController(store: IStoreAdapter, ttl: string) {
 	const invitations = new InvitationModel(store)
@@ -29,6 +30,25 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 
 			if (typeof email !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required')
+			}
+
+			// Seat limit — enforced automatically when billing module is registered.
+			// getPlanLimit reads from ctx.meta['billing'] (fail-open when billing absent).
+			const seatLimit = getPlanLimit(ctx, 'seats')
+			if (seatLimit !== null) {
+				const [countRow] = await store.query<{ count: string }>(
+					`SELECT COUNT(*) AS count FROM fonderie_role_user_workspaces
+					 WHERE workspace_id = $1 AND removed = false AND suspended = false`,
+					[ctx.workspace.id],
+				)
+				if (parseInt(countRow!.count, 10) >= seatLimit) {
+					return setApiResponse(
+						HTTP.PAYMENT_REQUIRED,
+						'SEAT_LIMIT_REACHED',
+						`Your plan allows ${seatLimit} seat${seatLimit === 1 ? '' : 's'}. Upgrade to invite more members.`,
+						{ limit: seatLimit },
+					)
+				}
 			}
 
 			let resolvedRoleId = roleId

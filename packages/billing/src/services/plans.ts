@@ -19,13 +19,12 @@ export async function syncPlansToDB(
 	if (plans.length === 0) return;
 
 	const values = plans.map((_, i) => {
-		const b = i * 11;
-		return `($${b+1}, $${b+2}, $${b+3}, $${b+4}, $${b+5}, $${b+6}, $${b+7}, $${b+8}, $${b+9}, $${b+10}::jsonb, $${b+11}::jsonb)`;
+		const b = i * 9;
+		return `($${b+1}, $${b+2}, $${b+3}, $${b+4}, $${b+5}, $${b+6}, $${b+7}, $${b+8}, $${b+9}::jsonb)`;
 	});
 
 	const params = plans.flatMap(plan => [
 		plan.name,
-		plan.seats            ?? null,
 		plan.trialDays        ?? 0,
 		plan.monthly?.amount  ?? null,
 		plan.monthly?.priceId ?? null,
@@ -33,19 +32,17 @@ export async function syncPlansToDB(
 		plan.yearly?.priceId  ?? null,
 		plan.description      ?? null,
 		plan.tier             ?? 0,
-		JSON.stringify(plan.features ?? []),
 		JSON.stringify(plan.metadata ?? {}),
 	]);
 
 	await store.query(
 		`INSERT INTO fonderie_plans
-			(name, seats, trial_days,
+			(name, trial_days,
 			 monthly_amount, monthly_price_id,
 			 yearly_amount,  yearly_price_id,
-			 description, tier, features, metadata)
+			 description, tier, metadata)
 		VALUES ${values.join(', ')}
 		ON CONFLICT (name) DO UPDATE SET
-			seats            = EXCLUDED.seats,
 			trial_days       = EXCLUDED.trial_days,
 			monthly_amount   = EXCLUDED.monthly_amount,
 			monthly_price_id = EXCLUDED.monthly_price_id,
@@ -53,7 +50,6 @@ export async function syncPlansToDB(
 			yearly_price_id  = EXCLUDED.yearly_price_id,
 			description      = EXCLUDED.description,
 			tier             = EXCLUDED.tier,
-			features         = EXCLUDED.features,
 			metadata         = EXCLUDED.metadata`,
 		params,
 	);

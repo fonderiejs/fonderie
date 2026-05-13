@@ -41,25 +41,52 @@ const config: IBillingConfig = {
 	cancelUrl:  'https://app.example.com/cancel',
 	plans: [
 		{
-			name:  'free',
-			seats: 1,
+			name:     'free',
+			defaults: { warnAt: 0.8, buffer: 0 },
+			policy: {
+				'api-calls': { limit: 1_000, buffer: 100, warnAt: 0.9, window: '1d' },
+				'projects':  { limit: 3 },
+				'seats':     { limit: 1, warnAt: 1.0 },
+				'analytics': { enabled: false },
+				'sso':       { enabled: false },
+			},
 		},
 		{
 			name:      'starter',
-			seats:     5,
 			trialDays: 14,
 			monthly:   { amount: 2900,  priceId: 'price_starter_monthly' },
 			yearly:    { amount: 29000, priceId: 'price_starter_yearly'  },
+			defaults:  { warnAt: 0.8, buffer: 0 },
+			policy: {
+				'api-calls': { limit: 10_000, buffer: 500, warnAt: 0.9, window: '1d' },
+				'projects':  { limit: 10 },
+				'seats':     { limit: 5, warnAt: 1.0 },
+				'analytics': { enabled: true },
+				'sso':       { enabled: false },
+			},
 		},
 		{
 			name:    'pro',
-			seats:   20,
 			monthly: { amount: 7900,  priceId: 'price_pro_monthly' },
 			yearly:  { amount: 79000, priceId: 'price_pro_yearly'  },
+			defaults: { warnAt: 0.85, buffer: 0 },
+			policy: {
+				'api-calls': { limit: 100_000, buffer: 5_000, warnAt: 0.9, window: '1d' },
+				'projects':  { limit: null },
+				'seats':     { limit: 20, warnAt: 1.0 },
+				'analytics': { enabled: true },
+				'sso':       { enabled: false },
+			},
 		},
 		{
-			name:  'enterprise',
-			seats: null,
+			name: 'enterprise',
+			policy: {
+				'api-calls': { limit: null },
+				'projects':  { limit: null },
+				'seats':     { limit: null },
+				'analytics': { enabled: true },
+				'sso':       { enabled: true },
+			},
 		},
 	],
 }
@@ -438,4 +465,176 @@ test('getMigrationsPath: returns a string path', async () => {
 	const path = getMigrationsPath();
 	assert.ok(typeof path === 'string');
 	assert.ok(path.includes('migrations'));
+});
+
+// ── Policy engine ─────────────────────────────────────────────────
+
+test('buildBillingContext: feature flag enabled', async () => {
+	const { buildBillingContext } = await import('../services/policy');
+	const plan = config.plans.find(p => p.name === 'starter')!;
+	const ctx  = buildBillingContext({ subscriber: { type: 'user', id: 'u1' }, plan, active: true, counters: {} });
+	const status = ctx.statuses['analytics'];
+	assert.ok(status?.type === 'feature');
+	assert.equal(status.enabled, true);
+});
+
+test('buildBillingContext: feature flag disabled', async () => {
+	const { buildBillingContext } = await import('../services/policy');
+	const plan = config.plans.find(p => p.name === 'free')!;
+	const ctx  = buildBillingContext({ subscriber: { type: 'user', id: 'u1' }, plan, active: true, counters: {} });
+	const status = ctx.statuses['sso'];
+	assert.ok(status?.type === 'feature');
+	assert.equal(status.enabled, false);
+});
+
+test('buildBillingContext: counter status ok when under limit', async () => {
+	const { buildBillingContext } = await import('../services/policy');
+	const plan = config.plans.find(p => p.name === 'free')!;
+	const ctx  = buildBillingContext({ subscriber: { type: 'user', id: 'u1' }, plan, active: true, counters: { 'api-calls': 500 } });
+	const status = ctx.statuses['api-calls'];
+	assert.ok(status?.type === 'counter');
+	assert.equal(status.status, 'ok');
+	assert.equal(status.limit,  1_000);
+	assert.equal(status.used,   500);
+});
+
+test('buildBillingContext: counter status warning when at warnAt threshold', async () => {
+	const { buildBillingContext } = await import('../services/policy');
+	const plan = config.plans.find(p => p.name === 'free')!;
+	const ctx  = buildBillingContext({ subscriber: { type: 'user', id: 'u1' }, plan, active: true, counters: { 'api-calls': 950 } });
+	const status = ctx.statuses['api-calls'];
+	assert.ok(status?.type === 'counter');
+	assert.equal(status.status, 'warning');  // 950 >= 1000 * 0.9
+});
+
+test('buildBillingContext: counter status over_limit when at soft limit', async () => {
+	const { buildBillingContext } = await import('../services/policy');
+	const plan = config.plans.find(p => p.name === 'free')!;
+	const ctx  = buildBillingContext({ subscriber: { type: 'user', id: 'u1' }, plan, active: true, counters: { 'api-calls': 1_000 } });
+	const status = ctx.statuses['api-calls'];
+	assert.ok(status?.type === 'counter');
+	assert.equal(status.status, 'over_limit');
+});
+
+test('buildBillingContext: counter status blocked when beyond hard limit', async () => {
+	const { buildBillingContext } = await import('../services/policy');
+	const plan = config.plans.find(p => p.name === 'free')!;
+	const ctx  = buildBillingContext({ subscriber: { type: 'user', id: 'u1' }, plan, active: true, counters: { 'api-calls': 1_101 } });
+	const status = ctx.statuses['api-calls'];
+	assert.ok(status?.type === 'counter');
+	assert.equal(status.status, 'blocked');  // 1101 >= 1000 + 100 (buffer)
+});
+
+test('buildBillingContext: unlimited counter (null limit) always ok', async () => {
+	const { buildBillingContext } = await import('../services/policy');
+	const plan = config.plans.find(p => p.name === 'pro')!;
+	const ctx  = buildBillingContext({ subscriber: { type: 'user', id: 'u1' }, plan, active: true, counters: { 'projects': 99999 } });
+	const status = ctx.statuses['projects'];
+	assert.ok(status?.type === 'counter');
+	assert.equal(status.status, 'ok');
+	assert.equal(status.limit,  null);
+});
+
+test('buildBillingContext: windowed counter has resetsAt', async () => {
+	const { buildBillingContext } = await import('../services/policy');
+	const plan = config.plans.find(p => p.name === 'free')!;
+	const ctx  = buildBillingContext({ subscriber: { type: 'user', id: 'u1' }, plan, active: true, counters: { 'api-calls': 0 } });
+	const status = ctx.statuses['api-calls'];
+	assert.ok(status?.type === 'counter');
+	assert.ok(status.resetsAt !== null);
+	assert.ok(!isNaN(Date.parse(status.resetsAt!)));
+});
+
+// ── Counter backends ──────────────────────────────────────────────
+
+test('MemoryCounterBackend: increments and returns total', async () => {
+	const { MemoryCounterBackend } = await import('../backends/memory');
+	const backend = new MemoryCounterBackend();
+	const key     = 'user:u1:api-calls';
+	assert.equal(await backend.increment(key, null),    1);
+	assert.equal(await backend.increment(key, null),    2);
+	assert.equal(await backend.increment(key, null, 3), 5);
+});
+
+test('MemoryCounterBackend: resets after window expires', async () => {
+	const { MemoryCounterBackend } = await import('../backends/memory');
+	const backend   = new MemoryCounterBackend();
+	const key       = 'user:u1:api-calls-window';
+	const windowMs  = 50  // 50ms test window
+	await backend.increment(key, windowMs);
+	await backend.increment(key, windowMs);
+	assert.equal(await backend.get(key, windowMs), 2);
+	await new Promise(r => setTimeout(r, 60))
+	assert.equal(await backend.get(key, windowMs), 0);  // expired
+});
+
+test('MemoryCounterBackend: get returns 0 for unknown key', async () => {
+	const { MemoryCounterBackend } = await import('../backends/memory');
+	const backend = new MemoryCounterBackend();
+	assert.equal(await backend.get('unknown:key', null), 0);
+});
+
+// ── Helpers ───────────────────────────────────────────────────────
+
+test('hasFeature: returns true for enabled feature', async () => {
+	const { hasFeature } = await import('../helpers');
+	const ctx: any = { meta: { billing: { plan: 'starter', active: true, subscriber: { type: 'user', id: 'u1' }, statuses: { 'analytics': { type: 'feature', enabled: true } } } } };
+	assert.equal(hasFeature(ctx, 'analytics'), true);
+});
+
+test('hasFeature: returns false for disabled feature', async () => {
+	const { hasFeature } = await import('../helpers');
+	const ctx: any = { meta: { billing: { plan: 'free', active: true, subscriber: { type: 'user', id: 'u1' }, statuses: { 'sso': { type: 'feature', enabled: false } } } } };
+	assert.equal(hasFeature(ctx, 'sso'), false);
+});
+
+test('hasFeature: returns true when no billing context (fail-open)', async () => {
+	const { hasFeature } = await import('../helpers');
+	const ctx: any = { meta: {} };
+	assert.equal(hasFeature(ctx, 'any-feature'), true);
+});
+
+test('getPlanLimit: returns limit for counter entry', async () => {
+	const { getPlanLimit } = await import('../helpers');
+	const ctx: any = { meta: { billing: { plan: 'free', active: true, subscriber: { type: 'user', id: 'u1' }, statuses: { 'projects': { type: 'counter', limit: 3, used: 1, status: 'ok', resetsAt: null } } } } };
+	assert.equal(getPlanLimit(ctx, 'projects'), 3);
+});
+
+test('getPlanLimit: returns null when no billing context', async () => {
+	const { getPlanLimit } = await import('../helpers');
+	const ctx: any = { meta: {} };
+	assert.equal(getPlanLimit(ctx, 'projects'), null);
+});
+
+test('requireFeature: passes when feature enabled', async () => {
+	const { requireFeature } = await import('../helpers');
+	const middleware = requireFeature('analytics');
+	const ctx: any = { meta: { billing: { plan: 'starter', active: true, subscriber: { type: 'user', id: 'u1' }, statuses: { 'analytics': { type: 'feature', enabled: true } } } } };
+	let called = false;
+	await middleware(ctx, async () => { called = true; return new Response(); });
+	assert.ok(called);
+});
+
+test('requireFeature: blocks when feature disabled', async () => {
+	const { requireFeature } = await import('../helpers');
+	const middleware = requireFeature('sso');
+	const ctx: any = { meta: { billing: { plan: 'free', active: true, subscriber: { type: 'user', id: 'u1' }, statuses: { 'sso': { type: 'feature', enabled: false } } } } };
+	let called = false;
+	const res = await middleware(ctx, async () => { called = true; return new Response(); });
+	assert.ok(!called);
+	assert.equal(res.status, 402);
+});
+
+// ── parseWindowMs ─────────────────────────────────────────────────
+
+test('parseWindowMs: parses day window', async () => {
+	const { parseWindowMs } = await import('../utils');
+	assert.equal(parseWindowMs('1d'),  86_400_000);
+	assert.equal(parseWindowMs('30d'), 30 * 86_400_000);
+});
+
+test('parseWindowMs: parses hour window', async () => {
+	const { parseWindowMs } = await import('../utils');
+	assert.equal(parseWindowMs('1h'),  3_600_000);
+	assert.equal(parseWindowMs('24h'), 86_400_000);
 });

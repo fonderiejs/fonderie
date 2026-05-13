@@ -39,7 +39,7 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			}
 
 			const { customerId } = await config.provider.createCustomer({
-				email:          ctx.user!.email,
+				email:          ctx.user!.email ?? '',
 				subscriberType: subscriber.type,
 				subscriberId:   subscriber.id,
 				userId:         ctx.user!.id,
