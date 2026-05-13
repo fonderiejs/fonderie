@@ -19,18 +19,10 @@ export function parseWindowMs(window: string): number {
 }
 
 // Resolves billing subscriber from request context.
-// Works in both global middleware (before router sets params) and route handlers.
-// Precedence: path params → URL path parsing → ctx.workspace → ctx.user
+// Precedence: X-Workspace-ID header → ctx.workspace (set by withWorkspace) → ctx.user
 export function resolveSubscriber(ctx: IFonderieContext): ISubscriber | null {
-	// Available in route handlers (after router runs)
-	const params      = ctx.meta['params'] as Record<string, string> | undefined
-	const wsFromParam = params?.['workspaceId']
-	if (wsFromParam) return { type: 'workspace', id: wsFromParam }
-
-	// Available in global middleware (before router runs) — parse from URL
-	const url        = new URL(ctx.request.url)
-	const wsFromUrl  = url.pathname.match(/\/workspaces\/([^/]+)/)?.[1]
-	if (wsFromUrl)  return { type: 'workspace', id: wsFromUrl }
+	const wsFromHeader = ctx.request.headers.get('x-workspace-id')
+	if (wsFromHeader) return { type: 'workspace', id: wsFromHeader }
 
 	if (ctx.workspace?.id) return { type: 'workspace', id: ctx.workspace.id }
 	if (ctx.user?.id)      return { type: 'user',      id: ctx.user.id     }

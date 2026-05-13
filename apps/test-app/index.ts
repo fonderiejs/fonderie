@@ -333,19 +333,12 @@ app.addRoute('GET', '/workspaces/:workspaceId/settings/sso',
 //   GET    /plans                                      (public)
 //   GET    /plans/:planId                              (public)
 //
-//   — user-level billing (subscriber = authenticated user) —
+//   — subscriber resolved from X-Workspace-ID header (workspace) or session (user) —
 //   GET    /billing/subscription
 //   POST   /billing/checkout
 //   POST   /billing/portal
 //   POST   /billing/usage
 //   GET    /billing/usage/:metric
-//
-//   — workspace-level billing (subscriber = workspaceId path param) —
-//   GET    /workspaces/:workspaceId/billing/subscription
-//   POST   /workspaces/:workspaceId/billing/checkout
-//   POST   /workspaces/:workspaceId/billing/portal
-//   POST   /workspaces/:workspaceId/billing/usage
-//   GET    /workspaces/:workspaceId/billing/usage/:metric
 //
 //   POST   /billing/webhook
 //
@@ -376,12 +369,6 @@ app.addRoute('GET', '/workspaces/:workspaceId/settings/sso',
 //   PUT    /workspaces/roles/:roleId
 //   DELETE /workspaces/roles/:roleId
 //   POST   /workspaces/roles/:roleId/permissions
-//
-//   GET    /workspaces/:workspaceId/billing/subscription
-//   POST   /workspaces/:workspaceId/billing/checkout
-//   POST   /workspaces/:workspaceId/billing/portal
-//   POST   /workspaces/:workspaceId/billing/usage
-//   GET    /workspaces/:workspaceId/billing/usage/:metric
 
 // ── Boot ──────────────────────────────────────────────────────────
 

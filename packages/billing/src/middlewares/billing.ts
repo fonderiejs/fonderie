@@ -10,6 +10,16 @@ import { getSubscription }        from '../services/subscriptions'
 import { buildBillingContext }    from '../services/policy'
 import { resolveSubscriber, parseWindowMs } from '../utils'
 
+async function isWorkspaceMember(store: IStoreAdapter, workspaceId: string, userId: string): Promise<boolean> {
+	const rows = await store.query<{ user_id: string }>(
+		`SELECT user_id FROM fonderie_role_user_workspaces
+		 WHERE workspace_id = $1 AND user_id = $2 AND removed = false AND suspended = false
+		 LIMIT 1`,
+		[workspaceId, userId],
+	)
+	return rows.length > 0
+}
+
 // In-process de-dup: tracks which threshold notifications have fired this session.
 // Acceptable to lose on restart (may send one duplicate after a redeploy).
 const notified = new Set<string>()
@@ -24,6 +34,14 @@ export function withBilling(
 
 		// No subscriber (unauthenticated / public route) — skip entirely
 		if (!subscriber) return next()
+
+		// Verify membership when the subscriber is a workspace
+		if (subscriber.type === 'workspace' && ctx.user?.id) {
+			const member = await isWorkspaceMember(store, subscriber.id, ctx.user.id)
+			if (!member) {
+				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Not a member of this workspace')
+			}
+		}
 
 		// Resolve subscription → plan name (fall back to first plan = free)
 		const subscription = await getSubscription(subscriber.type, subscriber.id, store)
