@@ -1,5 +1,6 @@
-import type { IFonderieContext } from '@fonderie-js/core'
-import type { SubscriberType }   from './types'
+import type { IFonderieContext } from '@fonderie-js/core';
+
+import type { SubscriberType }   from './types';
 
 export interface ISubscriber {
 	type: SubscriberType
@@ -21,10 +22,28 @@ export function parseWindowMs(window: string): number {
 // Resolves billing subscriber from request context.
 // Precedence: X-Workspace-ID header → ctx.workspace (set by withWorkspace) → ctx.user
 export function resolveSubscriber(ctx: IFonderieContext): ISubscriber | null {
-	const wsFromHeader = ctx.request.headers.get('x-workspace-id')
-	if (wsFromHeader) return { type: 'workspace', id: wsFromHeader }
+	const wsFromHeader = ctx.request.headers.get('x-workspace-id');
 
-	if (ctx.workspace?.id) return { type: 'workspace', id: ctx.workspace.id }
-	if (ctx.user?.id)      return { type: 'user',      id: ctx.user.id     }
+	if (wsFromHeader) {
+		return {
+			type: 'workspace',
+			id: wsFromHeader
+		}
+	}
+
+	if (ctx.workspace?.id) {
+		return {
+			type: 'workspace',
+			id: ctx.workspace.id
+		}
+	}
+
+	if (ctx.user?.id) {
+		return {
+			type: 'user',
+			id: ctx.user.id
+		}
+	}
+
 	return null
 }
