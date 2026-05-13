@@ -23,6 +23,7 @@ import {
 import { CourierModule }                from '@fonderie-js/courier';
 import { BillingModule, StripeProvider } from '@fonderie-js/billing';
 import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
+import { LoggerModule }                  from '@fonderie-js/logger';
 
 import { fileURLToPath } from 'node:url';
 import { join }          from 'node:path';
@@ -87,6 +88,7 @@ for (const dir of [
 
 // ── Modules ───────────────────────────────────────────────────────
 
+const logger      = new LoggerModule()
 const auth        = new AuthModule(store, authConfig);
 
 const permissions = new PermissionsModule(store);
@@ -209,7 +211,8 @@ const billing = new BillingModule(store, {
 
 const app = new FonderieApp(config)
   .use(withBody)
-  .register(remoteConfig) 
+  .register(logger)      // request logging + requestId on ctx.meta
+  .register(remoteConfig)
   .register(auth)        // populates ctx.user
   .register(permissions) // populates ctx.meta[PERMISSIONS_ENGINE_KEY]
   .register(workspaces)  // registers workspace routes

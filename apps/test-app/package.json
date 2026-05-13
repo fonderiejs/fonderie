@@ -17,6 +17,7 @@
 	"type": "module",
 	"dependencies": {
 		"@fonderie-js/auth": "../../packages/auth",
+		"@fonderie-js/logger": "../../packages/logger",
 		"@fonderie-js/billing": "../../packages/billing",
 		"@fonderie-js/config": "../../packages/config",
 		"@fonderie-js/core": "../../packages/core",
