@@ -11,7 +11,9 @@ import { PGAdapter, MigrationRunner } 	 from '@fonderie-js/store';
 import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
 import { LoggerModule }                  from '@fonderie-js/logger';
 import { CourierModule }                 from '@fonderie-js/courier';
-import { BillingModule, StripeProvider } from '@fonderie-js/billing';
+import { BillingModule, StripeProvider,
+         hasFeature, getPlanLimit,
+         requireFeature }                from '@fonderie-js/billing';
 import { withBody, requireAuth } 		 from '@fonderie-js/core/middlewares';
 
 import { AuthModule, AUTH_CONFIG_KEYS, MESSAGE_KEYS as AUTH_MESSAGE_KEYS } from '@fonderie-js/auth';
@@ -250,6 +252,53 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 
 	return Response.json({ config: remoteConfig.manager.all() });
 });
+
+// ── Billing-gated route examples ──────────────────────────────────
+//
+// requireFeature reads ctx.meta['billing'] set by withBilling (auto-applied
+// by BillingModule). No store argument — pure in-process check.
+
+// Feature flag gate — 402 for plans without 'analytics' enabled
+app.addRoute('GET', '/workspaces/:workspaceId/analytics',
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.READ, 'analytics'),
+	requireFeature('analytics'),
+	async (ctx: IFonderieContext) => Response.json({
+		workspaceId: ctx.workspace?.id,
+		metrics:     [],
+	})
+);
+
+// Inline limit check — returns remaining project quota in the response
+app.addRoute('GET', '/workspaces/:workspaceId/projects/quota',
+	requireAuth,
+	withWorkspace(store),
+	async (ctx: IFonderieContext) => {
+		const limit = getPlanLimit(ctx, 'projects')
+		return Response.json({
+			workspaceId: ctx.workspace?.id,
+			limit,
+			unlimited: limit === null,
+		})
+	}
+);
+
+// Conditional response shape based on plan capability
+app.addRoute('GET', '/workspaces/:workspaceId/settings/sso',
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.READ, 'settings'),
+	async (ctx: IFonderieContext) => {
+		if (!hasFeature(ctx, 'sso')) {
+			return Response.json(
+				{ error: 'SSO is not available on your current plan' },
+				{ status: 402 },
+			)
+		}
+		return Response.json({ sso: { enabled: false, provider: null } })
+	}
+);
 
 // Routes registered automatically by modules:
 //
