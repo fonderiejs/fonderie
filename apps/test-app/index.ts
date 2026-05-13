@@ -225,10 +225,10 @@ app.addRoute('GET', '/health', async (ctx: IFonderieContext) => {
 	return Response.json({ ok: true, ts: new Date().toISOString(), version: '0.0.1' });
 });
 
-// Workspace-scoped + permission-gated
-app.addRoute('GET', '/workspaces/:workspaceId/projects',
+// Workspace-scoped routes — workspace resolved from X-Workspace-ID header by withWorkspace
+app.addRoute('GET', '/projects',
 	requireAuth,
-	withWorkspace(store),   // resolves ctx.workspace, validates membership
+	withWorkspace(store),   // resolves ctx.workspace from header, validates membership
 	requirePermission(OPERATIONS.READ, 'projects'),
 	async (ctx: IFonderieContext) => Response.json({
 		workspaceId: ctx.workspace?.id,
@@ -236,7 +236,7 @@ app.addRoute('GET', '/workspaces/:workspaceId/projects',
 	})
 );
 
-app.addRoute('POST', '/workspaces/:workspaceId/projects',
+app.addRoute('POST', '/projects',
 	requireAuth,
 	withWorkspace(store),
 	requirePermission(OPERATIONS.CREATE, 'projects'),
@@ -253,13 +253,13 @@ app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
 	return Response.json({ config: remoteConfig.manager.all() });
 });
 
-// ── Billing-gated route examples ──────────────────────────────────
+// ── Billing-gated examples (workspace context via X-Workspace-ID header) ─────
 //
-// requireFeature reads ctx.meta['billing'] set by withBilling (auto-applied
-// by BillingModule). No store argument — pure in-process check.
+// withBilling (global, from BillingModule) sets ctx.meta['billing'] before
+// the handler runs — all helpers below are pure in-process reads, no DB call.
 
 // Feature flag gate — 402 for plans without 'analytics' enabled
-app.addRoute('GET', '/workspaces/:workspaceId/analytics',
+app.addRoute('GET', '/analytics',
 	requireAuth,
 	withWorkspace(store),
 	requirePermission(OPERATIONS.READ, 'analytics'),
@@ -270,8 +270,8 @@ app.addRoute('GET', '/workspaces/:workspaceId/analytics',
 	})
 );
 
-// Inline limit check — returns remaining project quota in the response
-app.addRoute('GET', '/workspaces/:workspaceId/projects/quota',
+// Expose project quota from the plan — null means unlimited
+app.addRoute('GET', '/projects/quota',
 	requireAuth,
 	withWorkspace(store),
 	async (ctx: IFonderieContext) => {
@@ -284,8 +284,8 @@ app.addRoute('GET', '/workspaces/:workspaceId/projects/quota',
 	}
 );
 
-// Conditional response shape based on plan capability
-app.addRoute('GET', '/workspaces/:workspaceId/settings/sso',
+// Conditional response shape — feature drives shape, not access
+app.addRoute('GET', '/settings/sso',
 	requireAuth,
 	withWorkspace(store),
 	requirePermission(OPERATIONS.READ, 'settings'),
