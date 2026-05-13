@@ -3,8 +3,9 @@ import type { IFonderieContext }             from '@fonderie-js/core';
 import type { ICourierMessage }              from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
 
-import { InvitationModel } from '../models/invitation.model';
-import { toInvitationDTO } from '../dtos/workspace';
+import { MESSAGE_KEYS } from '../config';
+import { InvitationModel }         from '../models/invitation.model';
+import { toInvitationDTO }         from '../dtos/workspace';
 
 export function invitationController(store: IStoreAdapter, ttl: string) {
 	const invitations = new InvitationModel(store)
@@ -49,7 +50,7 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 			)
 
 			ctx.meta['message'] = {
-				type:      'workspace-invitation',
+				type:      MESSAGE_KEYS.workspaceInvitation,
 				recipient: { email, phone: null, deviceToken: null },
 				data:      { token: invitation.token, pin: invitation.pin },
 			} satisfies ICourierMessage

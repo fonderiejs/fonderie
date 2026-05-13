@@ -14,9 +14,9 @@ import { CourierModule }                 from '@fonderie-js/courier';
 import { BillingModule, StripeProvider } from '@fonderie-js/billing';
 import { withBody, requireAuth } 		 from '@fonderie-js/core/middlewares';
 
-import { AuthModule, AUTH_CONFIG_KEYS }           			from '@fonderie-js/auth';
-import type { IAuthConfig, IAuthRuntimeConfig }   			from '@fonderie-js/auth';
-import { WorkspacesModule, withWorkspace } 					from '@fonderie-js/workspaces';
+import { AuthModule, AUTH_CONFIG_KEYS, MESSAGE_KEYS as AUTH_MESSAGE_KEYS } from '@fonderie-js/auth';
+import type { IAuthConfig, IAuthRuntimeConfig }                            from '@fonderie-js/auth';
+import { WorkspacesModule, withWorkspace, MESSAGE_KEYS as WS_MESSAGE_KEYS } from '@fonderie-js/workspaces';
 import { PermissionsModule, requirePermission, OPERATIONS } from '@fonderie-js/permissions';
 
 import { getMigrationsPath as authMigrations }        from '@fonderie-js/auth/migrations';
@@ -87,16 +87,16 @@ const workspaces  = new WorkspacesModule(store);
 const courier     = new CourierModule(
 	{
 		channels: {
-			'email-registration':   ['email'],
-			'email-verification':   ['email'],
-			'password-reset':       ['email'],
-			'workspace-invitation': ['email'],
-			'phone-otp':            ['sms'],
-			'mfa-enabled':                    ['email'],
-			'mfa-disabled':                   ['email'],
-			'mfa-backup-codes-regenerated':   ['email'],
-			'email-changed':                  ['email'],
-			'phone-changed':                  ['email'],
+			[AUTH_MESSAGE_KEYS.emailRegistration]:          ['email'],
+			[AUTH_MESSAGE_KEYS.emailVerification]:          ['email'],
+			[AUTH_MESSAGE_KEYS.passwordReset]:              ['email'],
+			[AUTH_MESSAGE_KEYS.phoneOtp]:                   ['sms'],
+			[AUTH_MESSAGE_KEYS.mfaEnabled]:                 ['email'],
+			[AUTH_MESSAGE_KEYS.mfaDisabled]:                ['email'],
+			[AUTH_MESSAGE_KEYS.mfaBackupCodesRegenerated]:  ['email'],
+			[AUTH_MESSAGE_KEYS.emailChanged]:               ['email'],
+			[AUTH_MESSAGE_KEYS.phoneChanged]:               ['email'],
+			[WS_MESSAGE_KEYS.workspaceInvitation]:          ['email'],
 		},
 		templates: {
 			source: 'fs', 
