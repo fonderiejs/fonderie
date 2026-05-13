@@ -20,7 +20,7 @@ export class Logger {
 		context: Record<string, unknown> = {},
 	) {
 		this.minLevel   = LEVELS[config.level ?? 'info']
-		this.transports = config.transports ?? [new ConsoleTransport({ pretty: config.pretty })]
+		this.transports = config.transports ?? [new ConsoleTransport(config.pretty !== undefined ? { pretty: config.pretty } : {})]
 		this.context    = context
 	}
 
@@ -65,10 +65,11 @@ export class Logger {
 		}
 
 		if (error) {
+			const errNode = error as NodeJS.ErrnoException
 			entry.error = {
 				message: error.message,
-				stack:   error.stack,
-				code:    (error as NodeJS.ErrnoException).code,
+				...(error.stack !== undefined ? { stack: error.stack } : {}),
+				...(errNode.code  !== undefined ? { code:  errNode.code  } : {}),
 			}
 		}
 
