@@ -788,6 +788,14 @@
                     {
                       "key": "Content-Type",
                       "value": "application/json"
+                    },
+                    {
+                      "key": "Set-Cookie",
+                      "value": "access_token=eyJ...; HttpOnly; SameSite=Strict; Path=/"
+                    },
+                    {
+                      "key": "Set-Cookie",
+                      "value": "refresh_token=eyJ...; HttpOnly; SameSite=Strict; Path=/auth/refresh"
                     }
                   ],
                   "body": "{\n  \"reason\": \"MFA_VERIFIED\",\n  \"explanation\": \"MFA verified successfully.\",\n  \"result\": {\n    \"tokens\": {\n      \"access\": \"eyJhbGciOiJIUzI1NiJ9...\",\n      \"refresh\": \"eyJhbGciOiJIUzI1NiJ9...\"\n    },\n    \"user\": { \"id\": \"a1b2c3d4-...\", \"email\": \"alice@example.com\", \"mfaEnabled\": true }\n  }\n}"
@@ -840,7 +848,33 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"reason\": \"MFA_DISABLED\",\n  \"explanation\": \"MFA has been disabled.\",\n  \"result\": { \"ok\": true }\n}"
+                  "body": "{\n  \"reason\": \"MFA_DISABLED\",\n  \"explanation\": \"MFA disabled successfully.\"\n}"
+                },
+                {
+                  "name": "400 MFA not enabled",
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"reason\": \"MFA_NOT_ENABLED\",\n  \"explanation\": \"MFA is not enabled.\"\n}"
+                },
+                {
+                  "name": "401 Invalid code",
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"reason\": \"INVALID_CODE\",\n  \"explanation\": \"Invalid TOTP code.\"\n}"
                 }
               ]
             },
@@ -877,7 +911,33 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"reason\": \"BACKUP_CODES_REGENERATED\",\n  \"explanation\": \"New backup codes generated. Previous codes are now invalid.\",\n  \"result\": {\n    \"backupCodes\": [\"MNOP-3456\", \"QRST-7890\", \"UVWX-1234\"]\n  }\n}"
+                  "body": "{\n  \"reason\": \"BACKUP_CODES_REGENERATED\",\n  \"explanation\": \"Backup codes regenerated.\",\n  \"result\": {\n    \"backupCodes\": [\n      \"A1B2C3D4\",\n      \"E5F6A7B8\",\n      \"C9D0E1F2\",\n      \"A3B4C5D6\",\n      \"E7F8A9B0\",\n      \"C1D2E3F4\",\n      \"A5B6C7D8\",\n      \"E9F0A1B2\"\n    ]\n  }\n}"
+                },
+                {
+                  "name": "400 MFA not enabled",
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"reason\": \"MFA_NOT_ENABLED\",\n  \"explanation\": \"MFA is not enabled.\"\n}"
+                },
+                {
+                  "name": "401 Invalid code",
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"reason\": \"INVALID_CODE\",\n  \"explanation\": \"Invalid TOTP code.\"\n}"
                 }
               ]
             }
