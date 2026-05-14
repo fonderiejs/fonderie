@@ -1,0 +1,38 @@
+{
+	"name": "@fonderie-js/adapter-hono",
+	"version": "0.0.1",
+	"description": "Hono adapter for fonderie-js — bridge(), adapt(), mount() to use fonderie middleware in native Hono routes.",
+	"keywords": ["fonderie-js", "hono", "adapter", "middleware", "saas", "typescript"],
+	"license": "UNLICENSED",
+	"type": "module",
+	"engines": { "node": ">=20" },
+	"exports": {
+		".": {
+			"types":   "./dist/index.d.ts",
+			"import":  "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"main":   "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types":  "./dist/index.d.ts",
+	"scripts": {
+		"build":     "tsup",
+		"dev":       "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"lint":      "biome lint src",
+		"format":    "biome format --write src",
+		"check":     "biome check --write src"
+	},
+	"peerDependencies": {
+		"@fonderie-js/core": "^0.0.1",
+		"hono":              "^4.0.0"
+	},
+	"devDependencies": {
+		"@fonderie-js/core": "../core",
+		"hono":              "^4.7.11",
+		"@types/node":       "^25.6.0",
+		"tsup":              "^8.5.1",
+		"typescript":        "^6.0.3"
+	}
+}

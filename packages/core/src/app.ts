@@ -7,14 +7,10 @@ import type {
 	IFonderieContext,
 	IFonderieModule,
 } from './types';
-import type { FonderieConfig }                       from './config';
-import { Router, routerMiddleware }                  from './router';
-import { compose }                                   from './compose';
-import { notFoundMiddleware, defaultErrorHandler }   from './middlewares';
-import { koaContextToWeb, webResponseToKoa }         from './adapters/koa';
-import type { KoaContext }                           from './adapters/koa';
-import type { ExpressRequest, ExpressResponse }      from './adapters/express';
-import { expressRequestToWeb, webResponseToExpress } from './adapters/express';
+import type { FonderieConfig }                     from './config';
+import { Router, routerMiddleware }                from './router';
+import { compose }                                 from './compose';
+import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
 
 export class FonderieApp {
 	private config: FonderieConfig;
@@ -100,6 +96,22 @@ export class FonderieApp {
 		return this
 	}
 
+	// Runs global middleware only (no routing, no 404).
+	// Adapter packages call this to populate user/workspace/meta into their
+	// native context before handing off to user-defined route handlers.
+	async buildContext(request: Request): Promise<IFonderieContext> {
+		const ctx: IFonderieContext = {
+			request,
+			tenant:    null,
+			user:      null,
+			workspace: null,
+			meta:      {},
+			_router:   this.router,
+		}
+		await compose(this.middlewares)(ctx, async () => new Response())
+		return ctx
+	}
+
 	// ─── Middleware ────────────────────────────────────────
 
 	use(middleware: Middleware): this {
@@ -140,33 +152,11 @@ export class FonderieApp {
 		}
 	}
 
-	// ─── Framework adapters ────────────────────────────────
-	// Each adapter is just a translation layer to `this.handle()`
-
-	// Express: npm install @fonderie-js/adapter-express
-	express() {
-		return async (req: ExpressRequest, res: ExpressResponse) => {
-			const webRequest  = await expressRequestToWeb(req)
-			const webResponse = await this.handle(webRequest)
-			await webResponseToExpress(webResponse, res)
-		}
-	}
-
-	// Koa: npm install @fonderie-js/adapter-koa  
-	koa() {
-		return async (ctx: KoaContext) => {
-			const webRequest  = koaContextToWeb(ctx)
-			const webResponse = await this.handle(webRequest)
-			await webResponseToKoa(webResponse, ctx)
-		}
-	}
-
-	// Hono needs no adapter — it speaks Web Standard natively.
-	// Users wire it directly:
-	//
-	//   const hono = new Hono()
-	//   hono.all('*', (c) => fonderie.handle(c.req.raw))
 }
+// Framework adapters live in their own packages — no framework deps in core:
+//   @fonderie-js/adapter-hono
+//   @fonderie-js/adapter-express
+//   @fonderie-js/adapter-koa
 
 function topoSort(modules: IFonderieModule[]): IFonderieModule[] {
 	const byName  = new Map(modules.map(m => [m.name, m]));
