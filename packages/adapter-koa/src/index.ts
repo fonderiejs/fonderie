@@ -1,5 +1,8 @@
 import type { IncomingMessage } from 'node:http';
-import type { Middleware as KoaMiddleware, Application } from 'koa';
+import type Koa                from 'koa';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type KoaMiddleware<S = any, C = any> = Koa.Middleware<S, C>;
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie-js/core';
 import { requireAuth as _requireAuth } from '@fonderie-js/core/middlewares';
@@ -144,7 +147,7 @@ export function requireFeature(key: string): KoaMiddleware<any, any> {
 //   app.use(router.routes())    // business routes — matched first
 //   mount(app, fonderie)        // fonderie infra — catch-all, matched last
 
-export function mount(app: Application, fonderie: FonderieApp): void {
+export function mount(app: Koa, fonderie: FonderieApp): void {
 	app.use(async (ctx) => {
 		const webReq = koaContextToWeb(ctx as unknown as KoaContext);
 		const webRes = await fonderie.handle(webReq);
