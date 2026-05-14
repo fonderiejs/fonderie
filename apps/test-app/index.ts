@@ -1,6 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import { join }          from 'node:path';
 
+import { Hono }        from 'hono';
+import { serve }       from '@hono/node-server';
+
 import { EventsModule } from '@fonderie-js/events';
 import { LoggerModule } from '@fonderie-js/logger';
 import type { IFonderieContext } from '@fonderie-js/core';
@@ -43,7 +46,7 @@ const googleCallbackUrl  = process.env['GOOGLE_CALLBACK_URL'] ?? 'http://127.0.0
 const authConfig: IAuthConfig = {
 	jwtSecret:       process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
 	sessionDuration: '7d',
-	appName:         'DemoApplication',
+	appName:         'CrewFinding',
 	providers:       ['email', 'phone', ...(googleClientId ? ['google' as const] : [])],
 	...(googleClientId && googleClientSecret ? {
 		google: {
@@ -101,12 +104,12 @@ const courier     = new CourierModule(
 			[WS_MESSAGE_KEYS.workspaceInvitation]:         [Channel.EMAIL],
 		},
 		templates: {
-			source: 'fs', 
+			source: 'fs',
 			directory: join(__dirname, 'templates'),
 		},
 		email: {
 			provider: 'smtp',
-			from:     'Fonderie Dev <noreply@fonderie.dev>',
+			from:     'CrewFinding <noreply@crewfinding.app>',
 			smtp: {
 				host:   process.env['SMTP_HOST'] ?? 'smtp.ethereal.email',
 				port:   Number(process.env['SMTP_PORT'] ?? 587),
@@ -140,7 +143,7 @@ const billing = new BillingModule(store, {
 			defaults:    { warnAt: 0.8, buffer: 0 },
 			policy: {
 				'api-calls': { limit: 1_000,  buffer: 100, warnAt: 0.9, window: '1d' },
-				'projects':  { limit: 3 },
+				'jobs':      { limit: 10 },
 				'seats':     { limit: 1,      warnAt: 1.0 },
 				'analytics': { enabled: false },
 				'sso':       { enabled: false },
@@ -150,7 +153,7 @@ const billing = new BillingModule(store, {
 		},
 		{
 			name:        'starter',
-			description: 'For small teams getting started',
+			description: 'For small crews getting started',
 			tier:        1,
 			trialDays:   14,
 			monthly:     { amount: 2900,  priceId: process.env['STRIPE_STARTER_MONTHLY'] ?? '' },
@@ -158,7 +161,7 @@ const billing = new BillingModule(store, {
 			defaults:    { warnAt: 0.8, buffer: 0 },
 			policy: {
 				'api-calls': { limit: 10_000,  buffer: 500,  warnAt: 0.9, window: '1d' },
-				'projects':  { limit: 10 },
+				'jobs':      { limit: 100 },
 				'seats':     { limit: 5,        warnAt: 1.0 },
 				'analytics': { enabled: true },
 				'sso':       { enabled: false },
@@ -168,14 +171,14 @@ const billing = new BillingModule(store, {
 		},
 		{
 			name:        'pro',
-			description: 'For growing teams who need more power',
+			description: 'For growing companies who need more',
 			tier:        2,
 			monthly:     { amount: 7900,  priceId: process.env['STRIPE_PRO_MONTHLY'] ?? '' },
 			yearly:      { amount: 79000, priceId: process.env['STRIPE_PRO_YEARLY']  ?? '' },
 			defaults:    { warnAt: 0.85, buffer: 0 },
 			policy: {
 				'api-calls': { limit: 100_000, buffer: 5_000, warnAt: 0.9, window: '1d' },
-				'projects':  { limit: null },
+				'jobs':      { limit: null },
 				'seats':     { limit: 20,       warnAt: 1.0 },
 				'analytics': { enabled: true },
 				'sso':       { enabled: false },
@@ -190,7 +193,7 @@ const billing = new BillingModule(store, {
 			defaults:    { warnAt: 0.9, buffer: 0 },
 			policy: {
 				'api-calls': { limit: null },
-				'projects':  { limit: null },
+				'jobs':      { limit: null },
 				'seats':     { limit: null },
 				'analytics': { enabled: true },
 				'sso':       { enabled: true },
@@ -208,7 +211,7 @@ const billing = new BillingModule(store, {
 const webhooks = new WebhooksModule(store, {}, events.bus);
 const audit    = new AuditModule(store);
 
-const app = new FonderieApp(config)
+const fonderie = new FonderieApp(config)
   .use(withBody)
   .register(logger)
   .register(events)
@@ -223,7 +226,7 @@ const app = new FonderieApp(config)
 
 // ── Routes ────────────────────────────────────────────────────────
 
-app.addRoute('GET', '/health', async (ctx: IFonderieContext) => {
+fonderie.addRoute('GET', '/health', async (ctx: IFonderieContext) => {
 	const maintenance = getConfig(ctx, 'maintenance.mode', false);
 	if (maintenance) {
 		return Response.json({ error: 'Service temporarily unavailable' }, { status: 503 });
@@ -232,41 +235,64 @@ app.addRoute('GET', '/health', async (ctx: IFonderieContext) => {
 	return Response.json({ ok: true, ts: new Date().toISOString(), version: '0.0.1' });
 });
 
-// Workspace-scoped routes — workspace resolved from X-Workspace-ID header by withWorkspace
-app.addRoute('GET', '/projects',
+// ── Jobs — core field service resource ───────────────────────────
+//
+// Workspace resolved from X-Workspace-ID header by withWorkspace.
+// Billing plan controls how many jobs a workspace can have (jobs quota).
+
+fonderie.addRoute('GET', '/jobs',
 	requireAuth,
-	withWorkspace(store),   // resolves ctx.workspace from header, validates membership
-	requirePermission(OPERATIONS.READ, 'projects'),
+	withWorkspace(store),
+	requirePermission(OPERATIONS.READ, 'jobs'),
 	async (ctx: IFonderieContext) => Response.json({
 		workspaceId: ctx.workspace?.id,
-		projects:    [],
+		jobs:        [],
 	})
 );
 
-app.addRoute('POST', '/projects',
+fonderie.addRoute('POST', '/jobs',
 	requireAuth,
 	withWorkspace(store),
-	requirePermission(OPERATIONS.CREATE, 'projects'),
+	requirePermission(OPERATIONS.CREATE, 'jobs'),
 	async (ctx: IFonderieContext) => Response.json({ created: true }, { status: 201 })
 );
 
-// Config inspection (dev only)
-app.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
-	const env = process.env['NODE_ENV'] ?? 'development';
-	if (env === 'production') {
-		return Response.json({ error: 'Not available in production' }, { status: 403 });
+// Jobs quota — how many jobs the current plan allows (null = unlimited)
+fonderie.addRoute('GET', '/jobs/quota',
+	requireAuth,
+	withWorkspace(store),
+	async (ctx: IFonderieContext) => {
+		const limit = getPlanLimit(ctx, 'jobs')
+		return Response.json({
+			workspaceId: ctx.workspace?.id,
+			limit,
+			unlimited: limit === null,
+		})
 	}
+);
 
-	return Response.json({ config: remoteConfig.manager.all() });
-});
+// ── Clients ───────────────────────────────────────────────────────
 
-// ── Billing-gated examples (workspace context via X-Workspace-ID header) ─────
-//
-// withBilling (global, from BillingModule) sets ctx.meta['billing'] before
-// the handler runs — all helpers below are pure in-process reads, no DB call.
+fonderie.addRoute('GET', '/clients',
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.READ, 'clients'),
+	async (ctx: IFonderieContext) => Response.json({
+		workspaceId: ctx.workspace?.id,
+		clients:     [],
+	})
+);
 
-// Feature flag gate — 402 for plans without 'analytics' enabled
-app.addRoute('GET', '/analytics',
+fonderie.addRoute('POST', '/clients',
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.CREATE, 'clients'),
+	async (ctx: IFonderieContext) => Response.json({ created: true }, { status: 201 })
+);
+
+// ── Analytics — plan-gated (402 for free plan) ────────────────────
+
+fonderie.addRoute('GET', '/analytics',
 	requireAuth,
 	withWorkspace(store),
 	requirePermission(OPERATIONS.READ, 'analytics'),
@@ -277,22 +303,9 @@ app.addRoute('GET', '/analytics',
 	})
 );
 
-// Expose project quota from the plan — null means unlimited
-app.addRoute('GET', '/projects/quota',
-	requireAuth,
-	withWorkspace(store),
-	async (ctx: IFonderieContext) => {
-		const limit = getPlanLimit(ctx, 'projects')
-		return Response.json({
-			workspaceId: ctx.workspace?.id,
-			limit,
-			unlimited: limit === null,
-		})
-	}
-);
+// ── SSO settings — feature drives shape, not access ──────────────
 
-// Conditional response shape — feature drives shape, not access
-app.addRoute('GET', '/settings/sso',
+fonderie.addRoute('GET', '/settings/sso',
 	requireAuth,
 	withWorkspace(store),
 	requirePermission(OPERATIONS.READ, 'settings'),
@@ -306,6 +319,16 @@ app.addRoute('GET', '/settings/sso',
 		return Response.json({ sso: { enabled: false, provider: null } })
 	}
 );
+
+// Config inspection (dev only)
+fonderie.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
+	const env = process.env['NODE_ENV'] ?? 'development';
+	if (env === 'production') {
+		return Response.json({ error: 'Not available in production' }, { status: 403 });
+	}
+
+	return Response.json({ config: remoteConfig.manager.all() });
+});
 
 // Routes registered automatically by modules (registration order handled by topo sort):
 //
@@ -395,12 +418,19 @@ app.addRoute('GET', '/settings/sso',
 //     ?limit=     page size (max 200, default 50)
 //     ?cursor=    pagination cursor from previous response
 
-// ── Boot ──────────────────────────────────────────────────────────
+// ── Boot + Serve (via Hono) ───────────────────────────────────────
+//
+// Hono speaks Web Standard Request/Response natively — no adapter needed.
+// fonderie.handle() is the single entry point for all HTTP traffic.
 
-await app.boot()
+await fonderie.boot()
 
-app.listen(4000, {
-	name: 'Fonderie',
-	version: '0.0.1',
-	env: 'development'
+const hono = new Hono()
+hono.all('*', (c) => fonderie.handle(c.req.raw))
+
+serve({ fetch: hono.fetch, port: 4000 }, (info) => {
+	console.log(
+		`\n  ƒ CrewFinding  development` +
+		`\n\n  Local    http://localhost:${info.port}\n`
+	)
 })
