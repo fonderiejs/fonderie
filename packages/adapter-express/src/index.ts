@@ -58,6 +58,10 @@ export function bridge(fonderie: FonderieApp) {
 		try {
 			const webReq  = await expressRequestToWeb(req)
 			req._fonderie = await fonderie.buildContext(webReq.clone())
+			// Forward fonderie's parsed body to req.body so Express handlers work naturally
+			if (req._fonderie.meta['body'] !== undefined) {
+				req.body = req._fonderie.meta['body']
+			}
 			next()
 		} catch (err) {
 			next(err)

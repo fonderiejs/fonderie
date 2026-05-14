@@ -1,0 +1,22 @@
+{
+	"name": "example-express",
+	"version": "1.0.0",
+	"description": "Minimal fonderie-js todo app using Express",
+	"type": "module",
+	"scripts": {
+		"dev": "node --env-file=.env --experimental-strip-types index.ts",
+		"setup": "cp -n .env.example .env || true"
+	},
+	"dependencies": {
+		"express":                       "^4.21.2",
+		"@fonderie-js/adapter-express":  "../../packages/adapter-express",
+		"@fonderie-js/auth":             "../../packages/auth",
+		"@fonderie-js/core":             "../../packages/core",
+		"@fonderie-js/events":           "../../packages/events",
+		"@fonderie-js/store":            "../../packages/store"
+	},
+	"devDependencies": {
+		"@types/express": "^5.0.2",
+		"@types/node":    "^25.6.2"
+	}
+}
