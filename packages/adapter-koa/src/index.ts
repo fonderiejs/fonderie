@@ -50,10 +50,13 @@ export function koaContextToWeb(ctx: KoaContext): Request {
 		}
 	}
 
+	const method = ctx.request.method.toUpperCase();
+	const hasBody = method !== 'GET' && method !== 'HEAD';
+
 	return new Request(url, {
 		headers,
-		method: ctx.request.method,
-		body: ctx.request.rawBody ?? null,
+		method,
+		body: hasBody ? (ctx.request.rawBody ?? null) : null,
 	});
 }
 
