@@ -25,6 +25,12 @@ export interface IPushChannelConfig {
 	serviceAccount: Record<string, unknown>
 }
 
+export const via = {
+	EMAIL: 'email',
+	SMS:   'sms',
+	PUSH:  'push',
+} as const satisfies Record<string, 'email' | 'sms' | 'push'>
+
 export interface ICourierConfig {
 	// Which channels handle which message types
 	// e.g. { 'password-reset': ['email'], 'new-message': ['push', 'sms'] }

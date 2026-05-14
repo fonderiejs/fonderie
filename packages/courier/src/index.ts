@@ -9,6 +9,7 @@ export type {
 	ICourierMessage, ICourierChannel,
 	IRenderedTemplate, ITemplateResolver,
 }                                                 from './types';
+export { via }                                    from './config';
 export type {
 	ICourierConfig,
 	IEmailChannelConfig, ISmsChannelConfig, IPushChannelConfig,

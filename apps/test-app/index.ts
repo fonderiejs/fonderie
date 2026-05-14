@@ -10,7 +10,7 @@ import type { IFonderieContext } 		 from '@fonderie-js/core';
 import { PGAdapter, MigrationRunner } 	 from '@fonderie-js/store';
 import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
 import { LoggerModule }                  from '@fonderie-js/logger';
-import { CourierModule }                 from '@fonderie-js/courier';
+import { CourierModule, via }            from '@fonderie-js/courier';
 import { BillingModule, StripeProvider,
          hasFeature, getPlanLimit,
          requireFeature }                from '@fonderie-js/billing';
@@ -30,14 +30,6 @@ import { getMigrationsPath as workspacesMigrations }  from '@fonderie-js/workspa
 import { getMigrationsPath as permissionsMigrations } from '@fonderie-js/permissions/migrations';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
-
-// ── Courier channel constants ─────────────────────────────────────
-
-const via = {
-	EMAIL: 'email',
-	SMS:   'sms',
-	PUSH:  'push',
-} as const satisfies Record<string, 'email' | 'sms' | 'push'>
 
 // ── Config ────────────────────────────────────────────────────────
 
