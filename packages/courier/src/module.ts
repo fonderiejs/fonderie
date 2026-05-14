@@ -13,7 +13,8 @@ import { EmailChannel }                        from './channels/email';
 import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
 
 export class CourierModule implements IFonderieModule {
-	readonly name       = '@fonderie-js/courier'
+	readonly name = '@fonderie-js/courier'
+	readonly deps = ['@fonderie-js/events']
 	readonly dispatcher: Dispatcher
 
 	constructor(
