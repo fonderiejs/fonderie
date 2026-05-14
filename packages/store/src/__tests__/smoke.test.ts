@@ -40,7 +40,7 @@ test('sql: numeric zero is a valid param', () => {
 // by building a minimal in-memory stub and type-checking it.
 
 import type { IStoreAdapter, IPoolConfig } from '../types';
-import { createMigrationsPath } from '../migrations';
+import { createMigrationsPath, MigrationRunner, InternalMigrationRunner } from '../migrations';
 
 test('IStoreAdapter: stub satisfies interface at compile time', () => {
 	const rows: unknown[] = [];
@@ -83,4 +83,28 @@ test('createMigrationsPath: returns absolute path ending in migrations/sql', () 
 	const fakeUrl = 'file:///some/package/dist/migrations/index.js';
 	const result = createMigrationsPath(fakeUrl);
 	assert.ok(result.endsWith('migrations/sql') || result.endsWith('migrations\\sql'));
+});
+
+// ── MigrationRunner namespace guard ──────────────────────────────
+
+test('MigrationRunner: throws when SQL uses reserved fonderie_ prefix', () => {
+	const runner = new MigrationRunner({} as IStoreAdapter, '/fake');
+	assert.throws(
+		() => (runner as any).assertNoReservedPrefix('001_bad.sql', 'CREATE TABLE fonderie_todos (id TEXT)'),
+		/reserved "fonderie_" prefix/,
+	);
+});
+
+test('MigrationRunner: allows SQL with no fonderie_ prefix', () => {
+	const runner = new MigrationRunner({} as IStoreAdapter, '/fake');
+	assert.doesNotThrow(() =>
+		(runner as any).assertNoReservedPrefix('001_ok.sql', 'CREATE TABLE todos (id TEXT)'),
+	);
+});
+
+test('InternalMigrationRunner: allows SQL with fonderie_ prefix', () => {
+	const runner = new InternalMigrationRunner({} as IStoreAdapter, '/fake');
+	assert.doesNotThrow(() =>
+		(runner as any).assertNoReservedPrefix('001_internal.sql', 'CREATE TABLE fonderie_users (id TEXT)'),
+	);
 });
