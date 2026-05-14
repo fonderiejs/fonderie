@@ -79,6 +79,8 @@ test('IPoolConfig: accepts individual field form with tuning knobs', () => {
 // ── createMigrationsPath ──────────────────────────────────────────
 
 test('createMigrationsPath: returns absolute path ending in migrations/sql', () => {
-	const result = createMigrationsPath(import.meta.url);
+	// Simulate being called from dist/migrations/index.js as intended
+	const fakeUrl = 'file:///some/package/dist/migrations/index.js';
+	const result  = createMigrationsPath(fakeUrl);
 	assert.ok(result.endsWith('migrations/sql') || result.endsWith('migrations\\sql'));
 });
