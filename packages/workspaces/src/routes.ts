@@ -1,5 +1,6 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
+import type { EventBus }       from '@fonderie-js/events';
 import { requireAuth }   from '@fonderie-js/core/middlewares';
 
 import type { IWorkspacesConfig } from './config';
@@ -15,6 +16,7 @@ type RouteDefinition = [string, string, ...Middleware[]]
 export function buildWorkspaceRoutes(
 	store:  IStoreAdapter,
 	config: IWorkspacesConfig,
+	bus?:   EventBus,
 ): RouteDefinition[] {
 	const ttl   = config.invitationTtl ?? '7d'
 	const wsCtx = withWorkspace(store)
@@ -22,7 +24,7 @@ export function buildWorkspaceRoutes(
 	const workspace  = workspaceController(store, config)
 	const member     = memberController(store)
 	const role       = roleController(store)
-	const invitation = invitationController(store, ttl)
+	const invitation = invitationController(store, ttl, bus)
 
 	return [
 		// ── Workspace creation + listing (no workspace context required)

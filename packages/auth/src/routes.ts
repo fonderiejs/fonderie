@@ -21,7 +21,7 @@ export function buildAuthRoutes(
 	const user  = userController(store, bus);
 	const auth  = authController(store, config, bus);
 	const oauth = oauthController(store, config);
-	const mfa   = mfaController(store, config, config.appName ?? 'Fonderie');
+	const mfa   = mfaController(store, config, config.appName ?? 'Fonderie', bus);
 
 	const routes: RouteDefinition[] = [
 		// Registration & Login (Public)

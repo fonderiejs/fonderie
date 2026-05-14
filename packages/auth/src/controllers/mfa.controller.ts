@@ -3,6 +3,8 @@ import QRCode from 'qrcode';
 import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
+import type { EventBus }                    from '@fonderie-js/events';
+import { NOTIFICATION_EVENT }               from '@fonderie-js/events';
 
 import type { IAuthConfig }                                     from '../config';
 import { MESSAGE_KEYS }                                    from '../config';
@@ -15,7 +17,7 @@ import { UserModel }                                            from '../models/
 import { SessionModel }                                         from '../models/session.model';
 import { BackupCodeModel }                                      from '../models/backup-code.model';
 
-export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer: string) {
+export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer: string, bus?: EventBus) {
 	const users       = new UserModel(store);
 	const sessions    = new SessionModel(store);
 	const backupCodes = new BackupCodeModel(store);
@@ -61,11 +63,11 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				}
 				await users.confirmMfaSecret(ctx.user!.id);
 
-				ctx.meta['message'] = {
+				bus?.emit(NOTIFICATION_EVENT, {
 					type:      MESSAGE_KEYS.mfaEnabled,
 					data:      {},
 					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-				} satisfies ICourierMessage;
+				} satisfies ICourierMessage).catch(() => {})
 
 				return setApiResponse(HTTP.OK, 'MFA_VERIFIED', 'MFA verified successfully.', { mfaEnabled: true });
 
@@ -161,11 +163,11 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			const codeHashes = await Promise.all(plainCodes.map(c => hashPassword(c)));
 			await backupCodes.replace(ctx.user!.id, codeHashes);
 
-			ctx.meta['message'] = {
+			bus?.emit(NOTIFICATION_EVENT, {
 				type:      MESSAGE_KEYS.mfaBackupCodesRegenerated,
 				data:      {},
 				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-			} satisfies ICourierMessage;
+			} satisfies ICourierMessage).catch(() => {})
 
 			return setApiResponse(HTTP.OK, 'BACKUP_CODES_REGENERATED', 'Backup codes regenerated.', {
 				backupCodes: plainCodes,
@@ -196,11 +198,11 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				backupCodes.deleteByUser(ctx.user!.id),
 			]);
 
-			ctx.meta['message'] = {
+			bus?.emit(NOTIFICATION_EVENT, {
 				type:      MESSAGE_KEYS.mfaDisabled,
 				data:      {},
 				recipient: { email: user.email, phone: null, deviceToken: null },
-			} satisfies ICourierMessage;
+			} satisfies ICourierMessage).catch(() => {})
 
 			return setApiResponse(HTTP.OK, 'MFA_DISABLED', 'MFA disabled successfully.');
 		},

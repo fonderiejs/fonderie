@@ -5,6 +5,7 @@ import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
 import type { IStoreAdapter }                     from '@fonderie-js/store';
 
 import type { EventBus }          from '@fonderie-js/events';
+import { NOTIFICATION_EVENT }     from '@fonderie-js/events';
 
 import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { toUserDTO }                  from '../dtos/user';
@@ -109,21 +110,18 @@ export function userController(store: IStoreAdapter, bus?: EventBus) {
 			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
 			await users.updateEmail(ctx.user!.id, normalised);
 
-			const messages: ICourierMessage[] = [
-				{
-					type:      MESSAGE_KEYS.emailVerification,
-					data:      { pin },
-					recipient: { email: normalised, phone: null, deviceToken: null },
-				},
-			];
+			bus?.emit(NOTIFICATION_EVENT, {
+				type:      MESSAGE_KEYS.emailVerification,
+				data:      { pin },
+				recipient: { email: normalised, phone: null, deviceToken: null },
+			} satisfies ICourierMessage).catch(() => {})
 			if (oldEmail) {
-				messages.push({
+				bus?.emit(NOTIFICATION_EVENT, {
 					type:      MESSAGE_KEYS.emailChanged,
 					data:      { newEmail: normalised },
 					recipient: { email: oldEmail, phone: null, deviceToken: null },
-				});
+				} satisfies ICourierMessage).catch(() => {})
 			}
-			ctx.meta['messages'] = messages;
 
 			return setApiResponse(HTTP.OK, 'EMAIL_UPDATED', 'Email updated. A verification code has been sent to your new address.', {
 				email: normalised,
@@ -150,21 +148,18 @@ export function userController(store: IStoreAdapter, bus?: EventBus) {
 			await phoneVerif.upsert(ctx.user!.id, normalised, otp, expiresAt);
 			await users.updatePhone(ctx.user!.id, normalised);
 
-			const messages: ICourierMessage[] = [
-				{
-					type:      MESSAGE_KEYS.phoneOtp,
-					data:      { otp },
-					recipient: { email: null, phone: normalised, deviceToken: null },
-				},
-			];
+			bus?.emit(NOTIFICATION_EVENT, {
+				type:      MESSAGE_KEYS.phoneOtp,
+				data:      { otp },
+				recipient: { email: null, phone: normalised, deviceToken: null },
+			} satisfies ICourierMessage).catch(() => {})
 			if (ctx.user!.email) {
-				messages.push({
+				bus?.emit(NOTIFICATION_EVENT, {
 					type:      MESSAGE_KEYS.phoneChanged,
 					data:      {},
 					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-				});
+				} satisfies ICourierMessage).catch(() => {})
 			}
-			ctx.meta['messages'] = messages;
 
 			return setApiResponse(HTTP.OK, 'PHONE_UPDATED', 'Phone number updated. A verification code has been sent to your new number.', {
 				phone: normalised,

@@ -1,21 +1,23 @@
 import { randomInt }                                    from 'node:crypto';
 
 import { setApiResponse, HTTP } from '@fonderie-js/core';
+import type { EventBus }             from '@fonderie-js/events';
+import { NOTIFICATION_EVENT }        from '@fonderie-js/events';
 import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
 import type { IStoreAdapter }                           from '@fonderie-js/store';
-import type { IAuthConfig }                             from '../config';
-import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
-import { issueTokenPair, issueMfaPendingToken, verifyToken, refreshTokenExpiry } from '../services/jwt';
+
 import { checkCooldown } from '../services/cooldown';
-import { hashPassword, verifyPassword }                 from '../services/password';
-import { toUserDTO }                                    from '../dtos/user';
+import { EVENT_KEYS }                from '../config';
 import { UserModel }                 from '../models/user.model';
 import { SessionModel }              from '../models/session.model';
-import { EmailVerificationModel }    from '../models/email-verification.model';
+import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
+import type { IAuthConfig }                             from '../config';
 import { PasswordResetModel }        from '../models/password-reset.model';
+import { toUserDTO }                                    from '../dtos/user';
+import { EmailVerificationModel }    from '../models/email-verification.model';
 import { PhoneVerificationModel }    from '../models/phone-verification.model';
-import type { EventBus }             from '@fonderie-js/events';
-import { EVENT_KEYS }                from '../config';
+import { hashPassword, verifyPassword }                 from '../services/password';
+import { issueTokenPair, issueMfaPendingToken, verifyToken, refreshTokenExpiry } from '../services/jwt';
 
 function isValidPhone(phone: unknown): phone is string {
 	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(phone.trim());
@@ -74,25 +76,25 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
 				await emailVerif.create(row.id, pin, expiresAt);
 
-				ctx.meta['message'] = {
-					type:      MESSAGE_KEYS.emailRegistration,
-					data:      { pin, firstName: firstName ?? '' },
-					recipient: { email, phone: null, deviceToken: null },
-				} satisfies ICourierMessage;
-
 				const user = await users.findById(row.id);
 				if (!user) {
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
 
-				const reqId = ctx.meta['requestId'] as string | undefined;
+				const reqId   = ctx.meta['requestId'] as string | undefined;
+				const reqOpts = reqId !== undefined ? { requestId: reqId } : undefined;
+				bus?.emit(NOTIFICATION_EVENT, {
+					type:      MESSAGE_KEYS.emailRegistration,
+					data:      { pin, firstName: firstName ?? '' },
+					recipient: { email, phone: null, deviceToken: null },
+				} satisfies ICourierMessage, reqOpts).catch(() => {})
 				bus?.emit(EVENT_KEYS.userRegistered, {
 					userId:      user.id,
 					email:       user.email,
 					firstName:   user.firstName,
 					lastName:    user.lastName,
 					loginMethod: 'email' as const,
-				}, reqId !== undefined ? { requestId: reqId } : undefined).catch(() => {})
+				}, reqOpts).catch(() => {})
 
 				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
@@ -135,25 +137,25 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(id, phone.trim(), otp, expiresAt);
 
-				ctx.meta['message'] = {
-					type:      MESSAGE_KEYS.phoneOtp,
-					data:      { otp },
-					recipient: { email: null, phone: phone.trim(), deviceToken: null },
-				} satisfies ICourierMessage;
-
 				const user = await users.findById(id);
 				if (!user) {
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
 
-				const reqId2 = ctx.meta['requestId'] as string | undefined;
+				const reqId2   = ctx.meta['requestId'] as string | undefined;
+				const reqOpts2 = reqId2 !== undefined ? { requestId: reqId2 } : undefined;
+				bus?.emit(NOTIFICATION_EVENT, {
+					type:      MESSAGE_KEYS.phoneOtp,
+					data:      { otp },
+					recipient: { email: null, phone: phone.trim(), deviceToken: null },
+				} satisfies ICourierMessage, reqOpts2).catch(() => {})
 				bus?.emit(EVENT_KEYS.userRegistered, {
 					userId:      user.id,
 					email:       user.email,
 					firstName:   user.firstName,
 					lastName:    user.lastName,
 					loginMethod: 'phone' as const,
-				}, reqId2 !== undefined ? { requestId: reqId2 } : undefined).catch(() => {})
+				}, reqOpts2).catch(() => {})
 
 				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'phone' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
@@ -247,11 +249,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(user.id, phone.trim(), otp, expiresAt);
 
-				ctx.meta['message'] = {
+				bus?.emit(NOTIFICATION_EVENT, {
 					type:      MESSAGE_KEYS.phoneOtp,
 					data:      { otp },
 					recipient: { email: null, phone: phone.trim(), deviceToken: null },
-				} satisfies ICourierMessage;
+				} satisfies ICourierMessage).catch(() => {})
 
 				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'phone' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
@@ -372,11 +374,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
 			await passwordReset.create(user.id, pin, expiresAt);
 
-			ctx.meta['message'] = {
+			bus?.emit(NOTIFICATION_EVENT, {
 				type:      MESSAGE_KEYS.passwordReset,
 				recipient: { email, phone: null, deviceToken: null },
 				data:      { pin },
-			} satisfies ICourierMessage;
+			} satisfies ICourierMessage).catch(() => {})
 
 			return setApiResponse(HTTP.OK, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
 		},
@@ -520,11 +522,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(ctx.user!.id, phone, otp, expiresAt);
 
-				ctx.meta['message'] = {
+				bus?.emit(NOTIFICATION_EVENT, {
 					type:      MESSAGE_KEYS.phoneOtp,
 					data:      { otp },
 					recipient: { email: null, phone, deviceToken: null },
-				} satisfies ICourierMessage;
+				} satisfies ICourierMessage).catch(() => {})
 
 				return setApiResponse(HTTP.OK, 'VERIFICATION_SENT', 'A verification code has been sent to your phone.');
 			}
@@ -551,11 +553,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
 			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
 
-			ctx.meta['message'] = {
+			bus?.emit(NOTIFICATION_EVENT, {
 				type:      MESSAGE_KEYS.emailVerification,
 				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 				data:      { pin },
-			} satisfies ICourierMessage;
+			} satisfies ICourierMessage).catch(() => {})
 
 			return setApiResponse(HTTP.OK, 'VERIFICATION_SENT', 'Verification email sent.', {
 				email: ctx.user!.email,
