@@ -34,13 +34,10 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 // ── Courier channel constants ─────────────────────────────────────
 
 const via = {
-	email:      ['email']         as Array<'email' | 'sms' | 'push'>,
-	sms:        ['sms']           as Array<'email' | 'sms' | 'push'>,
-	push:       ['push']          as Array<'email' | 'sms' | 'push'>,
-	emailSms:   ['email', 'sms']  as Array<'email' | 'sms' | 'push'>,
-	emailPush:  ['email', 'push'] as Array<'email' | 'sms' | 'push'>,
-	all:        ['email', 'sms', 'push'] as Array<'email' | 'sms' | 'push'>,
-} as const
+	EMAIL: 'email',
+	SMS:   'sms',
+	PUSH:  'push',
+} as const satisfies Record<string, 'email' | 'sms' | 'push'>
 
 // ── Config ────────────────────────────────────────────────────────
 
@@ -102,16 +99,16 @@ const workspaces  = new WorkspacesModule(store, {}, events.bus);
 const courier     = new CourierModule(
 	{
 		channels: {
-			[AUTH_MESSAGE_KEYS.emailRegistration]:         via.email,
-			[AUTH_MESSAGE_KEYS.emailVerification]:         via.email,
-			[AUTH_MESSAGE_KEYS.passwordReset]:             via.email,
-			[AUTH_MESSAGE_KEYS.phoneOtp]:                  via.sms,
-			[AUTH_MESSAGE_KEYS.mfaEnabled]:                via.email,
-			[AUTH_MESSAGE_KEYS.mfaDisabled]:               via.email,
-			[AUTH_MESSAGE_KEYS.mfaBackupCodesRegenerated]: via.email,
-			[AUTH_MESSAGE_KEYS.emailChanged]:              via.email,
-			[AUTH_MESSAGE_KEYS.phoneChanged]:              via.email,
-			[WS_MESSAGE_KEYS.workspaceInvitation]:         via.email,
+			[AUTH_MESSAGE_KEYS.emailRegistration]:         [via.EMAIL],
+			[AUTH_MESSAGE_KEYS.emailVerification]:         [via.EMAIL],
+			[AUTH_MESSAGE_KEYS.passwordReset]:             [via.EMAIL],
+			[AUTH_MESSAGE_KEYS.phoneOtp]:                  [via.SMS],
+			[AUTH_MESSAGE_KEYS.mfaEnabled]:                [via.EMAIL],
+			[AUTH_MESSAGE_KEYS.mfaDisabled]:               [via.EMAIL],
+			[AUTH_MESSAGE_KEYS.mfaBackupCodesRegenerated]: [via.EMAIL],
+			[AUTH_MESSAGE_KEYS.emailChanged]:              [via.EMAIL],
+			[AUTH_MESSAGE_KEYS.phoneChanged]:              [via.EMAIL],
+			[WS_MESSAGE_KEYS.workspaceInvitation]:         [via.EMAIL],
 		},
 		templates: {
 			source: 'fs', 
