@@ -7,7 +7,6 @@ import { serve }       from '@hono/node-server';
 import { EventsModule } from '@fonderie-js/events';
 import { LoggerModule } from '@fonderie-js/logger';
 import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { withBody } from '@fonderie-js/core/middlewares';
 import { CourierModule, Channel } from '@fonderie-js/courier';
 import { PGAdapter, InternalMigrationRunner } from '@fonderie-js/store';
 import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
@@ -216,7 +215,6 @@ const webhooks = new WebhooksModule(store, {}, events.bus)
 const audit    = new AuditModule(store)
 
 const fonderie = new FonderieApp(config)
-	.use(withBody)
 	.register(logger)
 	.register(events)
 	.register(remoteConfig)

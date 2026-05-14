@@ -6,7 +6,6 @@ import { FonderieApp, defineConfig }                          from '@fonderie-js
 import { PGAdapter, MigrationRunner, InternalMigrationRunner } from '@fonderie-js/store';
 import { EventsModule }                                       from '@fonderie-js/events';
 import { getMigrationsPath as authMig }                       from '@fonderie-js/auth/migrations';
-import { withBody }                                           from '@fonderie-js/core/middlewares';
 import { getMigrationsPath as evtMig }                        from '@fonderie-js/events/migrations';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -33,7 +32,6 @@ const auth   = new AuthModule(store, {
 }, events.bus)
 
 export const fonderie = new FonderieApp(config)
-	.use(withBody)
 	.register(events)
 	.register(auth)
 

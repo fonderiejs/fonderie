@@ -6,6 +6,7 @@ import type { FonderieConfig } from './config';
 import { Router, routerMiddleware } from './router';
 import { compose } from './compose';
 import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
+import { withBody } from './middlewares/body-parser';
 
 export class FonderieApp {
 	private config: FonderieConfig;
@@ -17,6 +18,7 @@ export class FonderieApp {
 	constructor(config: FonderieConfig) {
 		this.config = config;
 		this.prefix = (config.basePath ?? '').replace(/\/$/, '');
+		this.middlewares = [withBody];
 	}
 
 	listen(
