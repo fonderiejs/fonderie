@@ -25,13 +25,24 @@
 		"check":     "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core": "^0.0.1",
-		"express":           "^4.0.0 || ^5.0.0"
+		"@fonderie-js/core":        "^0.0.1",
+		"@fonderie-js/workspaces":  "^0.0.1",
+		"@fonderie-js/permissions": "^0.0.1",
+		"@fonderie-js/billing":     "^0.0.1",
+		"express":                  "^4.0.0 || ^5.0.0"
+	},
+	"peerDependenciesMeta": {
+		"@fonderie-js/workspaces":  { "optional": true },
+		"@fonderie-js/permissions": { "optional": true },
+		"@fonderie-js/billing":     { "optional": true }
 	},
 	"devDependencies": {
-		"@fonderie-js/core": "../core",
-		"@types/node":       "^25.6.0",
-		"tsup":              "^8.5.1",
-		"typescript":        "^6.0.3"
+		"@fonderie-js/core":        "../core",
+		"@fonderie-js/workspaces":  "../workspaces",
+		"@fonderie-js/permissions": "../permissions",
+		"@fonderie-js/billing":     "../billing",
+		"@types/node":              "^25.6.0",
+		"tsup":                     "^8.5.1",
+		"typescript":               "^6.0.3"
 	}
 }

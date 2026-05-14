@@ -1,14 +1,14 @@
 import express from 'express';
 
-import { FonderieApp, defineConfig }    from '@fonderie-js/core';
-import { withBody, requireAuth }        from '@fonderie-js/core/middlewares';
-import { PGAdapter, MigrationRunner }   from '@fonderie-js/store';
-import { EventsModule }                 from '@fonderie-js/events';
-import { AuthModule }                   from '@fonderie-js/auth';
-import { getMigrationsPath as authMig } from '@fonderie-js/auth/migrations';
-import { getMigrationsPath as evtMig }  from '@fonderie-js/events/migrations';
-import { bridge, adapt, mount }         from '@fonderie-js/adapter-express';
-import type { ExpressRequest }          from '@fonderie-js/adapter-express';
+import { FonderieApp, defineConfig }                          from '@fonderie-js/core';
+import { withBody }                                           from '@fonderie-js/core/middlewares';
+import { PGAdapter, MigrationRunner }                         from '@fonderie-js/store';
+import { EventsModule }                                       from '@fonderie-js/events';
+import { AuthModule }                                         from '@fonderie-js/auth';
+import { getMigrationsPath as authMig }                       from '@fonderie-js/auth/migrations';
+import { getMigrationsPath as evtMig }                        from '@fonderie-js/events/migrations';
+import { bridge, requireAuth, mount }                         from '@fonderie-js/adapter-express';
+import type { ExpressRequest }                                from '@fonderie-js/adapter-express';
 
 // ── Config ────────────────────────────────────────────────────────
 
@@ -43,15 +43,15 @@ await fonderie.boot()
 
 // ── Express app ───────────────────────────────────────────────────
 //
-// bridge()  — runs fonderie's global middleware (session verification, billing…)
-//             and populates req._fonderie with { user, workspace, meta }.
-//             Also forwards the parsed body to req.body.
+// bridge()      — runs fonderie's global middleware (session verification,
+//                 billing…) and populates req._fonderie with { user, workspace,
+//                 meta }. Also forwards the parsed body to req.body.
 //
-// adapt()   — wraps any fonderie middleware (requireAuth, withWorkspace…)
-//             into a standard Express middleware function.
+// requireAuth   — fonderie guard, pre-adapted as native Express middleware.
+//                 Import from @fonderie-js/adapter-express, not from core.
 //
-// mount()   — registers fonderie's infrastructure routes as a catch-all.
-//             Always call LAST so your own routes take priority.
+// mount()       — registers fonderie's infrastructure routes as a catch-all.
+//                 Always call LAST so your own routes take priority.
 
 const app = express()
 
@@ -61,12 +61,12 @@ app.use(bridge(fonderie))
 
 const todos: { id: string; text: string; done: boolean; userId: string }[] = []
 
-app.get('/v1/todos', adapt(requireAuth), (req, res) => {
+app.get('/v1/todos', requireAuth, (req, res) => {
 	const { user } = (req as ExpressRequest)._fonderie!
 	res.json({ todos: todos.filter(t => t.userId === user!.id) })
 })
 
-app.post('/v1/todos', adapt(requireAuth), (req, res) => {
+app.post('/v1/todos', requireAuth, (req, res) => {
 	const { user } = (req as ExpressRequest)._fonderie!
 	const { text } = req.body as { text: string }
 	const todo = { id: crypto.randomUUID(), text, done: false, userId: user!.id }
@@ -74,7 +74,7 @@ app.post('/v1/todos', adapt(requireAuth), (req, res) => {
 	res.status(201).json(todo)
 })
 
-app.patch('/v1/todos/:id', adapt(requireAuth), (req, res) => {
+app.patch('/v1/todos/:id', requireAuth, (req, res) => {
 	const { user } = (req as ExpressRequest)._fonderie!
 	const todo = todos.find(t => t.id === req.params['id'] && t.userId === user!.id)
 	if (!todo) { res.status(404).json({ error: 'NOT_FOUND' }); return }
@@ -82,7 +82,7 @@ app.patch('/v1/todos/:id', adapt(requireAuth), (req, res) => {
 	res.json(todo)
 })
 
-app.delete('/v1/todos/:id', adapt(requireAuth), (req, res) => {
+app.delete('/v1/todos/:id', requireAuth, (req, res) => {
 	const { user } = (req as ExpressRequest)._fonderie!
 	const idx = todos.findIndex(t => t.id === req.params['id'] && t.userId === user!.id)
 	if (idx === -1) { res.status(404).json({ error: 'NOT_FOUND' }); return }
