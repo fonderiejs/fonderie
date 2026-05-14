@@ -1,4 +1,4 @@
-import { randomInt }                                    from 'node:crypto';
+import { randomInt } from 'node:crypto';
 
 import type { EventBus } from '@fonderie-js/events';
 import type { IStoreAdapter } from '@fonderie-js/store';
@@ -6,10 +6,9 @@ import { NOTIFICATION_EVENT } from '@fonderie-js/events';
 import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
 
-import type { IAuthConfig } from '../config';
-
 import { EVENT_KEYS } from '../config';
 import { toUserDTO } from '../dtos/user';
+import type { IAuthConfig } from '../config';
 import { UserModel } from '../models/user.model';
 import { checkCooldown } from '../services/cooldown';
 import { SessionModel }  from '../models/session.model';
