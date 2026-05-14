@@ -17,17 +17,19 @@ import { getMigrationsPath as eventsMigrations } from '@fonderie-js/events/migra
 import { getMigrationsPath as configMigrations } from '@fonderie-js/config/migrations';
 import { getMigrationsPath as billingMigrations } from '@fonderie-js/billing/migrations';
 import { getMigrationsPath as courierMigrations } from '@fonderie-js/courier/migrations';
-import { PermissionsModule, requirePermission, OPERATIONS } from '@fonderie-js/permissions';
+import { PermissionsModule } from '@fonderie-js/permissions';
 import { getMigrationsPath as workspacesMigrations } from '@fonderie-js/workspaces/migrations';
 import { getMigrationsPath as permissionsMigrations } from '@fonderie-js/permissions/migrations';
 import { AuthModule, AUTH_CONFIG_KEYS, MESSAGE_KEYS as AUTH_MESSAGE_KEYS } from '@fonderie-js/auth';
-import { WorkspacesModule, withWorkspace, MESSAGE_KEYS as WS_MESSAGE_KEYS } from '@fonderie-js/workspaces';
-import { BillingModule, StripeProvider, hasFeature, getPlanLimit, requireFeature } from '@fonderie-js/billing';
+import { WorkspacesModule, MESSAGE_KEYS as WS_MESSAGE_KEYS } from '@fonderie-js/workspaces';
+import { BillingModule, StripeProvider, hasFeature, getPlanLimit } from '@fonderie-js/billing';
 import { WebhooksModule } from '@fonderie-js/webhooks';
 import { getMigrationsPath as webhooksMigrations } from '@fonderie-js/webhooks/migrations';
 import { AuditModule } from '@fonderie-js/audit';
-import { requireAuth } from '@fonderie-js/core/middlewares';
-import { bridge, adapt, mount } from '@fonderie-js/adapter-hono';
+import {
+	bridge, mount,
+	requireAuth, withWorkspace, requirePermission, requireFeature, OPERATIONS,
+} from '@fonderie-js/adapter-hono';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -232,9 +234,9 @@ await fonderie.boot()
 // bridge() runs fonderie's global middleware for every request, populating
 // c.var._fonderie with { user, workspace, meta }.
 //
-// User business routes are written in plain Hono. adapt() wraps any fonderie
-// middleware (requireAuth, withWorkspace, requirePermission, requireFeature)
-// to run against the shared fonderie context.
+// User business routes are written in plain Hono. requireAuth, withWorkspace,
+// requirePermission, requireFeature are imported from @fonderie-js/adapter-hono
+// as native Hono middleware — no wrapper needed.
 //
 // mount() registers fonderie's infrastructure routes (auth, billing,
 // workspaces, webhooks, audit) as a catch-all — always registered LAST.
@@ -257,9 +259,9 @@ hono.get('/v1/health', async (c) => {
 // ── Jobs ──────────────────────────────────────────────────────────
 
 hono.get('/v1/jobs',
-	adapt(requireAuth),
-	adapt(withWorkspace(store)),
-	adapt(requirePermission(OPERATIONS.READ, 'jobs')),
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.READ, 'jobs'),
 	(c) => {
 		const { workspace } = c.get('_fonderie')
 		return c.json({ workspaceId: workspace?.id, jobs: [] })
@@ -267,15 +269,15 @@ hono.get('/v1/jobs',
 )
 
 hono.post('/v1/jobs',
-	adapt(requireAuth),
-	adapt(withWorkspace(store)),
-	adapt(requirePermission(OPERATIONS.CREATE, 'jobs')),
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.CREATE, 'jobs'),
 	(c) => c.json({ created: true }, 201)
 )
 
 hono.get('/v1/jobs/quota',
-	adapt(requireAuth),
-	adapt(withWorkspace(store)),
+	requireAuth,
+	withWorkspace(store),
 	(c) => {
 		const fCtx = c.get('_fonderie')
 		const limit = getPlanLimit(fCtx, 'jobs')
@@ -286,9 +288,9 @@ hono.get('/v1/jobs/quota',
 // ── Clients ───────────────────────────────────────────────────────
 
 hono.get('/v1/clients',
-	adapt(requireAuth),
-	adapt(withWorkspace(store)),
-	adapt(requirePermission(OPERATIONS.READ, 'clients')),
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.READ, 'clients'),
 	(c) => {
 		const { workspace } = c.get('_fonderie')
 		return c.json({ workspaceId: workspace?.id, clients: [] })
@@ -296,19 +298,19 @@ hono.get('/v1/clients',
 )
 
 hono.post('/v1/clients',
-	adapt(requireAuth),
-	adapt(withWorkspace(store)),
-	adapt(requirePermission(OPERATIONS.CREATE, 'clients')),
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.CREATE, 'clients'),
 	(c) => c.json({ created: true }, 201)
 )
 
 // ── Analytics — plan-gated ────────────────────────────────────────
 
 hono.get('/v1/analytics',
-	adapt(requireAuth),
-	adapt(withWorkspace(store)),
-	adapt(requirePermission(OPERATIONS.READ, 'analytics')),
-	adapt(requireFeature('analytics')),
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.READ, 'analytics'),
+	requireFeature('analytics'),
 	(c) => {
 		const { workspace } = c.get('_fonderie')
 		return c.json({ workspaceId: workspace?.id, metrics: [] })
@@ -318,9 +320,9 @@ hono.get('/v1/analytics',
 // ── SSO settings ──────────────────────────────────────────────────
 
 hono.get('/v1/settings/sso',
-	adapt(requireAuth),
-	adapt(withWorkspace(store)),
-	adapt(requirePermission(OPERATIONS.READ, 'settings')),
+	requireAuth,
+	withWorkspace(store),
+	requirePermission(OPERATIONS.READ, 'settings'),
 	(c) => {
 		const fCtx = c.get('_fonderie')
 		if (!hasFeature(fCtx, 'sso')) {
@@ -333,7 +335,7 @@ hono.get('/v1/settings/sso',
 // ── Config (dev only) ─────────────────────────────────────────────
 
 hono.get('/v1/config',
-	adapt(requireAuth),
+	requireAuth,
 	(c) => {
 		if (process.env['NODE_ENV'] === 'production') {
 			return c.json({ error: 'Not available in production' }, 403)

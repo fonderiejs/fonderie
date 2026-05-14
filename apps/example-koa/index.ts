@@ -1,17 +1,17 @@
-import type Koa_  from 'koa';
 import Koa        from 'koa';
 import Router     from '@koa/router';
 import bodyParser from 'koa-bodyparser';
+import type Koa_  from 'koa';
 
-import type { IFonderieContext }        from '@fonderie-js/core';
 import { FonderieApp, defineConfig }    from '@fonderie-js/core';
-import { AuthModule }                   from '@fonderie-js/auth';
+import { withBody }                     from '@fonderie-js/core/middlewares';
 import { PGAdapter, MigrationRunner }   from '@fonderie-js/store';
 import { EventsModule }                 from '@fonderie-js/events';
-import { bridge, adapt, mount }         from '@fonderie-js/adapter-koa';
+import { AuthModule }                   from '@fonderie-js/auth';
 import { getMigrationsPath as authMig } from '@fonderie-js/auth/migrations';
-import { withBody, requireAuth }        from '@fonderie-js/core/middlewares';
 import { getMigrationsPath as evtMig }  from '@fonderie-js/events/migrations';
+import { bridge, requireAuth, mount }   from '@fonderie-js/adapter-koa';
+import type { IFonderieContext }        from '@fonderie-js/core';
 
 // State type — extends default Koa state with fonderie context
 type State = Koa_.DefaultState & { _fonderie: IFonderieContext }
@@ -50,15 +50,15 @@ await fonderie.boot()
 
 // ── Koa app ───────────────────────────────────────────────────────
 //
-// bridge()  — runs fonderie's global middleware (session verification, billing…)
-//             and populates ctx.state._fonderie with { user, workspace, meta }.
-//             Requires koa-bodyparser to run first so rawBody is available.
+// bridge()      — runs fonderie's global middleware (session verification,
+//                 billing…) and populates ctx.state._fonderie with
+//                 { user, workspace, meta }. Requires koa-bodyparser first.
 //
-// adapt()   — wraps any fonderie middleware (requireAuth, withWorkspace…)
-//             into a standard Koa middleware function.
+// requireAuth   — fonderie guard, pre-adapted as native Koa middleware.
+//                 Import from @fonderie-js/adapter-koa, not from core.
 //
-// mount()   — registers fonderie's infrastructure routes as a catch-all.
-//             Always call LAST so your own routes take priority.
+// mount()       — registers fonderie's infrastructure routes as a catch-all.
+//                 Always call LAST so your own routes take priority.
 
 const app    = new Koa<State>()
 const router = new Router<State>()
@@ -70,12 +70,12 @@ app.use(bridge(fonderie))  // populates ctx.state._fonderie
 
 const todos: { id: string; text: string; done: boolean; userId: string }[] = []
 
-router.get('/v1/todos', adapt(requireAuth), (ctx: Ctx) => {
+router.get('/v1/todos', requireAuth, (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	ctx.body = { todos: todos.filter(t => t.userId === user!.id) }
 })
 
-router.post('/v1/todos', adapt(requireAuth), (ctx: Ctx) => {
+router.post('/v1/todos', requireAuth, (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	const { text } = ctx.request.body as { text: string }
 	const todo = { id: crypto.randomUUID(), text, done: false, userId: user!.id }
@@ -84,7 +84,7 @@ router.post('/v1/todos', adapt(requireAuth), (ctx: Ctx) => {
 	ctx.body   = todo
 })
 
-router.patch('/v1/todos/:id', adapt(requireAuth), (ctx: Ctx) => {
+router.patch('/v1/todos/:id', requireAuth, (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	const todo = todos.find(t => t.id === ctx.params['id'] && t.userId === user!.id)
 	if (!todo) { ctx.status = 404; ctx.body = { error: 'NOT_FOUND' }; return }
@@ -92,7 +92,7 @@ router.patch('/v1/todos/:id', adapt(requireAuth), (ctx: Ctx) => {
 	ctx.body  = todo
 })
 
-router.delete('/v1/todos/:id', adapt(requireAuth), (ctx: Ctx) => {
+router.delete('/v1/todos/:id', requireAuth, (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	const idx = todos.findIndex(t => t.id === ctx.params['id'] && t.userId === user!.id)
 	if (idx === -1) { ctx.status = 404; ctx.body = { error: 'NOT_FOUND' }; return }

@@ -1,6 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie-js/core';
+import { requireAuth as _requireAuth }                    from '@fonderie-js/core/middlewares';
+import { withWorkspace as _withWorkspace }                from '@fonderie-js/workspaces';
+import { requirePermission as _requirePermission }        from '@fonderie-js/permissions';
+import { requireFeature as _requireFeature }              from '@fonderie-js/billing';
+
+export { OPERATIONS } from '@fonderie-js/permissions';
 
 export type ExpressRequest  = IncomingMessage & { body?: unknown; _fonderie?: IFonderieContext }
 export type ExpressResponse = ServerResponse
@@ -50,6 +56,7 @@ function readStream(req: IncomingMessage): Promise<ArrayBuffer> {
 //
 // Express middleware. Populates req._fonderie with the fonderie context
 // (user, workspace, meta) for all subsequent route handlers.
+// Also forwards the parsed body to req.body.
 //
 //   app.use(bridge(fonderie))
 
@@ -58,7 +65,6 @@ export function bridge(fonderie: FonderieApp) {
 		try {
 			const webReq  = await expressRequestToWeb(req)
 			req._fonderie = await fonderie.buildContext(webReq.clone())
-			// Forward fonderie's parsed body to req.body so Express handlers work naturally
 			if (req._fonderie.meta['body'] !== undefined) {
 				req.body = req._fonderie.meta['body']
 			}
@@ -71,13 +77,9 @@ export function bridge(fonderie: FonderieApp) {
 
 // ── adapt ─────────────────────────────────────────────────────────
 //
-// Wraps any fonderie Middleware into an Express middleware function.
-//
-//   app.get('/jobs',
-//     adapt(requireAuth),
-//     adapt(withWorkspace(store)),
-//     async (req, res) => { ... req._fonderie?.user ... }
-//   )
+// Low-level escape hatch — wraps any fonderie Middleware into an Express
+// middleware function. Use this for custom fonderie middleware; prefer the
+// named exports below for the built-in fonderie guards.
 
 export function adapt(middleware: Middleware) {
 	return async (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => {
@@ -98,13 +100,37 @@ export function adapt(middleware: Middleware) {
 	}
 }
 
+// ── Pre-adapted middleware ────────────────────────────────────────
+//
+// Drop-in replacements for the fonderie middleware functions — no adapt()
+// needed. Import directly from this package instead of from the source
+// packages, and use them as native Express middleware.
+//
+//   app.get('/jobs', requireAuth, withWorkspace(store), ...)
+
+export const requireAuth = adapt(_requireAuth)
+
+export function withWorkspace(
+	store: Parameters<typeof _withWorkspace>[0],
+) {
+	return adapt(_withWorkspace(store))
+}
+
+export function requirePermission(
+	operation:     Parameters<typeof _requirePermission>[0],
+	permissionKey: Parameters<typeof _requirePermission>[1],
+) {
+	return adapt(_requirePermission(operation, permissionKey))
+}
+
+export function requireFeature(key: string) {
+	return adapt(_requireFeature(key))
+}
+
 // ── mount ─────────────────────────────────────────────────────────
 //
 // Registers fonderie's infrastructure routes as an Express catch-all.
 // Always call AFTER registering your own business routes.
-//
-//   app.get('/jobs', ...)      // business route — matched first
-//   mount(app, fonderie)       // fonderie infra — catch-all, matched last
 
 export function mount(app: { all: (path: string, handler: (req: ExpressRequest, res: ExpressResponse) => void) => void }, fonderie: FonderieApp): void {
 	app.all('*', async (req: ExpressRequest, res: ExpressResponse) => {

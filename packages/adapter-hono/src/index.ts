@@ -2,6 +2,12 @@ import type { Context, MiddlewareHandler } from 'hono';
 import type { Hono }                       from 'hono';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie-js/core';
+import { requireAuth as _requireAuth }                    from '@fonderie-js/core/middlewares';
+import { withWorkspace as _withWorkspace }                from '@fonderie-js/workspaces';
+import { requirePermission as _requirePermission }        from '@fonderie-js/permissions';
+import { requireFeature as _requireFeature }              from '@fonderie-js/billing';
+
+export { OPERATIONS } from '@fonderie-js/permissions';
 
 // Augment Hono's ContextVariableMap so c.get('_fonderie') is typed.
 declare module 'hono' {
@@ -23,9 +29,6 @@ export type FonderieVariables = {
 // Must be registered before any fonderie-aware route middleware.
 //
 //   hono.use('*', bridge(fonderie))
-//
-// The request is cloned so the original body stream is preserved for
-// fonderie's own catch-all route (registered via mount()).
 
 export function bridge(fonderie: FonderieApp): MiddlewareHandler {
 	return async (c, next) => {
@@ -37,16 +40,9 @@ export function bridge(fonderie: FonderieApp): MiddlewareHandler {
 
 // ── adapt ─────────────────────────────────────────────────────────
 //
-// Wraps any fonderie Middleware into a Hono MiddlewareHandler.
-// Multiple adapt() calls in the same route share the same fonderie context
-// from c.var._fonderie, so workspace/permissions state propagates correctly.
-//
-//   hono.get('/jobs',
-//     adapt(requireAuth),
-//     adapt(withWorkspace(store)),
-//     adapt(requirePermission(OPERATIONS.READ, 'jobs')),
-//     async (c) => { ... }
-//   )
+// Low-level escape hatch — wraps any fonderie Middleware into a Hono
+// MiddlewareHandler. Use this for custom fonderie middleware; prefer the
+// named exports below for the built-in fonderie guards.
 
 export function adapt(middleware: Middleware): MiddlewareHandler {
 	return async (c: Context, next) => {
@@ -65,6 +61,33 @@ export function adapt(middleware: Middleware): MiddlewareHandler {
 			return result
 		}
 	}
+}
+
+// ── Pre-adapted middleware ────────────────────────────────────────
+//
+// Drop-in replacements for the fonderie middleware functions — no adapt()
+// needed. Import directly from this package instead of from the source
+// packages, and use them as native Hono middleware.
+//
+//   hono.get('/jobs', requireAuth, withWorkspace(store), ...)
+
+export const requireAuth: MiddlewareHandler = adapt(_requireAuth)
+
+export function withWorkspace(
+	store: Parameters<typeof _withWorkspace>[0],
+): MiddlewareHandler {
+	return adapt(_withWorkspace(store))
+}
+
+export function requirePermission(
+	operation:     Parameters<typeof _requirePermission>[0],
+	permissionKey: Parameters<typeof _requirePermission>[1],
+): MiddlewareHandler {
+	return adapt(_requirePermission(operation, permissionKey))
+}
+
+export function requireFeature(key: string): MiddlewareHandler {
+	return adapt(_requireFeature(key))
 }
 
 // ── mount ─────────────────────────────────────────────────────────

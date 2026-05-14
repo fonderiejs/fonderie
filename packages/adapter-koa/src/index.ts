@@ -1,7 +1,13 @@
-import type { IncomingMessage }                  from 'node:http';
+import type { IncomingMessage }                         from 'node:http';
 import type { Middleware as KoaMiddleware, Application } from 'koa';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie-js/core';
+import { requireAuth as _requireAuth }                    from '@fonderie-js/core/middlewares';
+import { withWorkspace as _withWorkspace }                from '@fonderie-js/workspaces';
+import { requirePermission as _requirePermission }        from '@fonderie-js/permissions';
+import { requireFeature as _requireFeature }              from '@fonderie-js/billing';
+
+export { OPERATIONS } from '@fonderie-js/permissions';
 
 // Minimal Koa shape used internally for Web Standard translation.
 // Application code uses Koa's own context types (Koa.ParameterizedContext).
@@ -73,15 +79,9 @@ export function bridge(fonderie: FonderieApp): KoaMiddleware {
 
 // ── adapt ─────────────────────────────────────────────────────────
 //
-// Wraps any fonderie Middleware into a Koa middleware function.
-// Returns KoaMiddleware<any, any> so it's directly assignable in both
-// app.use() and typed router chains — no cast helper needed.
-//
-//   router.get('/jobs',
-//     adapt(requireAuth),
-//     adapt(withWorkspace(store)),
-//     async (ctx) => { ctx.state._fonderie.user }
-//   )
+// Low-level escape hatch — wraps any fonderie Middleware into a Koa
+// middleware function. Use this for custom fonderie middleware; prefer the
+// named exports below for the built-in fonderie guards.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function adapt(middleware: Middleware): KoaMiddleware<any, any> {
@@ -101,6 +101,37 @@ export function adapt(middleware: Middleware): KoaMiddleware<any, any> {
 			await webResponseToKoa(result, ctx as unknown as KoaContext)
 		}
 	}
+}
+
+// ── Pre-adapted middleware ────────────────────────────────────────
+//
+// Drop-in replacements for the fonderie middleware functions — no adapt()
+// needed. Import directly from this package instead of from the source
+// packages, and use them as native Koa middleware.
+//
+//   router.get('/jobs', requireAuth, withWorkspace(store), ...)
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const requireAuth: KoaMiddleware<any, any> = adapt(_requireAuth)
+
+export function withWorkspace(
+	store: Parameters<typeof _withWorkspace>[0],
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): KoaMiddleware<any, any> {
+	return adapt(_withWorkspace(store))
+}
+
+export function requirePermission(
+	operation:     Parameters<typeof _requirePermission>[0],
+	permissionKey: Parameters<typeof _requirePermission>[1],
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): KoaMiddleware<any, any> {
+	return adapt(_requirePermission(operation, permissionKey))
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function requireFeature(key: string): KoaMiddleware<any, any> {
+	return adapt(_requireFeature(key))
 }
 
 // ── mount ─────────────────────────────────────────────────────────
