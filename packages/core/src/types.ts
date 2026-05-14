@@ -1,46 +1,46 @@
 // ── Stubbed until @fonderie-labs/auth ships ──────────────────────
 export interface ITenant {
-	id:   string;
+	id: string;
 	slug: string;
 	plan: string;
 }
 
 export interface IAuthUser {
-	id:               string;
-	email:            string | null;
-	phone:            string | null;
-	suspended:        boolean;
-	mfaEnabled:       boolean;
-	deletedAt:        Date | null;
-	emailVerifiedAt:  Date | null;
-	loginMethod:      'email' | 'phone' | 'google';  // sourced from JWT payload
-	phoneVerified:    boolean;            // per-session, sourced from JWT payload
-	mfaPending?:      boolean;            // true on the short-lived pre-auth token issued during MFA login
+	id: string;
+	email: string | null;
+	phone: string | null;
+	suspended: boolean;
+	mfaEnabled: boolean;
+	deletedAt: Date | null;
+	emailVerifiedAt: Date | null;
+	loginMethod: 'email' | 'phone' | 'google'; // sourced from JWT payload
+	phoneVerified: boolean; // per-session, sourced from JWT payload
+	mfaPending?: boolean; // true on the short-lived pre-auth token issued during MFA login
 }
 
 export interface IWorkspace {
-	id:         string;
-	name:       string;
+	id: string;
+	name: string;
 	isPersonal?: boolean;
 }
 
 // ── Courier contract — lives in core because auth + workspaces emit
 // messages without importing @fonderie-js/courier.
 export interface ICourierMessage {
-	type:      string
-	locale?:   string
+	type: string;
+	locale?: string;
 	recipient: {
-		email:       string | null
-		phone:       string | null
-		deviceToken: string | null
-	}
-	data: Record<string, unknown>
+		email: string | null;
+		phone: string | null;
+		deviceToken: string | null;
+	};
+	data: Record<string, unknown>;
 }
 
 // ── Router interface — avoids circular dep with router.ts ────────
 export interface IRouteMatch {
 	handler: Middleware;
-	params:  Record<string, string>;
+	params: Record<string, string>;
 }
 
 export interface IRouter {
@@ -50,29 +50,29 @@ export interface IRouter {
 
 // ── Typed well-known ctx.meta keys ───────────────────────────────
 export interface IFonderieContextMeta {
-	params?:             Record<string, string>
-	body?:               unknown
-	workspaceId?:        string
-	userId?:             string
-	userWorkspaceRoles?: string[]
-	message?:            ICourierMessage
-	[key: string]:       unknown
+	params?: Record<string, string>;
+	body?: unknown;
+	workspaceId?: string;
+	userId?: string;
+	userWorkspaceRoles?: string[];
+	message?: ICourierMessage;
+	[key: string]: unknown;
 }
 
 // ── Core types ───────────────────────────────────────────────────
 export interface IFonderieContext {
-	request:            Request
-	meta:               IFonderieContextMeta
-	readonly tenant:    ITenant | null
-	readonly user:      IAuthUser | null
-	readonly workspace: IWorkspace | null
-	_router:            IRouter
+	request: Request;
+	meta: IFonderieContextMeta;
+	readonly tenant: ITenant | null;
+	readonly user: IAuthUser | null;
+	readonly workspace: IWorkspace | null;
+	_router: IRouter;
 }
 
 export type Middleware = (
-	ctx:  IFonderieContext,
+	ctx: IFonderieContext,
 	next: () => Promise<Response>,
-) => Promise<Response>
+) => Promise<Response>;
 
 // ── App + module contracts ────────────────────────────────────────
 export interface IFonderieApp {
@@ -83,7 +83,7 @@ export interface IFonderieApp {
 }
 
 export interface IFonderieModule {
-	name:   string;
-	deps?:  string[];
+	name: string;
+	deps?: string[];
 	install(app: IFonderieApp): void | Promise<void>;
 }

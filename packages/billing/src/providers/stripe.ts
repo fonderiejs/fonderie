@@ -2,20 +2,20 @@ import type { IBillingProvider, IBillingEvent, INormalizedSubscription } from '.
 import type { SubscriberType } from '../types';
 
 interface IStripeSubscriptionRaw {
-	id:                   string
-	status:               string
-	customer:             string
-	metadata?:            Record<string, string>
-	items:                { data: Array<{ price: { id: string; nickname: string | null } }> }
-	current_period_start: number
-	current_period_end:   number
-	cancel_at_period_end: boolean
-	trial_end:            number | null
+	id: string;
+	status: string;
+	customer: string;
+	metadata?: Record<string, string>;
+	items: { data: Array<{ price: { id: string; nickname: string | null } }> };
+	current_period_start: number;
+	current_period_end: number;
+	cancel_at_period_end: boolean;
+	trial_end: number | null;
 }
 
 interface IStripeEventRaw {
-	type: string
-	data: { object: unknown }
+	type: string;
+	data: { object: unknown };
 }
 
 // Lazy singleton — Stripe SDK is optional
@@ -38,24 +38,24 @@ async function getClient(secretKey: string): Promise<unknown> {
 
 function normalizeSubscription(sub: IStripeSubscriptionRaw): INormalizedSubscription {
 	return {
-		subscriberType:          (sub.metadata?.['subscriberType'] ?? 'workspace') as SubscriberType,
-		subscriberId:            sub.metadata?.['subscriberId'] ?? '',
-		plan:                    sub.items.data[0]?.price.nickname ?? 'unknown',
-		status:                  sub.status,
-		providerCustomerId:      sub.customer,
-		providerSubscriptionId:  sub.id,
-		currentPeriodStart:      new Date(sub.current_period_start * 1000),
-		currentPeriodEnd:        new Date(sub.current_period_end   * 1000),
-		cancelAtPeriodEnd:       sub.cancel_at_period_end,
-		trialEndsAt:             sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-	}
+		subscriberType: (sub.metadata?.['subscriberType'] ?? 'workspace') as SubscriberType,
+		subscriberId: sub.metadata?.['subscriberId'] ?? '',
+		plan: sub.items.data[0]?.price.nickname ?? 'unknown',
+		status: sub.status,
+		providerCustomerId: sub.customer,
+		providerSubscriptionId: sub.id,
+		currentPeriodStart: new Date(sub.current_period_start * 1000),
+		currentPeriodEnd: new Date(sub.current_period_end * 1000),
+		cancelAtPeriodEnd: sub.cancel_at_period_end,
+		trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+	};
 }
 
 export class StripeProvider implements IBillingProvider {
-	readonly name = 'stripe'
+	readonly name = 'stripe';
 
 	constructor(
-		private secretKey:      string,
+		private secretKey: string,
 		private webhookSecret?: string,
 	) {}
 
@@ -64,72 +64,70 @@ export class StripeProvider implements IBillingProvider {
 	}
 
 	async createCustomer(opts: {
-		email:          string
-		subscriberType: SubscriberType
-		subscriberId:   string
-		userId:         string
+		email: string;
+		subscriberType: SubscriberType;
+		subscriberId: string;
+		userId: string;
 	}): Promise<{ customerId: string }> {
-		const stripe   = await this.client();
+		const stripe = await this.client();
 		const customer = await stripe.customers.create({
-			email:    opts.email,
+			email: opts.email,
 			metadata: {
 				subscriberType: opts.subscriberType,
-				subscriberId:   opts.subscriberId,
-				userId:         opts.userId,
+				subscriberId: opts.subscriberId,
+				userId: opts.userId,
 			},
 		});
 		return { customerId: customer.id };
 	}
 
 	async createCheckoutSession(opts: {
-		customerId:     string
-		priceId:        string
-		subscriberType: SubscriberType
-		subscriberId:   string
-		trialDays?:     number
-		successUrl:     string
-		cancelUrl:      string
+		customerId: string;
+		priceId: string;
+		subscriberType: SubscriberType;
+		subscriberId: string;
+		trialDays?: number;
+		successUrl: string;
+		cancelUrl: string;
 	}): Promise<{ url: string }> {
-		const stripe  = await this.client();
+		const stripe = await this.client();
 		const session = await stripe.checkout.sessions.create({
-			customer:    opts.customerId,
-			mode:        'subscription',
-			line_items:  [{ price: opts.priceId, quantity: 1 }],
+			customer: opts.customerId,
+			mode: 'subscription',
+			line_items: [{ price: opts.priceId, quantity: 1 }],
 			success_url: opts.successUrl,
-			cancel_url:  opts.cancelUrl,
+			cancel_url: opts.cancelUrl,
 			subscription_data: {
 				metadata: {
 					subscriberType: opts.subscriberType,
-					subscriberId:   opts.subscriberId,
+					subscriberId: opts.subscriberId,
 				},
-				...(opts.trialDays && opts.trialDays > 0
-					? { trial_period_days: opts.trialDays }
-					: {}),
+				...(opts.trialDays && opts.trialDays > 0 ? { trial_period_days: opts.trialDays } : {}),
 			},
 		});
 		return { url: session.url ?? '' };
 	}
 
 	async createPortalSession(opts: {
-		customerId: string
-		returnUrl:  string
+		customerId: string;
+		returnUrl: string;
 	}): Promise<{ url: string }> {
-		const stripe  = await this.client();
+		const stripe = await this.client();
 		const session = await stripe.billingPortal.sessions.create({
-			customer:   opts.customerId,
+			customer: opts.customerId,
 			return_url: opts.returnUrl,
 		});
 		return { url: session.url };
 	}
 
 	async constructEvent(opts: {
-		payload:   string
-		signature: string
-		secret:    string
+		payload: string;
+		signature: string;
+		secret: string;
 	}): Promise<IBillingEvent> {
 		const stripe = await this.client();
 
-		let raw: IStripeEventRaw
+		let raw: IStripeEventRaw;
 		try {
 			raw = stripe.webhooks.constructEvent(opts.payload, opts.signature, opts.secret);
 		} catch {
@@ -146,11 +144,11 @@ export class StripeProvider implements IBillingProvider {
 			return { type: raw.type, subscription: null };
 		}
 
-		const sub = raw.data.object as IStripeSubscriptionRaw
+		const sub = raw.data.object as IStripeSubscriptionRaw;
 
 		if (raw.type === 'customer.subscription.deleted') {
 			return {
-				type:         raw.type,
+				type: raw.type,
 				subscription: { ...normalizeSubscription(sub), plan: 'free', status: 'canceled' },
 			};
 		}

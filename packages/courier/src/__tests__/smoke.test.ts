@@ -1,12 +1,12 @@
 import { test } from 'node:test';
-import assert   from 'node:assert/strict';
+import assert from 'node:assert/strict';
 
-import type { ICourierConfig }                                from '../config';
+import type { ICourierConfig } from '../config';
 import type { ICourierChannel, ICourierMessage, ITemplateResolver } from '../types';
-import type { IStoreAdapter }                                from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie-js/store';
 
-import { Channel }            from '../config';
-import { Dispatcher }         from '../dispatcher';
+import { Channel } from '../config';
+import { Dispatcher } from '../dispatcher';
 import { FSTemplateResolver } from '../templates/resolver';
 
 // ── Stub channel ─────────────────────────────────────────────────
@@ -16,8 +16,10 @@ function makeChannel(name: string): ICourierChannel & { sent: ICourierMessage[] 
 	return {
 		name,
 		sent,
-		async send(message) { sent.push(message) },
-	}
+		async send(message) {
+			sent.push(message);
+		},
+	};
 }
 
 // ── Stub resolver ─────────────────────────────────────────────────
@@ -27,10 +29,10 @@ function makeResolver(): ITemplateResolver {
 		async resolve(type, data, locale) {
 			return {
 				subject: `Subject: ${type}${locale ? ` (${locale})` : ''}`,
-				text:    `Text: ${JSON.stringify(data)}`,
-			}
+				text: `Text: ${JSON.stringify(data)}`,
+			};
 		},
-	}
+	};
 }
 
 // ── Stub store ───────────────────────────────────────────────────
@@ -38,210 +40,224 @@ function makeResolver(): ITemplateResolver {
 function makeStore(interceptLog?: (sql: string) => void): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
-			interceptLog?.(sql)
-			if (sql.includes('INSERT INTO fonderie_message_log')) return [{ id: 'log-1' }] as T[]
-			if (sql.includes('UPDATE fonderie_message_log'))      return [] as T[]
-			return [] as T[]
+			interceptLog?.(sql);
+			if (sql.includes('INSERT INTO fonderie_message_log')) return [{ id: 'log-1' }] as T[];
+			if (sql.includes('UPDATE fonderie_message_log')) return [] as T[];
+			return [] as T[];
 		},
 		transaction: async (fn) => fn(stub),
-	}
-	return stub
+	};
+	return stub;
 }
 
 // ── Channel constants ─────────────────────────────────────────────
 
 test('Channel: exports correct string values', () => {
-	assert.equal(Channel.EMAIL, 'email')
-	assert.equal(Channel.SMS,   'sms')
-	assert.equal(Channel.PUSH,  'push')
-})
+	assert.equal(Channel.EMAIL, 'email');
+	assert.equal(Channel.SMS, 'sms');
+	assert.equal(Channel.PUSH, 'push');
+});
 
 // ── Dispatcher ───────────────────────────────────────────────────
 
 test('dispatcher: sends to configured channel', async () => {
-	const config: ICourierConfig = { channels: { 'password-reset': [Channel.EMAIL] } }
-	const email      = makeChannel('email')
-	const dispatcher = new Dispatcher(config, makeResolver())
-	dispatcher.registerChannel(email)
+	const config: ICourierConfig = { channels: { 'password-reset': [Channel.EMAIL] } };
+	const email = makeChannel('email');
+	const dispatcher = new Dispatcher(config, makeResolver());
+	dispatcher.registerChannel(email);
 
 	await dispatcher.dispatch({
-		type:      'password-reset',
+		type: 'password-reset',
 		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
-		data:      { token: 'abc123' },
-	})
+		data: { token: 'abc123' },
+	});
 
-	assert.equal(email.sent.length, 1)
-	assert.equal(email.sent[0]?.recipient.email, 'a@b.com')
-})
+	assert.equal(email.sent.length, 1);
+	assert.equal(email.sent[0]?.recipient.email, 'a@b.com');
+});
 
 test('dispatcher: sends to multiple channels', async () => {
-	const config: ICourierConfig = { channels: { 'workspace-invitation': [Channel.EMAIL, Channel.SMS] } }
-	const email = makeChannel('email')
-	const sms   = makeChannel('sms')
+	const config: ICourierConfig = {
+		channels: { 'workspace-invitation': [Channel.EMAIL, Channel.SMS] },
+	};
+	const email = makeChannel('email');
+	const sms = makeChannel('sms');
 
-	const dispatcher = new Dispatcher(config, makeResolver())
-	dispatcher.registerChannel(email)
-	dispatcher.registerChannel(sms)
+	const dispatcher = new Dispatcher(config, makeResolver());
+	dispatcher.registerChannel(email);
+	dispatcher.registerChannel(sms);
 
 	await dispatcher.dispatch({
-		type:      'workspace-invitation',
+		type: 'workspace-invitation',
 		recipient: { email: 'a@b.com', phone: '+15551234567', deviceToken: null },
-		data:      { pin: '123456' },
-	})
+		data: { pin: '123456' },
+	});
 
-	assert.equal(email.sent.length, 1)
-	assert.equal(sms.sent.length,   1)
-})
+	assert.equal(email.sent.length, 1);
+	assert.equal(sms.sent.length, 1);
+});
 
 test('dispatcher: skips unconfigured message type', async () => {
-	const config: ICourierConfig = { channels: {} }
-	const email      = makeChannel('email')
-	const dispatcher = new Dispatcher(config, makeResolver())
-	dispatcher.registerChannel(email)
+	const config: ICourierConfig = { channels: {} };
+	const email = makeChannel('email');
+	const dispatcher = new Dispatcher(config, makeResolver());
+	dispatcher.registerChannel(email);
 
 	await dispatcher.dispatch({
-		type:      'unknown-type',
+		type: 'unknown-type',
 		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
-		data:      {},
-	})
+		data: {},
+	});
 
-	assert.equal(email.sent.length, 0)
-})
+	assert.equal(email.sent.length, 0);
+});
 
 test('dispatcher: skips missing channel without throwing', async () => {
-	const config: ICourierConfig = { channels: { 'test-event': [Channel.SMS] } }
-	const dispatcher = new Dispatcher(config, makeResolver())
+	const config: ICourierConfig = { channels: { 'test-event': [Channel.SMS] } };
+	const dispatcher = new Dispatcher(config, makeResolver());
 	// no channels registered
 	await assert.doesNotReject(() =>
 		dispatcher.dispatch({
-			type:      'test-event',
+			type: 'test-event',
 			recipient: { email: null, phone: '+15551234567', deviceToken: null },
-			data:      {},
-		})
-	)
-})
+			data: {},
+		}),
+	);
+});
 
 test('dispatcher: passes locale to resolver', async () => {
-	let capturedLocale: string | undefined
+	let capturedLocale: string | undefined;
 
 	const localeResolver: ITemplateResolver = {
 		async resolve(_type, _data, locale) {
-			capturedLocale = locale
-			return { text: 'ok' }
+			capturedLocale = locale;
+			return { text: 'ok' };
 		},
-	}
+	};
 
-	const config: ICourierConfig = { channels: { 'welcome': [Channel.EMAIL] } }
-	const dispatcher = new Dispatcher(config, localeResolver)
-	dispatcher.registerChannel(makeChannel('email'))
+	const config: ICourierConfig = { channels: { welcome: [Channel.EMAIL] } };
+	const dispatcher = new Dispatcher(config, localeResolver);
+	dispatcher.registerChannel(makeChannel('email'));
 
 	await dispatcher.dispatch({
-		type:      'welcome',
-		locale:    'fr-FR',
+		type: 'welcome',
+		locale: 'fr-FR',
 		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
-		data:      {},
-	})
+		data: {},
+	});
 
-	assert.equal(capturedLocale, 'fr-FR')
-})
+	assert.equal(capturedLocale, 'fr-FR');
+});
 
 test('dispatcher: logs messages when store provided', async () => {
-	const logged: string[] = []
-	const store = makeStore(sql => {
-		if (sql.includes('INSERT INTO fonderie_message_log')) logged.push('insert')
-		if (sql.includes("status = 'sent'"))                 logged.push('sent')
-	})
+	const logged: string[] = [];
+	const store = makeStore((sql) => {
+		if (sql.includes('INSERT INTO fonderie_message_log')) logged.push('insert');
+		if (sql.includes("status = 'sent'")) logged.push('sent');
+	});
 
-	const config: ICourierConfig = { channels: { 'test-log': [Channel.EMAIL] } }
-	const dispatcher = new Dispatcher(config, makeResolver(), store)
-	dispatcher.registerChannel(makeChannel('email'))
+	const config: ICourierConfig = { channels: { 'test-log': [Channel.EMAIL] } };
+	const dispatcher = new Dispatcher(config, makeResolver(), store);
+	dispatcher.registerChannel(makeChannel('email'));
 
 	await dispatcher.dispatch({
-		type:      'test-log',
+		type: 'test-log',
 		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
-		data:      {},
-	})
+		data: {},
+	});
 
 	// Give fire-and-forget log updates a tick to settle
-	await new Promise(r => setTimeout(r, 10))
-	assert.ok(logged.includes('insert'), 'should insert log entry')
-})
+	await new Promise((r) => setTimeout(r, 10));
+	assert.ok(logged.includes('insert'), 'should insert log entry');
+});
 
 // ── FSTemplateResolver ───────────────────────────────────────────
 
 test('FSTemplateResolver: falls back to JSON when template file missing', async () => {
-	const resolver = new FSTemplateResolver('/tmp/nonexistent-templates')
-	const result   = await resolver.resolve('some-type', { key: 'value' })
-	assert.ok(result.text.includes('some-type'))
-})
+	const resolver = new FSTemplateResolver('/tmp/nonexistent-templates');
+	const result = await resolver.resolve('some-type', { key: 'value' });
+	assert.ok(result.text.includes('some-type'));
+});
 
 test('FSTemplateResolver: passes locale to file lookup (no error on missing)', async () => {
-	const resolver = new FSTemplateResolver('/tmp/nonexistent-templates')
-	const result   = await resolver.resolve('some-type', { key: 'value' }, 'fr-FR')
-	assert.ok(result.text.includes('some-type'))
-})
+	const resolver = new FSTemplateResolver('/tmp/nonexistent-templates');
+	const result = await resolver.resolve('some-type', { key: 'value' }, 'fr-FR');
+	assert.ok(result.text.includes('some-type'));
+});
 
 // ── ICourierMessage type ─────────────────────────────────────────
 
 test('ICourierMessage: shape is correct', () => {
 	const message: ICourierMessage = {
-		type:      'password-reset',
-		locale:    'en-US',
+		type: 'password-reset',
+		locale: 'en-US',
 		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
-		data:      { token: 'abc' },
-	}
-	assert.equal(message.type,             'password-reset')
-	assert.equal(message.locale,           'en-US')
-	assert.equal(message.recipient.email,  'a@b.com')
-	assert.equal(message.recipient.phone,  null)
-})
+		data: { token: 'abc' },
+	};
+	assert.equal(message.type, 'password-reset');
+	assert.equal(message.locale, 'en-US');
+	assert.equal(message.recipient.email, 'a@b.com');
+	assert.equal(message.recipient.phone, null);
+});
 
 // ── CourierModule shape ──────────────────────────────────────────
 
 test('CourierModule: satisfies IFonderieModule interface', async () => {
-	const { CourierModule } = await import('../module')
+	const { CourierModule } = await import('../module');
 	const mod = new CourierModule({
-		channels:  {},
+		channels: {},
 		templates: { source: 'fs', directory: '/tmp' },
-	})
-	assert.equal(mod.name, '@fonderie-js/courier')
-	assert.ok(typeof mod.install    === 'function')
-	assert.ok(typeof mod.dispatcher === 'object')
-})
+	});
+	assert.equal(mod.name, '@fonderie-js/courier');
+	assert.ok(typeof mod.install === 'function');
+	assert.ok(typeof mod.dispatcher === 'object');
+});
 
 // ── Bus subscription ─────────────────────────────────────────────
 
 test('CourierModule: subscribes to notification.send and dispatches on emit', async () => {
-	const { CourierModule } = await import('../module')
+	const { CourierModule } = await import('../module');
 
-	let capturedHandler: ((msg: any, meta: any) => Promise<void>) | undefined
+	let capturedHandler: ((msg: any, meta: any) => Promise<void>) | undefined;
 	const fakeBus = {
-		on: (_type: string, handler: any) => { capturedHandler = handler },
-	} as any
+		on: (_type: string, handler: any) => {
+			capturedHandler = handler;
+		},
+	} as any;
 
-	const email = makeChannel('email')
-	const mod   = new CourierModule(
-		{ channels: { 'password-reset': [Channel.EMAIL] }, templates: { source: 'fs', directory: '/tmp' } },
+	const email = makeChannel('email');
+	const mod = new CourierModule(
+		{
+			channels: { 'password-reset': [Channel.EMAIL] },
+			templates: { source: 'fs', directory: '/tmp' },
+		},
 		undefined,
 		fakeBus,
-	)
-	mod.dispatcher.registerChannel(email)
+	);
+	mod.dispatcher.registerChannel(email);
 
-	assert.ok(typeof capturedHandler === 'function', 'handler must be registered on bus')
+	assert.ok(typeof capturedHandler === 'function', 'handler must be registered on bus');
 
 	await capturedHandler!(
-		{ type: 'password-reset', recipient: { email: 'a@b.com', phone: null, deviceToken: null }, data: {} },
+		{
+			type: 'password-reset',
+			recipient: { email: 'a@b.com', phone: null, deviceToken: null },
+			data: {},
+		},
 		{ id: 'evt-1', type: 'notification.send', emittedAt: new Date().toISOString(), attempts: 0 },
-	)
+	);
 
-	assert.equal(email.sent.length, 1)
-	assert.equal(email.sent[0]?.recipient.email, 'a@b.com')
-})
+	assert.equal(email.sent.length, 1);
+	assert.equal(email.sent[0]?.recipient.email, 'a@b.com');
+});
 
 test('CourierModule: no bus — no error thrown', async () => {
-	const { CourierModule } = await import('../module')
-	assert.doesNotThrow(() => new CourierModule({
-		channels:  {},
-		templates: { source: 'fs', directory: '/tmp' },
-	}))
-})
+	const { CourierModule } = await import('../module');
+	assert.doesNotThrow(
+		() =>
+			new CourierModule({
+				channels: {},
+				templates: { source: 'fs', directory: '/tmp' },
+			}),
+	);
+});

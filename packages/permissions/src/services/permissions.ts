@@ -1,16 +1,16 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
-import type { Operation }    from '../types';
+import type { Operation } from '../types';
 import { PERMISSION_COLUMN } from '../constants';
 
 export async function checkPermission(
-	userId:        string,
-	workspaceId:   string,
+	userId: string,
+	workspaceId: string,
 	permissionKey: string,
-	operation:     Operation,
-	store:         IStoreAdapter,
+	operation: Operation,
+	store: IStoreAdapter,
 ): Promise<boolean> {
-	const col = PERMISSION_COLUMN[operation]
+	const col = PERMISSION_COLUMN[operation];
 
 	const [row] = await store.query<{ has_permission: boolean }>(
 		`SELECT BOOL_OR(rp.${col}) AS has_permission
@@ -26,7 +26,7 @@ export async function checkPermission(
 		   AND (r.workspace_id = $2 OR r.is_system = true)
 		 GROUP BY ruw.user_id, ruw.workspace_id`,
 		[userId, workspaceId, permissionKey],
-	)
+	);
 
-	return row?.has_permission ?? false
+	return row?.has_permission ?? false;
 }

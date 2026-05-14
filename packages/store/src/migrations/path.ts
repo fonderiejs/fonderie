@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { dirname, join }  from 'node:path';
+import { dirname, join } from 'node:path';
 
 // Each package calls this with its own import.meta.url to resolve
 // the absolute path to its compiled migrations/sql/ directory.

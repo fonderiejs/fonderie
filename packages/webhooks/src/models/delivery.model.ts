@@ -10,8 +10,8 @@ const COLS = `id, endpoint_id as "endpointId", event_id as "eventId",
 
 export interface IPendingRetry {
 	delivery: IWebhookDelivery;
-	url:      string;
-	secret:   string;
+	url: string;
+	secret: string;
 }
 
 export class DeliveryModel {
@@ -19,9 +19,9 @@ export class DeliveryModel {
 
 	async create(data: {
 		endpointId: string;
-		eventId:    string;
-		eventType:  string;
-		payload:    Record<string, unknown>;
+		eventId: string;
+		eventType: string;
+		payload: Record<string, unknown>;
 	}): Promise<IWebhookDelivery> {
 		const [row] = await this.store.query<IWebhookDelivery>(
 			`INSERT INTO fonderie_webhook_deliveries (endpoint_id, event_id, event_type, payload)
@@ -32,12 +32,15 @@ export class DeliveryModel {
 		return row!;
 	}
 
-	async markResult(id: string, result: {
-		ok:             boolean;
-		responseStatus: number | null;
-		responseBody:   string;
-		nextAttemptAt:  Date | null;
-	}): Promise<void> {
+	async markResult(
+		id: string,
+		result: {
+			ok: boolean;
+			responseStatus: number | null;
+			responseBody: string;
+			nextAttemptAt: Date | null;
+		},
+	): Promise<void> {
 		await this.store.query(
 			`UPDATE fonderie_webhook_deliveries
 			 SET status          = $2,

@@ -1,7 +1,7 @@
-import nodemailer                                                    from 'nodemailer';
+import nodemailer from 'nodemailer';
 
-import type { ICourierChannel, ICourierMessage, IRenderedTemplate }  from '../types';
-import type { IEmailChannelConfig }                                  from '../config';
+import type { ICourierChannel, ICourierMessage, IRenderedTemplate } from '../types';
+import type { IEmailChannelConfig } from '../config';
 
 export class EmailChannel implements ICourierChannel {
 	readonly name = 'email';
@@ -10,10 +10,10 @@ export class EmailChannel implements ICourierChannel {
 	constructor(private config: IEmailChannelConfig) {
 		if (config.provider === 'smtp' && config.smtp) {
 			this.transport = nodemailer.createTransport({
-				host:   config.smtp.host,
-				port:   config.smtp.port,
+				host: config.smtp.host,
+				port: config.smtp.port,
 				secure: config.smtp.secure,
-				auth:   { user: config.smtp.user, pass: config.smtp.pass },
+				auth: { user: config.smtp.user, pass: config.smtp.pass },
 			});
 		}
 	}
@@ -22,7 +22,7 @@ export class EmailChannel implements ICourierChannel {
 		const to = message.recipient.email;
 		if (!to) {
 			console.warn('[courier:email] no email address for recipient — skipping');
-			return
+			return;
 		}
 
 		if (this.config.provider === 'resend') {
@@ -40,17 +40,17 @@ export class EmailChannel implements ICourierChannel {
 		}
 
 		const res = await fetch('https://api.resend.com/emails', {
-			method:  'POST',
+			method: 'POST',
 			headers: {
-				'Authorization': `Bearer ${this.config.apiKey}`,
-				'Content-Type':  'application/json',
+				Authorization: `Bearer ${this.config.apiKey}`,
+				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				from:    this.config.from,
+				from: this.config.from,
 				to,
 				subject: template.subject ?? '(no subject)',
-				html:    template.html,
-				text:    template.text,
+				html: template.html,
+				text: template.text,
 			}),
 		});
 
@@ -66,11 +66,11 @@ export class EmailChannel implements ICourierChannel {
 		}
 
 		await this.transport.sendMail({
-			from:    this.config.from,
+			from: this.config.from,
 			to,
 			subject: template.subject ?? '(no subject)',
-			html:    template.html,
-			text:    template.text,
+			html: template.html,
+			text: template.text,
 		});
 	}
 }

@@ -2,33 +2,42 @@ import QRCode from 'qrcode';
 
 import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
-import type { IStoreAdapter }               from '@fonderie-js/store';
-import type { EventBus }                    from '@fonderie-js/events';
-import { NOTIFICATION_EVENT }               from '@fonderie-js/events';
+import type { IStoreAdapter } from '@fonderie-js/store';
+import type { EventBus } from '@fonderie-js/events';
+import { NOTIFICATION_EVENT } from '@fonderie-js/events';
 
-import type { IAuthConfig }                                     from '../config';
-import { MESSAGE_KEYS }                                    from '../config';
-import { issueTokenPair, refreshTokenExpiry }                    from '../services/jwt';
-import { generateTotpSecret, generateTotpUri, verifyTotpToken,
-         generateBackupCodes }                                   from '../services/mfa';
-import { hashPassword, verifyPassword }                         from '../services/password';
-import { toUserDTO }                                            from '../dtos/user';
-import { UserModel }                                            from '../models/user.model';
-import { SessionModel }                                         from '../models/session.model';
-import { BackupCodeModel }                                      from '../models/backup-code.model';
+import type { IAuthConfig } from '../config';
+import { MESSAGE_KEYS } from '../config';
+import { issueTokenPair, refreshTokenExpiry } from '../services/jwt';
+import {
+	generateTotpSecret,
+	generateTotpUri,
+	verifyTotpToken,
+	generateBackupCodes,
+} from '../services/mfa';
+import { hashPassword, verifyPassword } from '../services/password';
+import { toUserDTO } from '../dtos/user';
+import { UserModel } from '../models/user.model';
+import { SessionModel } from '../models/session.model';
+import { BackupCodeModel } from '../models/backup-code.model';
 
-export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer: string, bus?: EventBus) {
-	const users       = new UserModel(store);
-	const sessions    = new SessionModel(store);
+export function mfaController(
+	store: IStoreAdapter,
+	config: IAuthConfig,
+	issuer: string,
+	bus?: EventBus,
+) {
+	const users = new UserModel(store);
+	const sessions = new SessionModel(store);
 	const backupCodes = new BackupCodeModel(store);
 
 	return {
 		// ── 1. Setup ───────────────────────────────────────────────
 		setup: async (ctx: IFonderieContext): Promise<Response> => {
-			const secret     = generateTotpSecret();
-			const uri        = generateTotpUri(ctx.user!.email ?? ctx.user!.id, secret, issuer);
+			const secret = generateTotpSecret();
+			const uri = generateTotpUri(ctx.user!.email ?? ctx.user!.id, secret, issuer);
 			const plainCodes = generateBackupCodes();
-			const codeHashes = await Promise.all(plainCodes.map(c => hashPassword(c)));
+			const codeHashes = await Promise.all(plainCodes.map((c) => hashPassword(c)));
 
 			const qr = await QRCode.toDataURL(uri);
 
@@ -37,17 +46,22 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				backupCodes.replace(ctx.user!.id, codeHashes),
 			]);
 
-			return setApiResponse(HTTP.OK, 'MFA_SETUP_INITIATED', 'Scan the QR code with your authenticator app.', {
-				qr,
-				// uri — expose when adding a "manual entry" flow in the UI (otpauth:// URI lets
-				// users add the credential by typing the secret instead of scanning the QR code)
-				backupCodes: plainCodes,
-			});
+			return setApiResponse(
+				HTTP.OK,
+				'MFA_SETUP_INITIATED',
+				'Scan the QR code with your authenticator app.',
+				{
+					qr,
+					// uri — expose when adding a "manual entry" flow in the UI (otpauth:// URI lets
+					// users add the credential by typing the secret instead of scanning the QR code)
+					backupCodes: plainCodes,
+				},
+			);
 		},
 
 		// ── 2. Verify (setup confirm · TOTP login · backup code login) ──
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
-			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const token = body?.['token'];
 
 			if (typeof token !== 'string') {
@@ -63,18 +77,25 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				}
 				await users.confirmMfaSecret(ctx.user!.id);
 
-				bus?.emit(NOTIFICATION_EVENT, {
-					type:      MESSAGE_KEYS.mfaEnabled,
-					data:      {},
-					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-				} satisfies ICourierMessage).catch(() => {})
+				bus
+					?.emit(NOTIFICATION_EVENT, {
+						type: MESSAGE_KEYS.mfaEnabled,
+						data: {},
+						recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
+					} satisfies ICourierMessage)
+					.catch(() => {});
 
-				return setApiResponse(HTTP.OK, 'MFA_VERIFIED', 'MFA verified successfully.', { mfaEnabled: true });
-
+				return setApiResponse(HTTP.OK, 'MFA_VERIFIED', 'MFA verified successfully.', {
+					mfaEnabled: true,
+				});
 			} else if (/^[A-Z0-9]{8}$/i.test(token)) {
 				// ── Backup code consumption ────────────────────────────────────────────
 				if (!ctx.user!.mfaPending) {
-					return setApiResponse(HTTP.FORBIDDEN, 'MFA_NOT_PENDING', 'Use the mfaToken from the login response');
+					return setApiResponse(
+						HTTP.FORBIDDEN,
+						'MFA_NOT_PENDING',
+						'Use the mfaToken from the login response',
+					);
 				}
 				if (!ctx.user!.mfaEnabled) {
 					return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
@@ -82,23 +103,26 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 				const unused = await backupCodes.findUnused(ctx.user!.id);
 				const checks = await Promise.all(
-					unused.map(async row => ({
-						id:    row.id,
+					unused.map(async (row) => ({
+						id: row.id,
 						match: await verifyPassword(token.toUpperCase(), row.codeHash),
-					}))
+					})),
 				);
-				const matched = checks.find(r => r.match);
+				const matched = checks.find((r) => r.match);
 
 				if (!matched) {
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid backup code');
 				}
 
 				await backupCodes.consume(matched.id);
-
 			} else {
 				// ── TOTP login verification ───────────────────────────────────────────
 				if (!ctx.user!.mfaPending) {
-					return setApiResponse(HTTP.FORBIDDEN, 'MFA_NOT_PENDING', 'Use the mfaToken from the login response');
+					return setApiResponse(
+						HTTP.FORBIDDEN,
+						'MFA_NOT_PENDING',
+						'Use the mfaToken from the login response',
+					);
 				}
 				const secret = await users.getMfaSecret(ctx.user!.id);
 				if (!secret) {
@@ -112,7 +136,9 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				}
 			}
 
-			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, { loginMethod: ctx.user!.loginMethod });
+			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, {
+				loginMethod: ctx.user!.loginMethod,
+			});
 			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 			const fullUser = await users.findById(ctx.user!.id);
@@ -122,11 +148,11 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 			return Response.json(
 				{
-					reason:      'MFA_VERIFIED',
+					reason: 'MFA_VERIFIED',
 					explanation: 'MFA verified successfully.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
-						user:   toUserDTO(fullUser),
+						user: toUserDTO(fullUser),
 					},
 				},
 				{
@@ -160,14 +186,16 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 			}
 
 			const plainCodes = generateBackupCodes();
-			const codeHashes = await Promise.all(plainCodes.map(c => hashPassword(c)));
+			const codeHashes = await Promise.all(plainCodes.map((c) => hashPassword(c)));
 			await backupCodes.replace(ctx.user!.id, codeHashes);
 
-			bus?.emit(NOTIFICATION_EVENT, {
-				type:      MESSAGE_KEYS.mfaBackupCodesRegenerated,
-				data:      {},
-				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-			} satisfies ICourierMessage).catch(() => {})
+			bus
+				?.emit(NOTIFICATION_EVENT, {
+					type: MESSAGE_KEYS.mfaBackupCodesRegenerated,
+					data: {},
+					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
+				} satisfies ICourierMessage)
+				.catch(() => {});
 
 			return setApiResponse(HTTP.OK, 'BACKUP_CODES_REGENERATED', 'Backup codes regenerated.', {
 				backupCodes: plainCodes,
@@ -176,7 +204,7 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 
 		// ── 4. Disable ─────────────────────────────────────────────
 		disable: async (ctx: IFonderieContext): Promise<Response> => {
-			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const token = body?.['token'];
 
 			if (typeof token !== 'string') {
@@ -193,16 +221,15 @@ export function mfaController(store: IStoreAdapter, config: IAuthConfig, issuer:
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
 			}
 
-			await Promise.all([
-				users.disableMfa(ctx.user!.id),
-				backupCodes.deleteByUser(ctx.user!.id),
-			]);
+			await Promise.all([users.disableMfa(ctx.user!.id), backupCodes.deleteByUser(ctx.user!.id)]);
 
-			bus?.emit(NOTIFICATION_EVENT, {
-				type:      MESSAGE_KEYS.mfaDisabled,
-				data:      {},
-				recipient: { email: user.email, phone: null, deviceToken: null },
-			} satisfies ICourierMessage).catch(() => {})
+			bus
+				?.emit(NOTIFICATION_EVENT, {
+					type: MESSAGE_KEYS.mfaDisabled,
+					data: {},
+					recipient: { email: user.email, phone: null, deviceToken: null },
+				} satisfies ICourierMessage)
+				.catch(() => {});
 
 			return setApiResponse(HTTP.OK, 'MFA_DISABLED', 'MFA disabled successfully.');
 		},

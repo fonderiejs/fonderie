@@ -8,7 +8,11 @@ export const requireVerified: Middleware = async (ctx, next) => {
 
 	if (ctx.user.loginMethod === 'phone') {
 		if (!ctx.user.phoneVerified) {
-			return setApiResponse(HTTP.FORBIDDEN, 'PHONE_NOT_VERIFIED', 'Please verify your phone number');
+			return setApiResponse(
+				HTTP.FORBIDDEN,
+				'PHONE_NOT_VERIFIED',
+				'Please verify your phone number',
+			);
 		}
 		return next();
 	}
@@ -18,4 +22,4 @@ export const requireVerified: Middleware = async (ctx, next) => {
 	}
 
 	return next();
-}
+};

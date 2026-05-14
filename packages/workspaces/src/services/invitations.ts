@@ -5,21 +5,24 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import type { IInvitation } from '../types';
 
 function generateToken(): string {
-	return randomBytes(32).toString('hex')
+	return randomBytes(32).toString('hex');
 }
 
 function generatePin(): string {
-	return Math.floor(100000 + Math.random() * 900000).toString()
+	return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 function parseTtl(ttl: string): number {
 	const units: Record<string, number> = {
-		s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000,
-	}
-	const match = ttl.match(/^(\d+)([smhd])$/)
-	if (!match) return 7 * 86_400_000
-	const [, n, unit] = match
-	return parseInt(n!, 10) * (units[unit!] ?? 0)
+		s: 1000,
+		m: 60_000,
+		h: 3_600_000,
+		d: 86_400_000,
+	};
+	const match = ttl.match(/^(\d+)([smhd])$/);
+	if (!match) return 7 * 86_400_000;
+	const [, n, unit] = match;
+	return parseInt(n!, 10) * (units[unit!] ?? 0);
 }
 
 const SELECT_INV = `
@@ -32,15 +35,15 @@ const SELECT_INV = `
 	status,
 	expires_at   AS "expiresAt",
 	created_at   AS "createdAt"
-`
+`;
 
 export async function createInvitation(
 	opts: { workspaceId: string; email: string; roleId: string; ttl?: string },
 	store: IStoreAdapter,
 ): Promise<IInvitation> {
-	const token     = generateToken()
-	const pin       = generatePin()
-	const expiresAt = new Date(Date.now() + parseTtl(opts.ttl ?? '7d'))
+	const token = generateToken();
+	const pin = generatePin();
+	const expiresAt = new Date(Date.now() + parseTtl(opts.ttl ?? '7d'));
 
 	const [invitation] = await store.query<IInvitation>(
 		`INSERT INTO fonderie_workspace_invitations
@@ -49,7 +52,7 @@ export async function createInvitation(
 		 ON CONFLICT DO NOTHING
 		 RETURNING ${SELECT_INV}`,
 		[opts.workspaceId, opts.email, opts.roleId, token, pin, expiresAt],
-	)
+	);
 
 	if (!invitation) {
 		// Already pending — update it
@@ -59,17 +62,17 @@ export async function createInvitation(
 			 WHERE workspace_id = $1 AND email = $2 AND status = 'PENDING'
 			 RETURNING ${SELECT_INV}`,
 			[opts.workspaceId, opts.email, opts.roleId, token, pin, expiresAt],
-		)
-		if (!updated) throw new Error('Failed to create invitation')
-		return updated
+		);
+		if (!updated) throw new Error('Failed to create invitation');
+		return updated;
 	}
 
-	return invitation
+	return invitation;
 }
 
 export async function listInvitations(
 	workspaceId: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IInvitation[]> {
 	return store.query<IInvitation>(
 		`SELECT ${SELECT_INV}
@@ -77,20 +80,20 @@ export async function listInvitations(
 		 WHERE workspace_id = $1 AND status = 'PENDING'
 		 ORDER BY created_at DESC`,
 		[workspaceId],
-	)
+	);
 }
 
 export async function cancelInvitation(
 	invitationId: string,
-	workspaceId:  string,
-	store:        IStoreAdapter,
+	workspaceId: string,
+	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_workspace_invitations
 		 SET status = 'CANCELLED'
 		 WHERE id = $1 AND workspace_id = $2 AND status = 'PENDING'`,
 		[invitationId, workspaceId],
-	)
+	);
 }
 
 export async function acceptInvitationByPin(
@@ -98,18 +101,21 @@ export async function acceptInvitationByPin(
 	store: IStoreAdapter,
 ): Promise<{ workspaceId: string; roleId: string }> {
 	const [inv] = await store.query<{
-		id: string; workspaceId: string; roleId: string; expiresAt: string
+		id: string;
+		workspaceId: string;
+		roleId: string;
+		expiresAt: string;
 	}>(
 		`SELECT id, workspace_id AS "workspaceId", role_id AS "roleId", expires_at AS "expiresAt"
 		 FROM fonderie_workspace_invitations
 		 WHERE pin = $1 AND status = 'PENDING'`,
 		[opts.pin],
-	)
+	);
 
-	if (!inv) throw new Error('Invalid PIN')
-	if (new Date() > new Date(inv.expiresAt)) throw new Error('Invitation expired')
+	if (!inv) throw new Error('Invalid PIN');
+	if (new Date() > new Date(inv.expiresAt)) throw new Error('Invitation expired');
 
-	await store.transaction(async tx => {
+	await store.transaction(async (tx) => {
 		await Promise.all([
 			tx.query(
 				`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
@@ -118,34 +124,36 @@ export async function acceptInvitationByPin(
 				 SET confirmed = true, removed = false`,
 				[opts.userId, inv.workspaceId, inv.roleId],
 			),
-			tx.query(
-				`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED' WHERE id = $1`,
-				[inv.id],
-			),
-		])
-	})
+			tx.query(`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED' WHERE id = $1`, [
+				inv.id,
+			]),
+		]);
+	});
 
-	return { workspaceId: inv.workspaceId, roleId: inv.roleId }
+	return { workspaceId: inv.workspaceId, roleId: inv.roleId };
 }
 
 export async function acceptInvitationByToken(
-	token:  string,
+	token: string,
 	userId: string,
-	store:  IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<{ workspaceId: string; roleId: string }> {
 	const [inv] = await store.query<{
-		id: string; workspaceId: string; roleId: string; expiresAt: string
+		id: string;
+		workspaceId: string;
+		roleId: string;
+		expiresAt: string;
 	}>(
 		`SELECT id, workspace_id AS "workspaceId", role_id AS "roleId", expires_at AS "expiresAt"
 		 FROM fonderie_workspace_invitations
 		 WHERE token = $1 AND status = 'PENDING'`,
 		[token],
-	)
+	);
 
-	if (!inv) throw new Error('Invalid token')
-	if (new Date() > new Date(inv.expiresAt)) throw new Error('Invitation expired')
+	if (!inv) throw new Error('Invalid token');
+	if (new Date() > new Date(inv.expiresAt)) throw new Error('Invitation expired');
 
-	await store.transaction(async tx => {
+	await store.transaction(async (tx) => {
 		await Promise.all([
 			tx.query(
 				`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
@@ -154,12 +162,11 @@ export async function acceptInvitationByToken(
 				 SET confirmed = true, removed = false`,
 				[userId, inv.workspaceId, inv.roleId],
 			),
-			tx.query(
-				`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED' WHERE id = $1`,
-				[inv.id],
-			),
-		])
-	})
+			tx.query(`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED' WHERE id = $1`, [
+				inv.id,
+			]),
+		]);
+	});
 
-	return { workspaceId: inv.workspaceId, roleId: inv.roleId }
+	return { workspaceId: inv.workspaceId, roleId: inv.roleId };
 }

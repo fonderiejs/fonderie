@@ -1,20 +1,22 @@
 import { test, mock } from 'node:test';
-import assert          from 'node:assert/strict';
+import assert from 'node:assert/strict';
 
-import { MemoryTransport }  from '@fonderie-js/events';
-import { EventBus }         from '@fonderie-js/events';
-import type { IEventMeta }  from '@fonderie-js/events';
+import { MemoryTransport } from '@fonderie-js/events';
+import { EventBus } from '@fonderie-js/events';
+import type { IEventMeta } from '@fonderie-js/events';
 
 import { WebhookDispatcher } from '../dispatcher';
-import { signPayload }       from '../signing';
+import { signPayload } from '../signing';
 
 // ── stub store ────────────────────────────────────────────────────
 
 type Row = Record<string, unknown>;
 
-function makeStore(tables: Partial<{ fonderie_webhook_endpoints: Row[]; fonderie_webhook_deliveries: Row[] }> = {}) {
+function makeStore(
+	tables: Partial<{ fonderie_webhook_endpoints: Row[]; fonderie_webhook_deliveries: Row[] }> = {},
+) {
 	const db = {
-		fonderie_webhook_endpoints:  [] as Row[],
+		fonderie_webhook_endpoints: [] as Row[],
 		fonderie_webhook_deliveries: [] as Row[],
 		...tables,
 	};
@@ -28,7 +30,11 @@ function makeStore(tables: Partial<{ fonderie_webhook_endpoints: Row[]; fonderie
 				const [workspaceId, url, secret, events] = params as [string, string, string, string[]];
 				const row: Row = {
 					id: `ep-${db.fonderie_webhook_endpoints.length + 1}`,
-					workspaceId, url, secret, events, enabled: true,
+					workspaceId,
+					url,
+					secret,
+					events,
+					enabled: true,
 					createdAt: new Date(),
 				};
 				db.fonderie_webhook_endpoints.push(row);
@@ -36,14 +42,24 @@ function makeStore(tables: Partial<{ fonderie_webhook_endpoints: Row[]; fonderie
 			}
 
 			if (s.startsWith('INSERT INTO fonderie_webhook_deliveries')) {
-				const [endpointId, eventId, eventType, payload] = params as [string, string, string, string];
+				const [endpointId, eventId, eventType, payload] = params as [
+					string,
+					string,
+					string,
+					string,
+				];
 				const row: Row = {
 					id: `del-${db.fonderie_webhook_deliveries.length + 1}`,
-					endpointId, eventId, eventType,
+					endpointId,
+					eventId,
+					eventType,
 					payload: JSON.parse(payload as string),
-					status: 'pending', attempts: 0,
-					responseStatus: null, responseBody: null,
-					nextAttemptAt: null, deliveredAt: null,
+					status: 'pending',
+					attempts: 0,
+					responseStatus: null,
+					responseBody: null,
+					nextAttemptAt: null,
+					deliveredAt: null,
 					createdAt: new Date(),
 				};
 				db.fonderie_webhook_deliveries.push(row);
@@ -51,27 +67,41 @@ function makeStore(tables: Partial<{ fonderie_webhook_endpoints: Row[]; fonderie
 			}
 
 			if (s.includes('UPDATE fonderie_webhook_deliveries') && s.includes('SET status')) {
-				const [id, status, responseStatus, responseBody, nextAttemptAt, deliveredAt] = params as unknown[];
-				const row = db.fonderie_webhook_deliveries.find(r => r['id'] === id);
+				const [id, status, responseStatus, responseBody, nextAttemptAt, deliveredAt] =
+					params as unknown[];
+				const row = db.fonderie_webhook_deliveries.find((r) => r['id'] === id);
 				if (row) {
 					Object.assign(row, {
-						status, responseStatus, responseBody, nextAttemptAt, deliveredAt,
+						status,
+						responseStatus,
+						responseBody,
+						nextAttemptAt,
+						deliveredAt,
 						attempts: (row['attempts'] as number) + 1,
 					});
 				}
 				return [];
 			}
 
-			if (s.includes('fonderie_webhook_endpoints') && s.includes('workspace_id = $1') && s.includes('ANY(events)')) {
+			if (
+				s.includes('fonderie_webhook_endpoints') &&
+				s.includes('workspace_id = $1') &&
+				s.includes('ANY(events)')
+			) {
 				const [workspaceId, eventType] = params as [string, string];
-				return db.fonderie_webhook_endpoints.filter(r =>
-					r['workspaceId'] === workspaceId &&
-					r['enabled'] === true &&
-					((r['events'] as string[]).length === 0 || (r['events'] as string[]).includes(eventType as string))
+				return db.fonderie_webhook_endpoints.filter(
+					(r) =>
+						r['workspaceId'] === workspaceId &&
+						r['enabled'] === true &&
+						((r['events'] as string[]).length === 0 ||
+							(r['events'] as string[]).includes(eventType as string)),
 				) as unknown as T[];
 			}
 
-			if (s.includes('fonderie_webhook_deliveries') && s.includes('LEFT JOIN') || s.includes('JOIN fonderie_webhook_endpoints')) {
+			if (
+				(s.includes('fonderie_webhook_deliveries') && s.includes('LEFT JOIN')) ||
+				s.includes('JOIN fonderie_webhook_endpoints')
+			) {
 				return [] as T[];
 			}
 
@@ -121,8 +151,13 @@ test('dispatch: creates delivery and marks it delivered on 2xx', async () => {
 	const store = makeStore();
 
 	store.db.fonderie_webhook_endpoints.push({
-		id: 'ep-1', workspaceId: 'ws-1', url: 'https://example.com/hook',
-		secret: 'sec', events: [], enabled: true, createdAt: new Date(),
+		id: 'ep-1',
+		workspaceId: 'ws-1',
+		url: 'https://example.com/hook',
+		secret: 'sec',
+		events: [],
+		enabled: true,
+		createdAt: new Date(),
 	});
 
 	const origFetch = globalThis.fetch;
@@ -141,16 +176,40 @@ test('dispatch: filters endpoints by event type', async () => {
 	const store = makeStore();
 
 	store.db.fonderie_webhook_endpoints.push(
-		{ id: 'ep-1', workspaceId: 'ws-1', url: 'https://a.com', secret: 's', events: ['project.created'], enabled: true, createdAt: new Date() },
-		{ id: 'ep-2', workspaceId: 'ws-1', url: 'https://b.com', secret: 's', events: ['project.deleted'], enabled: true, createdAt: new Date() },
-		{ id: 'ep-3', workspaceId: 'ws-1', url: 'https://c.com', secret: 's', events: [], enabled: true, createdAt: new Date() },
+		{
+			id: 'ep-1',
+			workspaceId: 'ws-1',
+			url: 'https://a.com',
+			secret: 's',
+			events: ['project.created'],
+			enabled: true,
+			createdAt: new Date(),
+		},
+		{
+			id: 'ep-2',
+			workspaceId: 'ws-1',
+			url: 'https://b.com',
+			secret: 's',
+			events: ['project.deleted'],
+			enabled: true,
+			createdAt: new Date(),
+		},
+		{
+			id: 'ep-3',
+			workspaceId: 'ws-1',
+			url: 'https://c.com',
+			secret: 's',
+			events: [],
+			enabled: true,
+			createdAt: new Date(),
+		},
 	);
 
 	const d = new WebhookDispatcher(store as never);
 	await d.dispatch({ workspaceId: 'ws-1' }, makeMeta('project.created'));
 
 	// ep-1 (matches) + ep-3 (all events) should receive delivery — ep-2 should not
-	const delivered = store.db.fonderie_webhook_deliveries.map(r => r['endpointId']);
+	const delivered = store.db.fonderie_webhook_deliveries.map((r) => r['endpointId']);
 	assert.ok(delivered.includes('ep-1'));
 	assert.ok(delivered.includes('ep-3'));
 	assert.ok(!delivered.includes('ep-2'));
@@ -160,9 +219,18 @@ test('attemptDelivery: marks delivery as delivered on 2xx response', async () =>
 	const store = makeStore();
 
 	store.db.fonderie_webhook_deliveries.push({
-		id: 'del-1', endpointId: 'ep-1', eventId: 'evt-1', eventType: 'project.created',
-		payload: { workspaceId: 'ws-1' }, status: 'pending', attempts: 0,
-		responseStatus: null, responseBody: null, nextAttemptAt: null, deliveredAt: null, createdAt: new Date(),
+		id: 'del-1',
+		endpointId: 'ep-1',
+		eventId: 'evt-1',
+		eventType: 'project.created',
+		payload: { workspaceId: 'ws-1' },
+		status: 'pending',
+		attempts: 0,
+		responseStatus: null,
+		responseBody: null,
+		nextAttemptAt: null,
+		deliveredAt: null,
+		createdAt: new Date(),
 	});
 
 	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
@@ -172,7 +240,12 @@ test('attemptDelivery: marks delivery as delivered on 2xx response', async () =>
 
 	const d = new WebhookDispatcher(store as never, {});
 	const { DeliveryModel } = await import('../models/delivery.model');
-	await d.attemptDelivery('https://example.com', 'secret', delivery, new DeliveryModel(store as never));
+	await d.attemptDelivery(
+		'https://example.com',
+		'secret',
+		delivery,
+		new DeliveryModel(store as never),
+	);
 
 	globalThis.fetch = origFetch;
 
@@ -185,9 +258,18 @@ test('attemptDelivery: marks delivery as failed with next retry on non-2xx', asy
 	const store = makeStore();
 
 	store.db.fonderie_webhook_deliveries.push({
-		id: 'del-1', endpointId: 'ep-1', eventId: 'evt-1', eventType: 'project.created',
-		payload: { workspaceId: 'ws-1' }, status: 'pending', attempts: 0,
-		responseStatus: null, responseBody: null, nextAttemptAt: null, deliveredAt: null, createdAt: new Date(),
+		id: 'del-1',
+		endpointId: 'ep-1',
+		eventId: 'evt-1',
+		eventType: 'project.created',
+		payload: { workspaceId: 'ws-1' },
+		status: 'pending',
+		attempts: 0,
+		responseStatus: null,
+		responseBody: null,
+		nextAttemptAt: null,
+		deliveredAt: null,
+		createdAt: new Date(),
 	});
 
 	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
@@ -197,7 +279,12 @@ test('attemptDelivery: marks delivery as failed with next retry on non-2xx', asy
 
 	const d = new WebhookDispatcher(store as never, { maxAttempts: 3, retryDelays: [60_000] });
 	const { DeliveryModel } = await import('../models/delivery.model');
-	await d.attemptDelivery('https://example.com', 'secret', delivery, new DeliveryModel(store as never));
+	await d.attemptDelivery(
+		'https://example.com',
+		'secret',
+		delivery,
+		new DeliveryModel(store as never),
+	);
 
 	globalThis.fetch = origFetch;
 
@@ -210,9 +297,18 @@ test('attemptDelivery: sets nextAttemptAt to null when max attempts exhausted', 
 	const store = makeStore();
 
 	store.db.fonderie_webhook_deliveries.push({
-		id: 'del-1', endpointId: 'ep-1', eventId: 'evt-1', eventType: 'project.created',
-		payload: {}, status: 'failed', attempts: 2,  // already 2 attempts, max is 3
-		responseStatus: null, responseBody: null, nextAttemptAt: null, deliveredAt: null, createdAt: new Date(),
+		id: 'del-1',
+		endpointId: 'ep-1',
+		eventId: 'evt-1',
+		eventType: 'project.created',
+		payload: {},
+		status: 'failed',
+		attempts: 2, // already 2 attempts, max is 3
+		responseStatus: null,
+		responseBody: null,
+		nextAttemptAt: null,
+		deliveredAt: null,
+		createdAt: new Date(),
 	});
 
 	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
@@ -222,7 +318,12 @@ test('attemptDelivery: sets nextAttemptAt to null when max attempts exhausted', 
 
 	const d = new WebhookDispatcher(store as never, { maxAttempts: 3 });
 	const { DeliveryModel } = await import('../models/delivery.model');
-	await d.attemptDelivery('https://example.com', 'secret', delivery, new DeliveryModel(store as never));
+	await d.attemptDelivery(
+		'https://example.com',
+		'secret',
+		delivery,
+		new DeliveryModel(store as never),
+	);
 
 	globalThis.fetch = origFetch;
 
@@ -240,8 +341,13 @@ test('bus: dispatcher receives events emitted via MemoryTransport', async () => 
 
 	const store = makeStore();
 	store.db.fonderie_webhook_endpoints.push({
-		id: 'ep-1', workspaceId: 'ws-1', url: 'https://example.com',
-		secret: 'sec', events: [], enabled: true, createdAt: new Date(),
+		id: 'ep-1',
+		workspaceId: 'ws-1',
+		url: 'https://example.com',
+		secret: 'sec',
+		events: [],
+		enabled: true,
+		createdAt: new Date(),
 	});
 
 	const origFetch = globalThis.fetch;

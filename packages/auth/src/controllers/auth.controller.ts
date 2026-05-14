@@ -11,13 +11,18 @@ import { toUserDTO } from '../dtos/user';
 import type { IAuthConfig } from '../config';
 import { UserModel } from '../models/user.model';
 import { checkCooldown } from '../services/cooldown';
-import { SessionModel }  from '../models/session.model';
+import { SessionModel } from '../models/session.model';
 import { hashPassword, verifyPassword } from '../services/password';
 import { PasswordResetModel } from '../models/password-reset.model';
 import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
 import { EmailVerificationModel } from '../models/email-verification.model';
 import { PhoneVerificationModel } from '../models/phone-verification.model';
-import { issueTokenPair, issueMfaPendingToken, verifyToken, refreshTokenExpiry } from '../services/jwt';
+import {
+	issueTokenPair,
+	issueMfaPendingToken,
+	verifyToken,
+	refreshTokenExpiry,
+} from '../services/jwt';
 
 function isValidPhone(phone: unknown): phone is string {
 	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(phone.trim());
@@ -30,17 +35,17 @@ function extractRefreshToken(ctx: IFonderieContext): string | null {
 	}
 
 	const cookie = ctx.request.headers.get('cookie') ?? '';
-	const match  = cookie.match(/(?:^|;\s*)refresh_token=([^;]+)/);
+	const match = cookie.match(/(?:^|;\s*)refresh_token=([^;]+)/);
 
 	return match?.[1] ?? null;
 }
 
 export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
-	const users         = new UserModel(store);
-	const sessions      = new SessionModel(store);
+	const users = new UserModel(store);
+	const sessions = new SessionModel(store);
 	const passwordReset = new PasswordResetModel(store);
-	const emailVerif    = new EmailVerificationModel(store);
-	const phoneVerif    = new PhoneVerificationModel(store);
+	const emailVerif = new EmailVerificationModel(store);
+	const phoneVerif = new PhoneVerificationModel(store);
 
 	const OTP_TTL_MS = 10 * 60 * 1000;
 
@@ -52,7 +57,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			// ── Email branch takes priority (cheaper than SMS) ───────
 			if (typeof email === 'string' && typeof password === 'string') {
 				if (password.length < 8) {
-					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_PARAMETER',
+						'password must be at least 8 characters',
+					);
 				}
 
 				const existing = await users.findByEmail(email);
@@ -65,14 +74,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					email,
 					passwordHash,
 					firstName as string | null,
-					lastName  as string | null,
+					lastName as string | null,
 				);
 
 				if (!row) {
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
 
-				const pin       = randomInt(100000, 1000000).toString();
+				const pin = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
 				await emailVerif.create(row.id, pin, expiresAt);
 
@@ -81,31 +90,45 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
 
-				const reqId   = ctx.meta['requestId'] as string | undefined;
+				const reqId = ctx.meta['requestId'] as string | undefined;
 				const reqOpts = reqId !== undefined ? { requestId: reqId } : undefined;
-				bus?.emit(NOTIFICATION_EVENT, {
-					type:      MESSAGE_KEYS.emailRegistration,
-					data:      { pin, firstName: firstName ?? '' },
-					recipient: { email, phone: null, deviceToken: null },
-				} satisfies ICourierMessage, reqOpts).catch(() => {})
-				bus?.emit(EVENT_KEYS.userRegistered, {
-					userId:      user.id,
-					email:       user.email,
-					firstName:   user.firstName,
-					lastName:    user.lastName,
-					loginMethod: 'email' as const,
-				}, reqOpts).catch(() => {})
+				bus
+					?.emit(
+						NOTIFICATION_EVENT,
+						{
+							type: MESSAGE_KEYS.emailRegistration,
+							data: { pin, firstName: firstName ?? '' },
+							recipient: { email, phone: null, deviceToken: null },
+						} satisfies ICourierMessage,
+						reqOpts,
+					)
+					.catch(() => {});
+				bus
+					?.emit(
+						EVENT_KEYS.userRegistered,
+						{
+							userId: user.id,
+							email: user.email,
+							firstName: user.firstName,
+							lastName: user.lastName,
+							loginMethod: 'email' as const,
+						},
+						reqOpts,
+					)
+					.catch(() => {});
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+					loginMethod: 'email',
+				});
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				return Response.json(
 					{
-						reason:      'USER_EMAIL_REGISTERED',
+						reason: 'USER_EMAIL_REGISTERED',
 						explanation: 'Account created. Check your email for a verification code.',
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
-							user:   toUserDTO(user),
+							user: toUserDTO(user),
 						},
 					},
 					{
@@ -130,10 +153,10 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const { id } = await users.findOrCreateByPhone(
 					phone.trim(),
 					(firstName as string | null) ?? null,
-					(lastName  as string | null) ?? null,
+					(lastName as string | null) ?? null,
 				);
 
-				const otp       = randomInt(100000, 1000000).toString();
+				const otp = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(id, phone.trim(), otp, expiresAt);
 
@@ -142,31 +165,45 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
 
-				const reqId2   = ctx.meta['requestId'] as string | undefined;
+				const reqId2 = ctx.meta['requestId'] as string | undefined;
 				const reqOpts2 = reqId2 !== undefined ? { requestId: reqId2 } : undefined;
-				bus?.emit(NOTIFICATION_EVENT, {
-					type:      MESSAGE_KEYS.phoneOtp,
-					data:      { otp },
-					recipient: { email: null, phone: phone.trim(), deviceToken: null },
-				} satisfies ICourierMessage, reqOpts2).catch(() => {})
-				bus?.emit(EVENT_KEYS.userRegistered, {
-					userId:      user.id,
-					email:       user.email,
-					firstName:   user.firstName,
-					lastName:    user.lastName,
-					loginMethod: 'phone' as const,
-				}, reqOpts2).catch(() => {})
+				bus
+					?.emit(
+						NOTIFICATION_EVENT,
+						{
+							type: MESSAGE_KEYS.phoneOtp,
+							data: { otp },
+							recipient: { email: null, phone: phone.trim(), deviceToken: null },
+						} satisfies ICourierMessage,
+						reqOpts2,
+					)
+					.catch(() => {});
+				bus
+					?.emit(
+						EVENT_KEYS.userRegistered,
+						{
+							userId: user.id,
+							email: user.email,
+							firstName: user.firstName,
+							lastName: user.lastName,
+							loginMethod: 'phone' as const,
+						},
+						reqOpts2,
+					)
+					.catch(() => {});
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'phone' });
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+					loginMethod: 'phone',
+				});
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				return Response.json(
 					{
-						reason:      'USER_PHONE_REGISTERED',
+						reason: 'USER_PHONE_REGISTERED',
 						explanation: 'Account created. A verification code has been sent to your phone.',
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
-							user:   toUserDTO(user),
+							user: toUserDTO(user),
 						},
 					},
 					{
@@ -181,7 +218,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				);
 			}
 
-			return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
+			return setApiResponse(
+				HTTP.UNPROCESSABLE,
+				'INVALID_PARAMETER',
+				'Provide email + password or a valid phone number',
+			);
 		},
 
 		login: async (ctx: IFonderieContext): Promise<Response> => {
@@ -202,24 +243,32 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				}
 
 				if (user.suspended) {
-					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+					return setApiResponse(
+						HTTP.FORBIDDEN,
+						'ACCOUNT_SUSPENDED',
+						'Account suspended. Please contact support.',
+					);
 				}
 
 				if (user.mfaEnabled) {
 					const mfaToken = issueMfaPendingToken(user.id, config, 'email');
-					return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required', { mfaToken });
+					return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required', {
+						mfaToken,
+					});
 				}
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+					loginMethod: 'email',
+				});
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				return Response.json(
 					{
-						reason:      'USER_EMAIL_LOGIN',
+						reason: 'USER_EMAIL_LOGIN',
 						explanation: 'Login successful.',
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
-							user:   toUserDTO(user),
+							user: toUserDTO(user),
 						},
 					},
 					{
@@ -242,29 +291,37 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 				}
 				if (user.suspended) {
-					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+					return setApiResponse(
+						HTTP.FORBIDDEN,
+						'ACCOUNT_SUSPENDED',
+						'Account suspended. Please contact support.',
+					);
 				}
 
-				const otp       = randomInt(100000, 1000000).toString();
+				const otp = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(user.id, phone.trim(), otp, expiresAt);
 
-				bus?.emit(NOTIFICATION_EVENT, {
-					type:      MESSAGE_KEYS.phoneOtp,
-					data:      { otp },
-					recipient: { email: null, phone: phone.trim(), deviceToken: null },
-				} satisfies ICourierMessage).catch(() => {})
+				bus
+					?.emit(NOTIFICATION_EVENT, {
+						type: MESSAGE_KEYS.phoneOtp,
+						data: { otp },
+						recipient: { email: null, phone: phone.trim(), deviceToken: null },
+					} satisfies ICourierMessage)
+					.catch(() => {});
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'phone' });
+				const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+					loginMethod: 'phone',
+				});
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				return Response.json(
 					{
-						reason:      'USER_PHONE_OTP_SENT',
+						reason: 'USER_PHONE_OTP_SENT',
 						explanation: 'A verification code has been sent to your phone.',
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
-							user:   toUserDTO(user, false),
+							user: toUserDTO(user, false),
 						},
 					},
 					{
@@ -279,7 +336,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				);
 			}
 
-			return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Provide email + password or a valid phone number');
+			return setApiResponse(
+				HTTP.UNPROCESSABLE,
+				'INVALID_PARAMETER',
+				'Provide email + password or a valid phone number',
+			);
 		},
 
 		logout: async (ctx: IFonderieContext): Promise<Response> => {
@@ -315,7 +376,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 			const valid = await sessions.exists(token);
 			if (!valid) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
+				return setApiResponse(
+					HTTP.UNAUTHORIZED,
+					'TOKEN_REFRESH_FAILED',
+					'Session expired or already revoked',
+				);
 			}
 
 			const user = await users.findById(payload.sub);
@@ -325,14 +390,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 			await sessions.delete(token);
 			const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
-				loginMethod:   payload.loginMethod   ?? 'email',
+				loginMethod: payload.loginMethod ?? 'email',
 				phoneVerified: payload.phoneVerified ?? false,
 			});
 			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 			return Response.json(
 				{
-					reason:      'TOKENS_REFRESHED',
+					reason: 'TOKENS_REFRESHED',
 					explanation: 'Tokens refreshed successfully.',
 					result: { tokens: { access: accessToken, refresh: refreshToken } },
 				},
@@ -349,7 +414,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 		},
 
 		forgotPassword: async (ctx: IFonderieContext): Promise<Response> => {
-			const body  = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const email = body?.['email'];
 
 			if (typeof email !== 'string') {
@@ -358,46 +423,73 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 			const user = await users.findByEmail(email);
 			if (!user) {
-				return setApiResponse(HTTP.OK, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
+				return setApiResponse(
+					HTTP.OK,
+					'PASSWORD_RESET_EMAIL_SENT',
+					'Password reset email sent (if account exists).',
+				);
 			}
 
-			const resolved  = { ...config, ...config.resolve?.(ctx) };
-			const cooldown  = resolved.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
+			const resolved = { ...config, ...config.resolve?.(ctx) };
+			const cooldown = resolved.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
 			const remaining = checkCooldown(await passwordReset.findLastSentAt(user.id), cooldown);
 			if (remaining > 0) {
-				return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new password reset code.', {
-					retryAfter: Math.ceil(remaining / 1000),
-				});
+				return setApiResponse(
+					HTTP.TOO_MANY_REQUESTS,
+					'VERIFICATION_COOLDOWN',
+					'Please wait before requesting a new password reset code.',
+					{
+						retryAfter: Math.ceil(remaining / 1000),
+					},
+				);
 			}
 
-			const pin       = randomInt(100000, 1000000).toString();
+			const pin = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
 			await passwordReset.create(user.id, pin, expiresAt);
 
-			bus?.emit(NOTIFICATION_EVENT, {
-				type:      MESSAGE_KEYS.passwordReset,
-				recipient: { email, phone: null, deviceToken: null },
-				data:      { pin },
-			} satisfies ICourierMessage).catch(() => {})
+			bus
+				?.emit(NOTIFICATION_EVENT, {
+					type: MESSAGE_KEYS.passwordReset,
+					recipient: { email, phone: null, deviceToken: null },
+					data: { pin },
+				} satisfies ICourierMessage)
+				.catch(() => {});
 
-			return setApiResponse(HTTP.OK, 'PASSWORD_RESET_EMAIL_SENT', 'Password reset email sent (if account exists).');
+			return setApiResponse(
+				HTTP.OK,
+				'PASSWORD_RESET_EMAIL_SENT',
+				'Password reset email sent (if account exists).',
+			);
 		},
 
 		resetPassword: async (ctx: IFonderieContext): Promise<Response> => {
-			const body     = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const raw      = body?.['pin'];
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const raw = body?.['pin'];
 			const password = body?.['password'];
 
 			if (typeof raw !== 'string' || typeof password !== 'string') {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin and password are required');
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PARAMETER',
+					'pin and password are required',
+				);
 			}
 
 			if (!/^\d{6}$/.test(raw.trim())) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin must be a 6-digit code');
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PARAMETER',
+					'pin must be a 6-digit code',
+				);
 			}
 
 			if (password.length < 8) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password must be at least 8 characters');
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PARAMETER',
+					'password must be at least 8 characters',
+				);
 			}
 
 			const pin = raw.trim();
@@ -407,9 +499,12 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			}
 
 			const passwordHash = await hashPassword(password);
-			await store.transaction(async tx => {
+			await store.transaction(async (tx) => {
 				await Promise.all([
-					tx.query(`UPDATE fonderie_users SET password_hash = $1 WHERE id = $2`, [passwordHash, row.userId]),
+					tx.query(`UPDATE fonderie_users SET password_hash = $1 WHERE id = $2`, [
+						passwordHash,
+						row.userId,
+					]),
 					tx.query(`DELETE FROM fonderie_password_resets WHERE user_id = $1`, [row.userId]),
 				]);
 			});
@@ -422,15 +517,19 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			if (ctx.user!.loginMethod !== 'phone' && ctx.user!.emailVerifiedAt) {
 				return setApiResponse(HTTP.OK, 'VERIFIED', 'Email verified successfully.', {
 					verified: true,
-					email:    ctx.user!.email,
+					email: ctx.user!.email,
 				});
 			}
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const raw  = body?.['pin'];
+			const raw = body?.['pin'];
 
 			if (typeof raw !== 'string' || !/^\d{6}$/.test(raw.trim())) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin must be a 6-digit code');
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PARAMETER',
+					'pin must be a 6-digit code',
+				);
 			}
 
 			const pin = raw.trim();
@@ -443,11 +542,18 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				}
 				if (new Date() > record.expiresAt) {
 					await phoneVerif.deleteByUser(ctx.user!.id);
-					return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Verification code expired');
+					return setApiResponse(
+						HTTP.BAD_REQUEST,
+						'VERIFICATION_FAILED',
+						'Verification code expired',
+					);
 				}
 				await phoneVerif.deleteByUser(ctx.user!.id);
 
-				const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, { loginMethod: 'phone', phoneVerified: true });
+				const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, {
+					loginMethod: 'phone',
+					phoneVerified: true,
+				});
 				await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
 
 				const verifiedUser = await users.findById(ctx.user!.id);
@@ -455,16 +561,20 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
 				}
 				if (verifiedUser.suspended) {
-					return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+					return setApiResponse(
+						HTTP.FORBIDDEN,
+						'ACCOUNT_SUSPENDED',
+						'Account suspended. Please contact support.',
+					);
 				}
 
 				return Response.json(
 					{
-						reason:      'VERIFIED',
+						reason: 'VERIFIED',
 						explanation: 'Phone verified successfully.',
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
-							user:   toUserDTO(verifiedUser, true),
+							user: toUserDTO(verifiedUser, true),
 						},
 					},
 					{
@@ -488,16 +598,22 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Pin expired');
 			}
 
-			await store.transaction(async tx => {
+			await store.transaction(async (tx) => {
 				await Promise.all([
-					tx.query(`UPDATE fonderie_users SET email_verified_at = now(), updated_at = now() WHERE id = $1`, [ctx.user!.id]),
-					tx.query(`DELETE FROM fonderie_email_verifications WHERE user_id = $1 AND token = $2`, [ctx.user!.id, pin]),
+					tx.query(
+						`UPDATE fonderie_users SET email_verified_at = now(), updated_at = now() WHERE id = $1`,
+						[ctx.user!.id],
+					),
+					tx.query(`DELETE FROM fonderie_email_verifications WHERE user_id = $1 AND token = $2`, [
+						ctx.user!.id,
+						pin,
+					]),
 				]);
 			});
 
 			return setApiResponse(HTTP.OK, 'VERIFIED', 'Email verified successfully.', {
 				verified: true,
-				email:    ctx.user!.email,
+				email: ctx.user!.email,
 			});
 		},
 
@@ -508,56 +624,82 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			if (ctx.user!.loginMethod === 'phone') {
 				const phone = ctx.user!.phone;
 				if (!phone) {
-					return setApiResponse(HTTP.BAD_REQUEST, 'NO_PHONE_ON_ACCOUNT', 'No phone number associated with this account');
+					return setApiResponse(
+						HTTP.BAD_REQUEST,
+						'NO_PHONE_ON_ACCOUNT',
+						'No phone number associated with this account',
+					);
 				}
 
 				const remaining = checkCooldown(await phoneVerif.findLastSentAt(ctx.user!.id), cooldown);
 				if (remaining > 0) {
-					return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new code.', {
-						retryAfter: Math.ceil(remaining / 1000),
-					});
+					return setApiResponse(
+						HTTP.TOO_MANY_REQUESTS,
+						'VERIFICATION_COOLDOWN',
+						'Please wait before requesting a new code.',
+						{
+							retryAfter: Math.ceil(remaining / 1000),
+						},
+					);
 				}
 
-				const otp       = randomInt(100000, 1000000).toString();
+				const otp = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(ctx.user!.id, phone, otp, expiresAt);
 
-				bus?.emit(NOTIFICATION_EVENT, {
-					type:      MESSAGE_KEYS.phoneOtp,
-					data:      { otp },
-					recipient: { email: null, phone, deviceToken: null },
-				} satisfies ICourierMessage).catch(() => {})
+				bus
+					?.emit(NOTIFICATION_EVENT, {
+						type: MESSAGE_KEYS.phoneOtp,
+						data: { otp },
+						recipient: { email: null, phone, deviceToken: null },
+					} satisfies ICourierMessage)
+					.catch(() => {});
 
-				return setApiResponse(HTTP.OK, 'VERIFICATION_SENT', 'A verification code has been sent to your phone.');
+				return setApiResponse(
+					HTTP.OK,
+					'VERIFICATION_SENT',
+					'A verification code has been sent to your phone.',
+				);
 			}
 
 			if (!ctx.user!.email) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'NO_EMAIL_ON_ACCOUNT', 'No email address associated with this account');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'NO_EMAIL_ON_ACCOUNT',
+					'No email address associated with this account',
+				);
 			}
 
 			if (ctx.user!.emailVerifiedAt) {
 				return setApiResponse(HTTP.OK, 'EMAIL_VERIFIED', 'Email already verified.', {
 					verified: true,
-					email:    ctx.user!.email,
+					email: ctx.user!.email,
 				});
 			}
 
 			const remaining = checkCooldown(await emailVerif.findLastSentAt(ctx.user!.id), cooldown);
 			if (remaining > 0) {
-				return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', 'Please wait before requesting a new code.', {
-					retryAfter: Math.ceil(remaining / 1000),
-				});
+				return setApiResponse(
+					HTTP.TOO_MANY_REQUESTS,
+					'VERIFICATION_COOLDOWN',
+					'Please wait before requesting a new code.',
+					{
+						retryAfter: Math.ceil(remaining / 1000),
+					},
+				);
 			}
 
-			const pin       = randomInt(100000, 1000000).toString();
+			const pin = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
 			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
 
-			bus?.emit(NOTIFICATION_EVENT, {
-				type:      MESSAGE_KEYS.emailVerification,
-				recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-				data:      { pin },
-			} satisfies ICourierMessage).catch(() => {})
+			bus
+				?.emit(NOTIFICATION_EVENT, {
+					type: MESSAGE_KEYS.emailVerification,
+					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
+					data: { pin },
+				} satisfies ICourierMessage)
+				.catch(() => {});
 
 			return setApiResponse(HTTP.OK, 'VERIFICATION_SENT', 'Verification email sent.', {
 				email: ctx.user!.email,

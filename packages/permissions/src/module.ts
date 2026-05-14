@@ -1,8 +1,8 @@
 import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter }                 from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie-js/store';
 
-import type { IPermissionsConfig }            from './config';
-import { PermissionsEngine }                  from './engine';
+import type { IPermissionsConfig } from './config';
+import { PermissionsEngine } from './engine';
 
 export const PERMISSIONS_ENGINE_KEY = 'fonderie.permissions.engine';
 
@@ -11,10 +11,7 @@ export class PermissionsModule implements IFonderieModule {
 	readonly name = '@fonderie-js/permissions';
 	readonly deps = ['@fonderie-js/auth'];
 
-	constructor(
-		store:  IStoreAdapter,
-		config: IPermissionsConfig = {},
-	) {
+	constructor(store: IStoreAdapter, config: IPermissionsConfig = {}) {
 		this.engine = new PermissionsEngine(store, config);
 	}
 
@@ -26,6 +23,6 @@ export class PermissionsModule implements IFonderieModule {
 		app.use(async (ctx, next) => {
 			ctx.meta[PERMISSIONS_ENGINE_KEY] = engine;
 			return next();
-		})
+		});
 	}
 }

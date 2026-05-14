@@ -1,27 +1,27 @@
-import type { Middleware }       from '../types';
+import type { Middleware } from '../types';
 import { setApiResponse, HTTP } from '../response';
 
 export const withBody: Middleware = async (ctx, next) => {
-	const method = ctx.request.method.toUpperCase()
+	const method = ctx.request.method.toUpperCase();
 
 	if (method === 'GET' || method === 'HEAD') {
-		return next()
+		return next();
 	}
 
-	const ct = ctx.request.headers.get('content-type') ?? ''
+	const ct = ctx.request.headers.get('content-type') ?? '';
 
 	try {
 		if (ct.includes('application/json')) {
-			const text = (await ctx.request.clone().text()).trim()
-			ctx.meta.body = text ? JSON.parse(text) : {}
+			const text = (await ctx.request.clone().text()).trim();
+			ctx.meta.body = text ? JSON.parse(text) : {};
 		} else if (ct.includes('application/x-www-form-urlencoded')) {
-			const text = await ctx.request.clone().text()
-			ctx.meta.body = Object.fromEntries(new URLSearchParams(text))
+			const text = await ctx.request.clone().text();
+			ctx.meta.body = Object.fromEntries(new URLSearchParams(text));
 		}
 		// multipart/form-data left to the handler — no dep-free way to parse it
 	} catch {
-		return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Invalid request body')
+		return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Invalid request body');
 	}
 
-	return next()
-}
+	return next();
+};

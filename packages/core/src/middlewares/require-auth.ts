@@ -6,4 +6,4 @@ export const requireAuth: Middleware = async (ctx, next) => {
 		return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 	}
 	return next();
-}
+};

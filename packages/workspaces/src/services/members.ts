@@ -9,12 +9,12 @@ const SELECT_MEMBER = `
 	r.name           AS "roleName",
 	ruw.confirmed    AS "confirmed",
 	ruw.created_at   AS "createdAt"
-`
+`;
 
 export async function getMember(
-	userId:      string,
+	userId: string,
 	workspaceId: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IMember | null> {
 	const [row] = await store.query<IMember>(
 		`SELECT ${SELECT_MEMBER}
@@ -26,14 +26,11 @@ export async function getMember(
 		   AND ruw.suspended    = false
 		 LIMIT 1`,
 		[userId, workspaceId],
-	)
-	return row ?? null
+	);
+	return row ?? null;
 }
 
-export async function listMembers(
-	workspaceId: string,
-	store:       IStoreAdapter,
-): Promise<IMember[]> {
+export async function listMembers(workspaceId: string, store: IStoreAdapter): Promise<IMember[]> {
 	return store.query<IMember>(
 		`SELECT ${SELECT_MEMBER}
 		 FROM fonderie_role_user_workspaces ruw
@@ -43,11 +40,11 @@ export async function listMembers(
 		   AND ruw.suspended    = false
 		 ORDER BY ruw.created_at ASC`,
 		[workspaceId],
-	)
+	);
 }
 
 export async function addMember(
-	opts:  { userId: string; workspaceId: string; roleId: string; confirmed?: boolean },
+	opts: { userId: string; workspaceId: string; roleId: string; confirmed?: boolean },
 	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
@@ -56,13 +53,13 @@ export async function addMember(
 		 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
 		 SET confirmed = $4, removed = false, suspended = false`,
 		[opts.userId, opts.workspaceId, opts.roleId, opts.confirmed ?? true],
-	)
+	);
 }
 
 export async function removeMember(
-	userId:      string,
+	userId: string,
 	workspaceId: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_role_user_workspaces
@@ -70,13 +67,13 @@ export async function removeMember(
 		 WHERE user_id      = $1
 		   AND workspace_id = $2`,
 		[userId, workspaceId],
-	)
+	);
 }
 
 export async function getUserRoles(
-	userId:      string,
+	userId: string,
 	workspaceId: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IRole[]> {
 	return store.query<IRole>(
 		`SELECT
@@ -93,14 +90,14 @@ export async function getUserRoles(
 		   AND ruw.removed      = false
 		   AND ruw.suspended    = false`,
 		[userId, workspaceId],
-	)
+	);
 }
 
 export async function addRoleToMember(
-	userId:      string,
+	userId: string,
 	workspaceId: string,
-	roleId:      string,
-	store:       IStoreAdapter,
+	roleId: string,
+	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
 		`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
@@ -108,14 +105,14 @@ export async function addRoleToMember(
 		 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
 		 SET confirmed = true, removed = false, suspended = false`,
 		[userId, workspaceId, roleId],
-	)
+	);
 }
 
 export async function removeRoleFromMember(
-	userId:      string,
+	userId: string,
 	workspaceId: string,
-	roleId:      string,
-	store:       IStoreAdapter,
+	roleId: string,
+	store: IStoreAdapter,
 ): Promise<void> {
 	const remaining = await store.query<{ count: string }>(
 		`SELECT COUNT(*) AS count
@@ -124,9 +121,9 @@ export async function removeRoleFromMember(
 		   AND workspace_id = $2
 		   AND removed      = false`,
 		[userId, workspaceId],
-	)
-	const count = parseInt(remaining[0]?.count ?? '0', 10)
-	if (count <= 1) throw new Error('Cannot remove last role from member')
+	);
+	const count = parseInt(remaining[0]?.count ?? '0', 10);
+	if (count <= 1) throw new Error('Cannot remove last role from member');
 
 	await store.query(
 		`DELETE FROM fonderie_role_user_workspaces
@@ -134,5 +131,5 @@ export async function removeRoleFromMember(
 		   AND workspace_id = $2
 		   AND role_id      = $3`,
 		[userId, workspaceId, roleId],
-	)
+	);
 }

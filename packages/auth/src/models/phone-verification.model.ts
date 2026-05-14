@@ -13,7 +13,10 @@ export class PhoneVerificationModel {
 		);
 	}
 
-	async findByUser(userId: string, otp: string): Promise<{ phone: string; expiresAt: Date } | null> {
+	async findByUser(
+		userId: string,
+		otp: string,
+	): Promise<{ phone: string; expiresAt: Date } | null> {
 		const [row] = await this.store.query<{ phone: string; expires_at: Date }>(
 			`SELECT phone, expires_at FROM fonderie_phone_verifications WHERE user_id = $1 AND otp = $2`,
 			[userId, otp],
@@ -32,9 +35,6 @@ export class PhoneVerificationModel {
 	}
 
 	async deleteByUser(userId: string): Promise<void> {
-		await this.store.query(
-			`DELETE FROM fonderie_phone_verifications WHERE user_id = $1`,
-			[userId],
-		);
+		await this.store.query(`DELETE FROM fonderie_phone_verifications WHERE user_id = $1`, [userId]);
 	}
 }

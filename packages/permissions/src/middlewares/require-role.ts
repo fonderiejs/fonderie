@@ -1,11 +1,11 @@
 import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { Middleware }      from '@fonderie-js/core';
+import type { Middleware } from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter }   from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie-js/store';
 
-import { PermissionsEngine }      from '../engine';
+import { PermissionsEngine } from '../engine';
 import { PERMISSIONS_ENGINE_KEY } from '../module';
-import { getMembership }          from '../services/membership';
+import { getMembership } from '../services/membership';
 
 function makeHandler(roleName: string | string[], store: IStoreAdapter): Middleware {
 	const allowed = Array.isArray(roleName) ? roleName : [roleName];
@@ -20,7 +20,8 @@ function makeHandler(roleName: string | string[], store: IStoreAdapter): Middlew
 			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Permissions module not installed');
 		}
 
-		const workspaceId = ctx.workspace?.id ??
+		const workspaceId =
+			ctx.workspace?.id ??
 			(ctx.meta['params'] as Record<string, string> | undefined)?.['workspaceId'];
 
 		if (!workspaceId) {
@@ -33,18 +34,23 @@ function makeHandler(roleName: string | string[], store: IStoreAdapter): Middlew
 		}
 
 		return next();
-	}
+	};
 }
 
-export function requireRole(roleName: string | string[], store: IStoreAdapter): Middleware
-export function requireRole(roleName: string | string[], store: IStoreAdapter, ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
+export function requireRole(roleName: string | string[], store: IStoreAdapter): Middleware;
 export function requireRole(
 	roleName: string | string[],
-	store:    IStoreAdapter,
-	ctx?:     IFonderieContext,
-	next?:    () => Promise<Response>,
+	store: IStoreAdapter,
+	ctx: IFonderieContext,
+	next: () => Promise<Response>,
+): Promise<Response>;
+export function requireRole(
+	roleName: string | string[],
+	store: IStoreAdapter,
+	ctx?: IFonderieContext,
+	next?: () => Promise<Response>,
 ): Middleware | Promise<Response> {
-	const handler = makeHandler(roleName, store)
-	if (ctx !== undefined && next !== undefined) return handler(ctx, next)
-	return handler
+	const handler = makeHandler(roleName, store);
+	if (ctx !== undefined && next !== undefined) return handler(ctx, next);
+	return handler;
 }

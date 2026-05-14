@@ -1,60 +1,62 @@
-import type { LogLevel, ILogEntry, ILogTransport } from './types'
-import type { ILoggerConfig }                       from './config'
-import { ConsoleTransport }                          from './transports/console'
+import type { LogLevel, ILogEntry, ILogTransport } from './types';
+import type { ILoggerConfig } from './config';
+import { ConsoleTransport } from './transports/console';
 
 const LEVELS: Record<LogLevel, number> = {
 	debug: 0,
-	info:  1,
-	warn:  2,
+	info: 1,
+	warn: 2,
 	error: 3,
 	fatal: 4,
-}
+};
 
 export class Logger {
-	private readonly minLevel:   number
-	private readonly transports: ILogTransport[]
-	private readonly context:    Record<string, unknown>
+	private readonly minLevel: number;
+	private readonly transports: ILogTransport[];
+	private readonly context: Record<string, unknown>;
 
 	constructor(
 		private readonly config: ILoggerConfig,
 		context: Record<string, unknown> = {},
 	) {
-		this.minLevel   = LEVELS[config.level ?? 'info']
-		this.transports = config.transports ?? [new ConsoleTransport(config.pretty !== undefined ? { pretty: config.pretty } : {})]
-		this.context    = context
+		this.minLevel = LEVELS[config.level ?? 'info'];
+		this.transports = config.transports ?? [
+			new ConsoleTransport(config.pretty !== undefined ? { pretty: config.pretty } : {}),
+		];
+		this.context = context;
 	}
 
 	child(context: Record<string, unknown>): Logger {
-		return new Logger(this.config, { ...this.context, ...context })
+		return new Logger(this.config, { ...this.context, ...context });
 	}
 
 	debug(message: string, context?: Record<string, unknown>): void {
-		this.write('debug', message, context)
+		this.write('debug', message, context);
 	}
 
 	info(message: string, context?: Record<string, unknown>): void {
-		this.write('info', message, context)
+		this.write('info', message, context);
 	}
 
 	warn(message: string, context?: Record<string, unknown>): void {
-		this.write('warn', message, context)
+		this.write('warn', message, context);
 	}
 
 	error(message: string, error?: Error | unknown, context?: Record<string, unknown>): void {
-		this.write('error', message, context, error instanceof Error ? error : undefined)
+		this.write('error', message, context, error instanceof Error ? error : undefined);
 	}
 
 	fatal(message: string, error?: Error | unknown, context?: Record<string, unknown>): void {
-		this.write('fatal', message, context, error instanceof Error ? error : undefined)
+		this.write('fatal', message, context, error instanceof Error ? error : undefined);
 	}
 
 	private write(
-		level:   LogLevel,
+		level: LogLevel,
 		message: string,
-		extra?:  Record<string, unknown>,
-		error?:  Error,
+		extra?: Record<string, unknown>,
+		error?: Error,
 	): void {
-		if (LEVELS[level] < this.minLevel) return
+		if (LEVELS[level] < this.minLevel) return;
 
 		const entry: ILogEntry = {
 			level,
@@ -62,19 +64,19 @@ export class Logger {
 			timestamp: new Date().toISOString(),
 			...this.context,
 			...extra,
-		}
+		};
 
 		if (error) {
-			const errNode = error as NodeJS.ErrnoException
+			const errNode = error as NodeJS.ErrnoException;
 			entry.error = {
 				message: error.message,
 				...(error.stack !== undefined ? { stack: error.stack } : {}),
-				...(errNode.code  !== undefined ? { code:  errNode.code  } : {}),
-			}
+				...(errNode.code !== undefined ? { code: errNode.code } : {}),
+			};
 		}
 
 		for (const transport of this.transports) {
-			void transport.write(entry)
+			void transport.write(entry);
 		}
 	}
 }

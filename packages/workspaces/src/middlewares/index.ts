@@ -1,2 +1,2 @@
 export { requireWorkspace } from './require-workspace';
-export { withWorkspace }    from './workspace-context';
+export { withWorkspace } from './workspace-context';

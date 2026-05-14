@@ -1,18 +1,18 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
-import type { IEventMeta }    from '@fonderie-js/events';
+import type { IEventMeta } from '@fonderie-js/events';
 
-import type { IWebhooksConfig }  from './config';
+import type { IWebhooksConfig } from './config';
 import type { IWebhookEndpoint, IWebhookDelivery } from './types';
-import { EndpointModel }         from './models/endpoint.model';
-import { DeliveryModel }         from './models/delivery.model';
-import { signPayload }           from './signing';
+import { EndpointModel } from './models/endpoint.model';
+import { DeliveryModel } from './models/delivery.model';
+import { signPayload } from './signing';
 
 export class WebhookDispatcher {
 	private readonly maxAttempts: number;
 	private readonly retryDelays: number[];
 
 	constructor(
-		private readonly store:  IStoreAdapter,
+		private readonly store: IStoreAdapter,
 		private readonly config: IWebhooksConfig = {},
 	) {
 		this.maxAttempts = config.maxAttempts ?? 3;
@@ -29,15 +29,13 @@ export class WebhookDispatcher {
 		if (endpoints.length === 0) return;
 
 		const deliveries = new DeliveryModel(this.store);
-		await Promise.allSettled(
-			endpoints.map(ep => this.deliver(ep, payload, meta, deliveries)),
-		);
+		await Promise.allSettled(endpoints.map((ep) => this.deliver(ep, payload, meta, deliveries)));
 	}
 
 	// Retries failed deliveries whose next_attempt_at has passed.
 	async retry(): Promise<void> {
 		const deliveries = new DeliveryModel(this.store);
-		const pending    = await deliveries.claimForRetry();
+		const pending = await deliveries.claimForRetry();
 		await Promise.allSettled(
 			pending.map(({ delivery, url, secret }) =>
 				this.attemptDelivery(url, secret, delivery, deliveries),
@@ -46,28 +44,28 @@ export class WebhookDispatcher {
 	}
 
 	private async deliver(
-		endpoint:  IWebhookEndpoint,
-		payload:   Record<string, unknown>,
-		meta:      IEventMeta,
+		endpoint: IWebhookEndpoint,
+		payload: Record<string, unknown>,
+		meta: IEventMeta,
 		deliveries: DeliveryModel,
 	): Promise<void> {
 		const delivery = await deliveries.create({
 			endpointId: endpoint.id,
-			eventId:    meta.id,
-			eventType:  meta.type,
+			eventId: meta.id,
+			eventType: meta.type,
 			payload,
 		});
 		await this.attemptDelivery(endpoint.url, endpoint.secret, delivery, deliveries);
 	}
 
 	async attemptDelivery(
-		url:       string,
-		secret:    string,
-		delivery:  IWebhookDelivery,
+		url: string,
+		secret: string,
+		delivery: IWebhookDelivery,
 		deliveries: DeliveryModel,
 	): Promise<void> {
 		const body = JSON.stringify({
-			id:   delivery.eventId,
+			id: delivery.eventId,
 			type: delivery.eventType,
 			data: delivery.payload,
 		});
@@ -76,12 +74,12 @@ export class WebhookDispatcher {
 
 		try {
 			const res = await fetch(url, {
-				method:  'POST',
+				method: 'POST',
 				headers: {
-					'Content-Type':        'application/json',
+					'Content-Type': 'application/json',
 					'X-Webhook-Signature': signature,
-					'X-Webhook-Event':     delivery.eventType,
-					'X-Webhook-ID':        delivery.id,
+					'X-Webhook-Event': delivery.eventType,
+					'X-Webhook-ID': delivery.id,
 				},
 				body,
 				signal: AbortSignal.timeout(10_000),
@@ -90,24 +88,25 @@ export class WebhookDispatcher {
 			const responseBody = await res.text().catch(() => '');
 
 			await deliveries.markResult(delivery.id, {
-				ok:             res.ok,
+				ok: res.ok,
 				responseStatus: res.status,
 				responseBody,
-				nextAttemptAt:  res.ok ? null : this.nextRetryAt(delivery.attempts),
+				nextAttemptAt: res.ok ? null : this.nextRetryAt(delivery.attempts),
 			});
 		} catch (err) {
 			await deliveries.markResult(delivery.id, {
-				ok:             false,
+				ok: false,
 				responseStatus: null,
-				responseBody:   err instanceof Error ? err.message : String(err),
-				nextAttemptAt:  this.nextRetryAt(delivery.attempts),
+				responseBody: err instanceof Error ? err.message : String(err),
+				nextAttemptAt: this.nextRetryAt(delivery.attempts),
 			});
 		}
 	}
 
 	private nextRetryAt(currentAttempts: number): Date | null {
 		if (currentAttempts + 1 >= this.maxAttempts) return null;
-		const delay = this.retryDelays[currentAttempts] ?? this.retryDelays[this.retryDelays.length - 1]!;
+		const delay =
+			this.retryDelays[currentAttempts] ?? this.retryDelays[this.retryDelays.length - 1]!;
 		return new Date(Date.now() + delay);
 	}
 }

@@ -9,15 +9,15 @@ export async function recordUsage(
 		`INSERT INTO fonderie_usage_records (subscriber_type, subscriber_id, metric, quantity)
 		VALUES ($1, $2, $3, $4)`,
 		[opts.subscriberType, opts.subscriberId, opts.metric, opts.quantity],
-	)
+	);
 }
 
 export async function getUsage(
 	subscriberType: SubscriberType,
-	subscriberId:   string,
-	metric:         string,
-	since:          Date,
-	store:          IStoreAdapter,
+	subscriberId: string,
+	metric: string,
+	since: Date,
+	store: IStoreAdapter,
 ): Promise<number> {
 	const rows = await store.query<{ total: string }>(
 		`SELECT COALESCE(SUM(quantity), 0) AS total
@@ -27,6 +27,6 @@ export async function getUsage(
 			AND metric          = $3
 			AND recorded_at    >= $4`,
 		[subscriberType, subscriberId, metric, since],
-	)
-	return parseInt(rows[0]?.total ?? '0', 10)
+	);
+	return parseInt(rows[0]?.total ?? '0', 10);
 }

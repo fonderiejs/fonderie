@@ -4,14 +4,14 @@ export interface IStoreAdapter {
 }
 
 export interface IPoolConfig {
-	connectionString?:        string
-	host?:                    string
-	port?:                    number
-	database?:                string
-	user?:                    string
-	password?:                string
-	max?:                     number
-	idleTimeoutMillis?:       number
-	connectionTimeoutMillis?: number
-	ssl?:                     boolean | { rejectUnauthorized: boolean }
+	connectionString?: string;
+	host?: string;
+	port?: number;
+	database?: string;
+	user?: string;
+	password?: string;
+	max?: number;
+	idleTimeoutMillis?: number;
+	connectionTimeoutMillis?: number;
+	ssl?: boolean | { rejectUnauthorized: boolean };
 }

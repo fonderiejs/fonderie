@@ -1,39 +1,43 @@
 import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter }                 from '@fonderie-js/store';
-import type { EventBus }                      from '@fonderie-js/events';
-import { NOTIFICATION_EVENT }                 from '@fonderie-js/events';
+import type { IStoreAdapter } from '@fonderie-js/store';
+import type { EventBus } from '@fonderie-js/events';
+import { NOTIFICATION_EVENT } from '@fonderie-js/events';
 
 import type { ITemplateResolver, ICourierMessage } from './types';
-import type { ICourierConfig }                     from './config';
+import type { ICourierConfig } from './config';
 
-import { Dispatcher }                          from './dispatcher';
-import { SmsChannel }                          from './channels/sms';
-import { PushChannel }                         from './channels/push';
-import { EmailChannel }                        from './channels/email';
+import { Dispatcher } from './dispatcher';
+import { SmsChannel } from './channels/sms';
+import { PushChannel } from './channels/push';
+import { EmailChannel } from './channels/email';
 import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
 
 export class CourierModule implements IFonderieModule {
-	readonly name = '@fonderie-js/courier'
-	readonly deps = ['@fonderie-js/events']
-	readonly dispatcher: Dispatcher
+	readonly name = '@fonderie-js/courier';
+	readonly deps = ['@fonderie-js/events'];
+	readonly dispatcher: Dispatcher;
 
 	constructor(
 		private config: ICourierConfig,
-		store?:         IStoreAdapter,
-		bus?:           EventBus,
+		store?: IStoreAdapter,
+		bus?: EventBus,
 	) {
-		const templateSource = config.templates?.source ?? 'db'
-		const resolver       = createTemplateResolver(templateSource, config, store)
+		const templateSource = config.templates?.source ?? 'db';
+		const resolver = createTemplateResolver(templateSource, config, store);
 
-		this.dispatcher = new Dispatcher(config, resolver, store)
+		this.dispatcher = new Dispatcher(config, resolver, store);
 
-		if (config.email) this.dispatcher.registerChannel(new EmailChannel(config.email))
-		if (config.sms)   this.dispatcher.registerChannel(new SmsChannel(config.sms))
-		if (config.push)  this.dispatcher.registerChannel(new PushChannel(config.push))
+		if (config.email) this.dispatcher.registerChannel(new EmailChannel(config.email));
+		if (config.sms) this.dispatcher.registerChannel(new SmsChannel(config.sms));
+		if (config.push) this.dispatcher.registerChannel(new PushChannel(config.push));
 
-		bus?.on<ICourierMessage>(NOTIFICATION_EVENT, async (msg) => {
-			await this.dispatcher.dispatch(msg)
-		}, 'courier')
+		bus?.on<ICourierMessage>(
+			NOTIFICATION_EVENT,
+			async (msg) => {
+				await this.dispatcher.dispatch(msg);
+			},
+			'courier',
+		);
 	}
 
 	install(_app: IFonderieApp): void {}
@@ -45,12 +49,12 @@ function createTemplateResolver(
 	store?: IStoreAdapter,
 ): ITemplateResolver {
 	if (source === 'fs') {
-		return new FSTemplateResolver(config.templates?.directory ?? './templates')
+		return new FSTemplateResolver(config.templates?.directory ?? './templates');
 	}
 
 	if (!store) {
-		throw new Error('[courier] store is required for DB template resolution')
+		throw new Error('[courier] store is required for DB template resolution');
 	}
 
-	return new DBTemplateResolver(store)
+	return new DBTemplateResolver(store);
 }

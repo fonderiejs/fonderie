@@ -1,42 +1,42 @@
 export const HTTP = {
-	OK:                  200,
-	CREATED:             201,
-	ACCEPTED:            202,
-	NO_CONTENT:          204,
-	BAD_REQUEST:         400,
-	UNAUTHORIZED:        401,
-	PAYMENT_REQUIRED:    402,
-	FORBIDDEN:           403,
-	NOT_FOUND:           404,
-	CONFLICT:            409,
-	GONE:                410,
-	UNPROCESSABLE:       422,
-	TOO_MANY_REQUESTS:   429,
-	SERVER_ERROR:        500,
-	NOT_IMPLEMENTED:     501,
-	BAD_GATEWAY:         502,
+	OK: 200,
+	CREATED: 201,
+	ACCEPTED: 202,
+	NO_CONTENT: 204,
+	BAD_REQUEST: 400,
+	UNAUTHORIZED: 401,
+	PAYMENT_REQUIRED: 402,
+	FORBIDDEN: 403,
+	NOT_FOUND: 404,
+	CONFLICT: 409,
+	GONE: 410,
+	UNPROCESSABLE: 422,
+	TOO_MANY_REQUESTS: 429,
+	SERVER_ERROR: 500,
+	NOT_IMPLEMENTED: 501,
+	BAD_GATEWAY: 502,
 	SERVICE_UNAVAILABLE: 503,
-} as const
+} as const;
 
-export type HttpStatus = typeof HTTP[keyof typeof HTTP]
+export type HttpStatus = (typeof HTTP)[keyof typeof HTTP];
 
 export interface IApiEnvelope {
-	reason:      string
-	explanation: string
-	result?:     unknown
+	reason: string;
+	explanation: string;
+	result?: unknown;
 }
 
 export interface IApiError {
-	reason:      string
-	explanation: string
-	details?:    unknown
+	reason: string;
+	explanation: string;
+	details?: unknown;
 }
 
 export function setApiResponse<T>(
-	status:      number,
-	reason:      string,
+	status: number,
+	reason: string,
 	explanation: string,
-	payload?:    T,
+	payload?: T,
 ): Response {
 	const body: Record<string, unknown> = { reason, explanation };
 	if (payload !== undefined) {

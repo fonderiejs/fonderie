@@ -3,63 +3,77 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { IAuthConfig } from '../config';
 
 export interface TokenPair {
-	accessToken:  string;
+	accessToken: string;
 	refreshToken: string;
 }
 
 export interface IAccessPayload {
-	sub:           string;  // userId
-	type:          'access';
-	loginMethod:   'email' | 'phone' | 'google';
+	sub: string; // userId
+	type: 'access';
+	loginMethod: 'email' | 'phone' | 'google';
 	phoneVerified: boolean;
-	mfaPending?:   boolean;
+	mfaPending?: boolean;
 }
 
 export interface IRefreshPayload {
-	sub:           string;
-	type:          'refresh';
-	loginMethod:   'email' | 'phone' | 'google';
+	sub: string;
+	type: 'refresh';
+	loginMethod: 'email' | 'phone' | 'google';
 	phoneVerified: boolean;
 }
 
 export interface ITokenOptions {
-	loginMethod:    'email' | 'phone' | 'google';
+	loginMethod: 'email' | 'phone' | 'google';
 	phoneVerified?: boolean;
 }
 
-export function issueMfaPendingToken(userId: string, config: IAuthConfig, loginMethod: 'email' | 'phone'): string {
+export function issueMfaPendingToken(
+	userId: string,
+	config: IAuthConfig,
+	loginMethod: 'email' | 'phone',
+): string {
 	return jwt.sign(
-		{ sub: userId, type: 'access', loginMethod, phoneVerified: false, mfaPending: true } satisfies IAccessPayload,
+		{
+			sub: userId,
+			type: 'access',
+			loginMethod,
+			phoneVerified: false,
+			mfaPending: true,
+		} satisfies IAccessPayload,
 		config.jwtSecret,
 		{ expiresIn: '5m' },
-	)
+	);
 }
 
-export function issueTokenPair(userId: string, config: IAuthConfig, options: ITokenOptions): TokenPair {
-	const duration      = config.sessionDuration ?? '7d'
-	const loginMethod   = options.loginMethod
-	const phoneVerified = options.phoneVerified ?? false
+export function issueTokenPair(
+	userId: string,
+	config: IAuthConfig,
+	options: ITokenOptions,
+): TokenPair {
+	const duration = config.sessionDuration ?? '7d';
+	const loginMethod = options.loginMethod;
+	const phoneVerified = options.phoneVerified ?? false;
 
 	const accessToken = jwt.sign(
 		{ sub: userId, type: 'access', loginMethod, phoneVerified } satisfies IAccessPayload,
 		config.jwtSecret,
 		{ expiresIn: '15m' },
-	)
+	);
 
 	const refreshToken = jwt.sign(
 		{ sub: userId, type: 'refresh', loginMethod, phoneVerified } satisfies IRefreshPayload,
 		config.jwtSecret,
 		{ expiresIn: duration } as SignOptions,
-	)
+	);
 
-	return { accessToken, refreshToken }
+	return { accessToken, refreshToken };
 }
 
 export function refreshTokenExpiry(token: string): Date {
-	const decoded = jwt.decode(token) as { exp?: number } | null
+	const decoded = jwt.decode(token) as { exp?: number } | null;
 	return decoded?.exp
 		? new Date(decoded.exp * 1000)
-		: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+		: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 }
 
 export function verifyToken(
@@ -67,8 +81,8 @@ export function verifyToken(
 	config: IAuthConfig,
 ): IAccessPayload | IRefreshPayload | null {
 	try {
-		return jwt.verify(token, config.jwtSecret) as IAccessPayload | IRefreshPayload
+		return jwt.verify(token, config.jwtSecret) as IAccessPayload | IRefreshPayload;
 	} catch {
-		return null
+		return null;
 	}
 }

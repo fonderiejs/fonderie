@@ -1,16 +1,16 @@
 import { test } from 'node:test';
-import assert   from 'node:assert/strict';
+import assert from 'node:assert/strict';
 
 // ── inline the imports (no build step needed yet) ────────────────
-import { FonderieApp }          from '../app';
-import { defineConfig }         from '../config';
-import type { IFonderieModule }   from '../types';
-import { withBody }  from '../middlewares/body-parser';
+import { FonderieApp } from '../app';
+import { defineConfig } from '../config';
+import type { IFonderieModule } from '../types';
+import { withBody } from '../middlewares/body-parser';
 
 // ── minimal config — no real DB needed for core tests ───────────
 const config = defineConfig({
 	db: { url: 'postgres://localhost/test' },
-})
+});
 
 // ── helpers ──────────────────────────────────────────────────────
 function makeRequest(method: string, path: string, body?: unknown): Request {
@@ -28,19 +28,19 @@ test('returns 404 for unregistered route', async () => {
 	const res = await app.handle(makeRequest('GET', '/unknown'));
 
 	assert.equal(res.status, 404);
-})
+});
 
 test('registered route receives request and returns response', async () => {
 	const app = new FonderieApp(config);
 
 	app.addRoute('GET', '/health', async (_ctx, _next) =>
-		Response.json({ ok: true }, { status: 200 })
+		Response.json({ ok: true }, { status: 200 }),
 	);
 
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('GET', '/health'));
-	const body = await res.json() as { ok: boolean }
+	const res = await app.handle(makeRequest('GET', '/health'));
+	const body = (await res.json()) as { ok: boolean };
 
 	assert.equal(res.status, 200);
 	assert.equal(body.ok, true);
@@ -50,16 +50,14 @@ test('module installs its route on boot', async () => {
 	const pingModule: IFonderieModule = {
 		name: 'ping',
 		install(app) {
-			app.addRoute('GET', '/ping', async () =>
-				Response.json({ pong: true })
-			);
+			app.addRoute('GET', '/ping', async () => Response.json({ pong: true }));
 		},
-	}
+	};
 
 	const app = await new FonderieApp(config).register(pingModule).boot();
 
-	const res  = await app.handle(makeRequest('GET', '/ping'));
-	const body = await res.json() as { pong: boolean }
+	const res = await app.handle(makeRequest('GET', '/ping'));
+	const body = (await res.json()) as { pong: boolean };
 
 	assert.equal(res.status, 200);
 	assert.equal(body.pong, true);
@@ -78,7 +76,7 @@ test('middleware runs in order', async () => {
 
 		return r;
 	});
-	
+
 	app.use(async (ctx, next) => {
 		log.push('mw2-before');
 
@@ -89,7 +87,7 @@ test('middleware runs in order', async () => {
 	});
 
 	app.addRoute('GET', '/order', async () => {
-		log.push('handler'); 
+		log.push('handler');
 
 		return Response.json({ ok: true });
 	});
@@ -104,14 +102,14 @@ test('route params are extracted into ctx.meta.params', async () => {
 	const app = new FonderieApp(config);
 
 	app.addRoute('GET', '/users/:id', async (ctx) => {
-		const params = ctx.meta['params'] as { id: string }
+		const params = ctx.meta['params'] as { id: string };
 		return Response.json({ id: params.id });
 	});
 
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('GET', '/users/42'));
-	const body = await res.json() as { id: string }
+	const res = await app.handle(makeRequest('GET', '/users/42'));
+	const body = (await res.json()) as { id: string };
 
 	assert.equal(body.id, '42');
 });
@@ -120,28 +118,28 @@ test('body parser puts parsed json on ctx.meta.body', async () => {
 	const app = new FonderieApp(config);
 
 	app.use(withBody);
-	app.addRoute('POST', '/echo', async (ctx) =>
-		Response.json(ctx.meta['body'])
-	);
+	app.addRoute('POST', '/echo', async (ctx) => Response.json(ctx.meta['body']));
 
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('POST', '/echo', { name: 'fonderie' }));
-	const body = await res.json() as { name: string }
+	const res = await app.handle(makeRequest('POST', '/echo', { name: 'fonderie' }));
+	const body = (await res.json()) as { name: string };
 
 	assert.equal(body.name, 'fonderie');
 });
 
 test('basePath: prefixed route matches, unprefixed returns 404', async () => {
-	const app = new FonderieApp(defineConfig({
-		basePath: '/v1',
-		db: { url: 'postgres://localhost/test' },
-	}));
+	const app = new FonderieApp(
+		defineConfig({
+			basePath: '/v1',
+			db: { url: 'postgres://localhost/test' },
+		}),
+	);
 
 	app.addRoute('GET', '/health', async () => Response.json({ ok: true }));
 	await app.boot();
 
-	const hit  = await app.handle(makeRequest('GET', '/v1/health'));
+	const hit = await app.handle(makeRequest('GET', '/v1/health'));
 	const miss = await app.handle(makeRequest('GET', '/health'));
 
 	assert.equal(hit.status, 200);
@@ -149,10 +147,12 @@ test('basePath: prefixed route matches, unprefixed returns 404', async () => {
 });
 
 test('basePath: params still extracted under prefix', async () => {
-	const app = new FonderieApp(defineConfig({
-		basePath: '/v1',
-		db: { url: 'postgres://localhost/test' },
-	}));
+	const app = new FonderieApp(
+		defineConfig({
+			basePath: '/v1',
+			db: { url: 'postgres://localhost/test' },
+		}),
+	);
 
 	app.addRoute('GET', '/users/:id', async (ctx) => {
 		const params = ctx.meta['params'] as { id: string };
@@ -160,8 +160,8 @@ test('basePath: params still extracted under prefix', async () => {
 	});
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('GET', '/v1/users/99'));
-	const body = await res.json() as { id: string };
+	const res = await app.handle(makeRequest('GET', '/v1/users/99'));
+	const body = (await res.json()) as { id: string };
 
 	assert.equal(res.status, 200);
 	assert.equal(body.id, '99');
@@ -175,12 +175,16 @@ test('basePath: module routes are registered under prefix', async () => {
 		},
 	};
 
-	const app = await new FonderieApp(defineConfig({
-		basePath: '/v1',
-		db: { url: 'postgres://localhost/test' },
-	})).register(mod).boot();
+	const app = await new FonderieApp(
+		defineConfig({
+			basePath: '/v1',
+			db: { url: 'postgres://localhost/test' },
+		}),
+	)
+		.register(mod)
+		.boot();
 
-	const hit  = await app.handle(makeRequest('GET', '/v1/ping'));
+	const hit = await app.handle(makeRequest('GET', '/v1/ping'));
 	const miss = await app.handle(makeRequest('GET', '/ping'));
 
 	assert.equal(hit.status, 200);
@@ -188,9 +192,11 @@ test('basePath: module routes are registered under prefix', async () => {
 });
 
 test('basePath: defaults to empty — existing routes unaffected', async () => {
-	const app = new FonderieApp(defineConfig({
-		db: { url: 'postgres://localhost/test' },
-	}));
+	const app = new FonderieApp(
+		defineConfig({
+			db: { url: 'postgres://localhost/test' },
+		}),
+	);
 
 	app.addRoute('GET', '/health', async () => Response.json({ ok: true }));
 	await app.boot();
@@ -205,12 +211,14 @@ test('onError config is called on handler throw', async () => {
 		onError: () => Response.json({ custom: true }, { status: 500 }),
 	});
 
-	app.addRoute('GET', '/boom', async () => { throw new Error('test error') });
+	app.addRoute('GET', '/boom', async () => {
+		throw new Error('test error');
+	});
 
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('GET', '/boom'));
-	const body = await res.json() as { custom: boolean }
+	const res = await app.handle(makeRequest('GET', '/boom'));
+	const body = (await res.json()) as { custom: boolean };
 
 	assert.equal(res.status, 500);
 	assert.equal(body.custom, true);
@@ -241,17 +249,23 @@ test('boot: installs modules in dependency order regardless of registration orde
 
 	const a: IFonderieModule = {
 		name: 'a',
-		install() { log.push('a'); },
+		install() {
+			log.push('a');
+		},
 	};
 	const b: IFonderieModule = {
 		name: 'b',
 		deps: ['a'],
-		install() { log.push('b'); },
+		install() {
+			log.push('b');
+		},
 	};
 	const c: IFonderieModule = {
 		name: 'c',
 		deps: ['b'],
-		install() { log.push('c'); },
+		install() {
+			log.push('c');
+		},
 	};
 
 	// registered in reverse dependency order
@@ -277,10 +291,7 @@ test('boot: throws on circular dependency', async () => {
 	const a: IFonderieModule = { name: 'a', deps: ['b'], install() {} };
 	const b: IFonderieModule = { name: 'b', deps: ['a'], install() {} };
 
-	await assert.rejects(
-		() => new FonderieApp(config).register(a).register(b).boot(),
-		/circular/i,
-	);
+	await assert.rejects(() => new FonderieApp(config).register(a).register(b).boot(), /circular/i);
 });
 
 test('boot: module with no deps installs without error', async () => {

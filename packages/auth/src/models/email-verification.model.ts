@@ -22,10 +22,7 @@ export class EmailVerificationModel {
 	}
 
 	async delete(pin: string): Promise<void> {
-		await this.store.query(
-			`DELETE FROM fonderie_email_verifications WHERE token = $1`,
-			[pin],
-		);
+		await this.store.query(`DELETE FROM fonderie_email_verifications WHERE token = $1`, [pin]);
 	}
 
 	async findByUser(userId: string, pin: string): Promise<{ expiresAt: Date } | null> {
@@ -47,11 +44,8 @@ export class EmailVerificationModel {
 	}
 
 	async replace(userId: string, pin: string, expiresAt: Date): Promise<void> {
-		await this.store.transaction(async tx => {
-			await tx.query(
-				`DELETE FROM fonderie_email_verifications WHERE user_id = $1`,
-				[userId],
-			);
+		await this.store.transaction(async (tx) => {
+			await tx.query(`DELETE FROM fonderie_email_verifications WHERE user_id = $1`, [userId]);
 			await tx.query(
 				`INSERT INTO fonderie_email_verifications (token, user_id, expires_at)
 				VALUES ($1, $2, $3)`,

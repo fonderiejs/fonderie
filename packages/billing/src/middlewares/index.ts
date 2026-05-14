@@ -1,2 +1,2 @@
-export { requirePlan }    from './require-plan'
-export { withBilling }    from './billing'
+export { requirePlan } from './require-plan';
+export { withBilling } from './billing';

@@ -1,4 +1,4 @@
-import type { ISmsChannelConfig }                                  from '../config';
+import type { ISmsChannelConfig } from '../config';
 import type { ICourierChannel, ICourierMessage, IRenderedTemplate } from '../types';
 
 export class SmsChannel implements ICourierChannel {
@@ -10,7 +10,7 @@ export class SmsChannel implements ICourierChannel {
 		const to = message.recipient.phone;
 		if (!to) {
 			console.warn('[courier:sms] no phone number for recipient — skipping');
-			return
+			return;
 		}
 
 		if (this.config.provider === 'twilio') {
@@ -31,13 +31,13 @@ export class SmsChannel implements ICourierChannel {
 		const res = await fetch(
 			`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
 			{
-				method:  'POST',
+				method: 'POST',
 				headers: {
-					'Authorization': `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
-					'Content-Type':  'application/x-www-form-urlencoded',
+					Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+					'Content-Type': 'application/x-www-form-urlencoded',
 				},
 				body: new URLSearchParams({ From: this.config.from, To: to, Body: text }),
-			}
+			},
 		);
 
 		if (!res.ok) {
@@ -53,12 +53,12 @@ export class SmsChannel implements ICourierChannel {
 		}
 
 		const res = await fetch('https://rest.nexmo.com/sms/json', {
-			method:  'POST',
+			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				api_key:    apiKey,
+				api_key: apiKey,
 				api_secret: apiSecret,
-				from:       this.config.from,
+				from: this.config.from,
 				to,
 				text,
 			}),

@@ -1,13 +1,13 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
-import type { IUser }          from '../types';
+import type { IUser } from '../types';
 
 export interface IUserUpdateFields {
-	firstName?:   string;
-	lastName?:    string;
+	firstName?: string;
+	lastName?: string;
 	phoneNumber?: string;
-	avatarUrl?:   string;
-	locale?:      string;
-	timezone?:    string;
+	avatarUrl?: string;
+	locale?: string;
+	timezone?: string;
 	preferences?: unknown;
 }
 
@@ -63,9 +63,9 @@ export class UserModel {
 	}
 
 	async findOrCreateByPhone(
-		phone:     string,
+		phone: string,
 		firstName: string | null = null,
-		lastName:  string | null = null,
+		lastName: string | null = null,
 	): Promise<{ id: string }> {
 		const [row] = await this.store.query<{ id: string }>(
 			`INSERT INTO fonderie_users (phone, first_name, last_name)
@@ -81,10 +81,10 @@ export class UserModel {
 	}
 
 	async create(
-		email:        string,
+		email: string,
 		passwordHash: string,
-		firstName:    string | null,
-		lastName:     string | null,
+		firstName: string | null,
+		lastName: string | null,
 	): Promise<{ id: string } | null> {
 		const [row] = await this.store.query<{ id: string }>(
 			`INSERT INTO fonderie_users (email, password_hash, first_name, last_name)
@@ -97,16 +97,16 @@ export class UserModel {
 
 	async update(id: string, fields: IUserUpdateFields): Promise<{ id: string } | null> {
 		const columnMap: Record<string, string> = {
-			firstName:   'first_name',
-			lastName:    'last_name',
+			firstName: 'first_name',
+			lastName: 'last_name',
 			phoneNumber: 'phone',
-			avatarUrl:   'profile_image_url',
-			locale:      'locale',
-			timezone:    'timezone',
+			avatarUrl: 'profile_image_url',
+			locale: 'locale',
+			timezone: 'timezone',
 			preferences: 'preferences',
 		};
 
-		const sets:   string[]  = [];
+		const sets: string[] = [];
 		const values: unknown[] = [];
 
 		for (const [key, col] of Object.entries(columnMap)) {
@@ -125,10 +125,10 @@ export class UserModel {
 	}
 
 	async updatePassword(id: string, passwordHash: string): Promise<void> {
-		await this.store.query(
-			`UPDATE fonderie_users SET password_hash = $1 WHERE id = $2`,
-			[passwordHash, id],
-		);
+		await this.store.query(`UPDATE fonderie_users SET password_hash = $1 WHERE id = $2`, [
+			passwordHash,
+			id,
+		]);
 	}
 
 	async markEmailVerified(id: string): Promise<void> {
@@ -146,10 +146,7 @@ export class UserModel {
 	}
 
 	async saveMfaSecret(id: string, secret: string): Promise<void> {
-		await this.store.query(
-			`UPDATE fonderie_users SET mfa_secret = $1 WHERE id = $2`,
-			[secret, id],
-		);
+		await this.store.query(`UPDATE fonderie_users SET mfa_secret = $1 WHERE id = $2`, [secret, id]);
 	}
 
 	async saveMfaPendingSecret(id: string, secret: string): Promise<void> {
@@ -184,10 +181,7 @@ export class UserModel {
 	}
 
 	async enableMfa(id: string): Promise<void> {
-		await this.store.query(
-			`UPDATE fonderie_users SET mfa_enabled = true WHERE id = $1`,
-			[id],
-		);
+		await this.store.query(`UPDATE fonderie_users SET mfa_enabled = true WHERE id = $1`, [id]);
 	}
 
 	async disableMfa(id: string): Promise<void> {
@@ -211,12 +205,15 @@ export class UserModel {
 		);
 	}
 
-	async updatePreferences(id: string, fields: {
-		locale?:   string;
-		timezone?: string;
-		patch?:    Record<string, unknown>;
-	}): Promise<{ id: string } | null> {
-		const sets:   string[]  = [];
+	async updatePreferences(
+		id: string,
+		fields: {
+			locale?: string;
+			timezone?: string;
+			patch?: Record<string, unknown>;
+		},
+	): Promise<{ id: string } | null> {
+		const sets: string[] = [];
 		const values: unknown[] = [];
 
 		if (fields.locale !== undefined) {
@@ -251,8 +248,8 @@ export class UserModel {
 	}
 
 	async upsertByProvider(
-		email:      string,
-		provider:   string,
+		email: string,
+		provider: string,
 		providerId: string,
 	): Promise<{ id: string } | null> {
 		const [row] = await this.store.query<{ id: string }>(

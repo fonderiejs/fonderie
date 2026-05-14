@@ -2,9 +2,9 @@ import { createHmac, randomBytes } from 'node:crypto';
 
 // ── TOTP (RFC 6238) — no external dependency ─────────────────────
 
-const STEP    = 30;           // seconds per window
-const DRIFT   = 1;            // ±1 window tolerance
-const DIGITS  = 6;
+const STEP = 30; // seconds per window
+const DRIFT = 1; // ±1 window tolerance
+const DIGITS = 6;
 
 function hotp(secret: string, counter: number): string {
 	const buf = Buffer.alloc(8);
@@ -15,15 +15,15 @@ function hotp(secret: string, counter: number): string {
 		c >>= 8;
 	}
 
-	const key  = Buffer.from(base32Decode(secret));
+	const key = Buffer.from(base32Decode(secret));
 	const hmac = createHmac('sha1', key).update(buf).digest();
 	const offset = (hmac[19] ?? 0) & 0x0f;
-	const code = (
-		((hmac[offset]     ?? 0) & 0x7f) << 24 |
-		((hmac[offset + 1] ?? 0) & 0xff) << 16 |
-		((hmac[offset + 2] ?? 0) & 0xff) << 8  |
-		((hmac[offset + 3] ?? 0) & 0xff)
-	) % Math.pow(10, DIGITS);
+	const code =
+		((((hmac[offset] ?? 0) & 0x7f) << 24) |
+			(((hmac[offset + 1] ?? 0) & 0xff) << 16) |
+			(((hmac[offset + 2] ?? 0) & 0xff) << 8) |
+			((hmac[offset + 3] ?? 0) & 0xff)) %
+		Math.pow(10, DIGITS);
 
 	return code.toString().padStart(DIGITS, '0');
 }
@@ -35,7 +35,7 @@ function timeCounter(): number {
 // RFC 4648 base32 decode — uppercase alphabet only
 function base32Decode(input: string): Buffer {
 	const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-	const clean    = input.toUpperCase().replace(/=+$/, '');
+	const clean = input.toUpperCase().replace(/=+$/, '');
 	let bits = 0;
 	let value = 0;
 
@@ -43,7 +43,7 @@ function base32Decode(input: string): Buffer {
 	for (const char of clean) {
 		const idx = ALPHABET.indexOf(char);
 		if (idx === -1) {
-			continue
+			continue;
 		}
 
 		value = (value << 5) | idx;
@@ -91,8 +91,8 @@ export function generateTotpUri(email: string, secret: string, issuer: string): 
 		secret,
 		issuer,
 		algorithm: 'SHA1',
-		digits:    String(DIGITS),
-		period:    String(STEP),
+		digits: String(DIGITS),
+		period: String(STEP),
 	});
 
 	return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?${params}`;
@@ -114,7 +114,5 @@ export function generateTotpCode(secret: string): string {
 }
 
 export function generateBackupCodes(count = 8): string[] {
-	return Array.from({ length: count }, () =>
-		randomBytes(4).toString('hex').toUpperCase()
-	);
+	return Array.from({ length: count }, () => randomBytes(4).toString('hex').toUpperCase());
 }
