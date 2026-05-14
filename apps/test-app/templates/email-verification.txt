@@ -1,5 +1,0 @@
-Hi {{firstName}},
-
-Your new email verification code is: {{pin}}
-
-This code expires in 24 hours. If you did not request this, you can safely ignore this email.

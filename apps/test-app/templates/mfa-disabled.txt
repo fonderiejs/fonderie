@@ -1,3 +1,0 @@
-Two-factor authentication has been disabled on your account.
-
-If you did not make this change, please re-enable MFA immediately and contact support.
