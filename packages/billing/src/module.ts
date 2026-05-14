@@ -9,6 +9,7 @@ import { createBackend }                      from './backends'
 
 export class BillingModule implements IFonderieModule {
 	readonly name = '@fonderie-js/billing'
+	readonly deps = ['@fonderie-js/auth']
 
 	constructor(
 		private store:  IStoreAdapter,

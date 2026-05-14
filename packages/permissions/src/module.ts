@@ -9,6 +9,7 @@ export const PERMISSIONS_ENGINE_KEY = 'fonderie.permissions.engine';
 export class PermissionsModule implements IFonderieModule {
 	readonly engine: PermissionsEngine;
 	readonly name = '@fonderie-js/permissions';
+	readonly deps = ['@fonderie-js/auth'];
 
 	constructor(
 		store:  IStoreAdapter,

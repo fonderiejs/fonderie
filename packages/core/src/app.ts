@@ -94,7 +94,7 @@ export class FonderieApp {
 	}
 
 	async boot(): Promise<this> {
-		for (const module of this.modules.values()) {
+		for (const module of topoSort([...this.modules.values()])) {
 			await module.install(this)
 		}
 		return this
@@ -166,6 +166,32 @@ export class FonderieApp {
 	//
 	//   const hono = new Hono()
 	//   hono.all('*', (c) => fonderie.handle(c.req.raw))
+}
+
+function topoSort(modules: IFonderieModule[]): IFonderieModule[] {
+	const byName  = new Map(modules.map(m => [m.name, m]));
+	const result:   IFonderieModule[] = [];
+	const visited  = new Set<string>();
+	const visiting = new Set<string>();
+
+	function visit(m: IFonderieModule, path: string[]): void {
+		if (visited.has(m.name)) return;
+		if (visiting.has(m.name)) {
+			throw new Error(`[fonderie] circular dependency: ${[...path, m.name].join(' → ')}`);
+		}
+		visiting.add(m.name);
+		for (const dep of m.deps ?? []) {
+			const found = byName.get(dep);
+			if (!found) throw new Error(`[fonderie] "${m.name}" requires "${dep}" but it is not registered`);
+			visit(found, [...path, m.name]);
+		}
+		visiting.delete(m.name);
+		visited.add(m.name);
+		result.push(m);
+	}
+
+	for (const m of modules) visit(m, []);
+	return result;
 }
 
 function getLocalIPv4(): string {

@@ -83,6 +83,7 @@ export interface IFonderieApp {
 }
 
 export interface IFonderieModule {
-	name: string;
+	name:   string;
+	deps?:  string[];
 	install(app: IFonderieApp): void | Promise<void>;
 }

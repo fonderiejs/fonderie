@@ -22,6 +22,7 @@ interface UserRegisteredPayload {
 
 export class WorkspacesModule implements IFonderieModule {
 	readonly name = '@fonderie-js/workspaces';
+	readonly deps = ['@fonderie-js/auth', '@fonderie-js/billing'];
 
 	constructor(
 		private store:  IStoreAdapter,
