@@ -1,17 +1,22 @@
+import { fileURLToPath } from 'node:url';
+import { join }          from 'node:path';
+
 import Koa        from 'koa';
 import Router     from '@koa/router';
 import bodyParser from 'koa-bodyparser';
 import type Koa_  from 'koa';
 
-import { FonderieApp, defineConfig }    from '@fonderie-js/core';
-import { withBody }                     from '@fonderie-js/core/middlewares';
-import { PGAdapter, InternalMigrationRunner } from '@fonderie-js/store';
-import { EventsModule }                 from '@fonderie-js/events';
-import { AuthModule }                   from '@fonderie-js/auth';
-import { getMigrationsPath as authMig } from '@fonderie-js/auth/migrations';
-import { getMigrationsPath as evtMig }  from '@fonderie-js/events/migrations';
-import { bridge, requireAuth, mount }   from '@fonderie-js/adapter-koa';
-import type { IFonderieContext }        from '@fonderie-js/core';
+import { FonderieApp, defineConfig }                          from '@fonderie-js/core';
+import { withBody }                                           from '@fonderie-js/core/middlewares';
+import { PGAdapter, MigrationRunner, InternalMigrationRunner } from '@fonderie-js/store';
+import { EventsModule }                                       from '@fonderie-js/events';
+import { AuthModule }                                         from '@fonderie-js/auth';
+import { getMigrationsPath as authMig }                       from '@fonderie-js/auth/migrations';
+import { getMigrationsPath as evtMig }                        from '@fonderie-js/events/migrations';
+import { bridge, requireAuth, mount }                         from '@fonderie-js/adapter-koa';
+import type { IFonderieContext }                              from '@fonderie-js/core';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 // State type — extends default Koa state with fonderie context
 type State = Koa_.DefaultState & { _fonderie: IFonderieContext }
@@ -31,6 +36,8 @@ const store = new PGAdapter(config.db.url)
 for (const dir of [evtMig(), authMig()]) {
 	await new InternalMigrationRunner(store, dir).run()
 }
+
+await new MigrationRunner(store, join(__dirname, 'migrations/sql')).run()
 
 // ── Fonderie modules ──────────────────────────────────────────────
 
@@ -67,37 +74,47 @@ const router = new Router<State>()
 app.use(bodyParser())      // populates ctx.request.body + ctx.request.rawBody
 app.use(bridge(fonderie))  // populates ctx.state._fonderie
 
-// ── Todos (in-memory) ─────────────────────────────────────────────
+// ── Todos ─────────────────────────────────────────────────────────
 
-const todos: { id: string; text: string; done: boolean; userId: string }[] = []
+type TodoRow = { id: string; text: string; done: boolean; user_id: string }
 
-router.get('/v1/todos', requireAuth, (ctx: Ctx) => {
+router.get('/v1/todos', requireAuth, async (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
-	ctx.body = { todos: todos.filter(t => t.userId === user!.id) }
+	const todos = await store.query<TodoRow>(
+		'SELECT id, text, done FROM todos WHERE user_id = $1 ORDER BY created_at',
+		[user!.id],
+	)
+	ctx.body = { todos }
 })
 
-router.post('/v1/todos', requireAuth, (ctx: Ctx) => {
+router.post('/v1/todos', requireAuth, async (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	const { text } = ctx.request.body as { text: string }
-	const todo = { id: crypto.randomUUID(), text, done: false, userId: user!.id }
-	todos.push(todo)
+	const [todo] = await store.query<TodoRow>(
+		'INSERT INTO todos (id, user_id, text) VALUES (gen_random_uuid(), $1, $2) RETURNING id, text, done',
+		[user!.id, text],
+	)
 	ctx.status = 201
 	ctx.body   = todo
 })
 
-router.patch('/v1/todos/:id', requireAuth, (ctx: Ctx) => {
+router.patch('/v1/todos/:id', requireAuth, async (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
-	const todo = todos.find(t => t.id === ctx.params['id'] && t.userId === user!.id)
+	const [todo] = await store.query<TodoRow>(
+		'UPDATE todos SET done = true WHERE id = $1 AND user_id = $2 RETURNING id, text, done',
+		[ctx.params['id'], user!.id],
+	)
 	if (!todo) { ctx.status = 404; ctx.body = { error: 'NOT_FOUND' }; return }
-	todo.done = true
-	ctx.body  = todo
+	ctx.body = todo
 })
 
-router.delete('/v1/todos/:id', requireAuth, (ctx: Ctx) => {
+router.delete('/v1/todos/:id', requireAuth, async (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
-	const idx = todos.findIndex(t => t.id === ctx.params['id'] && t.userId === user!.id)
-	if (idx === -1) { ctx.status = 404; ctx.body = { error: 'NOT_FOUND' }; return }
-	todos.splice(idx, 1)
+	const [deleted] = await store.query<{ id: string }>(
+		'DELETE FROM todos WHERE id = $1 AND user_id = $2 RETURNING id',
+		[ctx.params['id'], user!.id],
+	)
+	if (!deleted) { ctx.status = 404; ctx.body = { error: 'NOT_FOUND' }; return }
 	ctx.status = 204
 })
 
