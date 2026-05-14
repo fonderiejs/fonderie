@@ -9,7 +9,7 @@ import { LoggerModule } from '@fonderie-js/logger';
 import { FonderieApp, defineConfig } from '@fonderie-js/core';
 import { withBody } from '@fonderie-js/core/middlewares';
 import { CourierModule, Channel } from '@fonderie-js/courier';
-import { PGAdapter, MigrationRunner } from '@fonderie-js/store';
+import { PGAdapter, InternalMigrationRunner } from '@fonderie-js/store';
 import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
 import type { IAuthConfig, IAuthRuntimeConfig } from '@fonderie-js/auth';
 import { getMigrationsPath as authMigrations } from '@fonderie-js/auth/migrations';
@@ -82,7 +82,7 @@ for (const dir of [
 	courierMigrations(),
 	webhooksMigrations(),
 ]) {
-	await new MigrationRunner(store, dir).run()
+	await new InternalMigrationRunner(store, dir).run()
 }
 
 // ── Modules ───────────────────────────────────────────────────────

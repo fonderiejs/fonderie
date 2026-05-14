@@ -2,7 +2,7 @@ import express from 'express';
 
 import { FonderieApp, defineConfig }                          from '@fonderie-js/core';
 import { withBody }                                           from '@fonderie-js/core/middlewares';
-import { PGAdapter, MigrationRunner }                         from '@fonderie-js/store';
+import { PGAdapter, InternalMigrationRunner }                  from '@fonderie-js/store';
 import { EventsModule }                                       from '@fonderie-js/events';
 import { AuthModule }                                         from '@fonderie-js/auth';
 import { getMigrationsPath as authMig }                       from '@fonderie-js/auth/migrations';
@@ -22,7 +22,7 @@ const config = defineConfig({
 const store = new PGAdapter(config.db.url)
 
 for (const dir of [evtMig(), authMig()]) {
-	await new MigrationRunner(store, dir).run()
+	await new InternalMigrationRunner(store, dir).run()
 }
 
 // ── Fonderie modules ──────────────────────────────────────────────

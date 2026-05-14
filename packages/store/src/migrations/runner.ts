@@ -4,6 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import type { IStoreAdapter } from '../types';
 
 const MIGRATIONS_TABLE = 'fonderie_migrations';
+const RESERVED_PREFIX_RE = /\bfonderie_/i;
 
 export class MigrationRunner {
 	constructor(
@@ -26,6 +27,8 @@ export class MigrationRunner {
 		for (const file of pending) {
 			const sql = await readFile(join(this.migrationsDir, file), 'utf8');
 
+			this.assertNoReservedPrefix(file, sql);
+
 			await this.store.transaction(async (tx) => {
 				await tx.query(sql);
 				await tx.query(`INSERT INTO ${MIGRATIONS_TABLE} (name, applied_at) VALUES ($1, now())`, [
@@ -34,6 +37,15 @@ export class MigrationRunner {
 			});
 
 			console.log(`[store] migrations: applied ${file}`);
+		}
+	}
+
+	protected assertNoReservedPrefix(file: string, sql: string): void {
+		if (RESERVED_PREFIX_RE.test(sql)) {
+			throw new Error(
+				`[store] migration "${file}" uses the reserved "fonderie_" prefix. ` +
+				`Use InternalMigrationRunner for fonderie-owned migrations.`,
+			);
 		}
 	}
 
@@ -57,4 +69,9 @@ export class MigrationRunner {
 		const all = await readdir(this.migrationsDir);
 		return all.filter((f) => f.endsWith('.sql')).sort(); // lexicographic — timestamp prefix keeps order correct
 	}
+}
+
+// For fonderie-internal use only. Skips the reserved-prefix guard.
+export class InternalMigrationRunner extends MigrationRunner {
+	protected override assertNoReservedPrefix(_file: string, _sql: string): void {}
 }
