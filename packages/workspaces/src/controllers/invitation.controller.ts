@@ -23,6 +23,9 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 
 		async invite(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
+			if (ctx.workspace.isPersonal) {
+				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Personal workspaces do not support invitations')
+			}
 
 			const body   = ctx.meta['body'] as Record<string, unknown> | undefined
 			const email  = body?.['email']

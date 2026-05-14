@@ -10,6 +10,7 @@ const SELECT_WS = `
 	description,
 	plan,
 	owner_id    AS "ownerId",
+	is_personal AS "isPersonal",
 	archived_at AS "archivedAt",
 	archived_by AS "archivedBy",
 	created_at  AS "createdAt",
@@ -24,6 +25,7 @@ const SELECT_WS_W = `
 	w.description,
 	w.plan,
 	w.owner_id    AS "ownerId",
+	w.is_personal AS "isPersonal",
 	w.archived_at AS "archivedAt",
 	w.archived_by AS "archivedBy",
 	w.created_at  AS "createdAt",
@@ -78,6 +80,34 @@ export async function createWorkspace(
 
 	if (!workspace) throw new Error('Failed to create workspace')
 	return workspace
+}
+
+// Returns the new workspace, or null if the personal workspace already exists (idempotent).
+export async function createPersonalWorkspace(
+	opts:  { name: string; slug: string; ownerId: string },
+	store: IStoreAdapter,
+): Promise<IWorkspace | null> {
+	const [workspace] = await store.query<IWorkspace>(
+		`INSERT INTO fonderie_workspaces (name, slug, owner_id, type, is_personal)
+		 VALUES ($1, $2, $3, 'PERSONAL', true)
+		 ON CONFLICT (owner_id) WHERE is_personal = true DO NOTHING
+		 RETURNING ${SELECT_WS}`,
+		[opts.name, opts.slug, opts.ownerId],
+	)
+	return workspace ?? null
+}
+
+export async function findPersonalWorkspace(
+	userId: string,
+	store:  IStoreAdapter,
+): Promise<IWorkspace | null> {
+	const [row] = await store.query<IWorkspace>(
+		`SELECT ${SELECT_WS} FROM fonderie_workspaces
+		 WHERE owner_id = $1 AND is_personal = true
+		 LIMIT 1`,
+		[userId],
+	)
+	return row ?? null
 }
 
 export async function updateWorkspace(

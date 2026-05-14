@@ -3,8 +3,8 @@ import type { Middleware }      from '@fonderie-js/core';
 import type { IFonderieContext } from '@fonderie-js/core';
 import type { IStoreAdapter }   from '@fonderie-js/store';
 
-import { getMember }         from '../services/members';
-import { findWorkspaceById } from '../services/workspaces';
+import { getMember }                               from '../services/members';
+import { findWorkspaceById, findPersonalWorkspace } from '../services/workspaces';
 
 // Resolves ctx.workspace from:
 //   1. Route param :workspaceId or :id (path-based admin routes)
@@ -21,7 +21,15 @@ function makeHandler(store: IStoreAdapter): Middleware {
 			ctx.request.headers.get('x-workspace-id') ??
 			undefined
 
-		if (!workspaceId) return next()
+		if (!workspaceId) {
+			// DMZ fallback — if the caller didn't specify a workspace, use their personal one.
+			// No membership check needed: the user is always the sole owner.
+			if (ctx.user) {
+				const personal = await findPersonalWorkspace(ctx.user.id, store)
+				if (personal) Object.assign(ctx, { workspace: personal })
+			}
+			return next()
+		}
 
 		const workspace = await findWorkspaceById(workspaceId, store)
 		if (!workspace) {

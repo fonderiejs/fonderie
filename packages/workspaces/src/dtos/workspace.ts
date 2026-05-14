@@ -12,6 +12,7 @@ export interface IWorkspaceDTO {
 	description: string
 	plan:        string
 	ownerId:     string
+	isPersonal:  boolean
 	isArchived:  boolean
 	archivedAt:  string
 	createdAt:   string
@@ -64,6 +65,7 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 		description: stringOrEmpty(ws.description),
 		plan:        stringOrEmpty(ws.plan),
 		ownerId:     stringOrEmpty(ws.ownerId),
+		isPersonal:  booleanOrFalse(ws.isPersonal),
 		isArchived:  ws.archivedAt !== null,
 		archivedAt:  stringOrEmpty(ws.archivedAt),
 		createdAt:   stringOrEmpty(ws.createdAt),

@@ -19,8 +19,9 @@ export interface IAuthUser {
 }
 
 export interface IWorkspace {
-	id:   string;
-	name: string;
+	id:         string;
+	name:       string;
+	isPersonal?: boolean;
 }
 
 // ── Courier contract — lives in core because auth + workspaces emit

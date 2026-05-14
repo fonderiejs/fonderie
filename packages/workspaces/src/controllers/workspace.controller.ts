@@ -17,7 +17,8 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
-			const list = await workspaces.findByUserId(ctx.user!.id)
+			if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Authentication required')
+			const list = await workspaces.findByUserId(ctx.user.id)
 			return setApiResponse(HTTP.OK, 'WORKSPACES_FETCHED', 'Workspaces retrieved successfully.', {
 				workspaces: list.map(toWorkspaceDTO),
 			})
@@ -31,6 +32,10 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 
 			if (typeof name !== 'string' || name.trim().length === 0) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'name is required')
+			}
+
+			if (type === 'PERSONAL') {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Personal workspaces are created automatically')
 			}
 
 			const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -95,6 +100,9 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 
 		async archive(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
+			if (ctx.workspace.isPersonal) {
+				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Personal workspaces cannot be archived')
+			}
 
 			await workspaces.archive(ctx.workspace.id, ctx.user!.id)
 			return setApiResponse(HTTP.OK, 'WORKSPACE_ARCHIVED', 'Workspace archived successfully.')

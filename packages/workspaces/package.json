@@ -44,11 +44,16 @@
 	"peerDependencies": {
 		"@fonderie-js/billing": "^0.0.1",
 		"@fonderie-js/core":    "^0.0.1",
+		"@fonderie-js/events":  "^0.0.1",
 		"@fonderie-js/store":   "^0.0.1"
+	},
+	"peerDependenciesMeta": {
+		"@fonderie-js/events": { "optional": true }
 	},
 	"devDependencies": {
 		"@fonderie-js/billing": "../billing",
 		"@fonderie-js/core":    "../core",
+		"@fonderie-js/events":  "../events",
 		"@fonderie-js/store":   "../store",
 		"@types/node": "^25.6.0",
 		"tsup": "^8.5.1",
