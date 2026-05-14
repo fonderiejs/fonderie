@@ -25,7 +25,7 @@ export interface IPushChannelConfig {
 	serviceAccount: Record<string, unknown>
 }
 
-export const via = {
+export const Channel = {
 	EMAIL: 'email',
 	SMS:   'sms',
 	PUSH:  'push',
