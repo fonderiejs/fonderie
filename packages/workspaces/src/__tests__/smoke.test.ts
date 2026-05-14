@@ -5,10 +5,11 @@ import type { IStoreAdapter }          from '@fonderie-js/store'
 import type { IWorkspace, IMember, IRole } from '../types'
 
 function makeStore(opts: {
-	workspace?:  IWorkspace | null
-	member?:     IMember | null
-	workspaces?: IWorkspace[]
-	roles?:      IRole[]
+	workspace?:         IWorkspace | null
+	member?:            IMember | null
+	workspaces?:        IWorkspace[]
+	roles?:             IRole[]
+	personalWorkspace?: IWorkspace | null
 } = {}): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
@@ -30,6 +31,18 @@ function makeStore(opts: {
 				return (opts.roles ?? []) as T[]
 			}
 
+			// findPersonalWorkspace: SELECT ... WHERE owner_id = $1 AND is_personal = true
+			if (sql.includes('fonderie_workspaces') && sql.includes('is_personal = true')) {
+				if (!opts.personalWorkspace) return [] as T[]
+				return [opts.personalWorkspace] as T[]
+			}
+
+			// createPersonalWorkspace: INSERT ... ON CONFLICT (owner_id) WHERE is_personal = true
+			if (sql.includes('INSERT INTO fonderie_workspaces') && sql.includes('ON CONFLICT')) {
+				if (!opts.personalWorkspace) return [] as T[]
+				return [opts.personalWorkspace] as T[]
+			}
+
 			// INSERT INTO fonderie_workspaces → createWorkspace
 			if (sql.includes('INSERT INTO fonderie_workspaces')) {
 				if (!opts.workspace) return [] as T[]
@@ -38,7 +51,13 @@ function makeStore(opts: {
 
 			// INSERT INTO fonderie_roles → createRole
 			if (sql.includes('INSERT INTO fonderie_roles')) {
-				return [{ id: 'role-1', name: 'ADMIN', isSystem: false, active: true, description: null, workspaceId: opts.workspace?.id ?? 'ws-1' }] as unknown as T[]
+				const wsId = opts.personalWorkspace?.id ?? opts.workspace?.id ?? 'ws-1'
+				return [{ id: 'role-1', name: 'ADMIN', isSystem: false, active: true, description: null, workspaceId: wsId }] as unknown as T[]
+			}
+
+			// INSERT INTO fonderie_role_user_workspaces → addMember (void)
+			if (sql.includes('INSERT INTO fonderie_role_user_workspaces')) {
+				return [] as T[]
 			}
 
 			// UPDATE fonderie_workspaces → updateWorkspace
@@ -270,4 +289,148 @@ test('getWorkspace: 200 with workspace DTO', async () => {
 	assert.equal(body.reason, 'WORKSPACE_FETCHED')
 	assert.equal(body.result.workspace.id,         'ws-1')
 	assert.equal(body.result.workspace.isArchived, false)
+})
+
+// ── Personal workspace guards ────────────────────────────────────
+
+const PERSONAL_WS: IWorkspace = {
+	...WS,
+	id:         'ws-personal',
+	slug:       'user-1-personal',
+	type:       'PERSONAL',
+	isPersonal: true,
+}
+
+test('archive: 403 FORBIDDEN on personal workspace', async () => {
+	const { workspaceController } = await import('../controllers/workspace.controller')
+	const ctrl     = workspaceController(makeStore(), {})
+	const response = await ctrl.archive(makeCtx({ workspace: PERSONAL_WS, user: { id: 'user-1', email: 'a@b.com' } }))
+	assert.equal(response.status, 403)
+	const body = await response.json() as any
+	assert.equal(body.reason, 'FORBIDDEN')
+})
+
+test('create: 422 when type is PERSONAL', async () => {
+	const { workspaceController } = await import('../controllers/workspace.controller')
+	const ctrl     = workspaceController(makeStore(), {})
+	const response = await ctrl.create(makeCtx({ user: { id: 'user-1', email: 'a@b.com' }, body: { name: 'My WS', type: 'PERSONAL' } }))
+	assert.equal(response.status, 422)
+	const body = await response.json() as any
+	assert.equal(body.reason, 'INVALID_PARAMETER')
+})
+
+test('invite: 403 FORBIDDEN on personal workspace', async () => {
+	const { invitationController } = await import('../controllers/invitation.controller')
+	const ctrl     = invitationController(makeStore(), '7d')
+	const response = await ctrl.invite(makeCtx({
+		workspace: PERSONAL_WS,
+		user:      { id: 'user-1', email: 'a@b.com' },
+		body:      { email: 'guest@example.com' },
+	}))
+	assert.equal(response.status, 403)
+	const body = await response.json() as any
+	assert.equal(body.reason, 'FORBIDDEN')
+})
+
+test('member.remove: 403 FORBIDDEN on personal workspace', async () => {
+	const { memberController } = await import('../controllers/member.controller')
+	const ctrl     = memberController(makeStore())
+	const response = await ctrl.remove(makeCtx({
+		workspace: PERSONAL_WS,
+		user:      { id: 'user-1', email: 'a@b.com' },
+		params:    { userId: 'user-2' },
+	}))
+	assert.equal(response.status, 403)
+	const body = await response.json() as any
+	assert.equal(body.reason, 'FORBIDDEN')
+})
+
+// ── DMZ fallback ─────────────────────────────────────────────────
+
+test('workspaceContext DMZ: sets ctx.workspace to personal when no header and user has personal ws', async () => {
+	const { withWorkspace } = await import('../middlewares/workspace-context')
+	const middleware = withWorkspace(makeStore({ personalWorkspace: PERSONAL_WS }))
+	const ctx = makeCtx({ user: { id: 'user-1', email: 'a@b.com' } })
+	let wsAfter: IWorkspace | null = null
+	await middleware(ctx, async () => {
+		wsAfter = ctx.workspace
+		return Response.json({})
+	})
+	assert.equal(wsAfter?.id, 'ws-personal')
+})
+
+test('workspaceContext DMZ: next is still called when no personal workspace found', async () => {
+	const { withWorkspace } = await import('../middlewares/workspace-context')
+	const middleware = withWorkspace(makeStore({ personalWorkspace: null }))
+	let called = false
+	await middleware(
+		makeCtx({ user: { id: 'user-1', email: 'a@b.com' } }),
+		async () => { called = true; return Response.json({}) },
+	)
+	assert.ok(called)
+})
+
+// ── Personal workspace provisioning ──────────────────────────────
+
+test('WorkspacesModule: provisions personal workspace on user.registered via bus', async () => {
+	const { WorkspacesModule } = await import('../module')
+
+	let registeredHandler: ((payload: any) => Promise<void>) | undefined
+	const fakeBus = {
+		on:   (_type: string, handler: any) => { registeredHandler = handler },
+		emit: async () => {},
+	} as any
+
+	const queriedSql: string[] = []
+	const innerStore = makeStore({ personalWorkspace: PERSONAL_WS })
+	const makeTracking = (): IStoreAdapter => ({
+		query: async <T = unknown>(sql: string, params?: unknown[]) => {
+			queriedSql.push(sql)
+			return innerStore.query<T>(sql, params)
+		},
+		transaction: async (fn) => fn(makeTracking()),
+	})
+	const trackedStore = makeTracking()
+
+	const fakeApp = { use: () => {}, addRoute: () => {} } as any
+	const mod = new WorkspacesModule(trackedStore, {}, fakeBus)
+	mod.install(fakeApp)
+
+	assert.ok(typeof registeredHandler === 'function', 'handler must be registered for user.registered')
+
+	await registeredHandler!({ userId: 'user-1', firstName: 'Jane', lastName: 'Doe' })
+
+	assert.ok(queriedSql.some(s => s.includes('INSERT INTO fonderie_workspaces') && s.includes('is_personal')), 'should insert personal workspace')
+	assert.ok(queriedSql.some(s => s.includes('INSERT INTO fonderie_roles')), 'should create ADMIN role')
+	assert.ok(queriedSql.some(s => s.includes('INSERT INTO fonderie_role_user_workspaces')), 'should add owner as member')
+})
+
+test('WorkspacesModule: skips provisioning when personalWorkspace config is false', async () => {
+	const { WorkspacesModule } = await import('../module')
+
+	let registeredHandler: (() => void) | undefined
+	const fakeBus = { on: (_t: string, h: any) => { registeredHandler = h } } as any
+
+	const fakeApp = { use: () => {}, addRoute: () => {} } as any
+	const mod = new WorkspacesModule(makeStore(), { personalWorkspace: false }, fakeBus)
+	mod.install(fakeApp)
+
+	assert.equal(registeredHandler, undefined, 'no handler should be registered when personalWorkspace is false')
+})
+
+test('WorkspacesModule: idempotent — no error when personal workspace already exists', async () => {
+	const { WorkspacesModule } = await import('../module')
+
+	let registeredHandler: ((payload: any) => Promise<void>) | undefined
+	const fakeBus = {
+		on:   (_type: string, handler: any) => { registeredHandler = handler },
+		emit: async () => {},
+	} as any
+
+	// personalWorkspace: null simulates ON CONFLICT DO NOTHING returning no row
+	const fakeApp = { use: () => {}, addRoute: () => {} } as any
+	const mod = new WorkspacesModule(makeStore({ personalWorkspace: null }), {}, fakeBus)
+	mod.install(fakeApp)
+
+	await assert.doesNotReject(() => registeredHandler!({ userId: 'user-1' }))
 })
