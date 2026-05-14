@@ -21,6 +21,9 @@ import { getMigrationsPath as permissionsMigrations } from '@fonderie-js/permiss
 import { AuthModule, AUTH_CONFIG_KEYS, MESSAGE_KEYS as AUTH_MESSAGE_KEYS } from '@fonderie-js/auth';
 import { WorkspacesModule, withWorkspace, MESSAGE_KEYS as WS_MESSAGE_KEYS } from '@fonderie-js/workspaces';
 import { BillingModule, StripeProvider, hasFeature, getPlanLimit, requireFeature } from '@fonderie-js/billing';
+import { WebhooksModule } from '@fonderie-js/webhooks';
+import { getMigrationsPath as webhooksMigrations } from '@fonderie-js/webhooks/migrations';
+import { AuditModule } from '@fonderie-js/audit';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -70,6 +73,7 @@ for (const dir of [
 	billingMigrations(),
 	configMigrations(),
 	courierMigrations(),
+	webhooksMigrations(),
 ]) {
 	await new MigrationRunner(store, dir).run()
 }
@@ -201,16 +205,21 @@ const billing = new BillingModule(store, {
 
 // ── App ───────────────────────────────────────────────────────────
 
+const webhooks = new WebhooksModule(store, {}, events.bus);
+const audit    = new AuditModule(store);
+
 const app = new FonderieApp(config)
   .use(withBody)
-  .register(logger)      // request logging + requestId on ctx.meta
-  .register(events)      // starts event bus transport
+  .register(logger)
+  .register(events)
   .register(remoteConfig)
-  .register(auth)        // populates ctx.user
-  .register(permissions) // populates ctx.meta[PERMISSIONS_ENGINE_KEY]
-  .register(workspaces)  // registers workspace routes
-  .register(courier)     // picks up ctx.meta['message'] after each handler
-  .register(billing)     // registers billing routes, syncs plans to DB
+  .register(auth)
+  .register(permissions)
+  .register(workspaces)
+  .register(courier)
+  .register(billing)
+  .register(webhooks)
+  .register(audit)
 
 // ── Routes ────────────────────────────────────────────────────────
 
@@ -298,7 +307,7 @@ app.addRoute('GET', '/settings/sso',
 	}
 );
 
-// Routes registered automatically by modules:
+// Routes registered automatically by modules (registration order handled by topo sort):
 //
 // AuthModule:
 //   POST   /auth/register
@@ -367,6 +376,24 @@ app.addRoute('GET', '/settings/sso',
 //   PUT    /workspaces/roles/:roleId
 //   DELETE /workspaces/roles/:roleId
 //   POST   /workspaces/roles/:roleId/permissions
+
+// WebhooksModule:  (workspace context required via X-Workspace-ID header)
+//   POST   /webhooks                              register endpoint
+//   GET    /webhooks                              list endpoints
+//   GET    /webhooks/:endpointId                  get endpoint
+//   PATCH  /webhooks/:endpointId                  update endpoint
+//   DELETE /webhooks/:endpointId                  delete endpoint
+//   GET    /webhooks/:endpointId/deliveries        delivery log
+//   POST   /webhooks/:endpointId/test             send test ping
+//
+// AuditModule:  (workspace context required via X-Workspace-ID header)
+//   GET    /audit                                 paginated event log
+//     ?type=      filter by event type
+//     ?actorId=   filter by user
+//     ?from=      ISO date lower bound
+//     ?to=        ISO date upper bound
+//     ?limit=     page size (max 200, default 50)
+//     ?cursor=    pagination cursor from previous response
 
 // ── Boot ──────────────────────────────────────────────────────────
 
