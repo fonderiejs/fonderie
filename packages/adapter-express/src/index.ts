@@ -152,16 +152,16 @@ export function requireFeature(key: string) {
 //   })
 
 type ExpressApp = {
-	use:    (...args: unknown[]) => unknown;
+	use:    (...args: any[]) => any;
 	all:    (path: string, handler: (req: ExpressRequest, res: ExpressResponse) => void) => void;
-	listen: (...args: unknown[]) => unknown;
+	listen: (...args: any[]) => any;
 };
 
-export function mount(
-	app: ExpressApp,
+export function mount<T extends ExpressApp>(
+	app: T,
 	fonderie: FonderieApp,
-	register?: (app: ExpressApp) => void,
-): ExpressApp {
+	register?: (app: T) => void,
+): T {
 	const infraHandler = async (req: ExpressRequest, res: ExpressResponse) => {
 		const webReq = (req as any)._fonterieReq as Request ?? await expressRequestToWeb(req);
 		const webRes = await fonderie.handle(webReq);
@@ -176,12 +176,12 @@ export function mount(
 	} else {
 		let sealed = false;
 		const origListen = app.listen.bind(app);
-		app.listen = (...args: unknown[]) => {
+		(app as ExpressApp).listen = (...args: any[]) => {
 			if (!sealed) {
 				sealed = true;
 				app.use(infraHandler);
 			}
-			app.listen = origListen;
+			(app as ExpressApp).listen = origListen;
 			return origListen(...args);
 		};
 	}
