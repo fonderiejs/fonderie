@@ -1,5 +1,6 @@
 import type { IStoreAdapter }  from '@fonderie-js/store';
 import type { Middleware }     from '@fonderie-js/core';
+import type { EventBus }      from '@fonderie-js/events';
 import type { IAuthConfig }    from './config';
 
 import { requireAuth, requireVerified }  from '@fonderie-js/core/middlewares';
@@ -15,9 +16,10 @@ type RouteDefinition = [string, string, ...Middleware[]]
 export function buildAuthRoutes(
 	store:  IStoreAdapter,
 	config: IAuthConfig,
+	bus?:   EventBus,
 ): RouteDefinition[] {
-	const user  = userController(store);
-	const auth  = authController(store, config);
+	const user  = userController(store, bus);
+	const auth  = authController(store, config, bus);
 	const oauth = oauthController(store, config);
 	const mfa   = mfaController(store, config, config.appName ?? 'Fonderie');
 

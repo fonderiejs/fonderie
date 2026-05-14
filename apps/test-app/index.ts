@@ -16,6 +16,7 @@ import { BillingModule, StripeProvider,
          requireFeature }                from '@fonderie-js/billing';
 import { withBody, requireAuth } 		 from '@fonderie-js/core/middlewares';
 
+import { EventsModule }                                                    from '@fonderie-js/events';
 import { AuthModule, AUTH_CONFIG_KEYS, MESSAGE_KEYS as AUTH_MESSAGE_KEYS } from '@fonderie-js/auth';
 import type { IAuthConfig, IAuthRuntimeConfig }                            from '@fonderie-js/auth';
 import { WorkspacesModule, withWorkspace, MESSAGE_KEYS as WS_MESSAGE_KEYS } from '@fonderie-js/workspaces';
@@ -82,7 +83,8 @@ for (const dir of [
 // ── Modules ───────────────────────────────────────────────────────
 
 const logger      = new LoggerModule()
-const auth        = new AuthModule(store, authConfig);
+const events      = new EventsModule({ transport: 'memory' })
+const auth        = new AuthModule(store, authConfig, events.bus);
 
 const permissions = new PermissionsModule(store);
 const workspaces  = new WorkspacesModule(store);
@@ -117,6 +119,7 @@ const courier     = new CourierModule(
 		},
 	},
 	store,
+	events.bus,
 );
 
 const remoteConfig = new RemoteConfigModule(store, {
@@ -207,6 +210,7 @@ const billing = new BillingModule(store, {
 const app = new FonderieApp(config)
   .use(withBody)
   .register(logger)      // request logging + requestId on ctx.meta
+  .register(events)      // starts event bus transport
   .register(remoteConfig)
   .register(auth)        // populates ctx.user
   .register(permissions) // populates ctx.meta[PERMISSIONS_ENGINE_KEY]

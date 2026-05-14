@@ -47,12 +47,17 @@
 		"qrcode": "^1.5.4"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core": "^0.0.1",
-		"@fonderie-js/store": "^0.0.1"
+		"@fonderie-js/core":   "^0.0.1",
+		"@fonderie-js/store":  "^0.0.1",
+		"@fonderie-js/events": "^0.0.1"
+	},
+	"peerDependenciesMeta": {
+		"@fonderie-js/events": { "optional": true }
 	},
 	"devDependencies": {
-		"@fonderie-js/core": "../core",
-		"@fonderie-js/store": "../store",
+		"@fonderie-js/core":   "../core",
+		"@fonderie-js/store":  "../store",
+		"@fonderie-js/events": "../events",
 		"@types/bcryptjs": "^2.4.6",
 		"@types/jsonwebtoken": "^9.0.10",
 		"@types/node": "^25.6.0",

@@ -14,6 +14,8 @@ import { SessionModel }              from '../models/session.model';
 import { EmailVerificationModel }    from '../models/email-verification.model';
 import { PasswordResetModel }        from '../models/password-reset.model';
 import { PhoneVerificationModel }    from '../models/phone-verification.model';
+import type { EventBus }             from '@fonderie-js/events';
+import { EVENT_KEYS }                from '../config';
 
 function isValidPhone(phone: unknown): phone is string {
 	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(phone.trim());
@@ -31,7 +33,7 @@ function extractRefreshToken(ctx: IFonderieContext): string | null {
 	return match?.[1] ?? null;
 }
 
-export function authController(store: IStoreAdapter, config: IAuthConfig) {
+export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users         = new UserModel(store);
 	const sessions      = new SessionModel(store);
 	const passwordReset = new PasswordResetModel(store);
@@ -82,6 +84,15 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				if (!user) {
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
+
+				const reqId = ctx.meta['requestId'] as string | undefined;
+				bus?.emit(EVENT_KEYS.userRegistered, {
+					userId:      user.id,
+					email:       user.email,
+					firstName:   user.firstName,
+					lastName:    user.lastName,
+					loginMethod: 'email' as const,
+				}, reqId !== undefined ? { requestId: reqId } : undefined).catch(() => {})
 
 				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'email' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
@@ -134,6 +145,15 @@ export function authController(store: IStoreAdapter, config: IAuthConfig) {
 				if (!user) {
 					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
 				}
+
+				const reqId2 = ctx.meta['requestId'] as string | undefined;
+				bus?.emit(EVENT_KEYS.userRegistered, {
+					userId:      user.id,
+					email:       user.email,
+					firstName:   user.firstName,
+					lastName:    user.lastName,
+					loginMethod: 'phone' as const,
+				}, reqId2 !== undefined ? { requestId: reqId2 } : undefined).catch(() => {})
 
 				const { accessToken, refreshToken } = issueTokenPair(user.id, config, { loginMethod: 'phone' });
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));

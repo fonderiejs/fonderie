@@ -4,7 +4,9 @@ import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
 import type { IStoreAdapter }                     from '@fonderie-js/store';
 
-import { MESSAGE_KEYS }          from '../config';
+import type { EventBus }          from '@fonderie-js/events';
+
+import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { toUserDTO }                  from '../dtos/user';
 import type { IUser }                 from '../types';
 import { UserModel }                  from '../models/user.model';
@@ -15,7 +17,7 @@ function isValidPhone(phone: unknown): phone is string {
 	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(phone.trim());
 }
 
-export function userController(store: IStoreAdapter) {
+export function userController(store: IStoreAdapter, bus?: EventBus) {
 	const users      = new UserModel(store);
 	const emailVerif = new EmailVerificationModel(store);
 	const phoneVerif = new PhoneVerificationModel(store);
@@ -170,7 +172,13 @@ export function userController(store: IStoreAdapter) {
 		},
 
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
-			await users.softDelete(ctx.user!.id);
+			const userId = ctx.user!.id;
+			await users.softDelete(userId);
+
+			const reqId = ctx.meta['requestId'] as string | undefined;
+			bus?.emit(EVENT_KEYS.userDeleted, { userId },
+				reqId !== undefined ? { requestId: reqId } : undefined,
+			).catch(() => {});
 
 			return Response.json(
 				{ reason: 'ACCOUNT_DELETED', explanation: 'Account successfully deleted.' },

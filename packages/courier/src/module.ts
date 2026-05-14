@@ -1,5 +1,7 @@
 import type { IFonderieModule, IFonderieApp, Middleware } from '@fonderie-js/core';
 import type { IStoreAdapter }                             from '@fonderie-js/store';
+import type { EventBus }                                  from '@fonderie-js/events';
+import { NOTIFICATION_EVENT }                             from '@fonderie-js/events';
 
 import type { ITemplateResolver, ICourierMessage }        from './types';
 import type { ICourierConfig }                            from './config';
@@ -17,6 +19,7 @@ export class CourierModule implements IFonderieModule {
 	constructor(
 		private config: ICourierConfig,
 		store?:         IStoreAdapter,
+		bus?:           EventBus,
 	) {
 		const templateSource = config.templates?.source ?? 'db'
 		const resolver       = createTemplateResolver(templateSource, config, store)
@@ -26,6 +29,10 @@ export class CourierModule implements IFonderieModule {
 		if (config.email) this.dispatcher.registerChannel(new EmailChannel(config.email))
 		if (config.sms)   this.dispatcher.registerChannel(new SmsChannel(config.sms))
 		if (config.push)  this.dispatcher.registerChannel(new PushChannel(config.push))
+
+		bus?.on<ICourierMessage>(NOTIFICATION_EVENT, async (msg) => {
+			await this.dispatcher.dispatch(msg)
+		})
 	}
 
 	install(app: IFonderieApp): void {
