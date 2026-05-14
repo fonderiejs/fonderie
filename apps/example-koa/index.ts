@@ -1,17 +1,17 @@
+import type Koa_  from 'koa';
 import Koa        from 'koa';
 import Router     from '@koa/router';
 import bodyParser from 'koa-bodyparser';
-import type Koa_  from 'koa';
 
+import type { IFonderieContext }        from '@fonderie-js/core';
 import { FonderieApp, defineConfig }    from '@fonderie-js/core';
-import { withBody, requireAuth }        from '@fonderie-js/core/middlewares';
+import { AuthModule }                   from '@fonderie-js/auth';
 import { PGAdapter, MigrationRunner }   from '@fonderie-js/store';
 import { EventsModule }                 from '@fonderie-js/events';
-import { AuthModule }                   from '@fonderie-js/auth';
-import { getMigrationsPath as authMig } from '@fonderie-js/auth/migrations';
-import { getMigrationsPath as evtMig }  from '@fonderie-js/events/migrations';
 import { bridge, adapt, mount }         from '@fonderie-js/adapter-koa';
-import type { IFonderieContext }        from '@fonderie-js/core';
+import { getMigrationsPath as authMig } from '@fonderie-js/auth/migrations';
+import { withBody, requireAuth }        from '@fonderie-js/core/middlewares';
+import { getMigrationsPath as evtMig }  from '@fonderie-js/events/migrations';
 
 // State type — extends default Koa state with fonderie context
 type State = Koa_.DefaultState & { _fonderie: IFonderieContext }
@@ -66,20 +66,16 @@ const router = new Router<State>()
 app.use(bodyParser())      // populates ctx.request.body + ctx.request.rawBody
 app.use(bridge(fonderie))  // populates ctx.state._fonderie
 
-// adapt() bridges fonderie middleware into Koa — cast tells the router
-// the middleware signature is compatible with the typed router chain
-const mw = (m: ReturnType<typeof adapt>) => m as Koa_.Middleware<State>
-
 // ── Todos (in-memory) ─────────────────────────────────────────────
 
 const todos: { id: string; text: string; done: boolean; userId: string }[] = []
 
-router.get('/v1/todos', mw(adapt(requireAuth)), (ctx: Ctx) => {
+router.get('/v1/todos', adapt(requireAuth), (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	ctx.body = { todos: todos.filter(t => t.userId === user!.id) }
 })
 
-router.post('/v1/todos', mw(adapt(requireAuth)), (ctx: Ctx) => {
+router.post('/v1/todos', adapt(requireAuth), (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	const { text } = ctx.request.body as { text: string }
 	const todo = { id: crypto.randomUUID(), text, done: false, userId: user!.id }
@@ -88,7 +84,7 @@ router.post('/v1/todos', mw(adapt(requireAuth)), (ctx: Ctx) => {
 	ctx.body   = todo
 })
 
-router.patch('/v1/todos/:id', mw(adapt(requireAuth)), (ctx: Ctx) => {
+router.patch('/v1/todos/:id', adapt(requireAuth), (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	const todo = todos.find(t => t.id === ctx.params['id'] && t.userId === user!.id)
 	if (!todo) { ctx.status = 404; ctx.body = { error: 'NOT_FOUND' }; return }
@@ -96,7 +92,7 @@ router.patch('/v1/todos/:id', mw(adapt(requireAuth)), (ctx: Ctx) => {
 	ctx.body  = todo
 })
 
-router.delete('/v1/todos/:id', mw(adapt(requireAuth)), (ctx: Ctx) => {
+router.delete('/v1/todos/:id', adapt(requireAuth), (ctx: Ctx) => {
 	const { user } = ctx.state._fonderie
 	const idx = todos.findIndex(t => t.id === ctx.params['id'] && t.userId === user!.id)
 	if (idx === -1) { ctx.status = 404; ctx.body = { error: 'NOT_FOUND' }; return }
