@@ -2,13 +2,15 @@ import { setApiResponse, HTTP } from '@fonderie-js/core';
 import type { IFonderieContext }             from '@fonderie-js/core';
 import type { ICourierMessage }              from '@fonderie-js/core';
 import type { IStoreAdapter }               from '@fonderie-js/store';
+import type { EventBus }                    from '@fonderie-js/events';
+import { NOTIFICATION_EVENT }               from '@fonderie-js/events';
 
 import { getPlanLimit }      from '@fonderie-js/billing'
 import { MESSAGE_KEYS }      from '../config'
 import { InvitationModel }   from '../models/invitation.model'
 import { toInvitationDTO }   from '../dtos/workspace'
 
-export function invitationController(store: IStoreAdapter, ttl: string) {
+export function invitationController(store: IStoreAdapter, ttl: string, bus?: EventBus) {
 	const invitations = new InvitationModel(store)
 
 	return {
@@ -72,11 +74,11 @@ export function invitationController(store: IStoreAdapter, ttl: string) {
 				{ workspaceId: ctx.workspace.id, email, roleId: resolvedRoleId, ttl },
 			)
 
-			ctx.meta['message'] = {
+			bus?.emit(NOTIFICATION_EVENT, {
 				type:      MESSAGE_KEYS.workspaceInvitation,
 				recipient: { email, phone: null, deviceToken: null },
 				data:      { token: invitation.token, pin: invitation.pin },
-			} satisfies ICourierMessage
+			} satisfies ICourierMessage).catch(() => {})
 
 			return setApiResponse(HTTP.CREATED, 'INVITATION_SENT', 'Invitation sent successfully.', {
 				invitationId: invitation.id,

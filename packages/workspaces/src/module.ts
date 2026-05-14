@@ -38,7 +38,7 @@ export class WorkspacesModule implements IFonderieModule {
 			)
 		}
 
-		const routes = buildWorkspaceRoutes(this.store, this.config);
+		const routes = buildWorkspaceRoutes(this.store, this.config, this.bus);
 		for (const [method, path, ...handlers] of routes) {
 			app.addRoute(method, path, ...handlers);
 		}
