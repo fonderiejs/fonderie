@@ -83,10 +83,20 @@ test('koaContextToWeb: uses rawBody when present', async () => {
 });
 
 test('koaContextToWeb: body is null when rawBody is absent', async () => {
-	const ctx = makeKoaCtx({ method: 'GET' });
+	const ctx = makeKoaCtx({ method: 'POST' });
 	const webReq = koaContextToWeb(ctx as unknown as KoaContext);
 
 	assert.equal(webReq.body, null);
+});
+
+test('koaContextToWeb: GET with rawBody does not throw (body suppressed)', () => {
+	const ctx = makeKoaCtx({ method: 'GET', rawBody: '{"should":"be ignored"}' });
+	assert.doesNotThrow(() => koaContextToWeb(ctx as unknown as KoaContext));
+});
+
+test('koaContextToWeb: HEAD with rawBody does not throw (body suppressed)', () => {
+	const ctx = makeKoaCtx({ method: 'HEAD', rawBody: 'data' });
+	assert.doesNotThrow(() => koaContextToWeb(ctx as unknown as KoaContext));
 });
 
 // ── webResponseToKoa ──────────────────────────────────────────────
