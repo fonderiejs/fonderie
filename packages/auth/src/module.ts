@@ -1,5 +1,6 @@
 import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
 import type { IStoreAdapter }                 from '@fonderie-js/store';
+import type { EventBus }                      from '@fonderie-js/events';
 
 import { buildAuthRoutes }                    from './routes';
 import type { IAuthConfig }                    from './config';
@@ -11,14 +12,13 @@ export class AuthModule implements IFonderieModule {
 	constructor(
 		private store:  IStoreAdapter,
 		private config: IAuthConfig,
+		private bus?:   EventBus,
 	) {}
 
 	install(app: IFonderieApp): void {
-		// 1. Session middleware runs on every request — populates ctx.user
 		app.use(withSession(this.store, this.config));
 
-		// 2. Register auth routes
-		const routes = buildAuthRoutes(this.store, this.config);
+		const routes = buildAuthRoutes(this.store, this.config, this.bus);
 		for (const [method, path, ...handlers] of routes) {
 			app.addRoute(method, path, ...handlers);
 		}

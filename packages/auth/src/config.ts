@@ -39,6 +39,15 @@ export const MESSAGE_KEYS = {
 
 export type AuthMessageKey = typeof MESSAGE_KEYS[keyof typeof MESSAGE_KEYS];
 
+export const EVENT_KEYS = {
+	userRegistered:    'user.registered',
+	userDeleted:       'user.deleted',
+	emailVerified:     'user.email_verified',
+	passwordChanged:   'user.password_changed',
+} as const
+
+export type AuthEventKey = typeof EVENT_KEYS[keyof typeof EVENT_KEYS]
+
 export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	providers: ('email' | 'phone' | 'google' | 'github')[];
 	appName?:  string;
