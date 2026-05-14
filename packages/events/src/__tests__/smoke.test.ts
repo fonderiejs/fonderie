@@ -1,7 +1,8 @@
-import { describe, it, before, after } from 'node:test';
-import assert                          from 'node:assert/strict';
+import { describe, it, before, after, test } from 'node:test';
+import assert                                from 'node:assert/strict';
 
 import { EventBus }        from '../bus';
+import { EventsModule }    from '../module';
 import { MemoryTransport } from '../transports/memory';
 import { matchesPattern }  from '../transports/pattern';
 
@@ -122,4 +123,13 @@ describe('EventBus — memory transport', () => {
 
 		assert.equal(capturedMeta?.requestId, 'req-abc');
 	});
+});
+
+// ── EventsModule ──────────────────────────────────────────────────────────
+
+test('EventsModule: accepts a custom IEventTransport (MemoryTransport as test stand-in)', () => {
+	const mod = new EventsModule({ transport: new MemoryTransport() });
+	assert.equal(mod.name, '@fonderie-js/events');
+	assert.ok(mod.bus instanceof EventBus);
+	assert.ok(typeof mod.install === 'function');
 });

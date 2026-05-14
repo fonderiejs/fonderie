@@ -1,12 +1,10 @@
 import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core'
 
-import { EventBus }        from './bus'
-import { MemoryTransport } from './transports/memory'
-import { PGTransport }     from './transports/pg'
+import { EventBus }    from './bus'
+import { PGTransport } from './transports/pg'
 import type { IEventTransport } from './transports/types'
 
 export type EventTransportConfig =
-	| 'memory'
 	| { type: 'pg'; connectionUrl: string; maxRetries?: number; batchSize?: number; pollInterval?: number }
 	| IEventTransport
 
@@ -15,9 +13,7 @@ export interface IEventsConfig {
 }
 
 function resolveTransport(config: EventTransportConfig): IEventTransport {
-	if (config === 'memory') return new MemoryTransport()
-
-	if (typeof config === 'object' && 'type' in config && config.type === 'pg') {
+	if ('type' in config && config.type === 'pg') {
 		return new PGTransport({
 			connectionUrl: config.connectionUrl,
 			...(config.maxRetries   !== undefined ? { maxRetries:   config.maxRetries   } : {}),
