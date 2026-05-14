@@ -21,8 +21,10 @@ export class EventBus {
 		await this.transport.publish(type, payload, meta)
 	}
 
-	on<T = unknown>(type: string, handler: IEventHandler<T>): void {
-		this.transport.subscribe(type, handler as IEventHandler)
+	// consumer identifies the logical subscriber for per-consumer delivery tracking.
+	// Defaults to the pattern string — stable and predictable for single-subscriber patterns.
+	on<T = unknown>(type: string, handler: IEventHandler<T>, consumer: string = type): void {
+		this.transport.subscribe(type, handler as IEventHandler, consumer)
 	}
 
 	async start(): Promise<void> {

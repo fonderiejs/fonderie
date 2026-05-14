@@ -7,8 +7,11 @@ export { MemoryTransport, PGTransport }      from './transports'
 export type { IEventTransport,
               IPGTransportConfig }           from './transports'
 
+export { matchesPattern }                    from './transports/pattern'
+
 export type { IEventMeta, IEventHandler,
-              IEventRecord }                 from './types'
+              IEventRecord,
+              IConsumerRecord }              from './types'
 
 // ── Typed event keys ─────────────────────────────────────────────
 // Each domain package re-exports its own EVENT_KEYS.

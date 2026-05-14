@@ -32,7 +32,7 @@ export class CourierModule implements IFonderieModule {
 
 		bus?.on<ICourierMessage>(NOTIFICATION_EVENT, async (msg) => {
 			await this.dispatcher.dispatch(msg)
-		})
+		}, 'courier')
 	}
 
 	install(app: IFonderieApp): void {

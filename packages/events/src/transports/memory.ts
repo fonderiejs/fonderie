@@ -1,20 +1,17 @@
 import type { IEventTransport }          from './types'
 import type { IEventMeta, IEventHandler } from '../types'
+import { matchesPattern }                 from './pattern'
 
 export class MemoryTransport implements IEventTransport {
-	private handlers = new Map<string, IEventHandler[]>()
+	private subscriptions: Array<{ pattern: string; handler: IEventHandler }> = []
 
 	async publish(type: string, payload: unknown, meta: IEventMeta): Promise<void> {
-		const targets = [
-			...(this.handlers.get(type) ?? []),
-			...(this.handlers.get('*')  ?? []),
-		]
-		await Promise.all(targets.map(h => h(payload, meta)))
+		const matching = this.subscriptions.filter(s => matchesPattern(s.pattern, type))
+		await Promise.all(matching.map(s => s.handler(payload, meta)))
 	}
 
-	subscribe(type: string, handler: IEventHandler): void {
-		const existing = this.handlers.get(type) ?? []
-		this.handlers.set(type, [...existing, handler])
+	subscribe(pattern: string, handler: IEventHandler, _consumer: string): void {
+		this.subscriptions.push({ pattern, handler })
 	}
 
 	async start(): Promise<void> {}
