@@ -10,7 +10,7 @@ import type { IFonderieContext } 		 from '@fonderie-js/core';
 import { PGAdapter, MigrationRunner } 	 from '@fonderie-js/store';
 import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
 import { LoggerModule }                  from '@fonderie-js/logger';
-import { CourierModule, via }            from '@fonderie-js/courier';
+import { CourierModule, Channel }        from '@fonderie-js/courier';
 import { BillingModule, StripeProvider,
          hasFeature, getPlanLimit,
          requireFeature }                from '@fonderie-js/billing';
@@ -91,16 +91,16 @@ const workspaces  = new WorkspacesModule(store, {}, events.bus);
 const courier     = new CourierModule(
 	{
 		channels: {
-			[AUTH_MESSAGE_KEYS.emailRegistration]:         [via.EMAIL],
-			[AUTH_MESSAGE_KEYS.emailVerification]:         [via.EMAIL],
-			[AUTH_MESSAGE_KEYS.passwordReset]:             [via.EMAIL],
-			[AUTH_MESSAGE_KEYS.phoneOtp]:                  [via.SMS],
-			[AUTH_MESSAGE_KEYS.mfaEnabled]:                [via.EMAIL],
-			[AUTH_MESSAGE_KEYS.mfaDisabled]:               [via.EMAIL],
-			[AUTH_MESSAGE_KEYS.mfaBackupCodesRegenerated]: [via.EMAIL],
-			[AUTH_MESSAGE_KEYS.emailChanged]:              [via.EMAIL],
-			[AUTH_MESSAGE_KEYS.phoneChanged]:              [via.EMAIL],
-			[WS_MESSAGE_KEYS.workspaceInvitation]:         [via.EMAIL],
+			[AUTH_MESSAGE_KEYS.emailRegistration]:         [Channel.EMAIL],
+			[AUTH_MESSAGE_KEYS.emailVerification]:         [Channel.EMAIL],
+			[AUTH_MESSAGE_KEYS.passwordReset]:             [Channel.EMAIL],
+			[AUTH_MESSAGE_KEYS.phoneOtp]:                  [Channel.SMS],
+			[AUTH_MESSAGE_KEYS.mfaEnabled]:                [Channel.EMAIL],
+			[AUTH_MESSAGE_KEYS.mfaDisabled]:               [Channel.EMAIL],
+			[AUTH_MESSAGE_KEYS.mfaBackupCodesRegenerated]: [Channel.EMAIL],
+			[AUTH_MESSAGE_KEYS.emailChanged]:              [Channel.EMAIL],
+			[AUTH_MESSAGE_KEYS.phoneChanged]:              [Channel.EMAIL],
+			[WS_MESSAGE_KEYS.workspaceInvitation]:         [Channel.EMAIL],
 		},
 		templates: {
 			source: 'fs', 
