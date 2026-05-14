@@ -1,8 +1,12 @@
 import { test } from 'node:test';
 import assert    from 'node:assert/strict';
 
+import { FonderieApp }   from '@fonderie-js/core';
+import { defineConfig }  from '@fonderie-js/core';
+
 import { toAuditEventDTO, encodeCursor, decodeCursor } from '../dtos/audit';
 import { AuditEventModel }                             from '../models/event.model';
+import { AuditModule }                                 from '../module';
 import type { IAuditEvent }                            from '../types';
 
 // ── helpers ───────────────────────────────────────────────────────
@@ -22,6 +26,32 @@ function makeStore(rows: IAuditEvent[] = []) {
 	return {
 		query: async <T>(): Promise<T[]> => rows as unknown as T[],
 	};
+}
+
+const appConfig = defineConfig({ db: { url: 'postgres://localhost/test' } });
+
+function makeRequest(path: string, user?: object, workspace?: object): Request {
+	return Object.assign(new Request(`http://localhost${path}`), {
+		_user:      user      ?? null,
+		_workspace: workspace ?? null,
+	});
+}
+
+function makeApp(rows: IAuditEvent[] = []) {
+	const store = makeStore(rows) as never;
+	const mod   = new AuditModule(store);
+	const app   = new FonderieApp(appConfig);
+
+	// inject user + workspace from the request extensions set in makeRequest
+	app.use(async (ctx, next) => {
+		const req = ctx.request as Request & { _user?: object; _workspace?: object };
+		(ctx as { user: object | null }).user      = req._user      ?? null;
+		(ctx as { workspace: object | null }).workspace = req._workspace ?? null;
+		return next();
+	});
+
+	mod.install(app);
+	return app;
 }
 
 // ── DTO ───────────────────────────────────────────────────────────
@@ -159,4 +189,72 @@ test('route pagination: nextCursor is null when results fit in one page', () => 
 	const nextCursor = hasMore ? encodeCursor(events[0]!.createdAt, events[0]!.id) : null;
 
 	assert.equal(nextCursor, null);
+});
+
+// ── model: date filters ───────────────────────────────────────────
+
+test('AuditEventModel.list: appends from filter when provided', async () => {
+	const sqls: string[] = [];
+	const store = { query: async <T>(sql: string): Promise<T[]> => { sqls.push(sql); return []; } };
+
+	await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', from: new Date() });
+
+	assert.ok(sqls[0]?.includes('created_at >='));
+});
+
+test('AuditEventModel.list: appends to filter when provided', async () => {
+	const sqls: string[] = [];
+	const store = { query: async <T>(sql: string): Promise<T[]> => { sqls.push(sql); return []; } };
+
+	await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', to: new Date() });
+
+	assert.ok(sqls[0]?.includes('created_at <='));
+});
+
+test('AuditEventModel.list: invalid cursor is silently ignored', async () => {
+	const store = { query: async <T>(): Promise<T[]> => [] as T[] };
+
+	await assert.doesNotReject(() =>
+		new AuditEventModel(store as never).list({ workspaceId: 'ws-1', cursor: 'not-valid' }),
+	);
+});
+
+// ── route ─────────────────────────────────────────────────────────
+
+test('GET /audit: 401 when not authenticated', async () => {
+	const app = makeApp();
+	await app.boot();
+
+	const res = await app.handle(makeRequest('/audit'));
+	assert.equal(res.status, 401);
+});
+
+test('GET /audit: 422 when no workspace context', async () => {
+	const app = makeApp();
+	await app.boot();
+
+	const res = await app.handle(makeRequest('/audit', { id: 'u-1' }));
+	assert.equal(res.status, 422);
+});
+
+test('GET /audit: 200 with events array', async () => {
+	const events = [makeEvent(), makeEvent({ id: 'evt-2' })];
+	const app    = makeApp(events);
+	await app.boot();
+
+	const res  = await app.handle(makeRequest('/audit', { id: 'u-1' }, { id: 'ws-1' }));
+	const body = await res.json() as { result: { events: unknown[] } };
+
+	assert.equal(res.status, 200);
+	assert.equal(body.result.events.length, 2);
+});
+
+test('GET /audit: nextCursor is null when results fit in page', async () => {
+	const app = makeApp([makeEvent()]);
+	await app.boot();
+
+	const res  = await app.handle(makeRequest('/audit', { id: 'u-1' }, { id: 'ws-1' }));
+	const body = await res.json() as { result: { nextCursor: string | null } };
+
+	assert.equal(body.result.nextCursor, null);
 });
