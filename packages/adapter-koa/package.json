@@ -19,6 +19,7 @@
 	"scripts": {
 		"build":     "tsup",
 		"dev":       "tsup --watch",
+		"test":      "tsx --test src/__tests__/*.test.ts",
 		"typecheck": "tsc --noEmit",
 		"lint":      "biome lint src",
 		"format":    "biome format --write src",
@@ -44,6 +45,7 @@
 		"koa":                      "^2.16.1",
 		"@types/koa":               "^2.15.0",
 		"@types/node":              "^25.6.0",
+		"tsx":                      "^4.21.0",
 		"tsup":                     "^8.5.1",
 		"typescript":               "^6.0.3"
 	}

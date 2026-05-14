@@ -47,7 +47,11 @@ function readStream(req: IncomingMessage): Promise<ArrayBuffer> {
 	return new Promise((resolve, reject) => {
 		const chunks: Buffer[] = []
 		req.on('data',  (chunk: Buffer) => chunks.push(chunk))
-		req.on('end',   () => resolve(Buffer.concat(chunks).buffer as ArrayBuffer))
+		req.on('end',   () => {
+			const buf = Buffer.concat(chunks)
+			// slice creates a correctly-sized ArrayBuffer (buf.buffer is a shared pool)
+			resolve(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer)
+		})
 		req.on('error', reject)
 	})
 }
