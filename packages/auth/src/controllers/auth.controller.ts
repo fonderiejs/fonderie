@@ -1,22 +1,23 @@
 import { randomInt }                                    from 'node:crypto';
 
+import type { EventBus } from '@fonderie-js/events';
+import type { IStoreAdapter } from '@fonderie-js/store';
+import { NOTIFICATION_EVENT } from '@fonderie-js/events';
 import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { EventBus }             from '@fonderie-js/events';
-import { NOTIFICATION_EVENT }        from '@fonderie-js/events';
-import type { IFonderieContext, ICourierMessage }        from '@fonderie-js/core';
-import type { IStoreAdapter }                           from '@fonderie-js/store';
+import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
 
+import type { IAuthConfig } from '../config';
+
+import { EVENT_KEYS } from '../config';
+import { toUserDTO } from '../dtos/user';
+import { UserModel } from '../models/user.model';
 import { checkCooldown } from '../services/cooldown';
-import { EVENT_KEYS }                from '../config';
-import { UserModel }                 from '../models/user.model';
-import { SessionModel }              from '../models/session.model';
+import { SessionModel }  from '../models/session.model';
+import { hashPassword, verifyPassword } from '../services/password';
+import { PasswordResetModel } from '../models/password-reset.model';
 import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
-import type { IAuthConfig }                             from '../config';
-import { PasswordResetModel }        from '../models/password-reset.model';
-import { toUserDTO }                                    from '../dtos/user';
-import { EmailVerificationModel }    from '../models/email-verification.model';
-import { PhoneVerificationModel }    from '../models/phone-verification.model';
-import { hashPassword, verifyPassword }                 from '../services/password';
+import { EmailVerificationModel } from '../models/email-verification.model';
+import { PhoneVerificationModel } from '../models/phone-verification.model';
 import { issueTokenPair, issueMfaPendingToken, verifyToken, refreshTokenExpiry } from '../services/jwt';
 
 function isValidPhone(phone: unknown): phone is string {
