@@ -9,6 +9,7 @@ export interface IWorkspace {
 	description: string | null
 	plan:        string
 	ownerId:     string
+	isPersonal:  boolean
 	archivedAt:  string | null
 	archivedBy:  string | null
 	createdAt:   string

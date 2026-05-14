@@ -56,7 +56,7 @@ function makeStore(opts: {
 
 const WS: IWorkspace = {
 	id: 'ws-1', name: 'Acme', slug: 'acme', type: 'ORGANIZATION',
-	description: null, plan: 'free', ownerId: 'user-1',
+	description: null, plan: 'free', ownerId: 'user-1', isPersonal: false,
 	archivedAt: null, archivedBy: null, createdAt: new Date().toISOString(), updatedAt: null,
 }
 

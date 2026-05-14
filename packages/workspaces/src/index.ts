@@ -1,6 +1,7 @@
-export { WorkspacesModule }                           from './module';
-export type { IWorkspacesConfig, WorkspacesMessageKey } from './config';
-export { MESSAGE_KEYS }                               from './config';
+export { WorkspacesModule }                                          from './module';
+export type { IWorkspacesConfig, WorkspacesMessageKey,
+              WorkspacesEventKey }                                   from './config';
+export { MESSAGE_KEYS, EVENT_KEYS }                                  from './config';
 export type {
 	WorkspaceType, InvitationStatus,
 	IWorkspace, IRole, IMember, IInvitation, IWorkspaceSettings,

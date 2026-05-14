@@ -3,7 +3,8 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import type { IWorkspace, IWorkspaceSettings } from '../types';
 import {
 	findWorkspaceById, findWorkspacesByUserId,
-	createWorkspace, updateWorkspace,
+	createWorkspace, createPersonalWorkspace, findPersonalWorkspace,
+	updateWorkspace,
 	archiveWorkspace, restoreWorkspace,
 	getWorkspaceSettings, updateWorkspaceSettings,
 } from '../services/workspaces';
@@ -21,6 +22,14 @@ export class WorkspaceModel {
 
 	create(opts: Parameters<typeof createWorkspace>[0]): Promise<IWorkspace> {
 		return createWorkspace(opts, this.store)
+	}
+
+	createPersonal(opts: Parameters<typeof createPersonalWorkspace>[0]): Promise<IWorkspace | null> {
+		return createPersonalWorkspace(opts, this.store)
+	}
+
+	findPersonal(userId: string): Promise<IWorkspace | null> {
+		return findPersonalWorkspace(userId, this.store)
 	}
 
 	update(id: string, opts: Parameters<typeof updateWorkspace>[1]): Promise<IWorkspace | null> {

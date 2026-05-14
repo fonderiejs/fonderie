@@ -20,6 +20,9 @@ export function memberController(store: IStoreAdapter) {
 
 		async remove(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found')
+			if (ctx.workspace.isPersonal) {
+				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Personal workspaces do not support member management')
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined
 			const userId = params?.['userId']

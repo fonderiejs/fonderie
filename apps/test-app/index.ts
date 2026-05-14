@@ -87,7 +87,7 @@ const events      = new EventsModule({ transport: 'memory' })
 const auth        = new AuthModule(store, authConfig, events.bus);
 
 const permissions = new PermissionsModule(store);
-const workspaces  = new WorkspacesModule(store);
+const workspaces  = new WorkspacesModule(store, {}, events.bus);
 const courier     = new CourierModule(
 	{
 		channels: {
