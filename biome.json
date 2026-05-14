@@ -1,19 +1,17 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
 	"files": {
-		"include": [
-			"packages/*/src/**",
-			"apps/*/src/**"
-		],
-		"ignore": [
-			"**/node_modules/**",
-			"**/dist/**"
+		"includes": [
+			"**/packages/**/*/src/**",
+			"**/apps/**/*/src/**",
+			"!**/node_modules/**",
+			"!**/dist/**"
 		]
 	},
 	"formatter": {
-		"enabled":     true,
+		"enabled": true,
 		"indentStyle": "tab",
-		"lineWidth":   100
+		"lineWidth": 100
 	},
 	"linter": {
 		"enabled": true,
@@ -23,9 +21,9 @@
 	},
 	"javascript": {
 		"formatter": {
-			"quoteStyle":     "single",
+			"quoteStyle": "single",
 			"trailingCommas": "all",
-			"semicolons":     "always"
+			"semicolons": "always"
 		}
 	}
 }
