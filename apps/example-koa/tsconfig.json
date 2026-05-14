@@ -1,0 +1,23 @@
+{
+	"compilerOptions": {
+		"target":             "ES2022",
+		"module":             "NodeNext",
+		"moduleResolution":   "NodeNext",
+		"strict":             true,
+		"skipLibCheck":       true,
+		"types":              ["node"],
+		"ignoreDeprecations": "6.0",
+		"baseUrl":            ".",
+		"paths": {
+			"@fonderie-js/core":                   ["../../packages/core/src/index.ts"],
+			"@fonderie-js/core/middlewares":       ["../../packages/core/src/middlewares/index.ts"],
+			"@fonderie-js/store":                  ["../../packages/store/src/index.ts"],
+			"@fonderie-js/events":                 ["../../packages/events/src/index.ts"],
+			"@fonderie-js/auth":                   ["../../packages/auth/src/index.ts"],
+			"@fonderie-js/auth/migrations":        ["../../packages/auth/src/migrations/index.ts"],
+			"@fonderie-js/events/migrations":      ["../../packages/events/src/migrations/index.ts"],
+			"@fonderie-js/adapter-koa":            ["../../packages/adapter-koa/src/index.ts"]
+		}
+	},
+	"include": ["./**/*.ts"]
+}
