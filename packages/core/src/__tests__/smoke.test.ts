@@ -233,3 +233,57 @@ test('router: root path / still matches after trailing-slash normalisation', asy
 	const res = await app.handle(makeRequest('GET', '/'));
 	assert.equal(res.status, 200);
 });
+
+// ── module dependency ordering ────────────────────────────────────
+
+test('boot: installs modules in dependency order regardless of registration order', async () => {
+	const log: string[] = [];
+
+	const a: IFonderieModule = {
+		name: 'a',
+		install() { log.push('a'); },
+	};
+	const b: IFonderieModule = {
+		name: 'b',
+		deps: ['a'],
+		install() { log.push('b'); },
+	};
+	const c: IFonderieModule = {
+		name: 'c',
+		deps: ['b'],
+		install() { log.push('c'); },
+	};
+
+	// registered in reverse dependency order
+	await new FonderieApp(config).register(c).register(b).register(a).boot();
+
+	assert.deepEqual(log, ['a', 'b', 'c']);
+});
+
+test('boot: throws when a declared dep is not registered', async () => {
+	const m: IFonderieModule = {
+		name: 'needs-missing',
+		deps: ['@fonderie-js/does-not-exist'],
+		install() {},
+	};
+
+	await assert.rejects(
+		() => new FonderieApp(config).register(m).boot(),
+		/needs-missing.*does-not-exist/,
+	);
+});
+
+test('boot: throws on circular dependency', async () => {
+	const a: IFonderieModule = { name: 'a', deps: ['b'], install() {} };
+	const b: IFonderieModule = { name: 'b', deps: ['a'], install() {} };
+
+	await assert.rejects(
+		() => new FonderieApp(config).register(a).register(b).boot(),
+		/circular/i,
+	);
+});
+
+test('boot: module with no deps installs without error', async () => {
+	const m: IFonderieModule = { name: 'standalone', install() {} };
+	await assert.doesNotReject(() => new FonderieApp(config).register(m).boot());
+});
