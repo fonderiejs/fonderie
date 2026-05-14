@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert   from 'node:assert/strict';
 
-import type { IStoreAdapter }   from '@fonderie-js/store';
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { ParameterizedContext } from 'koa';
+import type { IStoreAdapter }        from '@fonderie-js/store';
+import type { IFonderieContext }      from '@fonderie-js/core';
+import type { ParameterizedContext }  from 'koa';
 
-import { TodoModel }       from '../models/todo.model';
-import { todoController }  from '../controllers/todo.controller';
-import { buildTodoRouter } from '../routes/todo.routes';
+import { TodoModel }       from './todo.model';
+import { todoController }  from './todo.controller';
+import { buildTodoRouter } from './todo.routes';
 
 // ── Stubs ─────────────────────────────────────────────────────────
 
@@ -36,25 +36,19 @@ function makeCtx(
 
 test('TodoModel.list: queries todos for the given userId', async () => {
 	const rows = [{ id: '1', text: 'Buy milk', done: false }]
-	const model = TodoModel(makeStore(rows))
-
-	const result = await model.list('user-1')
+	const result = await TodoModel(makeStore(rows)).list('user-1')
 	assert.deepEqual(result, rows)
 })
 
 test('TodoModel.create: inserts and returns the new todo', async () => {
-	const row   = { id: 'abc', text: 'Walk dog', done: false }
-	const model = TodoModel(makeStore([row]))
-
-	const result = await model.create('user-1', 'Walk dog')
+	const row    = { id: 'abc', text: 'Walk dog', done: false }
+	const result = await TodoModel(makeStore([row])).create('user-1', 'Walk dog')
 	assert.deepEqual(result, row)
 })
 
 test('TodoModel.complete: returns updated todo on success', async () => {
-	const row   = { id: 'abc', text: 'Walk dog', done: true }
-	const model = TodoModel(makeStore([row]))
-
-	const result = await model.complete('abc', 'user-1')
+	const row    = { id: 'abc', text: 'Walk dog', done: true }
+	const result = await TodoModel(makeStore([row])).complete('abc', 'user-1')
 	assert.deepEqual(result, row)
 })
 

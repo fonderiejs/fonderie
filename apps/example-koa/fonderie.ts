@@ -1,12 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import { join }          from 'node:path';
 
-import { AuthModule }                                         from '@fonderie-js/auth';
-import { FonderieApp, defineConfig }                          from '@fonderie-js/core';
+import { AuthModule }                                          from '@fonderie-js/auth';
+import { FonderieApp, defineConfig }                           from '@fonderie-js/core';
 import { PGAdapter, MigrationRunner, InternalMigrationRunner } from '@fonderie-js/store';
-import { EventsModule }                                       from '@fonderie-js/events';
-import { getMigrationsPath as authMig }                       from '@fonderie-js/auth/migrations';
-import { getMigrationsPath as evtMig }                        from '@fonderie-js/events/migrations';
+import { EventsModule }                                        from '@fonderie-js/events';
+import { getMigrationsPath as authMig }                        from '@fonderie-js/auth/migrations';
+import { getMigrationsPath as evtMig }                         from '@fonderie-js/events/migrations';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -21,7 +21,7 @@ for (const dir of [evtMig(), authMig()]) {
 	await new InternalMigrationRunner(store, dir).run()
 }
 
-await new MigrationRunner(store, join(__dirname, '../migrations/sql')).run()
+await new MigrationRunner(store, join(__dirname, 'migrations/sql')).run()
 
 const events = new EventsModule({ transport: { type: 'pg', connectionUrl: config.db.url } })
 const auth   = new AuthModule(store, {

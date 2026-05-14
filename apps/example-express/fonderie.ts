@@ -21,7 +21,7 @@ for (const dir of [evtMig(), authMig()]) {
 	await new InternalMigrationRunner(store, dir).run()
 }
 
-await new MigrationRunner(store, join(__dirname, '../migrations/sql')).run()
+await new MigrationRunner(store, join(__dirname, 'migrations/sql')).run()
 
 const events = new EventsModule({ transport: { type: 'pg', connectionUrl: config.db.url } })
 const auth   = new AuthModule(store, {

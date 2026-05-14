@@ -1,10 +1,9 @@
 import Koa        from 'koa';
 import bodyParser from 'koa-bodyparser';
 
-import { bridge, mount }       from '@fonderie-js/adapter-koa';
-
-import { fonderie, store }     from './config/fonderie';
-import { buildTodoRouter }     from './routes/todo.routes';
+import { bridge, mount }   from '@fonderie-js/adapter-koa';
+import { fonderie, store } from './fonderie';
+import { buildTodoRouter } from './todo.routes';
 
 const app = new Koa()
 

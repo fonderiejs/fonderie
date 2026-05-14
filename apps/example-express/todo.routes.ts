@@ -1,8 +1,9 @@
 import { Router }             from 'express';
 import { requireAuth }        from '@fonderie-js/adapter-express';
 import type { IStoreAdapter } from '@fonderie-js/store';
-import { TodoModel }          from '../models/todo.model';
-import { todoController }     from '../controllers/todo.controller';
+
+import { TodoModel }          from './todo.model';
+import { todoController }     from './todo.controller';
 
 export function buildTodoRouter(store: IStoreAdapter): Router {
 	const router     = Router()
