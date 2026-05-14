@@ -1,8 +1,10 @@
 import { test } from 'node:test'
 import assert   from 'node:assert/strict'
 
-import type { IStoreAdapter }          from '@fonderie-js/store'
+import type { IStoreAdapter }              from '@fonderie-js/store'
 import type { IWorkspace, IMember, IRole } from '../types'
+import { NOTIFICATION_EVENT }              from '@fonderie-js/events'
+import { MESSAGE_KEYS }                    from '../config'
 
 function makeStore(opts: {
 	workspace?:         IWorkspace | null
@@ -433,4 +435,49 @@ test('WorkspacesModule: idempotent — no error when personal workspace already 
 	mod.install(fakeApp)
 
 	await assert.doesNotReject(() => registeredHandler!({ userId: 'user-1' }))
+})
+
+// ── Invitation NOTIFICATION_EVENT ────────────────────────────────
+
+test('invite: emits NOTIFICATION_EVENT with workspaceInvitation payload', async () => {
+	const { invitationController } = await import('../controllers/invitation.controller')
+
+	const FAKE_INVITATION = {
+		id:          'inv-1',
+		workspaceId: 'ws-1',
+		email:       'guest@example.com',
+		roleId:      'r-1',
+		token:       'tok-abc',
+		pin:         '654321',
+		status:      'PENDING',
+		expiresAt:   new Date().toISOString(),
+		createdAt:   new Date().toISOString(),
+	}
+
+	const invStore: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('fonderie_workspace_invitations')) return [FAKE_INVITATION] as unknown as T[]
+			return [] as T[]
+		},
+		transaction: async (fn) => fn(invStore),
+	}
+
+	const emitted: { type: string; payload: unknown }[] = []
+	const fakeBus = { emit: async (type: string, payload: unknown) => { emitted.push({ type, payload }) } } as any
+
+	const ctrl     = invitationController(invStore, '7d', fakeBus)
+	const response = await ctrl.invite(makeCtx({
+		workspace: WS,
+		user:      { id: 'user-1', email: 'a@b.com' },
+		body:      { email: 'guest@example.com', roleId: 'r-1' },
+	}))
+
+	assert.equal(response.status, 201)
+	assert.equal(emitted.length, 1)
+	assert.equal(emitted[0]?.type, NOTIFICATION_EVENT)
+	const p = emitted[0]?.payload as any
+	assert.equal(p.type,              MESSAGE_KEYS.workspaceInvitation)
+	assert.equal(p.recipient.email,   'guest@example.com')
+	assert.ok(typeof p.data.pin   === 'string')
+	assert.ok(typeof p.data.token === 'string')
 })
