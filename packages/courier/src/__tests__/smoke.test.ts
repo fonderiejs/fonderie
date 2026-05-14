@@ -5,6 +5,7 @@ import type { ICourierConfig }                                from '../config';
 import type { ICourierChannel, ICourierMessage, ITemplateResolver } from '../types';
 import type { IStoreAdapter }                                from '@fonderie-js/store';
 
+import { Channel }            from '../config';
 import { Dispatcher }         from '../dispatcher';
 import { FSTemplateResolver } from '../templates/resolver';
 
@@ -47,10 +48,18 @@ function makeStore(interceptLog?: (sql: string) => void): IStoreAdapter {
 	return stub
 }
 
+// ── Channel constants ─────────────────────────────────────────────
+
+test('Channel: exports correct string values', () => {
+	assert.equal(Channel.EMAIL, 'email')
+	assert.equal(Channel.SMS,   'sms')
+	assert.equal(Channel.PUSH,  'push')
+})
+
 // ── Dispatcher ───────────────────────────────────────────────────
 
 test('dispatcher: sends to configured channel', async () => {
-	const config: ICourierConfig = { channels: { 'password-reset': ['email'] } }
+	const config: ICourierConfig = { channels: { 'password-reset': [Channel.EMAIL] } }
 	const email      = makeChannel('email')
 	const dispatcher = new Dispatcher(config, makeResolver())
 	dispatcher.registerChannel(email)
@@ -66,7 +75,7 @@ test('dispatcher: sends to configured channel', async () => {
 })
 
 test('dispatcher: sends to multiple channels', async () => {
-	const config: ICourierConfig = { channels: { 'workspace-invitation': ['email', 'sms'] } }
+	const config: ICourierConfig = { channels: { 'workspace-invitation': [Channel.EMAIL, Channel.SMS] } }
 	const email = makeChannel('email')
 	const sms   = makeChannel('sms')
 
@@ -100,7 +109,7 @@ test('dispatcher: skips unconfigured message type', async () => {
 })
 
 test('dispatcher: skips missing channel without throwing', async () => {
-	const config: ICourierConfig = { channels: { 'test-event': ['sms'] } }
+	const config: ICourierConfig = { channels: { 'test-event': [Channel.SMS] } }
 	const dispatcher = new Dispatcher(config, makeResolver())
 	// no channels registered
 	await assert.doesNotReject(() =>
@@ -122,7 +131,7 @@ test('dispatcher: passes locale to resolver', async () => {
 		},
 	}
 
-	const config: ICourierConfig = { channels: { 'welcome': ['email'] } }
+	const config: ICourierConfig = { channels: { 'welcome': [Channel.EMAIL] } }
 	const dispatcher = new Dispatcher(config, localeResolver)
 	dispatcher.registerChannel(makeChannel('email'))
 
@@ -143,7 +152,7 @@ test('dispatcher: logs messages when store provided', async () => {
 		if (sql.includes("status = 'sent'"))                 logged.push('sent')
 	})
 
-	const config: ICourierConfig = { channels: { 'test-log': ['email'] } }
+	const config: ICourierConfig = { channels: { 'test-log': [Channel.EMAIL] } }
 	const dispatcher = new Dispatcher(config, makeResolver(), store)
 	dispatcher.registerChannel(makeChannel('email'))
 
@@ -212,7 +221,7 @@ test('CourierModule: subscribes to notification.send and dispatches on emit', as
 
 	const email = makeChannel('email')
 	const mod   = new CourierModule(
-		{ channels: { 'password-reset': ['email'] }, templates: { source: 'fs', directory: '/tmp' } },
+		{ channels: { 'password-reset': [Channel.EMAIL] }, templates: { source: 'fs', directory: '/tmp' } },
 		undefined,
 		fakeBus,
 	)
