@@ -1,34 +1,26 @@
 import { fileURLToPath } from 'node:url';
 import { join }          from 'node:path';
 
-import {
-	FonderieApp,
-	defineConfig,
-} from '@fonderie-js/core';
-
-import type { IFonderieContext } 		 from '@fonderie-js/core';
-import { PGAdapter, MigrationRunner } 	 from '@fonderie-js/store';
+import { EventsModule } from '@fonderie-js/events';
+import { LoggerModule } from '@fonderie-js/logger';
+import type { IFonderieContext } from '@fonderie-js/core';
+import { FonderieApp, defineConfig } from '@fonderie-js/core';
+import { CourierModule, Channel } from '@fonderie-js/courier';
+import { PGAdapter, MigrationRunner } from '@fonderie-js/store';
 import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
-import { LoggerModule }                  from '@fonderie-js/logger';
-import { CourierModule, Channel }        from '@fonderie-js/courier';
-import { BillingModule, StripeProvider,
-         hasFeature, getPlanLimit,
-         requireFeature }                from '@fonderie-js/billing';
-import { withBody, requireAuth } 		 from '@fonderie-js/core/middlewares';
-
-import { EventsModule }                                                    from '@fonderie-js/events';
-import { AuthModule, AUTH_CONFIG_KEYS, MESSAGE_KEYS as AUTH_MESSAGE_KEYS } from '@fonderie-js/auth';
-import type { IAuthConfig, IAuthRuntimeConfig }                            from '@fonderie-js/auth';
-import { WorkspacesModule, withWorkspace, MESSAGE_KEYS as WS_MESSAGE_KEYS } from '@fonderie-js/workspaces';
+import { withBody, requireAuth } from '@fonderie-js/core/middlewares';
+import type { IAuthConfig, IAuthRuntimeConfig } from '@fonderie-js/auth';
+import { getMigrationsPath as authMigrations } from '@fonderie-js/auth/migrations';
+import { getMigrationsPath as eventsMigrations } from '@fonderie-js/events/migrations';
+import { getMigrationsPath as configMigrations } from '@fonderie-js/config/migrations';
+import { getMigrationsPath as billingMigrations } from '@fonderie-js/billing/migrations';
+import { getMigrationsPath as courierMigrations } from '@fonderie-js/courier/migrations';
 import { PermissionsModule, requirePermission, OPERATIONS } from '@fonderie-js/permissions';
-
-import { getMigrationsPath as authMigrations }        from '@fonderie-js/auth/migrations';
-import { getMigrationsPath as configMigrations }      from '@fonderie-js/config/migrations';
-import { getMigrationsPath as billingMigrations }     from '@fonderie-js/billing/migrations';
-import { getMigrationsPath as courierMigrations }     from '@fonderie-js/courier/migrations';
-import { getMigrationsPath as eventsMigrations }      from '@fonderie-js/events/migrations';
-import { getMigrationsPath as workspacesMigrations }  from '@fonderie-js/workspaces/migrations';
+import { getMigrationsPath as workspacesMigrations } from '@fonderie-js/workspaces/migrations';
 import { getMigrationsPath as permissionsMigrations } from '@fonderie-js/permissions/migrations';
+import { AuthModule, AUTH_CONFIG_KEYS, MESSAGE_KEYS as AUTH_MESSAGE_KEYS } from '@fonderie-js/auth';
+import { WorkspacesModule, withWorkspace, MESSAGE_KEYS as WS_MESSAGE_KEYS } from '@fonderie-js/workspaces';
+import { BillingModule, StripeProvider, hasFeature, getPlanLimit, requireFeature } from '@fonderie-js/billing';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
