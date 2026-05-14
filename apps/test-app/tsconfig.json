@@ -26,7 +26,10 @@
 			"@fonderie-js/events":                  ["../../packages/events/src/index.ts"],
 			"@fonderie-js/store":                   ["../../packages/store/src/index.ts"],
 			"@fonderie-js/workspaces":              ["../../packages/workspaces/src/index.ts"],
-			"@fonderie-js/workspaces/migrations":   ["../../packages/workspaces/src/migrations/index.ts"]
+			"@fonderie-js/workspaces/migrations":   ["../../packages/workspaces/src/migrations/index.ts"],
+			"@fonderie-js/webhooks":                ["../../packages/webhooks/src/index.ts"],
+			"@fonderie-js/webhooks/migrations":     ["../../packages/webhooks/src/migrations/index.ts"],
+			"@fonderie-js/audit":                   ["../../packages/audit/src/index.ts"]
 		}
 	},
 	"include": ["./**/*.ts"]
