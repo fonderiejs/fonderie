@@ -1,0 +1,51 @@
+{
+	"name": "@fonderie-js/webhooks",
+	"version": "0.0.1",
+	"description": "Outgoing webhook engine — register endpoints, fan out workspace-scoped events, track delivery, and retry on failure.",
+	"keywords": ["fonderie-js", "webhooks", "events", "saas", "typescript"],
+	"license": "UNLICENSED",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./migrations": {
+			"types": "./dist/migrations/index.d.ts",
+			"import": "./dist/migrations/index.js"
+		}
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup && node -e \"require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})\"",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "tsx --test src/__tests__/*.test.ts",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
+	},
+	"peerDependencies": {
+		"@fonderie-js/core":   "^0.0.1",
+		"@fonderie-js/events": "^0.0.1",
+		"@fonderie-js/store":  "^0.0.1"
+	},
+	"peerDependenciesMeta": {
+		"@fonderie-js/events": { "optional": true }
+	},
+	"devDependencies": {
+		"@fonderie-js/core":   "../core",
+		"@fonderie-js/events": "../events",
+		"@fonderie-js/store":  "../store",
+		"@types/node": "^25.6.0",
+		"tsup": "^8.5.1",
+		"tsx": "^4.21.0",
+		"typescript": "^6.0.3"
+	}
+}
