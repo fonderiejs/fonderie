@@ -2,7 +2,6 @@ import { fileURLToPath } from 'node:url';
 import { join }          from 'node:path';
 
 import { FonderieApp, defineConfig }                           from '@fonderie-js/core';
-import { withBody }                                            from '@fonderie-js/core/middlewares';
 import { PGAdapter, MigrationRunner, InternalMigrationRunner } from '@fonderie-js/store';
 import { EventsModule }                                        from '@fonderie-js/events';
 import { AuthModule }                                          from '@fonderie-js/auth';
@@ -33,7 +32,6 @@ const auth   = new AuthModule(store, {
 }, events.bus)
 
 export const fonderie = new FonderieApp(config)
-	.use(withBody)
 	.register(events)
 	.register(auth)
 
