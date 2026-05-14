@@ -16,13 +16,15 @@ export interface IAuthRuntimeConfig {
 	sessionDuration?: string;
 	verificationCooldown?: number;
 	mfa?: boolean;
+	requireVerification?: boolean;
 }
 
 // Type-checked: adding/renaming a field in IAuthRuntimeConfig breaks this at compile time
 export const AUTH_CONFIG_KEYS: Record<keyof IAuthRuntimeConfig, string> = {
-	sessionDuration: 'auth.session.duration',
+	sessionDuration:     'auth.session.duration',
 	verificationCooldown: 'auth.verification.cooldown',
-	mfa: 'auth.mfa.enabled',
+	mfa:                 'auth.mfa.enabled',
+	requireVerification: 'auth.verification.required',
 } as const;
 
 export const MESSAGE_KEYS = {

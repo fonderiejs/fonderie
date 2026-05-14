@@ -1668,3 +1668,55 @@ test('mfa.disable: 200 MFA_DISABLED and emits NOTIFICATION_EVENT with mfaDisable
 	assert.equal(p.type, MESSAGE_KEYS.mfaDisabled);
 	assert.equal(p.recipient.email, 'jane@example.com');
 });
+
+// ── requireVerification config flag ──────────────────────────────
+
+test('updateProfile: succeeds without email verification when requireVerification is false (default)', async () => {
+	const updated  = { ...BASE_USER, firstName: 'Janet' };
+	const ctrl     = makeUser({ updateRow: { id: 'user-1' }, userById: updated });
+	// user has no emailVerifiedAt — would fail if requireVerified were enforced
+	const unverified = { ...BASE_USER, emailVerifiedAt: null };
+	const response = await ctrl.updateProfile(makeCtx({
+		user: { id: 'user-1', email: 'jane@example.com' },
+		body: { firstName: 'Janet' },
+	}));
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'PROFILE_UPDATED');
+});
+
+test('buildAuthRoutes: verifyGate is a no-op when requireVerification is false', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = {
+		query: async () => [],
+		transaction: async (fn: any) => fn(stub),
+	};
+	const routes = buildAuthRoutes(stub, { ...config, requireVerification: false });
+	const profileRoute = routes.find(([, path]) => path === '/users/profile');
+	assert.ok(profileRoute);
+
+	// Call the verifyGate directly (second-to-last handler before controller)
+	const verifyGate = profileRoute[profileRoute.length - 2] as any;
+	let nextCalled = false;
+	const unverifiedCtx = makeCtx({ user: { ...BASE_USER, emailVerifiedAt: null } });
+	await verifyGate(unverifiedCtx, async () => { nextCalled = true; return new Response(); });
+	assert.ok(nextCalled, 'verifyGate must call next when requireVerification is false');
+});
+
+test('buildAuthRoutes: verifyGate blocks unverified users when requireVerification is true', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = {
+		query: async () => [],
+		transaction: async (fn: any) => fn(stub),
+	};
+	const routes = buildAuthRoutes(stub, { ...config, requireVerification: true });
+	const profileRoute = routes.find(([, path]) => path === '/users/profile');
+	assert.ok(profileRoute);
+
+	const verifyGate = profileRoute[profileRoute.length - 2] as any;
+	const unverifiedCtx = makeCtx({ user: { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' } });
+	const response = await verifyGate(unverifiedCtx, async () => new Response());
+	assert.equal(response.status, 403);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'EMAIL_NOT_VERIFIED');
+});

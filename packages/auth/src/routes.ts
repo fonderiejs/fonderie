@@ -23,6 +23,13 @@ export function buildAuthRoutes(
 	const oauth = oauthController(store, config);
 	const mfa = mfaController(store, config, config.appName ?? 'Fonderie', bus);
 
+	// Opt-in verification gate: only enforces email/phone verification when
+	// requireVerification: true is set in config. Defaults to false so that
+	// auth can be used without a courier/email provider.
+	const verifyGate: Middleware = config.requireVerification
+		? requireVerified
+		: (_ctx, next) => next();
+
 	const routes: RouteDefinition[] = [
 		// Registration & Login (Public)
 		['POST', '/auth/register', auth.register],
@@ -42,15 +49,16 @@ export function buildAuthRoutes(
 		// Account Management (Protected)
 		['POST', '/auth/logout', requireAuth, auth.logout],
 
-		// User Profile (Protected; writes also require verified)
+		// User Profile (Protected; writes also gate on requireVerification)
 		['GET', '/users', requireAuth, user.me],
-		['PUT', '/users/profile', requireAuth, requireVerified, user.updateProfile],
-		['PUT', '/users/preferences', requireAuth, requireVerified, user.updatePreferences],
-		['PUT', '/users/email', requireAuth, requireVerified, user.updateEmail],
-		['PUT', '/users/phone', requireAuth, requireVerified, user.updatePhone],
-		['DELETE', '/users', requireAuth, requireVerified, user.deleteMe],
+		['PUT', '/users/profile', requireAuth, verifyGate, user.updateProfile],
+		['PUT', '/users/preferences', requireAuth, verifyGate, user.updatePreferences],
+		['PUT', '/users/email', requireAuth, verifyGate, user.updateEmail],
+		['PUT', '/users/phone', requireAuth, verifyGate, user.updatePhone],
+		['DELETE', '/users', requireAuth, verifyGate, user.deleteMe],
 
-		// MFA (email sessions only — OTP is the phone auth factor; email must be verified)
+		// MFA (email sessions only — requireVerified is always enforced here
+		// because MFA is a security feature and email verification is meaningful)
 		['POST', '/auth/mfa/setup', requireAuth, requireEmailLogin, requireVerified, mfa.setup],
 		['POST', '/auth/mfa/verify', requireAuth, requireEmailLogin, requireVerified, mfa.verify],
 		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, requireVerified, mfa.disable],
