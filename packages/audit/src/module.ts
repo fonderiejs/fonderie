@@ -1,5 +1,5 @@
 import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter }                 from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie-js/store';
 
 import { buildAuditRoutes } from './routes';
 

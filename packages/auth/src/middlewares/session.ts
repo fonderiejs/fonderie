@@ -1,17 +1,14 @@
-import type { Middleware }    from '@fonderie-js/core';
+import type { Middleware } from '@fonderie-js/core';
 import type { IStoreAdapter } from '@fonderie-js/store';
 
-import type { IAuthConfig }   from '../config';
-import { verifyToken }         from '../services/jwt';
+import type { IAuthConfig } from '../config';
+import { verifyToken } from '../services/jwt';
 import type { IAccessPayload } from '../services/jwt';
-import { UserModel }        from '../models/user.model';
+import { UserModel } from '../models/user.model';
 
 // Reads the Bearer token or session cookie, populates ctx.user
 // Does NOT reject — anonymous requests pass through
-export function withSession(
-	store:  IStoreAdapter,
-	config: IAuthConfig,
-): Middleware {
+export function withSession(store: IStoreAdapter, config: IAuthConfig): Middleware {
 	const users = new UserModel(store);
 
 	return async (ctx, next) => {
@@ -30,15 +27,17 @@ export function withSession(
 			return next();
 		}
 
-		Object.assign(ctx, { user: {
-			...user,
-			loginMethod:   payload.loginMethod   ?? 'email',
-			phoneVerified: payload.phoneVerified ?? false,
-			mfaPending:    (payload as IAccessPayload).mfaPending ?? false,
-		} });
+		Object.assign(ctx, {
+			user: {
+				...user,
+				loginMethod: payload.loginMethod ?? 'email',
+				phoneVerified: payload.phoneVerified ?? false,
+				mfaPending: (payload as IAccessPayload).mfaPending ?? false,
+			},
+		});
 
 		return next();
-	}
+	};
 }
 
 function extractToken(request: Request): string | null {
@@ -48,6 +47,6 @@ function extractToken(request: Request): string | null {
 	}
 
 	const cookie = request.headers.get('cookie') ?? '';
-	const match  = cookie.match(/(?:^|;\s*)access_token=([^;]+)/);
+	const match = cookie.match(/(?:^|;\s*)access_token=([^;]+)/);
 	return match?.[1] ?? null;
 }

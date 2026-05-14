@@ -1,7 +1,7 @@
-import { test }   from 'node:test';
-import assert     from 'node:assert/strict';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
 
-import { sql }    from '../sql';
+import { sql } from '../sql';
 
 // ── sql`` helper ─────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ test('sql: numeric zero is a valid param', () => {
 // by building a minimal in-memory stub and type-checking it.
 
 import type { IStoreAdapter, IPoolConfig } from '../types';
-import { createMigrationsPath }            from '../migrations';
+import { createMigrationsPath } from '../migrations';
 
 test('IStoreAdapter: stub satisfies interface at compile time', () => {
 	const rows: unknown[] = [];
@@ -48,7 +48,7 @@ test('IStoreAdapter: stub satisfies interface at compile time', () => {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(_sql: string, _params?: unknown[]) => rows as T[],
 		transaction: async (fn) => fn(stub),
-	}
+	};
 
 	assert.ok(typeof stub.query === 'function');
 	assert.ok(typeof stub.transaction === 'function');
@@ -63,13 +63,13 @@ test('IPoolConfig: accepts connection string form', () => {
 
 test('IPoolConfig: accepts individual field form with tuning knobs', () => {
 	const config: IPoolConfig = {
-		host:                    'localhost',
-		port:                    5432,
-		database:                'test',
-		user:                    'postgres',
-		password:                'secret',
-		max:                     10,
-		idleTimeoutMillis:       30_000,
+		host: 'localhost',
+		port: 5432,
+		database: 'test',
+		user: 'postgres',
+		password: 'secret',
+		max: 10,
+		idleTimeoutMillis: 30_000,
 		connectionTimeoutMillis: 5_000,
 	};
 	assert.equal(config.host, 'localhost');
@@ -81,6 +81,6 @@ test('IPoolConfig: accepts individual field form with tuning knobs', () => {
 test('createMigrationsPath: returns absolute path ending in migrations/sql', () => {
 	// Simulate being called from dist/migrations/index.js as intended
 	const fakeUrl = 'file:///some/package/dist/migrations/index.js';
-	const result  = createMigrationsPath(fakeUrl);
+	const result = createMigrationsPath(fakeUrl);
 	assert.ok(result.endsWith('migrations/sql') || result.endsWith('migrations\\sql'));
 });

@@ -1,18 +1,20 @@
 import { test } from 'node:test';
-import assert   from 'node:assert/strict';
+import assert from 'node:assert/strict';
 
-import type { IStoreAdapter }  from '@fonderie-js/store';
-import type { IConfigEntry }   from '../types';
+import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IConfigEntry } from '../types';
 
 import { RemoteConfigManager } from '../manager';
 
 // ── Stub store ────────────────────────────────────────────────────
 
-function makeStore(entries: Array<{ key: string; value: string; environment: string }> = []): IStoreAdapter {
+function makeStore(
+	entries: Array<{ key: string; value: string; environment: string }> = [],
+): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(): Promise<T[]> => entries as unknown as T[],
 		transaction: async (fn) => fn(stub),
-	}
+	};
 
 	return stub;
 }
@@ -21,31 +23,31 @@ function makeStore(entries: Array<{ key: string; value: string; environment: str
 
 test('get: returns fallback when no snapshot loaded', () => {
 	const manager = new RemoteConfigManager(makeStore(), { ttl: 60_000 });
-	const value   = manager.get('some.key', 'default');
+	const value = manager.get('some.key', 'default');
 	assert.equal(value, 'default');
 });
 
 test('get: returns value after refresh', async () => {
-	const store   = makeStore([
-		{ key: 'feature.enabled', value: 'true',  environment: 'all' },
-		{ key: 'rate.limit',      value: '100',   environment: 'all' },
+	const store = makeStore([
+		{ key: 'feature.enabled', value: 'true', environment: 'all' },
+		{ key: 'rate.limit', value: '100', environment: 'all' },
 	]);
 
 	const manager = new RemoteConfigManager(store, { ttl: 60_000 });
 	await manager.refresh();
 
 	assert.equal(manager.get('feature.enabled', false), true);
-	assert.equal(manager.get('rate.limit', 0),          100);
+	assert.equal(manager.get('rate.limit', 0), 100);
 });
 
 test('get: environment-specific overrides all', async () => {
 	const store = makeStore([
-		{ key: 'feature.enabled', value: 'false', environment: 'all'         },
-		{ key: 'feature.enabled', value: 'true',  environment: 'production'  },
+		{ key: 'feature.enabled', value: 'false', environment: 'all' },
+		{ key: 'feature.enabled', value: 'true', environment: 'production' },
 	]);
 
 	const manager = new RemoteConfigManager(store, {
-		ttl:         60_000,
+		ttl: 60_000,
 		environment: 'production',
 	});
 
@@ -55,7 +57,7 @@ test('get: environment-specific overrides all', async () => {
 });
 
 test('get: returns fallback for missing key', async () => {
-	const store   = makeStore([{ key: 'other.key', value: '"hello"', environment: 'all' }]);
+	const store = makeStore([{ key: 'other.key', value: '"hello"', environment: 'all' }]);
 	const manager = new RemoteConfigManager(store, { ttl: 60_000 });
 	await manager.refresh();
 
@@ -65,7 +67,7 @@ test('get: returns fallback for missing key', async () => {
 test('all: returns all entries as flat record', async () => {
 	const store = makeStore([
 		{ key: 'a', value: '"hello"', environment: 'all' },
-		{ key: 'b', value: '42',      environment: 'all' },
+		{ key: 'b', value: '42', environment: 'all' },
 	]);
 
 	const manager = new RemoteConfigManager(store, { ttl: 60_000 });
@@ -91,7 +93,7 @@ test('stop: clears the polling interval', async () => {
 	const manager = new RemoteConfigManager(makeStore(), { ttl: 100 });
 	await manager.boot();
 	manager.stop();
-	assert.ok(true);  // no error thrown
+	assert.ok(true); // no error thrown
 });
 
 // ── RemoteConfigModule shape ──────────────────────────────────────
@@ -99,20 +101,20 @@ test('stop: clears the polling interval', async () => {
 test('RemoteConfigModule: satisfies IFonderieModule interface', async () => {
 	const { RemoteConfigModule } = await import('../module');
 	const store = makeStore();
-	const mod   = new RemoteConfigModule(store);
+	const mod = new RemoteConfigModule(store);
 
 	assert.equal(mod.name, '@fonderie-js/config');
-	assert.ok(typeof mod.install  === 'function');
+	assert.ok(typeof mod.install === 'function');
 	assert.ok(mod.manager instanceof RemoteConfigManager);
 });
 
 // ── getConfig helper ──────────────────────────────────────────────
 
 test('getConfig: reads value from ctx.meta', async () => {
-	const { getConfig }          = await import('../middlewares/config-context');
+	const { getConfig } = await import('../middlewares/config-context');
 	const { CONFIG_MANAGER_KEY } = await import('../manager');
 
-	const store   = makeStore([{ key: 'maintenance.mode', value: 'false', environment: 'all' }]);
+	const store = makeStore([{ key: 'maintenance.mode', value: 'false', environment: 'all' }]);
 	const manager = new RemoteConfigManager(store, { ttl: 60_000 });
 	await manager.refresh();
 
@@ -132,62 +134,62 @@ function makeWriteStore(returnEntry?: IConfigEntry): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
 			if (returnEntry && (sql.includes('INSERT') || sql.includes('SELECT'))) {
-				return [returnEntry] as unknown as T[]
+				return [returnEntry] as unknown as T[];
 			}
 			if (sql.includes('DELETE') && returnEntry) {
-				return [{ key: returnEntry.key }] as unknown as T[]
+				return [{ key: returnEntry.key }] as unknown as T[];
 			}
-			return [] as T[]
+			return [] as T[];
 		},
 		transaction: async (fn) => fn(stub),
-	}
-	return stub
+	};
+	return stub;
 }
 
 const baseEntry: IConfigEntry = {
-	key:         'feature.dark-mode',
-	value:       'true',
+	key: 'feature.dark-mode',
+	value: 'true',
 	environment: 'all',
 	description: 'Enable dark mode',
-	active:      true,
-	updatedAt:   '2026-05-08T00:00:00.000Z',
-}
+	active: true,
+	updatedAt: '2026-05-08T00:00:00.000Z',
+};
 
 test('setConfigEntry: upserts and returns entry', async () => {
 	const { setConfigEntry } = await import('../services/config');
-	const store  = makeWriteStore(baseEntry);
+	const store = makeWriteStore(baseEntry);
 	const result = await setConfigEntry(
 		{ key: 'feature.dark-mode', value: true, description: 'Enable dark mode' },
 		store,
-	)
-	assert.equal(result.key,         'feature.dark-mode');
+	);
+	assert.equal(result.key, 'feature.dark-mode');
 	assert.equal(result.environment, 'all');
 });
 
 test('getConfigEntry: returns entry when found', async () => {
 	const { getConfigEntry } = await import('../services/config');
-	const store  = makeWriteStore(baseEntry);
+	const store = makeWriteStore(baseEntry);
 	const result = await getConfigEntry('feature.dark-mode', 'all', store);
 	assert.equal(result?.key, 'feature.dark-mode');
 });
 
 test('getConfigEntry: returns null when not found', async () => {
 	const { getConfigEntry } = await import('../services/config');
-	const store  = makeWriteStore(undefined);
+	const store = makeWriteStore(undefined);
 	const result = await getConfigEntry('missing', 'all', store);
 	assert.equal(result, null);
 });
 
 test('deleteConfigEntry: returns true when deleted', async () => {
 	const { deleteConfigEntry } = await import('../services/config');
-	const store   = makeWriteStore(baseEntry);
+	const store = makeWriteStore(baseEntry);
 	const deleted = await deleteConfigEntry('feature.dark-mode', 'all', store);
 	assert.ok(deleted);
 });
 
 test('deleteConfigEntry: returns false when not found', async () => {
 	const { deleteConfigEntry } = await import('../services/config');
-	const store   = makeWriteStore(undefined);
+	const store = makeWriteStore(undefined);
 	const deleted = await deleteConfigEntry('missing', 'all', store);
 	assert.ok(!deleted);
 });

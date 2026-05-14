@@ -15,7 +15,7 @@ const SELECT_WS = `
 	archived_by AS "archivedBy",
 	created_at  AS "createdAt",
 	updated_at  AS "updatedAt"
-`
+`;
 
 const SELECT_WS_W = `
 	w.id,
@@ -30,22 +30,22 @@ const SELECT_WS_W = `
 	w.archived_by AS "archivedBy",
 	w.created_at  AS "createdAt",
 	w.updated_at  AS "updatedAt"
-`
+`;
 
 export async function findWorkspaceById(
-	id:    string,
+	id: string,
 	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
 	const [row] = await store.query<IWorkspace>(
 		`SELECT ${SELECT_WS} FROM fonderie_workspaces WHERE id = $1`,
 		[id],
-	)
-	return row ?? null
+	);
+	return row ?? null;
 }
 
 export async function findWorkspacesByUserId(
 	userId: string,
-	store:  IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IWorkspace[]> {
 	return store.query<IWorkspace>(
 		`SELECT ${SELECT_WS_W}
@@ -57,17 +57,17 @@ export async function findWorkspacesByUserId(
 		 GROUP BY w.id
 		 ORDER BY w.created_at ASC`,
 		[userId],
-	)
+	);
 }
 
 export async function createWorkspace(
 	opts: {
-		name:         string
-		slug:         string
-		ownerId:      string
-		type?:        string
-		description?: string
-		plan?:        string
+		name: string;
+		slug: string;
+		ownerId: string;
+		type?: string;
+		description?: string;
+		plan?: string;
 	},
 	store: IStoreAdapter,
 ): Promise<IWorkspace> {
@@ -75,16 +75,23 @@ export async function createWorkspace(
 		`INSERT INTO fonderie_workspaces (name, slug, owner_id, type, description, plan)
 		 VALUES ($1, $2, $3, $4, $5, $6)
 		 RETURNING ${SELECT_WS}`,
-		[opts.name, opts.slug, opts.ownerId, opts.type ?? 'ORGANIZATION', opts.description ?? null, opts.plan ?? 'free'],
-	)
+		[
+			opts.name,
+			opts.slug,
+			opts.ownerId,
+			opts.type ?? 'ORGANIZATION',
+			opts.description ?? null,
+			opts.plan ?? 'free',
+		],
+	);
 
-	if (!workspace) throw new Error('Failed to create workspace')
-	return workspace
+	if (!workspace) throw new Error('Failed to create workspace');
+	return workspace;
 }
 
 // Returns the new workspace, or null if the personal workspace already exists (idempotent).
 export async function createPersonalWorkspace(
-	opts:  { name: string; slug: string; ownerId: string },
+	opts: { name: string; slug: string; ownerId: string },
 	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
 	const [workspace] = await store.query<IWorkspace>(
@@ -93,39 +100,42 @@ export async function createPersonalWorkspace(
 		 ON CONFLICT (owner_id) WHERE is_personal = true DO NOTHING
 		 RETURNING ${SELECT_WS}`,
 		[opts.name, opts.slug, opts.ownerId],
-	)
-	return workspace ?? null
+	);
+	return workspace ?? null;
 }
 
 export async function findPersonalWorkspace(
 	userId: string,
-	store:  IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
 	const [row] = await store.query<IWorkspace>(
 		`SELECT ${SELECT_WS} FROM fonderie_workspaces
 		 WHERE owner_id = $1 AND is_personal = true
 		 LIMIT 1`,
 		[userId],
-	)
-	return row ?? null
+	);
+	return row ?? null;
 }
 
 export async function updateWorkspace(
-	id:    string,
-	opts:  { name?: string; description?: string | null; slug?: string },
+	id: string,
+	opts: { name?: string; description?: string | null; slug?: string },
 	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
-	const sets: string[]   = ['updated_at = now()']
-	const params: unknown[] = [id]
+	const sets: string[] = ['updated_at = now()'];
+	const params: unknown[] = [id];
 
 	if (opts.name !== undefined) {
-		params.push(opts.name);  sets.push(`name = $${params.length}`)
+		params.push(opts.name);
+		sets.push(`name = $${params.length}`);
 	}
 	if (opts.description !== undefined) {
-		params.push(opts.description); sets.push(`description = $${params.length}`)
+		params.push(opts.description);
+		sets.push(`description = $${params.length}`);
 	}
 	if (opts.slug !== undefined) {
-		params.push(opts.slug); sets.push(`slug = $${params.length}`)
+		params.push(opts.slug);
+		sets.push(`slug = $${params.length}`);
 	}
 
 	const [row] = await store.query<IWorkspace>(
@@ -134,64 +144,66 @@ export async function updateWorkspace(
 		 WHERE id = $1
 		 RETURNING ${SELECT_WS}`,
 		params,
-	)
-	return row ?? null
+	);
+	return row ?? null;
 }
 
 export async function archiveWorkspace(
-	id:     string,
+	id: string,
 	byUser: string,
-	store:  IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_workspaces
 		 SET archived_at = now(), archived_by = $2, updated_at = now()
 		 WHERE id = $1 AND archived_at IS NULL`,
 		[id, byUser],
-	)
+	);
 }
 
-export async function restoreWorkspace(
-	id:    string,
-	store: IStoreAdapter,
-): Promise<void> {
+export async function restoreWorkspace(id: string, store: IStoreAdapter): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_workspaces
 		 SET archived_at = NULL, archived_by = NULL, updated_at = now()
 		 WHERE id = $1`,
 		[id],
-	)
+	);
 }
 
 const SETTINGS_DEFAULTS: IWorkspaceSettings = {
-	locale: 'en-US', timezone: 'UTC',
-	currency: 'USD', dateFormat: 'MM/DD/YYYY', timeFormat: 'hh:mm A',
-}
+	locale: 'en-US',
+	timezone: 'UTC',
+	currency: 'USD',
+	dateFormat: 'MM/DD/YYYY',
+	timeFormat: 'hh:mm A',
+};
 
 export async function getWorkspaceSettings(
-	id:    string,
+	id: string,
 	store: IStoreAdapter,
 ): Promise<IWorkspaceSettings> {
 	const [row] = await store.query<{ settings: Record<string, unknown> }>(
 		`SELECT settings FROM fonderie_workspaces WHERE id = $1`,
 		[id],
-	)
-	const raw = row?.settings ?? {}
-	const s   = (raw['settings'] as Record<string, unknown> | undefined) ?? raw
+	);
+	const raw = row?.settings ?? {};
+	const s = (raw['settings'] as Record<string, unknown> | undefined) ?? raw;
 
 	return {
-		locale:     typeof s['locale']     === 'string' ? s['locale']     : SETTINGS_DEFAULTS.locale,
-		timezone:   typeof s['timezone']   === 'string' ? s['timezone']   : SETTINGS_DEFAULTS.timezone,
-		currency:   typeof s['currency']   === 'string' ? s['currency']   : SETTINGS_DEFAULTS.currency,
-		dateFormat: typeof s['dateFormat'] === 'string' ? s['dateFormat'] : SETTINGS_DEFAULTS.dateFormat,
-		timeFormat: typeof s['timeFormat'] === 'string' ? s['timeFormat'] : SETTINGS_DEFAULTS.timeFormat,
-	}
+		locale: typeof s['locale'] === 'string' ? s['locale'] : SETTINGS_DEFAULTS.locale,
+		timezone: typeof s['timezone'] === 'string' ? s['timezone'] : SETTINGS_DEFAULTS.timezone,
+		currency: typeof s['currency'] === 'string' ? s['currency'] : SETTINGS_DEFAULTS.currency,
+		dateFormat:
+			typeof s['dateFormat'] === 'string' ? s['dateFormat'] : SETTINGS_DEFAULTS.dateFormat,
+		timeFormat:
+			typeof s['timeFormat'] === 'string' ? s['timeFormat'] : SETTINGS_DEFAULTS.timeFormat,
+	};
 }
 
 export async function updateWorkspaceSettings(
-	id:       string,
+	id: string,
 	settings: Partial<IWorkspaceSettings>,
-	store:    IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IWorkspaceSettings> {
 	await store.query(
 		`UPDATE fonderie_workspaces
@@ -199,6 +211,6 @@ export async function updateWorkspaceSettings(
 		     updated_at = now()
 		 WHERE id = $1`,
 		[id, JSON.stringify(settings)],
-	)
-	return getWorkspaceSettings(id, store)
+	);
+	return getWorkspaceSettings(id, store);
 }

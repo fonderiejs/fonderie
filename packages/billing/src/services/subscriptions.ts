@@ -17,33 +17,33 @@ const SELECT_SUBSCRIPTION = `
 		cancel_at_period_end     AS "cancelAtPeriodEnd",
 		trial_ends_at            AS "trialEndsAt",
 		created_at               AS "createdAt"
-	FROM fonderie_subscriptions`
+	FROM fonderie_subscriptions`;
 
 export async function getSubscription(
 	subscriberType: SubscriberType,
-	subscriberId:   string,
-	store:          IStoreAdapter,
+	subscriberId: string,
+	store: IStoreAdapter,
 ): Promise<ISubscription | null> {
 	const [row] = await store.query<ISubscription>(
 		`${SELECT_SUBSCRIPTION} WHERE subscriber_type = $1 AND subscriber_id = $2`,
 		[subscriberType, subscriberId],
-	)
-	return row ?? null
+	);
+	return row ?? null;
 }
 
 export async function upsertSubscription(
 	data: {
-		subscriberType:          SubscriberType
-		subscriberId:            string
-		plan:                    string
-		interval?:               'month' | 'year'
-		status:                  string
-		providerCustomerId?:     string
-		providerSubscriptionId?: string
-		currentPeriodStart?:     Date
-		currentPeriodEnd?:       Date
-		cancelAtPeriodEnd?:      boolean
-		trialEndsAt?:            Date | null
+		subscriberType: SubscriberType;
+		subscriberId: string;
+		plan: string;
+		interval?: 'month' | 'year';
+		status: string;
+		providerCustomerId?: string;
+		providerSubscriptionId?: string;
+		currentPeriodStart?: Date;
+		currentPeriodEnd?: Date;
+		cancelAtPeriodEnd?: boolean;
+		trialEndsAt?: Date | null;
 	},
 	store: IStoreAdapter,
 ): Promise<void> {
@@ -68,14 +68,14 @@ export async function upsertSubscription(
 			data.subscriberType,
 			data.subscriberId,
 			data.plan,
-			data.interval              ?? 'month',
+			data.interval ?? 'month',
 			data.status,
-			data.providerCustomerId    ?? null,
+			data.providerCustomerId ?? null,
 			data.providerSubscriptionId ?? null,
-			data.currentPeriodStart    ?? null,
-			data.currentPeriodEnd      ?? null,
-			data.cancelAtPeriodEnd     ?? false,
-			data.trialEndsAt           ?? null,
+			data.currentPeriodStart ?? null,
+			data.currentPeriodEnd ?? null,
+			data.cancelAtPeriodEnd ?? false,
+			data.trialEndsAt ?? null,
 		],
-	)
+	);
 }

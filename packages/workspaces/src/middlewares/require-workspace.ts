@@ -1,5 +1,5 @@
 import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { Middleware }       from '@fonderie-js/core';
+import type { Middleware } from '@fonderie-js/core';
 
 // Ensures ctx.workspace is set — use after withWorkspace
 
@@ -8,4 +8,4 @@ export const requireWorkspace: Middleware = async (ctx, next) => {
 		return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required');
 	}
 	return next();
-}
+};

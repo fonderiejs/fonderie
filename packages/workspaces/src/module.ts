@@ -1,23 +1,23 @@
 import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter }                 from '@fonderie-js/store';
-import type { EventBus }                      from '@fonderie-js/events';
+import type { IStoreAdapter } from '@fonderie-js/store';
+import type { EventBus } from '@fonderie-js/events';
 
-import type { IWorkspacesConfig }             from './config';
-import { EVENT_KEYS }                         from './config';
-import { buildWorkspaceRoutes }               from './routes';
-import { WorkspaceModel }                     from './models/workspace.model';
-import { RoleModel }                          from './models/role.model';
-import { MemberModel }                        from './models/member.model';
+import type { IWorkspacesConfig } from './config';
+import { EVENT_KEYS } from './config';
+import { buildWorkspaceRoutes } from './routes';
+import { WorkspaceModel } from './models/workspace.model';
+import { RoleModel } from './models/role.model';
+import { MemberModel } from './models/member.model';
 
 // Mirror of @fonderie-js/auth EVENT_KEYS.userRegistered — avoids a runtime
 // dependency on the auth package while remaining explicit about the contract.
-const AUTH_USER_REGISTERED = 'user.registered' as const
+const AUTH_USER_REGISTERED = 'user.registered' as const;
 
 interface UserRegisteredPayload {
-	userId:      string
-	email?:      string | null
-	firstName?:  string | null
-	lastName?:   string | null
+	userId: string;
+	email?: string | null;
+	firstName?: string | null;
+	lastName?: string | null;
 }
 
 export class WorkspacesModule implements IFonderieModule {
@@ -25,9 +25,9 @@ export class WorkspacesModule implements IFonderieModule {
 	readonly deps = ['@fonderie-js/auth', '@fonderie-js/billing'];
 
 	constructor(
-		private store:  IStoreAdapter,
+		private store: IStoreAdapter,
 		private config: IWorkspacesConfig = {},
-		private bus?:   EventBus,
+		private bus?: EventBus,
 	) {}
 
 	install(app: IFonderieApp): void {
@@ -36,7 +36,7 @@ export class WorkspacesModule implements IFonderieModule {
 				AUTH_USER_REGISTERED,
 				(payload) => this.provisionPersonalWorkspace(payload),
 				'workspaces',
-			)
+			);
 		}
 
 		const routes = buildWorkspaceRoutes(this.store, this.config, this.bus);
@@ -46,42 +46,45 @@ export class WorkspacesModule implements IFonderieModule {
 	}
 
 	private async provisionPersonalWorkspace(payload: UserRegisteredPayload): Promise<void> {
-		const parts = [payload.firstName, payload.lastName]
-			.filter((s): s is string => typeof s === 'string' && s.length > 0)
-		const name = parts.length > 0 ? `${parts.join(' ')}'s Workspace` : 'My Workspace'
-		const slug = `${payload.userId}-personal`
+		const parts = [payload.firstName, payload.lastName].filter(
+			(s): s is string => typeof s === 'string' && s.length > 0,
+		);
+		const name = parts.length > 0 ? `${parts.join(' ')}'s Workspace` : 'My Workspace';
+		const slug = `${payload.userId}-personal`;
 
-		let workspaceId: string | undefined
+		let workspaceId: string | undefined;
 
-		await this.store.transaction(async tx => {
-			const wsModel   = new WorkspaceModel(tx)
-			const roleModel = new RoleModel(tx)
-			const memModel  = new MemberModel(tx)
+		await this.store.transaction(async (tx) => {
+			const wsModel = new WorkspaceModel(tx);
+			const roleModel = new RoleModel(tx);
+			const memModel = new MemberModel(tx);
 
-			const ws = await wsModel.createPersonal({ name, slug, ownerId: payload.userId })
-			if (!ws) return // already exists — idempotent replay
+			const ws = await wsModel.createPersonal({ name, slug, ownerId: payload.userId });
+			if (!ws) return; // already exists — idempotent replay
 
-			workspaceId = ws.id
+			workspaceId = ws.id;
 
 			const adminRole = await roleModel.create({
-				name:        'ADMIN',
+				name: 'ADMIN',
 				workspaceId: ws.id,
 				description: 'Workspace owner',
-			})
+			});
 
 			await memModel.add({
-				userId:      payload.userId,
+				userId: payload.userId,
 				workspaceId: ws.id,
-				roleId:      adminRole.id,
-				confirmed:   true,
-			})
-		})
+				roleId: adminRole.id,
+				confirmed: true,
+			});
+		});
 
 		if (workspaceId) {
-			this.bus?.emit(EVENT_KEYS.personalWorkspaceCreated, {
-				workspaceId,
-				userId: payload.userId,
-			}).catch(() => {})
+			this.bus
+				?.emit(EVENT_KEYS.personalWorkspaceCreated, {
+					workspaceId,
+					userId: payload.userId,
+				})
+				.catch(() => {});
 		}
 	}
 }

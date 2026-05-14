@@ -10,9 +10,9 @@ export class EndpointModel {
 
 	async create(data: {
 		workspaceId: string;
-		url:         string;
-		secret:      string;
-		events:      string[];
+		url: string;
+		secret: string;
+		events: string[];
 	}): Promise<IWebhookEndpoint> {
 		const [row] = await this.store.query<IWebhookEndpoint>(
 			`INSERT INTO fonderie_webhook_endpoints (workspace_id, url, secret, events)
@@ -42,16 +42,25 @@ export class EndpointModel {
 	}
 
 	async update(
-		id:          string,
+		id: string,
 		workspaceId: string,
 		data: { url?: string; events?: string[]; enabled?: boolean },
 	): Promise<IWebhookEndpoint | null> {
-		const sets:   string[]  = [];
+		const sets: string[] = [];
 		const params: unknown[] = [id, workspaceId];
 
-		if (data.url     !== undefined) { params.push(data.url);     sets.push(`url = $${params.length}`); }
-		if (data.events  !== undefined) { params.push(data.events);  sets.push(`events = $${params.length}`); }
-		if (data.enabled !== undefined) { params.push(data.enabled); sets.push(`enabled = $${params.length}`); }
+		if (data.url !== undefined) {
+			params.push(data.url);
+			sets.push(`url = $${params.length}`);
+		}
+		if (data.events !== undefined) {
+			params.push(data.events);
+			sets.push(`events = $${params.length}`);
+		}
+		if (data.enabled !== undefined) {
+			params.push(data.enabled);
+			sets.push(`enabled = $${params.length}`);
+		}
 
 		if (sets.length === 0) return this.findById(id, workspaceId);
 

@@ -24,7 +24,7 @@ export class PGAdapter implements IStoreAdapter {
 
 	async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
 		const result = await this.pool.query(sql, params);
-		return result.rows as T[]
+		return result.rows as T[];
 	}
 
 	async transaction<T>(fn: (tx: IStoreAdapter) => Promise<T>): Promise<T> {
@@ -36,10 +36,10 @@ export class PGAdapter implements IStoreAdapter {
 			const tx: IStoreAdapter = {
 				query: async <U = unknown>(sql: string, params?: unknown[]) => {
 					const result = await client.query(sql, params);
-					return result.rows as U[]
+					return result.rows as U[];
 				},
 				transaction: <V>(nested: (tx: IStoreAdapter) => Promise<V>) => nested(tx),
-			}
+			};
 
 			const result = await fn(tx);
 			await client.query('COMMIT');

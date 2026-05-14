@@ -1,17 +1,17 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
-import type { IMembership }   from '../types';
+import type { IMembership } from '../types';
 
 export async function getMembership(
-	userId:      string,
+	userId: string,
 	workspaceId: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IMembership | null> {
 	const [row] = await store.query<{
-		user_id:      string
-		workspace_id: string
-		role_id:      string
-		role_name:    string
+		user_id: string;
+		workspace_id: string;
+		role_id: string;
+		role_name: string;
 	}>(
 		`SELECT ruw.user_id, ruw.workspace_id, ruw.role_id, r.name AS role_name
 		 FROM fonderie_role_user_workspaces ruw
@@ -22,23 +22,23 @@ export async function getMembership(
 		   AND ruw.suspended  = false
 		 LIMIT 1`,
 		[userId, workspaceId],
-	)
+	);
 
-	if (!row) return null
+	if (!row) return null;
 
 	return {
-		userId:      row.user_id,
+		userId: row.user_id,
 		workspaceId: row.workspace_id,
-		roleId:      row.role_id,
-		roleName:    row.role_name,
-	}
+		roleId: row.role_id,
+		roleName: row.role_name,
+	};
 }
 
 export async function hasRole(
-	userId:      string,
+	userId: string,
 	workspaceId: string,
-	roleName:    string,
-	store:       IStoreAdapter,
+	roleName: string,
+	store: IStoreAdapter,
 ): Promise<boolean> {
 	const [row] = await store.query<{ exists: boolean }>(
 		`SELECT EXISTS (
@@ -52,7 +52,7 @@ export async function hasRole(
 		     AND ruw.suspended  = false
 		 ) AS exists`,
 		[userId, workspaceId, roleName],
-	)
+	);
 
-	return row?.exists ?? false
+	return row?.exists ?? false;
 }

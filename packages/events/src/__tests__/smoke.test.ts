@@ -1,43 +1,43 @@
 import { describe, it, before, after, test } from 'node:test';
-import assert                                from 'node:assert/strict';
+import assert from 'node:assert/strict';
 
-import { EventBus }        from '../bus';
-import { EventsModule }    from '../module';
+import { EventBus } from '../bus';
+import { EventsModule } from '../module';
 import { MemoryTransport } from '../transports/memory';
-import { matchesPattern }  from '../transports/pattern';
+import { matchesPattern } from '../transports/pattern';
 
 // ── Pattern matching unit tests ────────────────────────────────────────
 
 describe('matchesPattern', () => {
 	it('* matches everything', () => {
-		assert.ok(matchesPattern('*', 'auth.user.registered'))
-		assert.ok(matchesPattern('*', 'x'))
-	})
+		assert.ok(matchesPattern('*', 'auth.user.registered'));
+		assert.ok(matchesPattern('*', 'x'));
+	});
 
 	it('exact match', () => {
-		assert.ok(matchesPattern('auth.user.registered', 'auth.user.registered'))
-		assert.ok(!matchesPattern('auth.user.registered', 'auth.user.deleted'))
-	})
+		assert.ok(matchesPattern('auth.user.registered', 'auth.user.registered'));
+		assert.ok(!matchesPattern('auth.user.registered', 'auth.user.deleted'));
+	});
 
 	it('prefix wildcard — sport.*', () => {
-		assert.ok(matchesPattern('sport.*', 'sport.event.created'))
-		assert.ok(matchesPattern('sport.*', 'sport.highlights.published'))
-		assert.ok(!matchesPattern('sport.*', 'news.article.created'))
-	})
+		assert.ok(matchesPattern('sport.*', 'sport.event.created'));
+		assert.ok(matchesPattern('sport.*', 'sport.highlights.published'));
+		assert.ok(!matchesPattern('sport.*', 'news.article.created'));
+	});
 
 	it('suffix wildcard — *.created', () => {
-		assert.ok(matchesPattern('*.created', 'auth.user.created'))
-		assert.ok(matchesPattern('*.created', 'news.article.created'))
-		assert.ok(!matchesPattern('*.created', 'news.article.updated'))
-	})
+		assert.ok(matchesPattern('*.created', 'auth.user.created'));
+		assert.ok(matchesPattern('*.created', 'news.article.created'));
+		assert.ok(!matchesPattern('*.created', 'news.article.updated'));
+	});
 
 	it('middle wildcard — sport.*.created', () => {
-		assert.ok(matchesPattern('sport.*.created', 'sport.event.created'))
-		assert.ok(matchesPattern('sport.*.created', 'sport.highlights.created'))
-		assert.ok(!matchesPattern('sport.*.created', 'sport.event.updated'))
-		assert.ok(!matchesPattern('sport.*.created', 'news.article.created'))
-	})
-})
+		assert.ok(matchesPattern('sport.*.created', 'sport.event.created'));
+		assert.ok(matchesPattern('sport.*.created', 'sport.highlights.created'));
+		assert.ok(!matchesPattern('sport.*.created', 'sport.event.updated'));
+		assert.ok(!matchesPattern('sport.*.created', 'news.article.created'));
+	});
+});
 
 // ── EventBus (memory transport) ────────────────────────────────────────
 
@@ -67,11 +67,15 @@ describe('EventBus — memory transport', () => {
 
 	it('delivers to wildcard * handler', async () => {
 		const types: string[] = [];
-		bus.on<unknown>('*', async (_payload, meta) => {
-			types.push(meta.type);
-		}, 'global-logger');
+		bus.on<unknown>(
+			'*',
+			async (_payload, meta) => {
+				types.push(meta.type);
+			},
+			'global-logger',
+		);
 
-		await bus.emit('user.deleted',  { userId: 'u-2' });
+		await bus.emit('user.deleted', { userId: 'u-2' });
 		await bus.emit('user.verified', { userId: 'u-3' });
 
 		assert.ok(types.includes('user.deleted'));
@@ -80,9 +84,13 @@ describe('EventBus — memory transport', () => {
 
 	it('delivers to prefix pattern — auth.*', async () => {
 		const received: string[] = [];
-		bus.on<unknown>('auth.*', async (_p, meta) => {
-			received.push(meta.type);
-		}, 'auth-consumer');
+		bus.on<unknown>(
+			'auth.*',
+			async (_p, meta) => {
+				received.push(meta.type);
+			},
+			'auth-consumer',
+		);
 
 		await bus.emit('auth.user.registered', {});
 		await bus.emit('billing.subscription.created', {});
@@ -93,13 +101,17 @@ describe('EventBus — memory transport', () => {
 
 	it('delivers to suffix pattern — *.created', async () => {
 		const received: string[] = [];
-		bus.on<unknown>('*.created', async (_p, meta) => {
-			received.push(meta.type);
-		}, 'created-indexer');
+		bus.on<unknown>(
+			'*.created',
+			async (_p, meta) => {
+				received.push(meta.type);
+			},
+			'created-indexer',
+		);
 
-		await bus.emit('news.article.created',  {});
-		await bus.emit('sport.event.created',   {});
-		await bus.emit('news.article.updated',  {});
+		await bus.emit('news.article.created', {});
+		await bus.emit('sport.event.created', {});
+		await bus.emit('news.article.updated', {});
 
 		assert.ok(received.includes('news.article.created'));
 		assert.ok(received.includes('sport.event.created'));
@@ -108,7 +120,13 @@ describe('EventBus — memory transport', () => {
 
 	it('does not deliver to unrelated handlers', async () => {
 		const received: unknown[] = [];
-		bus.on<unknown>('order.created', async (p) => { received.push(p) }, 'orders');
+		bus.on<unknown>(
+			'order.created',
+			async (p) => {
+				received.push(p);
+			},
+			'orders',
+		);
 
 		await bus.emit('invoice.created', { id: 'inv-1' });
 
@@ -117,7 +135,13 @@ describe('EventBus — memory transport', () => {
 
 	it('passes requestId through meta', async () => {
 		let capturedMeta: { requestId?: string } | undefined;
-		bus.on<unknown>('ping', async (_p, meta) => { capturedMeta = meta }, 'ping-consumer');
+		bus.on<unknown>(
+			'ping',
+			async (_p, meta) => {
+				capturedMeta = meta;
+			},
+			'ping-consumer',
+		);
 
 		await bus.emit('ping', {}, { requestId: 'req-abc' });
 

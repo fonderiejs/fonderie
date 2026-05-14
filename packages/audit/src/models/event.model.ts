@@ -1,7 +1,7 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
 import type { IAuditEvent, IAuditQuery } from '../types';
-import { decodeCursor }                  from '../dtos/audit';
+import { decodeCursor } from '../dtos/audit';
 
 const MAX_LIMIT = 200;
 
@@ -9,9 +9,9 @@ export class AuditEventModel {
 	constructor(private readonly store: IStoreAdapter) {}
 
 	async list(query: IAuditQuery): Promise<IAuditEvent[]> {
-		const limit  = Math.min(query.limit ?? 50, MAX_LIMIT);
+		const limit = Math.min(query.limit ?? 50, MAX_LIMIT);
 		const params: unknown[] = [query.workspaceId];
-		const where:  string[]  = [`payload->>'workspaceId' = $1`];
+		const where: string[] = [`payload->>'workspaceId' = $1`];
 
 		if (query.type) {
 			params.push(query.type);
@@ -37,7 +37,9 @@ export class AuditEventModel {
 			const decoded = decodeCursor(query.cursor);
 			if (decoded) {
 				params.push(decoded.createdAt, decoded.id);
-				where.push(`(created_at, id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
+				where.push(
+					`(created_at, id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`,
+				);
 			}
 		}
 

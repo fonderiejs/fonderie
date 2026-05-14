@@ -1,22 +1,22 @@
 import type { Middleware } from '../types';
 
 export const withLogger: Middleware = async (ctx, next) => {
-	const start = Date.now()
+	const start = Date.now();
 
-	const { method, url } = ctx.request
-	const { pathname }    = new URL(url)
+	const { method, url } = ctx.request;
+	const { pathname } = new URL(url);
 
-	const response = await next()
+	const response = await next();
 
 	console.log(
 		JSON.stringify({
-			ts:     new Date().toISOString(),
+			ts: new Date().toISOString(),
 			method,
-			path:   pathname,
+			path: pathname,
 			status: response.status,
-			ms:     Date.now() - start,
+			ms: Date.now() - start,
 		}),
-	)
+	);
 
-	return response
-}
+	return response;
+};

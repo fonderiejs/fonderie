@@ -1,26 +1,26 @@
 import type { Context, MiddlewareHandler } from 'hono';
-import type { Hono }                       from 'hono';
+import type { Hono } from 'hono';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie-js/core';
-import { requireAuth as _requireAuth }                    from '@fonderie-js/core/middlewares';
-import { withWorkspace as _withWorkspace }                from '@fonderie-js/workspaces';
-import { requirePermission as _requirePermission }        from '@fonderie-js/permissions';
-import { requireFeature as _requireFeature }              from '@fonderie-js/billing';
+import { requireAuth as _requireAuth } from '@fonderie-js/core/middlewares';
+import { withWorkspace as _withWorkspace } from '@fonderie-js/workspaces';
+import { requirePermission as _requirePermission } from '@fonderie-js/permissions';
+import { requireFeature as _requireFeature } from '@fonderie-js/billing';
 
 export { OPERATIONS } from '@fonderie-js/permissions';
 
 // Augment Hono's ContextVariableMap so c.get('_fonderie') is typed.
 declare module 'hono' {
 	interface ContextVariableMap {
-		_fonderie: IFonderieContext
+		_fonderie: IFonderieContext;
 	}
 }
 
 // Re-export for consumers who want to type their Hono app:
 //   const hono = new Hono<{ Variables: FonderieVariables }>()
 export type FonderieVariables = {
-	_fonderie: IFonderieContext
-}
+	_fonderie: IFonderieContext;
+};
 
 // ── bridge ────────────────────────────────────────────────────────
 //
@@ -32,10 +32,10 @@ export type FonderieVariables = {
 
 export function bridge(fonderie: FonderieApp): MiddlewareHandler {
 	return async (c, next) => {
-		const ctx = await fonderie.buildContext(c.req.raw.clone())
-		c.set('_fonderie', ctx)
-		await next()
-	}
+		const ctx = await fonderie.buildContext(c.req.raw.clone());
+		c.set('_fonderie', ctx);
+		await next();
+	};
 }
 
 // ── adapt ─────────────────────────────────────────────────────────
@@ -46,21 +46,21 @@ export function bridge(fonderie: FonderieApp): MiddlewareHandler {
 
 export function adapt(middleware: Middleware): MiddlewareHandler {
 	return async (c: Context, next) => {
-		const ctx = c.get('_fonderie')
-		if (!ctx) throw new Error('[fonderie] bridge() must be registered before adapt()')
+		const ctx = c.get('_fonderie');
+		if (!ctx) throw new Error('[fonderie] bridge() must be registered before adapt()');
 
-		let continued = false
+		let continued = false;
 		const result = await middleware(ctx, async () => {
-			continued = true
-			return new Response()
-		})
+			continued = true;
+			return new Response();
+		});
 
 		if (continued) {
-			await next()
+			await next();
 		} else {
-			return result
+			return result;
 		}
-	}
+	};
 }
 
 // ── Pre-adapted middleware ────────────────────────────────────────
@@ -71,23 +71,21 @@ export function adapt(middleware: Middleware): MiddlewareHandler {
 //
 //   hono.get('/jobs', requireAuth, withWorkspace(store), ...)
 
-export const requireAuth: MiddlewareHandler = adapt(_requireAuth)
+export const requireAuth: MiddlewareHandler = adapt(_requireAuth);
 
-export function withWorkspace(
-	store: Parameters<typeof _withWorkspace>[0],
-): MiddlewareHandler {
-	return adapt(_withWorkspace(store))
+export function withWorkspace(store: Parameters<typeof _withWorkspace>[0]): MiddlewareHandler {
+	return adapt(_withWorkspace(store));
 }
 
 export function requirePermission(
-	operation:     Parameters<typeof _requirePermission>[0],
+	operation: Parameters<typeof _requirePermission>[0],
 	permissionKey: Parameters<typeof _requirePermission>[1],
 ): MiddlewareHandler {
-	return adapt(_requirePermission(operation, permissionKey))
+	return adapt(_requirePermission(operation, permissionKey));
 }
 
 export function requireFeature(key: string): MiddlewareHandler {
-	return adapt(_requireFeature(key))
+	return adapt(_requireFeature(key));
 }
 
 // ── mount ─────────────────────────────────────────────────────────
@@ -99,5 +97,5 @@ export function requireFeature(key: string): MiddlewareHandler {
 //   mount(hono, fonderie)           // fonderie infra — catch-all, matched last
 
 export function mount(hono: Hono, fonderie: FonderieApp): void {
-	hono.all('*', (c) => fonderie.handle(c.req.raw))
+	hono.all('*', (c) => fonderie.handle(c.req.raw));
 }

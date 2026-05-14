@@ -4,11 +4,8 @@ export class BackupCodeModel {
 	constructor(private store: IStoreAdapter) {}
 
 	async replace(userId: string, codeHashes: string[]): Promise<void> {
-		await this.store.transaction(async tx => {
-			await tx.query(
-				`DELETE FROM fonderie_mfa_backup_codes WHERE user_id = $1`,
-				[userId],
-			);
+		await this.store.transaction(async (tx) => {
+			await tx.query(`DELETE FROM fonderie_mfa_backup_codes WHERE user_id = $1`, [userId]);
 			if (codeHashes.length === 0) return;
 			const placeholders = codeHashes.map((_, i) => `($1, $${i + 2})`).join(', ');
 			await tx.query(
@@ -24,20 +21,16 @@ export class BackupCodeModel {
 			 WHERE user_id = $1 AND used_at IS NULL`,
 			[userId],
 		);
-		return rows.map(r => ({ id: r.id, codeHash: r.code_hash }));
+		return rows.map((r) => ({ id: r.id, codeHash: r.code_hash }));
 	}
 
 	async consume(id: string): Promise<void> {
-		await this.store.query(
-			`UPDATE fonderie_mfa_backup_codes SET used_at = now() WHERE id = $1`,
-			[id],
-		);
+		await this.store.query(`UPDATE fonderie_mfa_backup_codes SET used_at = now() WHERE id = $1`, [
+			id,
+		]);
 	}
 
 	async deleteByUser(userId: string): Promise<void> {
-		await this.store.query(
-			`DELETE FROM fonderie_mfa_backup_codes WHERE user_id = $1`,
-			[userId],
-		);
+		await this.store.query(`DELETE FROM fonderie_mfa_backup_codes WHERE user_id = $1`, [userId]);
 	}
 }

@@ -32,9 +32,6 @@ export class PasswordResetModel {
 	}
 
 	async deleteByUser(userId: string): Promise<void> {
-		await this.store.query(
-			`DELETE FROM fonderie_password_resets WHERE user_id = $1`,
-			[userId],
-		);
+		await this.store.query(`DELETE FROM fonderie_password_resets WHERE user_id = $1`, [userId]);
 	}
 }

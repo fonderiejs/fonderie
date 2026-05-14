@@ -1,28 +1,28 @@
-export type Operation    = 'create' | 'read' | 'update' | 'delete'
-export type PermissionKey = string
+export type Operation = 'create' | 'read' | 'update' | 'delete';
+export type PermissionKey = string;
 
 export interface IPermission {
-	permissionKey: PermissionKey
-	canCreate:     boolean
-	canRead:       boolean
-	canUpdate:     boolean
-	canDelete:     boolean
+	permissionKey: PermissionKey;
+	canCreate: boolean;
+	canRead: boolean;
+	canUpdate: boolean;
+	canDelete: boolean;
 }
 
 export interface IRole {
-	id:          string
-	name:        string
-	isSystem:    boolean
-	workspaceId: string | null
+	id: string;
+	name: string;
+	isSystem: boolean;
+	workspaceId: string | null;
 }
 
 export interface IRoleWithPermissions extends IRole {
-	permissions: IPermission[]
+	permissions: IPermission[];
 }
 
 export interface IMembership {
-	userId:      string
-	workspaceId: string
-	roleId:      string
-	roleName:    string
+	userId: string;
+	workspaceId: string;
+	roleId: string;
+	roleName: string;
 }

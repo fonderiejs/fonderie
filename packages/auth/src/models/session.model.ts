@@ -13,10 +13,7 @@ export class SessionModel {
 	}
 
 	async delete(token: string): Promise<void> {
-		await this.store.query(
-			`DELETE FROM fonderie_sessions WHERE token = $1`,
-			[token],
-		);
+		await this.store.query(`DELETE FROM fonderie_sessions WHERE token = $1`, [token]);
 	}
 
 	async exists(token: string): Promise<boolean> {

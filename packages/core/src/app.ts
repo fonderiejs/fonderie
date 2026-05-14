@@ -1,15 +1,10 @@
-import { networkInterfaces }  from 'node:os';
-import { createServer }       from 'node:http';
+import { networkInterfaces } from 'node:os';
+import { createServer } from 'node:http';
 
-import type {
-	Middleware,
-	IFonderieApp,
-	IFonderieContext,
-	IFonderieModule,
-} from './types';
-import type { FonderieConfig }                     from './config';
-import { Router, routerMiddleware }                from './router';
-import { compose }                                 from './compose';
+import type { Middleware, IFonderieApp, IFonderieContext, IFonderieModule } from './types';
+import type { FonderieConfig } from './config';
+import { Router, routerMiddleware } from './router';
+import { compose } from './compose';
 import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
 
 export class FonderieApp {
@@ -24,9 +19,14 @@ export class FonderieApp {
 		this.prefix = (config.basePath ?? '').replace(/\/$/, '');
 	}
 
-	listen(port: number, options: {
-		name ? : string;version ? : string;env ? : string
-	} = {}): void {
+	listen(
+		port: number,
+		options: {
+			name?: string;
+			version?: string;
+			env?: string;
+		} = {},
+	): void {
 		const {
 			name = 'Fonderie',
 			version = '0.0.1',
@@ -34,22 +34,22 @@ export class FonderieApp {
 		} = options;
 
 		createServer(async (req, res) => {
-			const host    = req.headers.host ?? 'localhost';
-			const url     = `http://${host}${req.url ?? '/'}`;
+			const host = req.headers.host ?? 'localhost';
+			const url = `http://${host}${req.url ?? '/'}`;
 			const headers = new Headers();
 
 			for (const [key, value] of Object.entries(req.headers)) {
 				if (!value) {
-					continue
+					continue;
 				}
 
-				Array.isArray(value) ?
-					value.forEach(v => headers.append(key, v)) :
-					headers.set(key, value);
+				Array.isArray(value)
+					? value.forEach((v) => headers.append(key, v))
+					: headers.set(key, value);
 			}
 
 			// Read the body stream — this was missing
-			const body = await new Promise < Buffer > ((resolve, reject) => {
+			const body = await new Promise<Buffer>((resolve, reject) => {
 				const chunks: Buffer[] = [];
 				req.on('data', (chunk: Buffer) => chunks.push(chunk));
 				req.on('end', () => resolve(Buffer.concat(chunks)));
@@ -76,8 +76,8 @@ export class FonderieApp {
 
 			console.log(
 				`\n  ƒ ${name} v${version}  ${mode}\n` +
-				`\n  Local    http://localhost:${port}` +
-				`\n  Network  http://${ip}:${port}\n`
+					`\n  Local    http://localhost:${port}` +
+					`\n  Network  http://${ip}:${port}\n`,
 			);
 		});
 	}
@@ -85,15 +85,15 @@ export class FonderieApp {
 	// ─── Module registration ───────────────────────────────
 
 	register(module: IFonderieModule): this {
-		this.modules.set(module.name, module)
-		return this
+		this.modules.set(module.name, module);
+		return this;
 	}
 
 	async boot(): Promise<this> {
 		for (const module of topoSort([...this.modules.values()])) {
-			await module.install(this)
+			await module.install(this);
 		}
-		return this
+		return this;
 	}
 
 	// Runs global middleware only (no routing, no 404).
@@ -102,21 +102,21 @@ export class FonderieApp {
 	async buildContext(request: Request): Promise<IFonderieContext> {
 		const ctx: IFonderieContext = {
 			request,
-			tenant:    null,
-			user:      null,
+			tenant: null,
+			user: null,
 			workspace: null,
-			meta:      {},
-			_router:   this.router,
-		}
-		await compose(this.middlewares)(ctx, async () => new Response())
-		return ctx
+			meta: {},
+			_router: this.router,
+		};
+		await compose(this.middlewares)(ctx, async () => new Response());
+		return ctx;
 	}
 
 	// ─── Middleware ────────────────────────────────────────
 
 	use(middleware: Middleware): this {
-		this.middlewares.push(middleware)
-		return this
+		this.middlewares.push(middleware);
+		return this;
 	}
 
 	// Modules call this to register their routes
@@ -136,22 +136,21 @@ export class FonderieApp {
 			workspace: null,
 			meta: {},
 			_router: this.router,
-		}
+		};
 
 		// Build the pipeline: global middleware → router → 404
 		const pipeline = compose([
 			...this.middlewares,
 			routerMiddleware(this.router),
 			notFoundMiddleware(),
-		])
+		]);
 
 		try {
-			return await pipeline(ctx, async () => new Response('Not Found', { status: 404 }))
+			return await pipeline(ctx, async () => new Response('Not Found', { status: 404 }));
 		} catch (err) {
-			return this.config.onError?.(err) ?? defaultErrorHandler(err)
+			return this.config.onError?.(err) ?? defaultErrorHandler(err);
 		}
 	}
-
 }
 // Framework adapters live in their own packages — no framework deps in core:
 //   @fonderie-js/adapter-hono
@@ -159,9 +158,9 @@ export class FonderieApp {
 //   @fonderie-js/adapter-koa
 
 function topoSort(modules: IFonderieModule[]): IFonderieModule[] {
-	const byName  = new Map(modules.map(m => [m.name, m]));
-	const result:   IFonderieModule[] = [];
-	const visited  = new Set<string>();
+	const byName = new Map(modules.map((m) => [m.name, m]));
+	const result: IFonderieModule[] = [];
+	const visited = new Set<string>();
 	const visiting = new Set<string>();
 
 	function visit(m: IFonderieModule, path: string[]): void {
@@ -172,7 +171,8 @@ function topoSort(modules: IFonderieModule[]): IFonderieModule[] {
 		visiting.add(m.name);
 		for (const dep of m.deps ?? []) {
 			const found = byName.get(dep);
-			if (!found) throw new Error(`[fonderie] "${m.name}" requires "${dep}" but it is not registered`);
+			if (!found)
+				throw new Error(`[fonderie] "${m.name}" requires "${dep}" but it is not registered`);
 			visit(found, [...path, m.name]);
 		}
 		visiting.delete(m.name);
@@ -189,7 +189,7 @@ function getLocalIPv4(): string {
 
 	for (const interfaces of Object.values(nets)) {
 		if (!interfaces) {
-			continue
+			continue;
 		}
 
 		for (const iface of interfaces) {
@@ -199,5 +199,5 @@ function getLocalIPv4(): string {
 		}
 	}
 
-	return '127.0.0.1'  // fallback if no external interface found
+	return '127.0.0.1'; // fallback if no external interface found
 }

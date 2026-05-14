@@ -1,22 +1,22 @@
 import { test } from 'node:test';
-import assert    from 'node:assert/strict';
+import assert from 'node:assert/strict';
 
-import { FonderieApp }   from '@fonderie-js/core';
-import { defineConfig }  from '@fonderie-js/core';
+import { FonderieApp } from '@fonderie-js/core';
+import { defineConfig } from '@fonderie-js/core';
 
 import { toAuditEventDTO, encodeCursor, decodeCursor } from '../dtos/audit';
-import { AuditEventModel }                             from '../models/event.model';
-import { AuditModule }                                 from '../module';
-import type { IAuditEvent }                            from '../types';
+import { AuditEventModel } from '../models/event.model';
+import { AuditModule } from '../module';
+import type { IAuditEvent } from '../types';
 
 // ── helpers ───────────────────────────────────────────────────────
 
 function makeEvent(overrides: Partial<IAuditEvent> = {}): IAuditEvent {
 	return {
-		id:        'evt-1',
-		type:      'project.created',
-		payload:   { workspaceId: 'ws-1', userId: 'u-1', name: 'My Project' },
-		meta:      { id: 'evt-1', requestId: 'req-1' },
+		id: 'evt-1',
+		type: 'project.created',
+		payload: { workspaceId: 'ws-1', userId: 'u-1', name: 'My Project' },
+		meta: { id: 'evt-1', requestId: 'req-1' },
 		createdAt: new Date('2026-01-01T00:00:00Z'),
 		...overrides,
 	};
@@ -32,20 +32,20 @@ const appConfig = defineConfig({ db: { url: 'postgres://localhost/test' } });
 
 function makeRequest(path: string, user?: object, workspace?: object): Request {
 	return Object.assign(new Request(`http://localhost${path}`), {
-		_user:      user      ?? null,
+		_user: user ?? null,
 		_workspace: workspace ?? null,
 	});
 }
 
 function makeApp(rows: IAuditEvent[] = []) {
 	const store = makeStore(rows) as never;
-	const mod   = new AuditModule(store);
-	const app   = new FonderieApp(appConfig);
+	const mod = new AuditModule(store);
+	const app = new FonderieApp(appConfig);
 
 	// inject user + workspace from the request extensions set in makeRequest
 	app.use(async (ctx, next) => {
 		const req = ctx.request as Request & { _user?: object; _workspace?: object };
-		(ctx as { user: object | null }).user      = req._user      ?? null;
+		(ctx as { user: object | null }).user = req._user ?? null;
 		(ctx as { workspace: object | null }).workspace = req._workspace ?? null;
 		return next();
 	});
@@ -59,9 +59,9 @@ function makeApp(rows: IAuditEvent[] = []) {
 test('toAuditEventDTO: maps fields correctly', () => {
 	const dto = toAuditEventDTO(makeEvent());
 
-	assert.equal(dto.id,        'evt-1');
-	assert.equal(dto.type,      'project.created');
-	assert.equal(dto.actorId,   'u-1');
+	assert.equal(dto.id, 'evt-1');
+	assert.equal(dto.type, 'project.created');
+	assert.equal(dto.actorId, 'u-1');
 	assert.equal(dto.requestId, 'req-1');
 	assert.equal(dto.createdAt, '2026-01-01T00:00:00.000Z');
 });
@@ -80,7 +80,7 @@ test('toAuditEventDTO: requestId is null when meta has no requestId', () => {
 
 test('cursor: encode then decode round-trips', () => {
 	const date = new Date('2026-01-01T00:00:00Z');
-	const id   = 'evt-abc';
+	const id = 'evt-abc';
 	const decoded = decodeCursor(encodeCursor(date, id));
 
 	assert.ok(decoded !== null);
@@ -119,7 +119,7 @@ test('AuditEventModel.list: appends type filter when provided', async () => {
 
 	await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', type: 'project.created' });
 
-	assert.ok(sqls[0]?.includes("type = $"));
+	assert.ok(sqls[0]?.includes('type = $'));
 });
 
 test('AuditEventModel.list: appends actorId filter when provided', async () => {
@@ -173,9 +173,9 @@ test('route pagination: nextCursor is set when results exceed limit', () => {
 		makeEvent({ id: `evt-${i}`, createdAt: new Date(Date.now() - i * 1000) }),
 	);
 
-	const page       = events.slice(0, 50);
-	const hasMore    = events.length > 50;
-	const lastEvent  = page[page.length - 1]!;
+	const page = events.slice(0, 50);
+	const hasMore = events.length > 50;
+	const lastEvent = page[page.length - 1]!;
 	const nextCursor = hasMore ? encodeCursor(lastEvent.createdAt, lastEvent.id) : null;
 
 	assert.ok(nextCursor !== null);
@@ -184,8 +184,8 @@ test('route pagination: nextCursor is set when results exceed limit', () => {
 });
 
 test('route pagination: nextCursor is null when results fit in one page', () => {
-	const events    = [makeEvent()];
-	const hasMore   = events.length > 50;
+	const events = [makeEvent()];
+	const hasMore = events.length > 50;
 	const nextCursor = hasMore ? encodeCursor(events[0]!.createdAt, events[0]!.id) : null;
 
 	assert.equal(nextCursor, null);
@@ -195,7 +195,12 @@ test('route pagination: nextCursor is null when results fit in one page', () => 
 
 test('AuditEventModel.list: appends from filter when provided', async () => {
 	const sqls: string[] = [];
-	const store = { query: async <T>(sql: string): Promise<T[]> => { sqls.push(sql); return []; } };
+	const store = {
+		query: async <T>(sql: string): Promise<T[]> => {
+			sqls.push(sql);
+			return [];
+		},
+	};
 
 	await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', from: new Date() });
 
@@ -204,7 +209,12 @@ test('AuditEventModel.list: appends from filter when provided', async () => {
 
 test('AuditEventModel.list: appends to filter when provided', async () => {
 	const sqls: string[] = [];
-	const store = { query: async <T>(sql: string): Promise<T[]> => { sqls.push(sql); return []; } };
+	const store = {
+		query: async <T>(sql: string): Promise<T[]> => {
+			sqls.push(sql);
+			return [];
+		},
+	};
 
 	await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', to: new Date() });
 
@@ -239,11 +249,11 @@ test('GET /audit: 422 when no workspace context', async () => {
 
 test('GET /audit: 200 with events array', async () => {
 	const events = [makeEvent(), makeEvent({ id: 'evt-2' })];
-	const app    = makeApp(events);
+	const app = makeApp(events);
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('/audit', { id: 'u-1' }, { id: 'ws-1' }));
-	const body = await res.json() as { result: { events: unknown[] } };
+	const res = await app.handle(makeRequest('/audit', { id: 'u-1' }, { id: 'ws-1' }));
+	const body = (await res.json()) as { result: { events: unknown[] } };
 
 	assert.equal(res.status, 200);
 	assert.equal(body.result.events.length, 2);
@@ -253,8 +263,8 @@ test('GET /audit: nextCursor is null when results fit in page', async () => {
 	const app = makeApp([makeEvent()]);
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('/audit', { id: 'u-1' }, { id: 'ws-1' }));
-	const body = await res.json() as { result: { nextCursor: string | null } };
+	const res = await app.handle(makeRequest('/audit', { id: 'u-1' }, { id: 'ws-1' }));
+	const body = (await res.json()) as { result: { nextCursor: string | null } };
 
 	assert.equal(body.result.nextCursor, null);
 });

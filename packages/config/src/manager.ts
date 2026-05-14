@@ -1,32 +1,30 @@
-import type { IStoreAdapter }       from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie-js/store';
 
 import type { IRemoteConfigOptions } from './config';
-import type { IConfigSnapshot }      from './types';
+import type { IConfigSnapshot } from './types';
 
 const FONDERIE_CONFIG_KEY = 'fonderie.config.snapshot';
 
 export class RemoteConfigManager {
-	private snapshot:    IConfigSnapshot | null = null
-	private interval:    ReturnType<typeof setInterval> | null = null
-	private environment: string
-	private ttl:         number
-	private table:       string
+	private snapshot: IConfigSnapshot | null = null;
+	private interval: ReturnType<typeof setInterval> | null = null;
+	private environment: string;
+	private ttl: number;
+	private table: string;
 
 	constructor(
 		private store: IStoreAdapter,
 		options: IRemoteConfigOptions = {},
 	) {
-		this.ttl         = options.ttl         ?? 30_000;
+		this.ttl = options.ttl ?? 30_000;
 		this.environment = options.environment ?? process.env['NODE_ENV'] ?? 'development';
-		this.table       = options.table       ?? 'fonderie_config';
+		this.table = options.table ?? 'fonderie_config';
 	}
 
 	async boot(): Promise<void> {
 		await this.refresh();
 		this.interval = setInterval(() => {
-			this.refresh().catch(err =>
-				console.error('[config] refresh error:', err)
-			);
+			this.refresh().catch((err) => console.error('[config] refresh error:', err));
 		}, this.ttl);
 	}
 
@@ -42,7 +40,7 @@ export class RemoteConfigManager {
 		if (!this.snapshot) {
 			return fallback;
 		}
-		
+
 		const value = this.snapshot.entries[key];
 		return value !== undefined ? (value as T) : fallback;
 	}
@@ -55,9 +53,9 @@ export class RemoteConfigManager {
 	async refresh(): Promise<void> {
 		try {
 			const rows = await this.store.query<{
-				key:         string
-				value:       string
-				environment: string
+				key: string;
+				value: string;
+				environment: string;
 			}>(
 				`SELECT key, value, environment
 				 FROM ${this.table}
@@ -66,7 +64,7 @@ export class RemoteConfigManager {
 				[this.environment],
 			);
 
-			const entries: Record<string, unknown> = {}
+			const entries: Record<string, unknown> = {};
 
 			// First pass — load 'all' entries as base
 			for (const row of rows) {
@@ -91,9 +89,9 @@ export class RemoteConfigManager {
 			}
 
 			this.snapshot = {
-				entries, 
+				entries,
 				fetchedAt: new Date(),
-			}
+			};
 		} catch (err) {
 			console.error('[config] failed to refresh:', err);
 		}

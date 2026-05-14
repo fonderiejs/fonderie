@@ -1,16 +1,16 @@
-import type { IPushChannelConfig }                                   from '../config';
+import type { IPushChannelConfig } from '../config';
 import type { ICourierChannel, ICourierMessage, IRenderedTemplate } from '../types';
 
 export class PushChannel implements ICourierChannel {
-	readonly name = 'push'
+	readonly name = 'push';
 
 	constructor(private config: IPushChannelConfig) {}
 
 	async send(message: ICourierMessage, template: IRenderedTemplate): Promise<void> {
-		const token = message.recipient.deviceToken
+		const token = message.recipient.deviceToken;
 		if (!token) {
 			console.warn('[courier:push] no device token for recipient — skipping');
-			return
+			return;
 		}
 
 		if (this.config.provider === 'fcm') {
@@ -19,22 +19,22 @@ export class PushChannel implements ICourierChannel {
 	}
 
 	private async sendViaFCM(token: string, template: IRenderedTemplate): Promise<void> {
-		const apiKey = this.config.serviceAccount['apiKey'] as string | undefined
+		const apiKey = this.config.serviceAccount['apiKey'] as string | undefined;
 		if (!apiKey) {
 			throw new Error('[courier:push] FCM apiKey is required in serviceAccount');
 		}
 
 		const res = await fetch('https://fcm.googleapis.com/fcm/send', {
-			method:  'POST',
+			method: 'POST',
 			headers: {
-				'Authorization': `key=${apiKey}`,
-					'Content-Type':  'application/json',
+				Authorization: `key=${apiKey}`,
+				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				to:           token,
+				to: token,
 				notification: {
 					title: template.subject,
-					body:  template.text,
+					body: template.text,
 				},
 			}),
 		});

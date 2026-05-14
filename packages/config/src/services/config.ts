@@ -1,6 +1,6 @@
-import type { IStoreAdapter }  from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie-js/store';
 
-import type { IConfigEntry }   from '../types';
+import type { IConfigEntry } from '../types';
 
 const SELECT_ENTRY = `
 	SELECT
@@ -10,47 +10,45 @@ const SELECT_ENTRY = `
 		description,
 		active,
 		updated_at AS "updatedAt"
-	FROM fonderie_config`
+	FROM fonderie_config`;
 
 export async function listConfigEntries(
 	environment: string | null,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IConfigEntry[]> {
 	return environment
 		? store.query<IConfigEntry>(
-			`${SELECT_ENTRY} WHERE (environment = $1 OR environment = 'all') AND active = true ORDER BY key`,
-			[environment],
-		)
-		: store.query<IConfigEntry>(
-			`${SELECT_ENTRY} ORDER BY environment, key`,
-		)
+				`${SELECT_ENTRY} WHERE (environment = $1 OR environment = 'all') AND active = true ORDER BY key`,
+				[environment],
+			)
+		: store.query<IConfigEntry>(`${SELECT_ENTRY} ORDER BY environment, key`);
 }
 
 export async function getConfigEntry(
-	key:         string,
+	key: string,
 	environment: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IConfigEntry | null> {
 	const [row] = await store.query<IConfigEntry>(
 		`${SELECT_ENTRY} WHERE key = $1 AND environment = $2`,
 		[key, environment],
-	)
-	return row ?? null
+	);
+	return row ?? null;
 }
 
 export async function setConfigEntry(
 	opts: {
-		key:          string
-		value:        unknown
-		environment?: string
-		description?: string
-		active?:      boolean
+		key: string;
+		value: unknown;
+		environment?: string;
+		description?: string;
+		active?: boolean;
 	},
 	store: IStoreAdapter,
 ): Promise<IConfigEntry> {
-	const env    = opts.environment ?? 'all'
-	const raw    = typeof opts.value === 'string' ? opts.value : JSON.stringify(opts.value)
-	const active = opts.active ?? true
+	const env = opts.environment ?? 'all';
+	const raw = typeof opts.value === 'string' ? opts.value : JSON.stringify(opts.value);
+	const active = opts.active ?? true;
 
 	const [row] = await store.query<IConfigEntry>(
 		`INSERT INTO fonderie_config (key, value, environment, description, active)
@@ -64,19 +62,19 @@ export async function setConfigEntry(
 			key, value, environment, description, active,
 			updated_at AS "updatedAt"`,
 		[opts.key, raw, env, opts.description ?? null, active],
-	)
-	if (!row) throw new Error('Failed to upsert config entry')
-	return row
+	);
+	if (!row) throw new Error('Failed to upsert config entry');
+	return row;
 }
 
 export async function deleteConfigEntry(
-	key:         string,
+	key: string,
 	environment: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<boolean> {
 	const rows = await store.query<{ key: string }>(
 		`DELETE FROM fonderie_config WHERE key = $1 AND environment = $2 RETURNING key`,
 		[key, environment],
-	)
-	return rows.length > 0
+	);
+	return rows.length > 0;
 }

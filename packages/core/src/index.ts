@@ -13,10 +13,10 @@ export type {
 	IFonderieContextMeta,
 } from './types';
 
-export { FonderieApp }  from './app';
+export { FonderieApp } from './app';
 export { defineConfig } from './config';
-export { compose }      from './compose';
-export type { FonderieConfig }  from './config';
+export { compose } from './compose';
+export type { FonderieConfig } from './config';
 
 // Built-in middleware — import from '@fonderie-js/core/middlewares', not the root barrel
 
@@ -24,7 +24,7 @@ export type { FonderieConfig }  from './config';
 export { stringOrEmpty, booleanOrFalse, arrayOrEmpty, numberOrZero } from './parser';
 
 // Response helpers
-export type { IApiError, HttpStatus }                              from './response';
+export type { IApiError, HttpStatus } from './response';
 export { HTTP, setApiResponse } from './response';
 
 // NOT exported: adapters/, router internals, error-handler, not-found

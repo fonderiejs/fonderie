@@ -9,7 +9,7 @@ const SELECT_ROLE = `
 	active,
 	description,
 	workspace_id AS "workspaceId"
-`
+`;
 
 export async function createRole(
 	opts: { name: string; workspaceId: string; description?: string },
@@ -20,25 +20,22 @@ export async function createRole(
 		 VALUES ($1, $2, $3)
 		 RETURNING ${SELECT_ROLE}`,
 		[opts.name, opts.workspaceId, opts.description ?? null],
-	)
-	if (!role) throw new Error('Failed to create role')
-	return role
+	);
+	if (!role) throw new Error('Failed to create role');
+	return role;
 }
 
-export async function getRoleById(
-	id:    string,
-	store: IStoreAdapter,
-): Promise<IRole | null> {
+export async function getRoleById(id: string, store: IStoreAdapter): Promise<IRole | null> {
 	const [row] = await store.query<IRole>(
 		`SELECT ${SELECT_ROLE} FROM fonderie_roles WHERE id = $1`,
 		[id],
-	)
-	return row ?? null
+	);
+	return row ?? null;
 }
 
 export async function listWorkspaceRoles(
 	workspaceId: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<IRole[]> {
 	return store.query<IRole>(
 		`SELECT ${SELECT_ROLE}
@@ -46,28 +43,31 @@ export async function listWorkspaceRoles(
 		 WHERE workspace_id = $1 OR is_system = true
 		 ORDER BY is_system DESC, name ASC`,
 		[workspaceId],
-	)
+	);
 }
 
 export async function updateRole(
-	id:    string,
-	opts:  { name?: string; description?: string | null; active?: boolean },
+	id: string,
+	opts: { name?: string; description?: string | null; active?: boolean },
 	store: IStoreAdapter,
 ): Promise<IRole | null> {
-	const sets: string[]    = []
-	const params: unknown[] = [id]
+	const sets: string[] = [];
+	const params: unknown[] = [id];
 
 	if (opts.name !== undefined) {
-		params.push(opts.name); sets.push(`name = $${params.length}`)
+		params.push(opts.name);
+		sets.push(`name = $${params.length}`);
 	}
 	if (opts.description !== undefined) {
-		params.push(opts.description); sets.push(`description = $${params.length}`)
+		params.push(opts.description);
+		sets.push(`description = $${params.length}`);
 	}
 	if (opts.active !== undefined) {
-		params.push(opts.active); sets.push(`active = $${params.length}`)
+		params.push(opts.active);
+		sets.push(`active = $${params.length}`);
 	}
 
-	if (sets.length === 0) return getRoleById(id, store)
+	if (sets.length === 0) return getRoleById(id, store);
 
 	const [row] = await store.query<IRole>(
 		`UPDATE fonderie_roles
@@ -75,31 +75,31 @@ export async function updateRole(
 		 WHERE id = $1 AND is_system = false
 		 RETURNING ${SELECT_ROLE}`,
 		params,
-	)
-	return row ?? null
+	);
+	return row ?? null;
 }
 
 export async function deleteRole(
-	id:          string,
+	id: string,
 	workspaceId: string,
-	store:       IStoreAdapter,
+	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
 		`DELETE FROM fonderie_roles
 		 WHERE id = $1 AND workspace_id = $2 AND is_system = false`,
 		[id, workspaceId],
-	)
+	);
 }
 
 export async function setRolePermissions(
-	roleId:      string,
+	roleId: string,
 	workspaceId: string,
 	permissions: Array<{
-		permissionKey: string
-		canCreate:     boolean
-		canRead:       boolean
-		canUpdate:     boolean
-		canDelete:     boolean
+		permissionKey: string;
+		canCreate: boolean;
+		canRead: boolean;
+		canUpdate: boolean;
+		canDelete: boolean;
 	}>,
 	store: IStoreAdapter,
 ): Promise<void> {
@@ -107,15 +107,15 @@ export async function setRolePermissions(
 		await store.query(
 			`DELETE FROM fonderie_role_permissions WHERE role_id = $1 AND workspace_id = $2`,
 			[roleId, workspaceId],
-		)
-		return
+		);
+		return;
 	}
 
-	await store.transaction(async tx => {
+	await store.transaction(async (tx) => {
 		await tx.query(
 			`DELETE FROM fonderie_role_permissions WHERE role_id = $1 AND workspace_id = $2`,
 			[roleId, workspaceId],
-		)
+		);
 
 		for (const p of permissions) {
 			await tx.query(
@@ -127,7 +127,7 @@ export async function setRolePermissions(
 				   can_create = $4, can_read = $5,
 				   can_update = $6, can_delete = $7`,
 				[roleId, workspaceId, p.permissionKey, p.canCreate, p.canRead, p.canUpdate, p.canDelete],
-			)
+			);
 		}
-	})
+	});
 }

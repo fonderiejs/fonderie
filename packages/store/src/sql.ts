@@ -1,5 +1,5 @@
 export interface ISqlQuery {
-	text:   string;
+	text: string;
 	params: unknown[];
 }
 
@@ -22,5 +22,5 @@ export function sql(strings: TemplateStringsArray, ...values: unknown[]): ISqlQu
 		}
 	});
 
-	return { text, params }
+	return { text, params };
 }
