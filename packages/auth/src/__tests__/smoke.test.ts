@@ -3,7 +3,9 @@ import assert         from 'node:assert/strict';
 
 import type { IStoreAdapter }         from '@fonderie-js/store';
 import type { IAuthConfig }           from '../config';
+import { MESSAGE_KEYS }               from '../config';
 import type { IUser }                 from '../types';
+import { NOTIFICATION_EVENT }         from '@fonderie-js/events';
 import { issueTokenPair, issueMfaPendingToken, verifyToken } from '../services/jwt';
 import { generateTotpSecret, generateTotpCode, generateBackupCodes } from '../services/mfa';
 import { hashPassword, verifyPassword } from '../services/password';
@@ -222,16 +224,16 @@ function makeCtx(opts: {
 	}
 }
 
-function makeAuth(storeOpts: AuthStoreOpts = {}) {
-	return authController(makeStore(storeOpts), config)
+function makeAuth(storeOpts: AuthStoreOpts = {}, bus?: any) {
+	return authController(makeStore(storeOpts), config, bus)
 }
 
-function makeUser(storeOpts: AuthStoreOpts = {}) {
-	return userController(makeStore(storeOpts))
+function makeUser(storeOpts: AuthStoreOpts = {}, bus?: any) {
+	return userController(makeStore(storeOpts), bus)
 }
 
-function makeMfa(storeOpts: AuthStoreOpts = {}) {
-	return mfaController(makeStore(storeOpts), config, 'TestApp')
+function makeMfa(storeOpts: AuthStoreOpts = {}, bus?: any) {
+	return mfaController(makeStore(storeOpts), config, 'TestApp', bus)
 }
 
 // ── toUserDTO ─────────────────────────────────────────────────────
@@ -906,21 +908,22 @@ test('updateEmail: 409 when email is already in use by another account', async (
 	assert.equal(body.reason, 'EMAIL_IN_USE');
 });
 
-test('updateEmail: 200 EMAIL_UPDATED, sends verification to new address and alert to old', async () => {
-	const ctrl     = makeUser();
+test('updateEmail: 200 EMAIL_UPDATED, emits verification to new address and alert to old via bus', async () => {
+	const bus      = makeBus();
+	const ctrl     = makeUser({}, bus);
 	const ctx      = makeCtx({ user: { id: 'user-1', email: 'jane@example.com' }, body: { email: 'new@example.com' } });
 	const response = await ctrl.updateEmail(ctx);
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason,       'EMAIL_UPDATED');
 	assert.equal(body.result.email, 'new@example.com');
-	const msgs = ctx.meta['messages'] as any[];
-	assert.equal(msgs.length, 2);
-	const verification = msgs.find((m: any) => m.type === 'email-verification');
-	const alert        = msgs.find((m: any) => m.type === 'email-changed');
-	assert.equal(verification?.recipient?.email, 'new@example.com');
-	assert.ok(typeof verification?.data?.pin === 'string');
-	assert.equal(alert?.recipient?.email, 'jane@example.com');
+	const notifications = bus.emitted.filter((e: any) => e.type === NOTIFICATION_EVENT);
+	assert.equal(notifications.length, 2);
+	const verif = notifications.find((e: any) => (e.payload as any).type === MESSAGE_KEYS.emailVerification);
+	const alert = notifications.find((e: any) => (e.payload as any).type === MESSAGE_KEYS.emailChanged);
+	assert.equal((verif?.payload as any)?.recipient?.email, 'new@example.com');
+	assert.ok(typeof (verif?.payload as any)?.data?.pin === 'string');
+	assert.equal((alert?.payload as any)?.recipient?.email, 'jane@example.com');
 });
 
 // ── UserController.updatePhone ────────────────────────────────────
@@ -945,21 +948,22 @@ test('updatePhone: 409 when phone is already in use', async () => {
 	assert.equal(body.reason, 'PHONE_IN_USE');
 });
 
-test('updatePhone: 200 PHONE_UPDATED, sends OTP to new number and alert to email', async () => {
-	const ctrl     = makeUser();
+test('updatePhone: 200 PHONE_UPDATED, emits OTP to new number and alert to email via bus', async () => {
+	const bus      = makeBus();
+	const ctrl     = makeUser({}, bus);
 	const ctx      = makeCtx({ user: { id: 'user-1', email: 'jane@example.com' }, body: { phone: '+15141234567' } });
 	const response = await ctrl.updatePhone(ctx);
 	assert.equal(response.status, 200);
 	const body = await response.json() as any;
 	assert.equal(body.reason,       'PHONE_UPDATED');
 	assert.equal(body.result.phone, '+15141234567');
-	const msgs = ctx.meta['messages'] as any[];
-	assert.equal(msgs.length, 2);
-	const otp   = msgs.find((m: any) => m.type === 'phone-otp');
-	const alert = msgs.find((m: any) => m.type === 'phone-changed');
-	assert.equal(otp?.recipient?.phone, '+15141234567');
-	assert.ok(typeof otp?.data?.otp === 'string');
-	assert.equal(alert?.recipient?.email, 'jane@example.com');
+	const notifications = bus.emitted.filter((e: any) => e.type === NOTIFICATION_EVENT);
+	assert.equal(notifications.length, 2);
+	const otp   = notifications.find((e: any) => (e.payload as any).type === MESSAGE_KEYS.phoneOtp);
+	const alert = notifications.find((e: any) => (e.payload as any).type === MESSAGE_KEYS.phoneChanged);
+	assert.equal((otp?.payload as any)?.recipient?.phone, '+15141234567');
+	assert.ok(typeof (otp?.payload as any)?.data?.otp === 'string');
+	assert.equal((alert?.payload as any)?.recipient?.email, 'jane@example.com');
 });
 
 // ── MfaController.regenerateBackupCodes ──────────────────────────
@@ -1319,11 +1323,13 @@ function makeBus() {
 
 test('register (email): emits user.registered with correct payload', async () => {
 	const bus  = makeBus();
-	const ctrl = authController(makeStore({ insertedId: 'user-1', userById: BASE_USER }), config, bus as any);
+	const ctrl = makeAuth({ insertedId: 'user-1', userById: BASE_USER }, bus);
 	await ctrl.register(makeCtx({ body: { email: 'jane@example.com', password: 'password123', firstName: 'Jane', lastName: 'Doe' } }));
-	assert.equal(bus.emitted.length, 1);
-	assert.equal(bus.emitted[0]?.type, 'user.registered');
-	const p = bus.emitted[0]?.payload as any;
+	// register emits NOTIFICATION_EVENT + user.registered
+	assert.equal(bus.emitted.length, 2);
+	const reg = bus.emitted.find(e => e.type === 'user.registered');
+	assert.ok(reg, 'user.registered must be emitted');
+	const p = reg!.payload as any;
 	assert.equal(p.userId,      'user-1');
 	assert.equal(p.loginMethod, 'email');
 	assert.equal(p.email,       'jane@example.com');
@@ -1331,11 +1337,13 @@ test('register (email): emits user.registered with correct payload', async () =>
 
 test('register (phone): emits user.registered with loginMethod: phone', async () => {
 	const bus  = makeBus();
-	const ctrl = authController(makeStore({ insertedId: 'user-2', userById: PHONE_USER }), config, bus as any);
+	const ctrl = makeAuth({ insertedId: 'user-2', userById: PHONE_USER }, bus);
 	await ctrl.register(makeCtx({ body: { phone: '+15141234567' } }));
-	assert.equal(bus.emitted.length, 1);
-	assert.equal(bus.emitted[0]?.type, 'user.registered');
-	const p = bus.emitted[0]?.payload as any;
+	// register emits NOTIFICATION_EVENT + user.registered
+	assert.equal(bus.emitted.length, 2);
+	const reg = bus.emitted.find(e => e.type === 'user.registered');
+	assert.ok(reg, 'user.registered must be emitted');
+	const p = reg!.payload as any;
 	assert.equal(p.loginMethod, 'phone');
 });
 
@@ -1353,4 +1361,120 @@ test('register: no bus — no error thrown', async () => {
 	const ctrl = authController(makeStore({ insertedId: 'user-1', userById: BASE_USER }), config);
 	const response = await ctrl.register(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
 	assert.equal(response.status, 201);
+});
+
+// ── NOTIFICATION_EVENT coverage ────────────────────────────────────
+
+test('register (email): emits NOTIFICATION_EVENT with emailRegistration payload', async () => {
+	const bus  = makeBus();
+	const ctrl = makeAuth({ insertedId: 'user-1', userById: BASE_USER }, bus);
+	await ctrl.register(makeCtx({ body: { email: 'jane@example.com', password: 'password123', firstName: 'Jane' } }));
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.emailRegistration);
+	assert.equal(p.recipient.email, 'jane@example.com');
+	assert.ok(typeof p.data.pin === 'string');
+});
+
+test('register (phone): emits NOTIFICATION_EVENT with phoneOtp payload', async () => {
+	const bus  = makeBus();
+	const ctrl = makeAuth({ insertedId: 'user-2', userById: PHONE_USER }, bus);
+	await ctrl.register(makeCtx({ body: { phone: '+15141234567' } }));
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.phoneOtp);
+	assert.equal(p.recipient.phone, '+15141234567');
+	assert.ok(typeof p.data.otp === 'string');
+});
+
+test('login (phone): emits NOTIFICATION_EVENT with phoneOtp payload', async () => {
+	const bus  = makeBus();
+	const ctrl = makeAuth({ userByPhone: PHONE_USER }, bus);
+	await ctrl.login(makeCtx({ body: { phone: '+15141234567' } }));
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.phoneOtp);
+	assert.equal(p.recipient.phone, '+15141234567');
+});
+
+test('forgotPassword: emits NOTIFICATION_EVENT with passwordReset payload', async () => {
+	const bus  = makeBus();
+	const ctrl = makeAuth({ userByEmail: BASE_USER }, bus);
+	await ctrl.forgotPassword(makeCtx({ body: { email: 'jane@example.com' } }));
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.passwordReset);
+	assert.equal(p.recipient.email, 'jane@example.com');
+	assert.ok(typeof p.data.pin === 'string');
+});
+
+test('sendVerification (email): emits NOTIFICATION_EVENT with emailVerification payload', async () => {
+	const bus        = makeBus();
+	const ctrl       = makeAuth({}, bus);
+	const unverified = { ...BASE_USER, emailVerifiedAt: null };
+	await ctrl.sendVerification(makeCtx({ user: unverified }));
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.emailVerification);
+	assert.equal(p.recipient.email, 'jane@example.com');
+});
+
+test('sendVerification (phone): emits NOTIFICATION_EVENT with phoneOtp payload', async () => {
+	const bus  = makeBus();
+	const ctrl = makeAuth({}, bus);
+	await ctrl.sendVerification(makeCtx({
+		user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
+	}));
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.phoneOtp);
+	assert.equal(p.recipient.phone, '+15141234567');
+});
+
+test('mfa.verify (setup confirm): emits NOTIFICATION_EVENT with mfaEnabled payload', async () => {
+	const secret = generateTotpSecret();
+	const code   = generateTotpCode(secret);
+	const bus    = makeBus();
+	const ctrl   = makeMfa({ mfaPendingSecret: secret }, bus);
+	await ctrl.verify(makeCtx({ user: { ...MFA_USER }, body: { token: code } }));
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.mfaEnabled);
+	assert.equal(p.recipient.email, 'jane@example.com');
+});
+
+test('mfa.regenerateBackupCodes: emits NOTIFICATION_EVENT with mfaBackupCodesRegenerated payload', async () => {
+	const secret = generateTotpSecret();
+	const code   = generateTotpCode(secret);
+	const bus    = makeBus();
+	const ctrl   = makeMfa({ mfaSecret: secret }, bus);
+	await ctrl.regenerateBackupCodes(makeCtx({ user: MFA_USER, body: { token: code } }));
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.mfaBackupCodesRegenerated);
+	assert.equal(p.recipient.email, 'jane@example.com');
+});
+
+test('mfa.disable: 200 MFA_DISABLED and emits NOTIFICATION_EVENT with mfaDisabled payload', async () => {
+	const secret = generateTotpSecret();
+	const code   = generateTotpCode(secret);
+	const bus    = makeBus();
+	const ctrl   = makeMfa({ userById: { ...MFA_USER, mfaSecret: secret } as any }, bus);
+	const response = await ctrl.disable(makeCtx({ user: MFA_USER, body: { token: code } }));
+	assert.equal(response.status, 200);
+	const body = await response.json() as any;
+	assert.equal(body.reason, 'MFA_DISABLED');
+	const notif = bus.emitted.find(e => e.type === NOTIFICATION_EVENT);
+	assert.ok(notif, 'NOTIFICATION_EVENT must be emitted');
+	const p = notif!.payload as any;
+	assert.equal(p.type,            MESSAGE_KEYS.mfaDisabled);
+	assert.equal(p.recipient.email, 'jane@example.com');
 });
