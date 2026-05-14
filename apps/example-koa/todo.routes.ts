@@ -2,8 +2,8 @@ import Router               from '@koa/router';
 import type { IStoreAdapter } from '@fonderie-js/store';
 import { requireAuth }      from '@fonderie-js/adapter-koa';
 
-import { TodoModel }        from '../models/todo.model';
-import { todoController }   from '../controllers/todo.controller';
+import { TodoModel }        from './todo.model';
+import { todoController }   from './todo.controller';
 
 export function buildTodoRouter(store: IStoreAdapter) {
 	const router     = new Router()

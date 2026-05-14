@@ -1,7 +1,7 @@
 import type { ParameterizedContext } from 'koa';
 import type { IFonderieContext }     from '@fonderie-js/core';
 
-import type { TodoModel }            from '../models/todo.model';
+import type { TodoModel }            from './todo.model';
 
 type State = { _fonderie: IFonderieContext }
 type Ctx   = ParameterizedContext<State>

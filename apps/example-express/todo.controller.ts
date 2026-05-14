@@ -1,6 +1,7 @@
-import type { Request, Response }  from 'express';
-import type { ExpressRequest }     from '@fonderie-js/adapter-express';
-import type { TodoModel }          from '../models/todo.model';
+import type { Request, Response } from 'express';
+import type { ExpressRequest }    from '@fonderie-js/adapter-express';
+
+import type { TodoModel }         from './todo.model';
 
 export function todoController(model: ReturnType<typeof TodoModel>) {
 	return {

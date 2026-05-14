@@ -1,8 +1,8 @@
 import express            from 'express';
 
-import { bridge, mount } from '@fonderie-js/adapter-express';
-import { fonderie, store } from './config/fonderie';
-import { buildTodoRouter } from './routes/todo.routes';
+import { bridge, mount }   from '@fonderie-js/adapter-express';
+import { fonderie, store } from './fonderie';
+import { buildTodoRouter } from './todo.routes';
 
 const app = express()
 

@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "node --env-file=.env --experimental-strip-types index.ts",
 		"setup": "cp -n .env.example .env || true",
-		"test": "tsx --test __tests__/*.test.ts"
+		"test": "tsx --test *.test.ts"
 	},
 	"dependencies": {
 		"koa":                          "^2.16.1",
