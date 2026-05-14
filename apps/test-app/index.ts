@@ -26,6 +26,7 @@ import { getMigrationsPath as authMigrations }        from '@fonderie-js/auth/mi
 import { getMigrationsPath as configMigrations }      from '@fonderie-js/config/migrations';
 import { getMigrationsPath as billingMigrations }     from '@fonderie-js/billing/migrations';
 import { getMigrationsPath as courierMigrations }     from '@fonderie-js/courier/migrations';
+import { getMigrationsPath as eventsMigrations }      from '@fonderie-js/events/migrations';
 import { getMigrationsPath as workspacesMigrations }  from '@fonderie-js/workspaces/migrations';
 import { getMigrationsPath as permissionsMigrations } from '@fonderie-js/permissions/migrations';
 
@@ -70,6 +71,7 @@ const store = new PGAdapter(config.db.url)
 // ── Migrations ────────────────────────────────────────────────────
 
 for (const dir of [
+	eventsMigrations(),
 	authMigrations(),
 	permissionsMigrations(),
 	workspacesMigrations(),
@@ -83,7 +85,7 @@ for (const dir of [
 // ── Modules ───────────────────────────────────────────────────────
 
 const logger      = new LoggerModule()
-const events      = new EventsModule({ transport: 'memory' })
+const events      = new EventsModule({ transport: { type: 'pg', connectionUrl: config.db.url } })
 const auth        = new AuthModule(store, authConfig, events.bus);
 
 const permissions = new PermissionsModule(store);
