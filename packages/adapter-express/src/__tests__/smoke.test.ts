@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import express from 'express';
 
 import {
 	bridge,
 	adapt,
+	mount,
 	requireAuth,
 	expressRequestToWeb,
 	webResponseToExpress,
@@ -77,6 +79,29 @@ function makeServerResponse() {
 			captured.body = buf.toString();
 		},
 	} as unknown as ExpressResponse & { captured: typeof captured };
+}
+
+// Starts an Express app on a random port, makes one request, closes the server.
+// Uses app.listen() (not http.createServer) so mount()'s deferred infra is sealed.
+function request(
+	app: ReturnType<typeof mount>,
+	path: string,
+	opts: RequestInit = {},
+): Promise<{ status: number; body: unknown }> {
+	return new Promise((resolve, reject) => {
+		const server = (app.listen as any)(0, async () => {
+			const { port } = (server as any).address();
+			try {
+				const res = await fetch(`http://127.0.0.1:${port}${path}`, opts);
+				const body = await res.json().catch(() => null);
+				server.close();
+				resolve({ status: res.status, body });
+			} catch (e) {
+				server.close();
+				reject(e);
+			}
+		});
+	});
 }
 
 // ── expressRequestToWeb ───────────────────────────────────────────
@@ -260,4 +285,40 @@ test('requireAuth: calls next when user is set', async () => {
 	await requireAuth(req, res, next);
 
 	assert.ok(nextCalled);
+});
+
+// ── mount ─────────────────────────────────────────────────────────
+
+test('mount: returns the same Express app', () => {
+	const app = express();
+	const result = mount(app, makeApp());
+	assert.strictEqual(result, app as any);
+});
+
+test('mount: req._fonderie is available in user routes', async () => {
+	const app = mount(express(), makeApp({ id: 'u1' }));
+	app.get('/me', (req, res) => {
+		res.json({ userId: ((req as any)._fonderie.user as any).id });
+	});
+
+	const { status, body } = await request(app, '/me');
+	assert.equal(status, 200);
+	assert.equal((body as any).userId, 'u1');
+});
+
+test('mount: user routes added after mount take priority', async () => {
+	const app = mount(express(), makeApp());
+	app.get('/v1/health', (_req, res) => res.json({ mine: true }));
+
+	const { status, body } = await request(app, '/v1/health');
+	assert.equal(status, 200);
+	assert.ok((body as any).mine);
+});
+
+test('mount: fonderie.handle() called for unmatched routes', async () => {
+	const app = mount(express(), makeApp());
+
+	const { status, body } = await request(app, '/v1/auth/login', { method: 'POST' });
+	assert.equal(status, 200);
+	assert.equal((body as any).from, 'fonderie');
 });

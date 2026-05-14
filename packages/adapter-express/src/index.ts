@@ -68,6 +68,9 @@ export function bridge(fonderie: FonderieApp) {
 	return async (req: ExpressRequest, _res: ExpressResponse, next: ExpressNext) => {
 		try {
 			const webReq = await expressRequestToWeb(req);
+			// Cache so the infra handler in mount() can reuse it without re-reading
+			// the body stream (which can only be consumed once).
+			(req as any)._fonterieReq = webReq;
 			req._fonderie = await fonderie.buildContext(webReq.clone());
 			if (req._fonderie.meta['body'] !== undefined) {
 				req.body = req._fonderie.meta['body'];
@@ -134,18 +137,54 @@ export function requireFeature(key: string) {
 
 // ── mount ─────────────────────────────────────────────────────────
 //
-// Registers fonderie's infrastructure routes as an Express catch-all.
-// Always call AFTER registering your own business routes.
+// Wires up fonderie to an Express app. Returns the same app so you can add
+// routes after mount() and before app.listen() — infra is sealed lazily
+// when app.listen() is first called:
+//
+//   const api = mount(app, fonderie)
+//   api.use(buildTodoRouter(store))
+//   app.listen(port)
+//
+// Alternatively pass a register callback to be explicit about ordering:
+//
+//   mount(app, fonderie, (app) => {
+//     app.use(buildTodoRouter(store))
+//   })
+
+type ExpressApp = {
+	use:    (...args: unknown[]) => unknown;
+	all:    (path: string, handler: (req: ExpressRequest, res: ExpressResponse) => void) => void;
+	listen: (...args: unknown[]) => unknown;
+};
 
 export function mount(
-	app: {
-		all: (path: string, handler: (req: ExpressRequest, res: ExpressResponse) => void) => void;
-	},
+	app: ExpressApp,
 	fonderie: FonderieApp,
-): void {
-	app.all('*', async (req: ExpressRequest, res: ExpressResponse) => {
-		const webReq = await expressRequestToWeb(req);
+	register?: (app: ExpressApp) => void,
+): ExpressApp {
+	const infraHandler = async (req: ExpressRequest, res: ExpressResponse) => {
+		const webReq = (req as any)._fonterieReq as Request ?? await expressRequestToWeb(req);
 		const webRes = await fonderie.handle(webReq);
 		await webResponseToExpress(webRes, res);
-	});
+	};
+
+	app.use(bridge(fonderie));
+
+	if (register) {
+		register(app);
+		app.use(infraHandler);
+	} else {
+		let sealed = false;
+		const origListen = app.listen.bind(app);
+		app.listen = (...args: unknown[]) => {
+			if (!sealed) {
+				sealed = true;
+				app.use(infraHandler);
+			}
+			app.listen = origListen;
+			return origListen(...args);
+		};
+	}
+
+	return app;
 }

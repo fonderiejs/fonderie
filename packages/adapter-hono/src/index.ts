@@ -90,12 +90,16 @@ export function requireFeature(key: string): MiddlewareHandler {
 
 // ── mount ─────────────────────────────────────────────────────────
 //
-// Registers fonderie's infrastructure routes (auth, billing, workspaces, …)
-// as a Hono catch-all. Always call AFTER registering your own business routes.
+// Wires up fonderie to a Hono app. Returns the same app so you can add
+// routes after mount() — fonderie infra is the notFound handler, so
+// user routes always take priority:
 //
-//   hono.get('/jobs', ...)          // business route — matched first
-//   mount(hono, fonderie)           // fonderie infra — catch-all, matched last
+//   const api = mount(hono, fonderie)
+//   api.get('/v1/todos', requireAuth, handler)
+//   export default hono
 
-export function mount(hono: Hono, fonderie: FonderieApp): void {
-	hono.all('*', (c) => fonderie.handle(c.req.raw));
+export function mount(hono: Hono, fonderie: FonderieApp): Hono {
+	hono.use('*', bridge(fonderie));
+	hono.notFound((c) => fonderie.handle(c.req.raw));
+	return hono;
 }

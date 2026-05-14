@@ -5,6 +5,7 @@ import { AuthModule }                                          from '@fonderie-j
 import { FonderieApp, defineConfig }                           from '@fonderie-js/core';
 import { PGAdapter, MigrationRunner, InternalMigrationRunner } from '@fonderie-js/store';
 import { EventsModule }                                        from '@fonderie-js/events';
+import { Channel } 											   from "@fonderie-js/courier";
 import { getMigrationsPath as authMig }                        from '@fonderie-js/auth/migrations';
 import { getMigrationsPath as evtMig }                         from '@fonderie-js/events/migrations';
 
@@ -27,7 +28,7 @@ const events = new EventsModule({ transport: { type: 'pg', connectionUrl: config
 const auth   = new AuthModule(store, {
 	jwtSecret:           process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
 	appName:             'TodoApp',
-	providers:           ['email'],
+	providers:           [Channel.EMAIL],
 	requireVerification: false,
 }, events.bus)
 
