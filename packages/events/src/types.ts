@@ -1,20 +1,27 @@
 export interface IEventMeta {
-	id:          string
-	type:        string
-	emittedAt:   string
-	attempts:    number
-	requestId?:  string
+	id:         string
+	type:       string
+	emittedAt:  string
+	attempts:   number
+	requestId?: string
 }
 
+// Immutable event record — fonderie_events
 export interface IEventRecord {
-	id:           string
-	type:         string
-	payload:      Record<string, unknown>
-	meta:         IEventMeta
-	status:       'pending' | 'processed' | 'failed' | 'dead'
+	id:         string
+	type:       string
+	payload:    Record<string, unknown>
+	meta:       IEventMeta
+	created_at: Date
+}
+
+// Per-consumer delivery state — fonderie_event_consumers
+export interface IConsumerRecord {
+	event_id:     string
+	consumer:     string
+	status:       'pending' | 'processing' | 'processed' | 'failed' | 'dead'
 	attempts:     number
 	error:        string | null
-	created_at:   Date
 	processed_at: Date | null
 }
 
