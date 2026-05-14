@@ -29,9 +29,10 @@ for (const dir of [evtMig(), authMig()]) {
 
 const events = new EventsModule({ transport: { type: 'pg', connectionUrl: config.db.url } })
 const auth   = new AuthModule(store, {
-	jwtSecret: process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
-	appName:   'TodoApp',
-	providers: ['email'],
+	jwtSecret:           process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',
+	appName:             'TodoApp',
+	providers:           ['email'],
+	requireVerification: false,
 }, events.bus)
 
 const fonderie = new FonderieApp(config)

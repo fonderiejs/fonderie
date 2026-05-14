@@ -58,10 +58,12 @@ const authConfig: IAuthConfig = {
 			clientSecret: googleClientSecret,
 		},
 	} : {}),
+	requireVerification: false,
 	resolve: (ctx: { meta: Record<string, unknown> }): Partial<IAuthRuntimeConfig> => ({
 		verificationCooldown: Number(getConfig(ctx, AUTH_CONFIG_KEYS.verificationCooldown)) || undefined,
 		sessionDuration:      String(getConfig(ctx, AUTH_CONFIG_KEYS.sessionDuration))      || undefined,
 		mfa:                  Boolean(getConfig(ctx, AUTH_CONFIG_KEYS.mfa))                 || undefined,
+		requireVerification:  Boolean(getConfig(ctx, AUTH_CONFIG_KEYS.requireVerification)) || undefined,
 	}),
 }
 
