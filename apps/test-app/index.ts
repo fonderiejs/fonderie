@@ -6,12 +6,11 @@ import { serve }       from '@hono/node-server';
 
 import { EventsModule } from '@fonderie-js/events';
 import { LoggerModule } from '@fonderie-js/logger';
-import type { IFonderieContext } from '@fonderie-js/core';
 import { FonderieApp, defineConfig } from '@fonderie-js/core';
+import { withBody } from '@fonderie-js/core/middlewares';
 import { CourierModule, Channel } from '@fonderie-js/courier';
 import { PGAdapter, MigrationRunner } from '@fonderie-js/store';
 import { RemoteConfigModule, getConfig } from '@fonderie-js/config';
-import { withBody, requireAuth } from '@fonderie-js/core/middlewares';
 import type { IAuthConfig, IAuthRuntimeConfig } from '@fonderie-js/auth';
 import { getMigrationsPath as authMigrations } from '@fonderie-js/auth/migrations';
 import { getMigrationsPath as eventsMigrations } from '@fonderie-js/events/migrations';
@@ -27,6 +26,8 @@ import { BillingModule, StripeProvider, hasFeature, getPlanLimit, requireFeature
 import { WebhooksModule } from '@fonderie-js/webhooks';
 import { getMigrationsPath as webhooksMigrations } from '@fonderie-js/webhooks/migrations';
 import { AuditModule } from '@fonderie-js/audit';
+import { requireAuth } from '@fonderie-js/core/middlewares';
+import { bridge, adapt, mount } from '@fonderie-js/adapter-hono';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -85,10 +86,10 @@ for (const dir of [
 
 const logger      = new LoggerModule()
 const events      = new EventsModule({ transport: { type: 'pg', connectionUrl: config.db.url } })
-const auth        = new AuthModule(store, authConfig, events.bus);
+const auth        = new AuthModule(store, authConfig, events.bus)
 
-const permissions = new PermissionsModule(store);
-const workspaces  = new WorkspacesModule(store, {}, events.bus);
+const permissions = new PermissionsModule(store)
+const workspaces  = new WorkspacesModule(store, {}, events.bus)
 const courier     = new CourierModule(
 	{
 		channels: {
@@ -104,7 +105,7 @@ const courier     = new CourierModule(
 			[WS_MESSAGE_KEYS.workspaceInvitation]:         [Channel.EMAIL],
 		},
 		templates: {
-			source: 'fs',
+			source:    'fs',
 			directory: join(__dirname, 'templates'),
 		},
 		email: {
@@ -121,12 +122,12 @@ const courier     = new CourierModule(
 	},
 	store,
 	events.bus,
-);
+)
 
 const remoteConfig = new RemoteConfigModule(store, {
 	ttl:         30_000,
 	environment: process.env['NODE_ENV'] ?? 'development',
-});
+})
 
 const billing = new BillingModule(store, {
 	provider: new StripeProvider(
@@ -204,229 +205,150 @@ const billing = new BillingModule(store, {
 	],
 	successUrl: 'http://localhost:4000/billing/success',
 	cancelUrl:  'http://localhost:4000/billing/cancel',
-});
+})
 
 // ── App ───────────────────────────────────────────────────────────
 
-const webhooks = new WebhooksModule(store, {}, events.bus);
-const audit    = new AuditModule(store);
+const webhooks = new WebhooksModule(store, {}, events.bus)
+const audit    = new AuditModule(store)
 
 const fonderie = new FonderieApp(config)
-  .use(withBody)
-  .register(logger)
-  .register(events)
-  .register(remoteConfig)
-  .register(auth)
-  .register(permissions)
-  .register(workspaces)
-  .register(courier)
-  .register(billing)
-  .register(webhooks)
-  .register(audit)
-
-// ── Routes ────────────────────────────────────────────────────────
-
-fonderie.addRoute('GET', '/health', async (ctx: IFonderieContext) => {
-	const maintenance = getConfig(ctx, 'maintenance.mode', false);
-	if (maintenance) {
-		return Response.json({ error: 'Service temporarily unavailable' }, { status: 503 });
-	}
-
-	return Response.json({ ok: true, ts: new Date().toISOString(), version: '0.0.1' });
-});
-
-// ── Jobs — core field service resource ───────────────────────────
-//
-// Workspace resolved from X-Workspace-ID header by withWorkspace.
-// Billing plan controls how many jobs a workspace can have (jobs quota).
-
-fonderie.addRoute('GET', '/jobs',
-	requireAuth,
-	withWorkspace(store),
-	requirePermission(OPERATIONS.READ, 'jobs'),
-	async (ctx: IFonderieContext) => Response.json({
-		workspaceId: ctx.workspace?.id,
-		jobs:        [],
-	})
-);
-
-fonderie.addRoute('POST', '/jobs',
-	requireAuth,
-	withWorkspace(store),
-	requirePermission(OPERATIONS.CREATE, 'jobs'),
-	async (ctx: IFonderieContext) => Response.json({ created: true }, { status: 201 })
-);
-
-// Jobs quota — how many jobs the current plan allows (null = unlimited)
-fonderie.addRoute('GET', '/jobs/quota',
-	requireAuth,
-	withWorkspace(store),
-	async (ctx: IFonderieContext) => {
-		const limit = getPlanLimit(ctx, 'jobs')
-		return Response.json({
-			workspaceId: ctx.workspace?.id,
-			limit,
-			unlimited: limit === null,
-		})
-	}
-);
-
-// ── Clients ───────────────────────────────────────────────────────
-
-fonderie.addRoute('GET', '/clients',
-	requireAuth,
-	withWorkspace(store),
-	requirePermission(OPERATIONS.READ, 'clients'),
-	async (ctx: IFonderieContext) => Response.json({
-		workspaceId: ctx.workspace?.id,
-		clients:     [],
-	})
-);
-
-fonderie.addRoute('POST', '/clients',
-	requireAuth,
-	withWorkspace(store),
-	requirePermission(OPERATIONS.CREATE, 'clients'),
-	async (ctx: IFonderieContext) => Response.json({ created: true }, { status: 201 })
-);
-
-// ── Analytics — plan-gated (402 for free plan) ────────────────────
-
-fonderie.addRoute('GET', '/analytics',
-	requireAuth,
-	withWorkspace(store),
-	requirePermission(OPERATIONS.READ, 'analytics'),
-	requireFeature('analytics'),
-	async (ctx: IFonderieContext) => Response.json({
-		workspaceId: ctx.workspace?.id,
-		metrics:     [],
-	})
-);
-
-// ── SSO settings — feature drives shape, not access ──────────────
-
-fonderie.addRoute('GET', '/settings/sso',
-	requireAuth,
-	withWorkspace(store),
-	requirePermission(OPERATIONS.READ, 'settings'),
-	async (ctx: IFonderieContext) => {
-		if (!hasFeature(ctx, 'sso')) {
-			return Response.json(
-				{ error: 'SSO is not available on your current plan' },
-				{ status: 402 },
-			)
-		}
-		return Response.json({ sso: { enabled: false, provider: null } })
-	}
-);
-
-// Config inspection (dev only)
-fonderie.addRoute('GET', '/config', requireAuth, async (ctx: IFonderieContext) => {
-	const env = process.env['NODE_ENV'] ?? 'development';
-	if (env === 'production') {
-		return Response.json({ error: 'Not available in production' }, { status: 403 });
-	}
-
-	return Response.json({ config: remoteConfig.manager.all() });
-});
-
-// Routes registered automatically by modules (registration order handled by topo sort):
-//
-// AuthModule:
-//   POST   /auth/register
-//   POST   /auth/login
-//   POST   /auth/logout
-//   POST   /auth/refresh
-//
-//   POST   /auth/email/forgot
-//   POST   /auth/email/reset
-//
-//   GET    /auth/send-verification       (requires auth — sends to email or phone based on loginMethod)
-//   POST   /auth/verify                  (requires auth — verifies email or phone OTP)
-//
-//   POST   /auth/mfa/setup               (requires auth + verified email + email login)
-//   POST   /auth/mfa/verify              (requires auth + verified email + email login)
-//   POST   /auth/mfa/disable             (requires auth + verified email + email login)
-//   POST   /auth/mfa/backup-codes        (requires auth + verified email + email login)
-//
-//   GET    /auth/google                  (only when GOOGLE_CLIENT_ID is set)
-//   GET    /auth/google/callback         (only when GOOGLE_CLIENT_ID is set)
-//
-//   GET    /users                        (requires auth)
-//   PUT    /users/profile                (requires auth + verified email)
-//   PUT    /users/preferences            (requires auth + verified email)
-//   PUT    /users/email                  (requires auth + verified email)
-//   PUT    /users/phone                  (requires auth + verified email)
-//   DELETE /users                        (requires auth + verified email)
-//
-// BillingModule:
-//   GET    /plans                                      (public)
-//   GET    /plans/:planId                              (public)
-//
-//   — subscriber resolved from X-Workspace-ID header (workspace) or session (user) —
-//   GET    /billing/subscription
-//   POST   /billing/checkout
-//   POST   /billing/portal
-//   POST   /billing/usage
-//   GET    /billing/usage/:metric
-//
-//   POST   /billing/webhook
-//
-// WorkspacesModule:  (workspace resolved from X-Workspace-ID header unless noted)
-//   POST   /workspaces
-//   GET    /workspaces
-//   GET    /workspaces/:id                         (path-based)
-//   PUT    /workspaces/:id                         (path-based)
-//   POST   /workspaces/archive
-//   POST   /workspaces/restore
-//   GET    /workspaces/settings
-//   PUT    /workspaces/settings
-//
-//   GET    /workspaces/members
-//   DELETE /workspaces/members/:userId
-//   GET    /workspaces/members/:userId/roles
-//   POST   /workspaces/members/:userId/roles
-//   DELETE /workspaces/members/:userId/roles/:roleId
-//
-//   GET    /workspaces/invitations
-//   POST   /workspaces/invitations
-//   DELETE /workspaces/invitations/:inviteId
-//   POST   /workspaces/invitations/accept          (no workspace context)
-//
-//   POST   /workspaces/roles
-//   GET    /workspaces/roles
-//   GET    /workspaces/roles/:roleId
-//   PUT    /workspaces/roles/:roleId
-//   DELETE /workspaces/roles/:roleId
-//   POST   /workspaces/roles/:roleId/permissions
-
-// WebhooksModule:  (workspace context required via X-Workspace-ID header)
-//   POST   /webhooks                              register endpoint
-//   GET    /webhooks                              list endpoints
-//   GET    /webhooks/:endpointId                  get endpoint
-//   PATCH  /webhooks/:endpointId                  update endpoint
-//   DELETE /webhooks/:endpointId                  delete endpoint
-//   GET    /webhooks/:endpointId/deliveries        delivery log
-//   POST   /webhooks/:endpointId/test             send test ping
-//
-// AuditModule:  (workspace context required via X-Workspace-ID header)
-//   GET    /audit                                 paginated event log
-//     ?type=      filter by event type
-//     ?actorId=   filter by user
-//     ?from=      ISO date lower bound
-//     ?to=        ISO date upper bound
-//     ?limit=     page size (max 200, default 50)
-//     ?cursor=    pagination cursor from previous response
-
-// ── Boot + Serve (via Hono) ───────────────────────────────────────
-//
-// Hono speaks Web Standard Request/Response natively — no adapter needed.
-// fonderie.handle() is the single entry point for all HTTP traffic.
+	.use(withBody)
+	.register(logger)
+	.register(events)
+	.register(remoteConfig)
+	.register(auth)
+	.register(permissions)
+	.register(workspaces)
+	.register(courier)
+	.register(billing)
+	.register(webhooks)
+	.register(audit)
 
 await fonderie.boot()
 
+// ── Hono app ──────────────────────────────────────────────────────
+//
+// bridge() runs fonderie's global middleware for every request, populating
+// c.var._fonderie with { user, workspace, meta }.
+//
+// User business routes are written in plain Hono. adapt() wraps any fonderie
+// middleware (requireAuth, withWorkspace, requirePermission, requireFeature)
+// to run against the shared fonderie context.
+//
+// mount() registers fonderie's infrastructure routes (auth, billing,
+// workspaces, webhooks, audit) as a catch-all — always registered LAST.
+
 const hono = new Hono()
-hono.all('*', (c) => fonderie.handle(c.req.raw))
+
+hono.use('*', bridge(fonderie))
+
+// ── Health ────────────────────────────────────────────────────────
+
+hono.get('/v1/health', async (c) => {
+	const fCtx = c.get('_fonderie')
+	const maintenance = getConfig(fCtx, 'maintenance.mode', false)
+	if (maintenance) {
+		return c.json({ error: 'Service temporarily unavailable' }, 503)
+	}
+	return c.json({ ok: true, ts: new Date().toISOString(), version: '0.0.1' })
+})
+
+// ── Jobs ──────────────────────────────────────────────────────────
+
+hono.get('/v1/jobs',
+	adapt(requireAuth),
+	adapt(withWorkspace(store)),
+	adapt(requirePermission(OPERATIONS.READ, 'jobs')),
+	(c) => {
+		const { workspace } = c.get('_fonderie')
+		return c.json({ workspaceId: workspace?.id, jobs: [] })
+	}
+)
+
+hono.post('/v1/jobs',
+	adapt(requireAuth),
+	adapt(withWorkspace(store)),
+	adapt(requirePermission(OPERATIONS.CREATE, 'jobs')),
+	(c) => c.json({ created: true }, 201)
+)
+
+hono.get('/v1/jobs/quota',
+	adapt(requireAuth),
+	adapt(withWorkspace(store)),
+	(c) => {
+		const fCtx = c.get('_fonderie')
+		const limit = getPlanLimit(fCtx, 'jobs')
+		return c.json({ workspaceId: fCtx.workspace?.id, limit, unlimited: limit === null })
+	}
+)
+
+// ── Clients ───────────────────────────────────────────────────────
+
+hono.get('/v1/clients',
+	adapt(requireAuth),
+	adapt(withWorkspace(store)),
+	adapt(requirePermission(OPERATIONS.READ, 'clients')),
+	(c) => {
+		const { workspace } = c.get('_fonderie')
+		return c.json({ workspaceId: workspace?.id, clients: [] })
+	}
+)
+
+hono.post('/v1/clients',
+	adapt(requireAuth),
+	adapt(withWorkspace(store)),
+	adapt(requirePermission(OPERATIONS.CREATE, 'clients')),
+	(c) => c.json({ created: true }, 201)
+)
+
+// ── Analytics — plan-gated ────────────────────────────────────────
+
+hono.get('/v1/analytics',
+	adapt(requireAuth),
+	adapt(withWorkspace(store)),
+	adapt(requirePermission(OPERATIONS.READ, 'analytics')),
+	adapt(requireFeature('analytics')),
+	(c) => {
+		const { workspace } = c.get('_fonderie')
+		return c.json({ workspaceId: workspace?.id, metrics: [] })
+	}
+)
+
+// ── SSO settings ──────────────────────────────────────────────────
+
+hono.get('/v1/settings/sso',
+	adapt(requireAuth),
+	adapt(withWorkspace(store)),
+	adapt(requirePermission(OPERATIONS.READ, 'settings')),
+	(c) => {
+		const fCtx = c.get('_fonderie')
+		if (!hasFeature(fCtx, 'sso')) {
+			return c.json({ error: 'SSO is not available on your current plan' }, 402)
+		}
+		return c.json({ sso: { enabled: false, provider: null } })
+	}
+)
+
+// ── Config (dev only) ─────────────────────────────────────────────
+
+hono.get('/v1/config',
+	adapt(requireAuth),
+	(c) => {
+		if (process.env['NODE_ENV'] === 'production') {
+			return c.json({ error: 'Not available in production' }, 403)
+		}
+		return c.json({ config: remoteConfig.manager.all() })
+	}
+)
+
+// ── Fonderie infrastructure catch-all ────────────────────────────
+// Handles: /v1/auth/*, /v1/billing/*, /v1/workspaces/*,
+//          /v1/webhooks/*, /v1/audit, /v1/plans/*
+
+mount(hono, fonderie)
+
+// ── Serve ─────────────────────────────────────────────────────────
 
 serve({ fetch: hono.fetch, port: 4000 }, (info) => {
 	console.log(
@@ -434,3 +356,12 @@ serve({ fetch: hono.fetch, port: 4000 }, (info) => {
 		`\n\n  Local    http://localhost:${info.port}\n`
 	)
 })
+
+// Infrastructure routes registered automatically by fonderie modules:
+//
+// AuthModule:        POST /v1/auth/register, /v1/auth/login, /v1/auth/logout …
+// BillingModule:     GET  /v1/plans, POST /v1/billing/checkout …
+// WorkspacesModule:  POST /v1/workspaces, GET /v1/workspaces/members …
+// WebhooksModule:    POST /v1/webhooks, GET /v1/webhooks/:id/deliveries …
+// AuditModule:       GET  /v1/audit
+

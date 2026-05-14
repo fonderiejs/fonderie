@@ -18,6 +18,7 @@
 	"dependencies": {
 		"hono": "^4.7.11",
 		"@hono/node-server": "^1.14.3",
+		"@fonderie-js/adapter-hono": "../../packages/adapter-hono",
 		"@fonderie-js/auth": "../../packages/auth",
 		"@fonderie-js/logger": "../../packages/logger",
 		"@fonderie-js/billing": "../../packages/billing",
