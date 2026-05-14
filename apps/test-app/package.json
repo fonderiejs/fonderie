@@ -24,7 +24,10 @@
 		"@fonderie-js/courier": "../../packages/courier",
 		"@fonderie-js/permissions": "../../packages/permissions",
 		"@fonderie-js/store": "../../packages/store",
-		"@fonderie-js/workspaces": "../../packages/workspaces"
+		"@fonderie-js/workspaces": "../../packages/workspaces",
+		"@fonderie-js/webhooks":   "../../packages/webhooks",
+		"@fonderie-js/audit":      "../../packages/audit",
+		"@fonderie-js/events":     "../../packages/events"
 	},
 	"devDependencies": {
 		"@types/node": "^25.6.2"
