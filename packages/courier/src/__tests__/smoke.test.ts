@@ -199,3 +199,40 @@ test('CourierModule: satisfies IFonderieModule interface', async () => {
 	assert.ok(typeof mod.install    === 'function')
 	assert.ok(typeof mod.dispatcher === 'object')
 })
+
+// ── Bus subscription ─────────────────────────────────────────────
+
+test('CourierModule: subscribes to notification.send and dispatches on emit', async () => {
+	const { CourierModule } = await import('../module')
+
+	let capturedHandler: ((msg: any, meta: any) => Promise<void>) | undefined
+	const fakeBus = {
+		on: (_type: string, handler: any) => { capturedHandler = handler },
+	} as any
+
+	const email = makeChannel('email')
+	const mod   = new CourierModule(
+		{ channels: { 'password-reset': ['email'] }, templates: { source: 'fs', directory: '/tmp' } },
+		undefined,
+		fakeBus,
+	)
+	mod.dispatcher.registerChannel(email)
+
+	assert.ok(typeof capturedHandler === 'function', 'handler must be registered on bus')
+
+	await capturedHandler!(
+		{ type: 'password-reset', recipient: { email: 'a@b.com', phone: null, deviceToken: null }, data: {} },
+		{ id: 'evt-1', type: 'notification.send', emittedAt: new Date().toISOString(), attempts: 0 },
+	)
+
+	assert.equal(email.sent.length, 1)
+	assert.equal(email.sent[0]?.recipient.email, 'a@b.com')
+})
+
+test('CourierModule: no bus — no error thrown', async () => {
+	const { CourierModule } = await import('../module')
+	assert.doesNotThrow(() => new CourierModule({
+		channels:  {},
+		templates: { source: 'fs', directory: '/tmp' },
+	}))
+})

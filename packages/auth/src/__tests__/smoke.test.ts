@@ -1303,3 +1303,54 @@ test('requireEmailLogin: 403 EMAIL_LOGIN_REQUIRED for google session', async () 
 	const body = await response.json() as any;
 	assert.equal(body.reason, 'EMAIL_LOGIN_REQUIRED');
 });
+
+// ── Event bus integration ─────────────────────────────────────────
+
+function makeBus() {
+	const emitted: { type: string; payload: unknown }[] = [];
+	return Object.assign(
+		{
+			on:   () => {},
+			emit: async (type: string, payload: unknown) => { emitted.push({ type, payload }) },
+		} as any,
+		{ emitted },
+	) as { emitted: { type: string; payload: unknown }[]; on: () => void; emit: (type: string, payload: unknown) => Promise<void> };
+}
+
+test('register (email): emits user.registered with correct payload', async () => {
+	const bus  = makeBus();
+	const ctrl = authController(makeStore({ insertedId: 'user-1', userById: BASE_USER }), config, bus as any);
+	await ctrl.register(makeCtx({ body: { email: 'jane@example.com', password: 'password123', firstName: 'Jane', lastName: 'Doe' } }));
+	assert.equal(bus.emitted.length, 1);
+	assert.equal(bus.emitted[0]?.type, 'user.registered');
+	const p = bus.emitted[0]?.payload as any;
+	assert.equal(p.userId,      'user-1');
+	assert.equal(p.loginMethod, 'email');
+	assert.equal(p.email,       'jane@example.com');
+});
+
+test('register (phone): emits user.registered with loginMethod: phone', async () => {
+	const bus  = makeBus();
+	const ctrl = authController(makeStore({ insertedId: 'user-2', userById: PHONE_USER }), config, bus as any);
+	await ctrl.register(makeCtx({ body: { phone: '+15141234567' } }));
+	assert.equal(bus.emitted.length, 1);
+	assert.equal(bus.emitted[0]?.type, 'user.registered');
+	const p = bus.emitted[0]?.payload as any;
+	assert.equal(p.loginMethod, 'phone');
+});
+
+test('deleteMe: emits user.deleted with correct userId', async () => {
+	const bus  = makeBus();
+	const ctrl = userController(makeStore(), bus as any);
+	await ctrl.deleteMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(bus.emitted.length, 1);
+	assert.equal(bus.emitted[0]?.type, 'user.deleted');
+	const p = bus.emitted[0]?.payload as any;
+	assert.equal(p.userId, 'user-1');
+});
+
+test('register: no bus — no error thrown', async () => {
+	const ctrl = authController(makeStore({ insertedId: 'user-1', userById: BASE_USER }), config);
+	const response = await ctrl.register(makeCtx({ body: { email: 'jane@example.com', password: 'password123' } }));
+	assert.equal(response.status, 201);
+});
