@@ -1,5 +1,6 @@
 import pg from 'pg'
 
+import { PGAdapter }                      from '@fonderie-js/store'
 import type { IStoreAdapter }             from '@fonderie-js/store'
 import type { IEventTransport }           from './types'
 import type { IEventMeta, IEventHandler,
@@ -7,7 +8,6 @@ import type { IEventMeta, IEventHandler,
 import { matchesPattern }                 from './pattern'
 
 export interface IPGTransportConfig {
-	store:         IStoreAdapter
 	connectionUrl: string
 	maxRetries?:   number  // default 3
 	batchSize?:    number  // default 10 rows claimed per consumer per poll cycle
@@ -21,10 +21,11 @@ interface Subscription {
 }
 
 export class PGTransport implements IEventTransport {
-	private subscriptions: Subscription[]         = []
-	private listenClient:  pg.Client | null        = null
+	private subscriptions: Subscription[]   = []
+	private listenClient:  pg.Client | null  = null
+	private store!:        IStoreAdapter
 	private running = false
-	private wakeResolvers: Array<() => void>       = []
+	private wakeResolvers: Array<() => void> = []
 
 	private readonly maxRetries:   number
 	private readonly batchSize:    number
@@ -43,7 +44,7 @@ export class PGTransport implements IEventTransport {
 	}
 
 	async publish(type: string, payload: unknown, meta: IEventMeta): Promise<void> {
-		await this.config.store.query(
+		await this.store.query(
 			`INSERT INTO fonderie_events (id, type, payload, meta)
 			 VALUES ($1, $2, $3, $4)`,
 			[meta.id, type, JSON.stringify(payload), JSON.stringify(meta)],
@@ -51,7 +52,7 @@ export class PGTransport implements IEventTransport {
 
 		const consumers = this.matchingConsumers(type)
 		if (consumers.length > 0) {
-			await this.config.store.query(
+			await this.store.query(
 				`INSERT INTO fonderie_event_consumers (event_id, consumer, status, attempts)
 				 SELECT $1, unnest($2::text[]), 'pending', 0
 				 ON CONFLICT (event_id, consumer) DO NOTHING`,
@@ -60,14 +61,15 @@ export class PGTransport implements IEventTransport {
 		}
 
 		// NOTIFY carries no payload — it is a wake signal only
-		await this.config.store.query(`SELECT pg_notify('fonderie_events', '')`)
+		await this.store.query(`SELECT pg_notify('fonderie_events', '')`)
 	}
 
 	async start(): Promise<void> {
 		this.running = true
+		this.store   = new PGAdapter(this.config.connectionUrl)
 
 		// Reset any rows left in 'processing' by a crashed instance
-		await this.config.store.query(
+		await this.store.query(
 			`UPDATE fonderie_event_consumers SET status = 'failed' WHERE status = 'processing'`,
 		)
 
@@ -87,7 +89,7 @@ export class PGTransport implements IEventTransport {
 
 	async stop(): Promise<void> {
 		this.running = false
-		this.wake() // unblock a sleeping poll loop
+		this.wake()
 		await this.listenClient?.end()
 		this.listenClient = null
 	}
@@ -99,10 +101,9 @@ export class PGTransport implements IEventTransport {
 			try {
 				const hadWork = await this.pollAllConsumers()
 				if (!hadWork) await this.sleep()
-				// If there was work, loop immediately to drain remaining rows
 			} catch (err) {
 				console.error('[events:pg] poll error:', err)
-				await this.sleep() // back off before retrying
+				await this.sleep()
 			}
 		}
 	}
@@ -114,9 +115,7 @@ export class PGTransport implements IEventTransport {
 	}
 
 	private async pollConsumer(consumer: string): Promise<number> {
-		// Atomically claim a batch for this consumer using SKIP LOCKED.
-		// Increments attempts at claim time so crashes are counted correctly.
-		const claimed = await this.config.store.query<{ event_id: string }>(
+		const claimed = await this.store.query<{ event_id: string }>(
 			`UPDATE fonderie_event_consumers c
 			 SET status = 'processing', attempts = c.attempts + 1
 			 FROM (
@@ -142,7 +141,7 @@ export class PGTransport implements IEventTransport {
 	// ── Event processing ────────────────────────────────────────────
 
 	private async processConsumerEvent(consumer: string, eventId: string): Promise<void> {
-		const [event] = await this.config.store.query<IEventRecord>(
+		const [event] = await this.store.query<IEventRecord>(
 			`SELECT type, payload, meta FROM fonderie_events WHERE id = $1`,
 			[eventId],
 		)
@@ -154,15 +153,14 @@ export class PGTransport implements IEventTransport {
 
 		try {
 			await Promise.all(handlers.map(h => h(event.payload, event.meta)))
-			await this.config.store.query(
+			await this.store.query(
 				`UPDATE fonderie_event_consumers
 				 SET status = 'processed', processed_at = now()
 				 WHERE event_id = $1 AND consumer = $2`,
 				[eventId, consumer],
 			)
 		} catch (err) {
-			// attempts was already incremented at claim time
-			await this.config.store.query(
+			await this.store.query(
 				`UPDATE fonderie_event_consumers
 				 SET status = CASE WHEN attempts >= $1 THEN 'dead' ELSE 'failed' END,
 				     error  = $2
