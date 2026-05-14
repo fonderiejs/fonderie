@@ -5,7 +5,6 @@ import assert from 'node:assert/strict';
 import { FonderieApp } from '../app';
 import { defineConfig } from '../config';
 import type { IFonderieModule } from '../types';
-import { withBody } from '../middlewares/body-parser';
 
 // ── minimal config — no real DB needed for core tests ───────────
 const config = defineConfig({
@@ -117,7 +116,6 @@ test('route params are extracted into ctx.meta.params', async () => {
 test('body parser puts parsed json on ctx.meta.body', async () => {
 	const app = new FonderieApp(config);
 
-	app.use(withBody);
 	app.addRoute('POST', '/echo', async (ctx) => Response.json(ctx.meta['body']));
 
 	await app.boot();
@@ -126,6 +124,32 @@ test('body parser puts parsed json on ctx.meta.body', async () => {
 	const body = (await res.json()) as { name: string };
 
 	assert.equal(body.name, 'fonderie');
+});
+
+test('body parser: active by default — no .use(withBody) required', async () => {
+	const app = new FonderieApp(config);
+
+	app.addRoute('POST', '/ping', async (ctx) => Response.json({ got: ctx.meta['body'] }));
+
+	await app.boot();
+
+	const res  = await app.handle(makeRequest('POST', '/ping', { hello: 'world' }));
+	const json = (await res.json()) as { got: { hello: string } };
+
+	assert.equal(json.got.hello, 'world');
+});
+
+test('body parser: GET requests leave meta.body undefined', async () => {
+	const app = new FonderieApp(config);
+
+	app.addRoute('GET', '/check', async (ctx) => Response.json({ body: ctx.meta['body'] ?? null }));
+
+	await app.boot();
+
+	const res  = await app.handle(makeRequest('GET', '/check'));
+	const json = (await res.json()) as { body: null };
+
+	assert.equal(json.body, null);
 });
 
 test('basePath: prefixed route matches, unprefixed returns 404', async () => {
