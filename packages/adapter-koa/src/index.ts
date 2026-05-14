@@ -1,8 +1,10 @@
-import type { IncomingMessage } from 'node:http';
+import type { IncomingMessage }                  from 'node:http';
+import type { Middleware as KoaMiddleware, Application } from 'koa';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie-js/core';
 
-// Minimal Koa shape — no koa dep in this file, peer dep only
+// Minimal Koa shape used internally for Web Standard translation.
+// Application code uses Koa's own context types (Koa.ParameterizedContext).
 export interface KoaContext {
 	request: {
 		url:     string;
@@ -56,12 +58,14 @@ export async function webResponseToKoa(webRes: Response, ctx: KoaContext): Promi
 //
 // Koa middleware. Populates ctx.state._fonderie with the fonderie context
 // (user, workspace, meta) for all subsequent route handlers.
+// Requires koa-bodyparser (or equivalent) to run first so rawBody is set.
 //
+//   app.use(bodyParser())
 //   app.use(bridge(fonderie))
 
-export function bridge(fonderie: FonderieApp) {
-	return async (ctx: KoaContext, next: KoaNext) => {
-		const webReq      = koaContextToWeb(ctx)
+export function bridge(fonderie: FonderieApp): KoaMiddleware {
+	return async (ctx, next) => {
+		const webReq           = koaContextToWeb(ctx as unknown as KoaContext)
 		ctx.state['_fonderie'] = await fonderie.buildContext(webReq.clone())
 		await next()
 	}
@@ -70,16 +74,19 @@ export function bridge(fonderie: FonderieApp) {
 // ── adapt ─────────────────────────────────────────────────────────
 //
 // Wraps any fonderie Middleware into a Koa middleware function.
+// Returns KoaMiddleware<any, any> so it's directly assignable in both
+// app.use() and typed router chains — no cast helper needed.
 //
 //   router.get('/jobs',
 //     adapt(requireAuth),
 //     adapt(withWorkspace(store)),
-//     async (ctx) => { ... ctx.state._fonderie?.user ... }
+//     async (ctx) => { ctx.state._fonderie.user }
 //   )
 
-export function adapt(middleware: Middleware) {
-	return async (ctx: KoaContext, next: KoaNext) => {
-		const fCtx = ctx.state['_fonderie'] as IFonderieContext | undefined
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function adapt(middleware: Middleware): KoaMiddleware<any, any> {
+	return async (ctx, next) => {
+		const fCtx = (ctx.state as Record<string, unknown>)['_fonderie'] as IFonderieContext | undefined
 		if (!fCtx) throw new Error('[fonderie] bridge() must be registered before adapt()')
 
 		let continued = false
@@ -91,7 +98,7 @@ export function adapt(middleware: Middleware) {
 		if (continued) {
 			await next()
 		} else {
-			await webResponseToKoa(result, ctx)
+			await webResponseToKoa(result, ctx as unknown as KoaContext)
 		}
 	}
 }
@@ -104,10 +111,10 @@ export function adapt(middleware: Middleware) {
 //   app.use(router.routes())    // business routes — matched first
 //   mount(app, fonderie)        // fonderie infra — catch-all, matched last
 
-export function mount(app: { use: (fn: (ctx: KoaContext, next: KoaNext) => Promise<void>) => void }, fonderie: FonderieApp): void {
-	app.use(async (ctx: KoaContext) => {
-		const webReq = koaContextToWeb(ctx)
+export function mount(app: Application, fonderie: FonderieApp): void {
+	app.use(async (ctx) => {
+		const webReq = koaContextToWeb(ctx as unknown as KoaContext)
 		const webRes = await fonderie.handle(webReq)
-		await webResponseToKoa(webRes, ctx)
+		await webResponseToKoa(webRes, ctx as unknown as KoaContext)
 	})
 }
