@@ -144,16 +144,29 @@ export function requireFeature(key: string): KoaMiddleware<any, any> {
 
 // ── mount ─────────────────────────────────────────────────────────
 //
-// Registers fonderie's infrastructure routes as a Koa catch-all middleware.
-// Always call AFTER registering your own business routes.
+// Wires up fonderie to a Koa app. Uses Koa's onion model to register a
+// single wrap-around middleware: builds fonderie context, calls next()
+// so user routes run, then falls back to fonderie infra only if the
+// request was not handled (ctx.body is still undefined).
 //
-//   app.use(router.routes())    // business routes — matched first
-//   mount(app, fonderie)        // fonderie infra — catch-all, matched last
+// Routes registered after mount() are included automatically — Koa
+// composes all middlewares lazily at request time, not at registration.
+//
+//   app.use(bodyParser())
+//   const api = mount(app, fonderie)   // returns same app
+//   api.use(router.routes())
+//   api.use(router.allowedMethods())
+//   app.listen(port)
 
-export function mount(app: Koa, fonderie: FonderieApp): void {
-	app.use(async (ctx) => {
+export function mount(app: Koa, fonderie: FonderieApp): Koa {
+	app.use(async (ctx, next) => {
 		const webReq = koaContextToWeb(ctx as unknown as KoaContext);
-		const webRes = await fonderie.handle(webReq);
-		await webResponseToKoa(webRes, ctx as unknown as KoaContext);
+		ctx.state['_fonderie'] = await fonderie.buildContext(webReq.clone());
+		await next();
+		if (ctx.body === undefined) {
+			const webRes = await fonderie.handle(webReq);
+			await webResponseToKoa(webRes, ctx as unknown as KoaContext);
+		}
 	});
+	return app;
 }

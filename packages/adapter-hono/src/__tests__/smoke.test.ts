@@ -130,27 +130,43 @@ test('requireAuth: calls next when user is set', async () => {
 
 // ── mount ─────────────────────────────────────────────────────────
 
-test('mount: unmatched routes are delegated to fonderie.handle()', async () => {
-	const app = new Hono();
-	app.use('*', bridge(makeApp()));
-	mount(app, makeApp());
+test('mount: returns the same Hono instance', () => {
+	const hono = new Hono();
+	const result = mount(hono, makeApp());
+	assert.strictEqual(result, hono);
+});
 
-	const res = await app.request('/v1/auth/login', { method: 'POST' });
+test('mount: ctx._fonderie is available in user routes', async () => {
+	const app = mount(new Hono(), makeApp({ id: 'u1' }));
+	app.get('/me', (c) => {
+		const ctx = c.get('_fonderie');
+		return c.json({ userId: (ctx.user as any).id });
+	});
+
+	const res = await app.request('/me');
 	const body = (await res.json()) as any;
 
 	assert.equal(res.status, 200);
-	assert.equal(body.from, 'fonderie');
+	assert.equal(body.userId, 'u1');
 });
 
-test('mount: own routes take priority over fonderie catch-all', async () => {
-	const app = new Hono();
-	app.use('*', bridge(makeApp()));
+test('mount: user routes added after mount take priority', async () => {
+	const app = mount(new Hono(), makeApp());
 	app.get('/v1/health', (c) => c.json({ mine: true }));
-	mount(app, makeApp());
 
 	const res = await app.request('/v1/health');
 	const body = (await res.json()) as any;
 
 	assert.equal(res.status, 200);
 	assert.ok(body.mine);
+});
+
+test('mount: unmatched routes are delegated to fonderie.handle()', async () => {
+	const app = mount(new Hono(), makeApp());
+
+	const res = await app.request('/v1/auth/login', { method: 'POST' });
+	const body = (await res.json()) as any;
+
+	assert.equal(res.status, 200);
+	assert.equal(body.from, 'fonderie');
 });

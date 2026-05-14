@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
 	bridge,
 	adapt,
+	mount,
 	requireAuth,
 	koaContextToWeb,
 	webResponseToKoa,
@@ -36,14 +37,16 @@ function makeKoaCtx(
 	opts: { method?: string; url?: string; headers?: Record<string, string>; rawBody?: string } = {},
 ) {
 	const response = {
-		body: null as unknown,
+		body: undefined as unknown,
 		status: 200,
 		headers: {} as Record<string, string>,
 		set(k: string, v: string) {
 			this.headers[k] = v;
 		},
 	};
-	return {
+	// Mirror Koa's ctx.body ↔ ctx.response.body delegation so the
+	// mount() fallback check (ctx.body === undefined) behaves correctly.
+	const ctx = {
 		request: {
 			method: opts.method ?? 'GET',
 			url: opts.url ?? '/',
@@ -53,7 +56,22 @@ function makeKoaCtx(
 		response,
 		req: { socket: {} } as any,
 		state: {} as Record<string, unknown>,
+		get body() { return response.body; },
+		set body(v: unknown) { response.body = v; },
 	};
+	return ctx;
+}
+
+// mount() registers a single wrap-around middleware via app.use().
+// Collect it via a minimal stub to test its behaviour without going
+// through a real Koa instance (avoids a CJS/ESM interop issue with
+// is-generator-function under tsx).
+function collectMiddleware(fonderie: FonderieApp) {
+	type Mw = (ctx: unknown, next: () => Promise<void>) => Promise<void>;
+	const registered: Mw[] = [];
+	const stub = { use: (fn: Mw) => { registered.push(fn); return stub; } };
+	mount(stub as any, fonderie);
+	return registered[0]!;
 }
 
 // ── koaContextToWeb ───────────────────────────────────────────────
@@ -195,4 +213,52 @@ test('requireAuth: calls next when user is set', async () => {
 	});
 
 	assert.ok(nextCalled);
+});
+
+// ── mount ─────────────────────────────────────────────────────────
+
+test('mount: returns the same app instance', () => {
+	const stub = { use(_fn: unknown) { return stub; } };
+	const result = mount(stub as any, makeApp());
+	assert.strictEqual(result, stub);
+});
+
+test('mount: ctx.state._fonderie is set by the registered middleware', async () => {
+	const mw = collectMiddleware(makeApp({ id: 'u1' }));
+	const ctx = makeKoaCtx();
+
+	await mw(ctx, async () => {});
+
+	assert.ok(ctx.state['_fonderie']);
+	assert.equal(((ctx.state['_fonderie'] as any).user as any).id, 'u1');
+});
+
+test('mount: next() is called so user routes run inside the wrap-around', async () => {
+	const mw = collectMiddleware(makeApp());
+	const ctx = makeKoaCtx();
+
+	let nextCalled = false;
+	await mw(ctx, async () => { nextCalled = true; });
+
+	assert.ok(nextCalled);
+});
+
+test('mount: user route response is preserved — fonderie infra does not overwrite', async () => {
+	const mw = collectMiddleware(makeApp());
+	const ctx = makeKoaCtx();
+
+	await mw(ctx, async () => {
+		ctx.response.body = '{"mine":true}';   // user route handles request
+	});
+
+	assert.equal(ctx.response.body, '{"mine":true}');
+});
+
+test('mount: fonderie.handle() called as fallback when no user route responds', async () => {
+	const mw = collectMiddleware(makeApp());
+	const ctx = makeKoaCtx();
+
+	await mw(ctx, async () => {});             // next() leaves ctx.body undefined
+
+	assert.equal(ctx.response.body, '{"from":"fonderie"}');
 });
