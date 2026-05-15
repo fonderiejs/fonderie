@@ -12,3 +12,6 @@ export { toUserDTO } from './dtos/user';
 // Guards — used by other modules and user route handlers
 export { withSession } from './middlewares/session';
 export { requireAuth } from './middlewares/require-auth';
+
+// Utilities
+export { normalizeEmail, normalizeEmailSafe } from './services/email';

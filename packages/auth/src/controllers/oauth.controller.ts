@@ -7,6 +7,7 @@ import { issueTokenPair, refreshTokenExpiry } from '../services/jwt';
 import { toUserDTO } from '../dtos/user';
 import { UserModel } from '../models/user.model';
 import { SessionModel } from '../models/session.model';
+import { normalizeEmailSafe } from '../services/email';
 
 export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 	const users = new UserModel(store);
@@ -86,7 +87,12 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'GOOGLE_AUTH_FAILED', 'No email in OAuth response');
 			}
 
-			const upserted = await users.upsertByProvider(payload.email, 'google', payload.sub ?? '');
+			const normalizedEmail = normalizeEmailSafe(payload.email);
+			if (!normalizedEmail) {
+				return setApiResponse(HTTP.BAD_REQUEST, 'GOOGLE_AUTH_FAILED', 'Invalid email in OAuth response');
+			}
+
+			const upserted = await users.upsertByProvider(normalizedEmail, 'google', payload.sub ?? '');
 			if (!upserted) {
 				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
 			}

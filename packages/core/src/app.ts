@@ -107,10 +107,11 @@ export class FonderieApp {
 			tenant: null,
 			user: null,
 			workspace: null,
-			meta: {},
+			meta: { _buildContext: true },
 			_router: this.router,
 		};
 		await compose(this.middlewares)(ctx, async () => new Response());
+		delete ctx.meta['_buildContext'];
 		return ctx;
 	}
 

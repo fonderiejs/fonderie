@@ -4,6 +4,10 @@ import type { Logger } from '../logger';
 
 export function requestLogger(logger: Logger): Middleware {
 	return async (ctx, next) => {
+		if (ctx.meta['_buildContext']) {
+			return await next();
+		}
+
 		const requestId = randomUUID();
 		const start = Date.now();
 		const method = ctx.request.method;

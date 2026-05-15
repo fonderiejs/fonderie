@@ -13,6 +13,7 @@ import { UserModel } from '../models/user.model';
 import { checkCooldown } from '../services/cooldown';
 import { SessionModel } from '../models/session.model';
 import { hashPassword, verifyPassword } from '../services/password';
+import { normalizeEmailSafe } from '../services/email';
 import { PasswordResetModel } from '../models/password-reset.model';
 import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
 import { EmailVerificationModel } from '../models/email-verification.model';
@@ -56,6 +57,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 			// ── Email branch takes priority (cheaper than SMS) ───────
 			if (typeof email === 'string' && typeof password === 'string') {
+				const normalizedEmail = normalizeEmailSafe(email);
+				if (!normalizedEmail) {
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid email address');
+				}
+
 				if (password.length < 8) {
 					return setApiResponse(
 						HTTP.UNPROCESSABLE,
@@ -64,14 +70,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					);
 				}
 
-				const existing = await users.findByEmail(email);
+				const existing = await users.findByEmail(normalizedEmail);
 				if (existing) {
 					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Email already registered');
 				}
 
 				const passwordHash = await hashPassword(password);
 				const row = await users.create(
-					email,
+					normalizedEmail,
 					passwordHash,
 					firstName as string | null,
 					lastName as string | null,
@@ -98,7 +104,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 						{
 							type: MESSAGE_KEYS.emailRegistration,
 							data: { pin, firstName: firstName ?? '' },
-							recipient: { email, phone: null, deviceToken: null },
+							recipient: { email: normalizedEmail, phone: null, deviceToken: null },
 						} satisfies ICourierMessage,
 						reqOpts,
 					)
@@ -230,7 +236,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 			// ── Email branch takes priority (cheaper than SMS) ────────
 			if (typeof body?.['email'] === 'string' && typeof body?.['password'] === 'string') {
-				const { email, password } = body as { email: string; password: string };
+				const { email: rawEmail, password } = body as { email: string; password: string };
+				const email = normalizeEmailSafe(rawEmail);
+				if (!email) {
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid email address');
+				}
 
 				const user = await users.findByEmail(email);
 				if (!user || !user.passwordHash) {
@@ -415,10 +425,15 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 		forgotPassword: async (ctx: IFonderieContext): Promise<Response> => {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const email = body?.['email'];
+			const rawEmail = body?.['email'];
 
-			if (typeof email !== 'string') {
+			if (typeof rawEmail !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required');
+			}
+
+			const email = normalizeEmailSafe(rawEmail);
+			if (!email) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid email address');
 			}
 
 			const user = await users.findByEmail(email);
