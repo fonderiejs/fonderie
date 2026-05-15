@@ -261,3 +261,104 @@ test('CourierModule: no bus — no error thrown', async () => {
 			}),
 	);
 });
+
+// ── Delivery webhooks ─────────────────────────────────────────────
+
+function makeDeliveryStore() {
+	const updates: string[] = [];
+	const stub: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('UPDATE fonderie_message_log')) {
+				updates.push((params?.[0] as string) ?? '');
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(stub),
+	};
+	return { stub, updates };
+}
+
+test('handleSendGridDelivery: processes open event', async () => {
+	const { handleSendGridDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+
+	const payload = [{ event: 'open', sg_message_id: 'abc123.filterXxx' }];
+	const req = new Request('http://localhost/courier/delivery/sendgrid', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(payload),
+	});
+
+	const res = await handleSendGridDelivery(req, stub);
+	assert.equal(res.status, 200);
+	assert.ok(updates.includes('abc123'));
+});
+
+test('handleSendGridDelivery: processes bounce event', async () => {
+	const { handleSendGridDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+
+	const payload = [{ event: 'bounce', sg_message_id: 'msg456', reason: 'Invalid address' }];
+	const req = new Request('http://localhost/courier/delivery/sendgrid', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(payload),
+	});
+
+	const res = await handleSendGridDelivery(req, stub);
+	assert.equal(res.status, 200);
+	assert.ok(updates.includes('msg456'));
+});
+
+test('handleSendGridDelivery: skips events with no sg_message_id', async () => {
+	const { handleSendGridDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+
+	const payload = [{ event: 'open' }];
+	const req = new Request('http://localhost/courier/delivery/sendgrid', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(payload),
+	});
+
+	const res = await handleSendGridDelivery(req, stub);
+	assert.equal(res.status, 200);
+	assert.equal(updates.length, 0);
+});
+
+test('handleMailgunDelivery: processes delivered event', async () => {
+	const { handleMailgunDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+
+	const payload = {
+		'event-data': {
+			event: 'delivered',
+			message: { headers: { 'message-id': 'mg-msg-id-789' } },
+		},
+	};
+	const req = new Request('http://localhost/courier/delivery/mailgun', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(payload),
+	});
+
+	const res = await handleMailgunDelivery(req, stub);
+	assert.equal(res.status, 200);
+	assert.ok(updates.includes('mg-msg-id-789'));
+});
+
+test('handleMailtrapDelivery: processes open event', async () => {
+	const { handleMailtrapDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+
+	const payload = [{ event: 'open', message_id: 'trap-abc' }];
+	const req = new Request('http://localhost/courier/delivery/mailtrap', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(payload),
+	});
+
+	const res = await handleMailtrapDelivery(req, stub);
+	assert.equal(res.status, 200);
+	assert.ok(updates.includes('trap-abc'));
+});

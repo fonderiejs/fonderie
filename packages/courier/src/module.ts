@@ -11,6 +11,7 @@ import { SmsChannel } from './channels/sms';
 import { PushChannel } from './channels/push';
 import { EmailChannel } from './channels/email';
 import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
+import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 
 export class CourierModule implements IFonderieModule {
 	readonly name = '@fonderie-js/courier';
@@ -19,7 +20,7 @@ export class CourierModule implements IFonderieModule {
 
 	constructor(
 		private config: ICourierConfig,
-		store?: IStoreAdapter,
+		private store?: IStoreAdapter,
 		bus?: EventBus,
 	) {
 		const templateSource = config.templates?.source ?? 'db';
@@ -40,7 +41,20 @@ export class CourierModule implements IFonderieModule {
 		);
 	}
 
-	install(_app: IFonderieApp): void {}
+	install(app: IFonderieApp): void {
+		const store = this.store;
+		const signingKeys = this.config.delivery?.signingKeys;
+
+		app.addRoute('POST', '/courier/delivery/sendgrid', (ctx) =>
+			handleSendGridDelivery(ctx.request, store!, signingKeys?.sendgrid),
+		);
+		app.addRoute('POST', '/courier/delivery/mailgun', (ctx) =>
+			handleMailgunDelivery(ctx.request, store!, signingKeys?.mailgun),
+		);
+		app.addRoute('POST', '/courier/delivery/mailtrap', (ctx) =>
+			handleMailtrapDelivery(ctx.request, store!),
+		);
+	}
 }
 
 function createTemplateResolver(
