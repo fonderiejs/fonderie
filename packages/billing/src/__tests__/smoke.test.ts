@@ -105,6 +105,7 @@ function makeStore(
 				return (opts.plan ? [opts.plan] : []) as unknown as T[];
 			}
 			if (sql.includes('INSERT INTO fonderie_plans') || sql.includes('UPDATE fonderie_plans')) {
+				if (opts.plan === null) return [] as T[];
 				const plan: IPlan = opts.plan ?? {
 					id: 'plan-1',
 					name: 'test',
@@ -236,6 +237,115 @@ test('deletePlan: returns false when not found', async () => {
 	const store = makeStore({ plan: null });
 	const deleted = await deletePlan('missing', store);
 	assert.ok(!deleted);
+});
+
+// ── planController ────────────────────────────────────────────────
+
+function makeCtx(
+	params: Record<string, string> = {},
+	body: Record<string, unknown> = {},
+): import('@fonderie-js/core').IFonderieContext {
+	return {
+		meta: { params, body },
+		user: null,
+		workspace: null,
+		tenant: null,
+		request: new Request('http://localhost/'),
+		_router: null as any,
+	} as any;
+}
+
+test('planController.list: returns plans array', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: basePlan });
+	const ctrl = planController(store);
+	const res = await ctrl.list(makeCtx());
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.ok(Array.isArray(body.result?.plans));
+});
+
+test('planController.get: returns 200 when plan found', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: basePlan });
+	const ctrl = planController(store);
+	const res = await ctrl.get(makeCtx({ planId: 'plan-1' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.result?.plan.name, 'pro');
+});
+
+test('planController.get: 404 when not found', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: null });
+	const ctrl = planController(store);
+	const res = await ctrl.get(makeCtx({ planId: 'missing' }));
+	assert.equal(res.status, 404);
+});
+
+test('planController.get: 400 when planId missing', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const ctrl = planController(makeStore());
+	const res = await ctrl.get(makeCtx());
+	assert.equal(res.status, 400);
+});
+
+test('planController.create: 201 with new plan', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: basePlan });
+	const ctrl = planController(store);
+	const res = await ctrl.create(makeCtx({}, { name: 'pro', monthlyAmount: 7900 }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 201);
+	assert.ok(body.result?.plan);
+});
+
+test('planController.create: 422 when name missing', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const ctrl = planController(makeStore());
+	const res = await ctrl.create(makeCtx({}, {}));
+	assert.equal(res.status, 422);
+});
+
+test('planController.update: 200 with updated plan', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: { ...basePlan, monthlyAmount: 9900 } });
+	const ctrl = planController(store);
+	const res = await ctrl.update(makeCtx({ planId: 'plan-1' }, { monthlyAmount: 9900 }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.ok(body.result?.plan);
+});
+
+test('planController.update: 404 when plan not found', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: null });
+	const ctrl = planController(store);
+	const res = await ctrl.update(makeCtx({ planId: 'missing' }, { name: 'x' }));
+	assert.equal(res.status, 404);
+});
+
+test('planController.update: 422 when body is empty', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const ctrl = planController(makeStore());
+	const res = await ctrl.update(makeCtx({ planId: 'plan-1' }, {}));
+	assert.equal(res.status, 422);
+});
+
+test('planController.delete: 200 when deleted', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: basePlan });
+	const ctrl = planController(store);
+	const res = await ctrl.delete(makeCtx({ planId: 'plan-1' }));
+	assert.equal(res.status, 200);
+});
+
+test('planController.delete: 404 when not found', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: null });
+	const ctrl = planController(store);
+	const res = await ctrl.delete(makeCtx({ planId: 'missing' }));
+	assert.equal(res.status, 404);
 });
 
 // ── subscriptions ─────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 export { CourierModule } from './module';
+export { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 export { Dispatcher } from './dispatcher';
 export { SmsChannel } from './channels/sms';
 export { PushChannel } from './channels/push';

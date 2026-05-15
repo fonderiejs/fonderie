@@ -47,4 +47,12 @@ export interface ICourierConfig {
 		source: 'db' | 'fs';
 		directory?: string; // for 'fs' source
 	};
+
+	// Signing keys for verifying inbound delivery webhook payloads
+	delivery?: {
+		signingKeys?: {
+			sendgrid?: string; // HMAC-SHA256 key from SendGrid dashboard
+			mailgun?: string;  // Mailgun HTTP webhook signing key
+		};
+	};
 }

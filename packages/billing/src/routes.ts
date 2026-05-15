@@ -26,6 +26,11 @@ export function buildBillingRoutes(
 		['GET', '/plans', plan.list],
 		['GET', '/plans/:planId', plan.get],
 
+		// Plans — admin write (caller is responsible for authorization)
+		['POST', '/plans', plan.create],
+		['PUT', '/plans/:planId', plan.update],
+		['DELETE', '/plans/:planId', plan.delete],
+
 		// Billing — subscriber resolved from X-Workspace-ID header (workspace) or session (user)
 		// Workspace membership is verified automatically by the withBilling global middleware
 		['GET', '/billing/subscription', requireAuth, subscription.get],
