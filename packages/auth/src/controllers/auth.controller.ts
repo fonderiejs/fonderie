@@ -488,14 +488,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 		resetPassword: async (ctx: IFonderieContext): Promise<Response> => {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const raw = body?.['token'];
+			const raw = body?.['pin'];
 			const password = body?.['password'];
 
 			if (typeof raw !== 'string' || typeof password !== 'string') {
 				return setApiResponse(
 					HTTP.UNPROCESSABLE,
 					'INVALID_PARAMETER',
-					'token and password are required',
+					'pin and password are required',
 				);
 			}
 
@@ -503,7 +503,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				return setApiResponse(
 					HTTP.UNPROCESSABLE,
 					'INVALID_PARAMETER',
-					'token must be a 6-digit code',
+					'pin must be a 6-digit code',
 				);
 			}
 
