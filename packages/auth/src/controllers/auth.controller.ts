@@ -545,13 +545,13 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			}
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const raw = body?.['pin'];
+			const raw = body?.['token'];
 
 			if (typeof raw !== 'string' || !/^\d{6}$/.test(raw.trim())) {
 				return setApiResponse(
 					HTTP.UNPROCESSABLE,
 					'INVALID_PARAMETER',
-					'pin must be a 6-digit code',
+					'token must be a 6-digit code',
 				);
 			}
 
