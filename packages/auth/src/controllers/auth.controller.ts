@@ -128,6 +128,9 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				});
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
+				const resolvedRegister = { ...config, ...config.resolve?.(ctx) };
+				const requiresVerification = !!(resolvedRegister.requireVerification) && !user.emailVerifiedAt;
+
 				return Response.json(
 					{
 						reason: 'USER_EMAIL_REGISTERED',
@@ -135,6 +138,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
 							user: toUserDTO(user),
+							requiresVerification,
 						},
 					},
 					{
@@ -272,6 +276,9 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				});
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
 
+				const resolvedLogin = { ...config, ...config.resolve?.(ctx) };
+				const requiresVerification = !!(resolvedLogin.requireVerification) && !user.emailVerifiedAt;
+
 				return Response.json(
 					{
 						reason: 'USER_EMAIL_LOGIN',
@@ -279,6 +286,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 						result: {
 							tokens: { access: accessToken, refresh: refreshToken },
 							user: toUserDTO(user),
+							requiresVerification,
 						},
 					},
 					{
