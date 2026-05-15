@@ -8,6 +8,12 @@ const COLS = `id, endpoint_id as "endpointId", event_id as "eventId",
               next_attempt_at as "nextAttemptAt", delivered_at as "deliveredAt",
               created_at as "createdAt"`;
 
+const D_COLS = `d.id, d.endpoint_id as "endpointId", d.event_id as "eventId",
+                d.event_type as "eventType", d.payload, d.status, d.attempts,
+                d.response_status as "responseStatus", d.response_body as "responseBody",
+                d.next_attempt_at as "nextAttemptAt", d.delivered_at as "deliveredAt",
+                d.created_at as "createdAt"`;
+
 export interface IPendingRetry {
 	delivery: IWebhookDelivery;
 	url: string;
@@ -73,7 +79,7 @@ export class DeliveryModel {
 
 	claimForRetry(limit = 10): Promise<IPendingRetry[]> {
 		return this.store.query<IPendingRetry>(
-			`SELECT d.${COLS.replace(/\n\s+/g, ' ')},
+			`SELECT ${D_COLS},
 			        e.url, e.secret
 			 FROM   fonderie_webhook_deliveries d
 			 JOIN   fonderie_webhook_endpoints  e ON e.id = d.endpoint_id

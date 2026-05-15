@@ -98,8 +98,10 @@ export function requireFeature(key: string): MiddlewareHandler {
 //   api.get('/v1/todos', requireAuth, handler)
 //   export default hono
 
+// mount() wires fonderie's infrastructure routes as the notFound fallback so
+// user routes always take priority. Call bridge() yourself before your routes
+// to ensure _fonderie is populated for them.
 export function mount(hono: Hono, fonderie: FonderieApp): Hono {
-	hono.use('*', bridge(fonderie));
 	hono.notFound((c) => fonderie.handle(c.req.raw));
 	return hono;
 }

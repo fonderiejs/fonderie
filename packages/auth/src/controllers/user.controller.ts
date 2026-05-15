@@ -13,6 +13,7 @@ import type { IUser } from '../types';
 import { UserModel } from '../models/user.model';
 import { EmailVerificationModel } from '../models/email-verification.model';
 import { PhoneVerificationModel } from '../models/phone-verification.model';
+import { normalizeEmailSafe } from '../services/email';
 
 function isValidPhone(phone: unknown): phone is string {
 	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(phone.trim());
@@ -97,15 +98,14 @@ export function userController(store: IStoreAdapter, bus?: EventBus) {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const newEmail = body?.['email'];
 
-			if (typeof newEmail !== 'string' || !newEmail.includes('@')) {
+			const normalised = typeof newEmail === 'string' ? normalizeEmailSafe(newEmail) : null;
+			if (!normalised) {
 				return setApiResponse(
 					HTTP.UNPROCESSABLE,
 					'INVALID_PARAMETER',
 					'A valid email address is required',
 				);
 			}
-
-			const normalised = newEmail.toLowerCase().trim();
 			const oldEmail = ctx.user!.email;
 
 			if (normalised === oldEmail) {
