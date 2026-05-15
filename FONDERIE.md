@@ -493,10 +493,10 @@ npm run build --workspaces --if-present
 npm run test --workspaces --if-present
 
 # Run test app
-npm run dev --prefix packages/test-app
+npm run dev --prefix packages/api
 
 # Run migrations
-npm run migrate --prefix packages/test-app
+npm run migrate --prefix packages/api
 
 # Add a new package (copy core structure)
 cp -r packages/core packages/my-new-package

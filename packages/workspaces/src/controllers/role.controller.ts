@@ -10,7 +10,9 @@ export function roleController(store: IStoreAdapter) {
 
 	return {
 		async create(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if (!ctx.workspace) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			}
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const name = body?.['name'];
@@ -25,7 +27,10 @@ export function roleController(store: IStoreAdapter) {
 					name: name.trim(),
 					workspaceId: ctx.workspace.id,
 				};
-				if (typeof description === 'string') opts.description = description;
+
+				if (typeof description === 'string') {
+					opts.description = description;
+				}
 
 				const role = await roles.create(opts);
 				return setApiResponse(HTTP.CREATED, 'ROLE_CREATED', 'Role created successfully.', {
@@ -38,7 +43,9 @@ export function roleController(store: IStoreAdapter) {
 		},
 
 		async list(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if (!ctx.workspace) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			}
 
 			const list = await roles.list(ctx.workspace.id);
 			return setApiResponse(HTTP.OK, 'ROLES_FETCHED', 'Roles retrieved successfully.', {
@@ -47,15 +54,20 @@ export function roleController(store: IStoreAdapter) {
 		},
 
 		async get(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if (!ctx.workspace) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const roleId = params?.['roleId'];
-			if (!roleId)
+			if (!roleId) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
+			}
 
 			const role = await roles.findById(roleId);
-			if (!role) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found');
+			if (!role) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found');
+			}
 
 			return setApiResponse(HTTP.OK, 'ROLE_FETCHED', 'Role retrieved successfully.', {
 				role: toRoleDTO(role),
@@ -63,23 +75,39 @@ export function roleController(store: IStoreAdapter) {
 		},
 
 		async update(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if (!ctx.workspace) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const roleId = params?.['roleId'];
-			if (!roleId)
+			if (!roleId) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
+			}
 
 			const opts: { name?: string; description?: string | null; active?: boolean } = {};
-			if (typeof body?.['name'] === 'string') opts.name = body['name'];
-			if (typeof body?.['description'] === 'string') opts.description = body['description'];
-			if (body?.['description'] === null) opts.description = null;
-			if (typeof body?.['active'] === 'boolean') opts.active = body['active'];
+
+			if (typeof body?.['name'] === 'string') {
+				opts.name = body['name'];
+			}
+
+			if (typeof body?.['description'] === 'string') {
+				opts.description = body['description'];
+			}
+
+			if (body?.['description'] === null) {
+				opts.description = null;
+			}
+
+			if (typeof body?.['active'] === 'boolean') {
+				opts.active = body['active'];
+			}
 
 			const role = await roles.update(roleId, opts);
-			if (!role)
+			if (!role) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found or is a system role');
+			}
 
 			return setApiResponse(HTTP.OK, 'ROLE_UPDATED', 'Role updated successfully.', {
 				role: toRoleDTO(role),
@@ -87,25 +115,32 @@ export function roleController(store: IStoreAdapter) {
 		},
 
 		async remove(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if (!ctx.workspace) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const roleId = params?.['roleId'];
-			if (!roleId)
+			if (!roleId) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
+			}
 
 			await roles.delete(roleId, ctx.workspace.id);
+
 			return setApiResponse(HTTP.OK, 'ROLE_DELETED', 'Role deleted successfully.');
 		},
 
 		async setPermissions(ctx: IFonderieContext): Promise<Response> {
-			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if (!ctx.workspace) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const roleId = params?.['roleId'];
-			if (!roleId)
+			if (!roleId) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
+			}
 
 			const perms = body?.['permissions'];
 			if (!Array.isArray(perms)) {
@@ -130,6 +165,7 @@ export function roleController(store: IStoreAdapter) {
 				.filter((p) => p.permissionKey.length > 0);
 
 			await roles.setPermissions(roleId, ctx.workspace.id, normalized);
+
 			return setApiResponse(HTTP.OK, 'PERMISSIONS_SET', 'Role permissions updated successfully.');
 		},
 	};
