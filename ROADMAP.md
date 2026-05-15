@@ -248,72 +248,80 @@ and a defensible MRR number before that trip has ROI.
 
 ---
 
-## Package Scope Reference
+## Package Inventory
 
-See `GAME_PLAN.md` for the technical package-by-package execution plan.
+> **16 packages ship today. 375 tests, 0 failures.**
+> See `GAME_PLAN.md` for the technical execution detail on each package.
 
-### Foundation
+### Foundation — 2 packages
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/core` | Request router, middleware pipeline, module system, shared context types | ✅ Built |
-| `@fonderie-js/store` | DB adapter interface, PostgreSQL driver, migration runner, SQL helpers | ✅ Built |
+| `@fonderie-js/core` | Request router, middleware pipeline, module system, `IFonderieContext`, typed `ctx.meta`, parser utils, response helpers | 19 |
+| `@fonderie-js/store` | `IStoreAdapter` interface, `PGAdapter`, `MigrationRunner`, `sql` tagged-template, `createMigrationsPath` | 12 |
 
-### Identity & Access
+### Identity & Access — 2 packages
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/auth` | Email/password, phone OTP, Google OAuth, stateless JWT, TOTP MFA, password recovery | ✅ Built |
-| `@fonderie-js/permissions` | RBAC, CRUD-bit permissions per resource, `requirePermission` middleware, multi-role BOOL_OR | ✅ Built |
+| `@fonderie-js/auth` | Email/password, phone OTP, Google OAuth, stateless JWT, TOTP MFA + backup codes, password recovery, email verification, user profile | 121 |
+| `@fonderie-js/permissions` | RBAC engine, CRUD-bit permission keys, `requirePermission` middleware, `BOOL_OR` multi-role aggregation, super-role bypass | 14 |
 
-### Collaboration
+### Collaboration — 1 package
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/workspaces` | Workspaces, member management, custom roles, token-based invitations, workspace-scoped routes | ✅ Built |
+| `@fonderie-js/workspaces` | Workspace CRUD, member management, multi-role assignments, custom roles + seeded system roles, token/PIN invitations, `X-Workspace-ID` context resolution, personal workspace DMZ | 28 |
 
-### Revenue
+### Revenue — 1 package · 1 planned
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/billing` | Config-driven plans, Stripe subscriptions, polymorphic user/workspace billing, usage metering | ✅ Built |
-| `@fonderie-js/credits` | Credit ledger, debit/credit transactions, `requireCredits` middleware, top-up, balance | ⬜ Phase 2 |
+| `@fonderie-js/billing` | Config-driven plan catalogue, Stripe subscriptions, polymorphic user/workspace billing, usage metering + rate limits, plan admin (POST/PUT/DELETE), `requirePlan` / `requireFeature` / `getPlanLimit` middleware | 57 |
+| `@fonderie-js/credits` | Credit ledger, debit/credit transactions, `requireCredits` middleware, top-up endpoint, balance endpoint | ⬜ Phase 2 |
 
-### Communication
+### Communication — 1 package · 1 planned
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/courier` | Transactional email, SMS, push — multi-channel, FS/DB templates, delivery tracking | ✅ Built |
+| `@fonderie-js/courier` | Transactional email/SMS/push, FS + DB template resolvers, multi-channel routing, `fonderie_message_log`, inbound delivery webhooks (SendGrid, Mailgun, Mailtrap) | 18 |
 | `@fonderie-js/notifications` | In-app notification feed, read/unread state, type-based filtering | ⬜ Phase 4 |
 
-### Observability & Compliance
+### Eventing — 1 package
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/audit` | Immutable append-only activity log — who did what, when, on which resource | ⬜ Phase 4 |
-| `@fonderie-js/compliance` | GDPR data subject requests, PII masking, retention policies, SOC2 evidence | ⬜ Phase 5 |
+| `@fonderie-js/events` | `EventBus`, `MemoryTransport`, `PGTransport` (SKIP LOCKED, per-consumer), wildcard patterns, `NOTIFICATION_EVENT` constant, typed event keys convention | 12 |
 
-### Infrastructure
+### Observability — 2 packages · 1 planned
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/config` | DB-backed feature flags, per-environment overrides, TTL-based hot reload | ✅ Built |
-| `@fonderie-js/storage` | File uploads, provider abstraction (S3/R2/local), signed URLs, validation | ⬜ Phase 3 |
-| `@fonderie-js/queue` | Background jobs, scheduled tasks, retries, dead-letter handling | ⬜ Phase 2 |
-| `@fonderie-js/webhooks` | Outbound webhooks — customers subscribe their endpoints to your internal events | ⬜ Phase 4 |
+| `@fonderie-js/logger` | Structured logging, log levels, `ConsoleTransport`, `FileTransport`, pluggable transport interface, `LoggerModule` | 14 |
+| `@fonderie-js/audit` | Immutable append-only activity log (`fonderie_audit_events`), workspace-scoped, cursor-based pagination, `GET /audit` route | 19 |
+| `@fonderie-js/compliance` | GDPR data subject requests, PII masking, retention policies, SOC2 evidence collection | ⬜ Phase 5 |
 
-### Distribution
+### Infrastructure — 3 packages · 2 planned
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/client` | Isomorphic TypeScript client — consumes package DTOs, fully typed | 🔨 Phase 3 |
-| `fonderie` CLI | Scaffold projects, generate boilerplate, run migrations, sync plans | ⬜ Phase 5 |
-| OpenAPI | Auto-generate OpenAPI v3 specs from registered routes and DTOs | ⬜ Phase 3 |
+| `@fonderie-js/config` | DB-backed remote config, per-environment overrides, TTL-based hot reload, `getConfig` helper, `RemoteConfigModule` | 17 |
+| `@fonderie-js/webhooks` | Outbound webhooks — endpoint registration, HMAC-SHA256 signed delivery, delivery log, retry tracking, `EventBus` integration | 11 |
+| `@fonderie-js/storage` | File uploads, provider abstraction (S3/R2/local), signed URLs, size/type validation | ⬜ Phase 3 |
+| `@fonderie-js/queue` | Background jobs, scheduled tasks, configurable retries, dead-letter handling | ⬜ Phase 2 |
 
-### Framework Adapters
+### Distribution — 1 partial · 2 planned
 
-| Package | What it does | Status |
+| Package | What it does | Tests |
 |---|---|---|
-| `@fonderie-js/adapter-express` | Express 5 adapter — `mount()`, `bridge()`, `adapt()`, pre-adapted guards | ✅ Built |
-| `@fonderie-js/adapter-koa` | Koa adapter — onion wrap-around, `mount()`, `bridge()`, `adapt()` | ✅ Built |
-| `@fonderie-js/adapter-hono` | Hono adapter — `mount()`, `bridge()`, `adapt()`, `notFound` fallback | ✅ Built |
+| `@fonderie-js/client` | Isomorphic TypeScript client — `FonderieClient`, `AuthClient` with typed inputs/outputs | 🔨 auth module only |
+| `fonderie` CLI | Scaffold new projects, generate module boilerplate, run migrations, sync plans | ⬜ Phase 5 |
+| OpenAPI generator | Auto-generate OpenAPI v3 spec from registered routes and DTOs | ⬜ Phase 3 |
+
+### Framework Adapters — 3 packages
+
+| Package | What it does | Tests |
+|---|---|---|
+| `@fonderie-js/adapter-express` | Express 5 — `mount()`, `bridge()`, `adapt()`, pre-adapted `requireAuth` / `withWorkspace` / `requirePermission` / `requireFeature` | 17 |
+| `@fonderie-js/adapter-koa` | Koa — onion wrap-around `mount()`, `bridge()`, `adapt()`, pre-adapted guards | 18 |
+| `@fonderie-js/adapter-hono` | Hono — `mount()`, `bridge()`, `adapt()`, `notFound` infra fallback, pre-adapted guards | 11 |
