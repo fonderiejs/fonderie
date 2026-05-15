@@ -1,6 +1,6 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
-import type { IWorkspace, IWorkspaceSettings } from '../types';
+import type { IWorkspace, IWorkspaceAddress, IWorkspaceSettings } from '../types';
 
 const SELECT_WS = `
 	id,
@@ -8,6 +8,10 @@ const SELECT_WS = `
 	slug,
 	type,
 	description,
+	motto,
+	phone,
+	business_type AS "businessType",
+	address,
 	plan,
 	owner_id    AS "ownerId",
 	is_personal AS "isPersonal",
@@ -23,6 +27,10 @@ const SELECT_WS_W = `
 	w.slug,
 	w.type,
 	w.description,
+	w.motto,
+	w.phone,
+	w.business_type AS "businessType",
+	w.address,
 	w.plan,
 	w.owner_id    AS "ownerId",
 	w.is_personal AS "isPersonal",
@@ -119,7 +127,15 @@ export async function findPersonalWorkspace(
 
 export async function updateWorkspace(
 	id: string,
-	opts: { name?: string; description?: string | null; slug?: string },
+	opts: {
+		name?: string;
+		description?: string | null;
+		slug?: string;
+		motto?: string | null;
+		phone?: string | null;
+		businessType?: string | null;
+		address?: IWorkspaceAddress | null;
+	},
 	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
 	const sets: string[] = ['updated_at = now()'];
@@ -136,6 +152,22 @@ export async function updateWorkspace(
 	if (opts.slug !== undefined) {
 		params.push(opts.slug);
 		sets.push(`slug = $${params.length}`);
+	}
+	if (opts.motto !== undefined) {
+		params.push(opts.motto);
+		sets.push(`motto = $${params.length}`);
+	}
+	if (opts.phone !== undefined) {
+		params.push(opts.phone);
+		sets.push(`phone = $${params.length}`);
+	}
+	if (opts.businessType !== undefined) {
+		params.push(opts.businessType);
+		sets.push(`business_type = $${params.length}`);
+	}
+	if (opts.address !== undefined) {
+		params.push(JSON.stringify(opts.address ?? {}));
+		sets.push(`address = $${params.length}::jsonb`);
 	}
 
 	const [row] = await store.query<IWorkspace>(

@@ -1,5 +1,15 @@
 export type WorkspaceType = 'ORGANIZATION' | 'PERSONAL' | 'TEAM' | 'COMMUNITY' | 'VENDOR';
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+export type BusinessType = 'SOLE_PROP' | 'PARTNERSHIP' | 'LLC' | 'INC' | 'NONPROFIT' | 'COOPERATIVE';
+
+export interface IWorkspaceAddress {
+	line1?: string;
+	line2?: string;
+	city?: string;
+	state?: string;
+	zip?: string;
+	country?: string;
+}
 
 export interface IWorkspace {
 	id: string;
@@ -7,6 +17,10 @@ export interface IWorkspace {
 	slug: string;
 	type: WorkspaceType;
 	description: string | null;
+	motto: string | null;
+	phone: string | null;
+	businessType: string | null;
+	address: IWorkspaceAddress | null;
 	plan: string;
 	ownerId: string;
 	isPersonal: boolean;

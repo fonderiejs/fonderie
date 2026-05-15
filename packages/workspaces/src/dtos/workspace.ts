@@ -2,12 +2,25 @@ import { stringOrEmpty, booleanOrFalse } from '@fonderie-js/core/parser';
 
 import type { IWorkspace, IRole, IMember, IInvitation, IWorkspaceSettings } from '../types';
 
+export interface IWorkspaceAddressDTO {
+	line1: string;
+	line2: string;
+	city: string;
+	state: string;
+	zip: string;
+	country: string;
+}
+
 export interface IWorkspaceDTO {
 	id: string;
 	name: string;
 	slug: string;
 	type: string;
 	description: string;
+	motto: string;
+	phone: string;
+	businessType: string;
+	address: IWorkspaceAddressDTO;
 	plan: string;
 	ownerId: string;
 	isPersonal: boolean;
@@ -55,12 +68,24 @@ export interface IWorkspaceSettingsDTO {
 }
 
 export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
+	const addr = ws.address ?? {};
 	return {
 		id: stringOrEmpty(ws.id),
 		name: stringOrEmpty(ws.name),
 		slug: stringOrEmpty(ws.slug),
 		type: stringOrEmpty(ws.type),
 		description: stringOrEmpty(ws.description),
+		motto: stringOrEmpty(ws.motto),
+		phone: stringOrEmpty(ws.phone),
+		businessType: stringOrEmpty(ws.businessType),
+		address: {
+			line1: stringOrEmpty(addr.line1),
+			line2: stringOrEmpty(addr.line2),
+			city: stringOrEmpty(addr.city),
+			state: stringOrEmpty(addr.state),
+			zip: stringOrEmpty(addr.zip),
+			country: stringOrEmpty(addr.country),
+		},
 		plan: stringOrEmpty(ws.plan),
 		ownerId: stringOrEmpty(ws.ownerId),
 		isPersonal: booleanOrFalse(ws.isPersonal),
