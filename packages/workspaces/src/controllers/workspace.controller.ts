@@ -97,12 +97,19 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const opts: { name?: string; description?: string | null } = {};
+			const opts: Parameters<typeof workspaces.update>[1] = {};
 
 			if (typeof body?.['name'] === 'string') opts.name = body['name'].trim();
-			if (body?.['description'] !== undefined) {
+			if (body?.['description'] !== undefined)
 				opts.description = typeof body['description'] === 'string' ? body['description'] : null;
-			}
+			if (body?.['motto'] !== undefined)
+				opts.motto = typeof body['motto'] === 'string' ? body['motto'] : null;
+			if (body?.['phone'] !== undefined)
+				opts.phone = typeof body['phone'] === 'string' ? body['phone'].trim() : null;
+			if (body?.['businessType'] !== undefined)
+				opts.businessType = typeof body['businessType'] === 'string' ? body['businessType'] : null;
+			if (body?.['address'] !== undefined && typeof body['address'] === 'object')
+				opts.address = body['address'] as Parameters<typeof workspaces.update>[1]['address'];
 
 			const workspace = await workspaces.update(ctx.workspace.id, opts);
 			if (!workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
