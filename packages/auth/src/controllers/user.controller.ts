@@ -204,6 +204,33 @@ export function userController(store: IStoreAdapter, bus?: EventBus) {
 			);
 		},
 
+		changePassword: async (ctx: IFonderieContext): Promise<Response> => {
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const currentPassword = body?.['currentPassword'];
+			const newPassword     = body?.['newPassword'];
+
+			if (typeof currentPassword !== 'string' || !currentPassword) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'currentPassword is required');
+			}
+			if (typeof newPassword !== 'string' || newPassword.length < 8) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'newPassword must be at least 8 characters');
+			}
+
+			const user = await users.findById(ctx.user!.id);
+			if (!user) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
+
+			const { hashPassword, verifyPassword } = await import('../services/password');
+			const valid = await verifyPassword(currentPassword, user.passwordHash ?? '');
+			if (!valid) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_CREDENTIAL', 'Current password is incorrect');
+			}
+
+			const hash = await hashPassword(newPassword);
+			await users.updatePassword(ctx.user!.id, hash);
+
+			return setApiResponse(HTTP.OK, 'PASSWORD_CHANGED', 'Password updated successfully.');
+		},
+
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
 			const userId = ctx.user!.id;
 			await users.softDelete(userId);

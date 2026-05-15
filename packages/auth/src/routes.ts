@@ -55,6 +55,7 @@ export function buildAuthRoutes(
 		['PUT', '/users/preferences', requireAuth, verifyGate, user.updatePreferences],
 		['PUT', '/users/email', requireAuth, verifyGate, user.updateEmail],
 		['PUT', '/users/phone', requireAuth, verifyGate, user.updatePhone],
+		['PUT', '/users/password', requireAuth, user.changePassword],
 		['DELETE', '/users', requireAuth, verifyGate, user.deleteMe],
 
 		// MFA (email sessions only — requireVerified is always enforced here
