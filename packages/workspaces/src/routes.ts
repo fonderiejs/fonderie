@@ -58,8 +58,11 @@ export function buildWorkspaceRoutes(
 		['GET', '/workspaces/settings', requireAuth, wsCtx, workspace.getSettings],
 		['PUT', '/workspaces/settings', requireAuth, wsCtx, workspace.updateSettings],
 
-		// ── Path-based admin routes — MUST be last to avoid shadowing specific routes above
+		// ── Path-based lookup by ID (admin / cross-workspace use)
 		['GET', '/workspaces/:id', requireAuth, wsCtx, workspace.get],
-		['PUT', '/workspaces/:id', requireAuth, wsCtx, workspace.update],
+
+		// ── Update current workspace — ID resolved from X-Workspace-ID header
+		// (or personal workspace fallback when header is absent)
+		['PUT', '/workspaces', requireAuth, wsCtx, workspace.update],
 	];
 }
