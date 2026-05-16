@@ -52,8 +52,8 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 			if (seatLimit !== null) {
 				const [countRow] = await store.query<{ count: string }>(
 					`SELECT COUNT(*) AS count FROM fonderie_role_user_workspaces
-					 WHERE workspace_id = $1 AND removed = false AND suspended = false`,
-					[ctx.workspace.id],
+					 WHERE workspace_id = $1 AND user_id != $2 AND removed = false AND suspended = false`,
+					[ctx.workspace.id, ctx.user!.id],
 				);
 				if (parseInt(countRow!.count, 10) + entries.length > seatLimit) {
 					return setApiResponse(
