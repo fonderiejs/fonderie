@@ -33,12 +33,17 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 				);
 			}
 
-			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
-			const email = body?.['email'];
-			const roleId = body?.['roleId'] as string | undefined;
+			const body = ctx.meta['body'] as unknown;
+			const entries = Array.isArray(body) ? body as Record<string, unknown>[] : [body as Record<string, unknown>];
 
-			if (typeof email !== 'string') {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required');
+			if (!entries.length) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'at least one invite is required');
+			}
+
+			for (const entry of entries) {
+				if (typeof entry?.['email'] !== 'string') {
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required for every invite');
+				}
 			}
 
 			// Seat limit — enforced automatically when billing module is registered.
@@ -50,7 +55,7 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 					 WHERE workspace_id = $1 AND removed = false AND suspended = false`,
 					[ctx.workspace.id],
 				);
-				if (parseInt(countRow!.count, 10) >= seatLimit) {
+				if (parseInt(countRow!.count, 10) + entries.length > seatLimit) {
 					return setApiResponse(
 						HTTP.PAYMENT_REQUIRED,
 						'SEAT_LIMIT_REACHED',
@@ -60,37 +65,47 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 				}
 			}
 
-			let resolvedRoleId = roleId;
-			if (!resolvedRoleId) {
+			// Resolve default role once for entries that omit roleId.
+			let defaultRoleId: string | undefined;
+			const needsDefault = entries.some((e) => !e['roleId']);
+			if (needsDefault) {
 				const [row] = await store.query<{ id: string }>(
 					`SELECT id FROM fonderie_roles
 					 WHERE name = 'ADMIN' AND workspace_id = $1 LIMIT 1`,
 					[ctx.workspace.id],
 				);
-				resolvedRoleId = row?.id;
+				defaultRoleId = row?.id;
+				if (!defaultRoleId) {
+					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Default role not found');
+				}
 			}
 
-			if (!resolvedRoleId) {
-				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Default role not found');
-			}
+			const results = await Promise.all(
+				entries.map(async (entry) => {
+					const email = entry['email'] as string;
+					const resolvedRoleId = (entry['roleId'] as string | undefined) ?? defaultRoleId!;
 
-			const invitation = await invitations.create({
-				workspaceId: ctx.workspace.id,
-				email,
-				roleId: resolvedRoleId,
-				ttl,
-			});
+					const invitation = await invitations.create({
+						workspaceId: ctx.workspace!.id,
+						email,
+						roleId: resolvedRoleId,
+						ttl,
+					});
 
-			bus
-				?.emit(NOTIFICATION_EVENT, {
-					type: MESSAGE_KEYS.workspaceInvitation,
-					recipient: { email, phone: null, deviceToken: null },
-					data: { token: invitation.token, pin: invitation.pin },
-				} satisfies ICourierMessage)
-				.catch(() => {});
+					bus
+						?.emit(NOTIFICATION_EVENT, {
+							type: MESSAGE_KEYS.workspaceInvitation,
+							recipient: { email, phone: null, deviceToken: null },
+							data: { token: invitation.token, pin: invitation.pin },
+						} satisfies ICourierMessage)
+						.catch(() => {});
 
-			return setApiResponse(HTTP.CREATED, 'INVITATION_SENT', 'Invitation sent successfully.', {
-				invitationId: invitation.id,
+					return { invitationId: invitation.id, email };
+				}),
+			);
+
+			return setApiResponse(HTTP.CREATED, 'INVITATIONS_SENT', 'Invitations sent successfully.', {
+				invitations: results,
 			});
 		},
 
