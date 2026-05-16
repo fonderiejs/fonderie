@@ -15,9 +15,6 @@ const AUTH_USER_REGISTERED = 'user.registered' as const;
 
 interface UserRegisteredPayload {
 	userId: string;
-	email?: string | null;
-	firstName?: string | null;
-	lastName?: string | null;
 }
 
 export class WorkspacesModule implements IFonderieModule {
@@ -46,10 +43,7 @@ export class WorkspacesModule implements IFonderieModule {
 	}
 
 	private async provisionPersonalWorkspace(payload: UserRegisteredPayload): Promise<void> {
-		const parts = [payload.firstName, payload.lastName].filter(
-			(s): s is string => typeof s === 'string' && s.length > 0,
-		);
-		const name = parts.length > 0 ? `${parts.join(' ')}'s Workspace` : 'My Workspace';
+		const name = 'My Workspace';
 		const slug = `${payload.userId}-personal`;
 
 		let workspaceId: string | undefined;
