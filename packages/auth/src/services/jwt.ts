@@ -57,7 +57,7 @@ export function issueTokenPair(
 	const accessToken = jwt.sign(
 		{ sub: userId, type: 'access', loginMethod, phoneVerified } satisfies IAccessPayload,
 		config.jwtSecret,
-		{ expiresIn: '15m' },
+		{ expiresIn: '24h' },
 	);
 
 	const refreshToken = jwt.sign(
