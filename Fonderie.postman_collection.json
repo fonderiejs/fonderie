@@ -1558,7 +1558,7 @@
           "description": "Token-based workspace invitations. Sending an invitation triggers a transactional email (via `@fonderie-js/courier`) containing a time-limited acceptance link.\n\n`POST /workspaces/invitations/accept` does **not** require the `X-Workspace-ID` header \u2014 the workspace is resolved from the invitation token itself, so unauthenticated users who just registered can accept an invite directly.",
           "item": [
             {
-              "name": "Send Invitation",
+              "name": "Send Invitations (bulk)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -1577,10 +1577,10 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"bob@example.com\",\n  \"roleId\": \"<role-uuid>\"\n}"
+                  "raw": "[\n  { \"email\": \"alice@example.com\", \"roleId\": \"<role-uuid>\" },\n  { \"email\": \"bob@example.com\", \"roleId\": \"<role-uuid>\" }\n]"
                 },
                 "url": "{{base_url}}/workspaces/invitations",
-                "description": "Invite a user to the workspace by email. Sends a transactional email with an acceptance link."
+                "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
               },
               "response": [
                 {
@@ -1594,12 +1594,12 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"reason\": \"INVITATION_SENT\",\n  \"explanation\": \"Invitation sent successfully.\",\n  \"result\": {\n    \"invitation\": {\n      \"id\": \"inv-uuid\",\n      \"email\": \"bob@example.com\",\n      \"workspaceId\": \"b2c3d4e5-...\",\n      \"expiresAt\": \"2026-05-19T10:00:00.000Z\"\n    }\n  }\n}"
+                  "body": "{\n  \"reason\": \"INVITATIONS_SENT\",\n  \"explanation\": \"Invitations sent successfully.\",\n  \"result\": {\n    \"invitations\": [\n      { \"invitationId\": \"inv-uuid-1\", \"email\": \"alice@example.com\" },\n      { \"invitationId\": \"inv-uuid-2\", \"email\": \"bob@example.com\" }\n    ]\n  }\n}"
                 },
                 {
-                  "name": "409 Already invited",
-                  "status": "Conflict",
-                  "code": 409,
+                  "name": "422 Missing email",
+                  "status": "Unprocessable Entity",
+                  "code": 422,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -1607,7 +1607,20 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"reason\": \"ALREADY_INVITED\",\n  \"explanation\": \"This email has already been invited.\"\n}"
+                  "body": "{\n  \"reason\": \"INVALID_PARAMETER\",\n  \"explanation\": \"email is required for every invite\"\n}"
+                },
+                {
+                  "name": "402 Seat limit reached",
+                  "status": "Payment Required",
+                  "code": 402,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"reason\": \"SEAT_LIMIT_REACHED\",\n  \"explanation\": \"Your plan allows 5 seats. Upgrade to invite more members.\",\n  \"result\": { \"limit\": 5 }\n}"
                 }
               ]
             },
