@@ -321,6 +321,33 @@ test('requireAuth: calls next when ctx.user is set', async () => {
 	assert.ok(called);
 });
 
+test('requireAuth: 403 MFA_REQUIRED when ctx.user.mfaPending is true', async () => {
+	const { requireAuth } = await import('../middlewares/require-auth');
+	const ctx = makeCtx({ user: { id: 'user-1', email: 'a@b.com', mfaPending: true } });
+	const response = await requireAuth(ctx, async () => Response.json({ ok: true }));
+	assert.equal(response.status, 403);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'MFA_REQUIRED');
+});
+
+test('requireAnyAuth: 401 when ctx.user is null', async () => {
+	const { requireAnyAuth } = await import('../middlewares/require-auth');
+	const ctx = makeCtx({ user: null });
+	const response = await requireAnyAuth(ctx, async () => Response.json({ ok: true }));
+	assert.equal(response.status, 401);
+});
+
+test('requireAnyAuth: calls next when ctx.user.mfaPending is true', async () => {
+	const { requireAnyAuth } = await import('../middlewares/require-auth');
+	const ctx = makeCtx({ user: { id: 'user-1', email: 'a@b.com', mfaPending: true } });
+	let called = false;
+	await requireAnyAuth(ctx, async () => {
+		called = true;
+		return Response.json({});
+	});
+	assert.ok(called);
+});
+
 // ── requireVerified middleware ────────────────────────────────────
 
 test('requireVerified: passes email user with verified email', async () => {

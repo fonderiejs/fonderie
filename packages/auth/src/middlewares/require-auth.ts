@@ -1,1 +1,1 @@
-export { requireAuth } from '@fonderie-js/core/middlewares';
+export { requireAuth, requireAnyAuth } from '@fonderie-js/core/middlewares';
