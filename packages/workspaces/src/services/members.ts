@@ -19,7 +19,7 @@ export async function getMember(
 	const [row] = await store.query<IMember>(
 		`SELECT ${SELECT_MEMBER}
 		 FROM fonderie_role_user_workspaces ruw
-		 JOIN fonderie_roles r ON r.id = ruw.role_id
+		 LEFT JOIN fonderie_roles r ON r.id = ruw.role_id
 		 WHERE ruw.user_id      = $1
 		   AND ruw.workspace_id = $2
 		   AND ruw.removed      = false
@@ -34,7 +34,7 @@ export async function listMembers(workspaceId: string, store: IStoreAdapter): Pr
 	return store.query<IMember>(
 		`SELECT ${SELECT_MEMBER}
 		 FROM fonderie_role_user_workspaces ruw
-		 JOIN fonderie_roles r ON r.id = ruw.role_id
+		 LEFT JOIN fonderie_roles r ON r.id = ruw.role_id
 		 WHERE ruw.workspace_id = $1
 		   AND ruw.removed      = false
 		   AND ruw.suspended    = false
