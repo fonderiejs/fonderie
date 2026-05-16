@@ -4,5 +4,5 @@ export { withLogger } from './logger';
 export { notFoundMiddleware } from './not-found';
 export { withBody } from './body-parser';
 export { defaultErrorHandler } from './error-handler';
-export { requireAuth } from './require-auth';
+export { requireAuth, requireAnyAuth } from './require-auth';
 export { requireVerified } from './require-verified';

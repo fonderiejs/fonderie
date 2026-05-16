@@ -3,7 +3,7 @@ import type { Middleware } from '@fonderie-js/core';
 import type { EventBus } from '@fonderie-js/events';
 import type { IAuthConfig } from './config';
 
-import { requireAuth, requireVerified } from '@fonderie-js/core/middlewares';
+import { requireAuth, requireAnyAuth, requireVerified } from '@fonderie-js/core/middlewares';
 import { requireEmailLogin } from './middlewares/require-email-login';
 
 import { mfaController } from './controllers/mfa.controller';
@@ -61,7 +61,9 @@ export function buildAuthRoutes(
 		// MFA (email sessions only — requireVerified is always enforced here
 		// because MFA is a security feature and email verification is meaningful)
 		['POST', '/auth/mfa/setup', requireAuth, requireEmailLogin, requireVerified, mfa.setup],
-		['POST', '/auth/mfa/verify', requireAuth, requireEmailLogin, requireVerified, mfa.verify],
+		// /auth/mfa/verify accepts both mfaPending tokens (TOTP/backup-code login)
+		// and full tokens (setup confirmation), so requireAnyAuth is used here.
+		['POST', '/auth/mfa/verify', requireAnyAuth, requireEmailLogin, requireVerified, mfa.verify],
 		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, requireVerified, mfa.disable],
 		[
 			'POST',
