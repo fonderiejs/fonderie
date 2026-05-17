@@ -82,6 +82,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const type = body?.['type'];
+			const sex = body?.['sex'];
 			const firstName = body?.['firstName'];
 			const lastName = body?.['lastName'];
 			const companyName = body?.['companyName'];
@@ -97,10 +98,18 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 					'type must be individual or business',
 				);
 			}
+			if (sex !== undefined && sex !== 'UNKNOWN' && sex !== 'MALE' && sex !== 'FEMALE') {
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PARAMETER',
+					'sex must be UNKNOWN, MALE, or FEMALE',
+				);
+			}
 
 			const customer = await customers.create({
 				workspaceId,
 				type: typeof type === 'string' ? type : 'individual',
+				sex: typeof sex === 'string' ? sex : 'UNKNOWN',
 				firstName: typeof firstName === 'string' ? firstName : null,
 				lastName: typeof lastName === 'string' ? lastName : null,
 				companyName: typeof companyName === 'string' ? companyName : null,
@@ -152,6 +161,17 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 					);
 				}
 				opts.type = t;
+			}
+			if (body?.['sex'] !== undefined) {
+				const s = body['sex'];
+				if (s !== 'UNKNOWN' && s !== 'MALE' && s !== 'FEMALE') {
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_PARAMETER',
+						'sex must be UNKNOWN, MALE, or FEMALE',
+					);
+				}
+				opts.sex = s;
 			}
 			if (body?.['firstName'] !== undefined)
 				opts.firstName = typeof body['firstName'] === 'string' ? body['firstName'] : null;

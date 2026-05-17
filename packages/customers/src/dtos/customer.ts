@@ -1,5 +1,6 @@
 import { arrayOrEmpty, booleanOrFalse, dateOrEmpty, stringOrEmpty } from '@fonderie-js/core';
 
+import type { CustomerSex } from '../types';
 import type {
 	IAddress,
 	ICustomer,
@@ -14,6 +15,7 @@ import type {
 export interface ICustomerDTO {
 	id: string;
 	type: string;
+	sex: CustomerSex;
 	firstName: string;
 	lastName: string;
 	companyName: string;
@@ -76,10 +78,13 @@ export interface ICustomerTagDTO {
 	tag: string;
 }
 
+const VALID_SEX: CustomerSex[] = ['UNKNOWN', 'MALE', 'FEMALE'];
+
 export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 	return {
 		id: stringOrEmpty(c.id),
 		type: stringOrEmpty(c.type),
+		sex: VALID_SEX.includes(c.sex as CustomerSex) ? (c.sex as CustomerSex) : 'UNKNOWN',
 		firstName: stringOrEmpty(c.firstName),
 		lastName: stringOrEmpty(c.lastName),
 		companyName: stringOrEmpty(c.companyName),

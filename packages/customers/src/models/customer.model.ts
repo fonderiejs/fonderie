@@ -6,6 +6,7 @@ const SELECT_CUSTOMER = `
 	id,
 	workspace_id   AS "workspaceId",
 	type,
+	sex,
 	first_name     AS "firstName",
 	last_name      AS "lastName",
 	company_name   AS "companyName",
@@ -30,6 +31,7 @@ export interface ListCustomersOpts {
 export interface CreateCustomerOpts {
 	workspaceId: string;
 	type?: string;
+	sex?: string;
 	firstName?: string | null;
 	lastName?: string | null;
 	companyName?: string | null;
@@ -42,6 +44,7 @@ export interface CreateCustomerOpts {
 
 export interface UpdateCustomerOpts {
 	type?: string;
+	sex?: string;
 	firstName?: string | null;
 	lastName?: string | null;
 	companyName?: string | null;
@@ -165,12 +168,13 @@ export class CustomerModel {
 	async create(opts: CreateCustomerOpts): Promise<ICustomer> {
 		const [row] = await this.store.query<ICustomer>(
 			`INSERT INTO fonderie_customers
-			   (workspace_id, type, first_name, last_name, company_name, job_title, avatar_url, locale, reference_code, created_by)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			   (workspace_id, type, sex, first_name, last_name, company_name, job_title, avatar_url, locale, reference_code, created_by)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			 RETURNING ${SELECT_CUSTOMER}`,
 			[
 				opts.workspaceId,
 				opts.type ?? 'individual',
+				opts.sex ?? 'UNKNOWN',
 				opts.firstName ?? null,
 				opts.lastName ?? null,
 				opts.companyName ?? null,
@@ -196,6 +200,10 @@ export class CustomerModel {
 		if (opts.type !== undefined) {
 			params.push(opts.type);
 			sets.push(`type = $${params.length}`);
+		}
+		if (opts.sex !== undefined) {
+			params.push(opts.sex);
+			sets.push(`sex = $${params.length}`);
 		}
 		if (opts.firstName !== undefined) {
 			params.push(opts.firstName);
