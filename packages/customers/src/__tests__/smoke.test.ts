@@ -69,10 +69,9 @@ function makeCtx(
 ): any {
 	return {
 		user: opts.user ?? null,
-		workspace: null,
+		workspace: opts.workspaceId ? { id: opts.workspaceId, name: 'Test Workspace' } : null,
 		tenant: null,
 		meta: {
-			workspaceId: opts.workspaceId,
 			body: opts.body ?? {},
 			params: opts.params ?? {},
 		},
