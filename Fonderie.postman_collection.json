@@ -30,6 +30,31 @@
       "key": "plan_id",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "customer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_email_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_phone_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_addr_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_note_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -1580,7 +1605,7 @@
                   "raw": "[\n  { \"email\": \"alice@example.com\", \"roleId\": \"<role-uuid>\" },\n  { \"email\": \"bob@example.com\", \"roleId\": \"<role-uuid>\" }\n]"
                 },
                 "url": "{{base_url}}/workspaces/invitations",
-                "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
               },
               "response": [
                 {
@@ -2825,6 +2850,988 @@
                 }
               ],
               "body": "{\n  \"error\": \"SSO is not available on your current plan\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customers  (@fonderie-js/customers)",
+      "item": [
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers?limit=50&offset=0",
+            "description": "List all customers in the workspace. Supports ?search=, ?archived=true, ?limit=, ?offset=."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMERS_FETCHED\",\n  \"explanation\": \"Customers retrieved successfully.\",\n  \"result\": {\n    \"customers\": [\n      {\n        \"id\": \"{{customer_id}}\",\n        \"workspaceId\": \"{{workspace_id}}\",\n        \"type\": \"business\",\n        \"firstName\": null,\n        \"lastName\": null,\n        \"companyName\": \"Acme Landscaping\",\n        \"jobTitle\": null,\n        \"avatarUrl\": null,\n        \"locale\": \"en-US\",\n        \"referenceCode\": \"CLT-001\",\n        \"isArchived\": false,\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers",
+            "description": "Create a new workspace-scoped customer. type: individual | business.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"business\",\n  \"companyName\": \"Acme Landscaping\",\n  \"locale\": \"en-US\",\n  \"referenceCode\": \"CLT-001\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.customer.id){pm.collectionVariables.set('customer_id',r.result.customer.id);}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_CREATED\",\n  \"explanation\": \"Customer created successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"workspaceId\": \"{{workspace_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"jobTitle\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}",
+            "description": "Fetch a single customer with embedded emails, phones, and tags."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"workspaceId\": \"{{workspace_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"jobTitle\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n      \"emails\": [],\n      \"phones\": [],\n      \"tags\": []\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}",
+            "description": "Partial update \u2014 only send fields you want to change.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"Acme Landscaping Ltd.\",\n  \"referenceCode\": \"CLT-001\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_UPDATED\",\n  \"explanation\": \"Customer updated successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"workspaceId\": \"{{workspace_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"jobTitle\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Archive Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/archive",
+            "description": "Soft-archive a customer. Archived customers still appear on historical jobs."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_ARCHIVED\",\n  \"explanation\": \"Customer archived successfully.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Restore Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/restore",
+            "description": "Restore an archived customer."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_RESTORED\",\n  \"explanation\": \"Customer restored successfully.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Customer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}",
+            "description": "Hard delete a customer and all related emails, phones, addresses, notes, and tags (cascades)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_DELETED\",\n  \"explanation\": \"Customer deleted successfully.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Emails",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/emails",
+            "description": "List all emails for a customer. Primary email is returned first."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_EMAILS_FETCHED\",\n  \"explanation\": \"Emails retrieved successfully.\",\n  \"result\": {\n    \"emails\": [\n      {\n        \"id\": \"{{customer_email_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"email\": \"billing@acme.com\",\n        \"label\": \"billing\",\n        \"isPrimary\": true,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/emails",
+            "description": "Add an email. label: work | personal | billing. Setting isPrimary=true clears the existing primary.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"billing@acme.com\",\n  \"label\": \"billing\",\n  \"isPrimary\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.email.id){pm.collectionVariables.set('customer_email_id',r.result.email.id);}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_EMAIL_ADDED\",\n  \"explanation\": \"Email added successfully.\",\n  \"result\": {\n    \"email\": {\n      \"id\": \"{{customer_email_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"email\": \"billing@acme.com\",\n      \"label\": \"billing\",\n      \"isPrimary\": true,\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Set Primary Email",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/emails/{{customer_email_id}}/primary",
+            "description": "Atomically sets this email as primary and clears all others for this customer."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_EMAIL_PRIMARY_SET\",\n  \"explanation\": \"Primary email updated.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Email",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/emails/{{customer_email_id}}",
+            "description": "Remove an email from a customer."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_EMAIL_REMOVED\",\n  \"explanation\": \"Email removed successfully.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Phones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/phones",
+            "description": "List all phone numbers. Primary phone is returned first."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_PHONES_FETCHED\",\n  \"explanation\": \"Phones retrieved successfully.\",\n  \"result\": {\n    \"phones\": [\n      {\n        \"id\": \"{{customer_phone_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"phone\": \"+15141234567\",\n        \"label\": \"office\",\n        \"isPrimary\": true,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/phones",
+            "description": "Add a phone number in E.164 format. label: mobile | office | home | fax.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+15141234567\",\n  \"label\": \"office\",\n  \"isPrimary\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.phone.id){pm.collectionVariables.set('customer_phone_id',r.result.phone.id);}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_PHONE_ADDED\",\n  \"explanation\": \"Phone added successfully.\",\n  \"result\": {\n    \"phone\": {\n      \"id\": \"{{customer_phone_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"phone\": \"+15141234567\",\n      \"label\": \"office\",\n      \"isPrimary\": true,\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Set Primary Phone",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/phones/{{customer_phone_id}}/primary",
+            "description": "Atomically sets this phone as primary and clears all others."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_PHONE_PRIMARY_SET\",\n  \"explanation\": \"Primary phone updated.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Phone",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/phones/{{customer_phone_id}}",
+            "description": "Remove a phone number from a customer."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_PHONE_REMOVED\",\n  \"explanation\": \"Phone removed successfully.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Addresses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/addresses",
+            "description": "List all addresses with full address data. Primary address is returned first."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_ADDRESSES_FETCHED\",\n  \"explanation\": \"Addresses retrieved successfully.\",\n  \"result\": {\n    \"addresses\": [\n      {\n        \"addrId\": \"{{customer_addr_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"label\": \"service\",\n        \"isPrimary\": true,\n        \"address\": {\n          \"id\": \"{{customer_addr_id}}\",\n          \"countryIso\": \"CA\",\n          \"subdivision1Iso\": \"QC\",\n          \"subdivision2Iso\": null,\n          \"zipPostalCode\": \"H2X 1Y6\",\n          \"line1\": \"123 Rue Sainte-Catherine\",\n          \"line2\": null\n        }\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/addresses",
+            "description": "Create a new address and link it to the customer. label: service | billing | other.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countryIso\": \"CA\",\n  \"subdivision1Iso\": \"QC\",\n  \"zipPostalCode\": \"H2X 1Y6\",\n  \"line1\": \"123 Rue Sainte-Catherine\",\n  \"label\": \"service\",\n  \"isPrimary\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.address.addrId){pm.collectionVariables.set('customer_addr_id',r.result.address.addrId);}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_ADDED\",\n  \"explanation\": \"Address added successfully.\",\n  \"result\": {\n    \"address\": {\n      \"addrId\": \"{{customer_addr_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"label\": \"service\",\n      \"isPrimary\": true,\n      \"address\": {\n        \"id\": \"{{customer_addr_id}}\",\n        \"countryIso\": \"CA\",\n        \"subdivision1Iso\": \"QC\",\n        \"subdivision2Iso\": null,\n        \"zipPostalCode\": \"H2X 1Y6\",\n        \"line1\": \"123 Rue Sainte-Catherine\",\n        \"line2\": null\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Set Primary Address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/addresses/{{customer_addr_id}}/primary",
+            "description": "Atomically sets this address as primary and clears all others."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_PRIMARY_SET\",\n  \"explanation\": \"Primary address updated.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Address",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/addresses/{{customer_addr_id}}",
+            "description": "Unlink and delete the address record."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_REMOVED\",\n  \"explanation\": \"Address removed successfully.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Notes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/notes",
+            "description": "List all notes for a customer, newest first."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_NOTES_FETCHED\",\n  \"explanation\": \"Notes retrieved successfully.\",\n  \"result\": {\n    \"notes\": [\n      {\n        \"id\": \"{{customer_note_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"authorId\": \"{{user_id}}\",\n        \"body\": \"Prefers e-transfer. Always pays on time.\",\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/notes",
+            "description": "Add an internal note to a customer. Author is set from the authenticated user.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Prefers e-transfer. Always pays on time.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.note.id){pm.collectionVariables.set('customer_note_id',r.result.note.id);}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_NOTE_CREATED\",\n  \"explanation\": \"Note created successfully.\",\n  \"result\": {\n    \"note\": {\n      \"id\": \"{{customer_note_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"authorId\": \"{{user_id}}\",\n      \"body\": \"Prefers e-transfer. Always pays on time.\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Note",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/notes/{{customer_note_id}}",
+            "description": "Update the body of a note.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Prefers e-transfer. Net-30 terms agreed.\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_NOTE_UPDATED\",\n  \"explanation\": \"Note updated successfully.\",\n  \"result\": {\n    \"note\": {\n      \"id\": \"{{customer_note_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"authorId\": \"{{user_id}}\",\n      \"body\": \"Prefers e-transfer. Net-30 terms agreed.\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:05:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Note",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/notes/{{customer_note_id}}",
+            "description": "Delete a note."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_NOTE_DELETED\",\n  \"explanation\": \"Note deleted successfully.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Tags",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/tags",
+            "description": "List all tags for a customer."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_TAGS_FETCHED\",\n  \"explanation\": \"Tags retrieved successfully.\",\n  \"result\": {\n    \"tags\": [\n      \"vip\",\n      \"recurring\"\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/tags",
+            "description": "Add a tag to a customer. No-op if the tag already exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tag\": \"vip\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_TAG_ADDED\",\n  \"explanation\": \"Tag added successfully.\",\n  \"result\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Tag",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
+            ],
+            "url": "{{base_url}}/customers/{{customer_id}}/tags/vip",
+            "description": "Remove a tag from a customer."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"reason\": \"CUSTOMER_TAG_REMOVED\",\n  \"explanation\": \"Tag removed successfully.\",\n  \"result\": null\n}"
             }
           ]
         }
