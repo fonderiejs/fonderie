@@ -3701,7 +3701,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_NOTES_FETCHED\",\n  \"explanation\": \"Notes retrieved successfully.\",\n  \"result\": {\n    \"notes\": [\n      {\n        \"id\": \"{{customer_note_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"authorId\": \"{{user_id}}\",\n        \"body\": \"Prefers e-transfer. Always pays on time.\",\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_NOTES_FETCHED\",\n  \"explanation\": \"Notes retrieved successfully.\",\n  \"result\": {\n    \"notes\": [\n      {\n        \"id\": \"{{customer_note_id}}\",\n        \"authorId\": \"{{user_id}}\",\n        \"body\": \"Prefers e-transfer. Always pays on time.\",\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
                 }
               ]
             },
@@ -3797,7 +3797,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_NOTE_CREATED\",\n  \"explanation\": \"Note created successfully.\",\n  \"result\": {\n    \"note\": {\n      \"id\": \"{{customer_note_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"authorId\": \"{{user_id}}\",\n      \"body\": \"Prefers e-transfer. Always pays on time.\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_NOTE_CREATED\",\n  \"explanation\": \"Note created successfully.\",\n  \"result\": {\n    \"note\": {\n      \"id\": \"{{customer_note_id}}\",\n      \"authorId\": \"{{user_id}}\",\n      \"body\": \"Prefers e-transfer. Always pays on time.\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
                 }
               ]
             },
@@ -3884,7 +3884,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_NOTE_UPDATED\",\n  \"explanation\": \"Note updated successfully.\",\n  \"result\": {\n    \"note\": {\n      \"id\": \"{{customer_note_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"authorId\": \"{{user_id}}\",\n      \"body\": \"Prefers e-transfer. Net-30 terms agreed.\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:05:00.000Z\"\n    }\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_NOTE_UPDATED\",\n  \"explanation\": \"Note updated successfully.\",\n  \"result\": {\n    \"note\": {\n      \"id\": \"{{customer_note_id}}\",\n      \"authorId\": \"{{user_id}}\",\n      \"body\": \"Prefers e-transfer. Net-30 terms agreed.\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:05:00.000Z\"\n    }\n  }\n}"
                 }
               ]
             }
@@ -3958,7 +3958,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_EMAILS_FETCHED\",\n  \"explanation\": \"Emails retrieved successfully.\",\n  \"result\": {\n    \"emails\": [\n      {\n        \"id\": \"{{customer_email_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"email\": \"billing@acme.com\",\n        \"label\": \"billing\",\n        \"isPrimary\": true,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_EMAILS_FETCHED\",\n  \"explanation\": \"Emails retrieved successfully.\",\n  \"result\": {\n    \"emails\": [\n      {\n        \"id\": \"{{customer_email_id}}\",\n        \"email\": \"billing@acme.com\",\n        \"label\": \"billing\",\n        \"isPrimary\": true,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
                 }
               ]
             },
@@ -4127,7 +4127,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_EMAIL_ADDED\",\n  \"explanation\": \"Email added successfully.\",\n  \"result\": {\n    \"email\": {\n      \"id\": \"{{customer_email_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"email\": \"billing@acme.com\",\n      \"label\": \"billing\",\n      \"isPrimary\": true,\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_EMAIL_ADDED\",\n  \"explanation\": \"Email added successfully.\",\n  \"result\": {\n    \"email\": {\n      \"id\": \"{{customer_email_id}}\",\n      \"email\": \"billing@acme.com\",\n      \"label\": \"billing\",\n      \"isPrimary\": true,\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
                 }
               ]
             },
@@ -4272,7 +4272,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_PHONES_FETCHED\",\n  \"explanation\": \"Phones retrieved successfully.\",\n  \"result\": {\n    \"phones\": [\n      {\n        \"id\": \"{{customer_phone_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"phone\": \"+15141234567\",\n        \"label\": \"office\",\n        \"isPrimary\": true,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_PHONES_FETCHED\",\n  \"explanation\": \"Phones retrieved successfully.\",\n  \"result\": {\n    \"phones\": [\n      {\n        \"id\": \"{{customer_phone_id}}\",\n        \"phone\": \"+15141234567\",\n        \"label\": \"office\",\n        \"isPrimary\": true,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
                 }
               ]
             },
@@ -4368,7 +4368,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_PHONE_ADDED\",\n  \"explanation\": \"Phone added successfully.\",\n  \"result\": {\n    \"phone\": {\n      \"id\": \"{{customer_phone_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"phone\": \"+15141234567\",\n      \"label\": \"office\",\n      \"isPrimary\": true,\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_PHONE_ADDED\",\n  \"explanation\": \"Phone added successfully.\",\n  \"result\": {\n    \"phone\": {\n      \"id\": \"{{customer_phone_id}}\",\n      \"phone\": \"+15141234567\",\n      \"label\": \"office\",\n      \"isPrimary\": true,\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
                 }
               ]
             },
@@ -4586,7 +4586,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESSES_FETCHED\",\n  \"explanation\": \"Addresses retrieved successfully.\",\n  \"result\": {\n    \"addresses\": [\n      {\n        \"id\": \"{{customer_addr_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"label\": \"service\",\n        \"isPrimary\": true,\n        \"address\": {\n          \"countryIso\": \"CA\",\n          \"subdivision1Iso\": \"QC\",\n          \"subdivision2Iso\": null,\n          \"zipPostalCode\": \"H2X 1Y6\",\n          \"line1\": \"123 Rue Sainte-Catherine\",\n          \"line2\": null\n        }\n      }\n    ]\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESSES_FETCHED\",\n  \"explanation\": \"Addresses retrieved successfully.\",\n  \"result\": {\n    \"addresses\": [\n      {\n        \"id\": \"{{customer_addr_id}}\",\n        \"label\": \"service\",\n        \"isPrimary\": true,\n        \"address\": {\n          \"countryIso\": \"CA\",\n          \"subdivision1Iso\": \"QC\",\n          \"subdivision2Iso\": null,\n          \"zipPostalCode\": \"H2X 1Y6\",\n          \"line1\": \"123 Rue Sainte-Catherine\",\n          \"line2\": null\n        }\n      }\n    ]\n  }\n}"
                 }
               ]
             },
@@ -4682,7 +4682,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_ADDED\",\n  \"explanation\": \"Address added successfully.\",\n  \"result\": {\n    \"address\": {\n      \"id\": \"{{customer_addr_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"label\": \"service\",\n      \"isPrimary\": true,\n      \"address\": {\n        \"countryIso\": \"CA\",\n        \"subdivision1Iso\": \"QC\",\n        \"subdivision2Iso\": null,\n        \"zipPostalCode\": \"H2X 1Y6\",\n        \"line1\": \"123 Rue Sainte-Catherine\",\n        \"line2\": null\n      }\n    }\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_ADDED\",\n  \"explanation\": \"Address added successfully.\",\n  \"result\": {\n    \"address\": {\n      \"id\": \"{{customer_addr_id}}\",\n      \"label\": \"service\",\n      \"isPrimary\": true,\n      \"address\": {\n        \"countryIso\": \"CA\",\n        \"subdivision1Iso\": \"QC\",\n        \"subdivision2Iso\": null,\n        \"zipPostalCode\": \"H2X 1Y6\",\n        \"line1\": \"123 Rue Sainte-Catherine\",\n        \"line2\": null\n      }\n    }\n  }\n}"
                 }
               ]
             },
