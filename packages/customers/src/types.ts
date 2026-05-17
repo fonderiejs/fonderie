@@ -1,4 +1,5 @@
 export type CustomerType = 'individual' | 'business';
+export type CustomerSex = 'UNKNOWN' | 'MALE' | 'FEMALE';
 export type EmailLabel = 'work' | 'personal' | 'billing';
 export type PhoneLabel = 'mobile' | 'office' | 'home' | 'fax';
 export type AddressLabel = 'service' | 'billing' | 'other';
@@ -7,6 +8,7 @@ export interface ICustomer {
 	id: string;
 	workspaceId: string;
 	type: CustomerType;
+	sex: CustomerSex;
 	firstName: string | null;
 	lastName: string | null;
 	companyName: string | null;
