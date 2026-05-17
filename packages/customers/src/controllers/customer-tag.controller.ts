@@ -10,7 +10,7 @@ export function customerTagController(store: IStoreAdapter) {
 	const tags = new CustomerTagModel(store);
 
 	async function resolveCustomer(ctx: IFonderieContext) {
-		const workspaceId = ctx.meta['workspaceId'];
+		const workspaceId = ctx.workspace?.id;
 		if (!workspaceId)
 			return {
 				error: setApiResponse(

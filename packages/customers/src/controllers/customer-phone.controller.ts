@@ -10,7 +10,7 @@ export function customerPhoneController(store: IStoreAdapter) {
 	const phones = new CustomerPhoneModel(store);
 
 	async function resolveCustomer(ctx: IFonderieContext) {
-		const workspaceId = ctx.meta.workspaceId;
+		const workspaceId = ctx.workspace?.id;
 		if (!workspaceId)
 			return {
 				error: setApiResponse(
