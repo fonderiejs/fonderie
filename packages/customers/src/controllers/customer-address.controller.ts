@@ -10,7 +10,7 @@ export function customerAddressController(store: IStoreAdapter) {
 	const addresses = new CustomerAddressModel(store);
 
 	async function resolveCustomer(ctx: IFonderieContext) {
-		const workspaceId = ctx.meta.workspaceId;
+		const workspaceId = ctx.workspace?.id;
 		if (!workspaceId)
 			return {
 				error: setApiResponse(

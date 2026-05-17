@@ -10,7 +10,7 @@ export function customerNoteController(store: IStoreAdapter) {
 	const notes = new CustomerNoteModel(store);
 
 	async function resolveCustomer(ctx: IFonderieContext) {
-		const workspaceId = ctx.meta['workspaceId'];
+		const workspaceId = ctx.workspace?.id;
 		if (!workspaceId)
 			return {
 				error: setApiResponse(

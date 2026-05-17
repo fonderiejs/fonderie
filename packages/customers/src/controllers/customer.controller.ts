@@ -12,7 +12,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
-			const workspaceId = ctx.meta['workspaceId'];
+			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -44,7 +44,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 		},
 
 		async get(ctx: IFonderieContext): Promise<Response> {
-			const workspaceId = ctx.meta['workspaceId'];
+			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -70,7 +70,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 		},
 
 		async create(ctx: IFonderieContext): Promise<Response> {
-			const workspaceId = ctx.meta['workspaceId'];
+			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -123,7 +123,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 		},
 
 		async update(ctx: IFonderieContext): Promise<Response> {
-			const workspaceId = ctx.meta['workspaceId'];
+			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -186,7 +186,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 		},
 
 		async delete(ctx: IFonderieContext): Promise<Response> {
-			const workspaceId = ctx.meta['workspaceId'];
+			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -219,7 +219,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 		},
 
 		async archive(ctx: IFonderieContext): Promise<Response> {
-			const workspaceId = ctx.meta['workspaceId'];
+			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -252,7 +252,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 		},
 
 		async restore(ctx: IFonderieContext): Promise<Response> {
-			const workspaceId = ctx.meta['workspaceId'];
+			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
 					HTTP.BAD_REQUEST,
