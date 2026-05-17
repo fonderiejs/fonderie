@@ -49,12 +49,16 @@ export class CustomerEmailModel {
 	}
 
 	async setPrimary(emailId: string, customerId: string): Promise<void> {
-		await this.store.query(
-			`UPDATE fonderie_customer_emails
-			 SET is_primary = (id = $1)
-			 WHERE customer_id = $2`,
-			[emailId, customerId],
-		);
+		await this.store.transaction(async (tx) => {
+			await tx.query(
+				`UPDATE fonderie_customer_emails SET is_primary = false WHERE customer_id = $1`,
+				[customerId],
+			);
+			await tx.query(
+				`UPDATE fonderie_customer_emails SET is_primary = true WHERE id = $1 AND customer_id = $2`,
+				[emailId, customerId],
+			);
+		});
 	}
 
 	async remove(emailId: string, customerId: string): Promise<void> {

@@ -95,12 +95,16 @@ export class CustomerAddressModel {
 	}
 
 	async setPrimary(addrId: string, customerId: string): Promise<void> {
-		await this.store.query(
-			`UPDATE fonderie_customer_addresses
-			 SET is_primary = (addr_id = $1)
-			 WHERE customer_id = $2`,
-			[addrId, customerId],
-		);
+		await this.store.transaction(async (tx) => {
+			await tx.query(
+				`UPDATE fonderie_customer_addresses SET is_primary = false WHERE customer_id = $1`,
+				[customerId],
+			);
+			await tx.query(
+				`UPDATE fonderie_customer_addresses SET is_primary = true WHERE addr_id = $1 AND customer_id = $2`,
+				[addrId, customerId],
+			);
+		});
 	}
 
 	async remove(addrId: string, customerId: string): Promise<void> {
