@@ -52,10 +52,12 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 			if (seatLimit !== null) {
 				const [countRow] = await store.query<{ count: string }>(
 					`SELECT COUNT(*) AS count FROM fonderie_role_user_workspaces
-					 WHERE workspace_id = $1 AND user_id != $2 AND removed = false AND suspended = false`,
-					[ctx.workspace.id, ctx.user!.id],
+					 WHERE workspace_id = $1 AND removed = false AND suspended = false`,
+					[ctx.workspace.id],
 				);
-				if (parseInt(countRow!.count, 10) + entries.length > seatLimit) {
+				const total = parseInt(countRow!.count, 10);
+				const occupied = ctx.workspace.isPersonal ? total : Math.max(0, total - 1);
+				if (occupied + entries.length > seatLimit) {
 					return setApiResponse(
 						HTTP.PAYMENT_REQUIRED,
 						'SEAT_LIMIT_REACHED',
