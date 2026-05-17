@@ -4,6 +4,7 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 
 import { CustomerModel } from '../models/customer.model';
 import { CustomerTagModel } from '../models/customer-tag.model';
+import { isUuid } from '../utils';
 
 export function customerTagController(store: IStoreAdapter) {
 	const customers = new CustomerModel(store);
@@ -22,8 +23,8 @@ export function customerTagController(store: IStoreAdapter) {
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined;
 		const id = params?.['customerId'];
-		if (!id)
-			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required') };
+		if (!isUuid(id))
+			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID') };
 
 		const customer = await customers.findById(id, workspaceId);
 		if (!customer)

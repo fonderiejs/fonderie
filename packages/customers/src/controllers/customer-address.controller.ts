@@ -4,6 +4,7 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import { toCustomerAddressDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { CustomerAddressModel } from '../models/customer-address.model';
+import { isUuid } from '../utils';
 
 export function customerAddressController(store: IStoreAdapter) {
 	const customers = new CustomerModel(store);
@@ -22,8 +23,8 @@ export function customerAddressController(store: IStoreAdapter) {
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined;
 		const id = params?.['customerId'];
-		if (!id)
-			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId is required') };
+		if (!isUuid(id))
+			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID') };
 
 		const customer = await customers.findById(id, workspaceId);
 		if (!customer)
@@ -47,9 +48,9 @@ export function customerAddressController(store: IStoreAdapter) {
 			const r = await resolveCustomer(ctx);
 			if ('error' in r) return r.error;
 
-			const body = ctx.meta.body as Record<string, unknown> | undefined;
-			const countryIso = body?.countryIso;
-			const zipPostalCode = body?.zipPostalCode;
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const countryIso = body?.['countryIso'];
+			const zipPostalCode = body?.['zipPostalCode'];
 
 			if (typeof countryIso !== 'string' || countryIso.trim().length === 0) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'countryIso is required');
@@ -62,12 +63,12 @@ export function customerAddressController(store: IStoreAdapter) {
 				customerId: r.customer.id,
 				countryIso: countryIso.trim(),
 				zipPostalCode: zipPostalCode.trim(),
-				subdivision1Iso: typeof body?.subdivision1Iso === 'string' ? body.subdivision1Iso : null,
-				subdivision2Iso: typeof body?.subdivision2Iso === 'string' ? body.subdivision2Iso : null,
-				line1: typeof body?.line1 === 'string' ? body.line1 : null,
-				line2: typeof body?.line2 === 'string' ? body.line2 : null,
-				label: typeof body?.label === 'string' ? body.label : 'service',
-				isPrimary: body?.isPrimary === true,
+				subdivision1Iso: typeof body?.['subdivision1Iso'] === 'string' ? body['subdivision1Iso'] : null,
+				subdivision2Iso: typeof body?.['subdivision2Iso'] === 'string' ? body['subdivision2Iso'] : null,
+				line1: typeof body?.['line1'] === 'string' ? body['line1'] : null,
+				line2: typeof body?.['line2'] === 'string' ? body['line2'] : null,
+				label: typeof body?.['label'] === 'string' ? body['label'] : 'service',
+				isPrimary: body?.['isPrimary'] === true,
 			});
 
 			return setApiResponse(HTTP.CREATED, 'ADDRESS_ADDED', 'Address added successfully.', {
@@ -79,28 +80,24 @@ export function customerAddressController(store: IStoreAdapter) {
 			const r = await resolveCustomer(ctx);
 			if ('error' in r) return r.error;
 
-			const params = ctx.meta.params as Record<string, string> | undefined;
-			const addrId = params?.addrId;
-			if (!addrId) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'addrId is required');
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const addrId = params?.['addrId'];
+			if (!isUuid(addrId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'addrId must be a valid UUID');
 			}
 
 			await addresses.setPrimary(addrId, r.customer.id);
-			return setApiResponse(
-				HTTP.OK,
-				'ADDRESS_PRIMARY_SET',
-				'Primary address updated successfully.',
-			);
+			return setApiResponse(HTTP.OK, 'ADDRESS_PRIMARY_SET', 'Primary address updated successfully.');
 		},
 
 		async remove(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
 			if ('error' in r) return r.error;
 
-			const params = ctx.meta.params as Record<string, string> | undefined;
-			const addrId = params?.addrId;
-			if (!addrId) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'addrId is required');
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const addrId = params?.['addrId'];
+			if (!isUuid(addrId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'addrId must be a valid UUID');
 			}
 
 			await addresses.remove(addrId, r.customer.id);

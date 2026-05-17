@@ -4,6 +4,7 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import { toCustomerPhoneDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { CustomerPhoneModel } from '../models/customer-phone.model';
+import { isUuid } from '../utils';
 
 export function customerPhoneController(store: IStoreAdapter) {
 	const customers = new CustomerModel(store);
@@ -11,7 +12,7 @@ export function customerPhoneController(store: IStoreAdapter) {
 
 	async function resolveCustomer(ctx: IFonderieContext) {
 		const workspaceId = ctx.workspace?.id;
-		if (!workspaceId)
+		if (!workspaceId) {
 			return {
 				error: setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -19,15 +20,18 @@ export function customerPhoneController(store: IStoreAdapter) {
 					'Workspace context is required',
 				),
 			};
+		}
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined;
 		const id = params?.['customerId'];
-		if (!id)
-			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId is required') };
+		if (!isUuid(id)) {
+			return {error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID')};
+		}
 
 		const customer = await customers.findById(id, workspaceId);
-		if (!customer)
-			return { error: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found') };
+		if (!customer) {
+			return {error: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found')};
+		}
 
 		return { customer, workspaceId };
 	}
@@ -35,7 +39,9 @@ export function customerPhoneController(store: IStoreAdapter) {
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const list = await phones.list(r.customer.id);
 			return setApiResponse(HTTP.OK, 'PHONES_FETCHED', 'Phones retrieved successfully.', {
@@ -45,16 +51,18 @@ export function customerPhoneController(store: IStoreAdapter) {
 
 		async add(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
-			const body = ctx.meta.body as Record<string, unknown> | undefined;
-			const phone = body?.phone;
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const phone = body?.['phone'];
 			if (typeof phone !== 'string' || phone.trim().length === 0) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'phone is required');
 			}
 
-			const label = typeof body?.label === 'string' ? body.label : 'mobile';
-			const isPrimary = body?.isPrimary === true;
+			const label = typeof body?.['label'] === 'string' ? body['label'] : 'mobile';
+			const isPrimary = body?.['isPrimary'] === true;
 
 			const created = await phones.add({
 				customerId: r.customer.id,
@@ -70,12 +78,14 @@ export function customerPhoneController(store: IStoreAdapter) {
 
 		async setPrimary(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
-			const params = ctx.meta.params as Record<string, string> | undefined;
-			const phoneId = params?.phoneId;
-			if (!phoneId) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'phoneId is required');
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const phoneId = params?.['phoneId'];
+			if (!isUuid(phoneId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'phoneId must be a valid UUID');
 			}
 
 			await phones.setPrimary(phoneId, r.customer.id);
@@ -84,12 +94,14 @@ export function customerPhoneController(store: IStoreAdapter) {
 
 		async remove(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
-			const params = ctx.meta.params as Record<string, string> | undefined;
-			const phoneId = params?.phoneId;
-			if (!phoneId) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'phoneId is required');
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const phoneId = params?.['phoneId'];
+			if (!isUuid(phoneId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'phoneId must be a valid UUID');
 			}
 
 			await phones.remove(phoneId, r.customer.id);

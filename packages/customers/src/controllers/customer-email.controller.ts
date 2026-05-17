@@ -4,6 +4,7 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import { toCustomerEmailDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { CustomerEmailModel } from '../models/customer-email.model';
+import { isUuid } from '../utils';
 
 export function customerEmailController(store: IStoreAdapter) {
 	const customers = new CustomerModel(store);
@@ -11,7 +12,7 @@ export function customerEmailController(store: IStoreAdapter) {
 
 	async function resolveCustomer(ctx: IFonderieContext) {
 		const workspaceId = ctx.workspace?.id;
-		if (!workspaceId)
+		if (!workspaceId) {
 			return {
 				error: setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -19,15 +20,18 @@ export function customerEmailController(store: IStoreAdapter) {
 					'Workspace context is required',
 				),
 			};
+		}
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined;
 		const id = params?.['customerId'];
-		if (!id)
-			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required') };
+		if (!isUuid(id)) {
+			return {error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID')};
+		}
 
 		const customer = await customers.findById(id, workspaceId);
-		if (!customer)
-			return { error: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found') };
+		if (!customer) {
+			return {error: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found')};
+		}
 
 		return { customer, workspaceId };
 	}
@@ -35,7 +39,9 @@ export function customerEmailController(store: IStoreAdapter) {
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const list = await emails.list(r.customer.id);
 			return setApiResponse(HTTP.OK, 'EMAILS_FETCHED', 'Emails retrieved successfully.', {
@@ -45,7 +51,9 @@ export function customerEmailController(store: IStoreAdapter) {
 
 		async add(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const email = body?.['email'];
@@ -70,12 +78,14 @@ export function customerEmailController(store: IStoreAdapter) {
 
 		async setPrimary(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const emailId = params?.['emailId'];
-			if (!emailId) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'emailId is required');
+			if (!isUuid(emailId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'emailId must be a valid UUID');
 			}
 
 			await emails.setPrimary(emailId, r.customer.id);
@@ -84,12 +94,14 @@ export function customerEmailController(store: IStoreAdapter) {
 
 		async remove(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const emailId = params?.['emailId'];
-			if (!emailId) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'emailId is required');
+			if (!isUuid(emailId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'emailId must be a valid UUID');
 			}
 
 			await emails.remove(emailId, r.customer.id);
