@@ -21,7 +21,7 @@ export type { FonderieConfig } from './config';
 // Built-in middleware — import from '@fonderie-js/core/middlewares', not the root barrel
 
 // Parser utilities
-export { stringOrEmpty, booleanOrFalse, arrayOrEmpty, numberOrZero } from './parser';
+export { stringOrEmpty, booleanOrFalse, arrayOrEmpty, numberOrZero, dateOrEmpty } from './parser';
 
 // Response helpers
 export type { IApiError, HttpStatus } from './response';
