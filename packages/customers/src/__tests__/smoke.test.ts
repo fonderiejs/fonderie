@@ -110,7 +110,6 @@ test('EVENT_KEYS are defined', () => {
 test('toCustomerDTO: maps all fields correctly', () => {
 	const dto = toCustomerDTO(CUSTOMER);
 	assert.equal(dto.id, CUST_ID);
-	assert.equal(dto.workspaceId, WS_ID);
 	assert.equal(dto.type, 'individual');
 	assert.equal(dto.firstName, 'Jane');
 	assert.equal(dto.lastName, 'Doe');

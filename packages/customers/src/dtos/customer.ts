@@ -13,12 +13,10 @@ import type {
 
 export interface ICustomerDTO {
 	id: string;
-	workspaceId: string;
 	type: string;
 	firstName: string;
 	lastName: string;
 	companyName: string;
-	jobTitle: string;
 	avatarUrl: string;
 	locale: string;
 	referenceCode: string;
@@ -81,12 +79,10 @@ export interface ICustomerTagDTO {
 export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 	return {
 		id: stringOrEmpty(c.id),
-		workspaceId: stringOrEmpty(c.workspaceId),
 		type: stringOrEmpty(c.type),
 		firstName: stringOrEmpty(c.firstName),
 		lastName: stringOrEmpty(c.lastName),
 		companyName: stringOrEmpty(c.companyName),
-		jobTitle: stringOrEmpty(c.jobTitle),
 		avatarUrl: stringOrEmpty(c.avatarUrl),
 		locale: stringOrEmpty(c.locale),
 		referenceCode: stringOrEmpty(c.referenceCode),
