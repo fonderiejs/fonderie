@@ -6,6 +6,7 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import { EVENT_KEYS } from '../config';
 import { toCustomerDetailDTO, toCustomerDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
+import { isUuid } from '../utils';
 
 export function customerController(store: IStoreAdapter, bus?: EventBus) {
 	const customers = new CustomerModel(store);
@@ -55,8 +56,8 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const id = params?.['customerId'];
-			if (!id) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
+			if (!isUuid(id)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID');
 			}
 
 			const customer = await customers.findDetail(id, workspaceId);
@@ -134,8 +135,8 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const id = params?.['customerId'];
-			if (!id) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
+			if (!isUuid(id)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID');
 			}
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
@@ -197,8 +198,8 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const id = params?.['customerId'];
-			if (!id) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
+			if (!isUuid(id)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID');
 			}
 
 			const existing = await customers.findById(id, workspaceId);
@@ -230,8 +231,8 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const id = params?.['customerId'];
-			if (!id) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
+			if (!isUuid(id)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID');
 			}
 
 			const existing = await customers.findById(id, workspaceId);
@@ -263,8 +264,8 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const id = params?.['customerId'];
-			if (!id) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
+			if (!isUuid(id)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID');
 			}
 
 			const existing = await customers.findById(id, workspaceId);
