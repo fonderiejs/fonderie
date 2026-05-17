@@ -30,14 +30,22 @@ export class CustomerEmailModel {
 		label?: string;
 		isPrimary?: boolean;
 	}): Promise<ICustomerEmail> {
-		const [row] = await this.store.query<ICustomerEmail>(
-			`INSERT INTO fonderie_customer_emails (id, customer_id, email, label, is_primary)
-			 VALUES (gen_random_uuid(), $1, $2, $3, $4)
-			 RETURNING ${SELECT_EMAIL}`,
-			[opts.customerId, opts.email, opts.label ?? 'work', opts.isPrimary ?? false],
-		);
-		if (!row) throw new Error('Failed to add customer email');
-		return row;
+		return this.store.transaction(async (tx) => {
+			if (opts.isPrimary) {
+				await tx.query(
+					`UPDATE fonderie_customer_emails SET is_primary = false WHERE customer_id = $1`,
+					[opts.customerId],
+				);
+			}
+			const [row] = await tx.query<ICustomerEmail>(
+				`INSERT INTO fonderie_customer_emails (id, customer_id, email, label, is_primary)
+				 VALUES (gen_random_uuid(), $1, $2, $3, $4)
+				 RETURNING ${SELECT_EMAIL}`,
+				[opts.customerId, opts.email, opts.label ?? 'work', opts.isPrimary ?? false],
+			);
+			if (!row) throw new Error('Failed to add customer email');
+			return row;
+		});
 	}
 
 	async setPrimary(emailId: string, customerId: string): Promise<void> {
