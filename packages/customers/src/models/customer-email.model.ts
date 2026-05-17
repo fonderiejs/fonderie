@@ -62,10 +62,26 @@ export class CustomerEmailModel {
 	}
 
 	async remove(emailId: string, customerId: string): Promise<void> {
-		await this.store.query(
-			`DELETE FROM fonderie_customer_emails
-			 WHERE id = $1 AND customer_id = $2`,
-			[emailId, customerId],
-		);
+		await this.store.transaction(async (tx) => {
+			const [deleted] = await tx.query<{ isPrimary: boolean }>(
+				`DELETE FROM fonderie_customer_emails
+				 WHERE id = $1 AND customer_id = $2
+				 RETURNING is_primary AS "isPrimary"`,
+				[emailId, customerId],
+			);
+			if (deleted?.isPrimary) {
+				await tx.query(
+					`UPDATE fonderie_customer_emails
+					 SET is_primary = true
+					 WHERE id = (
+					   SELECT id FROM fonderie_customer_emails
+					   WHERE customer_id = $1
+					   ORDER BY created_at ASC
+					   LIMIT 1
+					 )`,
+					[customerId],
+				);
+			}
+		});
 	}
 }
