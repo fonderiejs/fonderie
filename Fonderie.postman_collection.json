@@ -4984,7 +4984,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMERS_FETCHED\",\n  \"explanation\": \"Customers retrieved successfully.\",\n  \"result\": {\n    \"customers\": [\n      {\n        \"id\": \"{{customer_id}}\",\n        \"workspaceId\": \"{{workspace_id}}\",\n        \"type\": \"business\",\n        \"firstName\": null,\n        \"lastName\": null,\n        \"companyName\": \"Acme Landscaping\",\n        \"jobTitle\": null,\n        \"avatarUrl\": null,\n        \"locale\": \"en-US\",\n        \"referenceCode\": \"CLT-001\",\n        \"isArchived\": false,\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMERS_FETCHED\",\n  \"explanation\": \"Customers retrieved successfully.\",\n  \"result\": {\n    \"customers\": [\n      {\n        \"id\": \"{{customer_id}}\",\n        \"type\": \"business\",\n        \"firstName\": null,\n        \"lastName\": null,\n        \"companyName\": \"Acme Landscaping\",\n        \"avatarUrl\": null,\n        \"locale\": \"en-US\",\n        \"referenceCode\": \"CLT-001\",\n        \"isArchived\": false,\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
             }
           ]
         },
@@ -5078,7 +5078,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_CREATED\",\n  \"explanation\": \"Customer created successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"workspaceId\": \"{{workspace_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"jobTitle\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_CREATED\",\n  \"explanation\": \"Customer created successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
             }
           ]
         },
@@ -5145,7 +5145,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"workspaceId\": \"{{workspace_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"jobTitle\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n      \"emails\": [],\n      \"phones\": [],\n      \"tags\": []\n    }\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n      \"emails\": [],\n      \"phones\": [],\n      \"tags\": []\n    }\n  }\n}"
             }
           ]
         },
@@ -5228,7 +5228,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_UPDATED\",\n  \"explanation\": \"Customer updated successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"workspaceId\": \"{{workspace_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"jobTitle\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_UPDATED\",\n  \"explanation\": \"Customer updated successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
             }
           ]
         },
