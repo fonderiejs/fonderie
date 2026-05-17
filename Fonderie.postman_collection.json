@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "32cc3ab4-5feb-4ff9-a1de-66ab310cfb6b",
+    "_postman_id": "132aa5f9-ebea-43a1-9430-4230698e0b90",
     "name": "Fonderie.js",
     "description": "API reference for **Fonderie.js** — a modular TypeScript framework that ships the first three months of every SaaS already built.\n\nEach folder maps directly to an `@fonderie-js/*` package. Register only the modules you need — the framework is intentionally composable.\n\n---\n\n**Base URL:** `{{base_url}}` (default `http://localhost:4000/v1`)\n\n**Authentication:** Protected endpoints require `Authorization: Bearer {{token}}`. The `token` variable is auto-captured after login or register.\n\n**Response envelope:** Every application response follows a consistent shape:\n```json\n{\n  \"reason\": \"SNAKE_CASE_CODE\",\n  \"explanation\": \"Human-readable description.\",\n  \"result\": { ... }\n}\n```\nError responses omit `result` and use a `4xx` / `5xx` status code.\n\n**Collection variables (auto-captured):**\n| Variable | Captured by | Purpose |\n|---|---|---|\n| `base_url` | — | Server base URL |\n| `token` | Login / Register | Short-lived access JWT |\n| `refresh_token` | Login / Register | Long-lived refresh token |\n| `workspace_id` | Create Workspace | Active workspace UUID |\n| `plan_id` | List Plans | First plan UUID from catalogue |",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
@@ -3964,17 +3964,6 @@
             },
             {
               "name": "Set Primary Email",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const c=pm.response.code;if(c>=200&&c<300){const emailId=pm.request.url.path[3];if(emailId){pm.collectionVariables.set('customer_email_id',emailId);}}"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
               "request": {
                 "method": "PUT",
                 "header": [
@@ -4385,17 +4374,6 @@
             },
             {
               "name": "Set Primary Phone",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const c=pm.response.code;if(c>=200&&c<300){const phoneId=pm.request.url.path[3];if(phoneId){pm.collectionVariables.set('customer_phone_id',phoneId);}}"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
               "request": {
                 "method": "PUT",
                 "header": [
@@ -4608,7 +4586,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESSES_FETCHED\",\n  \"explanation\": \"Addresses retrieved successfully.\",\n  \"result\": {\n    \"addresses\": [\n      {\n        \"addrId\": \"{{customer_addr_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"label\": \"service\",\n        \"isPrimary\": true,\n        \"address\": {\n          \"id\": \"{{customer_addr_id}}\",\n          \"countryIso\": \"CA\",\n          \"subdivision1Iso\": \"QC\",\n          \"subdivision2Iso\": null,\n          \"zipPostalCode\": \"H2X 1Y6\",\n          \"line1\": \"123 Rue Sainte-Catherine\",\n          \"line2\": null\n        }\n      }\n    ]\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESSES_FETCHED\",\n  \"explanation\": \"Addresses retrieved successfully.\",\n  \"result\": {\n    \"addresses\": [\n      {\n        \"id\": \"{{customer_addr_id}}\",\n        \"customerId\": \"{{customer_id}}\",\n        \"label\": \"service\",\n        \"isPrimary\": true,\n        \"address\": {\n          \"countryIso\": \"CA\",\n          \"subdivision1Iso\": \"QC\",\n          \"subdivision2Iso\": null,\n          \"zipPostalCode\": \"H2X 1Y6\",\n          \"line1\": \"123 Rue Sainte-Catherine\",\n          \"line2\": null\n        }\n      }\n    ]\n  }\n}"
                 }
               ]
             },
@@ -4619,7 +4597,7 @@
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.address.addrId){pm.collectionVariables.set('customer_addr_id',r.result.address.addrId);}"
+                      "const c=pm.response.code;const r=pm.response.json();if(c>=200&&c<300&&r.result?.address.id){pm.collectionVariables.set('customer_addr_id',r.result.address.id);}"
                     ],
                     "type": "text/javascript"
                   }
@@ -4704,23 +4682,12 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_ADDED\",\n  \"explanation\": \"Address added successfully.\",\n  \"result\": {\n    \"address\": {\n      \"addrId\": \"{{customer_addr_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"label\": \"service\",\n      \"isPrimary\": true,\n      \"address\": {\n        \"id\": \"{{customer_addr_id}}\",\n        \"countryIso\": \"CA\",\n        \"subdivision1Iso\": \"QC\",\n        \"subdivision2Iso\": null,\n        \"zipPostalCode\": \"H2X 1Y6\",\n        \"line1\": \"123 Rue Sainte-Catherine\",\n        \"line2\": null\n      }\n    }\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_ADDED\",\n  \"explanation\": \"Address added successfully.\",\n  \"result\": {\n    \"address\": {\n      \"id\": \"{{customer_addr_id}}\",\n      \"customerId\": \"{{customer_id}}\",\n      \"label\": \"service\",\n      \"isPrimary\": true,\n      \"address\": {\n        \"countryIso\": \"CA\",\n        \"subdivision1Iso\": \"QC\",\n        \"subdivision2Iso\": null,\n        \"zipPostalCode\": \"H2X 1Y6\",\n        \"line1\": \"123 Rue Sainte-Catherine\",\n        \"line2\": null\n      }\n    }\n  }\n}"
                 }
               ]
             },
             {
               "name": "Set Primary Address",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const c=pm.response.code;if(c>=200&&c<300){const addrId=pm.request.url.path[3];if(addrId){pm.collectionVariables.set('customer_addr_id',addrId);}}"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
               "request": {
                 "method": "PUT",
                 "header": [
