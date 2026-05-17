@@ -32,39 +32,39 @@ export function buildCustomerRoutes(
 		// ── Core customer CRUD ───────────────────────────────────────────
 		['GET', '/customers', requireAuth, wsCtx, customer.list],
 		['POST', '/customers', requireAuth, wsCtx, customer.create],
-		['GET', '/customers/:id', requireAuth, wsCtx, customer.get],
-		['PUT', '/customers/:id', requireAuth, wsCtx, customer.update],
-		['DELETE', '/customers/:id', requireAuth, wsCtx, customer.delete],
-		['POST', '/customers/:id/archive', requireAuth, wsCtx, customer.archive],
-		['POST', '/customers/:id/restore', requireAuth, wsCtx, customer.restore],
+		['GET', '/customers/:customerId', requireAuth, wsCtx, customer.get],
+		['PUT', '/customers/:customerId', requireAuth, wsCtx, customer.update],
+		['DELETE', '/customers/:customerId', requireAuth, wsCtx, customer.delete],
+		['POST', '/customers/:customerId/archive', requireAuth, wsCtx, customer.archive],
+		['POST', '/customers/:customerId/restore', requireAuth, wsCtx, customer.restore],
 
 		// ── Emails ───────────────────────────────────────────────────────
-		['GET', '/customers/:id/emails', requireAuth, wsCtx, email.list],
-		['POST', '/customers/:id/emails', requireAuth, wsCtx, email.add],
-		['PUT', '/customers/:id/emails/:emailId/primary', requireAuth, wsCtx, email.setPrimary],
-		['DELETE', '/customers/:id/emails/:emailId', requireAuth, wsCtx, email.remove],
+		['GET', '/customers/:customerId/emails', requireAuth, wsCtx, email.list],
+		['POST', '/customers/:customerId/emails', requireAuth, wsCtx, email.add],
+		['PUT', '/customers/:customerId/emails/:emailId/primary', requireAuth, wsCtx, email.setPrimary],
+		['DELETE', '/customers/:customerId/emails/:emailId', requireAuth, wsCtx, email.remove],
 
 		// ── Phones ───────────────────────────────────────────────────────
-		['GET', '/customers/:id/phones', requireAuth, wsCtx, phone.list],
-		['POST', '/customers/:id/phones', requireAuth, wsCtx, phone.add],
-		['PUT', '/customers/:id/phones/:phoneId/primary', requireAuth, wsCtx, phone.setPrimary],
-		['DELETE', '/customers/:id/phones/:phoneId', requireAuth, wsCtx, phone.remove],
+		['GET', '/customers/:customerId/phones', requireAuth, wsCtx, phone.list],
+		['POST', '/customers/:customerId/phones', requireAuth, wsCtx, phone.add],
+		['PUT', '/customers/:customerId/phones/:phoneId/primary', requireAuth, wsCtx, phone.setPrimary],
+		['DELETE', '/customers/:customerId/phones/:phoneId', requireAuth, wsCtx, phone.remove],
 
 		// ── Addresses ────────────────────────────────────────────────────
-		['GET', '/customers/:id/addresses', requireAuth, wsCtx, address.list],
-		['POST', '/customers/:id/addresses', requireAuth, wsCtx, address.add],
-		['PUT', '/customers/:id/addresses/:addrId/primary', requireAuth, wsCtx, address.setPrimary],
-		['DELETE', '/customers/:id/addresses/:addrId', requireAuth, wsCtx, address.remove],
+		['GET', '/customers/:customerId/addresses', requireAuth, wsCtx, address.list],
+		['POST', '/customers/:customerId/addresses', requireAuth, wsCtx, address.add],
+		['PUT', '/customers/:customerId/addresses/:addrId/primary', requireAuth, wsCtx, address.setPrimary],
+		['DELETE', '/customers/:customerId/addresses/:addrId', requireAuth, wsCtx, address.remove],
 
 		// ── Notes ────────────────────────────────────────────────────────
-		['GET', '/customers/:id/notes', requireAuth, wsCtx, note.list],
-		['POST', '/customers/:id/notes', requireAuth, wsCtx, note.create],
-		['PUT', '/customers/:id/notes/:noteId', requireAuth, wsCtx, note.update],
-		['DELETE', '/customers/:id/notes/:noteId', requireAuth, wsCtx, note.delete],
+		['GET', '/customers/:customerId/notes', requireAuth, wsCtx, note.list],
+		['POST', '/customers/:customerId/notes', requireAuth, wsCtx, note.create],
+		['PUT', '/customers/:customerId/notes/:noteId', requireAuth, wsCtx, note.update],
+		['DELETE', '/customers/:customerId/notes/:noteId', requireAuth, wsCtx, note.delete],
 
 		// ── Tags ─────────────────────────────────────────────────────────
-		['GET', '/customers/:id/tags', requireAuth, wsCtx, tag.list],
-		['POST', '/customers/:id/tags', requireAuth, wsCtx, tag.add],
-		['DELETE', '/customers/:id/tags/:tag', requireAuth, wsCtx, tag.remove],
+		['GET', '/customers/:customerId/tags', requireAuth, wsCtx, tag.list],
+		['POST', '/customers/:customerId/tags', requireAuth, wsCtx, tag.add],
+		['DELETE', '/customers/:customerId/tags/:tag', requireAuth, wsCtx, tag.remove],
 	];
 }

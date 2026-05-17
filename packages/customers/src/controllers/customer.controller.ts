@@ -54,7 +54,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
-			const id = params?.['id'];
+			const id = params?.['customerId'];
 			if (!id) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
 			}
@@ -133,7 +133,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
-			const id = params?.['id'];
+			const id = params?.['customerId'];
 			if (!id) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
 			}
@@ -196,7 +196,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
-			const id = params?.['id'];
+			const id = params?.['customerId'];
 			if (!id) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
 			}
@@ -229,7 +229,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
-			const id = params?.['id'];
+			const id = params?.['customerId'];
 			if (!id) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
 			}
@@ -262,7 +262,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
-			const id = params?.['id'];
+			const id = params?.['customerId'];
 			if (!id) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required');
 			}

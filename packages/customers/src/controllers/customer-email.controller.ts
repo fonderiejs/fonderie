@@ -21,7 +21,7 @@ export function customerEmailController(store: IStoreAdapter) {
 			};
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined;
-		const id = params?.['id'];
+		const id = params?.['customerId'];
 		if (!id)
 			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required') };
 
