@@ -165,21 +165,21 @@ test('customerController.create: 201 with customer DTO', async () => {
 test('customerController.get: 404 when customer not found', async () => {
 	const { customerController } = await import('../controllers/customer.controller');
 	const ctrl = customerController(makeStore({ customer: null }));
-	const res = await ctrl.get(makeCtx({ workspaceId: 'ws-1', params: { id: 'missing' } }));
+	const res = await ctrl.get(makeCtx({ workspaceId: 'ws-1', params: { customerId: 'missing' } }));
 	assert.equal(res.status, 404);
 });
 
 test('customerController.delete: 404 when customer not found', async () => {
 	const { customerController } = await import('../controllers/customer.controller');
 	const ctrl = customerController(makeStore({ customer: null }));
-	const res = await ctrl.delete(makeCtx({ workspaceId: 'ws-1', params: { id: 'missing' } }));
+	const res = await ctrl.delete(makeCtx({ workspaceId: 'ws-1', params: { customerId: 'missing' } }));
 	assert.equal(res.status, 404);
 });
 
 test('customerController.archive: 200 on success', async () => {
 	const { customerController } = await import('../controllers/customer.controller');
 	const ctrl = customerController(makeStore({ customer: CUSTOMER }));
-	const res = await ctrl.archive(makeCtx({ workspaceId: 'ws-1', params: { id: 'cust-1' } }));
+	const res = await ctrl.archive(makeCtx({ workspaceId: 'ws-1', params: { customerId: 'cust-1' } }));
 	assert.equal(res.status, 200);
 	const body = (await res.json()) as any;
 	assert.equal(body.reason, 'CUSTOMER_ARCHIVED');
@@ -188,7 +188,7 @@ test('customerController.archive: 200 on success', async () => {
 test('customerController.restore: 200 on success', async () => {
 	const { customerController } = await import('../controllers/customer.controller');
 	const ctrl = customerController(makeStore({ customer: CUSTOMER }));
-	const res = await ctrl.restore(makeCtx({ workspaceId: 'ws-1', params: { id: 'cust-1' } }));
+	const res = await ctrl.restore(makeCtx({ workspaceId: 'ws-1', params: { customerId: 'cust-1' } }));
 	assert.equal(res.status, 200);
 	const body = (await res.json()) as any;
 	assert.equal(body.reason, 'CUSTOMER_RESTORED');
@@ -199,7 +199,7 @@ test('customerController.restore: 200 on success', async () => {
 test('customerEmailController.add: 422 when email missing', async () => {
 	const { customerEmailController } = await import('../controllers/customer-email.controller');
 	const ctrl = customerEmailController(makeStore({ customer: CUSTOMER }));
-	const res = await ctrl.add(makeCtx({ workspaceId: 'ws-1', params: { id: 'cust-1' }, body: {} }));
+	const res = await ctrl.add(makeCtx({ workspaceId: 'ws-1', params: { customerId: 'cust-1' }, body: {} }));
 	assert.equal(res.status, 422);
 });
 
@@ -208,7 +208,7 @@ test('customerEmailController.add: 422 when email missing', async () => {
 test('customerPhoneController.add: 422 when phone missing', async () => {
 	const { customerPhoneController } = await import('../controllers/customer-phone.controller');
 	const ctrl = customerPhoneController(makeStore({ customer: CUSTOMER }));
-	const res = await ctrl.add(makeCtx({ workspaceId: 'ws-1', params: { id: 'cust-1' }, body: {} }));
+	const res = await ctrl.add(makeCtx({ workspaceId: 'ws-1', params: { customerId: 'cust-1' }, body: {} }));
 	assert.equal(res.status, 422);
 });
 
@@ -218,7 +218,7 @@ test('customerNoteController.create: 422 when body missing', async () => {
 	const { customerNoteController } = await import('../controllers/customer-note.controller');
 	const ctrl = customerNoteController(makeStore({ customer: CUSTOMER }));
 	const res = await ctrl.create(
-		makeCtx({ workspaceId: 'ws-1', params: { id: 'cust-1' }, body: {} }),
+		makeCtx({ workspaceId: 'ws-1', params: { customerId: 'cust-1' }, body: {} }),
 	);
 	assert.equal(res.status, 422);
 });
@@ -228,14 +228,14 @@ test('customerNoteController.create: 422 when body missing', async () => {
 test('customerTagController.add: 422 when tag missing', async () => {
 	const { customerTagController } = await import('../controllers/customer-tag.controller');
 	const ctrl = customerTagController(makeStore({ customer: CUSTOMER }));
-	const res = await ctrl.add(makeCtx({ workspaceId: 'ws-1', params: { id: 'cust-1' }, body: {} }));
+	const res = await ctrl.add(makeCtx({ workspaceId: 'ws-1', params: { customerId: 'cust-1' }, body: {} }));
 	assert.equal(res.status, 422);
 });
 
 test('customerTagController.list: 200 with tags array', async () => {
 	const { customerTagController } = await import('../controllers/customer-tag.controller');
 	const ctrl = customerTagController(makeStore({ customer: CUSTOMER }));
-	const res = await ctrl.list(makeCtx({ workspaceId: 'ws-1', params: { id: 'cust-1' } }));
+	const res = await ctrl.list(makeCtx({ workspaceId: 'ws-1', params: { customerId: 'cust-1' } }));
 	assert.equal(res.status, 200);
 	const body = (await res.json()) as any;
 	assert.ok(Array.isArray(body.result.tags));
