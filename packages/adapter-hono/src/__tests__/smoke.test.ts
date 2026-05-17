@@ -137,7 +137,10 @@ test('mount: returns the same Hono instance', () => {
 });
 
 test('mount: ctx._fonderie is available in user routes', async () => {
-	const app = mount(new Hono(), makeApp({ id: 'u1' }));
+	const fonderie = makeApp({ id: 'u1' });
+	const app = new Hono();
+	app.use('*', bridge(fonderie));
+	mount(app, fonderie);
 	app.get('/me', (c) => {
 		const ctx = c.get('_fonderie');
 		return c.json({ userId: (ctx.user as any).id });

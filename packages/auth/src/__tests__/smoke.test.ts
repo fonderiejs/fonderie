@@ -739,16 +739,16 @@ test('verify: 200 VERIFIED (idempotent) when email user is already verified', as
 	assert.equal(body.result.verified, true);
 });
 
-test('verify: 422 when pin missing or non-numeric', async () => {
+test('verify: 422 when token missing or non-numeric', async () => {
 	const ctrl = makeAuth();
 	const unverified = { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' as const };
 	assert.equal((await ctrl.verify(makeCtx({ user: unverified, body: {} }))).status, 422);
 	assert.equal(
-		(await ctrl.verify(makeCtx({ user: unverified, body: { pin: 'abcdef' } }))).status,
+		(await ctrl.verify(makeCtx({ user: unverified, body: { token: 'abcdef' } }))).status,
 		422,
 	);
 	assert.equal(
-		(await ctrl.verify(makeCtx({ user: unverified, body: { pin: ' 12345 ' } }))).status,
+		(await ctrl.verify(makeCtx({ user: unverified, body: { token: ' 12345 ' } }))).status,
 		422,
 	);
 });
@@ -756,7 +756,7 @@ test('verify: 422 when pin missing or non-numeric', async () => {
 test('verify: 400 VERIFICATION_FAILED when email pin not found', async () => {
 	const ctrl = makeAuth({ verifyRow: null });
 	const unverified = { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' as const };
-	const response = await ctrl.verify(makeCtx({ user: unverified, body: { pin: '000000' } }));
+	const response = await ctrl.verify(makeCtx({ user: unverified, body: { token: '000000' } }));
 	assert.equal(response.status, 400);
 	const body = (await response.json()) as any;
 	assert.equal(body.reason, 'VERIFICATION_FAILED');
@@ -765,7 +765,7 @@ test('verify: 400 VERIFICATION_FAILED when email pin not found', async () => {
 test('verify: 200 VERIFIED with verified and email on valid email pin', async () => {
 	const ctrl = makeAuth({ verifyRow: { expires_at: new Date(Date.now() + 60_000) } });
 	const unverified = { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' as const };
-	const response = await ctrl.verify(makeCtx({ user: unverified, body: { pin: '123456' } }));
+	const response = await ctrl.verify(makeCtx({ user: unverified, body: { token: '123456' } }));
 	assert.equal(response.status, 200);
 	const body = (await response.json()) as any;
 	assert.equal(body.reason, 'VERIFIED');
@@ -773,10 +773,10 @@ test('verify: 200 VERIFIED with verified and email on valid email pin', async ()
 	assert.equal(body.result.email, 'jane@example.com');
 });
 
-test('verify: 200 when email pin has surrounding whitespace (trimmed before lookup)', async () => {
+test('verify: 200 when email token has surrounding whitespace (trimmed before lookup)', async () => {
 	const ctrl = makeAuth({ verifyRow: { expires_at: new Date(Date.now() + 60_000) } });
 	const unverified = { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' as const };
-	const response = await ctrl.verify(makeCtx({ user: unverified, body: { pin: '  123456  ' } }));
+	const response = await ctrl.verify(makeCtx({ user: unverified, body: { token: '  123456  ' } }));
 	assert.equal(response.status, 200);
 });
 
@@ -785,7 +785,7 @@ test('verify: 400 VERIFICATION_FAILED when phone OTP not found', async () => {
 	const response = await ctrl.verify(
 		makeCtx({
 			user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
-			body: { pin: '000000' },
+			body: { token: '000000' },
 		}),
 	);
 	assert.equal(response.status, 400);
@@ -801,7 +801,7 @@ test('verify: 200 VERIFIED with new tokens and isPhoneVerified: true on valid ph
 	const response = await ctrl.verify(
 		makeCtx({
 			user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
-			body: { pin: '123456' },
+			body: { token: '123456' },
 		}),
 	);
 	assert.equal(response.status, 200);
