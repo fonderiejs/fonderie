@@ -36,7 +36,6 @@ export interface ICustomerDetailDTO extends ICustomerDTO {
 
 export interface ICustomerEmailDTO {
 	id: string;
-	customerId: string;
 	email: string;
 	label: string;
 	isPrimary: boolean;
@@ -45,7 +44,6 @@ export interface ICustomerEmailDTO {
 
 export interface ICustomerPhoneDTO {
 	id: string;
-	customerId: string;
 	phone: string;
 	label: string;
 	isPrimary: boolean;
@@ -63,7 +61,6 @@ export interface IAddressDTO {
 
 export interface ICustomerAddressDTO {
 	id: string;
-	customerId: string;
 	label: string;
 	isPrimary: boolean;
 	address: IAddressDTO;
@@ -71,7 +68,6 @@ export interface ICustomerAddressDTO {
 
 export interface ICustomerNoteDTO {
 	id: string;
-	customerId: string;
 	authorId: string;
 	body: string;
 	createdAt: string;
@@ -79,7 +75,6 @@ export interface ICustomerNoteDTO {
 }
 
 export interface ICustomerTagDTO {
-	customerId: string;
 	tag: string;
 }
 
@@ -125,7 +120,6 @@ export function toAddressDTO(a: IAddress): IAddressDTO {
 export function toCustomerEmailDTO(e: ICustomerEmail): ICustomerEmailDTO {
 	return {
 		id: stringOrEmpty(e.id),
-		customerId: stringOrEmpty(e.customerId),
 		email: stringOrEmpty(e.email),
 		label: stringOrEmpty(e.label),
 		isPrimary: booleanOrFalse(e.isPrimary),
@@ -136,7 +130,6 @@ export function toCustomerEmailDTO(e: ICustomerEmail): ICustomerEmailDTO {
 export function toCustomerPhoneDTO(p: ICustomerPhone): ICustomerPhoneDTO {
 	return {
 		id: stringOrEmpty(p.id),
-		customerId: stringOrEmpty(p.customerId),
 		phone: stringOrEmpty(p.phone),
 		label: stringOrEmpty(p.label),
 		isPrimary: booleanOrFalse(p.isPrimary),
@@ -147,7 +140,6 @@ export function toCustomerPhoneDTO(p: ICustomerPhone): ICustomerPhoneDTO {
 export function toCustomerAddressDTO(ca: ICustomerAddress): ICustomerAddressDTO {
 	return {
 		id: stringOrEmpty(ca.addrId),
-		customerId: stringOrEmpty(ca.customerId),
 		label: stringOrEmpty(ca.label),
 		isPrimary: booleanOrFalse(ca.isPrimary),
 		address: toAddressDTO(ca.address),
@@ -157,7 +149,6 @@ export function toCustomerAddressDTO(ca: ICustomerAddress): ICustomerAddressDTO 
 export function toCustomerNoteDTO(n: ICustomerNote): ICustomerNoteDTO {
 	return {
 		id: stringOrEmpty(n.id),
-		customerId: stringOrEmpty(n.customerId),
 		authorId: stringOrEmpty(n.authorId),
 		body: stringOrEmpty(n.body),
 		createdAt: dateOrEmpty(n.createdAt),
@@ -167,7 +158,6 @@ export function toCustomerNoteDTO(n: ICustomerNote): ICustomerNoteDTO {
 
 export function toCustomerTagDTO(t: ICustomerTag): ICustomerTagDTO {
 	return {
-		customerId: stringOrEmpty(t.customerId),
 		tag: stringOrEmpty(t.tag),
 	};
 }
