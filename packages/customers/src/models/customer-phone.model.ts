@@ -30,14 +30,22 @@ export class CustomerPhoneModel {
 		label?: string;
 		isPrimary?: boolean;
 	}): Promise<ICustomerPhone> {
-		const [row] = await this.store.query<ICustomerPhone>(
-			`INSERT INTO fonderie_customer_phones (id, customer_id, phone, label, is_primary)
-			 VALUES (gen_random_uuid(), $1, $2, $3, $4)
-			 RETURNING ${SELECT_PHONE}`,
-			[opts.customerId, opts.phone, opts.label ?? 'mobile', opts.isPrimary ?? false],
-		);
-		if (!row) throw new Error('Failed to add customer phone');
-		return row;
+		return this.store.transaction(async (tx) => {
+			if (opts.isPrimary) {
+				await tx.query(
+					`UPDATE fonderie_customer_phones SET is_primary = false WHERE customer_id = $1`,
+					[opts.customerId],
+				);
+			}
+			const [row] = await tx.query<ICustomerPhone>(
+				`INSERT INTO fonderie_customer_phones (id, customer_id, phone, label, is_primary)
+				 VALUES (gen_random_uuid(), $1, $2, $3, $4)
+				 RETURNING ${SELECT_PHONE}`,
+				[opts.customerId, opts.phone, opts.label ?? 'mobile', opts.isPrimary ?? false],
+			);
+			if (!row) throw new Error('Failed to add customer phone');
+			return row;
+		});
 	}
 
 	async setPrimary(phoneId: string, customerId: string): Promise<void> {
