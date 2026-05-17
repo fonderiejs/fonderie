@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "132aa5f9-ebea-43a1-9430-4230698e0b90",
     "name": "Fonderie.js",
-    "description": "API reference for **Fonderie.js** — a modular TypeScript framework that ships the first three months of every SaaS already built.\n\nEach folder maps directly to an `@fonderie-js/*` package. Register only the modules you need — the framework is intentionally composable.\n\n---\n\n**Base URL:** `{{base_url}}` (default `http://localhost:4000/v1`)\n\n**Authentication:** Protected endpoints require `Authorization: Bearer {{token}}`. The `token` variable is auto-captured after login or register.\n\n**Response envelope:** Every application response follows a consistent shape:\n```json\n{\n  \"reason\": \"SNAKE_CASE_CODE\",\n  \"explanation\": \"Human-readable description.\",\n  \"result\": { ... }\n}\n```\nError responses omit `result` and use a `4xx` / `5xx` status code.\n\n**Collection variables (auto-captured):**\n| Variable | Captured by | Purpose |\n|---|---|---|\n| `base_url` | — | Server base URL |\n| `token` | Login / Register | Short-lived access JWT |\n| `refresh_token` | Login / Register | Long-lived refresh token |\n| `workspace_id` | Create Workspace | Active workspace UUID |\n| `plan_id` | List Plans | First plan UUID from catalogue |",
+    "description": "API reference for **Fonderie.js** \u2014 a modular TypeScript framework that ships the first three months of every SaaS already built.\n\nEach folder maps directly to an `@fonderie-js/*` package. Register only the modules you need \u2014 the framework is intentionally composable.\n\n---\n\n**Base URL:** `{{base_url}}` (default `http://localhost:4000/v1`)\n\n**Authentication:** Protected endpoints require `Authorization: Bearer {{token}}`. The `token` variable is auto-captured after login or register.\n\n**Response envelope:** Every application response follows a consistent shape:\n```json\n{\n  \"reason\": \"SNAKE_CASE_CODE\",\n  \"explanation\": \"Human-readable description.\",\n  \"result\": { ... }\n}\n```\nError responses omit `result` and use a `4xx` / `5xx` status code.\n\n**Collection variables (auto-captured):**\n| Variable | Captured by | Purpose |\n|---|---|---|\n| `base_url` | \u2014 | Server base URL |\n| `token` | Login / Register | Short-lived access JWT |\n| `refresh_token` | Login / Register | Long-lived refresh token |\n| `workspace_id` | Create Workspace | Active workspace UUID |\n| `plan_id` | List Plans | First plan UUID from catalogue |",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "13650989"
   },
@@ -164,7 +164,7 @@
                     "login"
                   ]
                 },
-                "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+                "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token \u2014 submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
               },
               "response": [
                 {
@@ -191,7 +191,7 @@
                         "login"
                       ]
                     },
-                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token \u2014 submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
                   },
                   "status": "OK",
                   "code": 200,
@@ -229,7 +229,7 @@
                         "login"
                       ]
                     },
-                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token \u2014 submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
                   },
                   "status": "OK",
                   "code": 200,
@@ -267,7 +267,7 @@
                         "login"
                       ]
                     },
-                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token \u2014 submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
                   },
                   "status": "Unauthorized",
                   "code": 401,
@@ -601,7 +601,7 @@
                     "verify"
                   ]
                 },
-                "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth → Verify Phone OTP** request instead — phone verification returns a new token pair."
+                "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth \u2192 Verify Phone OTP** request instead \u2014 phone verification returns a new token pair."
               },
               "response": [
                 {
@@ -632,7 +632,7 @@
                         "verify"
                       ]
                     },
-                    "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth → Verify Phone OTP** request instead — phone verification returns a new token pair."
+                    "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth \u2192 Verify Phone OTP** request instead \u2014 phone verification returns a new token pair."
                   },
                   "status": "OK",
                   "code": 200,
@@ -674,7 +674,7 @@
                         "verify"
                       ]
                     },
-                    "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth → Verify Phone OTP** request instead — phone verification returns a new token pair."
+                    "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth \u2192 Verify Phone OTP** request instead \u2014 phone verification returns a new token pair."
                   },
                   "status": "Bad Request",
                   "code": 400,
@@ -691,7 +691,7 @@
               ]
             }
           ],
-          "description": "After registration the user's email is unverified (`isEmailVerified: false`). Several endpoints — profile updates, email/phone changes, account deletion — require a verified email.\n\nThe OTP is delivered to email or phone depending on the user's login method. Verification requests are rate-limited; re-sending too quickly returns `429`."
+          "description": "After registration the user's email is unverified (`isEmailVerified: false`). Several endpoints \u2014 profile updates, email/phone changes, account deletion \u2014 require a verified email.\n\nThe OTP is delivered to email or phone depending on the user's login method. Verification requests are rate-limited; re-sending too quickly returns `429`."
         },
         {
           "name": "Password Reset",
@@ -874,7 +874,7 @@
               ]
             }
           ],
-          "description": "Self-service password reset via email. Two-step flow:\n1. `POST /auth/email/forgot` — user submits their email and receives a reset link\n2. `POST /auth/email/reset` — user submits the token from the link and their new password\n\n`/forgot` always returns `ok: true` regardless of whether the email exists — this prevents email enumeration. The reset token is single-use and expires after a short window."
+          "description": "Self-service password reset via email. Two-step flow:\n1. `POST /auth/email/forgot` \u2014 user submits their email and receives a reset link\n2. `POST /auth/email/reset` \u2014 user submits the token from the link and their new password\n\n`/forgot` always returns `ok: true` regardless of whether the email exists \u2014 this prevents email enumeration. The reset token is single-use and expires after a short window."
         },
         {
           "name": "Google OAuth",
@@ -950,7 +950,7 @@
                     }
                   ]
                 },
-                "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production — included here for testing."
+                "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production \u2014 included here for testing."
               },
               "response": [
                 {
@@ -975,7 +975,7 @@
                         }
                       ]
                     },
-                    "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production — included here for testing."
+                    "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production \u2014 included here for testing."
                   },
                   "status": "OK",
                   "code": 200,
@@ -992,7 +992,7 @@
               ]
             }
           ],
-          "description": "Server-side Google OAuth 2.0 flow. Only registered when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in the server environment.\n\n**Flow:**\n1. Frontend calls `GET /auth/google` → receives an authorization URL\n2. Redirect the user's browser to that URL\n3. Google redirects back to `GET /auth/google/callback?code=...`\n4. Server exchanges the code for a Google profile, upserts the user account, and returns the standard access + refresh token pair\n\nThe callback URL defaults to `http://127.0.0.1:4000/v1/auth/google/callback` and must match the redirect URI registered in your Google Cloud console."
+          "description": "Server-side Google OAuth 2.0 flow. Only registered when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in the server environment.\n\n**Flow:**\n1. Frontend calls `GET /auth/google` \u2192 receives an authorization URL\n2. Redirect the user's browser to that URL\n3. Google redirects back to `GET /auth/google/callback?code=...`\n4. Server exchanges the code for a Google profile, upserts the user account, and returns the standard access + refresh token pair\n\nThe callback URL defaults to `http://127.0.0.1:4000/v1/auth/google/callback` and must match the redirect URI registered in your Google Cloud console."
         },
         {
           "name": "Phone Auth",
@@ -1148,7 +1148,7 @@
                     "login"
                   ]
                 },
-                "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+                "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) \u2014 this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
               },
               "response": [
                 {
@@ -1175,7 +1175,7 @@
                         "login"
                       ]
                     },
-                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) \u2014 this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
                   },
                   "status": "Accepted",
                   "code": 202,
@@ -1213,7 +1213,7 @@
                         "login"
                       ]
                     },
-                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) \u2014 this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
                   },
                   "status": "Unauthorized",
                   "code": 401,
@@ -1251,7 +1251,7 @@
                         "login"
                       ]
                     },
-                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) \u2014 this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
                   },
                   "status": "Forbidden",
                   "code": 403,
@@ -1396,7 +1396,7 @@
               ]
             }
           ],
-          "description": "Passwordless phone authentication via SMS OTP. Available when `phone` is listed in `providers` in `IAuthConfig`.\n\n**Register flow:**\n1. `POST /auth/register` with `{ phone }` → creates account, sends OTP, returns a pre-verified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + the token from step 1 → confirms the phone number and issues a verified token pair\n\n**Login flow (returning user):**\n1. `POST /auth/login` with `{ phone }` → sends OTP, returns an unverified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + that token → issues a verified token pair\n\nMFA is not available for phone sessions — the OTP itself is the second factor."
+          "description": "Passwordless phone authentication via SMS OTP. Available when `phone` is listed in `providers` in `IAuthConfig`.\n\n**Register flow:**\n1. `POST /auth/register` with `{ phone }` \u2192 creates account, sends OTP, returns a pre-verified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + the token from step 1 \u2192 confirms the phone number and issues a verified token pair\n\n**Login flow (returning user):**\n1. `POST /auth/login` with `{ phone }` \u2192 sends OTP, returns an unverified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + that token \u2192 issues a verified token pair\n\nMFA is not available for phone sessions \u2014 the OTP itself is the second factor."
         },
         {
           "name": "MFA",
@@ -1422,7 +1422,7 @@
                     "setup"
                   ]
                 },
-                "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately — they are only shown once.\n\nRequires: authenticated + verified email + email login method."
+                "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately \u2014 they are only shown once.\n\nRequires: authenticated + verified email + email login method."
               },
               "response": [
                 {
@@ -1446,7 +1446,7 @@
                         "setup"
                       ]
                     },
-                    "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately — they are only shown once.\n\nRequires: authenticated + verified email + email login method."
+                    "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately \u2014 they are only shown once.\n\nRequires: authenticated + verified email + email login method."
                   },
                   "status": "OK",
                   "code": 200,
@@ -1495,7 +1495,7 @@
               },
               "response": [
                 {
-                  "name": "200 OK — MFA activated",
+                  "name": "200 OK \u2014 MFA activated",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -1538,7 +1538,7 @@
                   "body": "{\n  \"reason\": \"MFA_VERIFIED\",\n  \"explanation\": \"MFA verified successfully.\",\n  \"result\": {\n    \"mfaEnabled\": true\n  }\n}"
                 },
                 {
-                  "name": "200 OK — MFA login complete",
+                  "name": "200 OK \u2014 MFA login complete",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -1960,7 +1960,7 @@
               ]
             }
           ],
-          "description": "TOTP-based multi-factor authentication (Google Authenticator, Authy, 1Password, etc.). Only available for email login sessions with a verified email.\n\n**Setup flow:**\n1. `POST /auth/mfa/setup` → returns a QR code image (base64 PNG) and the raw TOTP secret\n2. User scans the QR code in their authenticator app\n3. `POST /auth/mfa/verify` with the first code → activates MFA and returns one-time backup codes\n\n**Login flow (once MFA is enabled):**\n1. `POST /auth/login` returns `{ mfaPending: true, accessToken: \"<short-lived token>\" }` instead of a full session\n2. `POST /auth/mfa/verify` with the TOTP code → exchanges the pending token for full access + refresh tokens\n\nBackup codes can be used in place of a TOTP code everywhere a code is accepted."
+          "description": "TOTP-based multi-factor authentication (Google Authenticator, Authy, 1Password, etc.). Only available for email login sessions with a verified email.\n\n**Setup flow:**\n1. `POST /auth/mfa/setup` \u2192 returns a QR code image (base64 PNG) and the raw TOTP secret\n2. User scans the QR code in their authenticator app\n3. `POST /auth/mfa/verify` with the first code \u2192 activates MFA and returns one-time backup codes\n\n**Login flow (once MFA is enabled):**\n1. `POST /auth/login` returns `{ mfaPending: true, accessToken: \"<short-lived token>\" }` instead of a full session\n2. `POST /auth/mfa/verify` with the TOTP code \u2192 exchanges the pending token for full access + refresh tokens\n\nBackup codes can be used in place of a TOTP code everywhere a code is accepted."
         },
         {
           "name": "Users",
@@ -2383,7 +2383,7 @@
           "description": "Self-service profile management for the authenticated user. All endpoints require `Authorization: Bearer {{token}}`.\n\nEndpoints that mutate identity-sensitive fields (`/profile`, `/preferences`, `/email`, `/phone`, `DELETE /users`) additionally require a verified email (`isEmailVerified: true`). Changing email or phone triggers a new verification flow before the change takes effect."
         }
       ],
-      "description": "All authentication, session, and identity management — provided by `@fonderie-js/auth`.\n\n**Three supported login methods:**\n- **Email + password** — register, login, forgot/reset password, TOTP MFA\n- **Phone + OTP** — login via SMS one-time code\n- **Google OAuth** — one-click sign-in (requires `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` env vars)\n\nAll methods return the same pair: `accessToken` (short-lived JWT) and `refreshToken` (long-lived, stored server-side and invalidated on logout).\n\n**Email verification** is a separate step after registration. Several downstream endpoints (profile edits, email/phone changes, account deletion) require `isEmailVerified: true`."
+      "description": "All authentication, session, and identity management \u2014 provided by `@fonderie-js/auth`.\n\n**Three supported login methods:**\n- **Email + password** \u2014 register, login, forgot/reset password, TOTP MFA\n- **Phone + OTP** \u2014 login via SMS one-time code\n- **Google OAuth** \u2014 one-click sign-in (requires `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` env vars)\n\nAll methods return the same pair: `accessToken` (short-lived JWT) and `refreshToken` (long-lived, stored server-side and invalidated on logout).\n\n**Email verification** is a separate step after registration. Several downstream endpoints (profile edits, email/phone changes, account deletion) require `isEmailVerified: true`."
     },
     {
       "name": "Billing  (@fonderie-js/billing)",
@@ -2416,7 +2416,7 @@
                     "plans"
                   ]
                 },
-                "description": "Return all active plans. No authentication required — safe to call from marketing pages or mobile apps before sign-up."
+                "description": "Return all active plans. No authentication required \u2014 safe to call from marketing pages or mobile apps before sign-up."
               },
               "response": [
                 {
@@ -2433,7 +2433,7 @@
                         "plans"
                       ]
                     },
-                    "description": "Return all active plans. No authentication required — safe to call from marketing pages or mobile apps before sign-up."
+                    "description": "Return all active plans. No authentication required \u2014 safe to call from marketing pages or mobile apps before sign-up."
                   },
                   "status": "OK",
                   "code": 200,
@@ -2528,7 +2528,7 @@
               ]
             }
           ],
-          "description": "Read-only plan catalogue. No authentication required — safe to call from a marketing page or pricing component before the user has signed up.\n\nPlans are **config-driven**: defined in `IBillingConfig.plans` and synced to the database on every server boot via `ON CONFLICT DO UPDATE`. There are no write endpoints — to add, rename, or reprice a plan, change the config and redeploy."
+          "description": "Read-only plan catalogue. No authentication required \u2014 safe to call from a marketing page or pricing component before the user has signed up.\n\nPlans are **config-driven**: defined in `IBillingConfig.plans` and synced to the database on every server boot via `ON CONFLICT DO UPDATE`. There are no write endpoints \u2014 to add, rename, or reprice a plan, change the config and redeploy."
         },
         {
           "name": "User Subscription",
@@ -2654,7 +2654,7 @@
                     "checkout"
                   ]
                 },
-                "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` — plan name (e.g. `pro`)\n- `interval` — `month` or `year`"
+                "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` \u2014 plan name (e.g. `pro`)\n- `interval` \u2014 `month` or `year`"
               },
               "response": [
                 {
@@ -2685,7 +2685,7 @@
                         "checkout"
                       ]
                     },
-                    "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` — plan name (e.g. `pro`)\n- `interval` — `month` or `year`"
+                    "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` \u2014 plan name (e.g. `pro`)\n- `interval` \u2014 `month` or `year`"
                   },
                   "status": "OK",
                   "code": 200,
@@ -2897,7 +2897,7 @@
               ]
             }
           ],
-          "description": "Subscription scoped to the authenticated user (`subscriberType: 'user'`). No workspace context required — suitable for consumer/individual SaaS (Spotify, Netflix-style).\n\nThe subscriber is always resolved as the user in the access token. No `X-Workspace-ID` header is needed."
+          "description": "Subscription scoped to the authenticated user (`subscriberType: 'user'`). No workspace context required \u2014 suitable for consumer/individual SaaS (Spotify, Netflix-style).\n\nThe subscriber is always resolved as the user in the access token. No `X-Workspace-ID` header is needed."
         },
         {
           "name": "Workspace-scoped  (X-Workspace-ID)",
@@ -3272,7 +3272,7 @@
               ]
             }
           ],
-          "description": "Same `/billing/*` endpoints as user billing — the subscriber is switched to the workspace by adding the `X-Workspace-ID` header. Membership is verified automatically by the `withBilling` global middleware; no separate guard needed.\n\nSuitable for team / B2B SaaS (Slack, Linear-style)."
+          "description": "Same `/billing/*` endpoints as user billing \u2014 the subscriber is switched to the workspace by adding the `X-Workspace-ID` header. Membership is verified automatically by the `withBilling` global middleware; no separate guard needed.\n\nSuitable for team / B2B SaaS (Slack, Linear-style)."
         },
         {
           "name": "Webhook",
@@ -3395,10 +3395,10 @@
               ]
             }
           ],
-          "description": "Stripe webhook receiver — called by Stripe, not by your frontend. Configure this URL in your Stripe Dashboard under **Developers → Webhooks**.\n\nThe `stripe-signature` header is verified against `STRIPE_WEBHOOK_SECRET`. Requests with an invalid or missing signature are rejected with `400`.\n\n**Handled events:**\n- `customer.subscription.created` — creates the subscription record\n- `customer.subscription.updated` — syncs status, billing period, and cancel-at-period-end flag\n- `customer.subscription.deleted` — marks the subscription as cancelled\n\nAll other event types return `{ received: true }` without side effects."
+          "description": "Stripe webhook receiver \u2014 called by Stripe, not by your frontend. Configure this URL in your Stripe Dashboard under **Developers \u2192 Webhooks**.\n\nThe `stripe-signature` header is verified against `STRIPE_WEBHOOK_SECRET`. Requests with an invalid or missing signature are rejected with `400`.\n\n**Handled events:**\n- `customer.subscription.created` \u2014 creates the subscription record\n- `customer.subscription.updated` \u2014 syncs status, billing period, and cancel-at-period-end flag\n- `customer.subscription.deleted` \u2014 marks the subscription as cancelled\n\nAll other event types return `{ received: true }` without side effects."
         }
       ],
-      "description": "Subscription billing and usage metering — provided by `@fonderie-js/billing`.\n\n**Subscriber resolution** — the same `/billing/*` routes serve both user and workspace billing. The module resolves the subscriber automatically:\n\n| Header present | Resolved as |\n|---|---|\n| `X-Workspace-ID: <id>` | `subscriberType: 'workspace'` — membership verified automatically |\n| *(omitted)* | `subscriberType: 'user'` — the authenticated user |\n\n**Plan catalogue** is config-driven: plans live in `IBillingConfig.plans`, are synced to the database on every boot, and exposed as read-only via the API.\n\n**Amounts** are in cents (e.g. `7900` = $79.00). `null` limit = unlimited."
+      "description": "Subscription billing and usage metering \u2014 provided by `@fonderie-js/billing`.\n\n**Subscriber resolution** \u2014 the same `/billing/*` routes serve both user and workspace billing. The module resolves the subscriber automatically:\n\n| Header present | Resolved as |\n|---|---|\n| `X-Workspace-ID: <id>` | `subscriberType: 'workspace'` \u2014 membership verified automatically |\n| *(omitted)* | `subscriberType: 'user'` \u2014 the authenticated user |\n\n**Plan catalogue** is config-driven: plans live in `IBillingConfig.plans`, are synced to the database on every boot, and exposed as read-only via the API.\n\n**Amounts** are in cents (e.g. `7900` = $79.00). `null` limit = unlimited."
     },
     {
       "name": "Customers  (@fonderie-js/customers)",
@@ -4984,7 +4984,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMERS_FETCHED\",\n  \"explanation\": \"Customers retrieved successfully.\",\n  \"result\": {\n    \"customers\": [\n      {\n        \"id\": \"{{customer_id}}\",\n        \"type\": \"business\",\n        \"firstName\": null,\n        \"lastName\": null,\n        \"companyName\": \"Acme Landscaping\",\n        \"avatarUrl\": null,\n        \"locale\": \"en-US\",\n        \"referenceCode\": \"CLT-001\",\n        \"isArchived\": false,\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMERS_FETCHED\",\n  \"explanation\": \"Customers retrieved successfully.\",\n  \"result\": {\n    \"customers\": [\n      {\n        \"id\": \"{{customer_id}}\",\n        \"type\": \"business\",\n        \"sex\": \"UNKNOWN\",\n        \"firstName\": null,\n        \"lastName\": null,\n        \"companyName\": \"Acme Landscaping\",\n        \"avatarUrl\": null,\n        \"locale\": \"en-US\",\n        \"referenceCode\": \"CLT-001\",\n        \"isArchived\": false,\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n      }\n    ]\n  }\n}"
             }
           ]
         },
@@ -5078,7 +5078,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_CREATED\",\n  \"explanation\": \"Customer created successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_CREATED\",\n  \"explanation\": \"Customer created successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"sex\": \"UNKNOWN\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
             }
           ]
         },
@@ -5145,7 +5145,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n      \"emails\": [],\n      \"phones\": [],\n      \"tags\": []\n    }\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"sex\": \"UNKNOWN\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n      \"emails\": [],\n      \"phones\": [],\n      \"tags\": []\n    }\n  }\n}"
             }
           ]
         },
@@ -5181,7 +5181,7 @@
                 "{{customer_id}}"
               ]
             },
-            "description": "Partial update — only send fields you want to change."
+            "description": "Partial update \u2014 only send fields you want to change."
           },
           "response": [
             {
@@ -5216,7 +5216,7 @@
                     "{{customer_id}}"
                   ]
                 },
-                "description": "Partial update — only send fields you want to change."
+                "description": "Partial update \u2014 only send fields you want to change."
               },
               "status": "OK",
               "code": 200,
@@ -5228,7 +5228,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_UPDATED\",\n  \"explanation\": \"Customer updated successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_UPDATED\",\n  \"explanation\": \"Customer updated successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"sex\": \"UNKNOWN\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\"\n    }\n  }\n}"
             }
           ]
         },
@@ -5859,7 +5859,7 @@
               ]
             }
           ],
-          "description": "Manage the members of a workspace. All endpoints require `X-Workspace-ID: {{workspace_id}}`.\n\nMembers can hold multiple roles simultaneously. Their effective permissions are the union (BOOL_OR) of all assigned roles — if any role grants a permission, it is granted."
+          "description": "Manage the members of a workspace. All endpoints require `X-Workspace-ID: {{workspace_id}}`.\n\nMembers can hold multiple roles simultaneously. Their effective permissions are the union (BOOL_OR) of all assigned roles \u2014 if any role grants a permission, it is granted."
         },
         {
           "name": "Invitations",
@@ -5896,7 +5896,7 @@
                     "invitations"
                   ]
                 },
-                "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
               },
               "response": [
                 {
@@ -5931,7 +5931,7 @@
                         "invitations"
                       ]
                     },
-                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
                   },
                   "status": "Created",
                   "code": 201,
@@ -5977,7 +5977,7 @@
                         "invitations"
                       ]
                     },
-                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
                   },
                   "status": "Unprocessable Entity",
                   "code": 422,
@@ -6023,7 +6023,7 @@
                         "invitations"
                       ]
                     },
-                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
                   },
                   "status": "Payment Required",
                   "code": 402,
@@ -6263,7 +6263,7 @@
               ]
             }
           ],
-          "description": "Token-based workspace invitations. Sending an invitation triggers a transactional email (via `@fonderie-js/courier`) containing a time-limited acceptance link.\n\n`POST /workspaces/invitations/accept` does **not** require the `X-Workspace-ID` header — the workspace is resolved from the invitation token itself, so unauthenticated users who just registered can accept an invite directly."
+          "description": "Token-based workspace invitations. Sending an invitation triggers a transactional email (via `@fonderie-js/courier`) containing a time-limited acceptance link.\n\n`POST /workspaces/invitations/accept` does **not** require the `X-Workspace-ID` header \u2014 the workspace is resolved from the invitation token itself, so unauthenticated users who just registered can accept an invite directly."
         },
         {
           "name": "Roles",
@@ -6769,7 +6769,7 @@
               ]
             }
           ],
-          "description": "Custom RBAC roles scoped to a workspace. Roles group fine-grained permissions (READ / CREATE / UPDATE / DELETE) on named resources.\n\n`POST /workspaces/roles/:roleId/permissions` **replaces** the entire permission set atomically — it is not additive. Send the full desired permission list each time.\n\nTo assign roles to a member, use the endpoints in the **Members** sub-folder."
+          "description": "Custom RBAC roles scoped to a workspace. Roles group fine-grained permissions (READ / CREATE / UPDATE / DELETE) on named resources.\n\n`POST /workspaces/roles/:roleId/permissions` **replaces** the entire permission set atomically \u2014 it is not additive. Send the full desired permission list each time.\n\nTo assign roles to a member, use the endpoints in the **Members** sub-folder."
         },
         {
           "name": "Settings",
@@ -6925,7 +6925,7 @@
               ]
             }
           ],
-          "description": "Per-workspace key-value configuration — branding, locale defaults, feature toggles, or any other workspace-scoped preferences. Settings are stored alongside the workspace record and have no enforced schema."
+          "description": "Per-workspace key-value configuration \u2014 branding, locale defaults, feature toggles, or any other workspace-scoped preferences. Settings are stored alongside the workspace record and have no enforced schema."
         },
         {
           "name": "Create Workspace",
@@ -7345,7 +7345,7 @@
           ]
         }
       ],
-      "description": "Multi-tenant team layer — provided by `@fonderie-js/workspaces`.\n\nA workspace is a shared organizational context (company, team, project). Each workspace has an owner, a slug, a plan tier, and a custom RBAC structure built on top of `@fonderie-js/permissions`.\n\n**Workspace context resolution:**\n- Header-based routes use `X-Workspace-ID: {{workspace_id}}`\n- Path-based routes use `:id` or `:workspaceId` directly in the URL\n\n**Sub-sections:**\n- **Members** — list, remove, and manage role assignments for workspace members\n- **Invitations** — send token-based email invitations and accept them\n- **Roles** — define custom roles and attach CRUD permissions per resource\n- **Settings** — per-workspace key-value configuration (branding, feature toggles)"
+      "description": "Multi-tenant team layer \u2014 provided by `@fonderie-js/workspaces`.\n\nA workspace is a shared organizational context (company, team, project). Each workspace has an owner, a slug, a plan tier, and a custom RBAC structure built on top of `@fonderie-js/permissions`.\n\n**Workspace context resolution:**\n- Header-based routes use `X-Workspace-ID: {{workspace_id}}`\n- Path-based routes use `:id` or `:workspaceId` directly in the URL\n\n**Sub-sections:**\n- **Members** \u2014 list, remove, and manage role assignments for workspace members\n- **Invitations** \u2014 send token-based email invitations and accept them\n- **Roles** \u2014 define custom roles and attach CRUD permissions per resource\n- **Settings** \u2014 per-workspace key-value configuration (branding, feature toggles)"
     },
     {
       "name": "Platform",
@@ -7508,7 +7508,7 @@
                 "projects"
               ]
             },
-            "description": "Workspace-scoped route — workspace resolved from `X-Workspace-ID`. Requires `READ` permission on `projects`."
+            "description": "Workspace-scoped route \u2014 workspace resolved from `X-Workspace-ID`. Requires `READ` permission on `projects`."
           },
           "response": [
             {
@@ -7534,7 +7534,7 @@
                     "projects"
                   ]
                 },
-                "description": "Workspace-scoped route — workspace resolved from `X-Workspace-ID`. Requires `READ` permission on `projects`."
+                "description": "Workspace-scoped route \u2014 workspace resolved from `X-Workspace-ID`. Requires `READ` permission on `projects`."
               },
               "status": "OK",
               "code": 200,
@@ -7659,7 +7659,7 @@
           },
           "response": [
             {
-              "name": "200 OK — limited plan",
+              "name": "200 OK \u2014 limited plan",
               "originalRequest": {
                 "method": "GET",
                 "header": [
@@ -7697,7 +7697,7 @@
               "body": "{\n  \"workspaceId\": \"{{workspace_id}}\",\n  \"limit\": 10,\n  \"unlimited\": false\n}"
             },
             {
-              "name": "200 OK — unlimited plan",
+              "name": "200 OK \u2014 unlimited plan",
               "originalRequest": {
                 "method": "GET",
                 "header": [
@@ -7759,7 +7759,7 @@
                 "analytics"
               ]
             },
-            "description": "Gated by `requireFeature('analytics')` — returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
+            "description": "Gated by `requireFeature('analytics')` \u2014 returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
           },
           "response": [
             {
@@ -7785,7 +7785,7 @@
                     "analytics"
                   ]
                 },
-                "description": "Gated by `requireFeature('analytics')` — returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
+                "description": "Gated by `requireFeature('analytics')` \u2014 returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
               },
               "status": "OK",
               "code": 200,
@@ -7822,7 +7822,7 @@
                     "analytics"
                   ]
                 },
-                "description": "Gated by `requireFeature('analytics')` — returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
+                "description": "Gated by `requireFeature('analytics')` \u2014 returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
               },
               "status": "Payment Required",
               "code": 402,
@@ -7944,7 +7944,7 @@
           ]
         }
       ],
-      "description": "Cross-cutting utility endpoints available in every Fonderie.js application.\n\n- **Health check** — liveness probe for load balancers and uptime monitors. Returns `503` when `maintenance.mode` is `true` in remote config.\n- **Remote config** — inspect all active feature flags and runtime config values. Restricted to non-production environments."
+      "description": "Cross-cutting utility endpoints available in every Fonderie.js application.\n\n- **Health check** \u2014 liveness probe for load balancers and uptime monitors. Returns `503` when `maintenance.mode` is `true` in remote config.\n- **Remote config** \u2014 inspect all active feature flags and runtime config values. Restricted to non-production environments."
     }
   ],
   "variable": [
