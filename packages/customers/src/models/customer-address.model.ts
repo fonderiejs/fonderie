@@ -109,12 +109,26 @@ export class CustomerAddressModel {
 
 	async remove(addrId: string, customerId: string): Promise<void> {
 		await this.store.transaction(async (tx) => {
-			await tx.query(
+			const [deleted] = await tx.query<{ isPrimary: boolean }>(
 				`DELETE FROM fonderie_customer_addresses
-				 WHERE addr_id = $1 AND customer_id = $2`,
+				 WHERE addr_id = $1 AND customer_id = $2
+				 RETURNING is_primary AS "isPrimary"`,
 				[addrId, customerId],
 			);
 			await tx.query(`DELETE FROM fonderie_addresses WHERE id = $1`, [addrId]);
+			if (deleted?.isPrimary) {
+				await tx.query(
+					`UPDATE fonderie_customer_addresses
+					 SET is_primary = true
+					 WHERE addr_id = (
+					   SELECT addr_id FROM fonderie_customer_addresses
+					   WHERE customer_id = $1
+					   ORDER BY addr_id ASC
+					   LIMIT 1
+					 )`,
+					[customerId],
+				);
+			}
 		});
 	}
 }
