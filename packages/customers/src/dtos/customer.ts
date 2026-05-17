@@ -53,7 +53,6 @@ export interface ICustomerPhoneDTO {
 }
 
 export interface IAddressDTO {
-	id: string;
 	countryIso: string;
 	subdivision1Iso: string;
 	subdivision2Iso: string;
@@ -63,7 +62,7 @@ export interface IAddressDTO {
 }
 
 export interface ICustomerAddressDTO {
-	addrId: string;
+	id: string;
 	customerId: string;
 	label: string;
 	isPrimary: boolean;
@@ -114,7 +113,6 @@ export function toCustomerDetailDTO(c: ICustomerDetail): ICustomerDetailDTO {
 
 export function toAddressDTO(a: IAddress): IAddressDTO {
 	return {
-		id: stringOrEmpty(a.id),
 		countryIso: stringOrEmpty(a.countryIso),
 		subdivision1Iso: stringOrEmpty(a.subdivision1Iso),
 		subdivision2Iso: stringOrEmpty(a.subdivision2Iso),
@@ -148,7 +146,7 @@ export function toCustomerPhoneDTO(p: ICustomerPhone): ICustomerPhoneDTO {
 
 export function toCustomerAddressDTO(ca: ICustomerAddress): ICustomerAddressDTO {
 	return {
-		addrId: stringOrEmpty(ca.addrId),
+		id: stringOrEmpty(ca.addrId),
 		customerId: stringOrEmpty(ca.customerId),
 		label: stringOrEmpty(ca.label),
 		isPrimary: booleanOrFalse(ca.isPrimary),
