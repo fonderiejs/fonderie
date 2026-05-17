@@ -20,10 +20,10 @@ export function customerAddressController(store: IStoreAdapter) {
 				),
 			};
 
-		const params = ctx.meta.params as Record<string, string> | undefined;
-		const id = params?.id;
+		const params = ctx.meta['params'] as Record<string, string> | undefined;
+		const id = params?.['customerId'];
 		if (!id)
-			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'id is required') };
+			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId is required') };
 
 		const customer = await customers.findById(id, workspaceId);
 		if (!customer)

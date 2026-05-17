@@ -1,4 +1,4 @@
-import { arrayOrEmpty, booleanOrFalse, stringOrEmpty } from '@fonderie-js/core';
+import { arrayOrEmpty, booleanOrFalse, dateOrEmpty, stringOrEmpty } from '@fonderie-js/core';
 
 import type {
 	IAddress,
@@ -98,8 +98,8 @@ export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 		referenceCode: stringOrEmpty(c.referenceCode),
 		isArchived: booleanOrFalse(c.isArchived),
 		createdBy: stringOrEmpty(c.createdBy),
-		createdAt: stringOrEmpty(c.createdAt),
-		updatedAt: stringOrEmpty(c.updatedAt),
+		createdAt: dateOrEmpty(c.createdAt),
+		updatedAt: dateOrEmpty(c.updatedAt),
 	};
 }
 
@@ -131,7 +131,7 @@ export function toCustomerEmailDTO(e: ICustomerEmail): ICustomerEmailDTO {
 		email: stringOrEmpty(e.email),
 		label: stringOrEmpty(e.label),
 		isPrimary: booleanOrFalse(e.isPrimary),
-		createdAt: stringOrEmpty(e.createdAt),
+		createdAt: dateOrEmpty(e.createdAt),
 	};
 }
 
@@ -142,7 +142,7 @@ export function toCustomerPhoneDTO(p: ICustomerPhone): ICustomerPhoneDTO {
 		phone: stringOrEmpty(p.phone),
 		label: stringOrEmpty(p.label),
 		isPrimary: booleanOrFalse(p.isPrimary),
-		createdAt: stringOrEmpty(p.createdAt),
+		createdAt: dateOrEmpty(p.createdAt),
 	};
 }
 
@@ -162,8 +162,8 @@ export function toCustomerNoteDTO(n: ICustomerNote): ICustomerNoteDTO {
 		customerId: stringOrEmpty(n.customerId),
 		authorId: stringOrEmpty(n.authorId),
 		body: stringOrEmpty(n.body),
-		createdAt: stringOrEmpty(n.createdAt),
-		updatedAt: stringOrEmpty(n.updatedAt),
+		createdAt: dateOrEmpty(n.createdAt),
+		updatedAt: dateOrEmpty(n.updatedAt),
 	};
 }
 

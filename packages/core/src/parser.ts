@@ -16,3 +16,9 @@ export function numberOrZero(value: unknown): number {
 	const n = Number(value);
 	return Number.isFinite(n) ? n : 0;
 }
+
+export function dateOrEmpty(value: unknown): string {
+	if (typeof value === 'string') return value;
+	if (value instanceof Date) return value.toISOString();
+	return '';
+}
