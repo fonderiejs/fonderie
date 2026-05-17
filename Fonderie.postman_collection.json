@@ -3964,6 +3964,17 @@
             },
             {
               "name": "Set Primary Email",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const c=pm.response.code;if(c>=200&&c<300){const emailId=pm.request.url.path[3];if(emailId){pm.collectionVariables.set('customer_email_id',emailId);}}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
               "request": {
                 "method": "PUT",
                 "header": [
@@ -4374,6 +4385,17 @@
             },
             {
               "name": "Set Primary Phone",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const c=pm.response.code;if(c>=200&&c<300){const phoneId=pm.request.url.path[3];if(phoneId){pm.collectionVariables.set('customer_phone_id',phoneId);}}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
               "request": {
                 "method": "PUT",
                 "header": [
@@ -4688,6 +4710,17 @@
             },
             {
               "name": "Set Primary Address",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const c=pm.response.code;if(c>=200&&c<300){const addrId=pm.request.url.path[3];if(addrId){pm.collectionVariables.set('customer_addr_id',addrId);}}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
               "request": {
                 "method": "PUT",
                 "header": [
