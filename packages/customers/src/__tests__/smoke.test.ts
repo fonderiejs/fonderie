@@ -25,6 +25,7 @@ const CUSTOMER: ICustomer = {
 	locale: 'en-US',
 	referenceCode: null,
 	isBlacklisted: false,
+	blacklistReason: null,
 	createdBy: null,
 	createdAt: NOW,
 	updatedAt: NOW,

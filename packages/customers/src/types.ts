@@ -16,6 +16,7 @@ export interface ICustomer {
 	locale: string;
 	referenceCode: string | null;
 	isBlacklisted: boolean;
+	blacklistReason: string | null;
 	createdBy: string | null;
 	createdAt: string;
 	updatedAt: string;

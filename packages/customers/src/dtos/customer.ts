@@ -23,6 +23,7 @@ export interface ICustomerDTO {
 	locale: string;
 	referenceCode: string;
 	isBlacklisted: boolean;
+	blacklistReason: string | null;
 	createdBy: string;
 	createdAt: string;
 	updatedAt: string;
@@ -92,6 +93,7 @@ export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 		locale: stringOrEmpty(c.locale),
 		referenceCode: stringOrEmpty(c.referenceCode),
 		isBlacklisted: booleanOrFalse(c.isBlacklisted),
+		blacklistReason: c.blacklistReason ?? null,
 		createdBy: stringOrEmpty(c.createdBy),
 		createdAt: dateOrEmpty(c.createdAt),
 		updatedAt: dateOrEmpty(c.updatedAt),

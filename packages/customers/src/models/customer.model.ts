@@ -14,7 +14,8 @@ const SELECT_CUSTOMER = `
 	avatar_url     AS "avatarUrl",
 	locale,
 	reference_code AS "referenceCode",
-	is_blacklisted AS "isBlacklisted",
+	is_blacklisted    AS "isBlacklisted",
+	blacklist_reason  AS "blacklistReason",
 	created_by     AS "createdBy",
 	created_at     AS "createdAt",
 	updated_at     AS "updatedAt"
@@ -275,19 +276,19 @@ export class CustomerModel {
 		]);
 	}
 
-	async blacklist(id: string, workspaceId: string): Promise<void> {
+	async blacklist(id: string, workspaceId: string, reason?: string | null): Promise<void> {
 		await this.store.query(
 			`UPDATE fonderie_customers
-			 SET is_blacklisted = true, updated_at = now()
+			 SET is_blacklisted = true, blacklist_reason = $3, updated_at = now()
 			 WHERE id = $1 AND workspace_id = $2`,
-			[id, workspaceId],
+			[id, workspaceId, reason ?? null],
 		);
 	}
 
 	async unblacklist(id: string, workspaceId: string): Promise<void> {
 		await this.store.query(
 			`UPDATE fonderie_customers
-			 SET is_blacklisted = false, updated_at = now()
+			 SET is_blacklisted = false, blacklist_reason = null, updated_at = now()
 			 WHERE id = $1 AND workspace_id = $2`,
 			[id, workspaceId],
 		);
