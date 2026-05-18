@@ -12,7 +12,7 @@ export function customerAddressController(store: IStoreAdapter) {
 
 	async function resolveCustomer(ctx: IFonderieContext) {
 		const workspaceId = ctx.workspace?.id;
-		if (!workspaceId)
+		if (!workspaceId) {
 			return {
 				error: setApiResponse(
 					HTTP.BAD_REQUEST,
@@ -20,15 +20,18 @@ export function customerAddressController(store: IStoreAdapter) {
 					'Workspace context is required',
 				),
 			};
+		}
 
 		const params = ctx.meta['params'] as Record<string, string> | undefined;
 		const id = params?.['customerId'];
-		if (!isUuid(id))
-			return { error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID') };
+		if (!isUuid(id)) {
+			return {error: setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID')};
+		}
 
 		const customer = await customers.findById(id, workspaceId);
-		if (!customer)
-			return { error: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found') };
+		if (!customer) {
+			return {error: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found')};
+		}
 
 		return { customer, workspaceId };
 	}
@@ -36,7 +39,9 @@ export function customerAddressController(store: IStoreAdapter) {
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const list = await addresses.list(r.customer.id);
 			return setApiResponse(HTTP.OK, 'ADDRESSES_FETCHED', 'Addresses retrieved successfully.', {
@@ -46,7 +51,9 @@ export function customerAddressController(store: IStoreAdapter) {
 
 		async add(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const countryIso = body?.['countryIso'];
@@ -55,6 +62,7 @@ export function customerAddressController(store: IStoreAdapter) {
 			if (typeof countryIso !== 'string' || countryIso.trim().length === 0) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'countryIso is required');
 			}
+
 			if (typeof zipPostalCode !== 'string' || zipPostalCode.trim().length === 0) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'zipPostalCode is required');
 			}
@@ -78,7 +86,9 @@ export function customerAddressController(store: IStoreAdapter) {
 
 		async setPrimary(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const addrId = params?.['addrId'];
@@ -92,7 +102,9 @@ export function customerAddressController(store: IStoreAdapter) {
 
 		async remove(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
-			if ('error' in r) return r.error;
+			if ('error' in r) {
+				return r.error;
+			}
 
 			const params = ctx.meta['params'] as Record<string, string> | undefined;
 			const addrId = params?.['addrId'];
