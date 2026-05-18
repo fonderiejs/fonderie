@@ -5200,13 +5200,13 @@
               "query": [
                 {
                   "key": "depth",
-                  "value": "2",
-                  "description": "Set to 2 to resolve relationships of relationships (full household graph in one call). Default: 1.",
+                  "value": "1",
+                  "description": "Skip family resolution; returns shallow tenant data only (12 queries vs 18).",
                   "disabled": true
                 }
               ]
             },
-            "description": "Fetch a single customer with embedded emails, phones, addresses, notes, relationships, and tags.\n\n**?depth=2** — also resolves each relationship's own relationships (e.g. wife, kids of a tenant). Returns the full two-level graph in a single call. Uses 18 batch-parallelised DB queries vs 12 for depth=1. Only values 1 and 2 are accepted; anything else defaults to 1."
+            "description": "Retrieve a customer with full detail.\\n\\nDefault returns depth=2: each relationship entry includes its own relationships array (e.g. a tenant's wife, kids, partner). Pass ?depth=1 to skip the second-level resolution and return shallow tenant data only.\\n\\nQuery cost:\\n- depth=2 (default): 18 parallel-batched queries\\n- depth=1: 12 parallel-batched queries"
           },
           "response": [
             {
