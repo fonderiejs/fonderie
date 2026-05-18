@@ -13,7 +13,6 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 	const workspaces = new WorkspaceModel(store);
 	const members = new MemberModel(store);
 	const roles = new RoleModel(store);
-	const defaultRole = config.defaultRole ?? 'member';
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
@@ -63,15 +62,7 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 
 				const ws = await wsModel.create(wsOpts);
 
-				const [adminRole] = await Promise.all([
-					roleModel.findSystem('ADMIN'),
-					roleModel.create({
-						name: defaultRole,
-						workspaceId: ws.id,
-						description: 'Default member role',
-					}),
-				]);
-
+				const adminRole = await roleModel.findSystem('ADMIN');
 				if (!adminRole) throw new Error('System ADMIN role not found');
 				await memModel.add({ userId: ctx.user!.id, workspaceId: ws.id, roleId: adminRole.id });
 
