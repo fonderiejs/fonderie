@@ -55,6 +55,12 @@ function makeStore(opts: { customer?: ICustomer | null } = {}): IStoreAdapter {
 			if (sql.includes('fonderie_customer_phones') && sql.includes('ORDER BY')) {
 				return [] as T[];
 			}
+			if (sql.includes('fonderie_customer_addresses') && sql.includes('ORDER BY')) {
+				return [] as T[];
+			}
+			if (sql.includes('fonderie_customer_notes') && sql.includes('ORDER BY')) {
+				return [] as T[];
+			}
 			if (sql.includes('fonderie_customer_tags') && sql.includes('ORDER BY')) {
 				return [] as T[];
 			}

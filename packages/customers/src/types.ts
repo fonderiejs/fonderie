@@ -75,5 +75,7 @@ export interface ICustomerTag {
 export interface ICustomerDetail extends ICustomer {
 	emails: ICustomerEmail[];
 	phones: ICustomerPhone[];
+	addresses: ICustomerAddress[];
+	notes: ICustomerNote[];
 	tags: string[];
 }

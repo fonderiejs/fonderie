@@ -1,7 +1,7 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
 import { DEFAULT_REFERENCE_CODE_PREFIX } from '../config';
-import type { ICustomer, ICustomerDetail } from '../types';
+import type { ICustomer, ICustomerAddress, ICustomerDetail } from '../types';
 
 const SELECT_CUSTOMER = `
 	id,
@@ -126,7 +126,7 @@ export class CustomerModel {
 		);
 		if (!row) return null;
 
-		const [emailRows, phoneRows, tagRows] = await Promise.all([
+		const [emailRows, phoneRows, addressRows, noteRows, tagRows] = await Promise.all([
 			this.store.query<{
 				id: string;
 				customerId: string;
@@ -165,6 +165,45 @@ export class CustomerModel {
 				 ORDER BY is_primary DESC, created_at ASC`,
 				[id],
 			),
+			this.store.query<ICustomerAddress>(
+				`SELECT ca.addr_id     AS "addrId",
+				        ca.customer_id AS "customerId",
+				        ca.label,
+				        ca.is_primary  AS "isPrimary",
+				        jsonb_build_object(
+				          'id',              a.id,
+				          'countryIso',      a.country_iso,
+				          'subdivision1Iso', a.subdivision1_iso,
+				          'subdivision2Iso', a.subdivision2_iso,
+				          'zipPostalCode',   a.zip_postal_code,
+				          'line1',           a.line1,
+				          'line2',           a.line2
+				        ) AS address
+				 FROM fonderie_customer_addresses ca
+				 JOIN fonderie_addresses a ON a.id = ca.addr_id
+				 WHERE ca.customer_id = $1
+				 ORDER BY ca.is_primary DESC`,
+				[id],
+			),
+			this.store.query<{
+				id: string;
+				customerId: string;
+				authorId: string | null;
+				body: string;
+				createdAt: string;
+				updatedAt: string;
+			}>(
+				`SELECT id,
+				        customer_id AS "customerId",
+				        author_id   AS "authorId",
+				        body,
+				        created_at  AS "createdAt",
+				        updated_at  AS "updatedAt"
+				 FROM fonderie_customer_notes
+				 WHERE customer_id = $1
+				 ORDER BY created_at DESC`,
+				[id],
+			),
 			this.store.query<{ tag: string }>(
 				`SELECT tag FROM fonderie_customer_tags WHERE customer_id = $1 ORDER BY tag ASC`,
 				[id],
@@ -176,6 +215,8 @@ export class CustomerModel {
 			// DB returns TEXT for label; cast to the narrow union that callers expect.
 			emails: emailRows as unknown as ICustomerDetail['emails'],
 			phones: phoneRows as unknown as ICustomerDetail['phones'],
+			addresses: addressRows,
+			notes: noteRows as unknown as ICustomerDetail['notes'],
 			tags: tagRows.map((t) => t.tag),
 		};
 	}
