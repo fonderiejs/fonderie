@@ -5,7 +5,7 @@ export const MESSAGE_KEYS = {
 export type WorkspacesMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
 
 export const EVENT_KEYS = {
-	personalWorkspaceCreated: 'workspace.personal.created',
+	personalWorkspaceCreated: 'fonderie.workspace.personal.created',
 } as const;
 
 export type WorkspacesEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
