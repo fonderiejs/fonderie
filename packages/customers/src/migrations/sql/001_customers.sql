@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS fonderie_customers (
 	avatar_url     TEXT,
 	locale         TEXT        NOT NULL DEFAULT 'en-US',
 	reference_code TEXT,
-	is_archived    BOOLEAN     NOT NULL DEFAULT false,
+	is_blacklisted BOOLEAN     NOT NULL DEFAULT false,
 	created_by     UUID,
 	created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
 	updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS fonderie_customers (
 CREATE INDEX IF NOT EXISTS idx_fc_workspace
 	ON fonderie_customers (workspace_id);
 
-CREATE INDEX IF NOT EXISTS idx_fc_workspace_archived
-	ON fonderie_customers (workspace_id, is_archived);
+CREATE INDEX IF NOT EXISTS idx_fc_workspace_blacklisted
+	ON fonderie_customers (workspace_id, is_blacklisted);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_fc_reference_code
 	ON fonderie_customers (workspace_id, reference_code)
