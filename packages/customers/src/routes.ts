@@ -16,12 +16,12 @@ type RouteDefinition = [string, string, ...Middleware[]];
 
 export function buildCustomerRoutes(
 	store: IStoreAdapter,
-	_config: ICustomersConfig,
+	config: ICustomersConfig,
 	bus?: EventBus,
 ): RouteDefinition[] {
 	const wsCtx = withWorkspace(store);
 
-	const customer = customerController(store, bus);
+	const customer = customerController(store, config, bus);
 	const email = customerEmailController(store);
 	const phone = customerPhoneController(store);
 	const address = customerAddressController(store);

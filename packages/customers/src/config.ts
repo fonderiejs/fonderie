@@ -8,4 +8,7 @@ export const EVENT_KEYS = {
 
 export type CustomersEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
-export type ICustomersConfig = {};
+export type ICustomersConfig = {
+	/** Prefix used when auto-generating customer reference codes. Defaults to 'CLT'. */
+	referenceCodePrefix?: string;
+};
