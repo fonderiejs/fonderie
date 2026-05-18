@@ -4621,7 +4621,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"countryIso\": \"CA\",\n  \"subdivision1Iso\": \"QC\",\n  \"zipPostalCode\": \"H2X 1Y6\",\n  \"line1\": \"123 Rue Sainte-Catherine\",\n  \"label\": \"service\",\n  \"isPrimary\": true\n}"
+                  "raw": "{\n  \"countryIso\": \"CA\",\n  \"subdivision1Iso\": \"QC\",\n  \"zipPostalCode\": \"H2X 1Y6\",\n  \"line1\": \"123 Rue Sainte-Catherine\",\n  \"label\": \"service\",\n  \"isPrimary\": true,\n  \"unit\": \"Unit 42\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/addresses",
