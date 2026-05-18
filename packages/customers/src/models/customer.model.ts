@@ -38,7 +38,8 @@ export interface CreateCustomerOpts {
 	jobTitle?: string | null;
 	avatarUrl?: string | null;
 	locale?: string;
-	referenceCode?: string | null;
+	/** Explicit code to assign. Omit to auto-generate (CLT-0001, CLT-0002, …). */
+	referenceCode?: string;
 	createdBy?: string | null;
 }
 
@@ -167,9 +168,21 @@ export class CustomerModel {
 
 	async create(opts: CreateCustomerOpts): Promise<ICustomer> {
 		const [row] = await this.store.query<ICustomer>(
-			`INSERT INTO fonderie_customers
+			`WITH next_code AS (
+			   SELECT 'CLT-' || LPAD((
+			     COALESCE(MAX(
+			       CASE WHEN reference_code ~ '^CLT-[0-9]+$'
+			            THEN SPLIT_PART(reference_code, '-', 2)::int
+			            ELSE 0 END
+			     ), 0) + 1
+			   )::text, 4, '0') AS code
+			   FROM fonderie_customers
+			   WHERE workspace_id = $1
+			 )
+			 INSERT INTO fonderie_customers
 			   (workspace_id, type, sex, first_name, last_name, company_name, job_title, avatar_url, locale, reference_code, created_by)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			 SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, next_code.code), $11
+			 FROM next_code
 			 RETURNING ${SELECT_CUSTOMER}`,
 			[
 				opts.workspaceId,
