@@ -9,6 +9,7 @@ import type {
 	ICustomerEmail,
 	ICustomerNote,
 	ICustomerPhone,
+	ICustomerRelationship,
 } from '../types';
 
 export interface ICustomerDTO {
@@ -27,11 +28,20 @@ export interface ICustomerDTO {
 	updatedAt: string;
 }
 
+export interface ICustomerRelationshipDTO {
+	id: string;
+	relatedId: string;
+	relationship: string;
+	isPrimary: boolean;
+	createdAt: string;
+}
+
 export interface ICustomerDetailDTO extends ICustomerDTO {
 	emails: ICustomerEmailDTO[];
 	phones: ICustomerPhoneDTO[];
 	addresses: ICustomerAddressDTO[];
 	notes: ICustomerNoteDTO[];
+	relationships: ICustomerRelationshipDTO[];
 	tags: string[];
 }
 
@@ -99,6 +109,16 @@ export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 	};
 }
 
+export function toCustomerRelationshipDTO(r: ICustomerRelationship): ICustomerRelationshipDTO {
+	return {
+		id: stringOrEmpty(r.id),
+		relatedId: stringOrEmpty(r.relatedId),
+		relationship: stringOrEmpty(r.relationship),
+		isPrimary: booleanOrFalse(r.isPrimary),
+		createdAt: dateOrEmpty(r.createdAt),
+	};
+}
+
 export function toCustomerDetailDTO(c: ICustomerDetail): ICustomerDetailDTO {
 	return {
 		...toCustomerDTO(c),
@@ -106,6 +126,7 @@ export function toCustomerDetailDTO(c: ICustomerDetail): ICustomerDetailDTO {
 		phones: arrayOrEmpty<ICustomerPhone>(c.phones).map(toCustomerPhoneDTO),
 		addresses: arrayOrEmpty<ICustomerAddress>(c.addresses).map(toCustomerAddressDTO),
 		notes: arrayOrEmpty<ICustomerNote>(c.notes).map(toCustomerNoteDTO),
+		relationships: arrayOrEmpty<ICustomerRelationship>(c.relationships).map(toCustomerRelationshipDTO),
 		tags: arrayOrEmpty<string>(c.tags),
 	};
 }
