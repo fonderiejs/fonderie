@@ -71,9 +71,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
 			}
 
-			return setApiResponse(HTTP.OK, 'CUSTOMER_FETCHED', 'Customer retrieved successfully.', {
-				customer: toCustomerDetailDTO(customer),
-			});
+			return setApiResponse(HTTP.OK, 'CUSTOMER_FETCHED', 'Customer retrieved successfully.', toCustomerDetailDTO(customer));
 		},
 
 		async create(ctx: IFonderieContext): Promise<Response> {
