@@ -44,6 +44,7 @@ export interface ICustomerRelationshipDTO {
 export interface ICustomerShallowDTO extends ICustomerDTO {
 	emails: ICustomerEmailDTO[];
 	phones: ICustomerPhoneDTO[];
+	addresses: ICustomerAddressDTO[];
 	notes: ICustomerNoteDTO[];
 	tags: string[];
 }
@@ -155,6 +156,7 @@ export function toCustomerShallowDTO(c: ICustomerShallow): ICustomerShallowDTO {
 		...toCustomerDTO(c),
 		emails: arrayOrEmpty<ICustomerEmail>(c.emails).map(toCustomerEmailDTO),
 		phones: arrayOrEmpty<ICustomerPhone>(c.phones).map(toCustomerPhoneDTO),
+		addresses: arrayOrEmpty<ICustomerAddress>(c.addresses).map(toCustomerAddressDTO),
 		notes: arrayOrEmpty<ICustomerNote>(c.notes).map(toCustomerNoteDTO),
 		tags: arrayOrEmpty<string>(c.tags),
 	};

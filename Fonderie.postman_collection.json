@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "132aa5f9-ebea-43a1-9430-4230698e0b90",
     "name": "Fonderie.js",
-    "description": "API reference for **Fonderie.js** \u2014 a modular TypeScript framework that ships the first three months of every SaaS already built.\n\nEach folder maps directly to an `@fonderie-js/*` package. Register only the modules you need \u2014 the framework is intentionally composable.\n\n---\n\n**Base URL:** `{{base_url}}` (default `http://localhost:4000/v1`)\n\n**Authentication:** Protected endpoints require `Authorization: Bearer {{token}}`. The `token` variable is auto-captured after login or register.\n\n**Response envelope:** Every application response follows a consistent shape:\n```json\n{\n  \"reason\": \"SNAKE_CASE_CODE\",\n  \"explanation\": \"Human-readable description.\",\n  \"result\": { ... }\n}\n```\nError responses omit `result` and use a `4xx` / `5xx` status code.\n\n**Collection variables (auto-captured):**\n| Variable | Captured by | Purpose |\n|---|---|---|\n| `base_url` | \u2014 | Server base URL |\n| `token` | Login / Register | Short-lived access JWT |\n| `refresh_token` | Login / Register | Long-lived refresh token |\n| `workspace_id` | Create Workspace | Active workspace UUID |\n| `plan_id` | List Plans | First plan UUID from catalogue |",
+    "description": "API reference for **Fonderie.js** — a modular TypeScript framework that ships the first three months of every SaaS already built.\n\nEach folder maps directly to an `@fonderie-js/*` package. Register only the modules you need — the framework is intentionally composable.\n\n---\n\n**Base URL:** `{{base_url}}` (default `http://localhost:4000/v1`)\n\n**Authentication:** Protected endpoints require `Authorization: Bearer {{token}}`. The `token` variable is auto-captured after login or register.\n\n**Response envelope:** Every application response follows a consistent shape:\n```json\n{\n  \"reason\": \"SNAKE_CASE_CODE\",\n  \"explanation\": \"Human-readable description.\",\n  \"result\": { ... }\n}\n```\nError responses omit `result` and use a `4xx` / `5xx` status code.\n\n**Collection variables (auto-captured):**\n| Variable | Captured by | Purpose |\n|---|---|---|\n| `base_url` | — | Server base URL |\n| `token` | Login / Register | Short-lived access JWT |\n| `refresh_token` | Login / Register | Long-lived refresh token |\n| `workspace_id` | Create Workspace | Active workspace UUID |\n| `plan_id` | List Plans | First plan UUID from catalogue |",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "13650989"
   },
@@ -164,7 +164,7 @@
                     "login"
                   ]
                 },
-                "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token \u2014 submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+                "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
               },
               "response": [
                 {
@@ -191,7 +191,7 @@
                         "login"
                       ]
                     },
-                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token \u2014 submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
                   },
                   "status": "OK",
                   "code": 200,
@@ -229,7 +229,7 @@
                         "login"
                       ]
                     },
-                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token \u2014 submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
                   },
                   "status": "OK",
                   "code": 200,
@@ -267,7 +267,7 @@
                         "login"
                       ]
                     },
-                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token \u2014 submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
+                    "description": "Authenticate with email + password. Returns access + refresh tokens.\n\nIf MFA is enabled the response will contain `mfaPending: true` and a short-lived token — submit the TOTP code to `POST /auth/mfa/verify` to get a full token."
                   },
                   "status": "Unauthorized",
                   "code": 401,
@@ -601,7 +601,7 @@
                     "verify"
                   ]
                 },
-                "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth \u2192 Verify Phone OTP** request instead \u2014 phone verification returns a new token pair."
+                "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth → Verify Phone OTP** request instead — phone verification returns a new token pair."
               },
               "response": [
                 {
@@ -632,7 +632,7 @@
                         "verify"
                       ]
                     },
-                    "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth \u2192 Verify Phone OTP** request instead \u2014 phone verification returns a new token pair."
+                    "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth → Verify Phone OTP** request instead — phone verification returns a new token pair."
                   },
                   "status": "OK",
                   "code": 200,
@@ -674,7 +674,7 @@
                         "verify"
                       ]
                     },
-                    "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth \u2192 Verify Phone OTP** request instead \u2014 phone verification returns a new token pair."
+                    "description": "Submit the 6-digit OTP received by email. Marks the account as verified.\n\nFor phone sessions, use the **Phone Auth → Verify Phone OTP** request instead — phone verification returns a new token pair."
                   },
                   "status": "Bad Request",
                   "code": 400,
@@ -691,7 +691,7 @@
               ]
             }
           ],
-          "description": "After registration the user's email is unverified (`isEmailVerified: false`). Several endpoints \u2014 profile updates, email/phone changes, account deletion \u2014 require a verified email.\n\nThe OTP is delivered to email or phone depending on the user's login method. Verification requests are rate-limited; re-sending too quickly returns `429`."
+          "description": "After registration the user's email is unverified (`isEmailVerified: false`). Several endpoints — profile updates, email/phone changes, account deletion — require a verified email.\n\nThe OTP is delivered to email or phone depending on the user's login method. Verification requests are rate-limited; re-sending too quickly returns `429`."
         },
         {
           "name": "Password Reset",
@@ -874,7 +874,7 @@
               ]
             }
           ],
-          "description": "Self-service password reset via email. Two-step flow:\n1. `POST /auth/email/forgot` \u2014 user submits their email and receives a reset link\n2. `POST /auth/email/reset` \u2014 user submits the token from the link and their new password\n\n`/forgot` always returns `ok: true` regardless of whether the email exists \u2014 this prevents email enumeration. The reset token is single-use and expires after a short window."
+          "description": "Self-service password reset via email. Two-step flow:\n1. `POST /auth/email/forgot` — user submits their email and receives a reset link\n2. `POST /auth/email/reset` — user submits the token from the link and their new password\n\n`/forgot` always returns `ok: true` regardless of whether the email exists — this prevents email enumeration. The reset token is single-use and expires after a short window."
         },
         {
           "name": "Google OAuth",
@@ -950,7 +950,7 @@
                     }
                   ]
                 },
-                "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production \u2014 included here for testing."
+                "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production — included here for testing."
               },
               "response": [
                 {
@@ -975,7 +975,7 @@
                         }
                       ]
                     },
-                    "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production \u2014 included here for testing."
+                    "description": "Handled automatically by Google after the user authorises. Creates or updates the user account and returns tokens. Not called directly in production — included here for testing."
                   },
                   "status": "OK",
                   "code": 200,
@@ -992,7 +992,7 @@
               ]
             }
           ],
-          "description": "Server-side Google OAuth 2.0 flow. Only registered when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in the server environment.\n\n**Flow:**\n1. Frontend calls `GET /auth/google` \u2192 receives an authorization URL\n2. Redirect the user's browser to that URL\n3. Google redirects back to `GET /auth/google/callback?code=...`\n4. Server exchanges the code for a Google profile, upserts the user account, and returns the standard access + refresh token pair\n\nThe callback URL defaults to `http://127.0.0.1:4000/v1/auth/google/callback` and must match the redirect URI registered in your Google Cloud console."
+          "description": "Server-side Google OAuth 2.0 flow. Only registered when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in the server environment.\n\n**Flow:**\n1. Frontend calls `GET /auth/google` → receives an authorization URL\n2. Redirect the user's browser to that URL\n3. Google redirects back to `GET /auth/google/callback?code=...`\n4. Server exchanges the code for a Google profile, upserts the user account, and returns the standard access + refresh token pair\n\nThe callback URL defaults to `http://127.0.0.1:4000/v1/auth/google/callback` and must match the redirect URI registered in your Google Cloud console."
         },
         {
           "name": "Phone Auth",
@@ -1148,7 +1148,7 @@
                     "login"
                   ]
                 },
-                "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) \u2014 this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+                "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
               },
               "response": [
                 {
@@ -1175,7 +1175,7 @@
                         "login"
                       ]
                     },
-                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) \u2014 this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
                   },
                   "status": "Accepted",
                   "code": 202,
@@ -1213,7 +1213,7 @@
                         "login"
                       ]
                     },
-                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) \u2014 this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
                   },
                   "status": "Unauthorized",
                   "code": 401,
@@ -1251,7 +1251,7 @@
                         "login"
                       ]
                     },
-                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) \u2014 this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
+                    "description": "Request an OTP for an existing phone account. Returns an unverified token pair immediately (status 202) — this token is used to authenticate the follow-up `POST /auth/verify` call.\n\nThe session is not considered verified until the OTP is confirmed."
                   },
                   "status": "Forbidden",
                   "code": 403,
@@ -1396,7 +1396,7 @@
               ]
             }
           ],
-          "description": "Passwordless phone authentication via SMS OTP. Available when `phone` is listed in `providers` in `IAuthConfig`.\n\n**Register flow:**\n1. `POST /auth/register` with `{ phone }` \u2192 creates account, sends OTP, returns a pre-verified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + the token from step 1 \u2192 confirms the phone number and issues a verified token pair\n\n**Login flow (returning user):**\n1. `POST /auth/login` with `{ phone }` \u2192 sends OTP, returns an unverified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + that token \u2192 issues a verified token pair\n\nMFA is not available for phone sessions \u2014 the OTP itself is the second factor."
+          "description": "Passwordless phone authentication via SMS OTP. Available when `phone` is listed in `providers` in `IAuthConfig`.\n\n**Register flow:**\n1. `POST /auth/register` with `{ phone }` → creates account, sends OTP, returns a pre-verified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + the token from step 1 → confirms the phone number and issues a verified token pair\n\n**Login flow (returning user):**\n1. `POST /auth/login` with `{ phone }` → sends OTP, returns an unverified token pair (status 202)\n2. `POST /auth/verify` with `{ pin }` + that token → issues a verified token pair\n\nMFA is not available for phone sessions — the OTP itself is the second factor."
         },
         {
           "name": "MFA",
@@ -1422,7 +1422,7 @@
                     "setup"
                   ]
                 },
-                "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately \u2014 they are only shown once.\n\nRequires: authenticated + verified email + email login method."
+                "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately — they are only shown once.\n\nRequires: authenticated + verified email + email login method."
               },
               "response": [
                 {
@@ -1446,7 +1446,7 @@
                         "setup"
                       ]
                     },
-                    "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately \u2014 they are only shown once.\n\nRequires: authenticated + verified email + email login method."
+                    "description": "Initiate MFA setup. Returns a base64 QR code PNG (`qr`) and a set of one-time backup codes. The TOTP secret is in `pending` state until confirmed with `POST /auth/mfa/verify`.\n\nStore the backup codes immediately — they are only shown once.\n\nRequires: authenticated + verified email + email login method."
                   },
                   "status": "OK",
                   "code": 200,
@@ -1495,7 +1495,7 @@
               },
               "response": [
                 {
-                  "name": "200 OK \u2014 MFA activated",
+                  "name": "200 OK — MFA activated",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -1538,7 +1538,7 @@
                   "body": "{\n  \"reason\": \"MFA_VERIFIED\",\n  \"explanation\": \"MFA verified successfully.\",\n  \"result\": {\n    \"mfaEnabled\": true\n  }\n}"
                 },
                 {
-                  "name": "200 OK \u2014 MFA login complete",
+                  "name": "200 OK — MFA login complete",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -1960,7 +1960,7 @@
               ]
             }
           ],
-          "description": "TOTP-based multi-factor authentication (Google Authenticator, Authy, 1Password, etc.). Only available for email login sessions with a verified email.\n\n**Setup flow:**\n1. `POST /auth/mfa/setup` \u2192 returns a QR code image (base64 PNG) and the raw TOTP secret\n2. User scans the QR code in their authenticator app\n3. `POST /auth/mfa/verify` with the first code \u2192 activates MFA and returns one-time backup codes\n\n**Login flow (once MFA is enabled):**\n1. `POST /auth/login` returns `{ mfaPending: true, accessToken: \"<short-lived token>\" }` instead of a full session\n2. `POST /auth/mfa/verify` with the TOTP code \u2192 exchanges the pending token for full access + refresh tokens\n\nBackup codes can be used in place of a TOTP code everywhere a code is accepted."
+          "description": "TOTP-based multi-factor authentication (Google Authenticator, Authy, 1Password, etc.). Only available for email login sessions with a verified email.\n\n**Setup flow:**\n1. `POST /auth/mfa/setup` → returns a QR code image (base64 PNG) and the raw TOTP secret\n2. User scans the QR code in their authenticator app\n3. `POST /auth/mfa/verify` with the first code → activates MFA and returns one-time backup codes\n\n**Login flow (once MFA is enabled):**\n1. `POST /auth/login` returns `{ mfaPending: true, accessToken: \"<short-lived token>\" }` instead of a full session\n2. `POST /auth/mfa/verify` with the TOTP code → exchanges the pending token for full access + refresh tokens\n\nBackup codes can be used in place of a TOTP code everywhere a code is accepted."
         },
         {
           "name": "Users",
@@ -2383,7 +2383,7 @@
           "description": "Self-service profile management for the authenticated user. All endpoints require `Authorization: Bearer {{token}}`.\n\nEndpoints that mutate identity-sensitive fields (`/profile`, `/preferences`, `/email`, `/phone`, `DELETE /users`) additionally require a verified email (`isEmailVerified: true`). Changing email or phone triggers a new verification flow before the change takes effect."
         }
       ],
-      "description": "All authentication, session, and identity management \u2014 provided by `@fonderie-js/auth`.\n\n**Three supported login methods:**\n- **Email + password** \u2014 register, login, forgot/reset password, TOTP MFA\n- **Phone + OTP** \u2014 login via SMS one-time code\n- **Google OAuth** \u2014 one-click sign-in (requires `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` env vars)\n\nAll methods return the same pair: `accessToken` (short-lived JWT) and `refreshToken` (long-lived, stored server-side and invalidated on logout).\n\n**Email verification** is a separate step after registration. Several downstream endpoints (profile edits, email/phone changes, account deletion) require `isEmailVerified: true`."
+      "description": "All authentication, session, and identity management — provided by `@fonderie-js/auth`.\n\n**Three supported login methods:**\n- **Email + password** — register, login, forgot/reset password, TOTP MFA\n- **Phone + OTP** — login via SMS one-time code\n- **Google OAuth** — one-click sign-in (requires `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` env vars)\n\nAll methods return the same pair: `accessToken` (short-lived JWT) and `refreshToken` (long-lived, stored server-side and invalidated on logout).\n\n**Email verification** is a separate step after registration. Several downstream endpoints (profile edits, email/phone changes, account deletion) require `isEmailVerified: true`."
     },
     {
       "name": "Billing  (@fonderie-js/billing)",
@@ -2416,7 +2416,7 @@
                     "plans"
                   ]
                 },
-                "description": "Return all active plans. No authentication required \u2014 safe to call from marketing pages or mobile apps before sign-up."
+                "description": "Return all active plans. No authentication required — safe to call from marketing pages or mobile apps before sign-up."
               },
               "response": [
                 {
@@ -2433,7 +2433,7 @@
                         "plans"
                       ]
                     },
-                    "description": "Return all active plans. No authentication required \u2014 safe to call from marketing pages or mobile apps before sign-up."
+                    "description": "Return all active plans. No authentication required — safe to call from marketing pages or mobile apps before sign-up."
                   },
                   "status": "OK",
                   "code": 200,
@@ -2609,7 +2609,7 @@
               }
             }
           ],
-          "description": "Read-only plan catalogue. No authentication required \u2014 safe to call from a marketing page or pricing component before the user has signed up.\n\nPlans are **config-driven**: defined in `IBillingConfig.plans` and synced to the database on every server boot via `ON CONFLICT DO UPDATE`. There are no write endpoints \u2014 to add, rename, or reprice a plan, change the config and redeploy."
+          "description": "Read-only plan catalogue. No authentication required — safe to call from a marketing page or pricing component before the user has signed up.\n\nPlans are **config-driven**: defined in `IBillingConfig.plans` and synced to the database on every server boot via `ON CONFLICT DO UPDATE`. There are no write endpoints — to add, rename, or reprice a plan, change the config and redeploy."
         },
         {
           "name": "User Subscription",
@@ -2735,7 +2735,7 @@
                     "checkout"
                   ]
                 },
-                "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` \u2014 plan name (e.g. `pro`)\n- `interval` \u2014 `month` or `year`"
+                "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` — plan name (e.g. `pro`)\n- `interval` — `month` or `year`"
               },
               "response": [
                 {
@@ -2766,7 +2766,7 @@
                         "checkout"
                       ]
                     },
-                    "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` \u2014 plan name (e.g. `pro`)\n- `interval` \u2014 `month` or `year`"
+                    "description": "Create a Stripe checkout session for the authenticated user. Redirect the user to the returned `url`.\n\nBody fields:\n- `plan` — plan name (e.g. `pro`)\n- `interval` — `month` or `year`"
                   },
                   "status": "OK",
                   "code": 200,
@@ -2978,7 +2978,7 @@
               ]
             }
           ],
-          "description": "Subscription scoped to the authenticated user (`subscriberType: 'user'`). No workspace context required \u2014 suitable for consumer/individual SaaS (Spotify, Netflix-style).\n\nThe subscriber is always resolved as the user in the access token. No `X-Workspace-ID` header is needed."
+          "description": "Subscription scoped to the authenticated user (`subscriberType: 'user'`). No workspace context required — suitable for consumer/individual SaaS (Spotify, Netflix-style).\n\nThe subscriber is always resolved as the user in the access token. No `X-Workspace-ID` header is needed."
         },
         {
           "name": "Workspace-scoped  (X-Workspace-ID)",
@@ -3353,7 +3353,7 @@
               ]
             }
           ],
-          "description": "Same `/billing/*` endpoints as user billing \u2014 the subscriber is switched to the workspace by adding the `X-Workspace-ID` header. Membership is verified automatically by the `withBilling` global middleware; no separate guard needed.\n\nSuitable for team / B2B SaaS (Slack, Linear-style)."
+          "description": "Same `/billing/*` endpoints as user billing — the subscriber is switched to the workspace by adding the `X-Workspace-ID` header. Membership is verified automatically by the `withBilling` global middleware; no separate guard needed.\n\nSuitable for team / B2B SaaS (Slack, Linear-style)."
         },
         {
           "name": "Webhook",
@@ -3476,10 +3476,10 @@
               ]
             }
           ],
-          "description": "Stripe webhook receiver \u2014 called by Stripe, not by your frontend. Configure this URL in your Stripe Dashboard under **Developers \u2192 Webhooks**.\n\nThe `stripe-signature` header is verified against `STRIPE_WEBHOOK_SECRET`. Requests with an invalid or missing signature are rejected with `400`.\n\n**Handled events:**\n- `customer.subscription.created` \u2014 creates the subscription record\n- `customer.subscription.updated` \u2014 syncs status, billing period, and cancel-at-period-end flag\n- `customer.subscription.deleted` \u2014 marks the subscription as cancelled\n\nAll other event types return `{ received: true }` without side effects."
+          "description": "Stripe webhook receiver — called by Stripe, not by your frontend. Configure this URL in your Stripe Dashboard under **Developers → Webhooks**.\n\nThe `stripe-signature` header is verified against `STRIPE_WEBHOOK_SECRET`. Requests with an invalid or missing signature are rejected with `400`.\n\n**Handled events:**\n- `customer.subscription.created` — creates the subscription record\n- `customer.subscription.updated` — syncs status, billing period, and cancel-at-period-end flag\n- `customer.subscription.deleted` — marks the subscription as cancelled\n\nAll other event types return `{ received: true }` without side effects."
         }
       ],
-      "description": "Subscription billing and usage metering \u2014 provided by `@fonderie-js/billing`.\n\n**Subscriber resolution** \u2014 the same `/billing/*` routes serve both user and workspace billing. The module resolves the subscriber automatically:\n\n| Header present | Resolved as |\n|---|---|\n| `X-Workspace-ID: <id>` | `subscriberType: 'workspace'` \u2014 membership verified automatically |\n| *(omitted)* | `subscriberType: 'user'` \u2014 the authenticated user |\n\n**Plan catalogue** is config-driven: plans live in `IBillingConfig.plans`, are synced to the database on every boot, and exposed as read-only via the API.\n\n**Amounts** are in cents (e.g. `7900` = $79.00). `null` limit = unlimited."
+      "description": "Subscription billing and usage metering — provided by `@fonderie-js/billing`.\n\n**Subscriber resolution** — the same `/billing/*` routes serve both user and workspace billing. The module resolves the subscriber automatically:\n\n| Header present | Resolved as |\n|---|---|\n| `X-Workspace-ID: <id>` | `subscriberType: 'workspace'` — membership verified automatically |\n| *(omitted)* | `subscriberType: 'user'` — the authenticated user |\n\n**Plan catalogue** is config-driven: plans live in `IBillingConfig.plans`, are synced to the database on every boot, and exposed as read-only via the API.\n\n**Amounts** are in cents (e.g. `7900` = $79.00). `null` limit = unlimited."
     },
     {
       "name": "Customers  (@fonderie-js/customers)",
@@ -3974,13 +3974,26 @@
               "request": {
                 "method": "DELETE",
                 "header": [
-                  { "key": "Authorization", "value": "Bearer {{token}}" },
-                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "X-Workspace-ID",
+                    "value": "{{workspace_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/notes/{{customer_note_id}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "customers", "{{customer_id}}", "notes", "{{customer_note_id}}" ]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "notes",
+                    "{{customer_note_id}}"
+                  ]
                 },
                 "description": "Delete a note."
               },
@@ -3990,19 +4003,37 @@
                   "originalRequest": {
                     "method": "DELETE",
                     "header": [
-                      { "key": "Authorization", "value": "Bearer {{token}}" },
-                      { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{token}}"
+                      },
+                      {
+                        "key": "X-Workspace-ID",
+                        "value": "{{workspace_id}}"
+                      }
                     ],
                     "url": {
                       "raw": "{{base_url}}/customers/{{customer_id}}/notes/{{customer_note_id}}",
-                      "host": [ "{{base_url}}" ],
-                      "path": [ "customers", "{{customer_id}}", "notes", "{{customer_note_id}}" ]
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "customers",
+                        "{{customer_id}}",
+                        "notes",
+                        "{{customer_note_id}}"
+                      ]
                     }
                   },
                   "status": "OK",
                   "code": 200,
                   "_postman_previewlanguage": "json",
-                  "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
                   "cookie": [],
                   "body": "{\n  \"reason\": \"CUSTOMER_NOTE_DELETED\",\n  \"explanation\": \"Note deleted successfully.\",\n  \"result\": null\n}"
                 }
@@ -5148,13 +5179,24 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
-              { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Workspace-ID",
+                "value": "{{workspace_id}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/customers/{{customer_id}}",
-              "host": [ "{{base_url}}" ],
-              "path": [ "customers", "{{customer_id}}" ],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customers",
+                "{{customer_id}}"
+              ],
               "query": [
                 {
                   "key": "depth",
@@ -5172,43 +5214,80 @@
               "originalRequest": {
                 "method": "GET",
                 "header": [
-                  { "key": "Authorization", "value": "Bearer {{token}}" },
-                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "X-Workspace-ID",
+                    "value": "{{workspace_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "customers", "{{customer_id}}" ]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}"
+                  ]
                 }
               },
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [ { "key": "Content-Type", "value": "application/json" } ],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"id\": \"{{customer_id}}\",\n    \"type\": \"individual\",\n    \"sex\": \"MALE\",\n    \"firstName\": \"Tommy\",\n    \"lastName\": \"Mancini\",\n    \"companyName\": \"\",\n    \"avatarUrl\": \"\",\n    \"locale\": \"it-IT\",\n    \"referenceCode\": \"CLT-0001\",\n    \"blacklisted\": { \"status\": false, \"reason\": null },\n    \"createdBy\": \"{{user_id}}\",\n    \"createdAt\": \"2026-05-18T11:58:24.817Z\",\n    \"updatedAt\": \"2026-05-18T11:58:24.817Z\",\n    \"emails\": [ { \"id\": \"{{customer_email_id}}\", \"email\": \"tommy.mancini@gmail.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:25.219Z\" } ],\n    \"phones\": [ { \"id\": \"{{customer_phone_id}}\", \"phone\": \"+15141110001\", \"label\": \"mobile\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:26.445Z\" } ],\n    \"addresses\": [ { \"id\": \"{{customer_addr_id}}\", \"label\": \"service\", \"isPrimary\": true, \"address\": { \"countryIso\": \"CA\", \"subdivision1Iso\": \"QC\", \"subdivision2Iso\": \"\", \"zipPostalCode\": \"H7V 1A1\", \"unit\": \"\", \"line1\": \"85 Boulevard Sainte-Rose\", \"line2\": \"\" } } ],\n    \"notes\": [],\n    \"relationships\": [\n      {\n        \"id\": \"{{relationship_id}}\",\n        \"customerId\": \"{{related_customer_id}}\",\n        \"relationship\": \"tenant\",\n        \"isPrimary\": true,\n        \"type\": \"individual\",\n        \"sex\": \"MALE\",\n        \"firstName\": \"Marco\",\n        \"lastName\": \"Rossi\",\n        \"companyName\": \"\",\n        \"avatarUrl\": \"\",\n        \"locale\": \"it-IT\",\n        \"referenceCode\": \"CLT-0002\",\n        \"blacklisted\": { \"status\": false, \"reason\": null },\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-18T11:58:28.183Z\",\n        \"updatedAt\": \"2026-05-18T11:58:28.183Z\",\n        \"emails\": [ { \"id\": \"{{customer_email_id}}\", \"email\": \"marco.rossi@gmail.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:28.727Z\" } ],\n        \"phones\": [],\n        \"notes\": [],\n        \"tags\": []\n      }\n    ],\n    \"tags\": []\n  }\n}"
+              "body": "{\"reason\":\"CUSTOMER_FETCHED\",\"explanation\":\"Customer retrieved successfully.\",\"result\":{\"id\":\"c312baa3-df31-4bcf-b128-005dc8c339be\",\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Tommy\",\"lastName\":\"Mancini\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0001\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:24.817Z\",\"updatedAt\":\"2026-05-18T11:58:24.817Z\",\"emails\":[{\"id\":\"645af918-4d17-4248-8b88-505ef42e9d32\",\"email\":\"tommy.mancini@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:25.219Z\"}],\"phones\":[{\"id\":\"23bb4537-713e-4c0f-98ab-851255654494\",\"phone\":\"+15141110001\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:26.445Z\"}],\"addresses\":[{\"id\":\"996d0c0a-06e8-4ff6-9808-53a7fd3a1afe\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H7V 1A1\",\"unit\":\"\",\"line1\":\"85 Boulevard Sainte-Rose\",\"line2\":\"\"}}],\"notes\":[],\"relationships\":[{\"id\":\"b1b60d27-0d26-44a8-9986-8bd3d36b0895\",\"customerId\":\"567fd655-61f0-42a0-b537-b9ad4b8c9f3a\",\"relationship\":\"tenant\",\"isPrimary\":true,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Marco\",\"lastName\":\"Rossi\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0002\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:28.183Z\",\"updatedAt\":\"2026-05-18T11:58:28.183Z\",\"emails\":[{\"id\":\"626596ba-958a-4cf3-9436-bca2de4ed4c2\",\"email\":\"marco.rossi@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:28.727Z\"}],\"phones\":[{\"id\":\"29b30814-d140-4c82-9287-e0b7bcc5c9a4\",\"phone\":\"+15141110002\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:29.438Z\"}],\"addresses\":[{\"id\":\"b781e93a-7333-4839-9c24-ddc522cb154d\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"101\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"49be6c89-a11b-4ebf-8af5-8791f3664ec1\",\"customerId\":\"4dcb8aa6-50c7-44b9-afd1-0f2d40a9321a\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Giuseppe\",\"lastName\":\"Ferrari\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0005\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:35.377Z\",\"updatedAt\":\"2026-05-18T11:58:35.377Z\",\"emails\":[{\"id\":\"efcf04ad-80ce-4fe6-85a9-5ae421cc3e08\",\"email\":\"giuseppe.ferrari@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:36.891Z\"}],\"phones\":[{\"id\":\"66ef118e-105a-4474-9f8a-ff388e486f3e\",\"phone\":\"+15141110003\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:38.050Z\"}],\"addresses\":[{\"id\":\"55b3e1b3-7e81-434c-ba25-084c2b90fcdc\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"102\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"0d72ecc7-9528-480d-8230-13ae28d358be\",\"customerId\":\"ba8c6ae7-1b7b-47c1-8e7c-a4ed1b77c2f0\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Antonio\",\"lastName\":\"Bruno\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0007\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:41.119Z\",\"updatedAt\":\"2026-05-18T11:58:41.119Z\",\"emails\":[{\"id\":\"af889729-5aef-4944-8668-3aa38d4af10b\",\"email\":\"antonio.bruno@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:41.668Z\"}],\"phones\":[{\"id\":\"3d8b5c3d-fa3f-42d8-b072-3c9646f9b8c1\",\"phone\":\"+15141110004\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:42.194Z\"}],\"addresses\":[{\"id\":\"6399c79f-70c1-4b07-bf19-53103a6d47a5\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"103\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"1bbacfde-c9f7-41e4-bc4f-8c96dca610a9\",\"customerId\":\"725ec374-c16c-4f6d-b419-892762baa4dc\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Franco\",\"lastName\":\"Conti\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0008\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:43.443Z\",\"updatedAt\":\"2026-05-18T11:58:43.443Z\",\"emails\":[{\"id\":\"942db0fe-7642-4627-9277-bbb1bcf55cf4\",\"email\":\"franco.conti@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:44.153Z\"}],\"phones\":[{\"id\":\"b08f0747-8302-4db8-82a8-8a4317e45bfd\",\"phone\":\"+15141110005\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:48.312Z\"}],\"addresses\":[{\"id\":\"d954577f-af62-4a60-9974-4d1ca2ae9662\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"104\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"03b83779-c1bb-451e-94df-75a365c422e7\",\"customerId\":\"8311bf97-c067-47dc-ad42-857ef5f1dc3f\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Roberto\",\"lastName\":\"Esposito\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0012\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:52.267Z\",\"updatedAt\":\"2026-05-18T11:58:52.267Z\",\"emails\":[{\"id\":\"323f4b4b-ea41-4811-b6cc-0aaa8d7f89c9\",\"email\":\"roberto.esposito@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:52.483Z\"}],\"phones\":[{\"id\":\"68390f00-a8f0-479b-8418-13bb32e0280d\",\"phone\":\"+15141110006\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:52.681Z\"}],\"addresses\":[{\"id\":\"4f44cdbc-1413-49e9-9e2d-cee64ea5089b\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"105\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"1bb7f5d7-a741-4611-be78-3d8e29b17474\",\"customerId\":\"7d6a7548-eeb4-4181-bac8-332525f0208d\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Alessandro\",\"lastName\":\"Ricci\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0013\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:53.095Z\",\"updatedAt\":\"2026-05-18T11:58:53.095Z\",\"emails\":[{\"id\":\"f1d7f0fa-fc15-4784-ad95-0e81069a9749\",\"email\":\"a.ricci@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:53.282Z\"}],\"phones\":[{\"id\":\"8c956fc2-a186-4abf-a205-e45b0861febe\",\"phone\":\"+15141110007\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:53.719Z\"}],\"addresses\":[{\"id\":\"49cb9f5d-2e99-4793-8b2d-dc3ae38e9158\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"106\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"f5d56db0-e71e-44fe-8638-738901a2819d\",\"customerId\":\"81952f1f-4e09-4398-9772-a4b7fdc3e079\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Vincenzo\",\"lastName\":\"Lombardi\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0015\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:59:06.151Z\",\"updatedAt\":\"2026-05-18T11:59:06.151Z\",\"emails\":[{\"id\":\"bc83a4ff-ca84-4d5b-a5d8-82793c4a9abc\",\"email\":\"v.lombardi@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:59:18.735Z\"}],\"phones\":[{\"id\":\"b8a83718-3707-4524-804a-04d5c78cf0b9\",\"phone\":\"+15141110008\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:59:43.292Z\"}],\"addresses\":[{\"id\":\"b8ae5f6d-dea9-475b-97d7-c9c12be3b93c\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"107\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"ffc266c7-6681-41c3-a326-5ab20332f655\",\"customerId\":\"4e137ff2-babb-4d2a-abce-100a8ffcc98a\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Salvatore\",\"lastName\":\"Romano\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0016\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:59:43.357Z\",\"updatedAt\":\"2026-05-18T11:59:43.357Z\",\"emails\":[{\"id\":\"ebc0fb10-925a-4df7-88f0-9aac44b57807\",\"email\":\"s.romano@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:59:43.383Z\"}],\"phones\":[{\"id\":\"0a34b828-7c46-47eb-b5e6-5a041b4a426b\",\"phone\":\"+15141110009\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:59:43.413Z\"}],\"addresses\":[{\"id\":\"34dca8a0-7663-450a-b40b-5fb4c00854a8\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"108\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]}],\"tags\":[]}}"
             },
             {
               "name": "200 OK (depth=2)",
               "originalRequest": {
                 "method": "GET",
                 "header": [
-                  { "key": "Authorization", "value": "Bearer {{token}}" },
-                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "X-Workspace-ID",
+                    "value": "{{workspace_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}?depth=2",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "customers", "{{customer_id}}" ],
-                  "query": [ { "key": "depth", "value": "2" } ]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "depth",
+                      "value": "2"
+                    }
+                  ]
                 }
               },
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [ { "key": "Content-Type", "value": "application/json" } ],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"id\": \"{{customer_id}}\",\n    \"type\": \"individual\",\n    \"sex\": \"MALE\",\n    \"firstName\": \"Tommy\",\n    \"lastName\": \"Mancini\",\n    \"companyName\": \"\",\n    \"avatarUrl\": \"\",\n    \"locale\": \"it-IT\",\n    \"referenceCode\": \"CLT-0001\",\n    \"blacklisted\": { \"status\": false, \"reason\": null },\n    \"createdBy\": \"{{user_id}}\",\n    \"createdAt\": \"2026-05-18T11:58:24.817Z\",\n    \"updatedAt\": \"2026-05-18T11:58:24.817Z\",\n    \"emails\": [ { \"id\": \"{{customer_email_id}}\", \"email\": \"tommy.mancini@gmail.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:25.219Z\" } ],\n    \"phones\": [ { \"id\": \"{{customer_phone_id}}\", \"phone\": \"+15141110001\", \"label\": \"mobile\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:26.445Z\" } ],\n    \"addresses\": [ { \"id\": \"{{customer_addr_id}}\", \"label\": \"service\", \"isPrimary\": true, \"address\": { \"countryIso\": \"CA\", \"subdivision1Iso\": \"QC\", \"subdivision2Iso\": \"\", \"zipPostalCode\": \"H7V 1A1\", \"unit\": \"\", \"line1\": \"85 Boulevard Sainte-Rose\", \"line2\": \"\" } } ],\n    \"notes\": [],\n    \"relationships\": [\n      {\n        \"id\": \"{{relationship_id}}\",\n        \"customerId\": \"{{related_customer_id}}\",\n        \"relationship\": \"tenant\",\n        \"isPrimary\": true,\n        \"type\": \"individual\",\n        \"sex\": \"MALE\",\n        \"firstName\": \"Marco\",\n        \"lastName\": \"Rossi\",\n        \"companyName\": \"\",\n        \"avatarUrl\": \"\",\n        \"locale\": \"it-IT\",\n        \"referenceCode\": \"CLT-0002\",\n        \"blacklisted\": { \"status\": false, \"reason\": null },\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-18T11:58:28.183Z\",\n        \"updatedAt\": \"2026-05-18T11:58:28.183Z\",\n        \"emails\": [ { \"id\": \"{{customer_email_id}}\", \"email\": \"marco.rossi@gmail.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:28.727Z\" } ],\n        \"phones\": [],\n        \"notes\": [],\n        \"tags\": [],\n        \"relationships\": [\n          {\n            \"id\": \"{{relationship_id_2}}\",\n            \"customerId\": \"{{related_customer_id}}\",\n            \"relationship\": \"wife\",\n            \"isPrimary\": false,\n            \"type\": \"individual\",\n            \"sex\": \"FEMALE\",\n            \"firstName\": \"Sofia\",\n            \"lastName\": \"Rossi\",\n            \"companyName\": \"\",\n            \"avatarUrl\": \"\",\n            \"locale\": \"it-IT\",\n            \"referenceCode\": \"CLT-0003\",\n            \"blacklisted\": { \"status\": false, \"reason\": null },\n            \"createdBy\": \"{{user_id}}\",\n            \"createdAt\": \"2026-05-18T11:58:32.000Z\",\n            \"updatedAt\": \"2026-05-18T11:58:32.000Z\",\n            \"emails\": [],\n            \"phones\": [],\n            \"notes\": [],\n            \"tags\": []\n          },\n          {\n            \"id\": \"{{relationship_id_3}}\",\n            \"customerId\": \"{{related_customer_id}}\",\n            \"relationship\": \"kid\",\n            \"isPrimary\": false,\n            \"type\": \"individual\",\n            \"sex\": \"MALE\",\n            \"firstName\": \"Luca\",\n            \"lastName\": \"Rossi\",\n            \"companyName\": \"\",\n            \"avatarUrl\": \"\",\n            \"locale\": \"it-IT\",\n            \"referenceCode\": \"CLT-0004\",\n            \"blacklisted\": { \"status\": false, \"reason\": null },\n            \"createdBy\": \"{{user_id}}\",\n            \"createdAt\": \"2026-05-18T11:58:33.000Z\",\n            \"updatedAt\": \"2026-05-18T11:58:33.000Z\",\n            \"emails\": [],\n            \"phones\": [],\n            \"notes\": [],\n            \"tags\": []\n          }\n        ]\n      }\n    ],\n    \"tags\": []\n  }\n}"
+              "body": "{\"reason\":\"CUSTOMER_FETCHED\",\"explanation\":\"Customer retrieved successfully.\",\"result\":{\"id\":\"c312baa3-df31-4bcf-b128-005dc8c339be\",\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Tommy\",\"lastName\":\"Mancini\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0001\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:24.817Z\",\"updatedAt\":\"2026-05-18T11:58:24.817Z\",\"emails\":[{\"id\":\"645af918-4d17-4248-8b88-505ef42e9d32\",\"email\":\"tommy.mancini@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:25.219Z\"}],\"phones\":[{\"id\":\"23bb4537-713e-4c0f-98ab-851255654494\",\"phone\":\"+15141110001\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:26.445Z\"}],\"addresses\":[{\"id\":\"996d0c0a-06e8-4ff6-9808-53a7fd3a1afe\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H7V 1A1\",\"unit\":\"\",\"line1\":\"85 Boulevard Sainte-Rose\",\"line2\":\"\"}}],\"notes\":[],\"relationships\":[{\"id\":\"b1b60d27-0d26-44a8-9986-8bd3d36b0895\",\"customerId\":\"567fd655-61f0-42a0-b537-b9ad4b8c9f3a\",\"relationship\":\"tenant\",\"isPrimary\":true,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Marco\",\"lastName\":\"Rossi\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0002\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:28.183Z\",\"updatedAt\":\"2026-05-18T11:58:28.183Z\",\"emails\":[{\"id\":\"626596ba-958a-4cf3-9436-bca2de4ed4c2\",\"email\":\"marco.rossi@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:28.727Z\"}],\"phones\":[{\"id\":\"29b30814-d140-4c82-9287-e0b7bcc5c9a4\",\"phone\":\"+15141110002\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:29.438Z\"}],\"addresses\":[{\"id\":\"b781e93a-7333-4839-9c24-ddc522cb154d\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"101\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[],\"relationships\":[{\"id\":\"6df75f2c-868a-4661-8fce-e8404c878502\",\"customerId\":\"a6679812-5b54-476d-a792-876e51d0b932\",\"relationship\":\"wife\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"FEMALE\",\"firstName\":\"Sofia\",\"lastName\":\"Rossi\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0003\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:32.798Z\",\"updatedAt\":\"2026-05-18T11:58:32.798Z\",\"emails\":[],\"phones\":[],\"addresses\":[{\"id\":\"307b878c-70c2-43e9-ac00-94d68294d976\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"101\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"a9558ff3-d66c-426f-ae92-dfc22420d8c5\",\"customerId\":\"2971781f-9f4b-424a-9057-80f213c5fd0f\",\"relationship\":\"kid\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Luca\",\"lastName\":\"Rossi\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0004\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:34.174Z\",\"updatedAt\":\"2026-05-18T11:58:34.174Z\",\"emails\":[],\"phones\":[],\"addresses\":[{\"id\":\"0d38f972-13bf-46b3-a7a0-b193beac7f30\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"101\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]}]},{\"id\":\"49be6c89-a11b-4ebf-8af5-8791f3664ec1\",\"customerId\":\"4dcb8aa6-50c7-44b9-afd1-0f2d40a9321a\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Giuseppe\",\"lastName\":\"Ferrari\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0005\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:35.377Z\",\"updatedAt\":\"2026-05-18T11:58:35.377Z\",\"emails\":[{\"id\":\"efcf04ad-80ce-4fe6-85a9-5ae421cc3e08\",\"email\":\"giuseppe.ferrari@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:36.891Z\"}],\"phones\":[{\"id\":\"66ef118e-105a-4474-9f8a-ff388e486f3e\",\"phone\":\"+15141110003\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:38.050Z\"}],\"addresses\":[{\"id\":\"55b3e1b3-7e81-434c-ba25-084c2b90fcdc\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"102\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[],\"relationships\":[{\"id\":\"712d3b07-4661-4b0f-8878-c7831d4e6030\",\"customerId\":\"a57c197a-81ef-4581-9694-06f5a12bb82c\",\"relationship\":\"wife\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"FEMALE\",\"firstName\":\"Maria\",\"lastName\":\"Ferrari\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0006\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:40.078Z\",\"updatedAt\":\"2026-05-18T11:58:40.078Z\",\"emails\":[],\"phones\":[],\"addresses\":[{\"id\":\"b1899088-8ccb-4ba4-a92e-8a0fc3779234\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"102\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]}]},{\"id\":\"0d72ecc7-9528-480d-8230-13ae28d358be\",\"customerId\":\"ba8c6ae7-1b7b-47c1-8e7c-a4ed1b77c2f0\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Antonio\",\"lastName\":\"Bruno\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0007\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:41.119Z\",\"updatedAt\":\"2026-05-18T11:58:41.119Z\",\"emails\":[{\"id\":\"af889729-5aef-4944-8668-3aa38d4af10b\",\"email\":\"antonio.bruno@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:41.668Z\"}],\"phones\":[{\"id\":\"3d8b5c3d-fa3f-42d8-b072-3c9646f9b8c1\",\"phone\":\"+15141110004\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:42.194Z\"}],\"addresses\":[{\"id\":\"6399c79f-70c1-4b07-bf19-53103a6d47a5\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"103\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[],\"relationships\":[]},{\"id\":\"1bbacfde-c9f7-41e4-bc4f-8c96dca610a9\",\"customerId\":\"725ec374-c16c-4f6d-b419-892762baa4dc\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Franco\",\"lastName\":\"Conti\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0008\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:43.443Z\",\"updatedAt\":\"2026-05-18T11:58:43.443Z\",\"emails\":[{\"id\":\"942db0fe-7642-4627-9277-bbb1bcf55cf4\",\"email\":\"franco.conti@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:44.153Z\"}],\"phones\":[{\"id\":\"b08f0747-8302-4db8-82a8-8a4317e45bfd\",\"phone\":\"+15141110005\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:48.312Z\"}],\"addresses\":[{\"id\":\"d954577f-af62-4a60-9974-4d1ca2ae9662\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"104\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[],\"relationships\":[{\"id\":\"89bdaf6a-fad4-41a1-82e2-29783576227b\",\"customerId\":\"c2786b13-09fa-4586-a649-885e89413aea\",\"relationship\":\"wife\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"FEMALE\",\"firstName\":\"Carla\",\"lastName\":\"Conti\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0009\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:49.783Z\",\"updatedAt\":\"2026-05-18T11:58:49.783Z\",\"emails\":[],\"phones\":[],\"addresses\":[{\"id\":\"14054e2d-ce72-431d-9932-77a790d9144f\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"104\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"d898c7f9-9819-4f06-b253-fad3512d238b\",\"customerId\":\"e7370224-4dd4-41f1-a1ca-cfd4ddbc2fda\",\"relationship\":\"kid\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Stefano\",\"lastName\":\"Conti\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0010\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:51.079Z\",\"updatedAt\":\"2026-05-18T11:58:51.079Z\",\"emails\":[],\"phones\":[],\"addresses\":[{\"id\":\"ea06ac37-b63a-47f1-ba7a-c2ee3d82966a\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"104\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]},{\"id\":\"1e0dc5ba-e2a7-437f-b1d3-5beae24da14b\",\"customerId\":\"8dfff922-64ab-455b-ba4a-6e1285759ef4\",\"relationship\":\"kid\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"FEMALE\",\"firstName\":\"Elena\",\"lastName\":\"Conti\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0011\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:51.711Z\",\"updatedAt\":\"2026-05-18T11:58:51.711Z\",\"emails\":[],\"phones\":[],\"addresses\":[{\"id\":\"5ac6994b-8328-474d-aa7f-75b9baceae4c\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"104\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]}]},{\"id\":\"03b83779-c1bb-451e-94df-75a365c422e7\",\"customerId\":\"8311bf97-c067-47dc-ad42-857ef5f1dc3f\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Roberto\",\"lastName\":\"Esposito\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0012\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:52.267Z\",\"updatedAt\":\"2026-05-18T11:58:52.267Z\",\"emails\":[{\"id\":\"323f4b4b-ea41-4811-b6cc-0aaa8d7f89c9\",\"email\":\"roberto.esposito@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:52.483Z\"}],\"phones\":[{\"id\":\"68390f00-a8f0-479b-8418-13bb32e0280d\",\"phone\":\"+15141110006\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:52.681Z\"}],\"addresses\":[{\"id\":\"4f44cdbc-1413-49e9-9e2d-cee64ea5089b\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"105\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[],\"relationships\":[]},{\"id\":\"1bb7f5d7-a741-4611-be78-3d8e29b17474\",\"customerId\":\"7d6a7548-eeb4-4181-bac8-332525f0208d\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Alessandro\",\"lastName\":\"Ricci\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0013\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:53.095Z\",\"updatedAt\":\"2026-05-18T11:58:53.095Z\",\"emails\":[{\"id\":\"f1d7f0fa-fc15-4784-ad95-0e81069a9749\",\"email\":\"a.ricci@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:53.282Z\"}],\"phones\":[{\"id\":\"8c956fc2-a186-4abf-a205-e45b0861febe\",\"phone\":\"+15141110007\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:58:53.719Z\"}],\"addresses\":[{\"id\":\"49cb9f5d-2e99-4793-8b2d-dc3ae38e9158\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"106\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[],\"relationships\":[{\"id\":\"02808910-bafa-4f26-b9c0-e8b771b1c1be\",\"customerId\":\"d009c52d-c154-42d7-a5fb-0c8a4502407e\",\"relationship\":\"partner\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"FEMALE\",\"firstName\":\"Chiara\",\"lastName\":\"Moretti\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0014\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:58:59.176Z\",\"updatedAt\":\"2026-05-18T11:58:59.176Z\",\"emails\":[],\"phones\":[],\"addresses\":[{\"id\":\"33b16088-211e-4681-b63a-2412b335b438\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"106\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]}]},{\"id\":\"f5d56db0-e71e-44fe-8638-738901a2819d\",\"customerId\":\"81952f1f-4e09-4398-9772-a4b7fdc3e079\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Vincenzo\",\"lastName\":\"Lombardi\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0015\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:59:06.151Z\",\"updatedAt\":\"2026-05-18T11:59:06.151Z\",\"emails\":[{\"id\":\"bc83a4ff-ca84-4d5b-a5d8-82793c4a9abc\",\"email\":\"v.lombardi@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:59:18.735Z\"}],\"phones\":[{\"id\":\"b8a83718-3707-4524-804a-04d5c78cf0b9\",\"phone\":\"+15141110008\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:59:43.292Z\"}],\"addresses\":[{\"id\":\"b8ae5f6d-dea9-475b-97d7-c9c12be3b93c\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"107\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[],\"relationships\":[]},{\"id\":\"ffc266c7-6681-41c3-a326-5ab20332f655\",\"customerId\":\"4e137ff2-babb-4d2a-abce-100a8ffcc98a\",\"relationship\":\"tenant\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"MALE\",\"firstName\":\"Salvatore\",\"lastName\":\"Romano\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0016\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:59:43.357Z\",\"updatedAt\":\"2026-05-18T11:59:43.357Z\",\"emails\":[{\"id\":\"ebc0fb10-925a-4df7-88f0-9aac44b57807\",\"email\":\"s.romano@gmail.com\",\"label\":\"personal\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:59:43.383Z\"}],\"phones\":[{\"id\":\"0a34b828-7c46-47eb-b5e6-5a041b4a426b\",\"phone\":\"+15141110009\",\"label\":\"mobile\",\"isPrimary\":true,\"createdAt\":\"2026-05-18T11:59:43.413Z\"}],\"addresses\":[{\"id\":\"34dca8a0-7663-450a-b40b-5fb4c00854a8\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"108\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[],\"relationships\":[{\"id\":\"d3defee7-68e3-4e84-b617-6e677c978879\",\"customerId\":\"7cd0f9a9-a809-4f67-b166-29d7140e25ec\",\"relationship\":\"wife\",\"isPrimary\":false,\"type\":\"individual\",\"sex\":\"FEMALE\",\"firstName\":\"Rosa\",\"lastName\":\"Romano\",\"companyName\":\"\",\"avatarUrl\":\"\",\"locale\":\"it-IT\",\"referenceCode\":\"CRW-0017\",\"blacklisted\":{\"status\":false,\"reason\":null},\"createdBy\":\"cbb64c51-80bc-4f83-8682-ad5643aee8cb\",\"createdAt\":\"2026-05-18T11:59:43.463Z\",\"updatedAt\":\"2026-05-18T11:59:43.463Z\",\"emails\":[],\"phones\":[],\"addresses\":[{\"id\":\"e7b401ef-29db-4ffb-b390-28af0a9f85c8\",\"label\":\"service\",\"isPrimary\":true,\"address\":{\"countryIso\":\"CA\",\"subdivision1Iso\":\"QC\",\"subdivision2Iso\":\"\",\"zipPostalCode\":\"H3Z 1K8\",\"unit\":\"108\",\"line1\":\"3500 Boulevard de Maisonneuve O\",\"line2\":\"\"}}],\"notes\":[],\"tags\":[]}]}],\"tags\":[]}}"
             }
           ]
         },
@@ -5244,7 +5323,7 @@
                 "{{customer_id}}"
               ]
             },
-            "description": "Partial update \u2014 only send fields you want to change."
+            "description": "Partial update — only send fields you want to change."
           },
           "response": [
             {
@@ -5279,7 +5358,7 @@
                     "{{customer_id}}"
                   ]
                 },
-                "description": "Partial update \u2014 only send fields you want to change."
+                "description": "Partial update — only send fields you want to change."
               },
               "status": "OK",
               "code": 200,
@@ -5517,13 +5596,25 @@
               "request": {
                 "method": "GET",
                 "header": [
-                  { "key": "Authorization", "value": "Bearer {{token}}" },
-                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "X-Workspace-ID",
+                    "value": "{{workspace_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/relationships",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "customers", "{{customer_id}}", "relationships" ]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "relationships"
+                  ]
                 },
                 "description": "Returns all relationships for a customer. Each entry is flat: relationship metadata + related customer fields spread at the top level (no nested customer object). Addresses are excluded — related customers are assumed to share the parent's address."
               },
@@ -5533,19 +5624,36 @@
                   "originalRequest": {
                     "method": "GET",
                     "header": [
-                      { "key": "Authorization", "value": "Bearer {{token}}" },
-                      { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{token}}"
+                      },
+                      {
+                        "key": "X-Workspace-ID",
+                        "value": "{{workspace_id}}"
+                      }
                     ],
                     "url": {
                       "raw": "{{base_url}}/customers/{{customer_id}}/relationships",
-                      "host": [ "{{base_url}}" ],
-                      "path": [ "customers", "{{customer_id}}", "relationships" ]
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "customers",
+                        "{{customer_id}}",
+                        "relationships"
+                      ]
                     }
                   },
                   "status": "OK",
                   "code": 200,
                   "_postman_previewlanguage": "json",
-                  "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
                   "cookie": [],
                   "body": "{\n  \"reason\": \"CUSTOMER_RELATIONSHIPS_FETCHED\",\n  \"explanation\": \"Relationships retrieved successfully.\",\n  \"result\": {\n    \"relationships\": [\n      {\n        \"id\": \"{{relationship_id}}\",\n        \"customerId\": \"{{related_customer_id}}\",\n        \"relationship\": \"tenant\",\n        \"isPrimary\": false,\n        \"type\": \"individual\",\n        \"sex\": \"MALE\",\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"companyName\": null,\n        \"avatarUrl\": null,\n        \"locale\": \"en-US\",\n        \"referenceCode\": \"CLT-0002\",\n        \"blacklisted\": { \"status\": false, \"reason\": null },\n        \"createdBy\": null,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n        \"emails\": [],\n        \"phones\": [],\n        \"notes\": [],\n        \"tags\": []\n      }\n    ]\n  }\n}"
                 }
@@ -5556,19 +5664,38 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Authorization", "value": "Bearer {{token}}" },
-                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" },
-                  { "key": "Content-Type", "value": "application/json" }
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "X-Workspace-ID",
+                    "value": "{{workspace_id}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/relationships",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "customers", "{{customer_id}}", "relationships" ]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "relationships"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"relatedId\": \"{{related_customer_id}}\",\n  \"relationship\": \"tenant\",\n  \"isPrimary\": false\n}",
-                  "options": { "raw": { "language": "json" } }
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 },
                 "description": "Link two customers. relationship is a free-form string (e.g. tenant, spouse, employee)."
               },
@@ -5579,13 +5706,27 @@
               "request": {
                 "method": "PUT",
                 "header": [
-                  { "key": "Authorization", "value": "Bearer {{token}}" },
-                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "X-Workspace-ID",
+                    "value": "{{workspace_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/relationships/{{related_customer_id}}/primary",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "customers", "{{customer_id}}", "relationships", "{{related_customer_id}}", "primary" ]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "relationships",
+                    "{{related_customer_id}}",
+                    "primary"
+                  ]
                 },
                 "description": "Atomically sets this relationship as primary and clears all others."
               },
@@ -5596,13 +5737,26 @@
               "request": {
                 "method": "DELETE",
                 "header": [
-                  { "key": "Authorization", "value": "Bearer {{token}}" },
-                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "X-Workspace-ID",
+                    "value": "{{workspace_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/relationships/{{related_customer_id}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "customers", "{{customer_id}}", "relationships", "{{related_customer_id}}" ]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "relationships",
+                    "{{related_customer_id}}"
+                  ]
                 }
               },
               "response": []
@@ -6031,7 +6185,7 @@
               ]
             }
           ],
-          "description": "Manage the members of a workspace. All endpoints require `X-Workspace-ID: {{workspace_id}}`.\n\nMembers can hold multiple roles simultaneously. Their effective permissions are the union (BOOL_OR) of all assigned roles \u2014 if any role grants a permission, it is granted."
+          "description": "Manage the members of a workspace. All endpoints require `X-Workspace-ID: {{workspace_id}}`.\n\nMembers can hold multiple roles simultaneously. Their effective permissions are the union (BOOL_OR) of all assigned roles — if any role grants a permission, it is granted."
         },
         {
           "name": "Invitations",
@@ -6068,7 +6222,7 @@
                     "invitations"
                   ]
                 },
-                "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
               },
               "response": [
                 {
@@ -6103,7 +6257,7 @@
                         "invitations"
                       ]
                     },
-                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
                   },
                   "status": "Created",
                   "code": 201,
@@ -6149,7 +6303,7 @@
                         "invitations"
                       ]
                     },
-                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
                   },
                   "status": "Unprocessable Entity",
                   "code": 422,
@@ -6195,7 +6349,7 @@
                         "invitations"
                       ]
                     },
-                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects \u2014 pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
+                    "description": "Invite one or more users to the workspace by email. Body is an array of `{email, roleId?}` objects — pass a single-element array to invite one person. A transactional email is sent to each address. Omitting `roleId` falls back to the workspace ADMIN role."
                   },
                   "status": "Payment Required",
                   "code": 402,
@@ -6435,7 +6589,7 @@
               ]
             }
           ],
-          "description": "Token-based workspace invitations. Sending an invitation triggers a transactional email (via `@fonderie-js/courier`) containing a time-limited acceptance link.\n\n`POST /workspaces/invitations/accept` does **not** require the `X-Workspace-ID` header \u2014 the workspace is resolved from the invitation token itself, so unauthenticated users who just registered can accept an invite directly."
+          "description": "Token-based workspace invitations. Sending an invitation triggers a transactional email (via `@fonderie-js/courier`) containing a time-limited acceptance link.\n\n`POST /workspaces/invitations/accept` does **not** require the `X-Workspace-ID` header — the workspace is resolved from the invitation token itself, so unauthenticated users who just registered can accept an invite directly."
         },
         {
           "name": "Roles",
@@ -6941,7 +7095,7 @@
               ]
             }
           ],
-          "description": "Custom RBAC roles scoped to a workspace. Roles group fine-grained permissions (READ / CREATE / UPDATE / DELETE) on named resources.\n\n`POST /workspaces/roles/:roleId/permissions` **replaces** the entire permission set atomically \u2014 it is not additive. Send the full desired permission list each time.\n\nTo assign roles to a member, use the endpoints in the **Members** sub-folder."
+          "description": "Custom RBAC roles scoped to a workspace. Roles group fine-grained permissions (READ / CREATE / UPDATE / DELETE) on named resources.\n\n`POST /workspaces/roles/:roleId/permissions` **replaces** the entire permission set atomically — it is not additive. Send the full desired permission list each time.\n\nTo assign roles to a member, use the endpoints in the **Members** sub-folder."
         },
         {
           "name": "Settings",
@@ -7097,7 +7251,7 @@
               ]
             }
           ],
-          "description": "Per-workspace key-value configuration \u2014 branding, locale defaults, feature toggles, or any other workspace-scoped preferences. Settings are stored alongside the workspace record and have no enforced schema."
+          "description": "Per-workspace key-value configuration — branding, locale defaults, feature toggles, or any other workspace-scoped preferences. Settings are stored alongside the workspace record and have no enforced schema."
         },
         {
           "name": "Create Workspace",
@@ -7517,7 +7671,7 @@
           ]
         }
       ],
-      "description": "Multi-tenant team layer \u2014 provided by `@fonderie-js/workspaces`.\n\nA workspace is a shared organizational context (company, team, project). Each workspace has an owner, a slug, a plan tier, and a custom RBAC structure built on top of `@fonderie-js/permissions`.\n\n**Workspace context resolution:**\n- Header-based routes use `X-Workspace-ID: {{workspace_id}}`\n- Path-based routes use `:id` or `:workspaceId` directly in the URL\n\n**Sub-sections:**\n- **Members** \u2014 list, remove, and manage role assignments for workspace members\n- **Invitations** \u2014 send token-based email invitations and accept them\n- **Roles** \u2014 define custom roles and attach CRUD permissions per resource\n- **Settings** \u2014 per-workspace key-value configuration (branding, feature toggles)"
+      "description": "Multi-tenant team layer — provided by `@fonderie-js/workspaces`.\n\nA workspace is a shared organizational context (company, team, project). Each workspace has an owner, a slug, a plan tier, and a custom RBAC structure built on top of `@fonderie-js/permissions`.\n\n**Workspace context resolution:**\n- Header-based routes use `X-Workspace-ID: {{workspace_id}}`\n- Path-based routes use `:id` or `:workspaceId` directly in the URL\n\n**Sub-sections:**\n- **Members** — list, remove, and manage role assignments for workspace members\n- **Invitations** — send token-based email invitations and accept them\n- **Roles** — define custom roles and attach CRUD permissions per resource\n- **Settings** — per-workspace key-value configuration (branding, feature toggles)"
     },
     {
       "name": "Platform",
@@ -7680,7 +7834,7 @@
                 "projects"
               ]
             },
-            "description": "Workspace-scoped route \u2014 workspace resolved from `X-Workspace-ID`. Requires `READ` permission on `projects`."
+            "description": "Workspace-scoped route — workspace resolved from `X-Workspace-ID`. Requires `READ` permission on `projects`."
           },
           "response": [
             {
@@ -7706,7 +7860,7 @@
                     "projects"
                   ]
                 },
-                "description": "Workspace-scoped route \u2014 workspace resolved from `X-Workspace-ID`. Requires `READ` permission on `projects`."
+                "description": "Workspace-scoped route — workspace resolved from `X-Workspace-ID`. Requires `READ` permission on `projects`."
               },
               "status": "OK",
               "code": 200,
@@ -7831,7 +7985,7 @@
           },
           "response": [
             {
-              "name": "200 OK \u2014 limited plan",
+              "name": "200 OK — limited plan",
               "originalRequest": {
                 "method": "GET",
                 "header": [
@@ -7869,7 +8023,7 @@
               "body": "{\n  \"workspaceId\": \"{{workspace_id}}\",\n  \"limit\": 10,\n  \"unlimited\": false\n}"
             },
             {
-              "name": "200 OK \u2014 unlimited plan",
+              "name": "200 OK — unlimited plan",
               "originalRequest": {
                 "method": "GET",
                 "header": [
@@ -7931,7 +8085,7 @@
                 "analytics"
               ]
             },
-            "description": "Gated by `requireFeature('analytics')` \u2014 returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
+            "description": "Gated by `requireFeature('analytics')` — returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
           },
           "response": [
             {
@@ -7957,7 +8111,7 @@
                     "analytics"
                   ]
                 },
-                "description": "Gated by `requireFeature('analytics')` \u2014 returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
+                "description": "Gated by `requireFeature('analytics')` — returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
               },
               "status": "OK",
               "code": 200,
@@ -7994,7 +8148,7 @@
                     "analytics"
                   ]
                 },
-                "description": "Gated by `requireFeature('analytics')` \u2014 returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
+                "description": "Gated by `requireFeature('analytics')` — returns `402 FEATURE_UNAVAILABLE` on free plans. Requires `READ` permission on `analytics`."
               },
               "status": "Payment Required",
               "code": 402,
@@ -8116,7 +8270,7 @@
           ]
         }
       ],
-      "description": "Cross-cutting utility endpoints available in every Fonderie.js application.\n\n- **Health check** \u2014 liveness probe for load balancers and uptime monitors. Returns `503` when `maintenance.mode` is `true` in remote config.\n- **Remote config** \u2014 inspect all active feature flags and runtime config values. Restricted to non-production environments."
+      "description": "Cross-cutting utility endpoints available in every Fonderie.js application.\n\n- **Health check** — liveness probe for load balancers and uptime monitors. Returns `503` when `maintenance.mode` is `true` in remote config.\n- **Remote config** — inspect all active feature flags and runtime config values. Restricted to non-production environments."
     }
   ],
   "variable": [
@@ -8126,15 +8280,15 @@
     },
     {
       "key": "token",
-      "value": ""
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjYmI2NGM1MS04MGJjLTRmODMtODY4Mi1hZDU2NDNhZWU4Y2IiLCJ0eXBlIjoiYWNjZXNzIiwibG9naW5NZXRob2QiOiJlbWFpbCIsInBob25lVmVyaWZpZWQiOmZhbHNlLCJpYXQiOjE3NzkxMDk3NTUsImV4cCI6MTc3OTE5NjE1NX0.fo9B1jrcIDYuuZ9rvPkyCrAS7Syh5N2BsQWCtsubkjs"
     },
     {
       "key": "refresh_token",
-      "value": ""
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjYmI2NGM1MS04MGJjLTRmODMtODY4Mi1hZDU2NDNhZWU4Y2IiLCJ0eXBlIjoicmVmcmVzaCIsImxvZ2luTWV0aG9kIjoiZW1haWwiLCJwaG9uZVZlcmlmaWVkIjpmYWxzZSwiaWF0IjoxNzc5MTA5NzU1LCJleHAiOjE3Nzk3MTQ1NTV9.DzIZp-nh3IzDaibnLOrWmI1F2MxvZseZ2fIonH7rxwI"
     },
     {
       "key": "workspace_id",
-      "value": ""
+      "value": "5225103c-b3e0-46d5-87fd-7935c1e59952"
     },
     {
       "key": "plan_id",
@@ -8142,19 +8296,19 @@
     },
     {
       "key": "customer_id",
-      "value": ""
+      "value": "c312baa3-df31-4bcf-b128-005dc8c339be"
     },
     {
       "key": "customer_email_id",
-      "value": ""
+      "value": "645af918-4d17-4248-8b88-505ef42e9d32"
     },
     {
       "key": "customer_phone_id",
-      "value": ""
+      "value": "23bb4537-713e-4c0f-98ab-851255654494"
     },
     {
       "key": "customer_addr_id",
-      "value": ""
+      "value": "996d0c0a-06e8-4ff6-9808-53a7fd3a1afe"
     },
     {
       "key": "customer_note_id",
