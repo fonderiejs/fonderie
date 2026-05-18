@@ -1,7 +1,7 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
 import { DEFAULT_REFERENCE_CODE_PREFIX } from '../config';
-import type { ICustomer, ICustomerAddress, ICustomerDetail, ICustomerRelationship } from '../types';
+import type { ICustomer, ICustomerAddress, ICustomerDetail, ICustomerRelationship, ICustomerRelationshipExpanded, ICustomerShallow } from '../types';
 
 const SELECT_CUSTOMER = `
 	id,
@@ -176,6 +176,7 @@ export class CustomerModel {
 				          'subdivision1Iso', a.subdivision1_iso,
 				          'subdivision2Iso', a.subdivision2_iso,
 				          'zipPostalCode',   a.zip_postal_code,
+				          'unit',            a.unit,
 				          'line1',           a.line1,
 				          'line2',           a.line2
 				        ) AS address
@@ -223,6 +224,95 @@ export class CustomerModel {
 			),
 		]);
 
+		// Batch-resolve related customers so the caller gets full detail in one request.
+		const relatedIds = relationshipRows.map((r) => r.relatedId);
+		let expandedRelationships: ICustomerRelationshipExpanded[] = [];
+
+		if (relatedIds.length > 0) {
+			const [relCustomers, relEmails, relPhones, relAddresses, relNotes, relTags] = await Promise.all([
+				this.store.query<ICustomer>(
+					`SELECT ${SELECT_CUSTOMER} FROM fonderie_customers WHERE id = ANY($1::uuid[]) AND workspace_id = $2`,
+					[relatedIds, workspaceId],
+				),
+				this.store.query<{ id: string; customerId: string; email: string; label: string; isPrimary: boolean; createdAt: string }>(
+					`SELECT id, customer_id AS "customerId", email, label, is_primary AS "isPrimary", created_at AS "createdAt"
+					 FROM fonderie_customer_emails WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
+					[relatedIds],
+				),
+				this.store.query<{ id: string; customerId: string; phone: string; label: string; isPrimary: boolean; createdAt: string }>(
+					`SELECT id, customer_id AS "customerId", phone, label, is_primary AS "isPrimary", created_at AS "createdAt"
+					 FROM fonderie_customer_phones WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
+					[relatedIds],
+				),
+				this.store.query<ICustomerAddress>(
+					`SELECT ca.addr_id     AS "addrId",
+					        ca.customer_id AS "customerId",
+					        ca.label,
+					        ca.is_primary  AS "isPrimary",
+					        jsonb_build_object(
+					          'id',              a.id,
+					          'countryIso',      a.country_iso,
+					          'subdivision1Iso', a.subdivision1_iso,
+					          'subdivision2Iso', a.subdivision2_iso,
+					          'zipPostalCode',   a.zip_postal_code,
+					          'unit',            a.unit,
+					          'line1',           a.line1,
+					          'line2',           a.line2
+					        ) AS address
+					 FROM fonderie_customer_addresses ca
+					 JOIN fonderie_addresses a ON a.id = ca.addr_id
+					 WHERE ca.customer_id = ANY($1::uuid[]) ORDER BY ca.is_primary DESC`,
+					[relatedIds],
+				),
+				this.store.query<{ id: string; customerId: string; authorId: string | null; body: string; createdAt: string; updatedAt: string }>(
+					`SELECT id, customer_id AS "customerId", author_id AS "authorId", body, created_at AS "createdAt", updated_at AS "updatedAt"
+					 FROM fonderie_customer_notes WHERE customer_id = ANY($1::uuid[]) ORDER BY created_at DESC`,
+					[relatedIds],
+				),
+				this.store.query<{ customerId: string; tag: string }>(
+					`SELECT customer_id AS "customerId", tag FROM fonderie_customer_tags WHERE customer_id = ANY($1::uuid[]) ORDER BY tag ASC`,
+					[relatedIds],
+				),
+			]);
+
+			const customerMap = new Map(relCustomers.map((c) => [c.id, c]));
+
+			function groupByCustomer<T extends { customerId: string }>(rows: T[]): Map<string, T[]> {
+				return rows.reduce((m, r) => {
+					if (!m.has(r.customerId)) m.set(r.customerId, []);
+					m.get(r.customerId)!.push(r);
+					return m;
+				}, new Map<string, T[]>());
+			}
+
+			const emailMap   = groupByCustomer(relEmails);
+			const phoneMap   = groupByCustomer(relPhones);
+			const addressMap = groupByCustomer(relAddresses as unknown as (ICustomerAddress & { customerId: string })[]);
+			const noteMap    = groupByCustomer(relNotes);
+			const tagMap     = relTags.reduce((m, t) => {
+				if (!m.has(t.customerId)) m.set(t.customerId, []);
+				m.get(t.customerId)!.push(t.tag);
+				return m;
+			}, new Map<string, string[]>());
+
+			expandedRelationships = relationshipRows.map((rel) => ({
+				id:           rel.id,
+				workspaceId:  rel.workspaceId,
+				customerId:   rel.customerId,
+				relationship: rel.relationship,
+				isPrimary:    rel.isPrimary,
+				createdAt:    rel.createdAt,
+				customer: {
+					...(customerMap.get(rel.relatedId) ?? ({ id: rel.relatedId } as ICustomer)),
+					emails:    emailMap.get(rel.relatedId)   ?? [],
+					phones:    phoneMap.get(rel.relatedId)   ?? [],
+					addresses: (addressMap.get(rel.relatedId) ?? []) as ICustomerAddress[],
+					notes:     noteMap.get(rel.relatedId)    ?? [],
+					tags:      tagMap.get(rel.relatedId)     ?? [],
+				} as ICustomerShallow,
+			}));
+		}
+
 		return {
 			...row,
 			// DB returns TEXT for label; cast to the narrow union that callers expect.
@@ -230,7 +320,7 @@ export class CustomerModel {
 			phones: phoneRows as unknown as ICustomerDetail['phones'],
 			addresses: addressRows,
 			notes: noteRows as unknown as ICustomerDetail['notes'],
-			relationships: relationshipRows,
+			relationships: expandedRelationships,
 			tags: tagRows.map((t) => t.tag),
 		};
 	}

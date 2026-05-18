@@ -83,11 +83,29 @@ export interface ICustomerRelationship {
 	createdAt: string;
 }
 
+export interface ICustomerShallow extends ICustomer {
+	emails: ICustomerEmail[];
+	phones: ICustomerPhone[];
+	addresses: ICustomerAddress[];
+	notes: ICustomerNote[];
+	tags: string[];
+}
+
+export interface ICustomerRelationshipExpanded {
+	id: string;
+	workspaceId: string;
+	customerId: string;
+	relationship: string;
+	isPrimary: boolean;
+	createdAt: string;
+	customer: ICustomerShallow;
+}
+
 export interface ICustomerDetail extends ICustomer {
 	emails: ICustomerEmail[];
 	phones: ICustomerPhone[];
 	addresses: ICustomerAddress[];
 	notes: ICustomerNote[];
-	relationships: ICustomerRelationship[];
+	relationships: ICustomerRelationshipExpanded[];
 	tags: string[];
 }
