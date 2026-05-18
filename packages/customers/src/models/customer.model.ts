@@ -1,7 +1,24 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
 import { DEFAULT_REFERENCE_CODE_PREFIX } from '../config';
-import type { ICustomer, ICustomerAddress, ICustomerDetail, ICustomerRelationship, ICustomerRelationshipExpanded, ICustomerShallow } from '../types';
+import type {
+	ICustomer,
+	ICustomerAddress,
+	ICustomerDetail,
+	ICustomerDetailD2,
+	ICustomerRelationship,
+	ICustomerRelationshipExpanded,
+	ICustomerShallow,
+	ICustomerShallowD2,
+} from '../types';
+
+function groupByCustomer<T extends { customerId: string }>(rows: T[]): Map<string, T[]> {
+	return rows.reduce((m, r) => {
+		if (!m.has(r.customerId)) m.set(r.customerId, []);
+		m.get(r.customerId)!.push(r);
+		return m;
+	}, new Map<string, T[]>());
+}
 
 const SELECT_CUSTOMER = `
 	id,
@@ -117,7 +134,9 @@ export class CustomerModel {
 		return row ?? null;
 	}
 
-	async findDetail(id: string, workspaceId: string): Promise<ICustomerDetail | null> {
+	async findDetail(id: string, workspaceId: string, depth: 2): Promise<ICustomerDetailD2 | null>;
+	async findDetail(id: string, workspaceId: string, depth?: 1): Promise<ICustomerDetail | null>;
+	async findDetail(id: string, workspaceId: string, depth = 1): Promise<ICustomerDetail | ICustomerDetailD2 | null> {
 		const [row] = await this.store.query<ICustomer>(
 			`SELECT ${SELECT_CUSTOMER}
 			 FROM fonderie_customers
@@ -257,14 +276,6 @@ export class CustomerModel {
 
 			const customerMap = new Map(relCustomers.map((c) => [c.id, c]));
 
-			function groupByCustomer<T extends { customerId: string }>(rows: T[]): Map<string, T[]> {
-				return rows.reduce((m, r) => {
-					if (!m.has(r.customerId)) m.set(r.customerId, []);
-					m.get(r.customerId)!.push(r);
-					return m;
-				}, new Map<string, T[]>());
-			}
-
 			const emailMap = groupByCustomer(relEmails);
 			const phoneMap = groupByCustomer(relPhones);
 			const noteMap  = groupByCustomer(relNotes);
@@ -289,6 +300,109 @@ export class CustomerModel {
 					tags:   tagMap.get(rel.relatedId)   ?? [],
 				} as ICustomerShallow,
 			}));
+		}
+
+		// ── Depth-2: resolve relationships of relationships ────────────────────
+		if (depth >= 2 && expandedRelationships.length > 0) {
+			const visited = new Set([id]); // guard against cycles back to root
+			const d1Ids  = expandedRelationships.map((r) => r.customer.id);
+
+			const d2RelRows = await this.store.query<ICustomerRelationship>(
+				`SELECT id,
+				        workspace_id AS "workspaceId",
+				        customer_id  AS "customerId",
+				        related_id   AS "relatedId",
+				        relationship,
+				        is_primary   AS "isPrimary",
+				        created_at   AS "createdAt"
+				 FROM fonderie_customer_relationships
+				 WHERE customer_id = ANY($1::uuid[])
+				 ORDER BY is_primary DESC, created_at ASC`,
+				[d1Ids],
+			);
+
+			const validD2Rows = d2RelRows.filter((r) => !visited.has(r.relatedId));
+			const d2Ids       = [...new Set(validD2Rows.map((r) => r.relatedId))];
+
+			let d2CustomerMap = new Map<string, ICustomer>();
+			let d2EmailMap    = new Map<string, { id: string; customerId: string; email: string; label: string; isPrimary: boolean; createdAt: string }[]>();
+			let d2PhoneMap    = new Map<string, { id: string; customerId: string; phone: string; label: string; isPrimary: boolean; createdAt: string }[]>();
+			let d2NoteMap     = new Map<string, { id: string; customerId: string; authorId: string | null; body: string; createdAt: string; updatedAt: string }[]>();
+			let d2TagMap      = new Map<string, string[]>();
+
+			if (d2Ids.length > 0) {
+				const [d2Customers, d2Emails, d2Phones, d2Notes, d2Tags] = await Promise.all([
+					this.store.query<ICustomer>(
+						`SELECT ${SELECT_CUSTOMER} FROM fonderie_customers WHERE id = ANY($1::uuid[]) AND workspace_id = $2`,
+						[d2Ids, workspaceId],
+					),
+					this.store.query<{ id: string; customerId: string; email: string; label: string; isPrimary: boolean; createdAt: string }>(
+						`SELECT id, customer_id AS "customerId", email, label, is_primary AS "isPrimary", created_at AS "createdAt"
+						 FROM fonderie_customer_emails WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
+						[d2Ids],
+					),
+					this.store.query<{ id: string; customerId: string; phone: string; label: string; isPrimary: boolean; createdAt: string }>(
+						`SELECT id, customer_id AS "customerId", phone, label, is_primary AS "isPrimary", created_at AS "createdAt"
+						 FROM fonderie_customer_phones WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
+						[d2Ids],
+					),
+					this.store.query<{ id: string; customerId: string; authorId: string | null; body: string; createdAt: string; updatedAt: string }>(
+						`SELECT id, customer_id AS "customerId", author_id AS "authorId", body, created_at AS "createdAt", updated_at AS "updatedAt"
+						 FROM fonderie_customer_notes WHERE customer_id = ANY($1::uuid[]) ORDER BY created_at DESC`,
+						[d2Ids],
+					),
+					this.store.query<{ customerId: string; tag: string }>(
+						`SELECT customer_id AS "customerId", tag FROM fonderie_customer_tags WHERE customer_id = ANY($1::uuid[]) ORDER BY tag ASC`,
+						[d2Ids],
+					),
+				]);
+
+				d2CustomerMap = new Map(d2Customers.map((c) => [c.id, c]));
+				d2EmailMap    = groupByCustomer(d2Emails);
+				d2PhoneMap    = groupByCustomer(d2Phones);
+				d2NoteMap     = groupByCustomer(d2Notes);
+				d2TagMap      = d2Tags.reduce((m, t) => {
+					if (!m.has(t.customerId)) m.set(t.customerId, []);
+					m.get(t.customerId)!.push(t.tag);
+					return m;
+				}, new Map<string, string[]>());
+			}
+
+			const d2Relationships: ICustomerRelationshipExpanded[] = validD2Rows.map((d2rel) => ({
+				id:           d2rel.id,
+				workspaceId:  d2rel.workspaceId,
+				customerId:   d2rel.customerId,
+				relationship: d2rel.relationship,
+				isPrimary:    d2rel.isPrimary,
+				createdAt:    d2rel.createdAt,
+				customer: {
+					...(d2CustomerMap.get(d2rel.relatedId) ?? ({ id: d2rel.relatedId } as ICustomer)),
+					emails: d2EmailMap.get(d2rel.relatedId) ?? [],
+					phones: d2PhoneMap.get(d2rel.relatedId) ?? [],
+					notes:  d2NoteMap.get(d2rel.relatedId)  ?? [],
+					tags:   d2TagMap.get(d2rel.relatedId)   ?? [],
+				} as ICustomerShallow,
+			}));
+
+			const d2RelsByD1Id = groupByCustomer(d2Relationships);
+
+			const d2ExpandedRelationships = expandedRelationships.map((rel) => ({
+				...rel,
+				customer: {
+					...rel.customer,
+					relationships: d2RelsByD1Id.get(rel.customer.id) ?? [],
+				} as ICustomerShallowD2,
+			}));
+
+			return {
+				...row,
+				emails:        emailRows as unknown as ICustomerDetail['emails'],
+				phones:        phoneRows as unknown as ICustomerDetail['phones'],
+				addresses:     addressRows,
+				notes:         noteRows as unknown as ICustomerDetail['notes'],
+				relationships: d2ExpandedRelationships,
+				tags:          tagRows.map((t) => t.tag),
+			} as ICustomerDetailD2;
 		}
 
 		return {

@@ -4,7 +4,8 @@ import type { EventBus } from '@fonderie-js/events';
 import type { IStoreAdapter } from '@fonderie-js/store';
 
 import { DEFAULT_REFERENCE_CODE_PREFIX, EVENT_KEYS, type ICustomersConfig } from '../config';
-import { toCustomerDetailDTO, toCustomerDTO } from '../dtos/customer';
+import { toCustomerDetailD2DTO, toCustomerDetailDTO, toCustomerDTO } from '../dtos/customer';
+import type { ICustomerDetailD2 } from '../types';
 import { CustomerModel } from '../models/customer.model';
 import { isUuid } from '../utils';
 
@@ -64,6 +65,15 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			const id = params?.['customerId'];
 			if (!isUuid(id)) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID');
+			}
+
+			const query = ctx.request.url ? new URL(ctx.request.url).searchParams : null;
+			const depth = query?.get('depth') === '2' ? 2 : 1;
+
+			if (depth === 2) {
+				const customer = await customers.findDetail(id, workspaceId, 2);
+				if (!customer) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
+				return setApiResponse(HTTP.OK, 'CUSTOMER_FETCHED', 'Customer retrieved successfully.', toCustomerDetailD2DTO(customer));
 			}
 
 			const customer = await customers.findDetail(id, workspaceId);
