@@ -3,6 +3,7 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import type { IRole } from '../types';
 import {
 	createRole,
+	findSystemRole,
 	getRoleById,
 	listWorkspaceRoles,
 	updateRole,
@@ -15,6 +16,10 @@ export class RoleModel {
 
 	create(opts: Parameters<typeof createRole>[0]): Promise<IRole> {
 		return createRole(opts, this.store);
+	}
+
+	findSystem(name: string): Promise<IRole | null> {
+		return findSystemRole(name, this.store);
 	}
 
 	findById(id: string): Promise<IRole | null> {

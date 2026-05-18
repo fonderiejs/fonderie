@@ -58,11 +58,8 @@ export class WorkspacesModule implements IFonderieModule {
 
 			workspaceId = ws.id;
 
-			const adminRole = await roleModel.create({
-				name: 'ADMIN',
-				workspaceId: ws.id,
-				description: 'Workspace owner',
-			});
+			const adminRole = await roleModel.findSystem('ADMIN');
+			if (!adminRole) throw new Error('System ADMIN role not found');
 
 			await memModel.add({
 				userId: payload.userId,

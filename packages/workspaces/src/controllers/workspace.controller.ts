@@ -64,11 +64,7 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 				const ws = await wsModel.create(wsOpts);
 
 				const [adminRole] = await Promise.all([
-					roleModel.create({
-						name: 'ADMIN',
-						workspaceId: ws.id,
-						description: 'Workspace administrator',
-					}),
+					roleModel.findSystem('ADMIN'),
 					roleModel.create({
 						name: defaultRole,
 						workspaceId: ws.id,
@@ -76,6 +72,7 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 					}),
 				]);
 
+				if (!adminRole) throw new Error('System ADMIN role not found');
 				await memModel.add({ userId: ctx.user!.id, workspaceId: ws.id, roleId: adminRole.id });
 
 				return ws;
