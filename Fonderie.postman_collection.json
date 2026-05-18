@@ -2389,7 +2389,7 @@
       "name": "Billing  (@fonderie-js/billing)",
       "item": [
         {
-          "name": "Plans  (public)",
+          "name": "Plans",
           "item": [
             {
               "name": "List Plans",
@@ -2526,6 +2526,87 @@
                   "body": "{\n  \"reason\": \"NOT_FOUND\",\n  \"explanation\": \"Plan not found.\"\n}"
                 }
               ]
+            },
+            {
+              "name": "Create Plan",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Pro\",\n  \"description\": \"Professional plan with advanced features\",\n  \"tier\": 2,\n  \"seats\": 10,\n  \"trialDays\": 14,\n  \"monthlyAmount\": 4900,\n  \"monthlyPriceId\": \"price_monthly_xxx\",\n  \"yearlyAmount\": 49000,\n  \"yearlyPriceId\": \"price_yearly_xxx\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/plans",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "plans"
+                  ]
+                },
+                "description": "Create a new billing plan. Admin use only."
+              }
+            },
+            {
+              "name": "Update Plan",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Pro Plus\",\n  \"description\": \"Updated description\",\n  \"tier\": 3,\n  \"seats\": 20,\n  \"trialDays\": 30,\n  \"monthlyAmount\": 9900,\n  \"monthlyPriceId\": \"price_monthly_yyy\",\n  \"yearlyAmount\": 99000,\n  \"yearlyPriceId\": \"price_yearly_yyy\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/plans/{{plan_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "plans",
+                    "{{plan_id}}"
+                  ]
+                },
+                "description": "Update an existing billing plan. Admin use only."
+              }
+            },
+            {
+              "name": "Delete Plan",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/plans/{{plan_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "plans",
+                    "{{plan_id}}"
+                  ]
+                },
+                "description": "Delete a billing plan. Admin use only."
+              }
             }
           ],
           "description": "Read-only plan catalogue. No authentication required \u2014 safe to call from a marketing page or pricing component before the user has signed up.\n\nPlans are **config-driven**: defined in `IBillingConfig.plans` and synced to the database on every server boot via `ON CONFLICT DO UPDATE`. There are no write endpoints \u2014 to add, rename, or reprice a plan, change the config and redeploy."
@@ -6651,7 +6732,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"content-editor\",\n  \"description\": \"Updated description\"\n}"
+                  "raw": "{\n  \"name\": \"content-editor\",\n  \"description\": \"Updated description\",\n  \"active\": true\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/workspaces/roles/:roleId",
