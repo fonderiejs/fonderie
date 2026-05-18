@@ -10,6 +10,8 @@ import type {
 	ICustomerNote,
 	ICustomerPhone,
 	ICustomerRelationship,
+	ICustomerRelationshipExpanded,
+	ICustomerShallow,
 	ICustomerTag,
 } from '../types';
 
@@ -37,12 +39,28 @@ export interface ICustomerRelationshipDTO {
 	createdAt: string;
 }
 
+export interface ICustomerShallowDTO extends ICustomerDTO {
+	emails: ICustomerEmailDTO[];
+	phones: ICustomerPhoneDTO[];
+	addresses: ICustomerAddressDTO[];
+	notes: ICustomerNoteDTO[];
+	tags: string[];
+}
+
+export interface ICustomerRelationshipExpandedDTO {
+	id: string;
+	relationship: string;
+	isPrimary: boolean;
+	createdAt: string;
+	customer: ICustomerShallowDTO;
+}
+
 export interface ICustomerDetailDTO extends ICustomerDTO {
 	emails: ICustomerEmailDTO[];
 	phones: ICustomerPhoneDTO[];
 	addresses: ICustomerAddressDTO[];
 	notes: ICustomerNoteDTO[];
-	relationships: ICustomerRelationshipDTO[];
+	relationships: ICustomerRelationshipExpandedDTO[];
 	tags: string[];
 }
 
@@ -121,6 +139,27 @@ export function toCustomerRelationshipDTO(r: ICustomerRelationship): ICustomerRe
 	};
 }
 
+export function toCustomerShallowDTO(c: ICustomerShallow): ICustomerShallowDTO {
+	return {
+		...toCustomerDTO(c),
+		emails: arrayOrEmpty<ICustomerEmail>(c.emails).map(toCustomerEmailDTO),
+		phones: arrayOrEmpty<ICustomerPhone>(c.phones).map(toCustomerPhoneDTO),
+		addresses: arrayOrEmpty<ICustomerAddress>(c.addresses).map(toCustomerAddressDTO),
+		notes: arrayOrEmpty<ICustomerNote>(c.notes).map(toCustomerNoteDTO),
+		tags: arrayOrEmpty<string>(c.tags),
+	};
+}
+
+export function toCustomerRelationshipExpandedDTO(r: ICustomerRelationshipExpanded): ICustomerRelationshipExpandedDTO {
+	return {
+		id: stringOrEmpty(r.id),
+		relationship: stringOrEmpty(r.relationship),
+		isPrimary: booleanOrFalse(r.isPrimary),
+		createdAt: dateOrEmpty(r.createdAt),
+		customer: toCustomerShallowDTO(r.customer),
+	};
+}
+
 export function toCustomerDetailDTO(c: ICustomerDetail): ICustomerDetailDTO {
 	return {
 		...toCustomerDTO(c),
@@ -128,7 +167,7 @@ export function toCustomerDetailDTO(c: ICustomerDetail): ICustomerDetailDTO {
 		phones: arrayOrEmpty<ICustomerPhone>(c.phones).map(toCustomerPhoneDTO),
 		addresses: arrayOrEmpty<ICustomerAddress>(c.addresses).map(toCustomerAddressDTO),
 		notes: arrayOrEmpty<ICustomerNote>(c.notes).map(toCustomerNoteDTO),
-		relationships: arrayOrEmpty<ICustomerRelationship>(c.relationships).map(toCustomerRelationshipDTO),
+		relationships: arrayOrEmpty<ICustomerRelationshipExpanded>(c.relationships).map(toCustomerRelationshipExpandedDTO),
 		tags: arrayOrEmpty<string>(c.tags),
 	};
 }
