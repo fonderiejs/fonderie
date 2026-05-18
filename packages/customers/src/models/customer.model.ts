@@ -350,12 +350,13 @@ export class CustomerModel {
 			let d2CustomerMap = new Map<string, ICustomer>();
 			let d2EmailMap    = new Map<string, { id: string; customerId: string; email: string; label: string; isPrimary: boolean; createdAt: string }[]>();
 			let d2PhoneMap    = new Map<string, { id: string; customerId: string; phone: string; label: string; isPrimary: boolean; createdAt: string }[]>();
-			let d2AddrMap     = new Map<string, ICustomerAddress[]>();
 			let d2NoteMap     = new Map<string, { id: string; customerId: string; authorId: string | null; body: string; createdAt: string; updatedAt: string }[]>();
 			let d2TagMap      = new Map<string, string[]>();
 
 			if (d2Ids.length > 0) {
-				const [d2Customers, d2Emails, d2Phones, d2Addresses, d2Notes, d2Tags] = await Promise.all([
+				// Addresses are omitted at depth-2: family members share the parent tenant's
+				// address and duplicating it inflates mobile payloads unnecessarily.
+				const [d2Customers, d2Emails, d2Phones, d2Notes, d2Tags] = await Promise.all([
 					this.store.query<ICustomer>(
 						`SELECT ${SELECT_CUSTOMER} FROM fonderie_customers WHERE id = ANY($1::uuid[]) AND workspace_id = $2`,
 						[d2Ids, workspaceId],
@@ -368,27 +369,6 @@ export class CustomerModel {
 					this.store.query<{ id: string; customerId: string; phone: string; label: string; isPrimary: boolean; createdAt: string }>(
 						`SELECT id, customer_id AS "customerId", phone, label, is_primary AS "isPrimary", created_at AS "createdAt"
 						 FROM fonderie_customer_phones WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
-						[d2Ids],
-					),
-					this.store.query<ICustomerAddress>(
-						`SELECT ca.addr_id     AS "addrId",
-						        ca.customer_id AS "customerId",
-						        ca.label,
-						        ca.is_primary  AS "isPrimary",
-						        jsonb_build_object(
-						          'id',              a.id,
-						          'countryIso',      a.country_iso,
-						          'subdivision1Iso', a.subdivision1_iso,
-						          'subdivision2Iso', a.subdivision2_iso,
-						          'zipPostalCode',   a.zip_postal_code,
-						          'unit',            a.unit,
-						          'line1',           a.line1,
-						          'line2',           a.line2
-						        ) AS address
-						 FROM fonderie_customer_addresses ca
-						 JOIN fonderie_addresses a ON a.id = ca.addr_id
-						 WHERE ca.customer_id = ANY($1::uuid[])
-						 ORDER BY ca.is_primary DESC`,
 						[d2Ids],
 					),
 					this.store.query<{ id: string; customerId: string; authorId: string | null; body: string; createdAt: string; updatedAt: string }>(
@@ -405,7 +385,6 @@ export class CustomerModel {
 				d2CustomerMap = new Map(d2Customers.map((c) => [c.id, c]));
 				d2EmailMap    = groupByCustomer(d2Emails);
 				d2PhoneMap    = groupByCustomer(d2Phones);
-				d2AddrMap     = groupByCustomer(d2Addresses);
 				d2NoteMap     = groupByCustomer(d2Notes);
 				d2TagMap      = d2Tags.reduce((m, t) => {
 					if (!m.has(t.customerId)) m.set(t.customerId, []);
@@ -425,7 +404,7 @@ export class CustomerModel {
 					...(d2CustomerMap.get(d2rel.relatedId) ?? ({ id: d2rel.relatedId } as ICustomer)),
 					emails:    d2EmailMap.get(d2rel.relatedId) ?? [],
 					phones:    d2PhoneMap.get(d2rel.relatedId) ?? [],
-					addresses: d2AddrMap.get(d2rel.relatedId)  ?? [],
+					addresses: [],
 					notes:     d2NoteMap.get(d2rel.relatedId)  ?? [],
 					tags:      d2TagMap.get(d2rel.relatedId)   ?? [],
 				} as ICustomerShallow,
