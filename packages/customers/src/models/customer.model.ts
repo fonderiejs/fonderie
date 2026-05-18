@@ -533,9 +533,28 @@ export class CustomerModel {
 	}
 
 	async delete(id: string, workspaceId: string): Promise<void> {
-		// Detach strategy: fonderie_customer_relationships has ON DELETE CASCADE on both
-		// customer_id and related_id, so the DB removes all relationship rows for this
-		// customer automatically. Related customers themselves are left intact.
+		// Delete all sub-resources in parallel, then the customer.
+		// Relationships: remove both sides (owner and target) — detach strategy,
+		// related customers are left intact.
+		// Addresses: delete the underlying fonderie_addresses rows directly; their
+		// ON DELETE CASCADE removes the customer_addresses link automatically.
+		// The remaining DB cascades on the customer row act as a safety net.
+		await Promise.all([
+			this.store.query(`DELETE FROM fonderie_customer_emails WHERE customer_id = $1`, [id]),
+			this.store.query(`DELETE FROM fonderie_customer_phones WHERE customer_id = $1`, [id]),
+			this.store.query(
+				`DELETE FROM fonderie_addresses WHERE id IN (
+					SELECT addr_id FROM fonderie_customer_addresses WHERE customer_id = $1
+				)`,
+				[id],
+			),
+			this.store.query(`DELETE FROM fonderie_customer_notes WHERE customer_id = $1`, [id]),
+			this.store.query(`DELETE FROM fonderie_customer_tags WHERE customer_id = $1`, [id]),
+			this.store.query(
+				`DELETE FROM fonderie_customer_relationships WHERE customer_id = $1 OR related_id = $1`,
+				[id],
+			),
+		]);
 		await this.store.query(`DELETE FROM fonderie_customers WHERE id = $1 AND workspace_id = $2`, [
 			id,
 			workspaceId,
