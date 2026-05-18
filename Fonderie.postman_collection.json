@@ -4667,7 +4667,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESSES_FETCHED\",\n  \"explanation\": \"Addresses retrieved successfully.\",\n  \"result\": {\n    \"addresses\": [\n      {\n        \"id\": \"{{customer_addr_id}}\",\n        \"label\": \"service\",\n        \"isPrimary\": true,\n        \"address\": {\n          \"countryIso\": \"CA\",\n          \"subdivision1Iso\": \"QC\",\n          \"subdivision2Iso\": null,\n          \"zipPostalCode\": \"H2X 1Y6\",\n          \"line1\": \"123 Rue Sainte-Catherine\",\n          \"line2\": null\n        }\n      }\n    ]\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESSES_FETCHED\",\n  \"explanation\": \"Addresses retrieved successfully.\",\n  \"result\": {\n    \"addresses\": [\n      {\n        \"id\": \"{{customer_addr_id}}\",\n        \"label\": \"service\",\n        \"isPrimary\": true,\n        \"address\": {\n          \"countryIso\": \"CA\",\n          \"subdivision1Iso\": \"QC\",\n          \"subdivision2Iso\": null,\n          \"zipPostalCode\": \"H2X 1Y6\",\n          \"unit\": \"Unit 42\",\n          \"line1\": \"123 Rue Sainte-Catherine\",\n          \"line2\": null\n        }\n      }\n    ]\n  }\n}"
                 }
               ]
             },
@@ -4763,7 +4763,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_ADDED\",\n  \"explanation\": \"Address added successfully.\",\n  \"result\": {\n    \"address\": {\n      \"id\": \"{{customer_addr_id}}\",\n      \"label\": \"service\",\n      \"isPrimary\": true,\n      \"address\": {\n        \"countryIso\": \"CA\",\n        \"subdivision1Iso\": \"QC\",\n        \"subdivision2Iso\": null,\n        \"zipPostalCode\": \"H2X 1Y6\",\n        \"line1\": \"123 Rue Sainte-Catherine\",\n        \"line2\": null\n      }\n    }\n  }\n}"
+                  "body": "{\n  \"reason\": \"CUSTOMER_ADDRESS_ADDED\",\n  \"explanation\": \"Address added successfully.\",\n  \"result\": {\n    \"address\": {\n      \"id\": \"{{customer_addr_id}}\",\n      \"label\": \"service\",\n      \"isPrimary\": true,\n      \"address\": {\n        \"countryIso\": \"CA\",\n        \"subdivision1Iso\": \"QC\",\n        \"subdivision2Iso\": null,\n        \"zipPostalCode\": \"H2X 1Y6\",\n        \"unit\": \"Unit 42\",\n        \"line1\": \"123 Rue Sainte-Catherine\",\n        \"line2\": null\n      }\n    }\n  }\n}"
                 }
               ]
             },
@@ -5199,7 +5199,7 @@
                 "{{customer_id}}"
               ]
             },
-            "description": "Fetch a single customer with embedded emails, phones, and tags."
+            "description": "Fetch a single customer with embedded emails, phones, addresses, notes, relationships, and tags."
           },
           "response": [
             {
@@ -5226,7 +5226,7 @@
                     "{{customer_id}}"
                   ]
                 },
-                "description": "Fetch a single customer with embedded emails, phones, and tags."
+                "description": "Fetch a single customer with embedded emails, phones, addresses, notes, relationships, and tags."
               },
               "status": "OK",
               "code": 200,
@@ -5238,7 +5238,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"business\",\n      \"sex\": \"UNKNOWN\",\n      \"firstName\": null,\n      \"lastName\": null,\n      \"companyName\": \"Acme Landscaping\",\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-001\",\n      \"isArchived\": false,\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n      \"emails\": [],\n      \"phones\": [],\n      \"tags\": []\n    }\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"customer\": {\n      \"id\": \"{{customer_id}}\",\n      \"type\": \"individual\",\n      \"sex\": \"UNKNOWN\",\n      \"firstName\": \"Jane\",\n      \"lastName\": \"Doe\",\n      \"companyName\": null,\n      \"avatarUrl\": null,\n      \"locale\": \"en-US\",\n      \"referenceCode\": \"CLT-0001\",\n      \"blacklisted\": { \"status\": false, \"reason\": null },\n      \"createdBy\": \"{{user_id}}\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n      \"emails\": [\n        { \"id\": \"{{customer_email_id}}\", \"email\": \"jane@example.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-17T10:00:00.000Z\" }\n      ],\n      \"phones\": [],\n      \"addresses\": [\n        {\n          \"id\": \"{{customer_addr_id}}\",\n          \"label\": \"service\",\n          \"isPrimary\": true,\n          \"address\": {\n            \"countryIso\": \"CA\",\n            \"subdivision1Iso\": \"QC\",\n            \"subdivision2Iso\": null,\n            \"zipPostalCode\": \"H2X 1Y6\",\n            \"unit\": \"Unit 42\",\n            \"line1\": \"123 Rue Sainte-Catherine\",\n            \"line2\": null\n          }\n        }\n      ],\n      \"notes\": [],\n      \"relationships\": [\n        {\n          \"id\": \"{{relationship_id}}\",\n          \"customerId\": \"{{related_customer_id}}\",\n          \"relationship\": \"tenant\",\n          \"isPrimary\": false,\n          \"type\": \"individual\",\n          \"sex\": \"MALE\",\n          \"firstName\": \"John\",\n          \"lastName\": \"Smith\",\n          \"companyName\": null,\n          \"avatarUrl\": null,\n          \"locale\": \"en-US\",\n          \"referenceCode\": \"CLT-0002\",\n          \"blacklisted\": { \"status\": false, \"reason\": null },\n          \"createdBy\": null,\n          \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n          \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n          \"emails\": [],\n          \"phones\": [],\n          \"notes\": [],\n          \"tags\": []\n        }\n      ],\n      \"tags\": []\n    }\n  }\n}"
             }
           ]
         },
@@ -5547,55 +5547,60 @@
               "request": {
                 "method": "GET",
                 "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/relationships",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "customers",
-                    "{{customer_id}}",
-                    "relationships"
-                  ]
-                }
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "customers", "{{customer_id}}", "relationships" ]
+                },
+                "description": "Returns all relationships for a customer. Each entry is flat: relationship metadata + related customer fields spread at the top level (no nested customer object). Addresses are excluded — related customers are assumed to share the parent's address."
               },
-              "response": []
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      { "key": "Authorization", "value": "Bearer {{token}}" },
+                      { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/customers/{{customer_id}}/relationships",
+                      "host": [ "{{base_url}}" ],
+                      "path": [ "customers", "{{customer_id}}", "relationships" ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                  "cookie": [],
+                  "body": "{\n  \"reason\": \"CUSTOMER_RELATIONSHIPS_FETCHED\",\n  \"explanation\": \"Relationships retrieved successfully.\",\n  \"result\": {\n    \"relationships\": [\n      {\n        \"id\": \"{{relationship_id}}\",\n        \"customerId\": \"{{related_customer_id}}\",\n        \"relationship\": \"tenant\",\n        \"isPrimary\": false,\n        \"type\": \"individual\",\n        \"sex\": \"MALE\",\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"companyName\": null,\n        \"avatarUrl\": null,\n        \"locale\": \"en-US\",\n        \"referenceCode\": \"CLT-0002\",\n        \"blacklisted\": { \"status\": false, \"reason\": null },\n        \"createdBy\": null,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n        \"emails\": [],\n        \"phones\": [],\n        \"notes\": [],\n        \"tags\": []\n      }\n    ]\n  }\n}"
+                }
+              ]
             },
             {
               "name": "Add Relationship",
               "request": {
                 "method": "POST",
                 "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" },
+                  { "key": "Content-Type", "value": "application/json" }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/relationships",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "customers",
-                    "{{customer_id}}",
-                    "relationships"
-                  ]
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "customers", "{{customer_id}}", "relationships" ]
                 },
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"relatedId\": \"{{related_customer_id}}\",\n  \"relationship\": \"tenant\",\n  \"isPrimary\": false\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Link two customers. relationship is a free-form string (e.g. tenant, spouse, employee)."
               },
               "response": []
             },
@@ -5604,24 +5609,15 @@
               "request": {
                 "method": "PUT",
                 "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/relationships/{{related_customer_id}}/primary",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "customers",
-                    "{{customer_id}}",
-                    "relationships",
-                    "{{related_customer_id}}",
-                    "primary"
-                  ]
-                }
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "customers", "{{customer_id}}", "relationships", "{{related_customer_id}}", "primary" ]
+                },
+                "description": "Atomically sets this relationship as primary and clears all others."
               },
               "response": []
             },
@@ -5630,22 +5626,13 @@
               "request": {
                 "method": "DELETE",
                 "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}/relationships/{{related_customer_id}}",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "customers",
-                    "{{customer_id}}",
-                    "relationships",
-                    "{{related_customer_id}}"
-                  ]
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "customers", "{{customer_id}}", "relationships", "{{related_customer_id}}" ]
                 }
               },
               "response": []
