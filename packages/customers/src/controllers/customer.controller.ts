@@ -92,7 +92,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			const firstName = body?.['firstName'];
 			const lastName = body?.['lastName'];
 			const companyName = body?.['companyName'];
-			const jobTitle = body?.['jobTitle'];
+
 			const avatarUrl = body?.['avatarUrl'];
 			const locale = body?.['locale'];
 			const referenceCode = body?.['referenceCode'];
@@ -122,7 +122,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 					firstName: typeof firstName === 'string' ? firstName : null,
 					lastName: typeof lastName === 'string' ? lastName : null,
 					companyName: typeof companyName === 'string' ? companyName : null,
-					jobTitle: typeof jobTitle === 'string' ? jobTitle : null,
+	
 					avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
 					locale: typeof locale === 'string' ? locale : 'en-US',
 					referenceCode: typeof referenceCode === 'string' ? referenceCode.toUpperCase() : undefined,
@@ -201,10 +201,6 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			if (body?.['companyName'] !== undefined) {
 				opts.companyName = typeof body['companyName'] === 'string' ? body['companyName'] : null;
-			}
-
-			if (body?.['jobTitle'] !== undefined) {
-				opts.jobTitle = typeof body['jobTitle'] === 'string' ? body['jobTitle'] : null;
 			}
 
 			if (body?.['avatarUrl'] !== undefined) {

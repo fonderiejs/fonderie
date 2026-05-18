@@ -1,0 +1,1 @@
+-- No-op: sequence table stays (workspace_id, prefix) — per-prefix counters are intentional.
