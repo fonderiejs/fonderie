@@ -13,6 +13,7 @@ const SELECT_CUSTOMER_ADDRESS = `
 		'subdivision1Iso', a.subdivision1_iso,
 		'subdivision2Iso', a.subdivision2_iso,
 		'zipPostalCode',   a.zip_postal_code,
+		'unit',            a.unit,
 		'line1',           a.line1,
 		'line2',           a.line2
 	) AS address
@@ -38,6 +39,7 @@ export class CustomerAddressModel {
 		subdivision1Iso?: string | null;
 		subdivision2Iso?: string | null;
 		zipPostalCode: string;
+		unit?: string | null;
 		line1?: string | null;
 		line2?: string | null;
 		label?: string;
@@ -52,8 +54,9 @@ export class CustomerAddressModel {
 			   AND a.zip_postal_code    = $3
 			   AND a.subdivision1_iso IS NOT DISTINCT FROM $4
 			   AND a.subdivision2_iso IS NOT DISTINCT FROM $5
-			   AND a.line1            IS NOT DISTINCT FROM $6
-			   AND a.line2            IS NOT DISTINCT FROM $7
+			   AND a.unit             IS NOT DISTINCT FROM $6
+			   AND a.line1            IS NOT DISTINCT FROM $7
+			   AND a.line2            IS NOT DISTINCT FROM $8
 			 LIMIT 1`,
 			[
 				opts.customerId,
@@ -61,6 +64,7 @@ export class CustomerAddressModel {
 				opts.zipPostalCode,
 				opts.subdivision1Iso ?? null,
 				opts.subdivision2Iso ?? null,
+				opts.unit ?? null,
 				opts.line1 ?? null,
 				opts.line2 ?? null,
 			],
@@ -81,14 +85,15 @@ export class CustomerAddressModel {
 
 			const [addr] = await tx.query<{ id: string }>(
 				`INSERT INTO fonderie_addresses
-				   (id, country_iso, subdivision1_iso, subdivision2_iso, zip_postal_code, line1, line2)
-				 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
+				   (id, country_iso, subdivision1_iso, subdivision2_iso, zip_postal_code, unit, line1, line2)
+				 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
 				 RETURNING id`,
 				[
 					opts.countryIso,
 					opts.subdivision1Iso ?? null,
 					opts.subdivision2Iso ?? null,
 					opts.zipPostalCode,
+					opts.unit ?? null,
 					opts.line1 ?? null,
 					opts.line2 ?? null,
 				],

@@ -67,6 +67,7 @@ export interface IAddressDTO {
 	subdivision1Iso: string;
 	subdivision2Iso: string;
 	zipPostalCode: string;
+	unit: string;
 	line1: string;
 	line2: string;
 }
@@ -138,6 +139,7 @@ export function toAddressDTO(a: IAddress): IAddressDTO {
 		subdivision1Iso: stringOrEmpty(a.subdivision1Iso),
 		subdivision2Iso: stringOrEmpty(a.subdivision2Iso),
 		zipPostalCode: stringOrEmpty(a.zipPostalCode),
+		unit: stringOrEmpty(a.unit),
 		line1: stringOrEmpty(a.line1),
 		line2: stringOrEmpty(a.line2),
 	};
