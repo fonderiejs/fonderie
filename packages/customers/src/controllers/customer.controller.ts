@@ -68,7 +68,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			}
 
 			const query = ctx.request.url ? new URL(ctx.request.url).searchParams : null;
-			const depth = query?.get('depth') === '2' ? 2 : 1;
+			const depth = query?.get('depth') === '1' ? 1 : 2;
 
 			if (depth === 2) {
 				const customer = await customers.findDetail(id, workspaceId, 2);
