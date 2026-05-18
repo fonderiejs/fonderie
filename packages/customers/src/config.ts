@@ -8,7 +8,9 @@ export const EVENT_KEYS = {
 
 export type CustomersEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
+export const DEFAULT_REFERENCE_CODE_PREFIX = 'CLT';
+
 export type ICustomersConfig = {
-	/** Prefix used when auto-generating customer reference codes. Defaults to 'CLT'. */
+	/** Prefix used when auto-generating customer reference codes. Defaults to DEFAULT_REFERENCE_CODE_PREFIX. */
 	referenceCodePrefix?: string;
 };

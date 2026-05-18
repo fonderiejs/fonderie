@@ -3,14 +3,14 @@ import { HTTP, setApiResponse } from '@fonderie-js/core';
 import type { EventBus } from '@fonderie-js/events';
 import type { IStoreAdapter } from '@fonderie-js/store';
 
-import { EVENT_KEYS, type ICustomersConfig } from '../config';
+import { DEFAULT_REFERENCE_CODE_PREFIX, EVENT_KEYS, type ICustomersConfig } from '../config';
 import { toCustomerDetailDTO, toCustomerDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { isUuid } from '../utils';
 
 export function customerController(store: IStoreAdapter, config: ICustomersConfig = {}, bus?: EventBus) {
 	const customers = new CustomerModel(store);
-	const prefix = config.referenceCodePrefix ?? 'CLT';
+	const prefix = (config.referenceCodePrefix ?? DEFAULT_REFERENCE_CODE_PREFIX).toUpperCase();
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
@@ -125,7 +125,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 					jobTitle: typeof jobTitle === 'string' ? jobTitle : null,
 					avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
 					locale: typeof locale === 'string' ? locale : 'en-US',
-					referenceCode: typeof referenceCode === 'string' ? referenceCode : undefined,
+					referenceCode: typeof referenceCode === 'string' ? referenceCode.toUpperCase() : undefined,
 					referenceCodePrefix: prefix,
 					createdBy: ctx.user?.id ?? null,
 				});
@@ -216,7 +216,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			}
 
 			if (body?.['referenceCode'] !== undefined && typeof body['referenceCode'] === 'string') {
-				opts.referenceCode = body['referenceCode'];
+				opts.referenceCode = body['referenceCode'].toUpperCase();
 			}
 
 			const customer = await customers.update(id, workspaceId, opts, prefix);
