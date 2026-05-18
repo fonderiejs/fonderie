@@ -108,3 +108,16 @@ export interface ICustomerDetail extends ICustomer {
 	relationships: ICustomerRelationshipExpanded[];
 	tags: string[];
 }
+
+// Depth-2 variants: depth-1 customers have their own relationships resolved.
+export interface ICustomerShallowD2 extends ICustomerShallow {
+	relationships: ICustomerRelationshipExpanded[];
+}
+
+export interface ICustomerRelationshipExpandedD2 extends Omit<ICustomerRelationshipExpanded, 'customer'> {
+	customer: ICustomerShallowD2;
+}
+
+export interface ICustomerDetailD2 extends Omit<ICustomerDetail, 'relationships'> {
+	relationships: ICustomerRelationshipExpandedD2[];
+}

@@ -6,11 +6,13 @@ import type {
 	ICustomer,
 	ICustomerAddress,
 	ICustomerDetail,
+	ICustomerDetailD2,
 	ICustomerEmail,
 	ICustomerNote,
 	ICustomerPhone,
 	ICustomerRelationship,
 	ICustomerRelationshipExpanded,
+	ICustomerRelationshipExpandedD2,
 	ICustomerShallow,
 	ICustomerTag,
 } from '../types';
@@ -62,6 +64,15 @@ export interface ICustomerDetailDTO extends ICustomerDTO {
 	notes: ICustomerNoteDTO[];
 	relationships: ICustomerRelationshipExpandedDTO[];
 	tags: string[];
+}
+
+// Depth-2 DTOs: each depth-1 relationship entry carries its own relationships array.
+export type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {
+	relationships: ICustomerRelationshipExpandedDTO[];
+};
+
+export interface ICustomerDetailD2DTO extends Omit<ICustomerDetailDTO, 'relationships'> {
+	relationships: ICustomerRelationshipExpandedD2DTO[];
 }
 
 export interface ICustomerEmailDTO {
@@ -168,6 +179,30 @@ export function toCustomerDetailDTO(c: ICustomerDetail): ICustomerDetailDTO {
 		addresses: arrayOrEmpty<ICustomerAddress>(c.addresses).map(toCustomerAddressDTO),
 		notes: arrayOrEmpty<ICustomerNote>(c.notes).map(toCustomerNoteDTO),
 		relationships: arrayOrEmpty<ICustomerRelationshipExpanded>(c.relationships).map(toCustomerRelationshipExpandedDTO),
+		tags: arrayOrEmpty<string>(c.tags),
+	};
+}
+
+export function toCustomerRelationshipExpandedD2DTO(r: ICustomerRelationshipExpandedD2): ICustomerRelationshipExpandedD2DTO {
+	const { id: customerId, ...customerFields } = toCustomerShallowDTO(r.customer);
+	return {
+		id: stringOrEmpty(r.id),
+		customerId,
+		relationship: stringOrEmpty(r.relationship),
+		isPrimary: booleanOrFalse(r.isPrimary),
+		...customerFields,
+		relationships: arrayOrEmpty<ICustomerRelationshipExpanded>(r.customer.relationships).map(toCustomerRelationshipExpandedDTO),
+	};
+}
+
+export function toCustomerDetailD2DTO(c: ICustomerDetailD2): ICustomerDetailD2DTO {
+	return {
+		...toCustomerDTO(c),
+		emails: arrayOrEmpty<ICustomerEmail>(c.emails).map(toCustomerEmailDTO),
+		phones: arrayOrEmpty<ICustomerPhone>(c.phones).map(toCustomerPhoneDTO),
+		addresses: arrayOrEmpty<ICustomerAddress>(c.addresses).map(toCustomerAddressDTO),
+		notes: arrayOrEmpty<ICustomerNote>(c.notes).map(toCustomerNoteDTO),
+		relationships: arrayOrEmpty<ICustomerRelationshipExpandedD2>(c.relationships).map(toCustomerRelationshipExpandedD2DTO),
 		tags: arrayOrEmpty<string>(c.tags),
 	};
 }
