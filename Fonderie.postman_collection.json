@@ -5445,6 +5445,119 @@
               "body": "{\n  \"reason\": \"CUSTOMER_DELETED\",\n  \"explanation\": \"Customer deleted successfully.\",\n  \"result\": null\n}"
             }
           ]
+        },
+        {
+          "name": "Relationship",
+          "item": [
+            {
+              "name": "List Relationships",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/customers/{{customer_id}}/relationships",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "relationships"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Add Relationship",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/customers/{{customer_id}}/relationships",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "relationships"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"relatedId\": \"{{related_customer_id}}\",\n  \"relationship\": \"tenant\",\n  \"isPrimary\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Set Primary Relationship",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/customers/{{customer_id}}/relationships/{{related_customer_id}}/primary",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "relationships",
+                    "{{related_customer_id}}",
+                    "primary"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Remove Relationship",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/customers/{{customer_id}}/relationships/{{related_customer_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "customers",
+                    "{{customer_id}}",
+                    "relationships",
+                    "{{related_customer_id}}"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
         }
       ]
     },
