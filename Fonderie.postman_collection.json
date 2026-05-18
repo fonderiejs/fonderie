@@ -36,7 +36,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Alice\",\n  \"lastName\": \"Smith\"\n}"
+                  "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Alice\",\n  \"lastName\": \"Smith\",\n  \"phone\": null\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/auth/register",
@@ -7088,7 +7088,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Acme Corp\",\n  \"description\": \"Our main workspace\"\n}"
+              "raw": "{\n  \"name\": \"Acme Corp\",\n  \"description\": \"Our main workspace\",\n  \"type\": \"business\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/workspaces",
@@ -7281,7 +7281,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Acme Corp (updated)\",\n  \"description\": \"New description\"\n}"
+              "raw": "{\n  \"name\": \"Acme Corp (updated)\",\n  \"description\": \"New description\",\n  \"motto\": null,\n  \"phone\": null,\n  \"businessType\": null,\n  \"address\": {\n    \"countryIso\": \"CA\",\n    \"subdivision1Iso\": \"QC\",\n    \"zipPostalCode\": \"H2X 1Y6\",\n    \"line1\": \"123 Rue Sainte-Catherine\",\n    \"unit\": null,\n    \"line2\": null\n  }\n}"
             },
             "url": {
               "raw": "{{base_url}}/workspaces/{{workspace_id}}",
