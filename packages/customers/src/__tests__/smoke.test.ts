@@ -38,6 +38,9 @@ function makeStore(opts: { customer?: ICustomer | null } = {}): IStoreAdapter {
 				if (!opts.customer) return [] as T[];
 				return [opts.customer] as unknown as T[];
 			}
+			if (sql.includes('fonderie_customer_sequences')) {
+				return [{ nextVal: 1 }] as unknown as T[];
+			}
 			if (sql.includes('INSERT INTO fonderie_customers')) {
 				if (!opts.customer) return [] as T[];
 				return [opts.customer] as unknown as T[];

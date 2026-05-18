@@ -1,5 +1,6 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
+import { DEFAULT_REFERENCE_CODE_PREFIX } from '../config';
 import type { ICustomer, ICustomerDetail } from '../types';
 
 const SELECT_CUSTOMER = `
@@ -60,6 +61,18 @@ export interface UpdateCustomerOpts {
 
 export class CustomerModel {
 	constructor(private readonly store: IStoreAdapter) {}
+
+	private async allocateCode(workspaceId: string, prefix: string): Promise<string> {
+		const [row] = await this.store.query<{ nextVal: number }>(
+			`INSERT INTO fonderie_customer_sequences (workspace_id, prefix, next_val)
+			 VALUES ($1, $2, 1)
+			 ON CONFLICT (workspace_id, prefix) DO UPDATE
+			   SET next_val = fonderie_customer_sequences.next_val + 1
+			 RETURNING next_val AS "nextVal"`,
+			[workspaceId, prefix],
+		);
+		return `${prefix}-${String(row!.nextVal).padStart(4, '0')}`;
+	}
 
 	async list(opts: ListCustomersOpts): Promise<ICustomer[]> {
 		const conditions: string[] = ['workspace_id = $1'];
@@ -170,23 +183,13 @@ export class CustomerModel {
 	}
 
 	async create(opts: CreateCustomerOpts): Promise<ICustomer> {
-		const pfx = opts.referenceCodePrefix ?? 'CLT';
+		const referenceCode = opts.referenceCode
+			?? await this.allocateCode(opts.workspaceId, opts.referenceCodePrefix ?? DEFAULT_REFERENCE_CODE_PREFIX);
+
 		const [row] = await this.store.query<ICustomer>(
-			`WITH next_code AS (
-			   SELECT $12 || '-' || LPAD((
-			     COALESCE(MAX(
-			       CASE WHEN reference_code ~ ('^' || $12 || '-[0-9]+$')
-			            THEN SUBSTRING(reference_code FROM LENGTH($12) + 2)::int
-			            ELSE 0 END
-			     ), 0) + 1
-			   )::text, 4, '0') AS code
-			   FROM fonderie_customers
-			   WHERE workspace_id = $1
-			 )
-			 INSERT INTO fonderie_customers
+			`INSERT INTO fonderie_customers
 			   (workspace_id, type, sex, first_name, last_name, company_name, job_title, avatar_url, locale, reference_code, created_by)
-			 SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, next_code.code), $11
-			 FROM next_code
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			 RETURNING ${SELECT_CUSTOMER}`,
 			[
 				opts.workspaceId,
@@ -198,9 +201,8 @@ export class CustomerModel {
 				opts.jobTitle ?? null,
 				opts.avatarUrl ?? null,
 				opts.locale ?? 'en-US',
-				opts.referenceCode ?? null,
+				referenceCode,
 				opts.createdBy ?? null,
-				pfx,
 			],
 		);
 		if (!row) throw new Error('Failed to create customer');
@@ -211,8 +213,18 @@ export class CustomerModel {
 		id: string,
 		workspaceId: string,
 		opts: UpdateCustomerOpts,
-		referenceCodePrefix = 'CLT',
+		referenceCodePrefix = DEFAULT_REFERENCE_CODE_PREFIX,
 	): Promise<ICustomer | null> {
+		// Auto-assign a reference code if the customer doesn't have one yet.
+		let autoCode: string | undefined;
+		if (!opts.referenceCode) {
+			const current = await this.findById(id, workspaceId);
+			if (!current) return null;
+			if (!current.referenceCode) {
+				autoCode = await this.allocateCode(workspaceId, referenceCodePrefix);
+			}
+		}
+
 		const sets: string[] = ['updated_at = now()'];
 		const params: unknown[] = [id, workspaceId];
 
@@ -248,17 +260,11 @@ export class CustomerModel {
 			params.push(opts.locale);
 			sets.push(`locale = $${params.length}`);
 		}
-		const pfx = referenceCodePrefix;
-		params.push(opts.referenceCode ?? null);
-		const refIdx = params.length;
-		params.push(pfx);
-		const pfxIdx = params.length;
-		sets.push(
-			`reference_code = COALESCE($${refIdx}::text, reference_code, $${pfxIdx} || '-' || LPAD((` +
-			`SELECT COALESCE(MAX(CASE WHEN reference_code ~ ('^' || $${pfxIdx} || '-[0-9]+$') ` +
-			`THEN SUBSTRING(reference_code FROM LENGTH($${pfxIdx}) + 2)::int ELSE 0 END), 0) + 1 ` +
-			`FROM fonderie_customers WHERE workspace_id = $2)::text, 4, '0'))`,
-		);
+		const resolvedCode = opts.referenceCode ?? autoCode;
+		if (resolvedCode !== undefined) {
+			params.push(resolvedCode);
+			sets.push(`reference_code = $${params.length}`);
+		}
 
 		const [row] = await this.store.query<ICustomer>(
 			`UPDATE fonderie_customers
