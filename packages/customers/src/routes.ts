@@ -35,8 +35,8 @@ export function buildCustomerRoutes(
 		['GET', '/customers/:customerId', requireAuth, wsCtx, customer.get],
 		['PUT', '/customers/:customerId', requireAuth, wsCtx, customer.update],
 		['DELETE', '/customers/:customerId', requireAuth, wsCtx, customer.delete],
-		['POST', '/customers/:customerId/archive', requireAuth, wsCtx, customer.archive],
-		['POST', '/customers/:customerId/restore', requireAuth, wsCtx, customer.restore],
+		['POST', '/customers/:customerId/blacklist', requireAuth, wsCtx, customer.blacklist],
+		['POST', '/customers/:customerId/unblacklist', requireAuth, wsCtx, customer.unblacklist],
 
 		// ── Emails ───────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/emails', requireAuth, wsCtx, email.list],

@@ -24,7 +24,7 @@ const CUSTOMER: ICustomer = {
 	avatarUrl: null,
 	locale: 'en-US',
 	referenceCode: null,
-	isArchived: false,
+	isBlacklisted: false,
 	createdBy: null,
 	createdAt: NOW,
 	updatedAt: NOW,
@@ -101,10 +101,10 @@ test('CustomersModule.install registers routes', () => {
 
 test('EVENT_KEYS are defined', () => {
 	assert.ok(EVENT_KEYS.customerCreated);
-	assert.ok(EVENT_KEYS.customerArchived);
+	assert.ok(EVENT_KEYS.customerBlacklisted);
 	assert.ok(EVENT_KEYS.customerUpdated);
 	assert.ok(EVENT_KEYS.customerDeleted);
-	assert.ok(EVENT_KEYS.customerRestored);
+	assert.ok(EVENT_KEYS.customerUnblacklisted);
 });
 
 // ── toCustomerDTO ─────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ test('toCustomerDTO: maps all fields correctly', () => {
 	assert.equal(dto.firstName, 'Jane');
 	assert.equal(dto.lastName, 'Doe');
 	assert.equal(dto.companyName, '');
-	assert.equal(dto.isArchived, false);
+	assert.equal(dto.isBlacklisted, false);
 });
 
 // ── customerController ────────────────────────────────────────────────────────
@@ -180,22 +180,22 @@ test('customerController.delete: 404 when customer not found', async () => {
 	assert.equal(res.status, 404);
 });
 
-test('customerController.archive: 200 on success', async () => {
+test('customerController.blacklist: 200 on success', async () => {
 	const { customerController } = await import('../controllers/customer.controller');
 	const ctrl = customerController(makeStore({ customer: CUSTOMER }));
-	const res = await ctrl.archive(makeCtx({ workspaceId: WS_ID, params: { customerId: CUST_ID } }));
+	const res = await ctrl.blacklist(makeCtx({ workspaceId: WS_ID, params: { customerId: CUST_ID } }));
 	assert.equal(res.status, 200);
 	const body = (await res.json()) as any;
-	assert.equal(body.reason, 'CUSTOMER_ARCHIVED');
+	assert.equal(body.reason, 'CUSTOMER_BLACKLISTED');
 });
 
-test('customerController.restore: 200 on success', async () => {
+test('customerController.unblacklist: 200 on success', async () => {
 	const { customerController } = await import('../controllers/customer.controller');
 	const ctrl = customerController(makeStore({ customer: CUSTOMER }));
-	const res = await ctrl.restore(makeCtx({ workspaceId: WS_ID, params: { customerId: CUST_ID } }));
+	const res = await ctrl.unblacklist(makeCtx({ workspaceId: WS_ID, params: { customerId: CUST_ID } }));
 	assert.equal(res.status, 200);
 	const body = (await res.json()) as any;
-	assert.equal(body.reason, 'CUSTOMER_RESTORED');
+	assert.equal(body.reason, 'CUSTOMER_UNBLACKLISTED');
 });
 
 // ── customerEmailController ───────────────────────────────────────────────────

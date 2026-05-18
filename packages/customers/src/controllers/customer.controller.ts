@@ -25,7 +25,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			const query = ctx.request.url ? new URL(ctx.request.url).searchParams : null;
 			const search = query?.get('search') ?? undefined;
-			const archived = query?.get('archived');
+			const archived = query?.get('blacklisted');
 			const limit = Number(query?.get('limit') ?? 50);
 			const offset = Number(query?.get('offset') ?? 0);
 
@@ -40,7 +40,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			}
 
 			if (archived !== null && archived !== undefined) {
-				listOpts.archived = archived === 'true' || archived === '1';
+				listOpts.blacklisted = archived === 'true' || archived === '1';
 			}
 
 			const list = await customers.list(listOpts);
@@ -265,7 +265,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			return setApiResponse(HTTP.OK, 'CUSTOMER_DELETED', 'Customer deleted successfully.');
 		},
 
-		async archive(ctx: IFonderieContext): Promise<Response> {
+		async blacklist(ctx: IFonderieContext): Promise<Response> {
 			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
@@ -286,19 +286,19 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
 			}
 
-			await customers.archive(id, workspaceId);
+			await customers.blacklist(id, workspaceId);
 
 			bus
-				?.emit(EVENT_KEYS.customerArchived, {
+				?.emit(EVENT_KEYS.customerBlacklisted, {
 					customerId: id,
 					workspaceId,
 				})
 				.catch(() => {});
 
-			return setApiResponse(HTTP.OK, 'CUSTOMER_ARCHIVED', 'Customer archived successfully.');
+			return setApiResponse(HTTP.OK, 'CUSTOMER_BLACKLISTED', 'Customer blacklisted successfully.');
 		},
 
-		async restore(ctx: IFonderieContext): Promise<Response> {
+		async unblacklist(ctx: IFonderieContext): Promise<Response> {
 			const workspaceId = ctx.workspace?.id;
 			if (!workspaceId) {
 				return setApiResponse(
@@ -319,16 +319,16 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
 			}
 
-			await customers.restore(id, workspaceId);
+			await customers.unblacklist(id, workspaceId);
 
 			bus
-				?.emit(EVENT_KEYS.customerRestored, {
+				?.emit(EVENT_KEYS.customerUnblacklisted, {
 					customerId: id,
 					workspaceId,
 				})
 				.catch(() => {});
 
-			return setApiResponse(HTTP.OK, 'CUSTOMER_RESTORED', 'Customer restored successfully.');
+			return setApiResponse(HTTP.OK, 'CUSTOMER_UNBLACKLISTED', 'Customer removed from blacklist successfully.');
 		},
 	};
 }
