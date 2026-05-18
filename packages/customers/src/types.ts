@@ -46,6 +46,7 @@ export interface IAddress {
 	subdivision1Iso: string | null;
 	subdivision2Iso: string | null;
 	zipPostalCode: string;
+	unit: string | null;
 	line1: string | null;
 	line2: string | null;
 }

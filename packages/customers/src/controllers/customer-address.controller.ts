@@ -75,6 +75,7 @@ export function customerAddressController(store: IStoreAdapter) {
 					zipPostalCode: zipPostalCode.trim(),
 					subdivision1Iso: typeof body?.['subdivision1Iso'] === 'string' ? body['subdivision1Iso'] : null,
 					subdivision2Iso: typeof body?.['subdivision2Iso'] === 'string' ? body['subdivision2Iso'] : null,
+					unit: typeof body?.['unit'] === 'string' ? body['unit'] : null,
 					line1: typeof body?.['line1'] === 'string' ? body['line1'] : null,
 					line2: typeof body?.['line2'] === 'string' ? body['line2'] : null,
 					label: typeof body?.['label'] === 'string' ? body['label'] : 'service',
