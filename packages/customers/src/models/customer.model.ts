@@ -38,8 +38,10 @@ export interface CreateCustomerOpts {
 	jobTitle?: string | null;
 	avatarUrl?: string | null;
 	locale?: string;
-	/** Explicit code to assign. Omit to auto-generate (CLT-0001, CLT-0002, …). */
+	/** Explicit code to assign. Omit to auto-generate ({prefix}-0001, …). */
 	referenceCode?: string;
+	/** Prefix used when auto-generating. Defaults to 'CLT'. */
+	referenceCodePrefix?: string;
 	createdBy?: string | null;
 }
 
@@ -168,12 +170,13 @@ export class CustomerModel {
 	}
 
 	async create(opts: CreateCustomerOpts): Promise<ICustomer> {
+		const pfx = opts.referenceCodePrefix ?? 'CLT';
 		const [row] = await this.store.query<ICustomer>(
 			`WITH next_code AS (
-			   SELECT 'CLT-' || LPAD((
+			   SELECT $12 || '-' || LPAD((
 			     COALESCE(MAX(
-			       CASE WHEN reference_code ~ '^CLT-[0-9]+$'
-			            THEN SPLIT_PART(reference_code, '-', 2)::int
+			       CASE WHEN reference_code ~ ('^' || $12 || '-[0-9]+$')
+			            THEN SUBSTRING(reference_code FROM LENGTH($12) + 2)::int
 			            ELSE 0 END
 			     ), 0) + 1
 			   )::text, 4, '0') AS code
@@ -197,6 +200,7 @@ export class CustomerModel {
 				opts.locale ?? 'en-US',
 				opts.referenceCode ?? null,
 				opts.createdBy ?? null,
+				pfx,
 			],
 		);
 		if (!row) throw new Error('Failed to create customer');
@@ -207,6 +211,7 @@ export class CustomerModel {
 		id: string,
 		workspaceId: string,
 		opts: UpdateCustomerOpts,
+		referenceCodePrefix = 'CLT',
 	): Promise<ICustomer | null> {
 		const sets: string[] = ['updated_at = now()'];
 		const params: unknown[] = [id, workspaceId];
@@ -243,11 +248,15 @@ export class CustomerModel {
 			params.push(opts.locale);
 			sets.push(`locale = $${params.length}`);
 		}
+		const pfx = referenceCodePrefix;
 		params.push(opts.referenceCode ?? null);
+		const refIdx = params.length;
+		params.push(pfx);
+		const pfxIdx = params.length;
 		sets.push(
-			`reference_code = COALESCE($${params.length}::text, reference_code, 'CLT-' || LPAD((` +
-			`SELECT COALESCE(MAX(CASE WHEN reference_code ~ '^CLT-[0-9]+$' ` +
-			`THEN SPLIT_PART(reference_code, '-', 2)::int ELSE 0 END), 0) + 1 ` +
+			`reference_code = COALESCE($${refIdx}::text, reference_code, $${pfxIdx} || '-' || LPAD((` +
+			`SELECT COALESCE(MAX(CASE WHEN reference_code ~ ('^' || $${pfxIdx} || '-[0-9]+$') ` +
+			`THEN SUBSTRING(reference_code FROM LENGTH($${pfxIdx}) + 2)::int ELSE 0 END), 0) + 1 ` +
 			`FROM fonderie_customers WHERE workspace_id = $2)::text, 4, '0'))`,
 		);
 

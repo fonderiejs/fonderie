@@ -3,13 +3,14 @@ import { HTTP, setApiResponse } from '@fonderie-js/core';
 import type { EventBus } from '@fonderie-js/events';
 import type { IStoreAdapter } from '@fonderie-js/store';
 
-import { EVENT_KEYS } from '../config';
+import { EVENT_KEYS, type ICustomersConfig } from '../config';
 import { toCustomerDetailDTO, toCustomerDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { isUuid } from '../utils';
 
-export function customerController(store: IStoreAdapter, bus?: EventBus) {
+export function customerController(store: IStoreAdapter, config: ICustomersConfig = {}, bus?: EventBus) {
 	const customers = new CustomerModel(store);
+	const prefix = config.referenceCodePrefix ?? 'CLT';
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
@@ -33,10 +34,15 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 				limit: Number.isFinite(limit) ? limit : 50,
 				offset: Number.isFinite(offset) ? offset : 0,
 			};
-			if (search !== undefined) listOpts.search = search;
+
+			if (search !== undefined) {
+				listOpts.search = search;
+			}
+
 			if (archived !== null && archived !== undefined) {
 				listOpts.archived = archived === 'true' || archived === '1';
 			}
+
 			const list = await customers.list(listOpts);
 
 			return setApiResponse(HTTP.OK, 'CUSTOMERS_FETCHED', 'Customers retrieved successfully.', {
@@ -98,6 +104,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 					'type must be individual or business',
 				);
 			}
+
 			if (sex !== undefined && sex !== 'UNKNOWN' && sex !== 'MALE' && sex !== 'FEMALE') {
 				return setApiResponse(
 					HTTP.UNPROCESSABLE,
@@ -119,6 +126,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 					avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
 					locale: typeof locale === 'string' ? locale : 'en-US',
 					referenceCode: typeof referenceCode === 'string' ? referenceCode : undefined,
+					referenceCodePrefix: prefix,
 					createdBy: ctx.user?.id ?? null,
 				});
 			} catch (err: unknown) {
@@ -170,6 +178,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 				}
 				opts.type = t;
 			}
+
 			if (body?.['sex'] !== undefined) {
 				const s = body['sex'];
 				if (s !== 'UNKNOWN' && s !== 'MALE' && s !== 'FEMALE') {
@@ -181,6 +190,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 				}
 				opts.sex = s;
 			}
+
 			if (body?.['firstName'] !== undefined) {
 				opts.firstName = typeof body['firstName'] === 'string' ? body['firstName'] : null;
 			}
@@ -197,14 +207,19 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 				opts.jobTitle = typeof body['jobTitle'] === 'string' ? body['jobTitle'] : null;
 			}
 
-			if (body?.['avatarUrl'] !== undefined)
+			if (body?.['avatarUrl'] !== undefined) {
 				opts.avatarUrl = typeof body['avatarUrl'] === 'string' ? body['avatarUrl'] : null;
-			if (body?.['locale'] !== undefined && typeof body['locale'] === 'string')
-				opts.locale = body['locale'];
-			if (body?.['referenceCode'] !== undefined && typeof body['referenceCode'] === 'string')
-				opts.referenceCode = body['referenceCode'];
+			}
 
-			const customer = await customers.update(id, workspaceId, opts);
+			if (body?.['locale'] !== undefined && typeof body['locale'] === 'string') {
+				opts.locale = body['locale'];
+			}
+
+			if (body?.['referenceCode'] !== undefined && typeof body['referenceCode'] === 'string') {
+				opts.referenceCode = body['referenceCode'];
+			}
+
+			const customer = await customers.update(id, workspaceId, opts, prefix);
 			if (!customer) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
 			}
