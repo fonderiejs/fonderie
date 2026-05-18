@@ -5021,7 +5021,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"type\": \"business\",\n    \"companyName\": \"Acme Landscaping\",\n    \"locale\": \"en-US\"\n}"
+              "raw": "{\n  \"type\": \"business\",\n  \"companyName\": \"Acme Landscaping\",\n  \"locale\": \"en-US\",\n  \"sex\": \"UNKNOWN\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/customers",
@@ -5169,7 +5169,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"companyName\": \"Acme Landscaping Ltd.\",\n  \"referenceCode\": \"CLT-001\"\n}"
+              "raw": "{\n  \"companyName\": \"Acme Landscaping Ltd.\",\n  \"referenceCode\": \"CLT-001\",\n  \"sex\": \"UNKNOWN\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/customers/{{customer_id}}",
