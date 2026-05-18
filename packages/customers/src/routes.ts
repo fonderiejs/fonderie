@@ -11,6 +11,7 @@ import { customerEmailController } from './controllers/customer-email.controller
 import { customerNoteController } from './controllers/customer-note.controller';
 import { customerPhoneController } from './controllers/customer-phone.controller';
 import { customerTagController } from './controllers/customer-tag.controller';
+import { customerRelationshipController } from './controllers/customer-relationship.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]];
 
@@ -27,6 +28,7 @@ export function buildCustomerRoutes(
 	const address = customerAddressController(store);
 	const note = customerNoteController(store);
 	const tag = customerTagController(store);
+	const relationship = customerRelationshipController(store);
 
 	return [
 		// ── Core customer CRUD ───────────────────────────────────────────
@@ -66,5 +68,11 @@ export function buildCustomerRoutes(
 		['GET', '/customers/:customerId/tags', requireAuth, wsCtx, tag.list],
 		['POST', '/customers/:customerId/tags', requireAuth, wsCtx, tag.add],
 		['DELETE', '/customers/:customerId/tags/:tag', requireAuth, wsCtx, tag.remove],
+
+		// ── Relationships ────────────────────────────────────────────────────
+		['GET', '/customers/:customerId/relationships', requireAuth, wsCtx, relationship.list],
+		['POST', '/customers/:customerId/relationships', requireAuth, wsCtx, relationship.add],
+		['PUT', '/customers/:customerId/relationships/:relatedId/primary', requireAuth, wsCtx, relationship.setPrimary],
+		['DELETE', '/customers/:customerId/relationships/:relatedId', requireAuth, wsCtx, relationship.remove],
 	];
 }

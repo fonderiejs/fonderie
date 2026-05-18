@@ -1,7 +1,7 @@
 import type { IStoreAdapter } from '@fonderie-js/store';
 
 import { DEFAULT_REFERENCE_CODE_PREFIX } from '../config';
-import type { ICustomer, ICustomerAddress, ICustomerDetail } from '../types';
+import type { ICustomer, ICustomerAddress, ICustomerDetail, ICustomerRelationship } from '../types';
 
 const SELECT_CUSTOMER = `
 	id,
@@ -126,7 +126,7 @@ export class CustomerModel {
 		);
 		if (!row) return null;
 
-		const [emailRows, phoneRows, addressRows, noteRows, tagRows] = await Promise.all([
+		const [emailRows, phoneRows, addressRows, noteRows, relationshipRows, tagRows] = await Promise.all([
 			this.store.query<{
 				id: string;
 				customerId: string;
@@ -204,6 +204,19 @@ export class CustomerModel {
 				 ORDER BY created_at DESC`,
 				[id],
 			),
+			this.store.query<ICustomerRelationship>(
+				`SELECT id,
+				        workspace_id AS "workspaceId",
+				        customer_id  AS "customerId",
+				        related_id   AS "relatedId",
+				        relationship,
+				        is_primary   AS "isPrimary",
+				        created_at   AS "createdAt"
+				 FROM fonderie_customer_relationships
+				 WHERE customer_id = $1
+				 ORDER BY is_primary DESC, created_at ASC`,
+				[id],
+			),
 			this.store.query<{ tag: string }>(
 				`SELECT tag FROM fonderie_customer_tags WHERE customer_id = $1 ORDER BY tag ASC`,
 				[id],
@@ -217,6 +230,7 @@ export class CustomerModel {
 			phones: phoneRows as unknown as ICustomerDetail['phones'],
 			addresses: addressRows,
 			notes: noteRows as unknown as ICustomerDetail['notes'],
+			relationships: relationshipRows,
 			tags: tagRows.map((t) => t.tag),
 		};
 	}

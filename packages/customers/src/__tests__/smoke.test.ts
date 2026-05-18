@@ -61,6 +61,9 @@ function makeStore(opts: { customer?: ICustomer | null } = {}): IStoreAdapter {
 			if (sql.includes('fonderie_customer_notes') && sql.includes('ORDER BY')) {
 				return [] as T[];
 			}
+			if (sql.includes('fonderie_customer_relationships') && sql.includes('ORDER BY')) {
+				return [] as T[];
+			}
 			if (sql.includes('fonderie_customer_tags') && sql.includes('ORDER BY')) {
 				return [] as T[];
 			}
@@ -251,4 +254,22 @@ test('customerTagController.list: 200 with tags array', async () => {
 	assert.equal(res.status, 200);
 	const body = (await res.json()) as any;
 	assert.ok(Array.isArray(body.result.tags));
+});
+
+// ── customerRelationshipController ────────────────────────────────────────────
+
+test('customerRelationshipController.add: 422 when relatedId missing', async () => {
+	const { customerRelationshipController } = await import('../controllers/customer-relationship.controller');
+	const ctrl = customerRelationshipController(makeStore({ customer: CUSTOMER }));
+	const res = await ctrl.add(makeCtx({ workspaceId: WS_ID, params: { customerId: CUST_ID }, body: {} }));
+	assert.equal(res.status, 422);
+});
+
+test('customerRelationshipController.list: 200 with relationships array', async () => {
+	const { customerRelationshipController } = await import('../controllers/customer-relationship.controller');
+	const ctrl = customerRelationshipController(makeStore({ customer: CUSTOMER }));
+	const res = await ctrl.list(makeCtx({ workspaceId: WS_ID, params: { customerId: CUST_ID } }));
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as any;
+	assert.ok(Array.isArray(body.result.relationships));
 });

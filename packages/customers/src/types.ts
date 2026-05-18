@@ -72,10 +72,21 @@ export interface ICustomerTag {
 	tag: string;
 }
 
+export interface ICustomerRelationship {
+	id: string;
+	workspaceId: string;
+	customerId: string;
+	relatedId: string;
+	relationship: string;
+	isPrimary: boolean;
+	createdAt: string;
+}
+
 export interface ICustomerDetail extends ICustomer {
 	emails: ICustomerEmail[];
 	phones: ICustomerPhone[];
 	addresses: ICustomerAddress[];
 	notes: ICustomerNote[];
+	relationships: ICustomerRelationship[];
 	tags: string[];
 }
