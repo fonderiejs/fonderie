@@ -5233,7 +5233,7 @@
           ]
         },
         {
-          "name": "Archive Customer",
+          "name": "Blacklist Customer",
           "request": {
             "method": "POST",
             "header": [
@@ -5247,17 +5247,26 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/customers/{{customer_id}}/archive",
+              "raw": "{{base_url}}/customers/{{customer_id}}/blacklist",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "customers",
                 "{{customer_id}}",
-                "archive"
+                "blacklist"
               ]
             },
-            "description": "Soft-archive a customer. Archived customers still appear on historical jobs."
+            "description": "Soft-archive a customer. Archived customers still appear on historical jobs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Unpaid invoices\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
           "response": [
             {
@@ -5302,7 +5311,7 @@
           ]
         },
         {
-          "name": "Restore Customer",
+          "name": "Unblacklist Customer",
           "request": {
             "method": "POST",
             "header": [
@@ -5316,14 +5325,14 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/customers/{{customer_id}}/restore",
+              "raw": "{{base_url}}/customers/{{customer_id}}/unblacklist",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "customers",
                 "{{customer_id}}",
-                "restore"
+                "unblacklist"
               ]
             },
             "description": "Restore an archived customer."
