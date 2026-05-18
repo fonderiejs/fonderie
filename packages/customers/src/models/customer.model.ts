@@ -11,7 +11,6 @@ const SELECT_CUSTOMER = `
 	first_name     AS "firstName",
 	last_name      AS "lastName",
 	company_name   AS "companyName",
-	job_title      AS "jobTitle",
 	avatar_url     AS "avatarUrl",
 	locale,
 	reference_code AS "referenceCode",
@@ -36,7 +35,6 @@ export interface CreateCustomerOpts {
 	firstName?: string | null;
 	lastName?: string | null;
 	companyName?: string | null;
-	jobTitle?: string | null;
 	avatarUrl?: string | null;
 	locale?: string;
 	/** Explicit code to assign. Omit to auto-generate ({prefix}-0001, …). */
@@ -52,7 +50,6 @@ export interface UpdateCustomerOpts {
 	firstName?: string | null;
 	lastName?: string | null;
 	companyName?: string | null;
-	jobTitle?: string | null;
 	avatarUrl?: string | null;
 	locale?: string;
 	/** Explicit code to assign. Omit to keep existing or auto-generate if none. */
@@ -188,8 +185,8 @@ export class CustomerModel {
 
 		const [row] = await this.store.query<ICustomer>(
 			`INSERT INTO fonderie_customers
-			   (workspace_id, type, sex, first_name, last_name, company_name, job_title, avatar_url, locale, reference_code, created_by)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, created_by)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			 RETURNING ${SELECT_CUSTOMER}`,
 			[
 				opts.workspaceId,
@@ -198,7 +195,6 @@ export class CustomerModel {
 				opts.firstName ?? null,
 				opts.lastName ?? null,
 				opts.companyName ?? null,
-				opts.jobTitle ?? null,
 				opts.avatarUrl ?? null,
 				opts.locale ?? 'en-US',
 				referenceCode,
@@ -247,10 +243,6 @@ export class CustomerModel {
 		if (opts.companyName !== undefined) {
 			params.push(opts.companyName);
 			sets.push(`company_name = $${params.length}`);
-		}
-		if (opts.jobTitle !== undefined) {
-			params.push(opts.jobTitle);
-			sets.push(`job_title = $${params.length}`);
 		}
 		if (opts.avatarUrl !== undefined) {
 			params.push(opts.avatarUrl);

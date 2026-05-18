@@ -12,7 +12,6 @@ export interface ICustomer {
 	firstName: string | null;
 	lastName: string | null;
 	companyName: string | null;
-	jobTitle: string | null;
 	avatarUrl: string | null;
 	locale: string;
 	referenceCode: string | null;

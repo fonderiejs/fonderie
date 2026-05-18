@@ -21,7 +21,6 @@ const CUSTOMER: ICustomer = {
 	firstName: 'Jane',
 	lastName: 'Doe',
 	companyName: null,
-	jobTitle: null,
 	avatarUrl: null,
 	locale: 'en-US',
 	referenceCode: null,
