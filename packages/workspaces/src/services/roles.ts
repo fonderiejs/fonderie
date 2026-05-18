@@ -25,6 +25,14 @@ export async function createRole(
 	return role;
 }
 
+export async function findSystemRole(name: string, store: IStoreAdapter): Promise<IRole | null> {
+	const [row] = await store.query<IRole>(
+		`SELECT ${SELECT_ROLE} FROM fonderie_roles WHERE name = $1 AND is_system = true LIMIT 1`,
+		[name],
+	);
+	return row ?? null;
+}
+
 export async function getRoleById(id: string, store: IStoreAdapter): Promise<IRole | null> {
 	const [row] = await store.query<IRole>(
 		`SELECT ${SELECT_ROLE} FROM fonderie_roles WHERE id = $1`,

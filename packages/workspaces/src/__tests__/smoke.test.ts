@@ -31,6 +31,12 @@ function makeStore(
 				return [opts.member] as T[];
 			}
 
+			if (sql.includes('fonderie_roles') && sql.includes('is_system = true') && sql.includes('LIMIT 1')) {
+				return [
+					{ id: 'role-system-admin', name: 'ADMIN', isSystem: true, active: true, description: 'System administrator', workspaceId: null },
+				] as unknown as T[];
+			}
+
 			if (sql.includes('fonderie_roles') && sql.includes('ORDER BY')) {
 				return (opts.roles ?? []) as T[];
 			}
@@ -477,8 +483,8 @@ test('WorkspacesModule: provisions personal workspace on user.registered via bus
 		'should insert personal workspace',
 	);
 	assert.ok(
-		queriedSql.some((s) => s.includes('INSERT INTO fonderie_roles')),
-		'should create ADMIN role',
+		queriedSql.some((s) => s.includes('fonderie_roles') && s.includes('is_system = true')),
+		'should look up system ADMIN role',
 	);
 	assert.ok(
 		queriedSql.some((s) => s.includes('INSERT INTO fonderie_role_user_workspaces')),
