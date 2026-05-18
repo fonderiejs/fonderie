@@ -9,7 +9,6 @@ import type {
 	ICustomerEmail,
 	ICustomerNote,
 	ICustomerPhone,
-	ICustomerTag,
 } from '../types';
 
 export interface ICustomerDTO {
@@ -31,6 +30,8 @@ export interface ICustomerDTO {
 export interface ICustomerDetailDTO extends ICustomerDTO {
 	emails: ICustomerEmailDTO[];
 	phones: ICustomerPhoneDTO[];
+	addresses: ICustomerAddressDTO[];
+	notes: ICustomerNoteDTO[];
 	tags: string[];
 }
 
@@ -103,6 +104,8 @@ export function toCustomerDetailDTO(c: ICustomerDetail): ICustomerDetailDTO {
 		...toCustomerDTO(c),
 		emails: arrayOrEmpty<ICustomerEmail>(c.emails).map(toCustomerEmailDTO),
 		phones: arrayOrEmpty<ICustomerPhone>(c.phones).map(toCustomerPhoneDTO),
+		addresses: arrayOrEmpty<ICustomerAddress>(c.addresses).map(toCustomerAddressDTO),
+		notes: arrayOrEmpty<ICustomerNote>(c.notes).map(toCustomerNoteDTO),
 		tags: arrayOrEmpty<string>(c.tags),
 	};
 }
