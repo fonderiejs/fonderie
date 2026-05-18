@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import type { IStoreAdapter } from '@fonderie-js/store';
 import type { IAuthConfig } from '../config';
-import { MESSAGE_KEYS } from '../config';
+import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { IUser } from '../types';
 import { NOTIFICATION_EVENT } from '@fonderie-js/events';
 import { issueTokenPair, issueMfaPendingToken, verifyToken } from '../services/jwt';
@@ -1538,7 +1538,7 @@ test('register (email): emits user.registered with correct payload', async () =>
 	);
 	// register emits NOTIFICATION_EVENT + user.registered
 	assert.equal(bus.emitted.length, 2);
-	const reg = bus.emitted.find((e) => e.type === 'user.registered');
+	const reg = bus.emitted.find((e) => e.type === EVENT_KEYS.userRegistered);
 	assert.ok(reg, 'user.registered must be emitted');
 	const p = reg!.payload as any;
 	assert.equal(p.userId, 'user-1');
@@ -1552,7 +1552,7 @@ test('register (phone): emits user.registered with loginMethod: phone', async ()
 	await ctrl.register(makeCtx({ body: { phone: '+15141234567' } }));
 	// register emits NOTIFICATION_EVENT + user.registered
 	assert.equal(bus.emitted.length, 2);
-	const reg = bus.emitted.find((e) => e.type === 'user.registered');
+	const reg = bus.emitted.find((e) => e.type === EVENT_KEYS.userRegistered);
 	assert.ok(reg, 'user.registered must be emitted');
 	const p = reg!.payload as any;
 	assert.equal(p.loginMethod, 'phone');
@@ -1563,7 +1563,7 @@ test('deleteMe: emits user.deleted with correct userId', async () => {
 	const ctrl = userController(makeStore(), bus as any);
 	await ctrl.deleteMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
 	assert.equal(bus.emitted.length, 1);
-	assert.equal(bus.emitted[0]?.type, 'user.deleted');
+	assert.equal(bus.emitted[0]?.type, EVENT_KEYS.userDeleted);
 	const p = bus.emitted[0]?.payload as any;
 	assert.equal(p.userId, 'user-1');
 });

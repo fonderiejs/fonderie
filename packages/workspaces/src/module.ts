@@ -11,7 +11,7 @@ import { MemberModel } from './models/member.model';
 
 // Mirror of @fonderie-js/auth EVENT_KEYS.userRegistered — avoids a runtime
 // dependency on the auth package while remaining explicit about the contract.
-const AUTH_USER_REGISTERED = 'user.registered' as const;
+const AUTH_USER_REGISTERED = 'fonderie.user.registered' as const;
 
 interface UserRegisteredPayload {
 	userId: string;
