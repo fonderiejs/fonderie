@@ -43,6 +43,32 @@ export class CustomerAddressModel {
 		label?: string;
 		isPrimary?: boolean;
 	}): Promise<ICustomerAddress> {
+		const [existing] = await this.store.query<{ addrId: string }>(
+			`SELECT ca.addr_id AS "addrId"
+			 FROM fonderie_customer_addresses ca
+			 JOIN fonderie_addresses a ON a.id = ca.addr_id
+			 WHERE ca.customer_id = $1
+			   AND a.country_iso        = $2
+			   AND a.zip_postal_code    = $3
+			   AND a.subdivision1_iso IS NOT DISTINCT FROM $4
+			   AND a.subdivision2_iso IS NOT DISTINCT FROM $5
+			   AND a.line1            IS NOT DISTINCT FROM $6
+			   AND a.line2            IS NOT DISTINCT FROM $7
+			 LIMIT 1`,
+			[
+				opts.customerId,
+				opts.countryIso,
+				opts.zipPostalCode,
+				opts.subdivision1Iso ?? null,
+				opts.subdivision2Iso ?? null,
+				opts.line1 ?? null,
+				opts.line2 ?? null,
+			],
+		);
+		if (existing) {
+			throw Object.assign(new Error('Duplicate address for this customer'), { code: 'DUPLICATE_ADDRESS' });
+		}
+
 		return this.store.transaction(async (tx) => {
 			if (opts.isPrimary) {
 				await tx.query(

@@ -67,17 +67,25 @@ export function customerAddressController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'zipPostalCode is required');
 			}
 
-			const created = await addresses.add({
-				customerId: r.customer.id,
-				countryIso: countryIso.trim(),
-				zipPostalCode: zipPostalCode.trim(),
-				subdivision1Iso: typeof body?.['subdivision1Iso'] === 'string' ? body['subdivision1Iso'] : null,
-				subdivision2Iso: typeof body?.['subdivision2Iso'] === 'string' ? body['subdivision2Iso'] : null,
-				line1: typeof body?.['line1'] === 'string' ? body['line1'] : null,
-				line2: typeof body?.['line2'] === 'string' ? body['line2'] : null,
-				label: typeof body?.['label'] === 'string' ? body['label'] : 'service',
-				isPrimary: body?.['isPrimary'] === true,
-			});
+			let created;
+			try {
+				created = await addresses.add({
+					customerId: r.customer.id,
+					countryIso: countryIso.trim(),
+					zipPostalCode: zipPostalCode.trim(),
+					subdivision1Iso: typeof body?.['subdivision1Iso'] === 'string' ? body['subdivision1Iso'] : null,
+					subdivision2Iso: typeof body?.['subdivision2Iso'] === 'string' ? body['subdivision2Iso'] : null,
+					line1: typeof body?.['line1'] === 'string' ? body['line1'] : null,
+					line2: typeof body?.['line2'] === 'string' ? body['line2'] : null,
+					label: typeof body?.['label'] === 'string' ? body['label'] : 'service',
+					isPrimary: body?.['isPrimary'] === true,
+				});
+			} catch (err) {
+				if (err instanceof Error && (err as any).code === 'DUPLICATE_ADDRESS') {
+					return setApiResponse(HTTP.CONFLICT, 'DUPLICATE_ADDRESS', 'This address is already linked to this customer');
+				}
+				throw err;
+			}
 
 			return setApiResponse(HTTP.CREATED, 'ADDRESS_ADDED', 'Address added successfully.', {
 				address: toCustomerAddressDTO(created),

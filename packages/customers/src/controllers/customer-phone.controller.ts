@@ -64,12 +64,20 @@ export function customerPhoneController(store: IStoreAdapter) {
 			const label = typeof body?.['label'] === 'string' ? body['label'] : 'mobile';
 			const isPrimary = body?.['isPrimary'] === true;
 
-			const created = await phones.add({
-				customerId: r.customer.id,
-				phone: phone.trim(),
-				label,
-				isPrimary,
-			});
+			let created;
+			try {
+				created = await phones.add({
+					customerId: r.customer.id,
+					phone: phone.trim(),
+					label,
+					isPrimary,
+				});
+			} catch (err) {
+				if (err instanceof Error && err.message.includes('idx_fcp_unique_phone')) {
+					return setApiResponse(HTTP.CONFLICT, 'DUPLICATE_PHONE', 'This phone is already linked to this customer');
+				}
+				throw err;
+			}
 
 			return setApiResponse(HTTP.CREATED, 'PHONE_ADDED', 'Phone added successfully.', {
 				phone: toCustomerPhoneDTO(created),
