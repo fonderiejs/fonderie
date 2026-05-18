@@ -118,7 +118,7 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 					jobTitle: typeof jobTitle === 'string' ? jobTitle : null,
 					avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
 					locale: typeof locale === 'string' ? locale : 'en-US',
-					referenceCode: typeof referenceCode === 'string' ? referenceCode : null,
+					referenceCode: typeof referenceCode === 'string' ? referenceCode : undefined,
 					createdBy: ctx.user?.id ?? null,
 				});
 			} catch (err: unknown) {
