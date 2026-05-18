@@ -181,21 +181,28 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 				}
 				opts.sex = s;
 			}
-			if (body?.['firstName'] !== undefined)
+			if (body?.['firstName'] !== undefined) {
 				opts.firstName = typeof body['firstName'] === 'string' ? body['firstName'] : null;
-			if (body?.['lastName'] !== undefined)
+			}
+
+			if (body?.['lastName'] !== undefined) {
 				opts.lastName = typeof body['lastName'] === 'string' ? body['lastName'] : null;
-			if (body?.['companyName'] !== undefined)
+			}
+
+			if (body?.['companyName'] !== undefined) {
 				opts.companyName = typeof body['companyName'] === 'string' ? body['companyName'] : null;
-			if (body?.['jobTitle'] !== undefined)
+			}
+
+			if (body?.['jobTitle'] !== undefined) {
 				opts.jobTitle = typeof body['jobTitle'] === 'string' ? body['jobTitle'] : null;
+			}
+
 			if (body?.['avatarUrl'] !== undefined)
 				opts.avatarUrl = typeof body['avatarUrl'] === 'string' ? body['avatarUrl'] : null;
 			if (body?.['locale'] !== undefined && typeof body['locale'] === 'string')
 				opts.locale = body['locale'];
-			if (body?.['referenceCode'] !== undefined)
-				opts.referenceCode =
-					typeof body['referenceCode'] === 'string' ? body['referenceCode'] : null;
+			if (body?.['referenceCode'] !== undefined && typeof body['referenceCode'] === 'string')
+				opts.referenceCode = body['referenceCode'];
 
 			const customer = await customers.update(id, workspaceId, opts);
 			if (!customer) {
