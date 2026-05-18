@@ -86,6 +86,7 @@ export interface ICustomerRelationship {
 export interface ICustomerShallow extends ICustomer {
 	emails: ICustomerEmail[];
 	phones: ICustomerPhone[];
+	addresses: ICustomerAddress[];
 	notes: ICustomerNote[];
 	tags: string[];
 }
