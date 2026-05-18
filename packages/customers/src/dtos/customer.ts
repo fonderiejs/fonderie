@@ -47,13 +47,14 @@ export interface ICustomerShallowDTO extends ICustomerDTO {
 	tags: string[];
 }
 
-export interface ICustomerRelationshipExpandedDTO {
+// Flat merge: relationship metadata + customer fields spread at the same level.
+// `id` is the relationship record id; `customerId` is the related customer's id.
+export type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
 	id: string;
+	customerId: string;
 	relationship: string;
 	isPrimary: boolean;
-	createdAt: string;
-	customer: ICustomerShallowDTO;
-}
+};
 
 export interface ICustomerDetailDTO extends ICustomerDTO {
 	emails: ICustomerEmailDTO[];
@@ -151,12 +152,13 @@ export function toCustomerShallowDTO(c: ICustomerShallow): ICustomerShallowDTO {
 }
 
 export function toCustomerRelationshipExpandedDTO(r: ICustomerRelationshipExpanded): ICustomerRelationshipExpandedDTO {
+	const { id: customerId, ...customerFields } = toCustomerShallowDTO(r.customer);
 	return {
 		id: stringOrEmpty(r.id),
+		customerId,
 		relationship: stringOrEmpty(r.relationship),
 		isPrimary: booleanOrFalse(r.isPrimary),
-		createdAt: dateOrEmpty(r.createdAt),
-		customer: toCustomerShallowDTO(r.customer),
+		...customerFields,
 	};
 }
 
