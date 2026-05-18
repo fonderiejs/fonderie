@@ -106,19 +106,27 @@ export function customerController(store: IStoreAdapter, bus?: EventBus) {
 				);
 			}
 
-			const customer = await customers.create({
-				workspaceId,
-				type: typeof type === 'string' ? type : 'individual',
-				sex: typeof sex === 'string' ? sex : 'UNKNOWN',
-				firstName: typeof firstName === 'string' ? firstName : null,
-				lastName: typeof lastName === 'string' ? lastName : null,
-				companyName: typeof companyName === 'string' ? companyName : null,
-				jobTitle: typeof jobTitle === 'string' ? jobTitle : null,
-				avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
-				locale: typeof locale === 'string' ? locale : 'en-US',
-				referenceCode: typeof referenceCode === 'string' ? referenceCode : null,
-				createdBy: ctx.user?.id ?? null,
-			});
+			let customer;
+			try {
+				customer = await customers.create({
+					workspaceId,
+					type: typeof type === 'string' ? type : 'individual',
+					sex: typeof sex === 'string' ? sex : 'UNKNOWN',
+					firstName: typeof firstName === 'string' ? firstName : null,
+					lastName: typeof lastName === 'string' ? lastName : null,
+					companyName: typeof companyName === 'string' ? companyName : null,
+					jobTitle: typeof jobTitle === 'string' ? jobTitle : null,
+					avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
+					locale: typeof locale === 'string' ? locale : 'en-US',
+					referenceCode: typeof referenceCode === 'string' ? referenceCode : null,
+					createdBy: ctx.user?.id ?? null,
+				});
+			} catch (err: unknown) {
+				if (err instanceof Error && err.message.includes('idx_fc_reference_code')) {
+					return setApiResponse(HTTP.CONFLICT, 'DUPLICATE_REFERENCE_CODE', 'A customer with this reference code already exists');
+				}
+				throw err;
+			}
 
 			bus
 				?.emit(EVENT_KEYS.customerCreated, {
