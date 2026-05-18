@@ -5545,7 +5545,7 @@
                 "{{customer_id}}"
               ]
             },
-            "description": "Hard delete a customer and all related emails, phones, addresses, notes, and tags (cascades)."
+            "description": "Hard delete a customer. Sub-resources (emails, phones, addresses, notes, tags, relationships) are deleted in parallel before the customer row is removed. Relationships use a detach strategy — related customers are left intact. Address rows in `fonderie_addresses` are also deleted (the join-table FK cascades in the wrong direction for cleanup, so we delete the base rows directly)."
           },
           "response": [
             {
@@ -5572,7 +5572,7 @@
                     "{{customer_id}}"
                   ]
                 },
-                "description": "Hard delete a customer and all related emails, phones, addresses, notes, and tags (cascades)."
+                "description": "Hard delete a customer. Sub-resources (emails, phones, addresses, notes, tags, relationships) are deleted in parallel before the customer row is removed. Relationships use a detach strategy — related customers are left intact. Address rows in `fonderie_addresses` are also deleted (the join-table FK cascades in the wrong direction for cleanup, so we delete the base rows directly)."
               },
               "status": "OK",
               "code": 200,
