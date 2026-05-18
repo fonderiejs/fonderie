@@ -2,8 +2,8 @@ export const EVENT_KEYS = {
 	customerCreated: 'fonderie.customer.created',
 	customerUpdated: 'fonderie.customer.updated',
 	customerDeleted: 'fonderie.customer.deleted',
-	customerArchived: 'fonderie.customer.archived',
-	customerRestored: 'fonderie.customer.restored',
+	customerBlacklisted: 'fonderie.customer.blacklisted',
+	customerUnblacklisted: 'fonderie.customer.unblacklisted',
 } as const;
 
 export type CustomersEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];

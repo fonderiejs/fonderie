@@ -14,7 +14,7 @@ const SELECT_CUSTOMER = `
 	avatar_url     AS "avatarUrl",
 	locale,
 	reference_code AS "referenceCode",
-	is_archived    AS "isArchived",
+	is_blacklisted AS "isBlacklisted",
 	created_by     AS "createdBy",
 	created_at     AS "createdAt",
 	updated_at     AS "updatedAt"
@@ -23,7 +23,7 @@ const SELECT_CUSTOMER = `
 export interface ListCustomersOpts {
 	workspaceId: string;
 	search?: string | undefined;
-	archived?: boolean | undefined;
+	blacklisted?: boolean | undefined;
 	limit?: number | undefined;
 	offset?: number | undefined;
 }
@@ -75,11 +75,11 @@ export class CustomerModel {
 		const conditions: string[] = ['workspace_id = $1'];
 		const params: unknown[] = [opts.workspaceId];
 
-		if (opts.archived !== undefined) {
-			params.push(opts.archived);
-			conditions.push(`is_archived = $${params.length}`);
+		if (opts.blacklisted !== undefined) {
+			params.push(opts.blacklisted);
+			conditions.push(`is_blacklisted = $${params.length}`);
 		} else {
-			conditions.push('is_archived = false');
+			conditions.push('is_blacklisted = false');
 		}
 
 		if (opts.search) {
@@ -275,19 +275,19 @@ export class CustomerModel {
 		]);
 	}
 
-	async archive(id: string, workspaceId: string): Promise<void> {
+	async blacklist(id: string, workspaceId: string): Promise<void> {
 		await this.store.query(
 			`UPDATE fonderie_customers
-			 SET is_archived = true, updated_at = now()
+			 SET is_blacklisted = true, updated_at = now()
 			 WHERE id = $1 AND workspace_id = $2`,
 			[id, workspaceId],
 		);
 	}
 
-	async restore(id: string, workspaceId: string): Promise<void> {
+	async unblacklist(id: string, workspaceId: string): Promise<void> {
 		await this.store.query(
 			`UPDATE fonderie_customers
-			 SET is_archived = false, updated_at = now()
+			 SET is_blacklisted = false, updated_at = now()
 			 WHERE id = $1 AND workspace_id = $2`,
 			[id, workspaceId],
 		);

@@ -15,7 +15,7 @@ export interface ICustomer {
 	avatarUrl: string | null;
 	locale: string;
 	referenceCode: string | null;
-	isArchived: boolean;
+	isBlacklisted: boolean;
 	createdBy: string | null;
 	createdAt: string;
 	updatedAt: string;
