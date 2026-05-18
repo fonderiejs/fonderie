@@ -533,6 +533,9 @@ export class CustomerModel {
 	}
 
 	async delete(id: string, workspaceId: string): Promise<void> {
+		// Detach strategy: fonderie_customer_relationships has ON DELETE CASCADE on both
+		// customer_id and related_id, so the DB removes all relationship rows for this
+		// customer automatically. Related customers themselves are left intact.
 		await this.store.query(`DELETE FROM fonderie_customers WHERE id = $1 AND workspace_id = $2`, [
 			id,
 			workspaceId,
