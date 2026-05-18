@@ -5021,7 +5021,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"type\": \"business\",\n  \"companyName\": \"Acme Landscaping\",\n  \"locale\": \"en-US\",\n  \"sex\": \"UNKNOWN\"\n}"
+              "raw": "{\n  \"type\": \"business\",\n  \"companyName\": \"Acme Landscaping\",\n  \"locale\": \"en-US\",\n  \"sex\": \"UNKNOWN\",\n  \"referenceCode\": \"CRW-0001\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/customers",
