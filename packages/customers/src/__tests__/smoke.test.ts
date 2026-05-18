@@ -117,7 +117,8 @@ test('toCustomerDTO: maps all fields correctly', () => {
 	assert.equal(dto.firstName, 'Jane');
 	assert.equal(dto.lastName, 'Doe');
 	assert.equal(dto.companyName, '');
-	assert.equal(dto.isBlacklisted, false);
+	assert.equal(dto.blacklisted.status, false);
+	assert.equal(dto.blacklisted.reason, null);
 });
 
 // ── customerController ────────────────────────────────────────────────────────

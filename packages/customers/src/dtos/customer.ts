@@ -22,8 +22,7 @@ export interface ICustomerDTO {
 	avatarUrl: string;
 	locale: string;
 	referenceCode: string;
-	isBlacklisted: boolean;
-	blacklistReason: string | null;
+	blacklisted: { status: boolean; reason: string | null };
 	createdBy: string;
 	createdAt: string;
 	updatedAt: string;
@@ -92,8 +91,7 @@ export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 		avatarUrl: stringOrEmpty(c.avatarUrl),
 		locale: stringOrEmpty(c.locale),
 		referenceCode: stringOrEmpty(c.referenceCode),
-		isBlacklisted: booleanOrFalse(c.isBlacklisted),
-		blacklistReason: c.blacklistReason ?? null,
+		blacklisted: { status: booleanOrFalse(c.isBlacklisted), reason: c.blacklistReason ?? null },
 		createdBy: stringOrEmpty(c.createdBy),
 		createdAt: dateOrEmpty(c.createdAt),
 		updatedAt: dateOrEmpty(c.updatedAt),
