@@ -5148,65 +5148,67 @@
           "request": {
             "method": "GET",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "X-Workspace-ID",
-                "value": "{{workspace_id}}"
-              }
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
             ],
             "url": {
               "raw": "{{base_url}}/customers/{{customer_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "customers",
-                "{{customer_id}}"
+              "host": [ "{{base_url}}" ],
+              "path": [ "customers", "{{customer_id}}" ],
+              "query": [
+                {
+                  "key": "depth",
+                  "value": "2",
+                  "description": "Set to 2 to resolve relationships of relationships (full household graph in one call). Default: 1.",
+                  "disabled": true
+                }
               ]
             },
-            "description": "Fetch a single customer with embedded emails, phones, addresses, notes, relationships, and tags."
+            "description": "Fetch a single customer with embedded emails, phones, addresses, notes, relationships, and tags.\n\n**?depth=2** — also resolves each relationship's own relationships (e.g. wife, kids of a tenant). Returns the full two-level graph in a single call. Uses 18 batch-parallelised DB queries vs 12 for depth=1. Only values 1 and 2 are accepted; anything else defaults to 1."
           },
           "response": [
             {
-              "name": "200 OK",
+              "name": "200 OK (depth=1)",
               "originalRequest": {
                 "method": "GET",
                 "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{token}}"
-                  },
-                  {
-                    "key": "X-Workspace-ID",
-                    "value": "{{workspace_id}}"
-                  }
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
                 ],
                 "url": {
                   "raw": "{{base_url}}/customers/{{customer_id}}",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "customers",
-                    "{{customer_id}}"
-                  ]
-                },
-                "description": "Fetch a single customer with embedded emails, phones, addresses, notes, relationships, and tags."
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "customers", "{{customer_id}}" ]
+                }
               },
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
+              "header": [ { "key": "Content-Type", "value": "application/json" } ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"id\": \"{{customer_id}}\",\n    \"type\": \"individual\",\n    \"sex\": \"UNKNOWN\",\n    \"firstName\": \"Jane\",\n    \"lastName\": \"Doe\",\n    \"companyName\": \"\",\n    \"avatarUrl\": \"\",\n    \"locale\": \"en-US\",\n    \"referenceCode\": \"CLT-0001\",\n    \"blacklisted\": { \"status\": false, \"reason\": null },\n    \"createdBy\": \"{{user_id}}\",\n    \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n    \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n    \"emails\": [\n      { \"id\": \"{{customer_email_id}}\", \"email\": \"jane@example.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-17T10:00:00.000Z\" }\n    ],\n    \"phones\": [],\n    \"addresses\": [\n      {\n        \"id\": \"{{customer_addr_id}}\",\n        \"label\": \"service\",\n        \"isPrimary\": true,\n        \"address\": {\n          \"countryIso\": \"CA\",\n          \"subdivision1Iso\": \"QC\",\n          \"subdivision2Iso\": null,\n          \"zipPostalCode\": \"H2X 1Y6\",\n          \"unit\": \"Unit 42\",\n          \"line1\": \"123 Rue Sainte-Catherine\",\n          \"line2\": null\n        }\n      }\n    ],\n    \"notes\": [],\n    \"relationships\": [\n      {\n        \"id\": \"{{relationship_id}}\",\n        \"customerId\": \"{{related_customer_id}}\",\n        \"relationship\": \"tenant\",\n        \"isPrimary\": false,\n        \"type\": \"individual\",\n        \"sex\": \"MALE\",\n        \"firstName\": \"John\",\n        \"lastName\": \"Smith\",\n        \"companyName\": \"\",\n        \"avatarUrl\": \"\",\n        \"locale\": \"en-US\",\n        \"referenceCode\": \"CLT-0002\",\n        \"blacklisted\": { \"status\": false, \"reason\": null },\n        \"createdBy\": null,\n        \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n        \"updatedAt\": \"2026-05-17T10:00:00.000Z\",\n        \"emails\": [],\n        \"phones\": [],\n        \"notes\": [],\n        \"tags\": []\n      }\n    ],\n    \"tags\": []\n  }\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"id\": \"{{customer_id}}\",\n    \"type\": \"individual\",\n    \"sex\": \"MALE\",\n    \"firstName\": \"Tommy\",\n    \"lastName\": \"Mancini\",\n    \"companyName\": \"\",\n    \"avatarUrl\": \"\",\n    \"locale\": \"it-IT\",\n    \"referenceCode\": \"CLT-0001\",\n    \"blacklisted\": { \"status\": false, \"reason\": null },\n    \"createdBy\": \"{{user_id}}\",\n    \"createdAt\": \"2026-05-18T11:58:24.817Z\",\n    \"updatedAt\": \"2026-05-18T11:58:24.817Z\",\n    \"emails\": [ { \"id\": \"{{customer_email_id}}\", \"email\": \"tommy.mancini@gmail.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:25.219Z\" } ],\n    \"phones\": [ { \"id\": \"{{customer_phone_id}}\", \"phone\": \"+15141110001\", \"label\": \"mobile\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:26.445Z\" } ],\n    \"addresses\": [ { \"id\": \"{{customer_addr_id}}\", \"label\": \"service\", \"isPrimary\": true, \"address\": { \"countryIso\": \"CA\", \"subdivision1Iso\": \"QC\", \"subdivision2Iso\": \"\", \"zipPostalCode\": \"H7V 1A1\", \"unit\": \"\", \"line1\": \"85 Boulevard Sainte-Rose\", \"line2\": \"\" } } ],\n    \"notes\": [],\n    \"relationships\": [\n      {\n        \"id\": \"{{relationship_id}}\",\n        \"customerId\": \"{{related_customer_id}}\",\n        \"relationship\": \"tenant\",\n        \"isPrimary\": true,\n        \"type\": \"individual\",\n        \"sex\": \"MALE\",\n        \"firstName\": \"Marco\",\n        \"lastName\": \"Rossi\",\n        \"companyName\": \"\",\n        \"avatarUrl\": \"\",\n        \"locale\": \"it-IT\",\n        \"referenceCode\": \"CLT-0002\",\n        \"blacklisted\": { \"status\": false, \"reason\": null },\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-18T11:58:28.183Z\",\n        \"updatedAt\": \"2026-05-18T11:58:28.183Z\",\n        \"emails\": [ { \"id\": \"{{customer_email_id}}\", \"email\": \"marco.rossi@gmail.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:28.727Z\" } ],\n        \"phones\": [],\n        \"notes\": [],\n        \"tags\": []\n      }\n    ],\n    \"tags\": []\n  }\n}"
+            },
+            {
+              "name": "200 OK (depth=2)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/customers/{{customer_id}}?depth=2",
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "customers", "{{customer_id}}" ],
+                  "query": [ { "key": "depth", "value": "2" } ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [ { "key": "Content-Type", "value": "application/json" } ],
+              "cookie": [],
+              "body": "{\n  \"reason\": \"CUSTOMER_FETCHED\",\n  \"explanation\": \"Customer retrieved successfully.\",\n  \"result\": {\n    \"id\": \"{{customer_id}}\",\n    \"type\": \"individual\",\n    \"sex\": \"MALE\",\n    \"firstName\": \"Tommy\",\n    \"lastName\": \"Mancini\",\n    \"companyName\": \"\",\n    \"avatarUrl\": \"\",\n    \"locale\": \"it-IT\",\n    \"referenceCode\": \"CLT-0001\",\n    \"blacklisted\": { \"status\": false, \"reason\": null },\n    \"createdBy\": \"{{user_id}}\",\n    \"createdAt\": \"2026-05-18T11:58:24.817Z\",\n    \"updatedAt\": \"2026-05-18T11:58:24.817Z\",\n    \"emails\": [ { \"id\": \"{{customer_email_id}}\", \"email\": \"tommy.mancini@gmail.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:25.219Z\" } ],\n    \"phones\": [ { \"id\": \"{{customer_phone_id}}\", \"phone\": \"+15141110001\", \"label\": \"mobile\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:26.445Z\" } ],\n    \"addresses\": [ { \"id\": \"{{customer_addr_id}}\", \"label\": \"service\", \"isPrimary\": true, \"address\": { \"countryIso\": \"CA\", \"subdivision1Iso\": \"QC\", \"subdivision2Iso\": \"\", \"zipPostalCode\": \"H7V 1A1\", \"unit\": \"\", \"line1\": \"85 Boulevard Sainte-Rose\", \"line2\": \"\" } } ],\n    \"notes\": [],\n    \"relationships\": [\n      {\n        \"id\": \"{{relationship_id}}\",\n        \"customerId\": \"{{related_customer_id}}\",\n        \"relationship\": \"tenant\",\n        \"isPrimary\": true,\n        \"type\": \"individual\",\n        \"sex\": \"MALE\",\n        \"firstName\": \"Marco\",\n        \"lastName\": \"Rossi\",\n        \"companyName\": \"\",\n        \"avatarUrl\": \"\",\n        \"locale\": \"it-IT\",\n        \"referenceCode\": \"CLT-0002\",\n        \"blacklisted\": { \"status\": false, \"reason\": null },\n        \"createdBy\": \"{{user_id}}\",\n        \"createdAt\": \"2026-05-18T11:58:28.183Z\",\n        \"updatedAt\": \"2026-05-18T11:58:28.183Z\",\n        \"emails\": [ { \"id\": \"{{customer_email_id}}\", \"email\": \"marco.rossi@gmail.com\", \"label\": \"personal\", \"isPrimary\": true, \"createdAt\": \"2026-05-18T11:58:28.727Z\" } ],\n        \"phones\": [],\n        \"notes\": [],\n        \"tags\": [],\n        \"relationships\": [\n          {\n            \"id\": \"{{relationship_id_2}}\",\n            \"customerId\": \"{{related_customer_id}}\",\n            \"relationship\": \"wife\",\n            \"isPrimary\": false,\n            \"type\": \"individual\",\n            \"sex\": \"FEMALE\",\n            \"firstName\": \"Sofia\",\n            \"lastName\": \"Rossi\",\n            \"companyName\": \"\",\n            \"avatarUrl\": \"\",\n            \"locale\": \"it-IT\",\n            \"referenceCode\": \"CLT-0003\",\n            \"blacklisted\": { \"status\": false, \"reason\": null },\n            \"createdBy\": \"{{user_id}}\",\n            \"createdAt\": \"2026-05-18T11:58:32.000Z\",\n            \"updatedAt\": \"2026-05-18T11:58:32.000Z\",\n            \"emails\": [],\n            \"phones\": [],\n            \"notes\": [],\n            \"tags\": []\n          },\n          {\n            \"id\": \"{{relationship_id_3}}\",\n            \"customerId\": \"{{related_customer_id}}\",\n            \"relationship\": \"kid\",\n            \"isPrimary\": false,\n            \"type\": \"individual\",\n            \"sex\": \"MALE\",\n            \"firstName\": \"Luca\",\n            \"lastName\": \"Rossi\",\n            \"companyName\": \"\",\n            \"avatarUrl\": \"\",\n            \"locale\": \"it-IT\",\n            \"referenceCode\": \"CLT-0004\",\n            \"blacklisted\": { \"status\": false, \"reason\": null },\n            \"createdBy\": \"{{user_id}}\",\n            \"createdAt\": \"2026-05-18T11:58:33.000Z\",\n            \"updatedAt\": \"2026-05-18T11:58:33.000Z\",\n            \"emails\": [],\n            \"phones\": [],\n            \"notes\": [],\n            \"tags\": []\n          }\n        ]\n      }\n    ],\n    \"tags\": []\n  }\n}"
             }
           ]
         },
