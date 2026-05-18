@@ -3968,6 +3968,45 @@
                   "body": "{\n  \"reason\": \"CUSTOMER_NOTE_UPDATED\",\n  \"explanation\": \"Note updated successfully.\",\n  \"result\": {\n    \"note\": {\n      \"id\": \"{{customer_note_id}}\",\n      \"authorId\": \"{{user_id}}\",\n      \"body\": \"Prefers e-transfer. Net-30 terms agreed.\",\n      \"createdAt\": \"2026-05-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-05-17T10:05:00.000Z\"\n    }\n  }\n}"
                 }
               ]
+            },
+            {
+              "name": "Delete Note",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/customers/{{customer_id}}/notes/{{customer_note_id}}",
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "customers", "{{customer_id}}", "notes", "{{customer_note_id}}" ]
+                },
+                "description": "Delete a note."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      { "key": "Authorization", "value": "Bearer {{token}}" },
+                      { "key": "X-Workspace-ID", "value": "{{workspace_id}}" }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/customers/{{customer_id}}/notes/{{customer_note_id}}",
+                      "host": [ "{{base_url}}" ],
+                      "path": [ "customers", "{{customer_id}}", "notes", "{{customer_note_id}}" ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [ { "key": "Content-Type", "value": "application/json" } ],
+                  "cookie": [],
+                  "body": "{\n  \"reason\": \"CUSTOMER_NOTE_DELETED\",\n  \"explanation\": \"Note deleted successfully.\",\n  \"result\": null\n}"
+                }
+              ]
             }
           ]
         },
@@ -4914,77 +4953,6 @@
           ]
         },
         {
-          "name": "Delete Note",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "X-Workspace-ID",
-                "value": "{{workspace_id}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/customers/{{customer_id}}/notes/{{customer_note_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "customers",
-                "{{customer_id}}",
-                "notes",
-                "{{customer_note_id}}"
-              ]
-            },
-            "description": "Delete a note."
-          },
-          "response": [
-            {
-              "name": "200 OK",
-              "originalRequest": {
-                "method": "DELETE",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{token}}"
-                  },
-                  {
-                    "key": "X-Workspace-ID",
-                    "value": "{{workspace_id}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/customers/{{customer_id}}/notes/{{customer_note_id}}",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "customers",
-                    "{{customer_id}}",
-                    "notes",
-                    "{{customer_note_id}}"
-                  ]
-                },
-                "description": "Delete a note."
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_NOTE_DELETED\",\n  \"explanation\": \"Note deleted successfully.\",\n  \"result\": null\n}"
-            }
-          ]
-        },
-        {
           "name": "List Customers",
           "request": {
             "method": "GET",
@@ -5029,7 +4997,7 @@
                 }
               ]
             },
-            "description": "List all customers in the workspace. Supports ?search=, ?archived=true, ?limit=, ?offset=."
+            "description": "List all customers in the workspace. Supports ?search=, ?blacklisted=true, ?limit=, ?offset=."
           },
           "response": [
             {
@@ -5065,7 +5033,7 @@
                     }
                   ]
                 },
-                "description": "List all customers in the workspace. Supports ?search=, ?archived=true, ?limit=, ?offset=."
+                "description": "List all customers in the workspace. Supports ?search=, ?blacklisted=true, ?limit=, ?offset=."
               },
               "status": "OK",
               "code": 200,
@@ -5350,7 +5318,7 @@
                 "blacklist"
               ]
             },
-            "description": "Soft-archive a customer. Archived customers still appear on historical jobs.",
+            "description": "Blacklist a customer. Blacklisted customers are flagged and can be filtered out of listings.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reason\": \"Unpaid invoices\"\n}",
@@ -5377,17 +5345,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/customers/{{customer_id}}/archive",
+                  "raw": "{{base_url}}/customers/{{customer_id}}/blacklist",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "customers",
                     "{{customer_id}}",
-                    "archive"
+                    "blacklist"
                   ]
                 },
-                "description": "Soft-archive a customer. Archived customers still appear on historical jobs."
+                "description": "Blacklist a customer. Blacklisted customers are flagged and can be filtered out of listings."
               },
               "status": "OK",
               "code": 200,
@@ -5399,7 +5367,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_ARCHIVED\",\n  \"explanation\": \"Customer archived successfully.\",\n  \"result\": null\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_BLACKLISTED\",\n  \"explanation\": \"Customer blacklisted successfully.\",\n  \"result\": null\n}"
             }
           ]
         },
@@ -5428,7 +5396,7 @@
                 "unblacklist"
               ]
             },
-            "description": "Restore an archived customer."
+            "description": "Remove a customer from the blacklist."
           },
           "response": [
             {
@@ -5446,17 +5414,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/customers/{{customer_id}}/restore",
+                  "raw": "{{base_url}}/customers/{{customer_id}}/unblacklist",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "customers",
                     "{{customer_id}}",
-                    "restore"
+                    "unblacklist"
                   ]
                 },
-                "description": "Restore an archived customer."
+                "description": "Remove a customer from the blacklist."
               },
               "status": "OK",
               "code": 200,
@@ -5468,7 +5436,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"reason\": \"CUSTOMER_RESTORED\",\n  \"explanation\": \"Customer restored successfully.\",\n  \"result\": null\n}"
+              "body": "{\n  \"reason\": \"CUSTOMER_UNBLACKLISTED\",\n  \"explanation\": \"Customer removed from blacklist successfully.\",\n  \"result\": null\n}"
             }
           ]
         },
