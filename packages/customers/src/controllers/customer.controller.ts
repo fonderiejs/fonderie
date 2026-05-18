@@ -286,7 +286,10 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
 			}
 
-			await customers.blacklist(id, workspaceId);
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const reason = typeof body?.['reason'] === 'string' ? body['reason'].trim() || null : null;
+
+			await customers.blacklist(id, workspaceId, reason);
 
 			bus
 				?.emit(EVENT_KEYS.customerBlacklisted, {
