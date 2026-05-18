@@ -64,12 +64,20 @@ export function customerEmailController(store: IStoreAdapter) {
 			const label = typeof body?.['label'] === 'string' ? body['label'] : 'work';
 			const isPrimary = body?.['isPrimary'] === true;
 
-			const created = await emails.add({
-				customerId: r.customer.id,
-				email: email.trim(),
-				label,
-				isPrimary,
-			});
+			let created;
+			try {
+				created = await emails.add({
+					customerId: r.customer.id,
+					email: email.trim(),
+					label,
+					isPrimary,
+				});
+			} catch (err) {
+				if (err instanceof Error && err.message.includes('idx_fce_unique_email')) {
+					return setApiResponse(HTTP.CONFLICT, 'DUPLICATE_EMAIL', 'This email is already linked to this customer');
+				}
+				throw err;
+			}
 
 			return setApiResponse(HTTP.CREATED, 'EMAIL_ADDED', 'Email added successfully.', {
 				email: toCustomerEmailDTO(created),
