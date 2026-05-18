@@ -52,7 +52,8 @@ export interface UpdateCustomerOpts {
 	jobTitle?: string | null;
 	avatarUrl?: string | null;
 	locale?: string;
-	referenceCode?: string | null;
+	/** Explicit code to assign. Omit to keep existing or auto-generate if none. */
+	referenceCode?: string;
 }
 
 export class CustomerModel {
@@ -242,12 +243,13 @@ export class CustomerModel {
 			params.push(opts.locale);
 			sets.push(`locale = $${params.length}`);
 		}
-		if (opts.referenceCode !== undefined) {
-			params.push(opts.referenceCode);
-			sets.push(`reference_code = $${params.length}`);
-		}
-
-		if (sets.length === 1) return this.findById(id, workspaceId);
+		params.push(opts.referenceCode ?? null);
+		sets.push(
+			`reference_code = COALESCE($${params.length}::text, reference_code, 'CLT-' || LPAD((` +
+			`SELECT COALESCE(MAX(CASE WHEN reference_code ~ '^CLT-[0-9]+$' ` +
+			`THEN SPLIT_PART(reference_code, '-', 2)::int ELSE 0 END), 0) + 1 ` +
+			`FROM fonderie_customers WHERE workspace_id = $2)::text, 4, '0'))`,
+		);
 
 		const [row] = await this.store.query<ICustomer>(
 			`UPDATE fonderie_customers
