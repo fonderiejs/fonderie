@@ -10,6 +10,7 @@ import type {
 	ICustomerNote,
 	ICustomerPhone,
 	ICustomerRelationship,
+	ICustomerTag,
 } from '../types';
 
 export interface ICustomerDTO {
