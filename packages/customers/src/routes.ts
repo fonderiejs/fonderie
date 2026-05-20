@@ -43,12 +43,14 @@ export function buildCustomerRoutes(
 		// ── Emails ───────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/emails', requireAuth, wsCtx, email.list],
 		['POST', '/customers/:customerId/emails', requireAuth, wsCtx, email.add],
+		['PATCH', '/customers/:customerId/emails/:emailId', requireAuth, wsCtx, email.update],
 		['PUT', '/customers/:customerId/emails/:emailId/primary', requireAuth, wsCtx, email.setPrimary],
 		['DELETE', '/customers/:customerId/emails/:emailId', requireAuth, wsCtx, email.remove],
 
 		// ── Phones ───────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/phones', requireAuth, wsCtx, phone.list],
 		['POST', '/customers/:customerId/phones', requireAuth, wsCtx, phone.add],
+		['PATCH', '/customers/:customerId/phones/:phoneId', requireAuth, wsCtx, phone.update],
 		['PUT', '/customers/:customerId/phones/:phoneId/primary', requireAuth, wsCtx, phone.setPrimary],
 		['DELETE', '/customers/:customerId/phones/:phoneId', requireAuth, wsCtx, phone.remove],
 

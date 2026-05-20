@@ -84,6 +84,34 @@ export function customerEmailController(store: IStoreAdapter) {
 			});
 		},
 
+		async update(ctx: IFonderieContext): Promise<Response> {
+			const r = await resolveCustomer(ctx);
+			if ('error' in r) return r.error;
+
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const emailId = params?.['emailId'];
+			if (!isUuid(emailId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'emailId must be a valid UUID');
+			}
+
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			if (typeof body?.['label'] !== 'string' || body['label'].trim().length === 0) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'label is required');
+			}
+
+			try {
+				const updated = await emails.updateLabel(emailId, r.customer.id, body['label'].trim());
+				return setApiResponse(HTTP.OK, 'EMAIL_UPDATED', 'Email updated successfully.', {
+					email: toCustomerEmailDTO(updated),
+				});
+			} catch (err) {
+				if (err instanceof Error && (err as any).code === 'NOT_FOUND') {
+					return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Email not found');
+				}
+				throw err;
+			}
+		},
+
 		async setPrimary(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
 			if ('error' in r) {
