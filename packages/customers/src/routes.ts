@@ -55,6 +55,7 @@ export function buildCustomerRoutes(
 		// ── Addresses ────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/addresses', requireAuth, wsCtx, address.list],
 		['POST', '/customers/:customerId/addresses', requireAuth, wsCtx, address.add],
+		['PATCH', '/customers/:customerId/addresses/:addrId', requireAuth, wsCtx, address.update],
 		['PUT', '/customers/:customerId/addresses/:addrId/primary', requireAuth, wsCtx, address.setPrimary],
 		['DELETE', '/customers/:customerId/addresses/:addrId', requireAuth, wsCtx, address.remove],
 

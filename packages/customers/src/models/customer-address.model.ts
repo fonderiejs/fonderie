@@ -125,6 +125,27 @@ export class CustomerAddressModel {
 		});
 	}
 
+	async updateLabel(addrId: string, customerId: string, label: string): Promise<ICustomerAddress> {
+		const [row] = await this.store.query<ICustomerAddress>(
+			`UPDATE fonderie_customer_addresses
+			 SET label = $3
+			 WHERE addr_id = $1 AND customer_id = $2
+			 RETURNING addr_id AS "addrId", customer_id AS "customerId", label, is_primary AS "isPrimary", NULL::jsonb AS address`,
+			[addrId, customerId, label],
+		);
+		if (!row) throw Object.assign(new Error('Address not found'), { code: 'NOT_FOUND' });
+
+		const [full] = await this.store.query<ICustomerAddress>(
+			`SELECT ${SELECT_CUSTOMER_ADDRESS}
+			 FROM fonderie_customer_addresses ca
+			 JOIN fonderie_addresses a ON a.id = ca.addr_id
+			 WHERE ca.addr_id = $1 AND ca.customer_id = $2`,
+			[addrId, customerId],
+		);
+		if (!full) throw new Error('Failed to fetch updated address');
+		return full;
+	}
+
 	async setPrimary(addrId: string, customerId: string): Promise<void> {
 		await this.store.transaction(async (tx) => {
 			await tx.query(
