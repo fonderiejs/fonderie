@@ -48,6 +48,18 @@ export class CustomerPhoneModel {
 		});
 	}
 
+	async updateLabel(phoneId: string, customerId: string, label: string): Promise<ICustomerPhone> {
+		const [row] = await this.store.query<ICustomerPhone>(
+			`UPDATE fonderie_customer_phones
+			 SET label = $3
+			 WHERE id = $1 AND customer_id = $2
+			 RETURNING ${SELECT_PHONE}`,
+			[phoneId, customerId, label],
+		);
+		if (!row) throw Object.assign(new Error('Phone not found'), { code: 'NOT_FOUND' });
+		return row;
+	}
+
 	async setPrimary(phoneId: string, customerId: string): Promise<void> {
 		await this.store.transaction(async (tx) => {
 			await tx.query(

@@ -48,6 +48,18 @@ export class CustomerEmailModel {
 		});
 	}
 
+	async updateLabel(emailId: string, customerId: string, label: string): Promise<ICustomerEmail> {
+		const [row] = await this.store.query<ICustomerEmail>(
+			`UPDATE fonderie_customer_emails
+			 SET label = $3
+			 WHERE id = $1 AND customer_id = $2
+			 RETURNING ${SELECT_EMAIL}`,
+			[emailId, customerId, label],
+		);
+		if (!row) throw Object.assign(new Error('Email not found'), { code: 'NOT_FOUND' });
+		return row;
+	}
+
 	async setPrimary(emailId: string, customerId: string): Promise<void> {
 		await this.store.transaction(async (tx) => {
 			await tx.query(
