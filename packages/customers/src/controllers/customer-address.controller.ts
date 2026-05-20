@@ -93,6 +93,34 @@ export function customerAddressController(store: IStoreAdapter) {
 			});
 		},
 
+		async update(ctx: IFonderieContext): Promise<Response> {
+			const r = await resolveCustomer(ctx);
+			if ('error' in r) return r.error;
+
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const addrId = params?.['addrId'];
+			if (!isUuid(addrId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'addrId must be a valid UUID');
+			}
+
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			if (typeof body?.['label'] !== 'string' || body['label'].trim().length === 0) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'label is required');
+			}
+
+			try {
+				const updated = await addresses.updateLabel(addrId, r.customer.id, body['label'].trim());
+				return setApiResponse(HTTP.OK, 'ADDRESS_UPDATED', 'Address updated successfully.', {
+					address: toCustomerAddressDTO(updated),
+				});
+			} catch (err) {
+				if (err instanceof Error && (err as any).code === 'NOT_FOUND') {
+					return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Address not found');
+				}
+				throw err;
+			}
+		},
+
 		async setPrimary(ctx: IFonderieContext): Promise<Response> {
 			const r = await resolveCustomer(ctx);
 			if ('error' in r) {
