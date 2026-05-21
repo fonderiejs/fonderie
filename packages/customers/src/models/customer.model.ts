@@ -98,8 +98,6 @@ export class CustomerModel {
 		if (opts.blacklisted !== undefined) {
 			params.push(opts.blacklisted);
 			conditions.push(`is_blacklisted = $${params.length}`);
-		} else {
-			conditions.push('is_blacklisted = false');
 		}
 
 		if (opts.search) {
