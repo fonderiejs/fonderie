@@ -1,8 +1,20 @@
 export type CustomerType = 'individual' | 'business';
 export type CustomerSex = 'UNKNOWN' | 'MALE' | 'FEMALE';
+export type CustomerLabelType = 'email' | 'phone' | 'address';
+
+/** @deprecated resolved dynamically via fonderie_customer_labels */
 export type EmailLabel = 'work' | 'personal' | 'billing';
+/** @deprecated resolved dynamically via fonderie_customer_labels */
 export type PhoneLabel = 'mobile' | 'office' | 'home' | 'fax';
+/** @deprecated resolved dynamically via fonderie_customer_labels */
 export type AddressLabel = 'service' | 'billing' | 'other';
+
+export interface ICustomerLabel {
+	id: string;
+	type: CustomerLabelType;
+	value: string;
+	createdAt: string;
+}
 
 export interface ICustomer {
 	id: string;
@@ -26,7 +38,8 @@ export interface ICustomerEmail {
 	id: string;
 	customerId: string;
 	email: string;
-	label: EmailLabel;
+	labelId: string;
+	label: string;
 	isPrimary: boolean;
 	createdAt: string;
 }
@@ -35,7 +48,8 @@ export interface ICustomerPhone {
 	id: string;
 	customerId: string;
 	phone: string;
-	label: PhoneLabel;
+	labelId: string;
+	label: string;
 	isPrimary: boolean;
 	createdAt: string;
 }
@@ -54,7 +68,8 @@ export interface IAddress {
 export interface ICustomerAddress {
 	addrId: string;
 	customerId: string;
-	label: AddressLabel;
+	labelId: string;
+	label: string;
 	isPrimary: boolean;
 	address: IAddress;
 }

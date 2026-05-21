@@ -4,11 +4,13 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import { toCustomerAddressDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { CustomerAddressModel } from '../models/customer-address.model';
+import { CustomerLabelModel } from '../models/customer-label.model';
 import { isUuid } from '../utils';
 
 export function customerAddressController(store: IStoreAdapter) {
 	const customers = new CustomerModel(store);
 	const addresses = new CustomerAddressModel(store);
+	const labels = new CustomerLabelModel(store);
 
 	async function resolveCustomer(ctx: IFonderieContext) {
 		const workspaceId = ctx.workspace?.id;
@@ -67,6 +69,9 @@ export function customerAddressController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'zipPostalCode is required');
 			}
 
+			const rawLabel = typeof body?.['label'] === 'string' ? body['label'] : 'service';
+			const { id: labelId } = await labels.findOrCreate('address', rawLabel);
+
 			let created;
 			try {
 				created = await addresses.add({
@@ -78,7 +83,7 @@ export function customerAddressController(store: IStoreAdapter) {
 					unit: typeof body?.['unit'] === 'string' ? body['unit'] : null,
 					line1: typeof body?.['line1'] === 'string' ? body['line1'] : null,
 					line2: typeof body?.['line2'] === 'string' ? body['line2'] : null,
-					label: typeof body?.['label'] === 'string' ? body['label'] : 'service',
+					labelId,
 					isPrimary: body?.['isPrimary'] === true,
 				});
 			} catch (err) {
@@ -109,7 +114,8 @@ export function customerAddressController(store: IStoreAdapter) {
 			}
 
 			try {
-				const updated = await addresses.updateLabel(addrId, r.customer.id, body['label'].trim());
+				const { id: labelId } = await labels.findOrCreate('address', body['label'].trim());
+				const updated = await addresses.updateLabel(addrId, r.customer.id, labelId);
 				return setApiResponse(HTTP.OK, 'ADDRESS_UPDATED', 'Address updated successfully.', {
 					address: toCustomerAddressDTO(updated),
 				});

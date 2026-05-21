@@ -4,11 +4,13 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import { toCustomerPhoneDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { CustomerPhoneModel } from '../models/customer-phone.model';
+import { CustomerLabelModel } from '../models/customer-label.model';
 import { isUuid } from '../utils';
 
 export function customerPhoneController(store: IStoreAdapter) {
 	const customers = new CustomerModel(store);
 	const phones = new CustomerPhoneModel(store);
+	const labels = new CustomerLabelModel(store);
 
 	async function resolveCustomer(ctx: IFonderieContext) {
 		const workspaceId = ctx.workspace?.id;
@@ -61,15 +63,16 @@ export function customerPhoneController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'phone is required');
 			}
 
-			const label = typeof body?.['label'] === 'string' ? body['label'] : 'mobile';
+			const rawLabel = typeof body?.['label'] === 'string' ? body['label'] : 'mobile';
 			const isPrimary = body?.['isPrimary'] === true;
+			const { id: labelId } = await labels.findOrCreate('phone', rawLabel);
 
 			let created;
 			try {
 				created = await phones.add({
 					customerId: r.customer.id,
 					phone: phone.trim(),
-					label,
+					labelId,
 					isPrimary,
 				});
 			} catch (err) {
@@ -100,7 +103,8 @@ export function customerPhoneController(store: IStoreAdapter) {
 			}
 
 			try {
-				const updated = await phones.updateLabel(phoneId, r.customer.id, body['label'].trim());
+				const { id: labelId } = await labels.findOrCreate('phone', body['label'].trim());
+				const updated = await phones.updateLabel(phoneId, r.customer.id, labelId);
 				return setApiResponse(HTTP.OK, 'PHONE_UPDATED', 'Phone updated successfully.', {
 					phone: toCustomerPhoneDTO(updated),
 				});
