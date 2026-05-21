@@ -11,6 +11,7 @@ import { customerEmailController } from './controllers/customer-email.controller
 import { customerNoteController } from './controllers/customer-note.controller';
 import { customerPhoneController } from './controllers/customer-phone.controller';
 import { customerTagController } from './controllers/customer-tag.controller';
+import { customerLabelController } from './controllers/customer-label.controller';
 import { customerRelationshipController } from './controllers/customer-relationship.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]];
@@ -29,8 +30,12 @@ export function buildCustomerRoutes(
 	const note = customerNoteController(store);
 	const tag = customerTagController(store);
 	const relationship = customerRelationshipController(store);
+	const label = customerLabelController(store);
 
 	return [
+		// ── Labels ───────────────────────────────────────────────────────
+		['GET', '/customers/labels', requireAuth, wsCtx, label.list],
+
 		// ── Core customer CRUD ───────────────────────────────────────────
 		['GET', '/customers', requireAuth, wsCtx, customer.list],
 		['POST', '/customers', requireAuth, wsCtx, customer.create],
