@@ -6,7 +6,8 @@ const SELECT_PHONE = `
 	id,
 	customer_id AS "customerId",
 	phone,
-	label,
+	label_id    AS "labelId",
+	(SELECT value FROM fonderie_customer_labels WHERE id = label_id) AS label,
 	is_primary  AS "isPrimary",
 	created_at  AS "createdAt"
 `;
@@ -27,7 +28,7 @@ export class CustomerPhoneModel {
 	async add(opts: {
 		customerId: string;
 		phone: string;
-		label?: string;
+		labelId: string;
 		isPrimary?: boolean;
 	}): Promise<ICustomerPhone> {
 		return this.store.transaction(async (tx) => {
@@ -38,23 +39,23 @@ export class CustomerPhoneModel {
 				);
 			}
 			const [row] = await tx.query<ICustomerPhone>(
-				`INSERT INTO fonderie_customer_phones (id, customer_id, phone, label, is_primary)
+				`INSERT INTO fonderie_customer_phones (id, customer_id, phone, label_id, is_primary)
 				 VALUES (gen_random_uuid(), $1, $2, $3, $4)
 				 RETURNING ${SELECT_PHONE}`,
-				[opts.customerId, opts.phone, opts.label ?? 'mobile', opts.isPrimary ?? false],
+				[opts.customerId, opts.phone, opts.labelId, opts.isPrimary ?? false],
 			);
 			if (!row) throw new Error('Failed to add customer phone');
 			return row;
 		});
 	}
 
-	async updateLabel(phoneId: string, customerId: string, label: string): Promise<ICustomerPhone> {
+	async updateLabel(phoneId: string, customerId: string, labelId: string): Promise<ICustomerPhone> {
 		const [row] = await this.store.query<ICustomerPhone>(
 			`UPDATE fonderie_customer_phones
-			 SET label = $3
+			 SET label_id = $3
 			 WHERE id = $1 AND customer_id = $2
 			 RETURNING ${SELECT_PHONE}`,
-			[phoneId, customerId, label],
+			[phoneId, customerId, labelId],
 		);
 		if (!row) throw Object.assign(new Error('Phone not found'), { code: 'NOT_FOUND' });
 		return row;

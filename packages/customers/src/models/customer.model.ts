@@ -6,6 +6,8 @@ import type {
 	ICustomerAddress,
 	ICustomerDetail,
 	ICustomerDetailD2,
+	ICustomerEmail,
+	ICustomerPhone,
 	ICustomerRelationship,
 	ICustomerRelationshipExpanded,
 	ICustomerShallow,
@@ -146,18 +148,12 @@ export class CustomerModel {
 		if (!row) return null;
 
 		const [emailRows, phoneRows, addressRows, noteRows, relationshipRows, tagRows] = await Promise.all([
-			this.store.query<{
-				id: string;
-				customerId: string;
-				email: string;
-				label: string;
-				isPrimary: boolean;
-				createdAt: string;
-			}>(
+			this.store.query<ICustomerEmail>(
 				`SELECT id,
 				        customer_id AS "customerId",
 				        email,
-				        label,
+				        label_id    AS "labelId",
+				        (SELECT value FROM fonderie_customer_labels WHERE id = label_id) AS label,
 				        is_primary  AS "isPrimary",
 				        created_at  AS "createdAt"
 				 FROM fonderie_customer_emails
@@ -165,18 +161,12 @@ export class CustomerModel {
 				 ORDER BY is_primary DESC, created_at ASC`,
 				[id],
 			),
-			this.store.query<{
-				id: string;
-				customerId: string;
-				phone: string;
-				label: string;
-				isPrimary: boolean;
-				createdAt: string;
-			}>(
+			this.store.query<ICustomerPhone>(
 				`SELECT id,
 				        customer_id AS "customerId",
 				        phone,
-				        label,
+				        label_id    AS "labelId",
+				        (SELECT value FROM fonderie_customer_labels WHERE id = label_id) AS label,
 				        is_primary  AS "isPrimary",
 				        created_at  AS "createdAt"
 				 FROM fonderie_customer_phones
@@ -187,7 +177,8 @@ export class CustomerModel {
 			this.store.query<ICustomerAddress>(
 				`SELECT ca.addr_id     AS "addrId",
 				        ca.customer_id AS "customerId",
-				        ca.label,
+				        ca.label_id    AS "labelId",
+				        (SELECT value FROM fonderie_customer_labels WHERE id = ca.label_id) AS label,
 				        ca.is_primary  AS "isPrimary",
 				        jsonb_build_object(
 				          'id',              a.id,
@@ -253,20 +244,25 @@ export class CustomerModel {
 					`SELECT ${SELECT_CUSTOMER} FROM fonderie_customers WHERE id = ANY($1::uuid[]) AND workspace_id = $2`,
 					[relatedIds, workspaceId],
 				),
-				this.store.query<{ id: string; customerId: string; email: string; label: string; isPrimary: boolean; createdAt: string }>(
-					`SELECT id, customer_id AS "customerId", email, label, is_primary AS "isPrimary", created_at AS "createdAt"
+				this.store.query<ICustomerEmail>(
+					`SELECT id, customer_id AS "customerId", email, label_id AS "labelId",
+					        (SELECT value FROM fonderie_customer_labels WHERE id = label_id) AS label,
+					        is_primary AS "isPrimary", created_at AS "createdAt"
 					 FROM fonderie_customer_emails WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
 					[relatedIds],
 				),
-				this.store.query<{ id: string; customerId: string; phone: string; label: string; isPrimary: boolean; createdAt: string }>(
-					`SELECT id, customer_id AS "customerId", phone, label, is_primary AS "isPrimary", created_at AS "createdAt"
+				this.store.query<ICustomerPhone>(
+					`SELECT id, customer_id AS "customerId", phone, label_id AS "labelId",
+					        (SELECT value FROM fonderie_customer_labels WHERE id = label_id) AS label,
+					        is_primary AS "isPrimary", created_at AS "createdAt"
 					 FROM fonderie_customer_phones WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
 					[relatedIds],
 				),
 				this.store.query<ICustomerAddress>(
 					`SELECT ca.addr_id     AS "addrId",
 					        ca.customer_id AS "customerId",
-					        ca.label,
+					        ca.label_id    AS "labelId",
+					        (SELECT value FROM fonderie_customer_labels WHERE id = ca.label_id) AS label,
 					        ca.is_primary  AS "isPrimary",
 					        jsonb_build_object(
 					          'id',              a.id,
@@ -348,8 +344,8 @@ export class CustomerModel {
 			const d2Ids       = [...new Set(validD2Rows.map((r) => r.relatedId))];
 
 			let d2CustomerMap = new Map<string, ICustomer>();
-			let d2EmailMap    = new Map<string, { id: string; customerId: string; email: string; label: string; isPrimary: boolean; createdAt: string }[]>();
-			let d2PhoneMap    = new Map<string, { id: string; customerId: string; phone: string; label: string; isPrimary: boolean; createdAt: string }[]>();
+			let d2EmailMap    = new Map<string, ICustomerEmail[]>();
+			let d2PhoneMap    = new Map<string, ICustomerPhone[]>();
 			let d2NoteMap     = new Map<string, { id: string; customerId: string; authorId: string | null; body: string; createdAt: string; updatedAt: string }[]>();
 			let d2TagMap      = new Map<string, string[]>();
 
@@ -361,13 +357,17 @@ export class CustomerModel {
 						`SELECT ${SELECT_CUSTOMER} FROM fonderie_customers WHERE id = ANY($1::uuid[]) AND workspace_id = $2`,
 						[d2Ids, workspaceId],
 					),
-					this.store.query<{ id: string; customerId: string; email: string; label: string; isPrimary: boolean; createdAt: string }>(
-						`SELECT id, customer_id AS "customerId", email, label, is_primary AS "isPrimary", created_at AS "createdAt"
+					this.store.query<ICustomerEmail>(
+						`SELECT id, customer_id AS "customerId", email, label_id AS "labelId",
+						        (SELECT value FROM fonderie_customer_labels WHERE id = label_id) AS label,
+						        is_primary AS "isPrimary", created_at AS "createdAt"
 						 FROM fonderie_customer_emails WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
 						[d2Ids],
 					),
-					this.store.query<{ id: string; customerId: string; phone: string; label: string; isPrimary: boolean; createdAt: string }>(
-						`SELECT id, customer_id AS "customerId", phone, label, is_primary AS "isPrimary", created_at AS "createdAt"
+					this.store.query<ICustomerPhone>(
+						`SELECT id, customer_id AS "customerId", phone, label_id AS "labelId",
+						        (SELECT value FROM fonderie_customer_labels WHERE id = label_id) AS label,
+						        is_primary AS "isPrimary", created_at AS "createdAt"
 						 FROM fonderie_customer_phones WHERE customer_id = ANY($1::uuid[]) ORDER BY is_primary DESC, created_at ASC`,
 						[d2Ids],
 					),

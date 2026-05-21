@@ -5,7 +5,8 @@ import type { ICustomerAddress } from '../types';
 const SELECT_CUSTOMER_ADDRESS = `
 	ca.addr_id     AS "addrId",
 	ca.customer_id AS "customerId",
-	ca.label,
+	ca.label_id    AS "labelId",
+	(SELECT value FROM fonderie_customer_labels WHERE id = ca.label_id) AS label,
 	ca.is_primary  AS "isPrimary",
 	jsonb_build_object(
 		'id',              a.id,
@@ -42,7 +43,7 @@ export class CustomerAddressModel {
 		unit?: string | null;
 		line1?: string | null;
 		line2?: string | null;
-		label?: string;
+		labelId: string;
 		isPrimary?: boolean;
 	}): Promise<ICustomerAddress> {
 		const [existing] = await this.store.query<{ addrId: string }>(
@@ -101,15 +102,16 @@ export class CustomerAddressModel {
 			if (!addr) throw new Error('Failed to create address');
 
 			const [row] = await tx.query<ICustomerAddress>(
-				`INSERT INTO fonderie_customer_addresses (addr_id, customer_id, label, is_primary)
+				`INSERT INTO fonderie_customer_addresses (addr_id, customer_id, label_id, is_primary)
 				 VALUES ($1, $2, $3, $4)
 				 RETURNING
 				   addr_id     AS "addrId",
 				   customer_id AS "customerId",
-				   label,
+				   label_id    AS "labelId",
+				   NULL::text  AS label,
 				   is_primary  AS "isPrimary",
 				   NULL::jsonb AS address`,
-				[addr.id, opts.customerId, opts.label ?? 'service', opts.isPrimary ?? false],
+				[addr.id, opts.customerId, opts.labelId, opts.isPrimary ?? false],
 			);
 			if (!row) throw new Error('Failed to link address');
 
@@ -125,13 +127,13 @@ export class CustomerAddressModel {
 		});
 	}
 
-	async updateLabel(addrId: string, customerId: string, label: string): Promise<ICustomerAddress> {
+	async updateLabel(addrId: string, customerId: string, labelId: string): Promise<ICustomerAddress> {
 		const [row] = await this.store.query<ICustomerAddress>(
 			`UPDATE fonderie_customer_addresses
-			 SET label = $3
+			 SET label_id = $3
 			 WHERE addr_id = $1 AND customer_id = $2
-			 RETURNING addr_id AS "addrId", customer_id AS "customerId", label, is_primary AS "isPrimary", NULL::jsonb AS address`,
-			[addrId, customerId, label],
+			 RETURNING addr_id AS "addrId", customer_id AS "customerId", label_id AS "labelId", NULL::text AS label, is_primary AS "isPrimary", NULL::jsonb AS address`,
+			[addrId, customerId, labelId],
 		);
 		if (!row) throw Object.assign(new Error('Address not found'), { code: 'NOT_FOUND' });
 

@@ -6,7 +6,8 @@ const SELECT_EMAIL = `
 	id,
 	customer_id AS "customerId",
 	email,
-	label,
+	label_id    AS "labelId",
+	(SELECT value FROM fonderie_customer_labels WHERE id = label_id) AS label,
 	is_primary  AS "isPrimary",
 	created_at  AS "createdAt"
 `;
@@ -27,7 +28,7 @@ export class CustomerEmailModel {
 	async add(opts: {
 		customerId: string;
 		email: string;
-		label?: string;
+		labelId: string;
 		isPrimary?: boolean;
 	}): Promise<ICustomerEmail> {
 		return this.store.transaction(async (tx) => {
@@ -38,23 +39,23 @@ export class CustomerEmailModel {
 				);
 			}
 			const [row] = await tx.query<ICustomerEmail>(
-				`INSERT INTO fonderie_customer_emails (id, customer_id, email, label, is_primary)
+				`INSERT INTO fonderie_customer_emails (id, customer_id, email, label_id, is_primary)
 				 VALUES (gen_random_uuid(), $1, $2, $3, $4)
 				 RETURNING ${SELECT_EMAIL}`,
-				[opts.customerId, opts.email, opts.label ?? 'work', opts.isPrimary ?? false],
+				[opts.customerId, opts.email, opts.labelId, opts.isPrimary ?? false],
 			);
 			if (!row) throw new Error('Failed to add customer email');
 			return row;
 		});
 	}
 
-	async updateLabel(emailId: string, customerId: string, label: string): Promise<ICustomerEmail> {
+	async updateLabel(emailId: string, customerId: string, labelId: string): Promise<ICustomerEmail> {
 		const [row] = await this.store.query<ICustomerEmail>(
 			`UPDATE fonderie_customer_emails
-			 SET label = $3
+			 SET label_id = $3
 			 WHERE id = $1 AND customer_id = $2
 			 RETURNING ${SELECT_EMAIL}`,
-			[emailId, customerId, label],
+			[emailId, customerId, labelId],
 		);
 		if (!row) throw Object.assign(new Error('Email not found'), { code: 'NOT_FOUND' });
 		return row;

@@ -4,11 +4,13 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import { toCustomerEmailDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { CustomerEmailModel } from '../models/customer-email.model';
+import { CustomerLabelModel } from '../models/customer-label.model';
 import { isUuid } from '../utils';
 
 export function customerEmailController(store: IStoreAdapter) {
 	const customers = new CustomerModel(store);
 	const emails = new CustomerEmailModel(store);
+	const labels = new CustomerLabelModel(store);
 
 	async function resolveCustomer(ctx: IFonderieContext) {
 		const workspaceId = ctx.workspace?.id;
@@ -61,15 +63,16 @@ export function customerEmailController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required');
 			}
 
-			const label = typeof body?.['label'] === 'string' ? body['label'] : 'work';
+			const rawLabel = typeof body?.['label'] === 'string' ? body['label'] : 'work';
 			const isPrimary = body?.['isPrimary'] === true;
+			const { id: labelId } = await labels.findOrCreate('email', rawLabel);
 
 			let created;
 			try {
 				created = await emails.add({
 					customerId: r.customer.id,
 					email: email.trim(),
-					label,
+					labelId,
 					isPrimary,
 				});
 			} catch (err) {
@@ -100,7 +103,8 @@ export function customerEmailController(store: IStoreAdapter) {
 			}
 
 			try {
-				const updated = await emails.updateLabel(emailId, r.customer.id, body['label'].trim());
+				const { id: labelId } = await labels.findOrCreate('email', body['label'].trim());
+				const updated = await emails.updateLabel(emailId, r.customer.id, labelId);
 				return setApiResponse(HTTP.OK, 'EMAIL_UPDATED', 'Email updated successfully.', {
 					email: toCustomerEmailDTO(updated),
 				});
