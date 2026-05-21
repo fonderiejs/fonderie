@@ -3,6 +3,7 @@ import { HTTP, setApiResponse } from '@fonderie-js/core';
 import type { IStoreAdapter } from '@fonderie-js/store';
 import { CustomerLabelModel } from '../models/customer-label.model';
 import type { CustomerLabelType } from '../types';
+import { isUuid } from '../utils';
 
 const VALID_TYPES: CustomerLabelType[] = ['phone', 'email', 'address'];
 
@@ -20,6 +21,18 @@ export function customerLabelController(store: IStoreAdapter) {
 
 			const rows = await labels.list(type);
 			return setApiResponse(HTTP.OK, 'LABELS_FETCHED', 'Labels retrieved successfully.', { labels: rows });
+		},
+
+		async remove(ctx: IFonderieContext): Promise<Response> {
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const labelId = params?.['labelId'];
+
+			if (!isUuid(labelId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'labelId must be a valid UUID');
+			}
+
+			await labels.remove(labelId);
+			return setApiResponse(HTTP.OK, 'LABEL_DELETED', 'Label deleted successfully.');
 		},
 	};
 }

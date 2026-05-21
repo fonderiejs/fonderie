@@ -34,7 +34,8 @@ export function buildCustomerRoutes(
 
 	return [
 		// ── Labels ───────────────────────────────────────────────────────
-		['GET', '/customers/labels', requireAuth, wsCtx, label.list],
+		['GET',    '/customers/labels',            requireAuth, wsCtx, label.list],
+		['DELETE', '/customers/labels/:labelId',   requireAuth, wsCtx, label.remove],
 
 		// ── Core customer CRUD ───────────────────────────────────────────
 		['GET', '/customers', requireAuth, wsCtx, customer.list],

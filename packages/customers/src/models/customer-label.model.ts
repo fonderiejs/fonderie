@@ -15,6 +15,13 @@ export class CustomerLabelModel {
 		);
 	}
 
+	remove(id: string): Promise<void> {
+		return this.store.query(
+			`DELETE FROM fonderie_customer_labels WHERE id = $1`,
+			[id],
+		).then(() => undefined);
+	}
+
 	async findOrCreate(type: CustomerLabelType, raw: string): Promise<ICustomerLabel> {
 		const value = raw.trim().toLowerCase();
 		const [row] = await this.store.query<ICustomerLabel>(
