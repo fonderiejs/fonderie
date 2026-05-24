@@ -46,6 +46,10 @@ export interface IMember {
 	roleName: string;
 	confirmed: boolean;
 	createdAt: string;
+	firstName: string | null;
+	lastName: string | null;
+	email: string | null;
+	profileImageUrl: string | null;
 }
 
 export interface IInvitation {
