@@ -3,12 +3,16 @@ import type { IStoreAdapter } from '@fonderie-js/store';
 import type { IMember, IRole } from '../types';
 
 const SELECT_MEMBER = `
-	ruw.user_id      AS "userId",
-	ruw.workspace_id AS "workspaceId",
-	ruw.role_id      AS "roleId",
-	r.name           AS "roleName",
-	ruw.confirmed    AS "confirmed",
-	ruw.created_at   AS "createdAt"
+	ruw.user_id           AS "userId",
+	ruw.workspace_id      AS "workspaceId",
+	ruw.role_id           AS "roleId",
+	r.name                AS "roleName",
+	ruw.confirmed         AS "confirmed",
+	ruw.created_at        AS "createdAt",
+	u.first_name          AS "firstName",
+	u.last_name           AS "lastName",
+	u.email               AS "email",
+	u.profile_image_url   AS "profileImageUrl"
 `;
 
 export async function getMember(
@@ -20,6 +24,7 @@ export async function getMember(
 		`SELECT ${SELECT_MEMBER}
 		 FROM fonderie_role_user_workspaces ruw
 		 LEFT JOIN fonderie_roles r ON r.id = ruw.role_id
+		 LEFT JOIN fonderie_users u ON u.id = ruw.user_id
 		 WHERE ruw.user_id      = $1
 		   AND ruw.workspace_id = $2
 		   AND ruw.removed      = false
@@ -35,6 +40,7 @@ export async function listMembers(workspaceId: string, store: IStoreAdapter): Pr
 		`SELECT ${SELECT_MEMBER}
 		 FROM fonderie_role_user_workspaces ruw
 		 LEFT JOIN fonderie_roles r ON r.id = ruw.role_id
+		 LEFT JOIN fonderie_users u ON u.id = ruw.user_id
 		 WHERE ruw.workspace_id = $1
 		   AND ruw.removed      = false
 		   AND ruw.suspended    = false
