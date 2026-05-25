@@ -15,8 +15,12 @@ import { EmailVerificationModel } from '../models/email-verification.model';
 import { PhoneVerificationModel } from '../models/phone-verification.model';
 import { normalizeEmailSafe } from '../services/email';
 
+function normalizePhone(phone: string): string {
+	return phone.trim().replace(/[\s()\-\.]/g, '');
+}
+
 function isValidPhone(phone: unknown): phone is string {
-	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(phone.trim());
+	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(normalizePhone(phone));
 }
 
 export function userController(store: IStoreAdapter, bus?: EventBus) {
@@ -165,7 +169,7 @@ export function userController(store: IStoreAdapter, bus?: EventBus) {
 				);
 			}
 
-			const normalised = newPhone.trim();
+			const normalised = normalizePhone(newPhone);
 
 			const existing = await users.findByPhone(normalised);
 			if (existing) {

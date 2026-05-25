@@ -25,8 +25,12 @@ import {
 	refreshTokenExpiry,
 } from '../services/jwt';
 
+function normalizePhone(phone: string): string {
+	return phone.trim().replace(/[\s()\-\.]/g, '');
+}
+
 function isValidPhone(phone: unknown): phone is string {
-	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(phone.trim());
+	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(normalizePhone(phone));
 }
 
 function extractRefreshToken(ctx: IFonderieContext): string | null {
@@ -155,20 +159,20 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 			// ── Phone branch ──────────────────────────────────────────
 			if (isValidPhone(phone)) {
-				const existing = await users.findByPhone(phone.trim());
+				const existing = await users.findByPhone(normalizePhone(phone));
 				if (existing) {
 					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Phone already registered');
 				}
 
 				const { id } = await users.findOrCreateByPhone(
-					phone.trim(),
+					normalizePhone(phone),
 					(firstName as string | null) ?? null,
 					(lastName as string | null) ?? null,
 				);
 
 				const otp = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-				await phoneVerif.upsert(id, phone.trim(), otp, expiresAt);
+				await phoneVerif.upsert(id, normalizePhone(phone), otp, expiresAt);
 
 				const user = await users.findById(id);
 				if (!user) {
@@ -183,7 +187,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 						{
 							type: MESSAGE_KEYS.phoneOtp,
 							data: { otp },
-							recipient: { email: null, phone: phone.trim(), deviceToken: null },
+							recipient: { email: null, phone: normalizePhone(phone), deviceToken: null },
 						} satisfies ICourierMessage,
 						reqOpts2,
 					)
@@ -304,7 +308,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			// ── Phone branch ──────────────────────────────────────────
 			const phone = body?.['phone'];
 			if (isValidPhone(phone)) {
-				const user = await users.findByPhone(phone.trim());
+				const user = await users.findByPhone(normalizePhone(phone));
 				if (!user) {
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 				}
@@ -318,13 +322,13 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 				const otp = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-				await phoneVerif.upsert(user.id, phone.trim(), otp, expiresAt);
+				await phoneVerif.upsert(user.id, normalizePhone(phone), otp, expiresAt);
 
 				bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.phoneOtp,
 						data: { otp },
-						recipient: { email: null, phone: phone.trim(), deviceToken: null },
+						recipient: { email: null, phone: normalizePhone(phone), deviceToken: null },
 					} satisfies ICourierMessage)
 					.catch(() => {});
 
