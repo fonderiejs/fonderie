@@ -19,3 +19,9 @@
 
 # Local example apps — not part of the public SDK
 examples/
+
+# Editor / tool state
+.claude/
+.idea/
+.turbo/
+.DS_Store
