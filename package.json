@@ -2,8 +2,7 @@
 	"name": "@fonderie-js/sdk",
 	"private": true,
 	"workspaces": [
-		"packages/*",
-		"examples/*"
+		"packages/*"
 	],
 	"scripts": {
 		"build": "npm run build --workspaces --if-present",
