@@ -1,4 +1,4 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 export class PhoneVerificationModel {
 	constructor(private store: IStoreAdapter) {}

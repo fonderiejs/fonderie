@@ -1,5 +1,5 @@
 
-> @fonderie-js/config@1.0.0 build
+> @fonderie/config@1.0.0 build
 > tsup && node -e "require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})"
 
 CLI Building entry: {"migrations/index":"src/migrations/index.ts"}
@@ -16,33 +16,33 @@ CLI Target: esnext
 CLI Cleaning output folder
 ESM Build start
 CJS Build start
-ESM dist/migrations/index.js     220.00 B
-ESM dist/migrations/index.js.map 311.00 B
-ESM ⚡️ Build success in 45ms
-CJS dist/middlewares/index.cjs     1.64 KB
-CJS dist/index.cjs                 5.96 KB
-CJS dist/types.cjs                 792.00 B
-CJS dist/middlewares/index.cjs.map 4.26 KB
-CJS dist/index.cjs.map             10.32 KB
-CJS dist/types.cjs.map             382.00 B
-CJS ⚡️ Build success in 53ms
-ESM dist/index.js                 4.59 KB
+ESM dist/migrations/index.js     217.00 B
+ESM dist/migrations/index.js.map 308.00 B
+ESM ⚡️ Build success in 36ms
 ESM dist/middlewares/index.js     564.00 B
+ESM dist/index.js                 4.58 KB
 ESM dist/types.js                 33.00 B
-ESM dist/index.js.map             9.71 KB
-ESM dist/middlewares/index.js.map 4.11 KB
+ESM dist/middlewares/index.js.map 4.10 KB
 ESM dist/types.js.map             71.00 B
-ESM ⚡️ Build success in 54ms
+ESM dist/index.js.map             9.70 KB
+ESM ⚡️ Build success in 47ms
+CJS dist/middlewares/index.cjs     1.64 KB
+CJS dist/types.cjs                 792.00 B
+CJS dist/index.cjs                 5.95 KB
+CJS dist/middlewares/index.cjs.map 4.25 KB
+CJS dist/index.cjs.map             10.30 KB
+CJS dist/types.cjs.map             382.00 B
+CJS ⚡️ Build success in 49ms
 DTS Build start
 DTS Build start
-DTS ⚡️ Build success in 912ms
+DTS ⚡️ Build success in 1094ms
 DTS dist/migrations/index.d.ts 78.00 B
-DTS ⚡️ Build success in 1516ms
+DTS ⚡️ Build success in 1593ms
 DTS dist/types.d.ts              302.00 B
 DTS dist/index.d.ts              1.34 KB
-DTS dist/middlewares/index.d.ts  142.00 B
-DTS dist/index-oj9BK2I6.d.ts     1014.00 B
+DTS dist/middlewares/index.d.ts  136.00 B
+DTS dist/index-v2hLmm2m.d.ts     1008.00 B
 DTS dist/types.d.cts             302.00 B
-DTS dist/index.d.cts             1.35 KB
-DTS dist/middlewares/index.d.cts 143.00 B
-DTS dist/index-oj9BK2I6.d.cts    1014.00 B
+DTS dist/index.d.cts             1.34 KB
+DTS dist/middlewares/index.d.cts 137.00 B
+DTS dist/index-v2hLmm2m.d.cts    1008.00 B

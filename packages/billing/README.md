@@ -1,4 +1,4 @@
-# @fonderie-js/billing
+# @fonderie/billing
 
 SaaS billing as a brick: a config-driven plan catalogue, Stripe
 subscriptions, feature gates, and usage limits — so "can this workspace do
@@ -7,14 +7,14 @@ that?" is one function call.
 ## Install
 
 ```sh
-npm install @fonderie-js/billing
+npm install @fonderie/billing
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { BillingModule } from '@fonderie-js/billing';
+import { FonderieApp, defineConfig } from '@fonderie/core';
+import { BillingModule } from '@fonderie/billing';
 
 const app = await new FonderieApp(defineConfig({}))
   .register(new BillingModule())
@@ -24,7 +24,7 @@ const app = await new FonderieApp(defineConfig({}))
 Gate routes and features:
 
 ```ts
-import { requirePlan, requireFeature, hasFeature, getPlanLimit } from '@fonderie-js/billing';
+import { requirePlan, requireFeature, hasFeature, getPlanLimit } from '@fonderie/billing';
 ```
 
 `StripeProvider` handles checkout and webhook events; usage counters run
@@ -35,7 +35,7 @@ on `MemoryCounterBackend` or `DBCounterBackend`.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

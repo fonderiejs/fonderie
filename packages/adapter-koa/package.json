@@ -1,5 +1,5 @@
 {
-	"name": "@fonderie-js/adapter-koa",
+	"name": "@fonderie/adapter-koa",
 	"version": "1.0.0",
 	"description": "Koa adapter for fonderie-js — bridge(), adapt(), mount() to use fonderie middleware in native Koa routes.",
 	"keywords": [
@@ -35,28 +35,28 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core": "^0.1.0",
-		"@fonderie-js/workspaces": "^1.0.0",
-		"@fonderie-js/permissions": "^1.0.0",
-		"@fonderie-js/billing": "^1.0.0",
+		"@fonderie/core": "^0.1.0",
+		"@fonderie/workspaces": "^1.0.0",
+		"@fonderie/permissions": "^1.0.0",
+		"@fonderie/billing": "^1.0.0",
 		"koa": "^2.0.0"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/workspaces": {
+		"@fonderie/workspaces": {
 			"optional": true
 		},
-		"@fonderie-js/permissions": {
+		"@fonderie/permissions": {
 			"optional": true
 		},
-		"@fonderie-js/billing": {
+		"@fonderie/billing": {
 			"optional": true
 		}
 	},
 	"devDependencies": {
-		"@fonderie-js/core": "../core",
-		"@fonderie-js/workspaces": "../workspaces",
-		"@fonderie-js/permissions": "../permissions",
-		"@fonderie-js/billing": "../billing",
+		"@fonderie/core": "../core",
+		"@fonderie/workspaces": "../workspaces",
+		"@fonderie/permissions": "../permissions",
+		"@fonderie/billing": "../billing",
 		"koa": "^2.16.1",
 		"@types/koa": "^2.15.0",
 		"@types/node": "^25.6.0",

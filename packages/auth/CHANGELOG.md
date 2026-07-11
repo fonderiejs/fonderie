@@ -1,4 +1,4 @@
-# @fonderie-js/auth
+# @fonderie/auth
 
 ## 1.0.0
 
@@ -9,6 +9,6 @@
 ### Patch Changes
 
 - Updated dependencies
-  - @fonderie-js/core@0.1.0
-  - @fonderie-js/events@1.0.0
-  - @fonderie-js/store@0.1.0
+  - @fonderie/core@0.1.0
+  - @fonderie/events@1.0.0
+  - @fonderie/store@0.1.0

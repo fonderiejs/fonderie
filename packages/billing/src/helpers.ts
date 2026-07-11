@@ -1,6 +1,6 @@
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { Middleware } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import type { IFonderieContext } from '@fonderie/core';
+import type { Middleware } from '@fonderie/core';
 import type { IBillingContext, IPolicyStatus } from './types';
 
 function getBillingContext(ctx: IFonderieContext): IBillingContext | null {

@@ -1,5 +1,5 @@
 {
-	"name": "@fonderie-js/sdk",
+	"name": "@fonderie/sdk",
 	"private": true,
 	"workspaces": [
 		"packages/*"

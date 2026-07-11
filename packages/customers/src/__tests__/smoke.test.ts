@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 import { EVENT_KEYS } from '../config';
 import { toCustomerDTO } from '../dtos/customer';
 import { CustomersModule } from '../module';
@@ -97,7 +97,7 @@ function makeCtx(
 // ── CustomersModule ───────────────────────────────────────────────────────────
 
 test('CustomersModule instantiates', () => {
-	assert.equal(new CustomersModule({} as never).name, '@fonderie-js/customers');
+	assert.equal(new CustomersModule({} as never).name, '@fonderie/customers');
 });
 
 test('CustomersModule.install registers routes', () => {

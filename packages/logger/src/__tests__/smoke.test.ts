@@ -175,7 +175,7 @@ test('LoggerModule: satisfies IFonderieModule interface', async () => {
 	const { LoggerModule } = await import('../module');
 	const mod = new LoggerModule();
 
-	assert.equal(mod.name, '@fonderie-js/logger');
+	assert.equal(mod.name, '@fonderie/logger');
 	assert.ok(typeof mod.install === 'function');
 	assert.ok(mod.logger instanceof Logger);
 });

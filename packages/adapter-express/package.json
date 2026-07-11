@@ -1,5 +1,5 @@
 {
-	"name": "@fonderie-js/adapter-express",
+	"name": "@fonderie/adapter-express",
 	"version": "1.0.0",
 	"description": "Express adapter for fonderie-js — bridge(), adapt(), mount() to use fonderie middleware in native Express routes.",
 	"keywords": [
@@ -35,28 +35,28 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core": "^0.1.0",
-		"@fonderie-js/workspaces": "^1.0.0",
-		"@fonderie-js/permissions": "^1.0.0",
-		"@fonderie-js/billing": "^1.0.0",
+		"@fonderie/core": "^0.1.0",
+		"@fonderie/workspaces": "^1.0.0",
+		"@fonderie/permissions": "^1.0.0",
+		"@fonderie/billing": "^1.0.0",
 		"express": "^4.0.0 || ^5.0.0"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/workspaces": {
+		"@fonderie/workspaces": {
 			"optional": true
 		},
-		"@fonderie-js/permissions": {
+		"@fonderie/permissions": {
 			"optional": true
 		},
-		"@fonderie-js/billing": {
+		"@fonderie/billing": {
 			"optional": true
 		}
 	},
 	"devDependencies": {
-		"@fonderie-js/core": "../core",
-		"@fonderie-js/workspaces": "../workspaces",
-		"@fonderie-js/permissions": "../permissions",
-		"@fonderie-js/billing": "../billing",
+		"@fonderie/core": "../core",
+		"@fonderie/workspaces": "../workspaces",
+		"@fonderie/permissions": "../permissions",
+		"@fonderie/billing": "../billing",
 		"@types/node": "^25.6.0",
 		"tsx": "^4.21.0",
 		"tsup": "^8.5.1",

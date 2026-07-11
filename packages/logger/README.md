@@ -1,4 +1,4 @@
-# @fonderie-js/logger
+# @fonderie/logger
 
 Structured logging: pluggable transports, child loggers with inherited
 context, and a request-logging middleware — the brick that makes the other
@@ -7,14 +7,14 @@ bricks observable.
 ## Install
 
 ```sh
-npm install @fonderie-js/logger
+npm install @fonderie/logger
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { LoggerModule } from '@fonderie-js/logger';
+import { FonderieApp, defineConfig } from '@fonderie/core';
+import { LoggerModule } from '@fonderie/logger';
 
 const app = await new FonderieApp(defineConfig({}))
   .register(new LoggerModule())
@@ -22,7 +22,7 @@ const app = await new FonderieApp(defineConfig({}))
 ```
 
 ```ts
-import { Logger, ConsoleTransport, FileTransport } from '@fonderie-js/logger';
+import { Logger, ConsoleTransport, FileTransport } from '@fonderie/logger';
 
 const log = new Logger({ transports: [new ConsoleTransport()] });
 ```
@@ -32,7 +32,7 @@ const log = new Logger({ transports: [new ConsoleTransport()] });
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

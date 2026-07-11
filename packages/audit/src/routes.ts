@@ -1,7 +1,7 @@
-import type { Middleware } from '@fonderie-js/core';
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import { requireAuth } from '@fonderie-js/core/middlewares';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { Middleware } from '@fonderie/core';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import { requireAuth } from '@fonderie/core/middlewares';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { AuditEventModel } from './models/event.model';
 import { toAuditEventDTO, encodeCursor } from './dtos/audit';

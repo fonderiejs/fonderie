@@ -1,4 +1,4 @@
-# @fonderie-js/customers
+# @fonderie/customers
 
 Workspace-scoped customer records: individuals and businesses with multiple
 emails, phones, addresses, notes, and tags — the CRM brick.
@@ -6,13 +6,13 @@ emails, phones, addresses, notes, and tags — the CRM brick.
 ## Install
 
 ```sh
-npm install @fonderie-js/customers
+npm install @fonderie/customers
 ```
 
 ## Use
 
 ```ts
-import { EVENT_KEYS, toCustomerDTO, toCustomerDetailDTO } from '@fonderie-js/customers';
+import { EVENT_KEYS, toCustomerDTO, toCustomerDetailDTO } from '@fonderie/customers';
 ```
 
 Ships full DTO mappers for customers and their emails, phones, addresses,
@@ -24,7 +24,7 @@ elsewhere in your app.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

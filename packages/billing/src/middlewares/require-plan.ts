@@ -1,7 +1,7 @@
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { Middleware } from '@fonderie-js/core';
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import type { Middleware } from '@fonderie/core';
+import type { IFonderieContext } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { getSubscription } from '../services/subscriptions';
 import { resolveSubscriber } from '../utils';

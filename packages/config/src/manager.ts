@@ -1,4 +1,4 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IRemoteConfigOptions } from './config';
 import type { IConfigSnapshot } from './types';

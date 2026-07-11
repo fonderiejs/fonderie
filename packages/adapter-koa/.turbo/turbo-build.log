@@ -1,5 +1,5 @@
 
-> @fonderie-js/adapter-koa@1.0.0 build
+> @fonderie/adapter-koa@1.0.0 build
 > tsup
 
 CLI Building entry: src/index.ts
@@ -10,13 +10,13 @@ CLI Target: esnext
 CLI Cleaning output folder
 ESM Build start
 CJS Build start
-ESM dist/index.js     2.75 KB
-ESM dist/index.js.map 8.05 KB
-ESM ⚡️ Build success in 13ms
-CJS dist/index.cjs     4.08 KB
-CJS dist/index.cjs.map 8.21 KB
-CJS ⚡️ Build success in 14ms
+ESM dist/index.js     2.73 KB
+ESM dist/index.js.map 8.04 KB
+ESM ⚡️ Build success in 12ms
+CJS dist/index.cjs     4.07 KB
+CJS dist/index.cjs.map 8.20 KB
+CJS ⚡️ Build success in 12ms
 DTS Build start
-DTS ⚡️ Build success in 579ms
-DTS dist/index.d.ts  1.67 KB
-DTS dist/index.d.cts 1.67 KB
+DTS ⚡️ Build success in 523ms
+DTS dist/index.d.ts  1.66 KB
+DTS dist/index.d.cts 1.66 KB

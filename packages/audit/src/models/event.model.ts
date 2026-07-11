@@ -1,4 +1,4 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IAuditEvent, IAuditQuery } from '../types';
 import { decodeCursor } from '../dtos/audit';

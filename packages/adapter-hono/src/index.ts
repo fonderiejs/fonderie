@@ -1,13 +1,13 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import type { Hono } from 'hono';
 
-import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie-js/core';
-import { requireAuth as _requireAuth } from '@fonderie-js/core/middlewares';
-import { withWorkspace as _withWorkspace } from '@fonderie-js/workspaces';
-import { requirePermission as _requirePermission } from '@fonderie-js/permissions';
-import { requireFeature as _requireFeature } from '@fonderie-js/billing';
+import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
+import { requireAuth as _requireAuth } from '@fonderie/core/middlewares';
+import { withWorkspace as _withWorkspace } from '@fonderie/workspaces';
+import { requirePermission as _requirePermission } from '@fonderie/permissions';
+import { requireFeature as _requireFeature } from '@fonderie/billing';
 
-export { OPERATIONS } from '@fonderie-js/permissions';
+export { OPERATIONS } from '@fonderie/permissions';
 
 // Augment Hono's ContextVariableMap so c.get('_fonderie') is typed.
 declare module 'hono' {

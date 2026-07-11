@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { PermissionsEngine, PermissionDeniedError } from '../engine';
 import type { IMembership } from '../types';
@@ -183,7 +183,7 @@ test('PermissionsModule: satisfies IFonderieModule interface', async () => {
 	const { PermissionsModule } = await import('../module');
 	const mod = new PermissionsModule(makeStore({}));
 
-	assert.equal(mod.name, '@fonderie-js/permissions');
+	assert.equal(mod.name, '@fonderie/permissions');
 	assert.ok(typeof mod.install === 'function');
 	assert.ok(mod.engine instanceof PermissionsEngine);
 });

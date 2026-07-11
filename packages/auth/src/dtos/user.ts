@@ -1,4 +1,4 @@
-import { stringOrEmpty, booleanOrFalse } from '@fonderie-js/core';
+import { stringOrEmpty, booleanOrFalse } from '@fonderie/core';
 
 import type { IUser, IUserPreferences } from '../types';
 

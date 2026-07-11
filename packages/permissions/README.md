@@ -1,4 +1,4 @@
-# @fonderie-js/permissions
+# @fonderie/permissions
 
 Role-based access control: define roles, assign CRUD permissions per
 resource, and enforce them with middleware — the brick between "logged in"
@@ -7,14 +7,14 @@ and "allowed to".
 ## Install
 
 ```sh
-npm install @fonderie-js/permissions
+npm install @fonderie/permissions
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { PermissionsModule } from '@fonderie-js/permissions';
+import { FonderieApp, defineConfig } from '@fonderie/core';
+import { PermissionsModule } from '@fonderie/permissions';
 
 const app = await new FonderieApp(defineConfig({}))
   .register(new PermissionsModule())
@@ -22,7 +22,7 @@ const app = await new FonderieApp(defineConfig({}))
 ```
 
 ```ts
-import { requirePermission, requireRole, OPERATIONS } from '@fonderie-js/permissions';
+import { requirePermission, requireRole, OPERATIONS } from '@fonderie/permissions';
 ```
 
 `PermissionsEngine` evaluates keys like `projects:update`; denials raise a
@@ -33,7 +33,7 @@ typed `PermissionDeniedError`.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

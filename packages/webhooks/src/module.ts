@@ -1,14 +1,14 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { EventBus } from '@fonderie-js/events';
+import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
 
 import type { IWebhooksConfig } from './config';
 import { WebhookDispatcher } from './dispatcher';
 import { buildWebhookRoutes } from './routes';
 
 export class WebhooksModule implements IFonderieModule {
-	readonly name = '@fonderie-js/webhooks';
-	readonly deps = ['@fonderie-js/auth', '@fonderie-js/workspaces'];
+	readonly name = '@fonderie/webhooks';
+	readonly deps = ['@fonderie/auth', '@fonderie/workspaces'];
 
 	private retryTimer?: ReturnType<typeof setInterval>;
 

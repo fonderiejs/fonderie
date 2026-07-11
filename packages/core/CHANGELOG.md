@@ -1,4 +1,4 @@
-# @fonderie-js/core
+# @fonderie/core
 
 ## 0.1.0
 

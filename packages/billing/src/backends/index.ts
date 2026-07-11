@@ -1,4 +1,4 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 import type { RateLimitBackendConfig } from '../config';
 import { MemoryCounterBackend } from './memory';
 import { DBCounterBackend } from './db';

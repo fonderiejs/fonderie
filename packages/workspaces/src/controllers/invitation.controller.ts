@@ -1,11 +1,11 @@
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { ICourierMessage } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { EventBus } from '@fonderie-js/events';
-import { NOTIFICATION_EVENT } from '@fonderie-js/events';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import type { IFonderieContext } from '@fonderie/core';
+import type { ICourierMessage } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '@fonderie/events';
 
-import { getPlanLimit } from '@fonderie-js/billing';
+import { getPlanLimit } from '@fonderie/billing';
 import { MESSAGE_KEYS } from '../config';
 import { InvitationModel } from '../models/invitation.model';
 import { toInvitationDTO } from '../dtos/workspace';

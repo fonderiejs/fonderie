@@ -1,7 +1,7 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import { HTTP, setApiResponse } from '@fonderie-js/core';
-import type { EventBus } from '@fonderie-js/events';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IFonderieContext } from '@fonderie/core';
+import { HTTP, setApiResponse } from '@fonderie/core';
+import type { EventBus } from '@fonderie/events';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { DEFAULT_REFERENCE_CODE_PREFIX, EVENT_KEYS, type ICustomersConfig } from '../config';
 import { toCustomerDetailD2DTO, toCustomerDetailDTO, toCustomerDTO } from '../dtos/customer';

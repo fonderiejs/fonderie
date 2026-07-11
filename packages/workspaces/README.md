@@ -1,4 +1,4 @@
-# @fonderie-js/workspaces
+# @fonderie/workspaces
 
 The multi-tenant team layer: workspaces, members, invitations, and custom
 roles — the brick that turns a single-user API into a product teams share.
@@ -6,14 +6,14 @@ roles — the brick that turns a single-user API into a product teams share.
 ## Install
 
 ```sh
-npm install @fonderie-js/workspaces
+npm install @fonderie/workspaces
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { WorkspacesModule } from '@fonderie-js/workspaces';
+import { FonderieApp, defineConfig } from '@fonderie/core';
+import { WorkspacesModule } from '@fonderie/workspaces';
 
 const app = await new FonderieApp(defineConfig({}))
   .register(new WorkspacesModule())
@@ -23,7 +23,7 @@ const app = await new FonderieApp(defineConfig({}))
 Scope any route to the caller's workspace:
 
 ```ts
-import { withWorkspace, requireWorkspace } from '@fonderie-js/workspaces';
+import { withWorkspace, requireWorkspace } from '@fonderie/workspaces';
 ```
 
 DTO mappers (`toWorkspaceDTO`, `toMemberDTO`, `toInvitationDTO`, …) and
@@ -34,7 +34,7 @@ typed `EVENT_KEYS` are exported for your handlers and event consumers.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

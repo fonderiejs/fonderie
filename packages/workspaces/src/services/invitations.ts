@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IInvitation } from '../types';
 

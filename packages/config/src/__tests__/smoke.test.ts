@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 import type { IConfigEntry } from '../types';
 
 import { RemoteConfigManager } from '../manager';
@@ -103,7 +103,7 @@ test('RemoteConfigModule: satisfies IFonderieModule interface', async () => {
 	const store = makeStore();
 	const mod = new RemoteConfigModule(store);
 
-	assert.equal(mod.name, '@fonderie-js/config');
+	assert.equal(mod.name, '@fonderie/config');
 	assert.ok(typeof mod.install === 'function');
 	assert.ok(mod.manager instanceof RemoteConfigManager);
 });

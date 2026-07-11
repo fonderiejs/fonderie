@@ -1,5 +1,5 @@
 {
-	"name": "@fonderie-js/courier",
+	"name": "@fonderie/courier",
 	"version": "1.0.0",
 	"description": "Transactional messaging for SaaS — multi-channel delivery (email, SMS, push) with FS or DB templates, per-message-type channel routing, and a persistent message log.",
 	"keywords": [
@@ -51,22 +51,22 @@
 		"nodemailer": "^8.0.7"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core": "^0.1.0",
-		"@fonderie-js/store": "^0.1.0",
-		"@fonderie-js/events": "^1.0.0"
+		"@fonderie/core": "^0.1.0",
+		"@fonderie/store": "^0.1.0",
+		"@fonderie/events": "^1.0.0"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/store": {
+		"@fonderie/store": {
 			"optional": true
 		},
-		"@fonderie-js/events": {
+		"@fonderie/events": {
 			"optional": true
 		}
 	},
 	"devDependencies": {
-		"@fonderie-js/core": "../core",
-		"@fonderie-js/store": "../store",
-		"@fonderie-js/events": "../events",
+		"@fonderie/core": "../core",
+		"@fonderie/store": "../store",
+		"@fonderie/events": "../events",
 		"@types/node": "^25.6.0",
 		"@types/nodemailer": "^8.0.0",
 		"tsup": "^8.5.1",

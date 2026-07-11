@@ -301,7 +301,7 @@ test('boot: installs modules in dependency order regardless of registration orde
 test('boot: throws when a declared dep is not registered', async () => {
 	const m: IFonderieModule = {
 		name: 'needs-missing',
-		deps: ['@fonderie-js/does-not-exist'],
+		deps: ['@fonderie/does-not-exist'],
 		install() {},
 	};
 

@@ -1,4 +1,4 @@
-import type { ICourierMessage } from '@fonderie-js/core/types';
+import type { ICourierMessage } from '@fonderie/core/types';
 
 export type { ICourierMessage };
 

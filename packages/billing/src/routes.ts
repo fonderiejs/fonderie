@@ -1,6 +1,6 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { Middleware } from '@fonderie-js/core';
-import { requireAuth } from '@fonderie-js/core/middlewares';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { Middleware } from '@fonderie/core';
+import { requireAuth } from '@fonderie/core/middlewares';
 
 import type { IBillingConfig } from './config';
 import { planController } from './controllers/plan.controller';

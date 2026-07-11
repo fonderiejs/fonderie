@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 import type { IWorkspace, IMember, IRole } from '../types';
-import { NOTIFICATION_EVENT } from '@fonderie-js/events';
+import { NOTIFICATION_EVENT } from '@fonderie/events';
 import { MESSAGE_KEYS } from '../config';
 
 function makeStore(
@@ -189,7 +189,7 @@ test('toWorkspaceDTO: maps all fields correctly', async () => {
 test('WorkspacesModule: satisfies IFonderieModule interface', async () => {
 	const { WorkspacesModule } = await import('../module');
 	const mod = new WorkspacesModule(makeStore({}));
-	assert.equal(mod.name, '@fonderie-js/workspaces');
+	assert.equal(mod.name, '@fonderie/workspaces');
 	assert.ok(typeof mod.install === 'function');
 });
 

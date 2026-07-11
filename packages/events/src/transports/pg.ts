@@ -1,7 +1,7 @@
 import pg from 'pg';
 
-import { PGAdapter } from '@fonderie-js/store';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import { PGAdapter } from '@fonderie/store';
+import type { IStoreAdapter } from '@fonderie/store';
 import type { IEventTransport } from './types';
 import type { IEventMeta, IEventHandler, IEventRecord } from '../types';
 import { matchesPattern } from './pattern';

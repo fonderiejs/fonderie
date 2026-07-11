@@ -1,6 +1,6 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { EventBus } from '@fonderie-js/events';
+import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
 
 import type { IWorkspacesConfig } from './config';
 import { EVENT_KEYS } from './config';
@@ -9,7 +9,7 @@ import { WorkspaceModel } from './models/workspace.model';
 import { RoleModel } from './models/role.model';
 import { MemberModel } from './models/member.model';
 
-// Mirror of @fonderie-js/auth EVENT_KEYS.userRegistered — avoids a runtime
+// Mirror of @fonderie/auth EVENT_KEYS.userRegistered — avoids a runtime
 // dependency on the auth package while remaining explicit about the contract.
 const AUTH_USER_REGISTERED = 'fonderie.user.registered' as const;
 
@@ -18,8 +18,8 @@ interface UserRegisteredPayload {
 }
 
 export class WorkspacesModule implements IFonderieModule {
-	readonly name = '@fonderie-js/workspaces';
-	readonly deps = ['@fonderie-js/auth', '@fonderie-js/billing'];
+	readonly name = '@fonderie/workspaces';
+	readonly deps = ['@fonderie/auth', '@fonderie/billing'];
 
 	constructor(
 		private store: IStoreAdapter,

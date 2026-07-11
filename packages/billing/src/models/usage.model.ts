@@ -1,4 +1,4 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 import type { SubscriberType } from '../types';
 
 import { recordUsage, getUsage } from '../services/usage';

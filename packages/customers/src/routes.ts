@@ -1,8 +1,8 @@
-import type { Middleware } from '@fonderie-js/core';
-import { requireAuth } from '@fonderie-js/core/middlewares';
-import type { EventBus } from '@fonderie-js/events';
-import type { IStoreAdapter } from '@fonderie-js/store';
-import { withWorkspace } from '@fonderie-js/workspaces';
+import type { Middleware } from '@fonderie/core';
+import { requireAuth } from '@fonderie/core/middlewares';
+import type { EventBus } from '@fonderie/events';
+import type { IStoreAdapter } from '@fonderie/store';
+import { withWorkspace } from '@fonderie/workspaces';
 
 import type { ICustomersConfig } from './config';
 import { customerController } from './controllers/customer.controller';

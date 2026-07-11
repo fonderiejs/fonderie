@@ -1,10 +1,10 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
+import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
 import type { ILoggerConfig } from './config';
 import { Logger } from './logger';
 import { requestLogger } from './middlewares';
 
 export class LoggerModule implements IFonderieModule {
-	readonly name = '@fonderie-js/logger';
+	readonly name = '@fonderie/logger';
 	readonly logger: Logger;
 
 	constructor(config: ILoggerConfig = {}) {

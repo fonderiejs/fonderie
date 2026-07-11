@@ -1,4 +1,4 @@
-# @fonderie-js/logger
+# @fonderie/logger
 
 ## 0.1.0
 
@@ -9,4 +9,4 @@
 ### Patch Changes
 
 - Updated dependencies
-  - @fonderie-js/core@0.1.0
+  - @fonderie/core@0.1.0

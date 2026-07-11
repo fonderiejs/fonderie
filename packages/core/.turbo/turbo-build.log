@@ -1,5 +1,5 @@
 
-> @fonderie-js/core@0.1.0 build
+> @fonderie/core@0.1.0 build
 > tsup
 
 CLI Building entry: src/config.ts, src/index.ts, src/parser.ts, src/response.ts, src/types.ts, src/middlewares/index.ts
@@ -10,34 +10,34 @@ CLI Target: esnext
 CLI Cleaning output folder
 ESM Build start
 CJS Build start
-ESM dist/config.js                129.00 B
-ESM dist/middlewares/index.js     4.68 KB
-ESM dist/response.js              680.00 B
-ESM dist/index.js                 9.14 KB
-ESM dist/parser.js                703.00 B
-ESM dist/types.js                 33.00 B
-ESM dist/response.js.map          1.52 KB
-ESM dist/config.js.map            1.26 KB
-ESM dist/middlewares/index.js.map 9.75 KB
-ESM dist/index.js.map             20.25 KB
-ESM dist/parser.js.map            1.21 KB
-ESM dist/types.js.map             71.00 B
-ESM ⚡️ Build success in 20ms
-CJS dist/config.cjs                1.12 KB
-CJS dist/parser.cjs                1.83 KB
-CJS dist/index.cjs                 10.49 KB
-CJS dist/response.cjs              1.69 KB
 CJS dist/middlewares/index.cjs     5.97 KB
 CJS dist/types.cjs                 792.00 B
+CJS dist/response.cjs              1.69 KB
+CJS dist/index.cjs                 10.49 KB
+CJS dist/parser.cjs                1.83 KB
+CJS dist/config.cjs                1.12 KB
 CJS dist/response.cjs.map          1.57 KB
-CJS dist/config.cjs.map            1.30 KB
-CJS dist/parser.cjs.map            1.27 KB
-CJS dist/index.cjs.map             21.28 KB
-CJS dist/types.cjs.map             2.63 KB
 CJS dist/middlewares/index.cjs.map 10.24 KB
-CJS ⚡️ Build success in 20ms
+CJS dist/index.cjs.map             21.27 KB
+CJS dist/parser.cjs.map            1.27 KB
+CJS dist/types.cjs.map             2.63 KB
+CJS dist/config.cjs.map            1.30 KB
+CJS ⚡️ Build success in 21ms
+ESM dist/index.js                 9.14 KB
+ESM dist/response.js              680.00 B
+ESM dist/types.js                 33.00 B
+ESM dist/parser.js                703.00 B
+ESM dist/config.js                129.00 B
+ESM dist/middlewares/index.js     4.68 KB
+ESM dist/parser.js.map            1.21 KB
+ESM dist/response.js.map          1.52 KB
+ESM dist/index.js.map             20.24 KB
+ESM dist/config.js.map            1.26 KB
+ESM dist/types.js.map             71.00 B
+ESM dist/middlewares/index.js.map 9.75 KB
+ESM ⚡️ Build success in 21ms
 DTS Build start
-DTS ⚡️ Build success in 932ms
+DTS ⚡️ Build success in 915ms
 DTS dist/index.d.ts              1.28 KB
 DTS dist/config.d.ts             823.00 B
 DTS dist/parser.d.ts             362.00 B

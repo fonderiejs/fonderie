@@ -14,7 +14,7 @@ import {
 	type ExpressResponse,
 	type ExpressNext,
 } from '../index';
-import type { FonderieApp, IFonderieContext } from '@fonderie-js/core';
+import type { FonderieApp, IFonderieContext } from '@fonderie/core';
 
 // ── Stubs ─────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { DEFAULT_REFERENCE_CODE_PREFIX } from '../config';
 import type {

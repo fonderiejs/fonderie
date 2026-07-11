@@ -1,13 +1,13 @@
-import type { IFonderieApp, IFonderieModule } from '@fonderie-js/core';
-import type { EventBus } from '@fonderie-js/events';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IFonderieApp, IFonderieModule } from '@fonderie/core';
+import type { EventBus } from '@fonderie/events';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { ICustomersConfig } from './config';
 import { buildCustomerRoutes } from './routes';
 
 export class CustomersModule implements IFonderieModule {
-	readonly name = '@fonderie-js/customers';
-	readonly deps = ['@fonderie-js/workspaces'];
+	readonly name = '@fonderie/customers';
+	readonly deps = ['@fonderie/workspaces'];
 
 	constructor(
 		private store: IStoreAdapter,

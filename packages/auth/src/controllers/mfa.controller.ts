@@ -1,10 +1,10 @@
 import QRCode from 'qrcode';
 
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { EventBus } from '@fonderie-js/events';
-import { NOTIFICATION_EVENT } from '@fonderie-js/events';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '@fonderie/events';
 
 import type { IAuthConfig } from '../config';
 import { MESSAGE_KEYS } from '../config';

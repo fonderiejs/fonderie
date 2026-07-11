@@ -7,7 +7,7 @@
 
 ## Guiding Principles
 
-1. **All packages depend only on `@fonderie-js/core` and `@fonderie-js/store`.** No sibling imports.
+1. **All packages depend only on `@fonderie/core` and `@fonderie/store`.** No sibling imports.
    Cross-package communication happens exclusively through `ctx.meta`.
 2. **`ctx.meta` is the typed message bus.** Auth sets `ctx.user`. Permissions sets its engine key.
    Courier reads `ctx.meta['message']`. Workspace context sets `ctx.workspace`.
@@ -34,23 +34,23 @@
 ## Schema Ownership Map
 
 ```
-fonderie_migrations               → @fonderie-js/store
-fonderie_users                    → @fonderie-js/auth
-fonderie_email_verifications      → @fonderie-js/auth
-fonderie_password_resets          → @fonderie-js/auth
-fonderie_sessions                 → @fonderie-js/auth        (missing — must add)
-fonderie_mfa_challenges           → @fonderie-js/auth        (missing — must add)
-fonderie_role_permissions         → @fonderie-js/permissions  (owns the CRUD bit schema)
-fonderie_workspaces               → @fonderie-js/workspaces
-fonderie_roles                    → @fonderie-js/workspaces   (owns the role definition)
-fonderie_workspace_members        → @fonderie-js/workspaces
-fonderie_workspace_invitations    → @fonderie-js/workspaces
-fonderie_plans                    → @fonderie-js/billing
-fonderie_subscriptions            → @fonderie-js/billing
-fonderie_usage_records            → @fonderie-js/billing
-fonderie_courier_templates        → @fonderie-js/courier      (currently in workspaces — wrong)
-fonderie_message_log              → @fonderie-js/courier      (missing — must add)
-fonderie_config                   → @fonderie-js/config
+fonderie_migrations               → @fonderie/store
+fonderie_users                    → @fonderie/auth
+fonderie_email_verifications      → @fonderie/auth
+fonderie_password_resets          → @fonderie/auth
+fonderie_sessions                 → @fonderie/auth        (missing — must add)
+fonderie_mfa_challenges           → @fonderie/auth        (missing — must add)
+fonderie_role_permissions         → @fonderie/permissions  (owns the CRUD bit schema)
+fonderie_workspaces               → @fonderie/workspaces
+fonderie_roles                    → @fonderie/workspaces   (owns the role definition)
+fonderie_workspace_members        → @fonderie/workspaces
+fonderie_workspace_invitations    → @fonderie/workspaces
+fonderie_plans                    → @fonderie/billing
+fonderie_subscriptions            → @fonderie/billing
+fonderie_usage_records            → @fonderie/billing
+fonderie_courier_templates        → @fonderie/courier      (currently in workspaces — wrong)
+fonderie_message_log              → @fonderie/courier      (missing — must add)
+fonderie_config                   → @fonderie/config
 ```
 
 **Permission schema (API source of truth — CRUD bit pattern, not action/resource pairs):**
@@ -110,7 +110,7 @@ app
 
 ---
 
-### 0. `@fonderie-js/core`
+### 0. `@fonderie/core`
 
 **Role:** Request lifecycle, middleware pipeline, framework adapters, shared contracts.
 
@@ -118,7 +118,7 @@ app
 
 | Issue | File | Action |
 |---|---|---|
-| `ICourierMessage` lives in `@fonderie-js/courier` | `courier/src/types.ts` | Move to `core/src/types.ts` — it is a dispatch contract, not a courier implementation detail |
+| `ICourierMessage` lives in `@fonderie/courier` | `courier/src/types.ts` | Move to `core/src/types.ts` — it is a dispatch contract, not a courier implementation detail |
 | `ctx.meta` is `Record<string, unknown>` — well-known keys are untyped | `core/src/types.ts` | Add typed well-known keys to `IFonderieContext` |
 | Missing exports from SDK Package Overview | `core/src/index.ts` | Add `bodyParserMiddleware`, `corsMiddleware`, `loggerMiddleware`, `defineConfig` |
 | Tests use Jest | `core/src/__tests__/` | Migrate to `tsx --test` (Node test runner) |
@@ -178,7 +178,7 @@ export interface IFonderieContext {
 
 ---
 
-### 1. `@fonderie-js/store`
+### 1. `@fonderie/store`
 
 **Role:** Database adapter, migration runner, `sql` tagged-template helper.
 
@@ -200,7 +200,7 @@ export interface IFonderieContext {
 
 ---
 
-### 2. `@fonderie-js/auth`
+### 2. `@fonderie/auth`
 
 **Role:** JWT, session, OAuth, MFA, password reset, email verification.
 
@@ -208,7 +208,7 @@ export interface IFonderieContext {
 
 | Issue | File | Action |
 |---|---|---|
-| `import type { ICourierMessage } from '@fonderie-js/courier'` | `handlers/register.ts`, `handlers/forgot-password.ts` | Change to `@fonderie-js/core` |
+| `import type { ICourierMessage } from '@fonderie/courier'` | `handlers/register.ts`, `handlers/forgot-password.ts` | Change to `@fonderie/core` |
 | Duplicate `forget-password.ts` (typo) alongside `forgot-password.ts` | `handlers/` | Delete `forget-password.ts` |
 | Tests use Jest | `src/__tests__/` | Migrate to `tsx --test` |
 | No DTOs — handlers return raw DB rows | all handlers | Add DTO layer |
@@ -275,7 +275,7 @@ customers can build profile endpoints without touching the raw table.
 
 ---
 
-### 3. `@fonderie-js/permissions`
+### 3. `@fonderie/permissions`
 
 **Role:** RBAC engine, wildcard permissions, super-role bypass, permission check middleware.
 
@@ -365,7 +365,7 @@ This handles multi-role: if the user has ADMIN (can_read=true) + GUEST (can_read
 
 ---
 
-### 4. `@fonderie-js/workspaces`
+### 4. `@fonderie/workspaces`
 
 **Role:** Org management, member roles, PIN invitations, workspace context middleware.
 
@@ -386,8 +386,8 @@ UUID validation must be applied before querying the database.
 
 #### ICourierMessage dependency fix
 
-`handlers/invitations.ts` imports `ICourierMessage` from `@fonderie-js/courier`.
-Change to `@fonderie-js/core`.
+`handlers/invitations.ts` imports `ICourierMessage` from `@fonderie/courier`.
+Change to `@fonderie/core`.
 
 #### Schema gaps vs. API source of truth
 
@@ -423,7 +423,7 @@ updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 **Migrate out:** `fonderie_courier_templates` currently in `002_workspaces.sql` — remove from this
-package's migration. It belongs to `@fonderie-js/courier`.
+package's migration. It belongs to `@fonderie/courier`.
 
 **System role seeding** (roles must be created WITH permissions — cannot create ADMIN without granting it permissions):
 ```sql
@@ -472,13 +472,13 @@ Delete `packages/workspaces/routes.ts` (root level, outside `src/`). Canonical f
 
 ---
 
-### 5. `@fonderie-js/courier`
+### 5. `@fonderie/courier`
 
 **Role:** Email, SMS, push dispatch. Reads `ctx.meta['message']` post-handler. Fire-and-forget.
 
 #### ICourierMessage ownership change
 
-`ICourierMessage` moves OUT of courier to `@fonderie-js/core`. Courier becomes a consumer
+`ICourierMessage` moves OUT of courier to `@fonderie/core`. Courier becomes a consumer
 of the interface, not its owner. Update all internal imports accordingly.
 
 #### Schema corrections
@@ -540,7 +540,7 @@ Updates `fonderie_message_log` status, `opened_at`, `clicked_at`, `bounce_reason
 
 ---
 
-### 6. `@fonderie-js/billing`
+### 6. `@fonderie/billing`
 
 **Role:** Multi-provider subscription billing, plans, usage metering.
 
@@ -575,7 +575,7 @@ toUsageDTO(row): IUsageDTO
 
 ---
 
-### 7. `@fonderie-js/config`
+### 7. `@fonderie/config`
 
 **Role:** DB-backed remote config, multi-environment override, poll-based refresh.
 
@@ -607,7 +607,7 @@ toUsageDTO(row): IUsageDTO
 - [ ] All `fonderie_` table names use the prefix
 - [ ] Node built-ins use `node:` prefix — `import { randomBytes } from 'node:crypto'`
 - [ ] `tsup` dual ESM+CJS output — `"types"` condition before `"import"` and `"require"` in exports
-- [ ] `ICourierMessage` imported from `@fonderie-js/core` in all packages
+- [ ] `ICourierMessage` imported from `@fonderie/core` in all packages
 
 ---
 

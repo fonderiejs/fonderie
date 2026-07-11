@@ -1,4 +1,4 @@
-# @fonderie-js/events
+# @fonderie/events
 
 The event bus wiring the bricks together: publish domain events, subscribe
 with wildcard patterns, and swap transports without touching handlers.
@@ -7,14 +7,14 @@ Memory and PostgreSQL transports built in.
 ## Install
 
 ```sh
-npm install @fonderie-js/events
+npm install @fonderie/events
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { EventsModule } from '@fonderie-js/events';
+import { FonderieApp, defineConfig } from '@fonderie/core';
+import { EventsModule } from '@fonderie/events';
 
 const app = await new FonderieApp(defineConfig({}))
   .register(new EventsModule())
@@ -22,11 +22,11 @@ const app = await new FonderieApp(defineConfig({}))
 ```
 
 ```ts
-import { EventBus, matchesPattern, NOTIFICATION_EVENT } from '@fonderie-js/events';
+import { EventBus, matchesPattern, NOTIFICATION_EVENT } from '@fonderie/events';
 ```
 
 Domain packages export typed `EVENT_KEYS`; alias them on import
-(`import { EVENT_KEYS as AUTH_EVENTS } from '@fonderie-js/auth'`) and
+(`import { EVENT_KEYS as AUTH_EVENTS } from '@fonderie/auth'`) and
 subscribe to exactly the events you care about.
 
 ## Why this exists
@@ -34,7 +34,7 @@ subscribe to exactly the events you care about.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

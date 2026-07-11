@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IPlan, ISubscription } from '../types';
 import type { IBillingConfig } from '../config';
@@ -244,7 +244,7 @@ test('deletePlan: returns false when not found', async () => {
 function makeCtx(
 	params: Record<string, string> = {},
 	body: Record<string, unknown> = {},
-): import('@fonderie-js/core').IFonderieContext {
+): import('@fonderie/core').IFonderieContext {
 	return {
 		meta: { params, body },
 		user: null,
@@ -576,7 +576,7 @@ test('BillingModule: satisfies IFonderieModule interface', async () => {
 	const store = makeStore();
 	const mod = new BillingModule(store, config);
 
-	assert.equal(mod.name, '@fonderie-js/billing');
+	assert.equal(mod.name, '@fonderie/billing');
 	assert.ok(typeof mod.install === 'function');
 });
 

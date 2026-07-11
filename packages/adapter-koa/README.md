@@ -1,4 +1,4 @@
-# @fonderie-js/adapter-koa
+# @fonderie/adapter-koa
 
 Run Fonderie bricks inside your existing Koa app. `bridge()` builds the
 Fonderie context for every request, `adapt()` converts any Fonderie
@@ -7,13 +7,13 @@ middleware into a native Koa one, and `mount()` attaches whole modules.
 ## Install
 
 ```sh
-npm install @fonderie-js/adapter-koa
+npm install @fonderie/adapter-koa
 ```
 
 ## Use
 
 ```ts
-import { bridge, adapt, requireAuth } from '@fonderie-js/adapter-koa';
+import { bridge, adapt, requireAuth } from '@fonderie/adapter-koa';
 ```
 
 Register `bridge(fonderie)` as global middleware first, then use the
@@ -28,7 +28,7 @@ for the Fonderie pipeline.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

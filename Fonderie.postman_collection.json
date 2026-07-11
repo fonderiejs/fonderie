@@ -2,13 +2,13 @@
   "info": {
     "_postman_id": "62028f53-5a4e-4a6a-ba03-665101121a33",
     "name": "Fonderie.js",
-    "description": "API reference for **Fonderie.js** \u2014 a modular TypeScript framework that ships the first three months of every SaaS already built.\n\nEach folder maps directly to an `@fonderie-js/*` package. Register only the modules you need \u2014 the framework is intentionally composable.\n\n---\n\n**Base URL:** `{{base_url}}` (default `http://localhost:4000/v1`)\n\n**Authentication:** Protected endpoints require `Authorization: Bearer {{token}}`. The `token` variable is auto-captured after login or register.\n\n**Response envelope:** Every application response follows a consistent shape:\n```json\n{\n  \"reason\": \"SNAKE_CASE_CODE\",\n  \"explanation\": \"Human-readable description.\",\n  \"result\": { ... }\n}\n```\nError responses omit `result` and use a `4xx` / `5xx` status code.\n\n**Collection variables (auto-captured):**\n| Variable | Captured by | Purpose |\n|---|---|---|\n| `base_url` | \u2014 | Server base URL |\n| `token` | Login / Register | Short-lived access JWT |\n| `refresh_token` | Login / Register | Long-lived refresh token |\n| `workspace_id` | Create Workspace | Active workspace UUID |\n| `plan_id` | List Plans | First plan UUID from catalogue |",
+    "description": "API reference for **Fonderie.js** \u2014 a modular TypeScript framework that ships the first three months of every SaaS already built.\n\nEach folder maps directly to an `@fonderie/*` package. Register only the modules you need \u2014 the framework is intentionally composable.\n\n---\n\n**Base URL:** `{{base_url}}` (default `http://localhost:4000/v1`)\n\n**Authentication:** Protected endpoints require `Authorization: Bearer {{token}}`. The `token` variable is auto-captured after login or register.\n\n**Response envelope:** Every application response follows a consistent shape:\n```json\n{\n  \"reason\": \"SNAKE_CASE_CODE\",\n  \"explanation\": \"Human-readable description.\",\n  \"result\": { ... }\n}\n```\nError responses omit `result` and use a `4xx` / `5xx` status code.\n\n**Collection variables (auto-captured):**\n| Variable | Captured by | Purpose |\n|---|---|---|\n| `base_url` | \u2014 | Server base URL |\n| `token` | Login / Register | Short-lived access JWT |\n| `refresh_token` | Login / Register | Long-lived refresh token |\n| `workspace_id` | Create Workspace | Active workspace UUID |\n| `plan_id` | List Plans | First plan UUID from catalogue |",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "13650989"
   },
   "item": [
     {
-      "name": "Auth  (@fonderie-js/auth)",
+      "name": "Auth  (@fonderie/auth)",
       "item": [
         {
           "name": "Registration & Login",
@@ -2383,10 +2383,10 @@
           "description": "Self-service profile management for the authenticated user. All endpoints require `Authorization: Bearer {{token}}`.\n\nEndpoints that mutate identity-sensitive fields (`/profile`, `/preferences`, `/email`, `/phone`, `DELETE /users`) additionally require a verified email (`isEmailVerified: true`). Changing email or phone triggers a new verification flow before the change takes effect."
         }
       ],
-      "description": "All authentication, session, and identity management \u2014 provided by `@fonderie-js/auth`.\n\n**Three supported login methods:**\n- **Email + password** \u2014 register, login, forgot/reset password, TOTP MFA\n- **Phone + OTP** \u2014 login via SMS one-time code\n- **Google OAuth** \u2014 one-click sign-in (requires `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` env vars)\n\nAll methods return the same pair: `accessToken` (short-lived JWT) and `refreshToken` (long-lived, stored server-side and invalidated on logout).\n\n**Email verification** is a separate step after registration. Several downstream endpoints (profile edits, email/phone changes, account deletion) require `isEmailVerified: true`."
+      "description": "All authentication, session, and identity management \u2014 provided by `@fonderie/auth`.\n\n**Three supported login methods:**\n- **Email + password** \u2014 register, login, forgot/reset password, TOTP MFA\n- **Phone + OTP** \u2014 login via SMS one-time code\n- **Google OAuth** \u2014 one-click sign-in (requires `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` env vars)\n\nAll methods return the same pair: `accessToken` (short-lived JWT) and `refreshToken` (long-lived, stored server-side and invalidated on logout).\n\n**Email verification** is a separate step after registration. Several downstream endpoints (profile edits, email/phone changes, account deletion) require `isEmailVerified: true`."
     },
     {
-      "name": "Billing  (@fonderie-js/billing)",
+      "name": "Billing  (@fonderie/billing)",
       "item": [
         {
           "name": "Plans",
@@ -3482,10 +3482,10 @@
           "description": "Stripe webhook receiver \u2014 called by Stripe, not by your frontend. Configure this URL in your Stripe Dashboard under **Developers \u2192 Webhooks**.\n\nThe `stripe-signature` header is verified against `STRIPE_WEBHOOK_SECRET`. Requests with an invalid or missing signature are rejected with `400`.\n\n**Handled events:**\n- `customer.subscription.created` \u2014 creates the subscription record\n- `customer.subscription.updated` \u2014 syncs status, billing period, and cancel-at-period-end flag\n- `customer.subscription.deleted` \u2014 marks the subscription as cancelled\n\nAll other event types return `{ received: true }` without side effects."
         }
       ],
-      "description": "Subscription billing and usage metering \u2014 provided by `@fonderie-js/billing`.\n\n**Subscriber resolution** \u2014 the same `/billing/*` routes serve both user and workspace billing. The module resolves the subscriber automatically:\n\n| Header present | Resolved as |\n|---|---|\n| `X-Workspace-ID: <id>` | `subscriberType: 'workspace'` \u2014 membership verified automatically |\n| *(omitted)* | `subscriberType: 'user'` \u2014 the authenticated user |\n\n**Plan catalogue** is config-driven: plans live in `IBillingConfig.plans`, are synced to the database on every boot, and exposed as read-only via the API.\n\n**Amounts** are in cents (e.g. `7900` = $79.00). `null` limit = unlimited."
+      "description": "Subscription billing and usage metering \u2014 provided by `@fonderie/billing`.\n\n**Subscriber resolution** \u2014 the same `/billing/*` routes serve both user and workspace billing. The module resolves the subscriber automatically:\n\n| Header present | Resolved as |\n|---|---|\n| `X-Workspace-ID: <id>` | `subscriberType: 'workspace'` \u2014 membership verified automatically |\n| *(omitted)* | `subscriberType: 'user'` \u2014 the authenticated user |\n\n**Plan catalogue** is config-driven: plans live in `IBillingConfig.plans`, are synced to the database on every boot, and exposed as read-only via the API.\n\n**Amounts** are in cents (e.g. `7900` = $79.00). `null` limit = unlimited."
     },
     {
-      "name": "Customers  (@fonderie-js/customers)",
+      "name": "Customers  (@fonderie/customers)",
       "item": [
         {
           "name": "Tag",
@@ -6233,7 +6233,7 @@
       ]
     },
     {
-      "name": "Workspaces  (@fonderie-js/workspaces)",
+      "name": "Workspaces  (@fonderie/workspaces)",
       "item": [
         {
           "name": "Roles",
@@ -7718,7 +7718,7 @@
               ]
             }
           ],
-          "description": "Token-based workspace invitations. Sending an invitation triggers a transactional email (via `@fonderie-js/courier`) containing a time-limited acceptance link.\n\n`POST /workspaces/invitations/accept` does **not** require the `X-Workspace-ID` header \u2014 the workspace is resolved from the invitation token itself, so unauthenticated users who just registered can accept an invite directly."
+          "description": "Token-based workspace invitations. Sending an invitation triggers a transactional email (via `@fonderie/courier`) containing a time-limited acceptance link.\n\n`POST /workspaces/invitations/accept` does **not** require the `X-Workspace-ID` header \u2014 the workspace is resolved from the invitation token itself, so unauthenticated users who just registered can accept an invite directly."
         },
         {
           "name": "Create Workspace",
@@ -8138,7 +8138,7 @@
           ]
         }
       ],
-      "description": "Multi-tenant team layer \u2014 provided by `@fonderie-js/workspaces`.\n\nA workspace is a shared organizational context (company, team, project). Each workspace has an owner, a slug, a plan tier, and a custom RBAC structure built on top of `@fonderie-js/permissions`.\n\n**Workspace context resolution:**\n- Header-based routes use `X-Workspace-ID: {{workspace_id}}`\n- Path-based routes use `:id` or `:workspaceId` directly in the URL\n\n**Sub-sections:**\n- **Members** \u2014 list, remove, and manage role assignments for workspace members\n- **Invitations** \u2014 send token-based email invitations and accept them\n- **Roles** \u2014 define custom roles and attach CRUD permissions per resource\n- **Settings** \u2014 per-workspace key-value configuration (branding, feature toggles)"
+      "description": "Multi-tenant team layer \u2014 provided by `@fonderie/workspaces`.\n\nA workspace is a shared organizational context (company, team, project). Each workspace has an owner, a slug, a plan tier, and a custom RBAC structure built on top of `@fonderie/permissions`.\n\n**Workspace context resolution:**\n- Header-based routes use `X-Workspace-ID: {{workspace_id}}`\n- Path-based routes use `:id` or `:workspaceId` directly in the URL\n\n**Sub-sections:**\n- **Members** \u2014 list, remove, and manage role assignments for workspace members\n- **Invitations** \u2014 send token-based email invitations and accept them\n- **Roles** \u2014 define custom roles and attach CRUD permissions per resource\n- **Settings** \u2014 per-workspace key-value configuration (branding, feature toggles)"
     },
     {
       "name": "Platform",

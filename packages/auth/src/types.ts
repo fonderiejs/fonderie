@@ -12,7 +12,7 @@ export interface IUserPreferences {
 	timeFormat?: string;
 }
 
-// Concrete types — fulfill the stubs in @fonderie-js/core
+// Concrete types — fulfill the stubs in @fonderie/core
 export interface IUser {
 	id: string;
 	email: string | null;

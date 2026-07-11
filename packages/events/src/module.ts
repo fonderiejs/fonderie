@@ -1,4 +1,4 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
+import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
 
 import { EventBus } from './bus';
 import { PGTransport } from './transports/pg';
@@ -32,7 +32,7 @@ function resolveTransport(config: EventTransportConfig): IEventTransport {
 }
 
 export class EventsModule implements IFonderieModule {
-	readonly name = '@fonderie-js/events';
+	readonly name = '@fonderie/events';
 	readonly bus: EventBus;
 
 	constructor(config: IEventsConfig) {

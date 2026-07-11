@@ -1,5 +1,5 @@
 
-> @fonderie-js/logger@0.1.0 build
+> @fonderie/logger@0.1.0 build
 > tsup
 
 CLI Building entry: src/index.ts
@@ -10,13 +10,13 @@ CLI Target: esnext
 CLI Cleaning output folder
 ESM Build start
 CJS Build start
-ESM dist/index.js     4.34 KB
-ESM dist/index.js.map 9.35 KB
-ESM ⚡️ Build success in 60ms
 CJS dist/index.cjs     5.50 KB
-CJS dist/index.cjs.map 9.72 KB
-CJS ⚡️ Build success in 61ms
+CJS dist/index.cjs.map 9.71 KB
+CJS ⚡️ Build success in 47ms
+ESM dist/index.js     4.34 KB
+ESM dist/index.js.map 9.34 KB
+ESM ⚡️ Build success in 48ms
 DTS Build start
-DTS ⚡️ Build success in 1068ms
-DTS dist/index.d.ts  1.93 KB
-DTS dist/index.d.cts 1.93 KB
+DTS ⚡️ Build success in 1174ms
+DTS dist/index.d.ts  1.92 KB
+DTS dist/index.d.cts 1.92 KB

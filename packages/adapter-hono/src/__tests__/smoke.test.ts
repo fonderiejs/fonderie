@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Hono } from 'hono';
 
 import { bridge, adapt, mount, requireAuth } from '../index';
-import type { FonderieApp, IFonderieContext } from '@fonderie-js/core';
+import type { FonderieApp, IFonderieContext } from '@fonderie/core';
 
 // ── Stubs ─────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { IEventMeta } from '@fonderie-js/events';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { IEventMeta } from '@fonderie/events';
 
 import type { IWebhooksConfig } from './config';
 import type { IWebhookEndpoint, IWebhookDelivery } from './types';

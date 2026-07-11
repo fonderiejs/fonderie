@@ -1,4 +1,4 @@
-import type { Middleware } from '@fonderie-js/core';
+import type { Middleware } from '@fonderie/core';
 
 import type { RemoteConfigManager } from '../manager';
 
