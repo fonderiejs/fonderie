@@ -1,6 +1,7 @@
 # @fonderie-js/config
 
-DB-backed feature flags and remote config — per-environment overrides, TTL-based hot reload, and a typed getConfig helper usable inside any middleware.
+DB-backed feature flags and remote config: per-environment overrides and
+TTL-cached snapshots, changeable at runtime without a deploy.
 
 ## Install
 
@@ -11,10 +12,36 @@ npm install @fonderie-js/config
 ## Use
 
 ```ts
-import { CONFIG_MANAGER_KEY, configContextMiddleware, getConfig } from '@fonderie-js/config';
+import { FonderieApp, defineConfig } from '@fonderie-js/core';
+import { RemoteConfigModule } from '@fonderie-js/config';
+
+const app = await new FonderieApp(defineConfig({}))
+  .register(new RemoteConfigModule())
+  .boot();
 ```
 
-Part of [Fonderie](https://fonderie.ai) — the software foundry. Monorepo, docs, and issues live at [fonderie-js/sdk](https://github.com/fonderie-js/sdk). Follow [@fonderiejs](https://x.com/fonderiejs).
+```ts
+import { configContextMiddleware, getConfig } from '@fonderie-js/config';
+```
+
+CRUD services (`listConfigEntries`, `setConfigEntry`, …) are exported for
+building an admin surface on top.
+
+## Why this exists
+
+You've shipped this plumbing before — auth, teams, billing, messaging —
+and the next project will ask for it again. Fonderie packages it once:
+plain TypeScript modules for
+[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+PostgreSQL-backed, self-hosted, MIT. No external control plane, no
+per-seat anything. Register the modules you need; skip the ones you don't.
+
+**This package owns** how behavior changes without a deploy. Feature flags and remote
+config read live by the other bricks.
+
+Browse the whole set at
+[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[@fonderiejs](https://x.com/fonderiejs)
 
 ## License
 

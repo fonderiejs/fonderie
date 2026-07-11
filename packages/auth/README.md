@@ -1,6 +1,8 @@
 # @fonderie-js/auth
 
-Drop-in auth for SaaS — email/password, phone OTP, Google OAuth, stateless JWT sessions, TOTP-based MFA with backup codes, and self-service password recovery.
+Drop-in auth for SaaS: email/password, phone OTP, Google OAuth, and
+stateless JWT sessions — shipped as a brick that registers its routes,
+migrations, and events in one line.
 
 ## Install
 
@@ -11,10 +13,38 @@ npm install @fonderie-js/auth
 ## Use
 
 ```ts
-import { AUTH_CONFIG_KEYS, AuthMessageKey, MESSAGE_KEYS } from '@fonderie-js/auth';
+import { FonderieApp, defineConfig } from '@fonderie-js/core';
+import { AuthModule } from '@fonderie-js/auth';
+
+const app = await new FonderieApp(defineConfig({}))
+  .register(new AuthModule())
+  .boot();
 ```
 
-Part of [Fonderie](https://fonderie.ai) — the software foundry. Monorepo, docs, and issues live at [fonderie-js/sdk](https://github.com/fonderie-js/sdk). Follow [@fonderiejs](https://x.com/fonderiejs).
+Guard your own routes with the exported middlewares:
+
+```ts
+import { withSession, requireAuth } from '@fonderie-js/auth';
+```
+
+Also exports `toUserDTO`, `normalizeEmail`, and the full type surface
+(`IUser`, `ISession`, `IMfaChallenge`, …).
+
+## Why this exists
+
+You've shipped this plumbing before — auth, teams, billing, messaging —
+and the next project will ask for it again. Fonderie packages it once:
+plain TypeScript modules for
+[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+PostgreSQL-backed, self-hosted, MIT. No external control plane, no
+per-seat anything. Register the modules you need; skip the ones you don't.
+
+**This package owns** who the caller is. Identity, credentials, sessions, and MFA — every
+other brick trusts the `ctx.user` this one establishes.
+
+Browse the whole set at
+[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[@fonderiejs](https://x.com/fonderiejs)
 
 ## License
 

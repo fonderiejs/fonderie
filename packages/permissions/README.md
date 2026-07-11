@@ -1,6 +1,8 @@
 # @fonderie-js/permissions
 
-Role-based access control for SaaS — define roles, assign CRUD permissions per resource, and gate any route with requirePermission. Supports multiple roles per user via BOOL_OR aggregation.
+Role-based access control: define roles, assign CRUD permissions per
+resource, and enforce them with middleware — the brick between "logged in"
+and "allowed to".
 
 ## Install
 
@@ -11,10 +13,36 @@ npm install @fonderie-js/permissions
 ## Use
 
 ```ts
-import { PermissionKey, requirePermission, requireRole } from '@fonderie-js/permissions';
+import { FonderieApp, defineConfig } from '@fonderie-js/core';
+import { PermissionsModule } from '@fonderie-js/permissions';
+
+const app = await new FonderieApp(defineConfig({}))
+  .register(new PermissionsModule())
+  .boot();
 ```
 
-Part of [Fonderie](https://fonderie.ai) — the software foundry. Monorepo, docs, and issues live at [fonderie-js/sdk](https://github.com/fonderie-js/sdk). Follow [@fonderiejs](https://x.com/fonderiejs).
+```ts
+import { requirePermission, requireRole, OPERATIONS } from '@fonderie-js/permissions';
+```
+
+`PermissionsEngine` evaluates keys like `projects:update`; denials raise a
+typed `PermissionDeniedError`.
+
+## Why this exists
+
+You've shipped this plumbing before — auth, teams, billing, messaging —
+and the next project will ask for it again. Fonderie packages it once:
+plain TypeScript modules for
+[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+PostgreSQL-backed, self-hosted, MIT. No external control plane, no
+per-seat anything. Register the modules you need; skip the ones you don't.
+
+**This package owns** what the caller may do. Role and permission evaluation layered
+on auth and workspaces, enforced at the route with one middleware.
+
+Browse the whole set at
+[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[@fonderiejs](https://x.com/fonderiejs)
 
 ## License
 
