@@ -1,0 +1,54 @@
+
+> @fonderie-js/auth@1.0.0 build
+> tsup && node -e "require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})"
+
+CLI Building entry: {"migrations/index":"src/migrations/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/auth/tsup.config.ts
+CLI Building entry: src/index.ts, src/types.ts, src/dtos/user.ts, src/middlewares/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/auth/tsup.config.ts
+CLI Target: esnext
+ESM Build start
+CLI Target: esnext
+CLI Cleaning output folder
+ESM Build start
+CJS Build start
+ESM dist/migrations/index.js     220.00 B
+ESM dist/migrations/index.js.map 311.00 B
+ESM ⚡️ Build success in 27ms
+ESM dist/dtos/user.js             1.50 KB
+ESM dist/middlewares/index.js     7.86 KB
+ESM dist/index.js                 65.53 KB
+ESM dist/types.js                 33.00 B
+ESM dist/dtos/user.js.map         3.08 KB
+ESM dist/middlewares/index.js.map 16.99 KB
+ESM dist/types.js.map             71.00 B
+ESM dist/index.js.map             121.27 KB
+ESM ⚡️ Build success in 51ms
+CJS dist/types.cjs                 792.00 B
+CJS dist/index.cjs                 70.73 KB
+CJS dist/middlewares/index.cjs     9.44 KB
+CJS dist/dtos/user.cjs             2.61 KB
+CJS dist/index.cjs.map             121.84 KB
+CJS dist/middlewares/index.cjs.map 17.04 KB
+CJS dist/types.cjs.map             1.25 KB
+CJS dist/dtos/user.cjs.map         3.12 KB
+CJS ⚡️ Build success in 52ms
+DTS Build start
+DTS Build start
+DTS ⚡️ Build success in 610ms
+DTS dist/migrations/index.d.ts 78.00 B
+DTS ⚡️ Build success in 1339ms
+DTS dist/index.d.ts              1.02 KB
+DTS dist/dtos/user.d.ts          608.00 B
+DTS dist/types.d.ts              1.15 KB
+DTS dist/middlewares/index.d.ts  297.00 B
+DTS dist/session-B9J21sWf.d.ts   1.50 KB
+DTS dist/index.d.cts             1.02 KB
+DTS dist/dtos/user.d.cts         609.00 B
+DTS dist/types.d.cts             1.15 KB
+DTS dist/middlewares/index.d.cts 298.00 B
+DTS dist/session-B9J21sWf.d.cts  1.50 KB

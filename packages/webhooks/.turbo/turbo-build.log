@@ -1,0 +1,34 @@
+
+> @fonderie-js/webhooks@1.0.0 build
+> tsup && node -e "require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})"
+
+CLI Building entry: {"migrations/index":"src/migrations/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/webhooks/tsup.config.ts
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/webhooks/tsup.config.ts
+CLI Target: esnext
+ESM Build start
+CLI Target: esnext
+CLI Cleaning output folder
+ESM Build start
+CJS Build start
+ESM dist/migrations/index.js     220.00 B
+ESM dist/migrations/index.js.map 311.00 B
+ESM ⚡️ Build success in 27ms
+CJS dist/index.cjs     16.93 KB
+CJS dist/index.cjs.map 29.43 KB
+CJS ⚡️ Build success in 39ms
+ESM dist/index.js     15.12 KB
+ESM dist/index.js.map 29.03 KB
+ESM ⚡️ Build success in 39ms
+DTS Build start
+DTS Build start
+DTS ⚡️ Build success in 621ms
+DTS dist/migrations/index.d.ts 78.00 B
+DTS ⚡️ Build success in 704ms
+DTS dist/index.d.ts  1.85 KB
+DTS dist/index.d.cts 1.85 KB

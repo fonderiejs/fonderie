@@ -1,0 +1,22 @@
+
+> @fonderie-js/adapter-hono@1.0.0 build
+> tsup
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/adapter-hono/tsup.config.ts
+CLI Target: esnext
+CLI Cleaning output folder
+ESM Build start
+CJS Build start
+CJS dist/index.cjs     2.75 KB
+CJS dist/index.cjs.map 4.90 KB
+CJS ⚡️ Build success in 12ms
+ESM dist/index.js     1.50 KB
+ESM dist/index.js.map 4.75 KB
+ESM ⚡️ Build success in 13ms
+DTS Build start
+DTS ⚡️ Build success in 553ms
+DTS dist/index.d.ts  1.18 KB
+DTS dist/index.d.cts 1.18 KB

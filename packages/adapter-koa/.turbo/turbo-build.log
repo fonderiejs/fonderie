@@ -1,0 +1,22 @@
+
+> @fonderie-js/adapter-koa@1.0.0 build
+> tsup
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/adapter-koa/tsup.config.ts
+CLI Target: esnext
+CLI Cleaning output folder
+ESM Build start
+CJS Build start
+ESM dist/index.js     2.75 KB
+ESM dist/index.js.map 8.05 KB
+ESM ⚡️ Build success in 13ms
+CJS dist/index.cjs     4.08 KB
+CJS dist/index.cjs.map 8.21 KB
+CJS ⚡️ Build success in 14ms
+DTS Build start
+DTS ⚡️ Build success in 579ms
+DTS dist/index.d.ts  1.67 KB
+DTS dist/index.d.cts 1.67 KB

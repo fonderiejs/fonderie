@@ -1,0 +1,22 @@
+
+> @fonderie-js/client@0.1.0 build
+> tsup
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/client/tsup.config.ts
+CLI Target: esnext
+CLI Cleaning output folder
+ESM Build start
+CJS Build start
+CJS dist/index.cjs     5.63 KB
+CJS dist/index.cjs.map 11.05 KB
+CJS ⚡️ Build success in 13ms
+ESM dist/index.js     4.55 KB
+ESM dist/index.js.map 10.38 KB
+ESM ⚡️ Build success in 13ms
+DTS Build start
+DTS ⚡️ Build success in 512ms
+DTS dist/index.d.ts  4.91 KB
+DTS dist/index.d.cts 4.91 KB

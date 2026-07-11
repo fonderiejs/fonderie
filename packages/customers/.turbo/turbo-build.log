@@ -1,0 +1,40 @@
+
+> @fonderie-js/customers@1.0.0 build
+> tsup && node -e "require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})"
+
+CLI Building entry: {"migrations/index":"src/migrations/index.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/customers/tsup.config.ts
+CLI Building entry: src/index.ts, src/types.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/choleski/Development/projects/crewfinding/fonderie-js/packages/customers/tsup.config.ts
+CLI Target: esnext
+CLI Target: esnext
+ESM Build start
+CLI Cleaning output folder
+ESM Build start
+CJS Build start
+ESM dist/migrations/index.js     220.00 B
+ESM dist/migrations/index.js.map 311.00 B
+ESM ⚡️ Build success in 12ms
+ESM dist/index.js     78.20 KB
+ESM dist/types.js     33.00 B
+ESM dist/types.js.map 71.00 B
+ESM dist/index.js.map 145.64 KB
+ESM ⚡️ Build success in 28ms
+CJS dist/index.cjs     84.64 KB
+CJS dist/types.cjs     792.00 B
+CJS dist/types.cjs.map 3.51 KB
+CJS dist/index.cjs.map 146.51 KB
+CJS ⚡️ Build success in 28ms
+DTS Build start
+DTS Build start
+DTS ⚡️ Build success in 478ms
+DTS dist/migrations/index.d.ts 78.00 B
+DTS ⚡️ Build success in 832ms
+DTS dist/index.d.ts  8.54 KB
+DTS dist/types.d.ts  3.56 KB
+DTS dist/index.d.cts 8.54 KB
+DTS dist/types.d.cts 3.56 KB
