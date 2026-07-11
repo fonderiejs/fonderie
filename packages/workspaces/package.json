@@ -1,5 +1,5 @@
 {
-	"name": "@fonderie-js/workspaces",
+	"name": "@fonderie/workspaces",
 	"version": "1.0.0",
 	"description": "Multi-tenant team layer — create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
 	"keywords": [
@@ -52,21 +52,21 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie-js/billing": "^1.0.0",
-		"@fonderie-js/core": "^0.1.0",
-		"@fonderie-js/events": "^1.0.0",
-		"@fonderie-js/store": "^0.1.0"
+		"@fonderie/billing": "^1.0.0",
+		"@fonderie/core": "^0.1.0",
+		"@fonderie/events": "^1.0.0",
+		"@fonderie/store": "^0.1.0"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/events": {
+		"@fonderie/events": {
 			"optional": true
 		}
 	},
 	"devDependencies": {
-		"@fonderie-js/billing": "../billing",
-		"@fonderie-js/core": "../core",
-		"@fonderie-js/events": "../events",
-		"@fonderie-js/store": "../store",
+		"@fonderie/billing": "../billing",
+		"@fonderie/core": "../core",
+		"@fonderie/events": "../events",
+		"@fonderie/store": "../store",
 		"@types/node": "^25.6.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",

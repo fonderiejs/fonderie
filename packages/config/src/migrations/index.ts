@@ -1,3 +1,3 @@
-import { createMigrationsPath } from '@fonderie-js/store';
+import { createMigrationsPath } from '@fonderie/store';
 
 export const getMigrationsPath = (): string => createMigrationsPath(import.meta.url);

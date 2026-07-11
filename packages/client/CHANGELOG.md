@@ -1,4 +1,4 @@
-# @fonderie-js/client
+# @fonderie/client
 
 ## 0.1.0
 

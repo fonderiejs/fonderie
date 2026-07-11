@@ -1,9 +1,9 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { MemoryTransport } from '@fonderie-js/events';
-import { EventBus } from '@fonderie-js/events';
-import type { IEventMeta } from '@fonderie-js/events';
+import { MemoryTransport } from '@fonderie/events';
+import { EventBus } from '@fonderie/events';
+import type { IEventMeta } from '@fonderie/events';
 
 import { WebhookDispatcher } from '../dispatcher';
 import { signPayload } from '../signing';

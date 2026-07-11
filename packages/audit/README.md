@@ -1,4 +1,4 @@
-# @fonderie-js/audit
+# @fonderie/audit
 
 The paper trail: query the platform's event log as a human-readable,
 workspace-scoped activity feed. If a brick emitted it, this brick can
@@ -7,14 +7,14 @@ show it.
 ## Install
 
 ```sh
-npm install @fonderie-js/audit
+npm install @fonderie/audit
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { AuditModule } from '@fonderie-js/audit';
+import { FonderieApp, defineConfig } from '@fonderie/core';
+import { AuditModule } from '@fonderie/audit';
 
 const app = await new FonderieApp(defineConfig({}))
   .register(new AuditModule())
@@ -22,7 +22,7 @@ const app = await new FonderieApp(defineConfig({}))
 ```
 
 ```ts
-import type { IAuditQuery, IAuditPageDTO } from '@fonderie-js/audit';
+import type { IAuditQuery, IAuditPageDTO } from '@fonderie/audit';
 ```
 
 ## Why this exists
@@ -30,7 +30,7 @@ import type { IAuditQuery, IAuditPageDTO } from '@fonderie-js/audit';
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

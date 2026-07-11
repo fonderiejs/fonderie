@@ -1,4 +1,4 @@
-# @fonderie-js/adapter-express
+# @fonderie/adapter-express
 
 Run Fonderie bricks inside your existing Express app. `bridge()` builds the
 Fonderie context for every request, `adapt()` converts any Fonderie
@@ -7,13 +7,13 @@ middleware into a native Express one, and `mount()` attaches whole modules.
 ## Install
 
 ```sh
-npm install @fonderie-js/adapter-express
+npm install @fonderie/adapter-express
 ```
 
 ## Use
 
 ```ts
-import { bridge, adapt, requireAuth } from '@fonderie-js/adapter-express';
+import { bridge, adapt, requireAuth } from '@fonderie/adapter-express';
 ```
 
 Register `bridge(fonderie)` as global middleware first, then use the
@@ -28,7 +28,7 @@ objects for the Fonderie pipeline.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

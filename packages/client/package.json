@@ -1,5 +1,5 @@
 {
-	"name": "@fonderie-js/client",
+	"name": "@fonderie/client",
 	"version": "0.1.0",
 	"description": "Isomorphic TypeScript client for Fonderie-powered APIs — fully typed request and response shapes, zero runtime dependencies.",
 	"keywords": [

@@ -1,5 +1,5 @@
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { Middleware } from '@fonderie-js/core';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import type { Middleware } from '@fonderie/core';
 
 // Ensures ctx.workspace is set — use after withWorkspace
 

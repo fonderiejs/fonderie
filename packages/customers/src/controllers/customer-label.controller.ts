@@ -1,6 +1,6 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import { HTTP, setApiResponse } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IFonderieContext } from '@fonderie/core';
+import { HTTP, setApiResponse } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 import { CustomerLabelModel } from '../models/customer-label.model';
 import type { CustomerLabelType } from '../types';
 import { isUuid } from '../utils';

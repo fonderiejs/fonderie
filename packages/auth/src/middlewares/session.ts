@@ -1,5 +1,5 @@
-import type { Middleware } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { Middleware } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IAuthConfig } from '../config';
 import { verifyToken } from '../services/jwt';

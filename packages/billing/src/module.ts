@@ -1,5 +1,5 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IBillingConfig } from './config';
 import { buildBillingRoutes } from './routes';
@@ -8,8 +8,8 @@ import { withBilling } from './middlewares/billing';
 import { createBackend } from './backends';
 
 export class BillingModule implements IFonderieModule {
-	readonly name = '@fonderie-js/billing';
-	readonly deps = ['@fonderie-js/auth'];
+	readonly name = '@fonderie/billing';
+	readonly deps = ['@fonderie/auth'];
 
 	constructor(
 		private store: IStoreAdapter,

@@ -156,9 +156,9 @@ export class FonderieApp {
 	}
 }
 // Framework adapters live in their own packages — no framework deps in core:
-//   @fonderie-js/adapter-hono
-//   @fonderie-js/adapter-express
-//   @fonderie-js/adapter-koa
+//   @fonderie/adapter-hono
+//   @fonderie/adapter-express
+//   @fonderie/adapter-koa
 
 function topoSort(modules: IFonderieModule[]): IFonderieModule[] {
 	const byName = new Map(modules.map((m) => [m.name, m]));

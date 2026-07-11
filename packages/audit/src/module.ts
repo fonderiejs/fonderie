@@ -1,11 +1,11 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { buildAuditRoutes } from './routes';
 
 export class AuditModule implements IFonderieModule {
-	readonly name = '@fonderie-js/audit';
-	readonly deps = ['@fonderie-js/auth', '@fonderie-js/workspaces'];
+	readonly name = '@fonderie/audit';
+	readonly deps = ['@fonderie/auth', '@fonderie/workspaces'];
 
 	constructor(private readonly store: IStoreAdapter) {}
 

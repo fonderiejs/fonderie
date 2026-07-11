@@ -11,7 +11,7 @@ import {
 	type KoaContext,
 	type KoaNext,
 } from '../index';
-import type { FonderieApp, IFonderieContext } from '@fonderie-js/core';
+import type { FonderieApp, IFonderieContext } from '@fonderie/core';
 
 // ── Stubs ─────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-# @fonderie-js/courier
+# @fonderie/courier
 
 Transactional messaging: one brick that delivers email, SMS, and push
 through pluggable channels, with templates resolved from the database or
@@ -7,14 +7,14 @@ the filesystem and every send logged.
 ## Install
 
 ```sh
-npm install @fonderie-js/courier
+npm install @fonderie/courier
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { CourierModule } from '@fonderie-js/courier';
+import { FonderieApp, defineConfig } from '@fonderie/core';
+import { CourierModule } from '@fonderie/courier';
 
 const app = await new FonderieApp(defineConfig({}))
   .register(new CourierModule())
@@ -22,7 +22,7 @@ const app = await new FonderieApp(defineConfig({}))
 ```
 
 ```ts
-import { EmailChannel, SmsChannel, PushChannel, DBTemplateResolver } from '@fonderie-js/courier';
+import { EmailChannel, SmsChannel, PushChannel, DBTemplateResolver } from '@fonderie/courier';
 ```
 
 Delivery webhooks for SendGrid, Mailgun, and Mailtrap are handled by the
@@ -33,7 +33,7 @@ exported `handle*Delivery` functions; `IMessageLog` tracks status per send.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

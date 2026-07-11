@@ -1,11 +1,11 @@
 import { randomInt } from 'node:crypto';
 
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { IFonderieContext, ICourierMessage } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
-import type { EventBus } from '@fonderie-js/events';
-import { NOTIFICATION_EVENT } from '@fonderie-js/events';
+import type { EventBus } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '@fonderie/events';
 
 import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { toUserDTO } from '../dtos/user';

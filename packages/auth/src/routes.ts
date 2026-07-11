@@ -1,9 +1,9 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { Middleware } from '@fonderie-js/core';
-import type { EventBus } from '@fonderie-js/events';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { Middleware } from '@fonderie/core';
+import type { EventBus } from '@fonderie/events';
 import type { IAuthConfig } from './config';
 
-import { requireAuth, requireAnyAuth, requireVerified } from '@fonderie-js/core/middlewares';
+import { requireAuth, requireAnyAuth, requireVerified } from '@fonderie/core/middlewares';
 import { requireEmailLogin } from './middlewares/require-email-login';
 
 import { mfaController } from './controllers/mfa.controller';

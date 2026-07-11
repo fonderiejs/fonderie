@@ -1,4 +1,4 @@
-# @fonderie-js/store
+# @fonderie/store
 
 ## 0.1.0
 

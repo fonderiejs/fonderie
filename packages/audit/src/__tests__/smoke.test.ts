@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { FonderieApp } from '@fonderie-js/core';
-import { defineConfig } from '@fonderie-js/core';
+import { FonderieApp } from '@fonderie/core';
+import { defineConfig } from '@fonderie/core';
 
 import { toAuditEventDTO, encodeCursor, decodeCursor } from '../dtos/audit';
 import { AuditEventModel } from '../models/event.model';

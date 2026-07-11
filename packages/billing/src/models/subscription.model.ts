@@ -1,4 +1,4 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { ISubscription, SubscriberType } from '../types';
 import { getSubscription, upsertSubscription } from '../services/subscriptions';

@@ -1,4 +1,4 @@
-# @fonderie-js/billing
+# @fonderie/billing
 
 ## 1.0.0
 
@@ -9,5 +9,5 @@
 ### Patch Changes
 
 - Updated dependencies
-  - @fonderie-js/core@0.1.0
-  - @fonderie-js/store@0.1.0
+  - @fonderie/core@0.1.0
+  - @fonderie/store@0.1.0

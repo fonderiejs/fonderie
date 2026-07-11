@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Middleware } from '@fonderie-js/core';
+import type { Middleware } from '@fonderie/core';
 import type { Logger } from '../logger';
 
 export function requestLogger(logger: Logger): Middleware {

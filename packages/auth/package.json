@@ -1,5 +1,5 @@
 {
-	"name": "@fonderie-js/auth",
+	"name": "@fonderie/auth",
 	"version": "1.0.0",
 	"description": "Drop-in auth for SaaS — email/password, phone OTP, Google OAuth, stateless JWT sessions, TOTP-based MFA with backup codes, and self-service password recovery.",
 	"keywords": [
@@ -59,19 +59,19 @@
 		"qrcode": "^1.5.4"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core": "^0.1.0",
-		"@fonderie-js/store": "^0.1.0",
-		"@fonderie-js/events": "^1.0.0"
+		"@fonderie/core": "^0.1.0",
+		"@fonderie/store": "^0.1.0",
+		"@fonderie/events": "^1.0.0"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/events": {
+		"@fonderie/events": {
 			"optional": true
 		}
 	},
 	"devDependencies": {
-		"@fonderie-js/core": "../core",
-		"@fonderie-js/store": "../store",
-		"@fonderie-js/events": "../events",
+		"@fonderie/core": "../core",
+		"@fonderie/store": "../store",
+		"@fonderie/events": "../events",
 		"@types/bcryptjs": "^2.4.6",
 		"@types/jsonwebtoken": "^9.0.10",
 		"@types/node": "^25.6.0",

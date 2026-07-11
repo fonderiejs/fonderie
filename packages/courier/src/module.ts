@@ -1,7 +1,7 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { EventBus } from '@fonderie-js/events';
-import { NOTIFICATION_EVENT } from '@fonderie-js/events';
+import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '@fonderie/events';
 
 import type { ITemplateResolver, ICourierMessage } from './types';
 import type { ICourierConfig } from './config';
@@ -14,8 +14,8 @@ import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 
 export class CourierModule implements IFonderieModule {
-	readonly name = '@fonderie-js/courier';
-	readonly deps = ['@fonderie-js/events'];
+	readonly name = '@fonderie/courier';
+	readonly deps = ['@fonderie/events'];
 	readonly dispatcher: Dispatcher;
 
 	constructor(

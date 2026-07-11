@@ -1,11 +1,11 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 import type { IAuthConfig } from '../config';
 import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { IUser } from '../types';
-import { NOTIFICATION_EVENT } from '@fonderie-js/events';
+import { NOTIFICATION_EVENT } from '@fonderie/events';
 import { issueTokenPair, issueMfaPendingToken, verifyToken } from '../services/jwt';
 import { generateTotpSecret, generateTotpCode, generateBackupCodes } from '../services/mfa';
 import { hashPassword, verifyPassword } from '../services/password';
@@ -88,7 +88,7 @@ test('AuthModule: satisfies IFonderieModule interface', async () => {
 
 	const module = new AuthModule(stub, config);
 
-	assert.equal(module.name, '@fonderie-js/auth');
+	assert.equal(module.name, '@fonderie/auth');
 	assert.ok(typeof module.install === 'function');
 });
 
@@ -351,7 +351,7 @@ test('requireAnyAuth: calls next when ctx.user.mfaPending is true', async () => 
 // ── requireVerified middleware ────────────────────────────────────
 
 test('requireVerified: passes email user with verified email', async () => {
-	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const { requireVerified } = await import('@fonderie/core/middlewares');
 	const ctx = makeCtx({ user: { ...BASE_USER, loginMethod: 'email', phoneVerified: false } });
 	let called = false;
 	await requireVerified(ctx, async () => {
@@ -362,7 +362,7 @@ test('requireVerified: passes email user with verified email', async () => {
 });
 
 test('requireVerified: 403 EMAIL_NOT_VERIFIED when email user has unverified email', async () => {
-	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const { requireVerified } = await import('@fonderie/core/middlewares');
 	const ctx = makeCtx({
 		user: { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email', phoneVerified: false },
 	});
@@ -373,7 +373,7 @@ test('requireVerified: 403 EMAIL_NOT_VERIFIED when email user has unverified ema
 });
 
 test('requireVerified: passes phone user with phoneVerified: true in JWT', async () => {
-	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const { requireVerified } = await import('@fonderie/core/middlewares');
 	const ctx = makeCtx({ user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: true } });
 	let called = false;
 	await requireVerified(ctx, async () => {
@@ -384,7 +384,7 @@ test('requireVerified: passes phone user with phoneVerified: true in JWT', async
 });
 
 test('requireVerified: 403 PHONE_NOT_VERIFIED when phone user has phoneVerified: false', async () => {
-	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const { requireVerified } = await import('@fonderie/core/middlewares');
 	const ctx = makeCtx({ user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false } });
 	const response = await requireVerified(ctx, async () => Response.json({ ok: true }));
 	assert.equal(response.status, 403);
@@ -393,7 +393,7 @@ test('requireVerified: 403 PHONE_NOT_VERIFIED when phone user has phoneVerified:
 });
 
 test('requireVerified: uses phone gate for email+phone user who logged in via phone', async () => {
-	const { requireVerified } = await import('@fonderie-js/core/middlewares');
+	const { requireVerified } = await import('@fonderie/core/middlewares');
 	// email is set and verified — but loginMethod is phone so phone gate applies
 	const ctx = makeCtx({ user: { ...BASE_USER, loginMethod: 'phone', phoneVerified: false } });
 	const response = await requireVerified(ctx, async () => Response.json({ ok: true }));

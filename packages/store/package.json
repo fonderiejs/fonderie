@@ -1,5 +1,5 @@
 {
-	"name": "@fonderie-js/store",
+	"name": "@fonderie/store",
 	"version": "0.1.0",
 	"description": "Database abstraction layer — IStoreAdapter interface, PostgreSQL driver, sequential migration runner, and SQL tagged-template helpers. The only package every other module depends on.",
 	"keywords": [

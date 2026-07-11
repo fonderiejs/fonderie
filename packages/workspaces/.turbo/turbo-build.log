@@ -1,5 +1,5 @@
 
-> @fonderie-js/workspaces@1.0.0 build
+> @fonderie/workspaces@1.0.0 build
 > tsup && node -e "require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})"
 
 CLI Building entry: {"migrations/index":"src/migrations/index.ts"}
@@ -16,31 +16,31 @@ CLI Target: esnext
 CLI Cleaning output folder
 ESM Build start
 CJS Build start
-ESM dist/migrations/index.js     220.00 B
-ESM dist/migrations/index.js.map 311.00 B
-ESM ⚡️ Build success in 20ms
-ESM dist/middlewares/index.js     3.20 KB
+ESM dist/migrations/index.js     217.00 B
+ESM dist/migrations/index.js.map 308.00 B
+ESM ⚡️ Build success in 19ms
 ESM dist/types.js                 33.00 B
-ESM dist/index.js                 43.96 KB
-ESM dist/middlewares/index.js.map 15.45 KB
+ESM dist/index.js                 43.92 KB
+ESM dist/middlewares/index.js     3.19 KB
 ESM dist/types.js.map             71.00 B
-ESM dist/index.js.map             88.45 KB
-ESM ⚡️ Build success in 33ms
-CJS dist/index.cjs                 48.61 KB
-CJS dist/middlewares/index.cjs     4.32 KB
+ESM dist/index.js.map             88.33 KB
+ESM dist/middlewares/index.js.map 15.43 KB
+ESM ⚡️ Build success in 32ms
+CJS dist/index.cjs                 48.57 KB
 CJS dist/types.cjs                 792.00 B
-CJS dist/index.cjs.map             89.08 KB
-CJS dist/middlewares/index.cjs.map 15.59 KB
+CJS dist/middlewares/index.cjs     4.31 KB
+CJS dist/index.cjs.map             88.96 KB
 CJS dist/types.cjs.map             1.76 KB
-CJS ⚡️ Build success in 34ms
+CJS dist/middlewares/index.cjs.map 15.56 KB
+CJS ⚡️ Build success in 33ms
 DTS Build start
 DTS Build start
-DTS ⚡️ Build success in 391ms
+DTS ⚡️ Build success in 396ms
 DTS dist/migrations/index.d.ts 78.00 B
-DTS ⚡️ Build success in 859ms
+DTS ⚡️ Build success in 865ms
 DTS dist/types.d.ts              1.75 KB
-DTS dist/index.d.ts              3.02 KB
-DTS dist/middlewares/index.d.ts  402.00 B
+DTS dist/index.d.ts              3.01 KB
+DTS dist/middlewares/index.d.ts  396.00 B
 DTS dist/types.d.cts             1.75 KB
-DTS dist/index.d.cts             3.03 KB
-DTS dist/middlewares/index.d.cts 402.00 B
+DTS dist/index.d.cts             3.01 KB
+DTS dist/middlewares/index.d.cts 396.00 B

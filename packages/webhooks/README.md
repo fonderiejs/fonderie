@@ -1,4 +1,4 @@
-# @fonderie-js/webhooks
+# @fonderie/webhooks
 
 Outgoing webhooks: let your users register endpoints, fan workspace events
 out to them, and track every delivery attempt with retries and status.
@@ -6,14 +6,14 @@ out to them, and track every delivery attempt with retries and status.
 ## Install
 
 ```sh
-npm install @fonderie-js/webhooks
+npm install @fonderie/webhooks
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
-import { WebhooksModule } from '@fonderie-js/webhooks';
+import { FonderieApp, defineConfig } from '@fonderie/core';
+import { WebhooksModule } from '@fonderie/webhooks';
 
 const app = await new FonderieApp(defineConfig({}))
   .register(new WebhooksModule())
@@ -21,7 +21,7 @@ const app = await new FonderieApp(defineConfig({}))
 ```
 
 ```ts
-import type { IWebhookEndpoint, IWebhookDelivery, DeliveryStatus } from '@fonderie-js/webhooks';
+import type { IWebhookEndpoint, IWebhookDelivery, DeliveryStatus } from '@fonderie/webhooks';
 ```
 
 ## Why this exists
@@ -29,7 +29,7 @@ import type { IWebhookEndpoint, IWebhookDelivery, DeliveryStatus } from '@fonder
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

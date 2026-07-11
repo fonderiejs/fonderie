@@ -1,4 +1,4 @@
-# @fonderie-js/client
+# @fonderie/client
 
 Isomorphic TypeScript client for Fonderie-powered APIs. Fully typed request
 and response shapes end to end, zero runtime dependencies — works in the
@@ -7,13 +7,13 @@ browser, Node, and edge runtimes alike.
 ## Install
 
 ```sh
-npm install @fonderie-js/client
+npm install @fonderie/client
 ```
 
 ## Use
 
 ```ts
-import { FonderieClient, FonderieApiError } from '@fonderie-js/client';
+import { FonderieClient, FonderieApiError } from '@fonderie/client';
 
 const api = new FonderieClient({ baseUrl: 'https://api.example.com/v1' });
 
@@ -33,7 +33,7 @@ phone OTP, profile updates, and MFA setup/verify/disable, with every DTO
 (`IUserDTO`, `ITokens`, `ILoginResult`, …) exported for your own signatures.
 
 Pairs with any API built on
-[@fonderie-js/core](https://github.com/fonderie-js/sdk/tree/main/packages/core);
+[@fonderie/core](https://github.com/fonderie-js/sdk/tree/main/packages/core);
 the types stay in lockstep because both sides live in the same monorepo.
 
 ## Why this exists
@@ -41,7 +41,7 @@ the types stay in lockstep because both sides live in the same monorepo.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

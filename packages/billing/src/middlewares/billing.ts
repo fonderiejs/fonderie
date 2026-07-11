@@ -1,6 +1,6 @@
-import type { Middleware, ICourierMessage } from '@fonderie-js/core';
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { Middleware, ICourierMessage } from '@fonderie/core';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IBillingConfig } from '../config';
 import type { ICounterBackend } from '../backends/types';

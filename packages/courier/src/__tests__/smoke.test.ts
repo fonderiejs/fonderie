@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import type { ICourierConfig } from '../config';
 import type { ICourierChannel, ICourierMessage, ITemplateResolver } from '../types';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { Channel } from '../config';
 import { Dispatcher } from '../dispatcher';
@@ -208,7 +208,7 @@ test('CourierModule: satisfies IFonderieModule interface', async () => {
 		channels: {},
 		templates: { source: 'fs', directory: '/tmp' },
 	});
-	assert.equal(mod.name, '@fonderie-js/courier');
+	assert.equal(mod.name, '@fonderie/courier');
 	assert.ok(typeof mod.install === 'function');
 	assert.ok(typeof mod.dispatcher === 'object');
 });

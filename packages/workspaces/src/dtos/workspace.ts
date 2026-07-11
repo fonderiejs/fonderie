@@ -1,4 +1,4 @@
-import { stringOrEmpty, booleanOrFalse } from '@fonderie-js/core/parser';
+import { stringOrEmpty, booleanOrFalse } from '@fonderie/core/parser';
 
 import type { IWorkspace, IRole, IMember, IInvitation, IWorkspaceSettings } from '../types';
 

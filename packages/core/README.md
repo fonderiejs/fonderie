@@ -1,4 +1,4 @@
-# @fonderie-js/core
+# @fonderie/core
 
 The framework core every other `@fonderie-js` package builds on: a web-standard
 request router, a composable middleware pipeline, a module system, and the
@@ -10,13 +10,13 @@ mount it inside an existing Express, Hono, or Koa app via the adapter packages.
 ## Install
 
 ```sh
-npm install @fonderie-js/core
+npm install @fonderie/core
 ```
 
 ## Use
 
 ```ts
-import { FonderieApp, defineConfig } from '@fonderie-js/core';
+import { FonderieApp, defineConfig } from '@fonderie/core';
 
 const app = new FonderieApp(defineConfig({ basePath: '/v1' }));
 app.listen(3000, { name: 'my-api' });
@@ -26,7 +26,7 @@ Built-in middlewares (CORS, request logging, auth guards, body parsing) live
 under their own entry point so the root barrel stays lean:
 
 ```ts
-import { cors, requireAuth } from '@fonderie-js/core/middlewares';
+import { cors, requireAuth } from '@fonderie/core/middlewares';
 ```
 
 Also exported: `compose` for middleware composition, `HTTP`/`setApiResponse`
@@ -48,7 +48,7 @@ skip the rest.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

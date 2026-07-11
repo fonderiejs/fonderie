@@ -1,6 +1,6 @@
-import { setApiResponse, HTTP } from '@fonderie-js/core';
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import { setApiResponse, HTTP } from '@fonderie/core';
+import type { IFonderieContext } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { MemberModel } from '../models/member.model';
 import { toMemberDTO, toRoleDTO } from '../dtos/workspace';

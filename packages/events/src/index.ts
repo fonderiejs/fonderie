@@ -12,7 +12,7 @@ export type { IEventMeta, IEventHandler, IEventRecord, IConsumerRecord } from '.
 // ── Typed event keys ─────────────────────────────────────────────
 // Each domain package re-exports its own EVENT_KEYS.
 // Consumers alias on import:
-//   import { EVENT_KEYS as AUTH_EVENT_KEYS } from '@fonderie-js/auth'
+//   import { EVENT_KEYS as AUTH_EVENT_KEYS } from '@fonderie/auth'
 
 export const NOTIFICATION_EVENT = 'fonderie.notification.send' as const;
 export type NotificationEvent = typeof NOTIFICATION_EVENT;

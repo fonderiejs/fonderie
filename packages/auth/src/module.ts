@@ -1,13 +1,13 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { EventBus } from '@fonderie-js/events';
+import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
 
 import { buildAuthRoutes } from './routes';
 import type { IAuthConfig } from './config';
 import { withSession } from './middlewares/session';
 
 export class AuthModule implements IFonderieModule {
-	readonly name = '@fonderie-js/auth';
+	readonly name = '@fonderie/auth';
 
 	constructor(
 		private store: IStoreAdapter,

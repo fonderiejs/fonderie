@@ -1,4 +1,4 @@
-import type { IFonderieContext } from '@fonderie-js/core';
+import type { IFonderieContext } from '@fonderie/core';
 
 import type { SubscriberType } from './types';
 

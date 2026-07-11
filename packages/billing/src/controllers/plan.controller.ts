@@ -1,6 +1,6 @@
-import { setApiResponse, HTTP, stringOrEmpty, numberOrZero } from '@fonderie-js/core';
-import type { IFonderieContext } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import { setApiResponse, HTTP, stringOrEmpty, numberOrZero } from '@fonderie/core';
+import type { IFonderieContext } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
 import { PlanModel } from '../models/plan.model';
 import { toPlanDTO } from '../dtos/billing';

@@ -41,7 +41,7 @@ export interface ICourierConfig {
 	email?: IEmailChannelConfig;
 
 	// Where templates are loaded from
-	// 'db' requires @fonderie-js/store to be configured
+	// 'db' requires @fonderie/store to be configured
 	// 'fs' reads from a local directory
 	templates?: {
 		source: 'db' | 'fs';

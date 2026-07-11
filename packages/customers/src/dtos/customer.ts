@@ -1,4 +1,4 @@
-import { arrayOrEmpty, booleanOrFalse, dateOrEmpty, stringOrEmpty } from '@fonderie-js/core';
+import { arrayOrEmpty, booleanOrFalse, dateOrEmpty, stringOrEmpty } from '@fonderie/core';
 
 import type { CustomerSex } from '../types';
 import type {

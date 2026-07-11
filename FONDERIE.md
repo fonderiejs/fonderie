@@ -101,12 +101,12 @@ on their infrastructure. No Fonderie server is ever in the request path.
 
 ```
 ❌ WRONG: End User → Fonderie Server → Customer DB
-✅ RIGHT: End User → Customer Server (containing @fonderie-js/*) → Customer DB
+✅ RIGHT: End User → Customer Server (containing @fonderie/*) → Customer DB
 ```
 
 ### 2. Web Standard Core
 
-`@fonderie-js/core` is built on Web Standard `Request`/`Response`. It has zero
+`@fonderie/core` is built on Web Standard `Request`/`Response`. It has zero
 framework dependency. Framework adapters (Express, Koa, Hono) are thin shims
 that call `app.handle(request): Response`.
 
@@ -188,20 +188,20 @@ Zero changes to `BillingModule`.
 ## Package Overview
 
 ```
-@fonderie-js/core
+@fonderie/core
   Purpose:    Request lifecycle, middleware pipeline, framework adapters
   Exports:    FonderieApp, defineConfig, compose, bodyParserMiddleware,
               corsMiddleware, loggerMiddleware
   Depends on: nothing
   Key types:  IFonderieContext, Middleware, IFonderieModule, IFonderieApp
 
-@fonderie-js/store
+@fonderie/store
   Purpose:    Database adapter interface, migrations, sql helper
   Exports:    PGAdapter, MigrationRunner, sql
   Depends on: nothing
   Key types:  IStoreAdapter
 
-@fonderie-js/auth
+@fonderie/auth
   Purpose:    JWT, session, OAuth, MFA, password reset, email verification
   Exports:    AuthModule, requireAuth, requireVerifiedEmail
   Depends on: core, store
@@ -209,20 +209,20 @@ Zero changes to `BillingModule`.
               forgot-password|reset-password|mfa/enable|mfa/verify|
               GET+GET /auth/google|google/callback
 
-@fonderie-js/permissions
+@fonderie/permissions
   Purpose:    RBAC, wildcard permissions, super-role bypass
   Exports:    PermissionsModule, PermissionsEngine, requirePermission,
               requireRole, PERMISSIONS
   Depends on: core, store
   Key note:   Engine injected into ctx.meta — never passed to middleware directly
 
-@fonderie-js/workspaces
+@fonderie/workspaces
   Purpose:    Org management, member roles, PIN invitations
   Exports:    WorkspacesModule, workspaceContextMiddleware, requireWorkspace
   Depends on: core, store
   Routes:     Full CRUD on /workspaces and nested /members, /invitations
 
-@fonderie-js/courier
+@fonderie/courier
   Purpose:    Email, SMS, push notification dispatch
   Exports:    CourierModule, EmailChannel, SmsChannel, PushChannel,
               DBTemplateResolver, FSTemplateResolver
@@ -230,14 +230,14 @@ Zero changes to `BillingModule`.
   Key note:   Reads ctx.meta['message'] (ICourierMessage) after each handler.
               Fire-and-forget. Never blocks the response.
 
-@fonderie-js/billing
+@fonderie/billing
   Purpose:    Multi-provider subscription billing, plans, usage metering
   Exports:    BillingModule, StripeProvider, requirePlan
   Depends on: core, store
   Key note:   Provider-agnostic. Swap Stripe for PayPal by changing one line.
   Routes:     GET /billing/plans, POST .../checkout|portal|webhook|usage
 
-@fonderie-js/config
+@fonderie/config
   Purpose:    DB-backed remote config, multi-environment, poll-based refresh
   Exports:    RemoteConfigModule, RemoteConfigManager, getConfig
   Depends on: core, store
@@ -254,20 +254,20 @@ tables directly. Cross-package reads happen through the package's own service
 functions, never raw SQL across boundaries.
 
 ```
-fonderie_users                    → owned by @fonderie-js/auth
-fonderie_email_verifications      → owned by @fonderie-js/auth
-fonderie_password_resets          → owned by @fonderie-js/auth
-fonderie_roles                    → owned by @fonderie-js/workspaces
-fonderie_workspaces               → owned by @fonderie-js/workspaces
-fonderie_workspace_members        → owned by @fonderie-js/workspaces
-fonderie_workspace_invitations    → owned by @fonderie-js/workspaces
-fonderie_role_permissions         → owned by @fonderie-js/permissions
-fonderie_plans                    → owned by @fonderie-js/billing
-fonderie_subscriptions            → owned by @fonderie-js/billing
-fonderie_usage_records            → owned by @fonderie-js/billing
-fonderie_courier_templates        → owned by @fonderie-js/courier
-fonderie_config                   → owned by @fonderie-js/config
-fonderie_migrations               → owned by @fonderie-js/store
+fonderie_users                    → owned by @fonderie/auth
+fonderie_email_verifications      → owned by @fonderie/auth
+fonderie_password_resets          → owned by @fonderie/auth
+fonderie_roles                    → owned by @fonderie/workspaces
+fonderie_workspaces               → owned by @fonderie/workspaces
+fonderie_workspace_members        → owned by @fonderie/workspaces
+fonderie_workspace_invitations    → owned by @fonderie/workspaces
+fonderie_role_permissions         → owned by @fonderie/permissions
+fonderie_plans                    → owned by @fonderie/billing
+fonderie_subscriptions            → owned by @fonderie/billing
+fonderie_usage_records            → owned by @fonderie/billing
+fonderie_courier_templates        → owned by @fonderie/courier
+fonderie_config                   → owned by @fonderie/config
+fonderie_migrations               → owned by @fonderie/store
 ```
 
 **Customer tables** (their product data) use FK references to `fonderie_users`
@@ -328,14 +328,14 @@ When given an existing SaaS codebase to refactor into Fonderie:
 ### Step 1 — Identify what maps to which package
 
 ```
-Existing auth system        → replace with @fonderie-js/auth
-Custom role/permission code → replace with @fonderie-js/permissions
-Org/team management         → replace with @fonderie-js/workspaces
-Email sending logic         → replace with @fonderie-js/courier
-Stripe integration          → replace with @fonderie-js/billing
-Feature flags / env config  → replace with @fonderie-js/config
-Raw DB queries              → wrap with @fonderie-js/store IStoreAdapter
-Express/Koa/Hono app        → wrap with @fonderie-js/core adapters
+Existing auth system        → replace with @fonderie/auth
+Custom role/permission code → replace with @fonderie/permissions
+Org/team management         → replace with @fonderie/workspaces
+Email sending logic         → replace with @fonderie/courier
+Stripe integration          → replace with @fonderie/billing
+Feature flags / env config  → replace with @fonderie/config
+Raw DB queries              → wrap with @fonderie/store IStoreAdapter
+Express/Koa/Hono app        → wrap with @fonderie/core adapters
 ```
 
 ### Step 2 — Wire the app
@@ -397,20 +397,20 @@ curl http://localhost:3000/health
 ## The Future
 
 ### Short term (v0.2)
-- `@fonderie-js/cli` — `npx @fonderie-js/create my-saas` scaffolding
-- `@fonderie-js/audit` — SOC2-grade audit logging with SHA-256 checksums
+- `@fonderie/cli` — `npx @fonderie/create my-saas` scaffolding
+- `@fonderie/audit` — SOC2-grade audit logging with SHA-256 checksums
 - Rate limiting middleware in core
 - OpenAPI spec auto-generation
 
 ### Medium term (v0.3)
-- `@fonderie-js/admin` — server-rendered admin panel at `/fonderie`,
+- `@fonderie/admin` — server-rendered admin panel at `/fonderie`,
   mounted as a middleware. Think Active Admin or Filament, not WordPress.
   htmx-powered, zero React, minimal footprint.
-- MySQL/SQLite adapters for `@fonderie-js/store`
+- MySQL/SQLite adapters for `@fonderie/store`
 - Serverless adapters (Cloudflare Workers, AWS Lambda)
 
 ### Long term
-- `@fonderie-js/realtime` — WebSocket/SSE support
+- `@fonderie/realtime` — WebSocket/SSE support
 - Plugin marketplace — community packages that extend Fonderie
 - Managed dashboard (opt-in telemetry, project management, license keys)
 
@@ -452,7 +452,7 @@ to start. Real money when it matters.
 
 ### Open source the non-differentiating parts
 
-`@fonderie-js/store`, `@fonderie-js/config`, and `@fonderie-js/audit` can be
+`@fonderie/store`, `@fonderie/config`, and `@fonderie/audit` can be
 MIT licensed. They're infrastructure primitives. The auth, billing, workspaces,
 and courier packages — the ones that save the most time — are commercial.
 This gives developers a reason to start with Fonderie before they need the
@@ -506,9 +506,9 @@ cp -r packages/core packages/my-new-package
 
 ```typescript
 // Minimal working Fonderie app
-import { FonderieApp, defineConfig, bodyParserMiddleware } from '@fonderie-js/core'
-import { PGAdapter }                                        from '@fonderie-js/store'
-import { AuthModule }                                       from '@fonderie-js/auth'
+import { FonderieApp, defineConfig, bodyParserMiddleware } from '@fonderie/core'
+import { PGAdapter }                                        from '@fonderie/store'
+import { AuthModule }                                       from '@fonderie/auth'
 
 const store = new PGAdapter(process.env.DATABASE_URL)
 const app   = new FonderieApp(defineConfig({ db: { url: process.env.DATABASE_URL } }))

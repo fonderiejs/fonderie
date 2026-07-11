@@ -1,4 +1,4 @@
-# @fonderie-js/store
+# @fonderie/store
 
 The database brick: an `IStoreAdapter` interface, a PostgreSQL driver,
 sequential migrations, and a tagged-template `sql` helper that makes
@@ -7,13 +7,13 @@ unparameterized queries impossible to write by accident.
 ## Install
 
 ```sh
-npm install @fonderie-js/store
+npm install @fonderie/store
 ```
 
 ## Use
 
 ```ts
-import { sql, PGAdapter } from '@fonderie-js/store';
+import { sql, PGAdapter } from '@fonderie/store';
 
 const { text, params } = sql`SELECT * FROM users WHERE id = ${userId}`;
 const rows = await store.query(text, params);
@@ -28,7 +28,7 @@ package.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 

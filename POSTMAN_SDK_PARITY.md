@@ -2,7 +2,7 @@
 
 **Collection:** `CrewFinding_API.postman_collection.json`  
 **Base URL variable:** `{{base_url}}` → `https://crewfinding-api-prod.fly.dev/v1`  
-**SDK packages audited:** `@fonderie-js/auth` · `@fonderie-js/workspaces`  
+**SDK packages audited:** `@fonderie/auth` · `@fonderie/workspaces`  
 **Date:** 2026-05-08  
 **Result:** ✅ All 11 SDK-relevant endpoints are 1:1
 

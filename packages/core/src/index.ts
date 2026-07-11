@@ -18,7 +18,7 @@ export { defineConfig } from './config';
 export { compose } from './compose';
 export type { FonderieConfig } from './config';
 
-// Built-in middleware — import from '@fonderie-js/core/middlewares', not the root barrel
+// Built-in middleware — import from '@fonderie/core/middlewares', not the root barrel
 
 // Parser utilities
 export { stringOrEmpty, booleanOrFalse, arrayOrEmpty, numberOrZero, dateOrEmpty } from './parser';

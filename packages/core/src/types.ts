@@ -25,7 +25,7 @@ export interface IWorkspace {
 }
 
 // ── Courier contract — lives in core because auth + workspaces emit
-// messages without importing @fonderie-js/courier.
+// messages without importing @fonderie/courier.
 export interface ICourierMessage {
 	type: string;
 	locale?: string;

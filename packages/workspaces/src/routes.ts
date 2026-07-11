@@ -1,7 +1,7 @@
-import type { IStoreAdapter } from '@fonderie-js/store';
-import type { Middleware } from '@fonderie-js/core';
-import type { EventBus } from '@fonderie-js/events';
-import { requireAuth } from '@fonderie-js/core/middlewares';
+import type { IStoreAdapter } from '@fonderie/store';
+import type { Middleware } from '@fonderie/core';
+import type { EventBus } from '@fonderie/events';
+import { requireAuth } from '@fonderie/core/middlewares';
 
 import type { IWorkspacesConfig } from './config';
 import { withWorkspace } from './middlewares/workspace-context';

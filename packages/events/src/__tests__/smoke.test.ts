@@ -153,7 +153,7 @@ describe('EventBus — memory transport', () => {
 
 test('EventsModule: accepts a custom IEventTransport (MemoryTransport as test stand-in)', () => {
 	const mod = new EventsModule({ transport: new MemoryTransport() });
-	assert.equal(mod.name, '@fonderie-js/events');
+	assert.equal(mod.name, '@fonderie/events');
 	assert.ok(mod.bus instanceof EventBus);
 	assert.ok(typeof mod.install === 'function');
 });

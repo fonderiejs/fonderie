@@ -1,6 +1,6 @@
-import type { IFonderieContext } from '@fonderie-js/core';
-import { HTTP, setApiResponse } from '@fonderie-js/core';
-import type { IStoreAdapter } from '@fonderie-js/store';
+import type { IFonderieContext } from '@fonderie/core';
+import { HTTP, setApiResponse } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 import { toCustomerNoteDTO } from '../dtos/customer';
 import { CustomerModel } from '../models/customer.model';
 import { CustomerNoteModel } from '../models/customer-note.model';
