@@ -16,3 +16,6 @@
 
 # Local scripts
 **/scripts
+
+# Local example apps — not part of the public SDK
+examples/
