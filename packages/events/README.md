@@ -1,6 +1,8 @@
 # @fonderie-js/events
 
-Event bus for @fonderie-js — memory and PostgreSQL transports built-in, adapter interface for Redis/Kafka/RabbitMQ.
+The event bus wiring the bricks together: publish domain events, subscribe
+with wildcard patterns, and swap transports without touching handlers.
+Memory and PostgreSQL transports built in.
 
 ## Install
 
@@ -11,10 +13,37 @@ npm install @fonderie-js/events
 ## Use
 
 ```ts
-import { EventBus, EventsModule, MemoryTransport } from '@fonderie-js/events';
+import { FonderieApp, defineConfig } from '@fonderie-js/core';
+import { EventsModule } from '@fonderie-js/events';
+
+const app = await new FonderieApp(defineConfig({}))
+  .register(new EventsModule())
+  .boot();
 ```
 
-Part of [Fonderie](https://fonderie.ai) — the software foundry. Monorepo, docs, and issues live at [fonderie-js/sdk](https://github.com/fonderie-js/sdk). Follow [@fonderiejs](https://x.com/fonderiejs).
+```ts
+import { EventBus, matchesPattern, NOTIFICATION_EVENT } from '@fonderie-js/events';
+```
+
+Domain packages export typed `EVENT_KEYS`; alias them on import
+(`import { EVENT_KEYS as AUTH_EVENTS } from '@fonderie-js/auth'`) and
+subscribe to exactly the events you care about.
+
+## Why this exists
+
+You've shipped this plumbing before — auth, teams, billing, messaging —
+and the next project will ask for it again. Fonderie packages it once:
+plain TypeScript modules for
+[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+PostgreSQL-backed, self-hosted, MIT. No external control plane, no
+per-seat anything. Register the modules you need; skip the ones you don't.
+
+**This package owns** how the bricks talk. The publish/subscribe backbone that lets
+producers and consumers stay decoupled — swap transports, keep handlers.
+
+Browse the whole set at
+[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[@fonderiejs](https://x.com/fonderiejs)
 
 ## License
 

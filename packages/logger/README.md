@@ -1,6 +1,8 @@
 # @fonderie-js/logger
 
-Structured logger with pluggable transports, child loggers, and a request-logging middleware. The observability foundation for every @fonderie-js app.
+Structured logging: pluggable transports, child loggers with inherited
+context, and a request-logging middleware — the brick that makes the other
+bricks observable.
 
 ## Install
 
@@ -11,10 +13,35 @@ npm install @fonderie-js/logger
 ## Use
 
 ```ts
-import { ConsoleTransport, FileTransport, Logger } from '@fonderie-js/logger';
+import { FonderieApp, defineConfig } from '@fonderie-js/core';
+import { LoggerModule } from '@fonderie-js/logger';
+
+const app = await new FonderieApp(defineConfig({}))
+  .register(new LoggerModule())
+  .boot();
 ```
 
-Part of [Fonderie](https://fonderie.ai) — the software foundry. Monorepo, docs, and issues live at [fonderie-js/sdk](https://github.com/fonderie-js/sdk). Follow [@fonderiejs](https://x.com/fonderiejs).
+```ts
+import { Logger, ConsoleTransport, FileTransport } from '@fonderie-js/logger';
+
+const log = new Logger({ transports: [new ConsoleTransport()] });
+```
+
+## Why this exists
+
+You've shipped this plumbing before — auth, teams, billing, messaging —
+and the next project will ask for it again. Fonderie packages it once:
+plain TypeScript modules for
+[`@fonderie-js/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+PostgreSQL-backed, self-hosted, MIT. No external control plane, no
+per-seat anything. Register the modules you need; skip the ones you don't.
+
+**This package owns** how you see inside. Structured, transport-pluggable logging for
+everything the other bricks do.
+
+Browse the whole set at
+[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[@fonderiejs](https://x.com/fonderiejs)
 
 ## License
 
