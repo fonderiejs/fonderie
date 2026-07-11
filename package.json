@@ -20,5 +20,6 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.0",
 		"@changesets/cli": "^2.31.0"
-	}
+	},
+	"license": "MIT"
 }

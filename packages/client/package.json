@@ -2,30 +2,53 @@
 	"name": "@fonderie-js/client",
 	"version": "0.0.1",
 	"description": "Isomorphic TypeScript client for Fonderie-powered APIs — fully typed request and response shapes, zero runtime dependencies.",
-	"keywords": ["fonderie-js", "client", "http-client", "sdk", "saas", "typescript"],
-	"license": "UNLICENSED",
+	"keywords": [
+		"fonderie-js",
+		"client",
+		"http-client",
+		"sdk",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
 	"type": "module",
 	"engines": {
 		"node": ">=20"
 	},
 	"exports": {
 		".": {
-			"types":   "./dist/index.d.ts",
-			"import":  "./dist/index.js",
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
 		}
 	},
-	"main":   "./dist/index.cjs",
+	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
-	"types":  "./dist/index.d.ts",
+	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build":     "tsup",
-		"dev":       "tsup --watch",
+		"build": "tsup",
+		"dev": "tsup --watch",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@types/node": "^25.6.0",
-		"tsup":       "^8.5.1",
+		"tsup": "^8.5.1",
 		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderie-js/sdk.git",
+		"directory": "packages/client"
+	},
+	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/client#readme",
+	"bugs": {
+		"url": "https://github.com/fonderie-js/sdk/issues"
 	}
 }

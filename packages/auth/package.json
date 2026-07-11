@@ -2,8 +2,20 @@
 	"name": "@fonderie-js/auth",
 	"version": "0.0.1",
 	"description": "Drop-in auth for SaaS — email/password, phone OTP, Google OAuth, stateless JWT sessions, TOTP-based MFA with backup codes, and self-service password recovery.",
-	"keywords": ["fonderie-js", "auth", "authentication", "jwt", "oauth", "mfa", "totp", "otp", "sessions", "saas", "typescript"],
-	"license": "UNLICENSED",
+	"keywords": [
+		"fonderie-js",
+		"auth",
+		"authentication",
+		"jwt",
+		"oauth",
+		"mfa",
+		"totp",
+		"otp",
+		"sessions",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
 	"type": "module",
 	"engines": {
 		"node": ">=20"
@@ -47,16 +59,18 @@
 		"qrcode": "^1.5.4"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core":   "^0.0.1",
-		"@fonderie-js/store":  "^0.0.1",
+		"@fonderie-js/core": "^0.0.1",
+		"@fonderie-js/store": "^0.0.1",
 		"@fonderie-js/events": "^0.0.1"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/events": { "optional": true }
+		"@fonderie-js/events": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
-		"@fonderie-js/core":   "../core",
-		"@fonderie-js/store":  "../store",
+		"@fonderie-js/core": "../core",
+		"@fonderie-js/store": "../store",
 		"@fonderie-js/events": "../events",
 		"@types/bcryptjs": "^2.4.6",
 		"@types/jsonwebtoken": "^9.0.10",
@@ -65,5 +79,21 @@
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderie-js/sdk.git",
+		"directory": "packages/auth"
+	},
+	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/auth#readme",
+	"bugs": {
+		"url": "https://github.com/fonderie-js/sdk/issues"
 	}
 }

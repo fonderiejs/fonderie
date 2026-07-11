@@ -2,8 +2,14 @@
 	"name": "@fonderie-js/webhooks",
 	"version": "0.0.1",
 	"description": "Outgoing webhook engine — register endpoints, fan out workspace-scoped events, track delivery, and retry on failure.",
-	"keywords": ["fonderie-js", "webhooks", "events", "saas", "typescript"],
-	"license": "UNLICENSED",
+	"keywords": [
+		"fonderie-js",
+		"webhooks",
+		"events",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
 	"type": "module",
 	"engines": {
 		"node": ">=20"
@@ -32,20 +38,38 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core":   "^0.0.1",
+		"@fonderie-js/core": "^0.0.1",
 		"@fonderie-js/events": "^0.0.1",
-		"@fonderie-js/store":  "^0.0.1"
+		"@fonderie-js/store": "^0.0.1"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/events": { "optional": true }
+		"@fonderie-js/events": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
-		"@fonderie-js/core":   "../core",
+		"@fonderie-js/core": "../core",
 		"@fonderie-js/events": "../events",
-		"@fonderie-js/store":  "../store",
+		"@fonderie-js/store": "../store",
 		"@types/node": "^25.6.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderie-js/sdk.git",
+		"directory": "packages/webhooks"
+	},
+	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/webhooks#readme",
+	"bugs": {
+		"url": "https://github.com/fonderie-js/sdk/issues"
 	}
 }
