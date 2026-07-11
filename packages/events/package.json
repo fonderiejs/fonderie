@@ -2,52 +2,79 @@
 	"name": "@fonderie-js/events",
 	"version": "0.0.1",
 	"description": "Event bus for @fonderie-js — memory and PostgreSQL transports built-in, adapter interface for Redis/Kafka/RabbitMQ.",
-	"keywords": ["fonderie-js", "events", "event-bus", "pubsub", "outbox", "typescript"],
-	"license": "UNLICENSED",
+	"keywords": [
+		"fonderie-js",
+		"events",
+		"event-bus",
+		"pubsub",
+		"outbox",
+		"typescript"
+	],
+	"license": "MIT",
 	"type": "module",
 	"engines": {
 		"node": ">=20"
 	},
 	"exports": {
 		".": {
-			"types":   "./dist/index.d.ts",
-			"import":  "./dist/index.js",
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
 		},
 		"./migrations": {
-			"types":  "./dist/migrations/index.d.ts",
+			"types": "./dist/migrations/index.d.ts",
 			"import": "./dist/migrations/index.js"
 		}
 	},
-	"main":   "./dist/index.cjs",
+	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
-	"types":  "./dist/index.d.ts",
+	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build":     "tsup && node -e \"require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})\"",
-		"dev":       "tsup --watch",
+		"build": "tsup && node -e \"require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})\"",
+		"dev": "tsup --watch",
 		"typecheck": "tsc --noEmit",
-		"test":      "tsx --test src/__tests__/*.test.ts",
-		"lint":      "biome lint src",
-		"format":    "biome format --write src",
-		"check":     "biome check --write src"
+		"test": "tsx --test src/__tests__/*.test.ts",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core":  "^0.0.1",
+		"@fonderie-js/core": "^0.0.1",
 		"@fonderie-js/store": "^0.0.1",
-		"pg":                 "^8.0.0"
+		"pg": "^8.0.0"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/store": { "optional": true },
-		"pg":                 { "optional": true }
+		"@fonderie-js/store": {
+			"optional": true
+		},
+		"pg": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
-		"@fonderie-js/core":  "../core",
+		"@fonderie-js/core": "../core",
 		"@fonderie-js/store": "../store",
-		"@types/node":        "^25.6.0",
-		"@types/pg":          "^8.11.10",
-		"pg":                 "^8.13.3",
-		"tsup":               "^8.5.1",
-		"tsx":                "^4.21.0",
-		"typescript":         "^6.0.3"
+		"@types/node": "^25.6.0",
+		"@types/pg": "^8.11.10",
+		"pg": "^8.13.3",
+		"tsup": "^8.5.1",
+		"tsx": "^4.21.0",
+		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderie-js/sdk.git",
+		"directory": "packages/events"
+	},
+	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/events#readme",
+	"bugs": {
+		"url": "https://github.com/fonderie-js/sdk/issues"
 	}
 }

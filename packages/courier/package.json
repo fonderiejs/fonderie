@@ -2,8 +2,19 @@
 	"name": "@fonderie-js/courier",
 	"version": "0.0.1",
 	"description": "Transactional messaging for SaaS — multi-channel delivery (email, SMS, push) with FS or DB templates, per-message-type channel routing, and a persistent message log.",
-	"keywords": ["fonderie-js", "email", "sms", "transactional", "messaging", "notifications", "nodemailer", "templates", "saas", "typescript"],
-	"license": "UNLICENSED",
+	"keywords": [
+		"fonderie-js",
+		"email",
+		"sms",
+		"transactional",
+		"messaging",
+		"notifications",
+		"nodemailer",
+		"templates",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
 	"type": "module",
 	"engines": {
 		"node": ">=20"
@@ -40,22 +51,42 @@
 		"nodemailer": "^8.0.7"
 	},
 	"peerDependencies": {
-		"@fonderie-js/core":   "^0.0.1",
-		"@fonderie-js/store":  "^0.0.1",
+		"@fonderie-js/core": "^0.0.1",
+		"@fonderie-js/store": "^0.0.1",
 		"@fonderie-js/events": "^0.0.1"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/store":  { "optional": true },
-		"@fonderie-js/events": { "optional": true }
+		"@fonderie-js/store": {
+			"optional": true
+		},
+		"@fonderie-js/events": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
-		"@fonderie-js/core":   "../core",
-		"@fonderie-js/store":  "../store",
+		"@fonderie-js/core": "../core",
+		"@fonderie-js/store": "../store",
 		"@fonderie-js/events": "../events",
 		"@types/node": "^25.6.0",
 		"@types/nodemailer": "^8.0.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderie-js/sdk.git",
+		"directory": "packages/courier"
+	},
+	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/courier#readme",
+	"bugs": {
+		"url": "https://github.com/fonderie-js/sdk/issues"
 	}
 }

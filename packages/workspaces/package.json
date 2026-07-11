@@ -2,8 +2,18 @@
 	"name": "@fonderie-js/workspaces",
 	"version": "0.0.1",
 	"description": "Multi-tenant team layer — create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
-	"keywords": ["fonderie-js", "workspaces", "multi-tenant", "teams", "organizations", "invitations", "rbac", "saas", "typescript"],
-	"license": "UNLICENSED",
+	"keywords": [
+		"fonderie-js",
+		"workspaces",
+		"multi-tenant",
+		"teams",
+		"organizations",
+		"invitations",
+		"rbac",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
 	"type": "module",
 	"engines": {
 		"node": ">=20"
@@ -43,21 +53,39 @@
 	},
 	"peerDependencies": {
 		"@fonderie-js/billing": "^0.0.1",
-		"@fonderie-js/core":    "^0.0.1",
-		"@fonderie-js/events":  "^0.0.1",
-		"@fonderie-js/store":   "^0.0.1"
+		"@fonderie-js/core": "^0.0.1",
+		"@fonderie-js/events": "^0.0.1",
+		"@fonderie-js/store": "^0.0.1"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie-js/events": { "optional": true }
+		"@fonderie-js/events": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
 		"@fonderie-js/billing": "../billing",
-		"@fonderie-js/core":    "../core",
-		"@fonderie-js/events":  "../events",
-		"@fonderie-js/store":   "../store",
+		"@fonderie-js/core": "../core",
+		"@fonderie-js/events": "../events",
+		"@fonderie-js/store": "../store",
 		"@types/node": "^25.6.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderie-js/sdk.git",
+		"directory": "packages/workspaces"
+	},
+	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/workspaces#readme",
+	"bugs": {
+		"url": "https://github.com/fonderie-js/sdk/issues"
 	}
 }

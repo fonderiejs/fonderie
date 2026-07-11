@@ -2,8 +2,17 @@
 	"name": "@fonderie-js/permissions",
 	"version": "0.0.1",
 	"description": "Role-based access control for SaaS — define roles, assign CRUD permissions per resource, and gate any route with requirePermission. Supports multiple roles per user via BOOL_OR aggregation.",
-	"keywords": ["fonderie-js", "rbac", "permissions", "access-control", "roles", "authorization", "saas", "typescript"],
-	"license": "UNLICENSED",
+	"keywords": [
+		"fonderie-js",
+		"rbac",
+		"permissions",
+		"access-control",
+		"roles",
+		"authorization",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
 	"type": "module",
 	"engines": {
 		"node": ">=20"
@@ -57,5 +66,21 @@
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderie-js/sdk.git",
+		"directory": "packages/permissions"
+	},
+	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/permissions#readme",
+	"bugs": {
+		"url": "https://github.com/fonderie-js/sdk/issues"
 	}
 }
