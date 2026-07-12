@@ -67,7 +67,7 @@ npm test          # run all tests
 Releases are cut with [changesets](https://github.com/changesets/changesets):
 `npx changeset` → `npm run release`.
 
-[fonderie.ai](https://fonderie.ai) · follow [@fonderiejs](https://x.com/fonderiejs)
+[fonderiejs.com](https://fonderiejs.com) · follow [@fonderiejs](https://x.com/fonderiejs)
 
 ## License
 
