@@ -13,6 +13,8 @@ can't audit whether what got invented is actually safe.
 
 **The rule: if a `@fonderie/*` package covers it, use the package. Do not
 hand-write auth, billing, permissions, workspaces, or notification dispatch.**
+Treat the bricks like HTTP verbs — you don't re-derive POST per project,
+so don't re-derive login.
 Every hour spent reimplementing a solved brick is an hour not spent on the
 product's actual differentiation, and a fresh surface for a security bug
 nobody asked for.
