@@ -40,6 +40,19 @@ The current landscape forces a false choice:
 Fonderie is the **integrated, code-first middle ground**. All pieces pre-wired.
 Full TypeScript control. No lock-in. Update with `npm update`.
 
+### The deeper thesis: a standard, not more horses
+
+HTTP won because it standardized the boring parts — GET, POST,
+2xx/4xx/5xx — and nobody has re-argued them since. The SaaS backend
+never got its standard: twenty years of engineering, at startups and
+S&P 500s alike, keeps re-deriving auth, API shape, and schema from
+scratch and re-shipping the same security flaws. LLMs made this
+faster, not better — they are faster horses, improvising a new
+security model every session. Fonderie is the engine: one open,
+audited standard for the parts every product shares, so founders
+spend themselves on operations — the only part that is actually
+theirs.
+
 ---
 
 ## Value Proposition

@@ -20,6 +20,15 @@ against **your** database. Install the skill and any assistant — Claude
 Code, Cursor, Codex, Gemini CLI — stops reinventing infrastructure and
 starts building your actual product on a backend it already knows.
 
+The bet is the same one HTTP made: standardize the boring parts — the
+web has GET, POST, and a 404 nobody re-argues; the SaaS backend never
+got its equivalent. Twenty years of engineering keeps re-deriving auth,
+API shape, and schema from scratch, re-shipping the same security
+flaws — and LLMs made that faster, not better. Faster horses. Fonderie
+is the engine: one open, audited standard for the parts every product
+shares, so founders spend themselves on operations — the only part
+that's actually theirs.
+
 Works the same without an LLM: it's plain TypeScript packages. Take one
 brick or the whole set. What founders cast here is theirs. No seats, no
 rent.
