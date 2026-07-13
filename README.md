@@ -9,11 +9,29 @@
 
 # Fonderie SDK
 
-**Stop renting your own software.** Fonderie is a foundry for casting
-production SaaS: every package in this monorepo is a brick — auth,
-workspaces, billing, messaging, permissions, events — and each one snaps
-into the module system of `@fonderie/core`. Take one brick or the whole
-set. What you cast is yours. No seats, no rent.
+**The SaaS backend skill for AI coding assistants.** Every LLM asked to
+build a SaaS invents its own auth, its own billing wiring, its own
+permission model — different biases every session, security decisions
+nobody audits, thousands of tokens burned on boilerplate instead of your
+product. Fonderie replaces all of that with one set of pre-built,
+reviewable rails: auth, workspaces, billing, messaging, permissions,
+events — each a brick that snaps into `@fonderie/core`, each running in
+**your** process against **your** database. Install the skill and any
+assistant — Claude Code, Cursor, Codex, Gemini CLI — stops reinventing
+infrastructure and starts building your actual product on rails it
+already knows.
+
+Works the same without an LLM: it's plain TypeScript packages. Take one
+brick or the whole set. What you build is yours. No seats, no rent.
+
+## The skill
+
+This repo ships a [Claude Code skill](.claude/skills/fonderie/SKILL.md)
+that teaches an assistant to reach for `@fonderie/*` bricks instead of
+hand-writing auth, billing, or permissions. Working inside this repo (or
+any repo that vendors the skill), it loads automatically — say "add
+subscriptions" and the assistant wires `@fonderie/billing` instead of
+improvising Stripe glue.
 
 ## Quickstart
 
