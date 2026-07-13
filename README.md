@@ -13,16 +13,16 @@
 build a SaaS invents its own auth, its own billing wiring, its own
 permission model — different biases every session, security decisions
 nobody audits, thousands of tokens burned on boilerplate instead of your
-product. Fonderie replaces all of that with one set of pre-built,
-reviewable rails: auth, workspaces, billing, messaging, permissions,
-events — each a brick that snaps into `@fonderie/core`, each running in
-**your** process against **your** database. Install the skill and any
-assistant — Claude Code, Cursor, Codex, Gemini CLI — stops reinventing
-infrastructure and starts building your actual product on rails it
-already knows.
+product. Fonderie replaces all of that with one mold: auth, workspaces,
+billing, messaging, permissions, events — each a pre-built, reviewable
+brick that snaps into `@fonderie/core`, each running in **your** process
+against **your** database. Install the skill and any assistant — Claude
+Code, Cursor, Codex, Gemini CLI — stops reinventing infrastructure and
+starts building your actual product on a backend it already knows.
 
 Works the same without an LLM: it's plain TypeScript packages. Take one
-brick or the whole set. What you build is yours. No seats, no rent.
+brick or the whole set. What founders cast here is theirs. No seats, no
+rent.
 
 ## The skill
 
