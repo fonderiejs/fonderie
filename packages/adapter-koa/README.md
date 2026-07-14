@@ -13,13 +13,35 @@ npm install @fonderie/adapter-koa
 ## Use
 
 ```ts
-import { bridge, adapt, requireAuth } from '@fonderie/adapter-koa';
+import Koa from 'koa';
+import bodyParser from 'koa-bodyparser';
+import Router from '@koa/router';
+import { mount, requireAuth, withWorkspace } from '@fonderie/adapter-koa';
+import { buildFonderie } from './fonderie'; // your FonderieApp — see @fonderie/core
+
+const { fonderie, store } = await buildFonderie();
+
+const app = new Koa();
+app.use(bodyParser()); // must run first so rawBody is populated
+
+// mount() builds the fonderie context for every request and falls back to
+// fonderie's infra routes when no user route handled the request.
+mount(app, fonderie);
+
+const router = new Router();
+router.get('/jobs', requireAuth, withWorkspace(store), (ctx) => {
+  const f = ctx.state._fonderie;
+  ctx.body = { user: f.user, workspace: f.workspace };
+});
+app.use(router.routes());
+
+app.listen(3000);
 ```
 
-Register `bridge(fonderie)` as global middleware first, then use the
-re-exported guards (`requireAuth`, `requireWorkspace`, `requirePermission`,
-`requireFeature`) directly on routes.
-
+The guards `withWorkspace`, `requirePermission`, and `requireFeature` load
+their peer package lazily on first request — install `@fonderie/workspaces`,
+`@fonderie/permissions`, or `@fonderie/billing` only if you use the matching
+guard. For custom Fonderie middleware, wrap it with `adapt()`.
 `koaContextToWeb` converts Koa contexts to web-standard `Request` objects
 for the Fonderie pipeline.
 

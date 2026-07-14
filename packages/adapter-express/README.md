@@ -13,13 +13,31 @@ npm install @fonderie/adapter-express
 ## Use
 
 ```ts
-import { bridge, adapt, requireAuth } from '@fonderie/adapter-express';
+import express from 'express';
+import { mount, requireAuth, withWorkspace, type ExpressRequest } from '@fonderie/adapter-express';
+import { buildFonderie } from './fonderie'; // your FonderieApp — see @fonderie/core
+
+const { fonderie, store } = await buildFonderie();
+
+const app = express();
+app.use(express.json());
+
+// mount() registers bridge() for you and seals fonderie's infra routes
+// lazily at app.listen() — add your own routes in between.
+mount(app, fonderie);
+
+app.get('/jobs', requireAuth, withWorkspace(store), (req, res) => {
+  const ctx = (req as ExpressRequest)._fonderie!;
+  res.json({ user: ctx.user, workspace: ctx.workspace });
+});
+
+app.listen(3000);
 ```
 
-Register `bridge(fonderie)` as global middleware first, then use the
-re-exported guards (`requireAuth`, `requireWorkspace`, `requirePermission`,
-`requireFeature`) directly on routes.
-
+The guards `withWorkspace`, `requirePermission`, and `requireFeature` load
+their peer package lazily on first request — install `@fonderie/workspaces`,
+`@fonderie/permissions`, or `@fonderie/billing` only if you use the matching
+guard. For custom Fonderie middleware, wrap it with `adapt()`;
 `expressRequestToWeb` converts Express requests to web-standard `Request`
 objects for the Fonderie pipeline.
 
