@@ -13,13 +13,31 @@ npm install @fonderie/adapter-hono
 ## Use
 
 ```ts
-import { bridge, adapt, requireAuth } from '@fonderie/adapter-hono';
+import { Hono } from 'hono';
+import { mount, bridge, requireAuth, withWorkspace } from '@fonderie/adapter-hono';
+import { buildFonderie } from './fonderie'; // your FonderieApp — see @fonderie/core
+
+const { fonderie, store } = await buildFonderie();
+
+const hono = new Hono();
+
+// bridge() populates c.get('_fonderie') for your routes; mount() registers
+// fonderie's infra routes as the notFound fallback, so your routes win.
+hono.use('*', bridge(fonderie));
+mount(hono, fonderie);
+
+hono.get('/jobs', requireAuth, withWorkspace(store), (c) => {
+  const ctx = c.get('_fonderie');
+  return c.json({ user: ctx.user, workspace: ctx.workspace });
+});
+
+export default hono;
 ```
 
-Register `bridge(fonderie)` as global middleware first, then use the
-re-exported guards (`requireAuth`, `requireWorkspace`, `requirePermission`,
-`requireFeature`) directly on routes.
-
+The guards `withWorkspace`, `requirePermission`, and `requireFeature` load
+their peer package lazily on first request — install `@fonderie/workspaces`,
+`@fonderie/permissions`, or `@fonderie/billing` only if you use the matching
+guard. For custom Fonderie middleware, wrap it with `adapt()`.
 `ContextVariableMap` is augmented so `c.get('_fonderie')` is fully typed;
 `FonderieVariables` is exported for typing your `Hono` instance.
 
