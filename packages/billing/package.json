@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/billing",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "SaaS billing in one module — config-driven plan catalogue, Stripe subscriptions, polymorphic user and workspace billing surfaces, usage metering, and webhook handling.",
 	"keywords": [
 		"fonderie-js",
@@ -55,8 +55,8 @@
 		"stripe": "^22.1.1"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.1.0",
-		"@fonderie/store": "^0.1.0"
+		"@fonderie/core": "^0.1.1",
+		"@fonderie/store": "^0.1.1"
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
