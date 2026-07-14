@@ -10,6 +10,12 @@
 # OS
 **/.DS_Store
 
+# Documentation
+GAME_PLAN.md
+FONDERIE.md
+POSTMAN_SDK_PARITY.md
+ROADMAP.md
+
 # Local env files
 **/.env
 **/.env.local
