@@ -34,8 +34,8 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.1.0",
-		"@fonderie/store": "^0.1.0"
+		"@fonderie/core": "^0.1.1",
+		"@fonderie/store": "^0.1.1"
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
