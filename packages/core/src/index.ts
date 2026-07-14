@@ -2,6 +2,7 @@
 export type {
 	ITenant,
 	IRouter,
+	Operation,
 	IAuthUser,
 	Middleware,
 	IWorkspace,
@@ -12,6 +13,8 @@ export type {
 	ICourierMessage,
 	IFonderieContextMeta,
 } from './types';
+
+export { OPERATIONS } from './constants';
 
 export { FonderieApp } from './app';
 export { defineConfig } from './config';

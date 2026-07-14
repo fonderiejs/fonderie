@@ -87,3 +87,8 @@ export interface IFonderieModule {
 	deps?: string[];
 	install(app: IFonderieApp): void | Promise<void>;
 }
+
+// ── Cross-module vocabulary ───────────────────────────────────────
+// Lives in core (not permissions) so packages that only peer on core —
+// the adapters — can re-export it without loading optional peers.
+export type Operation = 'create' | 'read' | 'update' | 'delete';

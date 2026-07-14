@@ -1,4 +1,5 @@
-export type Operation = 'create' | 'read' | 'update' | 'delete';
+// Canonical definition moved to @fonderie/core; re-exported here for back-compat.
+export type { Operation } from '@fonderie/core';
 export type PermissionKey = string;
 
 export interface IPermission {
