@@ -30,7 +30,7 @@
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build": "tsup && node -e \"require('node:fs').cpSync('src/migrations/sql', 'dist/migrations/sql', {recursive:true})\"",
+		"build": "tsup && tsup --config tsup.migrations.ts",
 		"dev": "tsup --watch",
 		"typecheck": "tsc --noEmit",
 		"test": "tsx --test src/__tests__/*.test.ts",
