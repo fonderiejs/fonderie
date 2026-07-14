@@ -20,8 +20,9 @@ ROADMAP.md
 **/.env
 **/.env.local
 
-# Local scripts
-**/scripts
+# Local scripts (tracked exceptions re-included below)
+**/scripts/*
+!scripts/generate-signatures.mjs
 
 # Local example apps — not part of the public SDK
 examples/
