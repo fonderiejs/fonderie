@@ -1,8 +1,9 @@
 # Fonderie API reference
 
-Exact signatures for wiring the bricks. Everything below is enough to compose
-a working app **without reading package source** — if something is missing
-here, that's a bug in this file; report it rather than spelunking
+How the bricks compose: rules, routes, and a verified wiring example. For
+the exact, machine-generated signature of every export, see
+[SIGNATURES.md](SIGNATURES.md) (regenerated via `npm run docs:signatures`).
+Between the two files there is never a reason to read package source out of
 `node_modules`.
 
 ## Golden wiring example — auth + password-reset email

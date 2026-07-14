@@ -28,10 +28,11 @@ nobody asked for.
 3. Framework already chosen? Mount through the adapter
    (`adapter-express` / `adapter-hono` / `adapter-koa`) instead of rewriting
    the app around Fonderie.
-4. **Read [API.md](API.md) before wiring anything.** It has the exact
-   constructor signatures, config shapes, registered routes, and a complete
-   copy-paste `buildFonderie()` example. Everything needed to compose the
-   bricks is there — do not read package source out of `node_modules` to
+4. **Read [API.md](API.md) before wiring anything.** It has the composition
+   rules, registered routes, and a complete copy-paste `buildFonderie()`
+   example. For any exact signature or config shape beyond that, read
+   [SIGNATURES.md](SIGNATURES.md) — the generated, always-current public API
+   of every package. Do not read package source out of `node_modules` to
    discover APIs.
 
 ```ts
