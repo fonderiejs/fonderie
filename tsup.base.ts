@@ -9,8 +9,10 @@ export const baseConfig = {
 }
 
 // getMigrationsPath() uses import.meta.url which is ESM-only.
-// Append this as a second config entry in any package that exports migrations/.
-// Object entry form preserves the output path: dist/migrations/index.js
+// Built as a SEPARATE sequential tsup pass (tsup.migrations.ts in each package):
+// when this ran as a second entry in the same config array, the two parallel
+// dts builds raced and dist/migrations/index.d.ts was lost on multi-entry
+// packages. Object entry form preserves the output path: dist/migrations/index.js
 export const migrationsConfig = {
 	entry:     { 'migrations/index': 'src/migrations/index.ts' },
 	format:    ['esm'] as Array<'esm' | 'cjs'>,
