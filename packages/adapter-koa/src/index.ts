@@ -6,11 +6,33 @@ type KoaMiddleware<S = any, C = any> = Koa.Middleware<S, C>;
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
 import { requireAuth as _requireAuth } from '@fonderie/core/middlewares';
-import { withWorkspace as _withWorkspace } from '@fonderie/workspaces';
-import { requirePermission as _requirePermission } from '@fonderie/permissions';
-import { requireFeature as _requireFeature } from '@fonderie/billing';
+// Optional peers: type-only imports (erased at runtime). The guard factories
+// below load them lazily so installing this adapter never requires
+// @fonderie/workspaces, @fonderie/permissions, or @fonderie/billing unless
+// the corresponding guard is actually used.
+import type { withWorkspace as _withWorkspace } from '@fonderie/workspaces';
+import type { requirePermission as _requirePermission } from '@fonderie/permissions';
 
-export { OPERATIONS } from '@fonderie/permissions';
+export { OPERATIONS } from '@fonderie/core';
+
+async function loadOptionalPeer<T>(load: () => Promise<T>, pkg: string, api: string): Promise<T> {
+	try {
+		return await load();
+	} catch (err) {
+		const e = err as { code?: string; message?: string } | undefined;
+		const notFound = e?.code === 'ERR_MODULE_NOT_FOUND' || e?.code === 'MODULE_NOT_FOUND';
+		// Only claim the peer is missing when the unresolved specifier IS the
+		// peer — a transitive failure inside an installed peer must surface
+		// as-is, not as a misleading install hint.
+		const missing = notFound ? /Cannot find (?:package|module) '([^']+)'/.exec(e?.message ?? '')?.[1] : undefined;
+		if (missing === pkg || missing?.startsWith(pkg + '/')) {
+			throw new Error(
+				`[fonderie] ${api} requires the optional peer dependency "${pkg}". Install it: npm install ${pkg}`,
+			);
+		}
+		throw err;
+	}
+}
 
 // Minimal Koa shape used internally for Web Standard translation.
 // Application code uses Koa's own context types (Koa.ParameterizedContext).
@@ -122,11 +144,27 @@ export function adapt(middleware: Middleware): KoaMiddleware<any, any> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const requireAuth: KoaMiddleware<any, any> = adapt(_requireAuth);
 
+// The three guards below wrap OPTIONAL peers, so the peer is imported lazily
+// on first request — not at module load. Koa middleware is async either way,
+// so the extra await changes nothing for callers.
+
 export function withWorkspace(
 	store: Parameters<typeof _withWorkspace>[0],
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): KoaMiddleware<any, any> {
-	return adapt(_withWorkspace(store));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let inner: KoaMiddleware<any, any> | undefined;
+	return async (ctx, next) => {
+		if (!inner) {
+			const mod = await loadOptionalPeer(
+				() => import('@fonderie/workspaces'),
+				'@fonderie/workspaces',
+				'withWorkspace()',
+			);
+			inner = adapt(mod.withWorkspace(store));
+		}
+		return inner(ctx, next);
+	};
 }
 
 export function requirePermission(
@@ -134,12 +172,36 @@ export function requirePermission(
 	permissionKey: Parameters<typeof _requirePermission>[1],
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): KoaMiddleware<any, any> {
-	return adapt(_requirePermission(operation, permissionKey));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let inner: KoaMiddleware<any, any> | undefined;
+	return async (ctx, next) => {
+		if (!inner) {
+			const mod = await loadOptionalPeer(
+				() => import('@fonderie/permissions'),
+				'@fonderie/permissions',
+				'requirePermission()',
+			);
+			inner = adapt(mod.requirePermission(operation, permissionKey));
+		}
+		return inner(ctx, next);
+	};
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function requireFeature(key: string): KoaMiddleware<any, any> {
-	return adapt(_requireFeature(key));
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let inner: KoaMiddleware<any, any> | undefined;
+	return async (ctx, next) => {
+		if (!inner) {
+			const mod = await loadOptionalPeer(
+				() => import('@fonderie/billing'),
+				'@fonderie/billing',
+				'requireFeature()',
+			);
+			inner = adapt(mod.requireFeature(key));
+		}
+		return inner(ctx, next);
+	};
 }
 
 // ── mount ─────────────────────────────────────────────────────────

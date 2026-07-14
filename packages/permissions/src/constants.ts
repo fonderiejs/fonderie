@@ -1,11 +1,7 @@
 import type { Operation } from './types';
 
-export const OPERATIONS = {
-	CREATE: 'create',
-	READ: 'read',
-	UPDATE: 'update',
-	DELETE: 'delete',
-} as const satisfies Record<string, Operation>;
+// Canonical definition moved to @fonderie/core; re-exported here for back-compat.
+export { OPERATIONS } from '@fonderie/core';
 
 export const PERMISSION_COLUMN: Record<Operation, string> = {
 	create: 'can_create',

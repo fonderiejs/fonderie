@@ -3,11 +3,33 @@ import type { Hono } from 'hono';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
 import { requireAuth as _requireAuth } from '@fonderie/core/middlewares';
-import { withWorkspace as _withWorkspace } from '@fonderie/workspaces';
-import { requirePermission as _requirePermission } from '@fonderie/permissions';
-import { requireFeature as _requireFeature } from '@fonderie/billing';
+// Optional peers: type-only imports (erased at runtime). The guard factories
+// below load them lazily so installing this adapter never requires
+// @fonderie/workspaces, @fonderie/permissions, or @fonderie/billing unless
+// the corresponding guard is actually used.
+import type { withWorkspace as _withWorkspace } from '@fonderie/workspaces';
+import type { requirePermission as _requirePermission } from '@fonderie/permissions';
 
-export { OPERATIONS } from '@fonderie/permissions';
+export { OPERATIONS } from '@fonderie/core';
+
+async function loadOptionalPeer<T>(load: () => Promise<T>, pkg: string, api: string): Promise<T> {
+	try {
+		return await load();
+	} catch (err) {
+		const e = err as { code?: string; message?: string } | undefined;
+		const notFound = e?.code === 'ERR_MODULE_NOT_FOUND' || e?.code === 'MODULE_NOT_FOUND';
+		// Only claim the peer is missing when the unresolved specifier IS the
+		// peer — a transitive failure inside an installed peer must surface
+		// as-is, not as a misleading install hint.
+		const missing = notFound ? /Cannot find (?:package|module) '([^']+)'/.exec(e?.message ?? '')?.[1] : undefined;
+		if (missing === pkg || missing?.startsWith(pkg + '/')) {
+			throw new Error(
+				`[fonderie] ${api} requires the optional peer dependency "${pkg}". Install it: npm install ${pkg}`,
+			);
+		}
+		throw err;
+	}
+}
 
 // Augment Hono's ContextVariableMap so c.get('_fonderie') is typed.
 declare module 'hono' {
@@ -73,19 +95,56 @@ export function adapt(middleware: Middleware): MiddlewareHandler {
 
 export const requireAuth: MiddlewareHandler = adapt(_requireAuth);
 
+// The three guards below wrap OPTIONAL peers, so the peer is imported lazily
+// on first request — not at module load. MiddlewareHandler is async either
+// way, so the extra await changes nothing for callers.
+
 export function withWorkspace(store: Parameters<typeof _withWorkspace>[0]): MiddlewareHandler {
-	return adapt(_withWorkspace(store));
+	let inner: MiddlewareHandler | undefined;
+	return async (c, next) => {
+		if (!inner) {
+			const mod = await loadOptionalPeer(
+				() => import('@fonderie/workspaces'),
+				'@fonderie/workspaces',
+				'withWorkspace()',
+			);
+			inner = adapt(mod.withWorkspace(store));
+		}
+		return inner(c, next);
+	};
 }
 
 export function requirePermission(
 	operation: Parameters<typeof _requirePermission>[0],
 	permissionKey: Parameters<typeof _requirePermission>[1],
 ): MiddlewareHandler {
-	return adapt(_requirePermission(operation, permissionKey));
+	let inner: MiddlewareHandler | undefined;
+	return async (c, next) => {
+		if (!inner) {
+			const mod = await loadOptionalPeer(
+				() => import('@fonderie/permissions'),
+				'@fonderie/permissions',
+				'requirePermission()',
+			);
+			inner = adapt(mod.requirePermission(operation, permissionKey));
+		}
+		return inner(c, next);
+	};
 }
 
 export function requireFeature(key: string): MiddlewareHandler {
-	return adapt(_requireFeature(key));
+	let inner: MiddlewareHandler | undefined;
+	return async (c, next) => {
+		if (!inner) {
+			const mod = await loadOptionalPeer(
+				() => import('@fonderie/billing'),
+				'@fonderie/billing',
+				'requireFeature()',
+			);
+			inner = adapt(mod.requireFeature(key));
+		}
+		return inner(c, next);
+	};
 }
 
 // ── mount ─────────────────────────────────────────────────────────
