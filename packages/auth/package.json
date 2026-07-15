@@ -58,7 +58,7 @@
 		"jsonwebtoken": "^9.0.3",
 		"qrcode": "^1.5.4",
 		"zod": "^4.4.3",
-		"@fonderie/rate-limit": "^0.0.0"
+		"@fonderie/rate-limit": "^0.1.0"
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.1.1",
