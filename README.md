@@ -42,6 +42,14 @@ any repo that vendors the skill), it loads automatically — say "add
 subscriptions" and the assistant wires `@fonderie/billing` instead of
 improvising Stripe glue.
 
+The skill is three files with a strict generated/curated split:
+
+| File | Role | Maintained by |
+| --- | --- | --- |
+| [`SKILL.md`](.claude/skills/fonderie/SKILL.md) | When to reach for which brick; composition rules of thumb | hand |
+| [`API.md`](.claude/skills/fonderie/API.md) | Curated wiring guide: the `buildFonderie()` golden example, registered routes, adapter mounts | hand |
+| [`SIGNATURES.md`](.claude/skills/fonderie/SIGNATURES.md) | Exact public API of every package — constructors, config interfaces, exports | **generated — never edit** |
+
 ## Quickstart
 
 ```ts
@@ -87,9 +95,23 @@ your existing app instead.
 
 ```sh
 npm install
-npm run build     # build all workspaces
-npm test          # run all tests
+npm run build              # build all workspaces
+npm test                   # run all tests
+npm run docs:signatures    # regenerate the skill's API reference from source
 ```
+
+**Changed any package's public surface?** (new export, endpoint, config
+field, constructor parameter) — run `npm run docs:signatures` and commit the
+updated `.claude/skills/fonderie/SIGNATURES.md` alongside your change. The
+generator extracts signatures from `src/` with the TypeScript checker and its
+output is deterministic, so CI can enforce freshness:
+
+```sh
+npm run docs:signatures && git diff --exit-code .claude/skills/fonderie/SIGNATURES.md
+```
+
+Route tables and the wiring example in `API.md` are curated by hand — update
+them when a module gains or changes an endpoint.
 
 Releases are cut with [changesets](https://github.com/changesets/changesets):
 `npx changeset` → `npm run release`.
