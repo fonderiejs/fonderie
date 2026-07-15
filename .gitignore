@@ -23,6 +23,7 @@ ROADMAP.md
 # Local scripts (tracked exceptions re-included below)
 **/scripts/*
 !scripts/generate-signatures.mjs
+!scripts/audit-validation.mjs
 
 # Local example apps — not part of the public SDK
 examples/

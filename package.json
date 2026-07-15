@@ -15,7 +15,8 @@
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release": "npm run build && changeset publish",
-		"docs:signatures": "node scripts/generate-signatures.mjs"
+		"docs:signatures": "node scripts/generate-signatures.mjs",
+		"audit:validation": "node scripts/audit-validation.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.0",
