@@ -1,0 +1,12 @@
+# Token-cost experiment — raw per-run data. Model claude-fable-5, Claude Code
+# v2.1.197, headless (claude -p --output-format json), macOS, Node 24.
+# round 1 = Fonderie v0.1.0 + pre-fix skill (2026-07-13)
+# round 2 = Fonderie auth 1.1.0 / core 0.1.2 from npm + current skill (2026-07-15)
+# Aborted (disclosed, never averaged): two round-1 attempts truncated by a
+# session usage limit and rerun from scratch; one round-2 scratch attempt
+# (12 turns, $1.11) truncated by a monthly spend limit and discarded.
+run,round,cond,turns,wall_s,input_tokens,output_tokens,cache_write,cache_read,cost_usd,loc,tsc_clean,checklist_12
+a1,1,scratch,31,377,2923,22196,32145,724818,2.5074,557,yes,11
+b1,1,fonderie,77,699,3838,32157,69839,2792255,5.8359,147,yes,8
+a2,2,scratch,43,434,3066,26594,38193,845950,2.9708,626,yes,11
+b2,2,fonderie,36,291,2946,16184,43801,1001224,2.7165,103,yes,10
