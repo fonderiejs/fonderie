@@ -1,3 +1,4 @@
+import { tokenPairCookies } from '../services/cookies';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
@@ -119,10 +120,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				{
 					status: 200,
 					headers: {
-						'Set-Cookie': [
-							`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-							`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-						].join(', '),
+						'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
 					},
 				},
 			);

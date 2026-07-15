@@ -51,6 +51,9 @@ export const EVENT_KEYS = {
 export type AuthEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
+	// Adds the Secure attribute to auth cookies. Defaults to
+	// NODE_ENV === 'production'; set explicitly when that heuristic is wrong.
+	secureCookies?: boolean;
 	providers: ('email' | 'phone' | 'google' | 'github')[];
 	appName?: string;
 	resolve?: (ctx: { meta: Record<string, unknown> }) => Partial<IAuthRuntimeConfig>;

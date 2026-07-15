@@ -33,7 +33,7 @@ export function buildAuthRoutes(
 	config: IAuthConfig,
 	bus?: EventBus,
 ): RouteDefinition[] {
-	const user = userController(store, bus);
+	const user = userController(store, config, bus);
 	const auth = authController(store, config, bus);
 	const oauth = oauthController(store, config);
 	const mfa = mfaController(store, config, config.appName ?? 'Fonderie', bus);

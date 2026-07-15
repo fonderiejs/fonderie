@@ -1,3 +1,4 @@
+import { tokenPairCookies, clearedTokenCookies } from '../services/cookies';
 import { randomInt } from 'node:crypto';
 
 import type { EventBus } from '@fonderie/events';
@@ -148,10 +149,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					{
 						status: 201,
 						headers: {
-							'Set-Cookie': [
-								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-							].join(', '),
+							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
 						},
 					},
 				);
@@ -223,10 +221,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					{
 						status: 202,
 						headers: {
-							'Set-Cookie': [
-								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-							].join(', '),
+							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
 						},
 					},
 				);
@@ -296,10 +291,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					{
 						status: 200,
 						headers: {
-							'Set-Cookie': [
-								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-							].join(', '),
+							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
 						},
 					},
 				);
@@ -349,10 +341,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					{
 						status: 202,
 						headers: {
-							'Set-Cookie': [
-								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-							].join(', '),
+							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
 						},
 					},
 				);
@@ -376,10 +365,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				{
 					status: 200,
 					headers: {
-						'Set-Cookie': [
-							'access_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0',
-							'refresh_token=; HttpOnly; SameSite=Strict; Path=/auth/refresh; Max-Age=0',
-						].join(', '),
+						'Set-Cookie': clearedTokenCookies(config),
 					},
 				},
 			);
@@ -426,10 +412,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				{
 					status: 200,
 					headers: {
-						'Set-Cookie': [
-							`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-							`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-						].join(', '),
+						'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
 					},
 				},
 			);
@@ -461,13 +444,13 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			const cooldown = resolved.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
 			const remaining = checkCooldown(await passwordReset.findLastSentAt(user.id), cooldown);
 			if (remaining > 0) {
+				// Silently skip the send: a 429 here would fire only for existing
+				// accounts, letting an attacker enumerate users by requesting twice.
+				// The response must be indistinguishable from the not-found branch.
 				return setApiResponse(
-					HTTP.TOO_MANY_REQUESTS,
-					'VERIFICATION_COOLDOWN',
-					'Please wait before requesting a new password reset code.',
-					{
-						retryAfter: Math.ceil(remaining / 1000),
-					},
+					HTTP.OK,
+					'PASSWORD_RESET_EMAIL_SENT',
+					'Password reset email sent (if account exists).',
 				);
 			}
 
@@ -607,10 +590,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					{
 						status: 200,
 						headers: {
-							'Set-Cookie': [
-								`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-								`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-							].join(', '),
+							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
 						},
 					},
 				);

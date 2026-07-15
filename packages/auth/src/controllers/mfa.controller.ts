@@ -1,3 +1,4 @@
+import { tokenPairCookies } from '../services/cookies';
 import QRCode from 'qrcode';
 
 import { setApiResponse, HTTP } from '@fonderie/core';
@@ -158,10 +159,7 @@ export function mfaController(
 				{
 					status: 200,
 					headers: {
-						'Set-Cookie': [
-							`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/`,
-							`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh`,
-						].join(', '),
+						'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
 					},
 				},
 			);
