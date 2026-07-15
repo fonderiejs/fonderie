@@ -114,8 +114,33 @@ npm run docs:signatures && git diff --exit-code .claude/skills/fonderie/SIGNATUR
 Route tables and the wiring example in `API.md` are curated by hand — update
 them when a module gains or changes an endpoint.
 
-Releases are cut with [changesets](https://github.com/changesets/changesets):
-`npx changeset` → `npm run release`.
+## Branching & releases
+
+Work flows through `dev` and is promoted to `main`, which is the only branch
+that publishes:
+
+```
+feature/*  ──PR──▶  dev   (CI runs; peer review)
+dev        ──PR──▶  main  (CI runs; final review)
+merge to main  ──▶  automated npm publish
+```
+
+- Add a [changeset](https://github.com/changesets/changesets) on your feature
+  branch for any user-facing change: `npx changeset` (pick the packages and
+  bump levels). It rides through `dev` to `main`.
+- **CI** (`.github/workflows/ci.yml`) runs on every PR targeting `main` or
+  `dev`, and on pushes to `main`: build, typecheck, tests (including the
+  real Postgres + Redis concurrency tests for `@fonderie/rate-limit`), the
+  `docs:signatures` freshness gate, and the validation audit.
+- **Release** (`.github/workflows/release.yml`) runs **only on push to
+  `main`**. It opens a "Version Packages" PR consuming pending changesets;
+  merging that PR publishes to npm. Nothing on `dev` (or any other branch)
+  can publish.
+- `main` should be a protected branch (require PRs + a green CI check, no
+  direct pushes) so "only `main` publishes" is enforced, not just conventional.
+
+To publish manually instead (e.g. before CI is set up): `npx changeset version`
+then `npx changeset publish`.
 
 [fonderiejs.com](https://fonderiejs.com) · follow [@fonderiejs](https://x.com/fonderiejs)
 
