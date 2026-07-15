@@ -1906,11 +1906,14 @@ test('rate limit: 6th login attempt for one account 429s out of the box', async 
 	const routes = buildAuthRoutes(makeStore(), { ...config, rateLimit: { store: new MemoryStore() } });
 	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
 	assert.ok(login);
-	const [, , limiter] = login as any[];
+	// Route shape: [method, path, ipLimit, validate, accountLimit, controller].
+	// The per-account limiter (capacity 5) runs AFTER validation; exercise it.
+	const accountLimit = (login as any[])[4];
 
 	let last: Response = new Response();
 	for (let i = 0; i < 6; i++) {
-		last = await limiter(
+		last = await accountLimit(
+			// no client IP → the IP phase is irrelevant; this is the account bucket
 			makeCtx({ body: { email: 'target@example.com', password: 'x'.repeat(10) } }),
 			async () => new Response('ok'),
 		);
@@ -1919,6 +1922,35 @@ test('rate limit: 6th login attempt for one account 429s out of the box', async 
 	const body = (await last.json()) as any;
 	assert.equal(body.reason, 'RATE_LIMITED');
 	assert.ok(last.headers.get('Retry-After'));
+});
+
+test('rate limit: IP phase (before validation) sheds a flood from one IP', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const { MemoryStore } = await import('@fonderie/rate-limit');
+	const routes = buildAuthRoutes(makeStore(), { ...config, rateLimit: { store: new MemoryStore() } });
+	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
+	const ipLimit = (login as any[])[2]; // login IP capacity = 10
+	let last: Response = new Response();
+	for (let i = 0; i < 11; i++) {
+		last = await ipLimit(makeCtx({ ip: '203.0.113.50' }), async () => new Response('ok'));
+	}
+	assert.equal(last.status, 429);
+});
+
+test('rate limit: account bucket bites even as the attacker rotates IPs', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const { MemoryStore } = await import('@fonderie/rate-limit');
+	const routes = buildAuthRoutes(makeStore(), { ...config, rateLimit: { store: new MemoryStore() } });
+	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
+	const accountLimit = (login as any[])[4];
+	let last: Response = new Response();
+	for (let i = 0; i < 6; i++) {
+		last = await accountLimit(
+			makeCtx({ ip: `10.0.0.${i}`, body: { email: 'victim@example.com' } }),
+			async () => new Response('ok'),
+		);
+	}
+	assert.equal(last.status, 429, 'per-account limit is IP-independent');
 });
 
 test('rate limit: rateLimit: false disables it', async () => {

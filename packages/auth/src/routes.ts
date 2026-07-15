@@ -6,7 +6,7 @@ import type { IAuthConfig } from './config';
 import { requireAuth, requireAnyAuth, requireVerified } from '@fonderie/core/middlewares';
 import { requireEmailLogin } from './middlewares/require-email-login';
 import { validate } from './middlewares/validate';
-import { buildAuthLimiter } from './services/rate-limit';
+import { buildAuthIpLimiter, buildAuthAccountLimiter } from './services/rate-limit';
 import {
 	loginSchema,
 	verifySchema,
@@ -49,19 +49,23 @@ export function buildAuthRoutes(
 	// Brute-force protection — on by default, backed by the module's own
 	// store; see services/rate-limit.ts. Null when disabled via config.
 	const passthrough: Middleware = (_ctx, next) => next();
-	const limiter = (route: Parameters<typeof buildAuthLimiter>[0]): Middleware =>
-		buildAuthLimiter(route, store, config.rateLimit) ?? passthrough;
+	// IP limit runs before validate(); account limit runs after (keys on the
+	// validated, bounded email — never raw attacker input).
+	const ipLimit = (route: Parameters<typeof buildAuthIpLimiter>[0]): Middleware =>
+		buildAuthIpLimiter(route, store, config.rateLimit) ?? passthrough;
+	const acctLimit = (route: Parameters<typeof buildAuthAccountLimiter>[0]): Middleware =>
+		buildAuthAccountLimiter(route, store, config.rateLimit) ?? passthrough;
 
 	const routes: RouteDefinition[] = [
 		// Registration & Login (Public)
-		['POST', '/auth/register', limiter('register'), validate(registerSchema), auth.register],
-		['POST', '/auth/login', limiter('login'), validate(loginSchema), auth.login],
+		['POST', '/auth/register', ipLimit('register'), validate(registerSchema), auth.register],
+		['POST', '/auth/login', ipLimit('login'), validate(loginSchema), acctLimit('login'), auth.login],
 
 		// Token Management (Public)
 		['POST', '/auth/refresh', validate(refreshSchema), auth.refresh],
 
 		// Email — Password Recovery (Public)
-		['POST', '/auth/email/forgot', limiter('forgot'), validate(forgotPasswordSchema), auth.forgotPassword],
+		['POST', '/auth/email/forgot', ipLimit('forgot'), validate(forgotPasswordSchema), acctLimit('forgot'), auth.forgotPassword],
 		['POST', '/auth/email/reset', validate(resetPasswordSchema), auth.resetPassword],
 
 		// Verification (Protected — email or phone, determined by loginMethod)
@@ -85,7 +89,7 @@ export function buildAuthRoutes(
 		['POST', '/auth/mfa/setup', requireAuth, requireEmailLogin, requireVerified, mfa.setup],
 		// /auth/mfa/verify accepts both mfaPending tokens (TOTP/backup-code login)
 		// and full tokens (setup confirmation), so requireAnyAuth is used here.
-		['POST', '/auth/mfa/verify', limiter('mfaVerify'), requireAnyAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.verify],
+		['POST', '/auth/mfa/verify', ipLimit('mfaVerify'), requireAnyAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.verify],
 		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.disable],
 		[
 			'POST',

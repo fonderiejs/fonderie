@@ -225,3 +225,50 @@ test('middleware: fail-open on store errors by default, fail-closed opt-in', asy
 	const closed = rateLimit({ store: broken, rule: RULE, key: byIp('x'), failClosed: true });
 	assert.equal((await closed(makeCtx({ ip: '1.2.3.4' }), async () => new Response('ok'))).status, 429);
 });
+
+// ── hardening: hashed/bounded keys, IPv6 /64 ─────────────────────
+
+test('byBodyField: normalizes and produces a fixed-width hashed key', async () => {
+	const { byBodyField } = await import('../middleware');
+	const k = byBodyField('login', 'email');
+	const a = k(makeCtx({ body: { email: 'Jane@Example.com ' } }));
+	const b = k(makeCtx({ body: { email: 'jane@example.com' } }));
+	assert.equal(a, b, 'case/whitespace normalize to the same bucket');
+	assert.ok(a && a.startsWith('login:email:'), 'scope stays readable');
+	// the identifying tail is a base64url sha256 digest (43 chars), not the email
+	const tail = a!.split(':').pop()!;
+	assert.equal(tail.length, 43);
+	assert.ok(!tail.includes('@'), 'raw email must not appear in the key');
+});
+
+test('byBodyField: oversized value is bounded, not passed through', async () => {
+	const { byBodyField } = await import('../middleware');
+	const k = byBodyField('login', 'email');
+	const huge = 'x'.repeat(100_000) + '@evil.com';
+	const key = k(makeCtx({ body: { email: huge } }));
+	assert.ok(key, 'still produces a key');
+	assert.ok(key!.length < 80, 'key is bounded regardless of input size');
+});
+
+test('byBodyField: non-string field is skipped (null key)', async () => {
+	const { byBodyField } = await import('../middleware');
+	const k = byBodyField('login', 'email');
+	assert.equal(k(makeCtx({ body: { email: { nested: 'obj' } } })), null);
+	assert.equal(k(makeCtx({ body: {} })), null);
+});
+
+test('byIp: IPv6 keys on the /64 prefix (addresses in one /64 share a bucket)', async () => {
+	const { byIp } = await import('../middleware');
+	const k = byIp('login');
+	const a = k(makeCtx({ ip: '2001:db8:abcd:1234::1' }));
+	const b = k(makeCtx({ ip: '2001:db8:abcd:1234:ffff:ffff:ffff:ffff' }));
+	const other = k(makeCtx({ ip: '2001:db8:abcd:9999::1' }));
+	assert.equal(a, b, 'same /64 → same bucket (defeats residential /64 rotation)');
+	assert.notEqual(a, other, 'different /64 → different bucket');
+});
+
+test('byIp: IPv4 keys on the full address', async () => {
+	const { byIp } = await import('../middleware');
+	const k = byIp('login');
+	assert.notEqual(k(makeCtx({ ip: '203.0.113.1' })), k(makeCtx({ ip: '203.0.113.2' })));
+});

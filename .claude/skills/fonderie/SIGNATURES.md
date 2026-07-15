@@ -413,7 +413,9 @@ function normalizeEmail(email: string): string
 
 function normalizeEmailSafe(email: string): string | null
 
-function buildAuthLimiter(route: AuthLimitedRoute, store: IStoreAdapter, config: false | IAuthRateLimitConfig | undefined): Middleware | null
+function buildAuthIpLimiter(route: AuthLimitedRoute, store: IStoreAdapter, config: false | IAuthRateLimitConfig | undefined): Middleware | null
+
+function buildAuthAccountLimiter(route: AuthLimitedRoute, store: IStoreAdapter, config: false | IAuthRateLimitConfig | undefined): Middleware | null
 
 interface IAuthRateLimitConfig {
     store?: IRateLimitStore;

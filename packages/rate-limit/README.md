@@ -1,7 +1,8 @@
 # @fonderie/rate-limit
 
-Distributed rate limiting for `@fonderie-js` — an atomic token bucket over
-in-memory, PostgreSQL, or Redis, emitting standard `RateLimit-*` headers.
+Distributed rate limiting for `@fonderie-js` — an atomic token bucket, backed
+by your PostgreSQL by default, with an in-memory store for single instances
+and a Redis store for very high volume. Emits standard `RateLimit-*` headers.
 
 ## Install
 
@@ -52,3 +53,43 @@ the Fonderie adapters resolve with explicit proxy trust (`TRUST_PROXY`).
 ## License
 
 MIT © Fonderie, Inc.
+
+## Deploying behind a proxy (nginx, Kubernetes ingress, load balancer)
+
+`byIp()` reads the client IP that the Fonderie adapter resolved into
+`ctx.meta.clientIp`. **Read this if you run behind any L7 proxy — the default
+is wrong for you, on purpose.**
+
+The default (`TRUST_PROXY` unset) ignores `X-Forwarded-For` and uses the raw
+socket address, which is spoof-safe but means: behind nginx or a Kubernetes
+ingress, the socket address is the *proxy's* IP for every request. Every
+client collapses onto one bucket, the per-IP limit becomes global, and a
+single attacker can lock out your entire user base.
+
+There is no default that is both spoof-safe and correct behind a proxy — they
+contradict. So you must declare your topology:
+
+```sh
+# Number of trusted proxy hops between the internet and your app.
+# One nginx / one ingress in front → 1.
+TRUST_PROXY=1
+```
+
+With `TRUST_PROXY=N`, the client is taken as the Nth-from-the-right entry of
+`X-Forwarded-For` — anything a client spoofs to the left of your trusted
+proxies is ignored. Also ensure your proxy actually sets `X-Forwarded-For`
+(nginx-ingress does by default), and for Kubernetes `LoadBalancer` services
+consider `externalTrafficPolicy: Local` to preserve the source IP.
+
+When it detects the mismatch — a forwarding header present but `TRUST_PROXY`
+unset and the socket on a private/loopback address — the framework logs a
+one-time warning at request time.
+
+## Fail-open
+
+`rateLimit()` **fails open by default**: if the store errors (database down,
+Redis unreachable), the request is allowed through rather than rejected. This
+is a deliberate availability-over-strictness choice — a limiter outage
+shouldn't lock every user out of login. For endpoints where an unthrottled
+request is worse than a rejected one, set `failClosed: true` per limit. Either
+way, monitor your store: a silently failing limiter is a silently absent one.

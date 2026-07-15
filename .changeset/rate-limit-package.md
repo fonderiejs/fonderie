@@ -1,5 +1,4 @@
 ---
-"@fonderie/rate-limit": minor
 "@fonderie/auth": minor
 "@fonderie/core": patch
 "@fonderie/adapter-express": patch
