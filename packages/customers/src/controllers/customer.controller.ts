@@ -130,10 +130,11 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 					firstName: typeof firstName === 'string' ? firstName : null,
 					lastName: typeof lastName === 'string' ? lastName : null,
 					companyName: typeof companyName === 'string' ? companyName : null,
-	
+
 					avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
 					locale: typeof locale === 'string' ? locale : 'en-US',
-					referenceCode: typeof referenceCode === 'string' ? referenceCode.toUpperCase() : undefined,
+					// exactOptionalPropertyTypes: omit the key entirely when absent
+					...(typeof referenceCode === 'string' ? { referenceCode: referenceCode.toUpperCase() } : {}),
 					referenceCodePrefix: prefix,
 					createdBy: ctx.user?.id ?? null,
 				});

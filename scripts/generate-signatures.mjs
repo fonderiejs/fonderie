@@ -45,6 +45,16 @@ function renderSymbol(checker, name, symbol) {
 	if (!decl) return null;
 	const sf = decl.getSourceFile();
 
+	// Namespace re-exports (export * as ns from './x'): list the members —
+	// zod schema types are too verbose to print, but the names are the contract.
+	if (symbol.declarations?.some((d) => ts.isNamespaceExport(d))) {
+		const members = checker
+			.getExportsOfModule(target)
+			.map((m) => m.getName())
+			.sort();
+		return `namespace ${name} — exports: ${members.join(', ')}`;
+	}
+
 	// Interfaces, type aliases, enums: the declaration text IS the signature.
 	if (ts.isInterfaceDeclaration(decl) || ts.isTypeAliasDeclaration(decl) || ts.isEnumDeclaration(decl)) {
 		return printer.printNode(ts.EmitHint.Unspecified, decl, sf)

@@ -1,6 +1,8 @@
 import type { IStoreAdapter } from '@fonderie/store';
 import type { Middleware } from '@fonderie/core';
-import { requireAuth } from '@fonderie/core/middlewares';
+import { requireAuth, validate } from '@fonderie/core/middlewares';
+
+import { checkoutSchema, createPlanSchema, recordUsageSchema, updatePlanSchema } from './schemas';
 
 import type { IBillingConfig } from './config';
 import { planController } from './controllers/plan.controller';
@@ -27,16 +29,16 @@ export function buildBillingRoutes(
 		['GET', '/plans/:planId', plan.get],
 
 		// Plans — admin write (caller is responsible for authorization)
-		['POST', '/plans', plan.create],
-		['PUT', '/plans/:planId', plan.update],
+		['POST', '/plans', validate(createPlanSchema), plan.create],
+		['PUT', '/plans/:planId', validate(updatePlanSchema), plan.update],
 		['DELETE', '/plans/:planId', plan.delete],
 
 		// Billing — subscriber resolved from X-Workspace-ID header (workspace) or session (user)
 		// Workspace membership is verified automatically by the withBilling global middleware
 		['GET', '/billing/subscription', requireAuth, subscription.get],
-		['POST', '/billing/checkout', requireAuth, checkout.createSession],
+		['POST', '/billing/checkout', requireAuth, validate(checkoutSchema), checkout.createSession],
 		['POST', '/billing/portal', requireAuth, checkout.createPortal],
-		['POST', '/billing/usage', requireAuth, usage.record],
+		['POST', '/billing/usage', requireAuth, validate(recordUsageSchema), usage.record],
 		['GET', '/billing/usage/:metric', requireAuth, usage.get],
 
 		// Webhook — signature verified inside the handler

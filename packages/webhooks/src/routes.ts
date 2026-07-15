@@ -1,7 +1,9 @@
 import type { Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
-import { requireAuth } from '@fonderie/core/middlewares';
+import { requireAuth, validate } from '@fonderie/core/middlewares';
 import { withBody } from '@fonderie/core/middlewares';
+
+import { createEndpointSchema, updateEndpointSchema } from './schemas';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import { EndpointModel } from './models/endpoint.model';
@@ -19,6 +21,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			'POST',
 			'/webhooks',
 			requireAuth,
+			validate(createEndpointSchema),
 			withBody,
 			async (ctx) => {
 				if (!ctx.workspace)
@@ -97,6 +100,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			'PATCH',
 			'/webhooks/:endpointId',
 			requireAuth,
+			validate(updateEndpointSchema),
 			withBody,
 			async (ctx) => {
 				if (!ctx.workspace)

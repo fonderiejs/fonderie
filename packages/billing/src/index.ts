@@ -53,3 +53,7 @@ export {
 	deletePlan,
 } from './services/plans';
 export { getSubscription } from './services/subscriptions';
+
+// Request validation — enforced contract for body-taking routes (webhook
+// excluded: provider-shaped, signature-verified). Exported for docs/clients.
+export * as schemas from './schemas';

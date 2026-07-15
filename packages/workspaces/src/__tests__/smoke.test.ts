@@ -101,6 +101,10 @@ const WS: IWorkspace = {
 	plan: 'free',
 	ownerId: 'user-1',
 	isPersonal: false,
+	motto: null,
+	phone: null,
+	businessType: null,
+	address: null,
 	archivedAt: null,
 	archivedBy: null,
 	createdAt: new Date().toISOString(),
@@ -112,6 +116,10 @@ const MEMBER: IMember = {
 	workspaceId: 'ws-1',
 	roleId: 'r-1',
 	roleName: 'ADMIN',
+	firstName: null,
+	lastName: null,
+	email: null,
+	profileImageUrl: null,
 	confirmed: true,
 	createdAt: new Date().toISOString(),
 };
@@ -422,12 +430,12 @@ test('workspaceContext DMZ: sets ctx.workspace to personal when no header and us
 	const { withWorkspace } = await import('../middlewares/workspace-context');
 	const middleware = withWorkspace(makeStore({ personalWorkspace: PERSONAL_WS }));
 	const ctx = makeCtx({ user: { id: 'user-1', email: 'a@b.com' } });
-	let wsAfter: IWorkspace | null = null;
+	let wsAfter = null as IWorkspace | null;
 	await middleware(ctx, async () => {
 		wsAfter = ctx.workspace;
 		return Response.json({});
 	});
-	assert.equal(wsAfter?.id, 'ws-personal');
+	assert.equal((wsAfter as IWorkspace | null)?.id, 'ws-personal');
 });
 
 test('workspaceContext DMZ: next is still called when no personal workspace found', async () => {

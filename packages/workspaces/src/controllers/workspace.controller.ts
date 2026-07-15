@@ -97,7 +97,9 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			if (body?.['businessType'] !== undefined)
 				opts.businessType = typeof body['businessType'] === 'string' ? body['businessType'] : null;
 			if (body?.['address'] !== undefined && typeof body['address'] === 'object')
-				opts.address = body['address'] as Parameters<typeof workspaces.update>[1]['address'];
+				opts.address = (body['address'] ?? null) as NonNullable<
+					Parameters<typeof workspaces.update>[1]
+				>['address'] & (object | null);
 
 			const workspace = await workspaces.update(ctx.workspace.id, opts);
 			if (!workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
