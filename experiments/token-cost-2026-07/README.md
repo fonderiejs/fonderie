@@ -7,7 +7,8 @@ Raw data and harness for the blog post
 
 | File | What it is |
 | --- | --- |
-| `prompt.txt` | The fixed task prompt, identical in every run |
+| `prompt.txt` | The expert task prompt (rounds 1–2) |
+| `prompt-naive.txt` | The naive prompt (round 3): six words, no requirements |
 | `run.sh` | The runner: copies a pristine skeleton, executes one headless Claude Code session, records the JSON result |
 | `skeleton-a/` | Condition A — plain TypeScript/Express app, no auth deps |
 | `skeleton-b/` | Condition B — same app + `@fonderie/core` + the Fonderie skill (see its `SETUP.md`) |
