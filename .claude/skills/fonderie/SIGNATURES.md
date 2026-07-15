@@ -390,6 +390,16 @@ interface IUserDTO {
 
 function toUserDTO(user: IUser, phoneVerified?: boolean): IUserDTO
 
+function validate(schema: ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>): Middleware
+
+type RegisterInput = z.infer<typeof registerSchema>;
+
+type LoginInput = z.infer<typeof loginSchema>;
+
+type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
 function withSession(store: IStoreAdapter, config: IAuthConfig): Middleware
 
 function requireAuth(ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>

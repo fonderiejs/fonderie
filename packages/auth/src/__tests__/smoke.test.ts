@@ -1722,8 +1722,8 @@ test('buildAuthRoutes: verifyGate is a no-op when requireVerification is false',
 	const profileRoute = routes.find(([, path]) => path === '/users/profile');
 	assert.ok(profileRoute);
 
-	// Call the verifyGate directly (second-to-last handler before controller)
-	const verifyGate = profileRoute[profileRoute.length - 2] as any;
+	// Route shape: [method, path, requireAuth, verifyGate, validate, controller]
+	const verifyGate = profileRoute[3] as any;
 	let nextCalled = false;
 	const unverifiedCtx = makeCtx({ user: { ...BASE_USER, emailVerifiedAt: null } });
 	await verifyGate(unverifiedCtx, async () => { nextCalled = true; return new Response(); });
@@ -1740,10 +1740,101 @@ test('buildAuthRoutes: verifyGate blocks unverified users when requireVerificati
 	const profileRoute = routes.find(([, path]) => path === '/users/profile');
 	assert.ok(profileRoute);
 
-	const verifyGate = profileRoute[profileRoute.length - 2] as any;
+	// Route shape: [method, path, requireAuth, verifyGate, validate, controller]
+	const verifyGate = profileRoute[3] as any;
 	const unverifiedCtx = makeCtx({ user: { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email' } });
 	const response = await verifyGate(unverifiedCtx, async () => new Response());
 	assert.equal(response.status, 403);
 	const body = (await response.json()) as any;
 	assert.equal(body.reason, 'EMAIL_NOT_VERIFIED');
+});
+
+// ── validate() middleware + request schemas ─────────────────────────
+
+test('validate: rejects registration with a weak password', async () => {
+	const { validate } = await import('../middlewares/validate');
+	const { registerSchema } = await import('../schemas');
+	const mw = validate(registerSchema);
+	const res = await mw(
+		makeCtx({ body: { email: 'jane@example.com', password: 'short' } }),
+		async () => new Response(),
+	);
+	assert.equal(res.status, 422);
+	const body = (await res.json()) as any;
+	assert.equal(body.reason, 'INVALID_PARAMETER');
+});
+
+test('validate: rejects registration with a malformed email', async () => {
+	const { validate } = await import('../middlewares/validate');
+	const { registerSchema } = await import('../schemas');
+	const mw = validate(registerSchema);
+	const res = await mw(
+		makeCtx({ body: { email: 'not-an-email', password: 'longenough123' } }),
+		async () => new Response(),
+	);
+	assert.equal(res.status, 422);
+});
+
+test('validate: rejects oversized passwords before they reach bcrypt', async () => {
+	const { validate } = await import('../middlewares/validate');
+	const { registerSchema } = await import('../schemas');
+	const mw = validate(registerSchema);
+	const res = await mw(
+		makeCtx({ body: { email: 'jane@example.com', password: 'x'.repeat(4096) } }),
+		async () => new Response(),
+	);
+	assert.equal(res.status, 422);
+});
+
+test('validate: passes clean registration through with parsed body', async () => {
+	const { validate } = await import('../middlewares/validate');
+	const { registerSchema } = await import('../schemas');
+	const mw = validate(registerSchema);
+	const ctx = makeCtx({
+		body: { email: '  jane@example.com  ', password: 'longenough123', junk: 'stripped' },
+	});
+	let nextCalled = false;
+	const res = await mw(ctx, async () => { nextCalled = true; return new Response(); });
+	assert.ok(nextCalled);
+	assert.equal(res.status, 200);
+	const parsed = ctx.meta.body as Record<string, unknown>;
+	assert.equal(parsed.email, 'jane@example.com'); // trimmed
+	assert.equal('junk' in parsed, false); // unknown keys stripped
+});
+
+test('validate: reset requires a 6-digit pin', async () => {
+	const { validate } = await import('../middlewares/validate');
+	const { resetPasswordSchema } = await import('../schemas');
+	const mw = validate(resetPasswordSchema);
+	const bad = await mw(
+		makeCtx({ body: { pin: 'abc123', password: 'longenough123' } }),
+		async () => new Response(),
+	);
+	assert.equal(bad.status, 422);
+	const ok = await mw(
+		makeCtx({ body: { pin: ' 123456 ', password: 'longenough123' } }),
+		async () => new Response(),
+	);
+	assert.equal(ok.status, 200);
+});
+
+test('validate: profile update requires at least one field', async () => {
+	const { validate } = await import('../middlewares/validate');
+	const { updateProfileSchema } = await import('../schemas');
+	const mw = validate(updateProfileSchema);
+	const res = await mw(makeCtx({ body: {} }), async () => new Response());
+	assert.equal(res.status, 422);
+});
+
+test('validate: registration via phone branch accepts E.164 with separators', async () => {
+	const { validate } = await import('../middlewares/validate');
+	const { registerSchema } = await import('../schemas');
+	const mw = validate(registerSchema);
+	const ok = await mw(
+		makeCtx({ body: { phone: '+1 (628) 555-0136' } }),
+		async () => new Response(),
+	);
+	assert.equal(ok.status, 200);
+	const bad = await mw(makeCtx({ body: { phone: '012' } }), async () => new Response());
+	assert.equal(bad.status, 422);
 });

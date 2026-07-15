@@ -9,6 +9,12 @@ export type { AuthMessageKey } from './config';
 export type { IUserDTO } from './dtos/user';
 export { toUserDTO } from './dtos/user';
 
+// Request validation — schemas are the enforced contract for every
+// body-taking route; exported for docs generation and typed clients.
+export { validate } from './middlewares/validate';
+export * as schemas from './schemas';
+export type { RegisterInput, LoginInput, ResetPasswordInput, ChangePasswordInput } from './schemas';
+
 // Guards — used by other modules and user route handlers
 export { withSession } from './middlewares/session';
 export { requireAuth } from './middlewares/require-auth';
