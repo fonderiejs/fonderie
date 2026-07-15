@@ -1,5 +1,22 @@
 # @fonderie/auth
 
+## 1.1.0
+
+### Minor Changes
+
+- One request-validation layer across every endpoint-exposing package:
+
+  - `validate(schema)` middleware in `@fonderie/core/middlewares` (structural
+    `safeParse` interface — core stays dependency-free)
+  - zod request schemas on all 43 body-taking routes across auth, workspaces,
+    billing, customers, and webhooks; invalid input returns 422
+    `INVALID_PARAMETER` with a field path before the controller runs; parsed
+    bodies are trimmed and stripped of unknown keys
+  - schemas exported per package (`schemas.*`) so docs generators and typed
+    clients read the same contract the runtime enforces
+  - provider-shaped webhooks (`/billing/webhook`, `/courier/delivery/*`) are
+    deliberately exempt — gated by signature verification instead
+
 ## 1.0.1
 
 ### Patch Changes
