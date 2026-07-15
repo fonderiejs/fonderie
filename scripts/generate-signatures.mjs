@@ -124,23 +124,44 @@ function renderPackage(pkg) {
 	return `${header.join('\n\n')}\n\n\`\`\`ts\n${blocks.join('\n\n')}\n\`\`\``;
 }
 
-const sections = PACKAGES
-	.filter((p) => existsSync(join(root, 'packages', p, 'src/index.ts')))
-	.map((p) => {
-		process.stdout.write(`  ${p}\n`);
-		return renderPackage(p);
-	});
+// Per-package output. Writing one file per package (instead of a single
+// megafile) means an agent wiring, say, auth pulls ~1K tokens of auth
+// signatures into context — not the ~13K of all 17 packages, re-charged as
+// cache-read on every turn. This is a measured cost lever: the monolith was
+// the single largest resident-context item in the token-cost experiment.
+import { mkdirSync, rmSync, readdirSync } from 'node:fs';
 
-const out = `# Fonderie — generated API signatures
+const outDir = join(root, '.claude/skills/fonderie/signatures');
+mkdirSync(outDir, { recursive: true });
+// Clean stale per-package files so a removed package doesn't linger.
+for (const f of readdirSync(outDir)) {
+	if (f.endsWith('.md')) rmSync(join(outDir, f));
+}
 
-<!-- GENERATED FILE — do not edit. Regenerate with: npm run docs:signatures -->
+const HEADER = `<!-- GENERATED — do not edit. Regenerate with: npm run docs:signatures -->\n\n`;
+const index = [];
 
-Exact public signatures extracted from source by \`scripts/generate-signatures.mjs\`.
-For the curated wiring guide (composition rules, golden example, routes), see
-[API.md](API.md). If a signature here disagrees with API.md, this file wins.
+for (const p of PACKAGES) {
+	if (!existsSync(join(root, 'packages', p, 'src/index.ts'))) continue;
+	process.stdout.write(`  ${p}\n`);
+	const body = renderPackage(p);
+	const pkgName = JSON.parse(
+		readFileSync(join(root, 'packages', p, 'package.json'), 'utf8'),
+	).name;
+	writeFileSync(join(outDir, `${p}.md`), `${HEADER}# ${pkgName} — signatures\n\n${body}\n`);
+	index.push(`- \`${pkgName}\` → [signatures/${p}.md](signatures/${p}.md)`);
+}
 
-${sections.join('\n\n')}
+// Slim index replaces the old monolith. Reading THIS is cheap; it tells the
+// agent which single per-package file to open.
+const idx = `# Fonderie — generated API signatures (index)
+
+${HEADER}Exact public signatures per package, extracted from source. **Read only the
+file for the package you are wiring** — do not load them all. For the curated
+composition guide (rules, golden \`buildFonderie()\` example, routes), see
+[API.md](API.md).
+
+${index.join('\n')}
 `;
-
-writeFileSync(join(root, '.claude/skills/fonderie/SIGNATURES.md'), out);
-console.log(`wrote .claude/skills/fonderie/SIGNATURES.md (${out.length} bytes)`);
+writeFileSync(join(root, '.claude/skills/fonderie/SIGNATURES.md'), idx);
+console.log(`wrote signatures/ (${index.length} packages) + SIGNATURES.md index (${idx.length} bytes)`);
