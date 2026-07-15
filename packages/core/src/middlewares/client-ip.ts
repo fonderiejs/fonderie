@@ -50,17 +50,24 @@ function normalizeIp(ip: string): string {
 	return m ? m[1]! : noV6Prefix;
 }
 
+// Address ranges that indicate a local proxy sits in front of us (so a
+// forwarding header without TRUST_PROXY is a misconfiguration, not spoofing).
+const LOOPBACK_IPS = new Set(['127.0.0.1', '::1']);
+const PRIVATE_IP_PREFIXES = [
+	'10.', // RFC1918
+	'192.168.', // RFC1918
+	'169.254.', // link-local
+	'fc', // IPv6 unique local (fc00::/7)
+	'fd', // IPv6 unique local
+] as const;
+const CGNAT_OR_RFC1918_172 = /^172\.(1[6-9]|2\d|3[01])\./; // 172.16.0.0/12
+
 function isPrivateOrLoopback(ip: string): boolean {
 	const a = normalizeIp(ip);
 	return (
-		a === '127.0.0.1' ||
-		a === '::1' ||
-		a.startsWith('10.') ||
-		a.startsWith('192.168.') ||
-		a.startsWith('169.254.') || // link-local
-		a.startsWith('fc') ||
-		a.startsWith('fd') || // IPv6 ULA
-		/^172\.(1[6-9]|2\d|3[01])\./.test(a) // 172.16.0.0/12
+		LOOPBACK_IPS.has(a) ||
+		CGNAT_OR_RFC1918_172.test(a) ||
+		PRIVATE_IP_PREFIXES.some((prefix) => a.startsWith(prefix))
 	);
 }
 

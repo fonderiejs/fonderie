@@ -322,3 +322,54 @@ test('boot: module with no deps installs without error', async () => {
 	const m: IFonderieModule = { name: 'standalone', install() {} };
 	await assert.doesNotReject(() => new FonderieApp(config).register(m).boot());
 });
+
+// ── client-ip resolution + proxy-config detection ────────────────
+
+import { resolveClientIp, checkProxyConfig } from '../middlewares/client-ip';
+import { _resetProxyWarning } from '../middlewares/client-ip';
+
+test('resolveClientIp: trustProxy=0 uses the socket, ignoring X-Forwarded-For', () => {
+	const ip = resolveClientIp('203.0.113.5', new Headers({ 'x-forwarded-for': '1.2.3.4' }), 0);
+	assert.equal(ip, '203.0.113.5', 'spoofed XFF is ignored when no proxy is trusted');
+});
+
+test('resolveClientIp: trustProxy=N takes the Nth-from-right XFF entry', () => {
+	// client, proxy2, proxy1(trusted) → with 1 trusted hop, client is the last entry
+	const ip = resolveClientIp('10.0.0.1', new Headers({ 'x-forwarded-for': 'spoof, 198.51.100.9' }), 1);
+	assert.equal(ip, '198.51.100.9');
+});
+
+test('resolveClientIp: normalizes IPv4-mapped and strips ports', () => {
+	assert.equal(resolveClientIp('::ffff:203.0.113.7', new Headers(), 0), '203.0.113.7');
+	assert.equal(resolveClientIp('203.0.113.7:54321', new Headers(), 0), '203.0.113.7');
+});
+
+test('checkProxyConfig: warns for private/loopback sockets across all ranges', () => {
+	const warnings: string[] = [];
+	const orig = console.warn;
+	console.warn = (m: string) => void warnings.push(m);
+	try {
+		for (const socket of ['127.0.0.1', '::1', '10.1.2.3', '192.168.0.5', '169.254.1.1', '172.16.9.9', 'fd00::1']) {
+			_resetProxyWarning();
+			warnings.length = 0;
+			checkProxyConfig(socket, new Headers({ 'x-forwarded-for': '203.0.113.1' }), 0);
+			assert.equal(warnings.length, 1, `should warn for private socket ${socket}`);
+			assert.match(warnings[0]!, /TRUST_PROXY/);
+		}
+	} finally {
+		console.warn = orig;
+	}
+});
+
+test('checkProxyConfig: does NOT warn for a public socket', () => {
+	const warnings: string[] = [];
+	const orig = console.warn;
+	console.warn = (m: string) => void warnings.push(m);
+	try {
+		_resetProxyWarning();
+		checkProxyConfig('203.0.113.9', new Headers({ 'x-forwarded-for': '198.51.100.1' }), 0);
+		assert.equal(warnings.length, 0, 'a public-IP socket is not a local-proxy misconfig');
+	} finally {
+		console.warn = orig;
+	}
+});
