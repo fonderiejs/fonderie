@@ -30,10 +30,11 @@ nobody asked for.
    the app around Fonderie.
 4. **Read [API.md](API.md) before wiring anything.** It has the composition
    rules, registered routes, and a complete copy-paste `buildFonderie()`
-   example. For any exact signature or config shape beyond that, read
-   [SIGNATURES.md](SIGNATURES.md) — the generated, always-current public API
-   of every package. Do not read package source out of `node_modules` to
-   discover APIs.
+   example — usually enough on its own. For an exact signature or config
+   shape beyond that, open **only the per-package file** for the brick you
+   are wiring: `signatures/<package>.md` (e.g. `signatures/auth.md`) — listed
+   in [SIGNATURES.md](SIGNATURES.md). Load only what you need; do not read all
+   of them, and do not read package source out of `node_modules`.
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';

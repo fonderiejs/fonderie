@@ -36,6 +36,6 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npm run build
-      - run: npm run docs:signatures && git diff --exit-code .claude/skills/fonderie/SIGNATURES.md
+      - run: npm run docs:signatures && git diff --exit-code .claude/skills/fonderie/SIGNATURES.md .claude/skills/fonderie/signatures
       - run: npm run audit:validation
       - run: npm test
