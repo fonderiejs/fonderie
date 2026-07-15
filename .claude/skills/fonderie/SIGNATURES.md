@@ -339,6 +339,7 @@ new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus | undef
   .install(app: IFonderieApp): void
 
 interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
+    secureCookies?: boolean;
     providers: ('email' | 'phone' | 'google' | 'github')[];
     appName?: string;
     resolve?: (ctx: {

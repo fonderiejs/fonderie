@@ -1,5 +1,20 @@
 # @fonderie/auth
 
+## 1.1.1
+
+### Patch Changes
+
+- Two security fixes found by measuring an AI agent's build against this module:
+
+  - Auth cookies now carry the `Secure` attribute (default: `NODE_ENV ===
+'production'`; override with the new `secureCookies` config flag). All
+    login paths — email, phone, OAuth, MFA, refresh, logout — share one
+    cookie serializer, so the attributes can't drift between routes again.
+  - The forgot-password cooldown no longer answers `429 VERIFICATION_COOLDOWN`
+    (which fired only for existing accounts, letting an attacker enumerate
+    users by requesting twice). Within the cooldown the send is silently
+    skipped and the response is byte-identical to the unknown-email branch.
+
 ## 1.1.0
 
 ### Minor Changes

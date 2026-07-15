@@ -251,7 +251,7 @@ function makeAuth(storeOpts: AuthStoreOpts = {}, bus?: any) {
 }
 
 function makeUser(storeOpts: AuthStoreOpts = {}, bus?: any) {
-	return userController(makeStore(storeOpts), bus);
+	return userController(makeStore(storeOpts), config, bus);
 }
 
 function makeMfa(storeOpts: AuthStoreOpts = {}, bus?: any) {
@@ -671,14 +671,16 @@ test('forgotPassword: 200 with PASSWORD_RESET_EMAIL_SENT even when email not fou
 	assert.equal(body.reason, 'PASSWORD_RESET_EMAIL_SENT');
 });
 
-test('forgotPassword: 429 VERIFICATION_COOLDOWN when reset was requested recently', async () => {
+test('forgotPassword: cooldown suppresses the send but keeps the uniform envelope (no enumeration)', async () => {
+	// Previously returned 429 VERIFICATION_COOLDOWN — which fired only for
+	// existing accounts, so two rapid requests revealed whether an email was
+	// registered. The cooldown must be indistinguishable from every other
+	// outcome of this endpoint.
 	const ctrl = makeAuth({ userByEmail: BASE_USER, resetLastSentAt: new Date(Date.now() - 60_000) }); // 1 min ago
 	const response = await ctrl.forgotPassword(makeCtx({ body: { email: 'jane@example.com' } }));
-	assert.equal(response.status, 429);
+	assert.equal(response.status, 200);
 	const body = (await response.json()) as any;
-	assert.equal(body.reason, 'VERIFICATION_COOLDOWN');
-	assert.ok(typeof body.details.retryAfter === 'number');
-	assert.ok(body.details.retryAfter > 0);
+	assert.equal(body.reason, 'PASSWORD_RESET_EMAIL_SENT');
 });
 
 test('forgotPassword: 200 PASSWORD_RESET_EMAIL_SENT when cooldown has passed', async () => {
@@ -1560,7 +1562,7 @@ test('register (phone): emits user.registered with loginMethod: phone', async ()
 
 test('deleteMe: emits user.deleted with correct userId', async () => {
 	const bus = makeBus();
-	const ctrl = userController(makeStore(), bus as any);
+	const ctrl = userController(makeStore(), config, bus as any);
 	await ctrl.deleteMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
 	assert.equal(bus.emitted.length, 1);
 	assert.equal(bus.emitted[0]?.type, EVENT_KEYS.userDeleted);
@@ -1837,4 +1839,60 @@ test('validate: registration via phone branch accepts E.164 with separators', as
 	assert.equal(ok.status, 200);
 	const bad = await mw(makeCtx({ body: { phone: '012' } }), async () => new Response());
 	assert.equal(bad.status, 422);
+});
+
+// ── security patch: cookie Secure attribute + enumeration-safe cooldown ──
+
+test('cookies carry Secure when secureCookies is true, never when false', async () => {
+	const { tokenPairCookies, clearedTokenCookies } = await import('../services/cookies');
+	const on = tokenPairCookies('a', 'r', { ...config, secureCookies: true });
+	const off = tokenPairCookies('a', 'r', { ...config, secureCookies: false });
+	assert.ok(/access_token=a; HttpOnly; SameSite=Strict; Path=\/; Secure/.test(on));
+	assert.ok(/refresh_token=r; HttpOnly; SameSite=Strict; Path=\/auth\/refresh; Secure/.test(on));
+	assert.ok(!off.includes('Secure'));
+	assert.ok(clearedTokenCookies({ ...config, secureCookies: true }).match(/Max-Age=0; Secure/));
+});
+
+test('cookies default Secure from NODE_ENV=production', async () => {
+	const { tokenPairCookies } = await import('../services/cookies');
+	const prev = process.env.NODE_ENV;
+	process.env.NODE_ENV = 'production';
+	try {
+		assert.ok(tokenPairCookies('a', 'r', config).includes('; Secure'));
+	} finally {
+		if (prev === undefined) delete process.env.NODE_ENV;
+		else process.env.NODE_ENV = prev;
+	}
+});
+
+test('login sets Secure cookies when configured', async () => {
+	const { hashPassword } = await import('../services/password');
+	const user = { ...BASE_USER, passwordHash: await hashPassword('longenough123') };
+	const ctrl = authController(
+		makeStore({ userByEmail: user }),
+		{ ...config, secureCookies: true },
+	);
+	const res = await ctrl.login(makeCtx({ body: { email: BASE_USER.email, password: 'longenough123' } }));
+	assert.equal(res.status, 200);
+	const setCookie = res.headers.get('Set-Cookie') ?? '';
+	assert.ok(setCookie.includes('; Secure'), 'login cookies must carry Secure');
+});
+
+test('forgotPassword within cooldown returns the same envelope as unknown email', async () => {
+	// resetLastSentAt = now → cooldown active for the known account
+	const knownStore = makeStore({ userByEmail: { ...BASE_USER }, resetLastSentAt: new Date() });
+	const unknownStore = makeStore({ userByEmail: null });
+	const knownCtrl = authController(knownStore, config);
+	const unknownCtrl = authController(unknownStore, config);
+
+	const known = await knownCtrl.forgotPassword(makeCtx({ body: { email: BASE_USER.email } }));
+	const unknown = await unknownCtrl.forgotPassword(makeCtx({ body: { email: 'ghost@example.com' } }));
+
+	assert.equal(known.status, 200);
+	assert.equal(known.status, unknown.status);
+	const kb = (await known.json()) as any;
+	const ub = (await unknown.json()) as any;
+	assert.equal(kb.reason, ub.reason);
+	assert.equal(kb.reason, 'PASSWORD_RESET_EMAIL_SENT');
+	assert.equal('retryAfter' in (kb.result ?? {}), false);
 });

@@ -1,8 +1,10 @@
+import { clearedTokenCookies } from '../services/cookies';
 import { randomInt } from 'node:crypto';
 
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
+import type { IAuthConfig } from '../config';
 
 import type { EventBus } from '@fonderie/events';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
@@ -23,7 +25,7 @@ function isValidPhone(phone: unknown): phone is string {
 	return typeof phone === 'string' && /^\+?[1-9]\d{6,14}$/.test(normalizePhone(phone));
 }
 
-export function userController(store: IStoreAdapter, bus?: EventBus) {
+export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users = new UserModel(store);
 	const emailVerif = new EmailVerificationModel(store);
 	const phoneVerif = new PhoneVerificationModel(store);
@@ -253,10 +255,7 @@ export function userController(store: IStoreAdapter, bus?: EventBus) {
 				{
 					status: 200,
 					headers: {
-						'Set-Cookie': [
-							'access_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0',
-							'refresh_token=; HttpOnly; SameSite=Strict; Path=/auth/refresh; Max-Age=0',
-						].join(', '),
+						'Set-Cookie': clearedTokenCookies(config),
 					},
 				},
 			);
