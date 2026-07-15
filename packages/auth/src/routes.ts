@@ -62,7 +62,7 @@ export function buildAuthRoutes(
 		['GET', '/auth/send-verification', requireAuth, auth.sendVerification],
 
 		// Account Management (Protected)
-		['POST', '/auth/logout', requireAuth, auth.logout],
+		['POST', '/auth/logout', requireAuth, validate(refreshSchema), auth.logout],
 
 		// User Profile (Protected; writes also gate on requireVerification)
 		['GET', '/users', requireAuth, user.me],
@@ -86,6 +86,7 @@ export function buildAuthRoutes(
 			requireAuth,
 			requireEmailLogin,
 			requireVerified,
+			validate(mfaTokenSchema),
 			mfa.regenerateBackupCodes,
 		],
 	];
