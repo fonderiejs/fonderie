@@ -70,14 +70,15 @@ function pgEmulator(): IStoreAdapter & { rows: Map<string, { tokens: number; las
 	const adapter = {
 		rows,
 		async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
-			if (sql.startsWith('DELETE')) {
-				const cutoff = params![0] as number;
-				for (const [k, r] of rows) if (r.last < cutoff) rows.delete(k);
+			// Store now sources time itself (clock_timestamp() in real PG); the
+			// emulator models that single authoritative clock with Date.now().
+			const now = Date.now();
+			if (sql.trim().startsWith('DELETE')) {
+				const idleMs = params![0] as number;
+				for (const [k, r] of rows) if (r.last < now - idleMs) rows.delete(k);
 				return [];
 			}
-			const [key, capacity, now, cost, refillPerSec] = params as [
-				string, number, number, number, number,
-			];
+			const [key, capacity, cost, refillPerSec] = params as [string, number, number, number];
 			const prev = locks.get(key) ?? Promise.resolve();
 			const run = prev.then(async () => {
 				const row = rows.get(key);
@@ -134,13 +135,15 @@ function redisEmulator() {
 		hashes,
 		eval(_script: string, _numKeys: number, ...args: (string | number)[]) {
 			// Redis runs scripts serially — model that with one global chain.
+			// The Lua sources time via redis.call('TIME'); emulate that single
+			// server clock with Date.now() (args no longer carry `now`).
 			const run = chain.then(async () => {
-				const [key, capacity, now, cost, refillPerSec] = [
+				const now = Date.now();
+				const [key, capacity, cost, refillPerSec] = [
 					args[0] as string,
 					Number(args[1]),
 					Number(args[2]),
 					Number(args[3]),
-					Number(args[4]),
 				];
 				const row = hashes.get(key);
 				const tokens = row ? row.tokens : capacity;
