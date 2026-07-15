@@ -1,5 +1,20 @@
 import type { Middleware } from '@fonderie/core';
-import { requireAuth } from '@fonderie/core/middlewares';
+import { requireAuth, validate } from '@fonderie/core/middlewares';
+
+import {
+	noteSchema,
+	addTagSchema,
+	addEmailSchema,
+	addPhoneSchema,
+	blacklistSchema,
+	addAddressSchema,
+	updateEmailSchema,
+	updatePhoneSchema,
+	updateAddressSchema,
+	createCustomerSchema,
+	updateCustomerSchema,
+	addRelationshipSchema,
+} from './schemas';
 import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
 import { withWorkspace } from '@fonderie/workspaces';
@@ -39,48 +54,48 @@ export function buildCustomerRoutes(
 
 		// ── Core customer CRUD ───────────────────────────────────────────
 		['GET', '/customers', requireAuth, wsCtx, customer.list],
-		['POST', '/customers', requireAuth, wsCtx, customer.create],
+		['POST', '/customers', requireAuth, wsCtx, validate(createCustomerSchema), customer.create],
 		['GET', '/customers/:customerId', requireAuth, wsCtx, customer.get],
-		['PUT', '/customers/:customerId', requireAuth, wsCtx, customer.update],
+		['PUT', '/customers/:customerId', requireAuth, wsCtx, validate(updateCustomerSchema), customer.update],
 		['DELETE', '/customers/:customerId', requireAuth, wsCtx, customer.delete],
-		['POST', '/customers/:customerId/blacklist', requireAuth, wsCtx, customer.blacklist],
+		['POST', '/customers/:customerId/blacklist', requireAuth, wsCtx, validate(blacklistSchema), customer.blacklist],
 		['POST', '/customers/:customerId/unblacklist', requireAuth, wsCtx, customer.unblacklist],
 
 		// ── Emails ───────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/emails', requireAuth, wsCtx, email.list],
-		['POST', '/customers/:customerId/emails', requireAuth, wsCtx, email.add],
-		['PATCH', '/customers/:customerId/emails/:emailId', requireAuth, wsCtx, email.update],
+		['POST', '/customers/:customerId/emails', requireAuth, wsCtx, validate(addEmailSchema), email.add],
+		['PATCH', '/customers/:customerId/emails/:emailId', requireAuth, wsCtx, validate(updateEmailSchema), email.update],
 		['PUT', '/customers/:customerId/emails/:emailId/primary', requireAuth, wsCtx, email.setPrimary],
 		['DELETE', '/customers/:customerId/emails/:emailId', requireAuth, wsCtx, email.remove],
 
 		// ── Phones ───────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/phones', requireAuth, wsCtx, phone.list],
-		['POST', '/customers/:customerId/phones', requireAuth, wsCtx, phone.add],
-		['PATCH', '/customers/:customerId/phones/:phoneId', requireAuth, wsCtx, phone.update],
+		['POST', '/customers/:customerId/phones', requireAuth, wsCtx, validate(addPhoneSchema), phone.add],
+		['PATCH', '/customers/:customerId/phones/:phoneId', requireAuth, wsCtx, validate(updatePhoneSchema), phone.update],
 		['PUT', '/customers/:customerId/phones/:phoneId/primary', requireAuth, wsCtx, phone.setPrimary],
 		['DELETE', '/customers/:customerId/phones/:phoneId', requireAuth, wsCtx, phone.remove],
 
 		// ── Addresses ────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/addresses', requireAuth, wsCtx, address.list],
-		['POST', '/customers/:customerId/addresses', requireAuth, wsCtx, address.add],
-		['PATCH', '/customers/:customerId/addresses/:addrId', requireAuth, wsCtx, address.update],
+		['POST', '/customers/:customerId/addresses', requireAuth, wsCtx, validate(addAddressSchema), address.add],
+		['PATCH', '/customers/:customerId/addresses/:addrId', requireAuth, wsCtx, validate(updateAddressSchema), address.update],
 		['PUT', '/customers/:customerId/addresses/:addrId/primary', requireAuth, wsCtx, address.setPrimary],
 		['DELETE', '/customers/:customerId/addresses/:addrId', requireAuth, wsCtx, address.remove],
 
 		// ── Notes ────────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/notes', requireAuth, wsCtx, note.list],
-		['POST', '/customers/:customerId/notes', requireAuth, wsCtx, note.create],
-		['PUT', '/customers/:customerId/notes/:noteId', requireAuth, wsCtx, note.update],
+		['POST', '/customers/:customerId/notes', requireAuth, wsCtx, validate(noteSchema), note.create],
+		['PUT', '/customers/:customerId/notes/:noteId', requireAuth, wsCtx, validate(noteSchema), note.update],
 		['DELETE', '/customers/:customerId/notes/:noteId', requireAuth, wsCtx, note.delete],
 
 		// ── Tags ─────────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/tags', requireAuth, wsCtx, tag.list],
-		['POST', '/customers/:customerId/tags', requireAuth, wsCtx, tag.add],
+		['POST', '/customers/:customerId/tags', requireAuth, wsCtx, validate(addTagSchema), tag.add],
 		['DELETE', '/customers/:customerId/tags/:tag', requireAuth, wsCtx, tag.remove],
 
 		// ── Relationships ────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/relationships', requireAuth, wsCtx, relationship.list],
-		['POST', '/customers/:customerId/relationships', requireAuth, wsCtx, relationship.add],
+		['POST', '/customers/:customerId/relationships', requireAuth, wsCtx, validate(addRelationshipSchema), relationship.add],
 		['PUT', '/customers/:customerId/relationships/:relatedId/primary', requireAuth, wsCtx, relationship.setPrimary],
 		['DELETE', '/customers/:customerId/relationships/:relatedId', requireAuth, wsCtx, relationship.remove],
 	];

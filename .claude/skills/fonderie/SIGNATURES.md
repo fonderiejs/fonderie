@@ -390,7 +390,9 @@ interface IUserDTO {
 
 function toUserDTO(user: IUser, phoneVerified?: boolean): IUserDTO
 
-function validate(schema: ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>): Middleware
+function validate(schema: IRequestSchema): Middleware
+
+namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, changePasswordSchema, forgotPasswordSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, resetPasswordSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
 
 type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -700,6 +702,8 @@ function toSettingsDTO(s: IWorkspaceSettings): IWorkspaceSettingsDTO
 function withWorkspace(store: IStoreAdapter): Middleware
 
 function requireWorkspace(ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
+
+namespace schemas — exports: acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
 ```
 
 ## @fonderie/billing
@@ -963,6 +967,8 @@ function updatePlan(id: string, data: Partial<Omit<IPlan, "id">>, store: IStoreA
 function deletePlan(id: string, store: IStoreAdapter): Promise<boolean>
 
 function getSubscription(subscriberType: SubscriberType, subscriberId: string, store: IStoreAdapter): Promise<ISubscription | null>
+
+namespace schemas — exports: checkoutSchema, createPlanSchema, recordUsageSchema, updatePlanSchema
 ```
 
 ## @fonderie/permissions
@@ -1324,6 +1330,8 @@ interface ICustomerTag {
 }
 
 type PhoneLabel = 'mobile' | 'office' | 'home' | 'fax';
+
+namespace schemas — exports: addAddressSchema, addEmailSchema, addPhoneSchema, addRelationshipSchema, addTagSchema, blacklistSchema, createCustomerSchema, noteSchema, updateAddressSchema, updateCustomerSchema, updateEmailSchema, updatePhoneSchema
 ```
 
 ## @fonderie/audit
@@ -1432,6 +1440,8 @@ interface IWebhookDeliveryDTO {
     deliveredAt: string | null;
     createdAt: string;
 }
+
+namespace schemas — exports: createEndpointSchema, updateEndpointSchema
 ```
 
 ## @fonderie/logger

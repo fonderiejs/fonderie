@@ -18,6 +18,7 @@ const CUSTOMER: ICustomer = {
 	id: CUST_ID,
 	workspaceId: WS_ID,
 	type: 'individual',
+	sex: 'UNKNOWN',
 	firstName: 'Jane',
 	lastName: 'Doe',
 	companyName: null,

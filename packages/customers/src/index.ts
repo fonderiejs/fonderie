@@ -43,3 +43,7 @@ export type {
 	ICustomerTag,
 	PhoneLabel,
 } from './types';
+
+// Request validation — enforced contract for body-taking routes; exported
+// for docs generation and typed clients.
+export * as schemas from './schemas';

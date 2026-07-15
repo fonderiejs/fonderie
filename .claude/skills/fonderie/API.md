@@ -166,6 +166,17 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
 - `new WebhooksModule(store, config?, bus?)` — outgoing webhooks; CRUD at `/webhooks*`
 - `new CustomersModule(store, config?, bus?)` — customer records at `/customers*`
 
+## Request validation (all packages)
+
+Every body-taking route across auth, workspaces, billing, customers, and
+webhooks is guarded by `validate(schema)` from `@fonderie/core/middlewares`:
+invalid input → 422 `INVALID_PARAMETER` (with field path) before the
+controller runs; parsed bodies are trimmed and stripped of unknown keys.
+Each package exports its schemas as `schemas.*` — reuse them client-side
+instead of re-describing shapes. Two deliberate exceptions: courier's
+`/courier/delivery/*` and billing's `/billing/webhook` receive
+provider-shaped payloads and are gated by signature verification instead.
+
 ## Mounting inside an existing framework
 
 Each adapter exports the same surface: `mount`, `bridge`, `adapt`,
