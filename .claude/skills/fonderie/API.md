@@ -101,7 +101,12 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
 | `mfa?` / `requireVerification?` | `boolean` | TOTP MFA; block unverified logins |
 | `google?` | `{ clientId, clientSecret, redirectUri }` | for the google provider |
 
-- Exports: `requireAuth`, `withSession(store, config)`, `MESSAGE_KEYS`
+- Request validation: every body-taking route is guarded by `validate(schema)`
+  (zod). Invalid input → 422 `INVALID_PARAMETER` before the controller runs;
+  parsed bodies are trimmed and stripped of unknown keys. Schemas are exported
+  as `schemas.*` (`registerSchema`, `loginSchema`, `resetPasswordSchema`, …)
+  — reuse them client-side instead of re-describing shapes.
+- Exports: `requireAuth`, `withSession(store, config)`, `validate`, `schemas`, `MESSAGE_KEYS`
   (`passwordReset`, `emailRegistration`, `emailVerification`, `phoneOtp`, …),
   `EVENT_KEYS`, `toUserDTO`, `normalizeEmail`
 - Routes registered: `POST /auth/register`, `POST /auth/login`,

@@ -56,12 +56,13 @@
 	"dependencies": {
 		"bcryptjs": "^3.0.3",
 		"jsonwebtoken": "^9.0.3",
-		"qrcode": "^1.5.4"
+		"qrcode": "^1.5.4",
+		"zod": "^4.4.3"
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.1.1",
-		"@fonderie/store": "^0.1.1",
-		"@fonderie/events": "^1.0.1"
+		"@fonderie/events": "^1.0.1",
+		"@fonderie/store": "^0.1.1"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/events": {
@@ -70,8 +71,8 @@
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
-		"@fonderie/store": "../store",
 		"@fonderie/events": "../events",
+		"@fonderie/store": "../store",
 		"@types/bcryptjs": "^2.4.6",
 		"@types/jsonwebtoken": "^9.0.10",
 		"@types/node": "^25.6.0",

@@ -5,6 +5,21 @@ import type { IAuthConfig } from './config';
 
 import { requireAuth, requireAnyAuth, requireVerified } from '@fonderie/core/middlewares';
 import { requireEmailLogin } from './middlewares/require-email-login';
+import { validate } from './middlewares/validate';
+import {
+	loginSchema,
+	verifySchema,
+	refreshSchema,
+	mfaTokenSchema,
+	registerSchema,
+	updateEmailSchema,
+	updatePhoneSchema,
+	updateProfileSchema,
+	resetPasswordSchema,
+	changePasswordSchema,
+	forgotPasswordSchema,
+	updatePreferencesSchema,
+} from './schemas';
 
 import { mfaController } from './controllers/mfa.controller';
 import { authController } from './controllers/auth.controller';
@@ -32,18 +47,18 @@ export function buildAuthRoutes(
 
 	const routes: RouteDefinition[] = [
 		// Registration & Login (Public)
-		['POST', '/auth/register', auth.register],
-		['POST', '/auth/login', auth.login],
+		['POST', '/auth/register', validate(registerSchema), auth.register],
+		['POST', '/auth/login', validate(loginSchema), auth.login],
 
 		// Token Management (Public)
-		['POST', '/auth/refresh', auth.refresh],
+		['POST', '/auth/refresh', validate(refreshSchema), auth.refresh],
 
 		// Email — Password Recovery (Public)
-		['POST', '/auth/email/forgot', auth.forgotPassword],
-		['POST', '/auth/email/reset', auth.resetPassword],
+		['POST', '/auth/email/forgot', validate(forgotPasswordSchema), auth.forgotPassword],
+		['POST', '/auth/email/reset', validate(resetPasswordSchema), auth.resetPassword],
 
 		// Verification (Protected — email or phone, determined by loginMethod)
-		['POST', '/auth/verify', requireAuth, auth.verify],
+		['POST', '/auth/verify', requireAuth, validate(verifySchema), auth.verify],
 		['GET', '/auth/send-verification', requireAuth, auth.sendVerification],
 
 		// Account Management (Protected)
@@ -51,11 +66,11 @@ export function buildAuthRoutes(
 
 		// User Profile (Protected; writes also gate on requireVerification)
 		['GET', '/users', requireAuth, user.me],
-		['PUT', '/users/profile', requireAuth, verifyGate, user.updateProfile],
-		['PUT', '/users/preferences', requireAuth, verifyGate, user.updatePreferences],
-		['PUT', '/users/email', requireAuth, verifyGate, user.updateEmail],
-		['PUT', '/users/phone', requireAuth, verifyGate, user.updatePhone],
-		['PUT', '/users/password', requireAuth, user.changePassword],
+		['PUT', '/users/profile', requireAuth, verifyGate, validate(updateProfileSchema), user.updateProfile],
+		['PUT', '/users/preferences', requireAuth, verifyGate, validate(updatePreferencesSchema), user.updatePreferences],
+		['PUT', '/users/email', requireAuth, verifyGate, validate(updateEmailSchema), user.updateEmail],
+		['PUT', '/users/phone', requireAuth, verifyGate, validate(updatePhoneSchema), user.updatePhone],
+		['PUT', '/users/password', requireAuth, validate(changePasswordSchema), user.changePassword],
 		['DELETE', '/users', requireAuth, verifyGate, user.deleteMe],
 
 		// MFA (email sessions only — requireVerified is always enforced here
@@ -63,8 +78,8 @@ export function buildAuthRoutes(
 		['POST', '/auth/mfa/setup', requireAuth, requireEmailLogin, requireVerified, mfa.setup],
 		// /auth/mfa/verify accepts both mfaPending tokens (TOTP/backup-code login)
 		// and full tokens (setup confirmation), so requireAnyAuth is used here.
-		['POST', '/auth/mfa/verify', requireAnyAuth, requireEmailLogin, requireVerified, mfa.verify],
-		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, requireVerified, mfa.disable],
+		['POST', '/auth/mfa/verify', requireAnyAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.verify],
+		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.disable],
 		[
 			'POST',
 			'/auth/mfa/backup-codes',
