@@ -87,6 +87,7 @@ your existing app instead.
 | [`@fonderie/events`](packages/events) | Event bus for @fonderie-js |
 | [`@fonderie/logger`](packages/logger) | Structured logger with pluggable transports, child loggers, and a request-logging middleware |
 | [`@fonderie/permissions`](packages/permissions) | Role-based access control for SaaS |
+| [`@fonderie/rate-limit`](packages/rate-limit) | Distributed token-bucket rate limiting (memory/Postgres/Redis) |
 | [`@fonderie/store`](packages/store) | Database abstraction layer |
 | [`@fonderie/webhooks`](packages/webhooks) | Outgoing webhook engine |
 | [`@fonderie/workspaces`](packages/workspaces) | Multi-tenant team layer |

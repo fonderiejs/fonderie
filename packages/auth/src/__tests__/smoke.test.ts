@@ -233,13 +233,14 @@ function makeCtx(
 		body?: Record<string, unknown>;
 		workspace?: { id: string } | null;
 		cookie?: string;
+		ip?: string;
 	} = {},
 ): any {
 	return {
 		user: 'user' in opts ? opts.user : null,
 		workspace: 'workspace' in opts ? opts.workspace : null,
 		tenant: null,
-		meta: { body: opts.body ?? {} },
+		meta: { body: opts.body ?? {}, ...(opts.ip ? { clientIp: opts.ip } : {}) },
 		request: new Request('http://localhost/', {
 			headers: opts.cookie ? { cookie: opts.cookie } : {},
 		}),
@@ -1895,4 +1896,58 @@ test('forgotPassword within cooldown returns the same envelope as unknown email'
 	assert.equal(kb.reason, ub.reason);
 	assert.equal(kb.reason, 'PASSWORD_RESET_EMAIL_SENT');
 	assert.equal('retryAfter' in (kb.result ?? {}), false);
+});
+
+// ── brute-force protection: on by default ─────────────────────────
+
+test('rate limit: 6th login attempt for one account 429s out of the box', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const { MemoryStore } = await import('@fonderie/rate-limit');
+	const routes = buildAuthRoutes(makeStore(), { ...config, rateLimit: { store: new MemoryStore() } });
+	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
+	assert.ok(login);
+	const [, , limiter] = login as any[];
+
+	let last: Response = new Response();
+	for (let i = 0; i < 6; i++) {
+		last = await limiter(
+			makeCtx({ body: { email: 'target@example.com', password: 'x'.repeat(10) } }),
+			async () => new Response('ok'),
+		);
+	}
+	assert.equal(last.status, 429);
+	const body = (await last.json()) as any;
+	assert.equal(body.reason, 'RATE_LIMITED');
+	assert.ok(last.headers.get('Retry-After'));
+});
+
+test('rate limit: rateLimit: false disables it', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const routes = buildAuthRoutes(makeStore(), { ...config, rateLimit: false });
+	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
+	const [, , maybeLimiter] = login as any[];
+	// with rateLimit disabled the first middleware is the passthrough; hammer it
+	for (let i = 0; i < 20; i++) {
+		const res = await maybeLimiter(
+			makeCtx({ body: { email: 'target@example.com', password: 'x'.repeat(10) } }),
+			async () => new Response('ok'),
+		);
+		assert.equal(res.status, 200);
+	}
+});
+
+test('rate limit: per-route override can relax a single rule', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const { MemoryStore } = await import('@fonderie/rate-limit');
+	const routes = buildAuthRoutes(makeStore(), {
+		...config,
+		rateLimit: { store: new MemoryStore(), rules: { login: { capacity: 2, refillPerSec: 0.001 } } },
+	});
+	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
+	const [, , limiter] = login as any[];
+	const hit = () =>
+		limiter(makeCtx({ ip: '9.9.9.9', body: { email: 'a@b.c', password: 'x'.repeat(10) } }), async () => new Response('ok'));
+	assert.equal((await hit()).status, 200);
+	assert.equal((await hit()).status, 200);
+	assert.equal((await hit()).status, 429);
 });

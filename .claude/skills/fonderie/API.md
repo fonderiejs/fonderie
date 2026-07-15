@@ -88,6 +88,18 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
 - `new InternalMigrationRunner(store, migrationsPath).run()`
 - `` sql`...` `` tagged template → `ISqlQuery`
 
+## @fonderie/rate-limit
+
+- `new StoreAdapterStore(store)` / `new MemoryStore()` / `new RedisStore(client)`
+- `rateLimit(...limits)` → Middleware; each limit is `{ store, rule, key }`
+  where `rule` is `{ capacity, refillPerSec, cost? }` and `key` is
+  `byIp(scope)` or `byBodyField(scope, field)`
+- Emits `RateLimit-*` + `Retry-After` headers on 429 `RATE_LIMITED`.
+  Distributed-correct: token bucket applied atomically per store.
+- **@fonderie/auth wires this by default** on login/register/forgot/mfa —
+  do NOT add express-rate-limit or a hand-rolled limiter to auth routes.
+  Configure via the auth `rateLimit` option; disable with `rateLimit: false`.
+
 ## @fonderie/auth
 
 - `new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus)`
@@ -101,6 +113,10 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
 | `mfa?` / `requireVerification?` | `boolean` | TOTP MFA; block unverified logins |
 | `google?` | `{ clientId, clientSecret, redirectUri }` | for the google provider |
 
+- Brute-force protection: login, register, forgot-password, and mfa/verify
+  are rate-limited by default via @fonderie/rate-limit, backed by the
+  module's own store (distributed across instances, zero config). Tune or
+  disable with the `rateLimit` config field — do not add your own limiter.
 - Request validation: every body-taking route is guarded by `validate(schema)`
   (zod). Invalid input → 422 `INVALID_PARAMETER` before the controller runs;
   parsed bodies are trimmed and stripped of unknown keys. Schemas are exported

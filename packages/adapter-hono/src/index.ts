@@ -2,7 +2,7 @@ import type { Context, MiddlewareHandler } from 'hono';
 import type { Hono } from 'hono';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { requireAuth as _requireAuth } from '@fonderie/core/middlewares';
+import { requireAuth as _requireAuth, resolveClientIp } from '@fonderie/core/middlewares';
 // Optional peers: type-only imports (erased at runtime). The guard factories
 // below load them lazily so installing this adapter never requires
 // @fonderie/workspaces, @fonderie/permissions, or @fonderie/billing unless
@@ -55,6 +55,14 @@ export type FonderieVariables = {
 export function bridge(fonderie: FonderieApp): MiddlewareHandler {
 	return async (c, next) => {
 		const ctx = await fonderie.buildContext(c.req.raw.clone());
+		// Hono runs on web-standard runtimes with no socket handle; edge
+		// platforms hand the verified client IP via their own header.
+		const platformIp =
+			c.req.raw.headers.get('cf-connecting-ip') ??
+			c.req.raw.headers.get('x-real-ip') ??
+			undefined;
+		const clientIp = resolveClientIp(platformIp, c.req.raw.headers);
+		if (clientIp) ctx.meta.clientIp = clientIp;
 		c.set('_fonderie', ctx);
 		await next();
 	};

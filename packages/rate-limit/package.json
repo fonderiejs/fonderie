@@ -1,18 +1,13 @@
 {
-	"name": "@fonderie/auth",
-	"version": "1.1.1",
-	"description": "Drop-in auth for SaaS — email/password, phone OTP, Google OAuth, stateless JWT sessions, TOTP-based MFA with backup codes, and self-service password recovery.",
+	"name": "@fonderie/rate-limit",
+	"version": "0.0.0",
+	"description": "Distributed rate limiting for @fonderie-js — atomic token bucket over memory, PostgreSQL, or Redis, with standard RateLimit-* headers.",
 	"keywords": [
 		"fonderie-js",
-		"auth",
-		"authentication",
-		"jwt",
-		"oauth",
-		"mfa",
-		"totp",
-		"otp",
-		"sessions",
-		"saas",
+		"rate-limit",
+		"token-bucket",
+		"throttle",
+		"brute-force",
 		"typescript"
 	],
 	"license": "MIT",
@@ -25,16 +20,6 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
-		},
-		"./types": {
-			"types": "./dist/types.d.ts",
-			"import": "./dist/types.js",
-			"require": "./dist/types.cjs"
-		},
-		"./middleware": {
-			"types": "./dist/middlewares/index.d.ts",
-			"import": "./dist/middlewares/index.js",
-			"require": "./dist/middlewares/index.cjs"
 		},
 		"./migrations": {
 			"types": "./dist/migrations/index.d.ts",
@@ -53,35 +38,22 @@
 		"format": "biome format --write src",
 		"check": "biome check --write src"
 	},
-	"dependencies": {
-		"bcryptjs": "^3.0.3",
-		"jsonwebtoken": "^9.0.3",
-		"qrcode": "^1.5.4",
-		"zod": "^4.4.3",
-		"@fonderie/rate-limit": "^0.0.0"
-	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.1.1",
-		"@fonderie/events": "^1.0.1",
 		"@fonderie/store": "^0.1.1"
 	},
 	"peerDependenciesMeta": {
-		"@fonderie/events": {
+		"@fonderie/store": {
 			"optional": true
 		}
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
-		"@fonderie/events": "../events",
 		"@fonderie/store": "../store",
-		"@types/bcryptjs": "^2.4.6",
-		"@types/jsonwebtoken": "^9.0.10",
 		"@types/node": "^25.6.0",
-		"@types/qrcode": "^1.5.6",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
-		"typescript": "^6.0.3",
-		"@fonderie/rate-limit": "../rate-limit"
+		"typescript": "^6.0.3"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -94,9 +66,9 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/fonderie-js/sdk.git",
-		"directory": "packages/auth"
+		"directory": "packages/rate-limit"
 	},
-	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/auth#readme",
+	"homepage": "https://github.com/fonderie-js/sdk/tree/main/packages/rate-limit#readme",
 	"bugs": {
 		"url": "https://github.com/fonderie-js/sdk/issues"
 	}

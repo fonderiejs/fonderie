@@ -90,6 +90,7 @@ interface ICourierMessage {
 interface IFonderieContextMeta {
     params?: Record<string, string>;
     body?: unknown;
+    clientIp?: string;
     workspaceId?: string;
     userId?: string;
     userWorkspaceRoles?: string[];
@@ -340,6 +341,7 @@ new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus | undef
 
 interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     secureCookies?: boolean;
+    rateLimit?: IAuthRateLimitConfig | false;
     providers: ('email' | 'phone' | 'google' | 'github')[];
     appName?: string;
     resolve?: (ctx: {
@@ -410,6 +412,15 @@ function requireAuth(ctx: IFonderieContext, next: () => Promise<Response>): Prom
 function normalizeEmail(email: string): string
 
 function normalizeEmailSafe(email: string): string | null
+
+function buildAuthLimiter(route: AuthLimitedRoute, store: IStoreAdapter, config: false | IAuthRateLimitConfig | undefined): Middleware | null
+
+interface IAuthRateLimitConfig {
+    store?: IRateLimitStore;
+    rules?: Partial<Record<AuthLimitedRoute, IRateLimitRule | false>>;
+}
+
+type AuthLimitedRoute = 'login' | 'register' | 'forgot' | 'mfaVerify';
 ```
 
 ## @fonderie/courier

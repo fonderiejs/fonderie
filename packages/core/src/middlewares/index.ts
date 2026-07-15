@@ -8,3 +8,4 @@ export { requireAuth, requireAnyAuth } from './require-auth';
 export { requireVerified } from './require-verified';
 export { validate } from './validate';
 export type { IRequestSchema } from './validate';
+export { resolveClientIp } from './client-ip';
