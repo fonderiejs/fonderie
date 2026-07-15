@@ -275,3 +275,124 @@ test('byIp: IPv4 keys on the full address', async () => {
 	const k = byIp('login');
 	assert.notEqual(k(makeCtx({ ip: '203.0.113.1' })), k(makeCtx({ ip: '203.0.113.2' })));
 });
+
+// ── eviction / cleanup / failure paths (the "every N ops" branches) ──
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+test('memory: sweep evicts idle keys, keeps fresh ones', async () => {
+	const store = new MemoryStore();
+	// fullRefillMs = capacity/refillPerSec*1000 = 5/50*1000 = 100ms.
+	const rule: IRateLimitRule = { capacity: 5, refillPerSec: 50 };
+	await store.consume('stale', rule);
+	await sleep(130); // 'stale' now idle past a full refill
+	// Drive exactly one sweep (SWEEP_EVERY=1024) with fresh rotating keys.
+	for (let i = 0; i < 1024; i++) await store.consume(`k${i}`, rule);
+	// 1 stale + 1024 fresh would be 1025 without a sweep; the sweep drops
+	// 'stale' (idle) while keeping the just-created keys.
+	assert.ok(store.size <= 1024, `sweep should have evicted the idle key (size ${store.size})`);
+	assert.ok(store.size >= 1000, 'fresh keys must survive the sweep');
+});
+
+test('store-adapter: opportunistic cleanup deletes idle rows', async () => {
+	const emu = pgEmulator();
+	const store = new StoreAdapterStore(emu);
+	const rule: IRateLimitRule = { capacity: 5, refillPerSec: 50 }; // idleMs = 100ms
+	await store.consume('stale-row', rule);
+	assert.ok(emu.rows.has('stale-row'));
+	await sleep(130);
+	// CLEAN_EVERY=512 — trigger one cleanup pass.
+	for (let i = 0; i < 512; i++) await store.consume(`live${i}`, rule);
+	// give the fire-and-forget DELETE a tick to apply
+	await sleep(5);
+	assert.equal(emu.rows.has('stale-row'), false, 'idle row should be pruned');
+});
+
+test('store-adapter: throws if the upsert returns no row', async () => {
+	const empty: IStoreAdapter = {
+		query: async () => [],
+		transaction: async (fn) => fn(empty),
+	};
+	await assert.rejects(
+		() => new StoreAdapterStore(empty).consume('k', RULE),
+		/returned no row/,
+	);
+});
+
+test('bucket: cost > 1 consumes and denies correctly', () => {
+	const rule: IRateLimitRule = { capacity: 10, refillPerSec: 1, cost: 4 };
+	// fresh bucket (10) − cost 4 = 6 left
+	const first = consumeFromBucket(null, rule, 0);
+	assert.equal(first.result.allowed, true);
+	assert.equal(first.result.remaining, 6);
+	// from 6, another cost-4 → 2 left
+	const second = consumeFromBucket(first.next, rule, 0);
+	assert.equal(second.result.remaining, 2);
+	// from 2, cost 4 → denied, retryAfter reflects the 2-token deficit
+	const third = consumeFromBucket(second.next, rule, 0);
+	assert.equal(third.result.allowed, false);
+	assert.ok(third.result.retryAfterMs > 0);
+});
+
+test('middleware: a later limit denying still emits headers (first allows)', async () => {
+	const store = new MemoryStore();
+	const mw = rateLimit(
+		{ store, rule: { capacity: 100, refillPerSec: 1 }, key: byIp('x') },       // always allows here
+		{ store, rule: { capacity: 1, refillPerSec: 0.001 }, key: byBodyField('x', 'email') }, // trips 2nd call
+	);
+	const hit = () => mw(makeCtx({ ip: '1.1.1.1', body: { email: 'a@b.c' } }), async () => new Response('ok'));
+	assert.equal((await hit()).status, 200);
+	const denied = await hit();
+	assert.equal(denied.status, 429);
+	assert.equal(denied.headers.get('RateLimit-Limit'), '1', 'headers reflect the limit that tripped');
+});
+
+// ── defensive backstops ──────────────────────────────────────────
+
+test('store-adapter: a failing cleanup does NOT break the request', async () => {
+	// Emulator that serves consumes but rejects the periodic DELETE.
+	const rows = new Map<string, { tokens: number; last: number }>();
+	let ops = 0;
+	const flaky: IStoreAdapter = {
+		async query<T = unknown>(sql: string): Promise<T[]> {
+			if (sql.trim().startsWith('DELETE')) throw new Error('cleanup boom');
+			ops++;
+			const row = rows.get('k') ?? { tokens: RULE.capacity, last: Date.now() };
+			const tokens = Math.max(0, row.tokens - 1);
+			rows.set('k', { tokens, last: Date.now() });
+			return [{ tokens, granted: row.tokens >= 1 }] as T[];
+		},
+		async transaction<T>(fn: (tx: IStoreAdapter) => Promise<T>): Promise<T> {
+			return fn(flaky);
+		},
+	};
+	const store = new StoreAdapterStore(flaky);
+	// 512 consumes → triggers the cleanup DELETE, which rejects; consume must
+	// still resolve normally (fire-and-forget .catch swallows it).
+	let last: Awaited<ReturnType<StoreAdapterStore['consume']>> | undefined;
+	for (let i = 0; i < 512; i++) last = await store.consume('k', RULE);
+	assert.ok(last, 'consume resolved despite cleanup failure');
+	assert.ok(ops >= 512);
+});
+
+test('byBodyField: empty and whitespace-only values yield no key', async () => {
+	const { byBodyField } = await import('../middleware');
+	const k = byBodyField('login', 'email');
+	assert.equal(k(makeCtx({ body: { email: '' } })), null);
+	assert.equal(k(makeCtx({ body: { email: '   ' } })), null, 'whitespace trims to empty → skip');
+});
+
+test('byIp: empty clientIp string yields no key', async () => {
+	const { byIp } = await import('../middleware');
+	assert.equal(byIp('login')(makeCtx({ ip: '' })), null);
+});
+
+test('byIp: IPv6 :: at either end (loopback, link-local) keys deterministically', async () => {
+	const { byIp } = await import('../middleware');
+	const k = byIp('login');
+	// leading :: (empty left group) and trailing :: (empty right group)
+	assert.ok(k(makeCtx({ ip: '::1' })), 'loopback ::1 yields a key');
+	assert.ok(k(makeCtx({ ip: 'fe80::' })), 'link-local fe80:: yields a key');
+	// same /64 collapses regardless of host bits
+	assert.equal(k(makeCtx({ ip: 'fe80::1' })), k(makeCtx({ ip: 'fe80::abcd' })));
+});
