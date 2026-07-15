@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS fonderie_rate_limits (
 	key            TEXT             NOT NULL PRIMARY KEY,
 	tokens         DOUBLE PRECISION NOT NULL,
-	last_refill_ms BIGINT           NOT NULL,
+	last_refill_ms DOUBLE PRECISION NOT NULL,
 	granted        BOOLEAN          NOT NULL DEFAULT TRUE
 );
 
