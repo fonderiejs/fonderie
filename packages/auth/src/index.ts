@@ -21,3 +21,7 @@ export { requireAuth } from './middlewares/require-auth';
 
 // Utilities
 export { normalizeEmail, normalizeEmailSafe } from './services/email';
+
+// Brute-force protection — on by default; see services/rate-limit.ts
+export { buildAuthLimiter } from './services/rate-limit';
+export type { IAuthRateLimitConfig, AuthLimitedRoute } from './services/rate-limit';

@@ -5,7 +5,7 @@ import type Koa                from 'koa';
 type KoaMiddleware<S = any, C = any> = Koa.Middleware<S, C>;
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { requireAuth as _requireAuth } from '@fonderie/core/middlewares';
+import { requireAuth as _requireAuth, resolveClientIp } from '@fonderie/core/middlewares';
 // Optional peers: type-only imports (erased at runtime). The guard factories
 // below load them lazily so installing this adapter never requires
 // @fonderie/workspaces, @fonderie/permissions, or @fonderie/billing unless
@@ -100,7 +100,13 @@ export async function webResponseToKoa(webRes: Response, ctx: KoaContext): Promi
 export function bridge(fonderie: FonderieApp): KoaMiddleware {
 	return async (ctx, next) => {
 		const webReq = koaContextToWeb(ctx as unknown as KoaContext);
-		ctx.state['_fonderie'] = await fonderie.buildContext(webReq.clone());
+		const fCtx = await fonderie.buildContext(webReq.clone());
+		const clientIp = resolveClientIp(
+			(ctx as unknown as KoaContext).req.socket?.remoteAddress ?? undefined,
+			webReq.headers,
+		);
+		if (clientIp) fCtx.meta.clientIp = clientIp;
+		ctx.state['_fonderie'] = fCtx;
 		await next();
 	};
 }
@@ -223,7 +229,13 @@ export function requireFeature(key: string): KoaMiddleware<any, any> {
 export function mount(app: Koa, fonderie: FonderieApp): Koa {
 	app.use(async (ctx, next) => {
 		const webReq = koaContextToWeb(ctx as unknown as KoaContext);
-		ctx.state['_fonderie'] = await fonderie.buildContext(webReq.clone());
+		const fCtx = await fonderie.buildContext(webReq.clone());
+		const clientIp = resolveClientIp(
+			(ctx as unknown as KoaContext).req.socket?.remoteAddress ?? undefined,
+			webReq.headers,
+		);
+		if (clientIp) fCtx.meta.clientIp = clientIp;
+		ctx.state['_fonderie'] = fCtx;
 		await next();
 		if (ctx.body === undefined) {
 			const webRes = await fonderie.handle(webReq);

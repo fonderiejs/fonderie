@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { requireAuth as _requireAuth } from '@fonderie/core/middlewares';
+import { requireAuth as _requireAuth, resolveClientIp } from '@fonderie/core/middlewares';
 // Optional peers: type-only imports (erased at runtime). The guard factories
 // below load them lazily so installing this adapter never requires
 // @fonderie/workspaces, @fonderie/permissions, or @fonderie/billing unless
@@ -94,6 +94,8 @@ export function bridge(fonderie: FonderieApp) {
 			// the body stream (which can only be consumed once).
 			(req as any)._fonterieReq = webReq;
 			req._fonderie = await fonderie.buildContext(webReq.clone());
+			const clientIp = resolveClientIp(req.socket?.remoteAddress ?? undefined, webReq.headers);
+			if (clientIp) req._fonderie.meta.clientIp = clientIp;
 			if (req._fonderie.meta['body'] !== undefined) {
 				req.body = req._fonderie.meta['body'];
 			}

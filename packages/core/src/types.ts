@@ -52,6 +52,10 @@ export interface IRouter {
 export interface IFonderieContextMeta {
 	params?: Record<string, string>;
 	body?: unknown;
+	// Trust-proxy-resolved client IP, populated by the adapters (see
+	// resolveClientIp in @fonderie/core/middlewares). Consumed by
+	// @fonderie/rate-limit's byIp() keying.
+	clientIp?: string;
 	workspaceId?: string;
 	userId?: string;
 	userWorkspaceRoles?: string[];

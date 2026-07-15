@@ -1,3 +1,4 @@
+import type { IAuthRateLimitConfig } from './services/rate-limit';
 export const DEFAULT_VERIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 export const DEFAULT_SESSION_DURATION = '7d';
 
@@ -54,6 +55,11 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	// Adds the Secure attribute to auth cookies. Defaults to
 	// NODE_ENV === 'production'; set explicitly when that heuristic is wrong.
 	secureCookies?: boolean;
+	// Brute-force protection — ON by default, backed by the module's own
+	// store adapter (distributed-correct across instances with zero config).
+	// Inject a store (e.g. RedisStore) for high-throughput deployments,
+	// override individual rules, or set false to disable entirely.
+	rateLimit?: IAuthRateLimitConfig | false;
 	providers: ('email' | 'phone' | 'google' | 'github')[];
 	appName?: string;
 	resolve?: (ctx: { meta: Record<string, unknown> }) => Partial<IAuthRuntimeConfig>;
