@@ -33,4 +33,13 @@ jobs:
           publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # setup-node's registry-url writes an .npmrc that reads
+          # NODE_AUTH_TOKEN, so the automation token must be exposed under
+          # that name — providing only NPM_TOKEN leaves npm publish
+          # unauthenticated. Both are set so either resolution path works.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Generate npm provenance (the id-token: write permission above
+          # exists for this). Requires an automation token + OIDC, both
+          # present in this job.
+          NPM_CONFIG_PROVENANCE: true
