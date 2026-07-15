@@ -2,8 +2,9 @@
 # v2.1.197, headless (claude -p --output-format json), macOS, Node 24.
 # round 1 = Fonderie v0.1.0 + pre-fix skill (2026-07-13)
 # round 2 = Fonderie auth 1.1.0 / core 0.1.2 from npm + current skill (2026-07-15)
-# round 3 = naive prompt (prompt-naive.txt), claude-opus-4-8 (Claude Code
-# default), auth 1.1.1 from npm (2026-07-15)
+# round 3  = naive prompt (prompt-naive.txt), claude-opus-4-8, auth 1.1.1 (2026-07-15)
+# round 3b = coda: naive prompt re-run on the SHIPPED fix, auth 1.2.0 with
+#            default rate limiting (@fonderie/rate-limit), claude-opus-4-8 (2026-07-15)
 # Aborted (disclosed, never averaged): two round-1 attempts truncated by a
 # session usage limit and rerun from scratch; one round-2 scratch attempt
 # (12 turns, $1.11) truncated by a monthly spend limit and discarded; one
@@ -19,3 +20,5 @@ na2,3,scratch-naive,16,136,2580,9047,15814,172924,0.4843,268,yes,4
 nb2,3,fonderie-naive,21,187,2924,9170,26693,444390,0.7336,56,yes,11
 na3,3,scratch-naive,11,106,2451,5991,11539,151841,0.3539,207,yes,4
 nb3,3,fonderie-naive,15,111,2785,5092,18203,253668,0.4507,65,yes,11
+nb4,3b,fonderie-naive-1.2.0,17,104,2650,3765,,,0.5054,66,yes,12
+nb5,3b,fonderie-naive-1.2.0,13,95,2785,5092,,,0.3994,55,yes,12
