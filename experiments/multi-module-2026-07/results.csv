@@ -38,9 +38,21 @@ a3-s1,a3,a,1,25,174,3306,13483,50778,378088,2.1015,704,4,yes,
 a3-s2,a3,a,2,24,170,3218,14344,32360,494135,1.8913,383,0,yes,
 # a3-s3 attempt 1: truncated by session usage limit at 151s (14 turns, $1.3815, 391 lines); discarded and rerun from pre-stage snapshot per protocol
 a3-s3,a3,a,3,23,251,2600,21616,39232,651852,2.5439,346,21,yes,rerun after disclosed abort
+a3-s4,a3,a,4,29,151,2719,12305,38166,493807,1.9002,189,12,yes,
+b3-s1,b3,b,1,25,116,2791,7053,33952,374675,1.4349,842,0,yes,
+# b3-s2 attempt 1: truncated by session usage limit at 180s (37 turns, $1.9413, 107 lines); discarded and rerun from pre-stage snapshot per protocol
+b3-s2,b3,b,2,87,758,4703,31448,73921,3576664,6.6751,629,12,yes,rerun after disclosed abort
+# b3-s3 attempt 1: truncated by session usage limit at 346s (43 turns, $4.0788, 226 lines); discarded and rerun from pre-stage snapshot per protocol
+b3-s3,b3,b,3,91,772,9876,53135,103227,4246442,9.0671,180,15,yes,rerun after disclosed abort
+# b3-s4 attempt 1: truncated by session usage limit at 22s (10 turns, $0.5192, no code changes); discarded and rerun from pre-stage snapshot per protocol
+b3-s4,b3,b,4,97,741,3812,48568,114610,5735084,10.4945,378,6,yes,rerun after disclosed abort
+# b3 final-tree smoke (2026-07-17): workspace PASS, rbac PASS; auth FAIL only on stateless-JWT logout probe (package design, as b1/b2)
+# b3 scorecard (2026-07-17): 19/20 (fail: 4 revocable-session, package design). b3's agent defaulted bare invites to system GUEST — the fix later shipped as workspaces 1.1.1 — see scorecard-b3.md
 # b1 final-tree smoke (2026-07-16): workspace PASS; auth FAIL (same stateless-JWT logout behavior as post-s3, package design, not a stage regression); rbac FAIL — invited members are granted ADMIN by default, so the invited "guest" can send invitations (201 where 401/403 required); counts against scorecard items 16/19. Harness notes: stage-4 rate limiting (register 5/h/IP) throttled back-to-back smoke runs — fonderie_rate_limits cleared between runs; rbac.sh gained the same b1 accommodations as workspace.sh (id field, ctx header, pin, unique names)
 # a1 final-tree smoke (2026-07-16): auth PASS, workspace PASS, rbac PASS — no regressions in sequence a1
 # a1 scorecard (2026-07-16): 20/20 — see scorecard-a1.md
 # a2 final-tree smoke (2026-07-17): auth PASS, workspace PASS, rbac PASS — no regressions in sequence a2
 # a2 scorecard (2026-07-17): 20/20 — see scorecard-a2.md
+# a3 final-tree smoke (2026-07-17): auth PASS, workspace PASS, rbac PASS — no regressions in sequence a3
+# a3 scorecard (2026-07-17): 20/20 — see scorecard-a3.md
 # b1 scorecard (2026-07-16): 18/20 (fails: 4 revocable-session — stateless access JWTs survive logout; 16 GUEST-cannot-mutate — invited members default to ADMIN) — see scorecard-b1.md
