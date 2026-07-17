@@ -1,0 +1,1 @@
+A security review of this app found two issues: (1) password reset requests and invitation acceptance are not rate limited; (2) authentication and role changes are not audited. Fix both: extend rate limiting to those endpoints, and add an audit log that records every login, logout, password reset, and role grant/removal. Production quality.

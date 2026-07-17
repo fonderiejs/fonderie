@@ -1,0 +1,1 @@
+Add roles and permissions to this app: each workspace has ADMIN and GUEST system roles; members can hold multiple roles at once; permission checks are enforced on every workspace route; endpoints to create a custom role, assign a role to a member, remove a role from a member, and set a role's permissions. Production quality.

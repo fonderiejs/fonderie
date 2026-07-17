@@ -1,0 +1,46 @@
+# Multi-module + lifecycle experiment — raw per-stage data.
+# Model claude-fable-5, Claude Code v2.1.197, headless (claude -p --output-format json),
+# macOS 12, Node 24, embedded Postgres 17.10 per sequence (see DESIGN.md).
+# cond: a=scratch, b=fonderie(post-ac4f40c skill). Stage prompts in prompts/.
+# loc_added/loc_modified from git diff --stat vs pre-stage snapshot.
+# Aborted/truncated stages are disclosed here and rerun from the pre-stage snapshot, never averaged.
+run,seq,cond,stage,turns,wall_s,input_tokens,output_tokens,cache_write,cache_read,cost_usd,loc_added,loc_modified,tsc_clean,notes
+a1-s1,a1,a,1,37,363,2729,23780,66201,559223,3.1001,603,4,yes,
+a1-s2,a1,a,2,48,488,3302,32036,52831,1009083,3.7012,454,56,yes,
+# a1-s3 attempt 1: truncated by session usage limit at 207s (16 turns, $1.2782, no code changes); discarded and rerun from pre-stage snapshot per protocol
+a1-s3,a1,a,3,40,559,3759,43028,62938,1281099,4.7295,468,51,yes,rerun after disclosed abort
+a1-s4,a1,a,4,51,430,4172,26744,118030,1335387,5.0756,186,22,yes,
+# b1-s1 attempt 1: truncated by session usage limit at 120s (17 turns, $1.1366, 5 lines); discarded and rerun from baseline per protocol
+b1-s1,b1,b,1,77,763,4516,32344,68445,2728158,5.7600,393,7,yes,rerun after disclosed abort
+# b1-s2 attempt 1: truncated by session usage limit at 987s (98 turns, $8.8684, 375 lines, tsc clean but cut mid-session); discarded and rerun from pre-stage snapshot per protocol
+b1-s2,b1,b,2,94,2410,5622,42317,96632,4990863,9.3092,386,8,yes,rerun after disclosed abort; wall includes slow turns
+# b1-s3 attempt 1: truncated by session usage limit at 605s (43 turns, $4.7878, 38 lines); discarded and rerun from pre-stage snapshot per protocol
+# b1-s3 attempt 2: truncated by session usage limit at 1140s (65 turns, $8.8689, 149 lines); discarded and rerun from pre-stage snapshot per protocol
+# b1-s3 attempt 3: truncated by session usage limit at 830s (56 turns, $6.2908, 20 lines); discarded and rerun from pre-stage snapshot per protocol
+# b1-s3 attempt 4: truncated by session usage limit at 1463s (86 turns, $13.3281, 487 lines); discarded and rerun from pre-stage snapshot per protocol
+b1-s3,b1,b,3,67,657,3363,44521,88062,2412241,6.4338,334,12,yes,rerun after 4 disclosed aborts; ran on second subscription account
+# b1-s4 attempt 1: truncated by session usage limit at 500s (47 turns, $5.0128, 322 lines); discarded and rerun from pre-stage snapshot per protocol
+b1-s4,b1,b,4,79,962,7898,49468,105473,4320072,8.9826,390,7,yes,rerun after disclosed abort; loc excludes harness smoke.env
+# b1 post-s3 smoke (2026-07-16): workspace PASS; auth FAIL on "authed probe after logout must be 401/403" — @fonderie/auth design: logout revokes the refresh session but access JWTs (24h expiry) are stateless and stay valid; present since stage 1, not a stage regression; counts against scorecard item 4 at final scoring
+a2-s1,a2,a,1,,263,6571,16716,31882,876123,2.4159,857,6,yes,turns unavailable: JSON segmented by an in-session task notification; tokens/cost from cumulative modelUsage
+# a2-s2 attempt 1: truncated by session usage limit at 98s (9 turns, $0.8892, 87 lines); discarded and rerun from pre-stage snapshot per protocol
+a2-s2,a2,a,2,36,249,3056,17444,34099,878144,2.4635,361,25,yes,rerun after disclosed abort
+a2-s3,a2,a,3,26,428,2610,35035,53994,1022607,3.8810,460,29,yes,
+a2-s4,a2,a,4,25,152,2580,10001,35017,317554,1.5444,155,12,yes,
+# b2-s1 attempt 1: truncated by session usage limit at 588s (57 turns, $3.1897, 1090 lines uncommitted work discarded); rerun from baseline per protocol
+b2-s1,b2,b,1,79,895,6131,25612,61075,2859894,5.4239,895,2,yes,rerun after disclosed abort
+b2-s2,b2,b,2,78,685,3873,25597,64473,2677529,5.2862,218,7,yes,
+b2-s3,b2,b,3,50,525,3230,26440,76360,2141301,5.0234,179,2,yes,
+b2-s4,b2,b,4,54,423,3226,29635,79909,1873356,4.9862,270,5,yes,
+# b2 final-tree smoke (2026-07-17): workspace PASS, rbac PASS; auth FAIL only on stateless-JWT logout probe (package design, as b1). Invite bodies need explicit roleId (no default role — avoids b1's default-ADMIN bug); harness gained WS_INVITE_BODY template, assertions unchanged
+# b2 scorecard (2026-07-17): 19/20 (fail: 4 revocable-session, package design) — see scorecard-b2.md
+a3-s1,a3,a,1,25,174,3306,13483,50778,378088,2.1015,704,4,yes,
+a3-s2,a3,a,2,24,170,3218,14344,32360,494135,1.8913,383,0,yes,
+# a3-s3 attempt 1: truncated by session usage limit at 151s (14 turns, $1.3815, 391 lines); discarded and rerun from pre-stage snapshot per protocol
+a3-s3,a3,a,3,23,251,2600,21616,39232,651852,2.5439,346,21,yes,rerun after disclosed abort
+# b1 final-tree smoke (2026-07-16): workspace PASS; auth FAIL (same stateless-JWT logout behavior as post-s3, package design, not a stage regression); rbac FAIL — invited members are granted ADMIN by default, so the invited "guest" can send invitations (201 where 401/403 required); counts against scorecard items 16/19. Harness notes: stage-4 rate limiting (register 5/h/IP) throttled back-to-back smoke runs — fonderie_rate_limits cleared between runs; rbac.sh gained the same b1 accommodations as workspace.sh (id field, ctx header, pin, unique names)
+# a1 final-tree smoke (2026-07-16): auth PASS, workspace PASS, rbac PASS — no regressions in sequence a1
+# a1 scorecard (2026-07-16): 20/20 — see scorecard-a1.md
+# a2 final-tree smoke (2026-07-17): auth PASS, workspace PASS, rbac PASS — no regressions in sequence a2
+# a2 scorecard (2026-07-17): 20/20 — see scorecard-a2.md
+# b1 scorecard (2026-07-16): 18/20 (fails: 4 revocable-session — stateless access JWTs survive logout; 16 GUEST-cannot-mutate — invited members default to ADMIN) — see scorecard-b1.md
