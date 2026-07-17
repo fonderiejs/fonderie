@@ -103,10 +103,10 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
 			}
 
-			const { accessToken, refreshToken } = issueTokenPair(upserted.id, config, {
+			const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, config, {
 				loginMethod: 'google',
 			});
-			await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken));
+			await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
 			return Response.json(
 				{

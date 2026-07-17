@@ -137,10 +137,10 @@ export function mfaController(
 				}
 			}
 
-			const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, {
+			const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, config, {
 				loginMethod: ctx.user!.loginMethod,
 			});
-			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
+			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
 			const fullUser = await users.findById(ctx.user!.id);
 			if (!fullUser) {

@@ -5,11 +5,13 @@ import type { IAuthConfig } from '../config';
 import { verifyToken } from '../services/jwt';
 import type { IAccessPayload } from '../services/jwt';
 import { UserModel } from '../models/user.model';
+import { SessionModel } from '../models/session.model';
 
 // Reads the Bearer token or session cookie, populates ctx.user
 // Does NOT reject — anonymous requests pass through
 export function withSession(store: IStoreAdapter, config: IAuthConfig): Middleware {
 	const users = new UserModel(store);
+	const sessions = new SessionModel(store);
 
 	return async (ctx, next) => {
 		const token = extractToken(ctx.request);
@@ -19,6 +21,16 @@ export function withSession(store: IStoreAdapter, config: IAuthConfig): Middlewa
 
 		const payload = verifyToken(token, config);
 		if (!payload || payload.type !== 'access') {
+			return next();
+		}
+
+		// Revocation: access tokens are bound to their refresh session via the
+		// sid claim. Logout, rotation, and password change delete that row, so
+		// the access token dies with it instead of living out its JWT expiry.
+		// Tokens without a sid pass through: short-lived mfaPending tokens
+		// (no session exists yet) and legacy tokens from before session
+		// binding, which age out within one accessTokenDuration of deploy.
+		if (payload.sid && !(await sessions.aliveBySid(payload.sid))) {
 			return next();
 		}
 

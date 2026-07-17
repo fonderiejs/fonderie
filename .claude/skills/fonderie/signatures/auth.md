@@ -54,6 +54,7 @@ new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus | undef
 interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     secureCookies?: boolean;
     rateLimit?: IAuthRateLimitConfig | false;
+    accessTokenDuration?: string;
     providers: ('email' | 'phone' | 'google' | 'github')[];
     appName?: string;
     resolve?: (ctx: {
