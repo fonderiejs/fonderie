@@ -1,0 +1,1 @@
+Add workspaces (organizations) to this app: create a workspace; invite members by email with expiring, single-use invitations; accept or reject an invitation; list a workspace's members. A user can belong to multiple workspaces. Production quality.

@@ -1,0 +1,11 @@
+{
+  "name": "expt-pg",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "embedded-postgres": "17.10.0-beta.17"
+  },
+  "allowScripts": {
+    "@embedded-postgres/darwin-x64@17.10.0-beta.17": true
+  }
+}
