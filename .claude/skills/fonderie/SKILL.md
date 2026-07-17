@@ -35,6 +35,20 @@ nobody asked for.
    are wiring: `signatures/<package>.md` (e.g. `signatures/auth.md`) — listed
    in [SIGNATURES.md](SIGNATURES.md). Load only what you need; do not read all
    of them, and do not read package source out of `node_modules`.
+5. **Need to know what a package DID to the app — tables, seeded rows,
+   routes?** Read `signatures/<package>-outcomes.md`
+   (e.g. `signatures/auth-outcomes.md`): every DB table the package's
+   migrations create (with columns), every seeded row, and every HTTP route
+   it registers with its middleware chain. That answers "what do I query /
+   what do I call / what already exists" without touching `dist/`. If you
+   genuinely need the raw migration SQL, it ships at
+   `node_modules/@fonderie/<pkg>/dist/migrations/sql/` — read it in place;
+   never `npm pack` or download tarballs to inspect a package.
+6. **Local email:** modules send through SMTP config. In development point
+   `SMTP_HOST`/`SMTP_PORT` at a dev sink (e.g. `npx maildev`, SMTP on 1025)
+   instead of improvising one; invitation and password-reset tokens are also
+   readable from their tables (see the outcomes files) when a flow needs them
+   programmatically.
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';

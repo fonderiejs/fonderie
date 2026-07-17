@@ -14,9 +14,6 @@ export interface IWorkspacesConfig {
 	// How long invitations are valid. Default: '7d'
 	invitationTtl?: string;
 
-	// Default role assigned to invited members. Default: 'member'
-	defaultRole?: string;
-
 	// Auto-create a personal workspace when user.registered fires.
 	// Requires an EventBus to be passed to WorkspacesModule. Default: true
 	personalWorkspace?: boolean;

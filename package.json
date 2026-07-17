@@ -15,7 +15,7 @@
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release": "npm run build && changeset publish",
-		"docs:signatures": "node scripts/generate-signatures.mjs",
+		"docs:signatures": "node scripts/generate-signatures.mjs && node scripts/generate-outcomes.mjs",
 		"audit:validation": "node scripts/audit-validation.mjs"
 	},
 	"devDependencies": {
