@@ -14,7 +14,6 @@ new WorkspacesModule(store: IStoreAdapter, config?: IWorkspacesConfig, bus?: Eve
 
 interface IWorkspacesConfig {
     invitationTtl?: string;
-    defaultRole?: string;
     personalWorkspace?: boolean;
 }
 

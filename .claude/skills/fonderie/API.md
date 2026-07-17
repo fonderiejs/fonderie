@@ -134,7 +134,14 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
   `GET /users`, `PUT /users/{profile,preferences,email,phone,password}`,
   `DELETE /users`
 - Password reset flow = `POST /auth/email/forgot` (emits `passwordReset`
-  message via the bus → courier) then `POST /auth/email/reset`.
+  message via the bus → courier) then `POST /auth/email/reset` with
+  `{ email, pin, password }` — the pin is emailed and stored (single-use,
+  expiring) in `fonderie_password_resets`.
+- **Session semantics:** access tokens are stateless JWTs — `logout` revokes
+  the server-side *refresh* session (its body takes `{ refreshToken }`), but
+  an already-issued access token stays valid until its own expiry. Keep the
+  access-token lifetime short; don't build flows that assume logout kills the
+  access token instantly.
 
 ## @fonderie/courier
 
@@ -155,12 +162,26 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
 ## @fonderie/workspaces
 
 - `new WorkspacesModule(store, config?: IWorkspacesConfig, bus?: EventBus)`
-- Config: `invitationTtl?` (default `'7d'`), `defaultRole?` (`'member'`),
+- Config: `invitationTtl?` (default `'7d'`),
   `personalWorkspace?` (auto-create on `user.registered`; needs bus; default `true`)
 - Exports: `withWorkspace(store)`, `requireWorkspace`
 - Routes: full CRUD under `/workspaces` — members, invitations
   (`POST /workspaces/invitations/accept`), roles + permissions, settings,
   archive/restore
+- **Behavioral contracts** (things you'd otherwise discover by debugging):
+  - Workspace context comes from the `x-workspace-id` request header
+    (resolved by `withWorkspace`), not from the URL path.
+  - The migration seeds two global system roles, `ADMIN` and `GUEST`
+    (`workspace_id IS NULL`). Workspace creators get `ADMIN`; an invitation
+    sent without `roleId` defaults to the system **GUEST** role (≥ 1.1.1 —
+    least privilege). Pass a `roleId` from `GET /workspaces/roles` to grant
+    anything more.
+  - Accepting an invitation requires **both** `token` and `pin` (emailed;
+    both also live in `fonderie_workspace_invitations` — see
+    `signatures/workspaces-outcomes.md`). Invitations are single-use and
+    expire after `invitationTtl`.
+  - Personal workspaces (auto-created per user) don't accept invitations —
+    inviting into one returns 403.
 
 ## @fonderie/billing
 

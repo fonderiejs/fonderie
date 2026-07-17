@@ -24,3 +24,20 @@ composition guide (rules, golden `buildFonderie()` example, routes), see
 - `@fonderie/adapter-express` → [signatures/adapter-express.md](signatures/adapter-express.md)
 - `@fonderie/adapter-hono` → [signatures/adapter-hono.md](signatures/adapter-hono.md)
 - `@fonderie/adapter-koa` → [signatures/adapter-koa.md](signatures/adapter-koa.md)
+
+## Outcomes — schemas, seeds, routes
+
+What each package does to your app once wired: DB tables created, rows
+seeded, HTTP routes registered (with middleware). **Read the outcomes file
+instead of excavating `dist/` or tarballs.**
+
+- `@fonderie/events` (2 tables, 0 routes) → [signatures/events-outcomes.md](signatures/events-outcomes.md)
+- `@fonderie/auth` (7 tables, 21 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
+- `@fonderie/courier` (2 tables, 0 routes) → [signatures/courier-outcomes.md](signatures/courier-outcomes.md)
+- `@fonderie/workspaces` (4 tables, 23 routes) → [signatures/workspaces-outcomes.md](signatures/workspaces-outcomes.md)
+- `@fonderie/billing` (4 tables, 11 routes) → [signatures/billing-outcomes.md](signatures/billing-outcomes.md)
+- `@fonderie/permissions` (1 tables, 0 routes) → [signatures/permissions-outcomes.md](signatures/permissions-outcomes.md)
+- `@fonderie/config` (1 tables, 0 routes) → [signatures/config-outcomes.md](signatures/config-outcomes.md)
+- `@fonderie/customers` (10 tables, 35 routes) → [signatures/customers-outcomes.md](signatures/customers-outcomes.md)
+- `@fonderie/audit` (0 tables, 1 routes) → [signatures/audit-outcomes.md](signatures/audit-outcomes.md)
+- `@fonderie/webhooks` (2 tables, 7 routes) → [signatures/webhooks-outcomes.md](signatures/webhooks-outcomes.md)
