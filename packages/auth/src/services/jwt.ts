@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import type { IAuthConfig } from '../config';
@@ -5,6 +6,10 @@ import type { IAuthConfig } from '../config';
 export interface TokenPair {
 	accessToken: string;
 	refreshToken: string;
+	// Server-side session id both tokens are bound to. Store it on the
+	// fonderie_sessions row — deleting that row revokes the access token
+	// immediately, not just the refresh token.
+	sid: string;
 }
 
 export interface IAccessPayload {
@@ -13,6 +18,9 @@ export interface IAccessPayload {
 	loginMethod: 'email' | 'phone' | 'google';
 	phoneVerified: boolean;
 	mfaPending?: boolean;
+	// Absent only on legacy tokens issued before session binding and on
+	// short-lived mfaPending tokens (no session exists yet at that point).
+	sid?: string;
 }
 
 export interface IRefreshPayload {
@@ -20,6 +28,7 @@ export interface IRefreshPayload {
 	type: 'refresh';
 	loginMethod: 'email' | 'phone' | 'google';
 	phoneVerified: boolean;
+	sid?: string;
 }
 
 export interface ITokenOptions {
@@ -51,22 +60,24 @@ export function issueTokenPair(
 	options: ITokenOptions,
 ): TokenPair {
 	const duration = config.sessionDuration ?? '7d';
+	const accessDuration = config.accessTokenDuration ?? '24h';
 	const loginMethod = options.loginMethod;
 	const phoneVerified = options.phoneVerified ?? false;
+	const sid = randomUUID();
 
 	const accessToken = jwt.sign(
-		{ sub: userId, type: 'access', loginMethod, phoneVerified } satisfies IAccessPayload,
+		{ sub: userId, type: 'access', loginMethod, phoneVerified, sid } satisfies IAccessPayload,
 		config.jwtSecret,
-		{ expiresIn: '24h' },
+		{ expiresIn: accessDuration } as SignOptions,
 	);
 
 	const refreshToken = jwt.sign(
-		{ sub: userId, type: 'refresh', loginMethod, phoneVerified } satisfies IRefreshPayload,
+		{ sub: userId, type: 'refresh', loginMethod, phoneVerified, sid } satisfies IRefreshPayload,
 		config.jwtSecret,
 		{ expiresIn: duration } as SignOptions,
 	);
 
-	return { accessToken, refreshToken };
+	return { accessToken, refreshToken, sid };
 }
 
 export function refreshTokenExpiry(token: string): Date {

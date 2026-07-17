@@ -137,11 +137,12 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
   message via the bus → courier) then `POST /auth/email/reset` with
   `{ email, pin, password }` — the pin is emailed and stored (single-use,
   expiring) in `fonderie_password_resets`.
-- **Session semantics:** access tokens are stateless JWTs — `logout` revokes
-  the server-side *refresh* session (its body takes `{ refreshToken }`), but
-  an already-issued access token stays valid until its own expiry. Keep the
-  access-token lifetime short; don't build flows that assume logout kills the
-  access token instantly.
+- **Session semantics:** access tokens are session-bound JWTs — each pair
+  carries a `sid` bound to its server-side session row, and `withSession`
+  rejects an access token whose session is gone. Logout (body takes
+  `{ refreshToken }`), token rotation, and password change therefore kill
+  the access token immediately, not just the refresh token.
+  `accessTokenDuration?` (default `'24h'`) bounds the stolen-token window.
 
 ## @fonderie/courier
 

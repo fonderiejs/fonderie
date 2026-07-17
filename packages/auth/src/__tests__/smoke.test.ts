@@ -1983,3 +1983,46 @@ test('rate limit: per-route override can relax a single rule', async () => {
 	assert.equal((await hit()).status, 200);
 	assert.equal((await hit()).status, 429);
 });
+
+// ── session-bound access-token revocation ───────────────────────
+
+test('withSession: access token dies when its session row is gone', async () => {
+	const { withSession } = await import('../middlewares/session');
+	const { issueTokenPair } = await import('../services/jwt');
+	const { accessToken, sid } = issueTokenPair('user-1', config, { loginMethod: 'email' });
+	assert.ok(sid, 'issueTokenPair returns the session id');
+
+	const ctxFor = () => ({
+		request: new Request('http://test/x', {
+			headers: { authorization: `Bearer ${accessToken}` },
+		}),
+	}) as any;
+
+	// Session alive → ctx.user populated.
+	const alive = ctxFor();
+	await withSession(makeStore({ sessionExists: true, userById: BASE_USER }), config)(
+		alive, async () => new Response('ok'));
+	assert.equal(alive.user?.id, 'user-1');
+
+	// Session revoked (logout / rotation / password change) → anonymous.
+	const revoked = ctxFor();
+	await withSession(makeStore({ sessionExists: false, userById: BASE_USER }), config)(
+		revoked, async () => new Response('ok'));
+	assert.equal(revoked.user, undefined);
+});
+
+test('withSession: legacy token without sid still authenticates', async () => {
+	const { withSession } = await import('../middlewares/session');
+	const jwt = (await import('jsonwebtoken')).default;
+	const legacy = jwt.sign(
+		{ sub: 'user-1', type: 'access', loginMethod: 'email', phoneVerified: false },
+		config.jwtSecret,
+		{ expiresIn: '1h' },
+	);
+	const ctx = {
+		request: new Request('http://test/x', { headers: { authorization: `Bearer ${legacy}` } }),
+	} as any;
+	await withSession(makeStore({ sessionExists: false, userById: BASE_USER }), config)(
+		ctx, async () => new Response('ok'));
+	assert.equal(ctx.user?.id, 'user-1');
+});

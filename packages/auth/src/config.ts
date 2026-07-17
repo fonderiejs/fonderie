@@ -60,6 +60,11 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	// Inject a store (e.g. RedisStore) for high-throughput deployments,
 	// override individual rules, or set false to disable entirely.
 	rateLimit?: IAuthRateLimitConfig | false;
+	// Access-token lifetime (jsonwebtoken duration string). Default '24h'.
+	// Access tokens are session-bound and die on logout / rotation /
+	// password change regardless of this value; shorten it to bound the
+	// window of a stolen token whose session is still alive.
+	accessTokenDuration?: string;
 	providers: ('email' | 'phone' | 'google' | 'github')[];
 	appName?: string;
 	resolve?: (ctx: { meta: Record<string, unknown> }) => Partial<IAuthRuntimeConfig>;

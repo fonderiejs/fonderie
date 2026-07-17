@@ -128,10 +128,10 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					)
 					.catch(() => {});
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'email',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
 				const resolvedRegister = { ...config, ...config.resolve?.(ctx) };
 				const requiresVerification = !!(resolvedRegister.requireVerification) && !user.emailVerifiedAt;
@@ -204,10 +204,10 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					)
 					.catch(() => {});
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'phone',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
 				return Response.json(
 					{
@@ -270,10 +270,10 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					});
 				}
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'email',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
 				const resolvedLogin = { ...config, ...config.resolve?.(ctx) };
 				const requiresVerification = !!(resolvedLogin.requireVerification) && !user.emailVerifiedAt;
@@ -324,10 +324,10 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					} satisfies ICourierMessage)
 					.catch(() => {});
 
-				const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'phone',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
 				return Response.json(
 					{
@@ -397,11 +397,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			}
 
 			await sessions.delete(token);
-			const { accessToken, refreshToken } = issueTokenPair(user.id, config, {
+			const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 				loginMethod: payload.loginMethod ?? 'email',
 				phoneVerified: payload.phoneVerified ?? false,
 			});
-			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken));
+			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
 			return Response.json(
 				{
@@ -560,11 +560,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				}
 				await phoneVerif.deleteByUser(ctx.user!.id);
 
-				const { accessToken, refreshToken } = issueTokenPair(ctx.user!.id, config, {
+				const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, config, {
 					loginMethod: 'phone',
 					phoneVerified: true,
 				});
-				await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken));
+				await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
 				const verifiedUser = await users.findById(ctx.user!.id);
 				if (!verifiedUser) {

@@ -70,7 +70,9 @@ user_agent               TEXT
 ip_address               TEXT
 expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+sid                      UUID
 -- INDEX idx_fonderie_sessions_expires_at (expires_at)
+-- INDEX idx_fonderie_sessions_sid (sid)
 ```
 
 ### `fonderie_users`
