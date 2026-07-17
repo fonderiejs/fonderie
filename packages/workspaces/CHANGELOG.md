@@ -1,5 +1,16 @@
 # @fonderie/workspaces
 
+## 1.1.1
+
+### Patch Changes
+
+- Security: invitations without an explicit `roleId` now default to the seeded
+  system GUEST role (least privilege) instead of resolving a workspace-scoped
+  ADMIN role. Previously, apps that seeded per-workspace ADMIN roles would
+  silently grant every bare invite full admin rights; apps that didn't would
+  500 with "Default role not found". Granting a privileged role now always
+  requires passing `roleId` (from `GET /workspaces/roles`).
+
 ## 1.1.0
 
 ### Minor Changes
