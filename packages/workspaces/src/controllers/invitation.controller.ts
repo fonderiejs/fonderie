@@ -68,13 +68,16 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 			}
 
 			// Resolve default role once for entries that omit roleId.
+			// Invitations must never default to a privileged role: fall back to
+			// the seeded system GUEST role (least privilege). Granting anything
+			// more requires an explicit roleId from GET /workspaces/roles.
 			let defaultRoleId: string | undefined;
 			const needsDefault = entries.some((e) => !e['roleId']);
 			if (needsDefault) {
 				const [row] = await store.query<{ id: string }>(
 					`SELECT id FROM fonderie_roles
-					 WHERE name = 'ADMIN' AND workspace_id = $1 LIMIT 1`,
-					[ctx.workspace.id],
+					 WHERE name = 'GUEST' AND workspace_id IS NULL AND is_system = true
+					 LIMIT 1`,
 				);
 				defaultRoleId = row?.id;
 				if (!defaultRoleId) {
