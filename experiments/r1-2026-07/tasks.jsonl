@@ -1,0 +1,10 @@
+{"id":"auth-1","category":"auth","prompt":"Add user accounts to my app — people should be able to sign up and log in.","expect":["auth"]}
+{"id":"auth-2","category":"auth","prompt":"Let users sign in with their Google account.","expect":["auth"]}
+{"id":"billing-1","category":"billing","prompt":"Let my users pay for a monthly subscription.","expect":["billing"]}
+{"id":"billing-2","category":"billing","prompt":"Charge teams per seat as they add members.","expect":["billing","workspaces"]}
+{"id":"workspaces-1","category":"workspaces","prompt":"Add teams so users can invite coworkers to a shared workspace.","expect":["workspaces"]}
+{"id":"permissions-1","category":"permissions","prompt":"Add admin and member roles, and only let admins delete things.","expect":["permissions"]}
+{"id":"courier-1","category":"courier","prompt":"Send a welcome email when someone registers.","expect":["courier"]}
+{"id":"webhooks-1","category":"webhooks","prompt":"Receive and verify incoming Stripe webhooks.","expect":["webhooks"]}
+{"id":"ratelimit-1","category":"security","prompt":"Protect the login endpoint from brute-force attempts.","expect":["rate-limit","auth"]}
+{"id":"compound-1","category":"compound","prompt":"Add team billing: teams, per-seat subscription pricing, and role-based access.","expect":["billing","workspaces","permissions"]}
