@@ -44,3 +44,28 @@ the top-ranked slice contains the required nodes from
 | handle stripe events | 10 | gen |
 | tell other apps when something happens here | 10 | gen |
 | stop bots hammering the login | 10 | gen |
+
+## Repo-sourced phrasings (real — extracted 2026-07-18)
+
+Actual prompts used in this repo's experiments (token-cost `prompt*.txt`,
+multi-module `prompts/stage{1..4}.txt`). Provenance = `repo-experiment`:
+real task language written for the runs, not synthesized here — a step up
+from `gen`, though still not end-user support phrasing. They cover canonical
+tasks 1, 4, 8 + rate-limit + audit; billing/courier/webhooks tasks still lack
+real coverage and need genuine user phrasings. All five resolve correctly
+against brain.json (compound prompts fan out to the right multiple packages).
+
+| Entry | Task | Source |
+| --- | --- | --- |
+| Add user accounts to my app — people should be able to sign up and log in | 1 | repo-experiment |
+| Add email/password authentication: signup, login, logout, server-side sessions, password reset by email, input validation, and rate limiting on the login endpoint | 1,3,9,10 (compound) | repo-experiment |
+| Add workspaces (organizations): create a workspace; invite members by email with expiring, single-use invitations; accept or reject; list members | 4,9 (compound) | repo-experiment |
+| Add roles and permissions: each workspace has ADMIN and GUEST roles; permission checks enforced on every workspace route; assign/remove roles | 8 | repo-experiment |
+| password reset and invitation acceptance are not rate limited; authentication and role changes are not audited — add an audit log of every login, logout, reset, and role grant | 10,audit (compound) | repo-experiment |
+
+## Coverage gap (for the human review)
+
+Real coverage exists for auth, workspaces, permissions, rate-limit, audit.
+**Still `gen`-only — need real phrasings before the gate counts:** billing
+(tasks 5–7), courier (task 9 standalone), webhooks (task 10 outbound). Best
+sources: sales-call notes, Discord, or the first real support tickets.
