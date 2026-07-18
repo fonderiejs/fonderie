@@ -52,13 +52,22 @@ if [ "$ARM" = "c" ]; then
 JSON
 fi
 
+# R1a retrieval-decision scope: bound the session to the decision point so we
+# measure retrieval behavior, not the model's ability to build against packages
+# that aren't installed (that confounder belongs to a separate R1b full-workflow
+# test). See README § R1a vs R1b.
+SCOPE='Implement the module wiring in src/. Do not install dependencies, build, or test. Before making changes, determine which Fonderie capabilities/packages are relevant.'
+
 cd "$WORK"
 START=$(date +%s)
-env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude -p "$PROMPT" \
+# </dev/null: claude -p reads stdin; without this it drains the batch driver's
+# run-list, so only the first task ran (found on the first Stage 1 attempt).
+env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude -p "$PROMPT $SCOPE" \
   --model "$MODEL" \
   --output-format json \
   --mcp-config "$WORK/.mcp.json" \
   --dangerously-skip-permissions \
+  </dev/null \
   > "$EXPT/results/$ID.json" 2> "$EXPT/results/$ID.err"
 CODE=$?
 END=$(date +%s)
