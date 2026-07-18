@@ -27,6 +27,9 @@ ROADMAP.md
 !scripts/generate-outcomes.mjs
 !scripts/generate-brain.mjs
 !scripts/brain-query.mjs
+!scripts/brain-lib.mjs
+!scripts/brain-serve.mjs
+!scripts/brain-serve.test.mjs
 
 # Local example apps — not part of the public SDK
 examples/
