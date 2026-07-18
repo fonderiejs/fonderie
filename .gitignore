@@ -30,6 +30,7 @@ ROADMAP.md
 !scripts/brain-lib.mjs
 !scripts/brain-serve.mjs
 !scripts/brain-serve.test.mjs
+!scripts/brain-hook.mjs
 
 # Local example apps — not part of the public SDK
 examples/
@@ -46,3 +47,5 @@ graphify-out/
 experiments/*/results/
 experiments/*/runs/
 experiments/*/skeleton-*/.claude/
+
+experiments/r1-2026-07/results/
