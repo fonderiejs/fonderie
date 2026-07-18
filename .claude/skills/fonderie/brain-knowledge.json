@@ -1,0 +1,35 @@
+{
+  "_comment": "Curated R2 layer for the Fonderie brain (BRAIN_PLAN.md Phase 1/2). Hand-maintained: closed-domain alias edges + recipes + invariants that structural extraction cannot infer. Merged into brain.json by scripts/generate-brain.mjs. Grows from corpus misses (experiments/brain-2026-07).",
+  "aliases": {
+    "auth": ["login", "log in", "sign in", "signin", "signup", "sign up", "register", "account", "accounts", "user account", "password", "reset password", "forgot password", "magic link", "sso", "oauth", "social auth", "session", "signed in", "logged in", "authenticate", "mfa", "2fa", "verify email", "protect this endpoint", "protect", "make this page private", "make private", "private page", "logged in people", "only logged in", "require login", "gate a route"],
+    "billing": ["pay", "payment", "charge", "checkout", "subscription", "subscribe", "plan", "plans", "pricing", "price", "monetize", "stripe", "invoice", "seat", "per seat", "upgrade", "paid plan", "free tier", "tier", "entitlement", "usage limit", "metered", "pro users", "pro user", "pro plan", "premium"],
+    "workspaces": ["team", "teams", "org", "orgs", "organization", "organizations", "workspace", "group", "invite", "invitation", "member", "members", "coworker", "colleague", "multi tenant", "multi-tenancy", "shared account", "share one account", "multiple people", "people share"],
+    "permissions": ["role", "roles", "admin", "owner", "member role", "permission", "access control", "rbac", "can", "cannot", "authorize", "viewer", "editor", "grant", "policy"],
+    "courier": ["email", "send email", "welcome email", "notify", "notification", "transactional email", "sms", "text message", "push notification"],
+    "rate-limit": ["rate limit", "throttle", "brute force", "brute-force", "abuse", "spam", "bots", "hammering", "flood"],
+    "webhooks": ["webhook", "webhooks", "stripe events", "handle events", "callback", "tell other apps", "notify other apps", "outbound event", "signature verify"],
+    "config": ["feature flag", "remote config", "toggle", "flag", "runtime config", "kill switch"],
+    "audit": ["audit log", "audit trail", "activity log", "who did what", "compliance log"],
+    "events": ["event bus", "domain event", "emit event", "pub sub", "in process events"],
+    "customers": ["customer", "customers", "crm", "customer record", "contact"]
+  },
+  "recipes": {
+    "basic-auth": { "when": "sign up + log in with email/password", "packages": ["auth", "core", "events", "store"], "invariants": ["jwt-secret-from-env", "rate-limit-default-on"] },
+    "oauth": { "when": "social login (Google/GitHub)", "packages": ["auth", "config", "core", "store"], "invariants": ["jwt-secret-from-env"] },
+    "route-guard": { "when": "gate a route behind login", "packages": ["auth"], "invariants": [], "note": "use requireAuth middleware from @fonderie/auth on the protected route" },
+    "teams-invites": { "when": "teams/workspaces with email invites", "packages": ["workspaces", "auth", "courier", "events", "core", "store"], "invariants": ["workspaces-requires-billing"] },
+    "stripe-checkout": { "when": "charge users / subscription plans", "packages": ["billing", "customers", "core", "store"], "invariants": ["webhook-route-before-auth-mw", "rate-limit-default-on"] },
+    "per-seat-billing": { "when": "bill per team member / seat", "packages": ["billing", "workspaces", "core", "store"], "invariants": ["workspaces-requires-billing"] },
+    "plan-gate": { "when": "lock a feature behind a paid plan", "packages": ["billing", "permissions"], "invariants": [] },
+    "rbac": { "when": "roles & permissions (admin/member/viewer)", "packages": ["permissions", "workspaces", "core", "store"], "invariants": [] },
+    "transactional-email": { "when": "welcome / reset / invite emails", "packages": ["courier", "events", "config", "core", "store"], "invariants": [] },
+    "webhooks-in-out": { "when": "receive Stripe webhooks and emit your own", "packages": ["webhooks", "billing", "events", "rate-limit", "core", "store"], "invariants": ["webhook-route-before-auth-mw", "rate-limit-default-on"] }
+  },
+  "invariants": {
+    "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
+    "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
+    "logout-provided": "@fonderie/auth mounts POST /auth/logout with session invalidation — do not hand-roll stateless-JWT logout.",
+    "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
+    "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces."
+  }
+}
