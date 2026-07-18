@@ -67,19 +67,38 @@ model read `@fonderie` source and wrote the app via Bash heredocs instead.
 One data point, but it's the R1 risk showing up immediately, and it's exactly
 why arms b/c exist. Not averaged, not a conclusion.
 
-## Proposed paid batch (NEEDS SIGN-OFF — real spend)
+## Stage 1 (DONE — closed at n=7, underpowered by choice)
 
-Staged, to spend evidence-first:
+Ran arms a (tool-only) & c (hook), wiring-only prompt, matched skeleton.
+Outcome: milestone closed, hypothesis refined (see FINDINGS.md). This is the
+frozen methodology for the milestone — Phase 2.6 reuses the same harness,
+scorer, tasks, and pre-registration discipline.
 
-1. **Stage 1 (30 runs, ~$14):** all 10 tasks × arms a & c, 1 rep + 2 extra
-   reps on 5 core tasks. Establishes the voluntary floor (a) vs deterministic
-   ceiling (c). If a already ≥90%, hooks may be unnecessary.
-2. **Stage 2 (add arm b, ~20 runs, ~$9) only if arm a is 40–89%** — measures
-   whether the stub alone closes the gap before committing to hooks.
+## Next milestone → Phase 2.6 — Retrieval Intervention (pre-registered)
 
-Total 30–50 runs, $15–25, one model (claude-opus-4-8), alternating arms,
-aborts disclosed (session limits, per prior rounds). Corpus review (billing/
-courier/webhooks phrasings) proceeds in parallel — independent of R1.
+Not "Stage 2" and not more measurement — an **intervention experiment**. R1
+evolved from "does the model use the brain?" (answered: yes, eventually) to
+"what reliably shifts retrieval from *eventually* to *before code*?"
+
+**Primary output — a single effect size, not a pass/fail:**
+
+```
+Δ = P(retrieval before code | tool + stub)   [arm B]
+  − P(retrieval before code | tool only)     [arm A baseline, this milestone]
+```
+
+- **Arm B** = tool + brain-first CLAUDE.md stub (already implemented in run.sh).
+- **Interpretation (locked before data):** large positive Δ → a lightweight
+  stub is the cheap intervention, hooks may be unnecessary. Δ ≈ 0 → the stub
+  doesn't change first-action behavior, which *justifies* stronger integration
+  (arm C hook / init). Report Δ with a 95% CI; do not gate on a threshold.
+- Same model (claude-opus-4-8), same 10 tasks, same scorer. Aim for enough
+  arm-B runs to pair against the arm-A baseline; disclose aborts.
+- Freshness is now a design input, not just a metric: keep the test skeleton
+  version-matched to the brain so the R3 banner doesn't confound Δ.
+
+Corpus review (billing/courier/webhooks phrasings) proceeds in parallel —
+independent of the intervention experiment.
 
 ## Status
 
@@ -88,9 +107,9 @@ courier/webhooks phrasings) proceeds in parallel — independent of R1.
 - [x] Stage 1 batch — stopped at n=7 (underpowered by choice; ≈6-runs/login cap)
 - [x] **Milestone closed: infrastructure validated; behavioral hypothesis
       refined.** Not an R1 pass/fail. Full write-up in `FINDINGS.md`.
-- [ ] **Next experiment: Arm B (tool + brain-first stub)** — an *intervention*
-      measuring Δ(retrieval-before-code) vs this baseline. The question shifted
-      from "does the model use the brain?" to "what makes it use it *first*?"
+- [ ] **Phase 2.6 — Retrieval Intervention:** Arm B (tool + stub) measuring
+      Δ(retrieval-before-code) vs this milestone's Arm-A baseline. New milestone,
+      not an extension. Pre-registered above.
 - [ ] (Later) R1b full-workflow realism check — packages installed, end-to-end
 
 ## Milestone conclusion
