@@ -65,9 +65,12 @@ function scoreSession(transcriptPath, brainLogPath, hookLogPath, expect) {
   // "before code": a brain_query occurred before the first Fonderie-touching edit
   const beforeCode =
     firstBrainIdx >= 0 && (firstFonderieEditIdx < 0 || firstBrainIdx < firstFonderieEditIdx);
-  // wrong retrieval: a matched query whose returned packages (top) include none
-  // of the expected packages. Falls back to arg text if top wasn't logged.
-  const wrong = brainCalls.filter((c) => {
+  // semantic queries only (not brain_node / brain_recipe drill-downs)
+  const queryCalls = brainCalls.filter((c) => /brain_query/.test(c.tool || ''));
+  // wrong retrieval: a brain_query (NOT a node/recipe drill-down) whose returned
+  // packages include none of the expected packages. Drill-downs legitimately
+  // target one specific package and must not be scored against task expectations.
+  const wrong = queryCalls.filter((c) => {
     if (!c.matched || !expect.length) return false;
     const got = Array.isArray(c.top) ? c.top : String(c.arg || '').split(/\W+/);
     return !expect.some((e) => got.includes(e));
@@ -80,14 +83,27 @@ function scoreSession(transcriptPath, brainLogPath, hookLogPath, expect) {
   const reachedForSource =
     (firstFonderieEditIdx >= 0 || firstFonderieReadIdx >= 0) && firstBrainIdx < 0;
   const missed = hookMisses > 0 || reachedForSource ? 1 : 0;
-  // unnecessary: brain_query calls beyond the number of expected packages
-  const unnecessary = Math.max(0, brainCalls.length - Math.max(1, expect.length));
+  // unnecessary: REDUNDANT brain_query calls only (a 2nd+ semantic query for the
+  // same task). One query is expected; extras are the signal.
+  const unnecessary = Math.max(0, queryCalls.length - 1);
   const latencies = brainCalls.map((c) => c.latency_ms).filter((x) => typeof x === 'number');
   const versionSkewFail = brainCalls.some((c) => c.version_skew);
+
+  // first action: is semantic retrieval the model's DEFAULT instinct, or does it
+  // reach for local inspection first? (distinct from "eventually called the tool")
+  const first = seq[0];
+  const firstAction = !first
+    ? 'none'
+    : isBrainQuery(first.name)
+      ? 'brain_query'
+      : isFonderieRead(first.name)
+        ? `${first.name} @fonderie`
+        : first.name;
 
   return {
     id: transcriptPath.split('/').pop().replace('.transcript.jsonl', ''),
     expect,
+    first_action: firstAction,
     attempted,
     succeeded,
     before_code: beforeCode,
@@ -101,18 +117,37 @@ function scoreSession(transcriptPath, brainLogPath, hookLogPath, expect) {
   };
 }
 
+// Wilson score 95% CI for a binomial proportion — honest small-n interval
+// (never runs past [0,1] the way the normal approximation does).
+function wilson(k, n, z = 1.96) {
+  if (!n) return [0, 0];
+  const p = k / n;
+  const d = 1 + (z * z) / n;
+  const c = p + (z * z) / (2 * n);
+  const h = z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n));
+  return [Math.max(0, (c - h) / d), Math.min(1, (c + h) / d)];
+}
+
 // --- aggregate + gate --------------------------------------------------------
 function aggregate(metricPaths) {
   const ms = metricPaths.map((p) => JSON.parse(readFileSync(p, 'utf8')));
   const n = ms.length;
-  const rate = (f) => ms.filter(f).length / n;
+  const count = (f) => ms.filter(f).length;
+  const rate = (f) => count(f) / n;
   const allLat = ms.flatMap((m) => m.latencies_ms);
   const median = (a) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)] : null);
   const sum = (f) => ms.reduce((s, m) => s + f(m), 0);
+  const ci = wilson(count((m) => m.before_code), n).map((x) => +x.toFixed(3));
+
+  // distribution of first actions (is retrieval the default instinct?)
+  const firstActions = {};
+  for (const m of ms) firstActions[m.first_action] = (firstActions[m.first_action] || 0) + 1;
 
   const out = {
     sessions: n,
     auto_retrieval_rate: +rate((m) => m.before_code).toFixed(3),
+    auto_retrieval_ci95: ci,
+    first_action_dist: firstActions,
     attempted_rate: +rate((m) => m.attempted).toFixed(3),
     succeeded_rate: +rate((m) => m.succeeded).toFixed(3),
     changed_answer_proxy_rate: +rate((m) => m.before_code && m.succeeded).toFixed(3),
