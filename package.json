@@ -16,6 +16,7 @@
 		"version": "changeset version",
 		"release": "npm run build && changeset publish",
 		"docs:signatures": "node scripts/generate-signatures.mjs && node scripts/generate-outcomes.mjs",
+		"docs:brain": "node scripts/generate-brain.mjs",
 		"audit:validation": "node scripts/audit-validation.mjs"
 	},
 	"devDependencies": {
