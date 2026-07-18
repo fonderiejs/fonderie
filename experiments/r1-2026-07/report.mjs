@@ -43,7 +43,30 @@ function armStats(rows) {
 }
 
 const A = armStats(ms.filter((m) => arm(m) === 'a'));
+const B = armStats(ms.filter((m) => arm(m) === 'b'));
 const C = armStats(ms.filter((m) => arm(m) === 'c'));
+
+// Phase 2.6 primary output: the intervention effect size. Report P(tool),
+// P(stub), and Δ each with a 95% interval — never Δ alone (a big Δ can hide a
+// low absolute baseline). Only rendered when arm B has data.
+if (B) {
+  const pTool = A.before_code / A.n;
+  const pStub = B.before_code / B.n;
+  const delta = pStub - pTool;
+  const dband =
+    Math.abs(delta) < 0.1 ? 'not operationally meaningful → justifies stronger integration' :
+    delta >= 0.4 ? 'strong: lightweight stub materially shifts behavior → ship stub, defer hooks' :
+    delta >= 0.2 ? 'likely worth preferring the stub over hooks' :
+    'grey zone (10–20 pts) → widen n or read alongside absolute P(stub)';
+  console.log('## Phase 2.6 — Retrieval Intervention: effect size\n');
+  console.log('| Metric | Value | 95% CI (Wilson) |');
+  console.log('| --- | ---: | ---: |');
+  console.log(`| P(before-code \\| tool) | ${pct(pTool)} | ${pct(A.before_code_ci[0])}–${pct(A.before_code_ci[1])} |`);
+  console.log(`| P(before-code \\| stub) | ${pct(pStub)} | ${pct(B.before_code_ci[0])}–${pct(B.before_code_ci[1])} |`);
+  console.log(`| **Δ (stub − tool)** | **${delta >= 0 ? '+' : ''}${pct(delta)}** | (pre-registered bands below) |`);
+  console.log(`\n**Δ = ${delta >= 0 ? '+' : ''}${pct(delta)}** — ${dband}`);
+  console.log(`Absolute P(before-code | stub) = ${pct(pStub)} (report independent of Δ).\n`);
+}
 
 const row = (label, a, c) => `| ${label.padEnd(21)} | ${String(a).padStart(16)} | ${String(c).padStart(12)} |`;
 console.log('## R1 Stage 1 — arm A (tool only) vs arm C (hook)\n');

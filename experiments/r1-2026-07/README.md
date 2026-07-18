@@ -88,10 +88,21 @@ evolved from "does the model use the brain?" (answered: yes, eventually) to
 ```
 
 - **Arm B** = tool + brain-first CLAUDE.md stub (already implemented in run.sh).
-- **Interpretation (locked before data):** large positive Δ → a lightweight
-  stub is the cheap intervention, hooks may be unnecessary. Δ ≈ 0 → the stub
-  doesn't change first-action behavior, which *justifies* stronger integration
-  (arm C hook / init). Report Δ with a 95% CI; do not gate on a threshold.
+- **Report all three, always** — a large Δ can mislead if both baselines are
+  low (5%→30% and 55%→80% are the same Δ, very different product implications).
+  The primary table reports P(before-code | tool), P(before-code | stub), and Δ,
+  each with a 95% CI.
+- **Minimum detectable effect / decision bands (locked before data):**
+  - **Δ < 10 pts** — not operationally meaningful; the stub is not the answer,
+    which *justifies* stronger integration (arm C hook / init).
+  - **Δ ≈ 20–30 pts** — likely worth preferring the stub over hooks.
+  - **Δ > 40 pts** — strong evidence a lightweight intervention materially
+    shifts first-action behavior; ship the stub, defer hooks.
+  - 10–20 pts is a genuine grey zone → widen n or read alongside the absolute
+    P(stub) before deciding. These are decision aids, not pass/fail gates;
+    report Δ + CI regardless.
+- **Also report absolute P(stub)** independent of Δ: even a modest Δ that lands
+  P(before-code | stub) near ~0.8+ may be operationally sufficient on its own.
 - Same model (claude-opus-4-8), same 10 tasks, same scorer. Aim for enough
   arm-B runs to pair against the arm-A baseline; disclose aborts.
 - Freshness is now a design input, not just a metric: keep the test skeleton
