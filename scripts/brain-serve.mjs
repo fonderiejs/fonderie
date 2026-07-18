@@ -12,9 +12,19 @@
 //   node scripts/brain-serve.mjs [--project <dir>] [--brain <path>]
 
 import { createInterface } from 'node:readline';
+import { appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBrain, query, node, recipe, versionCheck } from './brain-lib.mjs';
+
+// Observability (Phase 2.5 R1 measurement): when FONDERIE_BRAIN_LOG is set,
+// append one JSONL record per tool call — timestamp, tool, args, latency, and
+// whether the query found a match. Off by default; zero overhead in normal use.
+const LOG = process.env.FONDERIE_BRAIN_LOG;
+function logCall(rec) {
+  if (!LOG) return;
+  try { appendFileSync(LOG, JSON.stringify({ ts: new Date().toISOString(), ...rec }) + '\n'); } catch {}
+}
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -68,27 +78,29 @@ function versionBanner() {
   );
 }
 
+// returns { text, top } — top is the ranked package names (for observability)
 function callTool(name, args) {
   if (name === 'brain_query') {
     const r = query(brain, args?.question);
-    if (!r.packages.length) return versionBanner() + `no Fonderie match for "${r.query}"`;
+    const top = r.packages.map((p) => p.name);
+    if (!r.packages.length) return { text: versionBanner() + `no Fonderie match for "${r.query}"`, top };
     let out = versionBanner() + `Q: ${r.query}\n`;
     for (const p of r.packages) out += `\n@fonderie/${p.name}@${p.version}  requires:[${p.requires.join(', ') || '—'}]  ${p.exports.join(', ')}`;
     if (r.recipe) {
       out += `\n\nrecipe: ${r.recipe.name} — ${r.recipe.when}\nwire: ${r.recipe.packages.join(' → ')}`;
       for (const inv of r.recipe.invariants) out += `\n⚠ ${inv}`;
     }
-    return out;
+    return { text: out, top };
   }
   if (name === 'brain_node') {
     const n = node(brain, args?.id);
-    if (!n) return `no package "${args?.id}" (try one of: ${Object.keys(brain.packages).join(', ')})`;
-    return JSON.stringify(n, null, 2);
+    if (!n) return { text: `no package "${args?.id}" (try one of: ${Object.keys(brain.packages).join(', ')})` };
+    return { text: JSON.stringify(n, null, 2) };
   }
   if (name === 'brain_recipe') {
     const r = recipe(brain, args?.name);
-    if (!r) return `no recipe "${args?.name}" (available: ${Object.keys(brain.recipes).join(', ')})`;
-    return JSON.stringify(r, null, 2);
+    if (!r) return { text: `no recipe "${args?.name}" (available: ${Object.keys(brain.recipes).join(', ')})` };
+    return { text: JSON.stringify(r, null, 2) };
   }
   throw new Error(`unknown tool: ${name}`);
 }
@@ -119,7 +131,18 @@ rl.on('line', (line) => {
     } else if (method === 'tools/list') {
       reply(id, { tools: TOOLS });
     } else if (method === 'tools/call') {
-      const text = callTool(params?.name, params?.arguments || {});
+      const t0 = process.hrtime.bigint();
+      const { text, top } = callTool(params?.name, params?.arguments || {});
+      const latencyMs = Number(process.hrtime.bigint() - t0) / 1e6;
+      const args = params?.arguments || {};
+      logCall({
+        tool: params?.name,
+        arg: args.question || args.id || args.name || null,
+        top: top || null,
+        latency_ms: Number(latencyMs.toFixed(2)),
+        matched: !/^no Fonderie match|^no package|^no recipe/.test(text),
+        version_skew: !vc.matched,
+      });
       reply(id, { content: [{ type: 'text', text }], isError: false });
     } else if (method === 'ping') {
       reply(id, {});
