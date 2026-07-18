@@ -22,3 +22,18 @@ na3,3,scratch-naive,11,106,2451,5991,11539,151841,0.3539,207,yes,4
 nb3,3,fonderie-naive,15,111,2785,5092,18203,253668,0.4507,65,yes,11
 nb4,3b,fonderie-naive-1.2.0,17,104,2650,3765,,,0.5054,66,yes,12
 nb5,3b,fonderie-naive-1.2.0,13,95,2785,5092,,,0.3994,55,yes,12
+# --- Phase 0 baseline refresh (2026-07-18, BRAIN_PLAN.md) ---
+# round 0-baseline = naive prompt (prompt-naive.txt), claude-opus-4-8,
+#   ISOLATED workdir ($TMPDIR/fonderie-baseline-runs) so condition A cannot
+#   see the repo-root skill or workspace @fonderie/* (bug found + fixed same day).
+# checklist_12 = pending (manual scoring, per R4 discipline — not self-graded here).
+# Aborted (disclosed, never averaged): bl-a1..bl-b3 (6 runs) contaminated by
+#   running inside the repo (A resolved @fonderie) — archived *.contaminated.
+#   bl2-b2, bl2-a3, bl2-b3, bl2-b4 hit a Claude Code session usage limit
+#   (resets 3:10am America/Toronto); bl2-b4 hung 11min and was killed.
+bl2-a1,0-baseline,scratch-naive,11,95,3375,5061,12043,153466,0.3412,117,yes,9
+bl2-a2,0-baseline,scratch-naive,14,92,3186,5485,12987,189233,0.3781,113,yes,9
+bl2-a4,0-baseline,scratch-naive,10,78,2449,4851,10885,127866,0.3069,120,yes,9
+bl2-b1,0-baseline,fonderie-naive,15,85,3383,3714,20367,226444,0.4272,40,yes,12
+bl2-b5,0-baseline,fonderie-naive,17,112,2783,6384,27560,290779,0.5951,52,yes,12
+bl2-b6,0-baseline,fonderie-naive,20,112,2791,6332,26552,408265,0.6425,50,yes,12
