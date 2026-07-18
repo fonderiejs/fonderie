@@ -24,6 +24,7 @@ ROADMAP.md
 **/scripts/*
 !scripts/generate-signatures.mjs
 !scripts/audit-validation.mjs
+!scripts/generate-outcomes.mjs
 
 # Local example apps — not part of the public SDK
 examples/
@@ -34,3 +35,9 @@ examples/
 .idea/
 .turbo/
 .DS_Store
+graphify-out/
+
+# Experiment run artifacts (raw Claude Code output — CSV is the tracked record)
+experiments/*/results/
+experiments/*/runs/
+experiments/*/skeleton-*/.claude/
