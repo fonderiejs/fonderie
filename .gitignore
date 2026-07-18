@@ -25,6 +25,8 @@ ROADMAP.md
 !scripts/generate-signatures.mjs
 !scripts/audit-validation.mjs
 !scripts/generate-outcomes.mjs
+!scripts/generate-brain.mjs
+!scripts/brain-query.mjs
 
 # Local example apps — not part of the public SDK
 examples/
