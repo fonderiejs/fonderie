@@ -84,7 +84,21 @@ courier/webhooks phrasings) proceeds in parallel — independent of R1.
 ## Status
 
 - [x] R1 hook + server instrumentation + scorer + aggregator + tasks
-- [x] Harness validated end-to-end (synthetic + 1 real session)
-- [ ] Stage 1 batch (needs sign-off)
-- [ ] Stage 2 batch (conditional)
-- [ ] Go/No-Go decision
+- [x] Harness validated end-to-end (synthetic + real runs; 5 fixes)
+- [x] Stage 1 batch — stopped at n=7 (underpowered by choice; ≈6-runs/login cap)
+- [x] **Milestone closed: infrastructure validated; behavioral hypothesis
+      refined.** Not an R1 pass/fail. Full write-up in `FINDINGS.md`.
+- [ ] **Next experiment: Arm B (tool + brain-first stub)** — an *intervention*
+      measuring Δ(retrieval-before-code) vs this baseline. The question shifted
+      from "does the model use the brain?" to "what makes it use it *first*?"
+- [ ] (Later) R1b full-workflow realism check — packages installed, end-to-end
+
+## Milestone conclusion
+
+Semantic retrieval is reliable, low-latency, and voluntarily discoverable under
+the tested conditions. Remaining uncertainty is about **retrieval timing, not
+capability**: models frequently begin with local workspace exploration (Bash)
+before consulting the brain. Highest-value engineering insight: **brain
+freshness is a behavioral dependency** — a version-skew warning appears to
+suppress retrieval, making freshness a first-class Phase 3 feature. See
+`FINDINGS.md` for the three confidence tiers and the Arm-B next step.
