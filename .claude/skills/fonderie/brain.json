@@ -1,0 +1,2116 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-07-18",
+  "sdkVersions": {
+    "adapter-express": "1.0.2",
+    "adapter-hono": "1.0.2",
+    "adapter-koa": "1.0.2",
+    "audit": "1.0.0",
+    "auth": "1.3.0",
+    "billing": "1.1.0",
+    "client": "0.1.0",
+    "config": "1.0.1",
+    "core": "0.1.4",
+    "courier": "1.0.1",
+    "customers": "1.1.0",
+    "events": "1.0.1",
+    "logger": "0.1.0",
+    "permissions": "1.0.1",
+    "rate-limit": "0.1.0",
+    "store": "0.1.1",
+    "webhooks": "1.1.0",
+    "workspaces": "1.2.0"
+  },
+  "packages": {
+    "adapter-express": {
+      "version": "1.0.2",
+      "requires": [
+        "core",
+        "workspaces",
+        "permissions",
+        "billing"
+      ],
+      "exports": [
+        "OPERATIONS"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "adapter-hono": {
+      "version": "1.0.2",
+      "requires": [
+        "core",
+        "workspaces",
+        "permissions",
+        "billing"
+      ],
+      "exports": [
+        "OPERATIONS"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "adapter-koa": {
+      "version": "1.0.2",
+      "requires": [
+        "core",
+        "workspaces",
+        "permissions",
+        "billing"
+      ],
+      "exports": [
+        "OPERATIONS"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "audit": {
+      "version": "1.0.0",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "AuditModule"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 1,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/audit",
+          "mw": "requireAuth → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const url = new URL(ctx.request.url); const params = url.searchParams; const limit = Math.min(Number(params.get('limit') ?? 50), 200); const type = params.get('type') ?? undefined; const actor = params.get('actorId') ?? undefined; const from = params.get('from') ? new Date(params.get('from')!) : undefined; const to = params.get('to') ? new Date(params.get('to')!) : undefined; const cursor = params.get('cursor') ?? undefined; const query: Parameters<AuditEventModel['list']>[0] = { workspaceId: ctx.workspace.id, limit: limit + 1, }; if (type) query.type = type; if (actor) query.actorId = actor; if (from) query.from = from; if (to) query.to = to; if (cursor) query.cursor = cursor; const events = await new AuditEventModel(store).list(query); // fetch one extra to determine if there's a next page const hasMore = events.length > limit; const page = hasMore ? events.slice(0, limit) : events; const lastEvent = page[page.length - 1]; const nextCursor = hasMore && lastEvent ? encodeCursor(lastEvent.createdAt, lastEvent.id) : null; return setApiResponse(HTTP.OK, 'AUDIT_FETCHED', 'Audit events retrieved.', { events: page.map(toAuditEventDTO), nextCursor, }); }"
+        }
+      ],
+      "secures": [
+        "auth"
+      ],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "auth": {
+      "version": "1.3.0",
+      "requires": [
+        "core",
+        "events",
+        "store"
+      ],
+      "exports": [
+        "AuthModule",
+        "AUTH_CONFIG_KEYS",
+        "MESSAGE_KEYS"
+      ],
+      "subpaths": [
+        "@fonderie/auth/types",
+        "@fonderie/auth/middleware",
+        "@fonderie/auth/migrations"
+      ],
+      "tables": [
+        "fonderie_email_verifications",
+        "fonderie_mfa_backup_codes",
+        "fonderie_mfa_challenges",
+        "fonderie_password_resets",
+        "fonderie_phone_verifications",
+        "fonderie_sessions",
+        "fonderie_users"
+      ],
+      "routeCount": 21,
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/auth/email/forgot",
+          "mw": "ipLimit('forgot') → validate(forgotPasswordSchema) → acctLimit('forgot') → auth.forgotPassword"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/email/reset",
+          "mw": "validate(resetPasswordSchema) → auth.resetPassword"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/google",
+          "mw": "oauth.googleInit"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/google/callback",
+          "mw": "oauth.googleCallback"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/login",
+          "mw": "ipLimit('login') → validate(loginSchema) → acctLimit('login') → auth.login"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/logout",
+          "mw": "requireAuth → validate(refreshSchema) → auth.logout"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/mfa/backup-codes",
+          "mw": "requireAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.regenerateBackupCodes"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/mfa/disable",
+          "mw": "requireAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.disable"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/mfa/setup",
+          "mw": "requireAuth → requireEmailLogin → requireVerified → mfa.setup"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/mfa/verify",
+          "mw": "ipLimit('mfaVerify') → requireAnyAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.verify"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/refresh",
+          "mw": "validate(refreshSchema) → auth.refresh"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/register",
+          "mw": "ipLimit('register') → validate(registerSchema) → auth.register"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/send-verification",
+          "mw": "requireAuth → auth.sendVerification"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/verify",
+          "mw": "requireAuth → validate(verifySchema) → auth.verify"
+        },
+        {
+          "method": "DELETE",
+          "path": "/users",
+          "mw": "requireAuth → verifyGate → user.deleteMe"
+        },
+        {
+          "method": "GET",
+          "path": "/users",
+          "mw": "requireAuth → user.me"
+        },
+        {
+          "method": "PUT",
+          "path": "/users/email",
+          "mw": "requireAuth → verifyGate → validate(updateEmailSchema) → user.updateEmail"
+        },
+        {
+          "method": "PUT",
+          "path": "/users/password",
+          "mw": "requireAuth → validate(changePasswordSchema) → user.changePassword"
+        },
+        {
+          "method": "PUT",
+          "path": "/users/phone",
+          "mw": "requireAuth → verifyGate → validate(updatePhoneSchema) → user.updatePhone"
+        },
+        {
+          "method": "PUT",
+          "path": "/users/preferences",
+          "mw": "requireAuth → verifyGate → validate(updatePreferencesSchema) → user.updatePreferences"
+        },
+        {
+          "method": "PUT",
+          "path": "/users/profile",
+          "mw": "requireAuth → verifyGate → validate(updateProfileSchema) → user.updateProfile"
+        }
+      ],
+      "secures": [
+        "rate-limit",
+        "validation",
+        "auth",
+        "verified-email"
+      ],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "billing": {
+      "version": "1.1.0",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "BillingModule",
+        "StripeProvider",
+        "MESSAGE_KEYS",
+        "MemoryCounterBackend",
+        "DBCounterBackend"
+      ],
+      "subpaths": [
+        "@fonderie/billing/types",
+        "@fonderie/billing/middleware",
+        "@fonderie/billing/migrations"
+      ],
+      "tables": [
+        "fonderie_billing_notifications",
+        "fonderie_plans",
+        "fonderie_subscriptions",
+        "fonderie_usage_records"
+      ],
+      "routeCount": 11,
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/billing/checkout",
+          "mw": "requireAuth → validate(checkoutSchema) → checkout.createSession"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/portal",
+          "mw": "requireAuth → checkout.createPortal"
+        },
+        {
+          "method": "GET",
+          "path": "/billing/subscription",
+          "mw": "requireAuth → subscription.get"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/usage",
+          "mw": "requireAuth → validate(recordUsageSchema) → usage.record"
+        },
+        {
+          "method": "GET",
+          "path": "/billing/usage/:metric",
+          "mw": "requireAuth → usage.get"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/webhook",
+          "mw": "webhook.handle"
+        },
+        {
+          "method": "GET",
+          "path": "/plans",
+          "mw": "plan.list"
+        },
+        {
+          "method": "POST",
+          "path": "/plans",
+          "mw": "validate(createPlanSchema) → plan.create"
+        },
+        {
+          "method": "DELETE",
+          "path": "/plans/:planId",
+          "mw": "plan.delete"
+        },
+        {
+          "method": "GET",
+          "path": "/plans/:planId",
+          "mw": "plan.get"
+        },
+        {
+          "method": "PUT",
+          "path": "/plans/:planId",
+          "mw": "validate(updatePlanSchema) → plan.update"
+        }
+      ],
+      "secures": [
+        "auth",
+        "validation"
+      ],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "client": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FonderieClient",
+        "FonderieApiError",
+        "AuthClient"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "config": {
+      "version": "1.0.1",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "RemoteConfigModule",
+        "RemoteConfigManager",
+        "CONFIG_MANAGER_KEY"
+      ],
+      "subpaths": [
+        "@fonderie/config/types",
+        "@fonderie/config/middleware",
+        "@fonderie/config/migrations"
+      ],
+      "tables": [
+        "fonderie_config"
+      ],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "core": {
+      "version": "0.1.4",
+      "requires": [],
+      "exports": [
+        "OPERATIONS",
+        "FonderieApp",
+        "HTTP"
+      ],
+      "subpaths": [
+        "@fonderie/core/config",
+        "@fonderie/core/types",
+        "@fonderie/core/middlewares",
+        "@fonderie/core/parser",
+        "@fonderie/core/response"
+      ],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "courier": {
+      "version": "1.0.1",
+      "requires": [
+        "core",
+        "store",
+        "events"
+      ],
+      "exports": [
+        "CourierModule",
+        "Dispatcher",
+        "SmsChannel",
+        "PushChannel",
+        "EmailChannel",
+        "DBTemplateResolver",
+        "FSTemplateResolver",
+        "Channel"
+      ],
+      "subpaths": [
+        "@fonderie/courier/types",
+        "@fonderie/courier/migrations"
+      ],
+      "tables": [
+        "fonderie_courier_templates",
+        "fonderie_message_log"
+      ],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "customers": {
+      "version": "1.1.0",
+      "requires": [
+        "core",
+        "events",
+        "store",
+        "workspaces"
+      ],
+      "exports": [
+        "EVENT_KEYS",
+        "CustomersModule"
+      ],
+      "subpaths": [
+        "@fonderie/customers/types",
+        "@fonderie/customers/migrations"
+      ],
+      "tables": [
+        "fonderie_addresses",
+        "fonderie_customer_addresses",
+        "fonderie_customer_emails",
+        "fonderie_customer_labels",
+        "fonderie_customer_notes",
+        "fonderie_customer_phones",
+        "fonderie_customer_relationships",
+        "fonderie_customer_sequences",
+        "fonderie_customer_tags",
+        "fonderie_customers"
+      ],
+      "routeCount": 35,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/customers",
+          "mw": "requireAuth → wsCtx → customer.list"
+        },
+        {
+          "method": "POST",
+          "path": "/customers",
+          "mw": "requireAuth → wsCtx → validate(createCustomerSchema) → customer.create"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/:customerId",
+          "mw": "requireAuth → wsCtx → customer.delete"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/:customerId",
+          "mw": "requireAuth → wsCtx → customer.get"
+        },
+        {
+          "method": "PUT",
+          "path": "/customers/:customerId",
+          "mw": "requireAuth → wsCtx → validate(updateCustomerSchema) → customer.update"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/:customerId/addresses",
+          "mw": "requireAuth → wsCtx → address.list"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/addresses",
+          "mw": "requireAuth → wsCtx → validate(addAddressSchema) → address.add"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/:customerId/addresses/:addrId",
+          "mw": "requireAuth → wsCtx → address.remove"
+        },
+        {
+          "method": "PATCH",
+          "path": "/customers/:customerId/addresses/:addrId",
+          "mw": "requireAuth → wsCtx → validate(updateAddressSchema) → address.update"
+        },
+        {
+          "method": "PUT",
+          "path": "/customers/:customerId/addresses/:addrId/primary",
+          "mw": "requireAuth → wsCtx → address.setPrimary"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/blacklist",
+          "mw": "requireAuth → wsCtx → validate(blacklistSchema) → customer.blacklist"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/:customerId/emails",
+          "mw": "requireAuth → wsCtx → email.list"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/emails",
+          "mw": "requireAuth → wsCtx → validate(addEmailSchema) → email.add"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/:customerId/emails/:emailId",
+          "mw": "requireAuth → wsCtx → email.remove"
+        },
+        {
+          "method": "PATCH",
+          "path": "/customers/:customerId/emails/:emailId",
+          "mw": "requireAuth → wsCtx → validate(updateEmailSchema) → email.update"
+        },
+        {
+          "method": "PUT",
+          "path": "/customers/:customerId/emails/:emailId/primary",
+          "mw": "requireAuth → wsCtx → email.setPrimary"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/:customerId/notes",
+          "mw": "requireAuth → wsCtx → note.list"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/notes",
+          "mw": "requireAuth → wsCtx → validate(noteSchema) → note.create"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/:customerId/notes/:noteId",
+          "mw": "requireAuth → wsCtx → note.delete"
+        },
+        {
+          "method": "PUT",
+          "path": "/customers/:customerId/notes/:noteId",
+          "mw": "requireAuth → wsCtx → validate(noteSchema) → note.update"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/:customerId/phones",
+          "mw": "requireAuth → wsCtx → phone.list"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/phones",
+          "mw": "requireAuth → wsCtx → validate(addPhoneSchema) → phone.add"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/:customerId/phones/:phoneId",
+          "mw": "requireAuth → wsCtx → phone.remove"
+        },
+        {
+          "method": "PATCH",
+          "path": "/customers/:customerId/phones/:phoneId",
+          "mw": "requireAuth → wsCtx → validate(updatePhoneSchema) → phone.update"
+        },
+        {
+          "method": "PUT",
+          "path": "/customers/:customerId/phones/:phoneId/primary",
+          "mw": "requireAuth → wsCtx → phone.setPrimary"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/:customerId/relationships",
+          "mw": "requireAuth → wsCtx → relationship.list"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/relationships",
+          "mw": "requireAuth → wsCtx → validate(addRelationshipSchema) → relationship.add"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/:customerId/relationships/:relatedId",
+          "mw": "requireAuth → wsCtx → relationship.remove"
+        },
+        {
+          "method": "PUT",
+          "path": "/customers/:customerId/relationships/:relatedId/primary",
+          "mw": "requireAuth → wsCtx → relationship.setPrimary"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/:customerId/tags",
+          "mw": "requireAuth → wsCtx → tag.list"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/tags",
+          "mw": "requireAuth → wsCtx → validate(addTagSchema) → tag.add"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/:customerId/tags/:tag",
+          "mw": "requireAuth → wsCtx → tag.remove"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/unblacklist",
+          "mw": "requireAuth → wsCtx → customer.unblacklist"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/labels",
+          "mw": "requireAuth → wsCtx → label.list"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/labels/:labelId",
+          "mw": "requireAuth → wsCtx → label.remove"
+        }
+      ],
+      "secures": [
+        "auth",
+        "validation"
+      ],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "events": {
+      "version": "1.0.1",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "EventBus",
+        "EventsModule",
+        "MemoryTransport",
+        "PGTransport"
+      ],
+      "subpaths": [
+        "@fonderie/events/migrations"
+      ],
+      "tables": [
+        "fonderie_event_consumers",
+        "fonderie_events"
+      ],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "logger": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "Logger",
+        "LoggerModule",
+        "FileTransport",
+        "ConsoleTransport"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "permissions": {
+      "version": "1.0.1",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "PermissionsModule",
+        "PermissionsEngine",
+        "PermissionDeniedError",
+        "OPERATIONS",
+        "PERMISSION_COLUMN"
+      ],
+      "subpaths": [
+        "@fonderie/permissions/config",
+        "@fonderie/permissions/types",
+        "@fonderie/permissions/middleware",
+        "@fonderie/permissions/migrations"
+      ],
+      "tables": [
+        "fonderie_role_permissions"
+      ],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "rate-limit": {
+      "version": "0.1.0",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "MemoryStore",
+        "StoreAdapterStore",
+        "RedisStore"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": false,
+      "hasOutcomes": false
+    },
+    "store": {
+      "version": "0.1.1",
+      "requires": [],
+      "exports": [
+        "MigrationRunner",
+        "InternalMigrationRunner",
+        "PGAdapter"
+      ],
+      "subpaths": [
+        "@fonderie/store/sql",
+        "@fonderie/store/types",
+        "@fonderie/store/migrations"
+      ],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "webhooks": {
+      "version": "1.1.0",
+      "requires": [
+        "core",
+        "events",
+        "store"
+      ],
+      "exports": [
+        "WebhooksModule"
+      ],
+      "subpaths": [
+        "@fonderie/webhooks/migrations"
+      ],
+      "tables": [
+        "fonderie_webhook_deliveries",
+        "fonderie_webhook_endpoints"
+      ],
+      "routeCount": 6,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/webhooks",
+          "mw": "requireAuth → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const list = await new EndpointModel(store).list(ctx.workspace.id); return setApiResponse(HTTP.OK, 'WEBHOOKS_FETCHED', 'Webhook endpoints retrieved.', { endpoints: list.map(toEndpointDTO), }); }"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks",
+          "mw": "requireAuth → validate(createEndpointSchema) → withBody → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const body = ctx.meta['body'] as { url?: string; events?: string[] } | undefined; if (!body?.url) return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_FIELD', 'url is required'); const endpoint = await new EndpointModel(store).create({ workspaceId: ctx.workspace.id, url: body.url, secret: generateSecret(), events: body.events ?? [], }); return setApiResponse( HTTP.CREATED, 'WEBHOOK_CREATED', 'Webhook endpoint registered.', toEndpointCreatedDTO(endpoint), ); }"
+        },
+        {
+          "method": "DELETE",
+          "path": "/webhooks/:endpointId",
+          "mw": "requireAuth → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id); if (!deleted) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return new Response(null, { status: HTTP.NO_CONTENT }); }"
+        },
+        {
+          "method": "GET",
+          "path": "/webhooks/:endpointId",
+          "mw": "requireAuth → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const endpoint = await new EndpointModel(store).findById(endpointId, ctx.workspace.id); if (!endpoint) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return setApiResponse( HTTP.OK, 'WEBHOOK_FETCHED', 'Webhook endpoint retrieved.', toEndpointDTO(endpoint), ); }"
+        },
+        {
+          "method": "PATCH",
+          "path": "/webhooks/:endpointId",
+          "mw": "requireAuth → validate(updateEndpointSchema) → withBody → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const body = ctx.meta['body'] as | { url?: string; events?: string[]; enabled?: boolean } | undefined; const patch: { url?: string; events?: string[]; enabled?: boolean } = {}; if (body?.url !== undefined) patch.url = body.url; if (body?.events !== undefined) patch.events = body.events; if (body?.enabled !== undefined) patch.enabled = body.enabled; const updated = await new EndpointModel(store).update(endpointId, ctx.workspace.id, patch); if (!updated) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return setApiResponse( HTTP.OK, 'WEBHOOK_UPDATED', 'Webhook endpoint updated.', toEndpointDTO(updated), ); }"
+        },
+        {
+          "method": "GET",
+          "path": "/webhooks/:endpointId/deliveries",
+          "mw": "requireAuth → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const endpoint = await new EndpointModel(store).findById(endpointId, ctx.workspace.id); if (!endpoint) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); const list = await new DeliveryModel(store).listByEndpoint(endpointId); return setApiResponse(HTTP.OK, 'DELIVERIES_FETCHED', 'Deliveries retrieved.', { deliveries: list.map(toDeliveryDTO), }); }"
+        }
+      ],
+      "secures": [
+        "auth",
+        "validation"
+      ],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "workspaces": {
+      "version": "1.2.0",
+      "requires": [
+        "billing",
+        "core",
+        "events",
+        "store"
+      ],
+      "exports": [
+        "WorkspacesModule",
+        "MESSAGE_KEYS",
+        "EVENT_KEYS"
+      ],
+      "subpaths": [
+        "@fonderie/workspaces/types",
+        "@fonderie/workspaces/middleware",
+        "@fonderie/workspaces/migrations"
+      ],
+      "tables": [
+        "fonderie_role_user_workspaces",
+        "fonderie_roles",
+        "fonderie_workspace_invitations",
+        "fonderie_workspaces"
+      ],
+      "routeCount": 23,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/workspaces",
+          "mw": "requireAuth → workspace.list"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces",
+          "mw": "requireAuth → validate(createWorkspaceSchema) → workspace.create"
+        },
+        {
+          "method": "PUT",
+          "path": "/workspaces",
+          "mw": "requireAuth → wsCtx → validate(updateWorkspaceSchema) → workspace.update"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/:id",
+          "mw": "requireAuth → wsCtx → workspace.get"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/archive",
+          "mw": "requireAuth → wsCtx → workspace.archive"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/invitations",
+          "mw": "requireAuth → wsCtx → invitation.list"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/invitations",
+          "mw": "requireAuth → wsCtx → validate(createInvitationsSchema) → invitation.invite"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/invitations/:inviteId",
+          "mw": "requireAuth → wsCtx → invitation.cancel"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/invitations/accept",
+          "mw": "requireAuth → validate(acceptInvitationSchema) → invitation.accept"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/members",
+          "mw": "requireAuth → wsCtx → member.list"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/members/:userId",
+          "mw": "requireAuth → wsCtx → member.remove"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/members/:userId/roles",
+          "mw": "requireAuth → wsCtx → member.getUserRoles"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/members/:userId/roles",
+          "mw": "requireAuth → wsCtx → validate(addMemberRoleSchema) → member.addRole"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/members/:userId/roles/:roleId",
+          "mw": "requireAuth → wsCtx → member.removeRole"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/restore",
+          "mw": "requireAuth → wsCtx → workspace.restore"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/roles",
+          "mw": "requireAuth → wsCtx → role.list"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/roles",
+          "mw": "requireAuth → wsCtx → validate(createRoleSchema) → role.create"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/roles/:roleId",
+          "mw": "requireAuth → wsCtx → role.remove"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/roles/:roleId",
+          "mw": "requireAuth → wsCtx → role.get"
+        },
+        {
+          "method": "PUT",
+          "path": "/workspaces/roles/:roleId",
+          "mw": "requireAuth → wsCtx → validate(updateRoleSchema) → role.update"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/roles/:roleId/permissions",
+          "mw": "requireAuth → wsCtx → validate(setRolePermissionsSchema) → role.setPermissions"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/settings",
+          "mw": "requireAuth → wsCtx → workspace.getSettings"
+        },
+        {
+          "method": "PUT",
+          "path": "/workspaces/settings",
+          "mw": "requireAuth → wsCtx → validate(updateSettingsSchema) → workspace.updateSettings"
+        }
+      ],
+      "secures": [
+        "auth",
+        "validation"
+      ],
+      "hasSignature": true,
+      "hasOutcomes": true
+    }
+  },
+  "edges": [
+    {
+      "from": "adapter-express",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-express",
+      "to": "workspaces",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-express",
+      "to": "permissions",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-express",
+      "to": "billing",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-hono",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-hono",
+      "to": "workspaces",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-hono",
+      "to": "permissions",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-hono",
+      "to": "billing",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-koa",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-koa",
+      "to": "workspaces",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-koa",
+      "to": "permissions",
+      "type": "requires"
+    },
+    {
+      "from": "adapter-koa",
+      "to": "billing",
+      "type": "requires"
+    },
+    {
+      "from": "audit",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "audit",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "audit",
+      "to": "auth",
+      "type": "secures-with"
+    },
+    {
+      "from": "auth",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "auth",
+      "to": "events",
+      "type": "requires"
+    },
+    {
+      "from": "auth",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "auth",
+      "to": "rate-limit",
+      "type": "secures-with"
+    },
+    {
+      "from": "auth",
+      "to": "auth",
+      "type": "secures-with"
+    },
+    {
+      "from": "billing",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "billing",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "billing",
+      "to": "auth",
+      "type": "secures-with"
+    },
+    {
+      "from": "config",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "config",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "courier",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "courier",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "courier",
+      "to": "events",
+      "type": "requires"
+    },
+    {
+      "from": "customers",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "customers",
+      "to": "events",
+      "type": "requires"
+    },
+    {
+      "from": "customers",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "customers",
+      "to": "workspaces",
+      "type": "requires"
+    },
+    {
+      "from": "customers",
+      "to": "auth",
+      "type": "secures-with"
+    },
+    {
+      "from": "events",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "events",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "permissions",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "permissions",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "rate-limit",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "rate-limit",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "webhooks",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "webhooks",
+      "to": "events",
+      "type": "requires"
+    },
+    {
+      "from": "webhooks",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "webhooks",
+      "to": "auth",
+      "type": "secures-with"
+    },
+    {
+      "from": "workspaces",
+      "to": "billing",
+      "type": "requires"
+    },
+    {
+      "from": "workspaces",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "workspaces",
+      "to": "events",
+      "type": "requires"
+    },
+    {
+      "from": "workspaces",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "workspaces",
+      "to": "auth",
+      "type": "secures-with"
+    }
+  ],
+  "index": {
+    "adapter-express": [
+      "adapter-express"
+    ],
+    "adapter-hono": [
+      "adapter-hono"
+    ],
+    "adapter-koa": [
+      "adapter-koa"
+    ],
+    "audit": [
+      "audit"
+    ],
+    "auth": [
+      "auth"
+    ],
+    "billing": [
+      "billing"
+    ],
+    "client": [
+      "client"
+    ],
+    "config": [
+      "config"
+    ],
+    "core": [
+      "core"
+    ],
+    "courier": [
+      "courier"
+    ],
+    "customers": [
+      "customers"
+    ],
+    "events": [
+      "events"
+    ],
+    "logger": [
+      "logger"
+    ],
+    "permissions": [
+      "permissions"
+    ],
+    "rate-limit": [
+      "rate-limit"
+    ],
+    "store": [
+      "store"
+    ],
+    "webhooks": [
+      "webhooks"
+    ],
+    "workspaces": [
+      "workspaces"
+    ],
+    "login": [
+      "auth"
+    ],
+    "log in": [
+      "auth"
+    ],
+    "sign in": [
+      "auth"
+    ],
+    "signin": [
+      "auth"
+    ],
+    "signup": [
+      "auth"
+    ],
+    "sign up": [
+      "auth"
+    ],
+    "register": [
+      "auth"
+    ],
+    "account": [
+      "auth"
+    ],
+    "accounts": [
+      "auth"
+    ],
+    "user account": [
+      "auth"
+    ],
+    "password": [
+      "auth"
+    ],
+    "reset password": [
+      "auth"
+    ],
+    "forgot password": [
+      "auth"
+    ],
+    "magic link": [
+      "auth"
+    ],
+    "sso": [
+      "auth"
+    ],
+    "oauth": [
+      "auth"
+    ],
+    "social auth": [
+      "auth"
+    ],
+    "session": [
+      "auth"
+    ],
+    "signed in": [
+      "auth"
+    ],
+    "logged in": [
+      "auth"
+    ],
+    "authenticate": [
+      "auth"
+    ],
+    "mfa": [
+      "auth"
+    ],
+    "2fa": [
+      "auth"
+    ],
+    "verify email": [
+      "auth"
+    ],
+    "protect this endpoint": [
+      "auth"
+    ],
+    "protect": [
+      "auth"
+    ],
+    "make this page private": [
+      "auth"
+    ],
+    "make private": [
+      "auth"
+    ],
+    "private page": [
+      "auth"
+    ],
+    "logged in people": [
+      "auth"
+    ],
+    "only logged in": [
+      "auth"
+    ],
+    "require login": [
+      "auth"
+    ],
+    "gate a route": [
+      "auth"
+    ],
+    "pay": [
+      "billing"
+    ],
+    "payment": [
+      "billing"
+    ],
+    "charge": [
+      "billing"
+    ],
+    "checkout": [
+      "billing"
+    ],
+    "subscription": [
+      "billing"
+    ],
+    "subscribe": [
+      "billing"
+    ],
+    "plan": [
+      "billing"
+    ],
+    "plans": [
+      "billing"
+    ],
+    "pricing": [
+      "billing"
+    ],
+    "price": [
+      "billing"
+    ],
+    "monetize": [
+      "billing"
+    ],
+    "stripe": [
+      "billing"
+    ],
+    "invoice": [
+      "billing"
+    ],
+    "seat": [
+      "billing"
+    ],
+    "per seat": [
+      "billing"
+    ],
+    "upgrade": [
+      "billing"
+    ],
+    "paid plan": [
+      "billing"
+    ],
+    "free tier": [
+      "billing"
+    ],
+    "tier": [
+      "billing"
+    ],
+    "entitlement": [
+      "billing"
+    ],
+    "usage limit": [
+      "billing"
+    ],
+    "metered": [
+      "billing"
+    ],
+    "pro users": [
+      "billing"
+    ],
+    "pro user": [
+      "billing"
+    ],
+    "pro plan": [
+      "billing"
+    ],
+    "premium": [
+      "billing"
+    ],
+    "team": [
+      "workspaces"
+    ],
+    "teams": [
+      "workspaces"
+    ],
+    "org": [
+      "workspaces"
+    ],
+    "orgs": [
+      "workspaces"
+    ],
+    "organization": [
+      "workspaces"
+    ],
+    "organizations": [
+      "workspaces"
+    ],
+    "workspace": [
+      "workspaces"
+    ],
+    "group": [
+      "workspaces"
+    ],
+    "invite": [
+      "workspaces"
+    ],
+    "invitation": [
+      "workspaces"
+    ],
+    "member": [
+      "workspaces"
+    ],
+    "members": [
+      "workspaces"
+    ],
+    "coworker": [
+      "workspaces"
+    ],
+    "colleague": [
+      "workspaces"
+    ],
+    "multi tenant": [
+      "workspaces"
+    ],
+    "multi-tenancy": [
+      "workspaces"
+    ],
+    "shared account": [
+      "workspaces"
+    ],
+    "share one account": [
+      "workspaces"
+    ],
+    "multiple people": [
+      "workspaces"
+    ],
+    "people share": [
+      "workspaces"
+    ],
+    "role": [
+      "permissions"
+    ],
+    "roles": [
+      "permissions"
+    ],
+    "admin": [
+      "permissions"
+    ],
+    "owner": [
+      "permissions"
+    ],
+    "member role": [
+      "permissions"
+    ],
+    "permission": [
+      "permissions"
+    ],
+    "access control": [
+      "permissions"
+    ],
+    "rbac": [
+      "permissions"
+    ],
+    "can": [
+      "permissions"
+    ],
+    "cannot": [
+      "permissions"
+    ],
+    "authorize": [
+      "permissions"
+    ],
+    "viewer": [
+      "permissions"
+    ],
+    "editor": [
+      "permissions"
+    ],
+    "grant": [
+      "permissions"
+    ],
+    "policy": [
+      "permissions"
+    ],
+    "email": [
+      "courier"
+    ],
+    "send email": [
+      "courier"
+    ],
+    "welcome email": [
+      "courier"
+    ],
+    "notify": [
+      "courier"
+    ],
+    "notification": [
+      "courier"
+    ],
+    "transactional email": [
+      "courier"
+    ],
+    "sms": [
+      "courier"
+    ],
+    "text message": [
+      "courier"
+    ],
+    "push notification": [
+      "courier"
+    ],
+    "rate limit": [
+      "rate-limit"
+    ],
+    "throttle": [
+      "rate-limit"
+    ],
+    "brute force": [
+      "rate-limit"
+    ],
+    "brute-force": [
+      "rate-limit"
+    ],
+    "abuse": [
+      "rate-limit"
+    ],
+    "spam": [
+      "rate-limit"
+    ],
+    "bots": [
+      "rate-limit"
+    ],
+    "hammering": [
+      "rate-limit"
+    ],
+    "flood": [
+      "rate-limit"
+    ],
+    "webhook": [
+      "webhooks"
+    ],
+    "stripe events": [
+      "webhooks"
+    ],
+    "handle events": [
+      "webhooks"
+    ],
+    "callback": [
+      "webhooks"
+    ],
+    "tell other apps": [
+      "webhooks"
+    ],
+    "notify other apps": [
+      "webhooks"
+    ],
+    "outbound event": [
+      "webhooks"
+    ],
+    "signature verify": [
+      "webhooks"
+    ],
+    "feature flag": [
+      "config"
+    ],
+    "remote config": [
+      "config"
+    ],
+    "toggle": [
+      "config"
+    ],
+    "flag": [
+      "config"
+    ],
+    "runtime config": [
+      "config"
+    ],
+    "kill switch": [
+      "config"
+    ],
+    "audit log": [
+      "audit"
+    ],
+    "audit trail": [
+      "audit"
+    ],
+    "activity log": [
+      "audit"
+    ],
+    "who did what": [
+      "audit"
+    ],
+    "compliance log": [
+      "audit"
+    ],
+    "event bus": [
+      "events"
+    ],
+    "domain event": [
+      "events"
+    ],
+    "emit event": [
+      "events"
+    ],
+    "pub sub": [
+      "events"
+    ],
+    "in process events": [
+      "events"
+    ],
+    "customer": [
+      "customers"
+    ],
+    "crm": [
+      "customers"
+    ],
+    "customer record": [
+      "customers"
+    ],
+    "contact": [
+      "customers"
+    ],
+    "operations": [
+      "adapter-express",
+      "adapter-hono",
+      "adapter-koa",
+      "core",
+      "permissions"
+    ],
+    "auditmodule": [
+      "audit"
+    ],
+    "authmodule": [
+      "auth"
+    ],
+    "auth_config_keys": [
+      "auth"
+    ],
+    "message_keys": [
+      "auth",
+      "billing",
+      "workspaces"
+    ],
+    "billingmodule": [
+      "billing"
+    ],
+    "stripeprovider": [
+      "billing"
+    ],
+    "memorycounterbackend": [
+      "billing"
+    ],
+    "dbcounterbackend": [
+      "billing"
+    ],
+    "fonderieclient": [
+      "client"
+    ],
+    "fonderieapierror": [
+      "client"
+    ],
+    "authclient": [
+      "client"
+    ],
+    "remoteconfigmodule": [
+      "config"
+    ],
+    "remoteconfigmanager": [
+      "config"
+    ],
+    "config_manager_key": [
+      "config"
+    ],
+    "fonderieapp": [
+      "core"
+    ],
+    "http": [
+      "core"
+    ],
+    "couriermodule": [
+      "courier"
+    ],
+    "dispatcher": [
+      "courier"
+    ],
+    "smschannel": [
+      "courier"
+    ],
+    "pushchannel": [
+      "courier"
+    ],
+    "emailchannel": [
+      "courier"
+    ],
+    "dbtemplateresolver": [
+      "courier"
+    ],
+    "fstemplateresolver": [
+      "courier"
+    ],
+    "channel": [
+      "courier"
+    ],
+    "event_keys": [
+      "customers",
+      "workspaces"
+    ],
+    "customersmodule": [
+      "customers"
+    ],
+    "eventbus": [
+      "events"
+    ],
+    "eventsmodule": [
+      "events"
+    ],
+    "memorytransport": [
+      "events"
+    ],
+    "pgtransport": [
+      "events"
+    ],
+    "loggermodule": [
+      "logger"
+    ],
+    "filetransport": [
+      "logger"
+    ],
+    "consoletransport": [
+      "logger"
+    ],
+    "permissionsmodule": [
+      "permissions"
+    ],
+    "permissionsengine": [
+      "permissions"
+    ],
+    "permissiondeniederror": [
+      "permissions"
+    ],
+    "permission_column": [
+      "permissions"
+    ],
+    "memorystore": [
+      "rate-limit"
+    ],
+    "storeadapterstore": [
+      "rate-limit"
+    ],
+    "redisstore": [
+      "rate-limit"
+    ],
+    "migrationrunner": [
+      "store"
+    ],
+    "internalmigrationrunner": [
+      "store"
+    ],
+    "pgadapter": [
+      "store"
+    ],
+    "webhooksmodule": [
+      "webhooks"
+    ],
+    "workspacesmodule": [
+      "workspaces"
+    ]
+  },
+  "aliases": {
+    "auth": [
+      "login",
+      "log in",
+      "sign in",
+      "signin",
+      "signup",
+      "sign up",
+      "register",
+      "account",
+      "accounts",
+      "user account",
+      "password",
+      "reset password",
+      "forgot password",
+      "magic link",
+      "sso",
+      "oauth",
+      "social auth",
+      "session",
+      "signed in",
+      "logged in",
+      "authenticate",
+      "mfa",
+      "2fa",
+      "verify email",
+      "protect this endpoint",
+      "protect",
+      "make this page private",
+      "make private",
+      "private page",
+      "logged in people",
+      "only logged in",
+      "require login",
+      "gate a route"
+    ],
+    "billing": [
+      "pay",
+      "payment",
+      "charge",
+      "checkout",
+      "subscription",
+      "subscribe",
+      "plan",
+      "plans",
+      "pricing",
+      "price",
+      "monetize",
+      "stripe",
+      "invoice",
+      "seat",
+      "per seat",
+      "upgrade",
+      "paid plan",
+      "free tier",
+      "tier",
+      "entitlement",
+      "usage limit",
+      "metered",
+      "pro users",
+      "pro user",
+      "pro plan",
+      "premium"
+    ],
+    "workspaces": [
+      "team",
+      "teams",
+      "org",
+      "orgs",
+      "organization",
+      "organizations",
+      "workspace",
+      "group",
+      "invite",
+      "invitation",
+      "member",
+      "members",
+      "coworker",
+      "colleague",
+      "multi tenant",
+      "multi-tenancy",
+      "shared account",
+      "share one account",
+      "multiple people",
+      "people share"
+    ],
+    "permissions": [
+      "role",
+      "roles",
+      "admin",
+      "owner",
+      "member role",
+      "permission",
+      "access control",
+      "rbac",
+      "can",
+      "cannot",
+      "authorize",
+      "viewer",
+      "editor",
+      "grant",
+      "policy"
+    ],
+    "courier": [
+      "email",
+      "send email",
+      "welcome email",
+      "notify",
+      "notification",
+      "transactional email",
+      "sms",
+      "text message",
+      "push notification"
+    ],
+    "rate-limit": [
+      "rate limit",
+      "throttle",
+      "brute force",
+      "brute-force",
+      "abuse",
+      "spam",
+      "bots",
+      "hammering",
+      "flood"
+    ],
+    "webhooks": [
+      "webhook",
+      "webhooks",
+      "stripe events",
+      "handle events",
+      "callback",
+      "tell other apps",
+      "notify other apps",
+      "outbound event",
+      "signature verify"
+    ],
+    "config": [
+      "feature flag",
+      "remote config",
+      "toggle",
+      "flag",
+      "runtime config",
+      "kill switch"
+    ],
+    "audit": [
+      "audit log",
+      "audit trail",
+      "activity log",
+      "who did what",
+      "compliance log"
+    ],
+    "events": [
+      "event bus",
+      "domain event",
+      "emit event",
+      "pub sub",
+      "in process events"
+    ],
+    "customers": [
+      "customer",
+      "customers",
+      "crm",
+      "customer record",
+      "contact"
+    ]
+  },
+  "recipes": {
+    "basic-auth": {
+      "when": "sign up + log in with email/password",
+      "packages": [
+        "auth",
+        "core",
+        "events",
+        "store"
+      ],
+      "invariants": [
+        "jwt-secret-from-env",
+        "rate-limit-default-on"
+      ]
+    },
+    "oauth": {
+      "when": "social login (Google/GitHub)",
+      "packages": [
+        "auth",
+        "config",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "jwt-secret-from-env"
+      ]
+    },
+    "route-guard": {
+      "when": "gate a route behind login",
+      "packages": [
+        "auth"
+      ],
+      "invariants": [],
+      "note": "use requireAuth middleware from @fonderie/auth on the protected route"
+    },
+    "teams-invites": {
+      "when": "teams/workspaces with email invites",
+      "packages": [
+        "workspaces",
+        "auth",
+        "courier",
+        "events",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "workspaces-requires-billing"
+      ]
+    },
+    "stripe-checkout": {
+      "when": "charge users / subscription plans",
+      "packages": [
+        "billing",
+        "customers",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "webhook-route-before-auth-mw",
+        "rate-limit-default-on"
+      ]
+    },
+    "per-seat-billing": {
+      "when": "bill per team member / seat",
+      "packages": [
+        "billing",
+        "workspaces",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "workspaces-requires-billing"
+      ]
+    },
+    "plan-gate": {
+      "when": "lock a feature behind a paid plan",
+      "packages": [
+        "billing",
+        "permissions"
+      ],
+      "invariants": []
+    },
+    "rbac": {
+      "when": "roles & permissions (admin/member/viewer)",
+      "packages": [
+        "permissions",
+        "workspaces",
+        "core",
+        "store"
+      ],
+      "invariants": []
+    },
+    "transactional-email": {
+      "when": "welcome / reset / invite emails",
+      "packages": [
+        "courier",
+        "events",
+        "config",
+        "core",
+        "store"
+      ],
+      "invariants": []
+    },
+    "webhooks-in-out": {
+      "when": "receive Stripe webhooks and emit your own",
+      "packages": [
+        "webhooks",
+        "billing",
+        "events",
+        "rate-limit",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "webhook-route-before-auth-mw",
+        "rate-limit-default-on"
+      ]
+    }
+  },
+  "invariants": {
+    "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
+    "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
+    "logout-provided": "@fonderie/auth mounts POST /auth/logout with session invalidation — do not hand-roll stateless-JWT logout.",
+    "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
+    "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces."
+  }
+}
