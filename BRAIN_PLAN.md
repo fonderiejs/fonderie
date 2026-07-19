@@ -218,3 +218,85 @@ every month. What nobody ships is the **durable contract between an SDK and
 every model that consumes it**: versioned knowledge that travels with the
 package, retrieval that survives naive phrasing, and a benchmark anyone can
 re-run. That contract — not the code — is what this plan protects.
+
+---
+
+# Phase 4.1 — pre-registration (2026-07-19)
+
+> Appended after the Phase 4 condition-C result
+> (`experiments/token-cost-2026-07/FINDINGS-condition-c.md`): the topology
+> brain LOST on cost for a small scoped task (classified negative — retrieval
+> density + model preference for compiler feedback over drill-down). This
+> section pins the goal numerically, records the architecture pivot the
+> evidence dictates, and pre-registers the benchmark + decision rule BEFORE
+> any build or spend. Thresholds are locked ahead of the data.
+
+## The goal, operationalized (it never was)
+
+Quality floor on both goals: checklist ≥ 11/12 (ASVS-anchored, CHECKLIST.md) —
+cost may not be won by shipping worse code.
+
+- **Goal A — single task (parity claim):** naive-prompt build with Fonderie
+  costs **≤ 1.1× scratch** at quality floor. Status: nearly met (best baseline
+  fonderie runs $0.40 @ 12/12 vs scratch $0.34 @ 9/12); needs N≥5 confirmation,
+  not invention.
+- **Goal B — sustained work (the "fraction" claim):** across a repeated-session
+  workload (≥4 sessions on one growing app), **Fonderie-knowledge overhead per
+  session** (cache_read + input attributable to skill/brain content) is
+  **≤ ⅓ of the fat-skill baseline** at equal quality. This is the only regime
+  with something to amortize — a single small task cannot physically yield
+  "a fraction" (condition C measured why).
+
+## Architecture pivot: the brain becomes a compiler
+
+Every measured finding converges on compile-time knowledge, not runtime
+retrieval:
+
+| Finding (measured) | Design consequence |
+| --- | --- |
+| `brain_node` got 0 calls even when instructed (ce1) | Knowledge in files/context, never behind an optional hop |
+| Topology-only → 34 turns of tsc iteration (c1) | Serve exact signatures — sufficiency is non-negotiable |
+| Fat skill wins small tasks | Its sufficiency is right; its breadth (18 pkgs every session) is the waste |
+| Retrieval's real edge is selectivity | Scope knowledge to the project's lockfile |
+| Freshness is behavioral (R3) | Regenerate on install/update → version-matched by construction |
+| `generatedAt` lesson | Byte-reproducible output |
+
+**Project brain**: `generate-project-brain.mjs` compiles ONE deterministic file
+per project — exact signatures + outcomes + invariants for ONLY the installed
+`@fonderie/*` packages (lockfile-keyed). The model reads one sufficient,
+project-specific file; zero retrieval behavior required. The MCP server keeps
+exactly one job files can't do — **discovery** of not-yet-installed
+capabilities — and there `brain_query` returns the top package's signatures
+**inline** (bounded to one package), because the model measurably will not
+come back for them. Phase 5's "retire the fat skill" is now: fat skill → stub
++ compiled project brain.
+
+## The benchmark (Retrieval Advantage, repeated-session core)
+
+- **Workload:** one app, 4 sequential sessions on the same growing codebase —
+  (1) add auth; (2) add billing + plan-gating; (3) add teams/workspaces with
+  invite emails; (4) security pass (rate-limit reset/invites + audit logging).
+  Mirrors the multi-module stage prompts already in the repo.
+- **Conditions** (identical session sequences): fat skill · project brain
+  (regenerated between sessions as packages land) · scratch control (quality
+  floor only).
+- **N ≥ 3 full sequences per condition** (single-run variance measured at
+  34-vs-22 turns makes n=1 worthless), aborts disclosed, one model
+  (claude-opus-4-8), version-matched throughout.
+- **Primary metric:** Fonderie-knowledge tokens per session + cumulative cost
+  across the 4 sessions at checklist-equal quality. Secondary: turns, LOC,
+  whether the project brain's advantage GROWS with sessions (the amortization
+  signature). Session 1 doubles as the Goal-A N≥5 confirmation cell.
+
+## Decision rule (locked before data)
+
+- Project-brain cumulative Fonderie-overhead **≤ ⅓** of fat skill → Goal B met;
+  ship the compiler as the `init` default; the "fraction" claim is earned.
+- **⅓–1×** → parity-plus: ship for freshness/selectivity; retire the
+  "fraction" headline.
+- **≥ 1×** → kill rule fires: the cost thesis dies; the product claim becomes
+  the already-measured correctness density (parity cost, 12/12 vs 9/12, half
+  the code, scratch's 3 recurring flaws fixed by default).
+
+Gate discipline unchanged: one iteration per failed gate; no claim without a
+gate; aborts disclosed, never averaged.
