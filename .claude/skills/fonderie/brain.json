@@ -1,6 +1,5 @@
 {
   "schema": 1,
-  "generatedAt": "2026-07-18",
   "sdkVersions": {
     "adapter-express": "1.0.2",
     "adapter-hono": "1.0.2",
