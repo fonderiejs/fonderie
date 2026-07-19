@@ -37,3 +37,12 @@ bl2-a4,0-baseline,scratch-naive,10,78,2449,4851,10885,127866,0.3069,120,yes,9
 bl2-b1,0-baseline,fonderie-naive,15,85,3383,3714,20367,226444,0.4272,40,yes,12
 bl2-b5,0-baseline,fonderie-naive,17,112,2783,6384,27560,290779,0.5951,52,yes,12
 bl2-b6,0-baseline,fonderie-naive,20,112,2791,6332,26552,408265,0.6425,50,yes,12
+# --- Phase 4 condition C (2026-07-19): brain instead of fat skill, naive auth
+#     prompt, claude-opus-4-8. CLASSIFIED NEGATIVE — see FINDINGS-condition-c.md.
+#     n=1 per variant; single-run variance is high (34 vs 22 turns), so these are
+#     directional, not a powered comparison. c1 = topology brain; ce1 = enriched
+#     brain_node available but NEVER CALLED (fix untested — its lower cost is
+#     variance, not the intervention). Both cost MORE than fat skill and scratch.
+#     cache_write left blank (not the metric of interest here).
+c1,4-conditionC,brain-topology,34,,3680,14708,,804619,1.1648,86,yes,pending
+ce1,4-conditionC,brain-enriched-uncalled,22,,,10186,,416037,0.8039,56,yes,pending
