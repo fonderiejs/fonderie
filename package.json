@@ -20,6 +20,8 @@
 		"brain:serve": "node scripts/brain-serve.mjs",
 		"brain:test": "node scripts/brain-serve.test.mjs",
 		"brain:drift": "node experiments/r1-2026-07/drift.mjs",
+		"brain:project": "node scripts/generate-project-brain.mjs",
+		"brain:project-test": "node scripts/project-brain.test.mjs",
 		"audit:validation": "node scripts/audit-validation.mjs"
 	},
 	"devDependencies": {
