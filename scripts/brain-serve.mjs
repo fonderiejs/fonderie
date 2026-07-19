@@ -12,10 +12,12 @@
 //   node scripts/brain-serve.mjs [--project <dir>] [--brain <path>]
 
 import { createInterface } from 'node:readline';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBrain, query, node, recipe, versionCheck } from './brain-lib.mjs';
+
+const readFileSafe = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : null);
 
 // Observability (Phase 2.5 R1 measurement): when FONDERIE_BRAIN_LOG is set,
 // append one JSONL record per tool call — timestamp, tool, args, latency, and
@@ -41,7 +43,7 @@ const TOOLS = [
   {
     name: 'brain_query',
     description:
-      'Fonderie SDK knowledge. Call this BEFORE writing or editing any code that touches auth, billing, orgs/teams, permissions, email, webhooks, rate limiting, or config. Returns the package(s) to use, how they wire together, the canonical recipe, and security invariants. Do not read @fonderie source or docs — ask here.',
+      'Fonderie SDK knowledge. Call this BEFORE writing or editing any code that touches auth, billing, orgs/teams, permissions, email, webhooks, rate limiting, or config. Returns the package(s) to use, how they wire together, the canonical recipe, security invariants, and the EXACT TypeScript signatures + routes of the top package — everything needed to write correct code in one shot. Do not read @fonderie source or docs — ask here.',
     inputSchema: {
       type: 'object',
       properties: { question: { type: 'string', description: 'Natural-language task, e.g. "add team billing"' } },
@@ -89,6 +91,20 @@ function callTool(name, args) {
     if (r.recipe) {
       out += `\n\nrecipe: ${r.recipe.name} — ${r.recipe.when}\nwire: ${r.recipe.packages.join(' → ')}`;
       for (const inv of r.recipe.invariants) out += `\n⚠ ${inv}`;
+    }
+    // Discovery must be ONE-SHOT: the model reliably makes this call and no
+    // follow-up drill-down (measured in Phase 4 condition C — brain_node got
+    // zero calls even when its description asked for them; the model iterated
+    // against tsc instead). So the exact API of the top-ranked package rides
+    // inline, bounded to one package (sufficiency without recreating the
+    // all-18-packages fat skill).
+    const topPkg = r.packages[0]?.name;
+    if (topPkg) {
+      const sigDir = join(root, '.claude/skills/fonderie/signatures');
+      const sig = readFileSafe(join(sigDir, `${topPkg}.md`));
+      const oc = readFileSafe(join(sigDir, `${topPkg}-outcomes.md`));
+      if (sig) out += `\n\n--- ${topPkg} signatures (exact API — use these, do not guess) ---\n${sig.trim()}`;
+      if (oc) out += `\n\n--- ${topPkg} outcomes (tables + routes registered) ---\n${oc.trim()}`;
     }
     return { text: out, top };
   }
