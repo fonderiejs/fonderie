@@ -1,0 +1,34 @@
+## Phase 2.6 — Retrieval Intervention: effect size
+
+| Metric | Value | 95% CI (Wilson) |
+| --- | ---: | ---: |
+| P(before-code \| tool) | 50% | 15%–85% |
+| P(before-code \| stub) | 100% | 72%–100% |
+| **Δ (stub − tool)** | **+50%** | (pre-registered bands below) |
+
+**Δ = +50%** — strong: lightweight stub materially shifts behavior → ship stub, defer hooks
+Absolute P(before-code | stub) = 100% (report independent of Δ).
+
+## R1 Stage 1 — arm A (tool only) vs arm C (hook)
+
+| Metric                | Arm A (tool only) | Arm C (hook) |
+| --------------------- | ----------------: | -----------: |
+
+### Arm A verdict: 50% auto-retrieval (CI 15%–85%)
+Decision band: 40–89% → run Stage 2 (stub arm)
+
+### First action (default instinct)
+- arm a: Bash:4
+- arm c: (none)
+
+### Per-category, arm A (before_code / n)
+- auth: 2/2
+- billing: 0/2
+
+### Per-task, arm A
+- auth: before_code 2/2, missed 0/2
+- billing: before_code 0/2, missed 0/2
+
+### Representative failures (arm A, no retrieval before code)
+- a-billing-1: first_action=Bash, attempted=true, n_brain_calls=10
+- a-billing-2: first_action=Bash, attempted=true, n_brain_calls=2
