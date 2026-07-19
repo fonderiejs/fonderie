@@ -48,6 +48,8 @@ const q = await rpc('tools/call', { name: 'brain_query', arguments: { question: 
 const qText = q.result?.content?.[0]?.text || '';
 assert(qText.includes('@fonderie/billing'), 'brain_query "let people pay" → billing');
 assert(qText.includes('stripe-checkout'), 'brain_query returns the recipe');
+assert(qText.includes('billing signatures (exact API'), 'brain_query inlines top-package signatures (one-shot discovery)');
+assert(qText.includes('billing outcomes'), 'brain_query inlines top-package outcomes');
 
 const n = await rpc('tools/call', { name: 'brain_node', arguments: { id: 'workspaces' } });
 assert((n.result?.content?.[0]?.text || '').includes('"requires"'), 'brain_node returns edges/requires');
