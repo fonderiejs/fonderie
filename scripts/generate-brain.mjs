@@ -103,7 +103,9 @@ for (const [pkg, p] of Object.entries(packages))
 
 const brain = {
   schema: 1,
-  generatedAt: new Date().toISOString().slice(0, 10),
+  // No wall-clock stamp here: brain.json must be byte-reproducible from source
+  // so the CI freshness gate (git diff --exit-code) is deterministic across
+  // days. sdkVersions is the real freshness signal.
   sdkVersions: Object.fromEntries(Object.entries(packages).map(([n, p]) => [n, p.version])),
   packages,
   edges,
