@@ -24,21 +24,25 @@ quality score a cheaper condition that ships worse code reads as a win — so
   `src/` — `node score.mjs <run-id> <pass>/<total> ["notes"]` — while the app
   is in front of you. Scoring 36 transcripts weeks later is unreliable.
 
-## 2. Environment stability — HIGH (Docker Postgres now available)
+## 2. Environment stability — WIRED ✓ (needs the container running)
 
-`fat-1-s1`'s own transcript: *"Docker's host port-forwarding is broken… installing
-a native Postgres via Homebrew."* That session burned turns fighting infra —
-noise, not signal, and it varies per session, inflating variance **unequally**
-across conditions and corrupting the token comparison.
+`fat-1-s1`'s transcript: *"Docker's host port-forwarding is broken… installing a
+native Postgres via Homebrew."* That session burned turns fighting infra — noise
+that varies per session and corrupts the token comparison.
 
-- **Do:** stand up ONE stable Postgres before the batch and point every session
-  at it via a fixed connection string, so all conditions face identical infra.
-  **Docker access is now available** — spin up e.g.
-  `docker run -d --name fonderie-bench-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16`
-  and export the URL the skeletons expect. (Ask the operator to start it; the
-  harness should assume it is already up, never provision per session.)
-- **Alternative:** stub verification to a fixed harness so DB effort is constant
-  across conditions. Either way the goal is: **equal, quiet infra for all runs.**
+- **Wired:** `run-sequence.sh` now provisions **one isolated database per
+  `(cond, seq)`** (`bench_<cond>_<seq>`, reset when the sequence's workdir is
+  first created; persists across its 4 growing sessions), writes a `.env`, and
+  exports `DATABASE_URL` into each session's `claude` run. Skeletons read
+  `process.env.DATABASE_URL`; the `.env` is harness infra (does not score).
+  Validated end-to-end against a running container (create/verify/drop).
+- **Operator:** just have the Postgres container running. Config assumed:
+  `postgresql://postgres:postgres@localhost:5432`, container named `postgres`
+  (your `docker run … --name postgres … postgres:17`). Override with
+  `BENCH_PG_BASE` / `BENCH_PG_CONTAINER` if different. Uses local `psql` if
+  present, else `docker exec <container> psql`.
+- Isolation matters: a user created in `fat-1` must not collide with `pb-1` —
+  hence per-sequence DBs, not one shared `mydb`.
 
 ## 3. Confirm `pb` actually triggers the brain — HIGH (fold into the pilot)
 
@@ -65,7 +69,7 @@ Do **not** launch the full 36-session batch until:
 
 - [x] #1 quality tooling in place (CHECKLISTS.md + score.mjs; `analyze.mjs`
       enforces the floor) — scoring still to be *done* per session during the run
-- [ ] #2 one stable Postgres up, all sessions pointed at it (Docker ready)
+- [x] #2 per-sequence Postgres wired + validated — just keep the container up
 - [ ] #3 pilot run `pb` 1→2 + `fat` 1→2, `brain.log` non-empty, `analyze.mjs` clean
 - [x] #4 install path confirmed — installs from npm
 
