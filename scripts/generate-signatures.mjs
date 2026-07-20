@@ -130,6 +130,7 @@ function renderPackage(pkg) {
 // cache-read on every turn. This is a measured cost lever: the monolith was
 // the single largest resident-context item in the token-cost experiment.
 import { mkdirSync, rmSync, readdirSync } from 'node:fs';
+import { writeFragment } from './brain-fragment.mjs';
 
 const outDir = join(root, '.claude/skills/fonderie/signatures');
 mkdirSync(outDir, { recursive: true });
@@ -148,7 +149,11 @@ for (const p of PACKAGES) {
 	const pkgName = JSON.parse(
 		readFileSync(join(root, 'packages', p, 'package.json'), 'utf8'),
 	).name;
-	writeFileSync(join(outDir, `${p}.md`), `${HEADER}# ${pkgName} — signatures\n\n${body}\n`);
+	const doc = `${HEADER}# ${pkgName} — signatures\n\n${body}\n`;
+	writeFileSync(join(outDir, `${p}.md`), doc);
+	// Co-locate the same bytes inside the package so they ship in its tarball
+	// and travel with its version (R3 — see brain-fragment.mjs).
+	writeFragment(join(root, 'packages', p), 'signatures', doc);
 	index.push(`- \`${pkgName}\` → [signatures/${p}.md](signatures/${p}.md)`);
 }
 
