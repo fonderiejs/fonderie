@@ -22,6 +22,7 @@
 		"brain:drift": "node experiments/r1-2026-07/drift.mjs",
 		"brain:project": "node scripts/generate-project-brain.mjs",
 		"brain:project-test": "node scripts/project-brain.test.mjs",
+		"brain:r3-test": "node scripts/brain-r3.test.mjs",
 		"audit:validation": "node scripts/audit-validation.mjs"
 	},
 	"devDependencies": {
