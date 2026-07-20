@@ -365,3 +365,32 @@ measured BM25, which no longer exists on this path. Embeddings
 a measured decision, never a default. "No embeddings, no LLM calls inside
 the tool" still holds: the mapping happens in the caller's tool call,
 not inside our process.
+
+## Pilot run — 2026-07-19 (indicative, not the official gate)
+
+First end-to-end measurement of the concept-enum mapping. **Not gate-
+official**: the corpus is still `gen`-flagged (no real user phrasings for
+billing/courier/webhooks yet, per corpus.md), and the FR/RO phrasings are
+translated here, not native-user sourced. Recorded as directional evidence.
+
+- **Harness:** for each phrase, a fresh `claude-haiku-4-5` instance sees
+  ONLY the concept enum + one-line descriptions (exactly what the MCP tool
+  schema exposes) and returns one concept ID. No signatures, no aliases,
+  no other context. Deliberately below-spec model (gate spec is
+  claude-opus-4-8) — a conservative floor.
+- **Corpus:** the 32 canonical naive phrasings × 3 languages (EN, FR, RO) =
+  96 picks. RO added with **zero code changes** — the enum carries no
+  language, so a new locale is only new test rows.
+- **Result:** 96/96 (EN 32/32, FR 32/32, RO 32/32) after one fix.
+  First pass was 94/96 — both misses the same phrase in two languages
+  ("forgot password email" / "email pentru parolă uitată" → `auth.accounts`
+  instead of `courier.messaging`), a genuine concept-boundary ambiguity
+  (password-reset is both an auth and a messaging concern), not a
+  translation failure — the FR equivalent resolved correctly. Fixed by
+  sharpening the `courier.messaging` description to explicitly claim
+  password-reset / verification emails and disambiguate against auth.*.
+- **Reading:** strong directional support that the enum resolves R2 across
+  languages consistently. The residual risk is concept-boundary phrasing,
+  addressed by description curation — the same closed-domain lever the plan
+  always relied on, now consumed by the model instead of BM25. Still gated
+  on the real-phrasing corpus before the number counts.
