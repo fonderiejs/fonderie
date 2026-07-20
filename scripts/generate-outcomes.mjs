@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { writeFragment } from './brain-fragment.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -193,7 +194,10 @@ for (const pkg of PACKAGES) {
 		parts.push('');
 	}
 
-	writeFileSync(join(outDir, `${pkg}-outcomes.md`), HEADER + parts.join('\n'));
+	const doc = HEADER + parts.join('\n');
+	writeFileSync(join(outDir, `${pkg}-outcomes.md`), doc);
+	// Co-locate inside the package (R3 — ships in the tarball, version-matched).
+	writeFragment(pkgDir, 'outcomes', doc);
 	written.push({ pkg, pkgName, tables: tables.size, routes: routes.length });
 	process.stdout.write(`  ${pkg} (${tables.size} tables, ${routes.length} routes)\n`);
 }
