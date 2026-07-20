@@ -22,7 +22,7 @@
     "billing.plan-gate": { "description": "lock a feature behind a paid plan / entitlements / free-tier limits", "package": "billing", "recipe": "plan-gate" },
     "workspaces.teams": { "description": "teams, orgs, multi-tenancy, members, email invites", "package": "workspaces", "recipe": "teams-invites" },
     "permissions.rbac": { "description": "roles and permissions — admin/member/viewer, access control", "package": "permissions", "recipe": "rbac" },
-    "courier.messaging": { "description": "send transactional email, SMS, push — welcome/reset/invite messages", "package": "courier", "recipe": "transactional-email" },
+    "courier.messaging": { "description": "SEND any transactional message — email, SMS, push; use this for password-reset, email-verification, welcome, and invite emails (auth.* is who can log in, courier is what delivers the message)", "package": "courier", "recipe": "transactional-email" },
     "webhooks.in-out": { "description": "receive webhooks (Stripe) and emit your own to other apps", "package": "webhooks", "recipe": "webhooks-in-out" },
     "events.bus": { "description": "in-process event bus — react when something happens in another module", "package": "events" },
     "config.flags": { "description": "feature flags, remote config, kill switches", "package": "config" },
