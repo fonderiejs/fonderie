@@ -1,0 +1,120 @@
+PASS	en	let people make accounts	auth.accounts
+PASS	en	sign in with google	auth.oauth
+PASS	en	protect this endpoint	auth.route-guard
+PASS	en	add github login button	auth.oauth
+PASS	en	add login	auth.accounts
+PASS	en	social auth	auth.oauth
+PASS	en	only logged in people can see the dashboard	auth.route-guard
+PASS	en	users should stay signed in	auth.accounts
+PASS	en	make this page private	auth.route-guard
+PASS	en	teams like slack	workspaces.teams
+PASS	en	let users invite coworkers	workspaces.teams
+PASS	en	I want a pro plan for $9	billing.subscriptions
+PASS	en	let people pay	billing.subscriptions
+PASS	en	add stripe	billing.subscriptions
+PASS	en	multiple people share one account	workspaces.teams
+PASS	en	add organizations	workspaces.teams
+PASS	en	charge per seat	billing.per-seat
+PASS	en	lock this feature behind the paid plan	billing.plan-gate
+PASS	en	price goes up when they add members	billing.per-seat
+PASS	en	bill the whole team	billing.per-seat
+PASS	en	make some users admins	permissions.rbac
+PASS	en	monetize the app	billing.subscriptions
+PASS	en	free tier limited to 3 projects	billing.plan-gate
+PASS	en	pro users get exports	billing.plan-gate
+PASS	en	only owners can delete stuff	permissions.rbac
+PASS	en	viewer vs editor roles	permissions.rbac
+PASS	en	send a welcome email	courier.messaging
+PASS	en	forgot password email	courier.messaging
+PASS	en	handle stripe events	webhooks.in-out
+PASS	en	email people when they get invited	courier.messaging
+PASS	en	stop bots hammering the login	rate-limit.throttle
+PASS	fr	permettre aux gens de créer des comptes	auth.accounts
+PASS	en	tell other apps when something happens here	webhooks.in-out
+PASS	fr	ajouter la connexion	auth.accounts
+PASS	fr	se connecter avec google	auth.oauth
+PASS	fr	les utilisateurs doivent rester connectés	auth.accounts
+PASS	fr	ajouter un bouton de connexion github	auth.oauth
+PASS	fr	authentification via les réseaux sociaux	auth.oauth
+PASS	fr	rendre cette page privée	auth.route-guard
+PASS	fr	seules les personnes connectées peuvent voir le tableau de bord	auth.route-guard
+PASS	fr	protéger ce point d'accès	auth.route-guard
+PASS	fr	des équipes comme slack	workspaces.teams
+PASS	fr	ajouter des organisations	workspaces.teams
+PASS	fr	permettre aux utilisateurs d'inviter des collègues	workspaces.teams
+PASS	fr	plusieurs personnes partagent un même compte	workspaces.teams
+PASS	fr	laisser les gens payer	billing.subscriptions
+PASS	fr	ajouter stripe	billing.subscriptions
+PASS	fr	monétiser l'application	billing.subscriptions
+PASS	fr	facturer par siège	billing.per-seat
+PASS	fr	le prix augmente quand ils ajoutent des membres	billing.per-seat
+PASS	fr	je veux un forfait pro à 9$	billing.subscriptions
+PASS	fr	verrouiller cette fonctionnalité derrière le forfait payant	billing.plan-gate
+PASS	fr	facturer toute l'équipe	billing.per-seat
+PASS	fr	offre gratuite limitée à 3 projets	billing.plan-gate
+PASS	fr	les utilisateurs pro ont accès aux exports	billing.plan-gate
+PASS	fr	rendre certains utilisateurs administrateurs	permissions.rbac
+PASS	fr	seuls les propriétaires peuvent supprimer des choses	permissions.rbac
+PASS	fr	rôles lecteur vs éditeur	permissions.rbac
+PASS	fr	envoyer un email de bienvenue	courier.messaging
+PASS	fr	email de mot de passe oublié	courier.messaging
+PASS	fr	gérer les événements stripe	webhooks.in-out
+PASS	fr	empêcher les bots de marteler la page de connexion	rate-limit.throttle
+PASS	fr	envoyer un email aux personnes invitées	courier.messaging
+PASS	ro	permite oamenilor să își creeze conturi	auth.accounts
+PASS	ro	adaugă autentificare	auth.accounts
+PASS	ro	conectare cu google	auth.oauth
+PASS	ro	utilizatorii ar trebui să rămână conectați	auth.accounts
+PASS	ro	autentificare prin rețele sociale	auth.oauth
+PASS	fr	prévenir d'autres applications quand quelque chose se passe ici	webhooks.in-out
+PASS	ro	adaugă buton de conectare cu github	auth.oauth
+PASS	ro	doar persoanele conectate pot vedea panoul de control	auth.route-guard
+PASS	ro	protejează acest endpoint	auth.route-guard
+PASS	ro	fă această pagină privată	auth.route-guard
+PASS	ro	echipe ca în slack	workspaces.teams
+PASS	ro	adaugă organizații	workspaces.teams
+PASS	ro	adaugă stripe	billing.subscriptions
+PASS	ro	permite utilizatorilor să invite colegi	workspaces.teams
+PASS	ro	mai multe persoane împart același cont	workspaces.teams
+PASS	ro	taxează per loc	billing.per-seat
+PASS	ro	vreau un plan pro la 9$	billing.subscriptions
+PASS	ro	lasă oamenii să plătească	billing.subscriptions
+PASS	ro	facturează întreaga echipă	billing.per-seat
+PASS	ro	monetizează aplicația	billing.subscriptions
+PASS	ro	blochează această funcționalitate în spatele planului plătit	billing.plan-gate
+PASS	ro	utilizatorii pro au acces la exporturi	billing.plan-gate
+PASS	ro	prețul crește când adaugă membri	billing.per-seat
+PASS	ro	fă unii utilizatori administratori	permissions.rbac
+PASS	ro	nivelul gratuit limitat la 3 proiecte	billing.plan-gate
+PASS	ro	doar proprietarii pot șterge lucruri	permissions.rbac
+PASS	ro	roluri de cititor vs editor	permissions.rbac
+PASS	ro	trimite un email de bun venit	courier.messaging
+PASS	ro	trimite email persoanelor invitate	courier.messaging
+PASS	ro	email pentru parolă uitată	courier.messaging
+PASS	ro	gestionează evenimentele stripe	webhooks.in-out
+PASS	ro	anunță alte aplicații când se întâmplă ceva aici	webhooks.in-out
+PASS	ro	oprește boții care bombardează pagina de conectare	rate-limit.throttle
+PASS	en	Add Authentication Jwt Token	auth.accounts
+PASS	en	Google, Facebook oauth Login for SPA without Page Refresh	auth.oauth
+PASS	en	How to Add Authentication in Node Js API?	auth.accounts
+PASS	en	Creating Protected routes for authentication	auth.route-guard
+PASS	en	SAML vs federated login with OAuth	auth.oauth
+PASS	en	How do I protect routes in an SPA using HttpOnly authentication session cookies?	auth.route-guard
+PASS	en	How to create a multi-tenant database with shared table structures?	workspaces.teams
+PASS	en	Multi-tenant SAAS in Django	workspaces.teams
+PASS	en	Multi Tenant vs Single Tenant?	workspaces.teams
+PASS	en	Invite team member functionality in MERN website	workspaces.teams
+PASS	en	Allow users to invite team members to Meteor application & link team accounts	workspaces.teams
+PASS	en	Best Practice for Designing User Roles and Permission System?	permissions.rbac
+PASS	en	Changing subscription plans and billing the difference	billing.subscriptions
+PASS	en	How to bill variable amounts (per-seat model), month to month	billing.per-seat
+PASS	en	Express.js/Mongoose user roles and permissions	permissions.rbac
+PASS	en	Roles and Permissions model in database	permissions.rbac
+FAIL	en	Laravel Spark -- configure both flat rate + per seat pricing?	expected=billing.per-seat got=billing.subscriptions
+PASS	en	Do I need to use a Transactional Email Service Provider to send emails with Django?	courier.messaging
+PASS	en	How to send transactional email with Nodemailer?	courier.messaging
+PASS	en	How to set global feature flags?	config.flags
+PASS	en	Database design for audit logging	audit.trail
+PASS	en	Rate limiting signup API	rate-limit.throttle
+PASS	en	Business Audit log - recommended library or approach?	audit.trail
+PASS	en	API rate limiting for authentication	rate-limit.throttle
