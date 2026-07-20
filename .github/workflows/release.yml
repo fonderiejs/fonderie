@@ -30,6 +30,10 @@ jobs:
       # publishes to npm when that PR is merged.
       - uses: changesets/action@v1
         with:
+          # `version` regenerates brain.json after the bumps so its sdkVersions
+          # match the new package versions — otherwise the docs:brain freshness
+          # gate fails on the very next push (learned the hard way, 2026-07-20).
+          version: npm run version
           publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

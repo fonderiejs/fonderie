@@ -13,7 +13,7 @@
 		"format": "biome format --write .",
 		"check": "biome check --write .",
 		"changeset": "changeset",
-		"version": "changeset version",
+		"version": "changeset version && npm run docs:brain",
 		"release": "npm run build && changeset publish",
 		"docs:signatures": "node scripts/generate-signatures.mjs && node scripts/generate-outcomes.mjs",
 		"docs:brain": "node scripts/generate-brain.mjs",
