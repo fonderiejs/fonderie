@@ -1,0 +1,96 @@
+en	let people make accounts	auth.accounts
+en	add login	auth.accounts
+en	users should stay signed in	auth.accounts
+en	sign in with google	auth.oauth
+en	add github login button	auth.oauth
+en	social auth	auth.oauth
+en	only logged in people can see the dashboard	auth.route-guard
+en	protect this endpoint	auth.route-guard
+en	make this page private	auth.route-guard
+en	teams like slack	workspaces.teams
+en	let users invite coworkers	workspaces.teams
+en	add organizations	workspaces.teams
+en	multiple people share one account	workspaces.teams
+en	let people pay	billing.subscriptions
+en	add stripe	billing.subscriptions
+en	I want a pro plan for $9	billing.subscriptions
+en	monetize the app	billing.subscriptions
+en	charge per seat	billing.per-seat
+en	bill the whole team	billing.per-seat
+en	price goes up when they add members	billing.per-seat
+en	pro users get exports	billing.plan-gate
+en	lock this feature behind the paid plan	billing.plan-gate
+en	free tier limited to 3 projects	billing.plan-gate
+en	make some users admins	permissions.rbac
+en	only owners can delete stuff	permissions.rbac
+en	viewer vs editor roles	permissions.rbac
+en	send a welcome email	courier.messaging
+en	forgot password email	courier.messaging
+en	email people when they get invited	courier.messaging
+en	handle stripe events	webhooks.in-out
+en	tell other apps when something happens here	webhooks.in-out
+en	stop bots hammering the login	rate-limit.throttle
+fr	permettre aux gens de créer des comptes	auth.accounts
+fr	ajouter la connexion	auth.accounts
+fr	les utilisateurs doivent rester connectés	auth.accounts
+fr	se connecter avec google	auth.oauth
+fr	ajouter un bouton de connexion github	auth.oauth
+fr	authentification via les réseaux sociaux	auth.oauth
+fr	seules les personnes connectées peuvent voir le tableau de bord	auth.route-guard
+fr	protéger ce point d'accès	auth.route-guard
+fr	rendre cette page privée	auth.route-guard
+fr	des équipes comme slack	workspaces.teams
+fr	permettre aux utilisateurs d'inviter des collègues	workspaces.teams
+fr	ajouter des organisations	workspaces.teams
+fr	plusieurs personnes partagent un même compte	workspaces.teams
+fr	laisser les gens payer	billing.subscriptions
+fr	ajouter stripe	billing.subscriptions
+fr	je veux un forfait pro à 9$	billing.subscriptions
+fr	monétiser l'application	billing.subscriptions
+fr	facturer par siège	billing.per-seat
+fr	facturer toute l'équipe	billing.per-seat
+fr	le prix augmente quand ils ajoutent des membres	billing.per-seat
+fr	les utilisateurs pro ont accès aux exports	billing.plan-gate
+fr	verrouiller cette fonctionnalité derrière le forfait payant	billing.plan-gate
+fr	offre gratuite limitée à 3 projets	billing.plan-gate
+fr	rendre certains utilisateurs administrateurs	permissions.rbac
+fr	seuls les propriétaires peuvent supprimer des choses	permissions.rbac
+fr	rôles lecteur vs éditeur	permissions.rbac
+fr	envoyer un email de bienvenue	courier.messaging
+fr	email de mot de passe oublié	courier.messaging
+fr	envoyer un email aux personnes invitées	courier.messaging
+fr	gérer les événements stripe	webhooks.in-out
+fr	prévenir d'autres applications quand quelque chose se passe ici	webhooks.in-out
+fr	empêcher les bots de marteler la page de connexion	rate-limit.throttle
+ro	permite oamenilor să își creeze conturi	auth.accounts
+ro	adaugă autentificare	auth.accounts
+ro	utilizatorii ar trebui să rămână conectați	auth.accounts
+ro	conectare cu google	auth.oauth
+ro	adaugă buton de conectare cu github	auth.oauth
+ro	autentificare prin rețele sociale	auth.oauth
+ro	doar persoanele conectate pot vedea panoul de control	auth.route-guard
+ro	protejează acest endpoint	auth.route-guard
+ro	fă această pagină privată	auth.route-guard
+ro	echipe ca în slack	workspaces.teams
+ro	permite utilizatorilor să invite colegi	workspaces.teams
+ro	adaugă organizații	workspaces.teams
+ro	mai multe persoane împart același cont	workspaces.teams
+ro	lasă oamenii să plătească	billing.subscriptions
+ro	adaugă stripe	billing.subscriptions
+ro	vreau un plan pro la 9$	billing.subscriptions
+ro	monetizează aplicația	billing.subscriptions
+ro	taxează per loc	billing.per-seat
+ro	facturează întreaga echipă	billing.per-seat
+ro	prețul crește când adaugă membri	billing.per-seat
+ro	utilizatorii pro au acces la exporturi	billing.plan-gate
+ro	blochează această funcționalitate în spatele planului plătit	billing.plan-gate
+ro	nivelul gratuit limitat la 3 proiecte	billing.plan-gate
+ro	fă unii utilizatori administratori	permissions.rbac
+ro	doar proprietarii pot șterge lucruri	permissions.rbac
+ro	roluri de cititor vs editor	permissions.rbac
+ro	trimite un email de bun venit	courier.messaging
+ro	email pentru parolă uitată	courier.messaging
+ro	trimite email persoanelor invitate	courier.messaging
+ro	gestionează evenimentele stripe	webhooks.in-out
+ro	anunță alte aplicații când se întâmplă ceva aici	webhooks.in-out
+ro	oprește boții care bombardează pagina de conectare	rate-limit.throttle
