@@ -43,6 +43,26 @@ export function query(brain, q) {
   };
 }
 
+// R2 concept-enum path (BRAIN_PLAN.md "R2 update"): deterministic lookup, no
+// ranking, nothing to miss. The intent→concept mapping happens in the caller's
+// tool call (the model picks an enum value); this function only resolves it.
+export function concept(brain, id) {
+  const c = (brain.concepts || {})[id];
+  if (!c) return null;
+  const p = brain.packages[c.package];
+  return {
+    id,
+    description: c.description,
+    package: {
+      name: c.package,
+      version: p?.version,
+      requires: p?.requires || [],
+      exports: (p?.exports || []).slice(0, 4),
+    },
+    recipe: c.recipe ? recipe(brain, c.recipe) : null,
+  };
+}
+
 export function node(brain, id) {
   const p = brain.packages[id];
   if (!p) return null;

@@ -101,6 +101,13 @@ for (const [pkg, terms] of Object.entries(knowledge.aliases || {}))
 for (const [pkg, p] of Object.entries(packages))
   for (const e of p.exports) add(e, pkg);
 
+// R2 concept layer: every concept must point at a real package (and recipe,
+// when named) — a dangling ref would make the enum route the model nowhere.
+for (const [id, c] of Object.entries(knowledge.concepts || {})) {
+  if (!packages[c.package]) throw new Error(`concept ${id}: unknown package "${c.package}"`);
+  if (c.recipe && !knowledge.recipes[c.recipe]) throw new Error(`concept ${id}: unknown recipe "${c.recipe}"`);
+}
+
 const brain = {
   schema: 1,
   // No wall-clock stamp here: brain.json must be byte-reproducible from source
@@ -111,6 +118,7 @@ const brain = {
   edges,
   index: Object.fromEntries(Object.entries(index).map(([k, v]) => [k, [...v]])),
   aliases: knowledge.aliases,
+  concepts: knowledge.concepts || {},
   recipes: knowledge.recipes,
   invariants: knowledge.invariants,
 };
@@ -122,6 +130,7 @@ const nEdges = edges.length;
 const nIndex = Object.keys(index).length;
 console.log(
   `wrote brain.json: ${Object.keys(packages).length} packages, ${nEdges} edges, ` +
-    `${nIndex} index terms, ${Object.keys(knowledge.recipes).length} recipes, ` +
+    `${nIndex} index terms, ${Object.keys(knowledge.concepts || {}).length} concepts, ` +
+    `${Object.keys(knowledge.recipes).length} recipes, ` +
     `${Object.keys(knowledge.invariants).length} invariants`,
 );
