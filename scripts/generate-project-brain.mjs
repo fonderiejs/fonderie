@@ -22,6 +22,7 @@
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveInstalledFragment } from './brain-fragment.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -95,21 +96,36 @@ if (recipes.length) {
   lines.push('');
 }
 
+// R3: for each installed package, prefer the fragment co-located INSIDE the
+// installed package (version-matched by construction). Only fall back to the
+// central authoring copy for packages published before co-location — and when
+// we do, flag it, because that copy is "latest" served against an unknown
+// version (the one skew case co-location can't eliminate, made visible).
+const stale = [];
 for (const p of installed) {
-  const sig = read(join(sigDir, `${p.name}.md`));
-  const oc = read(join(sigDir, `${p.name}-outcomes.md`));
-  if (!sig && !oc) continue;
+  const pkgDir = join(projectDir, 'node_modules', '@fonderie', p.name);
+  const central = { signatures: join(sigDir, `${p.name}.md`), outcomes: join(sigDir, `${p.name}-outcomes.md`) };
+  const frag = resolveInstalledFragment(pkgDir, central);
+  if (!frag.signatures && !frag.outcomes) continue;
   lines.push(`## @fonderie/${p.name}@${p.version}`);
   lines.push('');
-  if (sig) lines.push(sig.trim(), '');
-  if (oc) lines.push(oc.trim(), '');
+  if (!frag.matched) {
+    stale.push(p.name);
+    lines.push(`> ⚠ No co-located brain in @fonderie/${p.name}@${p.version}; showing the`);
+    lines.push('> repo\'s latest knowledge, which may not match this installed version.');
+    lines.push('> Rebuild/republish the package with `brain/` to make this exact.');
+    lines.push('');
+  }
+  if (frag.signatures) lines.push(frag.signatures, '');
+  if (frag.outcomes) lines.push(frag.outcomes, '');
 }
 
 const doc = lines.join('\n') + '\n';
 if (outPath) {
   writeFileSync(outPath, doc);
   const kb = (doc.length / 1024).toFixed(1);
-  console.error(`wrote ${outPath}: ${installed.length} packages, ${kb} KB (~${Math.ceil(doc.length / 4)} tokens)`);
+  const skew = stale.length ? `, ${stale.length} on central fallback (${stale.join(', ')})` : ', all version-matched';
+  console.error(`wrote ${outPath}: ${installed.length} packages, ${kb} KB (~${Math.ceil(doc.length / 4)} tokens)${skew}`);
 } else {
   process.stdout.write(doc);
 }
