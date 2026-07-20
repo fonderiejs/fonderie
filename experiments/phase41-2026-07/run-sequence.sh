@@ -25,6 +25,21 @@ ISOROOT="${TMPDIR:-/tmp}/fonderie-p41"
 WORK="$ISOROOT/$COND-$SEQ"
 mkdir -p "$EXPT/results" "$ISOROOT"
 
+# --- database (harness infrastructure, provided EQUALLY to every condition) ---
+# One isolated database per (cond, seq) — the app grows across a sequence's 4
+# sessions in one DB, but sequences/conditions must not share state (a user
+# created in fat-1 must not collide with pb-1). Reset when the workdir is first
+# created; persists across the sequence and resumes. Override the server or the
+# container name via BENCH_PG_BASE / BENCH_PG_CONTAINER.
+PG_BASE="${BENCH_PG_BASE:-postgresql://postgres:postgres@localhost:5432}"
+PG_CONTAINER="${BENCH_PG_CONTAINER:-postgres}"
+DB="bench_${COND}_${SEQ}"; DB="${DB//-/_}"
+DBURL="$PG_BASE/$DB"
+pg_admin() {  # psql against the server's admin db — local psql if present, else the container
+  if command -v psql >/dev/null 2>&1; then psql "$PG_BASE/postgres" -v ON_ERROR_STOP=1 "$@"
+  else docker exec -i "$PG_CONTAINER" psql -U postgres -v ON_ERROR_STOP=1 "$@"; fi
+}
+
 is_limited() {
   node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1]));process.exit(d.is_error&&/limit/i.test(d.result||"")?0:1)' "$1" 2>/dev/null
 }
@@ -46,6 +61,11 @@ if [ ! -d "$WORK" ]; then
     # pure fat skill — strip brain artifacts from the copy
     rm -f "$WORK/.claude/skills/fonderie/brain.json" "$WORK/.claude/skills/fonderie/brain-knowledge.json"
   fi
+  # fresh sequence → fresh, isolated database + provided .env (equal infra so no
+  # session burns turns provisioning its own DB, as fat-1 did)
+  pg_admin -c "DROP DATABASE IF EXISTS $DB WITH (FORCE)" -c "CREATE DATABASE $DB" >/dev/null 2>&1 \
+    || echo "⚠ could not reset DB '$DB' (need local psql, or a running container named '$PG_CONTAINER'). Sessions may fight infra."
+  printf 'DATABASE_URL=%s\n' "$DBURL" > "$WORK/.env"
 fi
 
 while read -r line <&3; do
@@ -77,7 +97,7 @@ JSON
 
   cd "$WORK"
   START=$(date +%s)
-  env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude -p "$PROMPT" \
+  env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT DATABASE_URL="$DBURL" claude -p "$PROMPT" \
     --model claude-opus-4-8 \
     --output-format json \
     --dangerously-skip-permissions \
