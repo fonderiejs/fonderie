@@ -1,5 +1,11 @@
 # @fonderie/config
 
+## 1.0.2
+
+### Patch Changes
+
+- 01a2b72: Ship the co-located brain fragment (`brain/{signatures,outcomes}.md`) inside each package tarball (R3). The project-brain compiler reads the installed package's own fragment, so brain knowledge is version-matched by construction — no central registry to skew against. No runtime code change; adds `brain/` to the published files only.
+
 ## 1.0.1
 
 ### Patch Changes
