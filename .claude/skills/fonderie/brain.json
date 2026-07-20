@@ -1,28 +1,28 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "1.0.2",
-    "adapter-hono": "1.0.2",
-    "adapter-koa": "1.0.2",
-    "audit": "1.0.0",
-    "auth": "1.3.0",
-    "billing": "1.1.0",
-    "client": "0.1.0",
-    "config": "1.0.1",
-    "core": "0.1.4",
-    "courier": "1.0.1",
-    "customers": "1.1.0",
-    "events": "1.0.1",
-    "logger": "0.1.0",
-    "permissions": "1.0.1",
+    "adapter-express": "1.0.3",
+    "adapter-hono": "1.0.3",
+    "adapter-koa": "1.0.3",
+    "audit": "1.0.1",
+    "auth": "1.3.1",
+    "billing": "1.1.1",
+    "client": "0.1.1",
+    "config": "1.0.2",
+    "core": "0.1.5",
+    "courier": "1.0.2",
+    "customers": "1.1.1",
+    "events": "1.0.2",
+    "logger": "0.1.1",
+    "permissions": "1.0.2",
     "rate-limit": "0.1.0",
-    "store": "0.1.1",
-    "webhooks": "1.1.0",
-    "workspaces": "1.2.0"
+    "store": "0.1.2",
+    "webhooks": "1.1.1",
+    "workspaces": "1.2.1"
   },
   "packages": {
     "adapter-express": {
-      "version": "1.0.2",
+      "version": "1.0.3",
       "requires": [
         "core",
         "workspaces",
@@ -41,7 +41,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "1.0.2",
+      "version": "1.0.3",
       "requires": [
         "core",
         "workspaces",
@@ -60,7 +60,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "1.0.2",
+      "version": "1.0.3",
       "requires": [
         "core",
         "workspaces",
@@ -79,7 +79,7 @@
       "hasOutcomes": false
     },
     "audit": {
-      "version": "1.0.0",
+      "version": "1.0.1",
       "requires": [
         "core",
         "store"
@@ -104,7 +104,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "1.3.0",
+      "version": "1.3.1",
       "requires": [
         "core",
         "events",
@@ -247,7 +247,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "1.1.0",
+      "version": "1.1.1",
       "requires": [
         "core",
         "store"
@@ -336,7 +336,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.1.0",
+      "version": "0.1.1",
       "requires": [],
       "exports": [
         "FonderieClient",
@@ -352,7 +352,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "1.0.1",
+      "version": "1.0.2",
       "requires": [
         "core",
         "store"
@@ -377,7 +377,7 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.1.4",
+      "version": "0.1.5",
       "requires": [],
       "exports": [
         "OPERATIONS",
@@ -399,7 +399,7 @@
       "hasOutcomes": false
     },
     "courier": {
-      "version": "1.0.1",
+      "version": "1.0.2",
       "requires": [
         "core",
         "store",
@@ -430,7 +430,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "1.1.0",
+      "version": "1.1.1",
       "requires": [
         "core",
         "events",
@@ -643,7 +643,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "1.0.1",
+      "version": "1.0.2",
       "requires": [
         "core",
         "store"
@@ -668,7 +668,7 @@
       "hasOutcomes": true
     },
     "logger": {
-      "version": "0.1.0",
+      "version": "0.1.1",
       "requires": [],
       "exports": [
         "Logger",
@@ -685,7 +685,7 @@
       "hasOutcomes": false
     },
     "permissions": {
-      "version": "1.0.1",
+      "version": "1.0.2",
       "requires": [
         "core",
         "store"
@@ -732,7 +732,7 @@
       "hasOutcomes": false
     },
     "store": {
-      "version": "0.1.1",
+      "version": "0.1.2",
       "requires": [],
       "exports": [
         "MigrationRunner",
@@ -752,7 +752,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "1.1.0",
+      "version": "1.1.1",
       "requires": [
         "core",
         "events",
@@ -809,7 +809,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "1.2.0",
+      "version": "1.2.1",
       "requires": [
         "billing",
         "core",
