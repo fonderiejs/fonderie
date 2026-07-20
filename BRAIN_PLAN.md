@@ -173,6 +173,34 @@ Deliberately absent (violate "less moving pieces", serve no gate): `stats`,
 - **Exit gate:** fresh machine → working, lockfile-matched brain in every
   tier-1 assistant with one command.
 
+### Deferred: extract `scripts/` → `packages/cli/` (archived 2026-07-19)
+
+The brain tooling currently lives in `scripts/*.mjs` (12 of the 14 files
+there — MCP server, CLI, hook, shared libs, generators, tests). That is a
+product-in-waiting, not a pile of scripts; its convention-correct home in
+this monorepo is a package. **Deliberately not done now** — the mechanism
+is still under validation (R2/R3), and extraction means real `tsup` /
+`tsconfig` / `bin` wiring plus `.mjs`→`.ts`, which the plan defers to this
+phase. When we do it, go straight here — skip any interim `scripts/`→
+`tools/` rename (cosmetic, would be redone). Proposed layout:
+
+```
+packages/cli/
+  src/
+    mcp/       brain-serve.ts          # stdio MCP server
+    cli/       query.ts, concepts.ts   # fonderie query / --concepts
+    hook/      pretooluse.ts           # the R1 PreToolUse hook
+    generate/  signatures.ts, outcomes.ts, brain.ts, project-brain.ts
+    lib/       brain-lib.ts, fragment.ts
+  bin/         fonderie                # umbrella entry (command surface above)
+scripts/       audit-validation.mjs, strip-coauthors.sh   # genuine chores stay
+```
+
+Side benefit: kills the `**/scripts/*` gitignore force-add friction — new
+files under `packages/` need no allowlist entry. Until then, tracked
+scripts stay on the per-file `.gitignore` exception list (by design: local
+scratch scripts remain ignored).
+
 ## Phase 4 — Prove it with the existing harness (1–2 weeks)
 
 - Add **condition C** to `experiments/token-cost-2026-07`: skeleton-b +
