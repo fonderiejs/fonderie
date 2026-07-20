@@ -13,6 +13,25 @@
     "events": ["event bus", "domain event", "emit event", "pub sub", "in process events"],
     "customers": ["customer", "customers", "crm", "customer record", "contact"]
   },
+  "concepts": {
+    "auth.accounts": { "description": "sign up, log in, sessions, passwords, MFA, email verification", "package": "auth", "recipe": "basic-auth" },
+    "auth.oauth": { "description": "social login / SSO via OAuth providers (Google, GitHub)", "package": "auth", "recipe": "oauth" },
+    "auth.route-guard": { "description": "protect a route or page so only logged-in users reach it", "package": "auth", "recipe": "route-guard" },
+    "billing.subscriptions": { "description": "accept payments, subscription plans, Stripe checkout, invoices", "package": "billing", "recipe": "stripe-checkout" },
+    "billing.per-seat": { "description": "charge per team member / seat", "package": "billing", "recipe": "per-seat-billing" },
+    "billing.plan-gate": { "description": "lock a feature behind a paid plan / entitlements / free-tier limits", "package": "billing", "recipe": "plan-gate" },
+    "workspaces.teams": { "description": "teams, orgs, multi-tenancy, members, email invites", "package": "workspaces", "recipe": "teams-invites" },
+    "permissions.rbac": { "description": "roles and permissions — admin/member/viewer, access control", "package": "permissions", "recipe": "rbac" },
+    "courier.messaging": { "description": "send transactional email, SMS, push — welcome/reset/invite messages", "package": "courier", "recipe": "transactional-email" },
+    "webhooks.in-out": { "description": "receive webhooks (Stripe) and emit your own to other apps", "package": "webhooks", "recipe": "webhooks-in-out" },
+    "events.bus": { "description": "in-process event bus — react when something happens in another module", "package": "events" },
+    "config.flags": { "description": "feature flags, remote config, kill switches", "package": "config" },
+    "audit.trail": { "description": "workspace-scoped audit log — who did what, compliance", "package": "audit" },
+    "rate-limit.throttle": { "description": "throttle requests — brute force, abuse, spam protection", "package": "rate-limit" },
+    "customers.crm": { "description": "customer records / CRM tied to billing", "package": "customers" },
+    "core.app": { "description": "bootstrap a Fonderie app, register modules, mount on Express/Hono/Koa", "package": "core" },
+    "store.database": { "description": "Postgres access and append-only migrations", "package": "store" }
+  },
   "recipes": {
     "basic-auth": { "when": "sign up + log in with email/password", "packages": ["auth", "core", "events", "store"], "invariants": ["jwt-secret-from-env", "rate-limit-default-on"] },
     "oauth": { "when": "social login (Google/GitHub)", "packages": ["auth", "config", "core", "store"], "invariants": ["jwt-secret-from-env"] },
