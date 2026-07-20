@@ -300,3 +300,68 @@ come back for them. Phase 5's "retire the fat skill" is now: fat skill → stub
 
 Gate discipline unchanged: one iteration per failed gate; no claim without a
 gate; aborts disclosed, never averaged.
+
+---
+
+# R2 update (2026-07-19) — concept enum replaces free-text discovery
+
+> Appended after researching multilingual retrieval. Conclusion: R2 was a
+> translation problem disguised as a retrieval problem, and the Phase 4.1
+> pivot already shrank its surface to one tool. Close it there.
+
+## The finding
+
+R2's failure mode — "let people pay" missing the billing node — is
+intent-to-vocabulary mapping, which string matching does badly (graphify's
+~50–76% on LOCOMO/LongMemEval) and an LLM does extremely well. Our query
+side is not a human typing into a search box; it is a model formulating a
+tool call. The MCP tool-design literature is unanimous: free-text
+parameters are a primary cause of failed/wrong tool calls; closed
+enums make the model perform the mapping itself, reliably.
+
+Both sides of our problem are closed: the SDK surface is known at publish
+time, and the consumer is an LLM. General retrieval assumes an open
+vocabulary on at least one side — we never had that problem.
+
+## Design consequence
+
+After the Phase 4.1 pivot, the only free-text retrieval left is the
+discovery tool (`brain_query` for not-yet-installed capabilities).
+Replace its parameter:
+
+```
+before:  brain_query(question: string)          → BM25 + edge expansion
+after:   brain_query(concept: <enum>, aspect?)  → deterministic lookup
+```
+
+- **Concept enum**: one language-less ID per capability
+  (`billing.subscriptions`, `auth.sessions`, `workspaces.roles`, …),
+  a few dozen values, generated per release in CI from packages/*.
+  Each value carries a one-line English description ("accept payments,
+  subscriptions, Stripe") — the model bridges from any user language to
+  the concept through the description; no per-language alias tables ever.
+- **Curated alias edges are superseded.** The hand-maintained synonym
+  layer ("pay/charge/checkout" → billing) becomes the enum descriptions —
+  same curation effort, but consumed by the model instead of BM25, so it
+  works in every language the model speaks.
+- **Result is the concept's whole bounded subgraph** (one package's
+  signatures, inline, per the ce1 lesson — the model will not come back
+  for a second hop). No ranking, no recall, nothing to miss. The residual
+  error is a wrong enum pick — rarer, visible (wrong signatures come
+  back), and self-correcting via retry; a BM25 miss returns silence and
+  the model improvises, which is the dangerous case.
+- **BM25 survives only for exact-symbol lookup** (function/route names
+  are already language-neutral).
+
+## Gate change (locked before data)
+
+The ≥90% naive-phrasing gate becomes: **≥90% correct concept selection on
+the naive-phrasing corpus, run in EN and FR** (crewfinding supplies the
+bilingual corpus), same threshold both languages, one model
+(claude-opus-4-8). Note the eval now has the model in the loop — it
+measures the enum mapping, which *is* the mechanism; the old no-LLM eval
+measured BM25, which no longer exists on this path. Embeddings
+(BGE-M3 / mE5) enter consideration only if this gate fails twice —
+a measured decision, never a default. "No embeddings, no LLM calls inside
+the tool" still holds: the mapping happens in the caller's tool call,
+not inside our process.

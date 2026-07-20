@@ -44,12 +44,22 @@ const list = await rpc('tools/list', {});
 const names = (list.result?.tools || []).map((t) => t.name);
 assert(['brain_query', 'brain_node', 'brain_recipe'].every((n) => names.includes(n)), `tools/list has 3 tools (got ${names})`);
 
-const q = await rpc('tools/call', { name: 'brain_query', arguments: { question: 'let people pay' } });
+const tool = (list.result?.tools || []).find((t) => t.name === 'brain_query');
+const enumVals = tool?.inputSchema?.properties?.concept?.enum || [];
+assert(enumVals.includes('billing.subscriptions'), `brain_query exposes concept enum (got ${enumVals.length} values)`);
+assert(tool.description.includes('billing.subscriptions —'), 'tool description carries per-concept descriptions');
+
+const q = await rpc('tools/call', { name: 'brain_query', arguments: { concept: 'billing.subscriptions' } });
 const qText = q.result?.content?.[0]?.text || '';
-assert(qText.includes('@fonderie/billing'), 'brain_query "let people pay" → billing');
+assert(qText.includes('@fonderie/billing'), 'brain_query billing.subscriptions → billing');
 assert(qText.includes('stripe-checkout'), 'brain_query returns the recipe');
 assert(qText.includes('billing signatures (exact API'), 'brain_query inlines top-package signatures (one-shot discovery)');
 assert(qText.includes('billing outcomes'), 'brain_query inlines top-package outcomes');
+
+const miss = await rpc('tools/call', { name: 'brain_query', arguments: { concept: 'nope.nothing' } });
+const missText = miss.result?.content?.[0]?.text || '';
+assert(missText.startsWith('unknown concept'), 'wrong concept pick returns the menu (retryable, not silent)');
+assert(missText.includes('auth.accounts'), 'menu lists valid concepts');
 
 const n = await rpc('tools/call', { name: 'brain_node', arguments: { id: 'workspaces' } });
 assert((n.result?.content?.[0]?.text || '').includes('"requires"'), 'brain_node returns edges/requires');
