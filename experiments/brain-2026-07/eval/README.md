@@ -104,6 +104,28 @@ Reddit) → `support` (a real client's own words). Reddit is `forum`: a real ste
 up from `gen`, still below live-client language. `candidates-reddit.tsv` is
 gitignored.
 
+### Stack Overflow (`fetch-stackexchange.mjs`) — recommended over Reddit
+
+Stack Exchange content is **CC BY-SA** with an official **keyless** API — real,
+reusable, no ToS gray area (Reddit closed off new API keys and blocks
+unauthenticated access). Question titles are naive phrasings.
+
+```
+node fetch-stackexchange.mjs > candidates-se.tsv   # then REVIEW
+```
+
+Uses full-text `q` + relevance (the API silently ignores `intitle`), ~15
+capability queries, keyless quota (~300/day). Same firewall; flag kept rows
+`forum`.
+
+**Honest yield note (2026-07-20):** a first run returned 351 titles but SO's
+register skews **developer-implementation-specific** — "add auth to
+`mongod.conf` / k8s / Solr / Xamarin", not "add auth to my SaaS". Expect to keep
+a **minority** (~10–20%) after review — the founder-register phrasings ("How to
+add authentication in Node.js API?", "Add Authentication JWT Token") — and
+discard framework plumbing. Real and licensed, but complements rather than
+replaces the eventual `support`-tier corpus. `candidates-se.tsv` gitignored.
+
 ## When the real corpus lands
 
 Replace/extend `corpus.tsv` with real user phrasings (keeping the same three
