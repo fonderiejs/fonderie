@@ -15,7 +15,7 @@ import { createInterface } from 'node:readline';
 import { appendFileSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadBrain, query, node, recipe, versionCheck } from './brain-lib.mjs';
+import { loadBrain, concept, node, recipe, versionCheck } from './brain-lib.mjs';
 
 const readFileSafe = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : null);
 
@@ -39,15 +39,29 @@ const vc = versionCheck(brain, projectDir);
 const SERVER = { name: 'fonderie-brain', version: brain.sdkVersions?.core || '0.0.0' };
 
 // --- MCP tool definitions ---------------------------------------------------
+// R2 concept enum (BRAIN_PLAN.md "R2 update"): brain_query takes a closed enum
+// of language-less concept IDs instead of free text. The model maps the user's
+// intent — in any language — onto a concept via the per-value descriptions
+// below; lookup is then deterministic (no BM25, no recall, nothing to miss).
+const CONCEPT_IDS = Object.keys(brain.concepts || {}).sort();
+const conceptMenu = CONCEPT_IDS.map((id) => `  ${id} — ${brain.concepts[id].description}`).join('\n');
+
 const TOOLS = [
   {
     name: 'brain_query',
     description:
-      'Fonderie SDK knowledge. Call this BEFORE writing or editing any code that touches auth, billing, orgs/teams, permissions, email, webhooks, rate limiting, or config. Returns the package(s) to use, how they wire together, the canonical recipe, security invariants, and the EXACT TypeScript signatures + routes of the top package — everything needed to write correct code in one shot. Do not read @fonderie source or docs — ask here.',
+      'Fonderie SDK knowledge. Call this BEFORE writing or editing any code that touches auth, billing, orgs/teams, permissions, email, webhooks, rate limiting, or config. Pick the concept matching the task, whatever language it was phrased in. Returns the package to use, how it wires, the canonical recipe, security invariants, and the EXACT TypeScript signatures + routes — everything needed to write correct code in one shot. Do not read @fonderie source or docs — ask here.\nConcepts:\n' +
+      conceptMenu,
     inputSchema: {
       type: 'object',
-      properties: { question: { type: 'string', description: 'Natural-language task, e.g. "add team billing"' } },
-      required: ['question'],
+      properties: {
+        concept: {
+          type: 'string',
+          enum: CONCEPT_IDS,
+          description: 'The Fonderie capability the task needs (see tool description for what each covers)',
+        },
+      },
+      required: ['concept'],
     },
   },
   {
@@ -83,29 +97,29 @@ function versionBanner() {
 // returns { text, top } — top is the ranked package names (for observability)
 function callTool(name, args) {
   if (name === 'brain_query') {
-    const r = query(brain, args?.question);
-    const top = r.packages.map((p) => p.name);
-    if (!r.packages.length) return { text: versionBanner() + `no Fonderie match for "${r.query}"`, top };
-    let out = versionBanner() + `Q: ${r.query}\n`;
-    for (const p of r.packages) out += `\n@fonderie/${p.name}@${p.version}  requires:[${p.requires.join(', ') || '—'}]  ${p.exports.join(', ')}`;
-    if (r.recipe) {
-      out += `\n\nrecipe: ${r.recipe.name} — ${r.recipe.when}\nwire: ${r.recipe.packages.join(' → ')}`;
-      for (const inv of r.recipe.invariants) out += `\n⚠ ${inv}`;
+    const c = concept(brain, args?.concept);
+    // A wrong/unknown pick gets the full menu back — visible and retryable,
+    // unlike a BM25 miss which returned silence.
+    if (!c) return { text: versionBanner() + `unknown concept "${args?.concept}". Pick one of:\n${conceptMenu}`, top: [] };
+    const top = [c.package.name];
+    let out = versionBanner() + `${c.id} — ${c.description}\n`;
+    out += `\n@fonderie/${c.package.name}@${c.package.version}  requires:[${c.package.requires.join(', ') || '—'}]  ${c.package.exports.join(', ')}`;
+    if (c.recipe) {
+      out += `\n\nrecipe: ${c.recipe.name} — ${c.recipe.when}\nwire: ${c.recipe.packages.join(' → ')}`;
+      for (const inv of c.recipe.invariants) out += `\n⚠ ${inv}`;
     }
     // Discovery must be ONE-SHOT: the model reliably makes this call and no
     // follow-up drill-down (measured in Phase 4 condition C — brain_node got
     // zero calls even when its description asked for them; the model iterated
-    // against tsc instead). So the exact API of the top-ranked package rides
+    // against tsc instead). So the exact API of the concept's package rides
     // inline, bounded to one package (sufficiency without recreating the
     // all-18-packages fat skill).
-    const topPkg = r.packages[0]?.name;
-    if (topPkg) {
-      const sigDir = join(root, '.claude/skills/fonderie/signatures');
-      const sig = readFileSafe(join(sigDir, `${topPkg}.md`));
-      const oc = readFileSafe(join(sigDir, `${topPkg}-outcomes.md`));
-      if (sig) out += `\n\n--- ${topPkg} signatures (exact API — use these, do not guess) ---\n${sig.trim()}`;
-      if (oc) out += `\n\n--- ${topPkg} outcomes (tables + routes registered) ---\n${oc.trim()}`;
-    }
+    const pkg = c.package.name;
+    const sigDir = join(root, '.claude/skills/fonderie/signatures');
+    const sig = readFileSafe(join(sigDir, `${pkg}.md`));
+    const oc = readFileSafe(join(sigDir, `${pkg}-outcomes.md`));
+    if (sig) out += `\n\n--- ${pkg} signatures (exact API — use these, do not guess) ---\n${sig.trim()}`;
+    if (oc) out += `\n\n--- ${pkg} outcomes (tables + routes registered) ---\n${oc.trim()}`;
     return { text: out, top };
   }
   if (name === 'brain_node') {
@@ -153,10 +167,10 @@ rl.on('line', (line) => {
       const args = params?.arguments || {};
       logCall({
         tool: params?.name,
-        arg: args.question || args.id || args.name || null,
+        arg: args.concept || args.id || args.name || null,
         top: top || null,
         latency_ms: Number(latencyMs.toFixed(2)),
-        matched: !/^no Fonderie match|^no package|^no recipe/.test(text),
+        matched: !/^unknown concept|^no package|^no recipe/.test(text),
         version_skew: !vc.matched,
       });
       reply(id, { content: [{ type: 'text', text }], isError: false });
