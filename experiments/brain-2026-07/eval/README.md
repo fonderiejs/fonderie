@@ -37,18 +37,33 @@ languages — not as a passed gate.
 
 ## Recorded result (`results.txt`)
 
-96/96 — `en` 32/32, `fr` 32/32, `ro` 32/32 — after one curation fix (sharpened
-`courier.messaging` to disambiguate password-reset emails from `auth.*`; see the
-BRAIN_PLAN pilot note). Romanian was added with **zero code changes** — there is
-no language in the system, only concept IDs the model maps onto.
+**119/120** on the current corpus. By provenance:
+
+| Provenance | Result | What it is |
+| --- | --- | --- |
+| `gen` | 32/32 | generated English canonical phrasings |
+| `translated` | 64/64 | FR + RO translations of those |
+| `forum` | **23/24** | **real** Stack Overflow titles (first real-data signal) |
+
+The `forum` rows are the payoff of the harvesters below: real developer phrasings,
+not ours. 23/24 with a below-spec model clears the ≥90% bar. The one miss —
+"Laravel Spark -- configure both flat rate **+** per seat pricing?" → picked
+`billing.subscriptions`, expected `billing.per-seat` — is a **compound** request
+naming two concepts at once; the pick is defensible, a fuzzy-boundary case, not a
+mechanism failure. (Earlier the `gen`/`translated` set needed one curation fix —
+sharpened `courier.messaging` vs `auth.*`; see the BRAIN_PLAN pilot note.)
+
+Still **not the official gate**: `forum` is search-register, not a live client's
+words, and the model is below spec. But it's the first evidence the enum holds on
+phrasings we did not write.
 
 ## Files
 
 | File | What |
 | --- | --- |
-| `corpus.tsv` | `lang <TAB> phrase <TAB> expected-concept-id`, 96 rows |
-| `run-eval.sh` | the harness (repo-relative; 8-way parallel) |
-| `results.txt` | the recorded pilot run, one `PASS`/`FAIL` line per phrase |
+| `corpus.tsv` | `lang <TAB> phrase <TAB> expected-concept <TAB> source`, 120 rows (32 `gen`, 64 `translated`, 24 `forum`) |
+| `run-eval.sh` | the harness (repo-relative; 8-way parallel; ignores the `source` column) |
+| `results.txt` | the recorded run, one `PASS`/`FAIL` line per phrase |
 
 ## Harvesting real phrasings (`extract-phrasings.mjs`)
 
@@ -118,13 +133,15 @@ Uses full-text `q` + relevance (the API silently ignores `intitle`), ~15
 capability queries, keyless quota (~300/day). Same firewall; flag kept rows
 `forum`.
 
-**Honest yield note (2026-07-20):** a first run returned 351 titles but SO's
-register skews **developer-implementation-specific** — "add auth to
-`mongod.conf` / k8s / Solr / Xamarin", not "add auth to my SaaS". Expect to keep
-a **minority** (~10–20%) after review — the founder-register phrasings ("How to
-add authentication in Node.js API?", "Add Authentication JWT Token") — and
-discard framework plumbing. Real and licensed, but complements rather than
-replaces the eventual `support`-tier corpus. `candidates-se.tsv` gitignored.
+**Yield outcome (2026-07-20):** the run returned 351 titles; SO's register skews
+**developer-implementation-specific** ("add auth to `mongod.conf` / k8s / Solr",
+not "add auth to my SaaS"). After review, **24 of 351 (~7%)** were founder-register
+enough to keep — now the `forum` rows in `corpus.tsv`, scoring 23/24 above. Good
+coverage on auth / workspaces / permissions / rate-limit / audit; **no clean real
+phrasing survived for `billing.plan-gate` or `webhooks.in-out`** (all were
+error-debugging titles), so those still await the `support` tier. Real and
+licensed, but complements rather than replaces live-client language.
+`candidates-se.tsv` gitignored.
 
 ## When the real corpus lands
 

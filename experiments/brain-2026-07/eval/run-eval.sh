@@ -36,8 +36,10 @@ Reply with EXACTLY one concept ID from the list above — nothing else." 2>/dev/
 export -f run_one
 export MENU
 
+# corpus.tsv columns: lang <TAB> phrase <TAB> expected-concept <TAB> source
+# (source is provenance — gen / translated / forum — not used by the eval).
 # NUL-delimit fields so phrases with spaces survive xargs; run 8 in parallel.
-while IFS=$'\t' read -r lang phrase expected; do
+while IFS=$'\t' read -r lang phrase expected source; do
   printf '%s\0%s\0%s\0' "$lang" "$phrase" "$expected"
 done < "$DIR/corpus.tsv" | xargs -0 -n3 -P 8 bash -c 'run_one "$1" "$2" "$3"' _ > "$DIR/results.txt"
 
