@@ -81,6 +81,29 @@ the brain's own rate limit). The real corpus therefore still awaits:
 
 `candidates.tsv` is gitignored — it's a per-machine scratch output, not corpus.
 
+### Public sources while pre-launch (`fetch-reddit.mjs`)
+
+Until real build/support data exists, the best public source is **Reddit** —
+r/SaaS, r/webdev, r/nextjs, … where devs ask to wire these capabilities in
+their own words. Post *titles* are naive phrasings ("How do I add auth to my
+SaaS?").
+
+Unauthenticated Reddit `.json` is now blocked from non-browser IPs, so use the
+**OAuth API** (free):
+
+1. Register a **script** app at <https://www.reddit.com/prefs/apps>.
+2. Export creds locally (never commit): `REDDIT_CLIENT_ID`,
+   `REDDIT_CLIENT_SECRET`, `REDDIT_USER_AGENT`.
+3. `node fetch-reddit.mjs > candidates-reddit.tsv` — OAuths, searches the seed
+   subreddits/queries, extracts titles, suggests a concept. Same firewall:
+   candidates only, you promote to `real` by hand.
+
+**Provenance ladder** (record the flag in `corpus.tsv`, tightest last):
+`gen` (generated) → `forum`/`search` (real but forum/search register, e.g.
+Reddit) → `support` (a real client's own words). Reddit is `forum`: a real step
+up from `gen`, still below live-client language. `candidates-reddit.tsv` is
+gitignored.
+
 ## When the real corpus lands
 
 Replace/extend `corpus.tsv` with real user phrasings (keeping the same three
