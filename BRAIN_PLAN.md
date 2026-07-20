@@ -423,6 +423,28 @@ translated here, not native-user sourced. Recorded as directional evidence.
   always relied on, now consumed by the model instead of BM25. Still gated
   on the real-phrasing corpus before the number counts.
 
+### First real-data signal — 2026-07-20 (`forum` tier, still not the gate)
+
+Added 24 **real** phrasings to the corpus: Stack Overflow question titles
+(harvested via `experiments/brain-2026-07/eval/fetch-stackexchange.mjs`, CC
+BY-SA, keyless API), reviewed down from 351 (~7% kept), verbatim, one concept
+each — provenance flag `forum`. These are phrasings we did **not** write.
+
+- **Result:** re-run over the full 120-row corpus (`gen`+`translated`+`forum`)
+  scored **119/120** — `gen` 32/32, `translated` 64/64, **`forum` 23/24** —
+  same below-spec `claude-haiku-4-5`.
+- **The one miss** is compound: "Laravel Spark — configure both flat rate +
+  per seat pricing?" → picked `billing.subscriptions`, expected
+  `billing.per-seat`. It names two concepts; the pick is defensible, a
+  fuzzy-boundary case, not a mechanism failure.
+- **Coverage gaps stay honest:** `billing.plan-gate` and `webhooks.in-out`
+  got **no** clean real phrasing (SO had only error-debugging titles), so
+  they still rest on `gen` and await the `support` tier.
+- **Ladder position:** `forum` is search/forum register — real, a rung above
+  `gen`, still below a live client's own words (`support`). So 23/24 is the
+  first evidence the enum holds on unauthored phrasings — **not** the passed
+  gate, which wants `support`-tier language on `claude-opus-4-8`.
+
 ---
 
 # R3 update (2026-07-19) — co-locate the brain, delete reconciliation
