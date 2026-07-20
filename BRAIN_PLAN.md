@@ -173,6 +173,34 @@ Deliberately absent (violate "less moving pieces", serve no gate): `stats`,
 - **Exit gate:** fresh machine → working, lockfile-matched brain in every
   tier-1 assistant with one command.
 
+### Deferred: extract `scripts/` → `packages/cli/` (archived 2026-07-19)
+
+The brain tooling currently lives in `scripts/*.mjs` (12 of the 14 files
+there — MCP server, CLI, hook, shared libs, generators, tests). That is a
+product-in-waiting, not a pile of scripts; its convention-correct home in
+this monorepo is a package. **Deliberately not done now** — the mechanism
+is still under validation (R2/R3), and extraction means real `tsup` /
+`tsconfig` / `bin` wiring plus `.mjs`→`.ts`, which the plan defers to this
+phase. When we do it, go straight here — skip any interim `scripts/`→
+`tools/` rename (cosmetic, would be redone). Proposed layout:
+
+```
+packages/cli/
+  src/
+    mcp/       brain-serve.ts          # stdio MCP server
+    cli/       query.ts, concepts.ts   # fonderie query / --concepts
+    hook/      pretooluse.ts           # the R1 PreToolUse hook
+    generate/  signatures.ts, outcomes.ts, brain.ts, project-brain.ts
+    lib/       brain-lib.ts, fragment.ts
+  bin/         fonderie                # umbrella entry (command surface above)
+scripts/       audit-validation.mjs, strip-coauthors.sh   # genuine chores stay
+```
+
+Side benefit: kills the `**/scripts/*` gitignore force-add friction — new
+files under `packages/` need no allowlist entry. Until then, tracked
+scripts stay on the per-file `.gitignore` exception list (by design: local
+scratch scripts remain ignored).
+
 ## Phase 4 — Prove it with the existing harness (1–2 weeks)
 
 - Add **condition C** to `experiments/token-cost-2026-07`: skeleton-b +
@@ -365,3 +393,124 @@ measured BM25, which no longer exists on this path. Embeddings
 a measured decision, never a default. "No embeddings, no LLM calls inside
 the tool" still holds: the mapping happens in the caller's tool call,
 not inside our process.
+
+## Pilot run — 2026-07-19 (indicative, not the official gate)
+
+First end-to-end measurement of the concept-enum mapping. **Not gate-
+official**: the corpus is still `gen`-flagged (no real user phrasings for
+billing/courier/webhooks yet, per corpus.md), and the FR/RO phrasings are
+translated here, not native-user sourced. Recorded as directional evidence.
+
+- **Harness:** for each phrase, a fresh `claude-haiku-4-5` instance sees
+  ONLY the concept enum + one-line descriptions (exactly what the MCP tool
+  schema exposes) and returns one concept ID. No signatures, no aliases,
+  no other context. Deliberately below-spec model (gate spec is
+  claude-opus-4-8) — a conservative floor.
+- **Corpus:** the 32 canonical naive phrasings × 3 languages (EN, FR, RO) =
+  96 picks. RO added with **zero code changes** — the enum carries no
+  language, so a new locale is only new test rows.
+- **Result:** 96/96 (EN 32/32, FR 32/32, RO 32/32) after one fix.
+  First pass was 94/96 — both misses the same phrase in two languages
+  ("forgot password email" / "email pentru parolă uitată" → `auth.accounts`
+  instead of `courier.messaging`), a genuine concept-boundary ambiguity
+  (password-reset is both an auth and a messaging concern), not a
+  translation failure — the FR equivalent resolved correctly. Fixed by
+  sharpening the `courier.messaging` description to explicitly claim
+  password-reset / verification emails and disambiguate against auth.*.
+- **Reading:** strong directional support that the enum resolves R2 across
+  languages consistently. The residual risk is concept-boundary phrasing,
+  addressed by description curation — the same closed-domain lever the plan
+  always relied on, now consumed by the model instead of BM25. Still gated
+  on the real-phrasing corpus before the number counts.
+
+---
+
+# R3 update (2026-07-19) — co-locate the brain, delete reconciliation
+
+> Appended after researching version-skew patterns. Conclusion: R3 was
+> framed as a reconciliation problem ("serve 1.3.0 knowledge that matches
+> the user's installed 1.1.0") when the proven pattern is to make skew
+> structurally impossible — ship each package's knowledge inside its own
+> versioned tarball, the way TypeScript ships `.d.ts`. Don't solve
+> reconciliation; remove the thing that needs reconciling.
+
+## The finding
+
+The dominant, decade-proven pattern for version-matched per-package
+metadata in the JS ecosystem is **co-location**: `.d.ts` type definitions,
+`@types`, `typesVersions`, source maps, ESLint shareable configs — all
+ship metadata *inside the package version's tarball*, resolved from
+`node_modules`. There is no central registry that must "match" the
+installed version, because the metadata travels with the code. The
+compiler that reads auth@1.1's types physically cannot get auth@1.3's —
+skew is impossible, not merely detected. (Refs: TypeScript publishing /
+`typesVersions` docs.)
+
+Our current R3 (`versionCheck` + "refuse loudly on mismatch" in
+brain-lib.mjs) is the *reconciliation* framing: a central brain artifact
+that must be compared against installed versions and can lag them. That is
+exactly the framing co-location eliminates.
+
+## What we already have
+
+The Phase 4.1 pivot (`generate-project-brain.mjs`) already reads
+`node_modules/@fonderie/*`, keys off each **installed** version, and
+compiles one project-specific file. Cross-package deps are already
+`peerDependencies` the generator reads. The only structural gap: the
+per-package fragments are pulled from a **central** `signatures/` directory
+in the CLI/brain, which must retain every version — that central store is
+where skew re-enters.
+
+## Design consequence: two paths, split by whether the package is installed
+
+| Path | Mechanism | Skew |
+| --- | --- | --- |
+| **Installed** packages (the project brain) | Each package ships its own brain fragment in its tarball (generated at that package's build, like `.d.ts`); `init`/postinstall compiles the project brain from `node_modules` | **Impossible by construction** — fragment version == code version |
+| **Discovery** (not-yet-installed) | Central prebuilt "latest" brain via the `brain_query` MCP tool | **Acceptable** — nothing is pinned yet, so "latest" is the correct answer to "which package should I add?" |
+
+- **Move the fragment into the package.** Generate `<pkg>/brain/*.md`
+  (signatures + outcomes) at each package's build; ship it in `files`. The
+  project-brain compiler reads `node_modules/@fonderie/<pkg>/brain/*`
+  instead of a central versioned `signatures/` dir. Central `signatures/`
+  stays only as the source for the discovery brain.
+- **`refuse-loudly` demotes from primary mechanism to safety net.**
+  Co-location makes the mismatch it guards against unreachable on the
+  installed path; keep `versionCheck` only as a cheap assertion for the
+  discovery server (which serves latest and legitimately can differ).
+- **Rolling release is rejected.** Collapsing to one version would remove
+  skew by removing versions, but breaks reproducibility, forces users to
+  update on our schedule, and kills pinning/rollback/audit — the exact
+  needs of the enterprise/compliance audience. Co-location gives
+  skew-immunity while keeping semver. (Refs: dependency-pinning best
+  practices — The Guild, Google Cloud.)
+
+## Gate change (locked before data)
+
+R3's gate was "at startup, serve the brain matching installed versions;
+refuse on mismatch." It becomes a **construction invariant plus one
+negative test**:
+
+1. **Construction:** the project brain is compiled solely from
+   `node_modules/@fonderie/*/brain/*` — never from a central version store.
+   A build that reads central signatures for an *installed* package fails
+   the gate.
+2. **Negative test:** install a project pinning mixed versions (e.g.
+   auth@1.1 + billing@1.1 while the CLI ships "latest"), regenerate, and
+   assert every signature block in the project brain equals the installed
+   package's shipped fragment byte-for-byte — i.e. the CLI's "latest"
+   never leaks onto the installed path.
+3. **Discovery unaffected:** `brain_query` for a not-yet-installed package
+   still returns latest; `versionCheck` remains only as its advisory
+   banner.
+
+Determinism unchanged: fragments are byte-reproducible (no timestamps),
+sorted order. "No embeddings, no LLM, one flat artifact per project" still
+holds — this only moves *where* the per-package fragment is authored, from
+a central dir to the package that owns it.
+
+## Open question (flagged, not yet decided)
+
+Fragment format inside the tarball: ship the generated markdown as-is
+(simple, human-readable, larger), or a compact JSON the compiler renders
+(smaller tarball, one more build step). Decide at prototype time against
+tarball-size and reproducibility, not now.

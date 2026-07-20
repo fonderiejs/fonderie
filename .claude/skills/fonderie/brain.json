@@ -2029,7 +2029,7 @@
       "recipe": "rbac"
     },
     "courier.messaging": {
-      "description": "send transactional email, SMS, push — welcome/reset/invite messages",
+      "description": "SEND any transactional message — email, SMS, push; use this for password-reset, email-verification, welcome, and invite emails (auth.* is who can log in, courier is what delivers the message)",
       "package": "courier",
       "recipe": "transactional-email"
     },
