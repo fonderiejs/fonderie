@@ -53,3 +53,4 @@ experiments/*/runs/
 experiments/*/skeleton-*/.claude/
 
 experiments/r1-2026-07/results/
+experiments/brain-2026-07/eval/candidates.tsv
