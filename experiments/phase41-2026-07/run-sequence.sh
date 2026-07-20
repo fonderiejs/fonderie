@@ -16,6 +16,10 @@
 # limit stops the WHOLE run cleanly (exit 3) — re-run to resume. The workdir
 # persists across sessions and re-runs (the app must grow).
 set -u
+# Some environments force Node color output (FORCE_COLOR), which makes
+# console.log(number) emit ANSI codes — corrupting $N → $ID → the .mcp.json path.
+# Disable it here; the numeric extraction below also writes a raw string to be safe.
+export NO_COLOR=1 FORCE_COLOR=0 NODE_DISABLE_COLORS=1
 EXPT="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$EXPT/../.." && pwd)"
 TC="$ROOT/experiments/token-cost-2026-07"
@@ -69,7 +73,7 @@ if [ ! -d "$WORK" ]; then
 fi
 
 while read -r line <&3; do
-  N=$(node -e 'console.log(JSON.parse(process.argv[1]).n)' "$line")
+  N=$(node -e 'process.stdout.write(String(JSON.parse(process.argv[1]).n))' "$line")
   [ "$N" -gt "$MAXS" ] && break
   PROMPT=$(node -e 'console.log(JSON.parse(process.argv[1]).prompt)' "$line")
   ID="$COND-$SEQ-s$N"
