@@ -33,6 +33,8 @@ ROADMAP.md
 !scripts/brain-hook.mjs
 !scripts/generate-project-brain.mjs
 !scripts/project-brain.test.mjs
+!scripts/brain-fragment.mjs
+!scripts/brain-r3.test.mjs
 
 # Local example apps — not part of the public SDK
 examples/
