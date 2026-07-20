@@ -50,6 +50,37 @@ no language in the system, only concept IDs the model maps onto.
 | `run-eval.sh` | the harness (repo-relative; 8-way parallel) |
 | `results.txt` | the recorded pilot run, one `PASS`/`FAIL` line per phrase |
 
+## Harvesting real phrasings (`extract-phrasings.mjs`)
+
+The most authentic pre-launch source of *real* phrasings is your own Claude
+Code transcripts: the developer asking an assistant to wire a capability, in
+their own words. `extract-phrasings.mjs` scans `~/.claude/projects/**/*.jsonl`,
+keeps only human-typed prompts, **excludes experiment-run transcripts** (those
+hold generated prompts — harvesting them would recontaminate the corpus),
+prefilters by the curated capability terms, and writes `candidates.tsv`.
+
+```
+node extract-phrasings.mjs > candidates.tsv   # then REVIEW, don't trust
+```
+
+It **proposes**; you dispose. Nothing becomes a `real` row until you read the
+candidate, pick one concept, and move it into `corpus.tsv` by hand. That review
+step is the R4 firewall against laundering generated text into "real".
+
+**Current yield: ~0 usable real phrasings (finding, 2026-07-19).** A first pass
+over the existing transcripts surfaced almost no genuine "add a capability"
+requests — because these sessions were spent *building Fonderie* (the brain,
+landing, planning, releases), not building a SaaS *with* it. The candidates were
+noise (Claude-account logins matching the `login` alias; meta-questions about
+the brain's own rate limit). The real corpus therefore still awaits:
+
+- **archetype build sessions** — transcripts of building the crewfinding app
+  (and later archetypes) *on* Fonderie, where "add billing / teams / roles"
+  requests actually occur;
+- **post-launch support / Discord / sales-call** language once clients are live.
+
+`candidates.tsv` is gitignored — it's a per-machine scratch output, not corpus.
+
 ## When the real corpus lands
 
 Replace/extend `corpus.tsv` with real user phrasings (keeping the same three
