@@ -36,12 +36,12 @@
     "basic-auth": { "when": "sign up + log in with email/password", "packages": ["auth", "core", "events", "store"], "invariants": ["jwt-secret-from-env", "rate-limit-default-on"] },
     "oauth": { "when": "social login (Google/GitHub)", "packages": ["auth", "config", "core", "store"], "invariants": ["jwt-secret-from-env"] },
     "route-guard": { "when": "gate a route behind login", "packages": ["auth"], "invariants": [], "note": "use requireAuth middleware from @fonderie/auth on the protected route" },
-    "teams-invites": { "when": "teams/workspaces with email invites", "packages": ["workspaces", "auth", "courier", "events", "core", "store"], "invariants": ["workspaces-requires-billing"] },
+    "teams-invites": { "when": "teams/workspaces with email invites", "packages": ["workspaces", "auth", "courier", "events", "core", "store"], "invariants": ["workspaces-requires-billing", "email-provider-default"] },
     "stripe-checkout": { "when": "charge users / subscription plans", "packages": ["billing", "customers", "core", "store"], "invariants": ["webhook-route-before-auth-mw", "rate-limit-default-on"] },
     "per-seat-billing": { "when": "bill per team member / seat", "packages": ["billing", "workspaces", "core", "store"], "invariants": ["workspaces-requires-billing"] },
     "plan-gate": { "when": "lock a feature behind a paid plan", "packages": ["billing", "permissions"], "invariants": [] },
     "rbac": { "when": "roles & permissions (admin/member/viewer)", "packages": ["permissions", "workspaces", "core", "store"], "invariants": [] },
-    "transactional-email": { "when": "welcome / reset / invite emails", "packages": ["courier", "events", "config", "core", "store"], "invariants": [] },
+    "transactional-email": { "when": "welcome / reset / invite emails", "packages": ["courier", "events", "config", "core", "store"], "invariants": ["email-provider-default"] },
     "webhooks-in-out": { "when": "receive Stripe webhooks and emit your own", "packages": ["webhooks", "billing", "events", "rate-limit", "core", "store"], "invariants": ["webhook-route-before-auth-mw", "rate-limit-default-on"] }
   },
   "invariants": {
@@ -49,6 +49,7 @@
     "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
     "logout-provided": "@fonderie/auth mounts POST /auth/logout with session invalidation — do not hand-roll stateless-JWT logout.",
     "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
-    "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces."
+    "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
+    "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task."
   }
 }
