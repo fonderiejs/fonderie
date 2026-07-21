@@ -84,16 +84,24 @@ const TOOLS = [
   },
 ];
 
-// prepend an R3 warning to any query answer when versions are skewed
-function versionBanner() {
+// R3 skew note — SCOPED to the packages relevant to THIS answer (Layer 3a,
+// DISCOVERY-RELIABILITY.md). The old banner reported EVERY project-wide
+// mismatch, so discovering `workspaces` warned about a stale, unrelated
+// `core` — noise that spooked the model into stalling (pb-2). Now we warn only
+// for packages named in the current answer, and only when they are actually
+// installed and mismatched. Discovering a NOT-installed package (the common
+// case) yields no banner at all — there is nothing to skew against.
+function versionBanner(pkgs = []) {
   if (vc.matched) return '';
-  const lines = vc.mismatches.map((m) => `  ${m.pkg}: installed ${m.installed}, brain ${m.brain}`);
+  const relevant = vc.mismatches.filter((m) => pkgs.includes(m.pkg));
+  if (!relevant.length) return '';
+  const lines = relevant.map((m) => `  ${m.pkg}: installed ${m.installed}, brain ${m.brain}`);
   return (
-    `ℹ VERSION NOTE — this brain is newer than some installed packages:\n${lines.join('\n')}\n` +
+    `ℹ VERSION NOTE — the brain is newer than your installed version of:\n${lines.join('\n')}\n` +
     `The wiring and recipe below are correct; a constructor arg or field may differ ` +
-    `slightly at these versions. PROCEED — install/wire as shown, then verify the exact ` +
-    `signature against the installed package's own \`node_modules/@fonderie/<pkg>/brain/\` ` +
-    `fragment (or its dist types) and adjust if needed. Do not stop or abandon the task over this.\n\n`
+    `slightly. PROCEED — install/wire as shown, then verify the exact signature against ` +
+    `the installed package's own \`node_modules/@fonderie/<pkg>/brain/\` fragment and ` +
+    `adjust if needed. Do not stop or abandon the task over this.\n\n`
   );
 }
 
@@ -103,9 +111,11 @@ function callTool(name, args) {
     const c = concept(brain, args?.concept);
     // A wrong/unknown pick gets the full menu back — visible and retryable,
     // unlike a BM25 miss which returned silence.
-    if (!c) return { text: versionBanner() + `unknown concept "${args?.concept}". Pick one of:\n${conceptMenu}`, top: [] };
+    if (!c) return { text: `unknown concept "${args?.concept}". Pick one of:\n${conceptMenu}`, top: [] };
     const top = [c.package.name];
-    let out = versionBanner() + `${c.id} — ${c.description}\n`;
+    // skew note scoped to the package + its recipe deps named in this answer
+    const relevantPkgs = [c.package.name, ...(c.recipe?.packages || [])];
+    let out = versionBanner(relevantPkgs) + `${c.id} — ${c.description}\n`;
     out += `\n@fonderie/${c.package.name}@${c.package.version}  requires:[${c.package.requires.join(', ') || '—'}]  ${c.package.exports.join(', ')}`;
     if (c.recipe) {
       out += `\n\nrecipe: ${c.recipe.name} — ${c.recipe.when}\nwire: ${c.recipe.packages.join(' → ')}`;
