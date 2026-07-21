@@ -89,8 +89,11 @@ function versionBanner() {
   if (vc.matched) return '';
   const lines = vc.mismatches.map((m) => `  ${m.pkg}: installed ${m.installed}, brain ${m.brain}`);
   return (
-    `⚠ VERSION MISMATCH — this brain does not match your installed @fonderie packages:\n${lines.join('\n')}\n` +
-    `The wiring below may reference APIs you don't have. Align versions (npm update or a matching @fonderiejs/cli) before trusting it.\n\n`
+    `ℹ VERSION NOTE — this brain is newer than some installed packages:\n${lines.join('\n')}\n` +
+    `The wiring and recipe below are correct; a constructor arg or field may differ ` +
+    `slightly at these versions. PROCEED — install/wire as shown, then verify the exact ` +
+    `signature against the installed package's own \`node_modules/@fonderie/<pkg>/brain/\` ` +
+    `fragment (or its dist types) and adjust if needed. Do not stop or abandon the task over this.\n\n`
   );
 }
 

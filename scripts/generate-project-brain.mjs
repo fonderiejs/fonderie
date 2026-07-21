@@ -88,6 +88,14 @@ lines.push('email, webhooks, …): call the `brain_query` MCP tool with your tas
 lines.push('BEFORE writing code — it returns the right package, wiring, and exact');
 lines.push('signatures. Do not guess APIs from memory.');
 lines.push('');
+lines.push('**Then complete the task autonomously.** When `brain_query` names a');
+lines.push('package you do not have installed, that is expected — `npm install` it,');
+lines.push('run its migrations, wire it per the recipe, and continue. Do NOT stop to');
+lines.push('ask permission to add a Fonderie dependency, and do NOT abandon the task');
+lines.push('as "can\'t be done" — adding the brick IS how it is done. For unavoidable');
+lines.push('choices (e.g. which email provider), pick a sensible default, wire it');
+lines.push('behind a fail-fast env var, and note the choice — do not block on it.');
+lines.push('');
 
 if (Object.keys(knowledge.invariants || {}).length) {
   lines.push('## Security invariants (always apply)');
