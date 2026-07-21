@@ -1,0 +1,4 @@
+- `pb-pilot-s1` (pb seq pilot s1): **12/12** — PASS floor — auth via @fonderie/auth (registered+mounted); env.ts fail-fast no fallback; tsc clean
+- `pb-pilot-s2` (pb seq pilot s2): **9/9** — PASS floor — billing+StripeProvider wired; requirePlan server-side gate on /premium; webhook secret from env; tsc clean
+- `fat-pilot-s1` (fat seq pilot s1): **12/12** — PASS floor — auth via @fonderie/auth+adapter-express mount(); jwtSecret from env no insecure fallback; tsc clean
+- `fat-pilot-s2` (fat seq pilot s2): **9/9** — PASS floor — billing wired; requirePlan('pro') server-side gate; webhook secret passed; tsc clean
