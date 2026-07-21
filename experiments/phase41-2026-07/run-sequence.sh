@@ -145,6 +145,11 @@ JSON
       </dev/null \
       > "$EXPT/results/$ID.json" 2> "$EXPT/results/$ID.err"
     CODE=$?
+    # A session-limit stub did NO work — don't run the completion check against
+    # it (it can spuriously pass on pre-existing state from earlier sessions and
+    # get marked completed:true). Bail; the is_limited check below stops the run
+    # cleanly and this session is re-run on resume.
+    if is_limited "$EXPT/results/$ID.json"; then break; fi
     if is_complete; then COMPLETED=true; break; fi
     [ "$attempt" = 1 ] && { RECOVERED=true; echo "  ⚠ $ID incomplete (scope '$SCOPE' not delivered) — Layer-2 corrective re-invoke"; }
   done
