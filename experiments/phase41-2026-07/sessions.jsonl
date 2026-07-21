@@ -1,4 +1,4 @@
-{"n":1,"prompt":"Add user accounts to my app — people should be able to sign up and log in."}
-{"n":2,"prompt":"Let users pay for a monthly subscription, and lock premium features behind the paid plan."}
-{"n":3,"prompt":"Add teams: let users invite coworkers by email to a shared workspace."}
-{"n":4,"prompt":"A security review found two issues: password reset and invitation acceptance are not rate limited, and authentication and role changes are not audited. Fix both."}
+{"n":1,"prompt":"Add user accounts to my app — people should be able to sign up and log in.","scope":"auth"}
+{"n":2,"prompt":"Let users pay for a monthly subscription, and lock premium features behind the paid plan.","scope":"billing"}
+{"n":3,"prompt":"Add teams: let users invite coworkers by email to a shared workspace.","scope":"workspaces,courier"}
+{"n":4,"prompt":"A security review found two issues: password reset and invitation acceptance are not rate limited, and authentication and role changes are not audited. Fix both.","scope":"rate-limit,audit,auth"}

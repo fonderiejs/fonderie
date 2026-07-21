@@ -29,6 +29,15 @@ const argv = process.argv.slice(2);
 const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const projectDir = arg('--project', process.cwd());
 const outPath = arg('--out', null);
+// --scope <pkg,pkg>: emit FULL signatures only for these packages (the ones the
+// current task touches); every other installed package gets a one-line "installed
+// + wired, ask brain_query for detail" pointer instead of its full surface. This
+// keeps the resident brain proportional to the task, not to everything ever
+// installed — the Method-B overhead lever (BRAIN_PLAN Phase 4.1 pb-scoped). No
+// --scope → full detail for all installed packages (original pb behaviour).
+const scopeArg = arg('--scope', null);
+const scopeSet = scopeArg ? new Set(scopeArg.split(',').map((s) => s.trim()).filter(Boolean)) : null;
+const inScope = (name) => !scopeSet || scopeSet.has(name);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');
 const knowledgePath = join(root, '.claude/skills/fonderie/brain-knowledge.json');
@@ -102,7 +111,16 @@ if (recipes.length) {
 // we do, flag it, because that copy is "latest" served against an unknown
 // version (the one skew case co-location can't eliminate, made visible).
 const stale = [];
+const trimmed = [];
 for (const p of installed) {
+  // Out-of-scope installed packages: a one-line pointer, not the full surface.
+  // They're wired and working; the model asks brain_query if it needs the API.
+  if (!inScope(p.name)) {
+    trimmed.push(p.name);
+    lines.push(`## @fonderie/${p.name}@${p.version}  (installed & wired — call \`brain_query\` for its API if this task needs it)`);
+    lines.push('');
+    continue;
+  }
   const pkgDir = join(projectDir, 'node_modules', '@fonderie', p.name);
   const central = { signatures: join(sigDir, `${p.name}.md`), outcomes: join(sigDir, `${p.name}-outcomes.md`) };
   const frag = resolveInstalledFragment(pkgDir, central);
@@ -125,7 +143,8 @@ if (outPath) {
   writeFileSync(outPath, doc);
   const kb = (doc.length / 1024).toFixed(1);
   const skew = stale.length ? `, ${stale.length} on central fallback (${stale.join(', ')})` : ', all version-matched';
-  console.error(`wrote ${outPath}: ${installed.length} packages, ${kb} KB (~${Math.ceil(doc.length / 4)} tokens)${skew}`);
+  const scoped = scopeSet ? `, scoped to [${[...scopeSet].join(', ')}] — ${trimmed.length} trimmed to pointers` : '';
+  console.error(`wrote ${outPath}: ${installed.length} packages, ${kb} KB (~${Math.ceil(doc.length / 4)} tokens)${skew}${scoped}`);
 } else {
   process.stdout.write(doc);
 }
