@@ -2,3 +2,5 @@
 - `pb-pilot-s2` (pb seq pilot s2): **9/9** — PASS floor — billing+StripeProvider wired; requirePlan server-side gate on /premium; webhook secret from env; tsc clean
 - `fat-pilot-s1` (fat seq pilot s1): **12/12** — PASS floor — auth via @fonderie/auth+adapter-express mount(); jwtSecret from env no insecure fallback; tsc clean
 - `fat-pilot-s2` (fat seq pilot s2): **9/9** — PASS floor — billing wired; requirePlan('pro') server-side gate; webhook secret passed; tsc clean
+- `scratch-pilot-s1` (scratch seq pilot s1): **10/12** — BELOW floor — hand-rolled auth: bcrypt-12, param SQL, env secret, timing-safe compare; MISSING logout/session-invalidation (#6) + login rate-limit (#9)
+- `scratch-pilot-s2` (scratch seq pilot s2): **8/9** — PASS floor — hand-rolled billing: checkout+webhook secret required, server-side isPremium gate, param SQL; webhook idempotency not explicit (#6)
