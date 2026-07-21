@@ -54,8 +54,8 @@ is_valid() {
 # fresh workdir only on first touch — the sequence's app grows in place
 if [ ! -d "$WORK" ]; then
   case "$COND" in
-    scratch) cp -R "$TC/skeleton-a" "$WORK" ;;
-    fat|pb)  cp -R "$TC/skeleton-b" "$WORK" ;;
+    scratch)      cp -R "$TC/skeleton-a" "$WORK" ;;
+    fat|pb|pb-scoped)  cp -R "$TC/skeleton-b" "$WORK" ;;
     *) echo "unknown cond $COND"; exit 2 ;;
   esac
   rm -rf "$WORK/.claude" "$WORK/graphify-out" "$WORK/.mcp.json" "$WORK/CLAUDE.md"
@@ -76,16 +76,22 @@ while read -r line <&3; do
   N=$(node -e 'process.stdout.write(String(JSON.parse(process.argv[1]).n))' "$line")
   [ "$N" -gt "$MAXS" ] && break
   PROMPT=$(node -e 'console.log(JSON.parse(process.argv[1]).prompt)' "$line")
+  SCOPE=$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).scope||"")' "$line")
   ID="$COND-$SEQ-s$N"
   if [ -f "$EXPT/results/$ID.json" ] && is_valid "$EXPT/results/$ID.json"; then
     echo "$ID skip (already done)"; continue
   fi
 
   MCPARGS=()
-  if [ "$COND" = pb ]; then
+  if [ "$COND" = pb ] || [ "$COND" = pb-scoped ]; then
     # freshness by construction: recompile the project brain from what THIS
-    # workdir has installed right now (grows as sessions install packages)
-    node "$ROOT/scripts/generate-project-brain.mjs" --project "$WORK" --out "$WORK/CLAUDE.md" 2>/dev/null
+    # workdir has installed right now (grows as sessions install packages).
+    # pb-scoped additionally passes --scope <this session's packages + core,store>
+    # so out-of-scope installed packages become one-line pointers, not full
+    # surfaces — the Method-B overhead lever (BRAIN_PLAN Phase 4.1).
+    SCOPEARG=()
+    if [ "$COND" = pb-scoped ] && [ -n "$SCOPE" ]; then SCOPEARG=(--scope "$SCOPE,core,store"); fi
+    node "$ROOT/scripts/generate-project-brain.mjs" --project "$WORK" --out "$WORK/CLAUDE.md" ${SCOPEARG[@]+"${SCOPEARG[@]}"} 2>/dev/null
     # archive the exact resident brain used this session — attribution (analyze.mjs)
     # needs the per-session artifact; it is regenerated (grows) every session.
     cp "$WORK/CLAUDE.md" "$EXPT/results/$ID.claude.md" 2>/dev/null
@@ -118,7 +124,7 @@ JSON
   # as cache_read every turn. pb: the compiled CLAUDE.md; fat: the loaded skill
   # dir minus brain artifacts; scratch: 0. This is analyze.mjs's static-K input.
   case "$COND" in
-    pb)   KCH=$(wc -c < "$WORK/CLAUDE.md" 2>/dev/null || echo 0) ;;
+    pb|pb-scoped)  KCH=$(wc -c < "$WORK/CLAUDE.md" 2>/dev/null || echo 0) ;;
     fat)  KCH=$(find "$WORK/.claude/skills/fonderie" -type f ! -name 'brain.json' ! -name 'brain-knowledge.json' -exec cat {} + 2>/dev/null | wc -c) ;;
     *)    KCH=0 ;;
   esac
