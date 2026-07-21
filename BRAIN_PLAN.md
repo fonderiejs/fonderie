@@ -331,6 +331,53 @@ gate; aborts disclosed, never averaged.
 
 ---
 
+# Phase 4.1b — `pb-scoped` condition (pre-registered 2026-07-20)
+
+> Added AFTER the 3-condition pilot (`PILOT-FINDINGS.md`) but BEFORE any
+> pb-scoped data. The pilot showed `pb` lands at parity-plus (Method B
+> pb/fat ≈ 0.71), not fraction, because the resident brain carries the FULL
+> signatures of every installed package — even those the current session's task
+> does not touch (measured: session-2 resident grew to ~22.6K chars carrying
+> auth+store+events while the task was billing). This condition tests the fix.
+> Thresholds are the SAME locked rule above; only a new condition is added, so
+> this is not renegotiation.
+
+## The change under test
+
+`pb-scoped` = `pb`, except the resident project brain (`CLAUDE.md`) emits FULL
+signatures only for the packages this session's task touches (`sessions.jsonl`
+`scope` field + always `core,store`); every other installed package is trimmed
+to a one-line "installed & wired — ask `brain_query`" pointer. Mechanism:
+`generate-project-brain.mjs --scope`. Demonstrated resident-brain reduction on
+the pilot workdir: **~8.6K → ~5.0K tokens (−41%)** for the billing session; the
+saving compounds in later sessions (by session 4, auth+billing+workspaces+
+courier are all trimmed).
+
+## Hypothesis (locked)
+
+Scoping cuts the resident-knowledge component of per-session cache_read without
+lowering quality (out-of-scope APIs remain reachable via `brain_query`). If the
+Method-B overhead is dominated by resident recharge, `pb-scoped/fat` drops
+toward or below ⅓.
+
+## Decision (same locked rule, applied to pb-scoped)
+
+- `pb-scoped/fat` **≤ ⅓** at equal quality → the "fraction" claim IS earned;
+  ship scoping as the `init` default.
+- **⅓–1×** → parity-plus stands; the durable claim remains correctness density.
+- Quality floor unchanged (`pass ≥ total−1` per session). A quality drop vs `pb`
+  means scoping trimmed something the model needed — scoping is then wrong, not
+  the metric.
+
+## Method note (both must still agree)
+
+Report Method A (resident-K, now smaller by construction) AND Method B
+(empirical vs scratch). The pilot's A/B divergence is the open risk; a
+`pb-scoped` verdict requires the two methods to converge, else "instrument
+resident context directly" before any claim.
+
+---
+
 # R2 update (2026-07-19) — concept enum replaces free-text discovery
 
 > Appended after researching multilingual retrieval. Conclusion: R2 was a
