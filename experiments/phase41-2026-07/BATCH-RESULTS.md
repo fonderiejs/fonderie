@@ -102,3 +102,36 @@ overhead = **0.240 (≤⅓)** at N=3, both attribution methods agreeing once
 turn-count noise averaged out, at **equal Fonderie-condition quality** and with
 the **correctness-density** advantage over scratch replicated. Efficiency caveat
 (≈1.7× scratch turns, equal fat/pb) disclosed and orthogonal.
+
+## Full 39-point rubric (score-full.mjs) — corrects the security-only read
+
+The 8-item security scan (pb 7.67 ≈ fat 8.0) HID a real completeness failure.
+Scoring the full combined rubric (auth 12 + billing 9 + teams 9 + security 9)
+per sequence's final tree:
+
+| cond | mean /39 | per-seq | failure mode |
+| --- | --- | --- | --- |
+| fat | 39.0 | 39, 39, 39 | none — perfectly consistent |
+| pb | 34.7 | 39, **27**, 38 | pb-2 STALLED: model declined the teams session ("can't be done with what's installed"), never installed `@fonderie/workspaces`, shipped no teams/audit |
+| scratch | 34.7 | 37, 34, 33 | security: insecure secret (2/3), missing logout, missing validation |
+
+**Honest, material finding:** pb's mean (34.7) equals scratch's — but for
+OPPOSITE reasons. scratch is consistently COMPLETE but INSECURE; pb is SECURE
+where it builds, but in **1 of 3 sequences the brain failed to drive the model
+to install + wire a not-yet-present capability** (a triggering/discovery
+reliability gap, R1-adjacent). pb-1 (39) and pb-3 (38) match fat; pb-2 (27) is a
+real stall, not noise.
+
+Common miss: T7 "invite email sent" — only fat wired courier email; pb-3 and all
+scratch shipped invites without the mailer.
+
+### What this does and does not change
+
+- **Cost goal (≤⅓): UNCHANGED and still met** — knowledge overhead per turn is
+  independent of whether a session completed; pb/fat = 0.24 stands.
+- **Quality claim: CORRECTED** — pb does NOT uniformly equal fat. pb matches fat
+  on 2/3 sequences and stalled on 1/3. "Equal quality" is true only 2/3 of the
+  time; the brain has a discovery-reliability weakness on not-yet-installed
+  capabilities that the batch exposed. This is the honest N=3 result, and it is
+  a concrete target (make discovery reliably drive install+wire, don't let the
+  model bail).
