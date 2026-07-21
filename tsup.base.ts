@@ -20,4 +20,11 @@ export const migrationsConfig = {
 	clean:     false,   // don't wipe the main build
 	sourcemap: true,
 	splitting: false,
+	// Copy the raw .sql next to the compiled loader. createMigrationsPath()
+	// resolves to dist/migrations/sql/ at runtime, but tsup bundles JS only — so
+	// without this the tarball ships the loader and NOT the SQL it reads, and a
+	// consumer's migrations silently find nothing (verified: @fonderie/auth@1.3.1
+	// shipped dist/migrations/index.js but no sql/). `files:["dist"]` then carries
+	// them into the package. Guarded for packages that have no migrations/sql.
+	onSuccess: 'rm -rf dist/migrations/sql && cp -R src/migrations/sql dist/migrations/sql 2>/dev/null || true',
 }
