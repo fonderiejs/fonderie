@@ -95,7 +95,7 @@ while read -r line <&3; do
     # surfaces — the Method-B overhead lever (BRAIN_PLAN Phase 4.1).
     SCOPEARG=()
     if [ "$COND" = pb-scoped ] && [ -n "$SCOPE" ]; then SCOPEARG=(--scope "$SCOPE,core,store"); fi
-    node "$ROOT/scripts/generate-project-brain.mjs" --project "$WORK" --out "$WORK/CLAUDE.md" ${SCOPEARG[@]+"${SCOPEARG[@]}"} 2>/dev/null
+    node "$ROOT/scripts/generate-project-brain.mjs" --project "$WORK" --out "$WORK/CLAUDE.md" --quiet ${SCOPEARG[@]+"${SCOPEARG[@]}"} 2>/dev/null
     # archive the exact resident brain used this session — attribution (analyze.mjs)
     # needs the per-session artifact; it is regenerated (grows) every session.
     cp "$WORK/CLAUDE.md" "$EXPT/results/$ID.claude.md" 2>/dev/null
