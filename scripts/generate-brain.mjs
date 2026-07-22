@@ -25,7 +25,7 @@ function extractPackages() {
     if (!existsSync(pj)) continue;
     const j = JSON.parse(readFileSync(pj, 'utf8'));
     // Only the SDK bricks (@fonderie/*) belong in the brain. Skip tooling like
-    // @fonderiejs/cli — a different scope, not a runtime package.
+    // @fonderie/cli — a different scope, not a runtime package.
     if (!j.name.startsWith('@fonderie/')) continue;
     const name = j.name.replace('@fonderie/', '');
     const requires = Object.keys(j.peerDependencies || {})

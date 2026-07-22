@@ -1,10 +1,10 @@
-# @fonderiejs/cli
+# @fonderie/cli
 
 Teach any coding agent the Fonderie SDK **without loading it eagerly.**
 
 ```
-npx @fonderiejs/cli init         # set up the lazy skill + keep it fresh, once
-npx @fonderiejs/cli query billing.subscriptions   # what to install for a capability
+npx @fonderie/cli init         # set up the lazy skill + keep it fresh, once
+npx @fonderie/cli query billing.subscriptions   # what to install for a capability
 ```
 
 The old way loaded every package's signatures into the agent's context every
