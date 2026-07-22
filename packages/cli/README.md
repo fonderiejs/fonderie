@@ -3,7 +3,7 @@
 Teach any coding agent the Fonderie SDK **without loading it eagerly.**
 
 ```
-npx @fonderiejs/cli skill        # writes a lazy skill into .claude/skills
+npx @fonderiejs/cli init         # set up the lazy skill + keep it fresh, once
 npx @fonderiejs/cli query billing.subscriptions   # what to install for a capability
 ```
 
@@ -15,6 +15,10 @@ at equal completion and quality** (`experiments/phase41-2026-07/`).
 
 ## Commands
 
+- **`fonderie init [--project <dir>]`** — run once: generates the lazy skill AND
+  adds a `postinstall` (`fonderie skill`) so it **regenerates on every
+  install/update**, staying version-matched to your lockfile. Idempotent; chains
+  onto an existing postinstall rather than clobbering it.
 - **`fonderie skill [--out <dir>] [--project <dir>]`** — write `SKILL.md` (the
   router: a capability→body table + security invariants) plus one
   `fonderie/<pkg>.md` body per **installed** `@fonderie/*` package. Point your
