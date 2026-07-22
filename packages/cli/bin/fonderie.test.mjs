@@ -55,4 +55,26 @@ if (!/class BillingModule/.test(readFileSync(join(out, 'fonderie', 'billing.md')
 // router should be small (lazy) — a few hundred to ~2k tokens, not the 6-28k eager brain
 if (Math.ceil(router.length / 4) > 3000) fail(`router too big (~${Math.ceil(router.length / 4)} tok) — lazy defeated`);
 
-console.log('fonderie CLI test: all assertions passed (skill writes router + installed bodies; query resolves installed/uninstalled)');
+// --- init → generates the skill AND wires a fresh-keeping postinstall ---
+const proj2 = mkdtempSync(join(tmpdir(), 'fonderie-init-'));
+mkdirSync(join(proj2, 'node_modules', '@fonderie', 'auth', 'brain'), { recursive: true });
+writeFileSync(join(proj2, 'node_modules', '@fonderie', 'auth', 'package.json'), JSON.stringify({ name: '@fonderie/auth', version: '1.3.2' }));
+writeFileSync(join(proj2, 'node_modules', '@fonderie', 'auth', 'brain', 'signatures.md'), '# auth\n\nclass AuthModule {}\n');
+writeFileSync(join(proj2, 'package.json'), JSON.stringify({ name: 'app', scripts: { build: 'tsc' } }));
+run(['init', '--project', proj2]);
+if (!existsSync(join(proj2, '.claude/skills/SKILL.md'))) fail('init did not write the skill');
+const pj2 = JSON.parse(readFileSync(join(proj2, 'package.json'), 'utf8'));
+if (pj2.scripts.postinstall !== 'fonderie skill') fail(`init did not wire postinstall (got: ${pj2.scripts.postinstall})`);
+if (pj2.scripts.build !== 'tsc') fail('init clobbered an existing script');
+// idempotent: running init again must not double-append
+run(['init', '--project', proj2]);
+const pj2b = JSON.parse(readFileSync(join(proj2, 'package.json'), 'utf8'));
+if (pj2b.scripts.postinstall !== 'fonderie skill') fail(`init not idempotent (got: ${pj2b.scripts.postinstall})`);
+// existing postinstall is chained, not clobbered
+const proj3 = mkdtempSync(join(tmpdir(), 'fonderie-init2-'));
+writeFileSync(join(proj3, 'package.json'), JSON.stringify({ name: 'app', scripts: { postinstall: 'patch-package' } }));
+run(['init', '--project', proj3]);
+const pj3 = JSON.parse(readFileSync(join(proj3, 'package.json'), 'utf8'));
+if (pj3.scripts.postinstall !== 'patch-package && fonderie skill') fail(`init did not chain existing postinstall (got: ${pj3.scripts.postinstall})`);
+
+console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall)');

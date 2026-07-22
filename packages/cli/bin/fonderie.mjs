@@ -132,12 +132,41 @@ function doSkill() {
   console.log('Point your agent at .claude/skills. Bodies load only when a task touches that package.');
 }
 
+// ── fonderie init — generate the skill AND keep it fresh on install/update ───
+// Freshness by construction (the R3 goal): a `postinstall` regenerates the skill
+// from node_modules every time packages change, so the resident knowledge is
+// always version-matched to the lockfile — no manual re-run, no skew.
+function doInit() {
+  doSkill();
+  const projectDir = arg('--project', process.cwd());
+  const pjPath = join(projectDir, 'package.json');
+  if (!existsSync(pjPath)) { console.log('\n(no package.json here — skipped postinstall wiring; run `fonderie skill` after installs to refresh.)'); return; }
+  const pj = JSON.parse(readFileSync(pjPath, 'utf8'));
+  pj.scripts ||= {};
+  const HOOK = 'fonderie skill';
+  const cur = pj.scripts.postinstall;
+  if (cur && cur.includes(HOOK)) {
+    console.log('\n✓ postinstall already refreshes the skill.');
+  } else if (cur) {
+    // don't clobber an existing postinstall — chain ours, idempotently
+    pj.scripts.postinstall = `${cur} && ${HOOK}`;
+    writeFileSync(pjPath, JSON.stringify(pj, null, 2) + '\n');
+    console.log(`\n✓ Appended \`${HOOK}\` to your existing postinstall (regenerates the skill on every install).`);
+  } else {
+    pj.scripts.postinstall = HOOK;
+    writeFileSync(pjPath, JSON.stringify(pj, null, 2) + '\n');
+    console.log(`\n✓ Added \`"postinstall": "${HOOK}"\` — the skill regenerates on every install/update, staying version-matched.`);
+  }
+}
+
 // ── dispatch ────────────────────────────────────────────────────────────────
 if (cmd === 'query') doQuery();
 else if (cmd === 'skill') doSkill();
+else if (cmd === 'init') doInit();
 else {
   console.log(`fonderie — the Fonderie CLI (lazy skills for coding agents)
 
+  fonderie init [--project <dir>]                  set up the lazy skill + keep it fresh (postinstall)
   fonderie skill [--out <dir>] [--project <dir>]   write the lazy skill (router + bodies)
   fonderie query <concept>                         what to install for a capability
   fonderie query --concepts                        list every capability
