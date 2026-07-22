@@ -27,6 +27,15 @@ at equal completion and quality** (`experiments/phase41-2026-07/`).
   for this capability": the package, the recipe, the wiring, and (if installed)
   the exact API. Zero resident schema tax — the agent runs it only when it needs
   discovery.
+- **`fonderie add <recipe> [--project <dir>]`** — deterministically wire a
+  capability in one command: `npm install` the recipe's bricks, emit a
+  version-matched `src/fonderie.ts` composition (modules on `FonderieApp`,
+  migrations on boot) matching the maintained `example-express`, and set up
+  `.env.example`. Prints the one app-specific line (`mount`) it leaves to you.
+  A **correctness/DX** convenience — the emitted wiring is verified to typecheck
+  against the installed packages; it is *not* a token/turn saving (an
+  auth-session pilot found the wiring isn't the turn bottleneck — see
+  `experiments/phase41-2026-07/DISCOVERY-ADD-WIRING.md`).
 
 ## How it stays correct
 
