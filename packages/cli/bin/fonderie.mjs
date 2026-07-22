@@ -19,6 +19,7 @@
 import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, '..');
@@ -159,14 +160,122 @@ function doInit() {
   }
 }
 
+// ── fonderie add <capability> — deterministic wiring in ONE command ─────────
+// Instead of the agent reasoning through install → migrate → compose → mount
+// across many turns, it runs ONE command that does the DETERMINISTIC part — npm
+// install, a version-matched composition module, the env template, the migration
+// step — driven by the recipe, not by LLM guessing. Emits code that matches the
+// maintained example-express composition (the ground-truth wiring), verified to
+// typecheck against the installed packages.
+//
+// Value: correctness + DX (one command → version-matched wiring that compiles),
+// NOT a token/turn saving. We prototyped it as a turn-count lever and pre-
+// registered a gate; the auth-session pilot (DISCOVERY-ADD-WIRING.md) found the
+// wiring was ~1 command's worth of a ~62-turn session — the turns live in
+// orientation + writing/testing the app's own surface, not the brick wiring —
+// so it did NOT cut turns (62 vs a 61–81 baseline). Kept as a DX feature, not
+// sold as an efficiency edge.
+//
+// Per-module wiring spec: import + construction + migrations + env. Deterministic
+// and version-matched — the installed package ships the real API these lines call.
+const MODULE_SPECS = {
+  // `order` = construction/registration priority. Lower first. auth depends on
+  // events.bus, so events (2) must precede auth (3) — the canonical example order.
+  store:  { pkg: 'store',  order: 0, import: `import { PGAdapter, MigrationRunner, InternalMigrationRunner } from '@fonderie/store';`, ctor: null, migrations: false },
+  core:   { pkg: 'core',   order: 1, import: `import { FonderieApp, defineConfig } from '@fonderie/core';`, ctor: null, migrations: false },
+  events: { pkg: 'events', order: 2, import: `import { EventsModule } from '@fonderie/events';\nimport { getMigrationsPath as evtMig } from '@fonderie/events/migrations';`,
+            varName: 'events', ctor: `const events = new EventsModule({ transport: { type: 'pg', connectionUrl: config.db.url } });`, migrations: 'evtMig()' },
+  auth:   { pkg: 'auth',   order: 3, import: `import { AuthModule } from '@fonderie/auth';\nimport { getMigrationsPath as authMig } from '@fonderie/auth/migrations';`,
+            varName: 'auth', ctor: `const auth = new AuthModule(store, {\n  jwtSecret: process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',\n  appName: 'App',\n  providers: ['email'],\n  requireVerification: false,\n}, events.bus);`, migrations: 'authMig()',
+            env: { JWT_SECRET: 'dev-secret-min-32-chars-long-here' } },
+};
+
+function doAdd() {
+  const capability = argv[1];
+  const projectDir = arg('--project', process.cwd());
+  // resolve capability → recipe (accept a concept id, a recipe name, or a bare package)
+  let recipeName = capability;
+  if (K.concepts[capability]?.recipe) recipeName = K.concepts[capability].recipe;
+  const recipe = K.recipes[recipeName];
+  if (!recipe) {
+    console.error(`unknown capability "${capability ?? ''}". Try a concept (\`fonderie query --concepts\`) or a recipe: ${Object.keys(K.recipes).join(', ')}`);
+    process.exit(2);
+  }
+  // module set in dependency order (spec.order): store, core, then modules with
+  // deps before dependents (events before auth). Dedup, keep only recipe packages.
+  const wanted = [...new Set(['store', 'core', ...recipe.packages])];
+  const unknown = wanted.filter((p) => !MODULE_SPECS[p]);
+  const order = wanted.filter((p) => MODULE_SPECS[p]).sort((a, b) => MODULE_SPECS[a].order - MODULE_SPECS[b].order);
+  const specs = order.map((p) => MODULE_SPECS[p]);
+  if (unknown.length) {
+    console.error(`recipe "${recipeName}" needs packages this prototype can't wire yet: ${unknown.join(', ')}. Wired recipes: ${Object.entries(K.recipes).filter(([, r]) => r.packages.every((p) => MODULE_SPECS[p])).map(([n]) => n).join(', ') || '(none)'}`);
+    process.exit(3);
+  }
+  const pkgs = [...new Set(order)];
+  const registrable = specs.filter((s) => s.varName);
+
+  // 1) install (deterministic) — packages + the express adapter it mounts through
+  const installList = [...pkgs.map((p) => `@fonderie/${p}`), '@fonderie/adapter-express'];
+  console.log(`fonderie add ${recipeName}: installing ${installList.join(' ')} …`);
+  const npm = spawnSync('npm', ['install', ...installList], { cwd: projectDir, stdio: 'inherit' });
+  if (npm.status !== 0) { console.error('npm install failed — aborting before writing wiring.'); process.exit(1); }
+
+  // 2) emit the composition module (version-matched to what we just installed)
+  const migCalls = specs.filter((s) => s.migrations).map((s) => s.migrations);
+  const lines = [
+    `// GENERATED by \`fonderie add ${recipeName}\` — deterministic wiring. Safe to edit;`,
+    `// re-running \`fonderie add\` overwrites it. Composes the audited @fonderie bricks.`,
+    `import { fileURLToPath } from 'node:url';`,
+    `import { join } from 'node:path';`,
+    ...specs.map((s) => s.import),
+    ``,
+    `const __dirname = fileURLToPath(new URL('.', import.meta.url));`,
+    ``,
+    `const config = defineConfig({ db: { url: process.env['DATABASE_URL'] ?? 'postgres://localhost/app' } });`,
+    `export const store = new PGAdapter(config.db.url);`,
+    ``,
+    ...(migCalls.length ? [`for (const dir of [${migCalls.join(', ')}]) {`, `  await new InternalMigrationRunner(store, dir).run();`, `}`, ``] : []),
+    ...registrable.map((s) => s.ctor),
+    ``,
+    `export { config };`,
+    `export const fonderie = new FonderieApp(config)`,
+    ...registrable.map((s, i) => `  .register(${s.varName})${i === registrable.length - 1 ? ';' : ''}`),
+    ``,
+    `await fonderie.boot();`,
+    ``,
+  ];
+  mkdirSync(join(projectDir, 'src'), { recursive: true });
+  const compPath = join(projectDir, 'src/fonderie.ts');
+  writeFileSync(compPath, lines.join('\n'));
+  console.log(`✓ wrote src/fonderie.ts — composes ${registrable.map((s) => s.varName).join(' + ')} on FonderieApp.`);
+
+  // 3) env template (deterministic, from the spec + recipe invariants)
+  const envAdds = { DATABASE_URL: 'postgres://localhost/app', ...Object.assign({}, ...specs.map((s) => s.env || {})) };
+  const envPath = join(projectDir, '.env.example');
+  const existingEnv = existsSync(envPath) ? readFileSync(envPath, 'utf8') : '';
+  let envOut = existingEnv;
+  for (const [k, v] of Object.entries(envAdds)) if (!new RegExp(`^${k}=`, 'm').test(envOut)) envOut += `${envOut && !envOut.endsWith('\n') ? '\n' : ''}${k}=${v}\n`;
+  if (envOut !== existingEnv) { writeFileSync(envPath, envOut); console.log(`✓ .env.example — added ${Object.keys(envAdds).join(', ')}`); }
+
+  // 4) the ONE app-specific line the agent still owns — printed, not guessed
+  console.log(`\nDone. Two lines left for your app entry (e.g. src/index.ts):`);
+  console.log(`    import { mount } from '@fonderie/adapter-express';`);
+  console.log(`    import { fonderie } from './fonderie';`);
+  console.log(`  then wrap your express app:  const app = mount(express(), fonderie);`);
+  for (const inv of recipe.invariants || []) if (K.invariants[inv]) console.log(`  ⚠ ${K.invariants[inv]}`);
+  console.log(`\nMigrations run automatically on boot (InternalMigrationRunner above). Set DATABASE_URL and start the app.`);
+}
+
 // ── dispatch ────────────────────────────────────────────────────────────────
 if (cmd === 'query') doQuery();
 else if (cmd === 'skill') doSkill();
+else if (cmd === 'add') doAdd();
 else if (cmd === 'init') doInit();
 else {
   console.log(`fonderie — the Fonderie CLI (lazy skills for coding agents)
 
   fonderie init [--project <dir>]                  set up the lazy skill + keep it fresh (postinstall)
+  fonderie add <capability> [--project <dir>]      deterministically wire a brick: install + compose + migrate + env
   fonderie skill [--out <dir>] [--project <dir>]   write the lazy skill (router + bodies)
   fonderie query <concept>                         what to install for a capability
   fonderie query --concepts                        list every capability
