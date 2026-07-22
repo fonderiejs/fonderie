@@ -24,6 +24,14 @@ const repo = join(here, '..', '..');
 const argv = process.argv.slice(2);
 const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const resultsDir = arg('--results', join(here, 'results'));
+// --seqs <a,b,c>: restrict to these run labels (meta.seq). The canonical
+// pre-registered comparison is N=3 over seqs 1,2,3. Other labels are extra runs
+// that share a condition and would otherwise contaminate its mean — pb carries
+// r1/r2/r3 (the discovery-reliability re-run) + verify, and the CLI/lazy arms
+// carry p1 pilots. Default (no flag) includes everything, for full-corpus views.
+const seqArg = arg('--seqs', null);
+const seqSet = seqArg ? new Set(seqArg.split(',').map((s) => s.trim()).filter(Boolean)) : null;
+const inSeqs = (meta) => !seqSet || seqSet.has(String(meta.seq));
 const tok = (s) => Math.ceil((s || '').length / 4); // chars/4 estimate
 
 // MCP tool-schema tax (CLI-vs-MCP finding): the brain-serve tool DEFINITIONS —
@@ -134,6 +142,7 @@ for (const f of readdirSync(resultsDir)) {
   if (!f.endsWith('.meta.json')) continue;
   const id = f.replace('.meta.json', '');
   const meta = JSON.parse(readFileSync(join(resultsDir, f), 'utf8'));
+  if (!inSeqs(meta)) continue;
   const tr = join(resultsDir, `${id}.transcript.jsonl`);
   const fetched = fetchedKnowledge(tr, meta.cond);
   const usage = realUsage(tr) || { turns: meta.turns || 0 };
