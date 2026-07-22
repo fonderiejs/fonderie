@@ -239,6 +239,32 @@ calls inside the tool, no per-assistant plugins beyond config writing, no
 second user-facing package. One npm package, one flat artifact per SDK
 version, one stdio process.
 
+## CLI vs MCP — why our MCP earns its schema tax
+
+The live objection to MCP: every tool's schema loads into context at
+conversation start, paying a token tax for knowledge the model already has
+from training (the GitHub MCP server: 80 tools ≈ 55,000 tokens for `git log`
+the model knows cold). It's a fair critique — for tools that wrap commands the
+model already knows. It does **not** apply to us, for two measured reasons:
+
+1. **We fill a gap training can't.** `brain_query` exposes a *private* SDK
+   surface — `@fonderie/auth@1.3.2`'s exact constructor, the tables it
+   migrates, the routes it mounts. No Stack Overflow post or man page carries
+   it; `cat`/`grep` over a compiled tarball is the archaeology round four
+   measured at 30–40% of turns. This is the textbook "MCP wins when there is a
+   gap between the raw tool and what you need."
+2. **We stay lean.** 3 tools, one narrow schema each — **752 resident
+   tokens** (measured), ~73× under the 55K cited above, and the concept enum
+   that dominates it is what buys the R2 multilingual mapping.
+
+Two honest consequences we hold ourselves to: the 752-token tax is now
+counted in the cost benchmark (`instrument.mjs`), not hidden — including it
+moved the headline from 0.24 to 0.27, still a fraction. And the tax is paid
+every session even when no discovery happens, so a CLI form of discovery
+(`fonderie brain query`, already built) that pays 0 resident is a live lever —
+pre-registered in `experiments/phase41-2026-07/DISCOVERY-CLI-VS-MCP.md`, to be
+adopted only if it holds triggering reliability, which the tax currently buys.
+
 ## Why this is the differentiator
 
 Anyone can write the JS — we have for 12 years, through a new architecture
