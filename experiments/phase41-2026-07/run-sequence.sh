@@ -145,15 +145,25 @@ JSON
       </dev/null \
       > "$EXPT/results/$ID.json" 2> "$EXPT/results/$ID.err"
     CODE=$?
-    # A session-limit stub did NO work — don't run the completion check against
-    # it (it can spuriously pass on pre-existing state from earlier sessions and
-    # get marked completed:true). Bail; the is_limited check below stops the run
-    # cleanly and this session is re-run on resume.
+    # A session-limit stub is inconclusive — bail out of the retry loop; the
+    # post-loop is_limited guard removes the partial result and stops for resume
+    # (no completed/gate verdict is written for a limit-truncated session).
     if is_limited "$EXPT/results/$ID.json"; then break; fi
     if is_complete; then COMPLETED=true; break; fi
     [ "$attempt" = 1 ] && { RECOVERED=true; echo "  ⚠ $ID incomplete (scope '$SCOPE' not delivered) — Layer-2 corrective re-invoke"; }
   done
   END=$(date +%s)
+
+  # If the session ended on a session-limit stub, the run is INCONCLUSIVE — the
+  # limit may have interrupted work that was actually completing (verified live:
+  # pb-r3-s2 had installed billing before the limit hit on the corrective retry).
+  # Do NOT write a completed/gate verdict (either direction is a false record);
+  # remove partial result files and stop cleanly so resume re-runs it honestly.
+  if is_limited "$EXPT/results/$ID.json"; then
+    rm -f "$EXPT/results/$ID".json "$EXPT/results/$ID".meta.json "$EXPT/results/$ID".err
+    echo "SESSION LIMIT at $ID (inconclusive — no verdict recorded) — stopping. Re-run to resume."
+    exit 3
+  fi
 
   loc=$(find "$WORK/src" -name '*.ts' 2>/dev/null | xargs cat 2>/dev/null | grep -vc '^[[:space:]]*$')
   (cd "$WORK" && npx tsc --noEmit >/dev/null 2>&1 </dev/null) && TSC=yes || TSC=no
@@ -178,10 +188,6 @@ JSON
     [ -n "$TR" ] && cp "$TR" "$EXPT/results/$ID.transcript.jsonl"
   fi
 
-  if is_limited "$EXPT/results/$ID.json"; then
-    echo "SESSION LIMIT at $ID — stopping. Re-run to resume."
-    exit 3
-  fi
   echo "$ID done (exit $CODE, $((END-START))s, loc:$loc tsc:$TSC, transcript:${TR:+yes})"
 done 3< "${SESSIONS_FILE:-$EXPT/sessions.jsonl}"
 echo "sequence $COND-$SEQ complete"
