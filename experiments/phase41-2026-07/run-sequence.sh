@@ -59,7 +59,7 @@ is_valid() {
 if [ ! -d "$WORK" ]; then
   case "$COND" in
     scratch)      cp -R "$TC/skeleton-a" "$WORK" ;;
-    fat|pb|pb-scoped)  cp -R "$TC/skeleton-b" "$WORK" ;;
+    fat|pb|pb-scoped|pb-lazy)  cp -R "$TC/skeleton-b" "$WORK" ;;
     *) echo "unknown cond $COND"; exit 2 ;;
   esac
   rm -rf "$WORK/.claude" "$WORK/graphify-out" "$WORK/.mcp.json" "$WORK/CLAUDE.md"
@@ -107,6 +107,15 @@ while read -r line <&3; do
   "env": { "FONDERIE_BRAIN_LOG": "$BRAINLOG" } } } }
 JSON
     MCPARGS=(--mcp-config "$WORK/.mcp.json")
+  elif [ "$COND" = pb-lazy ]; then
+    # Three-layer lazy pattern (PLAN-SKILLS-CLI.md): emit a small router SKILL.md
+    # + per-package bodies into .claude/skills/; NO eager CLAUDE.md, NO MCP. The
+    # agent reads a body only when the task touches it, or runs the CLI to
+    # discover. Resident K = the router only (bodies load on demand).
+    rm -f "$WORK/CLAUDE.md"
+    mkdir -p "$WORK/.claude/skills"
+    node "$ROOT/scripts/generate-skill.mjs" --project "$WORK" --out "$WORK/.claude/skills" 2>/dev/null
+    cp "$WORK/.claude/skills/SKILL.md" "$EXPT/results/$ID.skill.md" 2>/dev/null
   fi
 
   # Layer 2/4 (DISCOVERY-RELIABILITY.md): deterministic completion detect-and-
@@ -173,6 +182,9 @@ JSON
   # dir minus brain artifacts; scratch: 0. This is analyze.mjs's static-K input.
   case "$COND" in
     pb|pb-scoped)  KCH=$(wc -c < "$WORK/CLAUDE.md" 2>/dev/null || echo 0) ;;
+    # pb-lazy resident = the ROUTER only; per-package bodies load on demand (their
+    # cost shows up as fetched, like a CLI read — the whole point of lazy).
+    pb-lazy)  KCH=$(wc -c < "$WORK/.claude/skills/SKILL.md" 2>/dev/null || echo 0) ;;
     fat)  KCH=$(find "$WORK/.claude/skills/fonderie" -type f ! -name 'brain.json' ! -name 'brain-knowledge.json' -exec cat {} + 2>/dev/null | wc -c) ;;
     *)    KCH=0 ;;
   esac
