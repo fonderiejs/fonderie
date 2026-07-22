@@ -59,7 +59,7 @@ is_valid() {
 if [ ! -d "$WORK" ]; then
   case "$COND" in
     scratch)      cp -R "$TC/skeleton-a" "$WORK" ;;
-    fat|pb|pb-scoped|pb-cli|pb-lazy)  cp -R "$TC/skeleton-b" "$WORK" ;;
+    fat|pb|pb-scoped|pb-cli|pb-lazy|pb-lazy-add)  cp -R "$TC/skeleton-b" "$WORK" ;;
     *) echo "unknown cond $COND"; exit 2 ;;
   esac
   rm -rf "$WORK/.claude" "$WORK/graphify-out" "$WORK/.mcp.json" "$WORK/CLAUDE.md"
@@ -87,6 +87,7 @@ while read -r line <&3; do
   fi
 
   MCPARGS=()
+  EXTRA_PATH=""   # pb-lazy-add prepends its `fonderie` shim dir; empty otherwise
   if [ "$COND" = pb ] || [ "$COND" = pb-scoped ] || [ "$COND" = pb-cli ]; then
     # freshness by construction: recompile the project brain from what THIS
     # workdir has installed right now (grows as sessions install packages).
@@ -120,6 +121,37 @@ JSON
     mkdir -p "$WORK/.claude/skills"
     node "$ROOT/scripts/generate-skill.mjs" --project "$WORK" --out "$WORK/.claude/skills" 2>/dev/null
     cp "$WORK/.claude/skills/SKILL.md" "$EXPT/results/$ID.skill.md" 2>/dev/null
+  elif [ "$COND" = pb-lazy-add ]; then
+    # Turn-count lever (ARCHITECTURE-EVOLUTION §next): identical to pb-lazy, PLUS
+    # the `fonderie add` deterministic-wiring command. The router gets a fast-path
+    # section; a shim puts the (local, prototype) CLI on PATH. Same resident K as
+    # pb-lazy (router only) — the difference we measure is TURNS, not tokens.
+    rm -f "$WORK/CLAUDE.md"
+    mkdir -p "$WORK/.claude/skills" "$WORK/.fonderie-bin"
+    node "$ROOT/scripts/generate-skill.mjs" --project "$WORK" --out "$WORK/.claude/skills" 2>/dev/null
+    RECIPES=$(node -e 'console.log(Object.keys(require("'"$ROOT"'/packages/cli/data/knowledge.json").recipes).join(", "))')
+    cat >> "$WORK/.claude/skills/SKILL.md" <<SKILL
+
+## Fast path — wire a capability in ONE command
+
+Do not hand-write install + composition + migrations. Run:
+
+    fonderie add <recipe>          # e.g. fonderie add basic-auth
+
+It installs the packages, writes a version-matched composition to \`src/fonderie.ts\`
+(modules registered on \`FonderieApp\`, migrations on boot), and sets up \`.env.example\`.
+Then mount it in your app entry (the only app-specific step):
+
+    import { mount } from '@fonderie/adapter-express';
+    import { fonderie } from './fonderie';
+    const app = mount(express(), fonderie);
+
+Recipes: $RECIPES. Prefer \`fonderie add\` over wiring bricks by hand.
+SKILL
+    cp "$WORK/.claude/skills/SKILL.md" "$EXPT/results/$ID.skill.md" 2>/dev/null
+    printf '#!/bin/bash\nexec node "%s/packages/cli/bin/fonderie.mjs" "$@"\n' "$ROOT" > "$WORK/.fonderie-bin/fonderie"
+    chmod +x "$WORK/.fonderie-bin/fonderie"
+    EXTRA_PATH="$WORK/.fonderie-bin:"
   fi
 
   # Layer 2/4 (DISCOVERY-RELIABILITY.md): deterministic completion detect-and-
@@ -150,7 +182,7 @@ JSON
   COMPLETED=false; RECOVERED=false
   for attempt in 1 2; do
     P="$PROMPT"; [ "$attempt" = 2 ] && P="$PROMPT$CORRECTIVE"
-    env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT DATABASE_URL="$DBURL" "$CLAUDE_BIN" -p "$P" \
+    env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT DATABASE_URL="$DBURL" PATH="$EXTRA_PATH$PATH" "$CLAUDE_BIN" -p "$P" \
       --model claude-opus-4-8 \
       --output-format json \
       --dangerously-skip-permissions \
@@ -188,7 +220,7 @@ JSON
     pb|pb-scoped|pb-cli)  KCH=$(wc -c < "$WORK/CLAUDE.md" 2>/dev/null || echo 0) ;;
     # pb-lazy resident = the ROUTER only; per-package bodies load on demand (their
     # cost shows up as fetched, like a CLI read — the whole point of lazy).
-    pb-lazy)  KCH=$(wc -c < "$WORK/.claude/skills/SKILL.md" 2>/dev/null || echo 0) ;;
+    pb-lazy|pb-lazy-add)  KCH=$(wc -c < "$WORK/.claude/skills/SKILL.md" 2>/dev/null || echo 0) ;;
     fat)  KCH=$(find "$WORK/.claude/skills/fonderie" -type f ! -name 'brain.json' ! -name 'brain-knowledge.json' -exec cat {} + 2>/dev/null | wc -c) ;;
     *)    KCH=0 ;;
   esac
