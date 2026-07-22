@@ -277,6 +277,15 @@ re-run. That contract — not the code — is what this plan protects.
 
 # Phase 4.1 — pre-registration (2026-07-19)
 
+> **SUPERSEDED (2026-07-22).** The eager "project brain" this phase built and
+> measured (0.28 amortized / 0.40 resident-after-read vs fat) was beaten by the
+> **lazy skill** — a small router + per-package bodies read on demand — at 0.14
+> (N=3, equal completion/quality). The lazy path shipped as `@fonderie/cli`
+> (`fonderie init`); `generate-project-brain.mjs` is now DEPRECATED, kept only as
+> the `pb` benchmark baseline. See `PLAN-SKILLS-CLI.md`. The MCP server
+> (`brain-serve.mjs`) is unaffected — it remains the option for stateful /
+> long-running loops. This section is preserved as the record of how we got here.
+
 > Appended after the Phase 4 condition-C result
 > (`experiments/token-cost-2026-07/FINDINGS-condition-c.md`): the topology
 > brain LOST on cost for a small scoped task (classified negative — retrieval
