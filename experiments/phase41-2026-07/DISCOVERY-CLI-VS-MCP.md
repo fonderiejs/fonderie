@@ -65,3 +65,27 @@ n=1 is directional, never a verdict — same discipline as Phase 4.1.
       discovery pointer names the CLI command)
 - [ ] pilot (cli vs mcp, 1→3) → instrument + completion + quality
 - [ ] decision per the locked rule
+
+## pb-cli vs pb-lazy — full N=3 head-to-head (2026-07-22, $0 re-analysis)
+
+Both conditions already ran N=3 (12 sessions each); re-scored on the current fair
+instrument (resident-after-read, all-transport fetch). Canonical sequences only.
+
+| condition | knowledge overhead vs fat (fair) | amortized floor | wall-clock | verdict |
+| --- | --- | --- | --- | --- |
+| fat (eager skill)     | 1.000 | 1.000 | 207s | baseline |
+| pb (eager + MCP)      | 0.395 | 0.277 | 219s | parity-plus |
+| **pb-cli** (eager + CLI) | **0.341** | 0.316 | 262s | **parity-plus** |
+| **pb-lazy** (router)     | **0.141** | 0.053 | 301s | **FRACTION** |
+
+**pb-lazy beats pb-cli ~2.4× on knowledge tokens (0.141 vs 0.341)** — and the gap
+is the whole point of the CLI-vs-MCP thread. pb-cli only swapped the *discovery
+transport* (MCP tool → CLI command) while still loading the **eager brain** every
+turn; it lands at parity-plus, barely better than pb (0.395). pb-lazy changed
+*when knowledge loads* (router + on-demand bodies) and is the only fraction. So:
+**transport is a wash; lazy loading is the lever** — measured, head-to-head.
+
+Two-axis honesty: pb-lazy is the slowest (301s vs pb-cli 262s, fat 207s) — more
+on-demand reads, each a round trip. The token win costs latency, as expected;
+fine for coding agents, which is why lazy shipped as the default and MCP stays
+for latency-sensitive/long-running loops.
