@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/cli",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "The Fonderie CLI — teaches any coding agent the SDK without loading it eagerly. `fonderie skill` writes a lazy skill (a small router + per-package bodies read on demand); `fonderie query` answers what to install for a capability. Zero deps, runs anywhere.",
 	"keywords": [
 		"fonderie-js",
