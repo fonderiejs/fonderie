@@ -4,6 +4,35 @@ Full pre-registered batch: 3 conditions × 3 sequences × 4 growing sessions.
 **36/36 clean (exit 0, tsc pass), ~$35.54.** Pilot sessions archived
 (`results/_pilot-archive/`); this is batch-only.
 
+> **Reconciliation (2026-07-22) — read this before the 0.240 headline below.**
+> This doc's headline (pb/fat = **0.240**, "fraction met") was written under an
+> earlier `instrument.mjs`. Two later refinements changed the number and, for
+> `pb`, the verdict — the mechanism never moved, only how honestly we counted it:
+>
+> 1. **MCP tool-schema tax** (+752 tok/turn, resident) — see the Correction
+>    section below. Pushed the amortized floor from 0.240 → **0.267**.
+> 2. **Resident-after-read fair primary** — a fetched `brain_query` result does
+>    not vanish next turn; it stays in context. Charging fetches as resident
+>    (not amortised over all turns) is the fair primary; amortised is the floor.
+>    Under it, canonical N=3 `pb` = **0.383** (floor **0.267**).
+> 3. **De-contamination** (#45) — the `pb` tag also held the discovery re-run
+>    (`r1/r2/r3`) + `verify`; summed, they read 0.395. Canonical seqs 1,2,3 =
+>    **0.383**. Reproduce: `node instrument.mjs --seqs 1,2,3`.
+>
+> **Current canonical fair numbers (supersede the 0.240 below):**
+>
+> | cond | fair (resident-after-read) | amortized floor | verdict |
+> | --- | --- | --- | --- |
+> | fat | 1.000 | 1.000 | baseline |
+> | **pb** (eager + MCP) | **0.383** | 0.267 | **parity-plus (⅓–1×)** |
+> | pb-cli (eager + CLI) | 0.341 | 0.316 | parity-plus |
+> | **pb-lazy** (router) | **0.141** | 0.053 | **FRACTION (≤⅓)** |
+>
+> So: the ⅓ "fraction" goal below is **met by the lazy skill (`pb-lazy`, 0.141),
+> not by the eager brain (`pb`, 0.383 — parity-plus)**. `pb-lazy` post-dates this
+> batch; see `DISCOVERY-CLI-VS-MCP.md` for the head-to-head. The rest of this
+> document is preserved as the dated N=3 snapshot that got us there.
+
 ## Headline: the ⅓ "fraction" goal is met on knowledge cost
 
 **Turn-neutral Fonderie-knowledge footprint** (resident + fetched brain_query,
@@ -12,7 +41,7 @@ per turn — `instrument.mjs`):
 | cond | tok/turn | vs fat |
 | --- | --- | --- |
 | fat | 27,999 | — |
-| pb | 6,718 | **0.240 → FRACTION (≤⅓)** |
+| pb | 6,718 | **0.240 → FRACTION (≤⅓)** _(superseded → 0.383 parity-plus; see banner)_ |
 | scratch | 0 | (control) |
 
 Stable as N grew: pilot 0.13 → partial 0.22 → **N=3 0.240**, comfortably under
@@ -56,6 +85,8 @@ hand-rolling ships insecure auth; Fonderie prevents it by default.
 ## Verdict vs the locked rule
 
 - **Knowledge-cost goal (≤⅓): MET** — pb/fat = 0.240 at N=3, methods agree.
+  _(Superseded: under the fair resident-after-read primary, `pb` = 0.383
+  parity-plus; the ≤⅓ goal is met by `pb-lazy` at 0.141. See top banner.)_
 - **Correctness density: confirmed** — scratch below-floor flaws (insecure
   secret 2/3) absent in pb/fat.
 - **Efficiency caveat (disclosed):** Fonderie conditions take ~1.7× scratch's
@@ -97,11 +128,13 @@ sequence, does not move the aggregate.
 
 ## Bottom line
 
-The pre-registered "fraction of the token cost" goal is **met**: pb/fat knowledge
-overhead = **0.240 (≤⅓)** at N=3, both attribution methods agreeing once
-turn-count noise averaged out, at **equal Fonderie-condition quality** and with
-the **correctness-density** advantage over scratch replicated. Efficiency caveat
-(≈1.7× scratch turns, equal fat/pb) disclosed and orthogonal.
+The pre-registered "fraction of the token cost" goal is **met** — but, as the top
+banner records, by the **lazy skill (`pb-lazy` = 0.141)**, not the eager brain.
+As snapshotted here the eager `pb` read 0.240 under the then-current metric; the
+fair resident-after-read primary later put canonical `pb` at **0.383 (parity-plus,
+not ≤⅓)**. What holds unchanged from this batch: **equal Fonderie-condition
+quality** and the **correctness-density** advantage over scratch, replicated. The
+efficiency caveat (≈1.7× scratch turns, equal fat/pb) is disclosed and orthogonal.
 
 ## Full 39-point rubric (score-full.mjs) — corrects the security-only read
 
@@ -149,9 +182,12 @@ pay 0.
 - **Measured tax: 752 tokens/turn** (3 tools; the `brain_query` concept enum is
   the bulk). For scale, the GitHub MCP server advertises 80 tools ≈ 55,000
   tokens — we are ~73× leaner.
-- **Corrected ratio: pb/fat = 0.267** (was 0.24). Still a fraction (≤⅓).
-  `instrument.mjs` now includes the tax; the correction makes the claim *more*
-  defensible, not less — we counted a cost we own.
+- **Corrected ratio: pb/fat = 0.267** (was 0.24). `instrument.mjs` now includes
+  the tax; the correction makes the claim *more* defensible, not less — we counted
+  a cost we own. _(Later refinement: 0.267 is the **amortized floor**; the fair
+  **resident-after-read primary** puts canonical `pb` at **0.383 = parity-plus**,
+  not a fraction. The fraction verdict belongs to `pb-lazy` at 0.141 — see the
+  reconciliation banner at the top.)_
 
 **Why the tax is justified, not waste:** the CLI-vs-MCP critique is that MCP
 pays a schema tax for knowledge the model already has from training (git, ls,
