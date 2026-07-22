@@ -59,7 +59,7 @@ is_valid() {
 if [ ! -d "$WORK" ]; then
   case "$COND" in
     scratch)      cp -R "$TC/skeleton-a" "$WORK" ;;
-    fat|pb|pb-scoped|pb-lazy)  cp -R "$TC/skeleton-b" "$WORK" ;;
+    fat|pb|pb-scoped|pb-cli|pb-lazy)  cp -R "$TC/skeleton-b" "$WORK" ;;
     *) echo "unknown cond $COND"; exit 2 ;;
   esac
   rm -rf "$WORK/.claude" "$WORK/graphify-out" "$WORK/.mcp.json" "$WORK/CLAUDE.md"
@@ -87,26 +87,30 @@ while read -r line <&3; do
   fi
 
   MCPARGS=()
-  if [ "$COND" = pb ] || [ "$COND" = pb-scoped ]; then
+  if [ "$COND" = pb ] || [ "$COND" = pb-scoped ] || [ "$COND" = pb-cli ]; then
     # freshness by construction: recompile the project brain from what THIS
     # workdir has installed right now (grows as sessions install packages).
-    # pb-scoped additionally passes --scope <this session's packages + core,store>
-    # so out-of-scope installed packages become one-line pointers, not full
-    # surfaces — the Method-B overhead lever (BRAIN_PLAN Phase 4.1).
+    # pb-scoped additionally passes --scope; pb-cli passes --discovery cli so the
+    # discovery pointer names a shell command and mounts NO MCP server → 0 resident
+    # schema tax (DISCOVERY-CLI-VS-MCP.md).
     SCOPEARG=()
     if [ "$COND" = pb-scoped ] && [ -n "$SCOPE" ]; then SCOPEARG=(--scope "$SCOPE,core,store"); fi
+    [ "$COND" = pb-cli ] && SCOPEARG+=(--discovery cli)
     node "$ROOT/scripts/generate-project-brain.mjs" --project "$WORK" --out "$WORK/CLAUDE.md" --quiet ${SCOPEARG[@]+"${SCOPEARG[@]}"} 2>/dev/null
     # archive the exact resident brain used this session — attribution (analyze.mjs)
     # needs the per-session artifact; it is regenerated (grows) every session.
     cp "$WORK/CLAUDE.md" "$EXPT/results/$ID.claude.md" 2>/dev/null
     BRAINLOG="$EXPT/results/$ID.brain.log"; : > "$BRAINLOG"
-    cat > "$WORK/.mcp.json" <<JSON
+    # pb-cli: no MCP server (that's the point). pb/pb-scoped mount brain-serve.
+    if [ "$COND" != pb-cli ]; then
+      cat > "$WORK/.mcp.json" <<JSON
 { "mcpServers": { "fonderie-brain": {
   "command": "node",
   "args": ["$ROOT/scripts/brain-serve.mjs", "--project", "$WORK"],
   "env": { "FONDERIE_BRAIN_LOG": "$BRAINLOG" } } } }
 JSON
-    MCPARGS=(--mcp-config "$WORK/.mcp.json")
+      MCPARGS=(--mcp-config "$WORK/.mcp.json")
+    fi
   elif [ "$COND" = pb-lazy ]; then
     # Three-layer lazy pattern (PLAN-SKILLS-CLI.md): emit a small router SKILL.md
     # + per-package bodies into .claude/skills/; NO eager CLAUDE.md, NO MCP. The
@@ -181,7 +185,7 @@ JSON
   # as cache_read every turn. pb: the compiled CLAUDE.md; fat: the loaded skill
   # dir minus brain artifacts; scratch: 0. This is analyze.mjs's static-K input.
   case "$COND" in
-    pb|pb-scoped)  KCH=$(wc -c < "$WORK/CLAUDE.md" 2>/dev/null || echo 0) ;;
+    pb|pb-scoped|pb-cli)  KCH=$(wc -c < "$WORK/CLAUDE.md" 2>/dev/null || echo 0) ;;
     # pb-lazy resident = the ROUTER only; per-package bodies load on demand (their
     # cost shows up as fetched, like a CLI read — the whole point of lazy).
     pb-lazy)  KCH=$(wc -c < "$WORK/.claude/skills/SKILL.md" 2>/dev/null || echo 0) ;;
