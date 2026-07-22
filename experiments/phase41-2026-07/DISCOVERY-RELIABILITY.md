@@ -108,3 +108,36 @@ it is **one sample of a probabilistic mitigation, not coverage.** Layers 2–4
 remain required to *ensure* the edge case is covered, because "usually proceeds"
 is not "always completes." The next model, prompt, or task may still stall;
 only deterministic detection (Layer 2) + a completion gate (Layer 4) close it.
+
+## Production confirmation — pb re-run, 2026-07-21 (12/12)
+
+Re-ran the full pb condition (3 sequences × 4 sessions) with all layers active,
+to confirm in production what the fixture proved deterministically.
+
+**Result: 12/12 sessions completed. Zero real stalls. Zero Layer-2 recoveries
+needed. Zero (real) gate failures.**
+
+| seq | s1 auth | s2 billing | s3 teams | s4 security |
+| --- | --- | --- | --- | --- |
+| r1 | ✓ | ✓ | ✓ | ✓ |
+| r2 | ✓ | ✓ | ✓ | ✓ |
+| r3 | ✓ | ✓ | ✓ | ✓ |
+
+The teams session (s3) — which stalled in the original batch (pb-2, 27/39) —
+completed in **all 3** sequences: each installed `@fonderie/workspaces` +
+`@fonderie/courier` and built the invite flow (19–26 workspace/invite refs).
+Security (s4) built audit in all 3.
+
+**What it means:** the original 1-in-3 stall did NOT recur. Layers 1+3 (directive
+guidance, scoped skew note, default email provider) prevented the stall
+*upstream*, so Layer 2 (detect-and-recover) never had to fire — the ideal
+outcome. Layer 2 remains proven as the safety net by `test-l2-recover.sh`; it is
+there for the case guidance doesn't catch, not relied upon as the first line.
+
+**Two harness bugs found and fixed live during this run** (the gate correcting
+itself): a session-limit stub was first marked `completed:true` (#32), then
+over-corrected to a GATE-fail (#33). Final rule: a limit-truncated session is
+INCONCLUSIVE — no verdict, re-run on resume. The one GATE line in the old logs
+(pb-r3-s2) was that false positive; the honest re-run shows it `completed ✓`.
+
+Discovery-reliability edge case: **covered (4 layers) and confirmed in production.**
