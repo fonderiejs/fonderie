@@ -1,0 +1,211 @@
+{
+  "concepts": {
+    "auth.accounts": {
+      "description": "sign up, log in, sessions, passwords, MFA, email verification",
+      "package": "auth",
+      "recipe": "basic-auth"
+    },
+    "auth.oauth": {
+      "description": "social login / SSO via OAuth providers (Google, GitHub)",
+      "package": "auth",
+      "recipe": "oauth"
+    },
+    "auth.route-guard": {
+      "description": "protect a route or page so only logged-in users reach it",
+      "package": "auth",
+      "recipe": "route-guard"
+    },
+    "billing.subscriptions": {
+      "description": "accept payments, subscription plans, Stripe checkout, invoices",
+      "package": "billing",
+      "recipe": "stripe-checkout"
+    },
+    "billing.per-seat": {
+      "description": "charge per team member / seat",
+      "package": "billing",
+      "recipe": "per-seat-billing"
+    },
+    "billing.plan-gate": {
+      "description": "lock a feature behind a paid plan / entitlements / free-tier limits",
+      "package": "billing",
+      "recipe": "plan-gate"
+    },
+    "workspaces.teams": {
+      "description": "teams, orgs, multi-tenancy, members, email invites",
+      "package": "workspaces",
+      "recipe": "teams-invites"
+    },
+    "permissions.rbac": {
+      "description": "roles and permissions — admin/member/viewer, access control",
+      "package": "permissions",
+      "recipe": "rbac"
+    },
+    "courier.messaging": {
+      "description": "SEND any transactional message — email, SMS, push; use this for password-reset, email-verification, welcome, and invite emails (auth.* is who can log in, courier is what delivers the message)",
+      "package": "courier",
+      "recipe": "transactional-email"
+    },
+    "webhooks.in-out": {
+      "description": "receive webhooks (Stripe) and emit your own to other apps",
+      "package": "webhooks",
+      "recipe": "webhooks-in-out"
+    },
+    "events.bus": {
+      "description": "in-process event bus — react when something happens in another module",
+      "package": "events"
+    },
+    "config.flags": {
+      "description": "feature flags, remote config, kill switches",
+      "package": "config"
+    },
+    "audit.trail": {
+      "description": "workspace-scoped audit log — who did what, compliance",
+      "package": "audit"
+    },
+    "rate-limit.throttle": {
+      "description": "throttle requests — brute force, abuse, spam protection",
+      "package": "rate-limit"
+    },
+    "customers.crm": {
+      "description": "customer records / CRM tied to billing",
+      "package": "customers"
+    },
+    "core.app": {
+      "description": "bootstrap a Fonderie app, register modules, mount on Express/Hono/Koa",
+      "package": "core"
+    },
+    "store.database": {
+      "description": "Postgres access and append-only migrations",
+      "package": "store"
+    }
+  },
+  "recipes": {
+    "basic-auth": {
+      "when": "sign up + log in with email/password",
+      "packages": [
+        "auth",
+        "core",
+        "events",
+        "store"
+      ],
+      "invariants": [
+        "jwt-secret-from-env",
+        "rate-limit-default-on"
+      ]
+    },
+    "oauth": {
+      "when": "social login (Google/GitHub)",
+      "packages": [
+        "auth",
+        "config",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "jwt-secret-from-env"
+      ]
+    },
+    "route-guard": {
+      "when": "gate a route behind login",
+      "packages": [
+        "auth"
+      ],
+      "invariants": [],
+      "note": "use requireAuth middleware from @fonderie/auth on the protected route"
+    },
+    "teams-invites": {
+      "when": "teams/workspaces with email invites",
+      "packages": [
+        "workspaces",
+        "auth",
+        "courier",
+        "events",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "workspaces-requires-billing",
+        "email-provider-default"
+      ]
+    },
+    "stripe-checkout": {
+      "when": "charge users / subscription plans",
+      "packages": [
+        "billing",
+        "customers",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "webhook-route-before-auth-mw",
+        "rate-limit-default-on"
+      ]
+    },
+    "per-seat-billing": {
+      "when": "bill per team member / seat",
+      "packages": [
+        "billing",
+        "workspaces",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "workspaces-requires-billing"
+      ]
+    },
+    "plan-gate": {
+      "when": "lock a feature behind a paid plan",
+      "packages": [
+        "billing",
+        "permissions"
+      ],
+      "invariants": []
+    },
+    "rbac": {
+      "when": "roles & permissions (admin/member/viewer)",
+      "packages": [
+        "permissions",
+        "workspaces",
+        "core",
+        "store"
+      ],
+      "invariants": []
+    },
+    "transactional-email": {
+      "when": "welcome / reset / invite emails",
+      "packages": [
+        "courier",
+        "events",
+        "config",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "email-provider-default"
+      ]
+    },
+    "webhooks-in-out": {
+      "when": "receive Stripe webhooks and emit your own",
+      "packages": [
+        "webhooks",
+        "billing",
+        "events",
+        "rate-limit",
+        "core",
+        "store"
+      ],
+      "invariants": [
+        "webhook-route-before-auth-mw",
+        "rate-limit-default-on"
+      ]
+    }
+  },
+  "invariants": {
+    "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
+    "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
+    "logout-provided": "@fonderie/auth mounts POST /auth/logout with session invalidation — do not hand-roll stateless-JWT logout.",
+    "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
+    "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
+    "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task."
+  }
+}

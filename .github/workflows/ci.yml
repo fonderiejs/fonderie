@@ -41,8 +41,9 @@ jobs:
       # would otherwise publish inside the tarball, drifting from the shipped
       # code and breaking R3's version-matched-by-construction guarantee.
       - run: npm run docs:signatures && git diff --exit-code .claude/skills/fonderie/SIGNATURES.md .claude/skills/fonderie/signatures 'packages/*/brain/*'
-      - run: npm run docs:brain && git diff --exit-code .claude/skills/fonderie/brain.json
+      - run: npm run docs:brain && git diff --exit-code .claude/skills/fonderie/brain.json packages/cli/data/knowledge.json
       - run: npm run brain:test
       - run: npm run brain:project-test
+      - run: node packages/cli/bin/fonderie.test.mjs
       - run: npm run audit:validation
       - run: npm test

@@ -16,7 +16,7 @@
 		"version": "changeset version && npm run docs:brain",
 		"release": "npm run build && changeset publish",
 		"docs:signatures": "node scripts/generate-signatures.mjs && node scripts/generate-outcomes.mjs",
-		"docs:brain": "node scripts/generate-brain.mjs",
+		"docs:brain": "node scripts/generate-brain.mjs && node scripts/generate-cli-data.mjs",
 		"brain:serve": "node scripts/brain-serve.mjs",
 		"brain:test": "node scripts/brain-serve.test.mjs",
 		"brain:drift": "node experiments/r1-2026-07/drift.mjs",
