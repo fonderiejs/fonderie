@@ -1,4 +1,16 @@
 #!/usr/bin/env node
+// ⚠ DEPRECATED (2026-07-22) — the EAGER project brain, superseded by the LAZY
+// skill (`@fonderie/cli` → `fonderie skill`, scripts/generate-skill.mjs). This
+// compiles ALL installed packages' signatures into ONE resident CLAUDE.md, read
+// every turn. The N=3 benchmark measured that at 0.40× the fat skill's knowledge
+// overhead (parity-plus); the lazy skill — a small router + per-package bodies
+// read on demand — measured 0.14× (a fraction) at equal completion/quality
+// (experiments/phase41-2026-07/PLAN-SKILLS-CLI.md). So:
+//   • New projects: use `fonderie init` (lazy skill). Do NOT wire this in.
+//   • This file is KEPT only as the `pb` benchmark baseline (reproducibility).
+//   • The MCP server (scripts/brain-serve.mjs) is a SEPARATE thing and is NOT
+//     deprecated — it stays as the option for stateful / long-running loops.
+//
 // Compiles a PROJECT BRAIN (BRAIN_PLAN.md Phase 4.1): one deterministic file
 // containing the exact Fonderie knowledge for ONE project — signatures,
 // outcomes, recipes, and invariants for ONLY the @fonderie/* packages that
@@ -16,8 +28,9 @@
 //
 //   node scripts/generate-project-brain.mjs [--project <dir>] [--out <file>]
 //
-// stdout by default; --out writes the file. Intended to be wired into
-// `fonderie init` / postinstall in Phase 3.
+// stdout by default; --out writes the file. (Historically "intended for
+// fonderie init" — that role went to the lazy skill instead; see the
+// deprecation note above.)
 
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -29,6 +42,11 @@ const argv = process.argv.slice(2);
 const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const projectDir = arg('--project', process.cwd());
 const outPath = arg('--out', null);
+// Deprecation warning (stderr; --quiet suppresses it for the benchmark harness,
+// which needs clean output). New projects should use `fonderie init` instead.
+if (!argv.includes('--quiet')) {
+  process.stderr.write('⚠ generate-project-brain.mjs is DEPRECATED (eager brain). Use `fonderie init` (lazy skill) — it measured 0.14 vs this 0.40 knowledge overhead. Kept as the pb benchmark baseline. The MCP server is separate and not affected.\n');
+}
 // --scope <pkg,pkg>: emit FULL signatures only for these packages (the ones the
 // current task touches); every other installed package gets a one-line "installed
 // + wired, ask brain_query for detail" pointer instead of its full surface. This

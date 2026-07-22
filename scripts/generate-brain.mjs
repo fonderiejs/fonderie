@@ -24,9 +24,10 @@ function extractPackages() {
     const pj = join(pkgsDir, p, 'package.json');
     if (!existsSync(pj)) continue;
     const j = JSON.parse(readFileSync(pj, 'utf8'));
-    // Only the SDK bricks (@fonderie/*) belong in the brain. Skip tooling like
-    // @fonderie/cli — a different scope, not a runtime package.
-    if (!j.name.startsWith('@fonderie/')) continue;
+    // Only runtime SDK bricks belong in the brain. Skip anything that isn't a
+    // @fonderie/* library: a different scope, OR tooling that ships a `bin`
+    // (e.g. @fonderie/cli) — a bin package is a command, not a brick to import.
+    if (!j.name.startsWith('@fonderie/') || j.bin) continue;
     const name = j.name.replace('@fonderie/', '');
     const requires = Object.keys(j.peerDependencies || {})
       .filter((k) => k.startsWith('@fonderie/'))
