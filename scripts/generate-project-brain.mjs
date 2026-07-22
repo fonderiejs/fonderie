@@ -101,10 +101,27 @@ if (installed.length) {
   lines.push('No @fonderie packages installed yet.');
 }
 lines.push('');
-lines.push('**For capabilities NOT covered below** (billing, teams, permissions,');
-lines.push('email, webhooks, …): call the `brain_query` MCP tool with your task');
-lines.push('BEFORE writing code — it returns the right package, wiring, and exact');
-lines.push('signatures. Do not guess APIs from memory.');
+// Discovery pointer — how the model reaches the brain for a NOT-yet-installed
+// capability. `mcp` (default): the brain_query MCP tool. `cli`: a shell command,
+// which pays NO resident schema tax (DISCOVERY-CLI-VS-MCP.md). The pb-cli
+// benchmark arm uses --discovery cli; same knowledge, different transport.
+const discovery = arg('--discovery', 'mcp');
+if (discovery === 'cli') {
+  const cliBin = `node ${join(root, 'scripts/brain-query.mjs')}`;
+  lines.push('**For capabilities NOT covered below** (billing, teams, permissions,');
+  lines.push('email, webhooks, …): run this shell command BEFORE writing code —');
+  lines.push('```');
+  lines.push(`${cliBin} <concept>    # e.g. billing.subscriptions`);
+  lines.push(`${cliBin} --concepts   # list every concept id`);
+  lines.push('```');
+  lines.push('It prints the right package, wiring, and exact signatures.');
+  lines.push('Do not guess APIs from memory.');
+} else {
+  lines.push('**For capabilities NOT covered below** (billing, teams, permissions,');
+  lines.push('email, webhooks, …): call the `brain_query` MCP tool with your task');
+  lines.push('BEFORE writing code — it returns the right package, wiring, and exact');
+  lines.push('signatures. Do not guess APIs from memory.');
+}
 lines.push('');
 lines.push('**Then complete the task autonomously.** When `brain_query` names a');
 lines.push('package you do not have installed, that is expected — `npm install` it,');
