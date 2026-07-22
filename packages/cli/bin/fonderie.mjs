@@ -121,6 +121,23 @@ function doSkill() {
   L.push('Do NOT stop to ask permission or abandon the task; adding the brick IS the task.');
   L.push('Pick sensible defaults for provider/config choices behind fail-fast env vars.');
   L.push('');
+  L.push('## Definition of done — you do NOT need a database to build');
+  L.push('');
+  L.push('A Fonderie app is **done** when it **typechecks** (`tsc` clean) and each');
+  L.push('capability is **wired per its recipe**. That is sufficient: the bricks are');
+  L.push('audited and own their schema — migrations ship inside the package and run');
+  L.push('automatically on boot, and each route is guaranteed by the package, not by');
+  L.push('your app. (Confirmed: a typecheck-clean wired app boots, self-migrates, and');
+  L.push('serves the brick routes with no hand-written glue.)');
+  L.push('');
+  L.push('While building:');
+  L.push('- Do NOT provision a database — no `docker run`, no `initdb`, no testcontainers.');
+  L.push('- Do NOT boot the app to "check it works": a clean typecheck + correct wiring');
+  L.push('  IS the check. Running it is a separate, optional step the operator does');
+  L.push('  later with a real `DATABASE_URL`.');
+  L.push('- The tables each brick creates are listed in its body — read them, do not');
+  L.push('  reverse-engineer them from a running database.');
+  L.push('');
   if (Object.keys(K.invariants || {}).length) {
     L.push('## Security invariants (always apply)');
     L.push('');
