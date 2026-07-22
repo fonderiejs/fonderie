@@ -35,7 +35,7 @@ ROADMAP.md
 !scripts/project-brain.test.mjs
 !scripts/brain-fragment.mjs
 !scripts/brain-r3.test.mjs
-
+!scripts/generate-skill.mjs
 # Local example apps — not part of the public SDK
 examples/
 
