@@ -102,6 +102,19 @@ L.push('Then `npm install @fonderie/<pkg>`, run its migrations, wire it, and con
 L.push('Do NOT stop to ask permission or abandon the task; adding the brick IS the task.');
 L.push('Pick sensible defaults for provider/config choices behind fail-fast env vars.');
 L.push('');
+L.push('## Definition of done — you do NOT need a database to build');
+L.push('');
+L.push('A Fonderie app is **done** when it **typechecks** (`tsc` clean) and each');
+L.push('capability is **wired per its recipe**. The bricks are audited and own their');
+L.push('schema — migrations ship inside the package and run automatically on boot,');
+L.push('and each route is guaranteed by the package. (Confirmed: a typecheck-clean');
+L.push('wired app boots, self-migrates, and serves the brick routes with no glue.)');
+L.push('');
+L.push('While building: do NOT provision a database (no `docker run`/`initdb`) and do');
+L.push('NOT boot the app to "check it works" — a clean typecheck + correct wiring IS');
+L.push('the check. Running it is a separate, optional step done later with a real');
+L.push('`DATABASE_URL`. The tables each brick creates are in its body — read them.');
+L.push('');
 // security invariants — small, always apply → stay in the router
 if (Object.keys(knowledge.invariants || {}).length) {
   L.push('## Security invariants (always apply)');
