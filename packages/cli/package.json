@@ -1,14 +1,27 @@
 {
-	"name": "@fonderiejs/cli",
+	"name": "@fonderie/cli",
 	"version": "0.1.0",
 	"description": "The Fonderie CLI — teaches any coding agent the SDK without loading it eagerly. `fonderie skill` writes a lazy skill (a small router + per-package bodies read on demand); `fonderie query` answers what to install for a capability. Zero deps, runs anywhere.",
-	"keywords": ["fonderie-js", "cli", "skill", "ai-agent", "claude-code", "codex", "lazy"],
+	"keywords": [
+		"fonderie-js",
+		"cli",
+		"skill",
+		"ai-agent",
+		"claude-code",
+		"codex",
+		"lazy"
+	],
 	"license": "MIT",
 	"type": "module",
 	"bin": {
-		"fonderie": "./bin/fonderie.mjs"
+		"fonderie": "bin/fonderie.mjs"
 	},
-	"files": ["bin", "data", "LICENSE", "README.md"],
+	"files": [
+		"bin",
+		"data",
+		"LICENSE",
+		"README.md"
+	],
 	"engines": {
 		"node": ">=20"
 	},
