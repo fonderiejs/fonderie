@@ -52,27 +52,62 @@ function mcpSchemaTokens() {
 const MCP_TAX = mcpSchemaTokens();
 const usesMcp = (cond) => cond === 'pb' || cond === 'pb-scoped';
 
-// Pull the Fonderie knowledge the model FETCHED at runtime: sum the sizes of
-// every brain_query tool_result. Match tool_use(id) → tool_result(tool_use_id).
-function fetchedKnowledge(transcriptPath) {
-  if (!existsSync(transcriptPath)) return { calls: 0, tokens: 0 };
-  const brainIds = new Set();
-  let calls = 0, tokens = 0;
+// Pull the Fonderie knowledge the model FETCHED at runtime, on ANY transport, so
+// every condition is scored identically (PLAN-SKILLS-CLI.md):
+//   MCP  — tool_use named brain_query.
+//   CLI  — Bash tool_use whose command runs brain-query.mjs.
+//   LAZY — Read tool_use whose file_path is a lazy body (skills/fonderie/<pkg>.md
+//          or the router SKILL.md pulled on demand).
+// In each case the paired tool_result carries the knowledge; sum its size.
+// Returns { calls, tokens (total), turns, liveTurnSum } where liveTurnSum =
+// Σ over fetches of (size × turns-it-stays-in-context-after-read). Dividing that
+// by turns gives the RESIDENT-AFTER-READ per-turn contribution — the fair basis:
+// a fetched body/result stays cache-resident every turn from its arrival onward,
+// exactly like the eager brain. (The old `tokens/turns` amortization treated a
+// fetch as a one-turn cost, understating lazy conditions that read big bodies.)
+function fetchedKnowledge(transcriptPath, cond) {
+  if (!existsSync(transcriptPath)) return { calls: 0, tokens: 0, turns: 0, liveTurnSum: 0 };
+  const ids = new Set();
+  let calls = 0, tokens = 0, turnsSeen = 0;
+  const arrivals = []; // { atTurn, size } — turnsSeen when the result arrived
+  // Only count a fetch as MARGINAL (not already in resident K):
+  //  - brain_query (MCP) / brain-query.mjs (CLI): always marginal (discovery).
+  //  - a skill BODY read (fonderie/<pkg>.md): marginal ONLY for pb-lazy, whose K
+  //    is the router alone. For `fat`, the bodies ARE the resident skill dir (in
+  //    K) → reading one is a double-count, so NOT marginal.
+  //  - the router SKILL.md: never marginal for pb-lazy (it's in K).
+  const bodyRe = /skills\/fonderie\/[\w-]+\.md/;
+  const routerRe = /skills\/SKILL\.md/;
+  const skillRead = (s) => (/\b(cat|head|tail|less|bat)\b/.test(s) && /skills\/(fonderie\/[\w-]+\.md|SKILL\.md)/.test(s));
   for (const line of readFileSync(transcriptPath, 'utf8').split('\n')) {
     if (!line.trim()) continue;
     let o; try { o = JSON.parse(line); } catch { continue; }
+    if (o.type === 'assistant' && o.message?.usage) turnsSeen++; // count model turns in order
     const content = o.message?.content;
     if (!Array.isArray(content)) continue;
     for (const b of content) {
-      if (b.type === 'tool_use' && /brain_query/.test(b.name || '')) { brainIds.add(b.id); calls++; }
-      if (b.type === 'tool_result' && brainIds.has(b.tool_use_id)) {
+      if (b.type === 'tool_use') {
+        const mcp = /brain_query/.test(b.name || '');
+        const cmd = String(b.input?.command || b.input?.cmd || '');
+        const path = String(b.input?.file_path || b.input?.path || '');
+        const cliDiscovery = /brain-query\.mjs/.test(cmd);
+        // a body read (via cat or Read), excluding the router; marginal only for lazy
+        const bodyHit = (skillRead(cmd) && bodyRe.test(cmd) && !routerRe.test(cmd)) || bodyRe.test(path);
+        const marginalBody = bodyHit && cond === 'pb-lazy';
+        if (mcp || cliDiscovery || marginalBody) { ids.add(b.id); calls++; }
+      }
+      if (b.type === 'tool_result' && ids.has(b.tool_use_id)) {
         const t = typeof b.content === 'string' ? b.content
           : Array.isArray(b.content) ? b.content.map((x) => x.text || '').join('') : JSON.stringify(b.content || '');
+        arrivals.push({ atTurn: turnsSeen, size: tok(t) });
         tokens += tok(t);
       }
     }
   }
-  return { calls, tokens };
+  const turns = Math.max(turnsSeen, 1);
+  // each fetch stays resident for (turns - atTurn) turns after it arrives
+  const liveTurnSum = arrivals.reduce((s, a) => s + a.size * Math.max(0, turns - a.atTurn), 0);
+  return { calls, tokens, turns, liveTurnSum };
 }
 
 // Sum real per-turn throughput from the assistant records' usage (ground truth).
@@ -100,15 +135,18 @@ for (const f of readdirSync(resultsDir)) {
   const id = f.replace('.meta.json', '');
   const meta = JSON.parse(readFileSync(join(resultsDir, f), 'utf8'));
   const tr = join(resultsDir, `${id}.transcript.jsonl`);
-  const fetched = fetchedKnowledge(tr);
+  const fetched = fetchedKnowledge(tr, meta.cond);
   const usage = realUsage(tr) || { turns: meta.turns || 0 };
   const turns = usage.turns || 1;
   const K = meta.k_tokens ?? (meta.cond === 'scratch' ? 0 : null);
   const mcp = usesMcp(meta.cond) ? MCP_TAX : 0; // resident MCP tool-schema tax
-  // per-turn Fonderie-knowledge footprint (turn-neutral):
-  //   resident CLAUDE.md (K) + resident MCP schema (mcp) + fetched brain_query / turns
-  const perTurn = K == null ? null : K + mcp + fetched.tokens / turns;
-  rows.push({ id, cond: meta.cond, session: meta.session, turns, K, mcp, fetchedTok: fetched.tokens, fetchedCalls: fetched.calls, perTurn, quality: meta.checklist_pass != null ? `${meta.checklist_pass}/${meta.checklist_total}` : '—' });
+  // Per-turn Fonderie-knowledge footprint. Two models, reported as a range:
+  //   perTurnAmort  = K + mcp + fetched_total/turns   (fetch = one-turn cost; floor)
+  //   perTurn (R-A-R) = K + mcp + liveTurnSum/turns   (fetch stays resident after
+  //                     read, like the eager brain — the FAIR primary basis)
+  const perTurnAmort = K == null ? null : K + mcp + fetched.tokens / turns;
+  const perTurn = K == null ? null : K + mcp + fetched.liveTurnSum / turns;
+  rows.push({ id, cond: meta.cond, session: meta.session, turns, K, mcp, fetchedTok: fetched.tokens, fetchedCalls: fetched.calls, perTurn, perTurnAmort, wallS: meta.wall_s ?? null, quality: meta.checklist_pass != null ? `${meta.checklist_pass}/${meta.checklist_total}` : '—' });
 }
 rows.sort((a, b) => a.cond.localeCompare(b.cond) || a.session - b.session);
 
@@ -122,23 +160,24 @@ for (const r of rows) {
   console.log([pad(r.id, 16), padL(r.turns, 6), padL(r.K ?? '—', 11), padL(r.mcp, 5), padL(r.fetchedTok, 8), padL(r.fetchedCalls, 4), padL(r.perTurn != null ? Math.round(r.perTurn) : '—', 10), pad(' ' + r.quality, 6)].join(' '));
 }
 
-// per-turn footprint by condition (turn-neutral) — the honest "fraction" test
+// per-turn footprint by condition — reported as a RANGE (fair):
+//   R-A-R (primary): a fetched body stays resident every turn after read, like
+//     the eager brain. Amortized (floor): fetch = one-turn cost.
 const conds = [...new Set(rows.map((r) => r.cond))];
 const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
-const perTurnByCond = {};
-console.log('\n=== Turn-NEUTRAL knowledge footprint (mean per-turn tokens, across sessions) ===');
+const rar = {}, amort = {};
+console.log('\n=== Turn-NEUTRAL knowledge footprint (mean per-turn tokens) ===');
+console.log('  cond        resident-after-read   amortized (floor)');
 for (const c of conds) {
-  const vals = rows.filter((r) => r.cond === c && r.perTurn != null).map((r) => r.perTurn);
-  perTurnByCond[c] = mean(vals);
-  if (perTurnByCond[c] != null) console.log(`  ${pad(c, 10)} ${Math.round(perTurnByCond[c]).toLocaleString()} tok/turn  (resident + fetched/turn)`);
+  rar[c] = mean(rows.filter((r) => r.cond === c && r.perTurn != null).map((r) => r.perTurn));
+  amort[c] = mean(rows.filter((r) => r.cond === c && r.perTurnAmort != null).map((r) => r.perTurnAmort));
+  if (rar[c] != null) console.log(`  ${pad(c, 10)} ${padL(Math.round(rar[c]).toLocaleString(), 14)}   ${padL(Math.round(amort[c]).toLocaleString(), 12)}`);
 }
-if (perTurnByCond.fat > 0) {
+if (rar.fat > 0) {
+  const band = (r) => r <= 1 / 3 ? 'FRACTION (≤⅓)' : r < 1 ? 'parity-plus (⅓–1×)' : 'kill (≥1×)';
+  console.log('  ratios vs fat (resident-after-read = the fair primary):');
   for (const c of conds.filter((x) => x !== 'fat' && x !== 'scratch')) {
-    if (perTurnByCond[c] != null) {
-      const ratio = perTurnByCond[c] / perTurnByCond.fat;
-      const band = ratio <= 1 / 3 ? 'FRACTION (≤⅓)' : ratio < 1 ? 'parity-plus (⅓–1×)' : 'kill (≥1×)';
-      console.log(`  → ${c}/fat = ${ratio.toFixed(3)}  → ${band}`);
-    }
+    if (rar[c] != null) console.log(`  → ${pad(c, 10)} ${(rar[c] / rar.fat).toFixed(3)} → ${band(rar[c] / rar.fat)}   (amortized floor ${(amort[c] / amort.fat).toFixed(3)})`);
   }
 }
 
@@ -147,6 +186,15 @@ console.log('\n=== Turn count (efficiency — a separate axis, NOT knowledge ove
 for (const c of conds) {
   const t = rows.filter((r) => r.cond === c).map((r) => r.turns);
   if (t.length) console.log(`  ${pad(c, 10)} turns: ${t.join(', ')}  (mean ${Math.round(mean(t))})`);
+}
+
+// wall-clock — the SECOND axis (PLAN-SKILLS-CLI.md): CLI/lazy trade latency for
+// tokens (Playwright: MCP 90s vs CLI 3-10min). Report it so a token win that
+// blows up wall-clock is visible, not hidden.
+console.log('\n=== Wall-clock (the second axis — tokens saved can cost latency) ===');
+for (const c of conds) {
+  const w = rows.filter((r) => r.cond === c && r.wallS != null).map((r) => r.wallS);
+  if (w.length) console.log(`  ${pad(c, 10)} mean ${Math.round(mean(w))}s/session  (total ${Math.round(w.reduce((a, b) => a + b, 0))}s over ${w.length})`);
 }
 
 console.log('\nNote: n=1 sequence — directional. The per-turn footprint removes the');
