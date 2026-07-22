@@ -92,6 +92,28 @@ your existing app instead.
 | [`@fonderie/webhooks`](packages/webhooks) | Outgoing webhook engine |
 | [`@fonderie/workspaces`](packages/workspaces) | Multi-tenant team layer |
 
+## Measured
+
+We ran a pre-registered benchmark — thresholds locked before any data —
+building the same growing app (auth → billing → teams → a security pass)
+three ways, three times each, on `claude-opus-4-8`: with the Fonderie
+brain, with the full skill loaded, and from scratch with no Fonderie
+knowledge. 36 sessions.
+
+- **~⅓ the Fonderie-knowledge tokens per turn.** The project brain carries
+  only what the task touches; the model spends its context on your product,
+  not on re-reading the SDK. Measured overhead ratio: **0.24** (brain vs.
+  full skill), transcript-attributed.
+- **Fewer security holes by default.** The from-scratch builds shipped an
+  insecure hard-coded secret in **2 of 3** runs; the Fonderie builds, none —
+  the audited brick reads it from the environment and throws if it's
+  missing. And they did it in roughly **⅓ the code**.
+
+Both the harness and the raw runs are in the repo:
+[`experiments/phase41-2026-07/`](experiments/phase41-2026-07) —
+`BATCH-RESULTS.md` for the numbers, `analyze.mjs` / `instrument.mjs` to
+re-derive them. Re-run it and check.
+
 ## Development
 
 ```sh
