@@ -74,14 +74,14 @@ instrument (resident-after-read, all-transport fetch). Canonical sequences only.
 | condition | knowledge overhead vs fat (fair) | amortized floor | wall-clock | verdict |
 | --- | --- | --- | --- | --- |
 | fat (eager skill)     | 1.000 | 1.000 | 207s | baseline |
-| pb (eager + MCP)      | 0.395 | 0.277 | 219s | parity-plus |
+| pb (eager + MCP)      | 0.383 | 0.267 | 202s | parity-plus |
 | **pb-cli** (eager + CLI) | **0.341** | 0.316 | 262s | **parity-plus** |
 | **pb-lazy** (router)     | **0.141** | 0.053 | 301s | **FRACTION** |
 
 **pb-lazy beats pb-cli ~2.4× on knowledge tokens (0.141 vs 0.341)** — and the gap
 is the whole point of the CLI-vs-MCP thread. pb-cli only swapped the *discovery
 transport* (MCP tool → CLI command) while still loading the **eager brain** every
-turn; it lands at parity-plus, barely better than pb (0.395). pb-lazy changed
+turn; it lands at parity-plus, barely better than pb (0.383). pb-lazy changed
 *when knowledge loads* (router + on-demand bodies) and is the only fraction. So:
 **transport is a wash; lazy loading is the lever** — measured, head-to-head.
 

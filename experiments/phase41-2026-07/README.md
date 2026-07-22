@@ -45,6 +45,28 @@ SEQ_MAX_SESSIONS=1 ./run-sequence.sh pb val   # cheap validation run
 node analyze.mjs          # attribution + pre-registered decision (any time)
 ```
 
+### Results layout & the canonical N=3
+
+`results/` (gitignored — raw artifacts) holds one `<cond>-<seq>-s<N>.meta.json` +
+transcript per session. The **pre-registered comparison is N=3 over seqs `1,2,3`**.
+Other run labels are legitimate extra data that share a condition's tag and would
+otherwise inflate its mean if summed blindly:
+
+- `pb` `r1/r2/r3` — the discovery-reliability re-run; `pb` `verify` — a spot check.
+- `pb-cli` / `pb-lazy` `p1` — pilots run before the full batch.
+
+Two guards keep those out of the headline numbers, so the "pb re-run
+contamination" can't silently reappear:
+
+1. `results/_noncanon/` — non-canonical runs live in a subdir; `instrument.mjs`
+   does **not** recurse, so the default read is the clean canonical set.
+2. `node instrument.mjs --seqs 1,2,3` — pins the canonical N=3 by label
+   regardless of what else is in `results/`. Reproducible without moving files.
+
+For the record: summing pb's re-runs into its mean read **0.395**; the canonical
+pb is **0.383** (parity-plus either way — the contamination didn't change the
+verdict, only the digits, which is exactly why it's worth pinning).
+
 ## Analysis (`analyze.mjs`)
 
 Computes the pre-registered metric and emits the locked decision — never
