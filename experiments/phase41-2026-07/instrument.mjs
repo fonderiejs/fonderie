@@ -20,10 +20,37 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const repo = join(here, '..', '..');
 const argv = process.argv.slice(2);
 const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const resultsDir = arg('--results', join(here, 'results'));
 const tok = (s) => Math.ceil((s || '').length / 4); // chars/4 estimate
+
+// MCP tool-schema tax (CLI-vs-MCP finding): the brain-serve tool DEFINITIONS —
+// name + description + inputSchema for brain_query/node/recipe — are advertised
+// to the model at conversation start and sit RESIDENT every turn, before any
+// query. Prior versions of this script counted CLAUDE.md + fetched results but
+// missed this. It is a per-turn cost paid ONLY by conditions that mount the MCP
+// server (pb, pb-scoped); fat/scratch pay 0. Computed the same way brain-serve
+// builds the tools, so it tracks the real advertised surface (grows with the
+// concept enum).
+function mcpSchemaTokens() {
+  try {
+    const brain = JSON.parse(readFileSync(join(repo, '.claude/skills/fonderie/brain.json'), 'utf8'));
+    const ids = Object.keys(brain.concepts || {}).sort();
+    const menu = ids.map((id) => `  ${id} — ${brain.concepts[id].description}`).join('\n');
+    const tools = [
+      { name: 'brain_query',
+        description: 'Fonderie SDK knowledge. Call this BEFORE writing or editing any code that touches auth, billing, orgs/teams, permissions, email, webhooks, rate limiting, or config. Pick the concept matching the task, whatever language it was phrased in. Returns the package to use, how it wires, the canonical recipe, security invariants, and the EXACT TypeScript signatures + routes — everything needed to write correct code in one shot. Do not read @fonderie source or docs — ask here.\nConcepts:\n' + menu,
+        inputSchema: { type: 'object', properties: { concept: { type: 'string', enum: ids, description: 'The Fonderie capability the task needs (see tool description for what each covers)' } }, required: ['concept'] } },
+      { name: 'brain_node', description: 'Full detail on one @fonderie package: version, requires, exports, tables, routes, and edges.', inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Package name without the @fonderie/ prefix, e.g. "auth"' } }, required: ['id'] } },
+      { name: 'brain_recipe', description: 'Canonical wiring for a named recipe (e.g. "stripe-checkout", "basic-auth") plus its security invariants.', inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'Recipe name' } }, required: ['name'] } },
+    ];
+    return tok(JSON.stringify(tools));
+  } catch { return 0; }
+}
+const MCP_TAX = mcpSchemaTokens();
+const usesMcp = (cond) => cond === 'pb' || cond === 'pb-scoped';
 
 // Pull the Fonderie knowledge the model FETCHED at runtime: sum the sizes of
 // every brain_query tool_result. Match tool_use(id) → tool_result(tool_use_id).
@@ -77,19 +104,22 @@ for (const f of readdirSync(resultsDir)) {
   const usage = realUsage(tr) || { turns: meta.turns || 0 };
   const turns = usage.turns || 1;
   const K = meta.k_tokens ?? (meta.cond === 'scratch' ? 0 : null);
+  const mcp = usesMcp(meta.cond) ? MCP_TAX : 0; // resident MCP tool-schema tax
   // per-turn Fonderie-knowledge footprint (turn-neutral):
-  const perTurn = K == null ? null : K + fetched.tokens / turns;
-  rows.push({ id, cond: meta.cond, session: meta.session, turns, K, fetchedTok: fetched.tokens, fetchedCalls: fetched.calls, perTurn, quality: meta.checklist_pass != null ? `${meta.checklist_pass}/${meta.checklist_total}` : '—' });
+  //   resident CLAUDE.md (K) + resident MCP schema (mcp) + fetched brain_query / turns
+  const perTurn = K == null ? null : K + mcp + fetched.tokens / turns;
+  rows.push({ id, cond: meta.cond, session: meta.session, turns, K, mcp, fetchedTok: fetched.tokens, fetchedCalls: fetched.calls, perTurn, quality: meta.checklist_pass != null ? `${meta.checklist_pass}/${meta.checklist_total}` : '—' });
 }
 rows.sort((a, b) => a.cond.localeCompare(b.cond) || a.session - b.session);
 
 // --- report -----------------------------------------------------------------
 const pad = (s, n) => String(s ?? '').padEnd(n);
 const padL = (s, n) => String(s ?? '').padStart(n);
-console.log('\n=== Per-session Fonderie-knowledge footprint (transcript-measured) ===');
-console.log([pad('id', 16), padL('turns', 6), padL('resident_K', 11), padL('fetched', 8), padL('bq', 4), padL('perTurn_K', 10), pad(' qual', 6)].join(' '));
+console.log(`\n=== Per-session Fonderie-knowledge footprint (transcript-measured) ===`);
+console.log(`(MCP tool-schema tax = ${MCP_TAX} tok, resident every turn for pb/pb-scoped; 0 for fat/scratch)`);
+console.log([pad('id', 16), padL('turns', 6), padL('resident_K', 11), padL('mcp', 5), padL('fetched', 8), padL('bq', 4), padL('perTurn_K', 10), pad(' qual', 6)].join(' '));
 for (const r of rows) {
-  console.log([pad(r.id, 16), padL(r.turns, 6), padL(r.K ?? '—', 11), padL(r.fetchedTok, 8), padL(r.fetchedCalls, 4), padL(r.perTurn != null ? Math.round(r.perTurn) : '—', 10), pad(' ' + r.quality, 6)].join(' '));
+  console.log([pad(r.id, 16), padL(r.turns, 6), padL(r.K ?? '—', 11), padL(r.mcp, 5), padL(r.fetchedTok, 8), padL(r.fetchedCalls, 4), padL(r.perTurn != null ? Math.round(r.perTurn) : '—', 10), pad(' ' + r.quality, 6)].join(' '));
 }
 
 // per-turn footprint by condition (turn-neutral) — the honest "fraction" test
