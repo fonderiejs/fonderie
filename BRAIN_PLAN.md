@@ -127,7 +127,7 @@ product layer.
   3. Cold session answers "add team billing" using ≤ 2K tokens of Fonderie
      context.
 
-## Command surface (`@fonderiejs/cli`, bin `fonderie`)
+## Command surface (`@fonderie/cli`, bin `fonderie`)
 
 Rule: **daily human-facing verbs go top-level; plumbing stays namespaced under
 `brain`.** `fonderie` is an umbrella CLI that will grow non-brain commands
@@ -157,10 +157,10 @@ Deliberately absent (violate "less moving pieces", serve no gate): `stats`,
 
 ## Phase 3 — One entry point, every model (1–2 weeks)
 
-- Package **`@fonderiejs/cli`**, bin `fonderie`; `@fonderiejs/brain-core`
+- Package **`@fonderie/cli`**, bin `fonderie`; `@fonderiejs/brain-core`
   internal. Command surface as defined above — `query`/`init`/`doctor`
   top-level, everything else under `brain`.
-- `npx @fonderiejs/cli init`: detects installed assistants and applies
+- `npx @fonderie/cli init`: detects installed assistants and applies
   graphify's proven install matrix — hooks for Claude Code/Gemini CLI,
   instruction files (`AGENTS.md`, `.cursor/rules/`) for Codex/Cursor, native
   skill directories where a platform has them. All vendor differences
