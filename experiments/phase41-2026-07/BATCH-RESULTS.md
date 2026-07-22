@@ -135,3 +135,36 @@ scratch shipped invites without the mailer.
   capabilities that the batch exposed. This is the honest N=3 result, and it is
   a concrete target (make discovery reliably drive install+wire, don't let the
   model bail).
+
+## Correction (2026-07-22): the MCP tool-schema tax
+
+Prompted by the CLI-vs-MCP analysis, we found a blind spot: `instrument.mjs`
+counted the resident project brain (`CLAUDE.md`) + fetched `brain_query` results,
+but **not** the brain-serve tool *definitions* — name + description + JSON
+inputSchema for the 3 tools — which are advertised at conversation start and sit
+**resident every turn**, before any query. That is a real per-turn cost, paid
+only by conditions that mount the MCP server (`pb`, `pb-scoped`); `fat`/`scratch`
+pay 0.
+
+- **Measured tax: 752 tokens/turn** (3 tools; the `brain_query` concept enum is
+  the bulk). For scale, the GitHub MCP server advertises 80 tools ≈ 55,000
+  tokens — we are ~73× leaner.
+- **Corrected ratio: pb/fat = 0.267** (was 0.24). Still a fraction (≤⅓).
+  `instrument.mjs` now includes the tax; the correction makes the claim *more*
+  defensible, not less — we counted a cost we own.
+
+**Why the tax is justified, not waste:** the CLI-vs-MCP critique is that MCP
+pays a schema tax for knowledge the model already has from training (git, ls,
+curl). Our tools are the opposite case — they expose a **private SDK surface**
+(`@fonderie/*` exact signatures, the tables/routes each package creates) that is
+*not* in any training set. `cat` and `grep` cannot answer "what does
+`@fonderie/auth@1.3.2` migrate." That is the textbook "MCP wins when there is a
+gap between the raw tool and what you need." And we stay lean: 3 tools, one
+narrow schema each.
+
+**Open lever (pre-registered separately):** the 752-token resident tax is paid
+every session even when no discovery happens. A CLI form of discovery
+(`fonderie brain query <concept>`, which already exists as `brain-query.mjs`)
+would pay 0 resident and cost only on use — the model already knows how to run a
+shell command. Trade-off is R1 triggering reliability. See
+`DISCOVERY-CLI-VS-MCP.md`.
