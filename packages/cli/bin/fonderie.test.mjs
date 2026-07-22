@@ -77,4 +77,13 @@ run(['init', '--project', proj3]);
 const pj3 = JSON.parse(readFileSync(join(proj3, 'package.json'), 'utf8'));
 if (pj3.scripts.postinstall !== 'patch-package && fonderie skill') fail(`init did not chain existing postinstall (got: ${pj3.scripts.postinstall})`);
 
-console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall)');
+// --- add: offline guards (the happy path installs from npm — not unit-tested) ---
+// unknown capability → non-zero, lists the recipes (no network touched)
+let addErr = '';
+try { run(['add', 'not-a-recipe', '--project', proj]); fail('add accepted an unknown recipe'); }
+catch (e) { addErr = String(e.stderr || e.stdout || ''); }
+if (!/basic-auth/.test(addErr)) fail('add unknown-recipe error should list available recipes');
+// help lists the add command
+if (!/fonderie add <capability>/.test(run(['help']))) fail('help missing `fonderie add`');
+
+console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall, add guards)');
