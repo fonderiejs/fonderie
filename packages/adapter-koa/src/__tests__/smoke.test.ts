@@ -133,6 +133,23 @@ test('webResponseToKoa: writes status, headers, and body', async () => {
 	assert.equal(ctx.response.body, '{"ok":true}');
 });
 
+test('webResponseToKoa: forwards MULTIPLE Set-Cookie headers as a list', async () => {
+	// Same bug as adapter-express: forEach + set() overwrote all but the last.
+	const headers = new Headers({ 'content-type': 'application/json' });
+	headers.append('set-cookie', 'access_token=A; HttpOnly; SameSite=Strict; Path=/');
+	headers.append('set-cookie', 'refresh_token=R; HttpOnly; SameSite=Strict; Path=/auth/refresh');
+	const webRes = new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+	const ctx = makeKoaCtx();
+
+	await webResponseToKoa(webRes, ctx as unknown as KoaContext);
+
+	const sc = ctx.response.headers['Set-Cookie'] as unknown as string[];
+	assert.ok(Array.isArray(sc), 'Set-Cookie forwarded as an array, not overwritten');
+	assert.equal(sc.length, 2, 'both cookies survive');
+	assert.ok(sc.some((c) => c.startsWith('access_token=A')));
+	assert.ok(sc.some((c) => c.startsWith('refresh_token=R')));
+});
+
 // ── bridge ────────────────────────────────────────────────────────
 
 test('bridge: sets ctx.state._fonderie', async () => {
