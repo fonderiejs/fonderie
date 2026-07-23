@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/auth",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"description": "Drop-in auth for SaaS — email/password, phone OTP, Google OAuth, stateless JWT sessions, TOTP-based MFA with backup codes, and self-service password recovery.",
 	"keywords": [
 		"fonderie-js",
