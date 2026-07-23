@@ -153,6 +153,24 @@ test('webResponseToExpress: writes status, headers, and body', async () => {
 	assert.equal(res.captured.body, '{"ok":true}');
 });
 
+test('webResponseToExpress: forwards MULTIPLE Set-Cookie headers as a list', async () => {
+	// Regression: forEach + setHeader overwrote all but the last cookie, and a
+	// comma-joined Set-Cookie is invalid. Two cookies must survive as a list.
+	const headers = new Headers({ 'content-type': 'application/json' });
+	headers.append('set-cookie', 'access_token=A; HttpOnly; SameSite=Strict; Path=/');
+	headers.append('set-cookie', 'refresh_token=R; HttpOnly; SameSite=Strict; Path=/auth/refresh');
+	const webRes = new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+	const res = makeServerResponse() as any;
+
+	await webResponseToExpress(webRes, res);
+
+	const sc = res.captured.headers['Set-Cookie'];
+	assert.ok(Array.isArray(sc), 'Set-Cookie forwarded as an array, not a joined string');
+	assert.equal(sc.length, 2, 'both cookies survive');
+	assert.ok(sc.some((c: string) => c.startsWith('access_token=A')));
+	assert.ok(sc.some((c: string) => c.startsWith('refresh_token=R')));
+});
+
 // ── bridge ────────────────────────────────────────────────────────
 
 test('bridge: sets req._fonderie with fonderie context', async () => {

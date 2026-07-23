@@ -1,4 +1,4 @@
-import { clearedTokenCookies } from '../services/cookies';
+import { clearedTokenCookies, cookieHeaders } from '../services/cookies';
 import { randomInt } from 'node:crypto';
 
 import { setApiResponse, HTTP } from '@fonderie/core';
@@ -254,9 +254,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				{ reason: 'ACCOUNT_DELETED', explanation: 'Account successfully deleted.' },
 				{
 					status: 200,
-					headers: {
-						'Set-Cookie': clearedTokenCookies(config),
-					},
+					headers: cookieHeaders(clearedTokenCookies(config)),
 				},
 			);
 		},

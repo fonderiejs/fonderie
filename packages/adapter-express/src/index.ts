@@ -61,7 +61,14 @@ export async function expressRequestToWeb(req: ExpressRequest): Promise<Request>
 
 export async function webResponseToExpress(webRes: Response, res: ExpressResponse): Promise<void> {
 	res.statusCode = webRes.status;
-	webRes.headers.forEach((value, key) => res.setHeader(key, value));
+	// Set-Cookie is special: a response may carry SEVERAL, and `forEach` +
+	// `setHeader` would overwrite all but the last (and coalescing them into one
+	// comma-joined header is invalid). Forward the full list via getSetCookie().
+	const setCookies = webRes.headers.getSetCookie?.() ?? [];
+	if (setCookies.length) res.setHeader('Set-Cookie', setCookies);
+	webRes.headers.forEach((value, key) => {
+		if (key.toLowerCase() !== 'set-cookie') res.setHeader(key, value);
+	});
 	res.end(Buffer.from(await webRes.arrayBuffer()));
 }
 

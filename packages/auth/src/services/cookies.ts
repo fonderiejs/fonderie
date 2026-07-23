@@ -13,22 +13,35 @@ function secureAttr(config: IAuthConfig): string {
 	return secure ? '; Secure' : '';
 }
 
+// Returns ONE string per cookie. Each must go out as its own `Set-Cookie`
+// header — joining them (e.g. with ", ") is invalid HTTP and mangles the
+// distinct Paths. Callers append each via `jsonWithCookies`.
 export function tokenPairCookies(
 	accessToken: string,
 	refreshToken: string,
 	config: IAuthConfig,
-): string {
+): string[] {
 	const secure = secureAttr(config);
 	return [
 		`access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/${secure}`,
 		`refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/auth/refresh${secure}`,
-	].join(', ');
+	];
 }
 
-export function clearedTokenCookies(config: IAuthConfig): string {
+export function clearedTokenCookies(config: IAuthConfig): string[] {
 	const secure = secureAttr(config);
 	return [
 		`access_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure}`,
 		`refresh_token=; HttpOnly; SameSite=Strict; Path=/auth/refresh; Max-Age=0${secure}`,
-	].join(', ');
+	];
+}
+
+// Build a Headers object with each cookie as its OWN Set-Cookie entry. Pass it
+// straight to `Response.json(body, { status, headers: cookieHeaders(...) })`. A
+// plain `{ 'Set-Cookie': [...] }` init coalesces them into one comma-joined
+// header (invalid); appending onto a Headers instance keeps them distinct.
+export function cookieHeaders(cookies: string[]): Headers {
+	const headers = new Headers();
+	for (const c of cookies) headers.append('Set-Cookie', c);
+	return headers;
 }
