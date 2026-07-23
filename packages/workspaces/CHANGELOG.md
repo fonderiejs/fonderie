@@ -1,5 +1,19 @@
 # @fonderie/workspaces
 
+## 2.0.0
+
+### Minor Changes
+
+- c0f05ea: Decouple workspaces from billing. `@fonderie/workspaces` no longer hard-depends on `@fonderie/billing` — you can register and boot workspaces (create/read/update, invitations, roles, members) without wiring billing or a Stripe provider. Billing stays an _optional_ enhancement: when it's registered, seat limits on invitations are enforced; when it's absent, invitations are unlimited (fail-open, as before). Implementation also fixes an architecture-law violation — workspaces now reads billing's seat limit through `ctx.meta['billing']` (the sanctioned inter-package channel) instead of importing `getPlanLimit` from the billing package. Surfaced by the crewfinding backend rewrite (Phase 1), where a field-service app that only reads a workspace was forced to wire payments.
+
+### Patch Changes
+
+- Updated dependencies [bbd3e9a]
+- Updated dependencies [f18ac65]
+- Updated dependencies [e4d9bb2]
+  - @fonderie/core@0.2.0
+  - @fonderie/events@2.0.0
+
 ## 1.2.2
 
 ### Patch Changes

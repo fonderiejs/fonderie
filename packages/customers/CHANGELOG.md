@@ -1,5 +1,21 @@
 # @fonderie/customers
 
+## 2.0.0
+
+### Minor Changes
+
+- cc6fbfd: Add referral codes to customers. Every customer now auto-gets a random, **workspace-unique** `referralCode` at creation (safe to share — non-sequential, so it can't be guessed by incrementing), alongside the existing sequential `referenceCode` and the UUID primary key. New customers can pass `referredByCode` at signup: it resolves to the referrer within the same workspace and sets `referredBy` (a nullable FK), giving a clean 1:many referrer→referees relationship. An unknown `referredByCode` is ignored, not an error. Two workspaces may share a referral code; two customers in one workspace cannot (enforced by a partial unique index). Verified end-to-end against Postgres.
+
+### Patch Changes
+
+- Updated dependencies [bbd3e9a]
+- Updated dependencies [f18ac65]
+- Updated dependencies [e4d9bb2]
+- Updated dependencies [c0f05ea]
+  - @fonderie/core@0.2.0
+  - @fonderie/workspaces@2.0.0
+  - @fonderie/events@2.0.0
+
 ## 1.1.2
 
 ### Patch Changes

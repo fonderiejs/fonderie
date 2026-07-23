@@ -1,5 +1,19 @@
 # @fonderie/adapter-express
 
+## 2.0.0
+
+### Patch Changes
+
+- 5c9d49b: Fix auth cookies not reaching the client. Two bugs made `access_token` / `refresh_token` cookies unusable end-to-end: (1) `@fonderie/auth` emitted both cookies joined into a single comma-separated `Set-Cookie` header (invalid HTTP — each cookie needs its own header, and the two have different Paths); (2) `@fonderie/adapter-express` forwarded response headers with `forEach` + `setHeader`, which overwrites repeated `Set-Cookie` headers so only the last survived. Auth now returns one string per cookie and sets them via a `Headers` object (`cookieHeaders`); the express adapter forwards the full list via `getSetCookie()`. Cookie names, attributes (HttpOnly, SameSite=Strict, per-cookie Path, Secure) are unchanged — they now actually arrive. Surfaced by the crewfinding rewrite (Phase 1), where the frontend's expected auth cookies were missing.
+- Updated dependencies [bbd3e9a]
+- Updated dependencies [f18ac65]
+- Updated dependencies [e4d9bb2]
+- Updated dependencies [c0f05ea]
+  - @fonderie/core@0.2.0
+  - @fonderie/workspaces@2.0.0
+  - @fonderie/billing@2.0.0
+  - @fonderie/permissions@2.0.0
+
 ## 1.0.3
 
 ### Patch Changes

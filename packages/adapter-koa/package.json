@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/adapter-koa",
-	"version": "1.0.3",
+	"version": "2.0.0",
 	"description": "Koa adapter for fonderie-js — bridge(), adapt(), mount() to use fonderie middleware in native Koa routes.",
 	"keywords": [
 		"fonderie-js",
@@ -35,10 +35,10 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.1.1",
-		"@fonderie/workspaces": "^1.0.1",
-		"@fonderie/permissions": "^1.0.1",
-		"@fonderie/billing": "^1.0.1",
+		"@fonderie/core": "^0.2.0",
+		"@fonderie/workspaces": "^2.0.0",
+		"@fonderie/permissions": "^2.0.0",
+		"@fonderie/billing": "^2.0.0",
 		"koa": "^2.0.0"
 	},
 	"peerDependenciesMeta": {
