@@ -1,4 +1,4 @@
-import { tokenPairCookies } from '../services/cookies';
+import { tokenPairCookies, cookieHeaders } from '../services/cookies';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
@@ -119,9 +119,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				},
 				{
 					status: 200,
-					headers: {
-						'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
-					},
+					headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
 				},
 			);
 		},

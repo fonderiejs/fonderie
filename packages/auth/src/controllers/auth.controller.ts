@@ -1,4 +1,4 @@
-import { tokenPairCookies, clearedTokenCookies } from '../services/cookies';
+import { tokenPairCookies, clearedTokenCookies, cookieHeaders } from '../services/cookies';
 import { randomInt } from 'node:crypto';
 
 import type { EventBus } from '@fonderie/events';
@@ -148,9 +148,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					},
 					{
 						status: 201,
-						headers: {
-							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
-						},
+						headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
 					},
 				);
 			}
@@ -220,9 +218,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					},
 					{
 						status: 202,
-						headers: {
-							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
-						},
+						headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
 					},
 				);
 			}
@@ -290,9 +286,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					},
 					{
 						status: 200,
-						headers: {
-							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
-						},
+						headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
 					},
 				);
 			}
@@ -340,9 +334,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					},
 					{
 						status: 202,
-						headers: {
-							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
-						},
+						headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
 					},
 				);
 			}
@@ -364,9 +356,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				{ reason: 'USER_LOGOUT', explanation: 'Logged out successfully.' },
 				{
 					status: 200,
-					headers: {
-						'Set-Cookie': clearedTokenCookies(config),
-					},
+					headers: cookieHeaders(clearedTokenCookies(config)),
 				},
 			);
 		},
@@ -411,9 +401,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				},
 				{
 					status: 200,
-					headers: {
-						'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
-					},
+					headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
 				},
 			);
 		},
@@ -589,9 +577,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					},
 					{
 						status: 200,
-						headers: {
-							'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
-						},
+						headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
 					},
 				);
 			}
