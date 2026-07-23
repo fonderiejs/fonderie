@@ -148,11 +148,33 @@ export class FonderieApp {
 			notFoundMiddleware(),
 		]);
 
+		let response: Response;
 		try {
-			return await pipeline(ctx, async () => new Response('Not Found', { status: 404 }));
+			response = await pipeline(ctx, async () => new Response('Not Found', { status: 404 }));
 		} catch (err) {
-			return this.config.onError?.(err) ?? defaultErrorHandler(err);
+			response = this.config.onError?.(err) ?? defaultErrorHandler(err);
 		}
+		return this.config.onResponse ? this.transformResponse(response, request) : response;
+	}
+
+	// Apply config.onResponse to a JSON response body, preserving status, headers,
+	// and cookies. Non-JSON responses and hooks that return `undefined` pass through.
+	private async transformResponse(response: Response, request: Request): Promise<Response> {
+		const contentType = response.headers.get('content-type') ?? '';
+		if (!contentType.includes('application/json')) return response;
+		let body: unknown;
+		try {
+			body = await response.clone().json();
+		} catch {
+			return response; // not valid JSON after all — leave untouched
+		}
+		const transformed = this.config.onResponse!(body, { status: response.status, request });
+		if (transformed === undefined) return response;
+		// Preserve headers/cookies; drop content-length (the new body sets its own).
+		const headers = new Headers(response.headers);
+		headers.delete('content-length');
+		headers.delete('content-type');
+		return Response.json(transformed, { status: response.status, headers });
 	}
 }
 // Framework adapters live in their own packages — no framework deps in core:
