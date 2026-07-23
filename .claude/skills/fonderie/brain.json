@@ -811,7 +811,6 @@
     "workspaces": {
       "version": "1.2.2",
       "requires": [
-        "billing",
         "core",
         "events",
         "store"
@@ -1173,11 +1172,6 @@
       "from": "webhooks",
       "to": "auth",
       "type": "secures-with"
-    },
-    {
-      "from": "workspaces",
-      "to": "billing",
-      "type": "requires"
     },
     {
       "from": "workspaces",
