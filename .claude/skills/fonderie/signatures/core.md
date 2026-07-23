@@ -126,6 +126,10 @@ interface FonderieConfig {
         provider: 'resend' | 'ses' | 'smtp';
     };
     onError?: (err: unknown) => Response;
+    onResponse?: (body: unknown, info: {
+        status: number;
+        request: Request;
+    }) => unknown;
 }
 
 function stringOrEmpty(value: unknown): string
