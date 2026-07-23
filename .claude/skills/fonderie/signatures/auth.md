@@ -60,6 +60,7 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     resolve?: (ctx: {
         meta: Record<string, unknown>;
     }) => Partial<IAuthRuntimeConfig>;
+    routes?: Partial<Record<AuthRouteId, AuthRouteOverride>>;
 }
 
 interface IAuthSecrets {

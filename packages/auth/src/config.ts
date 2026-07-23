@@ -68,4 +68,21 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	providers: ('email' | 'phone' | 'google' | 'github')[];
 	appName?: string;
 	resolve?: (ctx: { meta: Record<string, unknown> }) => Partial<IAuthRuntimeConfig>;
+	// Override the HTTP path (and optionally method) of any auth route, keyed by a
+	// stable id. Lets an app match an existing frontend's contract without a
+	// gateway/shim, e.g. `{ forgotPassword: '/auth/forgot-password', updateProfile:
+	// { method: 'PATCH', path: '/users/me' } }`. A bare string overrides the path;
+	// an object can also change the method. Unset routes keep their defaults.
+	routes?: Partial<Record<AuthRouteId, AuthRouteOverride>>;
 }
+
+// Stable ids for every auth route, for the `routes` path/method override map.
+export type AuthRouteId =
+	| 'register' | 'login' | 'refresh'
+	| 'forgotPassword' | 'resetPassword'
+	| 'verifyEmail' | 'sendVerification'
+	| 'logout'
+	| 'me' | 'updateProfile' | 'updatePreferences' | 'updateEmail' | 'updatePhone' | 'changePassword' | 'deleteMe'
+	| 'mfaSetup' | 'mfaVerify' | 'mfaDisable' | 'mfaBackupCodes';
+
+export type AuthRouteOverride = string | { method?: string; path?: string };
