@@ -1,0 +1,601 @@
+{
+  "info": {
+    "name": "CrewFinding Contract Tests",
+    "description": "Executable contract oracle for the crewfinding backend rewrite. Green only when the backend serves crewfinding's exact contract (paths, status, response shapes, cookies). Point {{base_url}} at any backend. Directions endpoints are out of scope. Generated from POSTMAN_SDK_PARITY.md by build-contract-tests.mjs — do not edit by hand.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "user_id",
+      "value": ""
+    },
+    {
+      "key": "workspace_id",
+      "value": ""
+    },
+    {
+      "key": "test_password",
+      "value": "password123"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 · POST /auth/register",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('reg_email', 'user_' + Date.now() + '@example.com');",
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "pm.test('status 201', function(){ pm.response.to.have.status(201); });",
+              "var b = json();",
+              "pm.test('flat { user, accessToken, refreshToken }', function(){ pm.expect(b).to.have.property('accessToken'); pm.expect(b).to.have.property('refreshToken'); pm.expect(b).to.have.property('user'); });",
+              "hasFields(b.user||{}, USER_DTO, 'user matches IUserDTO');",
+              "pm.test('sets access_token + refresh_token HttpOnly cookies', function(){ var c = setCookiesStr(); pm.expect(c).to.include('access_token'); pm.expect(c).to.include('refresh_token'); pm.expect(c.toLowerCase()).to.include('httponly'); });",
+              "if (b.accessToken) pm.collectionVariables.set('access_token', b.accessToken);",
+              "if (b.refreshToken) pm.collectionVariables.set('refresh_token', b.refreshToken);",
+              "if (b.user && b.user.id) pm.collectionVariables.set('user_id', b.user.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"user_{{$timestamp}}@example.com\",\n  \"password\": \"{{test_password}}\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/register",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      }
+    },
+    {
+      "name": "2 · POST /auth/login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "pm.test('status 200', function(){ pm.response.to.have.status(200); });",
+              "var b = json();",
+              "pm.test('flat { user, accessToken, refreshToken }', function(){ pm.expect(b).to.have.property('accessToken'); pm.expect(b).to.have.property('refreshToken'); pm.expect(b).to.have.property('user'); });",
+              "hasFields(b.user||{}, USER_DTO, 'user matches IUserDTO');",
+              "pm.test('sets access_token + refresh_token HttpOnly cookies', function(){ var c = setCookiesStr(); pm.expect(c).to.include('access_token'); pm.expect(c).to.include('refresh_token'); pm.expect(c.toLowerCase()).to.include('httponly'); });",
+              "if (b.accessToken) pm.collectionVariables.set('access_token', b.accessToken);",
+              "if (b.refreshToken) pm.collectionVariables.set('refresh_token', b.refreshToken);",
+              "if (b.user && b.user.id) pm.collectionVariables.set('user_id', b.user.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{reg_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "3 · GET /users/me",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "pm.test('status 200', function(){ pm.response.to.have.status(200); });",
+              "var b = json();",
+              "hasFields(b, USER_DTO, 'flat IUserDTO');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/users/me",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "users",
+            "me"
+          ]
+        }
+      }
+    },
+    {
+      "name": "4 · PATCH /users/me",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "pm.test('status 200', function(){ pm.response.to.have.status(200); });",
+              "var b = json();",
+              "hasFields(b, USER_DTO, 'flat IUserDTO');",
+              "pm.test(\"firstName updated\", function(){ pm.expect(json().firstName).to.eql('Updated'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Updated\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/users/me",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "users",
+            "me"
+          ]
+        }
+      }
+    },
+    {
+      "name": "5 · POST /auth/refresh",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "pm.test('status 200', function(){ pm.response.to.have.status(200); });",
+              "var b = json();",
+              "pm.test('flat { user, accessToken, refreshToken }', function(){ pm.expect(b).to.have.property('accessToken'); pm.expect(b).to.have.property('refreshToken'); pm.expect(b).to.have.property('user'); });",
+              "hasFields(b.user||{}, USER_DTO, 'user matches IUserDTO');",
+              "pm.test('sets access_token + refresh_token HttpOnly cookies', function(){ var c = setCookiesStr(); pm.expect(c).to.include('access_token'); pm.expect(c).to.include('refresh_token'); pm.expect(c.toLowerCase()).to.include('httponly'); });",
+              "if (b.accessToken) pm.collectionVariables.set('access_token', b.accessToken);",
+              "if (b.refreshToken) pm.collectionVariables.set('refresh_token', b.refreshToken);",
+              "if (b.user && b.user.id) pm.collectionVariables.set('user_id', b.user.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/refresh",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "refresh"
+          ]
+        }
+      }
+    },
+    {
+      "name": "6 · POST /auth/forgot-password",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "pm.test('status 200', function(){ pm.response.to.have.status(200); });",
+              "pm.test(\"body is { ok: true }\", function(){ pm.expect(json()).to.have.property('ok', true); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{reg_email}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/forgot-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "forgot-password"
+          ]
+        }
+      }
+    },
+    {
+      "name": "7 · POST /auth/reset-password",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "var b = json();",
+              "pm.test('contract: 2xx {ok:true} OR error {error|code+message}', function(){",
+              "  if (pm.response.code >= 200 && pm.response.code < 300) { pm.expect(b).to.have.property('ok', true); }",
+              "  else { pm.expect(b.error !== undefined || (b.code !== undefined && b.message !== undefined)).to.be.true; }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resetToken\": \"contract-check-no-real-token\",\n  \"password\": \"{{test_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/reset-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "reset-password"
+          ]
+        }
+      }
+    },
+    {
+      "name": "8 · POST /auth/verify-email",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "var b = json();",
+              "pm.test('contract: 2xx {ok:true} OR error {error|code+message}', function(){",
+              "  if (pm.response.code >= 200 && pm.response.code < 300) { pm.expect(b).to.have.property('ok', true); }",
+              "  else { pm.expect(b.error !== undefined || (b.code !== undefined && b.message !== undefined)).to.be.true; }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"contract-check-no-real-token\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/verify-email",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "verify-email"
+          ]
+        }
+      }
+    },
+    {
+      "name": "9 · POST /auth/logout",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "pm.test('status 200', function(){ pm.response.to.have.status(200); });",
+              "pm.test(\"body is { ok: true }\", function(){ pm.expect(json()).to.have.property('ok', true); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/logout",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "logout"
+          ]
+        }
+      }
+    },
+    {
+      "name": "10 · GET /workspaces/:id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "if (!pm.collectionVariables.get('workspace_id')) {",
+              "  pm.test('skipped — set {{workspace_id}} to a workspace the test user owns', function(){ pm.expect(true).to.be.true; });",
+              "} else {",
+              "  pm.test('status 200', function(){ pm.response.to.have.status(200); });",
+              "  var b = json();",
+              "  pm.test('{ workspace: IWorkspaceDTO }', function(){ pm.expect(b).to.have.property('workspace'); });",
+              "  hasFields(b.workspace||{}, WORKSPACE_DTO, 'workspace matches IWorkspaceDTO');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/workspaces/{{workspace_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "workspaces",
+            "{{workspace_id}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "11 · PUT /workspaces/:id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
+              "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
+              "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
+              "var USER_DTO = [\"id\",\"email\",\"firstName\",\"lastName\",\"phone\",\"avatarUrl\",\"locale\",\"timezone\",\"isEmailVerified\",\"mfaEnabled\",\"suspended\",\"createdAt\",\"updatedAt\"];",
+              "var WORKSPACE_DTO = [\"id\",\"name\",\"slug\",\"type\",\"description\",\"plan\",\"ownerId\",\"isArchived\",\"archivedAt\",\"createdAt\",\"updatedAt\"];",
+              "if (!pm.collectionVariables.get('workspace_id')) {",
+              "  pm.test('skipped — set {{workspace_id}} to a workspace the test user owns', function(){ pm.expect(true).to.be.true; });",
+              "} else {",
+              "  pm.test('status 200', function(){ pm.response.to.have.status(200); });",
+              "  var b = json();",
+              "  pm.test('{ workspace: IWorkspaceDTO }', function(){ pm.expect(b).to.have.property('workspace'); });",
+              "  hasFields(b.workspace||{}, WORKSPACE_DTO, 'workspace matches IWorkspaceDTO');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "X-WORKSPACE-ID",
+            "value": "{{workspace_id}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Renamed Workspace\",\n  \"description\": \"updated by contract test\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/workspaces/{{workspace_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "workspaces",
+            "{{workspace_id}}"
+          ]
+        }
+      }
+    }
+  ]
+}
