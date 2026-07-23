@@ -97,7 +97,7 @@ interface IFonderieContextMeta {
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
 new FonderieApp(config: FonderieConfig): FonderieApp
-  .listen(port: number, options?: { name?: string; version?: string; env?: string; }): void
+  .listen(port: number, options?: { name?: string; version?: string; env?: string; quiet?: boolean; }): Server<typeof IncomingMessage, typeof ServerResponse>
   .register(module: IFonderieModule): FonderieApp
   .boot(): Promise<FonderieApp>
   .buildContext(request: Request): Promise<IFonderieContext>

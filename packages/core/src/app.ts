@@ -1,5 +1,5 @@
 import { networkInterfaces } from 'node:os';
-import { createServer } from 'node:http';
+import { createServer, type Server } from 'node:http';
 
 import type { Middleware, IFonderieApp, IFonderieContext, IFonderieModule } from './types';
 import type { FonderieConfig } from './config';
@@ -27,15 +27,17 @@ export class FonderieApp {
 			name?: string;
 			version?: string;
 			env?: string;
+			quiet?: boolean; // suppress the startup banner (tests, quiet deploys)
 		} = {},
-	): void {
+	): Server {
 		const {
 			name = 'Fonderie',
 			version = '0.0.1',
 			env = process.env['NODE_ENV'] ?? 'development',
+			quiet = false,
 		} = options;
 
-		createServer(async (req, res) => {
+		const server = createServer(async (req, res) => {
 			const host = req.headers.host ?? 'localhost';
 			const url = `http://${host}${req.url ?? '/'}`;
 			const headers = new Headers();
@@ -79,6 +81,7 @@ export class FonderieApp {
 			});
 			res.end(Buffer.from(await response.arrayBuffer()));
 		}).listen(port, () => {
+			if (quiet) return;
 			const ip = getLocalIPv4();
 			const mode = env.includes('dev') ? 'development' : 'production';
 
@@ -88,6 +91,7 @@ export class FonderieApp {
 					`\n  Network  http://${ip}:${port}\n`,
 			);
 		});
+		return server;
 	}
 
 	// ─── Module registration ───────────────────────────────
