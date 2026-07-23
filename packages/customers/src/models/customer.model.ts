@@ -1,6 +1,8 @@
+import { randomInt } from 'node:crypto';
+
 import type { IStoreAdapter } from '@fonderie/store';
 
-import { DEFAULT_REFERENCE_CODE_PREFIX } from '../config';
+import { DEFAULT_REFERENCE_CODE_PREFIX, REFERRAL_CODE_ALPHABET, REFERRAL_CODE_LENGTH } from '../config';
 import type {
 	ICustomer,
 	ICustomerAddress,
@@ -33,6 +35,8 @@ const SELECT_CUSTOMER = `
 	avatar_url     AS "avatarUrl",
 	locale,
 	reference_code AS "referenceCode",
+	referral_code  AS "referralCode",
+	referred_by    AS "referredBy",
 	is_blacklisted    AS "isBlacklisted",
 	blacklist_reason  AS "blacklistReason",
 	created_by     AS "createdBy",
@@ -61,6 +65,10 @@ export interface CreateCustomerOpts {
 	referenceCode?: string;
 	/** Prefix used when auto-generating. Defaults to 'CLT'. */
 	referenceCodePrefix?: string;
+	/** Explicit referral code. Omit to auto-generate a random, workspace-unique one. */
+	referralCode?: string;
+	/** The referrer's referral code (from signup). Resolved to `referredBy` within the same workspace; ignored if it doesn't match a customer. */
+	referredByCode?: string;
 	createdBy?: string | null;
 }
 
@@ -89,6 +97,42 @@ export class CustomerModel {
 			[workspaceId, prefix],
 		);
 		return `${prefix}-${String(row!.nextVal).padStart(4, '0')}`;
+	}
+
+	/** A random referral code (crypto-random over the unambiguous alphabet). */
+	private randomReferralCode(): string {
+		let out = '';
+		for (let i = 0; i < REFERRAL_CODE_LENGTH; i++) {
+			out += REFERRAL_CODE_ALPHABET[randomInt(REFERRAL_CODE_ALPHABET.length)];
+		}
+		return out;
+	}
+
+	/**
+	 * A referral code unique within the workspace. Random codes collide only
+	 * astronomically rarely; we still pre-check and retry a few times, and the
+	 * unique index is the final guard. Throws only if the space is somehow
+	 * exhausted (not reachable in practice).
+	 */
+	private async allocateReferralCode(workspaceId: string): Promise<string> {
+		for (let attempt = 0; attempt < 5; attempt++) {
+			const code = this.randomReferralCode();
+			const [hit] = await this.store.query<{ one: number }>(
+				`SELECT 1 AS one FROM fonderie_customers WHERE workspace_id = $1 AND referral_code = $2 LIMIT 1`,
+				[workspaceId, code],
+			);
+			if (!hit) return code;
+		}
+		throw new Error('could not allocate a unique referral code');
+	}
+
+	/** Resolve a referral code to the referring customer's id, within a workspace. */
+	async resolveReferralCode(workspaceId: string, code: string): Promise<string | null> {
+		const [row] = await this.store.query<{ id: string }>(
+			`SELECT id FROM fonderie_customers WHERE workspace_id = $1 AND referral_code = $2 LIMIT 1`,
+			[workspaceId, code],
+		);
+		return row?.id ?? null;
 	}
 
 	async list(opts: ListCustomersOpts): Promise<ICustomer[]> {
@@ -445,10 +489,20 @@ export class CustomerModel {
 		const referenceCode = opts.referenceCode
 			?? await this.allocateCode(opts.workspaceId, opts.referenceCodePrefix ?? DEFAULT_REFERENCE_CODE_PREFIX);
 
+		// Every customer gets a shareable referral code at creation.
+		const referralCode = opts.referralCode ?? await this.allocateReferralCode(opts.workspaceId);
+
+		// If they signed up with someone's code, record who referred them (same
+		// workspace). An unknown code is ignored, not an error — signup shouldn't
+		// fail because a referral code was mistyped.
+		const referredBy = opts.referredByCode
+			? await this.resolveReferralCode(opts.workspaceId, opts.referredByCode)
+			: null;
+
 		const [row] = await this.store.query<ICustomer>(
 			`INSERT INTO fonderie_customers
-			   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, created_by)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, referral_code, referred_by, created_by)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 			 RETURNING ${SELECT_CUSTOMER}`,
 			[
 				opts.workspaceId,
@@ -460,6 +514,8 @@ export class CustomerModel {
 				opts.avatarUrl ?? null,
 				opts.locale ?? 'en-US',
 				referenceCode,
+				referralCode,
+				referredBy,
 				opts.createdBy ?? null,
 			],
 		);

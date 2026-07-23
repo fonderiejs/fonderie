@@ -25,6 +25,8 @@ const CUSTOMER: ICustomer = {
 	avatarUrl: null,
 	locale: 'en-US',
 	referenceCode: null,
+	referralCode: null,
+	referredBy: null,
 	isBlacklisted: false,
 	blacklistReason: null,
 	createdBy: null,
@@ -129,6 +131,64 @@ test('toCustomerDTO: maps all fields correctly', () => {
 	assert.equal(dto.companyName, '');
 	assert.equal(dto.blacklisted.status, false);
 	assert.equal(dto.blacklisted.reason, null);
+});
+
+// ── referral code + referred_by (CustomerModel) ──────────────────────────────
+
+test('create: auto-generates a random workspace-unique referral code, resolves referredByCode', async () => {
+	const { CustomerModel } = await import('../models/customer.model');
+	let insertParams: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('fonderie_customer_sequences')) return [{ nextVal: 1 }] as unknown as T[];
+			// allocateReferralCode collision pre-check → no collision
+			if (sql.includes('1 AS one') && sql.includes('referral_code = $2')) return [] as T[];
+			// resolveReferralCode → the referrer's id
+			if (sql.includes('SELECT id') && sql.includes('referral_code = $2')) {
+				return [{ id: 'referrer-id' }] as unknown as T[];
+			}
+			if (sql.includes('INSERT INTO fonderie_customers')) {
+				insertParams = params ?? [];
+				return [{ ...CUSTOMER }] as unknown as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const model = new CustomerModel(store);
+	await model.create({ workspaceId: WS_ID, firstName: 'Jane', referredByCode: 'REFERRERX' });
+
+	// INSERT order: (…, reference_code[8], referral_code[9], referred_by[10], created_by[11])
+	const referralCode = insertParams[9] as string;
+	const referredBy = insertParams[10];
+	assert.equal(typeof referralCode, 'string');
+	assert.equal(referralCode.length, 8, 'referral code is 8 chars');
+	assert.match(referralCode, /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/, 'unambiguous alphabet, random');
+	assert.equal(referredBy, 'referrer-id', 'referredByCode resolved to the referrer id');
+});
+
+test('create: unknown referredByCode is ignored (signup does not fail), referred_by null', async () => {
+	const { CustomerModel } = await import('../models/customer.model');
+	let insertParams: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('fonderie_customer_sequences')) return [{ nextVal: 1 }] as unknown as T[];
+			if (sql.includes('1 AS one') && sql.includes('referral_code = $2')) return [] as T[];
+			if (sql.includes('SELECT id') && sql.includes('referral_code = $2')) return [] as T[]; // not found
+			if (sql.includes('INSERT INTO fonderie_customers')) { insertParams = params ?? []; return [{ ...CUSTOMER }] as unknown as T[]; }
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const model = new CustomerModel(store);
+	await model.create({ workspaceId: WS_ID, referredByCode: 'NOPENOPE' });
+	assert.equal(insertParams[10], null, 'unresolved referral code → referred_by null, not an error');
+});
+
+test('toCustomerDTO: exposes referralCode and referredBy', () => {
+	const dto = toCustomerDTO({ ...CUSTOMER, referralCode: 'AB23CD45', referredBy: 'referrer-id' });
+	assert.equal(dto.referralCode, 'AB23CD45');
+	assert.equal(dto.referredBy, 'referrer-id');
 });
 
 // ── customerController ────────────────────────────────────────────────────────
