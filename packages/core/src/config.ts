@@ -38,6 +38,16 @@ export interface FonderieConfig {
 	};
 
 	onError?: (err: unknown) => Response;
+
+	// Transform every JSON response body just before it is sent. Return the new
+	// body, or `undefined` to leave that response untouched. This is the single,
+	// adapter-agnostic seam for adapting Fonderie's `{ reason, explanation, result }`
+	// envelope to an app's own contract (e.g. flat shapes an existing frontend
+	// expects) WITHOUT editing handlers. Applied at the one egress point, so it
+	// covers every route and every adapter. Status code, headers, and cookies are
+	// preserved; only the body shape changes. Non-JSON responses pass through.
+	// Opt-in: unset = current behaviour, unchanged.
+	onResponse?: (body: unknown, info: { status: number; request: Request }) => unknown;
 }
 
 export function defineConfig(config: FonderieConfig): FonderieConfig {
