@@ -1,16 +1,16 @@
 import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { IRemoteConfigOptions } from './config';
+import type { IConfigOptions } from './config';
 
 import { RemoteConfigManager, CONFIG_MANAGER_KEY } from './manager';
 import { configContextMiddleware } from './middlewares/config-context';
 
-export class RemoteConfigModule implements IFonderieModule {
+export class ConfigModule implements IFonderieModule {
 	readonly name = '@fonderie/config';
 	readonly manager: RemoteConfigManager;
 
-	constructor(store: IStoreAdapter, options: IRemoteConfigOptions = {}) {
+	constructor(store: IStoreAdapter, options: IConfigOptions = {}) {
 		this.manager = new RemoteConfigManager(store, options);
 	}
 
