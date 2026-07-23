@@ -1,0 +1,19 @@
+{
+  "name": "crewfinding-fonderie-backend",
+  "private": true,
+  "type": "module",
+  "description": "Phase 1: crewfinding backend rebuilt on Fonderie bricks (contract-fit test)",
+  "dependencies": {
+    "@fonderie/adapter-express": "latest",
+    "@fonderie/auth": "latest",
+    "@fonderie/core": "latest",
+    "@fonderie/events": "latest",
+    "@fonderie/store": "latest",
+    "@fonderie/workspaces": "latest",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}

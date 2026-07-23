@@ -88,9 +88,12 @@ const H_AUTH = [{ key: 'Authorization', value: 'Bearer {{access_token}}' }];
 const raw = (obj) => ({ mode: 'raw', raw: JSON.stringify(obj, null, 2), options: { raw: { language: 'json' } } });
 const url = (path) => ({ raw: `{{base_url}}${path}`, host: ['{{base_url}}'], path: path.replace(/^\//, '').split('/') });
 
-const item = (name, method, path, { headers = [], body = null, test = [] } = {}) => ({
+const item = (name, method, path, { headers = [], body = null, test = [], prereq = null } = {}) => ({
   name,
-  event: [{ listen: 'test', script: { type: 'text/javascript', exec: test } }],
+  event: [
+    ...(prereq ? [{ listen: 'prerequest', script: { type: 'text/javascript', exec: prereq } }] : []),
+    { listen: 'test', script: { type: 'text/javascript', exec: test } },
+  ],
   request: {
     method,
     header: headers,
@@ -117,11 +120,11 @@ const collection = {
     // Chained: register (unique email) → login → me → patch → refresh → forgot → reset → verify → logout → workspace
     item('1 · POST /auth/register', 'POST', '/auth/register', {
       headers: H_JSON,
-      body: { email: 'user_{{$timestamp}}@example.com', password: '{{test_password}}', firstName: 'John', lastName: 'Doe' },
-      test: [
-        `pm.collectionVariables.set('reg_email', 'user_' + Date.now() + '@example.com');`,
-        ...authShapeTest(201).map((l) => l),
-      ],
+      // reg_email is generated ONCE in the pre-request and reused by register +
+      // login, so the login can actually find the user we just created.
+      prereq: [`pm.collectionVariables.set('reg_email', 'user_' + Date.now() + '@example.com');`],
+      body: { email: '{{reg_email}}', password: '{{test_password}}', firstName: 'John', lastName: 'Doe' },
+      test: authShapeTest(201),
     }),
     item('2 · POST /auth/login', 'POST', '/auth/login', {
       headers: H_JSON,

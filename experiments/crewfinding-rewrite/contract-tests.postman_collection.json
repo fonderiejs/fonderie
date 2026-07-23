@@ -35,11 +35,19 @@
       "name": "1 · POST /auth/register",
       "event": [
         {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('reg_email', 'user_' + Date.now() + '@example.com');"
+            ]
+          }
+        },
+        {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.collectionVariables.set('reg_email', 'user_' + Date.now() + '@example.com');",
               "function json(){ try { return pm.response.json(); } catch(e){ return {}; } }",
               "function hasFields(obj, fields, label){ pm.test(label, function(){ fields.forEach(function(f){ pm.expect(obj, f).to.have.property(f); }); }); }",
               "function setCookiesStr(){ return pm.response.headers.all().filter(function(h){return h.key.toLowerCase()==='set-cookie';}).map(function(h){return h.value;}).join(' ;; '); }",
@@ -67,7 +75,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"user_{{$timestamp}}@example.com\",\n  \"password\": \"{{test_password}}\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}",
+          "raw": "{\n  \"email\": \"{{reg_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}",
           "options": {
             "raw": {
               "language": "json"
