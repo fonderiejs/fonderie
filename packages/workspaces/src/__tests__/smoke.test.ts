@@ -201,6 +201,20 @@ test('WorkspacesModule: satisfies IFonderieModule interface', async () => {
 	assert.ok(typeof mod.install === 'function');
 });
 
+test('buildWorkspaceRoutes: config.routes overrides path (e.g. PUT /workspaces/:id)', async () => {
+	const { buildWorkspaceRoutes } = await import('../routes');
+	const routes = buildWorkspaceRoutes(makeStore({}), {
+		// crewfinding-style: update via a path id (wsCtx resolves :id natively)
+		routes: { updateWorkspace: '/workspaces/:id' },
+	});
+	const has = (m: string, p: string) => routes.some(([mm, pp]) => mm === m && pp === p);
+	assert.ok(has('PUT', '/workspaces/:id'), 'updateWorkspace path overridden to /workspaces/:id');
+	assert.ok(!has('PUT', '/workspaces'), 'default update path replaced');
+	// unset routes keep defaults
+	assert.ok(has('GET', '/workspaces/:id'), 'getWorkspace keeps default');
+	assert.ok(has('POST', '/workspaces'), 'createWorkspace keeps default');
+});
+
 test('WorkspacesModule: does NOT hard-depend on billing (boots without it)', async () => {
 	const { WorkspacesModule } = await import('../module');
 	const mod = new WorkspacesModule(makeStore({}));
