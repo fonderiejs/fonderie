@@ -1846,12 +1846,14 @@ test('validate: registration via phone branch accepts E.164 with separators', as
 
 test('cookies carry Secure when secureCookies is true, never when false', async () => {
 	const { tokenPairCookies, clearedTokenCookies } = await import('../services/cookies');
+	// tokenPairCookies returns ONE string per cookie (each its own Set-Cookie header)
 	const on = tokenPairCookies('a', 'r', { ...config, secureCookies: true });
 	const off = tokenPairCookies('a', 'r', { ...config, secureCookies: false });
-	assert.ok(/access_token=a; HttpOnly; SameSite=Strict; Path=\/; Secure/.test(on));
-	assert.ok(/refresh_token=r; HttpOnly; SameSite=Strict; Path=\/auth\/refresh; Secure/.test(on));
-	assert.ok(!off.includes('Secure'));
-	assert.ok(clearedTokenCookies({ ...config, secureCookies: true }).match(/Max-Age=0; Secure/));
+	assert.equal(on.length, 2, 'two distinct cookies, not one joined string');
+	assert.ok(/^access_token=a; HttpOnly; SameSite=Strict; Path=\/; Secure$/.test(on[0]!));
+	assert.ok(/^refresh_token=r; HttpOnly; SameSite=Strict; Path=\/auth\/refresh; Secure$/.test(on[1]!));
+	assert.ok(!off.join(' ').includes('Secure'));
+	assert.ok(clearedTokenCookies({ ...config, secureCookies: true }).some((c) => /Max-Age=0; Secure/.test(c)));
 });
 
 test('cookies default Secure from NODE_ENV=production', async () => {
@@ -1859,7 +1861,7 @@ test('cookies default Secure from NODE_ENV=production', async () => {
 	const prev = process.env.NODE_ENV;
 	process.env.NODE_ENV = 'production';
 	try {
-		assert.ok(tokenPairCookies('a', 'r', config).includes('; Secure'));
+		assert.ok(tokenPairCookies('a', 'r', config).every((c) => c.includes('; Secure')));
 	} finally {
 		if (prev === undefined) delete process.env.NODE_ENV;
 		else process.env.NODE_ENV = prev;
