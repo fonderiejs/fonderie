@@ -1,4 +1,4 @@
-import { tokenPairCookies } from '../services/cookies';
+import { tokenPairCookies, cookieHeaders } from '../services/cookies';
 import QRCode from 'qrcode';
 
 import { setApiResponse, HTTP } from '@fonderie/core';
@@ -158,9 +158,7 @@ export function mfaController(
 				},
 				{
 					status: 200,
-					headers: {
-						'Set-Cookie': tokenPairCookies(accessToken, refreshToken, config),
-					},
+					headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
 				},
 			);
 		},
