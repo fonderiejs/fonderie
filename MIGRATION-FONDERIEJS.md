@@ -34,9 +34,13 @@ before flipping. The business gate (one live paying client) is **not yet tripped
 — crewfinding is in flight.
 
 **Pre-work to do NOW (no gate; makes A flip-a-flag):**
-1. Parameterize the `@fonderie` scope to a single constant (see "Scope-hard-coding"
-   below) — turns the migration from a find-and-replace into a one-liner.
-2. Create the `@fonderiejs` npm org + confirm the publishing account owns it.
+1. ✅ **Done** — parameterized the `@fonderie` scope to a single `SCOPE` constant
+   (`scripts/scope.mjs` + the CLI's own const; PR #66). The rename is now a
+   one-line flip, verified byte-identical and flip-tested with `FONDERIE_SCOPE`.
+2. ✅ **Done** — `@fonderiejs` npm org created under the `fonderie` publishing
+   account. *Residual:* if CI publishes with a granular token, mint one scoped to
+   `@fonderiejs` too (the current token is `@fonderie`-scoped); a first manual
+   publish will confirm end-to-end.
 3. Freeze-review the public API surface.
 
 **Recommendation:** don't migrate yet (gate A not tripped); do the pre-work now so
@@ -70,9 +74,10 @@ peers remain.
 
 ## Checklist (in order)
 
-1. **Create the `fonderiejs` npm org** and confirm the publishing account owns
-   it (the current E404 on `@fonderiejs/*` is exactly this — the scope doesn't
-   exist yet).
+1. ✅ **Done (pre-work)** — the `fonderiejs` npm org is created under the
+   `fonderie` publishing account (`choleski@gmx.com`). Before the first publish,
+   confirm the CI token is scoped to `@fonderiejs` (mint a new granular token if
+   the current one is `@fonderie`-only).
 2. **Rename every package** `@fonderie/<x>` → `@fonderiejs/<x>` — `name`, and
    every cross-package `peerDependencies`/`devDependencies` reference.
 3. **Reset all versions to `1.0.0`**; reset CHANGELOGs; re-init changesets. **Set
