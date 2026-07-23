@@ -1,7 +1,7 @@
 import type { IStoreAdapter } from '@fonderie/store';
 import type { Middleware } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
-import type { IAuthConfig } from './config';
+import type { IAuthConfig, AuthRouteId } from './config';
 
 import { requireAuth, requireAnyAuth, requireVerified } from '@fonderie/core/middlewares';
 import { requireEmailLogin } from './middlewares/require-email-login';
@@ -56,50 +56,51 @@ export function buildAuthRoutes(
 	const acctLimit = (route: Parameters<typeof buildAuthAccountLimiter>[0]): Middleware =>
 		buildAuthAccountLimiter(route, store, config.rateLimit) ?? passthrough;
 
+	// Apply an optional per-route method/path override (config.routes) keyed by a
+	// stable id, so an app can match an existing frontend's contract without a shim.
+	const R = (id: AuthRouteId, method: string, path: string, ...handlers: Middleware[]): RouteDefinition => {
+		const o = config.routes?.[id];
+		if (!o) return [method, path, ...handlers];
+		if (typeof o === 'string') return [method, o, ...handlers];
+		return [o.method ?? method, o.path ?? path, ...handlers];
+	};
+
 	const routes: RouteDefinition[] = [
 		// Registration & Login (Public)
-		['POST', '/auth/register', ipLimit('register'), validate(registerSchema), auth.register],
-		['POST', '/auth/login', ipLimit('login'), validate(loginSchema), acctLimit('login'), auth.login],
+		R('register', 'POST', '/auth/register', ipLimit('register'), validate(registerSchema), auth.register),
+		R('login', 'POST', '/auth/login', ipLimit('login'), validate(loginSchema), acctLimit('login'), auth.login),
 
 		// Token Management (Public)
-		['POST', '/auth/refresh', validate(refreshSchema), auth.refresh],
+		R('refresh', 'POST', '/auth/refresh', validate(refreshSchema), auth.refresh),
 
 		// Email — Password Recovery (Public)
-		['POST', '/auth/email/forgot', ipLimit('forgot'), validate(forgotPasswordSchema), acctLimit('forgot'), auth.forgotPassword],
-		['POST', '/auth/email/reset', validate(resetPasswordSchema), auth.resetPassword],
+		R('forgotPassword', 'POST', '/auth/email/forgot', ipLimit('forgot'), validate(forgotPasswordSchema), acctLimit('forgot'), auth.forgotPassword),
+		R('resetPassword', 'POST', '/auth/email/reset', validate(resetPasswordSchema), auth.resetPassword),
 
 		// Verification (Protected — email or phone, determined by loginMethod)
-		['POST', '/auth/verify', requireAuth, validate(verifySchema), auth.verify],
-		['GET', '/auth/send-verification', requireAuth, auth.sendVerification],
+		R('verifyEmail', 'POST', '/auth/verify', requireAuth, validate(verifySchema), auth.verify),
+		R('sendVerification', 'GET', '/auth/send-verification', requireAuth, auth.sendVerification),
 
 		// Account Management (Protected)
-		['POST', '/auth/logout', requireAuth, validate(refreshSchema), auth.logout],
+		R('logout', 'POST', '/auth/logout', requireAuth, validate(refreshSchema), auth.logout),
 
 		// User Profile (Protected; writes also gate on requireVerification)
-		['GET', '/users', requireAuth, user.me],
-		['PUT', '/users/profile', requireAuth, verifyGate, validate(updateProfileSchema), user.updateProfile],
-		['PUT', '/users/preferences', requireAuth, verifyGate, validate(updatePreferencesSchema), user.updatePreferences],
-		['PUT', '/users/email', requireAuth, verifyGate, validate(updateEmailSchema), user.updateEmail],
-		['PUT', '/users/phone', requireAuth, verifyGate, validate(updatePhoneSchema), user.updatePhone],
-		['PUT', '/users/password', requireAuth, validate(changePasswordSchema), user.changePassword],
-		['DELETE', '/users', requireAuth, verifyGate, user.deleteMe],
+		R('me', 'GET', '/users', requireAuth, user.me),
+		R('updateProfile', 'PUT', '/users/profile', requireAuth, verifyGate, validate(updateProfileSchema), user.updateProfile),
+		R('updatePreferences', 'PUT', '/users/preferences', requireAuth, verifyGate, validate(updatePreferencesSchema), user.updatePreferences),
+		R('updateEmail', 'PUT', '/users/email', requireAuth, verifyGate, validate(updateEmailSchema), user.updateEmail),
+		R('updatePhone', 'PUT', '/users/phone', requireAuth, verifyGate, validate(updatePhoneSchema), user.updatePhone),
+		R('changePassword', 'PUT', '/users/password', requireAuth, validate(changePasswordSchema), user.changePassword),
+		R('deleteMe', 'DELETE', '/users', requireAuth, verifyGate, user.deleteMe),
 
 		// MFA (email sessions only — requireVerified is always enforced here
 		// because MFA is a security feature and email verification is meaningful)
-		['POST', '/auth/mfa/setup', requireAuth, requireEmailLogin, requireVerified, mfa.setup],
+		R('mfaSetup', 'POST', '/auth/mfa/setup', requireAuth, requireEmailLogin, requireVerified, mfa.setup),
 		// /auth/mfa/verify accepts both mfaPending tokens (TOTP/backup-code login)
 		// and full tokens (setup confirmation), so requireAnyAuth is used here.
-		['POST', '/auth/mfa/verify', ipLimit('mfaVerify'), requireAnyAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.verify],
-		['POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.disable],
-		[
-			'POST',
-			'/auth/mfa/backup-codes',
-			requireAuth,
-			requireEmailLogin,
-			requireVerified,
-			validate(mfaTokenSchema),
-			mfa.regenerateBackupCodes,
-		],
+		R('mfaVerify', 'POST', '/auth/mfa/verify', ipLimit('mfaVerify'), requireAnyAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.verify),
+		R('mfaDisable', 'POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.disable),
+		R('mfaBackupCodes', 'POST', '/auth/mfa/backup-codes', requireAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.regenerateBackupCodes),
 	];
 
 	if (config.providers.includes('google')) {
