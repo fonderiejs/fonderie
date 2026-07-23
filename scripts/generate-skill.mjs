@@ -21,6 +21,7 @@
 import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SCOPE, SCOPE_PREFIX } from './scope.mjs';
 import { resolveInstalledFragment } from './brain-fragment.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -37,7 +38,7 @@ const cliBin = `node ${join(root, 'scripts/brain-query.mjs')}`;
 // installed packages (router scopes to these when a project is given)
 function installed() {
   if (!projectDir) return null;
-  const dir = join(projectDir, 'node_modules', '@fonderie');
+  const dir = join(projectDir, 'node_modules', SCOPE);
   if (!existsSync(dir)) return [];
   return readdirSync(dir).sort().filter((n) => existsSync(join(dir, n, 'package.json')))
     .map((n) => ({ name: n, version: JSON.parse(readFileSync(join(dir, n, 'package.json'), 'utf8')).version }));
@@ -56,10 +57,10 @@ mkdirSync(join(outDir, 'fonderie'), { recursive: true });
 const bodyFor = (pkg) => {
   // prefer co-located installed fragment (version-matched); else central
   const central = { signatures: join(sigDir, `${pkg}.md`), outcomes: join(sigDir, `${pkg}-outcomes.md`) };
-  const pkgDir = projectDir ? join(projectDir, 'node_modules', '@fonderie', pkg) : '';
+  const pkgDir = projectDir ? join(projectDir, 'node_modules', SCOPE, pkg) : '';
   const frag = resolveInstalledFragment(pkgDir, central);
   if (!frag.signatures && !frag.outcomes) return null;
-  return [`# @fonderie/${pkg}`, '', frag.signatures || '', frag.outcomes ? '\n' + frag.outcomes : ''].join('\n');
+  return [`# ${SCOPE}/${pkg}`, '', frag.signatures || '', frag.outcomes ? '\n' + frag.outcomes : ''].join('\n');
 };
 let bodies = 0;
 for (const pkg of allPkgs) {
@@ -84,7 +85,7 @@ L.push('router: for the capability your task needs, **read only that package\'s 
 L.push('below — do not load them all.');
 L.push('');
 if (inst) {
-  L.push(`Installed here: ${inst.length ? inst.map((p) => `\`@fonderie/${p.name}@${p.version}\``).join(', ') : 'none yet'}.`);
+  L.push(`Installed here: ${inst.length ? inst.map((p) => `\`${SCOPE}/${p.name}@${p.version}\``).join(', ') : 'none yet'}.`);
   L.push('');
 }
 L.push('## Capability → read this / or run this');

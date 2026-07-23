@@ -35,6 +35,7 @@
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SCOPE } from './scope.mjs';
 import { resolveInstalledFragment } from './brain-fragment.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,7 +64,7 @@ const read = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : null);
 
 // --- installed @fonderie packages (the selectivity key) ----------------------
 function installedPackages() {
-  const dir = join(projectDir, 'node_modules', '@fonderie');
+  const dir = join(projectDir, 'node_modules', SCOPE);
   if (!existsSync(dir)) return [];
   const out = [];
   for (const name of readdirSync(dir).sort()) {
@@ -96,7 +97,7 @@ lines.push('');
 if (installed.length) {
   lines.push('Installed (this file is version-matched to these):');
   lines.push('');
-  for (const p of installed) lines.push(`- @fonderie/${p.name}@${p.version}`);
+  for (const p of installed) lines.push(`- ${SCOPE}/${p.name}@${p.version}`);
 } else {
   lines.push('No @fonderie packages installed yet.');
 }
@@ -160,19 +161,19 @@ for (const p of installed) {
   // They're wired and working; the model asks brain_query if it needs the API.
   if (!inScope(p.name)) {
     trimmed.push(p.name);
-    lines.push(`## @fonderie/${p.name}@${p.version}  (installed & wired — call \`brain_query\` for its API if this task needs it)`);
+    lines.push(`## ${SCOPE}/${p.name}@${p.version}  (installed & wired — call \`brain_query\` for its API if this task needs it)`);
     lines.push('');
     continue;
   }
-  const pkgDir = join(projectDir, 'node_modules', '@fonderie', p.name);
+  const pkgDir = join(projectDir, 'node_modules', SCOPE, p.name);
   const central = { signatures: join(sigDir, `${p.name}.md`), outcomes: join(sigDir, `${p.name}-outcomes.md`) };
   const frag = resolveInstalledFragment(pkgDir, central);
   if (!frag.signatures && !frag.outcomes) continue;
-  lines.push(`## @fonderie/${p.name}@${p.version}`);
+  lines.push(`## ${SCOPE}/${p.name}@${p.version}`);
   lines.push('');
   if (!frag.matched) {
     stale.push(p.name);
-    lines.push(`> ⚠ No co-located brain in @fonderie/${p.name}@${p.version}; showing the`);
+    lines.push(`> ⚠ No co-located brain in ${SCOPE}/${p.name}@${p.version}; showing the`);
     lines.push('> repo\'s latest knowledge, which may not match this installed version.');
     lines.push('> Rebuild/republish the package with `brain/` to make this exact.');
     lines.push('');
