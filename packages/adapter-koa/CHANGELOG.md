@@ -1,5 +1,19 @@
 # @fonderie/adapter-koa
 
+## 2.0.0
+
+### Patch Changes
+
+- e4d9bb2: Complete the auth-cookie fix across every response egress. The same `Set-Cookie` mangling fixed in `@fonderie/adapter-express` also existed in `@fonderie/adapter-koa` and in `@fonderie/core`'s built-in `app.listen()` HTTP server: forwarding headers with `forEach` + `set()`/`setHeader()` overwrites all but the last `Set-Cookie`, so cookie-based auth silently broke there too. Both now forward the full list via `getSetCookie()`. `@fonderie/adapter-hono` was already correct (it returns the Web `Response` natively). Found by auditing sibling packages after the express fix.
+- Updated dependencies [bbd3e9a]
+- Updated dependencies [f18ac65]
+- Updated dependencies [e4d9bb2]
+- Updated dependencies [c0f05ea]
+  - @fonderie/core@0.2.0
+  - @fonderie/workspaces@2.0.0
+  - @fonderie/billing@2.0.0
+  - @fonderie/permissions@2.0.0
+
 ## 1.0.3
 
 ### Patch Changes

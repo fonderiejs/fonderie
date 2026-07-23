@@ -1,5 +1,18 @@
 # @fonderie/adapter-hono
 
+## 2.0.0
+
+### Patch Changes
+
+- Updated dependencies [bbd3e9a]
+- Updated dependencies [f18ac65]
+- Updated dependencies [e4d9bb2]
+- Updated dependencies [c0f05ea]
+  - @fonderie/core@0.2.0
+  - @fonderie/workspaces@2.0.0
+  - @fonderie/billing@2.0.0
+  - @fonderie/permissions@2.0.0
+
 ## 1.0.3
 
 ### Patch Changes
