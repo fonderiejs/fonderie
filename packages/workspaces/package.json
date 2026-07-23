@@ -1,96 +1,95 @@
 {
-	"name": "@fonderie/workspaces",
-	"version": "1.2.2",
-	"description": "Multi-tenant team layer — create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
-	"keywords": [
-		"fonderie-js",
-		"workspaces",
-		"multi-tenant",
-		"teams",
-		"organizations",
-		"invitations",
-		"rbac",
-		"saas",
-		"typescript"
-	],
-	"license": "MIT",
-	"type": "module",
-	"engines": {
-		"node": ">=20"
-	},
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js",
-			"require": "./dist/index.cjs"
-		},
-		"./types": {
-			"types": "./dist/types.d.ts",
-			"import": "./dist/types.js",
-			"require": "./dist/types.cjs"
-		},
-		"./middleware": {
-			"types": "./dist/middlewares/index.d.ts",
-			"import": "./dist/middlewares/index.js",
-			"require": "./dist/middlewares/index.cjs"
-		},
-		"./migrations": {
-			"types": "./dist/migrations/index.d.ts",
-			"import": "./dist/migrations/index.js"
-		}
-	},
-	"main": "./dist/index.cjs",
-	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"scripts": {
-		"build": "tsup && tsup --config tsup.migrations.ts",
-		"dev": "tsup --watch",
-		"typecheck": "tsc --noEmit",
-		"test": "tsx --test src/__tests__/*.test.ts",
-		"lint": "biome lint src",
-		"format": "biome format --write src",
-		"check": "biome check --write src"
-	},
-	"peerDependencies": {
-		"@fonderie/billing": "^1.0.1",
-		"@fonderie/core": "^0.1.1",
-		"@fonderie/events": "^1.0.1",
-		"@fonderie/store": "^0.1.1"
-	},
-	"peerDependenciesMeta": {
-		"@fonderie/events": {
-			"optional": true
-		}
-	},
-	"devDependencies": {
-		"@fonderie/billing": "../billing",
-		"@fonderie/core": "../core",
-		"@fonderie/events": "../events",
-		"@fonderie/store": "../store",
-		"@types/node": "^25.6.0",
-		"tsup": "^8.5.1",
-		"tsx": "^4.21.0",
-		"typescript": "^6.0.3"
-	},
-	"publishConfig": {
-		"access": "public"
-	},
-	"files": [
-		"dist",
-		"brain",
-		"LICENSE",
-		"README.md"
-	],
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/fonderiejs/sdk.git",
-		"directory": "packages/workspaces"
-	},
-	"homepage": "https://github.com/fonderiejs/sdk/tree/main/packages/workspaces#readme",
-	"bugs": {
-		"url": "https://github.com/fonderiejs/sdk/issues"
-	},
-	"dependencies": {
-		"zod": "^4.4.3"
-	}
+  "name": "@fonderie/workspaces",
+  "version": "1.2.2",
+  "description": "Multi-tenant team layer — create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
+  "keywords": [
+    "fonderie-js",
+    "workspaces",
+    "multi-tenant",
+    "teams",
+    "organizations",
+    "invitations",
+    "rbac",
+    "saas",
+    "typescript"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "require": "./dist/types.cjs"
+    },
+    "./middleware": {
+      "types": "./dist/middlewares/index.d.ts",
+      "import": "./dist/middlewares/index.js",
+      "require": "./dist/middlewares/index.cjs"
+    },
+    "./migrations": {
+      "types": "./dist/migrations/index.d.ts",
+      "import": "./dist/migrations/index.js"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup && tsup --config tsup.migrations.ts",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/__tests__/*.test.ts",
+    "lint": "biome lint src",
+    "format": "biome format --write src",
+    "check": "biome check --write src"
+  },
+  "peerDependencies": {
+    "@fonderie/core": "^0.1.1",
+    "@fonderie/events": "^1.0.1",
+    "@fonderie/store": "^0.1.1"
+  },
+  "peerDependenciesMeta": {
+    "@fonderie/events": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@fonderie/billing": "../billing",
+    "@fonderie/core": "../core",
+    "@fonderie/events": "../events",
+    "@fonderie/store": "../store",
+    "@types/node": "^25.6.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "brain",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fonderiejs/sdk.git",
+    "directory": "packages/workspaces"
+  },
+  "homepage": "https://github.com/fonderiejs/sdk/tree/main/packages/workspaces#readme",
+  "bugs": {
+    "url": "https://github.com/fonderiejs/sdk/issues"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
 }

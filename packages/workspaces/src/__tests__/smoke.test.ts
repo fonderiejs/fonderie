@@ -201,6 +201,15 @@ test('WorkspacesModule: satisfies IFonderieModule interface', async () => {
 	assert.ok(typeof mod.install === 'function');
 });
 
+test('WorkspacesModule: does NOT hard-depend on billing (boots without it)', async () => {
+	const { WorkspacesModule } = await import('../module');
+	const mod = new WorkspacesModule(makeStore({}));
+	// FonderieApp.boot() topoSort throws if a listed dep is not registered.
+	// billing is optional (seat limits via ctx.meta['billing']); only auth is hard.
+	assert.deepEqual(mod.deps, ['@fonderie/auth']);
+	assert.ok(!mod.deps.includes('@fonderie/billing'), 'billing must not be a hard dependency');
+});
+
 // ── Ctx helper ───────────────────────────────────────────────────
 
 function makeCtx(
