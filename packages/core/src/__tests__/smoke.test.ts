@@ -99,6 +99,31 @@ test('onResponse: preserves Set-Cookie and skips non-JSON', async () => {
 	assert.equal(await textRes.text(), 'hello', 'non-JSON passes through untouched');
 });
 
+test('listen() returns the server and forwards MULTIPLE Set-Cookie headers', async () => {
+	// listen() now returns the http.Server (graceful shutdown + testable). The
+	// built-in server had the same forEach+setHeader Set-Cookie bug as the adapters.
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	app.addRoute('POST', '/login', async () => {
+		const headers = new Headers({ 'content-type': 'application/json' });
+		headers.append('set-cookie', 'access_token=A; HttpOnly; Path=/');
+		headers.append('set-cookie', 'refresh_token=R; HttpOnly; Path=/auth/refresh');
+		return Response.json({ ok: true }, { status: 200, headers });
+	});
+	await app.boot();
+	const server = app.listen(0, { quiet: true });
+	await new Promise((r) => (server.listening ? r(undefined) : server.once('listening', r)));
+	try {
+		const { port } = server.address() as { port: number };
+		const res = await fetch(`http://127.0.0.1:${port}/login`, { method: 'POST' });
+		const cookies = res.headers.getSetCookie();
+		assert.equal(cookies.length, 2, 'both cookies arrive over the wire');
+		assert.ok(cookies.some((c) => c.startsWith('access_token=A')));
+		assert.ok(cookies.some((c) => c.startsWith('refresh_token=R')));
+	} finally {
+		await new Promise((r) => server.close(() => r(undefined)));
+	}
+});
+
 test('module installs its route on boot', async () => {
 	const pingModule: IFonderieModule = {
 		name: 'ping',
