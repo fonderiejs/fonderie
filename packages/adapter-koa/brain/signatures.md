@@ -33,7 +33,7 @@ interface KoaContext {
     response: {
         body: unknown;
         status: number;
-        set(key: string, value: string): void;
+        set(key: string, value: string | string[]): void;
     };
     req: IncomingMessage;
     state: Record<string, unknown>;

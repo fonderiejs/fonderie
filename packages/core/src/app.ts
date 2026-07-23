@@ -70,7 +70,13 @@ export class FonderieApp {
 			const response = await this.handle(request);
 
 			res.statusCode = response.status;
-			response.headers.forEach((v, k) => res.setHeader(k, v));
+			// Set-Cookie must be forwarded as a LIST — forEach + setHeader would
+			// overwrite all but the last cookie. getSetCookie() returns each intact.
+			const setCookies = response.headers.getSetCookie?.() ?? [];
+			if (setCookies.length) res.setHeader('Set-Cookie', setCookies);
+			response.headers.forEach((v, k) => {
+				if (k.toLowerCase() !== 'set-cookie') res.setHeader(k, v);
+			});
 			res.end(Buffer.from(await response.arrayBuffer()));
 		}).listen(port, () => {
 			const ip = getLocalIPv4();
