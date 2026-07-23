@@ -15,6 +15,7 @@ new WorkspacesModule(store: IStoreAdapter, config?: IWorkspacesConfig, bus?: Eve
 interface IWorkspacesConfig {
     invitationTtl?: string;
     personalWorkspace?: boolean;
+    routes?: Partial<Record<WorkspaceRouteId, WorkspaceRouteOverride>>;
 }
 
 type WorkspacesMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
