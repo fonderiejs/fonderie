@@ -19,6 +19,24 @@ there — never uniform. The reset is a **deliberate rewrite**: set every
 `package.json` `version` to `1.0.0`, drop the accumulated `CHANGELOG.md`s (fresh
 history at launch), and start changesets from 1.0.0. One script, reviewed.
 
+### Peer ranges must tolerate minors (confirmed the hard way, 2026-07-23)
+
+Publishing the `@fonderie` test scope proved the failure mode this reset must
+fix. `core` was `0.1.5` and every package pinned it with `peerDependencies:
+"@fonderie/core": "^0.1.1"`. Two *additive* core features (a minor bump →
+`0.2.0`) fell **out of that `^0.1` range**, so changesets'
+`onlyUpdatePeerDependentsWhenOutOfRange` **major-bumped every peer-dependent to
+`2.0.0`** — a whole-SDK major release (incl. packages with no real change) off
+two backward-compatible additions. In `0.x`, a minor *is* breaking, and a caret
+range on a `0.x` peer only accepts patches, so any core feature cascades a major.
+
+At the `1.0.0` reset this stops being a problem **only if the peer ranges are set
+right**: with `core` at `1.0.0` and peers at `"@fonderiejs/core": "^1"` (not
+`"^1.0.0"` pinned tight — `^1` already spans all `1.x`), a core *minor* (`1.1.0`)
+stays in range and does **not** cascade a major. Set every internal
+`peerDependencies` range to `^1` at the reset, and audit that no `0.x` internal
+peers remain.
+
 ## Checklist (in order)
 
 1. **Create the `fonderiejs` npm org** and confirm the publishing account owns
@@ -26,7 +44,9 @@ history at launch), and start changesets from 1.0.0. One script, reviewed.
    exist yet).
 2. **Rename every package** `@fonderie/<x>` → `@fonderiejs/<x>` — `name`, and
    every cross-package `peerDependencies`/`devDependencies` reference.
-3. **Reset all versions to `1.0.0`**; reset CHANGELOGs; re-init changesets.
+3. **Reset all versions to `1.0.0`**; reset CHANGELOGs; re-init changesets. **Set
+   every internal `peerDependencies` range to `^1`** (see "Peer ranges must
+   tolerate minors") so future core changes don't cascade a whole-SDK major.
 4. **Repoint metadata**: `repository.url`, `homepage`, `bugs` (already
    `fonderiejs/sdk` on GitHub — verify), and the git remote/`.gitmodules` in the
    parent crewfinding repo.
