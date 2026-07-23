@@ -6,33 +6,47 @@ a real app would write: an `onResponse` that flattens Fonderie's envelope to
 crewfinding's flat shapes, and a thin path-alias shim. Measures how far the
 shipped fixes closed the Phase-1 gap.
 
-## Result: 18 / 25 assertions pass (was 6 / 25 vanilla)
+## Result: 25 / 25 — GREEN (was 6 / 25 vanilla)
 
-| endpoint | vanilla | re-run |
+Two stages, both against the **published** SDK:
+1. **SDK config alone (`onResponse` + the cookie fix): 18 / 25.** Every
+   path-matching endpoint (register/login/refresh/logout) went fully green —
+   flat `{user,accessToken,refreshToken}`, `IUserDTO`, and `access_token`/
+   `refresh_token` **HttpOnly cookies now arrive**. Those were the two biggest
+   Phase-1 divergences, closed with one config option and zero handler edits.
+2. **+ a ~15-line contract shim → 25 / 25.** The residual was pure route-naming;
+   a thin express middleware rewriting crewfinding's paths (and one method) to
+   Fonderie's closes it completely.
+
+| endpoint | vanilla | final |
 |---|---|---|
-| POST /auth/register | ✗ | **✓✓✓✓** status + flat `{user,accessToken,refreshToken}` + `IUserDTO` + **HttpOnly cookies** |
-| POST /auth/login | ✗ | **✓✓✓✓** |
-| POST /auth/refresh | ✗ | **✓✓✓✓** |
-| POST /auth/logout | ✗ | **✓✓** `{ ok: true }` |
-| POST /auth/reset, /verify (contract shape) | ✗ | **✓** |
-| GET/PATCH /users/me | ✗ | ✗ — 404 (path alias) |
-| POST /auth/forgot-password | ✗ | ✗ — 404 (path alias) |
-| workspaces | skip | skip (no workspace_id) |
+| register, login, refresh | ✗ | ✓ flat shape + `IUserDTO` + **cookies** |
+| logout, forgot | ✗ | ✓ `{ ok: true }` |
+| reset, verify (contract shape) | ✗ | ✓ |
+| GET /users/me → `GET /users` | ✗ | ✓ (path alias) |
+| PATCH /users/me → `PUT /users/profile` | ✗ | ✓ (method+path alias) |
+| workspaces | skip | skip |
 
-**What the shipped fixes bought:** every path-matching endpoint is fully green —
-the **response-envelope divergence is closed by `onResponse`** (one config option,
-no handler edits), and the **cookie fix means `access_token`/`refresh_token`
-HttpOnly cookies now arrive**. Those were the two biggest Phase-1 divergences.
+**The complete adopter integration** (in `backend/`):
+- **`onResponse`** — flatten Fonderie's `{reason,explanation,result}` envelope to
+  crewfinding's shapes, incl. mapping the user (`result.user` → flat `IUserDTO`,
+  `profileImageUrl`→`avatarUrl`). *SDK config, no handler edits.*
+- **path/method shim** — ~15 lines of express middleware:
+  `/users/me`→`/users`, `PATCH /users/me`→`PUT /users/profile`,
+  `/auth/forgot-password`→`/auth/email/forgot`, etc.
+- **cookies** — automatic (SDK fix #55/#56).
 
-**The residual 7 failures are purely route-naming** (`/users/me`→`/users`,
-`/auth/forgot-password`→`/auth/email/forgot`, …). `/users` itself exists and works
-(returns 401 without auth); the failures are the alias shim not rewriting the path
-— an app-integration detail (express `req.url` plumbing through `mount()`), not an
-SDK gap. With a working alias layer these close too, reaching ~full green.
+**Verdict: Outcome A is achievable.** An existing frontend works **unchanged**
+against a Fonderie-rebuilt backend with (a) one SDK config option and (b) a thin,
+app-owned contract shim — no fork of the SDK, no frontend edits. The Phase-1
+"needs a full adapter" gap is now "needs a config callback + ~15 lines."
 
-**Verdict:** Outcome B confirmed, and the SDK config now carries adoption most of
-the way to A. Remaining adopter work = a thin path-alias layer + per-DTO field
-mapping in `onResponse` (both app-side, both small).
+### Two bugs this closure surfaced
+- The 18→25 gap was initially masked by a **`docker cp` nesting mistake** (the
+  shim `index.ts` landed in `/app/src/src/`, so the container ran an alias-less
+  build) — a harness error, not a code one; the shim logic was always correct.
+- `updateProfile`/`me` nest the user under `result.user`; the `onResponse`
+  mapper had to read `r.user ?? r` (one-line fix).
 
 ## 🚨 Release defect found (more important than the score)
 
@@ -51,10 +65,10 @@ source is correct** (`core@^0.2.0`, `store@^0.1.1`) and a fresh build ships the
 SQL. Fix: republish both as **2.0.1** (changeset `republish-events-customers`).
 
 ## Honest caveats
-- To run at all, the published packages needed `--legacy-peer-deps` and the
-  missing `events` migration SQL hand-copied in — i.e. the release is genuinely
-  broken; this is a workaround, and the 2.0.1 republish is the real fix.
+- After the events/customers `2.0.1` republish, a clean install *still* needs
+  `--legacy-peer-deps` because **`@fonderie/rate-limit@1.0.0` has the same broken
+  peer ranges** (`core@^1.0.0`) — a third stale build from the partial release
+  that the first fix missed. The republished events `2.0.1` ships its SQL cleanly
+  (no hand-copy needed). rate-limit needs the same `1.0.1` republish.
 - Ran fully in-docker (host↔container networking is broken in this environment),
   so it's a faithful *contract* run, still a proxy for the live frontend.
-- The path-alias shim in `backend/` is committed as a reference but its `req.url`
-  rewrite doesn't take effect through `mount()` yet — a known app-side tweak.
