@@ -11,6 +11,37 @@ publishes. The product launch is a deliberate, one-way event (new scope, version
 reset, public URLs). We write it down now so it's a checklist, not a scramble,
 and execute once the test scope has proven the product.
 
+## Launch scope — two gated events, not one
+
+Treating "launch" as a single migration is why it feels heavy. It's cleaner as
+two events with different triggers:
+
+- **A. The 1.0.0 scope migration** — rename `@fonderie`→`@fonderiejs`, reset
+  versions to 1.0.0, peer ranges to `^1`, publish under the product scope. A
+  ~1-day mechanical execution (the checklist below). **Gate: one real paying
+  project live and stable on the SDK** (crewfinding, the first archetype) — i.e.
+  "we trust the API enough to call it 1.0.0."
+- **B. Public promotion** — landing push, open marketing. **Gate: the fuller
+  proof** (the roadmap's 3 clients / $3k MRR). Independent of A; do A the day
+  crewfinding goes live without doing B.
+
+**Readiness for A (is the API 1.0.0-worthy?):** contract-fit is proven (25/25
+oracle, drop-in with pure config), the SDK installs cleanly with correct peer
+ranges, the bricks are audited, cross-agent skill + db-free authoring ship. The
+one honest gap is the **1.0.0 stability commitment** — after 1.0.0 a breaking
+change costs a major bump and trust, so freeze-review the public API shapes once
+before flipping. The business gate (one live paying client) is **not yet tripped**
+— crewfinding is in flight.
+
+**Pre-work to do NOW (no gate; makes A flip-a-flag):**
+1. Parameterize the `@fonderie` scope to a single constant (see "Scope-hard-coding"
+   below) — turns the migration from a find-and-replace into a one-liner.
+2. Create the `@fonderiejs` npm org + confirm the publishing account owns it.
+3. Freeze-review the public API surface.
+
+**Recommendation:** don't migrate yet (gate A not tripped); do the pre-work now so
+the day crewfinding goes live, A is a one-day flip.
+
 ## The version reset — the subtlety
 
 "All at 1.0.0" is **not** a changeset bump. Changesets compute from current
