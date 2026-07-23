@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/events",
-	"version": "2.0.0",
+	"version": "2.0.1",
 	"description": "Event bus for @fonderie-js — memory and PostgreSQL transports built-in, adapter interface for Redis/Kafka/RabbitMQ.",
 	"keywords": [
 		"fonderie-js",
