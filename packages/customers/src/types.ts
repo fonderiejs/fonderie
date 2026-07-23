@@ -27,6 +27,8 @@ export interface ICustomer {
 	avatarUrl: string | null;
 	locale: string;
 	referenceCode: string | null;
+	referralCode: string | null;
+	referredBy: string | null;
 	isBlacklisted: boolean;
 	blacklistReason: string | null;
 	createdBy: string | null;

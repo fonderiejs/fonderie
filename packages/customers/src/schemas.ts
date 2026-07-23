@@ -20,6 +20,8 @@ const customerFields = {
 	avatarUrl: z.string().trim().pipe(z.url()).nullable().optional(),
 	locale: z.string().max(35).nullable().optional(),
 	referenceCode: z.string().max(100).nullable().optional(),
+	referralCode: z.string().max(100).nullable().optional(),
+	referredByCode: z.string().max(100).nullable().optional(),
 };
 
 export const createCustomerSchema = z.object(customerFields);

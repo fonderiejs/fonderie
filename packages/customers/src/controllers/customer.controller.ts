@@ -104,6 +104,8 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			const avatarUrl = body?.['avatarUrl'];
 			const locale = body?.['locale'];
 			const referenceCode = body?.['referenceCode'];
+			const referralCode = body?.['referralCode'];
+			const referredByCode = body?.['referredByCode'];
 
 			if (type !== undefined && type !== 'individual' && type !== 'business') {
 				return setApiResponse(
@@ -136,6 +138,9 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 					// exactOptionalPropertyTypes: omit the key entirely when absent
 					...(typeof referenceCode === 'string' ? { referenceCode: referenceCode.toUpperCase() } : {}),
 					referenceCodePrefix: prefix,
+					// referral: explicit code override is rare; referredByCode is the signup input
+					...(typeof referralCode === 'string' ? { referralCode: referralCode.toUpperCase() } : {}),
+					...(typeof referredByCode === 'string' ? { referredByCode: referredByCode.toUpperCase() } : {}),
 					createdBy: ctx.user?.id ?? null,
 				});
 			} catch (err: unknown) {

@@ -51,6 +51,8 @@ interface ICustomerDTO {
     avatarUrl: string;
     locale: string;
     referenceCode: string;
+    referralCode: string;
+    referredBy: string | null;
     blacklisted: {
         status: boolean;
         reason: string | null;
@@ -119,6 +121,7 @@ new CustomerEmailModel(store: IStoreAdapter): CustomerEmailModel
   .remove(emailId: string, customerId: string): Promise<void>
 
 new CustomerModel(store: IStoreAdapter): CustomerModel
+  .resolveReferralCode(workspaceId: string, code: string): Promise<string | null>
   .list(opts: ListCustomersOpts): Promise<ICustomer[]>
   .findById(id: string, workspaceId: string): Promise<ICustomer | null>
   .findDetail(id: string, workspaceId: string, depth: 2): Promise<ICustomerDetailD2 | null>
@@ -179,6 +182,8 @@ interface ICustomer {
     avatarUrl: string | null;
     locale: string;
     referenceCode: string | null;
+    referralCode: string | null;
+    referredBy: string | null;
     isBlacklisted: boolean;
     blacklistReason: string | null;
     createdBy: string | null;
