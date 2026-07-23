@@ -133,7 +133,20 @@ function collectRoutes(pkgDir) {
 				const chain = node.elements.slice(2).map((el) => el.getText(sf).replace(/\s+/g, ' '));
 				routes.push({ method: node.elements[0].text, path: node.elements[1].text, chain });
 			}
-			ts.forEachChild(node, visit);
+			// R('id', 'METHOD', '/path', ...middleware) — the route-override helper form
+				// (auth). Record the DEFAULT method/path (args 1,2); runtime config.routes
+				// overrides don't change what the package declares.
+				if (
+					ts.isCallExpression(node) &&
+					ts.isIdentifier(node.expression) && node.expression.text === 'R' &&
+					node.arguments.length >= 4 &&
+					ts.isStringLiteral(node.arguments[1]) && METHODS.has(node.arguments[1].text) &&
+					ts.isStringLiteral(node.arguments[2]) && node.arguments[2].text.startsWith('/')
+				) {
+					const chain = node.arguments.slice(3).map((el) => el.getText(sf).replace(/\s+/g, ' '));
+					routes.push({ method: node.arguments[1].text, path: node.arguments[2].text, chain });
+				}
+				ts.forEachChild(node, visit);
 		};
 		visit(sf);
 	}

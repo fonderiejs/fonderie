@@ -1733,6 +1733,29 @@ test('buildAuthRoutes: verifyGate is a no-op when requireVerification is false',
 	assert.ok(nextCalled, 'verifyGate must call next when requireVerification is false');
 });
 
+test('buildAuthRoutes: config.routes overrides path and method (contract-fit without a shim)', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const routes = buildAuthRoutes(stub, {
+		...config,
+		routes: {
+			forgotPassword: '/auth/forgot-password',           // string → path only
+			verifyEmail: '/auth/verify-email',
+			me: '/users/me',
+			updateProfile: { method: 'PATCH', path: '/users/me' }, // object → method + path
+		},
+	});
+	const has = (method: string, path: string) => routes.some(([m, p]) => m === method && p === path);
+	assert.ok(has('POST', '/auth/forgot-password'), 'forgotPassword path overridden');
+	assert.ok(has('POST', '/auth/verify-email'), 'verifyEmail path overridden');
+	assert.ok(has('GET', '/users/me'), 'me path overridden');
+	assert.ok(has('PATCH', '/users/me'), 'updateProfile method+path overridden');
+	// unset routes keep defaults; overridden defaults are gone
+	assert.ok(has('POST', '/auth/register'), 'register keeps default');
+	assert.ok(!has('POST', '/auth/email/forgot'), 'old forgot path replaced');
+	assert.ok(!has('PUT', '/users/profile'), 'old updateProfile route replaced');
+});
+
 test('buildAuthRoutes: verifyGate blocks unverified users when requireVerification is true', async () => {
 	const { buildAuthRoutes } = await import('../routes');
 	const stub: any = {
