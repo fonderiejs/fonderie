@@ -5,10 +5,24 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
 
-import { getPlanLimit } from '@fonderie/billing';
 import { MESSAGE_KEYS } from '../config';
 import { InvitationModel } from '../models/invitation.model';
 import { toInvitationDTO } from '../dtos/workspace';
+
+// Seat limits are OPTIONAL and owned by @fonderie/billing. Per Fonderie's
+// architecture law (packages talk only through ctx.meta — no sibling imports),
+// we read billing's cached context directly instead of importing its code, so
+// workspaces has no build- or runtime-dependency on billing. Billing registered
+// → it caches an IBillingContext on ctx.meta['billing'] and seats are enforced;
+// billing absent → fail open (no limit), which is the intended default.
+function seatLimitFromMeta(ctx: IFonderieContext): number | null {
+	const billing = ctx.meta['billing'] as
+		| { statuses?: Record<string, { type?: string; limit?: number }> }
+		| undefined;
+	const status = billing?.statuses?.['seats'];
+	if (!status || status.type === 'feature' || typeof status.limit !== 'number') return null;
+	return status.limit;
+}
 
 export function invitationController(store: IStoreAdapter, ttl: string, bus?: EventBus) {
 	const invitations = new InvitationModel(store);
@@ -46,9 +60,9 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 				}
 			}
 
-			// Seat limit — enforced automatically when billing module is registered.
-			// getPlanLimit reads from ctx.meta['billing'] (fail-open when billing absent).
-			const seatLimit = getPlanLimit(ctx, 'seats');
+			// Seat limit — enforced automatically when the billing module is
+			// registered (read from ctx.meta['billing']); fail-open when absent.
+			const seatLimit = seatLimitFromMeta(ctx);
 			if (seatLimit !== null) {
 				const [countRow] = await store.query<{ count: string }>(
 					`SELECT COUNT(*) AS count FROM fonderie_role_user_workspaces

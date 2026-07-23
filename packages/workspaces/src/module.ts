@@ -19,7 +19,9 @@ interface UserRegisteredPayload {
 
 export class WorkspacesModule implements IFonderieModule {
 	readonly name = '@fonderie/workspaces';
-	readonly deps = ['@fonderie/auth', '@fonderie/billing'];
+	// billing is OPTIONAL — seat limits activate if it's registered (read via
+	// ctx.meta['billing']), otherwise invitations are unlimited. Not a hard dep.
+	readonly deps = ['@fonderie/auth'];
 
 	constructor(
 		private store: IStoreAdapter,
