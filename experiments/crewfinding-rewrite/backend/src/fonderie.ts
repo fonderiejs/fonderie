@@ -30,7 +30,7 @@ function onResponse(body: any, { status, request }: { status: number; request: R
   const path = new URL(request.url).pathname;
   const r = body?.result ?? {};
   if (r && r.tokens) return { user: userDTO(r.user), accessToken: r.tokens.access, refreshToken: r.tokens.refresh };
-  if (path === '/users') return userDTO(r);
+  if (path === '/users' || path.startsWith('/users/')) return userDTO(r.user ?? r);
   if (path.startsWith('/workspaces')) return { workspace: r };
   if (body && body.reason && body.result === undefined) return { ok: true };
   return r;

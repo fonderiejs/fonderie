@@ -4,18 +4,17 @@ import { fonderie } from './fonderie';
 
 const app = express();
 
-// Thin path-alias shim: crewfinding contract paths -> Fonderie paths. Runs before
-// the Fonderie bridge, rewriting req.url so the framework sees its own routes.
-const ALIAS: Record<string, string> = {
-  'POST /auth/forgot-password': '/auth/email/forgot',
-  'POST /auth/reset-password': '/auth/email/reset',
-  'POST /auth/verify-email': '/auth/verify',
-};
+// Thin contract shim: rewrite crewfinding's paths (and one method) to Fonderie's,
+// BEFORE the Fonderie bridge reads req.url/req.method. This is all an adopter with
+// an existing frontend needs on top of the onResponse envelope mapping.
 app.use((req, _res, next) => {
-  const key = req.method + ' ' + req.path;
-  if (req.path === '/users/me') req.url = req.url.replace('/users/me', '/users');
-  else if (ALIAS[key]) req.url = req.url.replace(req.path, ALIAS[key]);
-  else if (req.method === 'PUT' && /^\/workspaces\/[^/]+$/.test(req.path)) req.url = '/workspaces';
+  const p = req.path;
+  if (req.method === 'GET' && p === '/users/me') req.url = req.url.replace('/users/me', '/users');
+  else if (req.method === 'PATCH' && p === '/users/me') { req.method = 'PUT'; req.url = '/users/profile'; }
+  else if (req.method === 'POST' && p === '/auth/forgot-password') req.url = '/auth/email/forgot';
+  else if (req.method === 'POST' && p === '/auth/reset-password') req.url = '/auth/email/reset';
+  else if (req.method === 'POST' && p === '/auth/verify-email') req.url = '/auth/verify';
+  else if (req.method === 'PUT' && /^\/workspaces\/[^/]+$/.test(p)) req.url = '/workspaces';
   next();
 });
 
