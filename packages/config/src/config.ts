@@ -1,4 +1,4 @@
-export interface IRemoteConfigOptions {
+export interface IConfigOptions {
 	// How often to poll the DB for changes (ms)
 	// Default: 30000 (30 seconds)
 	ttl?: number;

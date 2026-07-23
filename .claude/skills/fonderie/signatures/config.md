@@ -7,12 +7,12 @@
 Subpath exports: `@fonderie/config/types`, `@fonderie/config/middleware`, `@fonderie/config/migrations`
 
 ```ts
-new RemoteConfigModule(store: IStoreAdapter, options?: IRemoteConfigOptions): RemoteConfigModule
+new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule
   .name: "@fonderie/config"
   .manager: RemoteConfigManager
   .install(app: IFonderieApp): Promise<void>
 
-new RemoteConfigManager(store: IStoreAdapter, options?: IRemoteConfigOptions): RemoteConfigManager
+new RemoteConfigManager(store: IStoreAdapter, options?: IConfigOptions): RemoteConfigManager
   .boot(): Promise<void>
   .stop(): void
   .get<T>(key: string, fallback: T): T
@@ -48,7 +48,7 @@ interface IConfigSnapshot {
     fetchedAt: Date;
 }
 
-interface IRemoteConfigOptions {
+interface IConfigOptions {
     ttl?: number;
     environment?: string;
     table?: string;

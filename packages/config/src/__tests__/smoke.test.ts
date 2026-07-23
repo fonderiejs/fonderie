@@ -96,12 +96,12 @@ test('stop: clears the polling interval', async () => {
 	assert.ok(true); // no error thrown
 });
 
-// ── RemoteConfigModule shape ──────────────────────────────────────
+// ── ConfigModule shape ──────────────────────────────────────
 
-test('RemoteConfigModule: satisfies IFonderieModule interface', async () => {
-	const { RemoteConfigModule } = await import('../module');
+test('ConfigModule: satisfies IFonderieModule interface', async () => {
+	const { ConfigModule } = await import('../module');
 	const store = makeStore();
-	const mod = new RemoteConfigModule(store);
+	const mod = new ConfigModule(store);
 
 	assert.equal(mod.name, '@fonderie/config');
 	assert.ok(typeof mod.install === 'function');

@@ -13,10 +13,10 @@ npm install @fonderie/config
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';
-import { RemoteConfigModule } from '@fonderie/config';
+import { ConfigModule } from '@fonderie/config';
 
 const app = await new FonderieApp(defineConfig({}))
-  .register(new RemoteConfigModule())
+  .register(new ConfigModule())
   .boot();
 ```
 

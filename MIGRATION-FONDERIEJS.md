@@ -41,12 +41,11 @@ before flipping. The business gate (one live paying client) is **not yet tripped
    account. *Residual:* if CI publishes with a granular token, mint one scoped to
    `@fonderiejs` too (the current token is `@fonderie`-scoped); a first manual
    publish will confirm end-to-end.
-3. ✅ **Reviewed** — `API-FREEZE-REVIEW.md`. Surface is in good shape; **3 small
-   breaking-to-fix items to address before the flip**: Courier's constructor
-   order, the `@fonderie/config` class/type naming (`RemoteConfigModule` /
-   `IRemoteConfigOptions`), and snake_case in the public `@fonderie/events` row
-   types (`IEventRecord`/`IConsumerRecord`). Everything else is additive or a
-   conscious commitment.
+3. ✅ **Done** — `API-FREEZE-REVIEW.md`. All 3 breaking-to-fix items resolved and
+   staged for the 1.0.0 reset: `@fonderie/config` renamed to `ConfigModule` /
+   `IConfigOptions`; `@fonderie/events` row types camelCased; Courier's
+   config-first constructor kept + documented (store is genuinely optional). The
+   API is freeze-ready.
 
 **Recommendation:** don't migrate yet (gate A not tripped); do the pre-work now so
 the day crewfinding goes live, A is a one-day flip.
