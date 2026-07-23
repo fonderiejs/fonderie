@@ -24,6 +24,9 @@ import { spawnSync } from 'node:child_process';
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, '..');
 const K = JSON.parse(readFileSync(join(pkgRoot, 'data/knowledge.json'), 'utf8'));
+// Package scope — the @fonderiejs 1.0.0 launch flips this one line (see
+// MIGRATION-FONDERIEJS.md); every scope reference below derives from it.
+const SCOPE = '@fonderie';
 const CONCEPTS = Object.entries(K.concepts || {});
 
 const argv = process.argv.slice(2);
@@ -32,7 +35,7 @@ const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] :
 
 // installed @fonderie packages in a project (co-located fragments are the data)
 function installed(projectDir) {
-  const dir = join(projectDir, 'node_modules', '@fonderie');
+  const dir = join(projectDir, 'node_modules', SCOPE);
   if (!existsSync(dir)) return [];
   return readdirSync(dir).sort()
     .filter((n) => existsSync(join(dir, n, 'package.json')))
@@ -58,7 +61,7 @@ function doQuery() {
   const projectDir = arg('--project', process.cwd());
   const inst = installed(projectDir).find((p) => p.name === c.package);
   console.log(`${id} — ${c.description}\n`);
-  console.log(`Package: @fonderie/${c.package}${inst ? `@${inst.version} (installed)` : ' — run: npm install @fonderie/' + c.package}`);
+  console.log(`Package: ${SCOPE}/${c.package}${inst ? `@${inst.version} (installed)` : ` — run: npm install ${SCOPE}/${c.package}`}`);
   const recipe = c.recipe && K.recipes[c.recipe];
   if (recipe) {
     console.log(`Recipe: ${c.recipe} — ${recipe.when}`);
@@ -87,7 +90,7 @@ function doSkill() {
   for (const p of inst) {
     const fr = fragment(p);
     if (!fr.signatures && !fr.outcomes) continue;
-    const body = [`# @fonderie/${p.name}@${p.version}`, '', fr.signatures, fr.outcomes ? '\n' + fr.outcomes : ''].join('\n').trim();
+    const body = [`# ${SCOPE}/${p.name}@${p.version}`, '', fr.signatures, fr.outcomes ? '\n' + fr.outcomes : ''].join('\n').trim();
     writeFileSync(join(outDir, 'fonderie', `${p.name}.md`), body + '\n');
     bodies++;
   }
@@ -105,7 +108,7 @@ function doSkill() {
   L.push('limiting, or config. Use the audited `@fonderie/*` brick. For the capability');
   L.push('your task needs, **read only that package\'s body** — do not load them all.');
   L.push('');
-  L.push(`Installed here: ${inst.length ? inst.map((p) => `\`@fonderie/${p.name}@${p.version}\``).join(', ') : 'none yet'}.`);
+  L.push(`Installed here: ${inst.length ? inst.map((p) => `\`${SCOPE}/${p.name}@${p.version}\``).join(', ') : 'none yet'}.`);
   L.push('');
   L.push('## Capability → read this / or discover');
   L.push('');
@@ -198,11 +201,11 @@ function doInit() {
 const MODULE_SPECS = {
   // `order` = construction/registration priority. Lower first. auth depends on
   // events.bus, so events (2) must precede auth (3) — the canonical example order.
-  store:  { pkg: 'store',  order: 0, import: `import { PGAdapter, MigrationRunner, InternalMigrationRunner } from '@fonderie/store';`, ctor: null, migrations: false },
-  core:   { pkg: 'core',   order: 1, import: `import { FonderieApp, defineConfig } from '@fonderie/core';`, ctor: null, migrations: false },
-  events: { pkg: 'events', order: 2, import: `import { EventsModule } from '@fonderie/events';\nimport { getMigrationsPath as evtMig } from '@fonderie/events/migrations';`,
+  store:  { pkg: 'store',  order: 0, import: `import { PGAdapter, MigrationRunner, InternalMigrationRunner } from '${SCOPE}/store';`, ctor: null, migrations: false },
+  core:   { pkg: 'core',   order: 1, import: `import { FonderieApp, defineConfig } from '${SCOPE}/core';`, ctor: null, migrations: false },
+  events: { pkg: 'events', order: 2, import: `import { EventsModule } from '${SCOPE}/events';\nimport { getMigrationsPath as evtMig } from '${SCOPE}/events/migrations';`,
             varName: 'events', ctor: `const events = new EventsModule({ transport: { type: 'pg', connectionUrl: config.db.url } });`, migrations: 'evtMig()' },
-  auth:   { pkg: 'auth',   order: 3, import: `import { AuthModule } from '@fonderie/auth';\nimport { getMigrationsPath as authMig } from '@fonderie/auth/migrations';`,
+  auth:   { pkg: 'auth',   order: 3, import: `import { AuthModule } from '${SCOPE}/auth';\nimport { getMigrationsPath as authMig } from '${SCOPE}/auth/migrations';`,
             varName: 'auth', ctor: `const auth = new AuthModule(store, {\n  jwtSecret: process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',\n  appName: 'App',\n  providers: ['email'],\n  requireVerification: false,\n}, events.bus);`, migrations: 'authMig()',
             env: { JWT_SECRET: 'dev-secret-min-32-chars-long-here' } },
 };
@@ -232,7 +235,7 @@ function doAdd() {
   const registrable = specs.filter((s) => s.varName);
 
   // 1) install (deterministic) — packages + the express adapter it mounts through
-  const installList = [...pkgs.map((p) => `@fonderie/${p}`), '@fonderie/adapter-express'];
+  const installList = [...pkgs.map((p) => `${SCOPE}/${p}`), `${SCOPE}/adapter-express`];
   console.log(`fonderie add ${recipeName}: installing ${installList.join(' ')} …`);
   const npm = spawnSync('npm', ['install', ...installList], { cwd: projectDir, stdio: 'inherit' });
   if (npm.status !== 0) { console.error('npm install failed — aborting before writing wiring.'); process.exit(1); }
@@ -276,7 +279,7 @@ function doAdd() {
 
   // 4) the ONE app-specific line the agent still owns — printed, not guessed
   console.log(`\nDone. Two lines left for your app entry (e.g. src/index.ts):`);
-  console.log(`    import { mount } from '@fonderie/adapter-express';`);
+  console.log(`    import { mount } from '${SCOPE}/adapter-express';`);
   console.log(`    import { fonderie } from './fonderie';`);
   console.log(`  then wrap your express app:  const app = mount(express(), fonderie);`);
   for (const inv of recipe.invariants || []) if (K.invariants[inv]) console.log(`  ⚠ ${K.invariants[inv]}`);

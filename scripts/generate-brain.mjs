@@ -10,6 +10,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SCOPE_PREFIX } from './scope.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const sigDir = join(root, '.claude/skills/fonderie/signatures');
@@ -27,11 +28,11 @@ function extractPackages() {
     // Only runtime SDK bricks belong in the brain. Skip anything that isn't a
     // @fonderie/* library: a different scope, OR tooling that ships a `bin`
     // (e.g. @fonderie/cli) — a bin package is a command, not a brick to import.
-    if (!j.name.startsWith('@fonderie/') || j.bin) continue;
-    const name = j.name.replace('@fonderie/', '');
+    if (!j.name.startsWith(SCOPE_PREFIX) || j.bin) continue;
+    const name = j.name.replace(SCOPE_PREFIX, '');
     const requires = Object.keys(j.peerDependencies || {})
-      .filter((k) => k.startsWith('@fonderie/'))
-      .map((k) => k.replace('@fonderie/', ''));
+      .filter((k) => k.startsWith(SCOPE_PREFIX))
+      .map((k) => k.replace(SCOPE_PREFIX, ''));
 
     // exports: top-level symbols re-exported from src/index.ts
     const idx = read(join(pkgsDir, p, 'src/index.ts'));
