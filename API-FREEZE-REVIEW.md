@@ -8,6 +8,11 @@ additive, a conscious commitment, or already consistent.
 
 ## A. Decide before the freeze (breaking to change later)
 
+> **All three resolved (2026-07-23).** These are breaking changes staged on `main`
+> for the 1.0.0 reset (which republishes everything fresh) — deliberately **not**
+> released as separate `@fonderie` test-scope major bumps, to avoid cascade churn
+> on disposable versions. See the per-item resolutions below.
+
 1. **Constructor order — `CourierModule` is the outlier.** Every other
    store-backed module is `(store, config?, bus?)`:
    `AuthModule(store, config, bus?)`, `WorkspacesModule(store, config?, bus?)`,
@@ -17,6 +22,10 @@ additive, a conscious commitment, or already consistent.
    first (store optional — fs templates need no DB). Either reorder to
    `(store?, config, bus?)` for consistency, or keep and *document* why courier is
    special. Changing a constructor post-1.0.0 is breaking → decide now.
+   **✅ Resolved — kept, documented as intentional.** Courier's `store` is
+   genuinely optional (fs-based templates need no DB), so config-first is a
+   deliberate design (store-first would force a required-nullable first param).
+   Not a defect; left as-is.
 
 2. **`@fonderie/config` naming.** It's the only module whose class name doesn't
    mirror its package: `export class RemoteConfigModule` in `@fonderie/config`
@@ -25,6 +34,8 @@ additive, a conscious commitment, or already consistent.
    `IXConfig` convention. Pick one: rename to `ConfigModule` + `IConfigConfig`
    (consistency), or commit to the "RemoteConfig" concept. Renaming exports is
    breaking → decide now.
+   **✅ Resolved — renamed** `RemoteConfigModule` → `ConfigModule`,
+   `IRemoteConfigOptions` → `IConfigOptions` (class now mirrors the package).
 
 3. **snake_case leaks in public `@fonderie/events` types.** `IEventRecord` and
    `IConsumerRecord` are exported from `.` with **snake_case** fields —
@@ -32,6 +43,9 @@ additive, a conscious commitment, or already consistent.
    camelCase (`createdAt`, …). They mirror DB rows (`fonderie_events`,
    `fonderie_event_consumers`). Either camelCase them, or stop exporting the raw
    row types (make them internal). Breaking → decide now.
+   **✅ Resolved — camelCased** `IEventRecord.createdAt`,
+   `IConsumerRecord.eventId`/`processedAt` (pure type change; nothing read those
+   fields internally — DB column names in SQL are unaffected).
 
 ## B. Additive — safe to add after 1.0.0 (roadmap, not a blocker)
 
@@ -60,7 +74,6 @@ additive, a conscious commitment, or already consistent.
 
 ## Recommendation
 
-Fix the **3 items in section A** before the 1.0.0 scope flip — each is small and
-localized (one constructor, one class/type rename, one set of field renames). The
-rest is additive or a deliberate commitment. With A addressed, the public API is
-freeze-ready for `@fonderiejs@1.0.0`.
+**All of section A is now addressed** (config renamed, events camelCased, courier
+kept-and-documented) — staged on `main` for the 1.0.0 reset. The rest is additive
+or a deliberate commitment. **The public API is freeze-ready for `@fonderiejs@1.0.0`.**

@@ -358,7 +358,7 @@
         "store"
       ],
       "exports": [
-        "RemoteConfigModule",
+        "ConfigModule",
         "RemoteConfigManager",
         "CONFIG_MANAGER_KEY"
       ],
@@ -1711,7 +1711,7 @@
     "authclient": [
       "client"
     ],
-    "remoteconfigmodule": [
+    "configmodule": [
       "config"
     ],
     "remoteconfigmanager": [

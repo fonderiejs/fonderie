@@ -201,7 +201,7 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
 
 ## Other bricks (one-liners)
 
-- `new RemoteConfigModule(store, options?)` — feature flags; `getConfig(ctx)`
+- `new ConfigModule(store, config?)` — feature flags; `getConfig(ctx)`
 - `new AuditModule(store)` — workspace-scoped log at `GET /audit`
 - `new WebhooksModule(store, config?, bus?)` — outgoing webhooks; CRUD at `/webhooks*`
 - `new CustomersModule(store, config?, bus?)` — customer records at `/customers*`

@@ -73,16 +73,16 @@ interface IEventRecord {
     type: string;
     payload: Record<string, unknown>;
     meta: IEventMeta;
-    created_at: Date;
+    createdAt: Date;
 }
 
 interface IConsumerRecord {
-    event_id: string;
+    eventId: string;
     consumer: string;
     status: 'pending' | 'processing' | 'processed' | 'failed' | 'dead';
     attempts: number;
     error: string | null;
-    processed_at: Date | null;
+    processedAt: Date | null;
 }
 
 const NOTIFICATION_EVENT: "fonderie.notification.send"

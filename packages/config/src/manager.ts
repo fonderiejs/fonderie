@@ -1,6 +1,6 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { IRemoteConfigOptions } from './config';
+import type { IConfigOptions } from './config';
 import type { IConfigSnapshot } from './types';
 
 const FONDERIE_CONFIG_KEY = 'fonderie.config.snapshot';
@@ -14,7 +14,7 @@ export class RemoteConfigManager {
 
 	constructor(
 		private store: IStoreAdapter,
-		options: IRemoteConfigOptions = {},
+		options: IConfigOptions = {},
 	) {
 		this.ttl = options.ttl ?? 30_000;
 		this.environment = options.environment ?? process.env['NODE_ENV'] ?? 'development';

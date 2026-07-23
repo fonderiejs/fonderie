@@ -39,7 +39,7 @@ from `src/index.ts`.
 | customers | core, events, store, workspaces | CustomersModule |
 | courier | core, events, store | CourierModule, EmailChannel, SmsChannel |
 | webhooks | core, events, store | WebhooksModule |
-| audit, config | core, store | AuditModule, RemoteConfigModule |
+| audit, config | core, store | AuditModule, ConfigModule |
 | adapter-express/hono/koa | core, workspaces, permissions, billing | OPERATIONS |
 
 Findings: (1) `workspaces → billing` is a real peer edge — per-seat/team
