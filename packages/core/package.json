@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/core",
-	"version": "0.1.5",
+	"version": "0.2.0",
 	"description": "Framework core — request router, middleware pipeline, module system, and shared context types. Every other @fonderie-js package depends on this.",
 	"keywords": [
 		"fonderie-js",
