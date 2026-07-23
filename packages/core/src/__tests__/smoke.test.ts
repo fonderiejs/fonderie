@@ -45,6 +45,60 @@ test('registered route receives request and returns response', async () => {
 	assert.equal(body.ok, true);
 });
 
+// ── onResponse contract-adapter hook ─────────────────────────────
+
+test('onResponse: transforms the body, preserving status', async () => {
+	const app = new FonderieApp(defineConfig({
+		db: { url: 'postgres://localhost/test' },
+		onResponse: (body, { status }) => ({ wrapped: body, status }),
+	}));
+	app.addRoute('GET', '/x', async () => Response.json({ reason: 'OK', explanation: '', result: { a: 1 } }, { status: 201 }));
+	await app.boot();
+	const res = await app.handle(makeRequest('GET', '/x'));
+	assert.equal(res.status, 201);
+	assert.deepEqual(await res.json(), { wrapped: { reason: 'OK', explanation: '', result: { a: 1 } }, status: 201 });
+});
+
+test('onResponse: flattens the Fonderie envelope to a crewfinding-style shape', async () => {
+	// Proves one config option closes the Phase-1 envelope divergence: Fonderie
+	// { reason, explanation, result: { tokens, user } } → flat { user, accessToken, refreshToken }.
+	const flatten = (body: any, { status }: { status: number }) => {
+		if (status >= 400) return { error: body.explanation };
+		const r = body.result ?? {};
+		if (r.tokens) return { user: r.user, accessToken: r.tokens.access, refreshToken: r.tokens.refresh };
+		return r;
+	};
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, onResponse: flatten }));
+	app.addRoute('POST', '/auth/login', async () =>
+		Response.json({ reason: 'LOGGED_IN', explanation: 'ok', result: { tokens: { access: 'AAA', refresh: 'RRR' }, user: { id: 'u1', email: 'a@b.com' } } }, { status: 200 }),
+	);
+	await app.boot();
+	const res = await app.handle(makeRequest('POST', '/auth/login'));
+	assert.deepEqual(await res.json(), { user: { id: 'u1', email: 'a@b.com' }, accessToken: 'AAA', refreshToken: 'RRR' });
+});
+
+test('onResponse: undefined return leaves the response untouched', async () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, onResponse: () => undefined }));
+	app.addRoute('GET', '/y', async () => Response.json({ reason: 'OK', explanation: '' }, { status: 200 }));
+	await app.boot();
+	const res = await app.handle(makeRequest('GET', '/y'));
+	assert.deepEqual(await res.json(), { reason: 'OK', explanation: '' });
+});
+
+test('onResponse: preserves Set-Cookie and skips non-JSON', async () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, onResponse: (b: any) => b.result ?? b }));
+	app.addRoute('GET', '/c', async () =>
+		Response.json({ reason: 'OK', explanation: '', result: { ok: true } }, { status: 200, headers: { 'set-cookie': 'access_token=AAA; HttpOnly' } }),
+	);
+	app.addRoute('GET', '/text', async () => new Response('hello', { status: 200, headers: { 'content-type': 'text/plain' } }));
+	await app.boot();
+	const jsonRes = await app.handle(makeRequest('GET', '/c'));
+	assert.equal(jsonRes.headers.get('set-cookie'), 'access_token=AAA; HttpOnly', 'cookie preserved through transform');
+	assert.deepEqual(await jsonRes.json(), { ok: true });
+	const textRes = await app.handle(makeRequest('GET', '/text'));
+	assert.equal(await textRes.text(), 'hello', 'non-JSON passes through untouched');
+});
+
 test('module installs its route on boot', async () => {
 	const pingModule: IFonderieModule = {
 		name: 'ping',
