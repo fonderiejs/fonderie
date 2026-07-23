@@ -46,7 +46,7 @@ export interface KoaContext {
 	response: {
 		body: unknown;
 		status: number;
-		set(key: string, value: string): void;
+		set(key: string, value: string | string[]): void;
 	};
 	req: IncomingMessage;
 	state: Record<string, unknown>;
@@ -84,7 +84,13 @@ export function koaContextToWeb(ctx: KoaContext): Request {
 
 export async function webResponseToKoa(webRes: Response, ctx: KoaContext): Promise<void> {
 	ctx.response.status = webRes.status;
-	webRes.headers.forEach((value, key) => ctx.response.set(key, value));
+	// Set-Cookie must be forwarded as a LIST — forEach + set() would overwrite all
+	// but the last cookie (and joining them into one header is invalid).
+	const setCookies = webRes.headers.getSetCookie?.() ?? [];
+	if (setCookies.length) ctx.response.set('Set-Cookie', setCookies);
+	webRes.headers.forEach((value, key) => {
+		if (key.toLowerCase() !== 'set-cookie') ctx.response.set(key, value);
+	});
 	ctx.response.body = await webRes.text();
 }
 
