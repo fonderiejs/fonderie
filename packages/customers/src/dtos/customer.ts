@@ -27,6 +27,8 @@ export interface ICustomerDTO {
 	avatarUrl: string;
 	locale: string;
 	referenceCode: string;
+	referralCode: string;
+	referredBy: string | null;
 	blacklisted: { status: boolean; reason: string | null };
 	createdBy: string;
 	createdAt: string;
@@ -134,6 +136,8 @@ export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 		avatarUrl: stringOrEmpty(c.avatarUrl),
 		locale: stringOrEmpty(c.locale),
 		referenceCode: stringOrEmpty(c.referenceCode),
+		referralCode: stringOrEmpty(c.referralCode),
+		referredBy: c.referredBy ?? null,
 		blacklisted: { status: booleanOrFalse(c.isBlacklisted), reason: c.blacklistReason ?? null },
 		createdBy: stringOrEmpty(c.createdBy),
 		createdAt: dateOrEmpty(c.createdAt),

@@ -129,6 +129,8 @@ created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 sex                      TEXT NOT NULL DEFAULT 'UNKNOWN'
 blacklist_reason         TEXT
+referral_code            TEXT
+referred_by              UUID REFERENCES fonderie_customers(id) ON DELETE SET NULL
 ```
 
 Raw SQL ships in `node_modules/@fonderie/customers/dist/migrations/sql/` — read it there if you must; never download tarballs.
