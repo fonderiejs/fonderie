@@ -1,5 +1,7 @@
 # Experiment docs — verification index
 
+**Status: ✅ Complete (2026-07-24)**
+
 _Single record of a 2026-07-24 verification pass over the tracked experiment
 docs. Kept as an index (not per-doc stamps) so that **pre-registered designs and
 raw results stay byte-for-byte immutable** — post-hoc checks live here, never
