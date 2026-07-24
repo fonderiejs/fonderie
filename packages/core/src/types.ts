@@ -16,6 +16,7 @@ export interface IAuthUser {
 	loginMethod: 'email' | 'phone' | 'google'; // sourced from JWT payload
 	phoneVerified: boolean; // per-session, sourced from JWT payload
 	mfaPending?: boolean; // true on the short-lived pre-auth token issued during MFA login
+	locale: string; // the user's preferred locale (DB row); drives per-locale courier templates
 }
 
 export interface IWorkspace {

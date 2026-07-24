@@ -81,6 +81,7 @@ export function mfaController(
 				bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.mfaEnabled,
+						locale: ctx.user!.locale,
 						data: {},
 						recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 					} satisfies ICourierMessage)
@@ -188,6 +189,7 @@ export function mfaController(
 			bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.mfaBackupCodesRegenerated,
+					locale: ctx.user!.locale,
 					data: {},
 					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 				} satisfies ICourierMessage)
@@ -222,6 +224,7 @@ export function mfaController(
 			bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.mfaDisabled,
+					locale: user.locale,
 					data: {},
 					recipient: { email: user.email, phone: null, deviceToken: null },
 				} satisfies ICourierMessage)

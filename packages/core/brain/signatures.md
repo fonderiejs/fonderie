@@ -31,6 +31,7 @@ interface IAuthUser {
     loginMethod: 'email' | 'phone' | 'google';
     phoneVerified: boolean;
     mfaPending?: boolean;
+    locale: string;
 }
 
 type Middleware = (ctx: IFonderieContext, next: () => Promise<Response>) => Promise<Response>;
