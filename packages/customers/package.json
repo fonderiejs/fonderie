@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/customers",
-	"version": "2.0.1",
+	"version": "3.0.0",
 	"description": "Workspace-scoped customer records — individuals and businesses with multiple emails, phones, addresses, notes, and tags.",
 	"keywords": [
 		"fonderie-js",
@@ -42,10 +42,10 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.2.0",
-		"@fonderie/events": "^2.0.0",
+		"@fonderie/core": "^0.3.0",
+		"@fonderie/events": "^3.0.0",
 		"@fonderie/store": "^0.1.1",
-		"@fonderie/workspaces": "^2.0.0"
+		"@fonderie/workspaces": "^3.0.0"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/events": {

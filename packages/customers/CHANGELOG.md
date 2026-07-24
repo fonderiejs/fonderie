@@ -1,5 +1,14 @@
 # @fonderie/customers
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies [6e9f785]
+  - @fonderie/core@0.3.0
+  - @fonderie/events@3.0.0
+  - @fonderie/workspaces@3.0.0
+
 ## 2.0.1
 
 ### Patch Changes
