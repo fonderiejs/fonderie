@@ -10,18 +10,30 @@
 // `<head>` for the friendly classes and small-screen media query. Founders can
 // override the whole shell by storing a `_layout` template (DB row or
 // `_layout.html` file) in their own source.
+//
+// The theme tokens mirror the product design system (organization/ui/base.css):
+// near-black primary, a mint brand accent, Inter, and the `#fafafa` canvas —
+// retune `EMAIL_THEME` to rebrand every email at once.
 
 // A single small token set — retune these to match your brand.
 export const EMAIL_THEME = {
 	brand: 'Fonderie',
-	accent: '#3B82F6', // primary action colour
+	accent: '#171717', // primary action (button) background — the product's primary
 	accentText: '#ffffff', // text on the accent
-	ink: '#1f2937', // body copy
-	muted: '#6b7280', // secondary copy
-	line: '#e5e7eb', // hairline borders
-	canvas: '#f4f5f7', // page background behind the card
+	brandAccent: '#00d294', // mint brand highlight (top rule) — used sparingly
+	link: '#009767', // links — the accessible (darkened) brand teal
+	ink: '#171717', // body copy
+	muted: '#5c5c5c', // secondary copy
+	line: '#e0e0e0', // hairline borders
+	canvas: '#fafafa', // page background behind the card
 	card: '#ffffff', // the card itself
 } as const;
+
+// The product font stack (Inter first, with system fallbacks for clients that
+// lack it). Shared by every text element so the frame stays consistent.
+const FONT_SANS =
+	"Inter, 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif";
+const FONT_MONO = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 
 // The `{{content}}` marker is replaced with the body fragment BEFORE variable
 // interpolation, so a body's own `{{firstName}}` etc. still resolve.
@@ -44,40 +56,45 @@ export const DEFAULT_EMAIL_LAYOUT = `<!DOCTYPE html>
 		.email-card {
 			background: ${EMAIL_THEME.card};
 			border: 1px solid ${EMAIL_THEME.line};
-			border-radius: 12px;
+			border-radius: 8px;
 			overflow: hidden;
 		}
+		.email-accent { height: 3px; background: ${EMAIL_THEME.brandAccent}; font-size: 0; line-height: 0; }
 		.email-header { padding: 28px 32px 0 32px; }
-		.email-brand { font: 700 18px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: ${EMAIL_THEME.ink}; letter-spacing: -0.01em; }
+		.email-brand { font: 800 19px/1 ${FONT_SANS}; color: ${EMAIL_THEME.ink}; letter-spacing: -0.03em; }
 		.email-content {
 			padding: 20px 32px 8px 32px;
-			font: 400 16px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+			font: 400 16px/1.7 ${FONT_SANS};
 			color: ${EMAIL_THEME.ink};
+			letter-spacing: -0.01em;
 		}
-		.email-content h1 { margin: 0 0 12px 0; font-size: 22px; line-height: 1.3; font-weight: 700; letter-spacing: -0.01em; }
+		.email-content h1 { margin: 0 0 12px 0; font-size: 22px; line-height: 1.3; font-weight: 700; letter-spacing: -0.03em; }
 		.email-content p { margin: 0 0 16px 0; }
+		.email-content a { color: ${EMAIL_THEME.link}; }
 		.email-footer {
 			padding: 16px 32px 28px 32px;
-			font: 400 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+			font: 400 13px/1.6 ${FONT_SANS};
 			color: ${EMAIL_THEME.muted};
+			letter-spacing: -0.01em;
 		}
 		.btn {
 			display: inline-block;
 			background: ${EMAIL_THEME.accent};
 			color: ${EMAIL_THEME.accentText} !important;
 			text-decoration: none;
-			font: 600 16px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-			padding: 14px 28px;
-			border-radius: 8px;
+			font: 600 16px/1 ${FONT_SANS};
+			letter-spacing: -0.01em;
+			padding: 13px 26px;
+			border-radius: 6px;
 		}
 		.pin-code {
 			display: inline-block;
-			font: 700 30px/1 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
+			font: 700 30px/1 ${FONT_MONO};
 			letter-spacing: 0.28em;
 			color: ${EMAIL_THEME.ink};
 			background: ${EMAIL_THEME.canvas};
 			border: 1px solid ${EMAIL_THEME.line};
-			border-radius: 8px;
+			border-radius: 6px;
 			padding: 14px 22px 14px 30px;
 		}
 		.muted { color: ${EMAIL_THEME.muted}; }
@@ -94,10 +111,11 @@ export const DEFAULT_EMAIL_LAYOUT = `<!DOCTYPE html>
 			<td align="center" style="padding: 32px 16px;">
 				<table role="presentation" class="email-container" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
 					<tr>
-						<td class="email-card" style="background:${EMAIL_THEME.card};border:1px solid ${EMAIL_THEME.line};border-radius:12px;">
+						<td class="email-card" style="background:${EMAIL_THEME.card};border:1px solid ${EMAIL_THEME.line};border-radius:8px;">
 							<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+								<tr><td class="email-accent" style="height:3px;background:${EMAIL_THEME.brandAccent};font-size:0;line-height:0;">&nbsp;</td></tr>
 								<tr><td class="email-header" style="padding:28px 32px 0 32px;">
-									<span class="email-brand" style="font-weight:700;font-size:18px;color:${EMAIL_THEME.ink};">${EMAIL_THEME.brand}</span>
+									<span class="email-brand" style="font-weight:800;font-size:19px;color:${EMAIL_THEME.ink};letter-spacing:-0.03em;">${EMAIL_THEME.brand}</span>
 								</td></tr>
 								<tr><td class="email-content" style="padding:20px 32px 8px 32px;color:${EMAIL_THEME.ink};">
 ${LAYOUT_CONTENT_SLOT}
