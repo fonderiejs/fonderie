@@ -65,8 +65,9 @@ the day client-app goes live, A is a one-day flip.
 ## The version reset — the subtlety
 
 "All at 1.0.0" is **not** a changeset bump. Changesets compute from current
-versions (mixed 0.1.x and 1.x.x), so a "major" gives `2.0.0` here, `1.0.0`
-there — never uniform. The reset is a **deliberate rewrite**: set every
+versions (now spanning `0.x` through `3.x` — e.g. `core@0.3.0`, `store@0.1.2`,
+`rate-limit@2.0.0`, most others `3.0.0`), so a "major" gives `4.0.0` here,
+`1.0.0` there — never uniform. The reset is a **deliberate rewrite**: set every
 `package.json` `version` to `1.0.0`, drop the accumulated `CHANGELOG.md`s (fresh
 history at launch), and start changesets from 1.0.0. One script, reviewed.
 
