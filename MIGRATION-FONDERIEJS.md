@@ -4,6 +4,11 @@ _Parked 2026-07-22. Execute WHEN VALIDATED — not before. `@fonderie/*` is the
 pre-Y-Combinator test scope where we prove things make sense; `@fonderiejs/*` is
 the product delivery, launched with every package at a clean **1.0.0**._
 
+_✅ Accuracy-verified 2026-07-24 — reviewed end-to-end against the published
+3.0.0 SDK: version-spread example refreshed (0.x–3.x), Phase-1 re-run + broken-
+build deprecation recorded, and the publishing-account email (`choleski@gmx.com`)
+confirmed against npm registry maintainer metadata._
+
 ## Why a plan, not a script yet
 
 The test scope is doing its job — real benchmarks, real fixes, real npm
