@@ -7,6 +7,12 @@ in good shape — **3 small, localized breaking-to-fix items**; everything else 
 additive, a conscious commitment, or already consistent — plus one out-of-surface
 note (E) recording that the publishing-pipeline / OIDC change is API-neutral.
 
+_✅ Doc verification 2026-07-24 — read end-to-end: section A resolutions match
+what shipped, the A–E structure + intro taxonomy agree, the OIDC assessment (E)
+is stamped, the closing freeze-ready verdict is present, all cross-references
+(`release.oidc.yml.draft`, MIGRATION-FONDERIEJS.md) resolve, and no line exceeds
+~80 cols._
+
 ## A. Decide before the freeze (breaking to change later)
 
 > **All three resolved (2026-07-23).** These are breaking changes staged on `main`
