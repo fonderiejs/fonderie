@@ -1,0 +1,76 @@
+# ⚠️ DRAFT — NOT ACTIVE. The `.draft` suffix means GitHub Actions ignores this
+# file (Actions only reads `*.yml` / `*.yaml`). It's the token-free successor to
+# `release.yml`, staged for the `@fonderiejs` migration (MIGRATION-FONDERIEJS.md
+# pre-work item 2, option C). To activate: rename over `release.yml` AFTER the
+# prerequisites below are met, then delete this draft.
+#
+# ── Why: npm Trusted Publishing (OIDC) ──────────────────────────────────────
+# GitHub Actions exchanges its short-lived OIDC identity (the `id-token: write`
+# permission) directly with npm — no long-lived `NPM_TOKEN` secret, no
+# 2026-10-13 expiry to babysit, and provenance is generated automatically. This
+# is npm's recommended path now that 2FA-bypass automation tokens are being
+# deprecated (the warning we saw during the 3.0.0 release).
+#
+# ── Prerequisites (ALL required before renaming this over release.yml) ───────
+# 1. npm CLI ≥ 11.5.1 in the runner. Node 22 ships npm 10.x, so this workflow
+#    upgrades npm explicitly (the `npm -g install npm@^11` step below). Trusted
+#    publishing silently no-ops on older npm.
+# 2. A Trusted Publisher configured on npmjs.com for EACH published package
+#    (npmjs.com → package → Settings → Trusted Publisher):
+#       Organization/Repository: fonderiejs/sdk
+#       Workflow filename:       release.yml   (the name it runs UNDER once renamed)
+#       Environment:             (leave blank unless you add one below)
+#    Every `@fonderiejs/*` package needs its own trusted-publisher entry — a
+#    changeset run publishes them all, and each is authorized independently.
+# 3. First publish of a brand-new package name still can't use OIDC (npm can't
+#    create a new package from a trusted publisher) — do the manual first publish
+#    with a token (checklist item 7), THEN OIDC owns every subsequent release.
+# 4. Once every package is on OIDC, delete the `NPM_TOKEN` GitHub secret — it is
+#    no longer referenced.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency: release-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write # OIDC identity for npm Trusted Publishing (+ provenance)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing needs npm ≥ 11.5.1; Node 22 ships npm 10.x.
+      - run: npm install -g npm@^11
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      # Opens/updates the "Version Packages" PR when changesets are pending;
+      # publishes to npm when that PR is merged. With OIDC there is NO
+      # NODE_AUTH_TOKEN / NPM_TOKEN — npm authenticates via the job's id-token,
+      # and provenance is emitted automatically (no NPM_CONFIG_PROVENANCE needed).
+      - uses: changesets/action@v1
+        with:
+          # `version` regenerates brain.json after the bumps so its sdkVersions
+          # match the new package versions — otherwise the docs:brain freshness
+          # gate fails on the very next push (learned the hard way, 2026-07-20).
+          version: npm run version
+          publish: npm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No NODE_AUTH_TOKEN / NPM_TOKEN / NPM_CONFIG_PROVENANCE — Trusted
+          # Publishing supplies auth and provenance from the OIDC id-token.
