@@ -24,7 +24,7 @@ export interface IVerifyResult {
 // (rehash-on-login). `bcrypt.compare` returns false rather than throwing on a
 // non-bcrypt hash, so the fallback is reached cleanly; the legacy verifier is
 // wrapped defensively in case a custom implementation throws.
-export async function verifyPasswordWithLegacy(
+export async function verifyPasswordForLogin(
 	plain: string,
 	hash: string,
 	legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>,
