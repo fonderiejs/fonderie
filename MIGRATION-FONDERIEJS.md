@@ -33,6 +33,18 @@ change costs a major bump and trust, so freeze-review the public API shapes once
 before flipping. The business gate (one live paying client) is **not yet tripped**
 — client-app is in flight.
 
+> **Re-verified against the published 3.0.0 SDK (2026-07-24).** After the
+> whole-SDK `3.0.0` release (email templates + localization + theme;
+> `core@0.3.0`, `store@0.1.2`, rest `3.0.0`, `rate-limit@2.0.0`), re-ran the
+> Phase-1 oracle end-to-end from npm: **25/25 assertions, 0 failed**, and
+> `npm install @fonderie/*@latest` resolved **cleanly — no `ERESOLVE`, no
+> `--legacy-peer-deps`**, backend booted and applied all migrations first try.
+> The peer-range mismatch + missing-migration-SQL defects from the earlier
+> partial release are **gone**; peer ranges are internally consistent across the
+> cascade. This is the healthy-release proof the A gate wanted — the SDK a paying
+> client would install is verified installable + contract-fit. See
+> `experiments/client-app-rewrite/RESULTS-PHASE1-RERUN.md` § "Re-run #2".
+
 **Pre-work to do NOW (no gate; makes A flip-a-flag):**
 1. ✅ **Done** — parameterized the `@fonderie` scope to a single `SCOPE` constant
    (`scripts/scope.mjs` + the CLI's own const; PR #66). The rename is now a
