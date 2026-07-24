@@ -4,7 +4,8 @@ A read-only pass over the public export surface of every `@fonderie/*` package,
 flagging what's costly to change **after** 1.0.0 (a breaking change = major bump +
 trust). Launch pre-work item #3 (MIGRATION-FONDERIEJS.md). Verdict: the surface is
 in good shape — **3 small, localized breaking-to-fix items**; everything else is
-additive, a conscious commitment, or already consistent.
+additive, a conscious commitment, or already consistent — plus one out-of-surface
+note (E) recording that the publishing-pipeline / OIDC change is API-neutral.
 
 ## A. Decide before the freeze (breaking to change later)
 
