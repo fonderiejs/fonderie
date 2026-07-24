@@ -61,6 +61,7 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
         meta: Record<string, unknown>;
     }) => Partial<IAuthRuntimeConfig>;
     routes?: Partial<Record<AuthRouteId, AuthRouteOverride>>;
+    legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>;
 }
 
 interface IAuthSecrets {
