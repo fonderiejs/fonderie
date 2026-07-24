@@ -74,7 +74,7 @@ additive, a conscious commitment, or already consistent.
 
 ## E. Out of surface — publishing pipeline (recorded, not an API item)
 
-The drafted move to npm **Trusted Publishing (OIDC)**
+**✅ Assessed 2026-07-24 — no freeze action.** The drafted move to npm **Trusted Publishing (OIDC)**
 (`.github/workflows/release.oidc.yml.draft`; MIGRATION-FONDERIEJS.md pre-work
 item 2, option C) was assessed against the freeze and has **zero public-API
 impact** — it changes *how CI authenticates to npm*, not a single export, type,
@@ -88,3 +88,10 @@ emits it via `NPM_CONFIG_PROVENANCE` + an automation token; the OIDC draft emits
 it automatically from the job's id-token. Either way provenance stays **on**, so
 the freeze does not lock us out of it and the switch neither adds nor removes a
 guarantee consumers rely on.
+
+## Recommendation
+
+**All of section A is now addressed** (config renamed, events camelCased, courier
+kept-and-documented) — staged on `main` for the 1.0.0 reset. The rest is additive
+or a deliberate commitment, and the publishing-pipeline / OIDC change (E) is
+assessed and API-neutral. **The public API is freeze-ready for `@fonderiejs@1.0.0`.**
