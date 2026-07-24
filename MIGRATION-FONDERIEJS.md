@@ -65,6 +65,9 @@ before flipping. The business gate (one live paying client) is **not yet tripped
    `@fonderiejs`; **(C, recommended long-term)** switch CI to npm **Trusted
    Publishing (OIDC)** — no stored token, no expiry — which pairs naturally with
    the manual first publish (item 7), since npm is deprecating 2FA-bypass tokens.
+   Option C is **drafted and ready** at `.github/workflows/release.oidc.yml.draft`
+   (inert `.draft` suffix; rename over `release.yml` once its header
+   prerequisites are met).
    *Must be done by the account owner on npmjs.com — granular tokens can't be
    minted from the CLI/CI, and the OTP/2FA web session isn't available to tooling.*
    Then `gh secret set NPM_TOKEN --repo fonderiejs/sdk`. A first manual publish
