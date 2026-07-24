@@ -74,11 +74,12 @@ additive, a conscious commitment, or already consistent.
 
 ## E. Out of surface — publishing pipeline (recorded, not an API item)
 
-**✅ Assessed 2026-07-24 — no freeze action.** The drafted move to npm **Trusted Publishing (OIDC)**
-(`.github/workflows/release.oidc.yml.draft`; MIGRATION-FONDERIEJS.md pre-work
-item 2, option C) was assessed against the freeze and has **zero public-API
-impact** — it changes *how CI authenticates to npm*, not a single export, type,
-route, or response shape. Nothing here gates or blocks the 1.0.0 API freeze.
+**✅ Assessed 2026-07-24 — no freeze action.** The drafted move to npm **Trusted
+Publishing (OIDC)** (`.github/workflows/release.oidc.yml.draft`;
+MIGRATION-FONDERIEJS.md pre-work item 2, option C) was assessed against the
+freeze and has **zero public-API impact** — it changes *how CI authenticates to
+npm*, not a single export, type, route, or response shape. Nothing here gates or
+blocks the 1.0.0 API freeze.
 
 One thing it **preserves** is worth stating, because it's the one consumer-facing
 thread the publishing pipeline touches: **npm provenance**. Provenance is the
