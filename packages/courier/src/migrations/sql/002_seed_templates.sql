@@ -102,7 +102,7 @@ SELECT pg_temp._seed_courier_template(
 <p>Thanks for signing up. Confirm your account with this code:</p>
 <p><span class="pin-code">{{pin}}</span></p>
 <p class="muted">This code expires in 24 hours. If you didn&rsquo;t create an account, you can safely ignore this email.</p>',
-	'Welcome
+	'Welcome aboard
 
 Hi {{firstName}},
 
