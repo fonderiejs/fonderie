@@ -52,4 +52,5 @@ Raw SQL ships in `node_modules/@fonderie/courier/dist/migrations/sql/` — read 
 
 - `ELSE`
 - `END IF`
-- `END $$`
+- `END`
+- `$fn$ LANGUAGE plpgsql`
