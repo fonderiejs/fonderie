@@ -90,3 +90,87 @@ The email address on your account was just changed to {{newEmail}}.
 
 If you made this change, you''re all set. If not, contact support right away — someone may have access to your account.'
 );
+
+-- email-registration — variables: firstName, pin
+-- The first email a new account receives (initial signup). Distinct from
+-- email-verification, which covers the resend / email-change paths.
+SELECT pg_temp._seed_courier_template(
+	'email-registration',
+	'Confirm your account',
+	'<h1>Welcome aboard</h1>
+<p>Hi {{firstName}},</p>
+<p>Thanks for signing up. Confirm your account with this code:</p>
+<p><span class="pin-code">{{pin}}</span></p>
+<p class="muted">This code expires in 24 hours. If you didn&rsquo;t create an account, you can safely ignore this email.</p>',
+	'Welcome
+
+Hi {{firstName}},
+
+Thanks for signing up. Confirm your account with this code: {{pin}}
+
+This code expires in 24 hours. If you didn''t create an account, you can safely ignore this email.'
+);
+
+-- phone-otp — variables: otp — SMS channel (text only, no subject/html)
+SELECT pg_temp._seed_courier_template(
+	'phone-otp',
+	NULL,
+	NULL,
+	'{{otp}} is your verification code. It expires in 10 minutes.'
+);
+
+-- mfa-enabled — no variables — security notice
+SELECT pg_temp._seed_courier_template(
+	'mfa-enabled',
+	'Two-factor authentication is on',
+	'<h1>Two-factor authentication enabled</h1>
+<p>Two-factor authentication was just turned on for your account. From now on you&rsquo;ll enter a code from your authenticator app when you sign in.</p>
+<p class="muted">If you didn&rsquo;t do this, contact support right away &mdash; someone may have access to your account.</p>',
+	'Two-factor authentication enabled
+
+Two-factor authentication was just turned on for your account. From now on you''ll enter a code from your authenticator app when you sign in.
+
+If you didn''t do this, contact support right away — someone may have access to your account.'
+);
+
+-- mfa-disabled — no variables — security notice
+SELECT pg_temp._seed_courier_template(
+	'mfa-disabled',
+	'Two-factor authentication is off',
+	'<h1>Two-factor authentication disabled</h1>
+<p>Two-factor authentication was just turned off for your account. Your account is now protected by your password alone.</p>
+<p class="muted">If you didn&rsquo;t do this, contact support right away and re-enable two-factor authentication &mdash; someone may have access to your account.</p>',
+	'Two-factor authentication disabled
+
+Two-factor authentication was just turned off for your account. Your account is now protected by your password alone.
+
+If you didn''t do this, contact support right away and re-enable two-factor authentication — someone may have access to your account.'
+);
+
+-- mfa-backup-codes-regenerated — no variables — security notice
+SELECT pg_temp._seed_courier_template(
+	'mfa-backup-codes-regenerated',
+	'Your backup codes were regenerated',
+	'<h1>New backup codes generated</h1>
+<p>A new set of two-factor backup codes was just generated for your account. Your previous backup codes no longer work.</p>
+<p class="muted">If you didn&rsquo;t do this, contact support right away &mdash; someone may have access to your account.</p>',
+	'New backup codes generated
+
+A new set of two-factor backup codes was just generated for your account. Your previous backup codes no longer work.
+
+If you didn''t do this, contact support right away — someone may have access to your account.'
+);
+
+-- phone-changed — no variables — security notice (sent to the account email)
+SELECT pg_temp._seed_courier_template(
+	'phone-changed',
+	'Your phone number was changed',
+	'<h1>Your phone number was changed</h1>
+<p>The phone number on your account was just updated.</p>
+<p class="muted">If you made this change, you&rsquo;re all set. If not, contact support right away &mdash; someone may have access to your account.</p>',
+	'Your phone number was changed
+
+The phone number on your account was just updated.
+
+If you made this change, you''re all set. If not, contact support right away — someone may have access to your account.'
+);
