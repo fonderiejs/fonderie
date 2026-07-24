@@ -88,6 +88,16 @@ stays in range and does **not** cascade a major. Set every internal
 `peerDependencies` range to `^1` at the reset, and audit that no `0.x` internal
 peers remain.
 
+> **Version-level cleanup done (2026-07-24).** The three stale artifacts that
+> this failure mode produced — `@fonderie/events@2.0.0`, `customers@2.0.0`,
+> `rate-limit@1.0.0` (all carrying the impossible `@fonderie/core@^1.0.0` peers
+> from a partial release; events also missing its migration SQL) — are now
+> `npm deprecate`d, each pointing at its fix (`2.0.1`/`2.0.1`/`1.0.1`). Scope
+> verified (only those three flagged; every `latest` untouched) and confirmed on
+> install. This is the *version*-level tidy-up, distinct from checklist item 8
+> (the *scope*-wide `@fonderie`→`@fonderiejs` deprecation), which stays deferred
+> until the 1.0.0 migration. See `experiments/client-app-rewrite/RESULTS-PHASE1-RERUN.md`.
+
 ## Checklist (in order)
 
 1. ✅ **Done (pre-work)** — the `fonderiejs` npm org is created under the
@@ -113,7 +123,10 @@ peers remain.
 7. **First publish of each renamed package is manual** (npm can't create a new
    package name from CI — the E404 rule), then CI owns them.
 8. **Deprecate the `@fonderie/*` test packages** on npm pointing at
-   `@fonderiejs/*`, so the staging scope doesn't confuse anyone.
+   `@fonderiejs/*`, so the staging scope doesn't confuse anyone. *(Still
+   deferred — needs `@fonderiejs` live first. Not to be confused with the
+   already-done version-level deprecation of the 3 broken partial-release builds;
+   see "Peer ranges must tolerate minors" above.)*
 
 ## Scope-hard-coding to fix before migration (found while planning)
 
