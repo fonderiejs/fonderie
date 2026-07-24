@@ -135,6 +135,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.emailVerification,
+					locale: ctx.user!.locale,
 					data: { pin },
 					recipient: { email: normalised, phone: null, deviceToken: null },
 				} satisfies ICourierMessage)
@@ -143,6 +144,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.emailChanged,
+						locale: ctx.user!.locale,
 						data: { newEmail: normalised },
 						recipient: { email: oldEmail, phone: null, deviceToken: null },
 					} satisfies ICourierMessage)
@@ -186,6 +188,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.phoneOtp,
+					locale: ctx.user!.locale,
 					data: { otp },
 					recipient: { email: null, phone: normalised, deviceToken: null },
 				} satisfies ICourierMessage)
@@ -194,6 +197,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.phoneChanged,
+						locale: ctx.user!.locale,
 						data: {},
 						recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 					} satisfies ICourierMessage)

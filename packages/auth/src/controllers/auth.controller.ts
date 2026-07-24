@@ -108,6 +108,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 						NOTIFICATION_EVENT,
 						{
 							type: MESSAGE_KEYS.emailRegistration,
+							locale: user.locale,
 							data: { pin, firstName: firstName ?? '' },
 							recipient: { email: normalizedEmail, phone: null, deviceToken: null },
 						} satisfies ICourierMessage,
@@ -182,6 +183,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 						NOTIFICATION_EVENT,
 						{
 							type: MESSAGE_KEYS.phoneOtp,
+							locale: user.locale,
 							data: { otp },
 							recipient: { email: null, phone: normalizePhone(phone), deviceToken: null },
 						} satisfies ICourierMessage,
@@ -313,6 +315,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.phoneOtp,
+						locale: user.locale,
 						data: { otp },
 						recipient: { email: null, phone: normalizePhone(phone), deviceToken: null },
 					} satisfies ICourierMessage)
@@ -449,6 +452,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.passwordReset,
+					locale: user.locale,
 					recipient: { email, phone: null, deviceToken: null },
 					data: { pin },
 				} satisfies ICourierMessage)
@@ -643,6 +647,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.phoneOtp,
+						locale: ctx.user!.locale,
 						data: { otp },
 						recipient: { email: null, phone, deviceToken: null },
 					} satisfies ICourierMessage)
@@ -689,6 +694,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.emailVerification,
+					locale: ctx.user!.locale,
 					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 					data: { pin },
 				} satisfies ICourierMessage)
