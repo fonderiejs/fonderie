@@ -22,6 +22,11 @@ export { requireAuth } from './middlewares/require-auth';
 // Utilities
 export { normalizeEmail, normalizeEmailSafe } from './services/email';
 
+// Migration — import an existing user base (preserves identity; pairs with the
+// `legacyVerify` config option for rehash-on-login).
+export { importUser } from './migrate';
+export type { IImportUser } from './migrate';
+
 // Brute-force protection — on by default; see services/rate-limit.ts
 export { buildAuthIpLimiter, buildAuthAccountLimiter } from './services/rate-limit';
 export type { IAuthRateLimitConfig, AuthLimitedRoute } from './services/rate-limit';
