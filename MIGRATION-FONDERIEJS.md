@@ -55,9 +55,20 @@ before flipping. The business gate (one live paying client) is **not yet tripped
    (`scripts/scope.mjs` + the CLI's own const; PR #66). The rename is now a
    one-line flip, verified byte-identical and flip-tested with `FONDERIE_SCOPE`.
 2. ✅ **Done** — `@fonderiejs` npm org created under the `fonderie` publishing
-   account. *Residual:* if CI publishes with a granular token, mint one scoped to
-   `@fonderiejs` too (the current token is `@fonderie`-scoped); a first manual
-   publish will confirm end-to-end.
+   account. **Residual — CONFIRMED needed (2026-07-24):** the CI secret
+   `NPM_TOKEN` (repo `fonderiejs/sdk`, GitHub secret) is a **granular access
+   token** named "GitHub CI" (id `3402e5`, `package:write`, `bypass_2fa`, expires
+   2026-10-13) **scoped to `@fonderie` only** — so it **cannot publish
+   `@fonderiejs`**. A new/expanded credential is required before the migration.
+   Options: **(A)** edit that token on npmjs.com and add `@fonderiejs` to its
+   scopes (one token, both scopes); **(B)** mint a fresh granular token scoped to
+   `@fonderiejs`; **(C, recommended long-term)** switch CI to npm **Trusted
+   Publishing (OIDC)** — no stored token, no expiry — which pairs naturally with
+   the manual first publish (item 7), since npm is deprecating 2FA-bypass tokens.
+   *Must be done by the account owner on npmjs.com — granular tokens can't be
+   minted from the CLI/CI, and the OTP/2FA web session isn't available to tooling.*
+   Then `gh secret set NPM_TOKEN --repo fonderiejs/sdk`. A first manual publish
+   confirms end-to-end.
 3. ✅ **Done** — `API-FREEZE-REVIEW.md`. All 3 breaking-to-fix items resolved and
    staged for the 1.0.0 reset: `@fonderie/config` renamed to `ConfigModule` /
    `IConfigOptions`; `@fonderie/events` row types camelCased; Courier's
@@ -107,9 +118,10 @@ peers remain.
 ## Checklist (in order)
 
 1. ✅ **Done (pre-work)** — the `fonderiejs` npm org is created under the
-   `fonderie` publishing account (`choleski@gmx.com`). Before the first publish,
-   confirm the CI token is scoped to `@fonderiejs` (mint a new granular token if
-   the current one is `@fonderie`-only).
+   `fonderie` publishing account (`choleski@gmx.com`). ⚠️ **Token confirmed
+   `@fonderie`-only (2026-07-24)** — before the first publish, expand/mint the CI
+   credential to cover `@fonderiejs` (or move to OIDC). See the CONFIRMED residual
+   under "Pre-work" item 2 for the full finding and options.
 2. **Rename every package** `@fonderie/<x>` → `@fonderiejs/<x>` — `name`, and
    every cross-package `peerDependencies`/`devDependencies` reference.
 3. **Reset all versions to `1.0.0`**; reset CHANGELOGs; re-init changesets. **Set
