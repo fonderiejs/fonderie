@@ -128,6 +128,23 @@ function normalizeEmail(email: string): string
 
 function normalizeEmailSafe(email: string): string | null
 
+function importUser(store: IStoreAdapter, user: IImportUser): Promise<{ id: string; }>
+
+interface IImportUser {
+    id?: string;
+    email: string;
+    passwordHash?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    profileImageUrl?: string | null;
+    locale?: string;
+    timezone?: string;
+    emailVerifiedAt?: Date | null;
+    mfaEnabled?: boolean;
+    createdAt?: Date;
+}
+
 function buildAuthIpLimiter(route: AuthLimitedRoute, store: IStoreAdapter, config: false | IAuthRateLimitConfig | undefined): Middleware | null
 
 function buildAuthAccountLimiter(route: AuthLimitedRoute, store: IStoreAdapter, config: false | IAuthRateLimitConfig | undefined): Middleware | null

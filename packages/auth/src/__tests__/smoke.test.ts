@@ -71,6 +71,59 @@ test('verifyPasswordForLogin: legacy verifier that throws is treated as no-match
 	assert.deepEqual(r, { valid: false, needsRehash: false });
 });
 
+// ── migration: importUser ────────────────────────────────────────
+
+test('importUser: preserves supplied identity fields, omits the rest', async () => {
+	const { importUser } = await import('../migrate');
+	let capturedSql = '';
+	let capturedParams: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			capturedSql = sql;
+			capturedParams = params ?? [];
+			return [{ id: (params?.[0] as string) ?? 'gen' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const createdAt = new Date('2021-06-01T00:00:00Z');
+	const verifiedAt = new Date('2021-06-02T00:00:00Z');
+	const res = await importUser(store, {
+		id: '11111111-1111-1111-1111-111111111111',
+		email: 'Legacy@Example.com',
+		passwordHash: 'sha256$legacy',
+		emailVerifiedAt: verifiedAt,
+		createdAt,
+	});
+
+	assert.equal(res.id, '11111111-1111-1111-1111-111111111111');
+	// id preserved, email normalised, only supplied columns present
+	assert.match(capturedSql, /INSERT INTO fonderie_users \(id, email, password_hash, email_verified_at, created_at\)/);
+	assert.deepEqual(capturedParams, [
+		'11111111-1111-1111-1111-111111111111',
+		'legacy@example.com',
+		'sha256$legacy',
+		verifiedAt,
+		createdAt,
+	]);
+	// columns NOT supplied must not appear (they take table defaults)
+	assert.doesNotMatch(capturedSql, /first_name|mfa_enabled|locale/);
+});
+
+test('importUser: omitting id lets the table generate one', async () => {
+	const { importUser } = await import('../migrate');
+	let capturedSql = '';
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			capturedSql = sql;
+			return [{ id: 'generated-uuid' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const res = await importUser(store, { email: 'x@y.com' });
+	assert.equal(res.id, 'generated-uuid');
+	assert.doesNotMatch(capturedSql, /\(id,/); // no id column → Postgres default
+});
+
 // ── jwt ─────────────────────────────────────────────────────────
 
 test('jwt: access token round-trip', () => {
