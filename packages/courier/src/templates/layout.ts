@@ -20,7 +20,7 @@ export const EMAIL_THEME = {
 	brand: 'Fonderie',
 	accent: '#171717', // primary action (button) background — the product's primary
 	accentText: '#ffffff', // text on the accent
-	brandAccent: '#00d294', // mint brand highlight (top rule) — used sparingly
+	brandAccent: '#171717', // brand highlight (top rule) — monochrome near-black
 	link: '#009767', // links — the accessible (darkened) brand teal
 	ink: '#171717', // body copy
 	muted: '#5c5c5c', // secondary copy
