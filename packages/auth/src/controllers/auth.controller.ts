@@ -13,7 +13,7 @@ import type { IAuthConfig } from '../config';
 import { UserModel } from '../models/user.model';
 import { checkCooldown } from '../services/cooldown';
 import { SessionModel } from '../models/session.model';
-import { hashPassword, verifyPasswordWithLegacy } from '../services/password';
+import { hashPassword, verifyPasswordForLogin } from '../services/password';
 import { normalizeEmailSafe } from '../services/email';
 import { PasswordResetModel } from '../models/password-reset.model';
 import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
@@ -248,7 +248,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 				}
 
-				const { valid, needsRehash } = await verifyPasswordWithLegacy(
+				const { valid, needsRehash } = await verifyPasswordForLogin(
 					password,
 					user.passwordHash,
 					config.legacyVerify,
