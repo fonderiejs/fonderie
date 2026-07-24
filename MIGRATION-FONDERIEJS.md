@@ -9,7 +9,10 @@ reviewed end-to-end against the published 3.0.0 SDK: version-spread example
 refreshed (0.x–3.x), Phase-1 re-run + broken-build deprecation recorded, the
 publishing-account email (`choleski@gmx.com`) confirmed against npm registry
 maintainer metadata, the CI token confirmed `@fonderie`-scoped, and option C
-linked to the ready `release.oidc.yml.draft`. All cross-references resolve._
+linked to the ready `release.oidc.yml.draft`. All cross-references resolve.
+Re-swept 2026-07-24: corrected the stale "scope-hard-coding" section + checklist
+item 5 — pre-work item 1 (PR #66) already parameterized the generation scripts,
+so only the throwaway benchmark harness still holds a literal `@fonderie`._
 
 ## Why a plan, not a script yet
 
@@ -137,9 +140,10 @@ peers remain.
    parent client-app repo.
 5. **Update the CLI + skill data**: `@fonderie/cli` → `@fonderiejs/cli`; the
    generated skill/query text and `data/knowledge.json` reference package names —
-   regenerate. The co-located `brain/` fragments key off the scope in
-   `node_modules/@fonderiejs/*` — `brain-fragment.mjs` and
-   `generate-project-brain.mjs` hard-code `@fonderie`; parameterize the scope.
+   regenerate. The generation scripts (`generate-brain.mjs`,
+   `generate-project-brain.mjs`) already read the shared `SCOPE` (pre-work item 1),
+   so this is a scope flip + regenerate, not a hand-edit — set `FONDERIE_SCOPE`
+   (and the CLI's `const SCOPE`) and re-run.
 6. **CI / release**: `release.yml` and the freshness gates reference paths, not
    the scope, so mostly fine — but the provenance `repository.url` must match
    (the same class of bug we hit before: a mismatched org fails sigstore).
@@ -151,17 +155,23 @@ peers remain.
    already-done version-level deprecation of the 3 broken partial-release builds;
    see "Peer ranges must tolerate minors" above.)*
 
-## Scope-hard-coding to fix before migration (found while planning)
+## Scope-hard-coding — ✅ addressed by pre-work item 1 (PR #66)
 
-These assume `@fonderie` literally and must be parameterized (or sed-swept):
-- `scripts/brain-fragment.mjs`, `scripts/generate-project-brain.mjs`,
-  `scripts/generate-brain.mjs` — `node_modules/@fonderie`, `@fonderie/` filters.
-- `packages/cli/bin/fonderie.mjs` — `@fonderie` in `installed()` + query text.
-- `experiments/.../run-sequence.sh` — `@fonderie/$p` completion checks.
+This was the planning-time list of files that assumed `@fonderie` literally. The
+single-`SCOPE`-constant fix (pre-work item 1) has since landed, so the switch is
+now flip-a-flag, not a find-and-replace:
+- `scripts/generate-brain.mjs`, `scripts/generate-project-brain.mjs` — now read
+  the shared `SCOPE` from `scripts/scope.mjs` (no literal `@fonderie` left).
+- `scripts/brain-fragment.mjs` — verified: doesn't reference the scope at all.
+- `packages/cli/bin/fonderie.mjs` — carries its own `const SCOPE = '@fonderie'`
+  (line 29), the deliberate single flip point for the CLI.
 
-A single `FONDERIE_SCOPE` constant (default `@fonderie`, set `@fonderiejs` at
-migration) would make the switch one line instead of a sweep. Worth doing
-*before* launch so the migration is flip-a-flag, not find-and-replace.
+**Residual (non-blocking):** the benchmark harness
+`experiments/phase41-2026-07/run-sequence.sh` still hard-codes `@fonderie/$p`
+(node_modules completion checks + a fixture import). It's a throwaway experiment
+runner, not shipped tooling — sweep it at migration or leave it; it doesn't
+affect the published SDK. Set `FONDERIE_SCOPE=@fonderiejs` (or the CLI const) at
+the reset and the shipping tooling follows.
 
 ## What does NOT move
 
