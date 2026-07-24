@@ -72,8 +72,19 @@ additive, a conscious commitment, or already consistent.
 - **DTO camelCase** is consistent everywhere except the events row types (A.3).
 - **Module class names** mirror their packages everywhere except `config` (A.2).
 
-## Recommendation
+## E. Out of surface — publishing pipeline (recorded, not an API item)
 
-**All of section A is now addressed** (config renamed, events camelCased, courier
-kept-and-documented) — staged on `main` for the 1.0.0 reset. The rest is additive
-or a deliberate commitment. **The public API is freeze-ready for `@fonderiejs@1.0.0`.**
+The drafted move to npm **Trusted Publishing (OIDC)**
+(`.github/workflows/release.oidc.yml.draft`; MIGRATION-FONDERIEJS.md pre-work
+item 2, option C) was assessed against the freeze and has **zero public-API
+impact** — it changes *how CI authenticates to npm*, not a single export, type,
+route, or response shape. Nothing here gates or blocks the 1.0.0 API freeze.
+
+One thing it **preserves** is worth stating, because it's the one consumer-facing
+thread the publishing pipeline touches: **npm provenance**. Provenance is the
+verifiable "published from this repo + workflow" attestation — the checkable
+backing for the project's *audit-everything* promise. Today's `release.yml`
+emits it via `NPM_CONFIG_PROVENANCE` + an automation token; the OIDC draft emits
+it automatically from the job's id-token. Either way provenance stays **on**, so
+the freeze does not lock us out of it and the switch neither adds nor removes a
+guarantee consumers rely on.
