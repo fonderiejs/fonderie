@@ -13,7 +13,7 @@ import type { IAuthConfig } from '../config';
 import { UserModel } from '../models/user.model';
 import { checkCooldown } from '../services/cooldown';
 import { SessionModel } from '../models/session.model';
-import { hashPassword, verifyPassword } from '../services/password';
+import { hashPassword, verifyPasswordWithLegacy } from '../services/password';
 import { normalizeEmailSafe } from '../services/email';
 import { PasswordResetModel } from '../models/password-reset.model';
 import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
@@ -248,9 +248,19 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 				}
 
-				const valid = await verifyPassword(password, user.passwordHash);
+				const { valid, needsRehash } = await verifyPasswordWithLegacy(
+					password,
+					user.passwordHash,
+					config.legacyVerify,
+				);
 				if (!valid) {
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
+				}
+
+				// Rehash-on-login: a password validated via the legacy verifier is
+				// re-stored as bcrypt so the foreign hash is used at most once.
+				if (needsRehash) {
+					await users.updatePassword(user.id, await hashPassword(password));
 				}
 
 				if (user.suspended) {

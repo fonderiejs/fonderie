@@ -8,7 +8,7 @@ import type { IUser } from '../types';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
 import { issueTokenPair, issueMfaPendingToken, verifyToken } from '../services/jwt';
 import { generateTotpSecret, generateTotpCode, generateBackupCodes } from '../services/mfa';
-import { hashPassword, verifyPassword } from '../services/password';
+import { hashPassword, verifyPassword, verifyPasswordWithLegacy } from '../services/password';
 import { authController } from '../controllers/auth.controller';
 import { mfaController } from '../controllers/mfa.controller';
 import { oauthController } from '../controllers/oauth.controller';
@@ -32,6 +32,43 @@ test('password: different passwords produce different hashes', async () => {
 	const a = await hashPassword('password1');
 	const b = await hashPassword('password1');
 	assert.notEqual(a, b);
+});
+
+test('verifyPasswordWithLegacy: bcrypt match — valid, no rehash, legacy not called', async () => {
+	const hash = await hashPassword('correct-horse');
+	let legacyCalled = false;
+	const r = await verifyPasswordWithLegacy('correct-horse', hash, () => {
+		legacyCalled = true;
+		return true;
+	});
+	assert.deepEqual(r, { valid: true, needsRehash: false });
+	assert.equal(legacyCalled, false, 'legacy verifier must not run when bcrypt succeeds');
+});
+
+test('verifyPasswordWithLegacy: foreign hash + legacy match — valid, needsRehash', async () => {
+	// A non-bcrypt hash the built-in check can never validate.
+	const legacyHash = 'sha256$deadbeef';
+	const legacyVerify = (plain: string, hash: string) =>
+		plain === 'legacy-pw' && hash === legacyHash;
+	const r = await verifyPasswordWithLegacy('legacy-pw', legacyHash, legacyVerify);
+	assert.deepEqual(r, { valid: true, needsRehash: true });
+});
+
+test('verifyPasswordWithLegacy: wrong password with legacy present — invalid', async () => {
+	const r = await verifyPasswordWithLegacy('nope', 'sha256$deadbeef', () => false);
+	assert.deepEqual(r, { valid: false, needsRehash: false });
+});
+
+test('verifyPasswordWithLegacy: no legacy verifier + non-bcrypt hash — invalid, no throw', async () => {
+	const r = await verifyPasswordWithLegacy('x', 'not-a-bcrypt-hash');
+	assert.deepEqual(r, { valid: false, needsRehash: false });
+});
+
+test('verifyPasswordWithLegacy: legacy verifier that throws is treated as no-match', async () => {
+	const r = await verifyPasswordWithLegacy('x', 'sha256$deadbeef', () => {
+		throw new Error('boom');
+	});
+	assert.deepEqual(r, { valid: false, needsRehash: false });
 });
 
 // ── jwt ─────────────────────────────────────────────────────────
@@ -540,6 +577,38 @@ test('login: 200 with user DTO and tokens', async () => {
 	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
 	assert.ok(typeof body.result.tokens.access === 'string');
 	assert.ok(typeof body.result.tokens.refresh === 'string');
+});
+
+test('login: rehash-on-login re-stores a legacy-hash user as bcrypt', async () => {
+	const legacyHash = 'legacy$deadbeef'; // a foreign hash the bcrypt check can't validate
+	let rehashedTo: string | null = null;
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('WHERE email = $1'))
+				return [{ ...BASE_USER, passwordHash: legacyHash }] as unknown as T[];
+			if (sql.includes('UPDATE fonderie_users') && sql.includes('password_hash')) {
+				rehashedTo = (params?.[0] as string) ?? null;
+				return [] as unknown as T[];
+			}
+			return [] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const ctrl = authController(store, {
+		...config,
+		legacyVerify: (plain, hash) => plain === 'legacy-pw' && hash === legacyHash,
+	});
+
+	const response = await ctrl.login(
+		makeCtx({ body: { email: 'jane@example.com', password: 'legacy-pw' } }),
+	);
+	assert.equal(response.status, 200);
+	assert.ok(rehashedTo, 'updatePassword was called to re-store the hash');
+	assert.notEqual(rehashedTo, legacyHash, 'stored a fresh hash, not the legacy one');
+	assert.ok(
+		await verifyPassword('legacy-pw', rehashedTo!),
+		're-stored value is a valid bcrypt hash of the password',
+	);
 });
 
 // ── AuthController.login (phone) ─────────────────────────────────
