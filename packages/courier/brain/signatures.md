@@ -55,6 +55,10 @@ function getTemplateEntry(type: string, locale: string | null, store: IStoreAdap
 
 function listTemplateEntries(store: IStoreAdapter): Promise<ITemplateEntry[]>
 
+function deleteTemplate(type: string, locale: string | null, store: IStoreAdapter): Promise<boolean>
+
+function buildTemplateAdminRoutes(store: IStoreAdapter, adminToken: string): [string, string, Middleware][]
+
 interface ITemplateEntry {
     type: string;
     locale: string | null;
@@ -132,6 +136,7 @@ interface ICourierConfig {
     sms?: ISmsChannelConfig;
     push?: IPushChannelConfig;
     email?: IEmailChannelConfig;
+    adminToken?: string;
     templates?: {
         source: 'db' | 'fs';
         directory?: string;

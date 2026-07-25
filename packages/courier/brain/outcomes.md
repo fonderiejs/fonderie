@@ -63,6 +63,17 @@ bounce_reason            TEXT
 
 Raw SQL ships in `node_modules/@fonderie/courier/dist/migrations/sql/` — read it there if you must; never download tarballs.
 
+## HTTP routes registered
+
+| Method | Path | Middleware chain (auth / validation / handler) |
+|---|---|---|
+| GET | `/admin/templates` | `g(async () => { return setApiResponse(HTTP.OK, 'TEMPLATES_LISTED', 'Templates', await listTemplateEntries(store)); })` |
+| DELETE | `/admin/templates/:type` | `g(async (ctx) => { const ok = await deleteTemplate(typeOf(ctx), localeOf(ctx), store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such template'); })` |
+| GET | `/admin/templates/:type` | `g(async (ctx) => { const row = await getTemplateEntry(typeOf(ctx), localeOf(ctx), store); return row ? setApiResponse(HTTP.OK, 'TEMPLATE', 'Template', row) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such template'); })` |
+| PUT | `/admin/templates/:type` | `g(async (ctx) => { const b = body(ctx); if (typeof b['text'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required'); } try { const opts: Parameters<typeof setTemplate>[0] = { type: typeOf(ctx), text: b['text'], locale: localeOf(ctx), actor: actorOf(ctx), }; if (typeof b['subject'] === 'string') opts.subject = b['subject']; if (typeof b['html'] === 'string') opts.html = b['html']; if (typeof b['active'] === 'boolean') opts.active = b['active']; if (typeof b['ifVersion'] === 'number') opts.ifVersion = b['ifVersion']; return setApiResponse(HTTP.OK, 'TEMPLATE_SET', 'Template saved', await setTemplate(opts, store)); } catch (err) { return conflictOr(err); } })` |
+| GET | `/admin/templates/:type/revisions` | `g(async (ctx) => { return setApiResponse(HTTP.OK, 'REVISIONS', 'Template revisions', await listTemplateRevisions(typeOf(ctx), localeOf(ctx), store)); })` |
+| POST | `/admin/templates/:type/rollback` | `g(async (ctx) => { const b = body(ctx); const toVersion = Number(b['toVersion']); if (!Number.isInteger(toVersion)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.toVersion (int) is required'); } const row = await rollbackTemplate( { type: typeOf(ctx), locale: localeOf(ctx), toVersion, actor: actorOf(ctx) }, store, ); return setApiResponse(HTTP.OK, 'ROLLED_BACK', `Rolled back to v${toVersion}`, row); })` |
+
 ## Migration statements not replayed (verify in raw SQL)
 
 - `ELSE`

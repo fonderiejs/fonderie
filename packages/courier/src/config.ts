@@ -40,6 +40,10 @@ export interface ICourierConfig {
 	push?: IPushChannelConfig;
 	email?: IEmailChannelConfig;
 
+	// When set, exposes Bearer-guarded template admin routes (/admin/templates/*)
+	// for versioned edit/history/rollback. Requires @fonderie/store (db templates).
+	adminToken?: string;
+
 	// Where templates are loaded from
 	// 'db' requires @fonderie/store to be configured
 	// 'fs' reads from a local directory

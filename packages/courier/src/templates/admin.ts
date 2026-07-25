@@ -116,3 +116,15 @@ export async function listTemplateEntries(store: IStoreAdapter): Promise<ITempla
 		`SELECT ${ENTRY_COLS} FROM fonderie_courier_templates ORDER BY type, locale NULLS FIRST`,
 	);
 }
+
+export async function deleteTemplate(
+	type: string,
+	locale: string | null,
+	store: IStoreAdapter,
+): Promise<boolean> {
+	const rows = await store.query<{ type: string }>(
+		`DELETE FROM fonderie_courier_templates WHERE type = $1 AND locale IS NOT DISTINCT FROM $2 RETURNING type`,
+		[type, locale],
+	);
+	return rows.length > 0;
+}

@@ -334,7 +334,16 @@ function parseValue(raw) {
   try { return JSON.parse(raw); } catch { return raw; }
 }
 
+// Per-resource scope/value shape. config & secret scope by environment and carry
+// a `value`; templates scope by locale and carry `text` (+ optional subject/html).
+const RESOURCE_SHAPE = {
+  config:   { scopeFlag: '--env',    scopeParam: 'environment', valueKey: 'value' },
+  secret:   { scopeFlag: '--env',    scopeParam: 'environment', valueKey: 'value', rawValue: true },
+  template: { scopeFlag: '--locale', scopeParam: 'locale',      valueKey: 'text' },
+};
+
 async function resourceCmd(resource, base) {
+  const shape = RESOURCE_SHAPE[resource];
   const verb = argv[1];
   const spec = VERBS[verb];
   if (!spec || (spec.secretOnly && resource !== 'secret')) return usageErr(resource);
@@ -342,8 +351,8 @@ async function resourceCmd(resource, base) {
   const key = argv[2];
   if (spec.needsKey && !key) return usageErr(resource);
 
-  const env = arg('--env', undefined);
-  const q = env ? `?environment=${encodeURIComponent(env)}` : '';
+  const scope = arg(shape.scopeFlag, undefined);
+  const q = scope ? `?${shape.scopeParam}=${encodeURIComponent(scope)}` : '';
   const enc = (k) => encodeURIComponent(k);
 
   const path = spec.needsKey || key
@@ -354,15 +363,21 @@ async function resourceCmd(resource, base) {
   if (spec.needsValue) {
     const raw = argv[3];
     if (raw === undefined) { console.error(`usage: fonderie ${resource} set <key> <value>`); process.exit(1); }
-    body = { value: resource === 'secret' ? String(raw) : parseValue(raw) };
-    if (env) body.environment = env;
+    body = { [shape.valueKey]: shape.rawValue ? String(raw) : parseValue(raw) };
+    if (scope) body[shape.scopeParam] = scope;
+    if (resource === 'template') {
+      const subject = arg('--subject', undefined);
+      const html = arg('--html', undefined);
+      if (subject !== undefined) body.subject = subject;
+      if (html !== undefined) body.html = html;
+    }
     const ifVersion = arg('--if-version', undefined);
     if (ifVersion !== undefined) body.ifVersion = Number(ifVersion);
   } else if (spec.needsToVersion) {
     const toVersion = Number(arg('--to-version'));
     if (!Number.isInteger(toVersion)) { console.error('rollback needs --to-version <n>'); process.exit(1); }
     body = { toVersion };
-    if (env) body.environment = env;
+    if (scope) body[shape.scopeParam] = scope;
   }
 
   return adminFetch(spec.method, path, body);
@@ -370,7 +385,8 @@ async function resourceCmd(resource, base) {
 
 function usageErr(resource) {
   const verbs = Object.keys(VERBS).filter((v) => !VERBS[v].secretOnly || resource === 'secret');
-  console.error(`usage: fonderie ${resource} <${verbs.join('|')}> [key] [value] [--env <e>] [--if-version <n>] [--to-version <n>]`);
+  const scopeFlag = (RESOURCE_SHAPE[resource] ?? { scopeFlag: '--env' }).scopeFlag;
+  console.error(`usage: fonderie ${resource} <${verbs.join('|')}> [key] [value] [${scopeFlag} <s>] [--if-version <n>] [--to-version <n>]`);
   process.exit(1);
 }
 
@@ -381,6 +397,7 @@ else if (cmd === 'add') doAdd();
 else if (cmd === 'init') doInit();
 else if (cmd === 'config') resourceCmd('config', '/admin/config').catch((e) => { console.error(e.message); process.exit(1); });
 else if (cmd === 'secret') resourceCmd('secret', '/admin/secrets').catch((e) => { console.error(e.message); process.exit(1); });
+else if (cmd === 'template') resourceCmd('template', '/admin/templates').catch((e) => { console.error(e.message); process.exit(1); });
 else {
   console.log(`fonderie — the Fonderie CLI (lazy skills for coding agents)
 
@@ -392,6 +409,7 @@ else {
 
   fonderie config <get|set|delete|history|rollback> [key] [value] [--env <e>] [--if-version <n>] [--to-version <n>]
   fonderie secret <get|set|delete|history|rollback|reveal> [key] [value] [--env <e>] ...
+  fonderie template <get|set|delete|history|rollback> [type] [text] [--locale <l>] [--subject <s>] [--html <h>] ...
       manage a live deployment over its admin API — set FONDERIE_ADMIN_URL + FONDERIE_ADMIN_TOKEN
 
 Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);
