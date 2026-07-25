@@ -121,6 +121,10 @@ export async function setConfigEntry(
 			[opts.key, env, raw, version, actor],
 		);
 
+		// Broadcast invalidation — fires on commit; every config manager LISTENing
+		// wakes and re-reads (staleness-proof; the poll floor covers a missed one).
+		await tx.query(`SELECT pg_notify('fonderie_config_changed', $1)`, [env]);
+
 		if (!row) throw new Error('Failed to upsert config entry');
 		return row;
 	});
@@ -165,6 +169,7 @@ export async function rollbackConfigEntry(
 			 VALUES ($1, $2, $3, $4, $5)`,
 			[opts.key, env, target.value, version, actor],
 		);
+		await tx.query(`SELECT pg_notify('fonderie_config_changed', $1)`, [env]);
 		if (!row) throw new Error('rollback failed');
 		return row;
 	});

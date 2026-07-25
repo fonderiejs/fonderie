@@ -238,3 +238,24 @@ test('setConfigEntry: ifVersion match commits (no conflict)', async () => {
 	);
 	assert.equal(result.key, 'feature.dark-mode');
 });
+
+// ── event propagation: emit on write ─────────────────────────────
+
+test('setConfigEntry: emits pg_notify on the config-changed channel', async () => {
+	const { setConfigEntry } = await import('../services/config');
+	const seen: string[] = [];
+	const stub: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			seen.push(sql);
+			if (sql.includes('SELECT version FROM fonderie_config')) return [{ version: 1 }] as unknown as T[];
+			if (sql.includes('RETURNING')) return [baseEntry] as unknown as T[];
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(stub),
+	};
+	await setConfigEntry({ key: 'feature.dark-mode', value: true, ifVersion: 1 }, stub);
+	assert.ok(
+		seen.some((s) => s.includes("pg_notify('fonderie_config_changed'")),
+		'a pg_notify on fonderie_config_changed must fire',
+	);
+});

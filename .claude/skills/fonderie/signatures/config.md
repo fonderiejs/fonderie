@@ -77,5 +77,6 @@ interface IConfigOptions {
     ttl?: number;
     environment?: string;
     table?: string;
+    connectionUrl?: string;
 }
 ```
