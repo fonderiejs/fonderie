@@ -1,3 +1,12 @@
+# Release — token-free npm publish via OIDC Trusted Publishing.
+#
+# GitHub Actions exchanges its short-lived OIDC identity (`id-token: write`)
+# directly with npm — no long-lived NPM_TOKEN, and provenance is generated
+# automatically. Each published @fonderie/* package has a Trusted Publisher
+# configured on npmjs.com pointing at this repo + this workflow filename
+# (release.yml). A package missing that config will fail to publish, since there
+# is no token fallback here.
+
 name: Release
 
 on:
@@ -9,7 +18,7 @@ concurrency: release-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
-  id-token: write # npm provenance
+  id-token: write # OIDC identity for npm Trusted Publishing (+ provenance)
 
 jobs:
   release:
@@ -22,12 +31,17 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      # Trusted Publishing needs npm ≥ 11.5.1; Node 22 ships npm 10.x.
+      - run: npm install -g npm@^11
+
       - run: npm ci
       - run: npm run build
       - run: npm test
 
       # Opens/updates the "Version Packages" PR when changesets are pending;
-      # publishes to npm when that PR is merged.
+      # publishes to npm when that PR is merged. With OIDC there is NO
+      # NODE_AUTH_TOKEN / NPM_TOKEN — npm authenticates via the job's id-token,
+      # and provenance is emitted automatically (no NPM_CONFIG_PROVENANCE needed).
       - uses: changesets/action@v1
         with:
           # `version` regenerates brain.json after the bumps so its sdkVersions
@@ -37,13 +51,5 @@ jobs:
           publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # setup-node's registry-url writes an .npmrc that reads
-          # NODE_AUTH_TOKEN, so the automation token must be exposed under
-          # that name — providing only NPM_TOKEN leaves npm publish
-          # unauthenticated. Both are set so either resolution path works.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # Generate npm provenance (the id-token: write permission above
-          # exists for this). Requires an automation token + OIDC, both
-          # present in this job.
-          NPM_CONFIG_PROVENANCE: true
+          # No NODE_AUTH_TOKEN / NPM_TOKEN / NPM_CONFIG_PROVENANCE — Trusted
+          # Publishing supplies auth and provenance from the OIDC id-token.
