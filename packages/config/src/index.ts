@@ -1,6 +1,6 @@
 // ── Public API ───────────────────────────────────────────────────
 export { ConfigModule } from './module';
-export { RemoteConfigManager, CONFIG_MANAGER_KEY } from './manager';
+export { buildAdminRoutes } from './admin';export { RemoteConfigManager, CONFIG_MANAGER_KEY } from './manager';
 export { configContextMiddleware, getConfig } from './middlewares/config-context';
 export {
 	listConfigEntries,

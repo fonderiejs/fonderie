@@ -270,8 +270,8 @@ test('createAesGcmEncryptor: round-trips and detects tampering', async () => {
 	assert.notEqual(cipher, 'sk_live_secret'); // not plaintext
 	assert.equal(enc.decrypt(cipher), 'sk_live_secret'); // round-trip
 	// tamper the ciphertext body → auth tag rejects it
-	const [iv, tag, body] = cipher.split(':');
-	const flipped = body.startsWith('0') ? '1' + body.slice(1) : '0' + body.slice(1);
+	const [iv, tag, data = ''] = cipher.split(':');
+	const flipped = data.startsWith('0') ? `1${data.slice(1)}` : `0${data.slice(1)}`;
 	assert.throws(() => enc.decrypt(`${iv}:${tag}:${flipped}`));
 });
 
@@ -322,4 +322,71 @@ test('setSecret: ifVersion mismatch throws ConfigConflictError (OCC)', async () 
 			return true;
 		},
 	);
+});
+
+// ── admin HTTP surface + bootstrap auth ──────────────────────────
+
+function adminCtx(opts: { token?: string; params?: Record<string, string>; body?: unknown; url?: string }) {
+	const headers = new Headers();
+	if (opts.token) headers.set('authorization', `Bearer ${opts.token}`);
+	const req = new Request(opts.url ?? 'http://x/admin/config', { headers });
+	return { request: req, meta: { params: opts.params, body: opts.body } } as unknown as Parameters<
+		Awaited<ReturnType<typeof import('../admin')['buildAdminRoutes']>>[number][2]
+	>[0];
+}
+const noNext = async () => new Response(null);
+function pick(routes: Array<[string, string, unknown]>, method: string, path: string) {
+	const r = routes.find(([m, p]) => m === method && p === path);
+	if (!r) throw new Error(`route ${method} ${path} not found`);
+	return r[2] as (ctx: unknown, next: unknown) => Promise<Response>;
+}
+
+test('admin: rejects a request with no/invalid token (401)', async () => {
+	const { buildAdminRoutes } = await import('../admin');
+	const routes = buildAdminRoutes(makeWriteStore(baseEntry), 'sekret');
+	const list = pick(routes, 'GET', '/admin/config');
+	assert.equal((await list(adminCtx({}), noNext)).status, 401);
+	assert.equal((await list(adminCtx({ token: 'wrong' }), noNext)).status, 401);
+});
+
+test('admin: lists config with a valid token (200)', async () => {
+	const { buildAdminRoutes } = await import('../admin');
+	const routes = buildAdminRoutes(makeWriteStore(baseEntry), 'sekret');
+	const list = pick(routes, 'GET', '/admin/config');
+	assert.equal((await list(adminCtx({ token: 'sekret' }), noNext)).status, 200);
+});
+
+test('admin: PUT config saves (200); stale ifVersion → 409', async () => {
+	const { buildAdminRoutes } = await import('../admin');
+	const store = makeWriteStore({ ...baseEntry, version: 5 });
+	const put = pick(buildAdminRoutes(store, 'sekret'), 'PUT', '/admin/config/:key');
+	const ok = await put(adminCtx({ token: 'sekret', params: { key: 'k' }, body: { value: true } }), noNext);
+	assert.equal(ok.status, 200);
+	const conflict = await put(
+		adminCtx({ token: 'sekret', params: { key: 'k' }, body: { value: true, ifVersion: 1 } }),
+		noNext,
+	);
+	assert.equal(conflict.status, 409);
+});
+
+test('ConfigModule: registers admin routes only when adminToken is set', async () => {
+	const { ConfigModule } = await import('../module');
+	const added: string[] = [];
+	const app = {
+		use: () => {},
+		addRoute: (m: string, p: string) => added.push(`${m} ${p}`),
+	} as unknown as Parameters<InstanceType<typeof ConfigModule>['install']>[0];
+
+	const mod = new ConfigModule(makeStore(), { adminToken: 'sekret' });
+	await mod.install(app);
+	assert.ok(added.some((r) => r === 'GET /admin/config'), 'admin routes registered with token');
+	assert.ok(added.some((r) => r === 'POST /admin/secrets/:key/reveal'));
+	mod.manager.stop(); // release the poll interval so the test process can exit
+
+	const added2: string[] = [];
+	const app2 = { use: () => {}, addRoute: (m: string, p: string) => added2.push(`${m} ${p}`) } as unknown as typeof app;
+	const mod2 = new ConfigModule(makeStore(), {});
+	await mod2.install(app2);
+	assert.equal(added2.length, 0, 'no admin routes without a token');
+	mod2.manager.stop();
 });

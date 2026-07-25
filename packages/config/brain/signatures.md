@@ -12,6 +12,8 @@ new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule
   .manager: RemoteConfigManager
   .install(app: IFonderieApp): Promise<void>
 
+function buildAdminRoutes(store: IStoreAdapter, adminToken: string, encryptor?: ISecretEncryptor): [string, string, Middleware][]
+
 new RemoteConfigManager(store: IStoreAdapter, options?: IConfigOptions): RemoteConfigManager
   .boot(): Promise<void>
   .stop(): void
@@ -119,5 +121,7 @@ interface IConfigOptions {
     environment?: string;
     table?: string;
     connectionUrl?: string;
+    adminToken?: string;
+    secretEncryptor?: ISecretEncryptor;
 }
 ```
