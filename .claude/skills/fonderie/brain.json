@@ -369,7 +369,9 @@
       ],
       "tables": [
         "fonderie_config",
-        "fonderie_config_revisions"
+        "fonderie_config_revisions",
+        "fonderie_secret_revisions",
+        "fonderie_secrets"
       ],
       "routeCount": 0,
       "routes": [],
