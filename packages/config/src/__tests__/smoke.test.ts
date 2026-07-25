@@ -259,3 +259,67 @@ test('setConfigEntry: emits pg_notify on the config-changed channel', async () =
 		'a pg_notify on fonderie_config_changed must fire',
 	);
 });
+
+// ── secrets: encryption + masking ────────────────────────────────
+
+test('createAesGcmEncryptor: round-trips and detects tampering', async () => {
+	const { createAesGcmEncryptor } = await import('../crypto');
+	const key = 'a'.repeat(64); // 32 bytes hex
+	const enc = createAesGcmEncryptor(key);
+	const cipher = enc.encrypt('sk_live_secret');
+	assert.notEqual(cipher, 'sk_live_secret'); // not plaintext
+	assert.equal(enc.decrypt(cipher), 'sk_live_secret'); // round-trip
+	// tamper the ciphertext body → auth tag rejects it
+	const [iv, tag, body] = cipher.split(':');
+	const flipped = body.startsWith('0') ? '1' + body.slice(1) : '0' + body.slice(1);
+	assert.throws(() => enc.decrypt(`${iv}:${tag}:${flipped}`));
+});
+
+test('createAesGcmEncryptor: rejects a wrong-length key', async () => {
+	const { createAesGcmEncryptor } = await import('../crypto');
+	assert.throws(() => createAesGcmEncryptor('tooshort'), /32 bytes/);
+});
+
+test('noopEncryptor: identity', async () => {
+	const { noopEncryptor } = await import('../crypto');
+	assert.equal(noopEncryptor.encrypt('x'), 'x');
+	assert.equal(noopEncryptor.decrypt('x'), 'x');
+});
+
+test('getSecret / listSecrets: never return the value (masked)', async () => {
+	const { getSecret, listSecrets } = await import('../services/secrets');
+	// capture the SQL to prove `value` is never selected on the masked reads
+	let sql = '';
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(q: string): Promise<T[]> => {
+			sql += q;
+			return [{ key: 'k', environment: 'all', description: null, active: true, version: 1, updatedBy: null, updatedAt: 'x' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const one = await getSecret('k', 'all', store);
+	await listSecrets('all', store);
+	assert.ok(!('value' in (one as object)), 'masked entry has no value field');
+	assert.doesNotMatch(sql, /\bvalue\b/, 'masked reads must not select the value column');
+});
+
+test('setSecret: ifVersion mismatch throws ConfigConflictError (OCC)', async () => {
+	const { setSecret } = await import('../services/secrets');
+	const { ConfigConflictError } = await import('../services/config');
+	// store reports current version 5; caller writes against version 1 → conflict
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('SELECT version FROM fonderie_secrets')) return [{ version: 5 }] as unknown as T[];
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	await assert.rejects(
+		() => setSecret({ key: 'stripe.key', value: 'x', ifVersion: 1 }, store),
+		(err: unknown) => {
+			assert.ok(err instanceof ConfigConflictError);
+			assert.equal((err as InstanceType<typeof ConfigConflictError>).currentVersion, 5);
+			return true;
+		},
+	);
+});

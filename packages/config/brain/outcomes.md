@@ -36,4 +36,31 @@ created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 -- PRIMARY KEY (key, environment, version)
 ```
 
+### `fonderie_secret_revisions`
+
+```sql
+key                      TEXT NOT NULL
+environment              TEXT NOT NULL DEFAULT 'all'
+value                    TEXT NOT NULL
+version                  INT NOT NULL
+actor                    TEXT
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- PRIMARY KEY (key, environment, version)
+```
+
+### `fonderie_secrets`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+key                      TEXT NOT NULL
+value                    TEXT NOT NULL
+environment              TEXT NOT NULL DEFAULT 'all'
+description              TEXT
+active                   BOOLEAN NOT NULL DEFAULT true
+version                  INT NOT NULL DEFAULT 1
+updated_by               TEXT
+updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- UNIQUE (key, environment)
+```
+
 Raw SQL ships in `node_modules/@fonderie/config/dist/migrations/sql/` — read it there if you must; never download tarballs.

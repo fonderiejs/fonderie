@@ -73,6 +73,47 @@ interface IConfigSnapshot {
     fetchedAt: Date;
 }
 
+function listSecrets(environment: string | null, store: IStoreAdapter): Promise<ISecretEntry[]>
+
+function getSecret(key: string, environment: string, store: IStoreAdapter): Promise<ISecretEntry | null>
+
+function revealSecret(key: string, environment: string, store: IStoreAdapter, encryptor?: ISecretEncryptor): Promise<string | null>
+
+function setSecret(opts: { key: string; value: string; environment?: string; description?: string; active?: boolean; ifVersion?: number; actor?: string; }, store: IStoreAdapter, encryptor?: ISecretEncryptor): Promise<...>
+
+function rollbackSecret(opts: { key: string; environment?: string; toVersion: number; actor?: string; }, store: IStoreAdapter): Promise<ISecretEntry>
+
+function listSecretRevisions(key: string, environment: string, store: IStoreAdapter): Promise<ISecretRevision[]>
+
+function deleteSecret(key: string, environment: string, store: IStoreAdapter): Promise<boolean>
+
+interface ISecretEntry {
+    key: string;
+    environment: string;
+    description: string | null;
+    active: boolean;
+    version: number;
+    updatedBy: string | null;
+    updatedAt: string;
+}
+
+interface ISecretRevision {
+    key: string;
+    environment: string;
+    version: number;
+    actor: string | null;
+    createdAt: string;
+}
+
+const noopEncryptor: ISecretEncryptor
+
+function createAesGcmEncryptor(keyHex: string): ISecretEncryptor
+
+interface ISecretEncryptor {
+    encrypt(plain: string): string;
+    decrypt(cipher: string): string;
+}
+
 interface IConfigOptions {
     ttl?: number;
     environment?: string;

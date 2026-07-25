@@ -25,3 +25,24 @@ export interface IConfigSnapshot {
 	entries: Record<string, unknown>;
 	fetchedAt: Date;
 }
+
+// A secret's metadata — deliberately **without** the value. Admin list/get
+// return this; only the explicit reveal path returns the decrypted value.
+export interface ISecretEntry {
+	key: string;
+	environment: string;
+	description: string | null;
+	active: boolean;
+	version: number;
+	updatedBy: string | null;
+	updatedAt: string;
+}
+
+// A secret revision's metadata (no value).
+export interface ISecretRevision {
+	key: string;
+	environment: string;
+	version: number;
+	actor: string | null;
+	createdAt: string;
+}
