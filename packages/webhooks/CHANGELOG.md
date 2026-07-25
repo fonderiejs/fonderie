@@ -1,5 +1,15 @@
 # @fonderie/webhooks
 
+## 4.0.0
+
+### Patch Changes
+
+- Updated dependencies [2d4dac8]
+- Updated dependencies [da7e79c]
+  - @fonderie/core@0.4.0
+  - @fonderie/store@0.2.0
+  - @fonderie/events@4.0.0
+
 ## 3.0.0
 
 ### Patch Changes

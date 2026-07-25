@@ -1,5 +1,33 @@
 # @fonderie/cli
 
+## 0.3.0
+
+### Minor Changes
+
+- 8fbe182: Config control-plane, phase 5 — management CLI (the LLM-native interface). Adds
+  `fonderie config <get|set|delete|history|rollback>` and `fonderie secret
+<get|set|delete|history|rollback|reveal>` — a thin, zero-dep client over the
+  admin API (`FONDERIE_ADMIN_URL` + `FONDERIE_ADMIN_TOKEN`; optional
+  `FONDERIE_ACTOR`). The five kubectl-inspired verbs are held in a single `VERBS`
+  dictionary (method + path suffix + requirements), so usage/help derive from one
+  source and adding a resource costs the LLM ~zero extra grammar. `set` honours
+  `--if-version` (optimistic concurrency) and exits **2** on a 409 conflict
+  (reload-and-retry); config values are JSON-parsed, secret values stay raw
+  strings; secret reads are masked, `reveal` is the explicit decrypt path.
+- 8dcfc28: Courier template admin surface — bring versioned template management to config
+  parity. `CourierModule` registers `/admin/templates/*` routes **only when an
+  `adminToken` is configured** (fail-closed; requires `@fonderie/store` for db
+  templates), each guarded by a `Bearer` token. Endpoints mirror config: list /
+  get / put (with `ifVersion` optimistic concurrency → **409**) / delete /
+  `GET :type/revisions` / `POST :type/rollback`. Templates are keyed by
+  `(type, locale)` — the `?locale` query scopes a request, a null locale is the
+  base — and writes record an actor (optional `X-Actor` header). Exports
+  `buildTemplateAdminRoutes` and `deleteTemplate`.
+
+  The CLI gains a `template` verb group — `fonderie template get|set|delete|history|rollback`
+  against a live deployment's admin API (`FONDERIE_ADMIN_URL` + `FONDERIE_ADMIN_TOKEN`),
+  scoped with `--locale` and carrying `--subject` / `--html` on `set`.
+
 ## 0.2.1
 
 ### Patch Changes

@@ -1,5 +1,55 @@
 # @fonderie/auth
 
+## 4.0.0
+
+### Minor Changes
+
+- 4e82ef4: Production-readiness guard: `AuthModule` now validates its config on construction
+  and **refuses to boot in production with a weak `jwtSecret`** (< 32 chars or a
+  placeholder/dev-default like `dev-secret-…`) — a forgeable token is an auth
+  bypass, so this fails closed. Outside production the same issues are a loud
+  warning, so dev/test are unaffected. Also warns on `secureCookies: false` in
+  production. Exported as `validateAuthConfig` for an app's own preflight.
+
+  Note: an app currently deploying with a weak secret in production will now fail
+  to boot — that deployment was already insecure; set a real secret
+  (`openssl rand -base64 32`).
+
+- 464f2e2: Add `importUser` — the write-side of migrating an existing user base onto
+  Fonderie auth. `UserModel.create` is for fresh sign-ups (new id, default
+  timestamps); `importUser(store, user)` instead **preserves identity**: the
+  original id (so foreign keys still resolve), `createdAt`, `emailVerifiedAt`, and
+  the legacy password hash. Pair it with the `legacyVerify` config option — import
+  the foreign hash as-is, and Fonderie upgrades it to bcrypt on first login
+  (rehash-on-login). Supplied fields are preserved; omitted ones take the table
+  defaults.
+- ca700b2: Add `legacyVerify` — rehash-on-login for apps migrating onto Fonderie auth. Set
+  `legacyVerify: (plain, hash) => boolean | Promise<boolean>` on the auth config to
+  validate a foreign password hash (argon2, scrypt, pbkdf2, a framework's format)
+  on login; on the first successful login Fonderie transparently re-stores the
+  password as bcrypt, so the legacy verifier runs at most once per migrated user.
+  Imported bcrypt hashes need no config — the built-in check already accepts them.
+  No behavior change unless `legacyVerify` is set.
+- 2d4dac8: Add `app.checkProductionReadiness()` — one call that aggregates every module's
+  config footguns into a structured report (`{ ok, problems[] }`) you can gate a
+  deploy on or expose from a readiness endpoint, instead of relying on scattered
+  boot-time warnings. Modules opt in via an optional `IFonderieModule.checkReadiness()`;
+  core aggregates without importing them (`ok` is false on any `error`-severity
+  problem). Auth reports a weak/placeholder `jwtSecret` (error) and
+  `secureCookies: false` (warning); courier reports message types routed to a
+  channel with no provider (warning). The existing auto-guards (auth fails closed
+  in production, courier warns at boot) are unchanged — this adds the inspectable
+  data path alongside them.
+
+### Patch Changes
+
+- Updated dependencies [2d4dac8]
+- Updated dependencies [da7e79c]
+  - @fonderie/core@0.4.0
+  - @fonderie/store@0.2.0
+  - @fonderie/events@4.0.0
+  - @fonderie/rate-limit@3.0.0
+
 ## 3.0.0
 
 ### Minor Changes
