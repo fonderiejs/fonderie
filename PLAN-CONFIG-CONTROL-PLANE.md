@@ -103,9 +103,14 @@ The lazy skill teaches the *pattern once* (uniform verbs), so low-token holds.
 3. **Secret kind** â separate table, masked service, encryptor hook.
 4. **HTTP admin surface + bootstrap admin auth.**
 5. ✅ **CLI management commands** — done (v1: the five imperative verbs get/set/delete/history/rollback for config + secret, + secret reveal; thin client over the admin API, driven by a VERBS dictionary; low-token uniform grammar). apply/diff (declarative) is the v2 follow-up.
-6. **Consumers + generalize** â `audit` + `webhooks` consume `config.changed`;
-   lift version/revision/propagation into a shared control-plane primitive the
-   other admin resources reuse.
+6. **Generalize + consumers** — ✅ **generalize done**: the version index / OCC /
+   advisory-locked write / revisions / rollback / push-notify machinery is lifted
+   into a shared `versionedWrite`/`versionedRollback` primitive
+   (`services/versioned.ts`) that `config` and `secrets` both run on (a new
+   resource is a table descriptor + its read shape away). Proven end-to-end against
+   real Postgres for both. *Remaining (follow-on):* `audit` + `webhooks` consuming
+   a durable `config.changed` event — lower marginal value (the revisions table is
+   already the change trail), deferred.
 
 ## Open decisions (need a call before building)
 1. **Broadcast mode home** â add to `@fonderie/events` (reusable) vs config-local
