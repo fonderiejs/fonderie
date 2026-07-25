@@ -45,6 +45,39 @@ new DBTemplateResolver(store: IStoreAdapter): DBTemplateResolver
 new FSTemplateResolver(directory: string): FSTemplateResolver
   .resolve(type: string, data: Record<string, unknown>, locale?: string | undefined): Promise<IRenderedTemplate>
 
+function setTemplate(opts: { type: string; text: string; locale?: string | null; subject?: string | null; html?: string | null; active?: boolean; ifVersion?: number; actor?: string; }, store: IStoreAdapter): Promise<...>
+
+function rollbackTemplate(opts: { type: string; locale?: string | null; toVersion: number; actor?: string; }, store: IStoreAdapter): Promise<ITemplateEntry>
+
+function listTemplateRevisions(type: string, locale: string | null, store: IStoreAdapter): Promise<ITemplateRevision[]>
+
+function getTemplateEntry(type: string, locale: string | null, store: IStoreAdapter): Promise<ITemplateEntry | null>
+
+function listTemplateEntries(store: IStoreAdapter): Promise<ITemplateEntry[]>
+
+interface ITemplateEntry {
+    type: string;
+    locale: string | null;
+    subject: string | null;
+    html: string | null;
+    text: string;
+    active: boolean;
+    version: number;
+    updatedBy: string | null;
+    updatedAt: string;
+}
+
+interface ITemplateRevision {
+    type: string;
+    locale: string | null;
+    subject: string | null;
+    html: string | null;
+    text: string;
+    version: number;
+    actor: string | null;
+    createdAt: string;
+}
+
 interface IMessageLog {
     id: string;
     messageType: string;

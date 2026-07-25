@@ -479,6 +479,7 @@
         "@fonderie/courier/migrations"
       ],
       "tables": [
+        "fonderie_courier_template_revisions",
         "fonderie_courier_templates",
         "fonderie_message_log"
       ],

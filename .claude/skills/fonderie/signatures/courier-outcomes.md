@@ -9,6 +9,19 @@ downloading tarballs.
 
 ## Database tables (after all migrations)
 
+### `fonderie_courier_template_revisions`
+
+```sql
+type                     TEXT NOT NULL
+locale                   TEXT
+subject                  TEXT
+html                     TEXT
+text                     TEXT NOT NULL
+version                  INT NOT NULL
+actor                    TEXT
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_courier_templates`
 
 ```sql
@@ -21,6 +34,8 @@ text                     TEXT NOT NULL
 active                   BOOLEAN NOT NULL DEFAULT true
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+version                  INT NOT NULL DEFAULT 1
+updated_by               TEXT
 -- UNIQUE (type, locale)
 ```
 
