@@ -59,7 +59,7 @@ test('onResponse: transforms the body, preserving status', async () => {
 	assert.deepEqual(await res.json(), { wrapped: { reason: 'OK', explanation: '', result: { a: 1 } }, status: 201 });
 });
 
-test('onResponse: flattens the Fonderie envelope to a client-app-style shape', async () => {
+test('onResponse: flattens the Fonderie envelope to a client-style shape', async () => {
 	// Proves one config option closes the Phase-1 envelope divergence: Fonderie
 	// { reason, explanation, result: { tokens, user } } → flat { user, accessToken, refreshToken }.
 	const flatten = (body: any, { status }: { status: number }) => {

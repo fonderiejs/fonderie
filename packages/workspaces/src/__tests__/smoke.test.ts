@@ -204,7 +204,7 @@ test('WorkspacesModule: satisfies IFonderieModule interface', async () => {
 test('buildWorkspaceRoutes: config.routes overrides path (e.g. PUT /workspaces/:id)', async () => {
 	const { buildWorkspaceRoutes } = await import('../routes');
 	const routes = buildWorkspaceRoutes(makeStore({}), {
-		// client-app-style: update via a path id (wsCtx resolves :id natively)
+		// client-style: update via a path id (wsCtx resolves :id natively)
 		routes: { updateWorkspace: '/workspaces/:id' },
 	});
 	const has = (m: string, p: string) => routes.some(([mm, pp]) => mm === m && pp === p);
