@@ -145,6 +145,8 @@ interface IImportUser {
     createdAt?: Date;
 }
 
+function validateAuthConfig(config: IAuthConfig): void
+
 function buildAuthIpLimiter(route: AuthLimitedRoute, store: IStoreAdapter, config: false | IAuthRateLimitConfig | undefined): Middleware | null
 
 function buildAuthAccountLimiter(route: AuthLimitedRoute, store: IStoreAdapter, config: false | IAuthRateLimitConfig | undefined): Middleware | null

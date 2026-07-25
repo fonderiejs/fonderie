@@ -27,6 +27,11 @@ export { normalizeEmail, normalizeEmailSafe } from './services/email';
 export { importUser } from './migrate';
 export type { IImportUser } from './migrate';
 
+// Production-readiness — validate the auth config (fatal on a weak jwtSecret in
+// production). Runs automatically on AuthModule construction; exported for an
+// app's own preflight.
+export { validateAuthConfig } from './services/config-guard';
+
 // Brute-force protection — on by default; see services/rate-limit.ts
 export { buildAuthIpLimiter, buildAuthAccountLimiter } from './services/rate-limit';
 export type { IAuthRateLimitConfig, AuthLimitedRoute } from './services/rate-limit';

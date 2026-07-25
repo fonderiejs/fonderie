@@ -4,6 +4,7 @@ import type { EventBus } from '@fonderie/events';
 
 import { buildAuthRoutes } from './routes';
 import type { IAuthConfig } from './config';
+import { validateAuthConfig } from './services/config-guard';
 import { withSession } from './middlewares/session';
 
 export class AuthModule implements IFonderieModule {
@@ -13,7 +14,10 @@ export class AuthModule implements IFonderieModule {
 		private store: IStoreAdapter,
 		private config: IAuthConfig,
 		private bus?: EventBus,
-	) {}
+	) {
+		// Fail fast on an insecure jwtSecret (fatal in production) before boot.
+		validateAuthConfig(config);
+	}
 
 	install(app: IFonderieApp): void {
 		app.use(withSession(this.store, this.config));
