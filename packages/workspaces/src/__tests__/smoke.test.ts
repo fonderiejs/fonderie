@@ -614,3 +614,81 @@ test('invite: emits NOTIFICATION_EVENT with workspaceInvitation payload', async 
 	assert.ok(typeof p.data.pin === 'string');
 	assert.ok(typeof p.data.token === 'string');
 });
+
+// ── migration: importWorkspace / importMembership ────────────────
+
+test('importWorkspace: preserves supplied identity, stringifies jsonb, omits rest', async () => {
+	const { importWorkspace } = await import('../migrate');
+	let sql = '';
+	let params: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(q: string, p?: unknown[]): Promise<T[]> => {
+			sql = q;
+			params = p ?? [];
+			return [{ id: (p?.[0] as string) ?? 'gen' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const createdAt = new Date('2020-01-01T00:00:00Z');
+	const res = await importWorkspace(store, {
+		id: '22222222-2222-2222-2222-222222222222',
+		name: 'Acme',
+		slug: 'acme',
+		ownerId: '11111111-1111-1111-1111-111111111111',
+		settings: { theme: 'dark' },
+		createdAt,
+	});
+	assert.equal(res.id, '22222222-2222-2222-2222-222222222222');
+	assert.match(sql, /INSERT INTO fonderie_workspaces \(id, name, slug, owner_id, settings, created_at\)/);
+	assert.deepEqual(params, [
+		'22222222-2222-2222-2222-222222222222',
+		'Acme',
+		'acme',
+		'11111111-1111-1111-1111-111111111111',
+		'{"theme":"dark"}', // jsonb stringified
+		createdAt,
+	]);
+	assert.doesNotMatch(sql, /type|plan|is_personal|motto/);
+});
+
+test('importWorkspace: omitting id lets the table generate one', async () => {
+	const { importWorkspace } = await import('../migrate');
+	let sql = '';
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(q: string): Promise<T[]> => {
+			sql = q;
+			return [{ id: 'gen-uuid' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const res = await importWorkspace(store, { name: 'X', slug: 'x', ownerId: 'u-1' });
+	assert.equal(res.id, 'gen-uuid');
+	assert.doesNotMatch(sql, /\(id,/);
+});
+
+test('importMembership: inserts the join replay-safely, confirmed defaults true', async () => {
+	const { importMembership } = await import('../migrate');
+	let sql = '';
+	let params: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(q: string, p?: unknown[]): Promise<T[]> => {
+			sql = q;
+			params = p ?? [];
+			return [] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	await importMembership(store, {
+		userId: '11111111-1111-1111-1111-111111111111',
+		workspaceId: '22222222-2222-2222-2222-222222222222',
+		roleId: 'role-admin',
+	});
+	assert.match(sql, /INSERT INTO fonderie_role_user_workspaces \(user_id, workspace_id, role_id, confirmed\)/);
+	assert.match(sql, /ON CONFLICT \(user_id, workspace_id, role_id\) DO NOTHING/);
+	assert.deepEqual(params, [
+		'11111111-1111-1111-1111-111111111111',
+		'22222222-2222-2222-2222-222222222222',
+		'role-admin',
+		true,
+	]);
+});

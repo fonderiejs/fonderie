@@ -162,4 +162,35 @@ function withWorkspace(store: IStoreAdapter): Middleware
 function requireWorkspace(ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
 
 namespace schemas — exports: acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
+
+function importWorkspace(store: IStoreAdapter, ws: IImportWorkspace): Promise<{ id: string; }>
+
+function importMembership(store: IStoreAdapter, m: IImportMembership): Promise<void>
+
+interface IImportWorkspace {
+    id?: string;
+    name: string;
+    slug: string;
+    ownerId: string;
+    type?: string;
+    plan?: string;
+    description?: string | null;
+    settings?: Record<string, unknown>;
+    isPersonal?: boolean;
+    motto?: string | null;
+    phone?: string | null;
+    businessType?: string | null;
+    address?: Record<string, unknown>;
+    createdAt?: Date;
+    archivedAt?: Date | null;
+    archivedBy?: string | null;
+}
+
+interface IImportMembership {
+    userId: string;
+    workspaceId: string;
+    roleId: string;
+    confirmed?: boolean;
+    createdAt?: Date;
+}
 ```

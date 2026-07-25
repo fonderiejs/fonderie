@@ -30,3 +30,8 @@ export { requireWorkspace } from './middlewares/require-workspace';
 // Request validation — enforced contract for body-taking routes; exported
 // for docs generation and typed clients.
 export * as schemas from './schemas';
+
+// Migration — import existing teams/orgs + memberships (preserves identity;
+// pairs with @fonderie/auth's importUser).
+export { importWorkspace, importMembership } from './migrate';
+export type { IImportWorkspace, IImportMembership } from './migrate';
