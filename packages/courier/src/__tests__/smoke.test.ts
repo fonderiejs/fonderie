@@ -490,3 +490,46 @@ test('CourierModule.checkReadiness: reports gap channels as warning problems', a
 	assert.equal(problems[0]?.module, '@fonderie/courier');
 	assert.match(problems[0]?.message ?? '', /email-verification/);
 });
+
+// ── versioned template management ────────────────────────────────
+
+function captureStore(rows: (sql: string) => unknown[]) {
+	const seen: string[] = [];
+	const stub: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => { seen.push(sql); return rows(sql) as T[]; },
+		transaction: async (fn) => fn(stub),
+	};
+	return { store: stub, seen };
+}
+
+test('setTemplate: versioned write to the template table (subject/html/text)', async () => {
+	const { setTemplate } = await import('../templates/admin');
+	const { store, seen } = captureStore((sql) => (sql.includes('RETURNING') ? [{ type: 'email-verification', version: 2 }] : []));
+	const row = await setTemplate(
+		{ type: 'email-verification', subject: 'Verify', html: '<p>hi</p>', text: 'hi', actor: 'ada' },
+		store,
+	);
+	assert.equal(row.version, 2);
+	assert.ok(seen.some((s) => s.includes('fonderie_courier_templates') && s.includes('subject')));
+	assert.ok(seen.some((s) => s.includes('INSERT INTO fonderie_courier_template_revisions')));
+	assert.ok(seen.some((s) => s.includes("pg_notify('fonderie_courier_templates_changed'")));
+});
+
+test('setTemplate: stale ifVersion throws VersionConflictError', async () => {
+	const { setTemplate } = await import('../templates/admin');
+	const { VersionConflictError } = await import('@fonderie/store');
+	const { store } = captureStore((sql) => (sql.includes('SELECT version') ? [{ version: 5 }] : []));
+	await assert.rejects(
+		() => setTemplate({ type: 'email-verification', text: 'x', ifVersion: 1 }, store),
+		(e: unknown) => e instanceof VersionConflictError,
+	);
+});
+
+test('listTemplateRevisions: null-safe key match (base locale)', async () => {
+	const { listTemplateRevisions } = await import('../templates/admin');
+	let sql = '';
+	const { store } = captureStore((q) => { sql = q; return [{ version: 1 }]; });
+	await listTemplateRevisions('email-verification', null, store);
+	assert.match(sql, /locale IS NOT DISTINCT FROM \$2/);
+	assert.match(sql, /FROM fonderie_courier_template_revisions/);
+});

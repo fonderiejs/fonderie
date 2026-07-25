@@ -9,6 +9,16 @@ export { SmsChannel } from './channels/sms';
 export { PushChannel } from './channels/push';
 export { EmailChannel } from './channels/email';
 export { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
+// Versioned template management (on the @fonderie/store primitive): edit with
+// optimistic concurrency, revision history, rollback. The resolver is unchanged.
+export {
+	setTemplate,
+	rollbackTemplate,
+	listTemplateRevisions,
+	getTemplateEntry,
+	listTemplateEntries,
+} from './templates/admin';
+export type { ITemplateEntry, ITemplateRevision } from './templates/admin';
 export type { IMessageLog, MessageLogStatus } from './log';
 export type {
 	ICourierMessage,
