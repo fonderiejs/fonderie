@@ -48,7 +48,7 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"nodemailer": "^8.0.7"
+		"nodemailer": "^9.0.3"
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.4.0",

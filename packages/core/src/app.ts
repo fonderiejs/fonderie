@@ -54,9 +54,11 @@ export class FonderieApp implements IFonderieApp {
 					continue;
 				}
 
-				Array.isArray(value)
-					? value.forEach((v) => headers.append(key, v))
-					: headers.set(key, value);
+				if (Array.isArray(value)) {
+					for (const v of value) headers.append(key, v);
+				} else {
+					headers.set(key, value);
+				}
 			}
 
 			// Read the body stream — this was missing

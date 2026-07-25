@@ -72,7 +72,7 @@ export function customerAddressController(store: IStoreAdapter) {
 			const rawLabel = typeof body?.['label'] === 'string' ? body['label'] : 'service';
 			const { id: labelId } = await labels.findOrCreate('address', rawLabel);
 
-			let created;
+			let created: Awaited<ReturnType<typeof addresses.add>>;
 			try {
 				created = await addresses.add({
 					customerId: r.customer.id,

@@ -67,7 +67,7 @@ export function customerEmailController(store: IStoreAdapter) {
 			const isPrimary = body?.['isPrimary'] === true;
 			const { id: labelId } = await labels.findOrCreate('email', rawLabel);
 
-			let created;
+			let created: Awaited<ReturnType<typeof emails.add>>;
 			try {
 				created = await emails.add({
 					customerId: r.customer.id,
