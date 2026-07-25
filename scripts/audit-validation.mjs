@@ -28,6 +28,13 @@ const EXEMPT = new Map([
 	['PUT /customers/:customerId/phones/:phoneId/primary', 'params only'],
 	['PUT /customers/:customerId/addresses/:addrId/primary', 'params only'],
 	['PUT /customers/:customerId/relationships/:relatedId/primary', 'params only'],
+	// @fonderie/config admin surface: peers only on core/store (can't import
+	// @fonderie/auth's validate); handlers inline-validate + are admin-token-guarded.
+	['PUT /admin/config/:key', 'admin-token-guarded; body.value inline-validated'],
+	['POST /admin/config/:key/rollback', 'admin-token-guarded; body.toVersion inline-validated (integer)'],
+	['PUT /admin/secrets/:key', 'admin-token-guarded; body.value inline-validated (string)'],
+	['POST /admin/secrets/:key/rollback', 'admin-token-guarded; body.toVersion inline-validated (integer)'],
+	['POST /admin/secrets/:key/reveal', 'no body read — key from params'],
 ]);
 
 const pkgs = readdirSync(join(root, 'packages')).filter((d) =>

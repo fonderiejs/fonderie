@@ -373,8 +373,64 @@
         "fonderie_secret_revisions",
         "fonderie_secrets"
       ],
-      "routeCount": 0,
-      "routes": [],
+      "routeCount": 11,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/admin/config",
+          "mw": "g(async (ctx) => { const rows = await listConfigEntries(envOf(ctx) ?? null, store); return setApiResponse(HTTP.OK, 'CONFIG_LISTED', 'Config entries', rows); })"
+        },
+        {
+          "method": "DELETE",
+          "path": "/admin/config/:key",
+          "mw": "g(async (ctx) => { const ok = await deleteConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such config entry'); })"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/config/:key",
+          "mw": "g(async (ctx) => { const row = await getConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store); return row ? setApiResponse(HTTP.OK, 'CONFIG_ENTRY', 'Config entry', row) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such config entry'); })"
+        },
+        {
+          "method": "PUT",
+          "path": "/admin/config/:key",
+          "mw": "g(async (ctx) => { const b = body(ctx); if (!('value' in b)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value is required'); } try { const row = await setConfigEntry( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, ); return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', row); } catch (err) { return conflictOr(err); } })"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/config/:key/revisions",
+          "mw": "g(async (ctx) => { const revs = await listConfigRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(HTTP.OK, 'REVISIONS', 'Config revisions', revs); })"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/secrets",
+          "mw": "g(async (ctx) => { const rows = await listSecrets(envOf(ctx) ?? null, store); return setApiResponse(HTTP.OK, 'SECRETS_LISTED', 'Secrets (masked)', rows); })"
+        },
+        {
+          "method": "DELETE",
+          "path": "/admin/secrets/:key",
+          "mw": "g(async (ctx) => { const ok = await deleteSecret(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such secret'); })"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/secrets/:key",
+          "mw": "g(async (ctx) => { const row = await getSecret(keyOf(ctx), envOf(ctx) ?? 'all', store); return row ? setApiResponse(HTTP.OK, 'SECRET', 'Secret (masked)', row) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such secret'); })"
+        },
+        {
+          "method": "PUT",
+          "path": "/admin/secrets/:key",
+          "mw": "g(async (ctx) => { const b = body(ctx); if (typeof b['value'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value (string) is required'); } try { const row = await setSecret( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, encryptor, ); return setApiResponse(HTTP.OK, 'SECRET_SET', 'Secret saved (masked)', row); } catch (err) { return conflictOr(err); } })"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/secrets/:key/reveal",
+          "mw": "g(async (ctx) => { const value = await revealSecret(keyOf(ctx), envOf(ctx) ?? 'all', store, encryptor); return value === null ? setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such secret') : setApiResponse(HTTP.OK, 'SECRET_REVEALED', 'Decrypted secret value', { value }); })"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/secrets/:key/revisions",
+          "mw": "g(async (ctx) => { const revs = await listSecretRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(HTTP.OK, 'REVISIONS', 'Secret revisions', revs); })"
+        }
+      ],
       "secures": [],
       "hasSignature": true,
       "hasOutcomes": true
