@@ -796,7 +796,8 @@
       "exports": [
         "MigrationRunner",
         "InternalMigrationRunner",
-        "PGAdapter"
+        "PGAdapter",
+        "VersionConflictError"
       ],
       "subpaths": [
         "@fonderie/store/sql",
@@ -1865,6 +1866,9 @@
       "store"
     ],
     "pgadapter": [
+      "store"
+    ],
+    "versionconflicterror": [
       "store"
     ],
     "webhooksmodule": [

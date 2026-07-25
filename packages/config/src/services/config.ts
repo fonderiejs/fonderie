@@ -1,8 +1,8 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IConfigEntry, IConfigRevision } from '../types';
-import type { IVersionedTable } from './versioned';
-import { ConfigConflictError, versionedWrite, versionedRollback } from './versioned';
+import type { IVersionedResource } from './versioned';
+import { versionedWrite, versionedRollback } from './versioned';
 
 // Re-exported for the public API (the shared primitive owns the class).
 export { ConfigConflictError } from './versioned';
@@ -19,11 +19,14 @@ const ENTRY_COLS = `
 
 const SELECT_ENTRY = `SELECT ${ENTRY_COLS} FROM fonderie_config`;
 
-const CONFIG_TABLE: IVersionedTable = {
+const CONFIG_TABLE: IVersionedResource = {
 	table: 'fonderie_config',
 	revisions: 'fonderie_config_revisions',
 	channel: 'fonderie_config_changed',
-	cols: ENTRY_COLS,
+	keyColumns: ['key', 'environment'],
+	contentColumns: ['value'],
+	metaColumns: ['description', 'active'],
+	returning: ENTRY_COLS,
 };
 
 export async function listConfigEntries(
@@ -66,12 +69,12 @@ export async function setConfigEntry(
 	store: IStoreAdapter,
 ): Promise<IConfigEntry> {
 	const rawValue = typeof opts.value === 'string' ? opts.value : JSON.stringify(opts.value);
+	const data: Record<string, unknown> = { value: rawValue, active: opts.active ?? true };
+	if (opts.description !== undefined) data['description'] = opts.description;
 	return versionedWrite<IConfigEntry>(CONFIG_TABLE, store, {
 		key: opts.key,
-		environment: opts.environment ?? 'all',
-		rawValue,
-		description: opts.description ?? null,
-		active: opts.active ?? true,
+		scope: opts.environment ?? 'all',
+		data,
 		...(opts.ifVersion !== undefined ? { ifVersion: opts.ifVersion } : {}),
 		actor: opts.actor ?? null,
 	});
@@ -83,7 +86,7 @@ export async function rollbackConfigEntry(
 ): Promise<IConfigEntry> {
 	return versionedRollback<IConfigEntry>(CONFIG_TABLE, store, {
 		key: opts.key,
-		environment: opts.environment ?? 'all',
+		scope: opts.environment ?? 'all',
 		toVersion: opts.toVersion,
 		actor: opts.actor ?? null,
 	});
