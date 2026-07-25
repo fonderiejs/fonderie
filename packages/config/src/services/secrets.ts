@@ -3,7 +3,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { ISecretEntry, ISecretRevision } from '../types';
 import type { ISecretEncryptor } from '../crypto';
 import { noopEncryptor } from '../crypto';
-import type { IVersionedTable } from './versioned';
+import type { IVersionedResource } from './versioned';
 import { versionedWrite, versionedRollback } from './versioned';
 
 // Metadata only — the value column is deliberately never selected here, so a
@@ -18,11 +18,14 @@ const META_COLS = `
 	updated_by AS "updatedBy",
 	updated_at AS "updatedAt"`;
 
-const SECRET_TABLE: IVersionedTable = {
+const SECRET_TABLE: IVersionedResource = {
 	table: 'fonderie_secrets',
 	revisions: 'fonderie_secret_revisions',
 	channel: 'fonderie_secrets_changed',
-	cols: META_COLS, // masked — no value
+	keyColumns: ['key', 'environment'],
+	contentColumns: ['value'],
+	metaColumns: ['description', 'active'],
+	returning: META_COLS, // masked — no value
 };
 
 export async function listSecrets(
@@ -83,12 +86,15 @@ export async function setSecret(
 	store: IStoreAdapter,
 	encryptor: ISecretEncryptor = noopEncryptor,
 ): Promise<ISecretEntry> {
+	const data: Record<string, unknown> = {
+		value: encryptor.encrypt(opts.value),
+		active: opts.active ?? true,
+	};
+	if (opts.description !== undefined) data['description'] = opts.description;
 	return versionedWrite<ISecretEntry>(SECRET_TABLE, store, {
 		key: opts.key,
-		environment: opts.environment ?? 'all',
-		rawValue: encryptor.encrypt(opts.value),
-		description: opts.description ?? null,
-		active: opts.active ?? true,
+		scope: opts.environment ?? 'all',
+		data,
 		...(opts.ifVersion !== undefined ? { ifVersion: opts.ifVersion } : {}),
 		actor: opts.actor ?? null,
 	});
@@ -100,7 +106,7 @@ export async function rollbackSecret(
 ): Promise<ISecretEntry> {
 	return versionedRollback<ISecretEntry>(SECRET_TABLE, store, {
 		key: opts.key,
-		environment: opts.environment ?? 'all',
+		scope: opts.environment ?? 'all',
 		toVersion: opts.toVersion,
 		actor: opts.actor ?? null,
 	});

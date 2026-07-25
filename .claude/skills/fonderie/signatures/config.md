@@ -40,9 +40,9 @@ function rollbackConfigEntry(opts: { key: string; environment?: string; toVersio
 
 function listConfigRevisions(key: string, environment: string, store: IStoreAdapter): Promise<IConfigRevision[]>
 
-new ConfigConflictError(key: string, environment: string, currentVersion: number | null, expectedVersion: number): ConfigConflictError
+new ConfigConflictError(key: string, scope: string | null, currentVersion: number | null, expectedVersion: number): VersionConflictError
   .key: string
-  .environment: string
+  .scope: string | null
   .currentVersion: number | null
   .expectedVersion: number
   .name: string
