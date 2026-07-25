@@ -15,7 +15,7 @@ import { oauthController } from '../controllers/oauth.controller';
 import { userController } from '../controllers/user.controller';
 
 const config: IAuthConfig = {
-	jwtSecret: 'test-secret-min-32-chars-long-here',
+	jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
 	sessionDuration: '7d',
 	providers: ['email'],
 };
@@ -152,7 +152,7 @@ test('jwt: tampered token is rejected', () => {
 test('jwt: token signed with wrong secret is rejected', () => {
 	const other = issueTokenPair(
 		'user-000',
-		{ ...config, jwtSecret: 'other-secret-min-32-chars-long!!' },
+		{ ...config, jwtSecret: 'nP4wR8kX2mQ7vL9tB6yJ3hF5cD1aZ0sG' },
 		{ loginMethod: 'email' },
 	);
 	const payload = verifyToken(other.accessToken, config);
@@ -2172,4 +2172,71 @@ test('withSession: legacy token without sid still authenticates', async () => {
 	await withSession(makeStore({ sessionExists: false, userById: BASE_USER }), config)(
 		ctx, async () => new Response('ok'));
 	assert.equal(ctx.user?.id, 'user-1');
+});
+
+// ── production-readiness: validateAuthConfig ─────────────────────
+
+test('validateAuthConfig: strong secret passes (no throw, no warn)', async () => {
+	const { validateAuthConfig } = await import('../services/config-guard');
+	const warn = mock.method(console, 'warn', () => {});
+	try {
+		validateAuthConfig({ ...config, jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ' });
+		assert.equal(warn.mock.callCount(), 0);
+	} finally {
+		warn.mock.restore();
+	}
+});
+
+test('validateAuthConfig: weak secret throws in production', async () => {
+	const { validateAuthConfig } = await import('../services/config-guard');
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		assert.throws(
+			() => validateAuthConfig({ ...config, jwtSecret: 'short' }),
+			/at least 32 characters.*Refusing to boot/s,
+		);
+		// A 36-char dev-default is long enough but still a placeholder → still fatal.
+		assert.throws(
+			() => validateAuthConfig({ ...config, jwtSecret: 'dev-secret-min-32-chars-long-here-xx' }),
+			/placeholder or dev-default/,
+		);
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('validateAuthConfig: weak secret only warns outside production', async () => {
+	const { validateAuthConfig } = await import('../services/config-guard');
+	const prev = process.env['NODE_ENV'];
+	delete process.env['NODE_ENV'];
+	const warn = mock.method(console, 'warn', () => {});
+	try {
+		assert.doesNotThrow(() => validateAuthConfig({ ...config, jwtSecret: 'short' }));
+		assert.equal(warn.mock.callCount(), 1);
+	} finally {
+		warn.mock.restore();
+		if (prev !== undefined) process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('validateAuthConfig: warns on secureCookies=false in production', async () => {
+	const { validateAuthConfig } = await import('../services/config-guard');
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	const warn = mock.method(console, 'warn', () => {});
+	try {
+		validateAuthConfig({
+			...config,
+			jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
+			secureCookies: false,
+		});
+		assert.equal(warn.mock.callCount(), 1);
+		assert.match(warn.mock.calls[0]?.arguments[0] as string, /secureCookies is false/);
+	} finally {
+		warn.mock.restore();
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
+	}
 });
