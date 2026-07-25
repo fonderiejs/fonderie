@@ -1,4 +1,7 @@
-// ── Stubbed until @fonderie-labs/auth ships ──────────────────────
+// ── Identity contracts ───────────────────────────────────────────
+// Owned by core so packages that only peer on core (the adapters) can name
+// them without importing optional peers. @fonderie/auth populates `user`/
+// `tenant` and @fonderie/workspaces populates `workspace` on the context.
 export interface ITenant {
 	id: string;
 	slug: string;
@@ -85,6 +88,11 @@ export interface IFonderieApp {
 	register(module: IFonderieModule): IFonderieApp;
 	addRoute(method: string, path: string, ...handlers: Middleware[]): void;
 	listen(port: number, options?: { name?: string; version?: string; env?: string }): void;
+	// Install every registered module (dependency-ordered). Returns the app.
+	boot(): Promise<IFonderieApp>;
+	// Aggregate every module's self-reported readiness problems; gate a deploy
+	// or expose from a readiness endpoint. See IReadinessReport.
+	checkProductionReadiness(): IReadinessReport;
 }
 
 // A production-readiness finding a module reports about its own config.

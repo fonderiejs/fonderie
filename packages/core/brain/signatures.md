@@ -56,6 +56,8 @@ interface IFonderieApp {
         version?: string;
         env?: string;
     }): void;
+    boot(): Promise<IFonderieApp>;
+    checkProductionReadiness(): IReadinessReport;
 }
 
 interface IFonderieModule {
