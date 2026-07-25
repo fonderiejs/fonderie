@@ -390,3 +390,74 @@ test('ConfigModule: registers admin routes only when adminToken is set', async (
 	assert.equal(added2.length, 0, 'no admin routes without a token');
 	mod2.manager.stop();
 });
+
+// ── coverage: rollback / revisions / reveal / delete ─────────────
+
+// Typed stub: wraps a per-sql responder into a full IStoreAdapter.
+function stubStore(responder: (sql: string) => unknown[]): IStoreAdapter {
+	const stub: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => responder(sql) as T[],
+		transaction: async (fn) => fn(stub),
+	};
+	return stub;
+}
+
+function rollbackStore(targetValue: string, curVersion: number, entry: unknown): IStoreAdapter {
+	return stubStore((sql) => {
+		if (sql.includes('_revisions') && sql.includes('version = $3')) return [{ value: targetValue }];
+		if (sql.includes('SELECT version FROM')) return [{ version: curVersion }];
+		if (sql.includes('RETURNING')) return [entry];
+		return [];
+	});
+}
+
+test('rollbackConfigEntry: writes target value as a new version', async () => {
+	const { rollbackConfigEntry } = await import('../services/config');
+	const store = rollbackStore('"old"', 4, { ...baseEntry, version: 5 });
+	const row = await rollbackConfigEntry({ key: 'k', toVersion: 1, actor: 'ada' }, store);
+	assert.equal(row.version, 5);
+});
+
+test('rollbackConfigEntry: throws when the target revision is missing', async () => {
+	const { rollbackConfigEntry } = await import('../services/config');
+	const store = stubStore(() => []);
+	await assert.rejects(() => rollbackConfigEntry({ key: 'k', toVersion: 99 }, store), /no revision 99/);
+});
+
+test('listConfigRevisions: queries the revisions table', async () => {
+	const { listConfigRevisions } = await import('../services/config');
+	let sql = '';
+	const store = stubStore((q) => { sql = q; return [{ version: 2 }, { version: 1 }]; });
+	const revs = await listConfigRevisions('k', 'all', store);
+	assert.equal(revs.length, 2);
+	assert.match(sql, /FROM fonderie_config_revisions/);
+});
+
+test('rollbackSecret: writes target ciphertext as a new (masked) version', async () => {
+	const { rollbackSecret } = await import('../services/secrets');
+	const store = rollbackStore('cipher', 2, { key: 'k', environment: 'all', description: null, active: true, version: 3, updatedBy: null, updatedAt: 'x' });
+	const row = await rollbackSecret({ key: 'k', toVersion: 1 }, store);
+	assert.equal(row.version, 3);
+	assert.ok(!('value' in row), 'rollback returns masked metadata');
+});
+
+test('revealSecret: decrypts the stored ciphertext (null when absent)', async () => {
+	const { revealSecret } = await import('../services/secrets');
+	const encryptor = { encrypt: (p: string) => `E(${p})`, decrypt: (c: string) => c.replace(/^E\(|\)$/g, '') };
+	assert.equal(await revealSecret('k', 'all', stubStore(() => [{ value: 'E(sk_live)' }]), encryptor), 'sk_live');
+	assert.equal(await revealSecret('missing', 'all', stubStore(() => []), encryptor), null);
+});
+
+test('listSecretRevisions: masked (no value column selected)', async () => {
+	const { listSecretRevisions } = await import('../services/secrets');
+	let sql = '';
+	await listSecretRevisions('k', 'all', stubStore((q) => { sql = q; return [{ version: 1 }]; }));
+	assert.match(sql, /FROM fonderie_secret_revisions/);
+	assert.doesNotMatch(sql, /\bvalue\b/);
+});
+
+test('deleteSecret: true when deleted, false when absent', async () => {
+	const { deleteSecret } = await import('../services/secrets');
+	assert.equal(await deleteSecret('k', 'all', stubStore(() => [{ key: 'k' }])), true);
+	assert.equal(await deleteSecret('k', 'all', stubStore(() => [])), false);
+});
