@@ -10,11 +10,17 @@
 # OS
 **/.DS_Store
 
-# Documentation
+# Internal planning docs — relocated to a private repo, kept out of this public
+# one. FONDERIE.md is the exception, kept public via git add -f.
 GAME_PLAN.md
 FONDERIE.md
 POSTMAN_SDK_PARITY.md
 ROADMAP.md
+API-FREEZE-REVIEW.md
+ARCHITECTURE-EVOLUTION.md
+BRAIN_PLAN.md
+MIGRATION-FONDERIEJS.md
+PLAN-*.md
 
 # Local env files
 **/.env

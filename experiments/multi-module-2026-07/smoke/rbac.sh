@@ -49,7 +49,7 @@ curl -s -o "$inv" "${AH_A[@]}" ${WSH[@]+"${WSH[@]}"} -H 'Content-Type: applicati
 if [ "$INVITE_TOKEN_MODE" = db ]; then
   : "${INVITE_TOKEN_SQL:?}"
   ITOK=$(node -e "
-    const {Client}=require('${PG_MODULE:-/Users/choleski/Desktop/client-app/fonderie-js/node_modules/pg}');
+    const {Client}=require('${PG_MODULE:-pg}');
     const c=new Client({connectionString:process.env.DATABASE_URL});
     c.connect().then(()=>c.query(process.env.INVITE_TOKEN_SQL,['$B'])).then(r=>{console.log((r.rows[0]?.token??'')+'\t'+(r.rows[0]?.pin??''));return c.end()});")
   IPIN=${ITOK#*$'\t'}; ITOK=${ITOK%%$'\t'*}

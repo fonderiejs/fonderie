@@ -89,7 +89,7 @@ landing, planning, releases), not building a SaaS *with* it. The candidates were
 noise (Claude-account logins matching the `login` alias; meta-questions about
 the brain's own rate limit). The real corpus therefore still awaits:
 
-- **archetype build sessions** — transcripts of building the client-app app
+- **archetype build sessions** — transcripts of building the client app
   (and later archetypes) *on* Fonderie, where "add billing / teams / roles"
   requests actually occur;
 - **post-launch support / Discord / sales-call** language once clients are live.

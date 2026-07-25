@@ -25,9 +25,9 @@ inside the artifacts they check (same rule as `multi-module-2026-07/VERIFICATION
   `contract-tests.postman_collection.json`, sibling-dir links.
 
 **Content — entry points + launch-relevant docs (read end-to-end):**
-- ✅ All 6 experiment `README.md`s — coherent, correctly describe their
+- ✅ All experiment `README.md`s — coherent, correctly describe their
   experiment, cross-link the plan / design / blog.
-- ✅ `client-app-rewrite/RESULTS-PHASE1-RERUN.md` and `multi-module-2026-07/DESIGN-R5.md`
+- ✅ `multi-module-2026-07/DESIGN-R5.md`
   — already verified earlier this session (see that dir's `VERIFICATION-R5.md`).
 
 **Preserved, not re-adjudicated (~22 docs):** pre-registered designs
