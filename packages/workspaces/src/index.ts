@@ -33,5 +33,5 @@ export * as schemas from './schemas';
 
 // Migration — import existing teams/orgs + memberships (preserves identity;
 // pairs with @fonderie/auth's importUser).
-export { importWorkspace, importMembership } from './migrate';
-export type { IImportWorkspace, IImportMembership } from './migrate';
+export { importWorkspace, importRole, importMembership } from './migrate';
+export type { IImportWorkspace, IImportRole, IImportMembership } from './migrate';

@@ -165,6 +165,8 @@ namespace schemas — exports: acceptInvitationSchema, addMemberRoleSchema, crea
 
 function importWorkspace(store: IStoreAdapter, ws: IImportWorkspace): Promise<{ id: string; }>
 
+function importRole(store: IStoreAdapter, role: IImportRole): Promise<{ id: string; }>
+
 function importMembership(store: IStoreAdapter, m: IImportMembership): Promise<void>
 
 interface IImportWorkspace {
@@ -184,6 +186,15 @@ interface IImportWorkspace {
     createdAt?: Date;
     archivedAt?: Date | null;
     archivedBy?: string | null;
+}
+
+interface IImportRole {
+    id?: string;
+    name: string;
+    workspaceId: string;
+    description?: string | null;
+    active?: boolean;
+    createdAt?: Date;
 }
 
 interface IImportMembership {
