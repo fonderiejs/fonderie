@@ -1,5 +1,30 @@
 # @fonderie/workspaces
 
+## 4.0.0
+
+### Minor Changes
+
+- 9eb3c80: Add `importRole` — completes the workspaces migration trio (`importWorkspace` →
+  `importRole` → `importMembership`). Imports a custom, workspace-scoped role
+  preserving its id so migrated memberships resolve to it; `is_system` stays false
+  (system roles are seeded, resolve those by name). Supplied fields preserved,
+  omitted ones take table defaults.
+- 5130aba: Add `importWorkspace` + `importMembership` — the workspaces write-side of
+  migrating an existing app onto Fonderie (mirrors `importUser` in
+  `@fonderie/auth`). `importWorkspace` preserves the original id, `ownerId`,
+  `createdAt`, settings and org-profile fields; `importMembership` restores the
+  user↔workspace↔role join (replay-safe). A migration is: `importUser` →
+  `importWorkspace` → resolve a role (seeded system role or a custom one) →
+  `importMembership`. Supplied fields preserved, omitted ones take table defaults.
+
+### Patch Changes
+
+- Updated dependencies [2d4dac8]
+- Updated dependencies [da7e79c]
+  - @fonderie/core@0.4.0
+  - @fonderie/store@0.2.0
+  - @fonderie/events@4.0.0
+
 ## 3.0.0
 
 ### Patch Changes

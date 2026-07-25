@@ -1,5 +1,18 @@
 # @fonderie/customers
 
+## 4.0.0
+
+### Patch Changes
+
+- Updated dependencies [2d4dac8]
+- Updated dependencies [da7e79c]
+- Updated dependencies [9eb3c80]
+- Updated dependencies [5130aba]
+  - @fonderie/core@0.4.0
+  - @fonderie/store@0.2.0
+  - @fonderie/workspaces@4.0.0
+  - @fonderie/events@4.0.0
+
 ## 3.0.0
 
 ### Patch Changes

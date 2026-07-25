@@ -1,5 +1,60 @@
 # @fonderie/courier
 
+## 4.0.0
+
+### Minor Changes
+
+- 2d4dac8: Add `app.checkProductionReadiness()` — one call that aggregates every module's
+  config footguns into a structured report (`{ ok, problems[] }`) you can gate a
+  deploy on or expose from a readiness endpoint, instead of relying on scattered
+  boot-time warnings. Modules opt in via an optional `IFonderieModule.checkReadiness()`;
+  core aggregates without importing them (`ok` is false on any `error`-severity
+  problem). Auth reports a weak/placeholder `jwtSecret` (error) and
+  `secureCookies: false` (warning); courier reports message types routed to a
+  channel with no provider (warning). The existing auto-guards (auth fails closed
+  in production, courier warns at boot) are unchanged — this adds the inspectable
+  data path alongside them.
+- 41dfd9c: Production-readiness preflight: at boot (`CourierModule.install`) courier now
+  **warns when a message type is routed to a channel that has no registered
+  provider** — e.g. `email-verification → email` with no email provider, which the
+  dispatcher would otherwise silently drop (locking users out with
+  `requireVerification` on). Warn-only (channel setups vary legitimately; never
+  blocks boot). Checks the actually-registered channels, so channels added via
+  `registerChannel` count as present. Exported as `validateCourierConfig` for an
+  app's own preflight; `Dispatcher.channelNames()` lists registered channels.
+- 8dcfc28: Courier template admin surface — bring versioned template management to config
+  parity. `CourierModule` registers `/admin/templates/*` routes **only when an
+  `adminToken` is configured** (fail-closed; requires `@fonderie/store` for db
+  templates), each guarded by a `Bearer` token. Endpoints mirror config: list /
+  get / put (with `ifVersion` optimistic concurrency → **409**) / delete /
+  `GET :type/revisions` / `POST :type/rollback`. Templates are keyed by
+  `(type, locale)` — the `?locale` query scopes a request, a null locale is the
+  base — and writes record an actor (optional `X-Actor` header). Exports
+  `buildTemplateAdminRoutes` and `deleteTemplate`.
+
+  The CLI gains a `template` verb group — `fonderie template get|set|delete|history|rollback`
+  against a live deployment's admin API (`FONDERIE_ADMIN_URL` + `FONDERIE_ADMIN_TOKEN`),
+  scoped with `--locale` and carrying `--subject` / `--html` on `set`.
+
+- 7f3a180: Versioned email templates — the second adopter of the shared `@fonderie/store`
+  versioned-resource primitive. Templates (keyed by `type` + nullable `locale`,
+  content `subject/html/text`) now carry a `version`, an append-only revision
+  history, and rollback, with optimistic concurrency on edits. New exports:
+  `setTemplate` (upsert with `ifVersion` → `VersionConflictError` on a stale
+  compare-and-swap), `rollbackTemplate`, `listTemplateRevisions`,
+  `getTemplateEntry`, `listTemplateEntries`. The resolver and the whole email
+  pipeline are unchanged — templates simply gained an edit/history/rollback
+  lifecycle. Proven end-to-end against real Postgres (edit, rollback, and the
+  resolver still reading the current version).
+
+### Patch Changes
+
+- Updated dependencies [2d4dac8]
+- Updated dependencies [da7e79c]
+  - @fonderie/core@0.4.0
+  - @fonderie/store@0.2.0
+  - @fonderie/events@4.0.0
+
 ## 3.0.0
 
 ### Minor Changes
