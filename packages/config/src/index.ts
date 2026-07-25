@@ -7,7 +7,10 @@ export {
 	getConfigEntry,
 	setConfigEntry,
 	deleteConfigEntry,
+	rollbackConfigEntry,
+	listConfigRevisions,
+	ConfigConflictError,
 } from './services/config';
 
-export type { IConfigEntry, IConfigSnapshot } from './types';
+export type { IConfigEntry, IConfigRevision, IConfigSnapshot } from './types';
 export type { IConfigOptions } from './config';

@@ -133,11 +133,18 @@ test('getConfig: returns fallback when manager not in ctx', async () => {
 function makeWriteStore(returnEntry?: IConfigEntry): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
-			if (returnEntry && (sql.includes('INSERT') || sql.includes('SELECT'))) {
-				return [returnEntry] as unknown as T[];
+			// version lock read (setConfigEntry / rollback)
+			if (sql.includes('SELECT version FROM fonderie_config')) {
+				return (returnEntry ? [{ version: returnEntry.version }] : []) as unknown as T[];
 			}
-			if (sql.includes('DELETE') && returnEntry) {
-				return [{ key: returnEntry.key }] as unknown as T[];
+			// revision inserts return nothing
+			if (sql.includes('fonderie_config_revisions')) return [] as T[];
+			if (sql.includes('DELETE')) {
+				return (returnEntry ? [{ key: returnEntry.key }] : []) as unknown as T[];
+			}
+			// entry upsert (RETURNING) or plain SELECT
+			if (returnEntry && (sql.includes('RETURNING') || sql.includes('SELECT'))) {
+				return [returnEntry] as unknown as T[];
 			}
 			return [] as T[];
 		},
@@ -152,6 +159,8 @@ const baseEntry: IConfigEntry = {
 	environment: 'all',
 	description: 'Enable dark mode',
 	active: true,
+	version: 1,
+	updatedBy: null,
 	updatedAt: '2026-05-08T00:00:00.000Z',
 };
 
@@ -201,4 +210,31 @@ test('getMigrationsPath: returns a string path', async () => {
 	const path = getMigrationsPath();
 	assert.ok(typeof path === 'string');
 	assert.ok(path.includes('migrations'));
+});
+
+// ── optimistic concurrency (version index) ───────────────────────
+
+test('setConfigEntry: ifVersion mismatch throws ConfigConflictError', async () => {
+	const { setConfigEntry, ConfigConflictError } = await import('../services/config');
+	// store reports current version 5; caller writes against version 1 → conflict
+	const store = makeWriteStore({ ...baseEntry, version: 5 });
+	await assert.rejects(
+		() => setConfigEntry({ key: 'feature.dark-mode', value: false, ifVersion: 1 }, store),
+		(err: unknown) => {
+			assert.ok(err instanceof ConfigConflictError);
+			assert.equal((err as InstanceType<typeof ConfigConflictError>).currentVersion, 5);
+			assert.equal((err as InstanceType<typeof ConfigConflictError>).expectedVersion, 1);
+			return true;
+		},
+	);
+});
+
+test('setConfigEntry: ifVersion match commits (no conflict)', async () => {
+	const { setConfigEntry } = await import('../services/config');
+	const store = makeWriteStore({ ...baseEntry, version: 5 });
+	const result = await setConfigEntry(
+		{ key: 'feature.dark-mode', value: false, ifVersion: 5 },
+		store,
+	);
+	assert.equal(result.key, 'feature.dark-mode');
 });
