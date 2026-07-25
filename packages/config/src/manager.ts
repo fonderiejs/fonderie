@@ -1,16 +1,21 @@
+import pg from 'pg';
+
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IConfigOptions } from './config';
 import type { IConfigSnapshot } from './types';
 
 const FONDERIE_CONFIG_KEY = 'fonderie.config.snapshot';
+const NOTIFY_CHANNEL = 'fonderie_config_changed';
 
 export class RemoteConfigManager {
 	private snapshot: IConfigSnapshot | null = null;
 	private interval: ReturnType<typeof setInterval> | null = null;
+	private listenClient: pg.Client | null = null;
 	private environment: string;
 	private ttl: number;
 	private table: string;
+	private connectionUrl: string | undefined;
 
 	constructor(
 		private store: IStoreAdapter,
@@ -19,13 +24,35 @@ export class RemoteConfigManager {
 		this.ttl = options.ttl ?? 30_000;
 		this.environment = options.environment ?? process.env['NODE_ENV'] ?? 'development';
 		this.table = options.table ?? 'fonderie_config';
+		this.connectionUrl = options.connectionUrl;
 	}
 
 	async boot(): Promise<void> {
 		await this.refresh();
+		// Poll floor — catches a missed NOTIFY, cold start, or no LISTEN client.
 		this.interval = setInterval(() => {
 			this.refresh().catch((err) => console.error('[config] refresh error:', err));
 		}, this.ttl);
+		// Push fast-path — refresh within ms of a write (broadcast invalidation).
+		if (this.connectionUrl) await this.startListening();
+	}
+
+	private async startListening(): Promise<void> {
+		try {
+			this.listenClient = new pg.Client(this.connectionUrl);
+			await this.listenClient.connect();
+			await this.listenClient.query(`LISTEN ${NOTIFY_CHANNEL}`);
+			this.listenClient.on('notification', () => {
+				this.refresh().catch((err) => console.error('[config] refresh error:', err));
+			});
+			this.listenClient.on('error', (err) =>
+				console.error('[config] listen client error:', err.message),
+			);
+		} catch (err) {
+			// Non-fatal: fall back to the poll floor if LISTEN can't be established.
+			console.error('[config] failed to start LISTEN, falling back to poll:', err);
+			this.listenClient = null;
+		}
 	}
 
 	stop(): void {
@@ -33,6 +60,8 @@ export class RemoteConfigManager {
 			clearInterval(this.interval);
 			this.interval = null;
 		}
+		void this.listenClient?.end();
+		this.listenClient = null;
 	}
 
 	// Get a single value with a typed fallback
