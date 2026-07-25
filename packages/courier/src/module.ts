@@ -11,6 +11,7 @@ import { SmsChannel } from './channels/sms';
 import { PushChannel } from './channels/push';
 import { EmailChannel } from './channels/email';
 import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
+import { validateCourierConfig } from './config-guard';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 
 export class CourierModule implements IFonderieModule {
@@ -42,6 +43,9 @@ export class CourierModule implements IFonderieModule {
 	}
 
 	install(app: IFonderieApp): void {
+		// Boot-time preflight: warn if any routed message type has no provider.
+		validateCourierConfig(this.config, this.dispatcher.channelNames());
+
 		const store = this.store;
 		const signingKeys = this.config.delivery?.signingKeys;
 

@@ -1,4 +1,8 @@
 export { CourierModule } from './module';
+// Production-readiness — warn on message types routed to a channel with no
+// provider. Runs automatically at boot (CourierModule.install); exported for an
+// app's own preflight.
+export { validateCourierConfig } from './config-guard';
 export { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 export { Dispatcher } from './dispatcher';
 export { SmsChannel } from './channels/sms';

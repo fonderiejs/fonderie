@@ -25,6 +25,12 @@ export class Dispatcher {
 		return this;
 	}
 
+	// Names of the currently-registered channels — used by the boot-time config
+	// guard to detect message types routed to a channel with no provider.
+	channelNames(): string[] {
+		return [...this.channels.keys()];
+	}
+
 	async dispatch(message: ICourierMessage): Promise<void> {
 		const channelNames = this.config.channels[message.type];
 
