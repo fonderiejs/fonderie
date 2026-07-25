@@ -137,7 +137,6 @@ export class FonderieApp implements IFonderieApp {
 			user: null,
 			workspace: null,
 			meta: { _buildContext: true },
-			_router: this.router,
 		};
 		await compose(this.middlewares)(ctx, async () => new Response());
 		delete ctx.meta['_buildContext'];
@@ -167,7 +166,6 @@ export class FonderieApp implements IFonderieApp {
 			user: null,
 			workspace: null,
 			meta: {},
-			_router: this.router,
 		};
 
 		// Build the pipeline: global middleware → router → 404

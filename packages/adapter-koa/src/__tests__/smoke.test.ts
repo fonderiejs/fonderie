@@ -22,7 +22,6 @@ function makeCtx(user: unknown = null, meta: Record<string, unknown> = {}): IFon
 		tenant: null,
 		meta,
 		request: new Request('http://localhost/'),
-		_router: null as any,
 	} as unknown as IFonderieContext;
 }
 
