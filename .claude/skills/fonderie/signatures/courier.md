@@ -13,6 +13,8 @@ new CourierModule(config: ICourierConfig, store?: IStoreAdapter | undefined, bus
   .dispatcher: Dispatcher
   .install(app: IFonderieApp): void
 
+function validateCourierConfig(config: ICourierConfig, registeredChannels: Iterable<string>): void
+
 function handleSendGridDelivery(req: Request, store: IStoreAdapter, webhookSecret?: string | undefined): Promise<Response>
 
 function handleMailgunDelivery(req: Request, store: IStoreAdapter, signingKey?: string | undefined): Promise<Response>
@@ -21,6 +23,7 @@ function handleMailtrapDelivery(req: Request, store: IStoreAdapter): Promise<Res
 
 new Dispatcher(config: ICourierConfig, resolver: ITemplateResolver, store?: IStoreAdapter | undefined): Dispatcher
   .registerChannel(channel: ICourierChannel): Dispatcher
+  .channelNames(): string[]
   .dispatch(message: ICourierMessage): Promise<void>
 
 new SmsChannel(config: ISmsChannelConfig): SmsChannel

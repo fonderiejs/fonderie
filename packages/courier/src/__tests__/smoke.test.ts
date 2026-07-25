@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { ICourierConfig } from '../config';
@@ -431,4 +431,49 @@ test('handleMailtrapDelivery: processes open event', async () => {
 	const res = await handleMailtrapDelivery(req, stub);
 	assert.equal(res.status, 200);
 	assert.ok(updates.includes('trap-abc'));
+});
+
+// ── production-readiness: validateCourierConfig ──────────────────
+
+test('validateCourierConfig: warns on a routed channel with no provider', async () => {
+	const { validateCourierConfig } = await import('../config-guard');
+	const warn = mock.method(console, 'warn', () => {});
+	try {
+		validateCourierConfig(
+			{ channels: { 'email-verification': [Channel.EMAIL], 'new-message': [Channel.PUSH] } },
+			[], // nothing registered
+		);
+		// one warning per gap-channel (email, push)
+		assert.equal(warn.mock.callCount(), 2);
+		const msgs = warn.mock.calls.map((c) => c.arguments[0] as string).join('\n');
+		assert.match(msgs, /'email' provider is registered.*email-verification/s);
+		assert.match(msgs, /'push' provider is registered.*new-message/s);
+	} finally {
+		warn.mock.restore();
+	}
+});
+
+test('validateCourierConfig: silent when every routed channel is registered', async () => {
+	const { validateCourierConfig } = await import('../config-guard');
+	const warn = mock.method(console, 'warn', () => {});
+	try {
+		validateCourierConfig(
+			{ channels: { 'email-verification': [Channel.EMAIL] } },
+			['email'], // registered (config-driven OR via registerChannel)
+		);
+		assert.equal(warn.mock.callCount(), 0);
+	} finally {
+		warn.mock.restore();
+	}
+});
+
+test('validateCourierConfig: no channels configured — no warning', async () => {
+	const { validateCourierConfig } = await import('../config-guard');
+	const warn = mock.method(console, 'warn', () => {});
+	try {
+		validateCourierConfig({ channels: {} }, []);
+		assert.equal(warn.mock.callCount(), 0);
+	} finally {
+		warn.mock.restore();
+	}
 });
