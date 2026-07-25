@@ -3,7 +3,8 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { ISecretEntry, ISecretRevision } from '../types';
 import type { ISecretEncryptor } from '../crypto';
 import { noopEncryptor } from '../crypto';
-import { ConfigConflictError } from './config';
+import type { IVersionedTable } from './versioned';
+import { versionedWrite, versionedRollback } from './versioned';
 
 // Metadata only — the value column is deliberately never selected here, so a
 // secret's plaintext can't leak through admin list/get. Only `revealSecret`
@@ -16,6 +17,13 @@ const META_COLS = `
 	version,
 	updated_by AS "updatedBy",
 	updated_at AS "updatedAt"`;
+
+const SECRET_TABLE: IVersionedTable = {
+	table: 'fonderie_secrets',
+	revisions: 'fonderie_secret_revisions',
+	channel: 'fonderie_secrets_changed',
+	cols: META_COLS, // masked — no value
+};
 
 export async function listSecrets(
 	environment: string | null,
@@ -60,9 +68,8 @@ export async function revealSecret(
 	return row ? encryptor.decrypt(row.value) : null;
 }
 
-// Write a secret — same version index / optimistic concurrency / advisory-lock /
-// revisions / push-notify machinery as config, but the value is encrypted at
-// rest and returned masked (metadata only).
+// Write a secret — same versioned primitive as config, but the value is
+// encrypted at rest and returned masked (metadata only).
 export async function setSecret(
 	opts: {
 		key: string;
@@ -76,51 +83,14 @@ export async function setSecret(
 	store: IStoreAdapter,
 	encryptor: ISecretEncryptor = noopEncryptor,
 ): Promise<ISecretEntry> {
-	const env = opts.environment ?? 'all';
-	const enc = encryptor.encrypt(opts.value);
-	const active = opts.active ?? true;
-	const actor = opts.actor ?? null;
-
-	return store.transaction(async (tx) => {
-		await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`, [opts.key, env]);
-
-		const [cur] = await tx.query<{ version: number }>(
-			`SELECT version FROM fonderie_secrets WHERE key = $1 AND environment = $2 FOR UPDATE`,
-			[opts.key, env],
-		);
-		const currentVersion = cur?.version ?? null;
-		if (opts.ifVersion !== undefined && currentVersion !== opts.ifVersion) {
-			throw new ConfigConflictError(opts.key, env, currentVersion, opts.ifVersion);
-		}
-		const version = (currentVersion ?? 0) + 1;
-
-		const [row] = cur
-			? await tx.query<ISecretEntry>(
-					`UPDATE fonderie_secrets SET
-						value = $3, version = $4,
-						description = COALESCE($5, description), active = $6,
-						updated_by = $7, updated_at = now()
-					WHERE key = $1 AND environment = $2
-					RETURNING ${META_COLS}`,
-					[opts.key, env, enc, version, opts.description ?? null, active, actor],
-				)
-			: await tx.query<ISecretEntry>(
-					`INSERT INTO fonderie_secrets (key, environment, value, version, description, active, updated_by)
-					VALUES ($1, $2, $3, $4, $5, $6, $7)
-					RETURNING ${META_COLS}`,
-					[opts.key, env, enc, version, opts.description ?? null, active, actor],
-				);
-
-		await tx.query(
-			`INSERT INTO fonderie_secret_revisions (key, environment, value, version, actor)
-			VALUES ($1, $2, $3, $4, $5)`,
-			[opts.key, env, enc, version, actor],
-		);
-		// Broadcast invalidation — payload is the env only, never the value.
-		await tx.query(`SELECT pg_notify('fonderie_secrets_changed', $1)`, [env]);
-
-		if (!row) throw new Error('Failed to upsert secret');
-		return row;
+	return versionedWrite<ISecretEntry>(SECRET_TABLE, store, {
+		key: opts.key,
+		environment: opts.environment ?? 'all',
+		rawValue: encryptor.encrypt(opts.value),
+		description: opts.description ?? null,
+		active: opts.active ?? true,
+		...(opts.ifVersion !== undefined ? { ifVersion: opts.ifVersion } : {}),
+		actor: opts.actor ?? null,
 	});
 }
 
@@ -128,41 +98,11 @@ export async function rollbackSecret(
 	opts: { key: string; environment?: string; toVersion: number; actor?: string },
 	store: IStoreAdapter,
 ): Promise<ISecretEntry> {
-	const env = opts.environment ?? 'all';
-	const actor = opts.actor ?? null;
-
-	return store.transaction(async (tx) => {
-		await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`, [opts.key, env]);
-
-		const [target] = await tx.query<{ value: string }>(
-			`SELECT value FROM fonderie_secret_revisions
-			 WHERE key = $1 AND environment = $2 AND version = $3`,
-			[opts.key, env, opts.toVersion],
-		);
-		if (!target) {
-			throw new Error(`secret "${opts.key}" (${env}) has no revision ${opts.toVersion}`);
-		}
-		const [cur] = await tx.query<{ version: number }>(
-			`SELECT version FROM fonderie_secrets WHERE key = $1 AND environment = $2 FOR UPDATE`,
-			[opts.key, env],
-		);
-		if (!cur) throw new Error(`secret "${opts.key}" (${env}) does not exist`);
-		const version = cur.version + 1;
-
-		const [row] = await tx.query<ISecretEntry>(
-			`UPDATE fonderie_secrets SET value = $3, version = $4, updated_by = $5, updated_at = now()
-			 WHERE key = $1 AND environment = $2
-			 RETURNING ${META_COLS}`,
-			[opts.key, env, target.value, version, actor],
-		);
-		await tx.query(
-			`INSERT INTO fonderie_secret_revisions (key, environment, value, version, actor)
-			 VALUES ($1, $2, $3, $4, $5)`,
-			[opts.key, env, target.value, version, actor],
-		);
-		await tx.query(`SELECT pg_notify('fonderie_secrets_changed', $1)`, [env]);
-		if (!row) throw new Error('rollback failed');
-		return row;
+	return versionedRollback<ISecretEntry>(SECRET_TABLE, store, {
+		key: opts.key,
+		environment: opts.environment ?? 'all',
+		toVersion: opts.toVersion,
+		actor: opts.actor ?? null,
 	});
 }
 
