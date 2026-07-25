@@ -11,6 +11,7 @@ new CourierModule(config: ICourierConfig, store?: IStoreAdapter | undefined, bus
   .name: "@fonderie/courier"
   .deps: string[]
   .dispatcher: Dispatcher
+  .checkReadiness(): IReadinessProblem[]
   .install(app: IFonderieApp): void
 
 function validateCourierConfig(config: ICourierConfig, registeredChannels: Iterable<string>): void

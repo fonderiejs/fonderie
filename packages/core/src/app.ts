@@ -1,7 +1,14 @@
 import { networkInterfaces } from 'node:os';
 import { createServer, type Server } from 'node:http';
 
-import type { Middleware, IFonderieApp, IFonderieContext, IFonderieModule } from './types';
+import type {
+	Middleware,
+	IFonderieApp,
+	IFonderieContext,
+	IFonderieModule,
+	IReadinessProblem,
+	IReadinessReport,
+} from './types';
 import type { FonderieConfig } from './config';
 import { Router, routerMiddleware } from './router';
 import { compose } from './compose';
@@ -99,6 +106,18 @@ export class FonderieApp {
 	register(module: IFonderieModule): this {
 		this.modules.set(module.name, module);
 		return this;
+	}
+
+	// Aggregate every registered module's self-reported readiness problems into
+	// one report. Call it before boot to gate a deploy, or from a readiness
+	// endpoint. `ok` is false when any module reports an `error`-severity problem
+	// (e.g. a weak jwtSecret). Modules opt in via `checkReadiness`.
+	checkProductionReadiness(): IReadinessReport {
+		const problems: IReadinessProblem[] = [];
+		for (const module of this.modules.values()) {
+			if (module.checkReadiness) problems.push(...module.checkReadiness());
+		}
+		return { ok: !problems.some((p) => p.severity === 'error'), problems };
 	}
 
 	async boot(): Promise<this> {

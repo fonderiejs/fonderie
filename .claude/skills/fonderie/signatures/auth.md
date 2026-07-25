@@ -49,6 +49,7 @@ interface IMfaChallenge {
 
 new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus | undefined): AuthModule
   .name: "@fonderie/auth"
+  .checkReadiness(): IReadinessProblem[]
   .install(app: IFonderieApp): void
 
 interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {

@@ -2240,3 +2240,15 @@ test('validateAuthConfig: warns on secureCookies=false in production', async () 
 		else process.env['NODE_ENV'] = prev;
 	}
 });
+
+test('AuthModule.checkReadiness: surfaces a weak secret as an error problem', async () => {
+	const { AuthModule } = await import('../module');
+	const mod = new AuthModule(makeStore(), { ...config, jwtSecret: 'dev-secret-min-32-chars-long-here-xx' });
+	const problems = mod.checkReadiness();
+	assert.equal(problems.length, 1);
+	assert.equal(problems[0]?.severity, 'error');
+	assert.equal(problems[0]?.module, '@fonderie/auth');
+	// a strong secret → no problems
+	const clean = new AuthModule(makeStore(), { ...config, jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ' });
+	assert.deepEqual(clean.checkReadiness(), []);
+});

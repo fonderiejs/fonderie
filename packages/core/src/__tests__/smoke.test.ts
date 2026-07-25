@@ -452,3 +452,43 @@ test('checkProxyConfig: does NOT warn for a public socket', () => {
 		console.warn = orig;
 	}
 });
+
+// ── checkProductionReadiness ─────────────────────────────────────
+
+test('checkProductionReadiness: aggregates module problems; ok=false on any error', () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://x' } }));
+	app.register({
+		name: 'mod-a',
+		install() {},
+		checkReadiness: () => [{ module: 'mod-a', severity: 'error', message: 'weak secret' }],
+	});
+	app.register({
+		name: 'mod-b',
+		install() {},
+		checkReadiness: () => [{ module: 'mod-b', severity: 'warning', message: 'no email provider' }],
+	});
+	app.register({ name: 'mod-c', install() {} }); // opts out — no checkReadiness
+
+	const report = app.checkProductionReadiness();
+	assert.equal(report.ok, false); // mod-a error
+	assert.equal(report.problems.length, 2);
+	assert.deepEqual(
+		report.problems.map((p) => p.module).sort(),
+		['mod-a', 'mod-b'],
+	);
+});
+
+test('checkProductionReadiness: ok=true when only warnings (or none)', () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://x' } }));
+	app.register({
+		name: 'mod-warn',
+		install() {},
+		checkReadiness: () => [{ module: 'mod-warn', severity: 'warning', message: 'heads up' }],
+	});
+	const report = app.checkProductionReadiness();
+	assert.equal(report.ok, true);
+	assert.equal(report.problems.length, 1);
+
+	const empty = new FonderieApp(defineConfig({ db: { url: 'postgres://x' } }));
+	assert.deepEqual(empty.checkProductionReadiness(), { ok: true, problems: [] });
+});

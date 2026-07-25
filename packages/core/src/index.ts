@@ -12,6 +12,8 @@ export type {
 	IFonderieContext,
 	ICourierMessage,
 	IFonderieContextMeta,
+	IReadinessProblem,
+	IReadinessReport,
 } from './types';
 
 export { OPERATIONS } from './constants';
