@@ -67,7 +67,7 @@ export function customerPhoneController(store: IStoreAdapter) {
 			const isPrimary = body?.['isPrimary'] === true;
 			const { id: labelId } = await labels.findOrCreate('phone', rawLabel);
 
-			let created;
+			let created: Awaited<ReturnType<typeof phones.add>>;
 			try {
 				created = await phones.add({
 					customerId: r.customer.id,

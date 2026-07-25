@@ -35,7 +35,15 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      # Lint shipped code (packages/) at error severity — fast, no build needed.
+      - run: npm run lint:ci
+      # Security gate: fail on high+ advisories in what Fonderie actually ships —
+      # excluding dev tooling and peer deps (express etc.) the consuming app owns.
+      - run: npm run audit:ship
       - run: npm run build
+      # Strict full-project typecheck (tsc --noEmit) — build is tsup bundling,
+      # not a substitute for this. Runs after build so turbo has upstream dts.
+      - run: npm run typecheck
       # Gate the central signatures AND the co-located per-package fragments
       # (packages/*/brain) — docs:signatures writes both, and a stale fragment
       # would otherwise publish inside the tarball, drifting from the shipped

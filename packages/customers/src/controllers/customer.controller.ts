@@ -123,7 +123,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				);
 			}
 
-			let customer;
+			let customer: Awaited<ReturnType<typeof customers.create>>;
 			try {
 				customer = await customers.create({
 					workspaceId,
