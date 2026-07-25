@@ -692,3 +692,30 @@ test('importMembership: inserts the join replay-safely, confirmed defaults true'
 		true,
 	]);
 });
+
+test('importRole: preserves id, scopes to workspace, omits defaults', async () => {
+	const { importRole } = await import('../migrate');
+	let sql = '';
+	let params: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(q: string, p?: unknown[]): Promise<T[]> => {
+			sql = q;
+			params = p ?? [];
+			return [{ id: (p?.[0] as string) ?? 'gen' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const res = await importRole(store, {
+		id: '33333333-3333-3333-3333-333333333333',
+		name: 'Dispatcher',
+		workspaceId: '22222222-2222-2222-2222-222222222222',
+	});
+	assert.equal(res.id, '33333333-3333-3333-3333-333333333333');
+	assert.match(sql, /INSERT INTO fonderie_roles \(id, name, workspace_id\)/);
+	assert.deepEqual(params, [
+		'33333333-3333-3333-3333-333333333333',
+		'Dispatcher',
+		'22222222-2222-2222-2222-222222222222',
+	]);
+	assert.doesNotMatch(sql, /is_system|active|description/);
+});

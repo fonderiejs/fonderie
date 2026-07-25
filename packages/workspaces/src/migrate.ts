@@ -77,6 +77,51 @@ export async function importWorkspace(
 	return row;
 }
 
+export interface IImportRole {
+	// Preserve the legacy id so imported memberships (`importMembership`) can
+	// reference it. Omit to let the table generate one.
+	id?: string;
+	name: string;
+	// Custom roles are workspace-scoped. (The system roles — ADMIN, GUEST — are
+	// seeded with a NULL workspace_id; don't import those, resolve them by name.)
+	workspaceId: string;
+	description?: string | null;
+	active?: boolean;
+	createdAt?: Date;
+}
+
+// Insert one custom (workspace-scoped) role, preserving its id so memberships
+// resolve. `is_system` stays false (system roles are seeded, not imported).
+export async function importRole(
+	store: IStoreAdapter,
+	role: IImportRole,
+): Promise<{ id: string }> {
+	const cols: string[] = [];
+	const vals: unknown[] = [];
+	const placeholders: string[] = [];
+	const add = (col: string, val: unknown) => {
+		cols.push(col);
+		vals.push(val);
+		placeholders.push(`$${vals.length}`);
+	};
+
+	if (role.id !== undefined) add('id', role.id);
+	add('name', role.name);
+	add('workspace_id', role.workspaceId);
+	if (role.description !== undefined) add('description', role.description);
+	if (role.active !== undefined) add('active', role.active);
+	if (role.createdAt !== undefined) add('created_at', role.createdAt);
+
+	const [row] = await store.query<{ id: string }>(
+		`INSERT INTO fonderie_roles (${cols.join(', ')})
+		 VALUES (${placeholders.join(', ')})
+		 RETURNING id`,
+		vals,
+	);
+	if (!row) throw new Error('[workspaces] importRole: insert returned no row');
+	return row;
+}
+
 export interface IImportMembership {
 	userId: string;
 	workspaceId: string;
