@@ -368,7 +368,8 @@
         "@fonderie/config/migrations"
       ],
       "tables": [
-        "fonderie_config"
+        "fonderie_config",
+        "fonderie_config_revisions"
       ],
       "routeCount": 0,
       "routes": [],

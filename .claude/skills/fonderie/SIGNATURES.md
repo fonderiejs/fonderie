@@ -37,7 +37,7 @@ instead of excavating `dist/` or tarballs.**
 - `@fonderie/workspaces` (4 tables, 23 routes) → [signatures/workspaces-outcomes.md](signatures/workspaces-outcomes.md)
 - `@fonderie/billing` (4 tables, 11 routes) → [signatures/billing-outcomes.md](signatures/billing-outcomes.md)
 - `@fonderie/permissions` (1 tables, 0 routes) → [signatures/permissions-outcomes.md](signatures/permissions-outcomes.md)
-- `@fonderie/config` (1 tables, 0 routes) → [signatures/config-outcomes.md](signatures/config-outcomes.md)
+- `@fonderie/config` (2 tables, 0 routes) → [signatures/config-outcomes.md](signatures/config-outcomes.md)
 - `@fonderie/customers` (10 tables, 35 routes) → [signatures/customers-outcomes.md](signatures/customers-outcomes.md)
 - `@fonderie/audit` (0 tables, 1 routes) → [signatures/audit-outcomes.md](signatures/audit-outcomes.md)
 - `@fonderie/webhooks` (2 tables, 7 routes) → [signatures/webhooks-outcomes.md](signatures/webhooks-outcomes.md)

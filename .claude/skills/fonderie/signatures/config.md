@@ -30,9 +30,23 @@ function listConfigEntries(environment: string | null, store: IStoreAdapter): Pr
 
 function getConfigEntry(key: string, environment: string, store: IStoreAdapter): Promise<IConfigEntry | null>
 
-function setConfigEntry(opts: { key: string; value: unknown; environment?: string; description?: string; active?: boolean; }, store: IStoreAdapter): Promise<IConfigEntry>
+function setConfigEntry(opts: { key: string; value: unknown; environment?: string; description?: string; active?: boolean; ifVersion?: number; actor?: string; }, store: IStoreAdapter): Promise<IConfigEntry>
 
 function deleteConfigEntry(key: string, environment: string, store: IStoreAdapter): Promise<boolean>
+
+function rollbackConfigEntry(opts: { key: string; environment?: string; toVersion: number; actor?: string; }, store: IStoreAdapter): Promise<IConfigEntry>
+
+function listConfigRevisions(key: string, environment: string, store: IStoreAdapter): Promise<IConfigRevision[]>
+
+new ConfigConflictError(key: string, environment: string, currentVersion: number | null, expectedVersion: number): ConfigConflictError
+  .key: string
+  .environment: string
+  .currentVersion: number | null
+  .expectedVersion: number
+  .name: string
+  .message: string
+  .stack: string
+  .cause: unknown
 
 interface IConfigEntry {
     key: string;
@@ -40,7 +54,18 @@ interface IConfigEntry {
     environment: string;
     description: string | null;
     active: boolean;
+    version: number;
+    updatedBy: string | null;
     updatedAt: string;
+}
+
+interface IConfigRevision {
+    key: string;
+    environment: string;
+    value: unknown;
+    version: number;
+    actor: string | null;
+    createdAt: string;
 }
 
 interface IConfigSnapshot {
