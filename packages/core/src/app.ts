@@ -15,7 +15,7 @@ import { compose } from './compose';
 import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
 import { withBody } from './middlewares/body-parser';
 
-export class FonderieApp {
+export class FonderieApp implements IFonderieApp {
 	private config: FonderieConfig;
 	private prefix: string;
 	private router: Router = new Router();
