@@ -31,6 +31,10 @@ export interface IVersionedResource {
 	channel: string; // LISTEN/NOTIFY channel, e.g. 'fonderie_config_changed'
 	// The (primary, scope) key pair — config: ['key','environment'], courier:
 	// ['type','locale']. `scope` is null-safe (a NULL locale is the base).
+	// Intentionally a fixed 2-tuple: every resource is addressed by exactly one
+	// primary key plus one optional scope. Composite 3+-part keys are out of
+	// scope by design — model the extra dimension inside the primary key (e.g.
+	// a compound string) or the scope rather than widening this contract.
 	keyColumns: readonly [string, string];
 	// Content columns — written AND snapshotted into revisions (config: ['value'];
 	// courier: ['subject','html','text']).
