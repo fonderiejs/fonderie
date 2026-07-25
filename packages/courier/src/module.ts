@@ -14,6 +14,7 @@ import type { IReadinessProblem } from '@fonderie/core';
 import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
 import { validateCourierConfig, collectCourierConfigProblems } from './config-guard';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
+import { buildTemplateAdminRoutes } from './templates/admin-routes';
 
 export class CourierModule implements IFonderieModule {
 	readonly name = '@fonderie/courier';
@@ -64,6 +65,17 @@ export class CourierModule implements IFonderieModule {
 		app.addRoute('POST', '/courier/delivery/mailtrap', (ctx) =>
 			handleMailtrapDelivery(ctx.request, store!),
 		);
+
+		// Versioned template admin routes — only when a token is configured and a
+		// store is present (db templates). Mirrors @fonderie/config's admin surface.
+		if (this.config.adminToken) {
+			if (!store) {
+				throw new Error('[courier] adminToken requires @fonderie/store (db templates)');
+			}
+			for (const [method, path, handler] of buildTemplateAdminRoutes(store, this.config.adminToken)) {
+				app.addRoute(method, path, handler);
+			}
+		}
 	}
 }
 

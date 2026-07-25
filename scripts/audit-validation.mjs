@@ -35,6 +35,8 @@ const EXEMPT = new Map([
 	['PUT /admin/secrets/:key', 'admin-token-guarded; body.value inline-validated (string)'],
 	['POST /admin/secrets/:key/rollback', 'admin-token-guarded; body.toVersion inline-validated (integer)'],
 	['POST /admin/secrets/:key/reveal', 'no body read — key from params'],
+	['PUT /admin/templates/:type', 'admin-token-guarded; body.text inline-validated (string)'],
+	['POST /admin/templates/:type/rollback', 'admin-token-guarded; body.toVersion inline-validated (integer)'],
 ]);
 
 const pkgs = readdirSync(join(root, 'packages')).filter((d) =>

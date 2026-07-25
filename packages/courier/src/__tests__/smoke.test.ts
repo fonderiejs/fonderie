@@ -493,6 +493,93 @@ test('CourierModule.checkReadiness: reports gap channels as warning problems', a
 
 // ── versioned template management ────────────────────────────────
 
+// ── Template admin routes ─────────────────────────────────────────
+
+function routeMap(routes: Array<[string, string, unknown]>) {
+	const m = new Map<string, (ctx: unknown, next?: unknown) => Promise<Response>>();
+	for (const [method, path, handler] of routes)
+		m.set(`${method} ${path}`, handler as (ctx: unknown) => Promise<Response>);
+	return m;
+}
+
+function adminCtx(url: string, opts: { auth?: string; params?: Record<string, string>; body?: unknown } = {}) {
+	const headers = new Headers();
+	if (opts.auth) headers.set('authorization', `Bearer ${opts.auth}`);
+	return {
+		request: new Request(url, { headers }),
+		meta: { params: opts.params ?? {}, body: opts.body },
+	} as unknown;
+}
+
+test('template admin: missing/wrong token → 401', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store } = captureStore(() => []);
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'secret-token'));
+	const handler = routes.get('GET /admin/templates')!;
+	const bad = await handler(adminCtx('http://localhost/admin/templates', { auth: 'nope' }));
+	assert.equal(bad.status, 401);
+	const none = await handler(adminCtx('http://localhost/admin/templates'));
+	assert.equal(none.status, 401);
+});
+
+test('template admin: PUT writes a versioned template (200)', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store, seen } = captureStore((sql) => (sql.includes('RETURNING') ? [{ type: 'email-verification', version: 3 }] : []));
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok'));
+	const handler = routes.get('PUT /admin/templates/:type')!;
+	const res = await handler(adminCtx('http://localhost/admin/templates/email-verification', {
+		auth: 'tok', params: { type: 'email-verification' }, body: { text: 'hi', subject: 'Verify' },
+	}));
+	assert.equal(res.status, 200);
+	assert.ok(seen.some((s) => s.includes('fonderie_courier_templates') && s.includes('subject')));
+});
+
+test('template admin: PUT without body.text → 422', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store } = captureStore(() => []);
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok'));
+	const handler = routes.get('PUT /admin/templates/:type')!;
+	const res = await handler(adminCtx('http://localhost/admin/templates/x', {
+		auth: 'tok', params: { type: 'x' }, body: {},
+	}));
+	assert.equal(res.status, 422);
+});
+
+test('template admin: PUT stale ifVersion → 409', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store } = captureStore((sql) => (sql.includes('SELECT version') ? [{ version: 9 }] : []));
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok'));
+	const handler = routes.get('PUT /admin/templates/:type')!;
+	const res = await handler(adminCtx('http://localhost/admin/templates/x', {
+		auth: 'tok', params: { type: 'x' }, body: { text: 'hi', ifVersion: 1 },
+	}));
+	assert.equal(res.status, 409);
+});
+
+test('template admin: GET :type uses ?locale scope, 404 when absent', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	let sql = '';
+	const { store } = captureStore((q) => { sql = q; return []; });
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok'));
+	const handler = routes.get('GET /admin/templates/:type')!;
+	const res = await handler(adminCtx('http://localhost/admin/templates/x?locale=fr-CA', {
+		auth: 'tok', params: { type: 'x' },
+	}));
+	assert.equal(res.status, 404);
+	assert.match(sql, /locale IS NOT DISTINCT FROM \$2/);
+});
+
+test('template admin: rollback → 200 with toVersion', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store } = captureStore((sql) => (sql.includes('RETURNING') || sql.includes('SELECT') ? [{ type: 'x', version: 4, text: 'old' }] : []));
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok'));
+	const handler = routes.get('POST /admin/templates/:type/rollback')!;
+	const res = await handler(adminCtx('http://localhost/admin/templates/x/rollback', {
+		auth: 'tok', params: { type: 'x' }, body: { toVersion: 2 },
+	}));
+	assert.equal(res.status, 200);
+});
+
 function captureStore(rows: (sql: string) => unknown[]) {
 	const seen: string[] = [];
 	const stub: IStoreAdapter = {

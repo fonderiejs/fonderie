@@ -17,7 +17,9 @@ export {
 	listTemplateRevisions,
 	getTemplateEntry,
 	listTemplateEntries,
+	deleteTemplate,
 } from './templates/admin';
+export { buildTemplateAdminRoutes } from './templates/admin-routes';
 export type { ITemplateEntry, ITemplateRevision } from './templates/admin';
 export type { IMessageLog, MessageLogStatus } from './log';
 export type {
