@@ -286,11 +286,101 @@ function doAdd() {
   console.log(`\nMigrations run automatically on boot (InternalMigrationRunner above). Set DATABASE_URL and start the app.`);
 }
 
+// ── fonderie config|secret <verb> — manage a live deployment over the admin API ─
+// Thin client over @fonderie/config's /admin/* surface. Auth + endpoint come from
+// the environment so the LLM never handles the token inline:
+//   FONDERIE_ADMIN_URL   e.g. https://app.example.com
+//   FONDERIE_ADMIN_TOKEN the bootstrap admin token
+//   FONDERIE_ACTOR       optional — recorded on writes (X-Actor)
+async function adminFetch(method, path, body) {
+  const base = process.env.FONDERIE_ADMIN_URL;
+  const token = process.env.FONDERIE_ADMIN_TOKEN;
+  if (!base || !token) {
+    console.error('Set FONDERIE_ADMIN_URL and FONDERIE_ADMIN_TOKEN to manage a deployment.');
+    process.exit(1);
+  }
+  const headers = { authorization: `Bearer ${token}` };
+  if (body !== undefined) headers['content-type'] = 'application/json';
+  if (process.env.FONDERIE_ACTOR) headers['x-actor'] = process.env.FONDERIE_ACTOR;
+  const res = await fetch(base.replace(/\/$/, '') + path, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (res.status >= 400) {
+    console.error(json.explanation || json.reason || `HTTP ${res.status}`);
+    if (json.details) console.error(JSON.stringify(json.details));
+    process.exit(res.status === 409 ? 2 : 1); // 409 conflict → exit 2 (reload + retry)
+  }
+  const result = json.result;
+  console.log(typeof result === 'string' ? result : JSON.stringify(result, null, 2));
+}
+
+// The supported management verbs (kubectl-inspired) — the single source of truth
+// for the CLI's config/secret surface. Each maps to a method + optional path
+// suffix + what it requires (a key, a body value, a --to-version).
+const VERBS = {
+  get:      { method: 'GET',    needsKey: false },
+  set:      { method: 'PUT',    needsKey: true, needsValue: true },
+  delete:   { method: 'DELETE', needsKey: true },
+  history:  { method: 'GET',    needsKey: true, suffix: '/revisions' },
+  rollback: { method: 'POST',   needsKey: true, suffix: '/rollback', needsToVersion: true },
+  reveal:   { method: 'POST',   needsKey: true, suffix: '/reveal', secretOnly: true },
+};
+
+// config `value` is parsed (so `set flag true` stores a boolean); secrets stay raw strings.
+function parseValue(raw) {
+  try { return JSON.parse(raw); } catch { return raw; }
+}
+
+async function resourceCmd(resource, base) {
+  const verb = argv[1];
+  const spec = VERBS[verb];
+  if (!spec || (spec.secretOnly && resource !== 'secret')) return usageErr(resource);
+
+  const key = argv[2];
+  if (spec.needsKey && !key) return usageErr(resource);
+
+  const env = arg('--env', undefined);
+  const q = env ? `?environment=${encodeURIComponent(env)}` : '';
+  const enc = (k) => encodeURIComponent(k);
+
+  const path = spec.needsKey || key
+    ? `${base}/${enc(key)}${spec.suffix ?? ''}${q}`
+    : `${base}${q}`;
+
+  let body;
+  if (spec.needsValue) {
+    const raw = argv[3];
+    if (raw === undefined) { console.error(`usage: fonderie ${resource} set <key> <value>`); process.exit(1); }
+    body = { value: resource === 'secret' ? String(raw) : parseValue(raw) };
+    if (env) body.environment = env;
+    const ifVersion = arg('--if-version', undefined);
+    if (ifVersion !== undefined) body.ifVersion = Number(ifVersion);
+  } else if (spec.needsToVersion) {
+    const toVersion = Number(arg('--to-version'));
+    if (!Number.isInteger(toVersion)) { console.error('rollback needs --to-version <n>'); process.exit(1); }
+    body = { toVersion };
+    if (env) body.environment = env;
+  }
+
+  return adminFetch(spec.method, path, body);
+}
+
+function usageErr(resource) {
+  const verbs = Object.keys(VERBS).filter((v) => !VERBS[v].secretOnly || resource === 'secret');
+  console.error(`usage: fonderie ${resource} <${verbs.join('|')}> [key] [value] [--env <e>] [--if-version <n>] [--to-version <n>]`);
+  process.exit(1);
+}
+
 // ── dispatch ────────────────────────────────────────────────────────────────
 if (cmd === 'query') doQuery();
 else if (cmd === 'skill') doSkill();
 else if (cmd === 'add') doAdd();
 else if (cmd === 'init') doInit();
+else if (cmd === 'config') resourceCmd('config', '/admin/config').catch((e) => { console.error(e.message); process.exit(1); });
+else if (cmd === 'secret') resourceCmd('secret', '/admin/secrets').catch((e) => { console.error(e.message); process.exit(1); });
 else {
   console.log(`fonderie — the Fonderie CLI (lazy skills for coding agents)
 
@@ -299,6 +389,10 @@ else {
   fonderie skill [--out <dir>] [--project <dir>]   write the lazy skill (router + bodies)
   fonderie query <concept>                         what to install for a capability
   fonderie query --concepts                        list every capability
+
+  fonderie config <get|set|delete|history|rollback> [key] [value] [--env <e>] [--if-version <n>] [--to-version <n>]
+  fonderie secret <get|set|delete|history|rollback|reveal> [key] [value] [--env <e>] ...
+      manage a live deployment over its admin API — set FONDERIE_ADMIN_URL + FONDERIE_ADMIN_TOKEN
 
 Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);
   if (cmd && cmd !== 'help' && cmd !== '--help') process.exit(2);
