@@ -251,7 +251,6 @@ function makeCtx(
 		workspace: null,
 		tenant: null,
 		request: new Request('http://localhost/'),
-		_router: null as any,
 	} as any;
 }
 

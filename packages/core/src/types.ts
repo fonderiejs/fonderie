@@ -74,7 +74,6 @@ export interface IFonderieContext {
 	readonly tenant: ITenant | null;
 	readonly user: IAuthUser | null;
 	readonly workspace: IWorkspace | null;
-	_router: IRouter;
 }
 
 export type Middleware = (
