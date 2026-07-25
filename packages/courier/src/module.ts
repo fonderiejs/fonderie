@@ -10,8 +10,9 @@ import { Dispatcher } from './dispatcher';
 import { SmsChannel } from './channels/sms';
 import { PushChannel } from './channels/push';
 import { EmailChannel } from './channels/email';
+import type { IReadinessProblem } from '@fonderie/core';
 import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
-import { validateCourierConfig } from './config-guard';
+import { validateCourierConfig, collectCourierConfigProblems } from './config-guard';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 
 export class CourierModule implements IFonderieModule {
@@ -40,6 +41,11 @@ export class CourierModule implements IFonderieModule {
 			},
 			'courier',
 		);
+	}
+
+	// Report config problems for app.checkProductionReadiness() (data, not warn).
+	checkReadiness(): IReadinessProblem[] {
+		return collectCourierConfigProblems(this.config, this.dispatcher.channelNames());
 	}
 
 	install(app: IFonderieApp): void {

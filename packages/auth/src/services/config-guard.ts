@@ -1,4 +1,7 @@
+import type { IReadinessProblem } from '@fonderie/core';
 import type { IAuthConfig } from '../config';
+
+const MODULE = '@fonderie/auth';
 
 // Placeholder / dev-default secrets we never want signing tokens in production.
 // These distinctive fragments won't appear in a real random secret (e.g. the
@@ -10,39 +13,62 @@ const PLACEHOLDER_SECRET =
 // Minimum length for an HS256 signing secret — 256 bits.
 const MIN_SECRET_LENGTH = 32;
 
-// Production-readiness guard for the auth config. Called automatically when an
-// `AuthModule` is constructed (fail-fast, before boot), and exported so an app
-// can run its own preflight. In production a weak `jwtSecret` is fatal — a
-// forgeable token is an auth bypass — so we refuse to boot; outside production
-// the same problems are a loud warning so dev/test still run.
-export function validateAuthConfig(config: IAuthConfig): void {
-	const isProduction = process.env['NODE_ENV'] === 'production';
+// Pure production-readiness assessment (no side effects) — shared by the
+// boot-time guard and `AuthModule.checkReadiness`. Evaluates "is this ready for
+// production?" regardless of the current NODE_ENV.
+export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProblem[] {
+	const problems: IReadinessProblem[] = [];
 	const secret = config.jwtSecret ?? '';
-	const problems: string[] = [];
 
 	if (secret.length < MIN_SECRET_LENGTH) {
-		problems.push(
-			`jwtSecret must be at least ${MIN_SECRET_LENGTH} characters (got ${secret.length})`,
-		);
-	}
-	if (PLACEHOLDER_SECRET.test(secret)) {
-		problems.push('jwtSecret looks like a placeholder or dev-default value');
+		problems.push({
+			module: MODULE,
+			severity: 'error',
+			message: `jwtSecret must be at least ${MIN_SECRET_LENGTH} characters (got ${secret.length})`,
+		});
+	} else if (PLACEHOLDER_SECRET.test(secret)) {
+		problems.push({
+			module: MODULE,
+			severity: 'error',
+			message: 'jwtSecret looks like a placeholder or dev-default value',
+		});
 	}
 
-	if (problems.length > 0) {
-		const message =
-			`[auth] insecure config — ${problems.join('; ')}. ` +
-			'Set a long, random jwtSecret (e.g. `openssl rand -base64 32`).';
-		if (isProduction) {
-			throw new Error(`${message} Refusing to boot in production.`);
+	if (config.secureCookies === false) {
+		problems.push({
+			module: MODULE,
+			severity: 'warning',
+			message: 'secureCookies is false — auth cookies may be sent over non-HTTPS connections in production',
+		});
+	}
+
+	return problems;
+}
+
+// Boot-time guard, run automatically when an `AuthModule` is constructed
+// (fail-fast, before boot). In production a weak `jwtSecret` is fatal — a
+// forgeable token is an auth bypass — so we refuse to boot; outside production
+// the same errors are a loud warning so dev/test still run. `secureCookies`
+// warnings are only surfaced in production (dev intentionally uses non-secure
+// cookies over localhost).
+export function validateAuthConfig(config: IAuthConfig): void {
+	const isProduction = process.env['NODE_ENV'] === 'production';
+	const problems = collectAuthConfigProblems(config);
+	const errors = problems.filter((p) => p.severity === 'error');
+
+	if (isProduction && errors.length > 0) {
+		throw new Error(
+			`[auth] insecure config — ${errors.map((e) => e.message).join('; ')}. ` +
+				'Set a long, random jwtSecret (e.g. `openssl rand -base64 32`). ' +
+				'Refusing to boot in production.',
+		);
+	}
+
+	if (isProduction) {
+		for (const p of problems) console.warn(`[auth] ${p.message}`);
+	} else {
+		for (const p of errors) {
+			console.warn(`[auth] ${p.message} (insecure — would refuse to boot in production)`);
 		}
-		console.warn(`${message} (permitted outside production)`);
-	}
-
-	// Cookies without Secure in production means tokens can traverse plain HTTP.
-	if (isProduction && config.secureCookies === false) {
-		console.warn(
-			'[auth] secureCookies is false in production — auth cookies may be sent over non-HTTPS connections.',
-		);
 	}
 }

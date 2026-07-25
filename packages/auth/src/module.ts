@@ -2,9 +2,10 @@ import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
+import type { IReadinessProblem } from '@fonderie/core';
 import { buildAuthRoutes } from './routes';
 import type { IAuthConfig } from './config';
-import { validateAuthConfig } from './services/config-guard';
+import { validateAuthConfig, collectAuthConfigProblems } from './services/config-guard';
 import { withSession } from './middlewares/session';
 
 export class AuthModule implements IFonderieModule {
@@ -17,6 +18,11 @@ export class AuthModule implements IFonderieModule {
 	) {
 		// Fail fast on an insecure jwtSecret (fatal in production) before boot.
 		validateAuthConfig(config);
+	}
+
+	// Report config problems for app.checkProductionReadiness() (data, not throw).
+	checkReadiness(): IReadinessProblem[] {
+		return collectAuthConfigProblems(this.config);
 	}
 
 	install(app: IFonderieApp): void {

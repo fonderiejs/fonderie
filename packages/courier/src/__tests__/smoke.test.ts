@@ -477,3 +477,16 @@ test('validateCourierConfig: no channels configured — no warning', async () =>
 		warn.mock.restore();
 	}
 });
+
+test('CourierModule.checkReadiness: reports gap channels as warning problems', async () => {
+	const { CourierModule } = await import('../module');
+	const mod = new CourierModule({
+		channels: { 'email-verification': [Channel.EMAIL] },
+		templates: { source: 'fs', directory: '/tmp' },
+	});
+	const problems = mod.checkReadiness();
+	assert.equal(problems.length, 1);
+	assert.equal(problems[0]?.severity, 'warning');
+	assert.equal(problems[0]?.module, '@fonderie/courier');
+	assert.match(problems[0]?.message ?? '', /email-verification/);
+});

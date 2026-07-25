@@ -62,6 +62,7 @@ interface IFonderieModule {
     name: string;
     deps?: string[];
     install(app: IFonderieApp): void | Promise<void>;
+    checkReadiness?(): IReadinessProblem[];
 }
 
 interface IFonderieContext {
@@ -95,11 +96,23 @@ interface IFonderieContextMeta {
     [key: string]: unknown;
 }
 
+interface IReadinessProblem {
+    module: string;
+    severity: 'error' | 'warning';
+    message: string;
+}
+
+interface IReadinessReport {
+    ok: boolean;
+    problems: IReadinessProblem[];
+}
+
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
 new FonderieApp(config: FonderieConfig): FonderieApp
   .listen(port: number, options?: { name?: string; version?: string; env?: string; quiet?: boolean; }): Server<typeof IncomingMessage, typeof ServerResponse>
   .register(module: IFonderieModule): FonderieApp
+  .checkProductionReadiness(): IReadinessReport
   .boot(): Promise<FonderieApp>
   .buildContext(request: Request): Promise<IFonderieContext>
   .use(middleware: Middleware): FonderieApp

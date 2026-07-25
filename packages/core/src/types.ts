@@ -87,10 +87,29 @@ export interface IFonderieApp {
 	listen(port: number, options?: { name?: string; version?: string; env?: string }): void;
 }
 
+// A production-readiness finding a module reports about its own config.
+// `error` means "unsafe to run in production" (e.g. a forgeable-token secret);
+// `warning` means "probably a misconfiguration" (e.g. emails that will silently
+// drop). Collected across modules by `FonderieApp.checkProductionReadiness`.
+export interface IReadinessProblem {
+	module: string;
+	severity: 'error' | 'warning';
+	message: string;
+}
+
+export interface IReadinessReport {
+	// True when there are no `error`-severity problems — safe to boot in prod.
+	ok: boolean;
+	problems: IReadinessProblem[];
+}
+
 export interface IFonderieModule {
 	name: string;
 	deps?: string[];
 	install(app: IFonderieApp): void | Promise<void>;
+	// Optional: report production-readiness problems with this module's config.
+	// Modules opt in; `FonderieApp.checkProductionReadiness` aggregates them.
+	checkReadiness?(): IReadinessProblem[];
 }
 
 // ── Cross-module vocabulary ───────────────────────────────────────
