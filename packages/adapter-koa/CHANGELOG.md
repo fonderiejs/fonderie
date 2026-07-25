@@ -1,5 +1,16 @@
 # @fonderie/adapter-koa
 
+## 5.0.0
+
+### Patch Changes
+
+- Updated dependencies [b1d053c]
+- Updated dependencies [dfdcebb]
+  - @fonderie/core@0.5.0
+  - @fonderie/billing@5.0.0
+  - @fonderie/permissions@5.0.0
+  - @fonderie/workspaces@5.0.0
+
 ## 4.0.0
 
 ### Patch Changes
