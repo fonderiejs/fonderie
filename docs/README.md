@@ -13,6 +13,7 @@ promises the project makes.
 
 | I want to… | Read |
 | --- | --- |
+| Get started as a user of the SDK | [GETTING-STARTED.md](GETTING-STARTED.md) |
 | Understand the architecture and every component | This file |
 | Know what each tool/script is for | [TOOLING.md](TOOLING.md) |
 | Publish to npm and handle cross-package versions | [RELEASING.md](RELEASING.md) |
