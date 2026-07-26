@@ -69,6 +69,9 @@ Already on Express, Hono, or Koa? The adapter bricks
 (`adapter-express`, `adapter-hono`, `adapter-koa`) mount Fonderie inside
 your existing app instead.
 
+New here? The [Getting started guide](docs/GETTING-STARTED.md) walks
+through install, booting an app, and adding bricks step by step.
+
 ## The bricks
 
 | Package | What it is |
