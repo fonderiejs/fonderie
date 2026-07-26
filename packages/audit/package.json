@@ -56,11 +56,11 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/fonderiejs/sdk.git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
 		"directory": "packages/audit"
 	},
-	"homepage": "https://github.com/fonderiejs/sdk/tree/main/packages/audit#readme",
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/audit#readme",
 	"bugs": {
-		"url": "https://github.com/fonderiejs/sdk/issues"
+		"url": "https://github.com/fonderiejs/fonderie/issues"
 	}
 }
