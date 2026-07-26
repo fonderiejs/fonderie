@@ -46,11 +46,11 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/fonderiejs/sdk.git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
 		"directory": "packages/client"
 	},
-	"homepage": "https://github.com/fonderiejs/sdk/tree/main/packages/client#readme",
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/client#readme",
 	"bugs": {
-		"url": "https://github.com/fonderiejs/sdk/issues"
+		"url": "https://github.com/fonderiejs/fonderie/issues"
 	}
 }

@@ -84,11 +84,11 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/fonderiejs/sdk.git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
 		"directory": "packages/courier"
 	},
-	"homepage": "https://github.com/fonderiejs/sdk/tree/main/packages/courier#readme",
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/courier#readme",
 	"bugs": {
-		"url": "https://github.com/fonderiejs/sdk/issues"
+		"url": "https://github.com/fonderiejs/fonderie/issues"
 	}
 }

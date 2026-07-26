@@ -67,12 +67,12 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/fonderiejs/sdk.git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
 		"directory": "packages/webhooks"
 	},
-	"homepage": "https://github.com/fonderiejs/sdk/tree/main/packages/webhooks#readme",
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/webhooks#readme",
 	"bugs": {
-		"url": "https://github.com/fonderiejs/sdk/issues"
+		"url": "https://github.com/fonderiejs/fonderie/issues"
 	},
 	"dependencies": {
 		"zod": "^4.4.3"

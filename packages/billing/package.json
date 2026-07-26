@@ -77,12 +77,12 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/fonderiejs/sdk.git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
 		"directory": "packages/billing"
 	},
-	"homepage": "https://github.com/fonderiejs/sdk/tree/main/packages/billing#readme",
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/billing#readme",
 	"bugs": {
-		"url": "https://github.com/fonderiejs/sdk/issues"
+		"url": "https://github.com/fonderiejs/fonderie/issues"
 	},
 	"dependencies": {
 		"zod": "^4.4.3"
