@@ -1,0 +1,50 @@
+{
+	"name": "create-fonderie-app",
+	"version": "0.1.2",
+	"description": "Zero-prompt scaffold for a Fonderie-powered SaaS backend. Run `npx create-fonderie-app my-saas` and get a working TypeScript Express backend pre-wired with Fonderie.",
+	"keywords": [
+		"fonderie",
+		"fonderie-js",
+		"create",
+		"scaffold",
+		"starter",
+		"saas",
+		"cli"
+	],
+	"license": "MIT",
+	"type": "module",
+	"bin": "./dist/bin.js",
+	"files": [
+		"dist",
+		"LICENSE",
+		"README.md"
+	],
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch"
+	},
+	"dependencies": {
+		"commander": "^12.1.0",
+		"giget": "^1.2.3",
+		"picocolors": "^1.1.1"
+	},
+	"devDependencies": {
+		"tsup": "^8.3.5",
+		"typescript": "^5.6.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
+		"directory": "packages/create-fonderie-app"
+	},
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/create-fonderie-app#readme",
+	"bugs": {
+		"url": "https://github.com/fonderiejs/fonderie/issues"
+	}
+}

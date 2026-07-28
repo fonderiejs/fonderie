@@ -1,0 +1,3 @@
+verify-*/
+dist/
+node_modules/
