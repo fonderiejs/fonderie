@@ -6,6 +6,7 @@
 	],
 	"scripts": {
 		"build": "turbo build",
+		"create-app": "npm run build -w packages/create-fonderie-app && node packages/create-fonderie-app/dist/bin.js",
 		"dev": "npm run dev --workspaces --if-present",
 		"typecheck": "turbo typecheck",
 		"test": "turbo test",
