@@ -1,5 +1,11 @@
 # @fonderie/store
 
+## 0.2.2
+
+### Patch Changes
+
+- b134da7: Smoke-test OIDC Trusted Publishing across re-added publishers (no functional change).
+
 ## 0.2.1
 
 ### Patch Changes
