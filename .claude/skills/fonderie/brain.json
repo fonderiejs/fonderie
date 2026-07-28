@@ -13,7 +13,7 @@
     "courier": "5.0.0",
     "customers": "5.0.0",
     "events": "5.0.0",
-    "logger": "0.1.1",
+    "logger": "0.1.2",
     "permissions": "5.0.0",
     "rate-limit": "4.0.0",
     "store": "0.2.1",
@@ -754,7 +754,7 @@
       "hasOutcomes": true
     },
     "logger": {
-      "version": "0.1.1",
+      "version": "0.1.2",
       "requires": [],
       "exports": [
         "Logger",

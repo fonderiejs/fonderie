@@ -1,5 +1,11 @@
 # @fonderie/logger
 
+## 0.1.2
+
+### Patch Changes
+
+- efd6888: Verify OIDC Trusted Publishing after repo recreation (no functional change).
+
 ## 0.1.1
 
 ### Patch Changes
