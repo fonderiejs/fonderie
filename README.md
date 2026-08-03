@@ -103,10 +103,15 @@ three ways, three times each, on `claude-opus-4-8`: with the Fonderie
 brain, with the full skill loaded, and from scratch with no Fonderie
 knowledge. 36 sessions.
 
-- **~⅓ the Fonderie-knowledge tokens per turn.** The project brain carries
-  only what the task touches; the model spends its context on your product,
-  not on re-reading the SDK. Measured overhead ratio: **0.24** (brain vs.
-  full skill), transcript-attributed.
+- **Fonderie-knowledge overhead: parity-plus, not a fraction.** The project
+  brain carries only what the task touches, so the model spends more of its
+  context on your product and less re-reading the SDK than the full skill
+  does. Under the fair (resident-after-read) accounting, brain vs. full-skill
+  ratio is **0.383** (amortized floor: 0.267), transcript-attributed — a real
+  reduction, but not the ≤⅓ "fraction" this line originally claimed. (The ≤⅓
+  goal is met by a newer lazy-router variant, not by the eager brain
+  described here.) Full derivation and reconciliation:
+  [`BATCH-RESULTS.md`](experiments/phase41-2026-07/BATCH-RESULTS.md).
 - **Fewer security holes by default.** The from-scratch builds shipped an
   insecure hard-coded secret in **2 of 3** runs; the Fonderie builds, none —
   the audited brick reads it from the environment and throws if it's
