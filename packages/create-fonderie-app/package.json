@@ -1,6 +1,6 @@
 {
 	"name": "create-fonderie-app",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "Zero-prompt scaffold for a Fonderie-powered SaaS backend. Run `npx create-fonderie-app my-saas` and get a working TypeScript Express backend pre-wired with Fonderie.",
 	"keywords": [
 		"fonderie",
