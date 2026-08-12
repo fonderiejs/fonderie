@@ -2,6 +2,7 @@ import { HttpClient } from './http';
 import { AuditClient } from './modules/audit';
 import { AuthClient } from './modules/auth';
 import { BillingClient } from './modules/billing';
+import { WebhooksClient } from './modules/webhooks';
 import { WorkspacesClient } from './modules/workspaces';
 import { TokenStore } from './token-store';
 
@@ -15,6 +16,7 @@ export class FonderieClient {
 	readonly billing: BillingClient;
 	readonly workspaces: WorkspacesClient;
 	readonly audit: AuditClient;
+	readonly webhooks: WebhooksClient;
 
 	private http: HttpClient;
 
@@ -25,5 +27,6 @@ export class FonderieClient {
 		this.billing = new BillingClient(this.http, tokens);
 		this.workspaces = new WorkspacesClient(this.http, tokens);
 		this.audit = new AuditClient(this.http, tokens);
+		this.webhooks = new WebhooksClient(this.http, tokens);
 	}
 }

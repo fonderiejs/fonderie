@@ -1,0 +1,17 @@
+export type {
+	ICreateWebhookEndpointInput,
+	ITestWebhookResult,
+	IUpdateWebhookEndpointInput,
+	IWebhookDeliveryDTO,
+	IWebhookEndpointCreatedDTO,
+	IWebhookEndpointDTO,
+	WebhooksClient,
+} from '@fonderie/client';
+
+export { FonderieApiError } from '@fonderie/client';
+export {
+	useTestWebhookEndpoint,
+	useWebhookDeliveries,
+	useWebhookEndpoint,
+	useWebhookEndpoints,
+} from './composables';

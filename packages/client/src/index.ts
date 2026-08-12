@@ -26,6 +26,11 @@ export type {
 } from './modules/courier-admin';
 export { CourierAdminClient } from './modules/courier-admin';
 export type {
+	ICreateWebhookEndpointInput,
+	IUpdateWebhookEndpointInput,
+} from './modules/webhooks';
+export { WebhooksClient } from './modules/webhooks';
+export type {
 	ICreateRoleInput,
 	ICreateWorkspaceInput,
 	IInviteEntry,
@@ -71,12 +76,18 @@ export type {
 	ISubscriptionResult,
 	ITemplateEntry,
 	ITemplateRevision,
+	ITestWebhookResult,
 	ITokens,
 	IUsageResult,
 	IUserDTO,
 	IUserPreferences,
 	IUserSkill,
 	IVerifyEmailResult,
+	IWebhookDeliveryDTO,
+	IWebhookDeliveryListResult,
+	IWebhookEndpointCreatedDTO,
+	IWebhookEndpointDTO,
+	IWebhookEndpointListResult,
 	IWorkspaceAddressDTO,
 	IWorkspaceDTO,
 	IWorkspaceListResult,

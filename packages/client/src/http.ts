@@ -44,6 +44,13 @@ export class HttpClient {
 
 		const res = await fetch(`${this.baseUrl}${opts.path}`, fetchInit);
 
+		// 204 No Content (e.g. some DELETE routes) has no body to parse — a
+		// bare `res.json()` throws on the empty string.
+		if (res.status === 204) {
+			if (!res.ok) throw new FonderieApiError('unknown', res.statusText, res.status);
+			return undefined as T;
+		}
+
 		const data = (await res.json()) as T | IApiError;
 
 		if (!res.ok || res.status === 202) {
