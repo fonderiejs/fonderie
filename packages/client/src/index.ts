@@ -11,6 +11,12 @@ export { AuthClient } from './modules/auth';
 export type { ICheckoutInput, IRecordUsageInput } from './modules/billing';
 export { BillingClient } from './modules/billing';
 export type {
+	ICourierAdminClientOptions,
+	IRollbackTemplateInput,
+	ISetTemplateInput,
+} from './modules/courier-admin';
+export { CourierAdminClient } from './modules/courier-admin';
+export type {
 	ICreateRoleInput,
 	ICreateWorkspaceInput,
 	IInviteEntry,
@@ -47,6 +53,8 @@ export type {
 	IRoleResult,
 	ISubscriptionDTO,
 	ISubscriptionResult,
+	ITemplateEntry,
+	ITemplateRevision,
 	ITokens,
 	IUsageResult,
 	IUserDTO,
