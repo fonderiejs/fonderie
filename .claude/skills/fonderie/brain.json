@@ -24,11 +24,17 @@
     "react-native-auth-screens": "0.1.0",
     "react-native-billing": "0.1.0",
     "react-native-billing-screens": "0.1.0",
+    "react-native-workspaces": "0.1.0",
+    "react-native-workspaces-screens": "0.1.0",
+    "react-workspaces": "0.1.0",
+    "react-workspaces-screens": "0.1.0",
     "store": "0.2.2",
     "vue-auth": "0.1.0",
     "vue-auth-screens": "0.1.0",
     "vue-billing": "0.1.0",
     "vue-billing-screens": "0.1.0",
+    "vue-workspaces": "0.1.0",
+    "vue-workspaces-screens": "0.1.0",
     "webhooks": "5.0.0",
     "workspaces": "5.0.0"
   },
@@ -354,7 +360,8 @@
         "FonderieClient",
         "FonderieApiError",
         "AuthClient",
-        "BillingClient"
+        "BillingClient",
+        "WorkspacesClient"
       ],
       "subpaths": [],
       "tables": [],
@@ -978,6 +985,69 @@
       "hasSignature": true,
       "hasOutcomes": false
     },
+    "react-native-workspaces": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-native-workspaces-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "InviteMembersScreen",
+        "TeamMembersScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-workspaces": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FonderieApiError",
+        "useAcceptInvitation",
+        "useCreateWorkspace",
+        "useInvitations",
+        "useMembers",
+        "useRemoveMember",
+        "useWorkspaceSettings",
+        "useWorkspaces"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-workspaces-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "InviteMembersScreen",
+        "TeamMembersScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
     "store": {
       "version": "0.2.2",
       "requires": [],
@@ -1063,6 +1133,42 @@
       "exports": [
         "PricingScreen",
         "SubscriptionScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-workspaces": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FonderieApiError",
+        "useAcceptInvitation",
+        "useCreateWorkspace",
+        "useInvitations",
+        "useMembers",
+        "useRemoveMember",
+        "useWorkspaceSettings",
+        "useWorkspaces"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-workspaces-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "InviteMembersScreen",
+        "TeamMembersScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1585,6 +1691,18 @@
     "react-native-billing-screens": [
       "react-native-billing-screens"
     ],
+    "react-native-workspaces": [
+      "react-native-workspaces"
+    ],
+    "react-native-workspaces-screens": [
+      "react-native-workspaces-screens"
+    ],
+    "react-workspaces": [
+      "react-workspaces"
+    ],
+    "react-workspaces-screens": [
+      "react-workspaces-screens"
+    ],
     "store": [
       "store"
     ],
@@ -1599,6 +1717,12 @@
     ],
     "vue-billing-screens": [
       "vue-billing-screens"
+    ],
+    "vue-workspaces": [
+      "vue-workspaces"
+    ],
+    "vue-workspaces-screens": [
+      "vue-workspaces-screens"
     ],
     "webhooks": [
       "webhooks"
@@ -2229,6 +2353,108 @@
     "vue subscription screen": [
       "vue-billing-screens"
     ],
+    "react workspaces": [
+      "react-workspaces"
+    ],
+    "react teams": [
+      "react-workspaces"
+    ],
+    "useworkspaces": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "use workspaces": [
+      "react-workspaces"
+    ],
+    "usemembers": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "use members": [
+      "react-workspaces"
+    ],
+    "useinvitations": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "use invitations": [
+      "react-workspaces"
+    ],
+    "react invite": [
+      "react-workspaces"
+    ],
+    "react team switcher": [
+      "react-workspaces"
+    ],
+    "react team screen": [
+      "react-workspaces-screens"
+    ],
+    "react members screen": [
+      "react-workspaces-screens"
+    ],
+    "react invite screen": [
+      "react-workspaces-screens"
+    ],
+    "prebuilt react workspaces ui": [
+      "react-workspaces-screens"
+    ],
+    "react native workspaces": [
+      "react-native-workspaces"
+    ],
+    "mobile workspaces": [
+      "react-native-workspaces"
+    ],
+    "rn workspaces": [
+      "react-native-workspaces"
+    ],
+    "expo workspaces": [
+      "react-native-workspaces"
+    ],
+    "mobile teams": [
+      "react-native-workspaces"
+    ],
+    "mobile invite": [
+      "react-native-workspaces"
+    ],
+    "react native team screen": [
+      "react-native-workspaces-screens"
+    ],
+    "mobile team screen": [
+      "react-native-workspaces-screens"
+    ],
+    "prebuilt react native workspaces ui": [
+      "react-native-workspaces-screens"
+    ],
+    "mobile invite screen": [
+      "react-native-workspaces-screens"
+    ],
+    "vue workspaces": [
+      "vue-workspaces"
+    ],
+    "vue teams": [
+      "vue-workspaces"
+    ],
+    "vue3 workspaces": [
+      "vue-workspaces"
+    ],
+    "vue members": [
+      "vue-workspaces"
+    ],
+    "vue invite": [
+      "vue-workspaces"
+    ],
+    "vue team screen": [
+      "vue-workspaces-screens"
+    ],
+    "vue members screen": [
+      "vue-workspaces-screens"
+    ],
+    "prebuilt vue workspaces ui": [
+      "vue-workspaces-screens"
+    ],
+    "vue invite screen": [
+      "vue-workspaces-screens"
+    ],
     "operations": [
       "adapter-express",
       "adapter-hono",
@@ -2270,13 +2496,18 @@
       "react-auth",
       "react-billing",
       "react-native-auth",
+      "react-workspaces",
       "vue-auth",
-      "vue-billing"
+      "vue-billing",
+      "vue-workspaces"
     ],
     "authclient": [
       "client"
     ],
     "billingclient": [
+      "client"
+    ],
+    "workspacesclient": [
       "client"
     ],
     "configmodule": [
@@ -2453,6 +2684,32 @@
       "react-billing-screens",
       "react-native-billing-screens",
       "vue-billing-screens"
+    ],
+    "invitemembersscreen": [
+      "react-native-workspaces-screens",
+      "react-workspaces-screens",
+      "vue-workspaces-screens"
+    ],
+    "teammembersscreen": [
+      "react-native-workspaces-screens",
+      "react-workspaces-screens",
+      "vue-workspaces-screens"
+    ],
+    "useacceptinvitation": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usecreateworkspace": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "useremovemember": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "useworkspacesettings": [
+      "react-workspaces",
+      "vue-workspaces"
     ],
     "migrationrunner": [
       "store"
@@ -2727,6 +2984,51 @@
       "vue pricing table",
       "prebuilt vue billing ui",
       "vue subscription screen"
+    ],
+    "react-workspaces": [
+      "react workspaces",
+      "react teams",
+      "useworkspaces",
+      "use workspaces",
+      "usemembers",
+      "use members",
+      "useinvitations",
+      "use invitations",
+      "react invite",
+      "react team switcher"
+    ],
+    "react-workspaces-screens": [
+      "react team screen",
+      "react members screen",
+      "react invite screen",
+      "prebuilt react workspaces ui"
+    ],
+    "react-native-workspaces": [
+      "react native workspaces",
+      "mobile workspaces",
+      "rn workspaces",
+      "expo workspaces",
+      "mobile teams",
+      "mobile invite"
+    ],
+    "react-native-workspaces-screens": [
+      "react native team screen",
+      "mobile team screen",
+      "prebuilt react native workspaces ui",
+      "mobile invite screen"
+    ],
+    "vue-workspaces": [
+      "vue workspaces",
+      "vue teams",
+      "vue3 workspaces",
+      "vue members",
+      "vue invite"
+    ],
+    "vue-workspaces-screens": [
+      "vue team screen",
+      "vue members screen",
+      "prebuilt vue workspaces ui",
+      "vue invite screen"
     ]
   },
   "concepts": {
@@ -2867,6 +3169,36 @@
       "description": "pre-built Vue billing screens (PricingScreen, SubscriptionScreen) built on vue-billing composables via Vue's h() render API",
       "package": "vue-billing-screens",
       "recipe": "vue-billing-screens-wiring"
+    },
+    "react-workspaces.hooks": {
+      "description": "React hooks for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, wrapping @fonderie/client's WorkspacesClient",
+      "package": "react-workspaces",
+      "recipe": "react-workspaces-wiring"
+    },
+    "react-workspaces.screens": {
+      "description": "pre-built React workspaces screens (TeamMembersScreen, InviteMembersScreen) built on react-workspaces hooks — bring your own styling",
+      "package": "react-workspaces-screens",
+      "recipe": "react-workspaces-screens-wiring"
+    },
+    "react-native-workspaces.hooks": {
+      "description": "React Native workspaces hooks — re-exports react-workspaces wholesale (no platform-specific storage, unlike auth)",
+      "package": "react-native-workspaces",
+      "recipe": "react-native-workspaces-wiring"
+    },
+    "react-native-workspaces.screens": {
+      "description": "pre-built React Native workspaces screens (TeamMembersScreen, InviteMembersScreen) built on react-native-workspaces hooks",
+      "package": "react-native-workspaces-screens",
+      "recipe": "react-native-workspaces-screens-wiring"
+    },
+    "vue-workspaces.composables": {
+      "description": "Vue composables for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, wrapping @fonderie/client's WorkspacesClient",
+      "package": "vue-workspaces",
+      "recipe": "vue-workspaces-wiring"
+    },
+    "vue-workspaces.screens": {
+      "description": "pre-built Vue workspaces screens (TeamMembersScreen, InviteMembersScreen) built on vue-workspaces composables via Vue's h() render API",
+      "package": "vue-workspaces-screens",
+      "recipe": "vue-workspaces-screens-wiring"
     }
   },
   "recipes": {
@@ -3066,7 +3398,7 @@
       ],
       "invariants": [
         "frontend-client-injection",
-        "frontend-billing-shared-token"
+        "frontend-shared-token"
       ]
     },
     "react-billing-screens-wiring": {
@@ -3078,7 +3410,7 @@
       ],
       "invariants": [
         "frontend-client-injection",
-        "frontend-billing-shared-token"
+        "frontend-shared-token"
       ]
     },
     "react-native-billing-wiring": {
@@ -3089,7 +3421,7 @@
       ],
       "invariants": [
         "frontend-client-injection",
-        "frontend-billing-shared-token"
+        "frontend-shared-token"
       ]
     },
     "react-native-billing-screens-wiring": {
@@ -3101,7 +3433,7 @@
       ],
       "invariants": [
         "frontend-client-injection",
-        "frontend-billing-shared-token"
+        "frontend-shared-token"
       ]
     },
     "vue-billing-wiring": {
@@ -3112,7 +3444,7 @@
       ],
       "invariants": [
         "frontend-client-injection",
-        "frontend-billing-shared-token"
+        "frontend-shared-token"
       ]
     },
     "vue-billing-screens-wiring": {
@@ -3124,7 +3456,82 @@
       ],
       "invariants": [
         "frontend-client-injection",
-        "frontend-billing-shared-token"
+        "frontend-shared-token"
+      ]
+    },
+    "react-workspaces-wiring": {
+      "when": "adding teams/workspaces UI to a React web app",
+      "packages": [
+        "client",
+        "react-workspaces"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-workspaces-screens-wiring": {
+      "when": "adding teams/workspaces to a React web app with pre-built UI, not just hooks",
+      "packages": [
+        "client",
+        "react-workspaces",
+        "react-workspaces-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-native-workspaces-wiring": {
+      "when": "adding teams/workspaces UI to a React Native app",
+      "packages": [
+        "client",
+        "react-native-workspaces"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-native-workspaces-screens-wiring": {
+      "when": "adding teams/workspaces to a React Native app with pre-built UI, not just hooks",
+      "packages": [
+        "client",
+        "react-native-workspaces",
+        "react-native-workspaces-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "vue-workspaces-wiring": {
+      "when": "adding teams/workspaces UI to a Vue 3 app",
+      "packages": [
+        "client",
+        "vue-workspaces"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "vue-workspaces-screens-wiring": {
+      "when": "adding teams/workspaces to a Vue 3 app with pre-built UI, not just composables",
+      "packages": [
+        "client",
+        "vue-workspaces",
+        "vue-workspaces-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
       ]
     }
   },
@@ -3135,8 +3542,9 @@
     "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
     "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
     "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task.",
-    "frontend-client-injection": "Every @fonderie/*-auth and @fonderie/*-billing hook/composable takes the matching @fonderie/client sub-client instance (client.auth or client.billing) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
+    "frontend-client-injection": "Every @fonderie/*-auth, @fonderie/*-billing, and @fonderie/*-workspaces hook/composable takes the matching @fonderie/client sub-client instance (client.auth, client.billing, or client.workspaces) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
     "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",
-    "frontend-billing-shared-token": "client.auth and client.billing share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing requests too. Do not call client.billing.setAccessToken yourself or construct a separate BillingClient outside FonderieClient."
+    "frontend-shared-token": "client.auth, client.billing, and client.workspaces share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing and client.workspaces requests too. Do not call setAccessToken on billing/workspaces sub-clients yourself or construct one outside FonderieClient.",
+    "frontend-workspace-scoping": "@fonderie/*-workspaces and @fonderie/*-billing requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) — both fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback in @fonderie/workspaces' withWorkspace and @fonderie/billing's resolveSubscriber). Do not thread a workspace id through individual hook calls."
   }
 }

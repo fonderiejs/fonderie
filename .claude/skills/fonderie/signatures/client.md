@@ -13,6 +13,7 @@ interface IFonderieClientOptions {
 new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .auth: AuthClient
   .billing: BillingClient
+  .workspaces: WorkspacesClient
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
   .reason: string
@@ -88,6 +89,64 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string): Promise<IApiResponse<IUsageResult>>
 
+interface ICreateWorkspaceInput {
+    name: string;
+    description?: string;
+    type?: string;
+}
+
+interface IInviteEntry {
+    email: string;
+    roleId?: string;
+}
+
+interface IUpdateSettingsInput {
+    locale?: string;
+    timezone?: string;
+    currency?: string;
+    dateFormat?: string;
+    timeFormat?: string;
+}
+
+interface IUpdateWorkspaceInput {
+    name?: string;
+    description?: string | null;
+    motto?: string | null;
+    phone?: string | null;
+    businessType?: string | null;
+    address?: {
+        line1?: string;
+        line2?: string;
+        city?: string;
+        state?: string;
+        zip?: string;
+        country?: string;
+    } | null;
+}
+
+new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
+  .setAccessToken(token: string | undefined): void
+  .setWorkspaceId(workspaceId: string | undefined): void
+  .listWorkspaces(): Promise<IApiResponse<IWorkspaceListResult>>
+  .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
+  .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
+  .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
+  .listMembers(): Promise<IApiResponse<IMemberListResult>>
+  .removeMember(userId: string): Promise<IApiResponse<undefined>>
+  .getMemberRoles(userId: string): Promise<IApiResponse<IRoleListResult>>
+  .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
+  .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
+  .listInvitations(): Promise<IApiResponse<IInvitationListResult>>
+  .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
+  .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
+  .acceptInvitation(pin: string): Promise<IApiResponse<IAcceptInvitationResult>>
+  .getSettings(): Promise<IApiResponse<IWorkspaceSettingsResult>>
+  .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
+
+interface IAcceptInvitationResult {
+    workspaceId: string;
+}
+
 interface IApiError {
     reason: string;
     explanation: string;
@@ -104,9 +163,44 @@ interface ICheckoutUrlResult {
     url: string;
 }
 
+interface IInvitationDTO {
+    id: string;
+    workspaceId: string;
+    email: string;
+    roleId: string;
+    token: string;
+    status: string;
+    expiresAt: string;
+    createdAt: string;
+}
+
+interface IInvitationListResult {
+    invitations: IInvitationDTO[];
+}
+
+interface IInviteResult {
+    invitations: Array<{
+        invitationId: string;
+        email: string;
+    }>;
+}
+
 interface ILoginResult {
     tokens: ITokens;
     user: IUserDTO;
+}
+
+interface IMemberDTO {
+    userId: string;
+    workspaceId: string;
+    roleId: string;
+    roleName: string;
+    confirmed: boolean;
+    createdAt: string;
+}
+
+interface IMemberListResult {
+    members: IMemberDTO[];
 }
 
 interface IMeResult {
@@ -176,6 +270,19 @@ interface IResendVerificationResult {
         expiresAt: string;
         email: string;
     };
+}
+
+interface IRoleDTO {
+    id: string;
+    name: string;
+    isSystem: boolean;
+    active: boolean;
+    description: string;
+    workspaceId: string;
+}
+
+interface IRoleListResult {
+    roles: IRoleDTO[];
 }
 
 interface ISubscriptionDTO {
@@ -249,6 +356,54 @@ interface IUserSkill {
 interface IVerifyEmailResult {
     verified: boolean;
     email: string;
+}
+
+interface IWorkspaceAddressDTO {
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+}
+
+interface IWorkspaceDTO {
+    id: string;
+    name: string;
+    slug: string;
+    type: string;
+    description: string;
+    motto: string;
+    phone: string;
+    businessType: string;
+    address: IWorkspaceAddressDTO;
+    plan: string;
+    ownerId: string;
+    isPersonal: boolean;
+    isArchived: boolean;
+    archivedAt: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface IWorkspaceListResult {
+    workspaces: IWorkspaceDTO[];
+}
+
+interface IWorkspaceResult {
+    workspace: IWorkspaceDTO;
+}
+
+interface IWorkspaceSettingsDTO {
+    locale: string;
+    timezone: string;
+    currency: string;
+    dateFormat: string;
+    timeFormat: string;
+}
+
+interface IWorkspaceSettingsResult {
+    settings: IWorkspaceSettingsDTO;
 }
 
 type SubscriberType = 'user' | 'workspace';
