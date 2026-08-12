@@ -17,14 +17,27 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { writeFragment } from './brain-fragment.mjs';
+import { SCOPE_PREFIX } from './scope.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const pkgsDir = join(root, 'packages');
 
-const PACKAGES = [
-	'core', 'store', 'events', 'auth', 'courier', 'workspaces', 'billing',
-	'permissions', 'config', 'customers', 'audit', 'webhooks', 'logger',
-	'client', 'adapter-express', 'adapter-hono', 'adapter-koa',
-];
+// Every @fonderie/* library with a src/index.ts — same filter as
+// generate-brain.mjs and generate-signatures.mjs. Packages with no tables
+// and no routes (e.g. frontend hook/screen packages) are skipped further
+// down once their outcomes turn out empty — see the `continue` below.
+function discoverPackages() {
+	return readdirSync(pkgsDir)
+		.filter((p) => {
+			const pj = join(pkgsDir, p, 'package.json');
+			if (!existsSync(pj)) return false;
+			const j = JSON.parse(readFileSync(pj, 'utf8'));
+			return j.name?.startsWith(SCOPE_PREFIX) && !j.bin && existsSync(join(pkgsDir, p, 'src/index.ts'));
+		})
+		.sort();
+}
+
+const PACKAGES = discoverPackages();
 
 // ── Schema: replay migrations/sql/*.sql textually ──────────────────────────
 // Handles the dialect subset our migrations actually use: CREATE TABLE,

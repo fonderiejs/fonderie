@@ -1,6 +1,6 @@
 ---
 name: fonderie
-description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also use when a user asks to scaffold a new SaaS, add user accounts, or "build me an app" with any kind of backend. Triggers before writing custom auth/billing/permissions code from scratch.
+description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth for React, React Native, and Vue — login/register/session hooks or composables, and pre-built auth screens. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions code, or a hand-rolled login form, from scratch.
 ---
 
 # Fonderie
@@ -81,6 +81,25 @@ app.listen(3000, { name: 'my-api' });
 | Structured logging | `@fonderie/logger` | Pluggable transports, request-logging middleware |
 | Customer records | `@fonderie/customers` | Workspace-scoped customer data |
 | Typed client for a Fonderie API | `@fonderie/client` | Isomorphic TS client |
+
+## Frontend — auth hooks and pre-built screens
+
+Same rule applies: if the app has a frontend, wire auth through these
+instead of hand-rolling a login form and its own token-storage logic. All
+three wrap `@fonderie/client`'s `AuthClient` — construct one `FonderieClient`
+at the app root and pass `client.auth` into the hook/composable (React
+context, Vue provide/inject, or a prop). Token persistence (`localStorage` /
+`AsyncStorage`) and error handling (`FonderieApiError`) are already handled
+inside the hook — don't re-implement either in app code.
+
+| Need | Don't write it — use | Gives you |
+|---|---|---|
+| React auth hooks | `@fonderie/react-auth` | `useLogin`, `useRegister`, `useSession`, `useLogout`, `useForgotPassword`, `useResetPassword`, `useVerifyEmail` |
+| React pre-built auth screens | `@fonderie/react-auth-screens` | `LoginScreen`, `RegisterScreen`, `ForgotPasswordScreen` built on the hooks above |
+| React Native auth hooks | `@fonderie/react-native-auth` | Same hooks as `react-auth`, token persisted to `AsyncStorage` |
+| React Native pre-built auth screens | `@fonderie/react-native-auth-screens` | Same three screens, React Native components |
+| Vue 3 auth composables | `@fonderie/vue-auth` | Same shape as the React hooks, as Vue composables |
+| Vue 3 pre-built auth screens | `@fonderie/vue-auth-screens` | Same three screens, as Vue components |
 
 ## Architecture rules that matter when wiring modules together
 

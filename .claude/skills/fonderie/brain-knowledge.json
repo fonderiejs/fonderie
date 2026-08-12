@@ -11,7 +11,13 @@
     "config": ["feature flag", "remote config", "toggle", "flag", "runtime config", "kill switch"],
     "audit": ["audit log", "audit trail", "activity log", "who did what", "compliance log"],
     "events": ["event bus", "domain event", "emit event", "pub sub", "in process events"],
-    "customers": ["customer", "customers", "crm", "customer record", "contact"]
+    "customers": ["customer", "customers", "crm", "customer record", "contact"],
+    "react-auth": ["react auth", "react login", "react hooks", "uselogin", "use login", "usesession", "use session", "react login screen", "react auth ui"],
+    "react-auth-screens": ["react login screen", "react register screen", "react forgot password screen", "prebuilt react auth ui", "login form react"],
+    "react-native-auth": ["react native auth", "mobile auth", "rn auth", "expo auth", "asyncstorage auth", "react native login"],
+    "react-native-auth-screens": ["react native login screen", "mobile login screen", "prebuilt react native auth ui", "expo login screen"],
+    "vue-auth": ["vue auth", "vue login", "vue composable", "vue3 auth", "vue session"],
+    "vue-auth-screens": ["vue login screen", "vue register screen", "prebuilt vue auth ui"]
   },
   "concepts": {
     "auth.accounts": { "description": "sign up, log in, sessions, passwords, MFA, email verification", "package": "auth", "recipe": "basic-auth" },
@@ -30,7 +36,13 @@
     "rate-limit.throttle": { "description": "throttle requests — brute force, abuse, spam protection", "package": "rate-limit" },
     "customers.crm": { "description": "customer records / CRM tied to billing", "package": "customers" },
     "core.app": { "description": "bootstrap a Fonderie app, register modules, mount on Express/Hono/Koa", "package": "core" },
-    "store.database": { "description": "Postgres access and append-only migrations", "package": "store" }
+    "store.database": { "description": "Postgres access and append-only migrations", "package": "store" },
+    "react-auth.hooks": { "description": "React hooks for auth — useLogin, useRegister, useSession, useLogout, useForgotPassword, useResetPassword, useVerifyEmail, wrapping @fonderie/client", "package": "react-auth", "recipe": "react-auth-wiring" },
+    "react-auth.screens": { "description": "pre-built React auth screens (LoginScreen, RegisterScreen, ForgotPasswordScreen) built on react-auth hooks — bring your own styling", "package": "react-auth-screens", "recipe": "react-auth-screens-wiring" },
+    "react-native-auth.hooks": { "description": "React Native hooks for auth — same shape as react-auth, token persisted to AsyncStorage instead of localStorage", "package": "react-native-auth", "recipe": "react-native-auth-wiring" },
+    "react-native-auth.screens": { "description": "pre-built React Native auth screens (LoginScreen, RegisterScreen, ForgotPasswordScreen) built on react-native-auth hooks", "package": "react-native-auth-screens", "recipe": "react-native-auth-screens-wiring" },
+    "vue-auth.composables": { "description": "Vue composables for auth — useLogin, useRegister, useSession, useLogout, useForgotPassword, useResetPassword, useVerifyEmail, wrapping @fonderie/client", "package": "vue-auth", "recipe": "vue-auth-wiring" },
+    "vue-auth.screens": { "description": "pre-built Vue auth screens (LoginScreen, RegisterScreen, ForgotPasswordScreen) built on vue-auth composables via Vue's h() render API", "package": "vue-auth-screens", "recipe": "vue-auth-screens-wiring" }
   },
   "recipes": {
     "basic-auth": { "when": "sign up + log in with email/password", "packages": ["auth", "core", "events", "store"], "invariants": ["jwt-secret-from-env", "rate-limit-default-on"] },
@@ -42,7 +54,13 @@
     "plan-gate": { "when": "lock a feature behind a paid plan", "packages": ["billing", "permissions"], "invariants": [] },
     "rbac": { "when": "roles & permissions (admin/member/viewer)", "packages": ["permissions", "workspaces", "core", "store"], "invariants": [] },
     "transactional-email": { "when": "welcome / reset / invite emails", "packages": ["courier", "events", "config", "core", "store"], "invariants": ["email-provider-default"] },
-    "webhooks-in-out": { "when": "receive Stripe webhooks and emit your own", "packages": ["webhooks", "billing", "events", "rate-limit", "core", "store"], "invariants": ["webhook-route-before-auth-mw", "rate-limit-default-on"] }
+    "webhooks-in-out": { "when": "receive Stripe webhooks and emit your own", "packages": ["webhooks", "billing", "events", "rate-limit", "core", "store"], "invariants": ["webhook-route-before-auth-mw", "rate-limit-default-on"] },
+    "react-auth-wiring": { "when": "adding auth to a React web app", "packages": ["client", "react-auth"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
+    "react-auth-screens-wiring": { "when": "adding auth to a React web app with pre-built UI, not just hooks", "packages": ["client", "react-auth", "react-auth-screens"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
+    "react-native-auth-wiring": { "when": "adding auth to a React Native app", "packages": ["client", "react-native-auth"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
+    "react-native-auth-screens-wiring": { "when": "adding auth to a React Native app with pre-built UI, not just hooks", "packages": ["client", "react-native-auth", "react-native-auth-screens"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
+    "vue-auth-wiring": { "when": "adding auth to a Vue 3 app", "packages": ["client", "vue-auth"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
+    "vue-auth-screens-wiring": { "when": "adding auth to a Vue 3 app with pre-built UI, not just composables", "packages": ["client", "vue-auth", "vue-auth-screens"], "invariants": ["frontend-client-injection", "frontend-token-storage"] }
   },
   "invariants": {
     "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
@@ -50,6 +68,8 @@
     "logout-provided": "@fonderie/auth mounts POST /auth/logout with session invalidation — do not hand-roll stateless-JWT logout.",
     "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
     "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
-    "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task."
+    "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task.",
+    "frontend-client-injection": "react-auth/react-native-auth/vue-auth hooks and composables take an AuthClient instance as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass client.auth down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
+    "frontend-token-storage": "The access token is persisted client-side by the hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly."
   }
 }
