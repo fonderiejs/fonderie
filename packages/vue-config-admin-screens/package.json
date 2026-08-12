@@ -1,0 +1,69 @@
+{
+	"name": "@fonderie/vue-config-admin-screens",
+	"version": "0.1.0",
+	"description": "Pre-built Vue screens for the Fonderie config admin API — config/secret list, config editor with revision history and rollback.",
+	"keywords": [
+		"fonderie-js",
+		"vue",
+		"config",
+		"feature-flags",
+		"secrets",
+		"admin",
+		"screens",
+		"ui",
+		"typescript"
+	],
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
+	},
+	"dependencies": {
+		"@fonderie/client": "*",
+		"@fonderie/vue-config-admin": "*"
+	},
+	"peerDependencies": {
+		"vue": ">=3.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.6.0",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3",
+		"vue": "^3.5.0"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE",
+		"README.md"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
+		"directory": "packages/vue-config-admin-screens"
+	},
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/vue-config-admin-screens#readme",
+	"bugs": {
+		"url": "https://github.com/fonderiejs/fonderie/issues"
+	}
+}
