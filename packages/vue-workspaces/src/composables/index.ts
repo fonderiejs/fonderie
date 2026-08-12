@@ -1,7 +1,11 @@
 export { useAcceptInvitation } from './useAcceptInvitation';
 export { useCreateWorkspace } from './useCreateWorkspace';
 export { useInvitations } from './useInvitations';
+export { useMemberRoles } from './useMemberRoles';
 export { useMembers } from './useMembers';
 export { useRemoveMember } from './useRemoveMember';
+export { useRoles } from './useRoles';
+export { useSetRolePermissions } from './useSetRolePermissions';
+export { useUpdateRole } from './useUpdateRole';
 export { useWorkspaceSettings } from './useWorkspaceSettings';
 export { useWorkspaces } from './useWorkspaces';
