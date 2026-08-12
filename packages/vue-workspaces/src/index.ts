@@ -26,6 +26,7 @@ export {
 	useRoles,
 	useSetRolePermissions,
 	useUpdateRole,
+	useWorkspaceProfile,
 	useWorkspaceSettings,
 	useWorkspaces,
 } from './composables';

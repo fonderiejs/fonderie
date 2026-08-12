@@ -131,6 +131,8 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
+  .archiveWorkspace(): Promise<IApiResponse<undefined>>
+  .restoreWorkspace(): Promise<IApiResponse<undefined>>
   .listRoles(): Promise<IApiResponse<IRoleListResult>>
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
   .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
@@ -176,6 +178,8 @@ function useRoles(client: WorkspacesClient): { roles: Ref<{ id: string; name: st
 function useSetRolePermissions(client: WorkspacesClient): { setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>; isLoading: Ref<...>; error: Ref<...>; }
 
 function useUpdateRole(client: WorkspacesClient): { updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>; isLoading: Ref<...>; error: Ref<...>; }
+
+function useWorkspaceProfile(client: WorkspacesClient): { updateWorkspace: (input: IUpdateWorkspaceInput) => Promise<IWorkspaceDTO>; archiveWorkspace: () => Promise<...>; restoreWorkspace: () => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
 
 function useWorkspaceSettings(client: WorkspacesClient): { settings: Ref<{ locale: string; timezone: string; currency: string; dateFormat: string; timeFormat: string; } | null, IWorkspaceSettingsDTO | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; updateSettings: (input: IUpdateSettingsInput) => Promise<...>; }
 

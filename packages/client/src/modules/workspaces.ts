@@ -126,6 +126,25 @@ export class WorkspacesClient {
 		});
 	}
 
+	// Personal workspaces can't be archived — the server returns 403 if you try.
+	archiveWorkspace() {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'POST',
+			path: '/workspaces/archive',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	restoreWorkspace() {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'POST',
+			path: '/workspaces/restore',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
 	// ── Roles ────────────────────────────────────────────────────────────────────
 
 	listRoles() {
