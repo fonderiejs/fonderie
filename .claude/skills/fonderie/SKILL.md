@@ -1,6 +1,6 @@
 ---
 name: fonderie
-description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth for React, React Native, and Vue — login/register/session hooks or composables, and pre-built auth screens. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions code, or a hand-rolled login form, from scratch.
+description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth and billing for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks or composables, and pre-built screens for both. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions code, a hand-rolled login form, or a hand-rolled pricing table, from scratch.
 ---
 
 # Fonderie
@@ -100,6 +100,19 @@ inside the hook — don't re-implement either in app code.
 | React Native pre-built auth screens | `@fonderie/react-native-auth-screens` | Same three screens, React Native components |
 | Vue 3 auth composables | `@fonderie/vue-auth` | Same shape as the React hooks, as Vue composables |
 | Vue 3 pre-built auth screens | `@fonderie/vue-auth-screens` | Same three screens, as Vue components |
+
+Billing follows the same pattern (`client.billing` instead of `client.auth`).
+`client.auth` and `client.billing` share one token internally — signing in
+via an auth hook authenticates billing requests too, nothing extra to wire.
+
+| Need | Don't write it — use | Gives you |
+|---|---|---|
+| React billing hooks | `@fonderie/react-billing` | `usePlans`, `usePlan`, `useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage`, `useRecordUsage` |
+| React pre-built billing screens | `@fonderie/react-billing-screens` | `PricingScreen`, `SubscriptionScreen` built on the hooks above |
+| React Native billing hooks | `@fonderie/react-native-billing` | Re-exports `react-billing` as-is — billing has no platform-specific storage, unlike auth |
+| React Native pre-built billing screens | `@fonderie/react-native-billing-screens` | Same two screens, React Native components |
+| Vue 3 billing composables | `@fonderie/vue-billing` | Same shape as the React hooks, as Vue composables |
+| Vue 3 pre-built billing screens | `@fonderie/vue-billing-screens` | Same two screens, as Vue components |
 
 ## Architecture rules that matter when wiring modules together
 

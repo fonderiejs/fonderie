@@ -5,7 +5,7 @@
 ## @fonderie/vue-auth
 
 ```ts
-new AuthClient(http: HttpClient, accessToken?: string | undefined): AuthClient
+new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .phone: PhoneClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void

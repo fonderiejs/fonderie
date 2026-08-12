@@ -18,11 +18,17 @@
     "rate-limit": "4.0.0",
     "react-auth": "0.1.0",
     "react-auth-screens": "0.1.0",
+    "react-billing": "0.1.0",
+    "react-billing-screens": "0.1.0",
     "react-native-auth": "0.1.0",
     "react-native-auth-screens": "0.1.0",
+    "react-native-billing": "0.1.0",
+    "react-native-billing-screens": "0.1.0",
     "store": "0.2.2",
     "vue-auth": "0.1.0",
     "vue-auth-screens": "0.1.0",
+    "vue-billing": "0.1.0",
+    "vue-billing-screens": "0.1.0",
     "webhooks": "5.0.0",
     "workspaces": "5.0.0"
   },
@@ -347,7 +353,8 @@
       "exports": [
         "FonderieClient",
         "FonderieApiError",
-        "AuthClient"
+        "AuthClient",
+        "BillingClient"
       ],
       "subpaths": [],
       "tables": [],
@@ -871,6 +878,42 @@
       "hasSignature": true,
       "hasOutcomes": false
     },
+    "react-billing": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FonderieApiError",
+        "useBillingPortal",
+        "useCheckout",
+        "usePlan",
+        "usePlans",
+        "useRecordUsage",
+        "useSubscription",
+        "useUsage"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-billing-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "PricingScreen",
+        "SubscriptionScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
     "react-native-auth": {
       "version": "0.1.0",
       "requires": [],
@@ -899,6 +942,33 @@
         "LoginScreen",
         "RegisterScreen",
         "ForgotPasswordScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-native-billing": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-native-billing-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "PricingScreen",
+        "SubscriptionScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -957,6 +1027,42 @@
         "LoginScreen",
         "RegisterScreen",
         "ForgotPasswordScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-billing": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FonderieApiError",
+        "useBillingPortal",
+        "useCheckout",
+        "usePlan",
+        "usePlans",
+        "useRecordUsage",
+        "useSubscription",
+        "useUsage"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-billing-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "PricingScreen",
+        "SubscriptionScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1461,11 +1567,23 @@
     "react-auth-screens": [
       "react-auth-screens"
     ],
+    "react-billing": [
+      "react-billing"
+    ],
+    "react-billing-screens": [
+      "react-billing-screens"
+    ],
     "react-native-auth": [
       "react-native-auth"
     ],
     "react-native-auth-screens": [
       "react-native-auth-screens"
+    ],
+    "react-native-billing": [
+      "react-native-billing"
+    ],
+    "react-native-billing-screens": [
+      "react-native-billing-screens"
     ],
     "store": [
       "store"
@@ -1475,6 +1593,12 @@
     ],
     "vue-auth-screens": [
       "vue-auth-screens"
+    ],
+    "vue-billing": [
+      "vue-billing"
+    ],
+    "vue-billing-screens": [
+      "vue-billing-screens"
     ],
     "webhooks": [
       "webhooks"
@@ -2000,6 +2124,111 @@
     "prebuilt vue auth ui": [
       "vue-auth-screens"
     ],
+    "react billing": [
+      "react-billing"
+    ],
+    "react pricing": [
+      "react-billing"
+    ],
+    "react checkout": [
+      "react-billing"
+    ],
+    "useplans": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "use plans": [
+      "react-billing"
+    ],
+    "usecheckout": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "use checkout": [
+      "react-billing"
+    ],
+    "usesubscription": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "use subscription": [
+      "react-billing"
+    ],
+    "react stripe": [
+      "react-billing"
+    ],
+    "react pricing screen": [
+      "react-billing-screens"
+    ],
+    "react pricing table": [
+      "react-billing-screens"
+    ],
+    "prebuilt react billing ui": [
+      "react-billing-screens"
+    ],
+    "react subscription screen": [
+      "react-billing-screens"
+    ],
+    "react native billing": [
+      "react-native-billing"
+    ],
+    "mobile billing": [
+      "react-native-billing"
+    ],
+    "rn billing": [
+      "react-native-billing"
+    ],
+    "expo billing": [
+      "react-native-billing"
+    ],
+    "mobile checkout": [
+      "react-native-billing"
+    ],
+    "mobile pricing": [
+      "react-native-billing"
+    ],
+    "react native pricing screen": [
+      "react-native-billing-screens"
+    ],
+    "mobile pricing screen": [
+      "react-native-billing-screens"
+    ],
+    "prebuilt react native billing ui": [
+      "react-native-billing-screens"
+    ],
+    "mobile subscription screen": [
+      "react-native-billing-screens"
+    ],
+    "vue billing": [
+      "vue-billing"
+    ],
+    "vue pricing": [
+      "vue-billing"
+    ],
+    "vue checkout": [
+      "vue-billing"
+    ],
+    "vue3 billing": [
+      "vue-billing"
+    ],
+    "vue subscription": [
+      "vue-billing"
+    ],
+    "vue stripe": [
+      "vue-billing"
+    ],
+    "vue pricing screen": [
+      "vue-billing-screens"
+    ],
+    "vue pricing table": [
+      "vue-billing-screens"
+    ],
+    "prebuilt vue billing ui": [
+      "vue-billing-screens"
+    ],
+    "vue subscription screen": [
+      "vue-billing-screens"
+    ],
     "operations": [
       "adapter-express",
       "adapter-hono",
@@ -2039,10 +2268,15 @@
     "fonderieapierror": [
       "client",
       "react-auth",
+      "react-billing",
       "react-native-auth",
-      "vue-auth"
+      "vue-auth",
+      "vue-billing"
     ],
     "authclient": [
+      "client"
+    ],
+    "billingclient": [
       "client"
     ],
     "configmodule": [
@@ -2193,6 +2427,32 @@
       "react-auth-screens",
       "react-native-auth-screens",
       "vue-auth-screens"
+    ],
+    "usebillingportal": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "useplan": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "userecordusage": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "useusage": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "pricingscreen": [
+      "react-billing-screens",
+      "react-native-billing-screens",
+      "vue-billing-screens"
+    ],
+    "subscriptionscreen": [
+      "react-billing-screens",
+      "react-native-billing-screens",
+      "vue-billing-screens"
     ],
     "migrationrunner": [
       "store"
@@ -2421,6 +2681,52 @@
       "vue login screen",
       "vue register screen",
       "prebuilt vue auth ui"
+    ],
+    "react-billing": [
+      "react billing",
+      "react pricing",
+      "react checkout",
+      "useplans",
+      "use plans",
+      "usecheckout",
+      "use checkout",
+      "usesubscription",
+      "use subscription",
+      "react stripe"
+    ],
+    "react-billing-screens": [
+      "react pricing screen",
+      "react pricing table",
+      "prebuilt react billing ui",
+      "react subscription screen"
+    ],
+    "react-native-billing": [
+      "react native billing",
+      "mobile billing",
+      "rn billing",
+      "expo billing",
+      "mobile checkout",
+      "mobile pricing"
+    ],
+    "react-native-billing-screens": [
+      "react native pricing screen",
+      "mobile pricing screen",
+      "prebuilt react native billing ui",
+      "mobile subscription screen"
+    ],
+    "vue-billing": [
+      "vue billing",
+      "vue pricing",
+      "vue checkout",
+      "vue3 billing",
+      "vue subscription",
+      "vue stripe"
+    ],
+    "vue-billing-screens": [
+      "vue pricing screen",
+      "vue pricing table",
+      "prebuilt vue billing ui",
+      "vue subscription screen"
     ]
   },
   "concepts": {
@@ -2531,6 +2837,36 @@
       "description": "pre-built Vue auth screens (LoginScreen, RegisterScreen, ForgotPasswordScreen) built on vue-auth composables via Vue's h() render API",
       "package": "vue-auth-screens",
       "recipe": "vue-auth-screens-wiring"
+    },
+    "react-billing.hooks": {
+      "description": "React hooks for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, wrapping @fonderie/client's BillingClient",
+      "package": "react-billing",
+      "recipe": "react-billing-wiring"
+    },
+    "react-billing.screens": {
+      "description": "pre-built React billing screens (PricingScreen, SubscriptionScreen) built on react-billing hooks — bring your own styling",
+      "package": "react-billing-screens",
+      "recipe": "react-billing-screens-wiring"
+    },
+    "react-native-billing.hooks": {
+      "description": "React Native billing hooks — re-exports react-billing wholesale (no platform-specific storage, unlike auth)",
+      "package": "react-native-billing",
+      "recipe": "react-native-billing-wiring"
+    },
+    "react-native-billing.screens": {
+      "description": "pre-built React Native billing screens (PricingScreen, SubscriptionScreen) built on react-native-billing hooks",
+      "package": "react-native-billing-screens",
+      "recipe": "react-native-billing-screens-wiring"
+    },
+    "vue-billing.composables": {
+      "description": "Vue composables for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, wrapping @fonderie/client's BillingClient",
+      "package": "vue-billing",
+      "recipe": "vue-billing-wiring"
+    },
+    "vue-billing.screens": {
+      "description": "pre-built Vue billing screens (PricingScreen, SubscriptionScreen) built on vue-billing composables via Vue's h() render API",
+      "package": "vue-billing-screens",
+      "recipe": "vue-billing-screens-wiring"
     }
   },
   "recipes": {
@@ -2721,6 +3057,75 @@
         "frontend-client-injection",
         "frontend-token-storage"
       ]
+    },
+    "react-billing-wiring": {
+      "when": "adding billing/pricing/checkout to a React web app",
+      "packages": [
+        "client",
+        "react-billing"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-billing-shared-token"
+      ]
+    },
+    "react-billing-screens-wiring": {
+      "when": "adding billing to a React web app with pre-built UI, not just hooks",
+      "packages": [
+        "client",
+        "react-billing",
+        "react-billing-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-billing-shared-token"
+      ]
+    },
+    "react-native-billing-wiring": {
+      "when": "adding billing/pricing/checkout to a React Native app",
+      "packages": [
+        "client",
+        "react-native-billing"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-billing-shared-token"
+      ]
+    },
+    "react-native-billing-screens-wiring": {
+      "when": "adding billing to a React Native app with pre-built UI, not just hooks",
+      "packages": [
+        "client",
+        "react-native-billing",
+        "react-native-billing-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-billing-shared-token"
+      ]
+    },
+    "vue-billing-wiring": {
+      "when": "adding billing/pricing/checkout to a Vue 3 app",
+      "packages": [
+        "client",
+        "vue-billing"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-billing-shared-token"
+      ]
+    },
+    "vue-billing-screens-wiring": {
+      "when": "adding billing to a Vue 3 app with pre-built UI, not just composables",
+      "packages": [
+        "client",
+        "vue-billing",
+        "vue-billing-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-billing-shared-token"
+      ]
     }
   },
   "invariants": {
@@ -2730,7 +3135,8 @@
     "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
     "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
     "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task.",
-    "frontend-client-injection": "react-auth/react-native-auth/vue-auth hooks and composables take an AuthClient instance as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass client.auth down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
-    "frontend-token-storage": "The access token is persisted client-side by the hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly."
+    "frontend-client-injection": "Every @fonderie/*-auth and @fonderie/*-billing hook/composable takes the matching @fonderie/client sub-client instance (client.auth or client.billing) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
+    "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",
+    "frontend-billing-shared-token": "client.auth and client.billing share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing requests too. Do not call client.billing.setAccessToken yourself or construct a separate BillingClient outside FonderieClient."
   }
 }
