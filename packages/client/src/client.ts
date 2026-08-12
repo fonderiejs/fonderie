@@ -1,4 +1,5 @@
 import { HttpClient } from './http';
+import { AuditClient } from './modules/audit';
 import { AuthClient } from './modules/auth';
 import { BillingClient } from './modules/billing';
 import { WorkspacesClient } from './modules/workspaces';
@@ -13,6 +14,7 @@ export class FonderieClient {
 	readonly auth: AuthClient;
 	readonly billing: BillingClient;
 	readonly workspaces: WorkspacesClient;
+	readonly audit: AuditClient;
 
 	private http: HttpClient;
 
@@ -22,5 +24,6 @@ export class FonderieClient {
 		this.auth = new AuthClient(this.http, tokens);
 		this.billing = new BillingClient(this.http, tokens);
 		this.workspaces = new WorkspacesClient(this.http, tokens);
+		this.audit = new AuditClient(this.http, tokens);
 	}
 }

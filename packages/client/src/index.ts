@@ -1,6 +1,8 @@
 export type { IFonderieClientOptions } from './client';
 export { FonderieClient } from './client';
 export { FonderieApiError } from './http';
+export type { IListAuditEventsInput } from './modules/audit';
+export { AuditClient } from './modules/audit';
 export type {
 	ILoginInput,
 	IRegisterInput,
@@ -37,6 +39,8 @@ export type {
 	IAcceptInvitationResult,
 	IApiError,
 	IApiResponse,
+	IAuditEventDTO,
+	IAuditPageResult,
 	ICheckoutUrlResult,
 	IConfigEntry,
 	IConfigRevision,

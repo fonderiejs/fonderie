@@ -350,3 +350,22 @@ export interface ISecretRevision {
 export interface IRevealSecretResult {
 	value: string;
 }
+
+// ── Audit ────────────────────────────────────────────────────────────────────
+// Session-authenticated (shares FonderieClient's TokenStore, scoped via
+// setWorkspaceId like billing/workspaces) — unlike courier-admin/config-admin,
+// which use a standalone admin token. Read-only: @fonderie/audit has one route.
+
+export interface IAuditEventDTO {
+	id: string;
+	type: string;
+	actorId: string | null;
+	requestId: string | null;
+	payload: Record<string, unknown>;
+	createdAt: string;
+}
+
+export interface IAuditPageResult {
+	events: IAuditEventDTO[];
+	nextCursor: string | null;
+}
