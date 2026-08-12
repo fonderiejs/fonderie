@@ -273,3 +273,31 @@ export interface IAcceptInvitationResult {
 export interface IWorkspaceSettingsResult {
 	settings: IWorkspaceSettingsDTO;
 }
+
+// ── Courier admin (template management) ─────────────────────────────────────
+// Admin-token authenticated, not user-session authenticated — see
+// CourierAdminClient. Result shapes here are the raw resource, not wrapped
+// in a named key, matching @fonderie/courier's admin route handlers.
+
+export interface ITemplateEntry {
+	type: string;
+	locale: string | null;
+	subject: string | null;
+	html: string | null;
+	text: string;
+	active: boolean;
+	version: number;
+	updatedBy: string | null;
+	updatedAt: string;
+}
+
+export interface ITemplateRevision {
+	type: string;
+	locale: string | null;
+	subject: string | null;
+	html: string | null;
+	text: string;
+	version: number;
+	actor: string | null;
+	createdAt: string;
+}
