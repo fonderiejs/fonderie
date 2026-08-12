@@ -67,7 +67,7 @@
       "package": "rate-limit"
     },
     "customers.crm": {
-      "description": "customer records / CRM tied to billing",
+      "description": "customer records / CRM tied to billing — session-authenticated like billing/workspaces/audit/webhooks (not the admin-token model courier-admin/config-admin use). Widest surface in the SDK: core customer CRUD + blacklist, plus emails/phones/addresses/notes/tags/relationships/labels sub-resources (35 routes). Only the label is editable on an existing email/phone/address, not the value — remove and re-add to change it. For a frontend customer manager, see react-customers.hooks / vue-customers.composables.",
       "package": "customers"
     },
     "core.app": {
@@ -267,6 +267,36 @@
       "description": "pre-built Vue screens (WebhooksListScreen, WebhookDetailScreen) built on vue-webhooks' composables via Vue's h() render API, emitting select-endpoint / navigate-list",
       "package": "vue-webhooks-screens",
       "recipe": "vue-webhooks-screens-wiring"
+    },
+    "react-customers.hooks": {
+      "description": "React hooks for customers — useCustomers (list/create/delete/blacklist), useCustomer (get/update), plus one combined hook per sub-resource: useCustomerEmails, useCustomerPhones, useCustomerAddresses, useCustomerNotes, useCustomerTags, useCustomerRelationships, useCustomerLabels. Session-authenticated like billing/workspaces/audit/webhooks, wraps @fonderie/client's CustomersClient. Only the label is editable on an existing email/phone/address, not the value.",
+      "package": "react-customers",
+      "recipe": "react-customers-wiring"
+    },
+    "react-customers-screens.screens": {
+      "description": "pre-built React screens (CustomersListScreen: search + create + blacklist badge; CustomerDetailScreen: profile edit + inline emails/phones/tags/notes) built on react-customers' hooks — relationships and label vocabulary aren't covered, use the hooks directly for those",
+      "package": "react-customers-screens",
+      "recipe": "react-customers-screens-wiring"
+    },
+    "react-native-customers.hooks": {
+      "description": "React Native customer hooks — re-exports react-customers wholesale (no platform-specific storage, unlike auth)",
+      "package": "react-native-customers",
+      "recipe": "react-native-customers-wiring"
+    },
+    "react-native-customers-screens.screens": {
+      "description": "pre-built React Native screens (CustomersListScreen, CustomerDetailScreen) built on react-native-customers' hooks, using FlatList/TextInput/TouchableOpacity",
+      "package": "react-native-customers-screens",
+      "recipe": "react-native-customers-screens-wiring"
+    },
+    "vue-customers.composables": {
+      "description": "Vue composables for customers — useCustomers, useCustomer, plus one combined composable per sub-resource: useCustomerEmails, useCustomerPhones, useCustomerAddresses, useCustomerNotes, useCustomerTags, useCustomerRelationships, useCustomerLabels. Session-authenticated like billing/workspaces/audit/webhooks, wraps @fonderie/client's CustomersClient.",
+      "package": "vue-customers",
+      "recipe": "vue-customers-wiring"
+    },
+    "vue-customers-screens.screens": {
+      "description": "pre-built Vue screens (CustomersListScreen, CustomerDetailScreen) built on vue-customers' composables via Vue's h() render API, emitting select-customer / navigate-list",
+      "package": "vue-customers-screens",
+      "recipe": "vue-customers-screens-wiring"
     }
   },
   "recipes": {
@@ -835,6 +865,81 @@
         "frontend-shared-token",
         "frontend-workspace-scoping"
       ]
+    },
+    "react-customers-wiring": {
+      "when": "managing customers/CRM records in a React web app",
+      "packages": [
+        "client",
+        "react-customers"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-customers-screens-wiring": {
+      "when": "managing customers/CRM records in a React web app with pre-built UI, not just the hooks",
+      "packages": [
+        "client",
+        "react-customers",
+        "react-customers-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-native-customers-wiring": {
+      "when": "managing customers/CRM records in a React Native app",
+      "packages": [
+        "client",
+        "react-native-customers"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-native-customers-screens-wiring": {
+      "when": "managing customers/CRM records in a React Native app with pre-built UI, not just the hooks",
+      "packages": [
+        "client",
+        "react-native-customers",
+        "react-native-customers-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "vue-customers-wiring": {
+      "when": "managing customers/CRM records in a Vue 3 app",
+      "packages": [
+        "client",
+        "vue-customers"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "vue-customers-screens-wiring": {
+      "when": "managing customers/CRM records in a Vue 3 app with pre-built UI, not just the composables",
+      "packages": [
+        "client",
+        "vue-customers",
+        "vue-customers-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
     }
   },
   "invariants": {
@@ -844,10 +949,10 @@
     "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
     "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
     "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task.",
-    "frontend-client-injection": "Every @fonderie/*-auth, @fonderie/*-billing, @fonderie/*-workspaces, @fonderie/*-audit, and @fonderie/*-webhooks hook/composable takes the matching @fonderie/client sub-client instance (client.auth, client.billing, client.workspaces, client.audit, or client.webhooks) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
+    "frontend-client-injection": "Every @fonderie/*-auth, @fonderie/*-billing, @fonderie/*-workspaces, @fonderie/*-audit, @fonderie/*-webhooks, and @fonderie/*-customers hook/composable takes the matching @fonderie/client sub-client instance (client.auth, client.billing, client.workspaces, client.audit, client.webhooks, or client.customers) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
     "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",
-    "frontend-shared-token": "client.auth, client.billing, client.workspaces, client.audit, and client.webhooks share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing/client.workspaces/client.audit/client.webhooks requests too. Do not call setAccessToken on those sub-clients yourself or construct one outside FonderieClient.",
-    "frontend-workspace-scoping": "@fonderie/*-workspaces, @fonderie/*-billing, @fonderie/*-audit, and @fonderie/*-webhooks requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) / client.audit.setWorkspaceId(id) / client.webhooks.setWorkspaceId(id) — all four fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback pattern in @fonderie/workspaces' withWorkspace, @fonderie/billing's resolveSubscriber, @fonderie/audit's route handler, and @fonderie/webhooks' route handler). Do not thread a workspace id through individual hook calls.",
+    "frontend-shared-token": "client.auth, client.billing, client.workspaces, client.audit, client.webhooks, and client.customers share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing/client.workspaces/client.audit/client.webhooks/client.customers requests too. Do not call setAccessToken on those sub-clients yourself or construct one outside FonderieClient.",
+    "frontend-workspace-scoping": "@fonderie/*-workspaces, @fonderie/*-billing, @fonderie/*-audit, @fonderie/*-webhooks, and @fonderie/*-customers requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) / client.audit.setWorkspaceId(id) / client.webhooks.setWorkspaceId(id) / client.customers.setWorkspaceId(id) — all five fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback pattern in @fonderie/workspaces' withWorkspace, @fonderie/billing's resolveSubscriber, @fonderie/audit's route handler, @fonderie/webhooks' route handler, and @fonderie/customers' route handler). Do not thread a workspace id through individual hook calls.",
     "frontend-admin-token": "@fonderie/*-courier-admin and @fonderie/*-config-admin hooks/composables take a CourierAdminClient or ConfigAdminClient, each constructed standalone with { baseUrl, adminToken } — NOT a sub-client of FonderieClient, and NOT covered by frontend-client-injection/frontend-shared-token. Each authenticates with its own server-configured static admin bearer token (CourierModule's / ConfigModule's adminToken config), not the signed-in user's session, and the two do not share a token with each other either. Never expose an admin token to a general end-user build; these clients are for an internal/admin-only app."
   }
 }

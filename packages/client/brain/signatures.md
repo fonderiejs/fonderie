@@ -16,6 +16,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .workspaces: WorkspacesClient
   .audit: AuditClient
   .webhooks: WebhooksClient
+  .customers: CustomersClient
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
   .reason: string
@@ -166,6 +167,105 @@ new CourierAdminClient(opts: ICourierAdminClientOptions): CourierAdminClient
   .listRevisions(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateRevision[]>>
   .rollback(type: string, input: IRollbackTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
 
+interface IAddAddressInput {
+    countryIso: string;
+    zipPostalCode: string;
+    subdivision1Iso?: string | null;
+    subdivision2Iso?: string | null;
+    unit?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    label?: string;
+    isPrimary?: boolean;
+}
+
+interface IAddEmailInput {
+    email: string;
+    label?: string;
+    isPrimary?: boolean;
+}
+
+interface IAddPhoneInput {
+    phone: string;
+    label?: string;
+    isPrimary?: boolean;
+}
+
+interface IAddRelationshipInput {
+    relatedId: string;
+    relationship?: string;
+    isPrimary?: boolean;
+}
+
+interface IBlacklistCustomerInput {
+    reason?: string;
+}
+
+interface ICreateCustomerInput {
+    type?: CustomerType;
+    sex?: CustomerSex;
+    firstName?: string | null;
+    lastName?: string | null;
+    companyName?: string | null;
+    avatarUrl?: string | null;
+    locale?: string | null;
+    referenceCode?: string | null;
+    referralCode?: string | null;
+    referredByCode?: string | null;
+}
+
+interface IGetCustomerInput {
+    depth?: 1 | 2;
+}
+
+interface IListCustomersInput {
+    search?: string;
+    blacklisted?: boolean;
+    limit?: number;
+    offset?: number;
+}
+
+type IUpdateCustomerInput = ICreateCustomerInput;
+
+new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
+  .setAccessToken(token: string | undefined): void
+  .setWorkspaceId(workspaceId: string | undefined): void
+  .listCustomers(input?: IListCustomersInput): Promise<IApiResponse<ICustomerListResult>>
+  .createCustomer(input?: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
+  .getCustomer(customerId: string, input?: IGetCustomerInput): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
+  .updateCustomer(customerId: string, input: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
+  .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
+  .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput): Promise<IApiResponse<undefined>>
+  .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
+  .listEmails(customerId: string): Promise<IApiResponse<ICustomerEmailListResult>>
+  .addEmail(customerId: string, input: IAddEmailInput): Promise<IApiResponse<ICustomerEmailResult>>
+  .updateEmailLabel(customerId: string, emailId: string, label: string): Promise<IApiResponse<ICustomerEmailResult>>
+  .setPrimaryEmail(customerId: string, emailId: string): Promise<IApiResponse<undefined>>
+  .removeEmail(customerId: string, emailId: string): Promise<IApiResponse<undefined>>
+  .listPhones(customerId: string): Promise<IApiResponse<ICustomerPhoneListResult>>
+  .addPhone(customerId: string, input: IAddPhoneInput): Promise<IApiResponse<ICustomerPhoneResult>>
+  .updatePhoneLabel(customerId: string, phoneId: string, label: string): Promise<IApiResponse<ICustomerPhoneResult>>
+  .setPrimaryPhone(customerId: string, phoneId: string): Promise<IApiResponse<undefined>>
+  .removePhone(customerId: string, phoneId: string): Promise<IApiResponse<undefined>>
+  .listAddresses(customerId: string): Promise<IApiResponse<ICustomerAddressListResult>>
+  .addAddress(customerId: string, input: IAddAddressInput): Promise<IApiResponse<ICustomerAddressResult>>
+  .updateAddressLabel(customerId: string, addrId: string, label: string): Promise<IApiResponse<ICustomerAddressResult>>
+  .setPrimaryAddress(customerId: string, addrId: string): Promise<IApiResponse<undefined>>
+  .removeAddress(customerId: string, addrId: string): Promise<IApiResponse<undefined>>
+  .listNotes(customerId: string): Promise<IApiResponse<ICustomerNoteListResult>>
+  .createNote(customerId: string, body: string): Promise<IApiResponse<ICustomerNoteResult>>
+  .updateNote(customerId: string, noteId: string, body: string): Promise<IApiResponse<ICustomerNoteResult>>
+  .deleteNote(customerId: string, noteId: string): Promise<IApiResponse<undefined>>
+  .listTags(customerId: string): Promise<IApiResponse<ICustomerTagListResult>>
+  .addTag(customerId: string, tag: string): Promise<IApiResponse<undefined>>
+  .removeTag(customerId: string, tag: string): Promise<IApiResponse<undefined>>
+  .listRelationships(customerId: string): Promise<IApiResponse<ICustomerRelationshipListResult>>
+  .addRelationship(customerId: string, input: IAddRelationshipInput): Promise<IApiResponse<ICustomerRelationshipResult>>
+  .setPrimaryRelationship(customerId: string, relatedId: string): Promise<IApiResponse<undefined>>
+  .removeRelationship(customerId: string, relatedId: string): Promise<IApiResponse<undefined>>
+  .listLabels(type: CustomerLabelType): Promise<IApiResponse<ICustomerLabelListResult>>
+  .removeLabel(labelId: string): Promise<IApiResponse<undefined>>
+
 interface ICreateWebhookEndpointInput {
     url: string;
     events?: string[];
@@ -267,8 +367,24 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getSettings(): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
+type CustomerLabelType = 'phone' | 'email' | 'address';
+
+type CustomerSex = 'UNKNOWN' | 'MALE' | 'FEMALE';
+
+type CustomerType = 'individual' | 'business';
+
 interface IAcceptInvitationResult {
     workspaceId: string;
+}
+
+interface IAddressDTO {
+    countryIso: string;
+    subdivision1Iso: string;
+    subdivision2Iso: string;
+    zipPostalCode: string;
+    unit: string;
+    line1: string;
+    line2: string;
 }
 
 interface IApiError {
@@ -319,6 +435,161 @@ interface IConfigRevision {
     version: number;
     actor: string | null;
     createdAt: string;
+}
+
+interface ICustomerAddressDTO {
+    id: string;
+    label: string;
+    isPrimary: boolean;
+    address: IAddressDTO;
+}
+
+interface ICustomerAddressListResult {
+    addresses: ICustomerAddressDTO[];
+}
+
+interface ICustomerAddressResult {
+    address: ICustomerAddressDTO;
+}
+
+interface ICustomerDetailD2DTO extends Omit<ICustomerDetailDTO, 'relationships'> {
+    relationships: ICustomerRelationshipExpandedD2DTO[];
+}
+
+interface ICustomerDetailDTO extends ICustomerDTO {
+    emails: ICustomerEmailDTO[];
+    phones: ICustomerPhoneDTO[];
+    addresses: ICustomerAddressDTO[];
+    notes: ICustomerNoteDTO[];
+    relationships: ICustomerRelationshipExpandedDTO[];
+    tags: string[];
+}
+
+interface ICustomerDTO {
+    id: string;
+    type: string;
+    sex: CustomerSex;
+    firstName: string;
+    lastName: string;
+    companyName: string;
+    avatarUrl: string;
+    locale: string;
+    referenceCode: string;
+    referralCode: string;
+    referredBy: string | null;
+    blacklisted: {
+        status: boolean;
+        reason: string | null;
+    };
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface ICustomerEmailDTO {
+    id: string;
+    email: string;
+    label: string;
+    isPrimary: boolean;
+    createdAt: string;
+}
+
+interface ICustomerEmailListResult {
+    emails: ICustomerEmailDTO[];
+}
+
+interface ICustomerEmailResult {
+    email: ICustomerEmailDTO;
+}
+
+interface ICustomerLabelDTO {
+    id: string;
+    type: CustomerLabelType;
+    value: string;
+    createdAt: string;
+}
+
+interface ICustomerLabelListResult {
+    labels: ICustomerLabelDTO[];
+}
+
+interface ICustomerListResult {
+    customers: ICustomerDTO[];
+}
+
+interface ICustomerNoteDTO {
+    id: string;
+    authorId: string;
+    body: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface ICustomerNoteListResult {
+    notes: ICustomerNoteDTO[];
+}
+
+interface ICustomerNoteResult {
+    note: ICustomerNoteDTO;
+}
+
+interface ICustomerPhoneDTO {
+    id: string;
+    phone: string;
+    label: string;
+    isPrimary: boolean;
+    createdAt: string;
+}
+
+interface ICustomerPhoneListResult {
+    phones: ICustomerPhoneDTO[];
+}
+
+interface ICustomerPhoneResult {
+    phone: ICustomerPhoneDTO;
+}
+
+interface ICustomerRelationshipDTO {
+    id: string;
+    relatedId: string;
+    relationship: string;
+    isPrimary: boolean;
+    createdAt: string;
+}
+
+type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {
+    relationships: ICustomerRelationshipExpandedDTO[];
+};
+
+type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+    id: string;
+    customerId: string;
+    relationship: string;
+    isPrimary: boolean;
+};
+
+interface ICustomerRelationshipListResult {
+    relationships: ICustomerRelationshipDTO[];
+}
+
+interface ICustomerRelationshipResult {
+    relationship: ICustomerRelationshipDTO;
+}
+
+interface ICustomerResult {
+    customer: ICustomerDTO;
+}
+
+interface ICustomerShallowDTO extends ICustomerDTO {
+    emails: ICustomerEmailDTO[];
+    phones: ICustomerPhoneDTO[];
+    addresses: ICustomerAddressDTO[];
+    notes: ICustomerNoteDTO[];
+    tags: string[];
+}
+
+interface ICustomerTagListResult {
+    tags: string[];
 }
 
 interface IInvitationDTO {
