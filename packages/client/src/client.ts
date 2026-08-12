@@ -1,6 +1,7 @@
 import { HttpClient } from './http';
 import { AuthClient } from './modules/auth';
 import { BillingClient } from './modules/billing';
+import { WorkspacesClient } from './modules/workspaces';
 import { TokenStore } from './token-store';
 
 export interface IFonderieClientOptions {
@@ -11,6 +12,7 @@ export interface IFonderieClientOptions {
 export class FonderieClient {
 	readonly auth: AuthClient;
 	readonly billing: BillingClient;
+	readonly workspaces: WorkspacesClient;
 
 	private http: HttpClient;
 
@@ -19,5 +21,6 @@ export class FonderieClient {
 		const tokens = new TokenStore(opts.accessToken);
 		this.auth = new AuthClient(this.http, tokens);
 		this.billing = new BillingClient(this.http, tokens);
+		this.workspaces = new WorkspacesClient(this.http, tokens);
 	}
 }
