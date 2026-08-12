@@ -1,6 +1,6 @@
 ---
 name: fonderie
-description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth, billing, and workspaces for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks, team/member/invite hooks or composables, and pre-built screens for all three — plus admin-token-authenticated dashboards (React and Vue) for courier's email/SMS/push templates and for config's feature flags/remote config/secrets. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, add a team/members page, add an admin panel for email templates or feature flags/secrets, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions/workspaces/courier/config code, a hand-rolled login form, pricing table, team switcher, template editor, or config/secrets dashboard, from scratch.
+description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth, billing, workspaces, and audit-log viewing for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks, team/member/invite hooks, audit-log hooks with cursor pagination, and pre-built screens for all four — plus admin-token-authenticated dashboards (React and Vue) for courier's email/SMS/push templates and for config's feature flags/remote config/secrets. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, add a team/members page, add an audit/activity log page, add an admin panel for email templates or feature flags/secrets, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions/workspaces/audit/courier/config code, a hand-rolled login form, pricing table, team switcher, audit log viewer, template editor, or config/secrets dashboard, from scratch.
 ---
 
 # Fonderie
@@ -127,6 +127,19 @@ header, same fallback behavior billing's `setWorkspaceId` uses.
 | React Native pre-built workspaces screens | `@fonderie/react-native-workspaces-screens` | Same two screens, React Native components |
 | Vue 3 workspaces composables | `@fonderie/vue-workspaces` | Same shape as the React hooks, as Vue composables |
 | Vue 3 pre-built workspaces screens | `@fonderie/vue-workspaces-screens` | Same two screens, as Vue components |
+
+Audit follows the same session-authenticated pattern (`client.audit`,
+shared token, `setWorkspaceId`) — but it's read-only: `@fonderie/audit` has
+one route, so there's one hook per framework, not seven.
+
+| Need | Don't write it — use | Gives you |
+|---|---|---|
+| React audit-log hook | `@fonderie/react-audit` | `useAuditEvents` — cursor-paginated, filterable by type/actorId/date range, `loadMore` |
+| React pre-built audit-log screen | `@fonderie/react-audit-screens` | `AuditLogScreen` (filters + expandable JSON payload + load-more) built on the hook above |
+| React Native audit-log hook | `@fonderie/react-native-audit` | Re-exports `react-audit` as-is — no platform-specific storage, unlike auth |
+| React Native pre-built audit-log screen | `@fonderie/react-native-audit-screens` | Same screen, React Native components |
+| Vue 3 audit-log composable | `@fonderie/vue-audit` | Same shape as the React hook, as a Vue composable |
+| Vue 3 pre-built audit-log screen | `@fonderie/vue-audit-screens` | Same screen, as Vue components |
 
 Courier's frontend surface is different in kind: `@fonderie/courier` has no
 user-facing HTTP API (messages are sent server-side via the event bus), only
