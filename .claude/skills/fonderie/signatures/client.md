@@ -89,6 +89,31 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string): Promise<IApiResponse<IUsageResult>>
 
+interface ICourierAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+}
+
+interface IRollbackTemplateInput {
+    toVersion: number;
+}
+
+interface ISetTemplateInput {
+    text: string;
+    subject?: string;
+    html?: string;
+    active?: boolean;
+    ifVersion?: number;
+}
+
+new CourierAdminClient(opts: ICourierAdminClientOptions): CourierAdminClient
+  .listTemplates(): Promise<IApiResponse<ITemplateEntry[]>>
+  .getTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
+  .setTemplate(type: string, input: ISetTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
+  .deleteTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<undefined>>
+  .listRevisions(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateRevision[]>>
+  .rollback(type: string, input: IRollbackTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
+
 interface ICreateRoleInput {
     name: string;
     description?: string;
@@ -330,6 +355,29 @@ interface ISubscriptionDTO {
 
 interface ISubscriptionResult {
     subscription: ISubscriptionDTO;
+}
+
+interface ITemplateEntry {
+    type: string;
+    locale: string | null;
+    subject: string | null;
+    html: string | null;
+    text: string;
+    active: boolean;
+    version: number;
+    updatedBy: string | null;
+    updatedAt: string;
+}
+
+interface ITemplateRevision {
+    type: string;
+    locale: string | null;
+    subject: string | null;
+    html: string | null;
+    text: string;
+    version: number;
+    actor: string | null;
+    createdAt: string;
 }
 
 interface ITokens {

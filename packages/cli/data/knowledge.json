@@ -41,7 +41,7 @@
       "recipe": "rbac"
     },
     "courier.messaging": {
-      "description": "SEND any transactional message — email, SMS, push; use this for password-reset, email-verification, welcome, and invite emails (auth.* is who can log in, courier is what delivers the message)",
+      "description": "SEND any transactional message — email, SMS, push; use this for password-reset, email-verification, welcome, and invite emails (auth.* is who can log in, courier is what delivers the message). No end-user-facing HTTP API — messages are sent server-side via the event bus, not called from a frontend. For an admin template-editor UI, see react-courier-admin.templates / vue-courier-admin.templates.",
       "package": "courier",
       "recipe": "transactional-email"
     },
@@ -167,6 +167,26 @@
       "description": "pre-built Vue workspaces screens (TeamMembersScreen, InviteMembersScreen) built on vue-workspaces composables via Vue's h() render API",
       "package": "vue-workspaces-screens",
       "recipe": "vue-workspaces-screens-wiring"
+    },
+    "react-courier-admin.templates": {
+      "description": "React hooks for courier's email/SMS/push template admin API — useTemplates, useTemplate, useSaveTemplate, useDeleteTemplate, useTemplateRevisions (list + rollback). Admin-token authenticated via a standalone CourierAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "package": "react-courier-admin",
+      "recipe": "react-courier-admin-wiring"
+    },
+    "react-courier-admin.screens": {
+      "description": "pre-built React screens (TemplateListScreen, TemplateEditorScreen with revision history + rollback) built on react-courier-admin hooks — an admin-dashboard surface, bring your own styling",
+      "package": "react-courier-admin-screens",
+      "recipe": "react-courier-admin-screens-wiring"
+    },
+    "vue-courier-admin.composables": {
+      "description": "Vue composables for courier's email/SMS/push template admin API — useTemplates, useTemplate, useSaveTemplate, useDeleteTemplate, useTemplateRevisions (list + rollback). Admin-token authenticated via a standalone CourierAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "package": "vue-courier-admin",
+      "recipe": "vue-courier-admin-wiring"
+    },
+    "vue-courier-admin.screens": {
+      "description": "pre-built Vue screens (TemplateListScreen, TemplateEditorScreen with revision history + rollback) built on vue-courier-admin composables via Vue's h() render API — an admin-dashboard surface",
+      "package": "vue-courier-admin-screens",
+      "recipe": "vue-courier-admin-screens-wiring"
     }
   },
   "recipes": {
@@ -501,6 +521,48 @@
         "frontend-shared-token",
         "frontend-workspace-scoping"
       ]
+    },
+    "react-courier-admin-wiring": {
+      "when": "building an admin dashboard to edit courier's email/SMS/push templates in React",
+      "packages": [
+        "client",
+        "react-courier-admin"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "react-courier-admin-screens-wiring": {
+      "when": "building an admin dashboard for courier templates in React with pre-built UI, not just hooks",
+      "packages": [
+        "client",
+        "react-courier-admin",
+        "react-courier-admin-screens"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "vue-courier-admin-wiring": {
+      "when": "building an admin dashboard to edit courier's email/SMS/push templates in Vue 3",
+      "packages": [
+        "client",
+        "vue-courier-admin"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "vue-courier-admin-screens-wiring": {
+      "when": "building an admin dashboard for courier templates in Vue 3 with pre-built UI, not just composables",
+      "packages": [
+        "client",
+        "vue-courier-admin",
+        "vue-courier-admin-screens"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
     }
   },
   "invariants": {
@@ -513,6 +575,7 @@
     "frontend-client-injection": "Every @fonderie/*-auth, @fonderie/*-billing, and @fonderie/*-workspaces hook/composable takes the matching @fonderie/client sub-client instance (client.auth, client.billing, or client.workspaces) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
     "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",
     "frontend-shared-token": "client.auth, client.billing, and client.workspaces share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing and client.workspaces requests too. Do not call setAccessToken on billing/workspaces sub-clients yourself or construct one outside FonderieClient.",
-    "frontend-workspace-scoping": "@fonderie/*-workspaces and @fonderie/*-billing requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) — both fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback in @fonderie/workspaces' withWorkspace and @fonderie/billing's resolveSubscriber). Do not thread a workspace id through individual hook calls."
+    "frontend-workspace-scoping": "@fonderie/*-workspaces and @fonderie/*-billing requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) — both fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback in @fonderie/workspaces' withWorkspace and @fonderie/billing's resolveSubscriber). Do not thread a workspace id through individual hook calls.",
+    "frontend-admin-token": "@fonderie/*-courier-admin hooks/composables take a CourierAdminClient, constructed standalone with { baseUrl, adminToken } — NOT a sub-client of FonderieClient, and NOT covered by frontend-client-injection/frontend-shared-token. It authenticates with the server's static admin bearer token (CourierModule's adminToken config, the same model @fonderie/config's admin surface uses), not the signed-in user's session. Never expose the admin token to a general end-user build; this client is for an internal/admin-only app."
   }
 }
