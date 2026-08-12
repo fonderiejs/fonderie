@@ -1,6 +1,6 @@
 ---
 name: fonderie
-description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth, billing, and workspaces for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks, team/member/invite hooks or composables, and pre-built screens for all three — plus an admin-token-authenticated email/SMS/push template editor (React and Vue) for courier. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, add a team/members page, add an admin panel for email templates, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions/workspaces/courier code, a hand-rolled login form, pricing table, team switcher, or template editor, from scratch.
+description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth, billing, and workspaces for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks, team/member/invite hooks or composables, and pre-built screens for all three — plus admin-token-authenticated dashboards (React and Vue) for courier's email/SMS/push templates and for config's feature flags/remote config/secrets. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, add a team/members page, add an admin panel for email templates or feature flags/secrets, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions/workspaces/courier/config code, a hand-rolled login form, pricing table, team switcher, template editor, or config/secrets dashboard, from scratch.
 ---
 
 # Fonderie
@@ -143,6 +143,20 @@ admin-dashboard surface, not a phone screen.
 | React pre-built template-admin screens | `@fonderie/react-courier-admin-screens` | `TemplateListScreen`, `TemplateEditorScreen` (edit form + revision history + rollback) |
 | Vue 3 courier template-admin composables | `@fonderie/vue-courier-admin` | Same shape as the React hooks, as Vue composables |
 | Vue 3 pre-built template-admin screens | `@fonderie/vue-courier-admin-screens` | Same two screens, as Vue components |
+
+Config's admin surface follows the same pattern as courier's — a standalone
+`ConfigAdminClient` with its own `{ baseUrl, adminToken }`, not a
+`FonderieClient` sub-client. It covers both of config's admin resources:
+feature-flag/remote-config entries and secrets (masked by default; a
+`reveal` action returns plaintext on demand). No React Native package, same
+reasoning as courier-admin.
+
+| Need | Don't write it — use | Gives you |
+|---|---|---|
+| React config/secrets admin hooks | `@fonderie/react-config-admin` | `useConfigEntries`, `useConfigEntry`, `useSaveConfigEntry`, `useDeleteConfigEntry`, `useConfigRevisions`, plus the secret equivalents and `useRevealSecret` |
+| React pre-built config/secrets admin screens | `@fonderie/react-config-admin-screens` | `ConfigListScreen` (config + masked secrets dashboard), `ConfigEditorScreen` (JSON/secret editor + revision history + rollback) |
+| Vue 3 config/secrets admin composables | `@fonderie/vue-config-admin` | Same shape as the React hooks, as Vue composables |
+| Vue 3 pre-built config/secrets admin screens | `@fonderie/vue-config-admin-screens` | Same two screens, as Vue components |
 
 ## Architecture rules that matter when wiring modules together
 

@@ -89,6 +89,42 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string): Promise<IApiResponse<IUsageResult>>
 
+interface IConfigAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+}
+
+interface IRollbackInput {
+    toVersion: number;
+}
+
+interface ISetConfigInput {
+    value: unknown;
+    description?: string;
+    ifVersion?: number;
+}
+
+interface ISetSecretInput {
+    value: string;
+    description?: string;
+    ifVersion?: number;
+}
+
+new ConfigAdminClient(opts: IConfigAdminClientOptions): ConfigAdminClient
+  .listConfig(environment?: string | undefined): Promise<IApiResponse<IConfigEntry[]>>
+  .getConfig(key: string, environment?: string | undefined): Promise<IApiResponse<IConfigEntry>>
+  .setConfig(key: string, input: ISetConfigInput, environment?: string | undefined): Promise<IApiResponse<IConfigEntry>>
+  .deleteConfig(key: string, environment?: string | undefined): Promise<IApiResponse<undefined>>
+  .listConfigRevisions(key: string, environment?: string | undefined): Promise<IApiResponse<IConfigRevision[]>>
+  .rollbackConfig(key: string, input: IRollbackInput, environment?: string | undefined): Promise<IApiResponse<IConfigEntry>>
+  .listSecrets(environment?: string | undefined): Promise<IApiResponse<ISecretEntry[]>>
+  .getSecret(key: string, environment?: string | undefined): Promise<IApiResponse<ISecretEntry>>
+  .setSecret(key: string, input: ISetSecretInput, environment?: string | undefined): Promise<IApiResponse<ISecretEntry>>
+  .deleteSecret(key: string, environment?: string | undefined): Promise<IApiResponse<undefined>>
+  .listSecretRevisions(key: string, environment?: string | undefined): Promise<IApiResponse<ISecretRevision[]>>
+  .rollbackSecret(key: string, input: IRollbackInput, environment?: string | undefined): Promise<IApiResponse<ISecretEntry>>
+  .revealSecret(key: string, environment?: string | undefined): Promise<IApiResponse<IRevealSecretResult>>
+
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
@@ -213,6 +249,26 @@ interface ICheckoutUrlResult {
     url: string;
 }
 
+interface IConfigEntry {
+    key: string;
+    value: unknown;
+    environment: string;
+    description: string | null;
+    active: boolean;
+    version: number;
+    updatedBy: string | null;
+    updatedAt: string;
+}
+
+interface IConfigRevision {
+    key: string;
+    environment: string;
+    value: unknown;
+    version: number;
+    actor: string | null;
+    createdAt: string;
+}
+
 interface IInvitationDTO {
     id: string;
     workspaceId: string;
@@ -322,6 +378,10 @@ interface IResendVerificationResult {
     };
 }
 
+interface IRevealSecretResult {
+    value: string;
+}
+
 interface IRoleDTO {
     id: string;
     name: string;
@@ -337,6 +397,24 @@ interface IRoleListResult {
 
 interface IRoleResult {
     role: IRoleDTO;
+}
+
+interface ISecretEntry {
+    key: string;
+    environment: string;
+    description: string | null;
+    active: boolean;
+    version: number;
+    updatedBy: string | null;
+    updatedAt: string;
+}
+
+interface ISecretRevision {
+    key: string;
+    environment: string;
+    version: number;
+    actor: string | null;
+    createdAt: string;
 }
 
 interface ISubscriptionDTO {

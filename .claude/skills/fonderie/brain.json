@@ -20,6 +20,8 @@
     "react-auth-screens": "0.1.0",
     "react-billing": "0.1.0",
     "react-billing-screens": "0.1.0",
+    "react-config-admin": "0.1.0",
+    "react-config-admin-screens": "0.1.0",
     "react-courier-admin": "0.1.0",
     "react-courier-admin-screens": "0.1.0",
     "react-native-auth": "0.1.0",
@@ -35,6 +37,8 @@
     "vue-auth-screens": "0.1.0",
     "vue-billing": "0.1.0",
     "vue-billing-screens": "0.1.0",
+    "vue-config-admin": "0.1.0",
+    "vue-config-admin-screens": "0.1.0",
     "vue-courier-admin": "0.1.0",
     "vue-courier-admin-screens": "0.1.0",
     "vue-workspaces": "0.1.0",
@@ -365,6 +369,7 @@
         "FonderieApiError",
         "AuthClient",
         "BillingClient",
+        "ConfigAdminClient",
         "CourierAdminClient",
         "WorkspacesClient"
       ],
@@ -926,6 +931,47 @@
       "hasSignature": true,
       "hasOutcomes": false
     },
+    "react-config-admin": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "ConfigAdminClient",
+        "FonderieApiError",
+        "useConfigEntries",
+        "useConfigEntry",
+        "useConfigRevisions",
+        "useDeleteConfigEntry",
+        "useDeleteSecret",
+        "useRevealSecret",
+        "useSaveConfigEntry",
+        "useSaveSecret",
+        "useSecret",
+        "useSecretRevisions",
+        "useSecrets"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-config-admin-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "ConfigEditorScreen",
+        "ConfigListScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
     "react-courier-admin": {
       "version": "0.1.0",
       "requires": [],
@@ -1177,6 +1223,47 @@
       "exports": [
         "PricingScreen",
         "SubscriptionScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-config-admin": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "ConfigAdminClient",
+        "FonderieApiError",
+        "useConfigEntries",
+        "useConfigEntry",
+        "useConfigRevisions",
+        "useDeleteConfigEntry",
+        "useDeleteSecret",
+        "useRevealSecret",
+        "useSaveConfigEntry",
+        "useSaveSecret",
+        "useSecret",
+        "useSecretRevisions",
+        "useSecrets"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-config-admin-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "ConfigEditorScreen",
+        "ConfigListScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1762,6 +1849,12 @@
     "react-billing-screens": [
       "react-billing-screens"
     ],
+    "react-config-admin": [
+      "react-config-admin"
+    ],
+    "react-config-admin-screens": [
+      "react-config-admin-screens"
+    ],
     "react-courier-admin": [
       "react-courier-admin"
     ],
@@ -1806,6 +1899,12 @@
     ],
     "vue-billing-screens": [
       "vue-billing-screens"
+    ],
+    "vue-config-admin": [
+      "vue-config-admin"
+    ],
+    "vue-config-admin-screens": [
+      "vue-config-admin-screens"
     ],
     "vue-courier-admin": [
       "vue-courier-admin"
@@ -2632,6 +2731,68 @@
     "prebuilt vue template admin ui": [
       "vue-courier-admin-screens"
     ],
+    "react feature flag editor": [
+      "react-config-admin"
+    ],
+    "react remote config": [
+      "react-config-admin"
+    ],
+    "react secrets manager": [
+      "react-config-admin"
+    ],
+    "useconfigentries": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "use config entries": [
+      "react-config-admin"
+    ],
+    "usesecrets": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "use secrets": [
+      "react-config-admin"
+    ],
+    "reveal secret react": [
+      "react-config-admin"
+    ],
+    "react admin config": [
+      "react-config-admin"
+    ],
+    "react config dashboard": [
+      "react-config-admin-screens"
+    ],
+    "react secrets dashboard": [
+      "react-config-admin-screens"
+    ],
+    "prebuilt react config admin ui": [
+      "react-config-admin-screens"
+    ],
+    "vue feature flag editor": [
+      "vue-config-admin"
+    ],
+    "vue remote config": [
+      "vue-config-admin"
+    ],
+    "vue secrets manager": [
+      "vue-config-admin"
+    ],
+    "reveal secret vue": [
+      "vue-config-admin"
+    ],
+    "vue admin config": [
+      "vue-config-admin"
+    ],
+    "vue config dashboard": [
+      "vue-config-admin-screens"
+    ],
+    "vue secrets dashboard": [
+      "vue-config-admin-screens"
+    ],
+    "prebuilt vue config admin ui": [
+      "vue-config-admin-screens"
+    ],
     "operations": [
       "adapter-express",
       "adapter-hono",
@@ -2672,11 +2833,13 @@
       "client",
       "react-auth",
       "react-billing",
+      "react-config-admin",
       "react-courier-admin",
       "react-native-auth",
       "react-workspaces",
       "vue-auth",
       "vue-billing",
+      "vue-config-admin",
       "vue-courier-admin",
       "vue-workspaces"
     ],
@@ -2685,6 +2848,11 @@
     ],
     "billingclient": [
       "client"
+    ],
+    "configadminclient": [
+      "client",
+      "react-config-admin",
+      "vue-config-admin"
     ],
     "courieradminclient": [
       "client",
@@ -2868,6 +3036,50 @@
       "react-billing-screens",
       "react-native-billing-screens",
       "vue-billing-screens"
+    ],
+    "useconfigentry": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "useconfigrevisions": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "usedeleteconfigentry": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "usedeletesecret": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "userevealsecret": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "usesaveconfigentry": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "usesavesecret": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "usesecret": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "usesecretrevisions": [
+      "react-config-admin",
+      "vue-config-admin"
+    ],
+    "configeditorscreen": [
+      "react-config-admin-screens",
+      "vue-config-admin-screens"
+    ],
+    "configlistscreen": [
+      "react-config-admin-screens",
+      "vue-config-admin-screens"
     ],
     "usedeletetemplate": [
       "react-courier-admin",
@@ -3275,6 +3487,34 @@
       "vue template list screen",
       "vue template editor screen",
       "prebuilt vue template admin ui"
+    ],
+    "react-config-admin": [
+      "react feature flag editor",
+      "react remote config",
+      "react secrets manager",
+      "useconfigentries",
+      "use config entries",
+      "usesecrets",
+      "use secrets",
+      "reveal secret react",
+      "react admin config"
+    ],
+    "react-config-admin-screens": [
+      "react config dashboard",
+      "react secrets dashboard",
+      "prebuilt react config admin ui"
+    ],
+    "vue-config-admin": [
+      "vue feature flag editor",
+      "vue remote config",
+      "vue secrets manager",
+      "reveal secret vue",
+      "vue admin config"
+    ],
+    "vue-config-admin-screens": [
+      "vue config dashboard",
+      "vue secrets dashboard",
+      "prebuilt vue config admin ui"
     ]
   },
   "concepts": {
@@ -3333,7 +3573,7 @@
       "package": "events"
     },
     "config.flags": {
-      "description": "feature flags, remote config, kill switches",
+      "description": "feature flags, remote config, kill switches. No end-user-facing HTTP API — apps read config server-side or via defineConfig(); the only HTTP surface is the admin-token-guarded /admin/config and /admin/secrets management API. For an admin dashboard UI, see react-config-admin.admin / vue-config-admin.admin.",
       "package": "config"
     },
     "audit.trail": {
@@ -3465,6 +3705,26 @@
       "description": "pre-built Vue screens (TemplateListScreen, TemplateEditorScreen with revision history + rollback) built on vue-courier-admin composables via Vue's h() render API — an admin-dashboard surface",
       "package": "vue-courier-admin-screens",
       "recipe": "vue-courier-admin-screens-wiring"
+    },
+    "react-config-admin.admin": {
+      "description": "React hooks for config's feature-flag/remote-config + secrets admin API — useConfigEntries, useConfigEntry, useSaveConfigEntry, useDeleteConfigEntry, useConfigRevisions and the secret equivalents (useSecrets, useSecret, useSaveSecret, useDeleteSecret, useSecretRevisions) plus useRevealSecret. Admin-token authenticated via a standalone ConfigAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "package": "react-config-admin",
+      "recipe": "react-config-admin-wiring"
+    },
+    "react-config-admin.screens": {
+      "description": "pre-built React screens (ConfigListScreen: config + masked secrets dashboard; ConfigEditorScreen: JSON/secret editor with revision history + rollback) built on react-config-admin hooks — an admin-dashboard surface, bring your own styling",
+      "package": "react-config-admin-screens",
+      "recipe": "react-config-admin-screens-wiring"
+    },
+    "vue-config-admin.admin": {
+      "description": "Vue composables for config's feature-flag/remote-config + secrets admin API — same set as react-config-admin.admin. Admin-token authenticated via a standalone ConfigAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "package": "vue-config-admin",
+      "recipe": "vue-config-admin-wiring"
+    },
+    "vue-config-admin.screens": {
+      "description": "pre-built Vue screens (ConfigListScreen, ConfigEditorScreen) built on vue-config-admin composables via Vue's h() render API — an admin-dashboard surface",
+      "package": "vue-config-admin-screens",
+      "recipe": "vue-config-admin-screens-wiring"
     }
   },
   "recipes": {
@@ -3841,6 +4101,48 @@
       "invariants": [
         "frontend-admin-token"
       ]
+    },
+    "react-config-admin-wiring": {
+      "when": "building an admin dashboard to manage feature flags/remote config and secrets in React",
+      "packages": [
+        "client",
+        "react-config-admin"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "react-config-admin-screens-wiring": {
+      "when": "building a config/secrets admin dashboard in React with pre-built UI, not just hooks",
+      "packages": [
+        "client",
+        "react-config-admin",
+        "react-config-admin-screens"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "vue-config-admin-wiring": {
+      "when": "building an admin dashboard to manage feature flags/remote config and secrets in Vue 3",
+      "packages": [
+        "client",
+        "vue-config-admin"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "vue-config-admin-screens-wiring": {
+      "when": "building a config/secrets admin dashboard in Vue 3 with pre-built UI, not just composables",
+      "packages": [
+        "client",
+        "vue-config-admin",
+        "vue-config-admin-screens"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
     }
   },
   "invariants": {
@@ -3854,6 +4156,6 @@
     "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",
     "frontend-shared-token": "client.auth, client.billing, and client.workspaces share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing and client.workspaces requests too. Do not call setAccessToken on billing/workspaces sub-clients yourself or construct one outside FonderieClient.",
     "frontend-workspace-scoping": "@fonderie/*-workspaces and @fonderie/*-billing requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) — both fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback in @fonderie/workspaces' withWorkspace and @fonderie/billing's resolveSubscriber). Do not thread a workspace id through individual hook calls.",
-    "frontend-admin-token": "@fonderie/*-courier-admin hooks/composables take a CourierAdminClient, constructed standalone with { baseUrl, adminToken } — NOT a sub-client of FonderieClient, and NOT covered by frontend-client-injection/frontend-shared-token. It authenticates with the server's static admin bearer token (CourierModule's adminToken config, the same model @fonderie/config's admin surface uses), not the signed-in user's session. Never expose the admin token to a general end-user build; this client is for an internal/admin-only app."
+    "frontend-admin-token": "@fonderie/*-courier-admin and @fonderie/*-config-admin hooks/composables take a CourierAdminClient or ConfigAdminClient, each constructed standalone with { baseUrl, adminToken } — NOT a sub-client of FonderieClient, and NOT covered by frontend-client-injection/frontend-shared-token. Each authenticates with its own server-configured static admin bearer token (CourierModule's / ConfigModule's adminToken config), not the signed-in user's session, and the two do not share a token with each other either. Never expose an admin token to a general end-user build; these clients are for an internal/admin-only app."
   }
 }
