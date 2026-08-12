@@ -5,6 +5,11 @@
 ## @fonderie/vue-workspaces
 
 ```ts
+interface ICreateRoleInput {
+    name: string;
+    description?: string;
+}
+
 interface ICreateWorkspaceInput {
     name: string;
     description?: string;
@@ -34,6 +39,29 @@ interface IMemberDTO {
     roleName: string;
     confirmed: boolean;
     createdAt: string;
+}
+
+interface IRoleDTO {
+    id: string;
+    name: string;
+    isSystem: boolean;
+    active: boolean;
+    description: string;
+    workspaceId: string;
+}
+
+interface IRolePermissionInput {
+    permissionKey: string;
+    canCreate?: boolean;
+    canRead?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
+}
+
+interface IUpdateRoleInput {
+    name?: string;
+    description?: string | null;
+    active?: boolean;
 }
 
 interface IUpdateSettingsInput {
@@ -103,6 +131,12 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
+  .listRoles(): Promise<IApiResponse<IRoleListResult>>
+  .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
+  .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
+  .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
+  .removeRole(roleId: string): Promise<IApiResponse<undefined>>
+  .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>
   .getMemberRoles(userId: string): Promise<IApiResponse<IRoleListResult>>
@@ -131,9 +165,17 @@ function useCreateWorkspace(client: WorkspacesClient): { createWorkspace: (input
 
 function useInvitations(client: WorkspacesClient): { invitations: Ref<{ id: string; workspaceId: string; email: string; roleId: string; token: string; status: string; expiresAt: string; createdAt: string; }[], IInvitationDTO[] | { ...; }[]>; ... 4 more ...; cancelInvitation: (inviteId: string) => Promise<...>; }
 
+function useMemberRoles(client: WorkspacesClient, userId: string): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 4 more ...; removeRole: (roleId: string) => Promise<...>; }
+
 function useMembers(client: WorkspacesClient): { members: Ref<{ userId: string; workspaceId: string; roleId: string; roleName: string; confirmed: boolean; createdAt: string; }[], IMemberDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useRemoveMember(client: WorkspacesClient): { removeMember: (userId: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+
+function useRoles(client: WorkspacesClient): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 4 more ...; removeRole: (roleId: string) => Promise<...>; }
+
+function useSetRolePermissions(client: WorkspacesClient): { setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>; isLoading: Ref<...>; error: Ref<...>; }
+
+function useUpdateRole(client: WorkspacesClient): { updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>; isLoading: Ref<...>; error: Ref<...>; }
 
 function useWorkspaceSettings(client: WorkspacesClient): { settings: Ref<{ locale: string; timezone: string; currency: string; dateFormat: string; timeFormat: string; } | null, IWorkspaceSettingsDTO | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; updateSettings: (input: IUpdateSettingsInput) => Promise<...>; }
 

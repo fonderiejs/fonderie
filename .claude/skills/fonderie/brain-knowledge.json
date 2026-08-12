@@ -24,11 +24,11 @@
     "react-native-billing-screens": ["react native pricing screen", "mobile pricing screen", "prebuilt react native billing ui", "mobile subscription screen"],
     "vue-billing": ["vue billing", "vue pricing", "vue checkout", "vue3 billing", "vue subscription", "vue stripe"],
     "vue-billing-screens": ["vue pricing screen", "vue pricing table", "prebuilt vue billing ui", "vue subscription screen"],
-    "react-workspaces": ["react workspaces", "react teams", "useworkspaces", "use workspaces", "usemembers", "use members", "useinvitations", "use invitations", "react invite", "react team switcher"],
+    "react-workspaces": ["react workspaces", "react teams", "useworkspaces", "use workspaces", "usemembers", "use members", "useinvitations", "use invitations", "react invite", "react team switcher", "useroles", "use roles", "react role management", "usememberroles", "use member roles"],
     "react-workspaces-screens": ["react team screen", "react members screen", "react invite screen", "prebuilt react workspaces ui"],
     "react-native-workspaces": ["react native workspaces", "mobile workspaces", "rn workspaces", "expo workspaces", "mobile teams", "mobile invite"],
     "react-native-workspaces-screens": ["react native team screen", "mobile team screen", "prebuilt react native workspaces ui", "mobile invite screen"],
-    "vue-workspaces": ["vue workspaces", "vue teams", "vue3 workspaces", "vue members", "vue invite"],
+    "vue-workspaces": ["vue workspaces", "vue teams", "vue3 workspaces", "vue members", "vue invite", "vue roles", "vue role management", "vue member roles"],
     "vue-workspaces-screens": ["vue team screen", "vue members screen", "prebuilt vue workspaces ui", "vue invite screen"]
   },
   "concepts": {
@@ -39,7 +39,7 @@
     "billing.per-seat": { "description": "charge per team member / seat", "package": "billing", "recipe": "per-seat-billing" },
     "billing.plan-gate": { "description": "lock a feature behind a paid plan / entitlements / free-tier limits", "package": "billing", "recipe": "plan-gate" },
     "workspaces.teams": { "description": "teams, orgs, multi-tenancy, members, email invites", "package": "workspaces", "recipe": "teams-invites" },
-    "permissions.rbac": { "description": "roles and permissions — admin/member/viewer, access control", "package": "permissions", "recipe": "rbac" },
+    "permissions.rbac": { "description": "roles and permissions — admin/member/viewer, access control. Backend-only: @fonderie/permissions has no HTTP routes (server-side requirePermission/requireRole middleware + PermissionsEngine.can/.assert). For a frontend role-management UI, see react-workspaces.hooks / vue-workspaces.composables (useRoles, useMemberRoles) — role CRUD is exposed under @fonderie/workspaces' routes.", "package": "permissions", "recipe": "rbac" },
     "courier.messaging": { "description": "SEND any transactional message — email, SMS, push; use this for password-reset, email-verification, welcome, and invite emails (auth.* is who can log in, courier is what delivers the message)", "package": "courier", "recipe": "transactional-email" },
     "webhooks.in-out": { "description": "receive webhooks (Stripe) and emit your own to other apps", "package": "webhooks", "recipe": "webhooks-in-out" },
     "events.bus": { "description": "in-process event bus — react when something happens in another module", "package": "events" },
@@ -61,11 +61,11 @@
     "react-native-billing.screens": { "description": "pre-built React Native billing screens (PricingScreen, SubscriptionScreen) built on react-native-billing hooks", "package": "react-native-billing-screens", "recipe": "react-native-billing-screens-wiring" },
     "vue-billing.composables": { "description": "Vue composables for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, wrapping @fonderie/client's BillingClient", "package": "vue-billing", "recipe": "vue-billing-wiring" },
     "vue-billing.screens": { "description": "pre-built Vue billing screens (PricingScreen, SubscriptionScreen) built on vue-billing composables via Vue's h() render API", "package": "vue-billing-screens", "recipe": "vue-billing-screens-wiring" },
-    "react-workspaces.hooks": { "description": "React hooks for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, wrapping @fonderie/client's WorkspacesClient", "package": "react-workspaces", "recipe": "react-workspaces-wiring" },
+    "react-workspaces.hooks": { "description": "React hooks for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.", "package": "react-workspaces", "recipe": "react-workspaces-wiring" },
     "react-workspaces.screens": { "description": "pre-built React workspaces screens (TeamMembersScreen, InviteMembersScreen) built on react-workspaces hooks — bring your own styling", "package": "react-workspaces-screens", "recipe": "react-workspaces-screens-wiring" },
     "react-native-workspaces.hooks": { "description": "React Native workspaces hooks — re-exports react-workspaces wholesale (no platform-specific storage, unlike auth)", "package": "react-native-workspaces", "recipe": "react-native-workspaces-wiring" },
     "react-native-workspaces.screens": { "description": "pre-built React Native workspaces screens (TeamMembersScreen, InviteMembersScreen) built on react-native-workspaces hooks", "package": "react-native-workspaces-screens", "recipe": "react-native-workspaces-screens-wiring" },
-    "vue-workspaces.composables": { "description": "Vue composables for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, wrapping @fonderie/client's WorkspacesClient", "package": "vue-workspaces", "recipe": "vue-workspaces-wiring" },
+    "vue-workspaces.composables": { "description": "Vue composables for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.", "package": "vue-workspaces", "recipe": "vue-workspaces-wiring" },
     "vue-workspaces.screens": { "description": "pre-built Vue workspaces screens (TeamMembersScreen, InviteMembersScreen) built on vue-workspaces composables via Vue's h() render API", "package": "vue-workspaces-screens", "recipe": "vue-workspaces-screens-wiring" }
   },
   "recipes": {

@@ -72,7 +72,7 @@ app.listen(3000, { name: 'my-api' });
 | Login, sessions, MFA, OAuth, password reset | `@fonderie/auth` | JWT/session auth, `requireAuth`, email verification, Google OAuth |
 | Teams, orgs, multi-tenancy | `@fonderie/workspaces` | Full CRUD on workspaces/members/invitations |
 | Subscriptions, checkout, metering | `@fonderie/billing` | Provider-agnostic (`StripeProvider` ships in), `requirePlan` |
-| Roles, RBAC, access checks | `@fonderie/permissions` | Wildcard permissions, super-role bypass, `requirePermission` |
+| Roles, RBAC, access checks | `@fonderie/permissions` | Wildcard permissions, super-role bypass, `requirePermission` (server-side only — no HTTP API; role CRUD for a frontend is under `@fonderie/workspaces`, see `react-workspaces`'s `useRoles`/`useMemberRoles` below) |
 | Email, SMS, push | `@fonderie/courier` | Fire-and-forget dispatch, template resolvers |
 | Feature flags, remote config | `@fonderie/config` | DB-backed, per-environment, poll-based refresh |
 | Audit trail | `@fonderie/audit` | Workspace-scoped audit log |
@@ -121,7 +121,7 @@ header, same fallback behavior billing's `setWorkspaceId` uses.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| React workspaces hooks | `@fonderie/react-workspaces` | `useWorkspaces`, `useCreateWorkspace`, `useMembers`, `useRemoveMember`, `useInvitations`, `useAcceptInvitation`, `useWorkspaceSettings` |
+| React workspaces hooks | `@fonderie/react-workspaces` | `useWorkspaces`, `useCreateWorkspace`, `useMembers`, `useRemoveMember`, `useInvitations`, `useAcceptInvitation`, `useWorkspaceSettings`, plus role management — `useRoles`, `useUpdateRole`, `useSetRolePermissions`, `useMemberRoles` (`@fonderie/permissions` has no HTTP API; role CRUD lives here) |
 | React pre-built workspaces screens | `@fonderie/react-workspaces-screens` | `TeamMembersScreen`, `InviteMembersScreen` built on the hooks above |
 | React Native workspaces hooks | `@fonderie/react-native-workspaces` | Re-exports `react-workspaces` as-is — no platform-specific storage, unlike auth |
 | React Native pre-built workspaces screens | `@fonderie/react-native-workspaces-screens` | Same two screens, React Native components |

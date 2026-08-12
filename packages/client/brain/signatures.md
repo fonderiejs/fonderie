@@ -89,6 +89,11 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string): Promise<IApiResponse<IUsageResult>>
 
+interface ICreateRoleInput {
+    name: string;
+    description?: string;
+}
+
 interface ICreateWorkspaceInput {
     name: string;
     description?: string;
@@ -98,6 +103,20 @@ interface ICreateWorkspaceInput {
 interface IInviteEntry {
     email: string;
     roleId?: string;
+}
+
+interface IRolePermissionInput {
+    permissionKey: string;
+    canCreate?: boolean;
+    canRead?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
+}
+
+interface IUpdateRoleInput {
+    name?: string;
+    description?: string | null;
+    active?: boolean;
 }
 
 interface IUpdateSettingsInput {
@@ -131,6 +150,12 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
+  .listRoles(): Promise<IApiResponse<IRoleListResult>>
+  .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
+  .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
+  .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
+  .removeRole(roleId: string): Promise<IApiResponse<undefined>>
+  .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>
   .getMemberRoles(userId: string): Promise<IApiResponse<IRoleListResult>>
@@ -283,6 +308,10 @@ interface IRoleDTO {
 
 interface IRoleListResult {
     roles: IRoleDTO[];
+}
+
+interface IRoleResult {
+    role: IRoleDTO;
 }
 
 interface ISubscriptionDTO {
