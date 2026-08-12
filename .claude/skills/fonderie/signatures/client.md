@@ -14,6 +14,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .auth: AuthClient
   .billing: BillingClient
   .workspaces: WorkspacesClient
+  .audit: AuditClient
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
   .reason: string
@@ -24,6 +25,20 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .message: string
   .stack: string
   .cause: unknown
+
+interface IListAuditEventsInput {
+    type?: string;
+    actorId?: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    cursor?: string;
+}
+
+new AuditClient(http: HttpClient, tokens: TokenStore): AuditClient
+  .setAccessToken(token: string | undefined): void
+  .setWorkspaceId(workspaceId: string | undefined): void
+  .listEvents(input?: IListAuditEventsInput): Promise<IApiResponse<IAuditPageResult>>
 
 interface ILoginInput {
     email: string;
@@ -243,6 +258,20 @@ interface IApiResponse<T = undefined> {
     reason: string;
     explanation: string;
     result: T;
+}
+
+interface IAuditEventDTO {
+    id: string;
+    type: string;
+    actorId: string | null;
+    requestId: string | null;
+    payload: Record<string, unknown>;
+    createdAt: string;
+}
+
+interface IAuditPageResult {
+    events: IAuditEventDTO[];
+    nextCursor: string | null;
 }
 
 interface ICheckoutUrlResult {

@@ -59,7 +59,7 @@
       "package": "config"
     },
     "audit.trail": {
-      "description": "workspace-scoped audit log — who did what, compliance",
+      "description": "workspace-scoped audit log — who did what, compliance. One read-only route (GET /audit); no create/update/delete API since events are written internally by other modules. For a frontend log viewer, see react-audit.hooks / vue-audit.composables — session-authenticated like billing/workspaces, not the admin-token model courier-admin/config-admin use.",
       "package": "audit"
     },
     "rate-limit.throttle": {
@@ -207,6 +207,36 @@
       "description": "pre-built Vue screens (ConfigListScreen, ConfigEditorScreen) built on vue-config-admin composables via Vue's h() render API — an admin-dashboard surface",
       "package": "vue-config-admin-screens",
       "recipe": "vue-config-admin-screens-wiring"
+    },
+    "react-audit.hooks": {
+      "description": "React hook for the audit log — useAuditEvents, cursor-paginated with type/actorId/date-range filters and loadMore. Read-only (@fonderie/audit has one route); session-authenticated like billing/workspaces, wraps @fonderie/client's AuditClient.",
+      "package": "react-audit",
+      "recipe": "react-audit-wiring"
+    },
+    "react-audit.screens": {
+      "description": "pre-built React screen (AuditLogScreen: type/actor filters, expandable JSON payload, load-more) built on react-audit's useAuditEvents — bring your own styling",
+      "package": "react-audit-screens",
+      "recipe": "react-audit-screens-wiring"
+    },
+    "react-native-audit.hooks": {
+      "description": "React Native audit log hook — re-exports react-audit wholesale (no platform-specific storage, unlike auth)",
+      "package": "react-native-audit",
+      "recipe": "react-native-audit-wiring"
+    },
+    "react-native-audit.screens": {
+      "description": "pre-built React Native screen (AuditLogScreen) built on react-native-audit's useAuditEvents",
+      "package": "react-native-audit-screens",
+      "recipe": "react-native-audit-screens-wiring"
+    },
+    "vue-audit.composables": {
+      "description": "Vue composable for the audit log — useAuditEvents, cursor-paginated with type/actorId/date-range filters and loadMore. Read-only (@fonderie/audit has one route); session-authenticated like billing/workspaces, wraps @fonderie/client's AuditClient.",
+      "package": "vue-audit",
+      "recipe": "vue-audit-wiring"
+    },
+    "vue-audit.screens": {
+      "description": "pre-built Vue screen (AuditLogScreen) built on vue-audit's useAuditEvents via Vue's h() render API",
+      "package": "vue-audit-screens",
+      "recipe": "vue-audit-screens-wiring"
     }
   },
   "recipes": {
@@ -625,6 +655,81 @@
       "invariants": [
         "frontend-admin-token"
       ]
+    },
+    "react-audit-wiring": {
+      "when": "showing an audit/activity log in a React web app",
+      "packages": [
+        "client",
+        "react-audit"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-audit-screens-wiring": {
+      "when": "showing an audit/activity log in a React web app with pre-built UI, not just the hook",
+      "packages": [
+        "client",
+        "react-audit",
+        "react-audit-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-native-audit-wiring": {
+      "when": "showing an audit/activity log in a React Native app",
+      "packages": [
+        "client",
+        "react-native-audit"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "react-native-audit-screens-wiring": {
+      "when": "showing an audit/activity log in a React Native app with pre-built UI, not just the hook",
+      "packages": [
+        "client",
+        "react-native-audit",
+        "react-native-audit-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "vue-audit-wiring": {
+      "when": "showing an audit/activity log in a Vue 3 app",
+      "packages": [
+        "client",
+        "vue-audit"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
+    },
+    "vue-audit-screens-wiring": {
+      "when": "showing an audit/activity log in a Vue 3 app with pre-built UI, not just the composable",
+      "packages": [
+        "client",
+        "vue-audit",
+        "vue-audit-screens"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token",
+        "frontend-workspace-scoping"
+      ]
     }
   },
   "invariants": {
@@ -634,10 +739,10 @@
     "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
     "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
     "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task.",
-    "frontend-client-injection": "Every @fonderie/*-auth, @fonderie/*-billing, and @fonderie/*-workspaces hook/composable takes the matching @fonderie/client sub-client instance (client.auth, client.billing, or client.workspaces) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
+    "frontend-client-injection": "Every @fonderie/*-auth, @fonderie/*-billing, @fonderie/*-workspaces, and @fonderie/*-audit hook/composable takes the matching @fonderie/client sub-client instance (client.auth, client.billing, client.workspaces, or client.audit) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
     "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",
-    "frontend-shared-token": "client.auth, client.billing, and client.workspaces share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing and client.workspaces requests too. Do not call setAccessToken on billing/workspaces sub-clients yourself or construct one outside FonderieClient.",
-    "frontend-workspace-scoping": "@fonderie/*-workspaces and @fonderie/*-billing requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) — both fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback in @fonderie/workspaces' withWorkspace and @fonderie/billing's resolveSubscriber). Do not thread a workspace id through individual hook calls.",
+    "frontend-shared-token": "client.auth, client.billing, client.workspaces, and client.audit share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing/client.workspaces/client.audit requests too. Do not call setAccessToken on those sub-clients yourself or construct one outside FonderieClient.",
+    "frontend-workspace-scoping": "@fonderie/*-workspaces, @fonderie/*-billing, and @fonderie/*-audit requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) / client.audit.setWorkspaceId(id) — all three fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback pattern in @fonderie/workspaces' withWorkspace, @fonderie/billing's resolveSubscriber, and @fonderie/audit's route handler). Do not thread a workspace id through individual hook calls.",
     "frontend-admin-token": "@fonderie/*-courier-admin and @fonderie/*-config-admin hooks/composables take a CourierAdminClient or ConfigAdminClient, each constructed standalone with { baseUrl, adminToken } — NOT a sub-client of FonderieClient, and NOT covered by frontend-client-injection/frontend-shared-token. Each authenticates with its own server-configured static admin bearer token (CourierModule's / ConfigModule's adminToken config), not the signed-in user's session, and the two do not share a token with each other either. Never expose an admin token to a general end-user build; these clients are for an internal/admin-only app."
   }
 }
