@@ -254,6 +254,10 @@ export interface IRoleListResult {
 	roles: IRoleDTO[];
 }
 
+export interface IRoleResult {
+	role: IRoleDTO;
+}
+
 export interface IInvitationListResult {
 	invitations: IInvitationDTO[];
 }

@@ -7,6 +7,7 @@ import type {
 	IInviteResult,
 	IMemberListResult,
 	IRoleListResult,
+	IRoleResult,
 	IWorkspaceListResult,
 	IWorkspaceResult,
 	IWorkspaceSettingsResult,
@@ -47,6 +48,25 @@ export interface IUpdateSettingsInput {
 	currency?: string;
 	dateFormat?: string;
 	timeFormat?: string;
+}
+
+export interface ICreateRoleInput {
+	name: string;
+	description?: string;
+}
+
+export interface IUpdateRoleInput {
+	name?: string;
+	description?: string | null;
+	active?: boolean;
+}
+
+export interface IRolePermissionInput {
+	permissionKey: string;
+	canCreate?: boolean;
+	canRead?: boolean;
+	canUpdate?: boolean;
+	canDelete?: boolean;
 }
 
 // ── Workspaces client ────────────────────────────────────────────────────────
@@ -101,6 +121,65 @@ export class WorkspacesClient {
 			method: 'PUT',
 			path: '/workspaces',
 			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// ── Roles ────────────────────────────────────────────────────────────────────
+
+	listRoles() {
+		return this.http.request<IApiResponse<IRoleListResult>>({
+			method: 'GET',
+			path: '/workspaces/roles',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	createRole(input: ICreateRoleInput) {
+		return this.http.request<IApiResponse<IRoleResult>>({
+			method: 'POST',
+			path: '/workspaces/roles',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	getRole(roleId: string) {
+		return this.http.request<IApiResponse<IRoleResult>>({
+			method: 'GET',
+			path: `/workspaces/roles/${roleId}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	updateRole(roleId: string, input: IUpdateRoleInput) {
+		return this.http.request<IApiResponse<IRoleResult>>({
+			method: 'PUT',
+			path: `/workspaces/roles/${roleId}`,
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	removeRole(roleId: string) {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'DELETE',
+			path: `/workspaces/roles/${roleId}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	setRolePermissions(roleId: string, permissions: IRolePermissionInput[]) {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'POST',
+			path: `/workspaces/roles/${roleId}/permissions`,
+			body: { permissions },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

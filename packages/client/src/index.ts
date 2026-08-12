@@ -11,8 +11,11 @@ export { AuthClient } from './modules/auth';
 export type { ICheckoutInput, IRecordUsageInput } from './modules/billing';
 export { BillingClient } from './modules/billing';
 export type {
+	ICreateRoleInput,
 	ICreateWorkspaceInput,
 	IInviteEntry,
+	IRolePermissionInput,
+	IUpdateRoleInput,
 	IUpdateSettingsInput,
 	IUpdateWorkspaceInput,
 } from './modules/workspaces';
@@ -41,6 +44,7 @@ export type {
 	IResendVerificationResult,
 	IRoleDTO,
 	IRoleListResult,
+	IRoleResult,
 	ISubscriptionDTO,
 	ISubscriptionResult,
 	ITokens,
