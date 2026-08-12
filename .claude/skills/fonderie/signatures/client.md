@@ -15,6 +15,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .billing: BillingClient
   .workspaces: WorkspacesClient
   .audit: AuditClient
+  .webhooks: WebhooksClient
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
   .reason: string
@@ -164,6 +165,28 @@ new CourierAdminClient(opts: ICourierAdminClientOptions): CourierAdminClient
   .deleteTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<undefined>>
   .listRevisions(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateRevision[]>>
   .rollback(type: string, input: IRollbackTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
+
+interface ICreateWebhookEndpointInput {
+    url: string;
+    events?: string[];
+}
+
+interface IUpdateWebhookEndpointInput {
+    url?: string;
+    events?: string[];
+    enabled?: boolean;
+}
+
+new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
+  .setAccessToken(token: string | undefined): void
+  .setWorkspaceId(workspaceId: string | undefined): void
+  .listEndpoints(): Promise<IApiResponse<IWebhookEndpointListResult>>
+  .createEndpoint(input: ICreateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointCreatedDTO>>
+  .getEndpoint(endpointId: string): Promise<IApiResponse<IWebhookEndpointDTO>>
+  .updateEndpoint(endpointId: string, input: IUpdateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointDTO>>
+  .deleteEndpoint(endpointId: string): Promise<undefined>
+  .listDeliveries(endpointId: string): Promise<IApiResponse<IWebhookDeliveryListResult>>
+  .testEndpoint(endpointId: string): Promise<IApiResponse<ITestWebhookResult>>
 
 interface ICreateRoleInput {
     name: string;
@@ -487,6 +510,12 @@ interface ITemplateRevision {
     createdAt: string;
 }
 
+interface ITestWebhookResult {
+    status: number | null;
+    ok: boolean;
+    error?: string;
+}
+
 interface ITokens {
     access: string;
     refresh: string;
@@ -540,6 +569,37 @@ interface IUserSkill {
 interface IVerifyEmailResult {
     verified: boolean;
     email: string;
+}
+
+interface IWebhookDeliveryDTO {
+    id: string;
+    eventId: string;
+    eventType: string;
+    status: string;
+    attempts: number;
+    responseStatus: number | null;
+    deliveredAt: string | null;
+    createdAt: string;
+}
+
+interface IWebhookDeliveryListResult {
+    deliveries: IWebhookDeliveryDTO[];
+}
+
+interface IWebhookEndpointCreatedDTO extends IWebhookEndpointDTO {
+    secret: string;
+}
+
+interface IWebhookEndpointDTO {
+    id: string;
+    url: string;
+    events: string[];
+    enabled: boolean;
+    createdAt: string;
+}
+
+interface IWebhookEndpointListResult {
+    endpoints: IWebhookEndpointDTO[];
 }
 
 interface IWorkspaceAddressDTO {

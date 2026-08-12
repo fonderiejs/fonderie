@@ -1,6 +1,6 @@
 ---
 name: fonderie
-description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth, billing, workspaces, and audit-log viewing for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks, team/member/invite hooks, audit-log hooks with cursor pagination, and pre-built screens for all four — plus admin-token-authenticated dashboards (React and Vue) for courier's email/SMS/push templates and for config's feature flags/remote config/secrets. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, add a team/members page, add an audit/activity log page, add an admin panel for email templates or feature flags/secrets, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions/workspaces/audit/courier/config code, a hand-rolled login form, pricing table, team switcher, audit log viewer, template editor, or config/secrets dashboard, from scratch.
+description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth, billing, workspaces, audit-log viewing, and webhook endpoint management for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks, team/member/invite hooks, audit-log hooks with cursor pagination, webhook endpoint/delivery/test hooks, and pre-built screens for all five — plus admin-token-authenticated dashboards (React and Vue) for courier's email/SMS/push templates and for config's feature flags/remote config/secrets. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, add a team/members page, add an audit/activity log page, add an admin panel for email templates or feature flags/secrets, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions/workspaces/audit/courier/config code, a hand-rolled login form, pricing table, team switcher, audit log viewer, template editor, or config/secrets dashboard, from scratch.
 ---
 
 # Fonderie
@@ -76,7 +76,7 @@ app.listen(3000, { name: 'my-api' });
 | Email, SMS, push | `@fonderie/courier` | Fire-and-forget dispatch, template resolvers |
 | Feature flags, remote config | `@fonderie/config` | DB-backed, per-environment, poll-based refresh |
 | Audit trail | `@fonderie/audit` | Workspace-scoped audit log |
-| Outgoing webhooks | `@fonderie/webhooks` | Webhook engine |
+| Outgoing webhooks | `@fonderie/webhooks` | Webhook engine (endpoint CRUD + delivery history + test-send; frontend hooks under `react-webhooks`/`vue-webhooks` below) |
 | Event bus | `@fonderie/events` | Cross-module events |
 | Structured logging | `@fonderie/logger` | Pluggable transports, request-logging middleware |
 | Customer records | `@fonderie/customers` | Workspace-scoped customer data |
@@ -140,6 +140,20 @@ one route, so there's one hook per framework, not seven.
 | React Native pre-built audit-log screen | `@fonderie/react-native-audit-screens` | Same screen, React Native components |
 | Vue 3 audit-log composable | `@fonderie/vue-audit` | Same shape as the React hook, as a Vue composable |
 | Vue 3 pre-built audit-log screen | `@fonderie/vue-audit-screens` | Same screen, as Vue components |
+
+Webhooks follows the same session-authenticated pattern (`client.webhooks`,
+shared token, `setWorkspaceId`) — full CRUD on outbound endpoints plus
+delivery history and test-send. `createEndpoint`'s signing secret is
+returned once, at creation — surface it immediately.
+
+| Need | Don't write it — use | Gives you |
+|---|---|---|
+| React webhooks hooks | `@fonderie/react-webhooks` | `useWebhookEndpoints` (list/create/delete), `useWebhookEndpoint` (get/update), `useWebhookDeliveries`, `useTestWebhookEndpoint` |
+| React pre-built webhooks screens | `@fonderie/react-webhooks-screens` | `WebhooksListScreen`, `WebhookDetailScreen` built on the hooks above |
+| React Native webhooks hooks | `@fonderie/react-native-webhooks` | Re-exports `react-webhooks` as-is — no platform-specific storage, unlike auth |
+| React Native pre-built webhooks screens | `@fonderie/react-native-webhooks-screens` | Same two screens, React Native components |
+| Vue 3 webhooks composables | `@fonderie/vue-webhooks` | Same shape as the React hooks, as Vue composables |
+| Vue 3 pre-built webhooks screens | `@fonderie/vue-webhooks-screens` | Same two screens, as Vue components |
 
 Courier's frontend surface is different in kind: `@fonderie/courier` has no
 user-facing HTTP API (messages are sent server-side via the event bus), only
