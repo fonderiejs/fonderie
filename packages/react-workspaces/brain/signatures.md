@@ -5,6 +5,11 @@
 ## @fonderie/react-workspaces
 
 ```ts
+interface ICreateRoleInput {
+    name: string;
+    description?: string;
+}
+
 interface ICreateWorkspaceInput {
     name: string;
     description?: string;
@@ -34,6 +39,29 @@ interface IMemberDTO {
     roleName: string;
     confirmed: boolean;
     createdAt: string;
+}
+
+interface IRoleDTO {
+    id: string;
+    name: string;
+    isSystem: boolean;
+    active: boolean;
+    description: string;
+    workspaceId: string;
+}
+
+interface IRolePermissionInput {
+    permissionKey: string;
+    canCreate?: boolean;
+    canRead?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
+}
+
+interface IUpdateRoleInput {
+    name?: string;
+    description?: string | null;
+    active?: boolean;
 }
 
 interface IUpdateSettingsInput {
@@ -103,6 +131,12 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
+  .listRoles(): Promise<IApiResponse<IRoleListResult>>
+  .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
+  .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
+  .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
+  .removeRole(roleId: string): Promise<IApiResponse<undefined>>
+  .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>
   .getMemberRoles(userId: string): Promise<IApiResponse<IRoleListResult>>
@@ -146,6 +180,15 @@ interface IUseInvitationsReturn {
     cancelInvitation: (inviteId: string) => Promise<void>;
 }
 
+interface IUseMemberRolesReturn {
+    roles: IRoleDTO[];
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    addRole: (roleId: string) => Promise<void>;
+    removeRole: (roleId: string) => Promise<void>;
+}
+
 interface IUseMembersReturn {
     members: IMemberDTO[];
     isLoading: boolean;
@@ -155,6 +198,27 @@ interface IUseMembersReturn {
 
 interface IUseRemoveMemberReturn {
     removeMember: (userId: string) => Promise<void>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
+interface IUseRolesReturn {
+    roles: IRoleDTO[];
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
+    removeRole: (roleId: string) => Promise<void>;
+}
+
+interface IUseSetRolePermissionsReturn {
+    setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
+interface IUseUpdateRoleReturn {
+    updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
     isLoading: boolean;
     error: FonderieApiError | null;
 }
@@ -180,9 +244,17 @@ function useCreateWorkspace(client: WorkspacesClient): IUseCreateWorkspaceReturn
 
 function useInvitations(client: WorkspacesClient): IUseInvitationsReturn
 
+function useMemberRoles(client: WorkspacesClient, userId: string): IUseMemberRolesReturn
+
 function useMembers(client: WorkspacesClient): IUseMembersReturn
 
 function useRemoveMember(client: WorkspacesClient): IUseRemoveMemberReturn
+
+function useRoles(client: WorkspacesClient): IUseRolesReturn
+
+function useSetRolePermissions(client: WorkspacesClient): IUseSetRolePermissionsReturn
+
+function useUpdateRole(client: WorkspacesClient): IUseUpdateRoleReturn
 
 function useWorkspaceSettings(client: WorkspacesClient): IUseWorkspaceSettingsReturn
 

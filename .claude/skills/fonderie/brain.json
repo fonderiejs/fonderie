@@ -1020,8 +1020,12 @@
         "useAcceptInvitation",
         "useCreateWorkspace",
         "useInvitations",
+        "useMemberRoles",
         "useMembers",
         "useRemoveMember",
+        "useRoles",
+        "useSetRolePermissions",
+        "useUpdateRole",
         "useWorkspaceSettings",
         "useWorkspaces"
       ],
@@ -1150,8 +1154,12 @@
         "useAcceptInvitation",
         "useCreateWorkspace",
         "useInvitations",
+        "useMemberRoles",
         "useMembers",
         "useRemoveMember",
+        "useRoles",
+        "useSetRolePermissions",
+        "useUpdateRole",
         "useWorkspaceSettings",
         "useWorkspaces"
       ],
@@ -2386,6 +2394,23 @@
     "react team switcher": [
       "react-workspaces"
     ],
+    "useroles": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "use roles": [
+      "react-workspaces"
+    ],
+    "react role management": [
+      "react-workspaces"
+    ],
+    "usememberroles": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "use member roles": [
+      "react-workspaces"
+    ],
     "react team screen": [
       "react-workspaces-screens"
     ],
@@ -2441,6 +2466,15 @@
       "vue-workspaces"
     ],
     "vue invite": [
+      "vue-workspaces"
+    ],
+    "vue roles": [
+      "vue-workspaces"
+    ],
+    "vue role management": [
+      "vue-workspaces"
+    ],
+    "vue member roles": [
       "vue-workspaces"
     ],
     "vue team screen": [
@@ -2704,6 +2738,14 @@
       "vue-workspaces"
     ],
     "useremovemember": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usesetrolepermissions": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "useupdaterole": [
       "react-workspaces",
       "vue-workspaces"
     ],
@@ -2995,7 +3037,12 @@
       "useinvitations",
       "use invitations",
       "react invite",
-      "react team switcher"
+      "react team switcher",
+      "useroles",
+      "use roles",
+      "react role management",
+      "usememberroles",
+      "use member roles"
     ],
     "react-workspaces-screens": [
       "react team screen",
@@ -3022,7 +3069,10 @@
       "vue teams",
       "vue3 workspaces",
       "vue members",
-      "vue invite"
+      "vue invite",
+      "vue roles",
+      "vue role management",
+      "vue member roles"
     ],
     "vue-workspaces-screens": [
       "vue team screen",
@@ -3068,7 +3118,7 @@
       "recipe": "teams-invites"
     },
     "permissions.rbac": {
-      "description": "roles and permissions — admin/member/viewer, access control",
+      "description": "roles and permissions — admin/member/viewer, access control. Backend-only: @fonderie/permissions has no HTTP routes (server-side requirePermission/requireRole middleware + PermissionsEngine.can/.assert). For a frontend role-management UI, see react-workspaces.hooks / vue-workspaces.composables (useRoles, useMemberRoles) — role CRUD is exposed under @fonderie/workspaces' routes.",
       "package": "permissions",
       "recipe": "rbac"
     },
@@ -3171,7 +3221,7 @@
       "recipe": "vue-billing-screens-wiring"
     },
     "react-workspaces.hooks": {
-      "description": "React hooks for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, wrapping @fonderie/client's WorkspacesClient",
+      "description": "React hooks for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
       "package": "react-workspaces",
       "recipe": "react-workspaces-wiring"
     },
@@ -3191,7 +3241,7 @@
       "recipe": "react-native-workspaces-screens-wiring"
     },
     "vue-workspaces.composables": {
-      "description": "Vue composables for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, wrapping @fonderie/client's WorkspacesClient",
+      "description": "Vue composables for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
       "package": "vue-workspaces",
       "recipe": "vue-workspaces-wiring"
     },
