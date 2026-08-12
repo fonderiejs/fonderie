@@ -1,0 +1,66 @@
+{
+	"name": "@fonderie/react-billing",
+	"version": "0.1.0",
+	"description": "React hooks for Fonderie billing — thin bindings over @fonderie/client.",
+	"keywords": [
+		"fonderie-js",
+		"react",
+		"billing",
+		"stripe",
+		"hooks",
+		"typescript"
+	],
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
+	},
+	"dependencies": {
+		"@fonderie/client": "*"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.6.0",
+		"@types/react": "^18.0.0",
+		"react": "^18.0.0",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE",
+		"README.md"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
+		"directory": "packages/react-billing"
+	},
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/react-billing#readme",
+	"bugs": {
+		"url": "https://github.com/fonderiejs/fonderie/issues"
+	}
+}

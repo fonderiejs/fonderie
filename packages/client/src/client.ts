@@ -1,5 +1,7 @@
 import { HttpClient } from './http';
 import { AuthClient } from './modules/auth';
+import { BillingClient } from './modules/billing';
+import { TokenStore } from './token-store';
 
 export interface IFonderieClientOptions {
 	baseUrl: string;
@@ -8,11 +10,14 @@ export interface IFonderieClientOptions {
 
 export class FonderieClient {
 	readonly auth: AuthClient;
+	readonly billing: BillingClient;
 
 	private http: HttpClient;
 
 	constructor(opts: IFonderieClientOptions) {
 		this.http = new HttpClient(opts.baseUrl);
-		this.auth = new AuthClient(this.http, opts.accessToken);
+		const tokens = new TokenStore(opts.accessToken);
+		this.auth = new AuthClient(this.http, tokens);
+		this.billing = new BillingClient(this.http, tokens);
 	}
 }

@@ -1,0 +1,53 @@
+import type { CSSProperties } from 'vue';
+
+export const styles: Record<string, CSSProperties> = {
+	container: { padding: '24px' },
+	status: { padding: '24px', textAlign: 'center', color: '#666' },
+	error: { color: '#e11d48', textAlign: 'center', marginBottom: '12px', fontSize: '14px' },
+	toggle: { display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '24px' },
+	toggleButton: {
+		padding: '8px 16px',
+		border: '1px solid #ddd',
+		borderRadius: '8px',
+		background: 'none',
+		cursor: 'pointer',
+	},
+	toggleActive: {
+		padding: '8px 16px',
+		border: '1px solid #000',
+		borderRadius: '8px',
+		background: '#000',
+		color: '#fff',
+		cursor: 'pointer',
+	},
+	grid: {
+		display: 'grid',
+		gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+		gap: '16px',
+	},
+	card: { border: '1px solid #ddd', borderRadius: '12px', padding: '24px' },
+	planName: { fontSize: '20px', fontWeight: 700, marginBottom: '8px' },
+	planDescription: { color: '#666', fontSize: '14px', marginBottom: '16px' },
+	price: { fontSize: '32px', fontWeight: 700, marginBottom: '16px' },
+	priceInterval: { fontSize: '14px', fontWeight: 400, color: '#666' },
+	features: {
+		listStyle: 'none',
+		padding: '0',
+		margin: '0 0 24px',
+		fontSize: '14px',
+		color: '#333',
+	},
+	button: {
+		width: '100%',
+		backgroundColor: '#000',
+		color: '#fff',
+		padding: '12px',
+		borderRadius: '8px',
+		border: 'none',
+		fontSize: '14px',
+		fontWeight: 600,
+		cursor: 'pointer',
+	},
+	title: { fontSize: '24px', fontWeight: 700, marginBottom: '16px' },
+	plan: { fontSize: '18px', fontWeight: 600, marginBottom: '4px' },
+};
