@@ -170,3 +170,102 @@ export interface IUsageResult {
 	total: number;
 	since: string;
 }
+
+// ── Workspaces ───────────────────────────────────────────────────────────────
+
+export interface IWorkspaceAddressDTO {
+	line1: string;
+	line2: string;
+	city: string;
+	state: string;
+	zip: string;
+	country: string;
+}
+
+export interface IWorkspaceDTO {
+	id: string;
+	name: string;
+	slug: string;
+	type: string;
+	description: string;
+	motto: string;
+	phone: string;
+	businessType: string;
+	address: IWorkspaceAddressDTO;
+	plan: string;
+	ownerId: string;
+	isPersonal: boolean;
+	isArchived: boolean;
+	archivedAt: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IRoleDTO {
+	id: string;
+	name: string;
+	isSystem: boolean;
+	active: boolean;
+	description: string;
+	workspaceId: string;
+}
+
+export interface IMemberDTO {
+	userId: string;
+	workspaceId: string;
+	roleId: string;
+	roleName: string;
+	confirmed: boolean;
+	createdAt: string;
+}
+
+export interface IInvitationDTO {
+	id: string;
+	workspaceId: string;
+	email: string;
+	roleId: string;
+	token: string;
+	status: string;
+	expiresAt: string;
+	createdAt: string;
+}
+
+export interface IWorkspaceSettingsDTO {
+	locale: string;
+	timezone: string;
+	currency: string;
+	dateFormat: string;
+	timeFormat: string;
+}
+
+export interface IWorkspaceListResult {
+	workspaces: IWorkspaceDTO[];
+}
+
+export interface IWorkspaceResult {
+	workspace: IWorkspaceDTO;
+}
+
+export interface IMemberListResult {
+	members: IMemberDTO[];
+}
+
+export interface IRoleListResult {
+	roles: IRoleDTO[];
+}
+
+export interface IInvitationListResult {
+	invitations: IInvitationDTO[];
+}
+
+export interface IInviteResult {
+	invitations: Array<{ invitationId: string; email: string }>;
+}
+
+export interface IAcceptInvitationResult {
+	workspaceId: string;
+}
+
+export interface IWorkspaceSettingsResult {
+	settings: IWorkspaceSettingsDTO;
+}
