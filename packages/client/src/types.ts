@@ -412,3 +412,179 @@ export interface ITestWebhookResult {
 	ok: boolean;
 	error?: string;
 }
+
+// ── Customers ────────────────────────────────────────────────────────────────
+// Session-authenticated (shares FonderieClient's TokenStore, scoped via
+// setWorkspaceId like billing/workspaces/audit/webhooks).
+
+export type CustomerType = 'individual' | 'business';
+export type CustomerSex = 'UNKNOWN' | 'MALE' | 'FEMALE';
+export type CustomerLabelType = 'phone' | 'email' | 'address';
+
+export interface ICustomerDTO {
+	id: string;
+	type: string;
+	sex: CustomerSex;
+	firstName: string;
+	lastName: string;
+	companyName: string;
+	avatarUrl: string;
+	locale: string;
+	referenceCode: string;
+	referralCode: string;
+	referredBy: string | null;
+	blacklisted: { status: boolean; reason: string | null };
+	createdBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ICustomerEmailDTO {
+	id: string;
+	email: string;
+	label: string;
+	isPrimary: boolean;
+	createdAt: string;
+}
+
+export interface ICustomerPhoneDTO {
+	id: string;
+	phone: string;
+	label: string;
+	isPrimary: boolean;
+	createdAt: string;
+}
+
+export interface IAddressDTO {
+	countryIso: string;
+	subdivision1Iso: string;
+	subdivision2Iso: string;
+	zipPostalCode: string;
+	unit: string;
+	line1: string;
+	line2: string;
+}
+
+export interface ICustomerAddressDTO {
+	id: string;
+	label: string;
+	isPrimary: boolean;
+	address: IAddressDTO;
+}
+
+export interface ICustomerNoteDTO {
+	id: string;
+	authorId: string;
+	body: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ICustomerRelationshipDTO {
+	id: string;
+	relatedId: string;
+	relationship: string;
+	isPrimary: boolean;
+	createdAt: string;
+}
+
+// Flat merge: relationship metadata + related customer fields spread at the
+// same level. `id` is the relationship record id; `customerId` is the
+// related customer's id — matches @fonderie/customers' own flattening.
+export type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+	id: string;
+	customerId: string;
+	relationship: string;
+	isPrimary: boolean;
+};
+
+export type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {
+	relationships: ICustomerRelationshipExpandedDTO[];
+};
+
+export interface ICustomerShallowDTO extends ICustomerDTO {
+	emails: ICustomerEmailDTO[];
+	phones: ICustomerPhoneDTO[];
+	addresses: ICustomerAddressDTO[];
+	notes: ICustomerNoteDTO[];
+	tags: string[];
+}
+
+export interface ICustomerDetailDTO extends ICustomerDTO {
+	emails: ICustomerEmailDTO[];
+	phones: ICustomerPhoneDTO[];
+	addresses: ICustomerAddressDTO[];
+	notes: ICustomerNoteDTO[];
+	relationships: ICustomerRelationshipExpandedDTO[];
+	tags: string[];
+}
+
+// depth=1 (default via getCustomer) — one level of relationship expansion.
+// depth=2 (getCustomer(id, { depth: 2 })) — relationships carry their own
+// relationships array one level deeper. Matches @fonderie/customers' D2 DTOs.
+export interface ICustomerDetailD2DTO extends Omit<ICustomerDetailDTO, 'relationships'> {
+	relationships: ICustomerRelationshipExpandedD2DTO[];
+}
+
+export interface ICustomerLabelDTO {
+	id: string;
+	type: CustomerLabelType;
+	value: string;
+	createdAt: string;
+}
+
+export interface ICustomerListResult {
+	customers: ICustomerDTO[];
+}
+
+export interface ICustomerResult {
+	customer: ICustomerDTO;
+}
+
+export interface ICustomerEmailListResult {
+	emails: ICustomerEmailDTO[];
+}
+
+export interface ICustomerEmailResult {
+	email: ICustomerEmailDTO;
+}
+
+export interface ICustomerPhoneListResult {
+	phones: ICustomerPhoneDTO[];
+}
+
+export interface ICustomerPhoneResult {
+	phone: ICustomerPhoneDTO;
+}
+
+export interface ICustomerAddressListResult {
+	addresses: ICustomerAddressDTO[];
+}
+
+export interface ICustomerAddressResult {
+	address: ICustomerAddressDTO;
+}
+
+export interface ICustomerNoteListResult {
+	notes: ICustomerNoteDTO[];
+}
+
+export interface ICustomerNoteResult {
+	note: ICustomerNoteDTO;
+}
+
+export interface ICustomerTagListResult {
+	tags: string[];
+}
+
+export interface ICustomerRelationshipListResult {
+	relationships: ICustomerRelationshipDTO[];
+}
+
+export interface ICustomerRelationshipResult {
+	relationship: ICustomerRelationshipDTO;
+}
+
+export interface ICustomerLabelListResult {
+	labels: ICustomerLabelDTO[];
+}
