@@ -2,7 +2,10 @@
 
 Vue 3 composables for Fonderie workspaces — `useWorkspaces`,
 `useCreateWorkspace`, `useMembers`, `useRemoveMember`, `useInvitations`,
-`useAcceptInvitation`, and `useWorkspaceSettings`. Thin bindings over
+`useAcceptInvitation`, `useWorkspaceSettings`, and role management
+(`useRoles`, `useUpdateRole`, `useSetRolePermissions`, `useMemberRoles` —
+`@fonderie/permissions` has no HTTP API of its own; role CRUD lives under
+`@fonderie/workspaces`' routes). Thin bindings over
 [`@fonderie/client`](https://github.com/fonderie-js/sdk/tree/main/packages/client):
 reactive `ref`s for loading/error/data state and the request itself, nothing
 else. Bring your own UI.
