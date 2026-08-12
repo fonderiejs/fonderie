@@ -11,6 +11,13 @@ export { AuthClient } from './modules/auth';
 export type { ICheckoutInput, IRecordUsageInput } from './modules/billing';
 export { BillingClient } from './modules/billing';
 export type {
+	IConfigAdminClientOptions,
+	IRollbackInput,
+	ISetConfigInput,
+	ISetSecretInput,
+} from './modules/config-admin';
+export { ConfigAdminClient } from './modules/config-admin';
+export type {
 	ICourierAdminClientOptions,
 	IRollbackTemplateInput,
 	ISetTemplateInput,
@@ -31,6 +38,8 @@ export type {
 	IApiError,
 	IApiResponse,
 	ICheckoutUrlResult,
+	IConfigEntry,
+	IConfigRevision,
 	IInvitationDTO,
 	IInvitationListResult,
 	IInviteResult,
@@ -48,9 +57,12 @@ export type {
 	IRefreshResult,
 	IRegisterResult,
 	IResendVerificationResult,
+	IRevealSecretResult,
 	IRoleDTO,
 	IRoleListResult,
 	IRoleResult,
+	ISecretEntry,
+	ISecretRevision,
 	ISubscriptionDTO,
 	ISubscriptionResult,
 	ITemplateEntry,

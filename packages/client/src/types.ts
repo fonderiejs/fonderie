@@ -301,3 +301,52 @@ export interface ITemplateRevision {
 	actor: string | null;
 	createdAt: string;
 }
+
+// ── Config admin (feature flags / remote config + secrets) ──────────────────
+// Admin-token authenticated, not user-session authenticated — see
+// ConfigAdminClient. Result shapes here are the raw resource, matching
+// @fonderie/config's admin route handlers.
+
+export interface IConfigEntry {
+	key: string;
+	value: unknown;
+	environment: string;
+	description: string | null;
+	active: boolean;
+	version: number;
+	updatedBy: string | null;
+	updatedAt: string;
+}
+
+export interface IConfigRevision {
+	key: string;
+	environment: string;
+	value: unknown;
+	version: number;
+	actor: string | null;
+	createdAt: string;
+}
+
+// Deliberately has no `value` — admin list/get never return a secret's
+// plaintext, only the explicit reveal path does.
+export interface ISecretEntry {
+	key: string;
+	environment: string;
+	description: string | null;
+	active: boolean;
+	version: number;
+	updatedBy: string | null;
+	updatedAt: string;
+}
+
+export interface ISecretRevision {
+	key: string;
+	environment: string;
+	version: number;
+	actor: string | null;
+	createdAt: string;
+}
+
+export interface IRevealSecretResult {
+	value: string;
+}
