@@ -11,16 +11,6 @@ export type {
 } from '@fonderie/client';
 
 export { FonderieApiError } from '@fonderie/client';
-
-export {
-	useForgotPassword,
-	useLogin,
-	useLogout,
-	useRegister,
-	useResetPassword,
-	useSession,
-	useVerifyEmail,
-} from './hooks';
 export type {
 	IUseForgotPasswordReturn,
 	IUseLoginReturn,
@@ -29,4 +19,13 @@ export type {
 	IUseResetPasswordReturn,
 	IUseSessionReturn,
 	IUseVerifyEmailReturn,
+} from './hooks';
+export {
+	useForgotPassword,
+	useLogin,
+	useLogout,
+	useRegister,
+	useResetPassword,
+	useSession,
+	useVerifyEmail,
 } from './hooks';

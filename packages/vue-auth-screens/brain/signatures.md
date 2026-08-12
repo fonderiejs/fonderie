@@ -5,9 +5,9 @@
 ## @fonderie/vue-auth-screens
 
 ```ts
+component ForgotPasswordScreen(props: { client }) — emits: navigate-login
+
 component LoginScreen(props: { client }) — emits: login-success, navigate-register, navigate-forgot-password
 
 component RegisterScreen(props: { client }) — emits: register-success, navigate-login
-
-component ForgotPasswordScreen(props: { client }) — emits: navigate-login
 ```

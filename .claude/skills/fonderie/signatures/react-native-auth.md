@@ -88,20 +88,6 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useForgotPassword(client: AuthClient): IUseForgotPasswordReturn
-
-function useLogin(client: AuthClient): IUseLoginReturn
-
-function useLogout(client: AuthClient): IUseLogoutReturn
-
-function useRegister(client: AuthClient): IUseRegisterReturn
-
-function useResetPassword(client: AuthClient): IUseResetPasswordReturn
-
-function useSession(client: AuthClient): IUseSessionReturn
-
-function useVerifyEmail(client: AuthClient): IUseVerifyEmailReturn
-
 interface IUseForgotPasswordReturn {
     forgotPassword: (email: string) => Promise<void>;
     isLoading: boolean;
@@ -150,4 +136,18 @@ interface IUseVerifyEmailReturn {
     error: FonderieApiError | null;
     data: IVerifyEmailResult | null;
 }
+
+function useForgotPassword(client: AuthClient): IUseForgotPasswordReturn
+
+function useLogin(client: AuthClient): IUseLoginReturn
+
+function useLogout(client: AuthClient): IUseLogoutReturn
+
+function useRegister(client: AuthClient): IUseRegisterReturn
+
+function useResetPassword(client: AuthClient): IUseResetPasswordReturn
+
+function useSession(client: AuthClient): IUseSessionReturn
+
+function useVerifyEmail(client: AuthClient): IUseVerifyEmailReturn
 ```

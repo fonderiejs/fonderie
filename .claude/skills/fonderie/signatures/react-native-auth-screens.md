@@ -5,11 +5,10 @@
 ## @fonderie/react-native-auth-screens
 
 ```ts
-function LoginScreen({ client, onLoginSuccess, onNavigateToRegister, onNavigateToForgotPassword, }: ILoginScreenProps): Element
-
-function RegisterScreen({ client, onRegisterSuccess, onNavigateToLogin, }: IRegisterScreenProps): Element
-
-function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPasswordScreenProps): Element
+interface IForgotPasswordScreenProps {
+    client: AuthClient;
+    onNavigateToLogin?: () => void;
+}
 
 interface ILoginScreenProps {
     client: AuthClient;
@@ -24,8 +23,9 @@ interface IRegisterScreenProps {
     onNavigateToLogin?: () => void;
 }
 
-interface IForgotPasswordScreenProps {
-    client: AuthClient;
-    onNavigateToLogin?: () => void;
-}
+function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPasswordScreenProps): Element
+
+function LoginScreen({ client, onLoginSuccess, onNavigateToRegister, onNavigateToForgotPassword, }: ILoginScreenProps): Element
+
+function RegisterScreen({ client, onRegisterSuccess, onNavigateToLogin, }: IRegisterScreenProps): Element
 ```
