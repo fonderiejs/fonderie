@@ -953,6 +953,7 @@
         "useBillingPortal",
         "useCheckout",
         "usePlan",
+        "usePlanAdmin",
         "usePlans",
         "useRecordUsage",
         "useSubscription",
@@ -1435,6 +1436,7 @@
         "useBillingPortal",
         "useCheckout",
         "usePlan",
+        "usePlanAdmin",
         "usePlans",
         "useRecordUsage",
         "useSubscription",
@@ -3603,6 +3605,10 @@
       "react-billing",
       "vue-billing"
     ],
+    "useplanadmin": [
+      "react-billing",
+      "vue-billing"
+    ],
     "userecordusage": [
       "react-billing",
       "vue-billing"
@@ -4383,7 +4389,7 @@
       "recipe": "vue-auth-screens-wiring"
     },
     "react-billing.hooks": {
-      "description": "React hooks for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, wrapping @fonderie/client's BillingClient",
+      "description": "React hooks for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, plus usePlanAdmin (create/update/delete plans) wrapping @fonderie/client's BillingClient. usePlanAdmin's routes are the one write surface in this SDK with no requireAuth/admin-token gate server-side — the app must authorize access to it itself before shipping any UI built on it.",
       "package": "react-billing",
       "recipe": "react-billing-wiring"
     },
@@ -4403,7 +4409,7 @@
       "recipe": "react-native-billing-screens-wiring"
     },
     "vue-billing.composables": {
-      "description": "Vue composables for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, wrapping @fonderie/client's BillingClient",
+      "description": "Vue composables for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, plus usePlanAdmin (create/update/delete plans) wrapping @fonderie/client's BillingClient. usePlanAdmin's routes are the one write surface in this SDK with no requireAuth/admin-token gate server-side — the app must authorize access to it itself before shipping any UI built on it.",
       "package": "vue-billing",
       "recipe": "vue-billing-wiring"
     },

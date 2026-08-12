@@ -10,7 +10,12 @@ export type {
 	IUpdateUserInput,
 } from './modules/auth';
 export { AuthClient } from './modules/auth';
-export type { ICheckoutInput, IRecordUsageInput } from './modules/billing';
+export type {
+	ICheckoutInput,
+	ICreatePlanInput,
+	IRecordUsageInput,
+	IUpdatePlanInput,
+} from './modules/billing';
 export { BillingClient } from './modules/billing';
 export type {
 	IConfigAdminClientOptions,
