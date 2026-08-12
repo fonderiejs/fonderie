@@ -10,6 +10,9 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setWorkspaceId(workspaceId: string | undefined): void
   .listPlans(): Promise<IApiResponse<IPlanListResult>>
   .getPlan(planId: string): Promise<IApiResponse<IPlanResult>>
+  .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
+  .updatePlan(planId: string, input: Partial<ICreatePlanInput>): Promise<IApiResponse<IPlanResult>>
+  .deletePlan(planId: string): Promise<IApiResponse<undefined>>
   .getSubscription(): Promise<IApiResponse<ISubscriptionResult>>
   .createCheckoutSession(input: ICheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
@@ -19,6 +22,20 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
 interface ICheckoutInput {
     plan: string;
     interval?: 'month' | 'year';
+}
+
+interface ICreatePlanInput {
+    name: string;
+    description?: string | null;
+    tier?: number;
+    seats?: number | null;
+    trialDays?: number;
+    monthlyAmount?: number | null;
+    monthlyPriceId?: string | null;
+    yearlyAmount?: number | null;
+    yearlyPriceId?: string | null;
+    features?: unknown;
+    metadata?: unknown;
 }
 
 interface IPlanDTO {
@@ -64,6 +81,8 @@ interface ISubscriptionDTO {
     createdAt: string;
 }
 
+type IUpdatePlanInput = Partial<ICreatePlanInput>;
+
 type SubscriberType = 'user' | 'workspace';
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
@@ -81,6 +100,8 @@ function useBillingPortal(client: BillingClient): { openPortal: () => Promise<st
 function useCheckout(client: BillingClient): { checkout: (input: ICheckoutInput) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
 
 function usePlan(client: BillingClient, planId: string): { plan: Ref<{ id: string; planId: string; name: string; description: string; tier: number; seats: number | null; trialDays: number; pricing: { ...; }; features: { ...; }[]; metadata: Record<...>; } | null, IPlanDTO | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+
+function usePlanAdmin(client: BillingClient): { createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>; updatePlan: (planId: string, input: Partial<...>) => Promise<...>; deletePlan: (planId: string) => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
 
 function usePlans(client: BillingClient): { plans: Ref<{ id: string; planId: string; name: string; description: string; tier: number; seats: number | null; trialDays: number; pricing: { monthly: number; yearly: number; currency: string; }; features: { ...; }[]; metadata: Record<...>; }[], IPlanDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 

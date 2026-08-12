@@ -90,16 +90,35 @@ interface ICheckoutInput {
     interval?: 'month' | 'year';
 }
 
+interface ICreatePlanInput {
+    name: string;
+    description?: string | null;
+    tier?: number;
+    seats?: number | null;
+    trialDays?: number;
+    monthlyAmount?: number | null;
+    monthlyPriceId?: string | null;
+    yearlyAmount?: number | null;
+    yearlyPriceId?: string | null;
+    features?: unknown;
+    metadata?: unknown;
+}
+
 interface IRecordUsageInput {
     metric: string;
     quantity?: number;
 }
+
+type IUpdatePlanInput = Partial<ICreatePlanInput>;
 
 new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
   .listPlans(): Promise<IApiResponse<IPlanListResult>>
   .getPlan(planId: string): Promise<IApiResponse<IPlanResult>>
+  .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
+  .updatePlan(planId: string, input: Partial<ICreatePlanInput>): Promise<IApiResponse<IPlanResult>>
+  .deletePlan(planId: string): Promise<IApiResponse<undefined>>
   .getSubscription(): Promise<IApiResponse<ISubscriptionResult>>
   .createCheckoutSession(input: ICheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>

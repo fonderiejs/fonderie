@@ -10,6 +10,9 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setWorkspaceId(workspaceId: string | undefined): void
   .listPlans(): Promise<IApiResponse<IPlanListResult>>
   .getPlan(planId: string): Promise<IApiResponse<IPlanResult>>
+  .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
+  .updatePlan(planId: string, input: Partial<ICreatePlanInput>): Promise<IApiResponse<IPlanResult>>
+  .deletePlan(planId: string): Promise<IApiResponse<undefined>>
   .getSubscription(): Promise<IApiResponse<ISubscriptionResult>>
   .createCheckoutSession(input: ICheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
@@ -29,6 +32,20 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
 interface ICheckoutInput {
     plan: string;
     interval?: 'month' | 'year';
+}
+
+interface ICreatePlanInput {
+    name: string;
+    description?: string | null;
+    tier?: number;
+    seats?: number | null;
+    trialDays?: number;
+    monthlyAmount?: number | null;
+    monthlyPriceId?: string | null;
+    yearlyAmount?: number | null;
+    yearlyPriceId?: string | null;
+    features?: unknown;
+    metadata?: unknown;
 }
 
 interface IPlanDTO {
@@ -74,6 +91,8 @@ interface ISubscriptionDTO {
     createdAt: string;
 }
 
+type IUpdatePlanInput = Partial<ICreatePlanInput>;
+
 type SubscriberType = 'user' | 'workspace';
 
 interface IUseBillingPortalReturn {
@@ -84,6 +103,14 @@ interface IUseBillingPortalReturn {
 
 interface IUseCheckoutReturn {
     checkout: (input: ICheckoutInput) => Promise<string>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
+interface IUsePlanAdminReturn {
+    createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
+    updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
+    deletePlan: (planId: string) => Promise<void>;
     isLoading: boolean;
     error: FonderieApiError | null;
 }
@@ -127,6 +154,8 @@ function useBillingPortal(client: BillingClient): IUseBillingPortalReturn
 function useCheckout(client: BillingClient): IUseCheckoutReturn
 
 function usePlan(client: BillingClient, planId: string): IUsePlanReturn
+
+function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn
 
 function usePlans(client: BillingClient): IUsePlansReturn
 

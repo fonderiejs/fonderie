@@ -1,10 +1,12 @@
 export type {
 	BillingClient,
 	ICheckoutInput,
+	ICreatePlanInput,
 	IPlanDTO,
 	IPlanFeature,
 	IRecordUsageInput,
 	ISubscriptionDTO,
+	IUpdatePlanInput,
 	SubscriberType,
 } from '@fonderie/client';
 
@@ -13,6 +15,7 @@ export {
 	useBillingPortal,
 	useCheckout,
 	usePlan,
+	usePlanAdmin,
 	usePlans,
 	useRecordUsage,
 	useSubscription,

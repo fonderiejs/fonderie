@@ -22,6 +22,22 @@ export interface IRecordUsageInput {
 	quantity?: number;
 }
 
+export interface ICreatePlanInput {
+	name: string;
+	description?: string | null;
+	tier?: number;
+	seats?: number | null;
+	trialDays?: number;
+	monthlyAmount?: number | null;
+	monthlyPriceId?: string | null;
+	yearlyAmount?: number | null;
+	yearlyPriceId?: string | null;
+	features?: unknown;
+	metadata?: unknown;
+}
+
+export type IUpdatePlanInput = Partial<ICreatePlanInput>;
+
 // ── Billing client ───────────────────────────────────────────────────────────
 
 export class BillingClient {
@@ -56,6 +72,40 @@ export class BillingClient {
 		return this.http.request<IApiResponse<IPlanResult>>({
 			method: 'GET',
 			path: `/plans/${planId}`,
+		});
+	}
+
+	// ── Plans — admin write ──────────────────────────────────────────────────────
+	// Unlike every other write in this client, @fonderie/billing does not gate
+	// these with requireAuth or an admin token — "the caller is responsible for
+	// authorization" (its own routes.ts comment). Sending the session token is
+	// harmless (the server ignores it) but does nothing on its own; gate access
+	// to these calls yourself (an app-level route guard, a reverse-proxy admin
+	// zone, or similar) before wiring them into a UI.
+
+	createPlan(input: ICreatePlanInput) {
+		return this.http.request<IApiResponse<IPlanResult>>({
+			method: 'POST',
+			path: '/plans',
+			body: input,
+			token: this.tokens.get(),
+		});
+	}
+
+	updatePlan(planId: string, input: IUpdatePlanInput) {
+		return this.http.request<IApiResponse<IPlanResult>>({
+			method: 'PUT',
+			path: `/plans/${planId}`,
+			body: input,
+			token: this.tokens.get(),
+		});
+	}
+
+	deletePlan(planId: string) {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'DELETE',
+			path: `/plans/${planId}`,
+			token: this.tokens.get(),
 		});
 	}
 
