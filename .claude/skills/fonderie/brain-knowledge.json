@@ -17,7 +17,13 @@
     "react-native-auth": ["react native auth", "mobile auth", "rn auth", "expo auth", "asyncstorage auth", "react native login"],
     "react-native-auth-screens": ["react native login screen", "mobile login screen", "prebuilt react native auth ui", "expo login screen"],
     "vue-auth": ["vue auth", "vue login", "vue composable", "vue3 auth", "vue session"],
-    "vue-auth-screens": ["vue login screen", "vue register screen", "prebuilt vue auth ui"]
+    "vue-auth-screens": ["vue login screen", "vue register screen", "prebuilt vue auth ui"],
+    "react-billing": ["react billing", "react pricing", "react checkout", "useplans", "use plans", "usecheckout", "use checkout", "usesubscription", "use subscription", "react stripe"],
+    "react-billing-screens": ["react pricing screen", "react pricing table", "prebuilt react billing ui", "react subscription screen"],
+    "react-native-billing": ["react native billing", "mobile billing", "rn billing", "expo billing", "mobile checkout", "mobile pricing"],
+    "react-native-billing-screens": ["react native pricing screen", "mobile pricing screen", "prebuilt react native billing ui", "mobile subscription screen"],
+    "vue-billing": ["vue billing", "vue pricing", "vue checkout", "vue3 billing", "vue subscription", "vue stripe"],
+    "vue-billing-screens": ["vue pricing screen", "vue pricing table", "prebuilt vue billing ui", "vue subscription screen"]
   },
   "concepts": {
     "auth.accounts": { "description": "sign up, log in, sessions, passwords, MFA, email verification", "package": "auth", "recipe": "basic-auth" },
@@ -42,7 +48,13 @@
     "react-native-auth.hooks": { "description": "React Native hooks for auth — same shape as react-auth, token persisted to AsyncStorage instead of localStorage", "package": "react-native-auth", "recipe": "react-native-auth-wiring" },
     "react-native-auth.screens": { "description": "pre-built React Native auth screens (LoginScreen, RegisterScreen, ForgotPasswordScreen) built on react-native-auth hooks", "package": "react-native-auth-screens", "recipe": "react-native-auth-screens-wiring" },
     "vue-auth.composables": { "description": "Vue composables for auth — useLogin, useRegister, useSession, useLogout, useForgotPassword, useResetPassword, useVerifyEmail, wrapping @fonderie/client", "package": "vue-auth", "recipe": "vue-auth-wiring" },
-    "vue-auth.screens": { "description": "pre-built Vue auth screens (LoginScreen, RegisterScreen, ForgotPasswordScreen) built on vue-auth composables via Vue's h() render API", "package": "vue-auth-screens", "recipe": "vue-auth-screens-wiring" }
+    "vue-auth.screens": { "description": "pre-built Vue auth screens (LoginScreen, RegisterScreen, ForgotPasswordScreen) built on vue-auth composables via Vue's h() render API", "package": "vue-auth-screens", "recipe": "vue-auth-screens-wiring" },
+    "react-billing.hooks": { "description": "React hooks for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, wrapping @fonderie/client's BillingClient", "package": "react-billing", "recipe": "react-billing-wiring" },
+    "react-billing.screens": { "description": "pre-built React billing screens (PricingScreen, SubscriptionScreen) built on react-billing hooks — bring your own styling", "package": "react-billing-screens", "recipe": "react-billing-screens-wiring" },
+    "react-native-billing.hooks": { "description": "React Native billing hooks — re-exports react-billing wholesale (no platform-specific storage, unlike auth)", "package": "react-native-billing", "recipe": "react-native-billing-wiring" },
+    "react-native-billing.screens": { "description": "pre-built React Native billing screens (PricingScreen, SubscriptionScreen) built on react-native-billing hooks", "package": "react-native-billing-screens", "recipe": "react-native-billing-screens-wiring" },
+    "vue-billing.composables": { "description": "Vue composables for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, wrapping @fonderie/client's BillingClient", "package": "vue-billing", "recipe": "vue-billing-wiring" },
+    "vue-billing.screens": { "description": "pre-built Vue billing screens (PricingScreen, SubscriptionScreen) built on vue-billing composables via Vue's h() render API", "package": "vue-billing-screens", "recipe": "vue-billing-screens-wiring" }
   },
   "recipes": {
     "basic-auth": { "when": "sign up + log in with email/password", "packages": ["auth", "core", "events", "store"], "invariants": ["jwt-secret-from-env", "rate-limit-default-on"] },
@@ -60,7 +72,13 @@
     "react-native-auth-wiring": { "when": "adding auth to a React Native app", "packages": ["client", "react-native-auth"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
     "react-native-auth-screens-wiring": { "when": "adding auth to a React Native app with pre-built UI, not just hooks", "packages": ["client", "react-native-auth", "react-native-auth-screens"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
     "vue-auth-wiring": { "when": "adding auth to a Vue 3 app", "packages": ["client", "vue-auth"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
-    "vue-auth-screens-wiring": { "when": "adding auth to a Vue 3 app with pre-built UI, not just composables", "packages": ["client", "vue-auth", "vue-auth-screens"], "invariants": ["frontend-client-injection", "frontend-token-storage"] }
+    "vue-auth-screens-wiring": { "when": "adding auth to a Vue 3 app with pre-built UI, not just composables", "packages": ["client", "vue-auth", "vue-auth-screens"], "invariants": ["frontend-client-injection", "frontend-token-storage"] },
+    "react-billing-wiring": { "when": "adding billing/pricing/checkout to a React web app", "packages": ["client", "react-billing"], "invariants": ["frontend-client-injection", "frontend-billing-shared-token"] },
+    "react-billing-screens-wiring": { "when": "adding billing to a React web app with pre-built UI, not just hooks", "packages": ["client", "react-billing", "react-billing-screens"], "invariants": ["frontend-client-injection", "frontend-billing-shared-token"] },
+    "react-native-billing-wiring": { "when": "adding billing/pricing/checkout to a React Native app", "packages": ["client", "react-native-billing"], "invariants": ["frontend-client-injection", "frontend-billing-shared-token"] },
+    "react-native-billing-screens-wiring": { "when": "adding billing to a React Native app with pre-built UI, not just hooks", "packages": ["client", "react-native-billing", "react-native-billing-screens"], "invariants": ["frontend-client-injection", "frontend-billing-shared-token"] },
+    "vue-billing-wiring": { "when": "adding billing/pricing/checkout to a Vue 3 app", "packages": ["client", "vue-billing"], "invariants": ["frontend-client-injection", "frontend-billing-shared-token"] },
+    "vue-billing-screens-wiring": { "when": "adding billing to a Vue 3 app with pre-built UI, not just composables", "packages": ["client", "vue-billing", "vue-billing-screens"], "invariants": ["frontend-client-injection", "frontend-billing-shared-token"] }
   },
   "invariants": {
     "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
@@ -69,7 +87,8 @@
     "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
     "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
     "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task.",
-    "frontend-client-injection": "react-auth/react-native-auth/vue-auth hooks and composables take an AuthClient instance as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass client.auth down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
-    "frontend-token-storage": "The access token is persisted client-side by the hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly."
+    "frontend-client-injection": "Every @fonderie/*-auth and @fonderie/*-billing hook/composable takes the matching @fonderie/client sub-client instance (client.auth or client.billing) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
+    "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",
+    "frontend-billing-shared-token": "client.auth and client.billing share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing requests too. Do not call client.billing.setAccessToken yourself or construct a separate BillingClient outside FonderieClient."
   }
 }
