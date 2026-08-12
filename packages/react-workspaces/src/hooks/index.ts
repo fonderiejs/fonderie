@@ -16,6 +16,8 @@ export type { IUseSetRolePermissionsReturn } from './useSetRolePermissions';
 export { useSetRolePermissions } from './useSetRolePermissions';
 export type { IUseUpdateRoleReturn } from './useUpdateRole';
 export { useUpdateRole } from './useUpdateRole';
+export type { IUseWorkspaceProfileReturn } from './useWorkspaceProfile';
+export { useWorkspaceProfile } from './useWorkspaceProfile';
 export type { IUseWorkspaceSettingsReturn } from './useWorkspaceSettings';
 export { useWorkspaceSettings } from './useWorkspaceSettings';
 export type { IUseWorkspacesReturn } from './useWorkspaces';

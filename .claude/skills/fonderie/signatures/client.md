@@ -349,6 +349,8 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
+  .archiveWorkspace(): Promise<IApiResponse<undefined>>
+  .restoreWorkspace(): Promise<IApiResponse<undefined>>
   .listRoles(): Promise<IApiResponse<IRoleListResult>>
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
   .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>

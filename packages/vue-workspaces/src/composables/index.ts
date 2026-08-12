@@ -7,5 +7,6 @@ export { useRemoveMember } from './useRemoveMember';
 export { useRoles } from './useRoles';
 export { useSetRolePermissions } from './useSetRolePermissions';
 export { useUpdateRole } from './useUpdateRole';
+export { useWorkspaceProfile } from './useWorkspaceProfile';
 export { useWorkspaceSettings } from './useWorkspaceSettings';
 export { useWorkspaces } from './useWorkspaces';

@@ -25,6 +25,7 @@ export type {
 	IUseRolesReturn,
 	IUseSetRolePermissionsReturn,
 	IUseUpdateRoleReturn,
+	IUseWorkspaceProfileReturn,
 	IUseWorkspaceSettingsReturn,
 	IUseWorkspacesReturn,
 } from './hooks';
@@ -38,6 +39,7 @@ export {
 	useRoles,
 	useSetRolePermissions,
 	useUpdateRole,
+	useWorkspaceProfile,
 	useWorkspaceSettings,
 	useWorkspaces,
 } from './hooks';

@@ -139,7 +139,7 @@
       "recipe": "vue-billing-screens-wiring"
     },
     "react-workspaces.hooks": {
-      "description": "React hooks for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
+      "description": "React hooks for workspaces — useWorkspaces, useCreateWorkspace, useWorkspaceProfile (update/archive/restore the current workspace — action-only, no read hook since there's no 'get current workspace' route), useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
       "package": "react-workspaces",
       "recipe": "react-workspaces-wiring"
     },
@@ -159,7 +159,7 @@
       "recipe": "react-native-workspaces-screens-wiring"
     },
     "vue-workspaces.composables": {
-      "description": "Vue composables for workspaces — useWorkspaces, useCreateWorkspace, useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
+      "description": "Vue composables for workspaces — useWorkspaces, useCreateWorkspace, useWorkspaceProfile (update/archive/restore the current workspace — action-only, no read composable since there's no 'get current workspace' route), useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
       "package": "vue-workspaces",
       "recipe": "vue-workspaces-wiring"
     },

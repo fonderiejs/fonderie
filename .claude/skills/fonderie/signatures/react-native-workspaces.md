@@ -141,6 +141,8 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
+  .archiveWorkspace(): Promise<IApiResponse<undefined>>
+  .restoreWorkspace(): Promise<IApiResponse<undefined>>
   .listRoles(): Promise<IApiResponse<IRoleListResult>>
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
   .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
@@ -223,6 +225,14 @@ interface IUseUpdateRoleReturn {
     error: FonderieApiError | null;
 }
 
+interface IUseWorkspaceProfileReturn {
+    updateWorkspace: (input: IUpdateWorkspaceInput) => Promise<IWorkspaceDTO>;
+    archiveWorkspace: () => Promise<void>;
+    restoreWorkspace: () => Promise<void>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
 interface IUseWorkspaceSettingsReturn {
     settings: IWorkspaceSettingsDTO | null;
     isLoading: boolean;
@@ -255,6 +265,8 @@ function useRoles(client: WorkspacesClient): IUseRolesReturn
 function useSetRolePermissions(client: WorkspacesClient): IUseSetRolePermissionsReturn
 
 function useUpdateRole(client: WorkspacesClient): IUseUpdateRoleReturn
+
+function useWorkspaceProfile(client: WorkspacesClient): IUseWorkspaceProfileReturn
 
 function useWorkspaceSettings(client: WorkspacesClient): IUseWorkspaceSettingsReturn
 
