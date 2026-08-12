@@ -26,6 +26,18 @@ export type {
 } from './modules/courier-admin';
 export { CourierAdminClient } from './modules/courier-admin';
 export type {
+	IAddAddressInput,
+	IAddEmailInput,
+	IAddPhoneInput,
+	IAddRelationshipInput,
+	IBlacklistCustomerInput,
+	ICreateCustomerInput,
+	IGetCustomerInput,
+	IListCustomersInput,
+	IUpdateCustomerInput,
+} from './modules/customers';
+export { CustomersClient } from './modules/customers';
+export type {
 	ICreateWebhookEndpointInput,
 	IUpdateWebhookEndpointInput,
 } from './modules/webhooks';
@@ -41,7 +53,11 @@ export type {
 } from './modules/workspaces';
 export { WorkspacesClient } from './modules/workspaces';
 export type {
+	CustomerLabelType,
+	CustomerSex,
+	CustomerType,
 	IAcceptInvitationResult,
+	IAddressDTO,
 	IApiError,
 	IApiResponse,
 	IAuditEventDTO,
@@ -49,6 +65,32 @@ export type {
 	ICheckoutUrlResult,
 	IConfigEntry,
 	IConfigRevision,
+	ICustomerAddressDTO,
+	ICustomerAddressListResult,
+	ICustomerAddressResult,
+	ICustomerDetailD2DTO,
+	ICustomerDetailDTO,
+	ICustomerDTO,
+	ICustomerEmailDTO,
+	ICustomerEmailListResult,
+	ICustomerEmailResult,
+	ICustomerLabelDTO,
+	ICustomerLabelListResult,
+	ICustomerListResult,
+	ICustomerNoteDTO,
+	ICustomerNoteListResult,
+	ICustomerNoteResult,
+	ICustomerPhoneDTO,
+	ICustomerPhoneListResult,
+	ICustomerPhoneResult,
+	ICustomerRelationshipDTO,
+	ICustomerRelationshipExpandedD2DTO,
+	ICustomerRelationshipExpandedDTO,
+	ICustomerRelationshipListResult,
+	ICustomerRelationshipResult,
+	ICustomerResult,
+	ICustomerShallowDTO,
+	ICustomerTagListResult,
 	IInvitationDTO,
 	IInvitationListResult,
 	IInviteResult,
