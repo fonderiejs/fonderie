@@ -369,3 +369,46 @@ export interface IAuditPageResult {
 	events: IAuditEventDTO[];
 	nextCursor: string | null;
 }
+
+// ── Webhooks ─────────────────────────────────────────────────────────────────
+// Session-authenticated (shares FonderieClient's TokenStore, scoped via
+// setWorkspaceId like billing/workspaces/audit).
+
+export interface IWebhookEndpointDTO {
+	id: string;
+	url: string;
+	events: string[];
+	enabled: boolean;
+	createdAt: string;
+}
+
+// The signing secret is only ever returned here, at creation — every other
+// read masks it, matching @fonderie/webhooks' own toEndpointDTO/toEndpointCreatedDTO split.
+export interface IWebhookEndpointCreatedDTO extends IWebhookEndpointDTO {
+	secret: string;
+}
+
+export interface IWebhookDeliveryDTO {
+	id: string;
+	eventId: string;
+	eventType: string;
+	status: string;
+	attempts: number;
+	responseStatus: number | null;
+	deliveredAt: string | null;
+	createdAt: string;
+}
+
+export interface IWebhookEndpointListResult {
+	endpoints: IWebhookEndpointDTO[];
+}
+
+export interface IWebhookDeliveryListResult {
+	deliveries: IWebhookDeliveryDTO[];
+}
+
+export interface ITestWebhookResult {
+	status: number | null;
+	ok: boolean;
+	error?: string;
+}
