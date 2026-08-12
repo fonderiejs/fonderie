@@ -102,3 +102,71 @@ export interface IPhoneVerifyResult {
 	tokens: ITokens;
 	user: IUserDTO;
 }
+
+// ── Billing ──────────────────────────────────────────────────────────────────
+
+export interface IPlanFeature {
+	name: string;
+	description: string;
+	enabled: boolean;
+	limit?: number;
+}
+
+export interface IPlanDTO {
+	id: string;
+	planId: string;
+	name: string;
+	description: string;
+	tier: number;
+	seats: number | null;
+	trialDays: number;
+	pricing: {
+		monthly: number; // in cents, e.g. 1999 = $19.99
+		yearly: number; // in cents
+		currency: string; // ISO 4217, e.g. 'USD'
+	};
+	features: IPlanFeature[];
+	metadata: Record<string, unknown>;
+}
+
+export type SubscriberType = 'user' | 'workspace';
+
+export interface ISubscriptionDTO {
+	id: string;
+	subscriberType: SubscriberType;
+	subscriberId: string;
+	plan: string;
+	interval: string;
+	status: string;
+	cancelAtPeriodEnd: boolean;
+	currentPeriodStart: string | null;
+	currentPeriodEnd: string | null;
+	trialEndsAt: string | null;
+	createdAt: string;
+}
+
+export interface IPlanListResult {
+	plans: IPlanDTO[];
+}
+
+export interface IPlanResult {
+	plan: IPlanDTO;
+}
+
+export interface ISubscriptionResult {
+	subscription: ISubscriptionDTO;
+}
+
+export interface ICheckoutUrlResult {
+	url: string;
+}
+
+export interface IPortalUrlResult {
+	url: string;
+}
+
+export interface IUsageResult {
+	metric: string;
+	total: number;
+	since: string;
+}

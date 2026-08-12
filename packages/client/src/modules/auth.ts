@@ -1,15 +1,16 @@
 import type { HttpClient } from '../http';
+import type { TokenStore } from '../token-store';
 import type {
 	IApiResponse,
-	IRegisterResult,
 	ILoginResult,
-	IRefreshResult,
-	IVerifyEmailResult,
-	IResendVerificationResult,
 	IMeResult,
-	IMfaSetupResult,
 	IMfaEnabledResult,
+	IMfaSetupResult,
 	IPhoneVerifyResult,
+	IRefreshResult,
+	IRegisterResult,
+	IResendVerificationResult,
+	IVerifyEmailResult,
 } from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
@@ -106,14 +107,14 @@ export class AuthClient {
 
 	constructor(
 		private http: HttpClient,
-		private accessToken?: string,
+		private tokens: TokenStore,
 	) {
 		this.phone = new PhoneClient(http);
-		this.mfa = new MfaClient(http, () => this.accessToken);
+		this.mfa = new MfaClient(http, () => this.tokens.get());
 	}
 
 	setAccessToken(token: string | undefined) {
-		this.accessToken = token;
+		this.tokens.set(token);
 	}
 
 	// ── Public ─────────────────────────────────────────────────────────────────
@@ -173,7 +174,7 @@ export class AuthClient {
 			method: 'POST',
 			path: '/auth/logout',
 			body: refreshToken ? { refreshToken } : undefined,
-			token: this.accessToken,
+			token: this.tokens.get(),
 		});
 	}
 
@@ -181,7 +182,7 @@ export class AuthClient {
 		return this.http.request<IApiResponse<IResendVerificationResult>>({
 			method: 'POST',
 			path: '/auth/email/send-verification',
-			token: this.accessToken,
+			token: this.tokens.get(),
 		});
 	}
 
@@ -191,7 +192,7 @@ export class AuthClient {
 		return this.http.request<IApiResponse<IMeResult>>({
 			method: 'GET',
 			path: '/users',
-			token: this.accessToken,
+			token: this.tokens.get(),
 		});
 	}
 
@@ -200,7 +201,7 @@ export class AuthClient {
 			method: 'PUT',
 			path: '/users/update',
 			body: input,
-			token: this.accessToken,
+			token: this.tokens.get(),
 		});
 	}
 
@@ -208,7 +209,7 @@ export class AuthClient {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
 			path: '/users',
-			token: this.accessToken,
+			token: this.tokens.get(),
 		});
 	}
 }

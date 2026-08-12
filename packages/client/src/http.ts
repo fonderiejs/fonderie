@@ -18,6 +18,9 @@ export interface IRequestOptions {
 	body?: unknown;
 	token?: string | undefined;
 	cookie?: string | undefined;
+	// Resolves the billing subscriber to a workspace (@fonderie/billing's
+	// resolveSubscriber falls back to the session user when omitted).
+	workspaceId?: string | undefined;
 }
 
 export class HttpClient {
@@ -30,6 +33,7 @@ export class HttpClient {
 
 		if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
 		if (opts.cookie) headers['Cookie'] = opts.cookie;
+		if (opts.workspaceId) headers['X-Workspace-ID'] = opts.workspaceId;
 
 		const fetchInit: RequestInit = {
 			method: opts.method,
