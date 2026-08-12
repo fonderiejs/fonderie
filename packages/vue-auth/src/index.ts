@@ -11,4 +11,13 @@ export type {
 } from '@fonderie/client';
 
 export { FonderieApiError } from '@fonderie/client';
-export * from './composables';
+
+export {
+	useForgotPassword,
+	useLogin,
+	useLogout,
+	useRegister,
+	useResetPassword,
+	useSession,
+	useVerifyEmail,
+} from './composables';

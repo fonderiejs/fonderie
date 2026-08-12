@@ -34,13 +34,19 @@ function extractPackages() {
       .filter((k) => k.startsWith(SCOPE_PREFIX))
       .map((k) => k.replace(SCOPE_PREFIX, ''));
 
-    // exports: top-level symbols re-exported from src/index.ts
+    // exports: top-level symbols re-exported from src/index.ts. `\s*` (not a
+    // literal space) around the braces so this also matches Biome's multi-line
+    // wrap of anything past the 100-char line width — a single-line-only regex
+    // silently drops exports the moment a list gets long enough to wrap.
     const idx = read(join(pkgsDir, p, 'src/index.ts'));
     const exports = [
       ...new Set(
-        [...idx.matchAll(/export \{ ([A-Za-z0-9_,\s]+) \} from/g)]
-          .flatMap((m) => m[1].split(',').map((s) => s.trim()))
-          .filter((x) => /^[A-Z]/.test(x)),
+        [...idx.matchAll(/export\s*\{\s*([A-Za-z0-9_,\s]+)\s*\}\s*from/g)]
+          .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean))
+          // Headline symbols only (not every internal utility a package re-exports):
+          // PascalCase (classes/modules/constants), or the useX hook/composable
+          // naming convention used by the frontend packages.
+          .filter((x) => /^([A-Z]|use[A-Z])/.test(x)),
       ),
     ];
 

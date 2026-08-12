@@ -8,19 +8,31 @@
 // fonderie skill), exact enough that nobody needs to read package source to
 // learn a constructor or config shape.
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { SCOPE_PREFIX } from './scope.mjs';
+import { writeFragment } from './brain-fragment.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const pkgsDir = join(root, 'packages');
 
-// Publishable packages, in reading order (foundation first).
-const PACKAGES = [
-	'core', 'store', 'events', 'auth', 'courier', 'workspaces', 'billing',
-	'permissions', 'config', 'customers', 'audit', 'webhooks', 'logger',
-	'client', 'adapter-express', 'adapter-hono', 'adapter-koa',
-];
+// Every @fonderie/* library with a src/index.ts — same filter as
+// generate-brain.mjs (skip a different scope, or tooling that ships a `bin`;
+// a bin package is a command, not a brick with a public API to document).
+function discoverPackages() {
+	return readdirSync(pkgsDir)
+		.filter((p) => {
+			const pj = join(pkgsDir, p, 'package.json');
+			if (!existsSync(pj)) return false;
+			const j = JSON.parse(readFileSync(pj, 'utf8'));
+			return j.name?.startsWith(SCOPE_PREFIX) && !j.bin && existsSync(join(pkgsDir, p, 'src/index.ts'));
+		})
+		.sort();
+}
+
+const PACKAGES = discoverPackages();
 
 const printer = ts.createPrinter({ removeComments: true });
 
@@ -36,6 +48,32 @@ function loadProgram(pkgDir) {
 		noEmit: true,
 		skipLibCheck: true,
 	});
+}
+
+// `export const Foo = defineComponent({ props: {...}, emits: {...}, ... })`
+// → a compact synthetic signature read off the object-literal argument's AST,
+// not the checker's type (see call site for why). Returns null for anything
+// that isn't a bare `defineComponent(...)` call so the normal path still
+// handles everything else.
+function renderDefineComponent(name, decl) {
+	const init = decl.initializer;
+	if (!init || !ts.isCallExpression(init) || !ts.isIdentifier(init.expression) || init.expression.text !== 'defineComponent') {
+		return null;
+	}
+	const config = init.arguments[0];
+	if (!config || !ts.isObjectLiteralExpression(config)) return null;
+
+	const keysOf = (propName) => {
+		const prop = config.properties.find((p) => p.name && p.name.getText() === propName);
+		if (!prop || !ts.isPropertyAssignment(prop) || !ts.isObjectLiteralExpression(prop.initializer)) return [];
+		return prop.initializer.properties.map((p) => p.name?.getText().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+	};
+
+	const props = keysOf('props');
+	const emits = keysOf('emits');
+	const parts = [`component ${name}(props: { ${props.join(', ')} })`];
+	if (emits.length) parts.push(`emits: ${emits.join(', ')}`);
+	return parts.join(' — ');
 }
 
 // Render one exported symbol as a compact signature line/block.
@@ -90,6 +128,14 @@ function renderSymbol(checker, name, symbol) {
 	}
 
 	if (ts.isVariableDeclaration(decl)) {
+		// Vue `defineComponent({ props, emits, ... })`: the checker's inferred
+		// type is Vue's internal component-instance machinery (thousands of
+		// characters on one line — useless in an agent's context). Read the
+		// props/emits keys straight off the call's object-literal argument
+		// instead of resolving the type.
+		const fromDefineComponent = renderDefineComponent(name, decl);
+		if (fromDefineComponent) return fromDefineComponent;
+
 		const type = checker.getTypeOfSymbolAtLocation(target, decl);
 		const call = type.getCallSignatures()[0];
 		if (call) return `function ${name}${checker.signatureToString(call)}`;
@@ -126,11 +172,9 @@ function renderPackage(pkg) {
 
 // Per-package output. Writing one file per package (instead of a single
 // megafile) means an agent wiring, say, auth pulls ~1K tokens of auth
-// signatures into context — not the ~13K of all 17 packages, re-charged as
+// signatures into context — not the ~13K of all packages, re-charged as
 // cache-read on every turn. This is a measured cost lever: the monolith was
 // the single largest resident-context item in the token-cost experiment.
-import { mkdirSync, rmSync, readdirSync } from 'node:fs';
-import { writeFragment } from './brain-fragment.mjs';
 
 const outDir = join(root, '.claude/skills/fonderie/signatures');
 mkdirSync(outDir, { recursive: true });
