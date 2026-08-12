@@ -1,6 +1,6 @@
 ---
 name: fonderie
-description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth, billing, and workspaces for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks, team/member/invite hooks or composables, and pre-built screens for all three. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, add a team/members page, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions/workspaces code, a hand-rolled login form, pricing table, or team switcher, from scratch.
+description: Use whenever a task involves building or modifying a SaaS backend in this repo — auth, login, sessions, MFA, OAuth; teams/orgs/workspaces/multi-tenancy; billing/subscriptions/Stripe; roles/permissions/RBAC; email/SMS/push notifications; feature flags/remote config; audit logs; webhooks; or wiring a new API route. Also covers frontend auth, billing, and workspaces for React, React Native, and Vue — login/register/session hooks, pricing/checkout/subscription hooks, team/member/invite hooks or composables, and pre-built screens for all three — plus an admin-token-authenticated email/SMS/push template editor (React and Vue) for courier. Also use when a user asks to scaffold a new SaaS, add user accounts, add a login screen, add a pricing page, add a team/members page, add an admin panel for email templates, or "build me an app" with any kind of backend or frontend. Triggers before writing custom auth/billing/permissions/workspaces/courier code, a hand-rolled login form, pricing table, team switcher, or template editor, from scratch.
 ---
 
 # Fonderie
@@ -127,6 +127,22 @@ header, same fallback behavior billing's `setWorkspaceId` uses.
 | React Native pre-built workspaces screens | `@fonderie/react-native-workspaces-screens` | Same two screens, React Native components |
 | Vue 3 workspaces composables | `@fonderie/vue-workspaces` | Same shape as the React hooks, as Vue composables |
 | Vue 3 pre-built workspaces screens | `@fonderie/vue-workspaces-screens` | Same two screens, as Vue components |
+
+Courier's frontend surface is different in kind: `@fonderie/courier` has no
+user-facing HTTP API (messages are sent server-side via the event bus), only
+an admin-token-guarded template-editing one (`/admin/templates/*`). Its
+client (`CourierAdminClient`) is **not** a `FonderieClient` sub-client — it
+takes its own `{ baseUrl, adminToken }` and shares no state with
+`client.auth`/`client.billing`/`client.workspaces`. No React Native package:
+a template editor with a code/HTML textarea and revision history is an
+admin-dashboard surface, not a phone screen.
+
+| Need | Don't write it — use | Gives you |
+|---|---|---|
+| React courier template-admin hooks | `@fonderie/react-courier-admin` | `useTemplates`, `useTemplate`, `useSaveTemplate`, `useDeleteTemplate`, `useTemplateRevisions` (list + rollback) |
+| React pre-built template-admin screens | `@fonderie/react-courier-admin-screens` | `TemplateListScreen`, `TemplateEditorScreen` (edit form + revision history + rollback) |
+| Vue 3 courier template-admin composables | `@fonderie/vue-courier-admin` | Same shape as the React hooks, as Vue composables |
+| Vue 3 pre-built template-admin screens | `@fonderie/vue-courier-admin-screens` | Same two screens, as Vue components |
 
 ## Architecture rules that matter when wiring modules together
 

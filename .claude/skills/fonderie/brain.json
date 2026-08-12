@@ -20,6 +20,8 @@
     "react-auth-screens": "0.1.0",
     "react-billing": "0.1.0",
     "react-billing-screens": "0.1.0",
+    "react-courier-admin": "0.1.0",
+    "react-courier-admin-screens": "0.1.0",
     "react-native-auth": "0.1.0",
     "react-native-auth-screens": "0.1.0",
     "react-native-billing": "0.1.0",
@@ -33,6 +35,8 @@
     "vue-auth-screens": "0.1.0",
     "vue-billing": "0.1.0",
     "vue-billing-screens": "0.1.0",
+    "vue-courier-admin": "0.1.0",
+    "vue-courier-admin-screens": "0.1.0",
     "vue-workspaces": "0.1.0",
     "vue-workspaces-screens": "0.1.0",
     "webhooks": "5.0.0",
@@ -361,6 +365,7 @@
         "FonderieApiError",
         "AuthClient",
         "BillingClient",
+        "CourierAdminClient",
         "WorkspacesClient"
       ],
       "subpaths": [],
@@ -921,6 +926,41 @@
       "hasSignature": true,
       "hasOutcomes": false
     },
+    "react-courier-admin": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "CourierAdminClient",
+        "FonderieApiError",
+        "useDeleteTemplate",
+        "useSaveTemplate",
+        "useTemplate",
+        "useTemplateRevisions",
+        "useTemplates"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-courier-admin-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "TemplateEditorScreen",
+        "TemplateListScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
     "react-native-auth": {
       "version": "0.1.0",
       "requires": [],
@@ -1137,6 +1177,41 @@
       "exports": [
         "PricingScreen",
         "SubscriptionScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-courier-admin": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "CourierAdminClient",
+        "FonderieApiError",
+        "useDeleteTemplate",
+        "useSaveTemplate",
+        "useTemplate",
+        "useTemplateRevisions",
+        "useTemplates"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-courier-admin-screens": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "TemplateEditorScreen",
+        "TemplateListScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1687,6 +1762,12 @@
     "react-billing-screens": [
       "react-billing-screens"
     ],
+    "react-courier-admin": [
+      "react-courier-admin"
+    ],
+    "react-courier-admin-screens": [
+      "react-courier-admin-screens"
+    ],
     "react-native-auth": [
       "react-native-auth"
     ],
@@ -1725,6 +1806,12 @@
     ],
     "vue-billing-screens": [
       "vue-billing-screens"
+    ],
+    "vue-courier-admin": [
+      "vue-courier-admin"
+    ],
+    "vue-courier-admin-screens": [
+      "vue-courier-admin-screens"
     ],
     "vue-workspaces": [
       "vue-workspaces"
@@ -2489,6 +2576,62 @@
     "vue invite screen": [
       "vue-workspaces-screens"
     ],
+    "react template editor": [
+      "react-courier-admin"
+    ],
+    "react email template": [
+      "react-courier-admin"
+    ],
+    "usetemplates": [
+      "react-courier-admin",
+      "vue-courier-admin"
+    ],
+    "use templates": [
+      "react-courier-admin"
+    ],
+    "usesavetemplate": [
+      "react-courier-admin",
+      "vue-courier-admin"
+    ],
+    "use save template": [
+      "react-courier-admin"
+    ],
+    "react admin templates": [
+      "react-courier-admin"
+    ],
+    "edit email template react": [
+      "react-courier-admin"
+    ],
+    "react template list screen": [
+      "react-courier-admin-screens"
+    ],
+    "react template editor screen": [
+      "react-courier-admin-screens"
+    ],
+    "prebuilt react template admin ui": [
+      "react-courier-admin-screens"
+    ],
+    "vue template editor": [
+      "vue-courier-admin"
+    ],
+    "vue email template": [
+      "vue-courier-admin"
+    ],
+    "vue admin templates": [
+      "vue-courier-admin"
+    ],
+    "edit email template vue": [
+      "vue-courier-admin"
+    ],
+    "vue template list screen": [
+      "vue-courier-admin-screens"
+    ],
+    "vue template editor screen": [
+      "vue-courier-admin-screens"
+    ],
+    "prebuilt vue template admin ui": [
+      "vue-courier-admin-screens"
+    ],
     "operations": [
       "adapter-express",
       "adapter-hono",
@@ -2529,10 +2672,12 @@
       "client",
       "react-auth",
       "react-billing",
+      "react-courier-admin",
       "react-native-auth",
       "react-workspaces",
       "vue-auth",
       "vue-billing",
+      "vue-courier-admin",
       "vue-workspaces"
     ],
     "authclient": [
@@ -2540,6 +2685,11 @@
     ],
     "billingclient": [
       "client"
+    ],
+    "courieradminclient": [
+      "client",
+      "react-courier-admin",
+      "vue-courier-admin"
     ],
     "workspacesclient": [
       "client"
@@ -2718,6 +2868,26 @@
       "react-billing-screens",
       "react-native-billing-screens",
       "vue-billing-screens"
+    ],
+    "usedeletetemplate": [
+      "react-courier-admin",
+      "vue-courier-admin"
+    ],
+    "usetemplate": [
+      "react-courier-admin",
+      "vue-courier-admin"
+    ],
+    "usetemplaterevisions": [
+      "react-courier-admin",
+      "vue-courier-admin"
+    ],
+    "templateeditorscreen": [
+      "react-courier-admin-screens",
+      "vue-courier-admin-screens"
+    ],
+    "templatelistscreen": [
+      "react-courier-admin-screens",
+      "vue-courier-admin-screens"
     ],
     "invitemembersscreen": [
       "react-native-workspaces-screens",
@@ -3079,6 +3249,32 @@
       "vue members screen",
       "prebuilt vue workspaces ui",
       "vue invite screen"
+    ],
+    "react-courier-admin": [
+      "react template editor",
+      "react email template",
+      "usetemplates",
+      "use templates",
+      "usesavetemplate",
+      "use save template",
+      "react admin templates",
+      "edit email template react"
+    ],
+    "react-courier-admin-screens": [
+      "react template list screen",
+      "react template editor screen",
+      "prebuilt react template admin ui"
+    ],
+    "vue-courier-admin": [
+      "vue template editor",
+      "vue email template",
+      "vue admin templates",
+      "edit email template vue"
+    ],
+    "vue-courier-admin-screens": [
+      "vue template list screen",
+      "vue template editor screen",
+      "prebuilt vue template admin ui"
     ]
   },
   "concepts": {
@@ -3123,7 +3319,7 @@
       "recipe": "rbac"
     },
     "courier.messaging": {
-      "description": "SEND any transactional message — email, SMS, push; use this for password-reset, email-verification, welcome, and invite emails (auth.* is who can log in, courier is what delivers the message)",
+      "description": "SEND any transactional message — email, SMS, push; use this for password-reset, email-verification, welcome, and invite emails (auth.* is who can log in, courier is what delivers the message). No end-user-facing HTTP API — messages are sent server-side via the event bus, not called from a frontend. For an admin template-editor UI, see react-courier-admin.templates / vue-courier-admin.templates.",
       "package": "courier",
       "recipe": "transactional-email"
     },
@@ -3249,6 +3445,26 @@
       "description": "pre-built Vue workspaces screens (TeamMembersScreen, InviteMembersScreen) built on vue-workspaces composables via Vue's h() render API",
       "package": "vue-workspaces-screens",
       "recipe": "vue-workspaces-screens-wiring"
+    },
+    "react-courier-admin.templates": {
+      "description": "React hooks for courier's email/SMS/push template admin API — useTemplates, useTemplate, useSaveTemplate, useDeleteTemplate, useTemplateRevisions (list + rollback). Admin-token authenticated via a standalone CourierAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "package": "react-courier-admin",
+      "recipe": "react-courier-admin-wiring"
+    },
+    "react-courier-admin.screens": {
+      "description": "pre-built React screens (TemplateListScreen, TemplateEditorScreen with revision history + rollback) built on react-courier-admin hooks — an admin-dashboard surface, bring your own styling",
+      "package": "react-courier-admin-screens",
+      "recipe": "react-courier-admin-screens-wiring"
+    },
+    "vue-courier-admin.composables": {
+      "description": "Vue composables for courier's email/SMS/push template admin API — useTemplates, useTemplate, useSaveTemplate, useDeleteTemplate, useTemplateRevisions (list + rollback). Admin-token authenticated via a standalone CourierAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "package": "vue-courier-admin",
+      "recipe": "vue-courier-admin-wiring"
+    },
+    "vue-courier-admin.screens": {
+      "description": "pre-built Vue screens (TemplateListScreen, TemplateEditorScreen with revision history + rollback) built on vue-courier-admin composables via Vue's h() render API — an admin-dashboard surface",
+      "package": "vue-courier-admin-screens",
+      "recipe": "vue-courier-admin-screens-wiring"
     }
   },
   "recipes": {
@@ -3583,6 +3799,48 @@
         "frontend-shared-token",
         "frontend-workspace-scoping"
       ]
+    },
+    "react-courier-admin-wiring": {
+      "when": "building an admin dashboard to edit courier's email/SMS/push templates in React",
+      "packages": [
+        "client",
+        "react-courier-admin"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "react-courier-admin-screens-wiring": {
+      "when": "building an admin dashboard for courier templates in React with pre-built UI, not just hooks",
+      "packages": [
+        "client",
+        "react-courier-admin",
+        "react-courier-admin-screens"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "vue-courier-admin-wiring": {
+      "when": "building an admin dashboard to edit courier's email/SMS/push templates in Vue 3",
+      "packages": [
+        "client",
+        "vue-courier-admin"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "vue-courier-admin-screens-wiring": {
+      "when": "building an admin dashboard for courier templates in Vue 3 with pre-built UI, not just composables",
+      "packages": [
+        "client",
+        "vue-courier-admin",
+        "vue-courier-admin-screens"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
     }
   },
   "invariants": {
@@ -3595,6 +3853,7 @@
     "frontend-client-injection": "Every @fonderie/*-auth, @fonderie/*-billing, and @fonderie/*-workspaces hook/composable takes the matching @fonderie/client sub-client instance (client.auth, client.billing, or client.workspaces) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
     "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",
     "frontend-shared-token": "client.auth, client.billing, and client.workspaces share one TokenStore inside FonderieClient — signing in via a *-auth package's useLogin/useRegister automatically authenticates client.billing and client.workspaces requests too. Do not call setAccessToken on billing/workspaces sub-clients yourself or construct one outside FonderieClient.",
-    "frontend-workspace-scoping": "@fonderie/*-workspaces and @fonderie/*-billing requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) — both fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback in @fonderie/workspaces' withWorkspace and @fonderie/billing's resolveSubscriber). Do not thread a workspace id through individual hook calls."
+    "frontend-workspace-scoping": "@fonderie/*-workspaces and @fonderie/*-billing requests are scoped to a team via client.workspaces.setWorkspaceId(id) / client.billing.setWorkspaceId(id) — both fall back to the caller's personal workspace when unset (same X-Workspace-ID header, same server-side fallback in @fonderie/workspaces' withWorkspace and @fonderie/billing's resolveSubscriber). Do not thread a workspace id through individual hook calls.",
+    "frontend-admin-token": "@fonderie/*-courier-admin hooks/composables take a CourierAdminClient, constructed standalone with { baseUrl, adminToken } — NOT a sub-client of FonderieClient, and NOT covered by frontend-client-injection/frontend-shared-token. It authenticates with the server's static admin bearer token (CourierModule's adminToken config, the same model @fonderie/config's admin surface uses), not the signed-in user's session. Never expose the admin token to a general end-user build; this client is for an internal/admin-only app."
   }
 }
