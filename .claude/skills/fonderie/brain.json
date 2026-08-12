@@ -933,9 +933,9 @@
       "version": "0.1.0",
       "requires": [],
       "exports": [
+        "ForgotPasswordScreen",
         "LoginScreen",
-        "RegisterScreen",
-        "ForgotPasswordScreen"
+        "RegisterScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1146,9 +1146,9 @@
       "version": "0.1.0",
       "requires": [],
       "exports": [
+        "ForgotPasswordScreen",
         "LoginScreen",
-        "RegisterScreen",
-        "ForgotPasswordScreen"
+        "RegisterScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1414,9 +1414,9 @@
       "version": "0.1.0",
       "requires": [],
       "exports": [
+        "ForgotPasswordScreen",
         "LoginScreen",
-        "RegisterScreen",
-        "ForgotPasswordScreen"
+        "RegisterScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -3578,17 +3578,17 @@
       "react-native-auth",
       "vue-auth"
     ],
+    "forgotpasswordscreen": [
+      "react-auth-screens",
+      "react-native-auth-screens",
+      "vue-auth-screens"
+    ],
     "loginscreen": [
       "react-auth-screens",
       "react-native-auth-screens",
       "vue-auth-screens"
     ],
     "registerscreen": [
-      "react-auth-screens",
-      "react-native-auth-screens",
-      "vue-auth-screens"
-    ],
-    "forgotpasswordscreen": [
       "react-auth-screens",
       "react-native-auth-screens",
       "vue-auth-screens"

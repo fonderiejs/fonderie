@@ -1,6 +1,6 @@
-export { LoginScreen, RegisterScreen, ForgotPasswordScreen } from './screens';
 export type {
+	IForgotPasswordScreenProps,
 	ILoginScreenProps,
 	IRegisterScreenProps,
-	IForgotPasswordScreenProps,
 } from './screens';
+export { ForgotPasswordScreen, LoginScreen, RegisterScreen } from './screens';

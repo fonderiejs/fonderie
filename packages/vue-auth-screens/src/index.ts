@@ -1,1 +1,1 @@
-export { LoginScreen, RegisterScreen, ForgotPasswordScreen } from './screens';
+export { ForgotPasswordScreen, LoginScreen, RegisterScreen } from './screens';
