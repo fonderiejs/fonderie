@@ -4,7 +4,7 @@
 > **\[brackets]**, then have an officer approve and date it before it counts as a
 > control. Where a statement cites code, the control already exists in the repo.
 >
-> Owner: **[assign — e.g. CTO / Security Officer]** · Approver: **[assign]** ·
+> Owner: **Louis Choleski (founder, acting Security Officer)** · Approver: **Louis Choleski (founder)** ·
 > Version: 0.1 (draft) · Effective: **[date on adoption]** · Review: at least
 > annually and on material change.
 
