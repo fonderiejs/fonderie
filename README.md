@@ -101,29 +101,72 @@ through install, booting an app, and adding bricks step by step.
 
 ## Frontend bricks
 
-The standard doesn't stop at the API. Every capability ships **headless
-bindings** — React hooks, Vue composables, React Native hooks, all thin layers
-over [`@fonderie/client`](packages/client) — and, alongside them, **prebuilt
-screens**. So the same assistant that wires `@fonderie/billing` on the backend
-drops in a working subscription UI on the frontend, on whatever framework you
-ship.
+The standard doesn't stop at the API — Fonderie is end-to-end. Every capability
+ships **headless bindings** (React hooks, Vue composables, React Native hooks —
+thin layers over [`@fonderie/client`](packages/client)) and a matching set of
+**prebuilt screens**. So the same assistant that wires `@fonderie/billing` on
+the backend drops in a working subscription UI on the frontend, on whatever
+framework you ship. Take the hooks and build your own UI, or take the screens
+and ship today.
 
-| Capability | React | React Native | Vue |
-|---|:--:|:--:|:--:|
-| Auth | ✓ | ✓ | ✓ |
-| Billing | ✓ | ✓ | ✓ |
-| Customers | ✓ | ✓ | ✓ |
-| Workspaces | ✓ | ✓ | ✓ |
-| Audit | ✓ | ✓ | ✓ |
-| Webhooks | ✓ | ✓ | ✓ |
-| Config admin | ✓ | — | ✓ |
-| Courier admin | ✓ | — | ✓ |
+### React
 
-Each ✓ is two packages — headless plus screens — e.g.
-[`@fonderie/react-auth`](packages/react-auth) (hooks) and
-[`@fonderie/react-auth-screens`](packages/react-auth-screens) (login, register,
-forgot-password UI). Same pattern for `vue-*` and `react-native-*`. Take the
-hooks and build your own UI, or take the screens and ship today.
+| Package | What it is |
+|---|---|
+| [`@fonderie/react-auth`](packages/react-auth) | React hooks for Fonderie auth — thin bindings over @fonderie/client |
+| [`@fonderie/react-auth-screens`](packages/react-auth-screens) | Pre-built React auth screens — login, register, forgot password |
+| [`@fonderie/react-billing`](packages/react-billing) | React hooks for Fonderie billing |
+| [`@fonderie/react-billing-screens`](packages/react-billing-screens) | Pre-built React billing screens — pricing table, subscription management |
+| [`@fonderie/react-customers`](packages/react-customers) | React hooks for Fonderie customers |
+| [`@fonderie/react-customers-screens`](packages/react-customers-screens) | Pre-built React customers screens — list, detail (contact info, notes, tags) |
+| [`@fonderie/react-workspaces`](packages/react-workspaces) | React hooks for Fonderie workspaces |
+| [`@fonderie/react-workspaces-screens`](packages/react-workspaces-screens) | Pre-built React workspaces screens — team members, invitations |
+| [`@fonderie/react-audit`](packages/react-audit) | React hooks for the audit log |
+| [`@fonderie/react-audit-screens`](packages/react-audit-screens) | Pre-built React audit screen — filterable, cursor-paginated event list |
+| [`@fonderie/react-webhooks`](packages/react-webhooks) | React hooks for outgoing webhooks |
+| [`@fonderie/react-webhooks-screens`](packages/react-webhooks-screens) | Pre-built React webhooks screens — endpoint list, delivery history |
+| [`@fonderie/react-config-admin`](packages/react-config-admin) | React hooks for the config admin API (feature flags/remote config + secrets) |
+| [`@fonderie/react-config-admin-screens`](packages/react-config-admin-screens) | Pre-built React config-admin screens — editor with revision history and rollback |
+| [`@fonderie/react-courier-admin`](packages/react-courier-admin) | React hooks for the courier admin API (email/SMS/push templates) |
+| [`@fonderie/react-courier-admin-screens`](packages/react-courier-admin-screens) | Pre-built React courier-admin screens — template editor with revisions and rollback |
+
+### React Native
+
+| Package | What it is |
+|---|---|
+| [`@fonderie/react-native-auth`](packages/react-native-auth) | React Native hooks for Fonderie auth |
+| [`@fonderie/react-native-auth-screens`](packages/react-native-auth-screens) | Pre-built React Native auth screens — login, register, forgot password |
+| [`@fonderie/react-native-billing`](packages/react-native-billing) | React Native billing hooks |
+| [`@fonderie/react-native-billing-screens`](packages/react-native-billing-screens) | Pre-built React Native billing screens — pricing table, subscription management |
+| [`@fonderie/react-native-customers`](packages/react-native-customers) | React Native customers hooks |
+| [`@fonderie/react-native-customers-screens`](packages/react-native-customers-screens) | Pre-built React Native customers screens — list, detail |
+| [`@fonderie/react-native-workspaces`](packages/react-native-workspaces) | React Native workspaces hooks |
+| [`@fonderie/react-native-workspaces-screens`](packages/react-native-workspaces-screens) | Pre-built React Native workspaces screens — team members, invitations |
+| [`@fonderie/react-native-audit`](packages/react-native-audit) | React Native hooks for the audit log |
+| [`@fonderie/react-native-audit-screens`](packages/react-native-audit-screens) | Pre-built React Native audit screen — filterable, cursor-paginated event list |
+| [`@fonderie/react-native-webhooks`](packages/react-native-webhooks) | React Native hooks for outgoing webhooks |
+| [`@fonderie/react-native-webhooks-screens`](packages/react-native-webhooks-screens) | Pre-built React Native webhooks screens — endpoint list, delivery history |
+
+### Vue
+
+| Package | What it is |
+|---|---|
+| [`@fonderie/vue-auth`](packages/vue-auth) | Vue composables for Fonderie auth — thin bindings over @fonderie/client |
+| [`@fonderie/vue-auth-screens`](packages/vue-auth-screens) | Pre-built Vue auth screens — login, register, forgot password |
+| [`@fonderie/vue-billing`](packages/vue-billing) | Vue 3 composables for Fonderie billing |
+| [`@fonderie/vue-billing-screens`](packages/vue-billing-screens) | Pre-built Vue billing screens — pricing table, subscription management |
+| [`@fonderie/vue-customers`](packages/vue-customers) | Vue 3 composables for Fonderie customers |
+| [`@fonderie/vue-customers-screens`](packages/vue-customers-screens) | Pre-built Vue customers screens — list, detail (contact info, notes, tags) |
+| [`@fonderie/vue-workspaces`](packages/vue-workspaces) | Vue 3 composables for Fonderie workspaces |
+| [`@fonderie/vue-workspaces-screens`](packages/vue-workspaces-screens) | Pre-built Vue workspaces screens — team members, invitations |
+| [`@fonderie/vue-audit`](packages/vue-audit) | Vue 3 composables for the audit log |
+| [`@fonderie/vue-audit-screens`](packages/vue-audit-screens) | Pre-built Vue audit screen — filterable, cursor-paginated event list |
+| [`@fonderie/vue-webhooks`](packages/vue-webhooks) | Vue 3 composables for outgoing webhooks |
+| [`@fonderie/vue-webhooks-screens`](packages/vue-webhooks-screens) | Pre-built Vue webhooks screens — endpoint list, delivery history |
+| [`@fonderie/vue-config-admin`](packages/vue-config-admin) | Vue 3 composables for the config admin API (feature flags/remote config + secrets) |
+| [`@fonderie/vue-config-admin-screens`](packages/vue-config-admin-screens) | Pre-built Vue config-admin screens — editor with revision history and rollback |
+| [`@fonderie/vue-courier-admin`](packages/vue-courier-admin) | Vue 3 composables for the courier admin API (email/SMS/push templates) |
+| [`@fonderie/vue-courier-admin-screens`](packages/vue-courier-admin-screens) | Pre-built Vue courier-admin screens — template editor with revisions and rollback |
 
 ## Secure by construction
 
