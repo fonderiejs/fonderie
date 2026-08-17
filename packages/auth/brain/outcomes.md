@@ -131,6 +131,7 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | DELETE | `/users` | `requireAuth → verifyGate → user.deleteMe` |
 | GET | `/users` | `requireAuth → user.me` |
 | PUT | `/users/email` | `requireAuth → verifyGate → validate(updateEmailSchema) → user.updateEmail` |
+| GET | `/users/export` | `requireAuth → user.exportMe` |
 | PUT | `/users/password` | `requireAuth → validate(changePasswordSchema) → user.changePassword` |
 | PUT | `/users/phone` | `requireAuth → verifyGate → validate(updatePhoneSchema) → user.updatePhone` |
 | PUT | `/users/preferences` | `requireAuth → verifyGate → validate(updatePreferencesSchema) → user.updatePreferences` |

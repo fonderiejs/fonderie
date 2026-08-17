@@ -173,7 +173,7 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 21,
+      "routeCount": 22,
       "routes": [
         {
           "method": "POST",
@@ -259,6 +259,11 @@
           "method": "PUT",
           "path": "/users/email",
           "mw": "requireAuth → verifyGate → validate(updateEmailSchema) → user.updateEmail"
+        },
+        {
+          "method": "GET",
+          "path": "/users/export",
+          "mw": "requireAuth → user.exportMe"
         },
         {
           "method": "PUT",
