@@ -132,6 +132,12 @@ function normalizeEmailSafe(email: string): string | null
 
 function importUser(store: IStoreAdapter, user: IImportUser): Promise<{ id: string; }>
 
+function purgeSoftDeletedUsers(store: IStoreAdapter, { olderThanDays }: IPurgeOptions): Promise<number>
+
+interface IPurgeOptions {
+    olderThanDays: number;
+}
+
 interface IImportUser {
     id?: string;
     email: string;

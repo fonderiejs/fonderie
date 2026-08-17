@@ -81,6 +81,12 @@ interface IIntegrityReport {
     tampered: string[];
 }
 
+function purgeEvents(store: IStoreAdapter, { olderThanDays }: IPurgeEventsOptions): Promise<number>
+
+interface IPurgeEventsOptions {
+    olderThanDays: number;
+}
+
 interface IEventMeta {
     id: string;
     type: string;

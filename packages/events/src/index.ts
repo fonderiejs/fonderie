@@ -11,6 +11,10 @@ export { matchesPattern } from './transports/pattern';
 export { computeEventHmac, verifyEventChain, canonicalize } from './integrity';
 export type { IHashableEvent, IIntegrityReport } from './integrity';
 
+// Retention / disposal
+export { purgeEvents } from './retention';
+export type { IPurgeEventsOptions } from './retention';
+
 export type { IEventMeta, IEventHandler, IEventRecord, IConsumerRecord } from './types';
 
 // ── Typed event keys ─────────────────────────────────────────────
