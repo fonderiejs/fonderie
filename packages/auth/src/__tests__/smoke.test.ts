@@ -1693,6 +1693,32 @@ test('deleteMe: emits user.deleted with correct userId', async () => {
 	assert.equal(p.userId, 'user-1');
 });
 
+test('changePassword: revokes all of the user sessions', async () => {
+	const currentHash = await hashPassword('current-password');
+	const seenSql: string[] = [];
+	const recordingStore: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			seenSql.push(sql);
+			if (sql.includes('fonderie_users') && sql.includes('WHERE id = $1'))
+				return [{ ...BASE_USER, passwordHash: currentHash }] as unknown as T[];
+			return [] as unknown as T[];
+		},
+		transaction: async (fn) => fn(recordingStore),
+	};
+	const ctrl = userController(recordingStore, config);
+	const res = await ctrl.changePassword(
+		makeCtx({
+			user: { id: 'user-1', email: 'jane@example.com' },
+			body: { currentPassword: 'current-password', newPassword: 'a-new-password' },
+		}),
+	);
+	assert.equal(res.status, 200);
+	const revoked = seenSql.some(
+		(s) => s.includes('DELETE FROM fonderie_sessions') && s.includes('WHERE user_id = $1'),
+	);
+	assert.ok(revoked, 'changePassword must delete the user\'s sessions');
+});
+
 test('register: no bus — no error thrown', async () => {
 	const ctrl = authController(makeStore({ insertedId: 'user-1', userById: BASE_USER }), config);
 	const response = await ctrl.register(
@@ -2239,6 +2265,30 @@ test('validateAuthConfig: warns on secureCookies=false in production', async () 
 		if (prev === undefined) delete process.env['NODE_ENV'];
 		else process.env['NODE_ENV'] = prev;
 	}
+});
+
+test('collectAuthConfigProblems: placeholder google clientSecret is an error', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const problems = collectAuthConfigProblems({
+		...config,
+		jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
+		google: {
+			clientId: 'client-id.apps.googleusercontent.com',
+			clientSecret: 'your-secret-here',
+			redirectUri: 'https://app.example.com/auth/google/callback',
+		},
+	});
+	assert.ok(problems.some((p) => p.severity === 'error' && /clientSecret/.test(p.message)));
+});
+
+test('collectAuthConfigProblems: incomplete google config is an error', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const problems = collectAuthConfigProblems({
+		...config,
+		jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
+		google: { clientId: '', clientSecret: 'aRealLookingSecretValue123456', redirectUri: '' },
+	});
+	assert.ok(problems.some((p) => p.severity === 'error' && /clientId, clientSecret, or redirectUri/.test(p.message)));
 });
 
 test('AuthModule.checkReadiness: surfaces a weak secret as an error problem', async () => {

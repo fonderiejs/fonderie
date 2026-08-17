@@ -108,6 +108,38 @@ test('ConfigModule: satisfies IFonderieModule interface', async () => {
 	assert.ok(mod.manager instanceof RemoteConfigManager);
 });
 
+test('ConfigModule.checkReadiness: clean when no adminToken, warns on missing encryptor', async () => {
+	const { ConfigModule } = await import('../module');
+	const problems = new ConfigModule(makeStore()).checkReadiness();
+	// No admin surface, so no token error — but plaintext-at-rest is a warning.
+	assert.ok(!problems.some((p) => p.severity === 'error'));
+	assert.ok(problems.some((p) => p.message.includes('secretEncryptor')));
+});
+
+test('ConfigModule.checkReadiness: flags a short adminToken as an error', async () => {
+	const { ConfigModule } = await import('../module');
+	const problems = new ConfigModule(makeStore(), { adminToken: 'short' }).checkReadiness();
+	assert.ok(problems.some((p) => p.severity === 'error' && p.message.includes('adminToken')));
+});
+
+test('ConfigModule.checkReadiness: flags a placeholder adminToken as an error', async () => {
+	const { ConfigModule } = await import('../module');
+	const problems = new ConfigModule(makeStore(), {
+		adminToken: 'changeme-changeme-changeme-changeme',
+	}).checkReadiness();
+	assert.ok(problems.some((p) => p.severity === 'error' && p.message.includes('placeholder')));
+});
+
+test('ConfigModule.checkReadiness: a strong adminToken + encryptor is clean', async () => {
+	const { ConfigModule } = await import('../module');
+	const { createAesGcmEncryptor } = await import('../crypto');
+	const problems = new ConfigModule(makeStore(), {
+		adminToken: 'Zk9x2Qw7Lp4Rt6Vn1Bm8Cy3Df5Gh0JsW7uY2pR4',
+		secretEncryptor: createAesGcmEncryptor('a'.repeat(64)),
+	}).checkReadiness();
+	assert.equal(problems.length, 0);
+});
+
 // ── getConfig helper ──────────────────────────────────────────────
 
 test('getConfig: reads value from ctx.meta', async () => {

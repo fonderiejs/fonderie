@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import type { IFonderieContext, Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
@@ -29,10 +31,21 @@ import {
 function checkAdmin(ctx: IFonderieContext, adminToken: string): Response | null {
 	const header = ctx.request.headers.get('authorization') ?? '';
 	const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-	if (!token || token !== adminToken) {
+	if (!token || !safeTokenEqual(token, adminToken)) {
 		return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Missing or invalid admin token');
 	}
 	return null;
+}
+
+// Constant-time comparison so a wrong token can't be recovered byte-by-byte
+// from response-timing. Encode to bytes and length-guard first: timingSafeEqual
+// throws on unequal lengths, and that early return is itself acceptable — the
+// secret's length is not the sensitive part.
+function safeTokenEqual(a: string, b: string): boolean {
+	const bufA = Buffer.from(a);
+	const bufB = Buffer.from(b);
+	if (bufA.length !== bufB.length) return false;
+	return timingSafeEqual(bufA, bufB);
 }
 
 // The actor recorded on writes/audit — an optional `X-Actor` header lets the
