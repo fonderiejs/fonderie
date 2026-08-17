@@ -2386,6 +2386,30 @@ test('AuthModule.checkReadiness: surfaces a weak secret as an error problem', as
 	assert.deepEqual(clean.checkReadiness(), []);
 });
 
+// ── Retention: purgeSoftDeletedUsers ────────────────────────────────────
+test('purgeSoftDeletedUsers: deletes aged soft-deletes and returns count', async () => {
+	const { purgeSoftDeletedUsers } = await import('../services/retention');
+	let captured: { sql: string; params: unknown[] } | null = null;
+	const store = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			captured = { sql, params: params ?? [] };
+			return [{ id: 'u1' }, { id: 'u2' }, { id: 'u3' }] as unknown as T[];
+		},
+		transaction: async (fn: any) => fn(store),
+	} as any;
+	const n = await purgeSoftDeletedUsers(store, { olderThanDays: 30 });
+	assert.equal(n, 3);
+	assert.match(captured!.sql, /DELETE FROM fonderie_users/);
+	assert.match(captured!.sql, /deleted_at IS NOT NULL/);
+	assert.deepEqual(captured!.params, [30]);
+});
+
+test('purgeSoftDeletedUsers: rejects a negative window', async () => {
+	const { purgeSoftDeletedUsers } = await import('../services/retention');
+	const store = { query: async () => [], transaction: async (fn: any) => fn(store) } as any;
+	await assert.rejects(() => purgeSoftDeletedUsers(store, { olderThanDays: -5 }), /non-negative/);
+});
+
 // ── SAR: exportMe ───────────────────────────────────────────────────────
 test('exportMe: returns the user profile + session metadata, no secrets', async () => {
 	const ctrl = userController(makeStore({ userById: BASE_USER, sessionExists: true }), config);
