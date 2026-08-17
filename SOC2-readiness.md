@@ -19,7 +19,8 @@ Last audited: 2026-08-17 (static code review of `packages/`).
 are ✅ fixed and 3 ◑ surfaced/documented (#1 at-rest encryption default, #7
 backups, #8 monitoring). None remain open. What remains is **organizational**,
 not code: an auditor, adopted policies, and an evidence platform (see the bottom
-sections). Draft policies live in [`docs/policies/`](docs/policies/README.md).
+sections). Draft policies live in [`docs/policies/`](docs/policies/README.md); evidence
+registers (control matrix, risk register, vendor inventory) in [`docs/soc2/`](docs/soc2/README.md).
 
 ---
 
@@ -94,9 +95,9 @@ None of this lives in code. It is what actually separates "good controls" from
   retention, classification, vendor, risk, acceptable use, personnel). Remaining:
   officers **review, adopt, and date** them.
 - ☐ Access reviews (periodic), documented onboarding/offboarding.
-- ☐ Risk assessment and risk register.
+- ◑ Risk assessment and register — initial draft in [`docs/soc2/risk-register.md`](docs/soc2/risk-register.md). Remaining: review & keep current.
 - ☐ Security awareness training; background checks for personnel.
-- ☐ Vendor/subprocessor inventory with security reviews.
+- ◑ Vendor/subprocessor inventory — draft in [`docs/soc2/vendor-inventory.md`](docs/soc2/vendor-inventory.md). Remaining: confirm DPAs, keep current.
 - ☐ Incident response runbook + logging/retention evidence.
 - ☐ Backup + restore procedures with tested recovery (ties to gap #7).
 
