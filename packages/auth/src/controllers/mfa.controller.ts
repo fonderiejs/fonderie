@@ -17,6 +17,7 @@ import {
 	generateBackupCodes,
 } from '../services/mfa';
 import { hashPassword, verifyPassword } from '../services/password';
+import { makeMfaCipher } from '../services/mfa-crypto';
 import { toUserDTO } from '../dtos/user';
 import { UserModel } from '../models/user.model';
 import { SessionModel } from '../models/session.model';
@@ -31,6 +32,8 @@ export function mfaController(
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store);
 	const backupCodes = new BackupCodeModel(store);
+	// Encrypts/decrypts TOTP secrets at rest. Passthrough when no key is set.
+	const mfaCipher = makeMfaCipher(config.mfaSecretKey);
 
 	return {
 		// ── 1. Setup ───────────────────────────────────────────────
@@ -43,7 +46,7 @@ export function mfaController(
 			const qr = await QRCode.toDataURL(uri);
 
 			await Promise.all([
-				users.saveMfaPendingSecret(ctx.user!.id, secret),
+				users.saveMfaPendingSecret(ctx.user!.id, mfaCipher.encrypt(secret)),
 				backupCodes.replace(ctx.user!.id, codeHashes),
 			]);
 
@@ -69,7 +72,8 @@ export function mfaController(
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'token is required');
 			}
 
-			const pendingSecret = await users.getMfaPendingSecret(ctx.user!.id);
+			const pendingCipher = await users.getMfaPendingSecret(ctx.user!.id);
+			const pendingSecret = pendingCipher ? mfaCipher.decrypt(pendingCipher) : null;
 
 			if (pendingSecret) {
 				// ── Setup confirmation (TOTP only — backup codes cannot confirm setup) ──
@@ -126,10 +130,11 @@ export function mfaController(
 						'Use the mfaToken from the login response',
 					);
 				}
-				const secret = await users.getMfaSecret(ctx.user!.id);
-				if (!secret) {
+				const storedSecret = await users.getMfaSecret(ctx.user!.id);
+				if (!storedSecret) {
 					return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_CONFIGURED', 'MFA not configured');
 				}
+				const secret = mfaCipher.decrypt(storedSecret);
 				if (!verifyTotpToken(token, secret)) {
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
 				}
@@ -177,7 +182,8 @@ export function mfaController(
 				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_ENABLED', 'MFA is not enabled');
 			}
 
-			const secret = await users.getMfaSecret(ctx.user!.id);
+			const storedSecret = await users.getMfaSecret(ctx.user!.id);
+			const secret = storedSecret ? mfaCipher.decrypt(storedSecret) : null;
 			if (!secret || !verifyTotpToken(token, secret)) {
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
 			}
@@ -214,7 +220,8 @@ export function mfaController(
 				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_ENABLED', 'MFA is not enabled');
 			}
 
-			const secret = (user as unknown as { mfaSecret: string | null }).mfaSecret;
+			const storedSecret = (user as unknown as { mfaSecret: string | null }).mfaSecret;
+			const secret = storedSecret ? mfaCipher.decrypt(storedSecret) : null;
 			if (!secret || !verifyTotpToken(token, secret)) {
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
 			}

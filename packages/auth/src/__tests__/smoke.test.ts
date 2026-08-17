@@ -166,6 +166,44 @@ test('mfa: generated secret is a non-empty string', () => {
 	assert.ok(typeof secret === 'string' && secret.length > 0);
 });
 
+// ── mfa secret at-rest encryption ───────────────────────────────
+
+test('makeMfaCipher: encrypt→decrypt round-trips and tags ciphertext', async () => {
+	const { makeMfaCipher } = await import('../services/mfa-crypto');
+	const cipher = makeMfaCipher('a'.repeat(64));
+	const plain = generateTotpSecret();
+	const enc = cipher.encrypt(plain);
+	assert.ok(enc.startsWith('mfa.v1:'));
+	assert.notEqual(enc, plain);
+	assert.equal(cipher.decrypt(enc), plain);
+});
+
+test('makeMfaCipher: with a key, legacy plaintext decrypts unchanged (lazy migration)', async () => {
+	const { makeMfaCipher } = await import('../services/mfa-crypto');
+	const cipher = makeMfaCipher('b'.repeat(64));
+	const legacy = generateTotpSecret(); // stored before encryption existed
+	assert.equal(cipher.decrypt(legacy), legacy);
+});
+
+test('makeMfaCipher: no key is passthrough (backward-compatible)', async () => {
+	const { makeMfaCipher } = await import('../services/mfa-crypto');
+	const cipher = makeMfaCipher();
+	const plain = generateTotpSecret();
+	assert.equal(cipher.encrypt(plain), plain);
+	assert.equal(cipher.decrypt(plain), plain);
+});
+
+test('makeMfaCipher: a different key fails to decrypt (authenticated)', async () => {
+	const { makeMfaCipher } = await import('../services/mfa-crypto');
+	const enc = makeMfaCipher('c'.repeat(64)).encrypt(generateTotpSecret());
+	assert.throws(() => makeMfaCipher('d'.repeat(64)).decrypt(enc));
+});
+
+test('makeMfaCipher: rejects a malformed key length', async () => {
+	const { makeMfaCipher } = await import('../services/mfa-crypto');
+	assert.throws(() => makeMfaCipher('too-short'));
+});
+
 // ── AuthModule shape ─────────────────────────────────────────────
 
 test('AuthModule: satisfies IFonderieModule interface', async () => {
@@ -1307,9 +1345,22 @@ test('mfa.regenerateBackupCodes: 200 with 8 fresh backup codes on valid TOTP', a
 	assert.ok(body.result.backupCodes.every((c: string) => /^[A-F0-9]{8}$/.test(c)));
 });
 
-// ── MfaController.verify ─────────────────────────────────────────
-
 const MFA_USER = { ...BASE_USER, mfaEnabled: true, loginMethod: 'email' as const };
+
+test('mfa: controller decrypts an encrypted stored secret end-to-end', async () => {
+	const { makeMfaCipher } = await import('../services/mfa-crypto');
+	const KEY = 'e'.repeat(64);
+	const secret = generateTotpSecret();
+	const code = generateTotpCode(secret);
+	const stored = makeMfaCipher(KEY).encrypt(secret);
+	assert.ok(stored.startsWith('mfa.v1:'), 'stored value must be ciphertext');
+	// A controller with the key must decrypt `stored` and accept a valid TOTP.
+	const ctrl = mfaController(makeStore({ mfaSecret: stored }), { ...config, mfaSecretKey: KEY }, 'TestApp');
+	const res = await ctrl.regenerateBackupCodes(makeCtx({ user: MFA_USER, body: { token: code } }));
+	assert.equal(res.status, 200);
+});
+
+// ── MfaController.verify ─────────────────────────────────────────
 
 test('mfa.verify: 422 when token is missing', async () => {
 	const ctrl = makeMfa();
@@ -2239,6 +2290,38 @@ test('validateAuthConfig: warns on secureCookies=false in production', async () 
 		if (prev === undefined) delete process.env['NODE_ENV'];
 		else process.env['NODE_ENV'] = prev;
 	}
+});
+
+test('collectAuthConfigProblems: mfa on without mfaSecretKey warns (plaintext at rest)', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const problems = collectAuthConfigProblems({
+		...config,
+		jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
+		mfa: true,
+	});
+	assert.ok(problems.some((p) => p.severity === 'warning' && /mfaSecretKey/.test(p.message)));
+});
+
+test('collectAuthConfigProblems: malformed mfaSecretKey is an error', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const problems = collectAuthConfigProblems({
+		...config,
+		jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
+		mfa: true,
+		mfaSecretKey: 'not-64-hex',
+	});
+	assert.ok(problems.some((p) => p.severity === 'error' && /mfaSecretKey/.test(p.message)));
+});
+
+test('collectAuthConfigProblems: mfa on with a valid mfaSecretKey is clean', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const problems = collectAuthConfigProblems({
+		...config,
+		jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
+		mfa: true,
+		mfaSecretKey: 'a'.repeat(64),
+	});
+	assert.deepEqual(problems, []);
 });
 
 test('AuthModule.checkReadiness: surfaces a weak secret as an error problem', async () => {
