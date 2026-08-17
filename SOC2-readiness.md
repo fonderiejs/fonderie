@@ -82,6 +82,21 @@ auditors; **P3** hardening. Status legend: ✅ fixed · ◑ partially addressed 
 
 ---
 
+## Documentation & evidence (in-repo)
+
+The readiness package a company assembles before an audit. All drafted; policies
+await officer adoption.
+
+- **Operations runbook** — [`docs/OPERATIONS.md`](docs/OPERATIONS.md) (backups, monitoring, change management)
+- **Policies (13)** — [`docs/policies/`](docs/policies/README.md)
+- **Control matrix** (Common Criteria → control → evidence) — [`docs/soc2/control-matrix.md`](docs/soc2/control-matrix.md)
+- **Risk register** — [`docs/soc2/risk-register.md`](docs/soc2/risk-register.md)
+- **Vendor / subprocessor inventory** — [`docs/soc2/vendor-inventory.md`](docs/soc2/vendor-inventory.md)
+- **Access-review register** — [`docs/soc2/access-review-register.md`](docs/soc2/access-review-register.md)
+- **Incident-response runbook** — [`docs/soc2/incident-response-runbook.md`](docs/soc2/incident-response-runbook.md)
+
+---
+
 ## Organizational work (outside this repo — required for the report)
 
 None of this lives in code. It is what actually separates "good controls" from
@@ -94,11 +109,11 @@ None of this lives in code. It is what actually separates "good controls" from
   (info-sec, access, crypto, change mgmt, incident response, logging, BC/DR,
   retention, classification, vendor, risk, acceptable use, personnel). Remaining:
   officers **review, adopt, and date** them.
-- ☐ Access reviews (periodic), documented onboarding/offboarding.
+- ◑ Access reviews (periodic) — register/template in [`docs/soc2/access-review-register.md`](docs/soc2/access-review-register.md). Remaining: run reviews on cadence, log them.
 - ◑ Risk assessment and register — initial draft in [`docs/soc2/risk-register.md`](docs/soc2/risk-register.md). Remaining: review & keep current.
 - ☐ Security awareness training; background checks for personnel.
 - ◑ Vendor/subprocessor inventory — draft in [`docs/soc2/vendor-inventory.md`](docs/soc2/vendor-inventory.md). Remaining: confirm DPAs, keep current.
-- ☐ Incident response runbook + logging/retention evidence.
+- ◑ Incident response runbook — [`docs/soc2/incident-response-runbook.md`](docs/soc2/incident-response-runbook.md) + [policy](docs/policies/incident-response.md). Remaining: adopt, tabletop annually.
 - ☐ Backup + restore procedures with tested recovery (ties to gap #7).
 
 ---
