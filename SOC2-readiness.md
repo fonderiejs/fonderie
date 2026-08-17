@@ -15,6 +15,12 @@ after a readiness assessment passes.
 
 Last audited: 2026-08-17 (static code review of `packages/`).
 
+**Progress:** all in-repo technical findings are addressed. Of the 15 gaps, 11
+are ✅ fixed, 3 ◑ surfaced/documented (#1 at-rest encryption default, #7 backups,
+#8 monitoring), and 1 ☐ open (#14 branch protection — a GitHub setting). What
+remains is **organizational**, not code: an auditor, written policies, and an
+evidence platform (see the bottom sections).
+
 ---
 
 ## What already exists (control substrate)
@@ -52,18 +58,18 @@ auditors; **P3** hardening. Status legend: ✅ fixed · ◑ partially addressed 
 | 1 | At-rest encryption defaults to no-op plaintext (AES-256-GCM exists but off by default) | CC6.1 | P1 | `packages/config/src/crypto.ts:14` | ◑ Surfaced — readiness warns when no `secretEncryptor` set (default kept for back-compat) |
 | 2 | MFA secrets stored plaintext in DB | CC6.1 | P1 | `packages/auth/src/services/mfa-crypto.ts` | ✅ Fixed (PR #12) — TOTP secrets encrypted at rest (AES-256-GCM) under `mfaSecretKey`; lazy migration + tests |
 | 3 | Password change does not revoke existing sessions | CC6.1 | P1 | `packages/auth/src/controllers/user.controller.ts` | ✅ Fixed — `changePassword` revokes all sessions via `SessionModel.deleteByUser` + test |
-| 4 | Audit log is append-only but has no checksums/HMAC (tamper-evidence) | CC7.2 | P2 | `packages/events/src/migrations/sql/001_events.sql` | ☐ Open |
-| 5 | No data-retention policy — events and soft-deleted users persist indefinitely | C1 / P4 | P2 | events table; `auth` soft-delete | ☐ Open |
-| 6 | No data-export / Subject Access Request endpoint | P (Privacy) | P2 | — | ☐ Open |
-| 7 | No backup strategy shipped or documented (delegated to customer DB) | A1.2 | P2 | — | ☐ Open |
-| 8 | No monitoring / metrics / alerting (structured logging only) | CC7.2 | P2 | `packages/logger/` | ☐ Open |
-| 9 | No fail-closed validation for DB credentials in production | CC6.1 | P3 | `packages/config/src/config.ts:20` | ☐ Open |
+| 4 | Audit log is append-only but has no checksums/HMAC (tamper-evidence) | CC7.2 | P2 | `packages/events/src/integrity.ts` | ✅ Fixed (PR #17) — keyed per-event HMAC (`computeEventHmac`/`verifyEventChain`) + migration + readiness warning |
+| 5 | No data-retention policy — events and soft-deleted users persist indefinitely | C1 / P4 | P2 | `auth/services/retention.ts`, `events/retention.ts` | ✅ Fixed (PR #18) — `purgeSoftDeletedUsers` + `purgeEvents` disposal helpers + tests |
+| 6 | No data-export / Subject Access Request endpoint | P (Privacy) | P2 | `auth` `GET /users/export` | ✅ Fixed (PR #19) — SAR bundle (profile + session metadata, no secrets) + `SessionModel.listByUser` + tests |
+| 7 | No backup strategy shipped or documented (delegated to customer DB) | A1.2 | P2 | `docs/OPERATIONS.md` | ◑ Documented — backup/restore runbook added; provisioning is the operator's |
+| 8 | No monitoring / metrics / alerting (structured logging only) | CC7.2 | P2 | `docs/OPERATIONS.md` | ◑ Documented — logging→monitoring guidance added; alerting stack is the operator's |
+| 9 | No fail-closed validation for DB credentials in production | CC6.1 | P3 | `packages/store/src/adapters/pg.ts` | ✅ Fixed (PR #16) — `assertProductionDbConfig`: fatal on empty conn string in prod, warns on sslmode=disable/default creds |
 | 10 | OAuth `clientSecret` not validated against weak/placeholder patterns | CC6.1 | P3 | `packages/auth/src/services/config-guard.ts` | ✅ Fixed — `collectAuthConfigProblems` flags missing/placeholder google secret + test |
 | 11 | Admin token has no strength check (unlike jwtSecret) | CC6.1 | P3 | `packages/config/src/module.ts` | ✅ Fixed — `ConfigModule.checkReadiness` enforces length + placeholder + test |
 | 12 | Admin token compared with `!==` (not constant-time) — timing side-channel | CC6.1 | P3 | `packages/config/src/admin.ts` | ✅ Fixed — now `crypto.timingSafeEqual` |
-| 13 | TLS/secure cookies conditional on `NODE_ENV`; no HSTS / explicit TLS enforcement | CC6.7 | P3 | `packages/auth/src/services/cookies.ts:11` | ☐ Open |
-| 14 | Branch protection is a GitHub repo setting, not enforced/verifiable in-repo | CC8.1 | P3 | `README.md:170` | ☐ Open |
-| 15 | No CODEOWNERS file (review routing / segregation of duties) | CC1.4 | P3 | — | ☐ Open |
+| 13 | TLS/secure cookies conditional on `NODE_ENV`; no HSTS / explicit TLS enforcement | CC6.7 | P3 | `packages/core/src/middlewares/security-headers.ts` | ✅ Fixed (PR #16) — `withSecurityHeaders` (HSTS over HTTPS + nosniff) in default pipeline |
+| 14 | Branch protection is a GitHub repo setting, not enforced/verifiable in-repo | CC8.1 | P3 | GitHub repo settings | ☐ Open — enable required PR + green CI on `main` (admin action; see docs/OPERATIONS.md) |
+| 15 | No CODEOWNERS file (review routing / segregation of duties) | CC1.4 | P3 | `.github/CODEOWNERS` | ✅ Fixed (PR #16) |
 
 > **On #2 (MFA secrets at rest):** done in **PR #12**. TOTP secrets stay
 > reversible (you can't hash them and still compute codes), so they're now
@@ -97,7 +103,9 @@ None of this lives in code. It is what actually separates "good controls" from
 
 ## Path to a badge
 
-1. P1 gaps closed (#1 surfaced, #2 fixed, #3 fixed). Next: **P2** (#4–8).
+1. In-repo controls done (11 fixed, 3 surfaced/documented). Remaining code-side
+   item is **#14** — enable branch protection on `main` (require a PR + green CI),
+   an admin action in GitHub settings.
 2. Stand up the compliance platform + write policies.
 3. Run a **readiness assessment** — passing this is when "SOC 2 ready" becomes a
    truthful claim.
