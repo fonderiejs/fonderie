@@ -50,7 +50,7 @@ auditors; **P3** hardening. Status legend: ✅ fixed · ◑ partially addressed 
 | # | Gap | Criteria | Priority | Evidence | Status |
 |---|-----|----------|----------|----------|--------|
 | 1 | At-rest encryption defaults to no-op plaintext (AES-256-GCM exists but off by default) | CC6.1 | P1 | `packages/config/src/crypto.ts:14` | ◑ Surfaced — readiness warns when no `secretEncryptor` set (default kept for back-compat) |
-| 2 | MFA secrets stored plaintext in DB | CC6.1 | P1 | `packages/auth/src/migrations/sql/001_auth.sql:21` | ☐ Open — needs a dedicated migration + key story (see note) |
+| 2 | MFA secrets stored plaintext in DB | CC6.1 | P1 | `packages/auth/src/services/mfa-crypto.ts` | ✅ Fixed (PR #12) — TOTP secrets encrypted at rest (AES-256-GCM) under `mfaSecretKey`; lazy migration + tests |
 | 3 | Password change does not revoke existing sessions | CC6.1 | P1 | `packages/auth/src/controllers/user.controller.ts` | ✅ Fixed — `changePassword` revokes all sessions via `SessionModel.deleteByUser` + test |
 | 4 | Audit log is append-only but has no checksums/HMAC (tamper-evidence) | CC7.2 | P2 | `packages/events/src/migrations/sql/001_events.sql` | ☐ Open |
 | 5 | No data-retention policy — events and soft-deleted users persist indefinitely | C1 / P4 | P2 | events table; `auth` soft-delete | ☐ Open |
@@ -65,12 +65,13 @@ auditors; **P3** hardening. Status legend: ✅ fixed · ◑ partially addressed 
 | 14 | Branch protection is a GitHub repo setting, not enforced/verifiable in-repo | CC8.1 | P3 | `README.md:170` | ☐ Open |
 | 15 | No CODEOWNERS file (review routing / segregation of duties) | CC1.4 | P3 | — | ☐ Open |
 
-> **On #2 (MFA secrets at rest):** deliberately deferred, not skipped. TOTP
-> secrets must stay reversible (you can't hash them and still compute codes), so
-> encrypting them needs an encryptor wired into `@fonderie/auth`, encrypt-on-
-> write / decrypt-on-read, and a migration to re-encrypt existing rows behind a
-> key whose loss breaks every user's MFA. That is a designed, migration-bearing
-> change and should land on its own branch, not bundled with low-risk fixes.
+> **On #2 (MFA secrets at rest):** done in **PR #12**. TOTP secrets stay
+> reversible (you can't hash them and still compute codes), so they're now
+> AES-256-GCM encrypted under an optional `IAuthSecrets.mfaSecretKey`, applied at
+> the `mfa.controller` boundary. Backward-compatible: no key → passthrough; with
+> a key, legacy plaintext still decrypts and re-encrypts on next MFA setup (lazy
+> migration), so no SQL migration is required. Losing the key makes existing MFA
+> secrets unrecoverable (users re-enroll).
 
 ---
 
@@ -96,7 +97,7 @@ None of this lives in code. It is what actually separates "good controls" from
 
 ## Path to a badge
 
-1. Close **P1** gaps (#2 remaining), then **P2** (#4–8).
+1. P1 gaps closed (#1 surfaced, #2 fixed, #3 fixed). Next: **P2** (#4–8).
 2. Stand up the compliance platform + write policies.
 3. Run a **readiness assessment** — passing this is when "SOC 2 ready" becomes a
    truthful claim.
