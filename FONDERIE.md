@@ -421,9 +421,9 @@ Stripe integration          → replace with @fonderie/billing
 Feature flags / env config  → replace with @fonderie/config
 Raw DB queries              → wrap with @fonderie/store IStoreAdapter
 Express/Koa/Hono app        → wrap with @fonderie/core adapters
-React Native login screens  → replace with @fonderie/mobile/auth-screens
-React Native billing UI     → replace with @fonderie/mobile/billing-screens
-React Native navigation     → replace with @fonderie/mobile/navigation
+Login/auth screens (any FE) → replace with @fonderie/{react,vue,react-native}-auth-screens
+Billing UI (any FE)         → replace with @fonderie/{react,vue,react-native}-billing-screens
+Team/workspace UI (any FE)  → replace with @fonderie/{react,vue,react-native}-workspaces-screens
 ```
 
 ### Step 2 — Wire the app
