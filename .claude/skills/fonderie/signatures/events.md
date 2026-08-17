@@ -67,6 +67,18 @@ function verifyEventChain(store: IStoreAdapter, key: string): Promise<IIntegrity
 
 function canonicalize(value: unknown): string
 
+function startIntegrityCheck(store: IStoreAdapter, key: string, options?: IIntegrityCheckOptions): IIntegrityCheckHandle
+
+interface IIntegrityCheckOptions {
+    intervalMs?: number;
+    onResult?: (report: IIntegrityReport) => void;
+    onTamper?: (report: IIntegrityReport) => void;
+}
+
+interface IIntegrityCheckHandle {
+    stop: () => void;
+}
+
 interface IHashableEvent {
     id: string;
     type: string;
@@ -83,8 +95,15 @@ interface IIntegrityReport {
 
 function purgeEvents(store: IStoreAdapter, { olderThanDays }: IPurgeEventsOptions): Promise<number>
 
+function startEventRetention(store: IStoreAdapter, options: IRetentionScheduleOptions): { stop: () => void; }
+
 interface IPurgeEventsOptions {
     olderThanDays: number;
+}
+
+interface IRetentionScheduleOptions extends IPurgeEventsOptions {
+    intervalMs?: number;
+    onPurge?: (deleted: number) => void;
 }
 
 interface IEventMeta {
