@@ -126,10 +126,28 @@ export class FonderieApp implements IFonderieApp {
 	}
 
 	async boot(): Promise<this> {
+		// Fail closed before any side effects (transports, listeners): a
+		// production deploy with an error-severity readiness problem must not boot.
+		this.enforceProductionReadiness();
 		for (const module of topoSort([...this.modules.values()])) {
 			await module.install(this);
 		}
 		return this;
+	}
+
+	// Throws in production when `checkProductionReadiness()` reports any
+	// error-severity problem, unless explicitly overridden. No-op otherwise.
+	private enforceProductionReadiness(): void {
+		if (process.env['NODE_ENV'] !== 'production') return;
+		if (this.config.skipProductionReadinessGate) return;
+		const { ok, problems } = this.checkProductionReadiness();
+		if (ok) return;
+		const errors = problems.filter((p) => p.severity === 'error');
+		throw new Error(
+			`[fonderie] refusing to boot in production — ${errors.length} readiness ` +
+				`error(s): ${errors.map((e) => `${e.module}: ${e.message}`).join('; ')}. ` +
+				'Fix them, or set skipProductionReadinessGate: true to override (not recommended).',
+		);
 	}
 
 	// Runs global middleware only (no routing, no 404).
