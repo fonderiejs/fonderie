@@ -2409,3 +2409,26 @@ test('purgeSoftDeletedUsers: rejects a negative window', async () => {
 	const store = { query: async () => [], transaction: async (fn: any) => fn(store) } as any;
 	await assert.rejects(() => purgeSoftDeletedUsers(store, { olderThanDays: -5 }), /non-negative/);
 });
+
+// ── SAR: exportMe ───────────────────────────────────────────────────────
+test('exportMe: returns the user profile + session metadata, no secrets', async () => {
+	const ctrl = userController(makeStore({ userById: BASE_USER, sessionExists: true }), config);
+	const res = await ctrl.exportMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as any;
+	assert.equal(body.reason, 'DATA_EXPORT');
+	assert.equal(body.result.profile.id, 'user-1');
+	assert.ok(Array.isArray(body.result.sessions));
+	assert.ok(body.result.exportedAt);
+	// no secrets anywhere in the serialized bundle
+	const raw = JSON.stringify(body);
+	assert.ok(!/passwordHash/i.test(raw));
+	assert.ok(!/mfa_secret|mfaSecret/i.test(raw));
+	assert.ok(!/"token"/i.test(raw));
+});
+
+test('exportMe: 404 when the user no longer exists', async () => {
+	const ctrl = userController(makeStore(), config); // userById undefined → not found
+	const res = await ctrl.exportMe(makeCtx({ user: { id: 'ghost', email: null } }));
+	assert.equal(res.status, 404);
+});

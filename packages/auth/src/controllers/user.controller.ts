@@ -269,5 +269,32 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				},
 			);
 		},
+
+		// Subject Access Request — the authenticated user's own data as a portable
+		// JSON bundle. Only auth-owned data, and only safe fields: no password hash,
+		// no MFA secret, no session tokens (session metadata only).
+		exportMe: async (ctx: IFonderieContext): Promise<Response> => {
+			const user = await users.findById(ctx.user!.id);
+			if (!user) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
+
+			const sessionRows = await sessions.listByUser(ctx.user!.id);
+			const bundle = {
+				exportedAt: new Date().toISOString(),
+				profile: toUserDTO(user),
+				sessions: sessionRows.map((s) => ({
+					id: s.id,
+					userAgent: s.userAgent,
+					ipAddress: s.ipAddress,
+					createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
+					expiresAt: s.expiresAt instanceof Date ? s.expiresAt.toISOString() : s.expiresAt,
+				})),
+				security: {
+					mfaEnabled: user.mfaEnabled === true,
+					emailVerified: user.emailVerifiedAt !== null,
+				},
+			};
+
+			return setApiResponse(HTTP.OK, 'DATA_EXPORT', 'Your account data.', bundle);
+		},
 	};
 }

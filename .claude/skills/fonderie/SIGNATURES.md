@@ -77,7 +77,7 @@ seeded, HTTP routes registered (with middleware). **Read the outcomes file
 instead of excavating `dist/` or tarballs.**
 
 - `@fonderie/audit` (0 tables, 1 routes) → [signatures/audit-outcomes.md](signatures/audit-outcomes.md)
-- `@fonderie/auth` (7 tables, 21 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
+- `@fonderie/auth` (7 tables, 22 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
 - `@fonderie/billing` (4 tables, 11 routes) → [signatures/billing-outcomes.md](signatures/billing-outcomes.md)
 - `@fonderie/config` (4 tables, 13 routes) → [signatures/config-outcomes.md](signatures/config-outcomes.md)
 - `@fonderie/courier` (3 tables, 6 routes) → [signatures/courier-outcomes.md](signatures/courier-outcomes.md)
