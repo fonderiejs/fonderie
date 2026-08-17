@@ -7,31 +7,35 @@
 ╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝
 ```
 
-# Fonderie SDK
+# Fonderie — the control layer for AI-built software
 
-**The SaaS backend skill for AI coding assistants.** Every LLM asked to
-build a SaaS invents its own auth, its own billing wiring, its own
-permission model — different biases every session, security decisions
-nobody audits, thousands of tokens burned on boilerplate instead of your
-product. Fonderie replaces all of that with one mold: auth, workspaces,
-billing, messaging, permissions, events — each a pre-built, reviewable
-brick that snaps into `@fonderie/core`, each running in **your** process
-against **your** database. Install the skill and any assistant — Claude
-Code, Cursor, Codex, Gemini CLI — stops reinventing infrastructure and
-starts building your actual product on a backend it already knows.
+**Every SaaS rebuilds the same infrastructure. AI just made it faster — and
+less consistent.** Auth, billing, teams, permissions, messaging: every product
+needs them, every LLM reinvents them, and it invents them differently every
+session — different security decisions, none audited, thousands of tokens burned
+on boilerplate instead of your product. Fonderie is the standard that ends the
+re-derivation. Auth, workspaces, billing, messaging, permissions, events — each
+an audited, reviewable brick that snaps into `@fonderie/core` and runs in
+**your** process against **your** database. Install it and any assistant — Claude
+Code, Cursor, Codex, Gemini CLI — builds on a backend it already knows,
+correctly, every time.
 
-The bet is the same one HTTP made: standardize the boring parts — the
-web has GET, POST, and a 404 nobody re-argues; the SaaS backend never
-got its equivalent. Twenty years of engineering keeps re-deriving auth,
-API shape, and schema from scratch, re-shipping the same security
-flaws — and LLMs made that faster, not better. Faster horses. Fonderie
-is the engine: one open, audited standard for the parts every product
-shares, so founders spend themselves on operations — the only part
-that's actually theirs.
+The bet is the one HTTP made: standardize the boring parts. The web has GET,
+POST, and a 404 nobody re-argues; the SaaS backend never got its equivalent.
+Twenty years of engineering keeps re-deriving auth, API shape, and schema from
+scratch, re-shipping the same security flaws — and LLMs made that faster, not
+better. Faster horses. Fonderie is the engine: one open standard for the parts
+every product shares, so founders spend themselves on the only part that's
+actually theirs.
 
-Works the same without an LLM: it's plain TypeScript packages. Take one
-brick or the whole set. What founders cast here is theirs. No seats, no
-rent.
+> **The wedge is the first five systems. The market is the entire infrastructure
+> budget of every AI-built company.** We start where every SaaS starts — auth
+> and billing, the two systems no product can launch without — and the same
+> control layer extends to notifications, permissions, mobile, and every system
+> the AI builds next.
+
+Works the same without an LLM: it's plain TypeScript packages. Take one brick or
+the whole set. What founders cast here is theirs. No seats, no rent. MIT.
 
 ## The skill
 
@@ -94,6 +98,27 @@ through install, booting an app, and adding bricks step by step.
 | [`@fonderie/store`](packages/store) | Database abstraction layer |
 | [`@fonderie/webhooks`](packages/webhooks) | Outgoing webhook engine |
 | [`@fonderie/workspaces`](packages/workspaces) | Multi-tenant team layer |
+
+## Secure by construction
+
+Security is the whole reason a standard beats regenerated boilerplate: the
+audited path is the default path. None of this is opt-in, and every claim is in
+the source — read [`SECURITY.md`](SECURITY.md) and the package tests.
+
+- **Auth fails closed.** A weak or placeholder JWT secret is fatal in
+  production; the app refuses to boot rather than sign forgeable tokens.
+- **Credentials done right.** bcrypt password hashing, TOTP MFA with secrets
+  encrypted at rest (AES-256-GCM), and every session revoked on password change.
+- **Least privilege by default.** Workspace-scoped RBAC with parameterized,
+  tenant-isolated queries; rate limiting on by default in front of login,
+  registration, reset, and MFA.
+- **Tamper-evident audit trail.** The event log carries a keyed per-event HMAC —
+  altered or forged history is detectable.
+- **Privacy built in.** Per-user data export (SAR) and configurable retention /
+  erasure for events and deleted accounts.
+- **Hardened transport & supply chain.** HSTS and secure-by-default response
+  headers; CI fails on high-severity advisories; releases publish over OIDC with
+  signed [provenance](https://slsa.dev/) — no long-lived tokens.
 
 ## Measured
 
@@ -164,8 +189,8 @@ merge to main  ──▶  automated npm publish
   `docs:signatures` freshness gate, and the validation audit.
 - **Release** (`.github/workflows/release.yml`) runs **only on push to
   `main`**. It opens a "Version Packages" PR consuming pending changesets;
-  merging that PR publishes to npm. Nothing on `dev` (or any other branch)
-  can publish.
+  merging that PR publishes to npm over OIDC Trusted Publishing with signed
+  provenance. Nothing on `dev` (or any other branch) can publish.
 - `main` should be a protected branch (require PRs + a green CI check, no
   direct pushes) so "only `main` publishes" is enforced, not just conventional.
 
