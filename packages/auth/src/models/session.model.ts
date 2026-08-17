@@ -22,6 +22,23 @@ export class SessionModel {
 		await this.store.query(`DELETE FROM fonderie_sessions WHERE user_id = $1`, [userId]);
 	}
 
+	// Session metadata for a user (no tokens) — for the data-export / SAR bundle.
+	async listByUser(userId: string): Promise<
+		Array<{ id: string; userAgent: string | null; ipAddress: string | null; createdAt: Date; expiresAt: Date }>
+	> {
+		return this.store.query(
+			`SELECT id,
+			        user_agent AS "userAgent",
+			        ip_address AS "ipAddress",
+			        created_at AS "createdAt",
+			        expires_at AS "expiresAt"
+			 FROM fonderie_sessions
+			 WHERE user_id = $1
+			 ORDER BY created_at DESC`,
+			[userId],
+		);
+	}
+
 	async exists(token: string): Promise<boolean> {
 		const rows = await this.store.query<{ id: string }>(
 			`SELECT id FROM fonderie_sessions WHERE token = $1 AND expires_at > now()`,

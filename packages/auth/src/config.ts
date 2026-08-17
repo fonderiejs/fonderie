@@ -97,7 +97,7 @@ export type AuthRouteId =
 	| 'forgotPassword' | 'resetPassword'
 	| 'verifyEmail' | 'sendVerification'
 	| 'logout'
-	| 'me' | 'updateProfile' | 'updatePreferences' | 'updateEmail' | 'updatePhone' | 'changePassword' | 'deleteMe'
+	| 'me' | 'updateProfile' | 'updatePreferences' | 'updateEmail' | 'updatePhone' | 'changePassword' | 'deleteMe' | 'exportMe'
 	| 'mfaSetup' | 'mfaVerify' | 'mfaDisable' | 'mfaBackupCodes';
 
 export type AuthRouteOverride = string | { method?: string; path?: string };

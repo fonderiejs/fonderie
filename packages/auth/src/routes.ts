@@ -92,6 +92,7 @@ export function buildAuthRoutes(
 		R('updatePhone', 'PUT', '/users/phone', requireAuth, verifyGate, validate(updatePhoneSchema), user.updatePhone),
 		R('changePassword', 'PUT', '/users/password', requireAuth, validate(changePasswordSchema), user.changePassword),
 		R('deleteMe', 'DELETE', '/users', requireAuth, verifyGate, user.deleteMe),
+		R('exportMe', 'GET', '/users/export', requireAuth, user.exportMe),
 
 		// MFA (email sessions only — requireVerified is always enforced here
 		// because MFA is a security feature and email verification is meaningful)
