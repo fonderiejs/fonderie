@@ -4,7 +4,7 @@
 > **\[brackets]**, then have an officer approve and date it before it counts as a
 > control. Where a statement cites code, the control already exists in the repo.
 >
-> Owner: **[assign — e.g. CTO / Security Officer]** · Approver: **[assign]** ·
+> Owner: **Louis Choleski (founder, acting Security Officer)** · Approver: **Louis Choleski (founder)** ·
 > Version: 0.1 (draft) · Effective: **[date on adoption]** · Review: at least
 > annually and on material change.
 
@@ -27,7 +27,7 @@ source repositories, cloud/corporate accounts, and the application itself.
 ### Authorization
 - Access is granted on the principle of **least privilege**, by role, and only
   after approval by the resource owner or the Security Officer.
-- **Privileged/production access** is limited to named individuals ([assign]),
+- **Privileged/production access** is limited to named individuals (Louis Choleski (founder)),
   logged, and reviewed monthly.
 - Application access is **workspace-scoped** and enforced by RBAC
   (`@fonderie/permissions`) with tenant-isolated, parameterized queries.
@@ -49,4 +49,4 @@ source repositories, cloud/corporate accounts, and the application itself.
 
 ## 3. Exceptions & enforcement
 Per the Information Security Policy. Emergency ("break-glass") access is logged,
-time-boxed, and reviewed within [1 business day].
+time-boxed, and reviewed within 1 business day.

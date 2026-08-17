@@ -4,7 +4,7 @@
 > **\[brackets]**, then have an officer approve and date it before it counts as a
 > control. Where a statement cites code, the control already exists in the repo.
 >
-> Owner: **[assign — e.g. CTO / Security Officer]** · Approver: **[assign]** ·
+> Owner: **Louis Choleski (founder, acting Security Officer)** · Approver: **Louis Choleski (founder)** ·
 > Version: 0.1 (draft) · Effective: **[date on adoption]** · Review: at least
 > annually and on material change.
 
@@ -36,11 +36,11 @@ and deployment pipelines.
 
 ### Dependencies
 - CI **fails on high-severity advisories** in shipped dependencies
-  (`npm run audit:ship`). Dependencies are reviewed [monthly] and on alert.
+  (`npm run audit:ship`). Dependencies are reviewed monthly and on alert.
 
 ### Emergency changes
 - Expedited changes are permitted for incidents; they still go through a PR and
-  are reviewed **retroactively within [1 business day]**, with the reason recorded.
+  are reviewed **retroactively within 1 business day**, with the reason recorded.
 
 ## 3. Exceptions & enforcement
 Per the Information Security Policy.
