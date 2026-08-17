@@ -48,7 +48,7 @@
     "vue-audit": "0.1.0",
     "vue-audit-screens": "0.1.0",
     "vue-auth": "0.1.0",
-    "vue-auth-screens": "0.1.0",
+    "vue-auth-screens": "0.1.1",
     "vue-billing": "0.1.0",
     "vue-billing-screens": "0.1.0",
     "vue-config-admin": "0.1.0",
@@ -1413,7 +1413,7 @@
       "hasOutcomes": false
     },
     "vue-auth-screens": {
-      "version": "0.1.0",
+      "version": "0.1.1",
       "requires": [],
       "exports": [
         "ForgotPasswordScreen",
