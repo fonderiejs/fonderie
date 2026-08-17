@@ -7,7 +7,7 @@
 ╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝
 ```
 
-# Fonderie — the control layer for AI-built software
+# Fonderie — the control layer for AI-built SaaS
 
 **Every SaaS rebuilds the same infrastructure — auth, billing, teams,
 permissions, messaging. AI just made it faster, and less consistent.** Ask an
