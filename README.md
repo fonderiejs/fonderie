@@ -7,42 +7,42 @@
 ╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝
 ```
 
-# Fonderie SDK
+# Fonderie — the control layer for AI-built SaaS
 
-**The SaaS backend skill for AI coding assistants.** Every LLM asked to
-build a SaaS invents its own auth, its own billing wiring, its own
-permission model — different biases every session, security decisions
-nobody audits, thousands of tokens burned on boilerplate instead of your
-product. Fonderie replaces all of that with one mold: auth, workspaces,
-billing, messaging, permissions, events — each a pre-built, reviewable
-brick that snaps into `@fonderie/core`, each running in **your** process
-against **your** database. Install the skill and any assistant — Claude
-Code, Cursor, Codex, Gemini CLI — stops reinventing infrastructure and
-starts building your actual product on a backend it already knows.
+**Every SaaS rebuilds the same infrastructure — auth, billing, teams,
+permissions, messaging. AI just made it faster, and less consistent.** Ask an
+LLM to build it and you get a different version every session: different
+security calls, nothing audited, thousands of tokens spent on boilerplate
+instead of your product.
 
-The bet is the same one HTTP made: standardize the boring parts — the
-web has GET, POST, and a 404 nobody re-argues; the SaaS backend never
-got its equivalent. Twenty years of engineering keeps re-deriving auth,
-API shape, and schema from scratch, re-shipping the same security
-flaws — and LLMs made that faster, not better. Faster horses. Fonderie
-is the engine: one open, audited standard for the parts every product
-shares, so founders spend themselves on operations — the only part
-that's actually theirs.
+Fonderie is the standard that ends the re-derivation. Each piece — auth,
+workspaces, billing, messaging, permissions, events — is an audited, reviewable
+brick that snaps into `@fonderie/core` and runs in **your** process against
+**your** database. Install it and any assistant (Claude Code, Cursor, Codex,
+Gemini CLI) builds on a backend it already knows — the same way, every time.
 
-Works the same without an LLM: it's plain TypeScript packages. Take one
-brick or the whole set. What founders cast here is theirs. No seats, no
-rent.
+It's the bet HTTP made: standardize the boring parts. The web has GET, POST, and
+a 404 nobody re-argues. The SaaS backend never got its equivalent — so twenty
+years of engineers keep re-deriving auth and re-shipping the same flaws, and LLMs
+just do it faster. Fonderie is the missing standard, so you spend your time on
+the only part that's actually yours.
+
+> **The wedge is the first five systems. The market is the entire infrastructure
+> budget of every AI-built company.** We start where every SaaS starts — auth and
+> billing — and the same control layer extends to notifications, permissions,
+> mobile, and everything the AI builds next.
+
+No LLM required: it's plain TypeScript. Take one brick or the whole set. No
+seats, no rent. MIT.
 
 ## The skill
 
-This repo ships a [Claude Code skill](.claude/skills/fonderie/SKILL.md)
-that teaches an assistant to reach for `@fonderie/*` bricks instead of
-hand-writing auth, billing, or permissions. Working inside this repo (or
-any repo that vendors the skill), it loads automatically — say "add
-subscriptions" and the assistant wires `@fonderie/billing` instead of
-improvising Stripe glue.
+This repo ships a [Claude Code skill](.claude/skills/fonderie/SKILL.md) that
+teaches an assistant to reach for `@fonderie/*` bricks instead of hand-writing
+auth, billing, or permissions. It loads automatically — say "add subscriptions"
+and the assistant wires `@fonderie/billing` instead of improvising Stripe glue.
 
-The skill is three files with a strict generated/curated split:
+Three files, with a strict generated/curated split:
 
 | File | Role | Maintained by |
 | --- | --- | --- |
@@ -95,32 +95,113 @@ through install, booting an app, and adding bricks step by step.
 | [`@fonderie/webhooks`](packages/webhooks) | Outgoing webhook engine |
 | [`@fonderie/workspaces`](packages/workspaces) | Multi-tenant team layer |
 
+## Frontend bricks
+
+The standard doesn't stop at the API — Fonderie is end-to-end. Every capability
+ships **headless bindings** (React hooks, Vue composables, React Native hooks —
+thin layers over [`@fonderie/client`](packages/client)) and a matching set of
+**prebuilt screens**. So the same assistant that wires `@fonderie/billing` on
+the backend drops in a working subscription UI on the frontend, on whatever
+framework you ship. Take the hooks and build your own UI, or take the screens
+and ship today.
+
+### React
+
+| Package | What it is |
+|---|---|
+| [`@fonderie/react-auth`](packages/react-auth) | React hooks for Fonderie auth — thin bindings over @fonderie/client |
+| [`@fonderie/react-auth-screens`](packages/react-auth-screens) | Pre-built React auth screens — login, register, forgot password |
+| [`@fonderie/react-billing`](packages/react-billing) | React hooks for Fonderie billing |
+| [`@fonderie/react-billing-screens`](packages/react-billing-screens) | Pre-built React billing screens — pricing table, subscription management |
+| [`@fonderie/react-customers`](packages/react-customers) | React hooks for Fonderie customers |
+| [`@fonderie/react-customers-screens`](packages/react-customers-screens) | Pre-built React customers screens — list, detail (contact info, notes, tags) |
+| [`@fonderie/react-workspaces`](packages/react-workspaces) | React hooks for Fonderie workspaces |
+| [`@fonderie/react-workspaces-screens`](packages/react-workspaces-screens) | Pre-built React workspaces screens — team members, invitations |
+| [`@fonderie/react-audit`](packages/react-audit) | React hooks for the audit log |
+| [`@fonderie/react-audit-screens`](packages/react-audit-screens) | Pre-built React audit screen — filterable, cursor-paginated event list |
+| [`@fonderie/react-webhooks`](packages/react-webhooks) | React hooks for outgoing webhooks |
+| [`@fonderie/react-webhooks-screens`](packages/react-webhooks-screens) | Pre-built React webhooks screens — endpoint list, delivery history |
+| [`@fonderie/react-config-admin`](packages/react-config-admin) | React hooks for the config admin API (feature flags/remote config + secrets) |
+| [`@fonderie/react-config-admin-screens`](packages/react-config-admin-screens) | Pre-built React config-admin screens — editor with revision history and rollback |
+| [`@fonderie/react-courier-admin`](packages/react-courier-admin) | React hooks for the courier admin API (email/SMS/push templates) |
+| [`@fonderie/react-courier-admin-screens`](packages/react-courier-admin-screens) | Pre-built React courier-admin screens — template editor with revisions and rollback |
+
+### React Native
+
+| Package | What it is |
+|---|---|
+| [`@fonderie/react-native-auth`](packages/react-native-auth) | React Native hooks for Fonderie auth |
+| [`@fonderie/react-native-auth-screens`](packages/react-native-auth-screens) | Pre-built React Native auth screens — login, register, forgot password |
+| [`@fonderie/react-native-billing`](packages/react-native-billing) | React Native billing hooks |
+| [`@fonderie/react-native-billing-screens`](packages/react-native-billing-screens) | Pre-built React Native billing screens — pricing table, subscription management |
+| [`@fonderie/react-native-customers`](packages/react-native-customers) | React Native customers hooks |
+| [`@fonderie/react-native-customers-screens`](packages/react-native-customers-screens) | Pre-built React Native customers screens — list, detail |
+| [`@fonderie/react-native-workspaces`](packages/react-native-workspaces) | React Native workspaces hooks |
+| [`@fonderie/react-native-workspaces-screens`](packages/react-native-workspaces-screens) | Pre-built React Native workspaces screens — team members, invitations |
+| [`@fonderie/react-native-audit`](packages/react-native-audit) | React Native hooks for the audit log |
+| [`@fonderie/react-native-audit-screens`](packages/react-native-audit-screens) | Pre-built React Native audit screen — filterable, cursor-paginated event list |
+| [`@fonderie/react-native-webhooks`](packages/react-native-webhooks) | React Native hooks for outgoing webhooks |
+| [`@fonderie/react-native-webhooks-screens`](packages/react-native-webhooks-screens) | Pre-built React Native webhooks screens — endpoint list, delivery history |
+
+### Vue
+
+| Package | What it is |
+|---|---|
+| [`@fonderie/vue-auth`](packages/vue-auth) | Vue composables for Fonderie auth — thin bindings over @fonderie/client |
+| [`@fonderie/vue-auth-screens`](packages/vue-auth-screens) | Pre-built Vue auth screens — login, register, forgot password |
+| [`@fonderie/vue-billing`](packages/vue-billing) | Vue 3 composables for Fonderie billing |
+| [`@fonderie/vue-billing-screens`](packages/vue-billing-screens) | Pre-built Vue billing screens — pricing table, subscription management |
+| [`@fonderie/vue-customers`](packages/vue-customers) | Vue 3 composables for Fonderie customers |
+| [`@fonderie/vue-customers-screens`](packages/vue-customers-screens) | Pre-built Vue customers screens — list, detail (contact info, notes, tags) |
+| [`@fonderie/vue-workspaces`](packages/vue-workspaces) | Vue 3 composables for Fonderie workspaces |
+| [`@fonderie/vue-workspaces-screens`](packages/vue-workspaces-screens) | Pre-built Vue workspaces screens — team members, invitations |
+| [`@fonderie/vue-audit`](packages/vue-audit) | Vue 3 composables for the audit log |
+| [`@fonderie/vue-audit-screens`](packages/vue-audit-screens) | Pre-built Vue audit screen — filterable, cursor-paginated event list |
+| [`@fonderie/vue-webhooks`](packages/vue-webhooks) | Vue 3 composables for outgoing webhooks |
+| [`@fonderie/vue-webhooks-screens`](packages/vue-webhooks-screens) | Pre-built Vue webhooks screens — endpoint list, delivery history |
+| [`@fonderie/vue-config-admin`](packages/vue-config-admin) | Vue 3 composables for the config admin API (feature flags/remote config + secrets) |
+| [`@fonderie/vue-config-admin-screens`](packages/vue-config-admin-screens) | Pre-built Vue config-admin screens — editor with revision history and rollback |
+| [`@fonderie/vue-courier-admin`](packages/vue-courier-admin) | Vue 3 composables for the courier admin API (email/SMS/push templates) |
+| [`@fonderie/vue-courier-admin-screens`](packages/vue-courier-admin-screens) | Pre-built Vue courier-admin screens — template editor with revisions and rollback |
+
+## Secure by construction
+
+Security is the whole reason a standard beats regenerated boilerplate: the
+audited path is the default path. None of this is opt-in, and every claim is in
+the source — read [`SECURITY.md`](SECURITY.md) and the package tests.
+
+- **Auth fails closed.** A weak or placeholder JWT secret is fatal in
+  production; the app refuses to boot rather than sign forgeable tokens.
+- **Credentials done right.** bcrypt password hashing, TOTP MFA with secrets
+  encrypted at rest (AES-256-GCM), and every session revoked on password change.
+- **Least privilege by default.** Workspace-scoped RBAC with parameterized,
+  tenant-isolated queries; rate limiting on by default in front of login,
+  registration, reset, and MFA.
+- **Tamper-evident audit trail.** The event log carries a keyed per-event HMAC —
+  altered or forged history is detectable.
+- **Privacy built in.** Per-user data export (SAR) and configurable retention /
+  erasure for events and deleted accounts.
+- **Hardened transport & supply chain.** HSTS and secure-by-default response
+  headers; CI fails on high-severity advisories; releases publish over OIDC with
+  signed [provenance](https://slsa.dev/) — no long-lived tokens.
+
 ## Measured
 
-We ran a pre-registered benchmark — thresholds locked before any data —
-building the same growing app (auth → billing → teams → a security pass)
-three ways, three times each, on `claude-opus-4-8`: with the Fonderie
-brain, with the full skill loaded, and from scratch with no Fonderie
-knowledge. 36 sessions.
+We don't just claim it — we benchmarked it. Thresholds locked before any data,
+then the same growing app (auth → billing → teams → a security pass) built three
+ways, three times each, on `claude-opus-4-8`. 36 sessions.
 
-- **Fonderie-knowledge overhead: parity-plus, not a fraction.** The project
-  brain carries only what the task touches, so the model spends more of its
-  context on your product and less re-reading the SDK than the full skill
-  does. Under the fair (resident-after-read) accounting, brain vs. full-skill
-  ratio is **0.383** (amortized floor: 0.267), transcript-attributed — a real
-  reduction, but not the ≤⅓ "fraction" this line originally claimed. (The ≤⅓
-  goal is met by a newer lazy-router variant, not by the eager brain
-  described here.) Full derivation and reconciliation:
+- **Fewer holes, less code.** From-scratch builds shipped a hard-coded secret in
+  **2 of 3** runs; the Fonderie builds, zero — the audited brick reads it from
+  the environment and throws if it's missing. And in roughly **⅓ the code**.
+- **The SDK earns its context.** The project brain loads only what a task
+  touches, so the model spends its budget on your product, not re-reading the
+  SDK — a **0.383** context ratio vs. the full skill (fair, resident-after-read
+  accounting). Full derivation:
   [`BATCH-RESULTS.md`](experiments/phase41-2026-07/BATCH-RESULTS.md).
-- **Fewer security holes by default.** The from-scratch builds shipped an
-  insecure hard-coded secret in **2 of 3** runs; the Fonderie builds, none —
-  the audited brick reads it from the environment and throws if it's
-  missing. And they did it in roughly **⅓ the code**.
 
-Both the harness and the raw runs are in the repo:
-[`experiments/phase41-2026-07/`](experiments/phase41-2026-07) —
-`BATCH-RESULTS.md` for the numbers, `analyze.mjs` / `instrument.mjs` to
-re-derive them. Re-run it and check.
+Harness and raw runs are all in [`experiments/phase41-2026-07/`](experiments/phase41-2026-07).
+Re-run it and check — that's the point.
 
 ## Development
 
@@ -164,8 +245,8 @@ merge to main  ──▶  automated npm publish
   `docs:signatures` freshness gate, and the validation audit.
 - **Release** (`.github/workflows/release.yml`) runs **only on push to
   `main`**. It opens a "Version Packages" PR consuming pending changesets;
-  merging that PR publishes to npm. Nothing on `dev` (or any other branch)
-  can publish.
+  merging that PR publishes to npm over OIDC Trusted Publishing with signed
+  provenance. Nothing on `dev` (or any other branch) can publish.
 - `main` should be a protected branch (require PRs + a green CI check, no
   direct pushes) so "only `main` publishes" is enforced, not just conventional.
 
