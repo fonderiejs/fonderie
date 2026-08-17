@@ -1,15 +1,30 @@
 # Acceptable Use Policy
 
-> **Status:** DRAFT stub — not adopted. Fill every `[FILL: …]` and have an
-> officer approve before it counts as a control.
-> Owner: `[FILL: role]` · Version: 0.1 · Effective: `[FILL: date]` ·
-> Review: annually or on material change.
+> **Status:** DRAFT for review — not yet adopted. Confirm the values in
+> **\[brackets]**, then have an officer approve and date it before it counts as a
+> control. Where a statement cites code, the control already exists in the repo.
+>
+> Owner: **[assign — e.g. CTO / Security Officer]** · Approver: **[assign]** ·
+> Version: 0.1 (draft) · Effective: **[date on adoption]** · Review: at least
+> annually and on material change.
 
-## Policy
-- Company systems and data are for authorized business use.
-- Endpoints: full-disk encryption, screen lock, current OS/patches, endpoint
-  protection.
-- No shared accounts; MFA required; secrets never shared over insecure channels.
-- Prohibited: circumventing controls, unauthorized data export, installing
-  unvetted software on systems that touch production.
-- Report suspected incidents immediately per the Incident Response Plan.
+## 1. Purpose & scope
+Define acceptable use of Fonderie systems, accounts, and data by all personnel
+and contractors.
+
+## 2. Policy
+- Company systems and data are for **authorized business use**; incidental
+  personal use must not compromise security or violate policy.
+- **Endpoints** that access company data must have: full-disk encryption, a
+  screen lock, current OS/security patches, and endpoint protection.
+- **Accounts**: no shared logins; MFA enabled; credentials never shared over
+  insecure channels; secrets kept in the approved secrets manager.
+- **Prohibited**: circumventing security controls; unauthorized export or
+  sharing of Confidential/Restricted data; installing unvetted software on
+  systems that touch production; using company access after termination.
+- **Report** suspected incidents, phishing, or lost devices immediately per the
+  Incident Response Plan.
+
+## 3. Acknowledgement & enforcement
+Personnel acknowledge this policy at onboarding and annually. Violations may lead
+to disciplinary action per the Information Security Policy.
