@@ -62,12 +62,13 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 		}
 	}
 
-	// MFA is on but TOTP secrets have no at-rest encryption key — they'll be
-	// stored plaintext. Not fatal (backward-compatible default), but a finding.
+	// MFA is on but TOTP secrets have no at-rest encryption key — they'd be
+	// stored plaintext. An error in production (fails the boot gate); a warning
+	// elsewhere so dev/test with backward-compatible defaults still run.
 	if (config.mfa && !config.mfaSecretKey) {
 		problems.push({
 			module: MODULE,
-			severity: 'warning',
+			severity: process.env['NODE_ENV'] === 'production' ? 'error' : 'warning',
 			message: 'mfa is enabled without mfaSecretKey — TOTP secrets are stored plaintext at rest; set a 32-byte key (openssl rand -hex 32)',
 		});
 	}
