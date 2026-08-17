@@ -26,3 +26,32 @@ export async function purgeEvents(
 	);
 	return rows.length;
 }
+
+// Scheduled disposal (SOC 2 C1/P4). Runs purgeEvents on an interval so aged
+// audit/event rows don't accumulate past the policy window. Runs once
+// immediately, then every intervalMs. Non-blocking (timer unref'd). .stop() cancels.
+export interface IRetentionScheduleOptions extends IPurgeEventsOptions {
+	intervalMs?: number; // default 24h
+	onPurge?: (deleted: number) => void;
+}
+
+export function startEventRetention(
+	store: IStoreAdapter,
+	options: IRetentionScheduleOptions,
+): { stop: () => void } {
+	const intervalMs = options.intervalMs ?? 24 * 60 * 60 * 1000;
+	let stopped = false;
+	const run = async () => {
+		if (stopped) return;
+		try {
+			const deleted = await purgeEvents(store, { olderThanDays: options.olderThanDays });
+			options.onPurge?.(deleted);
+		} catch (err) {
+			console.error('[events] scheduled retention purge failed:', err);
+		}
+	};
+	const timer = setInterval(run, intervalMs);
+	if (typeof (timer as { unref?: () => void }).unref === 'function') (timer as { unref: () => void }).unref();
+	void run();
+	return { stop: () => { stopped = true; clearInterval(timer); } };
+}

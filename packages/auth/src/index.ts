@@ -25,8 +25,8 @@ export { normalizeEmail, normalizeEmailSafe } from './services/email';
 // Migration — import an existing user base (preserves identity; pairs with the
 // `legacyVerify` config option for rehash-on-login).
 export { importUser } from './migrate';
-export { purgeSoftDeletedUsers } from './services/retention';
-export type { IPurgeOptions } from './services/retention';
+export { purgeSoftDeletedUsers, startUserRetention } from './services/retention';
+export type { IPurgeOptions, IUserRetentionScheduleOptions } from './services/retention';
 export type { IImportUser } from './migrate';
 
 // Production-readiness — validate the auth config (fatal on a weak jwtSecret in

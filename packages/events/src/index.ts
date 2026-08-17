@@ -9,11 +9,13 @@ export { matchesPattern } from './transports/pattern';
 
 // Audit-log tamper-evidence
 export { computeEventHmac, verifyEventChain, canonicalize } from './integrity';
+export { startIntegrityCheck } from './integrity-job';
+export type { IIntegrityCheckOptions, IIntegrityCheckHandle } from './integrity-job';
 export type { IHashableEvent, IIntegrityReport } from './integrity';
 
 // Retention / disposal
-export { purgeEvents } from './retention';
-export type { IPurgeEventsOptions } from './retention';
+export { purgeEvents, startEventRetention } from './retention';
+export type { IPurgeEventsOptions, IRetentionScheduleOptions } from './retention';
 
 export type { IEventMeta, IEventHandler, IEventRecord, IConsumerRecord } from './types';
 

@@ -239,3 +239,43 @@ describe('purgeEvents', () => {
 		await assert.rejects(() => purgeEvents(store, { olderThanDays: -1 }), /non-negative/);
 	});
 });
+
+// ── B4: scheduled integrity check ───────────────────────────────────────
+import { startIntegrityCheck } from '../integrity-job';
+import { computeEventHmac as chmac } from '../integrity';
+import { startEventRetention } from '../retention';
+import type { IStoreAdapter as IStore3 } from '@fonderie/store';
+
+describe('startIntegrityCheck (B4)', () => {
+	const key = 'k'.repeat(48);
+	it('fires onTamper when a row fails verification, and stops cleanly', async () => {
+		const good = chmac(key, { id: 'e1', type: 't', payload: {}, meta: {} });
+		const store: IStore3 = {
+			query: async <T = unknown>() => ([
+				{ id: 'e1', type: 't', payload: {}, meta: {}, hmac: good },
+				{ id: 'e2', type: 't', payload: {}, meta: {}, hmac: 'deadbeef' },
+			] as unknown as T[]),
+			transaction: async (fn) => fn(store),
+		};
+		const tamper = new Promise<string[]>((resolve) => {
+			const h = startIntegrityCheck(store, key, {
+				intervalMs: 1_000_000,
+				onTamper: (r) => { resolve(r.tampered); h.stop(); },
+			});
+		});
+		assert.deepEqual(await tamper, ['e2']);
+	});
+});
+
+describe('startEventRetention (C1)', () => {
+	it('runs purge immediately and reports the count', async () => {
+		const store: IStore3 = {
+			query: async <T = unknown>() => ([{ id: 'a' }, { id: 'b' }] as unknown as T[]),
+			transaction: async (fn) => fn(store),
+		};
+		const purged = new Promise<number>((resolve) => {
+			const h = startEventRetention(store, { olderThanDays: 90, intervalMs: 1_000_000, onPurge: (n) => { resolve(n); h.stop(); } });
+		});
+		assert.equal(await purged, 2);
+	});
+});
