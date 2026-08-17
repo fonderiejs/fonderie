@@ -62,6 +62,26 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 		}
 	}
 
+	// MFA is on but TOTP secrets have no at-rest encryption key — they'll be
+	// stored plaintext. Not fatal (backward-compatible default), but a finding.
+	if (config.mfa && !config.mfaSecretKey) {
+		problems.push({
+			module: MODULE,
+			severity: 'warning',
+			message: 'mfa is enabled without mfaSecretKey — TOTP secrets are stored plaintext at rest; set a 32-byte key (openssl rand -hex 32)',
+		});
+	}
+
+	// A malformed key can never decrypt: catch it at boot rather than on the
+	// first MFA request. 32 bytes = 64 hex chars.
+	if (config.mfaSecretKey && !/^[0-9a-fA-F]{64}$/.test(config.mfaSecretKey)) {
+		problems.push({
+			module: MODULE,
+			severity: 'error',
+			message: 'mfaSecretKey must be 64 hex characters (32 bytes, e.g. `openssl rand -hex 32`)',
+		});
+	}
+
 	return problems;
 }
 
