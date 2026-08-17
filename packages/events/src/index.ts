@@ -7,6 +7,10 @@ export type { IEventTransport, IPGTransportConfig } from './transports';
 
 export { matchesPattern } from './transports/pattern';
 
+// Retention / disposal
+export { purgeEvents } from './retention';
+export type { IPurgeEventsOptions } from './retention';
+
 export type { IEventMeta, IEventHandler, IEventRecord, IConsumerRecord } from './types';
 
 // ── Typed event keys ─────────────────────────────────────────────

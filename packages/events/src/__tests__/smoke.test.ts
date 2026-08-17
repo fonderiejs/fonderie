@@ -157,3 +157,29 @@ test('EventsModule: accepts a custom IEventTransport (MemoryTransport as test st
 	assert.ok(mod.bus instanceof EventBus);
 	assert.ok(typeof mod.install === 'function');
 });
+
+// ── Retention / disposal ───────────────────────────────────────────────
+import { purgeEvents } from '../retention';
+import type { IStoreAdapter as IStore2 } from '@fonderie/store';
+
+describe('purgeEvents', () => {
+	it('deletes events older than the window and returns the count', async () => {
+		let captured: { sql: string; params: unknown[] } | null = null;
+		const store: IStore2 = {
+			query: async <T = unknown>(sql: string, params?: unknown[]) => {
+				captured = { sql, params: params ?? [] };
+				return [{ id: 'a' }, { id: 'b' }] as unknown as T[];
+			},
+			transaction: async (fn) => fn(store),
+		};
+		const n = await purgeEvents(store, { olderThanDays: 90 });
+		assert.equal(n, 2);
+		assert.match(captured!.sql, /DELETE FROM fonderie_events/);
+		assert.match(captured!.sql, /make_interval\(days => \$1\)/);
+		assert.deepEqual(captured!.params, [90]);
+	});
+	it('rejects a negative window', async () => {
+		const store: IStore2 = { query: async () => [], transaction: async (fn) => fn(store) };
+		await assert.rejects(() => purgeEvents(store, { olderThanDays: -1 }), /non-negative/);
+	});
+});

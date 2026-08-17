@@ -58,6 +58,12 @@ interface IPGTransportConfig {
 
 function matchesPattern(pattern: string, eventType: string): boolean
 
+function purgeEvents(store: IStoreAdapter, { olderThanDays }: IPurgeEventsOptions): Promise<number>
+
+interface IPurgeEventsOptions {
+    olderThanDays: number;
+}
+
 interface IEventMeta {
     id: string;
     type: string;
