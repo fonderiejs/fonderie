@@ -37,6 +37,13 @@ export interface FonderieConfig {
 		provider: 'resend' | 'ses' | 'smtp';
 	};
 
+	// Fail-closed production boot gate. In production, `boot()` refuses to start
+	// when any registered module reports an `error`-severity readiness problem
+	// (e.g. a weak signing secret, a missing at-rest encryption key). Set this to
+	// true only to deliberately override the gate — not recommended. Outside
+	// production the gate never runs.
+	skipProductionReadinessGate?: boolean;
+
 	onError?: (err: unknown) => Response;
 
 	// Transform every JSON response body just before it is sent. Return the new
