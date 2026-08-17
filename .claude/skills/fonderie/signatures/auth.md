@@ -67,6 +67,7 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 
 interface IAuthSecrets {
     jwtSecret: string;
+    mfaSecretKey?: string;
     google?: {
         clientId: string;
         clientSecret: string;
