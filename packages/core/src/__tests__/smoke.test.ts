@@ -45,6 +45,29 @@ test('registered route receives request and returns response', async () => {
 	assert.equal(body.ok, true);
 });
 
+// ── security headers (default pipeline) ──────────────────────────
+
+test('security headers: nosniff on every response; no HSTS over http', async () => {
+	const app = new FonderieApp(config);
+	app.addRoute('GET', '/h', async () => Response.json({ ok: true }));
+	await app.boot();
+	const res = await app.handle(makeRequest('GET', '/h'));
+	assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+	assert.equal(res.headers.get('strict-transport-security'), null); // http request
+});
+
+test('security headers: HSTS emitted when the proxy reports https', async () => {
+	const app = new FonderieApp(config);
+	app.addRoute('GET', '/h', async () => Response.json({ ok: true }));
+	await app.boot();
+	const req = new Request('http://localhost/h', {
+		method: 'GET',
+		headers: { 'content-type': 'application/json', 'x-forwarded-proto': 'https' },
+	});
+	const res = await app.handle(req);
+	assert.match(res.headers.get('strict-transport-security') ?? '', /^max-age=\d+/);
+});
+
 // ── onResponse contract-adapter hook ─────────────────────────────
 
 test('onResponse: transforms the body, preserving status', async () => {

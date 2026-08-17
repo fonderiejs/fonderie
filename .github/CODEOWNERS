@@ -1,0 +1,11 @@
+# Default: every change needs a review from the maintainer.
+* @fonderiejs
+
+# Security-sensitive surfaces — auth, secrets/config, permissions, rate limiting,
+# and the release/CI pipeline. Called out explicitly so a reviewer with context
+# is always requested (SOC 2 CC1.4 / change-management segregation of duties).
+/packages/auth/            @fonderiejs
+/packages/config/          @fonderiejs
+/packages/permissions/     @fonderiejs
+/packages/rate-limit/      @fonderiejs
+/.github/workflows/        @fonderiejs

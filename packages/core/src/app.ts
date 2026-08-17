@@ -14,6 +14,7 @@ import { Router, routerMiddleware } from './router';
 import { compose } from './compose';
 import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
 import { withBody } from './middlewares/body-parser';
+import { withSecurityHeaders } from './middlewares/security-headers';
 
 export class FonderieApp implements IFonderieApp {
 	private config: FonderieConfig;
@@ -25,7 +26,9 @@ export class FonderieApp implements IFonderieApp {
 	constructor(config: FonderieConfig) {
 		this.config = config;
 		this.prefix = (config.basePath ?? '').replace(/\/$/, '');
-		this.middlewares = [withBody];
+		// Body parsing first, then baseline security headers (nosniff always; HSTS
+		// over HTTPS). Apps can layer more via `.use()`.
+		this.middlewares = [withBody, withSecurityHeaders()];
 	}
 
 	listen(

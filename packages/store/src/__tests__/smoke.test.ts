@@ -162,3 +162,44 @@ test('versionedRollback: writes a past revision content as a new version', async
 	assert.equal((row as { version: number }).version, 5);
 	assert.ok(seen.some((s) => s.startsWith('UPDATE tpl SET')));
 });
+
+// ── production DB config fail-closed check ───────────────────────
+import { assertProductionDbConfig } from '../adapters/pg';
+
+test('assertProductionDbConfig: no-op outside production', () => {
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'development';
+	try {
+		assert.doesNotThrow(() => assertProductionDbConfig({ connectionString: '' }));
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('assertProductionDbConfig: empty connectionString is fatal in production', () => {
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		assert.throws(() => assertProductionDbConfig({ connectionString: '   ' }), /empty in production/);
+		// a real URL and env-var mode (no string) are both fine
+		assert.doesNotThrow(() => assertProductionDbConfig({ connectionString: 'postgres://u:p@db:5432/app' }));
+		assert.doesNotThrow(() => assertProductionDbConfig({ host: 'db', user: 'u' }));
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('assertProductionDbConfig: warns (no throw) on sslmode=disable in production', () => {
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	const warns: string[] = [];
+	const orig = console.warn;
+	console.warn = (m?: unknown) => { warns.push(String(m)); };
+	try {
+		assert.doesNotThrow(() => assertProductionDbConfig({ connectionString: 'postgres://u:p@db/app?sslmode=disable' }));
+		assert.ok(warns.some((w) => /TLS is disabled/.test(w)));
+	} finally {
+		console.warn = orig;
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
