@@ -132,7 +132,39 @@ export class FonderieApp implements IFonderieApp {
 		for (const module of topoSort([...this.modules.values()])) {
 			await module.install(this);
 		}
+		this.registerHealthRoutes();
 		return this;
+	}
+
+	// Liveness (/healthz) and readiness (/readyz) probes. Registered unprefixed so
+	// they sit at a stable path regardless of basePath. Enabled unless disabled.
+	private registerHealthRoutes(): void {
+		if (this.config.healthChecks === false) return;
+
+		this.router.add('GET', '/healthz', compose([async () => Response.json({ status: 'ok' })]));
+
+		this.router.add(
+			'GET',
+			'/readyz',
+			compose([
+				async () => {
+					const report = this.checkProductionReadiness();
+					let dependencies = true;
+					if (this.config.readyProbe) {
+						try {
+							dependencies = Boolean(await this.config.readyProbe());
+						} catch {
+							dependencies = false;
+						}
+					}
+					const ready = report.ok && dependencies;
+					return Response.json(
+						{ status: ready ? 'ready' : 'not_ready', dependencies, problems: report.problems },
+						{ status: ready ? 200 : 503 },
+					);
+				},
+			]),
+		);
 	}
 
 	// Throws in production when `checkProductionReadiness()` reports any
