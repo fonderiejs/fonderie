@@ -11,6 +11,7 @@ new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule
   .name: "@fonderie/config"
   .manager: RemoteConfigManager
   .install(app: IFonderieApp): Promise<void>
+  .checkReadiness(): IReadinessProblem[]
 
 function buildAdminRoutes(store: IStoreAdapter, adminToken: string, encryptor?: ISecretEncryptor): [string, string, Middleware][]
 

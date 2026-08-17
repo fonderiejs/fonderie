@@ -16,6 +16,12 @@ export class SessionModel {
 		await this.store.query(`DELETE FROM fonderie_sessions WHERE token = $1`, [token]);
 	}
 
+	// Revoke every session for a user (e.g. on password change). Access tokens
+	// bound to these sessions via the sid claim die on their next request.
+	async deleteByUser(userId: string): Promise<void> {
+		await this.store.query(`DELETE FROM fonderie_sessions WHERE user_id = $1`, [userId]);
+	}
+
 	async exists(token: string): Promise<boolean> {
 		const rows = await this.store.query<{ id: string }>(
 			`SELECT id FROM fonderie_sessions WHERE token = $1 AND expires_at > now()`,
