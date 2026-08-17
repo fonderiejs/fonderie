@@ -42,6 +42,26 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 		});
 	}
 
+	// Google OAuth secrets: if the provider is wired up, its clientSecret is a
+	// bearer credential to Google — a placeholder or blank value is as unsafe as
+	// a weak jwtSecret, so it's a boot-blocking error in production.
+	if (config.google) {
+		const clientSecret = config.google.clientSecret ?? '';
+		if (!clientSecret || !config.google.clientId || !config.google.redirectUri) {
+			problems.push({
+				module: MODULE,
+				severity: 'error',
+				message: 'google OAuth is configured but clientId, clientSecret, or redirectUri is missing',
+			});
+		} else if (PLACEHOLDER_SECRET.test(clientSecret)) {
+			problems.push({
+				module: MODULE,
+				severity: 'error',
+				message: 'google.clientSecret looks like a placeholder or dev-default value',
+			});
+		}
+	}
+
 	return problems;
 }
 

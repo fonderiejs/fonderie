@@ -13,6 +13,7 @@ import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { toUserDTO } from '../dtos/user';
 import type { IUser } from '../types';
 import { UserModel } from '../models/user.model';
+import { SessionModel } from '../models/session.model';
 import { EmailVerificationModel } from '../models/email-verification.model';
 import { PhoneVerificationModel } from '../models/phone-verification.model';
 import { normalizeEmailSafe } from '../services/email';
@@ -27,6 +28,7 @@ function isValidPhone(phone: unknown): phone is string {
 
 export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users = new UserModel(store);
+	const sessions = new SessionModel(store);
 	const emailVerif = new EmailVerificationModel(store);
 	const phoneVerif = new PhoneVerificationModel(store);
 
@@ -237,6 +239,11 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 			const hash = await hashPassword(newPassword);
 			await users.updatePassword(ctx.user!.id, hash);
+
+			// Revoke all sessions so a changed password invalidates any tokens an
+			// attacker (or the user's old device) may still hold. The client must
+			// re-authenticate after changing its password.
+			await sessions.deleteByUser(ctx.user!.id);
 
 			return setApiResponse(HTTP.OK, 'PASSWORD_CHANGED', 'Password updated successfully.');
 		},
