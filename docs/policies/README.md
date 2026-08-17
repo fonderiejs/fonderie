@@ -1,10 +1,10 @@
 # Security policies — starter kit
 
 SOC 2 tests whether documented policies exist **and** are followed. These are
-**draft stubs** to adapt, not finished policies: fill every `[FILL: …]`, delete
-what doesn't apply, and have an accountable officer approve and date each one.
-Where a control is already implemented in code, the stub links to it so the
-policy and the evidence line up.
+**drafts for review** — substantive content with sensible defaults, not finished
+policies. Confirm the values in **[brackets]**, delete what doesn't apply, and
+have an accountable officer approve and date each one. Where a control is already
+implemented in code, the policy links to it so policy and evidence line up.
 
 | Policy | Covers (SOC 2) |
 |---|---|
