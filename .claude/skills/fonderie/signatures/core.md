@@ -141,6 +141,8 @@ interface FonderieConfig {
         provider: 'resend' | 'ses' | 'smtp';
     };
     skipProductionReadinessGate?: boolean;
+    healthChecks?: boolean;
+    readyProbe?: () => boolean | Promise<boolean>;
     onError?: (err: unknown) => Response;
     onResponse?: (body: unknown, info: {
         status: number;

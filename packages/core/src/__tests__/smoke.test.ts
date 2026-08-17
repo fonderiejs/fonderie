@@ -516,43 +516,71 @@ test('checkProductionReadiness: ok=true when only warnings (or none)', () => {
 	assert.deepEqual(empty.checkProductionReadiness(), { ok: true, problems: [] });
 });
 
-// ── A1: fail-closed production boot gate ────────────────────────────────
-import { defineConfig as defineConfig2 } from '../config';
+// ── B1: health & readiness endpoints ────────────────────────────────────
+test('healthz: liveness returns 200 ok', async () => {
+	const app = await new FonderieApp(config).boot();
+	const res = await app.handle(makeRequest('GET', '/healthz'));
+	assert.equal(res.status, 200);
+	assert.deepEqual(await res.json(), { status: 'ok' });
+});
 
+test('readyz: 200 when readiness ok and probe truthy', async () => {
+	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, readyProbe: () => true })).boot();
+	const res = await app.handle(makeRequest('GET', '/readyz'));
+	assert.equal(res.status, 200);
+	assert.equal((await res.json() as any).status, 'ready');
+});
+
+test('readyz: 503 when the dependency probe fails', async () => {
+	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, readyProbe: () => false })).boot();
+	const res = await app.handle(makeRequest('GET', '/readyz'));
+	assert.equal(res.status, 503);
+	const body = await res.json() as any;
+	assert.equal(body.status, 'not_ready');
+	assert.equal(body.dependencies, false);
+});
+
+test('health routes: disabled via healthChecks:false', async () => {
+	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, healthChecks: false })).boot();
+	const res = await app.handle(makeRequest('GET', '/healthz'));
+	assert.equal(res.status, 404);
+});
+
+// ── A1: fail-closed production boot gate ────────────────────────────────
 const insecureModule: IFonderieModule = {
-  name: 'test-insecure',
-  install() {},
-  checkReadiness: () => [{ module: 'test-insecure', severity: 'error', message: 'weak secret' }],
+	name: 'test-insecure',
+	install() {},
+	checkReadiness: () => [{ module: 'test-insecure', severity: 'error' as const, message: 'weak secret' }],
 };
 
 test('boot gate: throws in production on an error-severity readiness problem', async () => {
-  const prev = process.env['NODE_ENV'];
-  process.env['NODE_ENV'] = 'production';
-  try {
-    const app = new FonderieApp(config).register(insecureModule);
-    await assert.rejects(() => app.boot(), /refusing to boot in production.*weak secret/s);
-  } finally {
-    if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
-  }
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		const app = new FonderieApp(config).register(insecureModule);
+		await assert.rejects(() => app.boot(), /refusing to boot in production.*weak secret/s);
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
 });
 
 test('boot gate: no-op outside production', async () => {
-  const prev = process.env['NODE_ENV'];
-  process.env['NODE_ENV'] = 'development';
-  try {
-    await assert.doesNotReject(() => new FonderieApp(config).register(insecureModule).boot());
-  } finally {
-    if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
-  }
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'development';
+	try {
+		await assert.doesNotReject(() => new FonderieApp(config).register(insecureModule).boot());
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
 });
 
 test('boot gate: skipProductionReadinessGate overrides in production', async () => {
-  const prev = process.env['NODE_ENV'];
-  process.env['NODE_ENV'] = 'production';
-  try {
-    const cfg = defineConfig2({ db: { url: 'postgres://localhost/test' }, skipProductionReadinessGate: true });
-    await assert.doesNotReject(() => new FonderieApp(cfg).register(insecureModule).boot());
-  } finally {
-    if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
-  }
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		const cfg = defineConfig({ db: { url: 'postgres://localhost/test' }, skipProductionReadinessGate: true });
+		await assert.doesNotReject(() => new FonderieApp(cfg).register(insecureModule).boot());
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
 });

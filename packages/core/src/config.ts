@@ -44,6 +44,16 @@ export interface FonderieConfig {
 	// production the gate never runs.
 	skipProductionReadinessGate?: boolean;
 
+	// Built-in health endpoints, registered on boot (unprefixed by basePath):
+	//   GET /healthz — liveness, always 200 while the process is up
+	//   GET /readyz  — readiness, 200 when checkProductionReadiness() is ok AND
+	//                  readyProbe() (if provided) resolves truthy, else 503
+	// Set false to disable. Point your platform's probes at these.
+	healthChecks?: boolean;
+	// Optional dependency probe for /readyz — e.g. `() => store.testConnection()`.
+	// Throwing or returning false makes /readyz report 503.
+	readyProbe?: () => boolean | Promise<boolean>;
+
 	onError?: (err: unknown) => Response;
 
 	// Transform every JSON response body just before it is sent. Return the new
