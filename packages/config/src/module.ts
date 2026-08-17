@@ -50,14 +50,22 @@ export class ConfigModule implements IFonderieModule {
 	checkReadiness(): IReadinessProblem[] {
 		const problems: IReadinessProblem[] = [];
 		// Secrets are stored plaintext at rest unless an encryptor is configured.
-		// Not fatal (existing deployments upgrade without a key and their stored
-		// ciphertext must stay readable), but a production deployment holding
-		// secrets without at-rest encryption is a finding worth surfacing.
+		// It's a hard error in production when the admin secrets surface is enabled
+		// (a plaintext secret is revealable over the API) — this fails the boot gate.
+		// Otherwise (dev, or no admin surface) it's a warning so back-compatible
+		// deployments that never expose secrets aren't broken.
 		if (!this.options.secretEncryptor) {
+			const inProd = process.env['NODE_ENV'] === 'production';
+			const secretsExposed = Boolean(this.options.adminToken);
 			problems.push({
 				module: this.name,
-				severity: 'warning',
-				message: 'no secretEncryptor configured — secrets are stored plaintext at rest; use createAesGcmEncryptor for production',
+				severity: inProd && secretsExposed ? 'error' : 'warning',
+				message:
+					'no secretEncryptor configured — secrets are stored plaintext at rest; ' +
+					'use createAesGcmEncryptor' +
+					(inProd && secretsExposed
+						? ' (required in production when the secrets admin surface is enabled)'
+						: ' for production'),
 			});
 		}
 
