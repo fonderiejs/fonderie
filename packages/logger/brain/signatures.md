@@ -51,4 +51,18 @@ new FileTransport(path: string): FileTransport
 
 new ConsoleTransport(opts?: { pretty?: boolean; }): ConsoleTransport
   .write(entry: ILogEntry): void
+
+function logSecurityEvent(logger: Logger, evt: ISecurityEvent): void
+
+interface ISecurityEvent {
+    action: SecurityAction;
+    outcome: 'success' | 'failure' | 'denied';
+    actorId?: string | null;
+    workspaceId?: string | null;
+    requestId?: string;
+    ip?: string;
+    detail?: Record<string, unknown>;
+}
+
+type SecurityAction = 'auth.login' | 'auth.logout' | 'auth.register' | 'auth.password_change' | 'auth.mfa_verify' | 'auth.token_refresh' | 'authz.permission_denied' | 'admin.action' | 'account.deleted' | 'account.suspended';
 ```

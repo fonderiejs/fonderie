@@ -92,6 +92,8 @@ export interface IFonderieApp {
 	// Aggregate every module's self-reported readiness problems; gate a deploy
 	// or expose from a readiness endpoint. See IReadinessReport.
 	checkProductionReadiness(): IReadinessReport;
+	// Point-in-time control-posture snapshot for SOC 2 evidence.
+	securityReport(): ISecurityReport;
 }
 
 // A production-readiness finding a module reports about its own config.
@@ -108,6 +110,15 @@ export interface IReadinessReport {
 	// True when there are no `error`-severity problems — safe to boot in prod.
 	ok: boolean;
 	problems: IReadinessProblem[];
+}
+
+// A point-in-time control-posture snapshot for SOC 2 evidence (see
+// FonderieApp.securityReport). Serialise it to a file/log as an audit artifact.
+export interface ISecurityReport {
+	generatedAt: string; // ISO timestamp
+	env: string; // NODE_ENV
+	registeredModules: string[];
+	readiness: IReadinessReport;
 }
 
 export interface IFonderieModule {
