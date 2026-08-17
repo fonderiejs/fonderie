@@ -9,44 +9,40 @@
 
 # Fonderie — the control layer for AI-built software
 
-**Every SaaS rebuilds the same infrastructure. AI just made it faster — and
-less consistent.** Auth, billing, teams, permissions, messaging: every product
-needs them, every LLM reinvents them, and it invents them differently every
-session — different security decisions, none audited, thousands of tokens burned
-on boilerplate instead of your product. Fonderie is the standard that ends the
-re-derivation. Auth, workspaces, billing, messaging, permissions, events — each
-an audited, reviewable brick that snaps into `@fonderie/core` and runs in
-**your** process against **your** database. Install it and any assistant — Claude
-Code, Cursor, Codex, Gemini CLI — builds on a backend it already knows,
-correctly, every time.
+**Every SaaS rebuilds the same infrastructure — auth, billing, teams,
+permissions, messaging. AI just made it faster, and less consistent.** Ask an
+LLM to build it and you get a different version every session: different
+security calls, nothing audited, thousands of tokens spent on boilerplate
+instead of your product.
 
-The bet is the one HTTP made: standardize the boring parts. The web has GET,
-POST, and a 404 nobody re-argues; the SaaS backend never got its equivalent.
-Twenty years of engineering keeps re-deriving auth, API shape, and schema from
-scratch, re-shipping the same security flaws — and LLMs made that faster, not
-better. Faster horses. Fonderie is the engine: one open standard for the parts
-every product shares, so founders spend themselves on the only part that's
-actually theirs.
+Fonderie is the standard that ends the re-derivation. Each piece — auth,
+workspaces, billing, messaging, permissions, events — is an audited, reviewable
+brick that snaps into `@fonderie/core` and runs in **your** process against
+**your** database. Install it and any assistant (Claude Code, Cursor, Codex,
+Gemini CLI) builds on a backend it already knows — the same way, every time.
+
+It's the bet HTTP made: standardize the boring parts. The web has GET, POST, and
+a 404 nobody re-argues. The SaaS backend never got its equivalent — so twenty
+years of engineers keep re-deriving auth and re-shipping the same flaws, and LLMs
+just do it faster. Fonderie is the missing standard, so you spend your time on
+the only part that's actually yours.
 
 > **The wedge is the first five systems. The market is the entire infrastructure
-> budget of every AI-built company.** We start where every SaaS starts — auth
-> and billing, the two systems no product can launch without — and the same
-> control layer extends to notifications, permissions, mobile, and every system
-> the AI builds next.
+> budget of every AI-built company.** We start where every SaaS starts — auth and
+> billing — and the same control layer extends to notifications, permissions,
+> mobile, and everything the AI builds next.
 
-Works the same without an LLM: it's plain TypeScript packages. Take one brick or
-the whole set. What founders cast here is theirs. No seats, no rent. MIT.
+No LLM required: it's plain TypeScript. Take one brick or the whole set. No
+seats, no rent. MIT.
 
 ## The skill
 
-This repo ships a [Claude Code skill](.claude/skills/fonderie/SKILL.md)
-that teaches an assistant to reach for `@fonderie/*` bricks instead of
-hand-writing auth, billing, or permissions. Working inside this repo (or
-any repo that vendors the skill), it loads automatically — say "add
-subscriptions" and the assistant wires `@fonderie/billing` instead of
-improvising Stripe glue.
+This repo ships a [Claude Code skill](.claude/skills/fonderie/SKILL.md) that
+teaches an assistant to reach for `@fonderie/*` bricks instead of hand-writing
+auth, billing, or permissions. It loads automatically — say "add subscriptions"
+and the assistant wires `@fonderie/billing` instead of improvising Stripe glue.
 
-The skill is three files with a strict generated/curated split:
+Three files, with a strict generated/curated split:
 
 | File | Role | Maintained by |
 | --- | --- | --- |
@@ -191,30 +187,21 @@ the source — read [`SECURITY.md`](SECURITY.md) and the package tests.
 
 ## Measured
 
-We ran a pre-registered benchmark — thresholds locked before any data —
-building the same growing app (auth → billing → teams → a security pass)
-three ways, three times each, on `claude-opus-4-8`: with the Fonderie
-brain, with the full skill loaded, and from scratch with no Fonderie
-knowledge. 36 sessions.
+We don't just claim it — we benchmarked it. Thresholds locked before any data,
+then the same growing app (auth → billing → teams → a security pass) built three
+ways, three times each, on `claude-opus-4-8`. 36 sessions.
 
-- **Fonderie-knowledge overhead: parity-plus, not a fraction.** The project
-  brain carries only what the task touches, so the model spends more of its
-  context on your product and less re-reading the SDK than the full skill
-  does. Under the fair (resident-after-read) accounting, brain vs. full-skill
-  ratio is **0.383** (amortized floor: 0.267), transcript-attributed — a real
-  reduction, but not the ≤⅓ "fraction" this line originally claimed. (The ≤⅓
-  goal is met by a newer lazy-router variant, not by the eager brain
-  described here.) Full derivation and reconciliation:
+- **Fewer holes, less code.** From-scratch builds shipped a hard-coded secret in
+  **2 of 3** runs; the Fonderie builds, zero — the audited brick reads it from
+  the environment and throws if it's missing. And in roughly **⅓ the code**.
+- **The SDK earns its context.** The project brain loads only what a task
+  touches, so the model spends its budget on your product, not re-reading the
+  SDK — a **0.383** context ratio vs. the full skill (fair, resident-after-read
+  accounting). Full derivation:
   [`BATCH-RESULTS.md`](experiments/phase41-2026-07/BATCH-RESULTS.md).
-- **Fewer security holes by default.** The from-scratch builds shipped an
-  insecure hard-coded secret in **2 of 3** runs; the Fonderie builds, none —
-  the audited brick reads it from the environment and throws if it's
-  missing. And they did it in roughly **⅓ the code**.
 
-Both the harness and the raw runs are in the repo:
-[`experiments/phase41-2026-07/`](experiments/phase41-2026-07) —
-`BATCH-RESULTS.md` for the numbers, `analyze.mjs` / `instrument.mjs` to
-re-derive them. Re-run it and check.
+Harness and raw runs are all in [`experiments/phase41-2026-07/`](experiments/phase41-2026-07).
+Re-run it and check — that's the point.
 
 ## Development
 
