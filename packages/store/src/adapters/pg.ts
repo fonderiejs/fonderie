@@ -22,7 +22,11 @@ export function assertProductionDbConfig(options: IPoolConfig): void {
 
 	if (url) {
 		if (/[?&]sslmode=disable\b/i.test(url) || /[?&]ssl=false\b/i.test(url)) {
-			console.warn('[store] database TLS is disabled (sslmode=disable) in production — traffic to Postgres is unencrypted');
+			throw new Error(
+				'[store] database TLS is disabled (sslmode=disable) in production — traffic to ' +
+					'Postgres would be unencrypted. Use sslmode=require (or stronger), or set ' +
+					'NODE_ENV appropriately for non-production.',
+			);
 		}
 		if (/:\/\/postgres:postgres@/i.test(url) || /:\/\/postgres:password@/i.test(url)) {
 			console.warn('[store] database is using well-known default credentials in production');
