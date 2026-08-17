@@ -99,6 +99,32 @@ through install, booting an app, and adding bricks step by step.
 | [`@fonderie/webhooks`](packages/webhooks) | Outgoing webhook engine |
 | [`@fonderie/workspaces`](packages/workspaces) | Multi-tenant team layer |
 
+## Frontend bricks
+
+The standard doesn't stop at the API. Every capability ships **headless
+bindings** — React hooks, Vue composables, React Native hooks, all thin layers
+over [`@fonderie/client`](packages/client) — and, alongside them, **prebuilt
+screens**. So the same assistant that wires `@fonderie/billing` on the backend
+drops in a working subscription UI on the frontend, on whatever framework you
+ship.
+
+| Capability | React | React Native | Vue |
+|---|:--:|:--:|:--:|
+| Auth | ✓ | ✓ | ✓ |
+| Billing | ✓ | ✓ | ✓ |
+| Customers | ✓ | ✓ | ✓ |
+| Workspaces | ✓ | ✓ | ✓ |
+| Audit | ✓ | ✓ | ✓ |
+| Webhooks | ✓ | ✓ | ✓ |
+| Config admin | ✓ | — | ✓ |
+| Courier admin | ✓ | — | ✓ |
+
+Each ✓ is two packages — headless plus screens — e.g.
+[`@fonderie/react-auth`](packages/react-auth) (hooks) and
+[`@fonderie/react-auth-screens`](packages/react-auth-screens) (login, register,
+forgot-password UI). Same pattern for `vue-*` and `react-native-*`. Take the
+hooks and build your own UI, or take the screens and ship today.
+
 ## Secure by construction
 
 Security is the whole reason a standard beats regenerated boilerplate: the
