@@ -493,3 +493,31 @@ test('deleteSecret: true when deleted, false when absent', async () => {
 	assert.equal(await deleteSecret('k', 'all', stubStore(() => [{ key: 'k' }])), true);
 	assert.equal(await deleteSecret('k', 'all', stubStore(() => [])), false);
 });
+
+// ── A2: require at-rest encryptor in production (secrets surface) ────────
+test('ConfigModule.checkReadiness: missing encryptor is an ERROR in prod when adminToken set', async () => {
+	const { ConfigModule } = await import('../module');
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		const problems = new ConfigModule(makeStore(), {
+			adminToken: 'Zk9x2Qw7Lp4Rt6Vn1Bm8Cy3Df5Gh0JsW7uY2pR4',
+		}).checkReadiness();
+		assert.ok(problems.some((p) => p.severity === 'error' && /secretEncryptor/.test(p.message)));
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('ConfigModule.checkReadiness: missing encryptor is only a WARNING in prod without adminToken', async () => {
+	const { ConfigModule } = await import('../module');
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		const problems = new ConfigModule(makeStore()).checkReadiness();
+		assert.ok(problems.some((p) => p.severity === 'warning' && /secretEncryptor/.test(p.message)));
+		assert.ok(!problems.some((p) => p.severity === 'error'));
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
