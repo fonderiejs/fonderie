@@ -17,6 +17,7 @@ new EventsModule(config: IEventsConfig): EventsModule
   .name: "@fonderie/events"
   .bus: EventBus
   .install(_app: IFonderieApp): void
+  .checkReadiness(): IReadinessProblem[]
 
 interface IEventsConfig {
     transport: EventTransportConfig;
@@ -28,6 +29,7 @@ type EventTransportConfig = {
     maxRetries?: number;
     batchSize?: number;
     pollInterval?: number;
+    integrityKey?: string;
 } | IEventTransport;
 
 new MemoryTransport(): MemoryTransport
@@ -54,9 +56,30 @@ interface IPGTransportConfig {
     maxRetries?: number;
     batchSize?: number;
     pollInterval?: number;
+    integrityKey?: string;
 }
 
 function matchesPattern(pattern: string, eventType: string): boolean
+
+function computeEventHmac(key: string, event: IHashableEvent): string
+
+function verifyEventChain(store: IStoreAdapter, key: string): Promise<IIntegrityReport>
+
+function canonicalize(value: unknown): string
+
+interface IHashableEvent {
+    id: string;
+    type: string;
+    payload: unknown;
+    meta: unknown;
+}
+
+interface IIntegrityReport {
+    ok: boolean;
+    checked: number;
+    unprotected: number;
+    tampered: string[];
+}
 
 function purgeEvents(store: IStoreAdapter, { olderThanDays }: IPurgeEventsOptions): Promise<number>
 

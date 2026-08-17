@@ -7,6 +7,10 @@ export type { IEventTransport, IPGTransportConfig } from './transports';
 
 export { matchesPattern } from './transports/pattern';
 
+// Audit-log tamper-evidence
+export { computeEventHmac, verifyEventChain, canonicalize } from './integrity';
+export type { IHashableEvent, IIntegrityReport } from './integrity';
+
 // Retention / disposal
 export { purgeEvents } from './retention';
 export type { IPurgeEventsOptions } from './retention';

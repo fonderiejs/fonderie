@@ -48,6 +48,8 @@ new PGAdapter(config: string | IPoolConfig): PGAdapter
   .transaction<T>(fn: (tx: IStoreAdapter) => Promise<T>): Promise<T>
   .end(): Promise<void>
 
+function assertProductionDbConfig(options: IPoolConfig): void
+
 function versionedWrite<T>(r: IVersionedResource, store: IStoreAdapter, opts: { key: string; scope: string | null; data: Record<string, unknown>; ifVersion?: number; actor: string | null; }): Promise<...>
 
 function versionedRollback<T>(r: IVersionedResource, store: IStoreAdapter, opts: { key: string; scope: string | null; toVersion: number; actor: string | null; }): Promise<T>
