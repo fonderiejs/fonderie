@@ -1,8 +1,13 @@
 ```markdown
-# Fonderie Labs — SDK Context Document
+# Fonderie — the control layer for AI-built SaaS
 
-> This document is the canonical reference for any LLM, developer, or contributor
-> working with the Fonderie ecosystem. Read it entirely before writing a single line.
+> Canonical reference for any LLM, developer, or contributor working with the
+> Fonderie ecosystem. Read it entirely before writing a single line.
+>
+> **Positioning in one line:** the control layer for AI-built SaaS — the audited
+> standard for the infrastructure every product shares, backend *and* frontend.
+> **The wedge is the first five systems. The market is the entire infrastructure
+> budget of every AI-built company.**
 
 ---
 
@@ -63,11 +68,12 @@ audited standard for the parts every product shares, so founders
 spend themselves on operations — the only part that is actually
 theirs.
 
-The same standard applies to frontend. Every React Native app
-regenerates the same login screen, the same billing flow, the same
-team invite modal. Fonderie extends the composition model to mobile:
-pre-built screen kits that wire directly into backend modules,
-so AI assistants compose UI the same way they compose API routes.
+The same standard applies to the frontend — and it's shipped. Every app
+regenerates the same login screen, billing flow, and team-invite modal.
+Fonderie extends the composition model across **React, React Native, and Vue**:
+headless hooks/composables over `@fonderie/client` plus matching pre-built
+screens, wired directly into the backend modules. An assistant composes the UI
+the same way it composes API routes — one prompt, full stack.
 
 ---
 
@@ -83,7 +89,7 @@ You are Drizzle, not Supabase.
 You are Next.js, not Vercel.
 You are a library, not a service.
 
-Backend today. React Native frontend tomorrow.
+Backend and frontend, shipped (React, React Native, Vue).
 The composition model is stack-agnostic.
 ```
 
@@ -98,7 +104,7 @@ not to a $29 dev tool. Price accordingly.
 Free        → Building, pre-revenue, 1 project
 $49/mo      → Launched, <$10k MRR
 $149/mo     → Growing, team features, priority support
-$199/mo     → Mobile + backend bundle, React Native screen kits
+$199/mo     → Full-stack bundle — backend + React/RN/Vue screen kits
 Custom      → Enterprise, SSO, compliance, SLA
 ```
 
@@ -126,44 +132,39 @@ copy-pasted a project 3 times for 3 clients is your ideal buyer.
 
 ---
 
-## Frontend Vision: React Native Screen Kits
+## Frontend: end-to-end, shipped
 
-The same composition model that works for backend modules extends to
-React Native frontends. AI assistants today regenerate the same mobile
-screens from scratch: login forms, signup flows, billing UIs, team
-invite modals, settings panels, navigation shells.
+The composition model that works for backend modules runs the whole way to the
+UI — and it's live today across **React, React Native, and Vue**. Every domain
+ships two packages: **headless bindings** (hooks/composables over
+`@fonderie/client`) and **pre-built screens**. So the same prompt that adds a
+backend module also drops in its UI, wired to the same typed contracts.
 
-Fonderie frontend modules are **functional screen kits**, not design
-systems. A `@fonderie/mobile/auth-screen` imports `@fonderie/auth`
-hooks, respects the same typed contracts, and handles edge cases the
-AI would otherwise miss — password visibility toggle, biometric
-fallback, validation error states, accessibility labels.
+Screens are **functional kits**, not a design system: `@fonderie/react-auth-screens`
+imports `@fonderie/react-auth` hooks and handles the edge cases an AI would
+otherwise miss — validation states, error handling, accessibility labels.
 
 ### How it works
 
 ```typescript
-// Backend module (today)
+// Backend module
 import { AuthModule } from '@fonderie/auth'
 
-// Frontend screen kit (tomorrow)
-import { LoginScreen, SignupScreen } from '@fonderie/mobile/auth-screens'
+// Frontend, same domain — hooks + screens (React shown; vue-* / react-native-* identical)
+import { useAuth } from '@fonderie/react-auth'
+import { LoginScreen, RegisterScreen } from '@fonderie/react-auth-screens'
 
-// The assistant composes both from one prompt:
-// "Add auth to my React Native app"
-// Result: backend routes + frontend screens, wired together.
+// One prompt — "Add auth to my app" — composes backend routes AND frontend
+// screens, wired together through the same typed contracts.
 ```
 
-### Why React Native first
+### Coverage
 
-1. **Thinnest ecosystem** — No equivalent of shadcn/ui or Tailwind UI
-   for React Native functional modules. The pain of regenerating
-   screens is most acute.
-2. **Typed contract continuity** — The same `User`, `Workspace`,
-   `Subscription` types flow from backend to frontend. No drift.
-3. **One prompt, full stack** — "Add team billing" composes both
-   the API module and the mobile billing flow.
-
-Web frontend (Next.js, Vue) follows once the mobile model is proven.
+- **React & Vue** — auth, billing, customers, workspaces, audit, webhooks,
+  config-admin, courier-admin (hooks + screens for each).
+- **React Native** — auth, billing, customers, workspaces, audit, webhooks.
+- **Typed contract continuity** — the same `User`, `Workspace`, `Subscription`
+  types flow from backend to every frontend. No drift, no re-derivation.
 
 ---
 
@@ -319,12 +320,13 @@ Zero changes to `BillingModule`.
   Key note:   Reads fonderie_config table every N seconds (default 30s).
               Environment-specific values override 'all' values.
 
-@fonderie/mobile  (planned — v0.3)
-  Purpose:    React Native screen kits — auth, billing, workspaces, navigation
-  Exports:    LoginScreen, SignupScreen, BillingScreen, TeamInviteScreen,
-              WorkspaceSwitcher, NavigationShell
-  Depends on: core (types), auth, billing, workspaces
-  Key note:   Functional screen kits, not design systems. Import backend
+@fonderie/{react,vue,react-native}-<domain>[-screens]  (shipped)
+  Purpose:    Headless bindings + pre-built screens per domain, per framework —
+              e.g. react-auth (hooks) + react-auth-screens (login/register/…).
+  Domains:    auth, billing, customers, workspaces, audit, webhooks
+              (+ config-admin, courier-admin on React & Vue)
+  Depends on: @fonderie/client (typed API contracts)
+  Key note:   Functional screen kits, not design systems. Import the domain
               hooks directly. Handle edge cases AI usually misses.
 ```
 
@@ -436,8 +438,8 @@ const app = new FonderieApp(config)
   .register(new CourierModule(courierConfig, store))
   .register(new BillingModule(store, billingConfig))
 
-// React Native frontend (tomorrow)
-import { NavigationShell, LoginScreen } from '@fonderie/mobile'
+// Frontend, same domains (React shown; vue-* / react-native-* identical)
+import { LoginScreen, RegisterScreen } from '@fonderie/react-auth-screens'
 // Screens auto-wire into the same backend modules via typed hooks.
 ```
 
@@ -482,17 +484,20 @@ curl http://localhost:3000/health
   SQL (`CREATE TABLE IF NOT EXISTS`, `ON CONFLICT DO NOTHING`).
 - **New projects only.** Fonderie is not a migration tool for existing
   monoliths. Target audience is greenfield SaaS.
-- **Frontend modules are planned, not shipped.** React Native screen kits
-  are in active design. Backend modules are production-ready today.
+- **Frontend is shipped across React, React Native, and Vue** (headless
+  bindings + screens). Both backend and frontend modules are published today.
 
 ---
 
 ## The Future
 
-### Short term (v0.2)
-- `@fonderie/cli` — `npx @fonderie/create my-saas` scaffolding
-- `@fonderie/audit` — SOC2-grade audit logging with SHA-256 checksums
-- Rate limiting middleware in core
+### Shipped since (was v0.2)
+- `@fonderie/cli` — `npx @fonderie/create my-saas` scaffolding ✅
+- `@fonderie/audit` + tamper-evident event log (keyed per-event HMAC) ✅
+- `@fonderie/rate-limit` — distributed token-bucket limiting ✅
+- Frontend bricks across React, React Native, Vue ✅
+
+### Short term
 - OpenAPI spec auto-generation
 
 ### Medium term (v0.3)
@@ -501,8 +506,6 @@ curl http://localhost:3000/health
   htmx-powered, zero React, minimal footprint.
 - MySQL/SQLite adapters for `@fonderie/store`
 - Serverless adapters (Cloudflare Workers, AWS Lambda)
-- `@fonderie/mobile` — React Native screen kits for auth, billing,
-  workspaces, and navigation. Functional modules, not design systems.
 
 ### Long term
 - `@fonderie/realtime` — WebSocket/SSE support
@@ -551,8 +554,8 @@ to start. Real money when it matters.
 `@fonderie/store`, `@fonderie/config`, and `@fonderie/audit` can be
 MIT licensed. They're infrastructure primitives. The auth, billing, workspaces,
 and courier packages — the ones that save the most time — are commercial.
-`@fonderie/mobile` base screens may be open-sourced as a funnel; premium
-screen kits (biometric auth, advanced billing UIs) are commercial.
+Base frontend screens (`react-*`, `vue-*`, `react-native-*`) may be open-sourced
+as a funnel; premium kits (biometric auth, advanced billing UIs) are commercial.
 This gives developers a reason to start with Fonderie before they need the
 paid parts.
 
@@ -573,9 +576,10 @@ You are working in a Fonderie-powered codebase or being asked to help build one.
   email/SMS logic directly to a handler
 - Respect the ownership boundary — customer domain logic is untouched,
   only infrastructure is replaced
-- For React Native: always prefer `@fonderie/mobile/*` screen kits over
-  building auth/billing/team UI from scratch. The screen kit imports the
-  backend hooks and respects the same typed contracts.
+- For any frontend (React, React Native, Vue): always prefer the
+  `@fonderie/<framework>-<domain>[-screens]` bindings over building
+  auth/billing/team UI from scratch. They import the backend hooks and
+  respect the same typed contracts.
 
 **The question to ask before every architectural decision:**
 > "Does this make the developer write less code that isn't their product?"
@@ -626,6 +630,6 @@ app.listen(3000)
 
 ---
 
-*Fonderie Labs — The SaaS stack you don't have to build.*
-*We handle everything that isn't your product — backend today, frontend tomorrow.*
+*Fonderie — the control layer for AI-built SaaS.*
+*We handle everything that isn't your product — backend and frontend, end to end.*
 ```
