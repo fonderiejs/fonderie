@@ -15,11 +15,11 @@ after a readiness assessment passes.
 
 Last audited: 2026-08-17 (static code review of `packages/`).
 
-**Progress:** all in-repo technical findings are addressed. Of the 15 gaps, 11
-are ✅ fixed, 3 ◑ surfaced/documented (#1 at-rest encryption default, #7 backups,
-#8 monitoring), and 1 ☐ open (#14 branch protection — a GitHub setting). What
-remains is **organizational**, not code: an auditor, written policies, and an
-evidence platform (see the bottom sections).
+**Progress:** all in-repo technical findings are addressed. Of the 15 gaps, 12
+are ✅ fixed and 3 ◑ surfaced/documented (#1 at-rest encryption default, #7
+backups, #8 monitoring). None remain open. What remains is **organizational**,
+not code: an auditor, adopted policies, and an evidence platform (see the bottom
+sections). Draft policies live in [`docs/policies/`](docs/policies/README.md).
 
 ---
 
@@ -68,7 +68,7 @@ auditors; **P3** hardening. Status legend: ✅ fixed · ◑ partially addressed 
 | 11 | Admin token has no strength check (unlike jwtSecret) | CC6.1 | P3 | `packages/config/src/module.ts` | ✅ Fixed — `ConfigModule.checkReadiness` enforces length + placeholder + test |
 | 12 | Admin token compared with `!==` (not constant-time) — timing side-channel | CC6.1 | P3 | `packages/config/src/admin.ts` | ✅ Fixed — now `crypto.timingSafeEqual` |
 | 13 | TLS/secure cookies conditional on `NODE_ENV`; no HSTS / explicit TLS enforcement | CC6.7 | P3 | `packages/core/src/middlewares/security-headers.ts` | ✅ Fixed (PR #16) — `withSecurityHeaders` (HSTS over HTTPS + nosniff) in default pipeline |
-| 14 | Branch protection is a GitHub repo setting, not enforced/verifiable in-repo | CC8.1 | P3 | GitHub repo settings | ☐ Open — enable required PR + green CI on `main` (admin action; see docs/OPERATIONS.md) |
+| 14 | Branch protection is a GitHub repo setting, not enforced/verifiable in-repo | CC8.1 | P3 | GitHub repo settings | ✅ Fixed — `main` protected: required PR + required `test` CI check + up-to-date, no direct pushes/force-pushes |
 | 15 | No CODEOWNERS file (review routing / segregation of duties) | CC1.4 | P3 | `.github/CODEOWNERS` | ✅ Fixed (PR #16) |
 
 > **On #2 (MFA secrets at rest):** done in **PR #12**. TOTP secrets stay
@@ -89,9 +89,10 @@ None of this lives in code. It is what actually separates "good controls" from
 - ☐ Engage a CPA/audit firm; choose Type I then Type II.
 - ☐ Adopt a compliance platform for continuous evidence collection (Vanta /
   Drata / Secureframe).
-- ☐ Written policies: information security, access control, incident response,
-  vendor/subprocessor management, business continuity & disaster recovery, data
-  retention & disposal, secure SDLC, acceptable use.
+- ◑ Written policies — **13 filled drafts** in [`docs/policies/`](docs/policies/README.md)
+  (info-sec, access, crypto, change mgmt, incident response, logging, BC/DR,
+  retention, classification, vendor, risk, acceptable use, personnel). Remaining:
+  officers **review, adopt, and date** them.
 - ☐ Access reviews (periodic), documented onboarding/offboarding.
 - ☐ Risk assessment and risk register.
 - ☐ Security awareness training; background checks for personnel.
@@ -103,9 +104,8 @@ None of this lives in code. It is what actually separates "good controls" from
 
 ## Path to a badge
 
-1. In-repo controls done (11 fixed, 3 surfaced/documented). Remaining code-side
-   item is **#14** — enable branch protection on `main` (require a PR + green CI),
-   an admin action in GitHub settings.
+1. In-repo controls complete (12 fixed, 3 surfaced/documented; `main` branch
+   protection enforced). No code-side items remain.
 2. Stand up the compliance platform + write policies.
 3. Run a **readiness assessment** — passing this is when "SOC 2 ready" becomes a
    truthful claim.
