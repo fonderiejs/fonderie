@@ -6,6 +6,7 @@ gap tracker is [`../../SOC2-readiness.md`](../../SOC2-readiness.md).
 
 | Artifact | What it is |
 |---|---|
+| [readiness-plan.md](readiness-plan.md) | **Codebase engineering plan** to reach readiness (workstreams A–F) |
 | [control-matrix.md](control-matrix.md) | SOC 2 Common Criteria → control → evidence location + status |
 | [risk-register.md](risk-register.md) | Initial security/availability risk register |
 | [vendor-inventory.md](vendor-inventory.md) | Subprocessor inventory (Stripe/GitHub/npm today; infra vendors at launch) |
