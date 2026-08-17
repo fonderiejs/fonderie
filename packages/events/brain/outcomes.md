@@ -29,6 +29,7 @@ type                     TEXT NOT NULL
 payload                  JSONB NOT NULL DEFAULT '{}'
 meta                     JSONB NOT NULL DEFAULT '{}'
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+hmac                     TEXT
 ```
 
 Raw SQL ships in `node_modules/@fonderie/events/dist/migrations/sql/` — read it there if you must; never download tarballs.

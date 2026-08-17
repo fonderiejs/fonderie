@@ -157,3 +157,59 @@ test('EventsModule: accepts a custom IEventTransport (MemoryTransport as test st
 	assert.ok(mod.bus instanceof EventBus);
 	assert.ok(typeof mod.install === 'function');
 });
+
+// ── Audit-log tamper-evidence (HMAC) ───────────────────────────────────
+
+import { computeEventHmac, canonicalize, verifyEventChain } from '../integrity';
+import type { IStoreAdapter } from '@fonderie/store';
+
+describe('event integrity HMAC', () => {
+	const key = 'k'.repeat(48);
+	const ev = { id: 'e1', type: 'fonderie.user.registered', payload: { userId: 'u1', b: 2, a: 1 }, meta: { id: 'e1', requestId: 'r1' } };
+
+	it('canonicalize is order-independent', () => {
+		assert.equal(canonicalize({ a: 1, b: 2 }), canonicalize({ b: 2, a: 1 }));
+		assert.equal(canonicalize({ x: { c: 3, a: 1 } }), '{"x":{"a":1,"c":3}}');
+	});
+
+	it('computeEventHmac is deterministic and key-dependent', () => {
+		assert.equal(computeEventHmac(key, ev), computeEventHmac(key, ev));
+		assert.notEqual(computeEventHmac(key, ev), computeEventHmac('other-key-'.padEnd(48, 'x'), ev));
+	});
+
+	it('a modified payload changes the HMAC', () => {
+		const tampered = { ...ev, payload: { ...ev.payload, userId: 'attacker' } };
+		assert.notEqual(computeEventHmac(key, tampered), computeEventHmac(key, ev));
+	});
+
+	it('verifyEventChain flags a row whose content no longer matches its HMAC', async () => {
+		const good = computeEventHmac(key, ev);
+		const ev2 = { id: 'e2', type: 'x', payload: {}, meta: { id: 'e2' } };
+		const rows = [
+			{ ...ev, hmac: good, created_at: '2026-01-01' },
+			{ ...ev2, hmac: 'deadbeef', created_at: '2026-01-02' }, // wrong hmac
+			{ id: 'e0', type: 'legacy', payload: {}, meta: {}, hmac: null, created_at: '2025-01-01' }, // pre-integrity
+		];
+		const store: IStoreAdapter = {
+			query: async <T = unknown>() => rows as unknown as T[],
+			transaction: async (fn) => fn(store),
+		};
+		const report = await verifyEventChain(store, key);
+		assert.equal(report.ok, false);
+		assert.equal(report.checked, 2);
+		assert.equal(report.unprotected, 1);
+		assert.deepEqual(report.tampered, ['e2']);
+	});
+});
+
+describe('EventsModule.checkReadiness', () => {
+	it('warns when pg transport has no integrityKey', () => {
+		const mod = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x' } });
+		const problems = mod.checkReadiness();
+		assert.ok(problems.some((p) => p.severity === 'warning' && /integrityKey/.test(p.message)));
+	});
+	it('clean when integrityKey is set', () => {
+		const mod = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x', integrityKey: 'k'.repeat(48) } });
+		assert.deepEqual(mod.checkReadiness(), []);
+	});
+});
