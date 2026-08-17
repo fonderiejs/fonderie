@@ -515,3 +515,33 @@ test('checkProductionReadiness: ok=true when only warnings (or none)', () => {
 	const empty = new FonderieApp(defineConfig({ db: { url: 'postgres://x' } }));
 	assert.deepEqual(empty.checkProductionReadiness(), { ok: true, problems: [] });
 });
+
+// ── B1: health & readiness endpoints ────────────────────────────────────
+test('healthz: liveness returns 200 ok', async () => {
+	const app = await new FonderieApp(config).boot();
+	const res = await app.handle(makeRequest('GET', '/healthz'));
+	assert.equal(res.status, 200);
+	assert.deepEqual(await res.json(), { status: 'ok' });
+});
+
+test('readyz: 200 when readiness ok and probe truthy', async () => {
+	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, readyProbe: () => true })).boot();
+	const res = await app.handle(makeRequest('GET', '/readyz'));
+	assert.equal(res.status, 200);
+	assert.equal((await res.json() as any).status, 'ready');
+});
+
+test('readyz: 503 when the dependency probe fails', async () => {
+	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, readyProbe: () => false })).boot();
+	const res = await app.handle(makeRequest('GET', '/readyz'));
+	assert.equal(res.status, 503);
+	const body = await res.json() as any;
+	assert.equal(body.status, 'not_ready');
+	assert.equal(body.dependencies, false);
+});
+
+test('health routes: disabled via healthChecks:false', async () => {
+	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, healthChecks: false })).boot();
+	const res = await app.handle(makeRequest('GET', '/healthz'));
+	assert.equal(res.status, 404);
+});

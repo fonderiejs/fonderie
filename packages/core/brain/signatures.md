@@ -140,6 +140,8 @@ interface FonderieConfig {
         smtp?: ISMTPConfig;
         provider: 'resend' | 'ses' | 'smtp';
     };
+    healthChecks?: boolean;
+    readyProbe?: () => boolean | Promise<boolean>;
     onError?: (err: unknown) => Response;
     onResponse?: (body: unknown, info: {
         status: number;
