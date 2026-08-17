@@ -545,3 +545,42 @@ test('health routes: disabled via healthChecks:false', async () => {
 	const res = await app.handle(makeRequest('GET', '/healthz'));
 	assert.equal(res.status, 404);
 });
+
+// ── A1: fail-closed production boot gate ────────────────────────────────
+const insecureModule: IFonderieModule = {
+	name: 'test-insecure',
+	install() {},
+	checkReadiness: () => [{ module: 'test-insecure', severity: 'error' as const, message: 'weak secret' }],
+};
+
+test('boot gate: throws in production on an error-severity readiness problem', async () => {
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		const app = new FonderieApp(config).register(insecureModule);
+		await assert.rejects(() => app.boot(), /refusing to boot in production.*weak secret/s);
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('boot gate: no-op outside production', async () => {
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'development';
+	try {
+		await assert.doesNotReject(() => new FonderieApp(config).register(insecureModule).boot());
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('boot gate: skipProductionReadinessGate overrides in production', async () => {
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		const cfg = defineConfig({ db: { url: 'postgres://localhost/test' }, skipProductionReadinessGate: true });
+		await assert.doesNotReject(() => new FonderieApp(cfg).register(insecureModule).boot());
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
