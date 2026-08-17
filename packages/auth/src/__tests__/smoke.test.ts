@@ -2445,3 +2445,40 @@ test('collectAuthConfigProblems: mfa without key is ERROR in production (A3)', a
 		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
 	}
 });
+
+// ── C1: user retention scheduler ────────────────────────────────────────
+test('startUserRetention: runs purge immediately and reports count', async () => {
+	const { startUserRetention } = await import('../services/retention');
+	const store = { query: async () => [{ id: 'u1' }, { id: 'u2' }], transaction: async (fn: any) => fn(store) } as any;
+	const n = await new Promise<number>((resolve) => {
+		const h = startUserRetention(store, { olderThanDays: 30, intervalMs: 1_000_000, onPurge: (c: number) => { resolve(c); h.stop(); } });
+	});
+	assert.equal(n, 2);
+});
+
+// ── F1: production-config fail-closed matrix ────────────────────────────
+test('F1: collectAuthConfigProblems errors on each insecure setting', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	const good = 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ';
+	const cases: Array<[string, Partial<typeof config>]> = [
+		['short jwtSecret', { jwtSecret: 'short' }],
+		['placeholder jwtSecret', { jwtSecret: 'dev-secret-min-32-chars-long-here-xx' }],
+		['incomplete google', { jwtSecret: good, google: { clientId: '', clientSecret: 'x', redirectUri: '' } }],
+		['placeholder google secret', { jwtSecret: good, google: { clientId: 'a', clientSecret: 'your-secret', redirectUri: 'https://x/cb' } }],
+		['mfa without key', { jwtSecret: good, mfa: true }],
+		['malformed mfa key', { jwtSecret: good, mfa: true, mfaSecretKey: 'not-hex' }],
+	];
+	try {
+		for (const [label, patch] of cases) {
+			const problems = collectAuthConfigProblems({ ...config, ...patch } as any);
+			assert.ok(problems.some((p) => p.severity === 'error'), `expected an error for: ${label}`);
+		}
+		// a fully secure prod config has no errors
+		const clean = collectAuthConfigProblems({ ...config, jwtSecret: good, mfa: true, mfaSecretKey: 'a'.repeat(64) } as any);
+		assert.ok(!clean.some((p) => p.severity === 'error'), 'secure config should have no errors');
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
