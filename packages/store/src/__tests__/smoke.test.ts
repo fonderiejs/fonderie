@@ -189,17 +189,17 @@ test('assertProductionDbConfig: empty connectionString is fatal in production', 
 	}
 });
 
-test('assertProductionDbConfig: warns (no throw) on sslmode=disable in production', () => {
+test('assertProductionDbConfig: THROWS on sslmode=disable in production (A4)', () => {
 	const prev = process.env['NODE_ENV'];
 	process.env['NODE_ENV'] = 'production';
-	const warns: string[] = [];
-	const orig = console.warn;
-	console.warn = (m?: unknown) => { warns.push(String(m)); };
 	try {
-		assert.doesNotThrow(() => assertProductionDbConfig({ connectionString: 'postgres://u:p@db/app?sslmode=disable' }));
-		assert.ok(warns.some((w) => /TLS is disabled/.test(w)));
+		assert.throws(
+			() => assertProductionDbConfig({ connectionString: 'postgres://u:p@db/app?sslmode=disable' }),
+			/TLS is disabled/,
+		);
+		// TLS enabled is fine
+		assert.doesNotThrow(() => assertProductionDbConfig({ connectionString: 'postgres://u:p@db/app?sslmode=require' }));
 	} finally {
-		console.warn = orig;
 		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
 	}
 });

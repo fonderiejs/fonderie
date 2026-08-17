@@ -2432,3 +2432,16 @@ test('exportMe: 404 when the user no longer exists', async () => {
 	const res = await ctrl.exportMe(makeCtx({ user: { id: 'ghost', email: null } }));
 	assert.equal(res.status, 404);
 });
+
+// ── A3: MFA key required in production ──────────────────────────────────
+test('collectAuthConfigProblems: mfa without key is ERROR in production (A3)', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		const problems = collectAuthConfigProblems({ ...config, jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ', mfa: true });
+		assert.ok(problems.some((p) => p.severity === 'error' && /mfaSecretKey/.test(p.message)));
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
