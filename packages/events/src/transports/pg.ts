@@ -5,12 +5,17 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { IEventTransport } from './types';
 import type { IEventMeta, IEventHandler, IEventRecord } from '../types';
 import { matchesPattern } from './pattern';
+import { computeEventHmac } from '../integrity';
 
 export interface IPGTransportConfig {
 	connectionUrl: string;
 	maxRetries?: number; // default 3
 	batchSize?: number; // default 10 rows claimed per consumer per poll cycle
 	pollInterval?: number; // default 1000ms fallback poll when no NOTIFY arrives
+	// When set, every event is stored with a keyed HMAC over its immutable
+	// content, making the audit log tamper-evident. Unset → no HMAC (unchanged
+	// behaviour). Verify later with `verifyEventChain(store, integrityKey)`.
+	integrityKey?: string;
 }
 
 interface Subscription {
@@ -29,11 +34,13 @@ export class PGTransport implements IEventTransport {
 	private readonly maxRetries: number;
 	private readonly batchSize: number;
 	private readonly pollInterval: number;
+	private readonly integrityKey: string | undefined;
 
 	constructor(private config: IPGTransportConfig) {
 		this.maxRetries = config.maxRetries ?? 3;
 		this.batchSize = config.batchSize ?? 10;
 		this.pollInterval = config.pollInterval ?? 1_000;
+		this.integrityKey = config.integrityKey;
 	}
 
 	// ── Public API ──────────────────────────────────────────────────
@@ -43,10 +50,13 @@ export class PGTransport implements IEventTransport {
 	}
 
 	async publish(type: string, payload: unknown, meta: IEventMeta): Promise<void> {
+		const hmac = this.integrityKey
+			? computeEventHmac(this.integrityKey, { id: meta.id, type, payload, meta })
+			: null;
 		await this.store.query(
-			`INSERT INTO fonderie_events (id, type, payload, meta)
-			 VALUES ($1, $2, $3, $4)`,
-			[meta.id, type, JSON.stringify(payload), JSON.stringify(meta)],
+			`INSERT INTO fonderie_events (id, type, payload, meta, hmac)
+			 VALUES ($1, $2, $3, $4, $5)`,
+			[meta.id, type, JSON.stringify(payload), JSON.stringify(meta), hmac],
 		);
 
 		const consumers = this.matchingConsumers(type);

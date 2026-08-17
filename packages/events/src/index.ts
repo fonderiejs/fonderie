@@ -7,6 +7,10 @@ export type { IEventTransport, IPGTransportConfig } from './transports';
 
 export { matchesPattern } from './transports/pattern';
 
+// Audit-log tamper-evidence
+export { computeEventHmac, verifyEventChain, canonicalize } from './integrity';
+export type { IHashableEvent, IIntegrityReport } from './integrity';
+
 export type { IEventMeta, IEventHandler, IEventRecord, IConsumerRecord } from './types';
 
 // ── Typed event keys ─────────────────────────────────────────────
