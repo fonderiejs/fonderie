@@ -13,7 +13,9 @@ Do **not** claim "SOC 2 certified" or "SOC 2 compliant" anywhere (site, sales,
 docs) until an auditor has issued a report. "SOC 2 ready" is only defensible
 after a readiness assessment passes.
 
-Last audited: 2026-08-17 (static code review of `packages/`).
+Last audited: 2026-08-17 (static code review of `packages/`). Controls
+re-verified 2026-08-18 (drift guard resolves all evidence paths; OIDC signed
+publish proven end-to-end).
 
 **Progress:** all in-repo technical findings are addressed. Of the 15 gaps, 12
 are ✅ fixed and 3 ◑ surfaced/documented (#1 at-rest encryption default, #7
@@ -21,6 +23,12 @@ backups, #8 monitoring). None remain open. What remains is **organizational**,
 not code: an auditor, adopted policies, and an evidence platform (see the bottom
 sections). Draft policies live in [`docs/policies/`](docs/policies/README.md); evidence
 registers (control matrix, risk register, vendor inventory) in [`docs/soc2/`](docs/soc2/README.md).
+
+**The single gating list is [`docs/soc2/readiness-punchlist.md`](docs/soc2/readiness-punchlist.md)** —
+every non-code item (policy adoption, infra, operating evidence, audit
+engagement) mapped to the control it gates, with a critical path to a Type I.
+Policy adoption is a one-signature act via
+[`docs/soc2/policy-adoption-record.md`](docs/soc2/policy-adoption-record.md).
 
 ---
 
@@ -87,6 +95,8 @@ auditors; **P3** hardening. Status legend: ✅ fixed · ◑ partially addressed 
 The readiness package a company assembles before an audit. All drafted; policies
 await officer adoption.
 
+- **Readiness punch-list** (gating policy/infra/process items) — [`docs/soc2/readiness-punchlist.md`](docs/soc2/readiness-punchlist.md)
+- **Policy adoption record** (one-signature adoption) — [`docs/soc2/policy-adoption-record.md`](docs/soc2/policy-adoption-record.md)
 - **Operations runbook** — [`docs/OPERATIONS.md`](docs/OPERATIONS.md) (backups, monitoring, change management)
 - **Policies (13)** — [`docs/policies/`](docs/policies/README.md)
 - **Control matrix** (Common Criteria → control → evidence) — [`docs/soc2/control-matrix.md`](docs/soc2/control-matrix.md)
@@ -100,7 +110,9 @@ await officer adoption.
 ## Organizational work (outside this repo — required for the report)
 
 None of this lives in code. It is what actually separates "good controls" from
-"SOC 2."
+"SOC 2." The itemized, control-mapped version is
+[`docs/soc2/readiness-punchlist.md`](docs/soc2/readiness-punchlist.md); the
+summary below mirrors it.
 
 - ☐ Engage a CPA/audit firm; choose Type I then Type II.
 - ☐ Adopt a compliance platform for continuous evidence collection (Vanta /
