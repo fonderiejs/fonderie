@@ -3,7 +3,7 @@
 	"version": "5.0.0",
 	"description": "Workspace-scoped audit log — query fonderie_events for a human-readable activity trail.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"audit",
 		"events",
 		"saas",

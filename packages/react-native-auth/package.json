@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "React Native hooks for Fonderie auth \u2014 thin bindings over @fonderie/client.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"react-native",
 		"auth",
 		"hooks",

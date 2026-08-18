@@ -3,7 +3,7 @@
 	"version": "5.0.0",
 	"description": "Workspace-scoped customer records — individuals and businesses with multiple emails, phones, addresses, notes, and tags.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"customers",
 		"saas",
 		"typescript"

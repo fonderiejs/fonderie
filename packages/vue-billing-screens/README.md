@@ -2,7 +2,7 @@
 
 Pre-built Vue 3 billing screens — `PricingScreen` and `SubscriptionScreen` —
 built on
-[`@fonderie/vue-billing`](https://github.com/fonderie-js/sdk/tree/main/packages/vue-billing)
+[`@fonderie/vue-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-billing)
 composables. Plain HTML elements via Vue's `h()` render function, inline
 styles you can override, zero UI library dependency.
 
@@ -46,7 +46,7 @@ directly.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -55,7 +55,7 @@ a pricing table from scratch. Swap it for your own design system whenever
 you outgrow it — `@fonderie/vue-billing`'s composables work standalone.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

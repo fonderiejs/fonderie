@@ -1,9 +1,9 @@
 {
 	"name": "@fonderie/logger",
 	"version": "0.1.2",
-	"description": "Structured logger with pluggable transports, child loggers, and a request-logging middleware. The observability foundation for every @fonderie-js app.",
+	"description": "Structured logger with pluggable transports, child loggers, and a request-logging middleware. The observability foundation for every @fonderiejs app.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"logger",
 		"structured-logging",
 		"transports",

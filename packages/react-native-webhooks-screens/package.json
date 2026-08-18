@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Pre-built React Native screens for Fonderie's outgoing webhooks \u2014 endpoint list, endpoint detail with delivery history.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"react-native",
 		"webhooks",
 		"screens",

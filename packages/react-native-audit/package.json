@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "React Native hooks for Fonderie's audit log — re-exports @fonderie/react-audit (no platform-specific code: no storage, no DOM/RN APIs).",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"react-native",
 		"audit",
 		"audit-log",

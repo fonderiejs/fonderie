@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Vue 3 composables for the Fonderie courier admin API (email/SMS/push template management) — thin bindings over @fonderie/client's CourierAdminClient.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"vue",
 		"courier",
 		"templates",

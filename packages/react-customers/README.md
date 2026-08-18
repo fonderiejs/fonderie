@@ -71,7 +71,7 @@ around `@fonderie/client`, nothing more. No business logic lives here; it
 lives in `@fonderie/customers` on the server.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

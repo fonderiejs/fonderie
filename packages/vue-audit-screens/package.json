@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Pre-built Vue screen for Fonderie's audit log — filterable, cursor-paginated event list.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"vue",
 		"audit",
 		"audit-log",

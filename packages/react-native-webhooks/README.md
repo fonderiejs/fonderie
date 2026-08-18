@@ -1,7 +1,7 @@
 # @fonderie/react-native-webhooks
 
 React Native hooks for Fonderie's webhooks module — re-exports
-[`@fonderie/react-webhooks`](https://github.com/fonderie-js/sdk/tree/main/packages/react-webhooks)
+[`@fonderie/react-webhooks`](https://github.com/fonderiejs/sdk/tree/main/packages/react-webhooks)
 wholesale. Like billing and workspaces, the webhooks hooks own no storage of
 their own, so there's no platform-specific code to fork — the same hooks
 work in React Native as-is.
@@ -33,14 +33,14 @@ function Webhooks() {
 ```
 
 Want a pre-built screen instead of wiring your own endpoint manager?
-See [`@fonderie/react-native-webhooks-screens`](https://github.com/fonderie-js/sdk/tree/main/packages/react-native-webhooks-screens).
+See [`@fonderie/react-native-webhooks-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/react-native-webhooks-screens).
 
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -50,7 +50,7 @@ for "webhook hooks for my Expo app" finds them without having to know the
 hooks happen to be framework-agnostic under the hood.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

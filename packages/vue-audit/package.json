@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Vue 3 composables for Fonderie's audit log — thin bindings over @fonderie/client.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"vue",
 		"audit",
 		"audit-log",

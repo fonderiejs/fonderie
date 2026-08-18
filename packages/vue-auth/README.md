@@ -3,7 +3,7 @@
 Vue 3 composables for Fonderie auth — `useLogin`, `useRegister`,
 `useSession`, `useLogout`, `useForgotPassword`, `useResetPassword`, and
 `useVerifyEmail`. Thin bindings over
-[`@fonderie/client`](https://github.com/fonderie-js/sdk/tree/main/packages/client):
+[`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client):
 reactive `ref`s for loading/error/data state and the request itself, nothing
 else. Bring your own UI.
 
@@ -39,14 +39,14 @@ or a prop). The access token is persisted to `localStorage` and restored
 automatically by `useSession` on setup; don't re-implement that in app code.
 
 Want pre-built screens instead of wiring your own form?
-See [`@fonderie/vue-auth-screens`](https://github.com/fonderie-js/sdk/tree/main/packages/vue-auth-screens).
+See [`@fonderie/vue-auth-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-auth-screens).
 
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -55,7 +55,7 @@ around `@fonderie/client`, nothing more. No business logic lives here; it
 lives in `@fonderie/auth` on the server.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

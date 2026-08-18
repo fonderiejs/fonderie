@@ -11,7 +11,7 @@ remain empirical — **our retrieval quality** and **our cost baseline**.
 | --- | --- |
 | `corpus.md` | Naive-phrasing corpus — real-user formulations of the 10 canonical tasks. The retrieval eval set for every later gate. |
 | `canonical-questions.md` | The 10 canonical tasks + node/edge mapping template (the Phase 0 exit-gate deliverable) |
-| `graphify-study.md` | Protocol + results log for running graphify against fonderie-js and skeleton-b |
+| `graphify-study.md` | Protocol + results log for running graphify against fonderiejs and skeleton-b |
 
 ## Protocol
 
@@ -32,7 +32,7 @@ remain empirical — **our retrieval quality** and **our cost baseline**.
 
 - [x] Scaffold + generated corpus draft
 - [ ] Corpus reviewed against real user phrasings (human)
-- [x] Graphify installed + run against fonderie-js (see graphify-study.md)
+- [x] Graphify installed + run against fonderiejs (see graphify-study.md)
 - [x] Graphify run against skeleton-b app
 - [x] Baseline refresh — COMPLETE: 3 valid isolated runs/condition on
       claude-opus-4-8 (scratch bl2-a1/a2/a4, fonderie bl2-b1/b5/b6) in

@@ -9,7 +9,7 @@ does the graph cost/weigh on a repo our size.
 
 ```sh
 pipx install graphifyy        # or: uv tool install graphifyy
-cd fonderie-js
+cd fonderiejs
 graphify extract .            # AST-only for code, $0; skip doc/LLM passes first
 # repeat in ../experiments/token-cost-2026-07/skeleton-b
 ```
@@ -31,7 +31,7 @@ Hit = returned subgraph contains the required nodes for that entry's task
 
 ## Results (run 2026-07-17, graphify 0.9.18, --code-only)
 
-| Metric | fonderie-js | skeleton-b |
+| Metric | fonderiejs | skeleton-b |
 | --- | --- | --- |
 | Extraction time | 46 s (483 files, 8 workers) | 1.4 s (3 files) |
 | graph.json size | 2.8 MB | tiny |

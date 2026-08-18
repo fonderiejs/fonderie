@@ -1,6 +1,6 @@
 # @fonderie/core
 
-The framework core every other `@fonderie-js` package builds on: a web-standard
+The framework core every other `@fonderiejs` package builds on: a web-standard
 request router, a composable middleware pipeline, a module system, and the
 shared `IFonderieContext` that flows through all of it.
 
@@ -35,10 +35,10 @@ for untrusted input.
 
 ## The module system
 
-Feature packages — [auth](https://github.com/fonderie-js/sdk/tree/main/packages/auth),
-[workspaces](https://github.com/fonderie-js/sdk/tree/main/packages/workspaces),
-[billing](https://github.com/fonderie-js/sdk/tree/main/packages/billing),
-[courier](https://github.com/fonderie-js/sdk/tree/main/packages/courier), and
+Feature packages — [auth](https://github.com/fonderiejs/sdk/tree/main/packages/auth),
+[workspaces](https://github.com/fonderiejs/sdk/tree/main/packages/workspaces),
+[billing](https://github.com/fonderiejs/sdk/tree/main/packages/billing),
+[courier](https://github.com/fonderiejs/sdk/tree/main/packages/courier), and
 friends — implement `IFonderieModule` and register their routes, migrations,
 and event handlers against this core. Pick the modules your product needs;
 skip the rest.
@@ -48,7 +48,7 @@ skip the rest.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -57,7 +57,7 @@ module lifecycle every other brick builds against. It depends on nothing;
 everything depends on it.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

@@ -2,7 +2,7 @@
 
 Pre-built React workspaces screens — `TeamMembersScreen` and
 `InviteMembersScreen` — built on
-[`@fonderie/react-workspaces`](https://github.com/fonderie-js/sdk/tree/main/packages/react-workspaces)
+[`@fonderie/react-workspaces`](https://github.com/fonderiejs/sdk/tree/main/packages/react-workspaces)
 hooks. Plain HTML elements, inline styles you can override, zero UI library
 dependency.
 
@@ -51,7 +51,7 @@ Use `@fonderie/react-workspaces`'s hooks directly.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -61,7 +61,7 @@ system whenever you outgrow it — `@fonderie/react-workspaces`'s hooks work
 standalone.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License
