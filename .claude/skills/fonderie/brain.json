@@ -7,7 +7,7 @@
     "audit": "5.0.0",
     "auth": "5.0.0",
     "billing": "5.0.0",
-    "client": "0.3.0",
+    "client": "0.4.0",
     "config": "5.0.0",
     "core": "0.5.0",
     "courier": "5.0.0",
@@ -385,7 +385,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "FonderieClient",
