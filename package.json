@@ -30,9 +30,9 @@
     "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.0.0",
+    "@biomejs/biome": "^2.5.8",
     "@changesets/cli": "^3.0.0",
-    "turbo": "^2.10.4"
+    "turbo": "^2.10.10"
   },
   "license": "MIT",
   "packageManager": "npm@11.16.0"

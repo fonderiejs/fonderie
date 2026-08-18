@@ -57,9 +57,9 @@
 		"@fonderie/workspaces": "../workspaces",
 		"@fonderie/permissions": "../permissions",
 		"@fonderie/billing": "../billing",
-		"hono": "^4.7.11",
+		"hono": "^4.13.2",
 		"@types/node": "^26.2.0",
-		"tsx": "^4.21.0",
+		"tsx": "^4.23.12",
 		"tsup": "^8.5.1",
 		"typescript": "^6.0.3"
 	},

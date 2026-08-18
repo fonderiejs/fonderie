@@ -52,7 +52,7 @@
 		"check": "biome check --write src"
 	},
 	"optionalDependencies": {
-		"stripe": "^22.1.1"
+		"stripe": "^22.5.0"
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.5.0",
@@ -63,7 +63,7 @@
 		"@fonderie/store": "../store",
 		"@types/node": "^26.2.0",
 		"tsup": "^8.5.1",
-		"tsx": "^4.21.0",
+		"tsx": "^4.23.12",
 		"typescript": "^6.0.3"
 	},
 	"publishConfig": {
