@@ -22,9 +22,10 @@ covers this in detail.
 
 To set expectations on where we are: our **technical controls are implemented and
 continuously verified in CI**, our security policies are written and pending
-formal adoption, and our production infrastructure and operating evidence are the
-next things we're standing up. We're happy to walk you through the current
-control set.
+formal adoption, and — because we run no customer-data service — the remaining
+work is hardening our own corporate/development environment (MFA, access,
+endpoint) and standing up operating evidence. We're happy to walk you through the
+current control set.
 
 If you're interested, please send a proposal to [email] by **[date]** covering
 the items in Section 6. Questions welcome to the same address.

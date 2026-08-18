@@ -10,12 +10,29 @@
 > **2026-08-18**. Legend: **P0** blocks any audit · **P1** auditor expects ·
 > **P2** hardening.
 
+## Scope
+
+Fonderie, Inc. is a **self-hosted SDK** — the `@fonderie/*` packages run inside
+each customer's own environment. **Fonderie, Inc. operates no multi-tenant
+service and stores no end-customer data.** The audit scope is therefore
+Fonderie's **corporate/development environment and software supply chain**
+(GitHub, CI/CD, npm publishing, the marketing site, corporate SaaS, endpoints,
+identity) — **not** a hosted data plane.
+
+Consequence for infrastructure (Track B): customer-data infra (managed Postgres,
+KMS, PITR of a customer database, service-scale log aggregation) is **out of
+scope until/unless a managed offering launches**. Those remain **product
+capabilities** the SDK provides to customers — implemented and evidenced in code
+(see the ✅ rows) — but not operated by Fonderie, Inc. today. In-scope infra
+reduces to identity/MFA, endpoint security, and access management for the systems
+Fonderie actually runs.
+
 ## Summary
 
 | Track | Items | State |
 |---|---|---|
 | A. Policy adoption | 13 policies | drafted, **unadopted** |
-| B. Production infrastructure | 7 items | not provisioned |
+| B. Corporate/dev environment | 5 in-scope items | not yet hardened |
 | C. Operating process & evidence | 6 items | not yet operating |
 | D. Audit engagement | 3 items | not started |
 
@@ -48,21 +65,25 @@ Each policy exists as **DRAFT v0.1** with `Effective: [date on adoption]` and
 
 ---
 
-## B. Production infrastructure (CC6, CC7, A1)
+## B. Corporate/dev environment (CC6)
 
-The technical controls enforce these **once infra exists** — e.g. `assertProductionDbConfig`
-already fails closed on plaintext DB transport, but needs a TLS-terminated
-database to protect. "Config flip, not a rebuild."
+Scoped to the systems Fonderie, Inc. **actually operates** (per Scope above):
+GitHub, npm, CI/CD, the marketing site's host, Google Workspace/email, and the
+founder's endpoint. No customer-data plane exists to secure.
 
 | # | Item | Enables control | Priority |
 |---|---|---|---|
-| B1 | Managed Postgres with **TLS termination** | CC6.7 (A4 DB-TLS gate operates) | **P0** |
-| B2 | **PITR backups** + tested restore, documented RTO/RPO | A1.2 backups & recovery | **P0** |
-| B3 | **KMS** for at-rest encryption of DB + backups | CC6.1 encryption at rest (beyond in-product MFA AES-GCM) | **P0** |
-| B4 | **Secrets manager** for prod credentials (no secrets in env files) | CC6.1 secrets handling | P1 |
-| B5 | **Log aggregation + alerting** wired to the security-event schema and integrity-check failures | CC7.2 monitoring | P1 |
-| B6 | **Backup retention** window configured at the infra layer | C1 disposal | P1 |
-| B7 | Prod **access management** (SSO/MFA on the cloud console, least-privilege IAM) | CC6.1/6.2 | **P0** |
+| B1 | **MFA enforced** on every corporate/dev account (GitHub, npm, Google, site host) | CC6.1 authentication | **P0** |
+| B2 | **Least-privilege access management** on the systems Fonderie runs; remove unused access | CC6.1/6.2/6.3 | **P0** |
+| B3 | **Endpoint security** on the founder's device: full-disk encryption, screen lock, auto-update | CC6.1 | P1 |
+| B4 | **Secrets handling** for CI/release (GitHub secrets + OIDC, no long-lived npm token) | CC6.1 | ✅ largely in place |
+| B5 | **Backups of Fonderie's own critical data** — source is in Git; document corporate-SaaS backup/retention | A1.2 / C1 | P2 |
+
+**Out of scope under SDK-only** (product capabilities in code, not operated by
+Fonderie, Inc. — revisit only if a managed offering launches): managed Postgres
++ TLS (`assertProductionDbConfig`), KMS for a customer database, PITR of customer
+data, and service-scale log aggregation of the security-event schema. These stay
+✅ implemented as SDK features for customers to run in their own environment.
 
 ---
 
@@ -94,10 +115,12 @@ Controls must be seen **operating over time**, not just existing.
 ## Critical path to a Type I
 
 1. **A1, A3, A9, A12** adopted (master + access + incident-response + risk-management policies).
-2. **B1, B2, B3, B7** provisioned (TLS Postgres, backups, KMS, prod access management).
+2. **B1, B2** hardened (MFA everywhere + least-privilege access on Fonderie's own systems); **B3** endpoint.
 3. **C1** risk assessment performed.
 4. **D1** auditor engaged for a point-in-time design review.
 
-Type II then adds the **D3** observation window over the adopted policies and
-provisioned infra. Until D1's report exists, the only truthful public claim is
-**"codebase readiness assessment complete"** — never "certified" or "compliant."
+Because the scope is corporate/dev only (no customer-data plane), the infra lift
+is small — it's account hygiene, not a data-center build. Type II then adds the
+**D3** observation window over the adopted policies and hardened environment.
+Until D1's report exists, the only truthful public claim is **"codebase readiness
+assessment complete"** — never "certified" or "compliant."
