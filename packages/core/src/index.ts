@@ -35,3 +35,5 @@ export { HTTP, setApiResponse } from './response';
 
 // NOT exported: adapters/, router internals, error-handler, not-found
 // Those are consumed by FonderieApp, never by users directly
+
+export { MetricsRegistry, withMetrics } from './metrics';
