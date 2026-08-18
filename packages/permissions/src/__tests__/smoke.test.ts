@@ -253,3 +253,18 @@ test('requirePermission: calls next when permission granted', async () => {
 	});
 	assert.ok(called);
 });
+
+// ── D2: access-grant export ─────────────────────────────────────────────
+import { listGrants } from '../services/grants';
+test('D2 listGrants: returns active user→workspace→role grants', async () => {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>() => ([
+			{ user_id: 'u1', workspace_id: 'w1', role_id: 'r1', role_name: 'owner', suspended: false },
+		] as unknown as T[]),
+		transaction: async (fn) => fn(store),
+	};
+	const grants = await listGrants(store);
+	assert.equal(grants.length, 1);
+	assert.equal(grants[0]?.roleName, 'owner');
+	assert.equal(grants[0]?.userId, 'u1');
+});

@@ -89,6 +89,16 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	// hashes are already bcrypt, you don't need this — the built-in check
 	// accepts them and re-stores at the current cost factor automatically.
 	legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>;
+	// SAR export contributors from other modules (see IDataExportContributor).
+	dataExportContributors?: IDataExportContributor[];
+}
+
+// A module's contribution to the per-user data export (SAR). The app wires
+// these (e.g. from @fonderie/workspaces) so auth can aggregate data owned by
+// other packages without importing them.
+export interface IDataExportContributor {
+	name: string;
+	collect: (userId: string) => Promise<unknown> | unknown;
 }
 
 // Stable ids for every auth route, for the `routes` path/method override map.

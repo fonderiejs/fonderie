@@ -16,6 +16,7 @@ import { compose } from './compose';
 import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
 import { withBody } from './middlewares/body-parser';
 import { withSecurityHeaders } from './middlewares/security-headers';
+import { MetricsRegistry, withMetrics } from './metrics';
 
 export class FonderieApp implements IFonderieApp {
 	private config: FonderieConfig;
@@ -23,6 +24,7 @@ export class FonderieApp implements IFonderieApp {
 	private router: Router = new Router();
 	private middlewares: Middleware[] = [];
 	private modules: Map<string, IFonderieModule> = new Map();
+	readonly metrics = new MetricsRegistry();
 
 	constructor(config: FonderieConfig) {
 		this.config = config;
@@ -30,6 +32,7 @@ export class FonderieApp implements IFonderieApp {
 		// Body parsing first, then baseline security headers (nosniff always; HSTS
 		// over HTTPS). Apps can layer more via `.use()`.
 		this.middlewares = [withBody, withSecurityHeaders()];
+		if (config.metrics) this.middlewares.push(withMetrics(this.metrics));
 	}
 
 	listen(
@@ -155,6 +158,20 @@ export class FonderieApp implements IFonderieApp {
 		if (this.config.healthChecks === false) return;
 
 		this.router.add('GET', '/healthz', compose([async () => Response.json({ status: 'ok' })]));
+
+		if (this.config.metrics) {
+			this.router.add(
+				'GET',
+				'/metrics',
+				compose([
+					async () =>
+						new Response(this.metrics.render(), {
+							status: 200,
+							headers: { 'content-type': 'text/plain; version=0.0.4' },
+						}),
+				]),
+			);
+		}
 
 		this.router.add(
 			'GET',
