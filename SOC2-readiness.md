@@ -101,8 +101,9 @@ auditors; **P3** hardening. Status legend: ✅ fixed · ◑ partially addressed 
 
 ## Documentation & evidence (in-repo)
 
-The readiness package a company assembles before an audit. All drafted; policies
-await officer adoption.
+The readiness package a company assembles before an audit. Policies are
+**adopted (v1.0, effective 2026-08-18)**; operating evidence accrues over the
+Type II window.
 
 - **Readiness punch-list** (gating policy/infra/process items) — [`docs/soc2/readiness-punchlist.md`](docs/soc2/readiness-punchlist.md)
 - **Policy adoption record** (one-signature adoption) — [`docs/soc2/policy-adoption-record.md`](docs/soc2/policy-adoption-record.md)
@@ -126,10 +127,10 @@ summary below mirrors it.
 - ☐ Engage a CPA/audit firm; choose Type I then Type II.
 - ☐ Adopt a compliance platform for continuous evidence collection (Vanta /
   Drata / Secureframe).
-- ◑ Written policies — **13 filled drafts** in [`docs/policies/`](docs/policies/README.md)
-  (info-sec, access, crypto, change mgmt, incident response, logging, BC/DR,
-  retention, classification, vendor, risk, acceptable use, personnel). Remaining:
-  officers **review, adopt, and date** them.
+- ✅ Written policies — **13 adopted at v1.0 (effective 2026-08-18)** in
+  [`docs/policies/`](docs/policies/README.md), recorded in
+  [`docs/soc2/policy-adoption-record.md`](docs/soc2/policy-adoption-record.md).
+  Next review 2027-08-18.
 - ◑ Access reviews (periodic) — register/template in [`docs/soc2/access-review-register.md`](docs/soc2/access-review-register.md). Remaining: run reviews on cadence, log them.
 - ◑ Risk assessment and register — initial draft in [`docs/soc2/risk-register.md`](docs/soc2/risk-register.md). Remaining: review & keep current.
 - ☐ Security awareness training; background checks for personnel.
