@@ -294,6 +294,22 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				},
 			};
 
+			// SAR completeness: other modules contribute the caller's data they own
+			// (workspaces memberships, billing, …) without auth importing them — the
+			// app wires collectors via config.dataExportContributors.
+			const contributors = config.dataExportContributors ?? [];
+			if (contributors.length > 0) {
+				const modules: Record<string, unknown> = {};
+				for (const c of contributors) {
+					try {
+						modules[c.name] = await c.collect(ctx.user!.id);
+					} catch {
+						modules[c.name] = null; // a failing contributor never blocks the export
+					}
+				}
+				(bundle as Record<string, unknown>)['modules'] = modules;
+			}
+
 			return setApiResponse(HTTP.OK, 'DATA_EXPORT', 'Your account data.', bundle);
 		},
 	};

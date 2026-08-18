@@ -69,4 +69,14 @@ const PERMISSION_COLUMN: { create: string; read: string; update: string; delete:
 function requireRole(roleName: string | string[], store: IStoreAdapter): Middleware
 
 function requirePermission(operation: Operation, permissionKey: string): Middleware
+
+function listGrants(store: IStoreAdapter): Promise<IGrant[]>
+
+interface IGrant {
+    userId: string;
+    workspaceId: string;
+    roleId: string;
+    roleName: string;
+    suspended: boolean;
+}
 ```

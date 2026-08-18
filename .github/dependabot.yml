@@ -10,6 +10,19 @@ updates:
       # Batch low-risk updates so PR volume stays manageable.
       dev-and-minor:
         update-types: [minor, patch]
+    # react-native uses 0.x semver where a "minor" bump is a breaking release
+    # requiring a real migration (and @types/react-native is a deprecated stub
+    # superseded by RN's bundled types). Grouping them poisoned the whole
+    # dev-and-minor PR (#40). Track the RN upgrade in its own dedicated PR.
+    ignore:
+      - dependency-name: react-native
+      - dependency-name: "@types/react-native"
+      # typescript 6/7 are the native (Go) compiler rewrite; our DTS build
+      # pipeline (tsup -> rollup-plugin-dts) isn't compatible yet, so majors
+      # break the build (#42). Keep 5.x patches/minors; revisit majors once the
+      # toolchain supports the native compiler.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     labels: [dependencies]
 
   - package-ecosystem: github-actions

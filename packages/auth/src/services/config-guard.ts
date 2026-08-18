@@ -34,10 +34,12 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 		});
 	}
 
+	// Explicitly disabling Secure cookies ships session cookies over plaintext —
+	// an error in production (fails the boot gate), a warning elsewhere.
 	if (config.secureCookies === false) {
 		problems.push({
 			module: MODULE,
-			severity: 'warning',
+			severity: process.env['NODE_ENV'] === 'production' ? 'error' : 'warning',
 			message: 'secureCookies is false — auth cookies may be sent over non-HTTPS connections in production',
 		});
 	}

@@ -54,6 +54,11 @@ export interface FonderieConfig {
 	// Throwing or returning false makes /readyz report 503.
 	readyProbe?: () => boolean | Promise<boolean>;
 
+	// Enable Prometheus-format metrics: counts requests by status class and
+	// serves them at GET /metrics (unprefixed). Off by default. Access to
+	// /metrics should be restricted at your ingress/scraper.
+	metrics?: boolean;
+
 	onError?: (err: unknown) => Response;
 
 	// Transform every JSON response body just before it is sent. Return the new

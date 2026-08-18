@@ -596,3 +596,21 @@ test('securityReport: returns a control-posture snapshot', async () => {
 	assert.equal(report.readiness.ok, true);
 	assert.ok('env' in report);
 });
+
+// ── B2: metrics endpoint ────────────────────────────────────────────────
+test('metrics: /metrics counts requests when enabled', async () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, metrics: true }));
+	app.addRoute('GET', '/ping', async () => Response.json({ ok: true }));
+	await app.boot();
+	await app.handle(makeRequest('GET', '/ping'));
+	const res = await app.handle(makeRequest('GET', '/metrics'));
+	assert.equal(res.status, 200);
+	const body = await res.text();
+	assert.match(body, /http_requests_total\{status_class="2xx"\} \d+/);
+});
+
+test('metrics: /metrics is 404 when disabled', async () => {
+	const app = await new FonderieApp(config).boot();
+	const res = await app.handle(makeRequest('GET', '/metrics'));
+	assert.equal(res.status, 404);
+});

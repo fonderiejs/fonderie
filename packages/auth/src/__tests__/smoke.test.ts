@@ -2298,21 +2298,28 @@ test('validateAuthConfig: weak secret only warns outside production', async () =
 	}
 });
 
-test('validateAuthConfig: warns on secureCookies=false in production', async () => {
+test('validateAuthConfig: secureCookies=false is fatal in production (A5)', async () => {
 	const { validateAuthConfig } = await import('../services/config-guard');
 	const prev = process.env['NODE_ENV'];
 	process.env['NODE_ENV'] = 'production';
-	const warn = mock.method(console, 'warn', () => {});
 	try {
-		validateAuthConfig({
-			...config,
-			jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
-			secureCookies: false,
-		});
-		assert.equal(warn.mock.callCount(), 1);
-		assert.match(warn.mock.calls[0]?.arguments[0] as string, /secureCookies is false/);
+		assert.throws(
+			() => validateAuthConfig({ ...config, jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ', secureCookies: false }),
+			/secureCookies is false/,
+		);
 	} finally {
-		warn.mock.restore();
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('validateAuthConfig: secureCookies=false only warns outside production', async () => {
+	const { validateAuthConfig } = await import('../services/config-guard');
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'development';
+	try {
+		assert.doesNotThrow(() => validateAuthConfig({ ...config, jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ', secureCookies: false }));
+	} finally {
 		if (prev === undefined) delete process.env['NODE_ENV'];
 		else process.env['NODE_ENV'] = prev;
 	}
@@ -2481,4 +2488,23 @@ test('F1: collectAuthConfigProblems errors on each insecure setting', async () =
 	} finally {
 		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
 	}
+});
+
+// ── C2: SAR export contributors ─────────────────────────────────────────
+test('exportMe: includes module contributor data', async () => {
+	const cfg = { ...config, dataExportContributors: [{ name: 'workspaces', collect: async () => ({ memberships: [{ workspace_id: 'w1' }] }) }] };
+	const ctrl = userController(makeStore({ userById: BASE_USER, sessionExists: true }), cfg as any);
+	const res = await ctrl.exportMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as any;
+	assert.deepEqual(body.result.modules.workspaces, { memberships: [{ workspace_id: 'w1' }] });
+});
+
+test('exportMe: a failing contributor does not block the export', async () => {
+	const cfg = { ...config, dataExportContributors: [{ name: 'billing', collect: async () => { throw new Error('down'); } }] };
+	const ctrl = userController(makeStore({ userById: BASE_USER }), cfg as any);
+	const res = await ctrl.exportMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as any;
+	assert.equal(body.result.modules.billing, null);
 });
