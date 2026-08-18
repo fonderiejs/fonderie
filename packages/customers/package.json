@@ -60,7 +60,7 @@
 		"@fonderie/events": "../events",
 		"@fonderie/store": "../store",
 		"@fonderie/workspaces": "../workspaces",
-		"@types/node": "^25.6.0",
+		"@types/node": "^26.2.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3"
