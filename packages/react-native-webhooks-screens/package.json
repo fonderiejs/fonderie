@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie/react-native-webhooks-screens",
 	"version": "0.1.0",
-	"description": "Pre-built React Native screens for Fonderie's outgoing webhooks — endpoint list, endpoint detail with delivery history.",
+	"description": "Pre-built React Native screens for Fonderie's outgoing webhooks \u2014 endpoint list, endpoint detail with delivery history.",
 	"keywords": [
 		"fonderie-js",
 		"react-native",
@@ -45,7 +45,7 @@
 		"@types/node": "^26.2.0",
 		"@types/react": "^19.2.18",
 		"react": "^19.2.8",
-		"react-native": "0.76.5",
+		"react-native": "0.87.0",
 		"tsup": "^8.5.1",
 		"typescript": "^6.0.3"
 	},
