@@ -42,7 +42,7 @@ jobs:
       # publishes to npm when that PR is merged. With OIDC there is NO
       # NODE_AUTH_TOKEN / NPM_TOKEN — npm authenticates via the job's id-token,
       # and provenance is emitted automatically (no NPM_CONFIG_PROVENANCE needed).
-      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
+      - uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v1
         with:
           # `version` regenerates brain.json after the bumps so its sdkVersions
           # match the new package versions — otherwise the docs:brain freshness
