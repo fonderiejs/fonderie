@@ -52,13 +52,13 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"pg": "^8.20.0"
+		"pg": "^8.23.0"
 	},
 	"devDependencies": {
 		"@types/node": "^26.2.0",
-		"@types/pg": "^8.20.0",
+		"@types/pg": "^8.21.0",
 		"tsup": "^8.5.1",
-		"tsx": "^4.21.0",
+		"tsx": "^4.23.12",
 		"typescript": "^6.0.3"
 	},
 	"publishConfig": {

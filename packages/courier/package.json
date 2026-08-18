@@ -48,7 +48,7 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"nodemailer": "^9.0.3"
+		"nodemailer": "^9.0.5"
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.5.0",
@@ -68,9 +68,9 @@
 		"@fonderie/store": "../store",
 		"@fonderie/events": "../events",
 		"@types/node": "^26.2.0",
-		"@types/nodemailer": "^8.0.0",
+		"@types/nodemailer": "^8.0.1",
 		"tsup": "^8.5.1",
-		"tsx": "^4.21.0",
+		"tsx": "^4.23.12",
 		"typescript": "^6.0.3"
 	},
 	"publishConfig": {
