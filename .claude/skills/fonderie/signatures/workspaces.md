@@ -204,4 +204,6 @@ interface IImportMembership {
     confirmed?: boolean;
     createdAt?: Date;
 }
+
+function deleteUserData(store: IStoreAdapter, userId: string): Promise<number>
 ```

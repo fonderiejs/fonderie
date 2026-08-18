@@ -54,7 +54,7 @@ Make retention and subject rights complete and automatable.
 |---|------|---------|------------|:--:|:--:|
 | C1 | Retention **scheduler** — a first-class job wrapping `purgeEvents` + `purgeSoftDeletedUsers` on a configurable interval (not manual cron) | C1/P4 | Scheduler runs on boot; windows configurable; test | P1 | ☐ |
 | C2 | **SAR completeness** — extend `GET /users/export` to include the caller's data across modules (workspaces memberships, billing, customers) via a registration hook | Privacy | Export bundle covers all user-owned data; no secrets; test | P1 | ☐ |
-| C3 | **Erasure completeness** — verify hard-delete cascades across every module's tables; add missing `ON DELETE CASCADE` / cleanup | Privacy | A deleted user leaves no residual rows in any package; test | P1 | ☐ |
+| C3 | **Erasure completeness** — verify hard-delete cascades across every module's tables; add missing `ON DELETE CASCADE` / cleanup | Privacy | A deleted user leaves no residual rows in any package; test | P1 | ✅ |
 
 ## Workstream D — Evidence generation
 Make audits cheap by producing evidence from the running system.
@@ -63,7 +63,7 @@ Make audits cheap by producing evidence from the running system.
 |---|------|---------|------------|:--:|:--:|
 | D1 | `fonderie security:report` CLI — prints the live control posture (readiness report, enabled controls, versions, config flags) as JSON/markdown | CC4.1 | One command emits a control-status snapshot for evidence | P1 | ☐ |
 | D2 | Access-export helper — list DB roles/role-user-workspace grants to feed the access-review register | CC6.2/6.3 | Command outputs current grants; documented in the register | P2 | ☐ |
-| D3 | CI job that regenerates the [control matrix](control-matrix.md) "✅ implemented" rows from code markers (guard against drift) | CC4.1 | Matrix status can't silently go stale; CI check | P2 | ☐ |
+| D3 | CI job that regenerates the [control matrix](control-matrix.md) "✅ implemented" rows from code markers (guard against drift) | CC4.1 | Matrix status can't silently go stale; CI check | P2 | ✅ |
 
 ## Workstream E — Supply chain & CI hardening
 Strengthen CC7.1 / CC8.1 beyond today's audit gate + OIDC provenance.
@@ -73,7 +73,7 @@ Strengthen CC7.1 / CC8.1 beyond today's audit gate + OIDC provenance.
 | E1 | Generate and publish an **SBOM** (CycloneDX) with each release | CC7.1 | SBOM attached to releases | P1 | ☐ |
 | E2 | Enable **Dependabot** (or Renovate) + GitHub dependency review on PRs | CC7.1 | Config committed; PRs get dependency review | P1 | ☐ |
 | E3 | **Secret scanning** in CI (gitleaks) + GitHub push protection | CC6.1 | CI fails on committed secrets; test/fixture | P1 | ☐ |
-| E4 | Pin GitHub Actions to commit SHAs; set least-privilege `permissions:` per workflow | CC8.1 | Workflows use pinned actions + minimal perms | P2 | ☐ |
+| E4 | Pin GitHub Actions to commit SHAs; set least-privilege `permissions:` per workflow | CC8.1 | Workflows use pinned actions + minimal perms | P2 | ✅ |
 
 ## Workstream F — Assurance
 Prove the controls with tests so they don't regress.
