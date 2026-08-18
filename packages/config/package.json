@@ -3,7 +3,7 @@
   "version": "5.0.0",
   "description": "DB-backed feature flags and remote config — per-environment overrides, TTL-based hot reload, and a typed getConfig helper usable inside any middleware.",
   "keywords": [
-    "fonderie-js",
+    "fonderiejs",
     "feature-flags",
     "remote-config",
     "runtime-config",

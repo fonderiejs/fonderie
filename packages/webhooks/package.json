@@ -3,7 +3,7 @@
 	"version": "5.0.0",
 	"description": "Outgoing webhook engine — register endpoints, fan out workspace-scoped events, track delivery, and retry on failure.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"webhooks",
 		"events",
 		"saas",

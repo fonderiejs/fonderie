@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Vue composables for Fonderie auth — thin bindings over @fonderie/client.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"vue",
 		"auth",
 		"composables",

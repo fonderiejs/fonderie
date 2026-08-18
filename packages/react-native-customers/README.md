@@ -51,7 +51,7 @@ without having to know the hooks happen to be framework-agnostic under
 the hood.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

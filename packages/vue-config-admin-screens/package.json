@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Pre-built Vue screens for the Fonderie config admin API — config/secret list, config editor with revision history and rollback.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"vue",
 		"config",
 		"feature-flags",

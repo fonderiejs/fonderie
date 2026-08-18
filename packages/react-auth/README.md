@@ -2,7 +2,7 @@
 
 React hooks for Fonderie auth — `useLogin`, `useRegister`, `useSession`,
 `useLogout`, `useForgotPassword`, `useResetPassword`, and `useVerifyEmail`.
-Thin bindings over [`@fonderie/client`](https://github.com/fonderie-js/sdk/tree/main/packages/client):
+Thin bindings over [`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client):
 loading/error state and the request itself, nothing else. Bring your own UI.
 
 ## Install
@@ -45,14 +45,14 @@ The access token is persisted to `localStorage` and restored automatically by
 `useSession` on mount; don't re-implement that in app code.
 
 Want pre-built screens instead of wiring your own form?
-See [`@fonderie/react-auth-screens`](https://github.com/fonderie-js/sdk/tree/main/packages/react-auth-screens).
+See [`@fonderie/react-auth-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/react-auth-screens).
 
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -61,7 +61,7 @@ per-seat anything. Register the modules you need; skip the ones you don't.
 `@fonderie/auth` on the server.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

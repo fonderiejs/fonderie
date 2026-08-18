@@ -76,9 +76,9 @@ through install, booting an app, and adding bricks step by step.
 
 | Package | What it is |
 |---|---|
-| [`@fonderie/adapter-express`](packages/adapter-express) | Express adapter for fonderie-js |
-| [`@fonderie/adapter-hono`](packages/adapter-hono) | Hono adapter for fonderie-js |
-| [`@fonderie/adapter-koa`](packages/adapter-koa) | Koa adapter for fonderie-js |
+| [`@fonderie/adapter-express`](packages/adapter-express) | Express adapter for fonderiejs |
+| [`@fonderie/adapter-hono`](packages/adapter-hono) | Hono adapter for fonderiejs |
+| [`@fonderie/adapter-koa`](packages/adapter-koa) | Koa adapter for fonderiejs |
 | [`@fonderie/audit`](packages/audit) | Workspace-scoped audit log |
 | [`@fonderie/auth`](packages/auth) | Drop-in auth for SaaS |
 | [`@fonderie/billing`](packages/billing) | SaaS billing in one module |
@@ -87,7 +87,7 @@ through install, booting an app, and adding bricks step by step.
 | [`@fonderie/core`](packages/core) | Framework core |
 | [`@fonderie/courier`](packages/courier) | Transactional messaging for SaaS |
 | [`@fonderie/customers`](packages/customers) | Workspace-scoped customer records |
-| [`@fonderie/events`](packages/events) | Event bus for @fonderie-js |
+| [`@fonderie/events`](packages/events) | Event bus for @fonderiejs |
 | [`@fonderie/logger`](packages/logger) | Structured logger with pluggable transports, child loggers, and a request-logging middleware |
 | [`@fonderie/permissions`](packages/permissions) | Role-based access control for SaaS |
 | [`@fonderie/rate-limit`](packages/rate-limit) | Distributed token-bucket rate limiting (memory/Postgres/Redis) |

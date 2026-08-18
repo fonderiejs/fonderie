@@ -49,7 +49,7 @@ whenever you outgrow it — `@fonderie/react-customers`'s hooks work
 standalone.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

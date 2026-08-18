@@ -1,6 +1,6 @@
 # @fonderie/rate-limit
 
-Distributed rate limiting for `@fonderie-js` — an atomic token bucket, backed
+Distributed rate limiting for `@fonderiejs` — an atomic token bucket, backed
 by your PostgreSQL by default, with an in-memory store for single instances
 and a Redis store for very high volume. Emits standard `RateLimit-*` headers.
 

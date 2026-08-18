@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Pre-built React screens for the Fonderie courier admin API — template list, template editor with revision history and rollback.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"react",
 		"courier",
 		"templates",
