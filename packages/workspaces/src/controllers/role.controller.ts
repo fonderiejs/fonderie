@@ -130,6 +130,28 @@ export function roleController(store: IStoreAdapter) {
 			return setApiResponse(HTTP.OK, 'ROLE_DELETED', 'Role deleted successfully.');
 		},
 
+		async getPermissions(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			}
+
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const roleId = params?.['roleId'];
+			if (!roleId) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
+			}
+
+			const role = await roles.findById(roleId);
+			if (!role) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found');
+			}
+
+			const permissions = await roles.getPermissions(roleId, ctx.workspace.id);
+			return setApiResponse(HTTP.OK, 'PERMISSIONS_FETCHED', 'Role permissions retrieved successfully.', {
+				permissions,
+			});
+		},
+
 		async setPermissions(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');

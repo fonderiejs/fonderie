@@ -1739,7 +1739,7 @@
         "fonderie_workspace_invitations",
         "fonderie_workspaces"
       ],
-      "routeCount": 23,
+      "routeCount": 24,
       "routes": [
         {
           "method": "GET",
@@ -1840,6 +1840,11 @@
           "method": "PUT",
           "path": "/workspaces/roles/:roleId",
           "mw": "requireAuth → wsCtx → validate(updateRoleSchema) → role.update"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/roles/:roleId/permissions",
+          "mw": "requireAuth → wsCtx → role.getPermissions"
         },
         {
           "method": "POST",

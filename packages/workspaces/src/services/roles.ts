@@ -139,3 +139,29 @@ export async function setRolePermissions(
 		}
 	});
 }
+
+export interface IRolePermission {
+	permissionKey: string;
+	canCreate: boolean;
+	canRead: boolean;
+	canUpdate: boolean;
+	canDelete: boolean;
+}
+
+export async function getRolePermissions(
+	roleId: string,
+	workspaceId: string,
+	store: IStoreAdapter,
+): Promise<IRolePermission[]> {
+	return store.query<IRolePermission>(
+		`SELECT permission_key AS "permissionKey",
+		        can_create     AS "canCreate",
+		        can_read       AS "canRead",
+		        can_update     AS "canUpdate",
+		        can_delete     AS "canDelete"
+		   FROM fonderie_role_permissions
+		  WHERE role_id = $1 AND workspace_id = $2
+		  ORDER BY permission_key`,
+		[roleId, workspaceId],
+	);
+}

@@ -138,6 +138,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
   .removeRole(roleId: string): Promise<IApiResponse<undefined>>
+  .getRolePermissions(roleId: string): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>

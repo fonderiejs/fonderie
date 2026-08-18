@@ -102,6 +102,7 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → role.remove` |
 | GET | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → role.get` |
 | PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → validate(updateRoleSchema) → role.update` |
+| GET | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → role.getPermissions` |
 | POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → validate(setRolePermissionsSchema) → role.setPermissions` |
 | GET | `/workspaces/settings` | `requireAuth → wsCtx → workspace.getSettings` |
 | PUT | `/workspaces/settings` | `requireAuth → wsCtx → validate(updateSettingsSchema) → workspace.updateSettings` |
