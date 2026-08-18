@@ -43,13 +43,15 @@ jobs:
       # publishes to npm when that PR is merged. With OIDC there is NO
       # NODE_AUTH_TOKEN / NPM_TOKEN — npm authenticates via the job's id-token,
       # and provenance is emitted automatically (no NPM_CONFIG_PROVENANCE needed).
-      - uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v1
+      - uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v2.1.0
         with:
-          # `version` regenerates brain.json after the bumps so its sdkVersions
-          # match the new package versions — otherwise the docs:brain freshness
-          # gate fails on the very next push (learned the hard way, 2026-07-20).
-          version: npm run version
-          publish: npm run release
+          # `version-script` regenerates brain.json after the bumps so its
+          # sdkVersions match the new package versions — otherwise the
+          # docs:brain freshness gate fails on the very next push (learned the
+          # hard way, 2026-07-20). NB: v2 renamed the inputs version->version-script
+          # and publish->publish-script.
+          version-script: npm run version
+          publish-script: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No NODE_AUTH_TOKEN / NPM_TOKEN / NPM_CONFIG_PROVENANCE — Trusted
