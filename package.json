@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
-    "@changesets/cli": "^2.31.0",
+    "@changesets/cli": "^3.0.0",
     "turbo": "^2.10.4"
   },
   "license": "MIT",
