@@ -92,7 +92,7 @@ operates — MFA, access, endpoint, and the supply chain.
 
 | # | Step | State | Artifact |
 |---|---|---|---|
-| 5.1 | Perform risk assessment; load into Vanta | ⛔ P0 | [`risk-register.md`](risk-register.md) (C1) |
+| 5.1 | Perform risk assessment; load into Vanta | ✅ **done 2026-08-18** | [`risk-register.md`](risk-register.md) (C1) — import the 19 risks |
 | 5.2 | Vendor/subprocessor inventory + SOC 2 review per vendor | ◑ | [`vendor-inventory.md`](vendor-inventory.md) (C3) |
 | 5.3 | Quarterly access review workflow | ◑ | [`access-review-register.md`](access-review-register.md) (C2) |
 | 5.4 | Incident-response plan + annual tabletop | ◑ | [`incident-response-runbook.md`](incident-response-runbook.md) (C5) |
@@ -116,7 +116,7 @@ operates — MFA, access, endpoint, and the supply chain.
    (B2). This flips 4.5–4.6.
 3. **1.9 / B3** — enable full-disk encryption + screen lock on the founder's
    device. Flips 4.7.
-4. **5.1** — run the risk assessment.
+4. ~~**5.1** — run the risk assessment~~ ✅ done 2026-08-18 (import into Vanta).
 5. **6.3** — engage the auditor through Vanta.
 
 Because there's no hosted data plane, the data-plane tests (4.1–4.4) are **N/A**,

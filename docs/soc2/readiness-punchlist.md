@@ -93,7 +93,7 @@ Controls must be seen **operating over time**, not just existing.
 
 | # | Item | Gates | Priority |
 |---|---|---|---|
-| C1 | Perform a real **risk assessment**; populate `risk-register.md` with rated, owned risks | CC3 | **P0** |
+| C1 | ✅ **Risk assessment performed 2026-08-18** — [`risk-register.md`](risk-register.md) (19 rated risks; next review 2026-11-18) | CC3 | ✅ done |
 | C2 | Run the **quarterly access review** and record it in `access-review-register.md` | CC6.2/6.3 | P1 |
 | C3 | Finalize **vendor/subprocessor inventory** (`vendor-inventory.md`) + review each vendor's SOC 2 | CC9.2 | P1 |
 | C4 | **Personnel controls**: onboarding/offboarding checklist, background checks, annual security training | CC1.4 | P1 |
@@ -116,7 +116,7 @@ Controls must be seen **operating over time**, not just existing.
 
 1. ~~**A1–A13** adopted~~ ✅ **done 2026-08-18** (all 13 policies v1.0).
 2. **B1, B2** hardened (MFA everywhere + least-privilege access on Fonderie's own systems); **B3** endpoint.
-3. **C1** risk assessment performed.
+3. ~~**C1** risk assessment performed~~ ✅ done 2026-08-18.
 4. **D1** auditor engaged for a point-in-time design review.
 
 Because the scope is corporate/dev only (no customer-data plane), the infra lift

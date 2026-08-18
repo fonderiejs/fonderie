@@ -132,7 +132,7 @@ summary below mirrors it.
   [`docs/soc2/policy-adoption-record.md`](docs/soc2/policy-adoption-record.md).
   Next review 2027-08-18.
 - ◑ Access reviews (periodic) — register/template in [`docs/soc2/access-review-register.md`](docs/soc2/access-review-register.md). Remaining: run reviews on cadence, log them.
-- ◑ Risk assessment and register — initial draft in [`docs/soc2/risk-register.md`](docs/soc2/risk-register.md). Remaining: review & keep current.
+- ✅ Risk assessment performed 2026-08-18 — [`docs/soc2/risk-register.md`](docs/soc2/risk-register.md) (19 rated risks; scope-correct). Remaining: quarterly review (next 2026-11-18).
 - ☐ Security awareness training; background checks for personnel.
 - ◑ Vendor/subprocessor inventory — draft in [`docs/soc2/vendor-inventory.md`](docs/soc2/vendor-inventory.md). Remaining: confirm DPAs, keep current.
 - ◑ Incident response runbook — [`docs/soc2/incident-response-runbook.md`](docs/soc2/incident-response-runbook.md) + [policy](docs/policies/incident-response.md). Remaining: adopt, tabletop annually.
