@@ -39,7 +39,7 @@
 		"@fonderie/workspaces": "^5.0.0",
 		"@fonderie/permissions": "^5.0.0",
 		"@fonderie/billing": "^5.0.0",
-		"koa": "^2.0.0"
+		"koa": "^2.0.0 || ^3.0.0"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/workspaces": {
