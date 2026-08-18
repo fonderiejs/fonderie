@@ -1,18 +1,19 @@
 # Request for Proposal — SOC 2 examination
 
-> Template to send to CPA firms. Fill the **[bracketed]** commercial values
-> before sending. Keep every factual claim accurate — the readiness state below
-> is intentionally honest so firms scope realistically.
+> Template to send to CPA firms. Commercial values are pre-filled with proposed
+> defaults (issue/response dates, contact, timeline) — **review and adjust before
+> sending**. Keep every factual claim accurate — the readiness state below is
+> intentionally honest so firms scope realistically.
 >
-> Contact: **Louis Choleski**, Fonderie, Inc. · [email] · Issued: **[date]** ·
-> Responses due: **[date]**.
+> Contact: **Louis Choleski**, Fonderie, Inc. · security@fonderiejs.com · Issued:
+> **2026-08-18** · Responses due: **2026-09-08**.
 
 ## 1. About Fonderie
 
 Fonderie, Inc. builds **Fonderie** — an open-source (MIT), self-hosted backend
 SDK (`@fonderie/*`) that other companies embed to run auth, billing, customers,
 and related SaaS backends. Founder/acting Security Officer: **Louis Choleski**.
-Headcount: **[N]**. Website: fonderiejs.com.
+Headcount: **1 (solo founder)**. Website: fonderiejs.com.
 
 ## 2. Read this first — system boundary (scoping question)
 
@@ -23,15 +24,17 @@ threshold question we need the firm to advise on**, not an assumption:
 
 - What Fonderie, Inc. *does* run: source code + release supply chain (GitHub,
   CI, npm OIDC publishing), the marketing site (fonderiejs.com), and corporate
-  SaaS (email, etc.). **[Confirm/expand: any hosted API, dashboard, or managed
-  offering? any customer data processed by Fonderie, Inc.?]**
+  SaaS (email, etc.). **Fonderie, Inc. operates no hosted API, dashboard, or
+  managed offering and processes no end-customer data** — the SDK executes
+  entirely within each customer's own environment.
 - Open questions for proposers:
   1. Given the self-hosted model, is a SOC 2 the right attestation, or is the
      buyer signal better served by the **SDK's security posture** (e.g. the
      controls in our [control matrix](control-matrix.md)) plus a SOC 2 scoped to
      our **corporate/development environment and software supply chain**?
   2. If SOC 2, what is the defensible **system description** and boundary?
-  3. Where would a **[managed/cloud offering, if planned]** change scope?
+  3. Where would a **future managed/cloud offering** change scope? (None is
+     currently planned.)
 
 We would rather pay for the report our customers actually need than the
 best-known acronym. Proposals should address this directly.
@@ -45,10 +48,9 @@ Subject to §2, we expect:
   **Availability**, **Confidentiality**, and **Privacy** as advised (our
   [control matrix](control-matrix.md) already maps all four).
 - **Report type:** **Type I** (design, point-in-time) first, then **Type II**
-  (operating effectiveness) over a **[3 / 6 / 12]-month** window.
+  (operating effectiveness) over a **6-month** window.
 - **Environment:** software development lifecycle, change management, and release
-  supply chain; corporate identity/access; **[production infrastructure once
-  provisioned — see readiness state]**.
+  supply chain; corporate identity/access; **production infrastructure once provisioned for our own operations — see §4**.
 
 ## 4. Readiness state (honest)
 
@@ -68,7 +70,7 @@ SOC 2 readiness or certification.
   **not yet running**.
 
 Full gating list: [readiness-punchlist.md](readiness-punchlist.md). We plan to
-onboard an evidence platform (**[Vanta / Drata / Secureframe / none]** — see
+onboard an evidence platform (**evaluating: Vanta / Drata / Secureframe** — see
 [vanta-onboarding.md](vanta-onboarding.md)).
 
 ## 5. What we're asking the firm to provide
@@ -107,15 +109,15 @@ Please include:
 
 | Milestone | Date |
 |---|---|
-| RFP issued | **[date]** |
-| Questions due | **[date]** |
-| Proposals due | **[date]** |
-| Firm selected | **[date]** |
-| Target Type I | **[quarter]** |
-| Target Type II window start | **[quarter]** |
+| RFP issued | **2026-08-18** |
+| Questions due | **2026-08-28** |
+| Proposals due | **2026-09-08** |
+| Firm selected | **2026-09-19** |
+| Target Type I | **Q4 2026** |
+| Target Type II window start | **Q1 2027** |
 
 ---
 
-**Submission:** email proposals to **[email]** by the date above. Questions to the
+**Submission:** email proposals to **security@fonderiejs.com** by the date above. Questions to the
 same address. Non-binding; Fonderie, Inc. may decline all proposals. No fees for
 proposing.
