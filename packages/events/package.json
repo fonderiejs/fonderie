@@ -54,7 +54,7 @@
 	"devDependencies": {
 		"@fonderie/core": "../core",
 		"@fonderie/store": "../store",
-		"@types/node": "^25.6.0",
+		"@types/node": "^26.2.0",
 		"@types/pg": "^8.11.10",
 		"pg": "^8.13.3",
 		"tsup": "^8.5.1",
