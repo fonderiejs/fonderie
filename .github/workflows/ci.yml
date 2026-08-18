@@ -60,4 +60,7 @@ jobs:
       - run: npm run audit:validation
       # SOC 2 control-matrix drift guard — every cited evidence path must exist.
       - run: npm run check:evidence
+      # Client<->server route drift guard — every @fonderie/client path must map
+      # to a route registered by its server package.
+      - run: npm run check:routes
       - run: npm test
