@@ -1,4 +1,4 @@
-export type { IFonderieClientOptions } from './client';
+export type { IFonderieClientOptions, IRequestConfig } from './client';
 export { FonderieClient } from './client';
 export { FonderieApiError } from './http';
 export type { IListAuditEventsInput } from './modules/audit';
