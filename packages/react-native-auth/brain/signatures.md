@@ -6,7 +6,6 @@
 
 ```ts
 new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
-  .phone: PhoneClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
@@ -14,11 +13,16 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>
-  .verifyEmail(pin: string): Promise<IApiResponse<IVerifyEmailResult>>
+  .verifyEmail(token: string): Promise<IApiResponse<IVerifyEmailResult>>
   .logout(refreshToken?: string | undefined): Promise<IApiResponse<undefined>>
   .sendVerificationEmail(): Promise<IApiResponse<IResendVerificationResult>>
   .getUser(): Promise<IApiResponse<IMeResult>>
-  .updateUser(input: IUpdateUserInput): Promise<IApiResponse<IMeResult>>
+  .updateProfile(input: IUpdateProfileInput): Promise<IApiResponse<IMeResult>>
+  .updatePreferences(input: IUpdatePreferencesInput): Promise<IApiResponse<IMeResult>>
+  .updateEmail(email: string): Promise<IApiResponse<unknown>>
+  .updatePhone(phone: string): Promise<IApiResponse<unknown>>
+  .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
+  .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
 
 interface ILoginInput {
@@ -44,7 +48,7 @@ interface IRegisterResult {
 }
 
 interface IResetPasswordInput {
-    resetToken: string;
+    pin: string;
     password: string;
 }
 

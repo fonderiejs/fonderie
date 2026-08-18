@@ -42,6 +42,11 @@ new AuditClient(http: HttpClient, tokens: TokenStore): AuditClient
   .setWorkspaceId(workspaceId: string | undefined): void
   .listEvents(input?: IListAuditEventsInput): Promise<IApiResponse<IAuditPageResult>>
 
+interface IChangePasswordInput {
+    currentPassword: string;
+    newPassword: string;
+}
+
 interface ILoginInput {
     email: string;
     password: string;
@@ -55,22 +60,26 @@ interface IRegisterInput {
 }
 
 interface IResetPasswordInput {
-    resetToken: string;
+    pin: string;
     password: string;
 }
 
-interface IUpdateUserInput {
-    firstName?: string;
-    lastName?: string;
-    phoneNumber?: string;
-    avatarUrl?: string;
+interface IUpdatePreferencesInput {
     locale?: string;
     timezone?: string;
-    preferences?: Record<string, unknown>;
+    notifications?: unknown;
+    emailDigest?: unknown;
+    dateFormat?: unknown;
+    timeFormat?: unknown;
+}
+
+interface IUpdateProfileInput {
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
 }
 
 new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
-  .phone: PhoneClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
@@ -78,11 +87,16 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>
-  .verifyEmail(pin: string): Promise<IApiResponse<IVerifyEmailResult>>
+  .verifyEmail(token: string): Promise<IApiResponse<IVerifyEmailResult>>
   .logout(refreshToken?: string | undefined): Promise<IApiResponse<undefined>>
   .sendVerificationEmail(): Promise<IApiResponse<IResendVerificationResult>>
   .getUser(): Promise<IApiResponse<IMeResult>>
-  .updateUser(input: IUpdateUserInput): Promise<IApiResponse<IMeResult>>
+  .updateProfile(input: IUpdateProfileInput): Promise<IApiResponse<IMeResult>>
+  .updatePreferences(input: IUpdatePreferencesInput): Promise<IApiResponse<IMeResult>>
+  .updateEmail(email: string): Promise<IApiResponse<unknown>>
+  .updatePhone(phone: string): Promise<IApiResponse<unknown>>
+  .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
+  .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
 
 interface ICheckoutInput {

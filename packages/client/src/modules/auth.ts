@@ -6,7 +6,6 @@ import type {
 	IMeResult,
 	IMfaEnabledResult,
 	IMfaSetupResult,
-	IPhoneVerifyResult,
 	IRefreshResult,
 	IRegisterResult,
 	IResendVerificationResult,
@@ -28,40 +27,32 @@ export interface ILoginInput {
 }
 
 export interface IResetPasswordInput {
-	resetToken: string;
+	// The 6-digit code emailed by forgotPassword. Matches @fonderie/auth's
+	// resetPasswordSchema ({ pin, password }); the route is POST /auth/email/reset.
+	pin: string;
 	password: string;
 }
 
-export interface IUpdateUserInput {
+// User updates are split by @fonderie/auth into dedicated, individually
+// validated routes — there is no combined /users/update endpoint.
+export interface IUpdateProfileInput {
 	firstName?: string;
 	lastName?: string;
-	phoneNumber?: string;
 	avatarUrl?: string;
-	locale?: string;
-	timezone?: string;
-	preferences?: Record<string, unknown>;
 }
 
-// ── Phone sub-client ─────────────────────────────────────────────────────────
+export interface IUpdatePreferencesInput {
+	locale?: string;
+	timezone?: string;
+	notifications?: unknown;
+	emailDigest?: unknown;
+	dateFormat?: unknown;
+	timeFormat?: unknown;
+}
 
-class PhoneClient {
-	constructor(private http: HttpClient) {}
-
-	sendVerification(phone: string) {
-		return this.http.request<IApiResponse<undefined>>({
-			method: 'POST',
-			path: '/auth/phone/send-verification',
-			body: { phone },
-		});
-	}
-
-	verify(phone: string, otp: string) {
-		return this.http.request<IApiResponse<IPhoneVerifyResult>>({
-			method: 'POST',
-			path: '/auth/phone/verify',
-			body: { phone, otp },
-		});
-	}
+export interface IChangePasswordInput {
+	currentPassword: string;
+	newPassword: string;
 }
 
 // ── MFA sub-client ───────────────────────────────────────────────────────────
@@ -93,7 +84,17 @@ class MfaClient {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
 			path: '/auth/mfa/disable',
-			body: { code },
+			body: { token: code },
+			token: this.token(),
+		});
+	}
+
+	// POST /auth/mfa/backup-codes (mfaTokenSchema { token }) — returns a fresh set.
+	regenerateBackupCodes(code: string) {
+		return this.http.request<IApiResponse<{ backupCodes: string[] }>>({
+			method: 'POST',
+			path: '/auth/mfa/backup-codes',
+			body: { token: code },
 			token: this.token(),
 		});
 	}
@@ -102,14 +103,12 @@ class MfaClient {
 // ── Auth client ──────────────────────────────────────────────────────────────
 
 export class AuthClient {
-	readonly phone: PhoneClient;
 	readonly mfa: MfaClient;
 
 	constructor(
 		private http: HttpClient,
 		private tokens: TokenStore,
 	) {
-		this.phone = new PhoneClient(http);
 		this.mfa = new MfaClient(http, () => this.tokens.get());
 	}
 
@@ -159,11 +158,14 @@ export class AuthClient {
 		});
 	}
 
-	verifyEmail(pin: string) {
+	verifyEmail(token: string) {
+		// @fonderie/auth registers this as POST /auth/verify with body { token }
+		// (verifySchema = { token: sixDigitPin }).
 		return this.http.request<IApiResponse<IVerifyEmailResult>>({
 			method: 'POST',
-			path: '/auth/email/verify',
-			body: { pin },
+			path: '/auth/verify',
+			body: { token },
+			token: this.tokens.get(),
 		});
 	}
 
@@ -179,9 +181,10 @@ export class AuthClient {
 	}
 
 	sendVerificationEmail() {
+		// @fonderie/auth registers this as GET /auth/send-verification (requireAuth).
 		return this.http.request<IApiResponse<IResendVerificationResult>>({
-			method: 'POST',
-			path: '/auth/email/send-verification',
+			method: 'GET',
+			path: '/auth/send-verification',
 			token: this.tokens.get(),
 		});
 	}
@@ -196,11 +199,56 @@ export class AuthClient {
 		});
 	}
 
-	updateUser(input: IUpdateUserInput) {
+	updateProfile(input: IUpdateProfileInput) {
 		return this.http.request<IApiResponse<IMeResult>>({
 			method: 'PUT',
-			path: '/users/update',
+			path: '/users/profile',
 			body: input,
+			token: this.tokens.get(),
+		});
+	}
+
+	updatePreferences(input: IUpdatePreferencesInput) {
+		return this.http.request<IApiResponse<IMeResult>>({
+			method: 'PUT',
+			path: '/users/preferences',
+			body: input,
+			token: this.tokens.get(),
+		});
+	}
+
+	updateEmail(email: string) {
+		return this.http.request<IApiResponse<unknown>>({
+			method: 'PUT',
+			path: '/users/email',
+			body: { email },
+			token: this.tokens.get(),
+		});
+	}
+
+	updatePhone(phone: string) {
+		return this.http.request<IApiResponse<unknown>>({
+			method: 'PUT',
+			path: '/users/phone',
+			body: { phone },
+			token: this.tokens.get(),
+		});
+	}
+
+	changePassword(input: IChangePasswordInput) {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'PUT',
+			path: '/users/password',
+			body: input,
+			token: this.tokens.get(),
+		});
+	}
+
+	// GET /users/export — the caller's own data as a portable bundle (SAR).
+	exportData() {
+		return this.http.request<IApiResponse<unknown>>({
+			method: 'GET',
+			path: '/users/export',
 			token: this.tokens.get(),
 		});
 	}

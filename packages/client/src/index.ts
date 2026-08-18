@@ -4,10 +4,12 @@ export { FonderieApiError } from './http';
 export type { IListAuditEventsInput } from './modules/audit';
 export { AuditClient } from './modules/audit';
 export type {
+	IChangePasswordInput,
 	ILoginInput,
 	IRegisterInput,
 	IResetPasswordInput,
-	IUpdateUserInput,
+	IUpdatePreferencesInput,
+	IUpdateProfileInput,
 } from './modules/auth';
 export { AuthClient } from './modules/auth';
 export type {
