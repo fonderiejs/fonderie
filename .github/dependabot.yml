@@ -17,6 +17,12 @@ updates:
     ignore:
       - dependency-name: react-native
       - dependency-name: "@types/react-native"
+      # typescript 6/7 are the native (Go) compiler rewrite; our DTS build
+      # pipeline (tsup -> rollup-plugin-dts) isn't compatible yet, so majors
+      # break the build (#42). Keep 5.x patches/minors; revisit majors once the
+      # toolchain supports the native compiler.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     labels: [dependencies]
 
   - package-ecosystem: github-actions
