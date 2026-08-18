@@ -37,4 +37,4 @@ export { importWorkspace, importRole, importMembership } from './migrate';
 export type { IImportWorkspace, IImportRole, IImportMembership } from './migrate';
 
 // Cross-module erasure — remove a user's membership/role rows (no FK to auth).
-export { deleteUserData } from './retention';
+export { deleteUserData, exportUserData, workspaceExportContributor } from './retention';

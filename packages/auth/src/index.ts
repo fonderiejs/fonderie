@@ -1,7 +1,7 @@
 // ── Public API ───────────────────────────────────────────────────
 export type { IUser, ISession, IMfaChallenge } from './types';
 export { AuthModule } from './module';
-export type { IAuthConfig, IAuthSecrets, IAuthRuntimeConfig } from './config';
+export type { IAuthConfig, IAuthSecrets, IAuthRuntimeConfig, IDataExportContributor } from './config';
 export { AUTH_CONFIG_KEYS, MESSAGE_KEYS } from './config';
 export type { AuthMessageKey } from './config';
 

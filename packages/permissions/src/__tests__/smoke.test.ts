@@ -254,6 +254,21 @@ test('requirePermission: calls next when permission granted', async () => {
 	assert.ok(called);
 });
 
+// ── D2: access-grant export ─────────────────────────────────────────────
+import { listGrants } from '../services/grants';
+test('D2 listGrants: returns active user→workspace→role grants', async () => {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>() => ([
+			{ user_id: 'u1', workspace_id: 'w1', role_id: 'r1', role_name: 'owner', suspended: false },
+		] as unknown as T[]),
+		transaction: async (fn) => fn(store),
+	};
+	const grants = await listGrants(store);
+	assert.equal(grants.length, 1);
+	assert.equal(grants[0]?.roleName, 'owner');
+	assert.equal(grants[0]?.userId, 'u1');
+});
+
 // ── F2: tenant-isolation sweep ──────────────────────────────────────────
 // A store where USER is a member WITH permission AND super-role, but ONLY in
 // `memberWs`. workspace_id is $2 (params[1]) in every access query, so any
@@ -282,9 +297,7 @@ test('F2: member of ws-A is allowed in ws-A but DENIED in ws-B', async () => {
 
 test('F2: super-role does not cross workspaces', async () => {
 	const engine = new PermissionsEngine(isolatedStore('ws-A'));
-	// super-role/owner in ws-A grants everything there…
 	assert.equal(await engine.can(USER, 'delete', 'ANYTHING', 'ws-A'), true);
-	// …but nothing in ws-B (membership check fails first)
 	assert.equal(await engine.can(USER, 'delete', 'ANYTHING', 'ws-B'), false);
 });
 
@@ -302,7 +315,7 @@ test('F2: requirePermission middleware returns 403 across workspaces', async () 
 	const engine = new PermissionsEngine(isolatedStore('ws-A'));
 	const ctx: any = {
 		user: { id: USER },
-		workspace: { id: 'ws-B' }, // cross-workspace request
+		workspace: { id: 'ws-B' },
 		meta: { [PERMISSIONS_ENGINE_KEY]: engine },
 		request: new Request('http://localhost/x'),
 	};

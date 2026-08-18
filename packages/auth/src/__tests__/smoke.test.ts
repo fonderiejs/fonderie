@@ -2489,3 +2489,22 @@ test('F1: collectAuthConfigProblems errors on each insecure setting', async () =
 		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
 	}
 });
+
+// ── C2: SAR export contributors ─────────────────────────────────────────
+test('exportMe: includes module contributor data', async () => {
+	const cfg = { ...config, dataExportContributors: [{ name: 'workspaces', collect: async () => ({ memberships: [{ workspace_id: 'w1' }] }) }] };
+	const ctrl = userController(makeStore({ userById: BASE_USER, sessionExists: true }), cfg as any);
+	const res = await ctrl.exportMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as any;
+	assert.deepEqual(body.result.modules.workspaces, { memberships: [{ workspace_id: 'w1' }] });
+});
+
+test('exportMe: a failing contributor does not block the export', async () => {
+	const cfg = { ...config, dataExportContributors: [{ name: 'billing', collect: async () => { throw new Error('down'); } }] };
+	const ctrl = userController(makeStore({ userById: BASE_USER }), cfg as any);
+	const res = await ctrl.exportMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as any;
+	assert.equal(body.result.modules.billing, null);
+});

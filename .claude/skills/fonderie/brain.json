@@ -498,7 +498,8 @@
       "exports": [
         "OPERATIONS",
         "FonderieApp",
-        "HTTP"
+        "HTTP",
+        "MetricsRegistry"
       ],
       "subpaths": [
         "@fonderie/core/config",
@@ -3464,6 +3465,9 @@
       "core"
     ],
     "http": [
+      "core"
+    ],
+    "metricsregistry": [
       "core"
     ],
     "couriermodule": [

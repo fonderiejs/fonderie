@@ -63,6 +63,7 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     }) => Partial<IAuthRuntimeConfig>;
     routes?: Partial<Record<AuthRouteId, AuthRouteOverride>>;
     legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>;
+    dataExportContributors?: IDataExportContributor[];
 }
 
 interface IAuthSecrets {
@@ -80,6 +81,11 @@ interface IAuthRuntimeConfig {
     verificationCooldown?: number;
     mfa?: boolean;
     requireVerification?: boolean;
+}
+
+interface IDataExportContributor {
+    name: string;
+    collect: (userId: string) => Promise<unknown> | unknown;
 }
 
 const AUTH_CONFIG_KEYS: { sessionDuration: string; verificationCooldown: string; mfa: string; requireVerification: string; }
