@@ -46,7 +46,7 @@ Give operators the signals CC7.2 wants. Code is inert until a collector exists
 | # | Task | Control | Acceptance | Pri | Status |
 |---|------|---------|------------|:--:|:--:|
 | B1 | Built-in `/healthz` (liveness) and `/readyz` (calls `store.testConnection()` + readiness report) endpoints in core | A1.2/CC7.2 | Endpoints return 200/503 correctly; documented; test | P0 | ✅ #33 |
-| B2 | Metrics export (OpenTelemetry or Prometheus): request count/latency, 5xx, auth failures, rate-limit hits | CC7.2 | Counters emitted; a `/metrics` or OTLP exporter is wired; test | P1 | ☐ |
+| B2 | Metrics export (OpenTelemetry or Prometheus): request count/latency, 5xx, auth failures, rate-limit hits | CC7.2 | Counters emitted; a `/metrics` or OTLP exporter is wired; test | P1 | ✅ |
 | B3 | Canonical **security-event log** schema (auth success/failure, admin action, permission denial) via a small helper, so alerts key off stable fields | CC7.2 | Events emitted with consistent shape; documented for alerting | P1 | ✅ #51 |
 | B4 | `IntegrityCheckJob` — a scheduled runner wrapping `verifyEventChain` that logs/emits a high-severity event on `ok:false` | CC7.2 | Job runnable on an interval; emits alert-worthy signal on tamper; test | P1 | ✅ #41 |
 
@@ -56,7 +56,7 @@ Make retention and subject rights complete and automatable.
 | # | Task | Control | Acceptance | Pri | Status |
 |---|------|---------|------------|:--:|:--:|
 | C1 | Retention **scheduler** — a first-class job wrapping `purgeEvents` + `purgeSoftDeletedUsers` on a configurable interval (not manual cron) | C1/P4 | Scheduler runs on boot; windows configurable; test | P1 | ✅ #41 |
-| C2 | **SAR completeness** — extend `GET /users/export` to include the caller's data across modules (workspaces memberships, billing, customers) via a registration hook | Privacy | Export bundle covers all user-owned data; no secrets; test | P1 | ☐ |
+| C2 | **SAR completeness** — extend `GET /users/export` to include the caller's data across modules (workspaces memberships, billing, customers) via a registration hook | Privacy | Export bundle covers all user-owned data; no secrets; test | P1 | ✅ |
 | C3 | **Erasure completeness** — verify hard-delete cascades across every module's tables; add missing `ON DELETE CASCADE` / cleanup | Privacy | A deleted user leaves no residual rows in any package; test | P1 | ✅ |
 
 ## Workstream D — Evidence generation
@@ -65,7 +65,7 @@ Make audits cheap by producing evidence from the running system.
 | # | Task | Control | Acceptance | Pri | Status |
 |---|------|---------|------------|:--:|:--:|
 | D1 | `fonderie security:report` CLI — prints the live control posture (readiness report, enabled controls, versions, config flags) as JSON/markdown | CC4.1 | One command emits a control-status snapshot for evidence | P1 | ✅ #51 |
-| D2 | Access-export helper — list DB roles/role-user-workspace grants to feed the access-review register | CC6.2/6.3 | Command outputs current grants; documented in the register | P2 | ☐ |
+| D2 | Access-export helper — list DB roles/role-user-workspace grants to feed the access-review register | CC6.2/6.3 | Command outputs current grants; documented in the register | P2 | ✅ |
 | D3 | CI job that regenerates the [control matrix](control-matrix.md) "✅ implemented" rows from code markers (guard against drift) | CC4.1 | Matrix status can't silently go stale; CI check | P2 | ✅ |
 
 ## Workstream E — Supply chain & CI hardening
