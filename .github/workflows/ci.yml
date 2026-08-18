@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, dev]
 
+# Least privilege — CI only needs to read the repo.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -30,8 +34,8 @@ jobs:
       RATE_LIMIT_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
       RATE_LIMIT_REDIS_URL: redis://localhost:6379
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - run: npm ci
@@ -54,4 +58,6 @@ jobs:
       - run: npm run brain:project-test
       - run: node packages/cli/bin/fonderie.test.mjs
       - run: npm run audit:validation
+      # SOC 2 control-matrix drift guard — every cited evidence path must exist.
+      - run: npm run check:evidence
       - run: npm test

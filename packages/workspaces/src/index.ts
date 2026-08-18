@@ -35,3 +35,6 @@ export * as schemas from './schemas';
 // pairs with @fonderie/auth's importUser).
 export { importWorkspace, importRole, importMembership } from './migrate';
 export type { IImportWorkspace, IImportRole, IImportMembership } from './migrate';
+
+// Cross-module erasure — remove a user's membership/role rows (no FK to auth).
+export { deleteUserData } from './retention';
