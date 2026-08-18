@@ -71,30 +71,30 @@ class MfaClient {
 		});
 	}
 
-	verify(code: string) {
+	verify(token: string) {
 		return this.http.request<IApiResponse<IMfaEnabledResult>>({
 			method: 'POST',
 			path: '/auth/mfa/verify',
-			body: { token: code },
+			body: { token },
 			token: this.token(),
 		});
 	}
 
-	disable(code: string) {
+	disable(token: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
 			path: '/auth/mfa/disable',
-			body: { token: code },
+			body: { token },
 			token: this.token(),
 		});
 	}
 
 	// POST /auth/mfa/backup-codes (mfaTokenSchema { token }) — returns a fresh set.
-	regenerateBackupCodes(code: string) {
+	regenerateBackupCodes(token: string) {
 		return this.http.request<IApiResponse<{ backupCodes: string[] }>>({
 			method: 'POST',
 			path: '/auth/mfa/backup-codes',
-			body: { token: code },
+			body: { token },
 			token: this.token(),
 		});
 	}
