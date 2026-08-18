@@ -589,7 +589,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"pin\": \"123456\"\n}"
+                  "raw": "{\n  \"token\": \"123456\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/auth/verify",
@@ -620,7 +620,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"pin\": \"123456\"\n}"
+                      "raw": "{\n  \"token\": \"123456\"\n}"
                     },
                     "url": {
                       "raw": "{{base_url}}/auth/verify",
@@ -662,7 +662,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"pin\": \"123456\"\n}"
+                      "raw": "{\n  \"token\": \"123456\"\n}"
                     },
                     "url": {
                       "raw": "{{base_url}}/auth/verify",
@@ -1294,7 +1294,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"pin\": \"123456\"\n}"
+                  "raw": "{\n  \"token\": \"123456\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/auth/verify",
@@ -1325,7 +1325,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"pin\": \"123456\"\n}"
+                      "raw": "{\n  \"token\": \"123456\"\n}"
                     },
                     "url": {
                       "raw": "{{base_url}}/auth/verify",
@@ -1367,7 +1367,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"pin\": \"123456\"\n}"
+                      "raw": "{\n  \"token\": \"123456\"\n}"
                     },
                     "url": {
                       "raw": "{{base_url}}/auth/verify",
