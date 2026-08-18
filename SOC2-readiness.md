@@ -30,6 +30,15 @@ engagement) mapped to the control it gates, with a critical path to a Type I.
 Policy adoption is a one-signature act via
 [`docs/soc2/policy-adoption-record.md`](docs/soc2/policy-adoption-record.md).
 
+**Scope note.** Fonderie is a **self-hosted SDK**; Fonderie, Inc. operates no
+multi-tenant service and stores no end-customer data. The audit scope is the
+**corporate/development environment and software supply chain**, not a hosted
+data plane. Customer-data infrastructure (managed DB, KMS, PITR, service-scale
+monitoring) is therefore **out of scope unless a managed offering launches** —
+those remain SDK capabilities customers run in their own environment. The
+in-scope "infra" reduces to MFA, access management, and endpoint hygiene on the
+handful of accounts/devices Fonderie actually runs.
+
 ---
 
 ## What already exists (control substrate)
@@ -126,7 +135,10 @@ summary below mirrors it.
 - ☐ Security awareness training; background checks for personnel.
 - ◑ Vendor/subprocessor inventory — draft in [`docs/soc2/vendor-inventory.md`](docs/soc2/vendor-inventory.md). Remaining: confirm DPAs, keep current.
 - ◑ Incident response runbook — [`docs/soc2/incident-response-runbook.md`](docs/soc2/incident-response-runbook.md) + [policy](docs/policies/incident-response.md). Remaining: adopt, tabletop annually.
-- ☐ Backup + restore procedures with tested recovery (ties to gap #7).
+- ◑ Backup + restore — customer data lives in the customer's own DB (their
+  responsibility; the SDK ships disposal/retention helpers). For Fonderie, Inc.
+  itself: source is in Git and corporate data in SaaS; document those providers'
+  backup/retention. No customer-data backup plane to operate (ties to gap #7).
 
 ---
 
