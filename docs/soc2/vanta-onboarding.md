@@ -24,7 +24,7 @@
 | 0.1 | Create Vanta account; assign **Security Officer** owner | ✅ | Louis Choleski |
 | 0.2 | Choose framework **SOC 2**, report **Type I first → Type II** | ✅ | Decision, not a connector |
 | 0.3 | Select Trust Services Criteria: **Security (CC)** + **Availability (A1)** + **Confidentiality (C1)** + **Privacy** | ✅ | Matches [`control-matrix.md`](control-matrix.md) |
-| 0.4 | Define system/audit scope (the `@fonderie/*` platform + prod infra) | ◑ | Code scope defined; infra scope pending provisioning |
+| 0.4 | Define system/audit scope (corporate/dev environment + software supply chain; no customer-data plane) | ✅ | Boundary confirmed — see [`readiness-punchlist.md`](readiness-punchlist.md) → Scope |
 
 ## 1. Integrations to connect
 
@@ -45,13 +45,13 @@ Vanta pulls evidence from these. ✅ = the account exists and can be connected n
 
 ## 2. Policies
 
-Vanta ships policy templates, but **we already have 13 drafted policies** — upload
-ours and map, rather than adopting Vanta's generic set.
+Vanta ships policy templates, but **we already have 13 adopted policies (v1.0,
+2026-08-18)** — upload ours and map, rather than adopting Vanta's generic set.
 
 | # | Step | State |
 |---|---|---|
 | 2.1 | Upload the 13 policies from [`../policies/`](../policies/) | ✅ ready |
-| 2.2 | Officer **adopts + dates** them via [`policy-adoption-record.md`](policy-adoption-record.md) | ⛔ **P0** — one signature |
+| 2.2 | Officer **adopts + dates** them via [`policy-adoption-record.md`](policy-adoption-record.md) | ✅ **adopted v1.0, 2026-08-18** |
 | 2.3 | Map each policy → Vanta control (see [`control-matrix.md`](control-matrix.md)) | ✅ mapping exists |
 | 2.4 | Enable annual policy re-acceptance reminders | ✅ config |
 
@@ -110,7 +110,7 @@ operates — MFA, access, endpoint, and the supply chain.
 
 ## What to do first (critical path)
 
-1. **2.2** — adopt the policies (one signature).
+1. ~~**2.2** — adopt the policies~~ ✅ done 2026-08-18 (all 13 at v1.0).
 2. **1.4 / B1** — connect the Google/identity account and **enforce MFA** on every
    account Fonderie runs (GitHub, npm, Google, site host); set least-privilege
    (B2). This flips 4.5–4.6.

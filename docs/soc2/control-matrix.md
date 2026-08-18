@@ -20,8 +20,8 @@ Owner: **Louis Choleski (founder, acting Security Officer)** · Last updated:
 ## CC1 — Control environment
 | Criteria | Control | Evidence | Status |
 |---|---|---|---|
-| CC1.1 Integrity & ethics | Acceptable Use Policy; code of conduct | `docs/policies/acceptable-use.md` | ◑ drafted |
-| CC1.2 Board oversight | Founder/officer oversight of the security program | `docs/policies/information-security.md` §3 | ◑ drafted |
+| CC1.1 Integrity & ethics | Acceptable Use Policy; code of conduct | `docs/policies/acceptable-use.md` | ✅ adopted v1.0 |
+| CC1.2 Board oversight | Founder/officer oversight of the security program | `docs/policies/information-security.md` §3 | ✅ adopted v1.0 |
 | CC1.4 Competence & segregation | CODEOWNERS review routing; Personnel Security | `.github/CODEOWNERS`, `docs/policies/personnel-security.md` | ✅ / ◑ |
 
 ## CC2 — Communication & information
@@ -90,6 +90,7 @@ Owner: **Louis Choleski (founder, acting Security Officer)** · Last updated:
 ---
 
 **Gap summary:** the ✅ rows are implemented and verifiable in the repo today.
-The ◑ rows are policy-drafted and either (a) awaiting officer adoption or (b)
+The ◑ rows are either (a) policies now **adopted v1.0 (2026-08-18)** but whose
+operation is evidenced over the Type II window, or (b)
 dependent on production infrastructure not yet provisioned. No criterion is
 wholly unaddressed. See [`../../SOC2-readiness.md`](../../SOC2-readiness.md).

@@ -1,10 +1,11 @@
 # Security policies — starter kit
 
 SOC 2 tests whether documented policies exist **and** are followed. These are
-**drafts for review** — substantive content with sensible defaults, not finished
-policies. Confirm the values in **[brackets]**, delete what doesn't apply, and
-have an accountable officer approve and date each one. Where a control is already
-implemented in code, the policy links to it so policy and evidence line up.
+**adopted at v1.0, effective 2026-08-18** (approved by Louis Choleski, acting
+Security Officer; see [`../soc2/policy-adoption-record.md`](../soc2/policy-adoption-record.md)),
+next review 2027-08-18. Adoption establishes the commitment; evidence that each
+control operates accrues over the Type II observation window. Where a control is
+already implemented in code, the policy links to it so policy and evidence line up.
 
 | Policy | Covers (SOC 2) |
 |---|---|
