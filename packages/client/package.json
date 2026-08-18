@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie/client",
 	"version": "0.3.0",
-	"description": "Isomorphic TypeScript client for Fonderie-powered APIs — fully typed request and response shapes, zero runtime dependencies.",
+	"description": "Isomorphic TypeScript client for Fonderie-powered APIs \u2014 fully typed request and response shapes, zero runtime dependencies.",
 	"keywords": [
 		"fonderiejs",
 		"client",
@@ -28,12 +28,14 @@
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "tsx --test src/__tests__/*.test.ts"
 	},
 	"devDependencies": {
 		"@types/node": "^26.2.0",
 		"tsup": "^8.5.1",
-		"typescript": "^6.0.3"
+		"typescript": "^6.0.3",
+		"tsx": "^4.21.0"
 	},
 	"publishConfig": {
 		"access": "public"

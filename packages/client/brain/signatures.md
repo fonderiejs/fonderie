@@ -5,15 +5,40 @@
 ## @fonderie/client
 
 ```ts
+interface IClientAuthConfig {
+    getRefreshToken?: () => string | undefined;
+    onTokensChanged?: (tokens: ITokens) => void;
+    onAuthError?: () => void;
+}
+
 interface IFonderieClientOptions {
     baseUrl: string;
     accessToken?: string;
     workspaceId?: string;
+    cache?: ICache;
+    auth?: IClientAuthConfig;
 }
 
 interface IRequestConfig {
     workspaceId?: string;
+    cache?: number | false;
+    bust?: boolean;
+    invalidate?: string[];
 }
+
+interface ICache {
+    get<T>(key: string): T | undefined;
+    set<T>(key: string, value: T, ttlMs: number): void;
+    dedupe<T>(key: string, fn: () => Promise<T>): Promise<T>;
+    invalidate(fragment: string): void;
+    clear(): void;
+}
+
+interface IMemoryCacheOptions {
+    defaultTtlMs?: number;
+}
+
+function createMemoryCache(opts?: IMemoryCacheOptions): ICache & { defaultTtlMs: number; }
 
 new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .auth: AuthClient
@@ -23,8 +48,9 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .webhooks: WebhooksClient
   .customers: CustomersClient
   .setAccessToken(token: string | undefined): void
+  .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .request<T = unknown>(opts: { method: string; path: string; body?: unknown; workspaceId?: string | undefined; }): Promise<IApiResponse<T>>
+  .request<T = unknown>(opts: { method: string; path: string; body?: unknown; workspaceId?: string | undefined; cache?: number | false | undefined; bust?: boolean | undefined; invalidate?: string[] | undefined; }): Promise<IApiResponse<...>>
   .get<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .put<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
