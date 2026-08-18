@@ -31,7 +31,7 @@ Fonderie actually runs.
 
 | Track | Items | State |
 |---|---|---|
-| A. Policy adoption | 13 policies | drafted, **unadopted** |
+| A. Policy adoption | 13 policies | **adopted v1.0 (2026-08-18)** ✅ |
 | B. Corporate/dev environment | 5 in-scope items | not yet hardened |
 | C. Operating process & evidence | 6 items | not yet operating |
 | D. Audit engagement | 3 items | not started |
@@ -41,11 +41,11 @@ and/or an implemented technical control waiting for it.
 
 ---
 
-## A. Policy adoption (CC1, CC2, CC3, CC9)
+## A. Policy adoption (CC1, CC2, CC3, CC9) — ✅ DONE
 
-Each policy exists as **DRAFT v0.1** with `Effective: [date on adoption]` and
-`[bracketed]` values to confirm. **Adopt** = resolve brackets → officer approves
-→ set effective date → bump to **v1.0**. Same action for all 13.
+**Adopted 2026-08-18.** All 13 policies are at **v1.0** with effective date set
+and DRAFT banners removed (see [`policy-adoption-record.md`](policy-adoption-record.md)).
+Next review 2027-08-18. Listed here for the control mapping.
 
 | # | Policy file | Gates | Priority |
 |---|---|---|---|
@@ -114,7 +114,7 @@ Controls must be seen **operating over time**, not just existing.
 
 ## Critical path to a Type I
 
-1. **A1, A3, A9, A12** adopted (master + access + incident-response + risk-management policies).
+1. ~~**A1–A13** adopted~~ ✅ **done 2026-08-18** (all 13 policies v1.0).
 2. **B1, B2** hardened (MFA everywhere + least-privilege access on Fonderie's own systems); **B3** endpoint.
 3. **C1** risk assessment performed.
 4. **D1** auditor engaged for a point-in-time design review.

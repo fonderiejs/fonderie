@@ -1,11 +1,11 @@
 # Acceptable Use Policy
 
-> **Status:** DRAFT for review — not yet adopted. Confirm the values in
-> **\[brackets]**, then have an officer approve and date it before it counts as a
-> control. Where a statement cites code, the control already exists in the repo.
+> **Status:** ADOPTED — effective 2026-08-18, approved by Louis Choleski (founder,
+> acting Security Officer). Reviewed at least annually and on material change.
+> Where a statement cites code, the control already exists in the repo.
 >
 > Owner: **Louis Choleski (founder, acting Security Officer)** · Approver: **Louis Choleski (founder)** ·
-> Version: 0.1 (draft) · Effective: **[date on adoption]** · Review: at least
+> Version: 1.0 · Effective: **2026-08-18** · Review: at least
 > annually and on material change.
 
 ## 1. Purpose & scope
