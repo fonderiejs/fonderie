@@ -268,3 +268,57 @@ test('D2 listGrants: returns active user→workspace→role grants', async () =>
 	assert.equal(grants[0]?.roleName, 'owner');
 	assert.equal(grants[0]?.userId, 'u1');
 });
+
+// ── F2: tenant-isolation sweep ──────────────────────────────────────────
+// A store where USER is a member WITH permission AND super-role, but ONLY in
+// `memberWs`. workspace_id is $2 (params[1]) in every access query, so any
+// query for a different workspace returns "no membership / no permission".
+function isolatedStore(memberWs: string): IStoreAdapter {
+	const stub: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			const inWs = (params?.[1] ?? '') === memberWs;
+			if (sql.includes('fonderie_role_user_workspaces') && sql.includes('LIMIT 1')) {
+				return (inWs ? [{ user_id: USER, workspace_id: memberWs, role_id: 'r1', role_name: 'owner' }] : []) as T[];
+			}
+			if (sql.includes('EXISTS')) return [{ exists: inWs }] as T[];
+			if (sql.includes('BOOL_OR')) return (inWs ? [{ has_permission: true }] : []) as T[];
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(stub),
+	};
+	return stub;
+}
+
+test('F2: member of ws-A is allowed in ws-A but DENIED in ws-B', async () => {
+	const engine = new PermissionsEngine(isolatedStore('ws-A'));
+	assert.equal(await engine.can(USER, 'read', 'JOBS', 'ws-A'), true, 'allowed in own workspace');
+	assert.equal(await engine.can(USER, 'read', 'JOBS', 'ws-B'), false, 'denied in other workspace');
+});
+
+test('F2: super-role does not cross workspaces', async () => {
+	const engine = new PermissionsEngine(isolatedStore('ws-A'));
+	assert.equal(await engine.can(USER, 'delete', 'ANYTHING', 'ws-A'), true);
+	assert.equal(await engine.can(USER, 'delete', 'ANYTHING', 'ws-B'), false);
+});
+
+test('F2: canAll / canAny / assert all respect isolation', async () => {
+	const engine = new PermissionsEngine(isolatedStore('ws-A'));
+	const checks = [{ operation: 'read' as const, permissionKey: 'JOBS' }];
+	assert.equal(await engine.canAll(USER, checks, 'ws-B'), false);
+	assert.equal(await engine.canAny(USER, checks, 'ws-B'), false);
+	await assert.rejects(() => engine.assert(USER, 'read', 'JOBS', 'ws-B'), PermissionDeniedError);
+});
+
+test('F2: requirePermission middleware returns 403 across workspaces', async () => {
+	const { requirePermission } = await import('../middlewares/require-permission');
+	const { PERMISSIONS_ENGINE_KEY } = await import('../module');
+	const engine = new PermissionsEngine(isolatedStore('ws-A'));
+	const ctx: any = {
+		user: { id: USER },
+		workspace: { id: 'ws-B' },
+		meta: { [PERMISSIONS_ENGINE_KEY]: engine },
+		request: new Request('http://localhost/x'),
+	};
+	const res = await requirePermission('read', 'JOBS', ctx, async () => new Response('ok', { status: 200 }));
+	assert.equal(res.status, 403);
+});

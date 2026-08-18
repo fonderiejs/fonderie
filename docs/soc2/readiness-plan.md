@@ -10,7 +10,7 @@
 Owner: **Louis Choleski** · Status legend: ☐ todo · ◍ in progress · ✅ done.
 
 **Progress (2026-08-18):** P0 complete; most of P1 merged. Done: A1–A4, B1, B3,
-B4, C1, D1, E1–E3, F1. Remaining: A5, B2, C2, C3, D2, D3, E4, F2.
+B4, C1, D1, E1–E3, F1. Remaining: B2 (metrics), C2 (SAR completeness), D2 (access-export helper).
 Priority: **P0** unblocks readiness · **P1** expected by auditors · **P2** hardening.
 
 ## Scope & boundary
@@ -37,7 +37,7 @@ boot. Builds on `FonderieApp.checkProductionReadiness()`.
 | A2 | Escalate `secretEncryptor` absence from warning → **error in production** (config module) | CC6.1 (#1) | Prod boot fails without an at-rest encryptor unless explicitly acknowledged; test | P0 | ✅ #32 |
 | A3 | Add `mfaSecretKey` required-in-prod check when MFA is enabled (warn → error) | CC6.1 | Prod + MFA without key fails readiness as error; test | P1 | ✅ #34 |
 | A4 | Enforce DB TLS in production: `assertProductionDbConfig` errors (not warns) on `sslmode=disable`/`ssl=false` | CC6.7 | Prod boot fails on plaintext DB transport; test | P1 | ✅ #34 |
-| A5 | `secureCookies` defaults to required in production (error if false) | CC6.7 | Test covers the escalation | P2 | ☐ |
+| A5 | `secureCookies` defaults to required in production (error if false) | CC6.7 | Test covers the escalation | P2 | ✅ |
 
 ## Workstream B — Observability & monitoring
 Give operators the signals CC7.2 wants. Code is inert until a collector exists
@@ -84,7 +84,7 @@ Prove the controls with tests so they don't regress.
 | # | Task | Control | Acceptance | Pri | Status |
 |---|------|---------|------------|:--:|:--:|
 | F1 | Production-config test: `checkProductionReadiness` fails on each insecure setting (matrix of cases) | CC6.1 | One test enumerates all fail-closed cases | P1 | ✅ #41 |
-| F2 | Authorization/tenant-isolation test sweep — assert cross-workspace access is denied on every protected route | CC6.1 | Coverage report of authz per route | P2 | ☐ |
+| F2 | Authorization/tenant-isolation test sweep — assert cross-workspace access is denied on every protected route | CC6.1 | Coverage report of authz per route | P2 | ✅ |
 
 ---
 
