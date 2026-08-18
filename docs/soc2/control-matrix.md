@@ -9,6 +9,14 @@
 Owner: **Louis Choleski (founder, acting Security Officer)** · Last updated:
 **2026-08-17**.
 
+> **Scope.** Fonderie is a self-hosted SDK; Fonderie, Inc. runs no customer-data
+> service. Rows marked "◑ at launch" describe **SDK capabilities** customers
+> operate in their own environment (e.g. DB TLS, at-rest KMS, backups) — they are
+> in scope as *product* controls, not as infrastructure Fonderie, Inc. operates.
+> An examination of Fonderie, Inc. scopes to its corporate/development
+> environment and software supply chain. See
+> [`readiness-punchlist.md`](readiness-punchlist.md) → Scope.
+
 ## CC1 — Control environment
 | Criteria | Control | Evidence | Status |
 |---|---|---|---|
