@@ -134,8 +134,15 @@ function importUser(store: IStoreAdapter, user: IImportUser): Promise<{ id: stri
 
 function purgeSoftDeletedUsers(store: IStoreAdapter, { olderThanDays }: IPurgeOptions): Promise<number>
 
+function startUserRetention(store: IStoreAdapter, options: IUserRetentionScheduleOptions): { stop: () => void; }
+
 interface IPurgeOptions {
     olderThanDays: number;
+}
+
+interface IUserRetentionScheduleOptions extends IPurgeOptions {
+    intervalMs?: number;
+    onPurge?: (deleted: number) => void;
 }
 
 interface IImportUser {
