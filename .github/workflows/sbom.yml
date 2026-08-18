@@ -1,0 +1,28 @@
+# Software Bill of Materials (SOC 2 CC7.1 — supply-chain transparency).
+# Generates a CycloneDX SBOM of the shipped dependency surface and uploads it
+# as a build artifact on each push to main and on demand.
+name: SBOM
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate CycloneDX SBOM
+        run: npx --yes @cyclonedx/cyclonedx-npm@latest --omit dev --output-format JSON --output-file sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          retention-days: 90

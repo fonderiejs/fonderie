@@ -584,3 +584,15 @@ test('boot gate: skipProductionReadinessGate overrides in production', async () 
 		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
 	}
 });
+
+// ── D1: securityReport evidence snapshot ────────────────────────────────
+test('securityReport: returns a control-posture snapshot', async () => {
+	const app = new FonderieApp(config)
+		.register({ name: 'mod-b', install() {} })
+		.register({ name: 'mod-a', install() {} });
+	const report = app.securityReport();
+	assert.ok(report.generatedAt);
+	assert.deepEqual(report.registeredModules, ['mod-a', 'mod-b']); // sorted
+	assert.equal(report.readiness.ok, true);
+	assert.ok('env' in report);
+});

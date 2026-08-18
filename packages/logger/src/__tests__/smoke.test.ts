@@ -179,3 +179,28 @@ test('LoggerModule: satisfies IFonderieModule interface', async () => {
 	assert.ok(typeof mod.install === 'function');
 	assert.ok(mod.logger instanceof Logger);
 });
+
+// ── B3: canonical security-event helper ─────────────────────────────────
+import { logSecurityEvent } from '../security-event';
+
+test('logSecurityEvent: success → info with canonical fields', () => {
+	let level = '';
+	let ctx: Record<string, unknown> = {};
+	const fake = {
+		info: (_m: string, c?: Record<string, unknown>) => { level = 'info'; ctx = c ?? {}; },
+		warn: (_m: string, c?: Record<string, unknown>) => { level = 'warn'; ctx = c ?? {}; },
+	} as any;
+	logSecurityEvent(fake, { action: 'auth.login', outcome: 'success', actorId: 'u1', workspaceId: 'w1' });
+	assert.equal(level, 'info');
+	assert.equal(ctx['event'], 'security');
+	assert.equal(ctx['action'], 'auth.login');
+	assert.equal(ctx['outcome'], 'success');
+	assert.equal(ctx['actorId'], 'u1');
+});
+
+test('logSecurityEvent: failure/denied → warn', () => {
+	let level = '';
+	const fake = { info: () => { level = 'info'; }, warn: () => { level = 'warn'; } } as any;
+	logSecurityEvent(fake, { action: 'authz.permission_denied', outcome: 'denied' });
+	assert.equal(level, 'warn');
+});
