@@ -8,6 +8,7 @@ import type {
 	IFonderieModule,
 	IReadinessProblem,
 	IReadinessReport,
+	ISecurityReport,
 } from './types';
 import type { FonderieConfig } from './config';
 import { Router, routerMiddleware } from './router';
@@ -123,6 +124,18 @@ export class FonderieApp implements IFonderieApp {
 			if (module.checkReadiness) problems.push(...module.checkReadiness());
 		}
 		return { ok: !problems.some((p) => p.severity === 'error'), problems };
+	}
+
+	// A point-in-time control-posture snapshot for SOC 2 evidence: which modules
+	// are registered and the current readiness report. Serialise to a file/log
+	// (e.g. on a schedule) as an audit artifact.
+	securityReport(): ISecurityReport {
+		return {
+			generatedAt: new Date().toISOString(),
+			env: process.env['NODE_ENV'] ?? 'development',
+			registeredModules: [...this.modules.keys()].sort(),
+			readiness: this.checkProductionReadiness(),
+		};
 	}
 
 	async boot(): Promise<this> {

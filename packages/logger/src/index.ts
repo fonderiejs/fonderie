@@ -5,3 +5,6 @@ export { Logger } from './logger';
 export { LoggerModule } from './module';
 export { FileTransport } from './transports/file';
 export { ConsoleTransport } from './transports/console';
+
+export { logSecurityEvent } from './security-event';
+export type { ISecurityEvent, SecurityAction } from './security-event';

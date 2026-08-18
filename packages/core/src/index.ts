@@ -14,6 +14,7 @@ export type {
 	IFonderieContextMeta,
 	IReadinessProblem,
 	IReadinessReport,
+	ISecurityReport,
 } from './types';
 
 export { OPERATIONS } from './constants';
