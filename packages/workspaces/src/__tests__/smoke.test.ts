@@ -719,3 +719,22 @@ test('importRole: preserves id, scopes to workspace, omits defaults', async () =
 	]);
 	assert.doesNotMatch(sql, /is_system|active|description/);
 });
+
+// ── C3: cross-module erasure (memberships) ──────────────────────────────
+import { deleteUserData as delUser } from '../retention';
+import type { IStoreAdapter as IStoreC3 } from '@fonderie/store';
+
+test('deleteUserData: removes a user\'s role/membership rows and returns count', async () => {
+	let captured: { sql: string; params: unknown[] } | null = null;
+	const store: IStoreC3 = {
+		query: async <T = unknown>(sql: string, params?: unknown[]) => {
+			captured = { sql, params: params ?? [] };
+			return [{ user_id: 'u1' }, { user_id: 'u1' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const n = await delUser(store, 'u1');
+	assert.equal(n, 2);
+	assert.match(captured!.sql, /DELETE FROM fonderie_role_user_workspaces WHERE user_id = \$1/);
+	assert.deepEqual(captured!.params, ['u1']);
+});

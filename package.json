@@ -1,38 +1,39 @@
 {
-	"name": "@fonderie/sdk",
-	"private": true,
-	"workspaces": [
-		"packages/*"
-	],
-	"scripts": {
-		"build": "turbo build",
-		"create-app": "npm run build -w packages/create-fonderie-app && node packages/create-fonderie-app/dist/bin.js",
-		"dev": "npm run dev --workspaces --if-present",
-		"typecheck": "turbo typecheck",
-		"test": "turbo test",
-		"lint": "biome lint .",
-		"lint:ci": "biome lint packages --diagnostic-level=error",
-		"format": "biome format --write .",
-		"check": "biome check --write .",
-		"changeset": "changeset",
-		"version": "changeset version && npm run docs:brain",
-		"release": "npm run build && changeset publish",
-		"docs:signatures": "node scripts/generate-signatures.mjs && node scripts/generate-outcomes.mjs",
-		"docs:brain": "node scripts/generate-brain.mjs && node scripts/generate-cli-data.mjs",
-		"brain:serve": "node scripts/brain-serve.mjs",
-		"brain:test": "node scripts/brain-serve.test.mjs",
-		"brain:drift": "node experiments/r1-2026-07/drift.mjs",
-		"brain:project": "node scripts/generate-project-brain.mjs",
-		"brain:project-test": "node scripts/project-brain.test.mjs",
-		"brain:r3-test": "node scripts/brain-r3.test.mjs",
-		"audit:validation": "node scripts/audit-validation.mjs",
-		"audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.0.0",
-		"@changesets/cli": "^2.31.0",
-		"turbo": "^2.10.4"
-	},
-	"license": "MIT",
-	"packageManager": "npm@11.16.0"
+  "name": "@fonderie/sdk",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "create-app": "npm run build -w packages/create-fonderie-app && node packages/create-fonderie-app/dist/bin.js",
+    "dev": "npm run dev --workspaces --if-present",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "lint": "biome lint .",
+    "lint:ci": "biome lint packages --diagnostic-level=error",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "changeset": "changeset",
+    "version": "changeset version && npm run docs:brain",
+    "release": "npm run build && changeset publish",
+    "docs:signatures": "node scripts/generate-signatures.mjs && node scripts/generate-outcomes.mjs",
+    "docs:brain": "node scripts/generate-brain.mjs && node scripts/generate-cli-data.mjs",
+    "brain:serve": "node scripts/brain-serve.mjs",
+    "brain:test": "node scripts/brain-serve.test.mjs",
+    "brain:drift": "node experiments/r1-2026-07/drift.mjs",
+    "brain:project": "node scripts/generate-project-brain.mjs",
+    "brain:project-test": "node scripts/project-brain.test.mjs",
+    "brain:r3-test": "node scripts/brain-r3.test.mjs",
+    "audit:validation": "node scripts/audit-validation.mjs",
+    "check:evidence": "node scripts/check-evidence.mjs",
+    "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "@changesets/cli": "^2.31.0",
+    "turbo": "^2.10.4"
+  },
+  "license": "MIT",
+  "packageManager": "npm@11.16.0"
 }
