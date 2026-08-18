@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "React hooks for Fonderie's audit log — thin bindings over @fonderie/client.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"react",
 		"audit",
 		"audit-log",

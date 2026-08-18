@@ -3,7 +3,7 @@
 	"version": "0.1.1",
 	"description": "Pre-built React screens for Fonderie's outgoing webhooks — endpoint list, endpoint detail with delivery history.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"react",
 		"webhooks",
 		"screens",

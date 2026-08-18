@@ -33,7 +33,7 @@ phone OTP, profile updates, and MFA setup/verify/disable, with every DTO
 (`IUserDTO`, `ITokens`, `ILoginResult`, …) exported for your own signatures.
 
 Pairs with any API built on
-[@fonderie/core](https://github.com/fonderie-js/sdk/tree/main/packages/core);
+[@fonderie/core](https://github.com/fonderiejs/sdk/tree/main/packages/core);
 the types stay in lockstep because both sides live in the same monorepo.
 
 ## Why this exists
@@ -41,7 +41,7 @@ the types stay in lockstep because both sides live in the same monorepo.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -50,7 +50,7 @@ browser, Node, or edge — with request/response shapes that stay in lockstep
 with the server because both live in this monorepo.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

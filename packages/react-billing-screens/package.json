@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Pre-built React billing screens for Fonderie — pricing table, subscription management.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"react",
 		"billing",
 		"stripe",

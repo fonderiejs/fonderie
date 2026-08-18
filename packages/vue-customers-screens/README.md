@@ -49,7 +49,7 @@ to build one from scratch. Swap it for your own design system whenever
 you outgrow it — `@fonderie/vue-customers`'s composables work standalone.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

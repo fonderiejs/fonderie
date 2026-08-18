@@ -1,9 +1,9 @@
 {
 	"name": "@fonderie/rate-limit",
 	"version": "4.0.0",
-	"description": "Distributed rate limiting for @fonderie-js — atomic token bucket over memory, PostgreSQL, or Redis, with standard RateLimit-* headers.",
+	"description": "Distributed rate limiting for @fonderiejs — atomic token bucket over memory, PostgreSQL, or Redis, with standard RateLimit-* headers.",
 	"keywords": [
-		"fonderie-js",
+		"fonderiejs",
 		"rate-limit",
 		"token-bucket",
 		"throttle",

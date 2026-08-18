@@ -5,7 +5,7 @@ config (`useConfigEntries`, `useConfigEntry`, `useSaveConfigEntry`,
 `useDeleteConfigEntry`, `useConfigRevisions`) and secrets (`useSecrets`,
 `useSecret`, `useSaveSecret`, `useDeleteSecret`, `useSecretRevisions`,
 `useRevealSecret`). Thin bindings over
-[`@fonderie/client`](https://github.com/fonderie-js/sdk/tree/main/packages/client)'s
+[`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client)'s
 `ConfigAdminClient`: reactive `ref`s for loading/error/data state and the
 request itself, nothing else. Bring your own UI.
 
@@ -42,19 +42,19 @@ const { revealSecret } = useRevealSecret(admin);
 `/admin/config/*` and `/admin/secrets/*` routes are guarded by a static
 bearer token configured on the server (`ConfigModule`'s `adminToken`), not
 the signed-in user's session — the same model
-[`@fonderie/vue-courier-admin`](https://github.com/fonderie-js/sdk/tree/main/packages/vue-courier-admin)
+[`@fonderie/vue-courier-admin`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-courier-admin)
 uses. Construct `ConfigAdminClient` with that token directly; it does not
 share state with `AuthClient`/`BillingClient`/`WorkspacesClient`.
 
 Want pre-built screens instead of wiring your own dashboard?
-See [`@fonderie/vue-config-admin-screens`](https://github.com/fonderie-js/sdk/tree/main/packages/vue-config-admin-screens).
+See [`@fonderie/vue-config-admin-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-config-admin-screens).
 
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -63,7 +63,7 @@ state management around `@fonderie/client`, nothing more. No business logic
 lives here; it lives in `@fonderie/config` on the server.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

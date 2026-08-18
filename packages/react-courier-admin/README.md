@@ -3,7 +3,7 @@
 React hooks for the Fonderie courier admin API — `useTemplates`,
 `useTemplate`, `useSaveTemplate`, `useDeleteTemplate`, and
 `useTemplateRevisions` (list + rollback). Thin bindings over
-[`@fonderie/client`](https://github.com/fonderie-js/sdk/tree/main/packages/client)'s
+[`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client)'s
 `CourierAdminClient`: loading/error state and the request itself, nothing
 else. Bring your own UI.
 
@@ -48,14 +48,14 @@ session — the same model `@fonderie/config`'s admin surface and the
 `AuthClient`/`BillingClient`/`WorkspacesClient`.
 
 Want pre-built screens instead of wiring your own editor?
-See [`@fonderie/react-courier-admin-screens`](https://github.com/fonderie-js/sdk/tree/main/packages/react-courier-admin-screens).
+See [`@fonderie/react-courier-admin-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/react-courier-admin-screens).
 
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderie-js/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -64,7 +64,7 @@ state management around `@fonderie/client`, nothing more. No business logic
 lives here; it lives in `@fonderie/courier` on the server.
 
 Browse the whole set at
-[fonderie-js/sdk](https://github.com/fonderie-js/sdk) · follow
+[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

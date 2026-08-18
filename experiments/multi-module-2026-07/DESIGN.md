@@ -12,7 +12,7 @@ Rounds 1–3 (`../token-cost-2026-07/`) measured one module (auth), greenfield
 only. The article's cost claim needs to survive two harder conditions:
 
 1. **Multi-module** — does the skill's context overhead amortize across
-   modules now that signatures are split per-package (fonderie-js `ac4f40c`),
+   modules now that signatures are split per-package (fonderiejs `ac4f40c`),
    and does package leverage compound as the app grows?
 2. **Lifecycle** — greenfield build cost is only half the story. When an agent
    returns to a *growing* codebase in later sessions, the from-scratch
