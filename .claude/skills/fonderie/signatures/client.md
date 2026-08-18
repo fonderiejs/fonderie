@@ -8,6 +8,11 @@
 interface IFonderieClientOptions {
     baseUrl: string;
     accessToken?: string;
+    workspaceId?: string;
+}
+
+interface IRequestConfig {
+    workspaceId?: string;
 }
 
 new FonderieClient(opts: IFonderieClientOptions): FonderieClient
@@ -17,6 +22,14 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .audit: AuditClient
   .webhooks: WebhooksClient
   .customers: CustomersClient
+  .setAccessToken(token: string | undefined): void
+  .setWorkspaceId(workspaceId: string | undefined): void
+  .request<T = unknown>(opts: { method: string; path: string; body?: unknown; workspaceId?: string | undefined; }): Promise<IApiResponse<T>>
+  .get<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
+  .post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
+  .put<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
+  .patch<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
+  .delete<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
   .reason: string
