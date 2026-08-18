@@ -46,7 +46,7 @@
 		"@types/node": "^25.6.0",
 		"@types/react": "^18.0.0",
 		"react": "^18.0.0",
-		"react-native": "0.76.5",
+		"react-native": "0.87.0",
 		"tsup": "^8.5.1",
 		"typescript": "^6.0.3"
 	},
