@@ -98,11 +98,6 @@ export interface IMfaEnabledResult {
 	user: IUserDTO;
 }
 
-export interface IPhoneVerifyResult {
-	tokens: ITokens;
-	user: IUserDTO;
-}
-
 // ── Billing ──────────────────────────────────────────────────────────────────
 
 export interface IPlanFeature {
