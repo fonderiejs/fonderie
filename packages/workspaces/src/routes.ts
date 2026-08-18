@@ -71,6 +71,7 @@ export function buildWorkspaceRoutes(
 		R('getRole', 'GET', '/workspaces/roles/:roleId', requireAuth, wsCtx, role.get),
 		R('updateRole', 'PUT', '/workspaces/roles/:roleId', requireAuth, wsCtx, validate(updateRoleSchema), role.update),
 		R('removeRole', 'DELETE', '/workspaces/roles/:roleId', requireAuth, wsCtx, role.remove),
+		R('getRolePermissions', 'GET', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, role.getPermissions),
 		R('setRolePermissions', 'POST', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, validate(setRolePermissionsSchema), role.setPermissions),
 
 		// ── Workspace lifecycle

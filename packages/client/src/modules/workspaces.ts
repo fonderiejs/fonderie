@@ -69,6 +69,18 @@ export interface IRolePermissionInput {
 	canDelete?: boolean;
 }
 
+export interface IRolePermission {
+	permissionKey: string;
+	canCreate: boolean;
+	canRead: boolean;
+	canUpdate: boolean;
+	canDelete: boolean;
+}
+
+export interface IRolePermissionsResult {
+	permissions: IRolePermission[];
+}
+
 // ── Workspaces client ────────────────────────────────────────────────────────
 
 export class WorkspacesClient {
@@ -189,6 +201,15 @@ export class WorkspacesClient {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
 			path: `/workspaces/roles/${roleId}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	getRolePermissions(roleId: string) {
+		return this.http.request<IApiResponse<IRolePermissionsResult>>({
+			method: 'GET',
+			path: `/workspaces/roles/${roleId}/permissions`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

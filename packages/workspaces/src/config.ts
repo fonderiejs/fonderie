@@ -33,6 +33,6 @@ export type WorkspaceRouteId =
 	| 'archive' | 'restore' | 'getSettings' | 'updateSettings'
 	| 'listMembers' | 'removeMember' | 'getMemberRoles' | 'addMemberRole' | 'removeMemberRole'
 	| 'listInvitations' | 'invite' | 'cancelInvitation' | 'acceptInvitation'
-	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'setRolePermissions';
+	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions';
 
 export type WorkspaceRouteOverride = string | { method?: string; path?: string };
