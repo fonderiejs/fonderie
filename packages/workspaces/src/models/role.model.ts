@@ -9,6 +9,7 @@ import {
 	updateRole,
 	deleteRole,
 	setRolePermissions,
+	getRolePermissions,
 } from '../services/roles';
 
 export class RoleModel {
@@ -44,5 +45,9 @@ export class RoleModel {
 		permissions: Parameters<typeof setRolePermissions>[2],
 	): Promise<void> {
 		return setRolePermissions(roleId, workspaceId, permissions, this.store);
+	}
+
+	getPermissions(roleId: string, workspaceId: string): ReturnType<typeof getRolePermissions> {
+		return getRolePermissions(roleId, workspaceId, this.store);
 	}
 }
