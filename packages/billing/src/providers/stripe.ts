@@ -9,7 +9,7 @@ interface IStripeSubscriptionRaw {
 	metadata?: Record<string, string>;
 	items: {
 		data: Array<{
-			price: { id: string; nickname: string | null; recurring?: { interval: string } };
+			price: { id: string; nickname: string | null; lookup_key?: string | null; recurring?: { interval: string } };
 			// Since Stripe API 2025+, the period lives on the item, not the subscription.
 			current_period_start?: number;
 			current_period_end?: number;
@@ -55,6 +55,8 @@ function normalizeSubscription(sub: IStripeSubscriptionRaw): INormalizedSubscrip
 		subscriberType: (sub.metadata?.['subscriberType'] ?? 'workspace') as SubscriberType,
 		subscriberId: sub.metadata?.['subscriberId'] ?? '',
 		plan: item?.price.nickname ?? 'unknown',
+		priceLookupKey: item?.price.lookup_key ?? null,
+		priceId: item?.price.id ?? null,
 		status: sub.status,
 		providerCustomerId: sub.customer,
 		providerSubscriptionId: sub.id,

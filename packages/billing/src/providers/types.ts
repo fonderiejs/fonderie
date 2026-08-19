@@ -9,7 +9,11 @@ export interface IBillingEvent {
 export interface INormalizedSubscription {
 	subscriberType: SubscriberType;
 	subscriberId: string;
+	/** Plan name from the price nickname (legacy fallback; prefer resolving via priceLookupKey/priceId). */
 	plan: string;
+	/** The subscription item's price lookup_key + id — for config-based plan attribution (§16.3). */
+	priceLookupKey: string | null;
+	priceId: string | null;
 	status: string;
 	providerCustomerId: string;
 	providerSubscriptionId: string;

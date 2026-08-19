@@ -27,7 +27,7 @@ export function buildBillingRoutes(
 	const subscription = subscriptionController(store);
 	const checkout = checkoutController(store, config);
 	const usage = usageController(store);
-	const webhook = webhookController(store, config);
+	const webhook = webhookController(store, config, priceCache);
 
 	return [
 		// Plans — public read-only
