@@ -31,6 +31,10 @@ export interface IFonderieClientOptions {
 // Per-call options for the generic transport.
 export interface IRequestConfig {
 	workspaceId?: string;
+	// Per-call Bearer override — e.g. the MFA-login step, where a temporary
+	// mfaToken is used before the session access token exists. Defaults to the
+	// client's stored token.
+	token?: string;
 	// Cache this GET for `cache` ms; false to skip; bust to force-refresh.
 	cache?: number | false;
 	bust?: boolean;
@@ -130,6 +134,7 @@ export class FonderieClient {
 		method: string;
 		path: string;
 		body?: unknown;
+		token?: string | undefined;
 		workspaceId?: string | undefined;
 		cache?: number | false | undefined;
 		bust?: boolean | undefined;
@@ -139,7 +144,7 @@ export class FonderieClient {
 			method: opts.method,
 			path: opts.path,
 			body: opts.body,
-			token: this.tokens.get(),
+			token: opts.token ?? this.tokens.get(),
 			workspaceId: opts.workspaceId ?? this.workspaceId,
 			cache: opts.cache,
 			bust: opts.bust,
@@ -151,6 +156,7 @@ export class FonderieClient {
 		return this.request<T>({
 			method: 'GET',
 			path,
+			token: config?.token,
 			workspaceId: config?.workspaceId,
 			cache: config?.cache,
 			bust: config?.bust,
@@ -158,18 +164,18 @@ export class FonderieClient {
 	}
 
 	post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig): Promise<IApiResponse<T>> {
-		return this.request<T>({ method: 'POST', path, body, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
+		return this.request<T>({ method: 'POST', path, body, token: config?.token, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
 	}
 
 	put<T = unknown>(path: string, body?: unknown, config?: IRequestConfig): Promise<IApiResponse<T>> {
-		return this.request<T>({ method: 'PUT', path, body, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
+		return this.request<T>({ method: 'PUT', path, body, token: config?.token, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
 	}
 
 	patch<T = unknown>(path: string, body?: unknown, config?: IRequestConfig): Promise<IApiResponse<T>> {
-		return this.request<T>({ method: 'PATCH', path, body, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
+		return this.request<T>({ method: 'PATCH', path, body, token: config?.token, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
 	}
 
 	delete<T = unknown>(path: string, config?: IRequestConfig): Promise<IApiResponse<T>> {
-		return this.request<T>({ method: 'DELETE', path, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
+		return this.request<T>({ method: 'DELETE', path, token: config?.token, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
 	}
 }

@@ -82,6 +82,24 @@ test('refreshes once on 401 and retries with the new token', async () => {
 	assert.equal(jobCalls[1]!.auth, 'Bearer new'); // retried with refreshed token
 });
 
+test('per-call token overrides the stored Bearer (e.g. MFA login)', async () => {
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x' });
+	c.setAccessToken('stored-token');
+	await c.post('/auth/mfa/verify', { token: '123' }, { token: 'mfa-temp-token' });
+	const call = calls.find((x) => x.path.endsWith('/auth/mfa/verify'));
+	assert.equal(call?.auth, 'Bearer mfa-temp-token'); // override wins
+});
+
+test('without a per-call token, uses the stored Bearer', async () => {
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x' });
+	c.setAccessToken('stored-token');
+	await c.get('/users');
+	const call = calls.find((x) => x.path.endsWith('/users'));
+	assert.equal(call?.auth, 'Bearer stored-token');
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });
