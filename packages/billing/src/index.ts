@@ -15,6 +15,8 @@ export type {
 	IBillingConfig,
 	IBillingPlan,
 	IBillingPlanDefaults,
+	IBillingPlanPrice,
+	IBillingPricingConfig,
 	RateLimitBackendConfig,
 	IBillingNotificationsConfig,
 	BillingMessageKey,
@@ -24,8 +26,10 @@ export type {
 export { MemoryCounterBackend, DBCounterBackend } from './backends';
 export type { ICounterBackend } from './backends';
 
+export { BILLING_INTERVAL } from './types';
+export type { BillingInterval } from './types';
 // Types
-export type { IBillingProvider, IBillingEvent } from './providers/types';
+export type { IBillingProvider, IBillingEvent, IResolvedPrice } from './providers/types';
 export type {
 	IPlan,
 	ISubscription,

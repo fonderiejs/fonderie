@@ -25,6 +25,17 @@ function makeProvider(overrides: Partial<IBillingProvider> = {}): IBillingProvid
 			return { status: 'active', currentPeriodStart: new Date(), currentPeriodEnd: new Date() };
 		},
 
+		async resolvePriceById(priceId) {
+			return {
+				priceId, lookupKey: null, unitAmount: 1500, currency: 'usd',
+				interval: 'month' as const, nickname: null, productId: 'prod_stub', active: true,
+			};
+		},
+
+		async resolvePricesByLookupKey() {
+			return new Map();
+		},
+
 		async createPortalSession() {
 			return { url: 'https://portal.stub.com/session_123' };
 		},
@@ -39,6 +50,8 @@ function makeProvider(overrides: Partial<IBillingProvider> = {}): IBillingProvid
 
 // ── Config ────────────────────────────────────────────────────────
 
+import { PriceCache } from '../services/price-cache';
+const priceCache = new PriceCache();
 const config: IBillingConfig = {
 	provider: makeProvider(),
 	successUrl: 'https://app.example.com/success',
@@ -261,7 +274,7 @@ function makeCtx(
 test('planController.list: returns plans array', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: basePlan });
-	const ctrl = planController(store);
+	const ctrl = planController(store, config, priceCache);
 	const res = await ctrl.list(makeCtx());
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
@@ -271,7 +284,7 @@ test('planController.list: returns plans array', async () => {
 test('planController.get: returns 200 when plan found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: basePlan });
-	const ctrl = planController(store);
+	const ctrl = planController(store, config, priceCache);
 	const res = await ctrl.get(makeCtx({ planId: 'plan-1' }));
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
@@ -281,14 +294,14 @@ test('planController.get: returns 200 when plan found', async () => {
 test('planController.get: 404 when not found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: null });
-	const ctrl = planController(store);
+	const ctrl = planController(store, config, priceCache);
 	const res = await ctrl.get(makeCtx({ planId: 'missing' }));
 	assert.equal(res.status, 404);
 });
 
 test('planController.get: 400 when planId missing', async () => {
 	const { planController } = await import('../controllers/plan.controller');
-	const ctrl = planController(makeStore());
+	const ctrl = planController(makeStore(), config, priceCache);
 	const res = await ctrl.get(makeCtx());
 	assert.equal(res.status, 400);
 });
@@ -296,7 +309,7 @@ test('planController.get: 400 when planId missing', async () => {
 test('planController.create: 201 with new plan', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: basePlan });
-	const ctrl = planController(store);
+	const ctrl = planController(store, config, priceCache);
 	const res = await ctrl.create(makeCtx({}, { name: 'pro', monthlyAmount: 7900 }));
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 201);
@@ -305,7 +318,7 @@ test('planController.create: 201 with new plan', async () => {
 
 test('planController.create: 422 when name missing', async () => {
 	const { planController } = await import('../controllers/plan.controller');
-	const ctrl = planController(makeStore());
+	const ctrl = planController(makeStore(), config, priceCache);
 	const res = await ctrl.create(makeCtx({}, {}));
 	assert.equal(res.status, 422);
 });
@@ -313,7 +326,7 @@ test('planController.create: 422 when name missing', async () => {
 test('planController.update: 200 with updated plan', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: { ...basePlan, monthlyAmount: 9900 } });
-	const ctrl = planController(store);
+	const ctrl = planController(store, config, priceCache);
 	const res = await ctrl.update(makeCtx({ planId: 'plan-1' }, { monthlyAmount: 9900 }));
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
@@ -323,14 +336,14 @@ test('planController.update: 200 with updated plan', async () => {
 test('planController.update: 404 when plan not found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: null });
-	const ctrl = planController(store);
+	const ctrl = planController(store, config, priceCache);
 	const res = await ctrl.update(makeCtx({ planId: 'missing' }, { name: 'x' }));
 	assert.equal(res.status, 404);
 });
 
 test('planController.update: 422 when body is empty', async () => {
 	const { planController } = await import('../controllers/plan.controller');
-	const ctrl = planController(makeStore());
+	const ctrl = planController(makeStore(), config, priceCache);
 	const res = await ctrl.update(makeCtx({ planId: 'plan-1' }, {}));
 	assert.equal(res.status, 422);
 });
@@ -338,7 +351,7 @@ test('planController.update: 422 when body is empty', async () => {
 test('planController.delete: 200 when deleted', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: basePlan });
-	const ctrl = planController(store);
+	const ctrl = planController(store, config, priceCache);
 	const res = await ctrl.delete(makeCtx({ planId: 'plan-1' }));
 	assert.equal(res.status, 200);
 });
@@ -346,7 +359,7 @@ test('planController.delete: 200 when deleted', async () => {
 test('planController.delete: 404 when not found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: null });
-	const ctrl = planController(store);
+	const ctrl = planController(store, config, priceCache);
 	const res = await ctrl.delete(makeCtx({ planId: 'missing' }));
 	assert.equal(res.status, 404);
 });
@@ -855,4 +868,51 @@ test('parseWindowMs: parses hour window', async () => {
 	const { parseWindowMs } = await import('../utils');
 	assert.equal(parseWindowMs('1h'), 3_600_000);
 	assert.equal(parseWindowMs('24h'), 86_400_000);
+});
+
+// ── pricing hydration (kill-switch + cache) ───────────────────────
+
+const priced = (id: string) => ({
+	priceId: id, lookupKey: null, unitAmount: 1500, currency: 'usd',
+	interval: 'month' as const, nickname: null, productId: 'p', active: true,
+});
+
+test('planController.list: hydrates amount/currency from provider when enabled', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: basePlan });
+	const ctrl = planController(store, { ...config, pricing: { hydration: true } }, new PriceCache());
+	const body = (await (await ctrl.list(makeCtx())).json()) as any;
+	assert.equal(body.result.plans[0].pricing.monthly, 1500); // live price, not basePlan's 7900
+	assert.equal(body.result.plans[0].pricing.currency, 'USD');
+});
+
+test('planController.list: uses hardcoded amount/currency when hydration off', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const store = makeStore({ plan: basePlan });
+	const ctrl = planController(store, config, new PriceCache()); // no pricing.hydration
+	const body = (await (await ctrl.list(makeCtx())).json()) as any;
+	assert.equal(body.result.plans[0].pricing.monthly, 7900); // fallback
+});
+
+test('PriceCache: single-flight dedupes concurrent misses', async () => {
+	let calls = 0;
+	const provider = makeProvider({ resolvePriceById: async (id) => { calls++; return priced(id); } });
+	const cache = new PriceCache();
+	await Promise.all([
+		cache.byPriceId('price_x', provider),
+		cache.byPriceId('price_x', provider),
+		cache.byPriceId('price_x', provider),
+	]);
+	assert.equal(calls, 1);
+});
+
+test('PriceCache: serves last-cached on transient miss within grace', async () => {
+	let n = 0;
+	const provider = makeProvider({ resolvePriceById: async (id) => (++n === 1 ? priced(id) : null) });
+	const cache = new PriceCache({ ttlMs: 0 }); // force re-resolve each call
+	const first = await cache.byPriceId('price_y', provider);
+	assert.equal(first.price?.unitAmount, 1500);
+	const second = await cache.byPriceId('price_y', provider); // provider now returns null
+	assert.equal(second.price?.unitAmount, 1500); // served from cache
+	assert.equal(second.stale, true);
 });
