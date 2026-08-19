@@ -72,6 +72,9 @@ your existing app instead.
 New here? The [Getting started guide](docs/GETTING-STARTED.md) walks
 through install, booting an app, and adding bricks step by step.
 
+Prefer to read code? The [`examples/`](examples/README.md) folder has minimal,
+deploy-ready apps for Hono, Express, and Koa.
+
 ## The bricks
 
 | Package | What it is |
