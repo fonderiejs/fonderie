@@ -6,7 +6,7 @@
     "adapter-koa": "5.0.0",
     "audit": "5.0.0",
     "auth": "5.0.0",
-    "billing": "5.0.2",
+    "billing": "5.1.0",
     "client": "0.4.0",
     "config": "5.0.0",
     "core": "0.5.0",
@@ -296,7 +296,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "5.0.2",
+      "version": "5.1.0",
       "requires": [
         "core",
         "store"
