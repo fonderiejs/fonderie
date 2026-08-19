@@ -21,6 +21,7 @@ interface IFonderieClientOptions {
 
 interface IRequestConfig {
     workspaceId?: string;
+    token?: string;
     cache?: number | false;
     bust?: boolean;
     invalidate?: string[];
@@ -50,7 +51,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .request<T = unknown>(opts: { method: string; path: string; body?: unknown; workspaceId?: string | undefined; cache?: number | false | undefined; bust?: boolean | undefined; invalidate?: string[] | undefined; }): Promise<IApiResponse<...>>
+  .request<T = unknown>(opts: { method: string; path: string; body?: unknown; token?: string | undefined; workspaceId?: string | undefined; cache?: number | false | undefined; bust?: boolean | undefined; invalidate?: string[] | undefined; }): Promise<...>
   .get<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .put<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
