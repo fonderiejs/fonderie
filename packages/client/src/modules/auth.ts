@@ -80,6 +80,18 @@ class MfaClient {
 		});
 	}
 
+	// MFA-login: complete a login that returned MFA_REQUIRED. Authenticates with
+	// the temporary `mfaToken` (not the session) and verifies the TOTP `code` —
+	// same route as `verify`, different auth context. Returns the completed login.
+	verifyLogin(mfaToken: string, code: string) {
+		return this.http.request<IApiResponse<ILoginResult>>({
+			method: 'POST',
+			path: '/auth/mfa/verify',
+			body: { token: code },
+			token: mfaToken,
+		});
+	}
+
 	disable(token: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',

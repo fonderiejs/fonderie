@@ -100,6 +100,15 @@ test('without a per-call token, uses the stored Bearer', async () => {
 	assert.equal(call?.auth, 'Bearer stored-token');
 });
 
+test('auth.mfa.verifyLogin sends the mfaToken as bearer', async () => {
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x' });
+	c.setAccessToken('session-token');
+	await c.auth.mfa.verifyLogin('mfa-temp', '123456');
+	const call = calls.find((x) => x.path.endsWith('/auth/mfa/verify'));
+	assert.equal(call?.auth, 'Bearer mfa-temp');
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });
