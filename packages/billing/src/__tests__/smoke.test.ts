@@ -1002,3 +1002,118 @@ test('resolvePlanNameByPrice: lookup_key wins, then priceId, else null', async (
 	assert.equal(resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_starter_yearly' }, plans), 'starter');
 	assert.equal(resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_unknown' }, plans), null);
 });
+
+// ── PriceCache edge cases ─────────────────────────────────────────
+
+test('PriceCache: fresh hit does not re-call provider within TTL', async () => {
+	let calls = 0;
+	const provider = makeProvider({ resolvePriceById: async (id) => { calls++; return priced(id); } });
+	const cache = new PriceCache({ ttlMs: 60_000 });
+	await cache.byPriceId('p', provider);
+	const second = await cache.byPriceId('p', provider);
+	assert.equal(calls, 1);
+	assert.equal(second.stale, false);
+});
+
+test('PriceCache: transient miss beyond grace returns null', async () => {
+	let n = 0;
+	const provider = makeProvider({ resolvePriceById: async (id) => (++n === 1 ? priced(id) : null) });
+	const cache = new PriceCache({ ttlMs: 0, graceMs: 0 });
+	await cache.byPriceId('p', provider);
+	const r = await cache.byPriceId('p', provider);
+	assert.equal(r.price, null);
+	assert.equal(r.stale, true);
+});
+
+test('PriceCache: provider outage serves last-cached within maxStale', async () => {
+	let n = 0;
+	const provider = makeProvider({
+		resolvePriceById: async (id) => { if (++n > 1) throw new Error('stripe down'); return priced(id); },
+	});
+	const cache = new PriceCache({ ttlMs: 0, maxStaleMs: 60_000 });
+	await cache.byPriceId('p', provider);
+	const r = await cache.byPriceId('p', provider);
+	assert.equal(r.price?.unitAmount, 1500);
+	assert.equal(r.stale, true);
+});
+
+test('PriceCache: provider outage beyond maxStale returns null', async () => {
+	let n = 0;
+	const provider = makeProvider({
+		resolvePriceById: async (id) => { if (++n > 1) throw new Error('down'); return priced(id); },
+	});
+	const cache = new PriceCache({ ttlMs: 0, maxStaleMs: 0 });
+	await cache.byPriceId('p', provider);
+	const r = await cache.byPriceId('p', provider);
+	assert.equal(r.price, null);
+});
+
+test('PriceCache: invalidate forces re-resolution', async () => {
+	let calls = 0;
+	const provider = makeProvider({ resolvePriceById: async (id) => { calls++; return priced(id); } });
+	const cache = new PriceCache({ ttlMs: 60_000 });
+	await cache.byPriceId('p', provider);
+	cache.invalidate('p');
+	await cache.byPriceId('p', provider);
+	assert.equal(calls, 2);
+});
+
+test('PriceCache: prime warms the cache without a provider call', async () => {
+	let calls = 0;
+	const provider = makeProvider({ resolvePriceById: async (id) => { calls++; return priced(id); } });
+	const cache = new PriceCache({ ttlMs: 60_000 });
+	cache.prime([priced('p')]);
+	const r = await cache.byPriceId('p', provider);
+	assert.equal(calls, 0);
+	assert.equal(r.price?.unitAmount, 1500);
+});
+
+// ── hydration edge cases ──────────────────────────────────────────
+
+test('hydration: currency mismatch flags pricingStale and keeps fallback (no throw)', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const provider = makeProvider({
+		resolvePriceById: async (id) => ({ ...priced(id), currency: id.includes('yearly') ? 'eur' : 'usd' }),
+	});
+	const store = makeStore({ plan: basePlan });
+	const ctrl = planController(store, { ...config, provider, pricing: { hydration: true } }, new PriceCache());
+	const body = (await (await ctrl.list(makeCtx())).json()) as any;
+	const pro = body.result.plans[0];
+	assert.equal(pro.pricingStale, true);
+	assert.equal(pro.pricing.monthly, 7900); // fallback retained, not partially applied
+});
+
+test('hydration: plan without priceIds is left untouched', async () => {
+	const { planController } = await import('../controllers/plan.controller');
+	const freePlan = { ...basePlan, name: 'free', monthlyPriceId: null, yearlyPriceId: null, monthlyAmount: 0, yearlyAmount: 0 };
+	const store = makeStore({ plan: freePlan });
+	const ctrl = planController(store, { ...config, pricing: { hydration: true } }, new PriceCache());
+	const body = (await (await ctrl.list(makeCtx())).json()) as any;
+	assert.equal(body.result.plans[0].pricing.monthly, 0);
+	assert.equal(body.result.plans[0].pricingStale, undefined);
+});
+
+// ── attribution edge cases ────────────────────────────────────────
+
+test('resolvePlanNameByPrice: lookup_key wins over a conflicting priceId', async () => {
+	const { resolvePlanNameByPrice } = await import('../services/plans');
+	const plans: any = [
+		{ name: 'a', monthly: { lookupKey: 'k_pro', priceId: 'price_x' } },
+		{ name: 'b', monthly: { priceId: 'price_y' } },
+	];
+	assert.equal(resolvePlanNameByPrice({ lookupKey: 'k_pro', priceId: 'price_y' }, plans), 'a');
+});
+
+test('webhook: falls back to nickname when price matches no config plan', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const cap = captureStore();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.updated',
+			subscription: normalizedSub({ priceId: 'price_unmatched', plan: 'legacy-nick' }) as any,
+		}),
+	});
+	const ctrl = webhookController(cap.store, { ...config, provider, webhookSecret: 'whsec_x' });
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(cap.plan(), 'legacy-nick');
+});
