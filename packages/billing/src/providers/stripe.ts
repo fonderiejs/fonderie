@@ -6,7 +6,7 @@ interface IStripeSubscriptionRaw {
 	status: string;
 	customer: string;
 	metadata?: Record<string, string>;
-	items: { data: Array<{ price: { id: string; nickname: string | null } }> };
+	items: { data: Array<{ price: { id: string; nickname: string | null; recurring?: { interval: string } } }> };
 	current_period_start: number;
 	current_period_end: number;
 	cancel_at_period_end: boolean;
@@ -48,6 +48,7 @@ function normalizeSubscription(sub: IStripeSubscriptionRaw): INormalizedSubscrip
 		currentPeriodEnd: new Date(sub.current_period_end * 1000),
 		cancelAtPeriodEnd: sub.cancel_at_period_end,
 		trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+		interval: sub.items.data[0]?.price.recurring?.interval === 'year' ? 'year' : 'month',
 	};
 }
 
