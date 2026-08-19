@@ -122,6 +122,30 @@ export class StripeProvider implements IBillingProvider {
 		return { url: session.url ?? '' };
 	}
 
+	async updateSubscription(opts: {
+		subscriptionId: string;
+		priceId: string;
+	}): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null }> {
+		const stripe = await this.client();
+		const sub = await stripe.subscriptions.retrieve(opts.subscriptionId);
+		const itemId = sub.items.data[0]?.id;
+		// Swap the price on the existing item and invoice the prorated difference
+		// immediately (upgrade → pay the difference now).
+		const updated = await stripe.subscriptions.update(opts.subscriptionId, {
+			items: [{ id: itemId, price: opts.priceId }],
+			proration_behavior: 'always_invoice',
+			payment_behavior: 'error_if_incomplete',
+		});
+		const item = updated.items?.data?.[0];
+		const cps = item?.current_period_start ?? updated.current_period_start;
+		const cpe = item?.current_period_end ?? updated.current_period_end;
+		return {
+			status: updated.status,
+			currentPeriodStart: cps ? new Date(cps * 1000) : null,
+			currentPeriodEnd: cpe ? new Date(cpe * 1000) : null,
+		};
+	}
+
 	async createPortalSession(opts: {
 		customerId: string;
 		returnUrl: string;

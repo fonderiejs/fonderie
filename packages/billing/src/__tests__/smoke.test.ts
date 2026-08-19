@@ -21,6 +21,10 @@ function makeProvider(overrides: Partial<IBillingProvider> = {}): IBillingProvid
 			return { url: 'https://checkout.stub.com/session_123' };
 		},
 
+		async updateSubscription() {
+			return { status: 'active', currentPeriodStart: new Date(), currentPeriodEnd: new Date() };
+		},
+
 		async createPortalSession() {
 			return { url: 'https://portal.stub.com/session_123' };
 		},
