@@ -43,6 +43,17 @@ export interface IBillingProvider {
 		cancelUrl: string;
 	}): Promise<{ url: string }>;
 
+	// Change an existing subscription's price in place (upgrade), invoicing the
+	// prorated difference immediately.
+	updateSubscription(opts: {
+		subscriptionId: string;
+		priceId: string;
+	}): Promise<{
+		status: string;
+		currentPeriodStart: Date | null;
+		currentPeriodEnd: Date | null;
+	}>;
+
 	// Generate a hosted billing portal URL
 	createPortalSession(opts: { customerId: string; returnUrl: string }): Promise<{ url: string }>;
 

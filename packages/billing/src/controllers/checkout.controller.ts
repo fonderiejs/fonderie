@@ -50,6 +50,47 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				);
 			}
 
+			// If there's already an active subscription: allow upgrades only, and
+			// change the subscription in place (proration) rather than opening a
+			// second checkout / creating a duplicate subscription.
+			const current = await subscriptions.get(subscriber.type, subscriber.id);
+			const ACTIVE = ['active', 'trialing', 'past_due'];
+			if (current && ACTIVE.includes(current.status)) {
+				const currentTier = plans.findByNameInConfig(current.plan, config)?.tier ?? -1;
+				const targetTier = plan.tier ?? -1;
+				if (targetTier <= currentTier) {
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'DOWNGRADE_NOT_ALLOWED',
+						`Cannot switch from ${current.plan} to a same-or-lower tier (${planName}) mid-cycle. Upgrades only.`,
+					);
+				}
+				if (current.providerSubscriptionId) {
+					const res = await config.provider.updateSubscription({
+						subscriptionId: current.providerSubscriptionId,
+						priceId: pricing.priceId,
+					});
+					const upsert: Parameters<typeof subscriptions.upsert>[0] = {
+						subscriberType: subscriber.type,
+						subscriberId: subscriber.id,
+						plan: planName,
+						interval,
+						status: res.status,
+						providerSubscriptionId: current.providerSubscriptionId,
+					};
+					if (current.providerCustomerId) upsert.providerCustomerId = current.providerCustomerId;
+					if (res.currentPeriodStart) upsert.currentPeriodStart = res.currentPeriodStart;
+					if (res.currentPeriodEnd) upsert.currentPeriodEnd = res.currentPeriodEnd;
+					await subscriptions.upsert(upsert);
+					return setApiResponse(
+						HTTP.OK,
+						'SUBSCRIPTION_UPGRADED',
+						'Subscription upgraded; the prorated difference was charged.',
+						{ upgraded: true, plan: planName },
+					);
+				}
+			}
+
 			const { customerId } = await config.provider.createCustomer({
 				email: ctx.user!.email ?? '',
 				subscriberType: subscriber.type,
