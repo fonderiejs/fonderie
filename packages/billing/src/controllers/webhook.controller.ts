@@ -41,6 +41,7 @@ export function webhookController(store: IStoreAdapter, config: IBillingConfig) 
 					subscriberType: event.subscription.subscriberType,
 					subscriberId: event.subscription.subscriberId,
 					plan: event.subscription.plan,
+					interval: event.subscription.interval,
 					status: event.subscription.status,
 					providerCustomerId: event.subscription.providerCustomerId,
 					providerSubscriptionId: event.subscription.providerSubscriptionId,

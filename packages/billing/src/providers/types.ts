@@ -17,6 +17,7 @@ export interface INormalizedSubscription {
 	currentPeriodEnd: Date;
 	cancelAtPeriodEnd: boolean;
 	trialEndsAt: Date | null;
+	interval: 'month' | 'year';
 }
 
 // The one interface every handler calls
