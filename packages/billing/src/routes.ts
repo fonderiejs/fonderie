@@ -5,6 +5,7 @@ import { requireAuth, validate } from '@fonderie/core/middlewares';
 import { checkoutSchema, createPlanSchema, recordUsageSchema, updatePlanSchema } from './schemas';
 
 import type { IBillingConfig } from './config';
+import { PriceCache } from './services/price-cache';
 import { planController } from './controllers/plan.controller';
 import { subscriptionController } from './controllers/subscription.controller';
 import { checkoutController } from './controllers/checkout.controller';
@@ -17,7 +18,12 @@ export function buildBillingRoutes(
 	store: IStoreAdapter,
 	config: IBillingConfig,
 ): RouteDefinition[] {
-	const plan = planController(store);
+	const priceCache = new PriceCache({
+		ttlMs: config.pricing?.cacheTtlMs,
+		graceMs: config.pricing?.transferGraceMs,
+		maxStaleMs: config.pricing?.maxStaleMs,
+	});
+	const plan = planController(store, config, priceCache);
 	const subscription = subscriptionController(store);
 	const checkout = checkoutController(store, config);
 	const usage = usageController(store);

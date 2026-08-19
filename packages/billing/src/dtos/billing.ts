@@ -13,6 +13,8 @@ export interface IPlanDTO {
 		yearly: number; // in cents
 		currency: string; // ISO 4217, e.g. 'USD'
 	};
+	/** True when pricing was served from stale cache (transfer window / provider outage). */
+	pricingStale?: boolean;
 	features: IPlanFeature[];
 	metadata: Record<string, unknown>;
 }

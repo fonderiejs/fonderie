@@ -1,4 +1,5 @@
-import type { IBillingProvider, IBillingEvent, INormalizedSubscription } from './types';
+import type { IBillingProvider, IBillingEvent, INormalizedSubscription, IResolvedPrice } from './types';
+import { BILLING_INTERVAL } from '../types';
 import type { SubscriberType } from '../types';
 
 interface IStripeSubscriptionRaw {
@@ -61,7 +62,21 @@ function normalizeSubscription(sub: IStripeSubscriptionRaw): INormalizedSubscrip
 		currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : new Date(),
 		cancelAtPeriodEnd: sub.cancel_at_period_end,
 		trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-		interval: item?.price.recurring?.interval === 'year' ? 'year' : 'month',
+		interval: item?.price.recurring?.interval === BILLING_INTERVAL.YEAR ? BILLING_INTERVAL.YEAR : BILLING_INTERVAL.MONTH,
+	};
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toResolvedPrice(p: any): IResolvedPrice {
+	return {
+		priceId: p.id,
+		lookupKey: p.lookup_key ?? null,
+		unitAmount: p.unit_amount ?? 0,
+		currency: p.currency,
+		interval: p.recurring?.interval === BILLING_INTERVAL.YEAR ? BILLING_INTERVAL.YEAR : BILLING_INTERVAL.MONTH,
+		nickname: p.nickname ?? null,
+		productId: typeof p.product === 'string' ? p.product : (p.product?.id ?? ''),
+		active: p.active ?? true,
 	};
 }
 
@@ -120,6 +135,32 @@ export class StripeProvider implements IBillingProvider {
 			},
 		});
 		return { url: session.url ?? '' };
+	}
+
+	async resolvePriceById(priceId: string): Promise<IResolvedPrice | null> {
+		const stripe = await this.client();
+		try {
+			const p = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+			return toResolvedPrice(p);
+		} catch {
+			return null;
+		}
+	}
+
+	async resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>> {
+		const out = new Map<string, IResolvedPrice>();
+		if (lookupKeys.length === 0) return out;
+		const stripe = await this.client();
+		const res = await stripe.prices.list({
+			lookup_keys: lookupKeys,
+			active: true,
+			expand: ['data.product'],
+			limit: 100,
+		});
+		for (const p of res.data) {
+			if (p.lookup_key) out.set(p.lookup_key, toResolvedPrice(p));
+		}
+		return out;
 	}
 
 	async updateSubscription(opts: {

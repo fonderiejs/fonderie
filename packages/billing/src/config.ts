@@ -3,8 +3,31 @@ import type { PolicyEntry } from './types';
 import type { ICounterBackend } from './backends/types';
 
 export interface IBillingPlanPrice {
-	amount: number;
+	/** Stable Stripe Price lookup_key, e.g. "pro_monthly". Preferred reference. */
+	lookupKey?: string;
+	/** Stripe price id. Used for hydration and as a lookup_key fallback. */
 	priceId?: string;
+	/**
+	 * @deprecated Display amount in cents. When pricing hydration is on and the
+	 * price resolves from Stripe, the live amount wins; this is the fallback only.
+	 */
+	amount?: number;
+}
+
+/**
+ * Read-through pricing: amount/currency come from Stripe (source of truth) rather
+ * than the duplicated `amount` above. Gated by `hydration` (kill-switch, §16.9).
+ * See packages/billing/docs/pricing-hydration.md.
+ */
+export interface IBillingPricingConfig {
+	/** Kill-switch. When false (default), use the deprecated hardcoded amount/USD path. */
+	hydration?: boolean;
+	/** Fresh-cache TTL. Default 300_000 (5m). */
+	cacheTtlMs?: number;
+	/** Serve last-cached price on a transient resolution miss (lookup_key transfer). Default 3_600_000 (1h). */
+	transferGraceMs?: number;
+	/** Max age to serve stale price during a Stripe outage before giving up. Default 86_400_000 (24h). */
+	maxStaleMs?: number;
 }
 
 export interface IBillingPlanDefaults {
@@ -39,6 +62,7 @@ export interface IBillingConfig {
 	webhookSecret?: string;
 	rateLimit?: { backend?: RateLimitBackendConfig };
 	notifications?: IBillingNotificationsConfig;
+	pricing?: IBillingPricingConfig;
 }
 
 export const MESSAGE_KEYS = {

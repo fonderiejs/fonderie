@@ -20,6 +20,18 @@ export interface INormalizedSubscription {
 	interval: 'month' | 'year';
 }
 
+// Live price resolved from the provider (Stripe = source of truth).
+export interface IResolvedPrice {
+	priceId: string;
+	lookupKey: string | null;
+	unitAmount: number; // cents
+	currency: string; // ISO 4217 (Stripe lowercases)
+	interval: 'month' | 'year';
+	nickname: string | null;
+	productId: string;
+	active: boolean;
+}
+
 // The one interface every handler calls
 export interface IBillingProvider {
 	name: string;
@@ -42,6 +54,11 @@ export interface IBillingProvider {
 		successUrl: string;
 		cancelUrl: string;
 	}): Promise<{ url: string }>;
+
+	// Resolve live price data (source of truth for amount/currency/interval) from
+	// the provider. Used by read-through pricing hydration.
+	resolvePriceById(priceId: string): Promise<IResolvedPrice | null>;
+	resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>;
 
 	// Change an existing subscription's price in place (upgrade), invoicing the
 	// prorated difference immediately.
