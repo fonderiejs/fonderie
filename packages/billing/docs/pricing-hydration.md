@@ -1,6 +1,10 @@
 # Design: Stripe-authoritative pricing via `lookup_key` + hydration
 
-**Status:** proposed · **Package:** `@fonderie/billing` · **Target:** `5.2.0` (additive), cleanup in `6.0.0`
+**Status:** proposed (review round 1 incorporated) · **Package:** `@fonderie/billing` · **Target:** `5.2.0` (additive), cleanup in `6.0.0`
+
+> **Implementation is blocked on §16.1 (transfer race) and §16.3 (legacy subscription
+> mapping); §16.9 (kill-switch) is strongly recommended before rollout.** See
+> §16 for the full failure-mode analysis.
 
 ## 1. Goal
 
@@ -133,22 +137,37 @@ change.
 
 ## 10. Boot-time config guard
 
-Extend config validation (like the `jwtSecret` guard): on `boot()`, resolve every
-configured `lookupKey`. Any that doesn't resolve to an active Stripe price → **fail
-fast** with a clear error (catches typos / un-transferred keys before checkout).
+On `boot()`, resolve every configured `lookupKey` — and **warm the cache** with the
+results (§16.2). Behaviour on an unresolved key is **a warning, not fatal**, because
+a deploy can legitimately coincide with a `lookup_key` transfer window (§16.1); a
+fatal guard would make price changes unsafe. Provide `pricing.validateOnBoot: 'warn'
+| 'error' | 'off'` (default `warn`) so strict environments can opt into fail-fast.
 
-## 11. `nickname` → no longer plan identity
+## 11. Plan attribution for subscriptions (dual mapping)
 
-`normalizeSubscription` maps plan via `price.nickname` today. Prefer mapping the
-subscription's `price.lookup_key` (or product) back to the Fonderie plan by matching
-config `lookupKey`. Robust even when a nickname is missing.
+`normalizeSubscription` maps plan via `price.nickname` today. Active subscriptions
+created before this change reference legacy prices that may have **no `lookup_key`**,
+so we cannot drop the old mapping until they churn (§16.3). Resolve plan by
+**precedence**, first match wins:
+
+1. `price.lookup_key` → config `lookupKey`  (preferred)
+2. `price.id` → config `priceId`            (deprecated)
+3. `price.nickname` → config `name`         (legacy, sunset)
+
+Each fallback logs a deprecation warning tagged with the subscription id. **Sunset:**
+keep (2) and (3) until the last subscription created before `5.2.0` has renewed or
+ended; earliest removal `6.0.0`, gated on a "no legacy-mapped subscriptions in the
+last 30 days" metric.
 
 ## 12. Backward compatibility & versioning
 
 - Additive & non-breaking: `lookupKey` optional; `priceId`/`amount` still work
   (deprecated, warn once). → **minor `5.2.0`**.
 - Deprecate `amount`/`currency` duplication in JSDoc/docs now; **remove in `6.0.0`**.
-- `fonderie_plans.*_amount` becomes derived/cache-only (dropped in `6.0`).
+- `fonderie_plans.*_amount` becomes derived/cache-only. **DB migration (§16.6):**
+  `5.2.0` migration makes `monthly_amount`/`yearly_amount` **NULLable** and code stops
+  writing them (dropping them in `5.2.0` would break rollback / old readers); `6.0.0`
+  drops the columns after all readers are gone.
 
 ## 13. Migration for a user
 
@@ -164,14 +183,83 @@ the cache. **No Fonderie change.**
 - `resolvePricesByLookupKey` maps Stripe → `IResolvedPrice` (mock provider).
 - `GET /plans` reflects Stripe amount/currency; falls back to deprecated `amount`
   when no `lookupKey`; sets `pricingStale` on provider failure.
-- Cache TTL + webhook invalidation.
+- Cache TTL + webhook invalidation; single-flight dedup coalesces concurrent misses (§16.2).
 - Checkout/upgrade resolve the current price after a lookup_key transfer.
-- Boot guard fails on an unresolvable lookup_key.
+- Boot guard **warns** (not throws) on an unresolvable lookup_key at `validateOnBoot: 'warn'` (§10).
+- Transfer-race grace: on a transient resolution miss, serves last-cached price within `transferGraceMs` (§16.1).
+- Currency-mismatch validation throws when monthly/yearly resolve to different currencies (§16.4).
+- Webhook dedup: replaying the same `event.id` invalidates the cache once (§16.5).
+- Max-staleness: past `maxStaleMs`, plan DTO is `pricingStale`/unavailable, not a wrong price (§16.8).
+- Kill-switch off (`lookupKeyHydration: false`) → deprecated `amount`/`currency` path (§16.9).
+- Renewal: a lookup_key transfer does **not** change an existing subscription's next invoice (§16.11).
 
 ## 15. Out of scope
 
 Tax, Stripe automatic multi-currency, and coupons stay Stripe-native; Fonderie
 passes the resolved `priceId` to Checkout/subscription APIs.
+
+**Existing subscribers are NOT re-priced (§16.11).** Stripe charges the `priceId`
+pinned to the subscription item at renewal — transferring a `lookup_key` only affects
+*new* checkouts/upgrades. Migrating live subscribers to a new price is an explicit,
+separate operation (bulk `subscriptions.update` per item) and is out of scope here.
+
+---
+
+## 16. Edge cases, failure modes & operational hardening
+
+Incorporated from design review. Items **16.1** and **16.3** block implementation;
+**16.9** is required before rollout.
+
+**16.1 — `lookup_key` transfer race (BLOCKER).** During a transfer A→B there is a
+brief window with **zero** active prices for the key. Runtime resolution must tolerate
+a transient miss and serve the **last-cached price even if TTL-expired**, for a grace
+window (`pricing.transferGraceMs`, default 1h). Boot guard is non-fatal (§10).
+
+**16.2 — Cache stampede on cold start.** Empty cache + traffic spike ⇒ concurrent
+Stripe calls per key. Fix: warm the cache from the boot guard resolution, and add a
+**single-flight `Promise` dedup map** so concurrent misses for the same key share one
+Stripe request.
+
+**16.3 — Legacy subscriptions with no `lookup_key` (BLOCKER).** See the dual-mapping
+precedence and sunset gate in §11. Do **not** remove nickname/priceId mapping while
+pre-`5.2.0` subscriptions are still active.
+
+**16.4 — Currency mismatch monthly vs yearly.** DTO hydration must **validate** that a
+plan's resolved monthly/yearly prices share a currency; mismatch ⇒ throw (config/Stripe
+error) rather than silently emit inconsistent pricing.
+
+**16.5 — Webhook robustness.** For the price/product events (§8): (a) verify the
+signature via `constructEvent` (same path as subscription webhooks); (b) **dedupe** on
+Stripe `event.id` (store processed ids ~24h) since Stripe re-delivers; (c) treat
+ordering as unreliable — invalidate the cache on `price.created`/`price.updated`/
+`price.deleted` regardless of arrival order (invalidate-and-refetch is order-safe).
+
+**16.6 — `fonderie_plans` migration.** NULLable amounts in `5.2.0`, stop writing, drop
+in `6.0.0` — see §12. Guards against NOT NULL failures and old readers.
+
+**16.7 — Price change mid-checkout.** A Checkout session created with the old `priceId`
+stays valid (Prices are immutable), so the user pays the **old** amount. **Policy:**
+accept it — price changes apply to *new* checkouts only; document it. (Expiring live
+sessions on price change is impractical.)
+
+**16.8 — Extended Stripe outage.** Define **max staleness** (`pricing.maxStaleMs`,
+default 24h): serve last-cached within it; beyond it, return `pricingStale: true` with
+`unavailable` semantics rather than very-wrong prices. Emit a metric/alarm whenever a
+`pricingStale` response is served.
+
+**16.9 — Kill-switch / phased rollout (REQUIRED).** This changes how money is read, so
+gate it behind `pricing.lookupKeyHydration: boolean` (config, flippable without deploy).
+When off, fall back to the deprecated hardcoded `amount`/`currency` path. Lets us revert
+instantly if hydration misbehaves.
+
+**16.10 — Stripe test/live parity.** A `lookup_key` must exist in **both** Test and
+Live. Add a release-checklist item, and have the boot guard warn (§10) when a key is
+missing so staging surfaces it before prod.
+
+**16.11 — Renewal does not re-price.** Documented in §15 — the spec's tests cover
+checkout/upgrade resolution; renewal bills the subscription item's pinned price. Add a
+test asserting a `lookup_key` transfer does **not** change an existing subscription's
+next invoice.
 
 ---
 
