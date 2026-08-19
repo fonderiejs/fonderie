@@ -11,6 +11,28 @@ export function getPlanByName(name: string, config: IBillingConfig): IBillingPla
 	return config.plans.find((p) => p.name.toLowerCase() === name.toLowerCase()) ?? null;
 }
 
+/**
+ * Attribute a subscription to a Fonderie plan by its price, precedence
+ * `lookup_key → priceId` (§16.3). Pure — pass the plans list. Returns null so the
+ * caller can fall back to the legacy nickname-derived plan.
+ */
+export function resolvePlanNameByPrice(
+	price: { lookupKey?: string | null; priceId?: string | null },
+	plans: IBillingPlan[],
+): string | null {
+	const find = (pred: (p?: { lookupKey?: string; priceId?: string }) => boolean) =>
+		plans.find((pl) => pred(pl.monthly) || pred(pl.yearly))?.name ?? null;
+	if (price.lookupKey) {
+		const m = find((p) => p?.lookupKey === price.lookupKey);
+		if (m) return m;
+	}
+	if (price.priceId) {
+		const m = find((p) => p?.priceId === price.priceId);
+		if (m) return m;
+	}
+	return null;
+}
+
 export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter): Promise<void> {
 	const plans = config.plans;
 	if (plans.length === 0) return;

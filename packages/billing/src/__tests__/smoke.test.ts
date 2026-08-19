@@ -916,3 +916,89 @@ test('PriceCache: serves last-cached on transient miss within grace', async () =
 	assert.equal(second.price?.unitAmount, 1500); // served from cache
 	assert.equal(second.stale, true);
 });
+
+// ── webhook: dual-mapping (§16.3) + cache invalidation (§8) ────────
+
+const webhookCtx = (body: string): any => ({
+	request: new Request('http://localhost/webhook', {
+		method: 'POST',
+		headers: { 'stripe-signature': 't=1,v1=stub' },
+		body,
+	}),
+	meta: {},
+});
+
+const normalizedSub = (over: Record<string, unknown> = {}) => ({
+	subscriberType: 'workspace' as const, subscriberId: 'ws-1',
+	plan: 'wrong-nickname', priceLookupKey: null, priceId: null,
+	status: 'active', interval: 'month' as const,
+	providerCustomerId: 'cus', providerSubscriptionId: 'sub',
+	currentPeriodStart: new Date(), currentPeriodEnd: new Date(),
+	cancelAtPeriodEnd: false, trialEndsAt: null,
+	...over,
+});
+
+function captureStore(): { store: IStoreAdapter; plan: () => string | undefined } {
+	let capturedPlan: string | undefined;
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('fonderie_subscriptions') && !sql.trimStart().startsWith('SELECT')) {
+				capturedPlan = params?.[2] as string; // (subscriber_type, subscriber_id, plan, …)
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return { store, plan: () => capturedPlan };
+}
+
+test('webhook: maps plan from priceId (dual-mapping), not the nickname', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const cap = captureStore();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.updated',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly' }) as any,
+		}),
+	});
+	const ctrl = webhookController(cap.store, { ...config, provider, webhookSecret: 'whsec_x' });
+	const res = await ctrl.handle(webhookCtx('{}'));
+	assert.equal(res.status, 200);
+	assert.equal(cap.plan(), 'pro'); // resolved from price_pro_monthly, not 'wrong-nickname'
+});
+
+test('webhook: deletion stays free/canceled (dual-mapping not applied)', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const cap = captureStore();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.deleted',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly', plan: 'free', status: 'canceled' }) as any,
+		}),
+	});
+	const ctrl = webhookController(cap.store, { ...config, provider, webhookSecret: 'whsec_x' });
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(cap.plan(), 'free'); // NOT re-mapped to 'pro'
+});
+
+test('webhook: price.updated invalidates the price cache (§8)', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const cache = new PriceCache();
+	let invalidated = false;
+	const orig = cache.invalidate.bind(cache);
+	cache.invalidate = (k?: string) => { invalidated = true; orig(k); };
+	const provider = makeProvider({
+		constructEvent: async () => ({ type: 'price.updated', subscription: null }),
+	});
+	const ctrl = webhookController(captureStore().store, { ...config, provider, webhookSecret: 'whsec_x' }, cache);
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(invalidated, true);
+});
+
+test('resolvePlanNameByPrice: lookup_key wins, then priceId, else null', async () => {
+	const { resolvePlanNameByPrice } = await import('../services/plans');
+	const plans = config.plans;
+	assert.equal(resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_pro_monthly' }, plans), 'pro');
+	assert.equal(resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_starter_yearly' }, plans), 'starter');
+	assert.equal(resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_unknown' }, plans), null);
+});

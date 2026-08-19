@@ -3,9 +3,11 @@ import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IBillingConfig } from '../config';
+import type { PriceCache } from '../services/price-cache';
 import { SubscriptionModel } from '../models/subscription.model';
+import { resolvePlanNameByPrice } from '../services/plans';
 
-export function webhookController(store: IStoreAdapter, config: IBillingConfig) {
+export function webhookController(store: IStoreAdapter, config: IBillingConfig, priceCache?: PriceCache) {
 	const subscriptions = new SubscriptionModel(store);
 
 	return {
@@ -36,11 +38,25 @@ export function webhookController(store: IStoreAdapter, config: IBillingConfig) 
 				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Invalid webhook signature');
 			}
 
+			// §8: keep the price cache honest. Invalidate on any price/product change
+			// regardless of arrival order (invalidate-and-refetch is order-safe).
+			if (priceCache && (event.type.startsWith('price.') || event.type.startsWith('product.'))) {
+				priceCache.invalidate();
+			}
+
 			if (event.subscription) {
+				// A deletion resolves to the free/canceled state set by the provider;
+				// otherwise map the plan from the price (dual-mapping), falling back to
+				// the nickname-derived value.
+				const plan =
+					event.type === 'customer.subscription.deleted'
+						? event.subscription.plan
+						: resolvePlanNameByPrice(event.subscription, config.plans) ?? event.subscription.plan;
+
 				await subscriptions.upsert({
 					subscriberType: event.subscription.subscriberType,
 					subscriberId: event.subscription.subscriberId,
-					plan: event.subscription.plan,
+					plan,
 					interval: event.subscription.interval,
 					status: event.subscription.status,
 					providerCustomerId: event.subscription.providerCustomerId,
