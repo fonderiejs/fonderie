@@ -64,3 +64,12 @@ jobs:
       # to a route registered by its server package.
       - run: npm run check:routes
       - run: npm test
+      # Reference example apps (examples/*) are standalone — they consume the
+      # published @fonderie/* packages, so they install + test on their own
+      # (pure unit tests, no DB needed).
+      - name: Test example apps
+        run: |
+          for e in examples/example-hono examples/example-express examples/example-koa; do
+            echo "== $e =="
+            ( cd "$e" && npm install --no-audit --no-fund && npm test )
+          done
