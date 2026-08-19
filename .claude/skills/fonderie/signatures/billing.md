@@ -16,6 +16,9 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
   .name: "stripe"
   .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>
   .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; }): Promise<{ url: string; }>
+  .resolvePriceById(priceId: string): Promise<IResolvedPrice | null>
+  .resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>
+  .updateSubscription(opts: { subscriptionId: string; priceId: string; }): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null; }>
   .createPortalSession(opts: { customerId: string; returnUrl: string; }): Promise<{ url: string; }>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
 
@@ -43,6 +46,7 @@ interface IBillingConfig {
         backend?: RateLimitBackendConfig;
     };
     notifications?: IBillingNotificationsConfig;
+    pricing?: IBillingPricingConfig;
 }
 
 interface IBillingPlan {
@@ -60,6 +64,19 @@ interface IBillingPlan {
 interface IBillingPlanDefaults {
     warnAt?: number;
     buffer?: number;
+}
+
+interface IBillingPlanPrice {
+    lookupKey?: string;
+    priceId?: string;
+    amount?: number;
+}
+
+interface IBillingPricingConfig {
+    hydration?: boolean;
+    cacheTtlMs?: number;
+    transferGraceMs?: number;
+    maxStaleMs?: number;
 }
 
 type RateLimitBackendConfig = 'memory' | 'db' | ICounterBackend;
@@ -84,6 +101,10 @@ interface ICounterBackend {
     get(key: string, windowMs: number | null): Promise<number>;
 }
 
+const BILLING_INTERVAL: { readonly MONTH: "month"; readonly YEAR: "year"; }
+
+type BillingInterval = (typeof BILLING_INTERVAL)[keyof typeof BILLING_INTERVAL];
+
 interface IBillingProvider {
     name: string;
     createCustomer(opts: {
@@ -105,6 +126,16 @@ interface IBillingProvider {
     }): Promise<{
         url: string;
     }>;
+    resolvePriceById(priceId: string): Promise<IResolvedPrice | null>;
+    resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>;
+    updateSubscription(opts: {
+        subscriptionId: string;
+        priceId: string;
+    }): Promise<{
+        status: string;
+        currentPeriodStart: Date | null;
+        currentPeriodEnd: Date | null;
+    }>;
     createPortalSession(opts: {
         customerId: string;
         returnUrl: string;
@@ -121,6 +152,17 @@ interface IBillingProvider {
 interface IBillingEvent {
     type: string;
     subscription: INormalizedSubscription | null;
+}
+
+interface IResolvedPrice {
+    priceId: string;
+    lookupKey: string | null;
+    unitAmount: number;
+    currency: string;
+    interval: 'month' | 'year';
+    nickname: string | null;
+    productId: string;
+    active: boolean;
 }
 
 interface IPlan {
@@ -211,6 +253,7 @@ interface IPlanDTO {
         yearly: number;
         currency: string;
     };
+    pricingStale?: boolean;
     features: IPlanFeature[];
     metadata: Record<string, unknown>;
 }
