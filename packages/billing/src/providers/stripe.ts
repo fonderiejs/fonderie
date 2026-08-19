@@ -6,9 +6,17 @@ interface IStripeSubscriptionRaw {
 	status: string;
 	customer: string;
 	metadata?: Record<string, string>;
-	items: { data: Array<{ price: { id: string; nickname: string | null; recurring?: { interval: string } } }> };
-	current_period_start: number;
-	current_period_end: number;
+	items: {
+		data: Array<{
+			price: { id: string; nickname: string | null; recurring?: { interval: string } };
+			// Since Stripe API 2025+, the period lives on the item, not the subscription.
+			current_period_start?: number;
+			current_period_end?: number;
+		}>;
+	};
+	// Older API versions (pre-2025) expose the period on the subscription itself.
+	current_period_start?: number;
+	current_period_end?: number;
 	cancel_at_period_end: boolean;
 	trial_end: number | null;
 }
@@ -37,18 +45,23 @@ async function getClient(secretKey: string): Promise<unknown> {
 }
 
 function normalizeSubscription(sub: IStripeSubscriptionRaw): INormalizedSubscription {
+	const item = sub.items.data[0];
+	// Period moved from the subscription to the item in Stripe API 2025+; read the
+	// item first, fall back to the subscription-level fields for older versions.
+	const periodStart = item?.current_period_start ?? sub.current_period_start;
+	const periodEnd = item?.current_period_end ?? sub.current_period_end;
 	return {
 		subscriberType: (sub.metadata?.['subscriberType'] ?? 'workspace') as SubscriberType,
 		subscriberId: sub.metadata?.['subscriberId'] ?? '',
-		plan: sub.items.data[0]?.price.nickname ?? 'unknown',
+		plan: item?.price.nickname ?? 'unknown',
 		status: sub.status,
 		providerCustomerId: sub.customer,
 		providerSubscriptionId: sub.id,
-		currentPeriodStart: new Date(sub.current_period_start * 1000),
-		currentPeriodEnd: new Date(sub.current_period_end * 1000),
+		currentPeriodStart: periodStart ? new Date(periodStart * 1000) : new Date(),
+		currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : new Date(),
 		cancelAtPeriodEnd: sub.cancel_at_period_end,
 		trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-		interval: sub.items.data[0]?.price.recurring?.interval === 'year' ? 'year' : 'month',
+		interval: item?.price.recurring?.interval === 'year' ? 'year' : 'month',
 	};
 }
 
