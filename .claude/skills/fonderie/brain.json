@@ -6,7 +6,7 @@
     "adapter-koa": "5.0.0",
     "audit": "5.0.0",
     "auth": "5.0.0",
-    "billing": "5.1.0",
+    "billing": "5.2.0",
     "client": "0.4.0",
     "config": "5.0.0",
     "core": "0.5.0",
@@ -296,7 +296,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "5.1.0",
+      "version": "5.2.0",
       "requires": [
         "core",
         "store"
@@ -306,7 +306,8 @@
         "StripeProvider",
         "MESSAGE_KEYS",
         "MemoryCounterBackend",
-        "DBCounterBackend"
+        "DBCounterBackend",
+        "BILLING_INTERVAL"
       ],
       "subpaths": [
         "@fonderie/billing/types",
@@ -3401,6 +3402,9 @@
       "billing"
     ],
     "dbcounterbackend": [
+      "billing"
+    ],
+    "billing_interval": [
       "billing"
     ],
     "fonderieclient": [
