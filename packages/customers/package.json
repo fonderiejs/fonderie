@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/customers",
-	"version": "5.1.0",
+	"version": "6.0.0",
 	"description": "Workspace-scoped customer records — individuals and businesses with multiple emails, phones, addresses, notes, and tags.",
 	"keywords": [
 		"fonderiejs",
