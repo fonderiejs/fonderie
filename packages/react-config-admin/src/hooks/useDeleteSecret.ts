@@ -8,6 +8,7 @@ export interface IUseDeleteSecretReturn {
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useSecrets().removeSecret` instead — it refreshes the list after deleting. */
 export function useDeleteSecret(client: ConfigAdminClient): IUseDeleteSecretReturn {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);

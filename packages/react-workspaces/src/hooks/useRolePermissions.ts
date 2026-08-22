@@ -7,7 +7,7 @@ export interface IUseRolePermissionsReturn {
 	permissions: IRolePermission[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	// Writes the full permission set for the role, then re-reads it — the
 	// read/write pair lives in one hook so editors can pre-populate.
 	setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
@@ -30,20 +30,23 @@ export function useRolePermissions(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await workspaces.getRolePermissions(roleId);
-			setPermissions(result.permissions);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [workspaces, roleId]);
+	const refresh = useCallback(
+		async (opts?: { force?: boolean }) => {
+			setIsLoading(true);
+			setError(null);
+			try {
+				const { result } = await workspaces.getRolePermissions(roleId, { bust: opts?.force });
+				setPermissions(result.permissions);
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[workspaces, roleId],
+	);
 
 	const setRolePermissions = useCallback(
 		async (input: IRolePermissionInput[]) => {

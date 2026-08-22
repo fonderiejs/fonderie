@@ -145,29 +145,29 @@ interface IWorkspaceSettingsDTO {
 new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listWorkspaces(): Promise<IApiResponse<IWorkspaceListResult>>
+  .listWorkspaces(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceListResult>>
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
-  .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
+  .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
   .restoreWorkspace(): Promise<IApiResponse<undefined>>
-  .listRoles(): Promise<IApiResponse<IRoleListResult>>
+  .listRoles(opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
-  .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
+  .getRole(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
   .removeRole(roleId: string): Promise<IApiResponse<undefined>>
-  .getRolePermissions(roleId: string): Promise<IApiResponse<IRolePermissionsResult>>
+  .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
-  .listMembers(): Promise<IApiResponse<IMemberListResult>>
+  .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>
-  .getMemberRoles(userId: string): Promise<IApiResponse<IRoleListResult>>
+  .getMemberRoles(userId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
-  .listInvitations(): Promise<IApiResponse<IInvitationListResult>>
+  .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
   .acceptInvitation(pin: string): Promise<IApiResponse<IAcceptInvitationResult>>
-  .getSettings(): Promise<IApiResponse<IWorkspaceSettingsResult>>
+  .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
 interface IUseAcceptInvitationReturn {
@@ -186,7 +186,9 @@ interface IUseInvitationsReturn {
     invitations: IInvitationDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
     cancelInvitation: (inviteId: string) => Promise<void>;
 }
@@ -195,7 +197,9 @@ interface IUseMemberRolesReturn {
     roles: IRoleDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     addRole: (roleId: string) => Promise<void>;
     removeRole: (roleId: string) => Promise<void>;
 }
@@ -204,7 +208,10 @@ interface IUseMembersReturn {
     members: IMemberDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    removeMember: (userId: string) => Promise<void>;
 }
 
 interface IUseRemoveMemberReturn {
@@ -217,7 +224,9 @@ interface IUseRolePermissionsReturn {
     permissions: IRolePermission[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
 }
 
@@ -225,8 +234,11 @@ interface IUseRolesReturn {
     roles: IRoleDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
+    updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
     removeRole: (roleId: string) => Promise<void>;
 }
 
@@ -254,7 +266,9 @@ interface IUseWorkspaceSettingsReturn {
     settings: IWorkspaceSettingsDTO | null;
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     updateSettings: (input: IUpdateSettingsInput) => Promise<void>;
 }
 
@@ -262,7 +276,11 @@ interface IUseWorkspacesReturn {
     workspaces: IWorkspaceDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
+    acceptInvitation: (pin: string) => Promise<string>;
 }
 
 function useAcceptInvitation(client?: WorkspacesClient | undefined): IUseAcceptInvitationReturn

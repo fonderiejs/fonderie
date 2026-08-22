@@ -7,7 +7,7 @@ export interface IUseCustomersReturn {
 	customers: ICustomerDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	// Pagination over the same params: total matching rows server-side,
 	// whether more pages exist, and an append-fetch of the next page.
 	total: number;
@@ -44,11 +44,11 @@ export function useCustomers(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listCustomers(params);
+			const { result } = await client.listCustomers(params, { bust: opts?.force });
 			setCustomers(result.customers);
 			setTotal(result.total);
 		} catch (err) {

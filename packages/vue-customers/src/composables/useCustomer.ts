@@ -12,7 +12,7 @@ export interface IUseCustomerReturn {
 	customer: Ref<ICustomerDetailDTO | ICustomerDetailD2DTO | null>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateCustomer: (input: IUpdateCustomerInput) => Promise<void>;
 }
 
@@ -39,7 +39,7 @@ export function useCustomer(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!customerId) {
 			isLoading.value = false;
 			return;
@@ -47,7 +47,7 @@ export function useCustomer(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.getCustomer(customerId, { depth });
+			const { result } = await customers.getCustomer(customerId, { depth }, { bust: opts?.force });
 			customer.value = result;
 		} catch (err) {
 			const apiError =

@@ -2,6 +2,7 @@ import type { ConfigAdminClient, ISetConfigInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { ref } from 'vue';
 
+/** @deprecated Use useConfigEntries(client).saveEntry — the list composable self-refreshes after the write. */
 export function useSaveConfigEntry(client: ConfigAdminClient) {
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);

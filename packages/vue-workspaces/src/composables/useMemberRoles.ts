@@ -8,7 +8,7 @@ export interface IUseMemberRolesReturn {
 	roles: Ref<IRoleDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addRole: (roleId: string) => Promise<void>;
 	removeRole: (roleId: string) => Promise<void>;
 }
@@ -30,11 +30,11 @@ export function useMemberRoles(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await workspaces.getMemberRoles(userId);
+			const { result } = await workspaces.getMemberRoles(userId, { bust: opts?.force });
 			roles.value = result.roles;
 		} catch (err) {
 			const apiError =

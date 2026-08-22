@@ -3,12 +3,14 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+/** @deprecated Use `useWorkspaces().createWorkspace` instead — the list hook self-refreshes after the write. */
 export interface IUseCreateWorkspaceReturn {
 	createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useWorkspaces().createWorkspace` instead — the list hook self-refreshes after the write. */
 export function useCreateWorkspace(client?: WorkspacesClient): IUseCreateWorkspaceReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useCreateWorkspace');
 	const [isLoading, setIsLoading] = useState(false);

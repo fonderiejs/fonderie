@@ -6,7 +6,7 @@ export interface IUseCustomerTagsReturn {
 	tags: string[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addTag: (tag: string) => Promise<void>;
 	removeTag: (tag: string) => Promise<void>;
 }
@@ -28,7 +28,7 @@ export function useCustomerTags(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		if (!customerId) {
 			setIsLoading(false);
 			return;
@@ -36,7 +36,7 @@ export function useCustomerTags(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await customers.listTags(customerId);
+			const { result } = await customers.listTags(customerId, { bust: opts?.force });
 			setTags(result.tags);
 		} catch (err) {
 			const apiError =

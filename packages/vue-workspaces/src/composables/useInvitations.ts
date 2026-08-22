@@ -9,11 +9,11 @@ export function useInvitations(client?: WorkspacesClient) {
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await workspaces.listInvitations();
+			const { result } = await workspaces.listInvitations({ bust: opts?.force });
 			invitations.value = result.invitations;
 		} catch (err) {
 			const apiError =

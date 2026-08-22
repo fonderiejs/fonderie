@@ -8,7 +8,7 @@ export interface IUseCustomersReturn {
 	customers: Ref<ICustomerDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	// Pagination over the same params: total matching rows server-side,
 	// whether more pages exist, and an append-fetch of the next page.
 	total: Ref<number>;
@@ -40,11 +40,11 @@ export function useCustomers(
 
 	const hasMore = computed(() => customers.value.length < total.value);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customersClient.listCustomers(params);
+			const { result } = await customersClient.listCustomers(params, { bust: opts?.force });
 			customers.value = result.customers;
 			total.value = result.total;
 		} catch (err) {

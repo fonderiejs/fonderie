@@ -3,6 +3,7 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
+/** @deprecated Use useRolePermissions(roleId).setRolePermissions — the list hook self-refreshes after the write. */
 export function useSetRolePermissions(client?: WorkspacesClient) {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useSetRolePermissions');
 	const isLoading = ref(false);

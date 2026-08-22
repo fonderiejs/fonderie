@@ -3,6 +3,7 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
+/** @deprecated Use useWorkspaces().acceptInvitation — the list hook self-refreshes after the write. */
 export function useAcceptInvitation(client?: WorkspacesClient) {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useAcceptInvitation');
 	const isLoading = ref(false);

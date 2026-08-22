@@ -1,3 +1,9 @@
+// Per-call read options accepted by the typed sub-clients' GET methods.
+export interface IReadOptions {
+	// Ignore any cached value and refresh it (pull-to-refresh semantics).
+	bust?: boolean | undefined;
+}
+
 // ── Envelope ─────────────────────────────────────────────────────────────────
 
 export interface IApiResponse<T = undefined> {

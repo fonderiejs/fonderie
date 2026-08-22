@@ -13,11 +13,11 @@ export function useWorkspaceSettings(client?: WorkspacesClient) {
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await workspaces.getSettings();
+			const { result } = await workspaces.getSettings({ bust: opts?.force });
 			settings.value = result.settings;
 		} catch (err) {
 			const apiError =

@@ -16,7 +16,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .verifyEmail(token: string): Promise<IApiResponse<IVerifyEmailResult>>
   .logout(refreshToken?: string | undefined): Promise<IApiResponse<undefined>>
   .sendVerificationEmail(): Promise<IApiResponse<IResendVerificationResult>>
-  .getUser(): Promise<IApiResponse<IMeResult>>
+  .getUser(opts?: IReadOptions | undefined): Promise<IApiResponse<IMeResult>>
   .updateProfile(input: IUpdateProfileInput): Promise<IApiResponse<IMeResult>>
   .updatePreferences(input: IUpdatePreferencesInput): Promise<IApiResponse<IMeResult>>
   .updateEmail(email: string): Promise<IApiResponse<unknown>>
@@ -161,7 +161,9 @@ interface IUseMfaSetupReturn {
 
 interface IUseProfileReturn {
     user: Ref<IUserDTO | null>;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     updateProfile: (input: IUpdateProfileInput) => Promise<IUserDTO>;
     updatePreferences: (input: IUpdatePreferencesInput) => Promise<IUserDTO>;
     updateEmail: (email: string) => Promise<void>;
@@ -190,7 +192,7 @@ function useRegister(client?: AuthClient | undefined): { register: (input: IRegi
 
 function useResetPassword(client?: AuthClient | undefined): { resetPassword: (input: IResetPasswordInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; done: Ref<...>; }
 
-function useSession(client?: AuthClient | undefined): { user: Ref<{ id: string; email: string; firstName: string; lastName: string; phone: string; profileImageUrl: string; isActive: boolean; lastLogin: string; ... 8 more ...; updatedAt: string; } | null, IUserDTO | ... 1 more ... | null>; isLoading: Ref<...>; isAuthenticated: Ref<...>; refresh: () => Promise<...>; logout: (refreshToken?: string | undefined) => Promise<...>; }
+function useSession(client?: AuthClient | undefined): { user: Ref<{ id: string; email: string; firstName: string; lastName: string; phone: string; profileImageUrl: string; isActive: boolean; lastLogin: string; ... 8 more ...; updatedAt: string; } | null, IUserDTO | ... 1 more ... | null>; isLoading: Ref<...>; isAuthenticated: Ref<...>; refresh: (opts?: { ...; } | undefined) => Promise<...>; logout: (refreshToken?: string | undefined) => Promise<...>; }
 
 function useVerifyEmail(client?: AuthClient | undefined): { verifyEmail: (pin: string) => Promise<IVerifyEmailResult>; resend: () => Promise<void>; resent: Ref<...>; isLoading: Ref<...>; error: Ref<...>; data: Ref<...>; }
 

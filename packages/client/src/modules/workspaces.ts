@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IReadOptions,
 	IAcceptInvitationResult,
 	IApiResponse,
 	IInvitationListResult,
@@ -103,11 +104,12 @@ export class WorkspacesClient {
 
 	// ── Workspace creation + listing ─────────────────────────────────────────────
 
-	listWorkspaces() {
+	listWorkspaces(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWorkspaceListResult>>({
 			method: 'GET',
 			path: '/workspaces',
 			token: this.tokens.get(),
+			bust: opts?.bust,
 		});
 	}
 
@@ -120,11 +122,12 @@ export class WorkspacesClient {
 		});
 	}
 
-	getWorkspace(id: string) {
+	getWorkspace(id: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWorkspaceResult>>({
 			method: 'GET',
 			path: `/workspaces/${id}`,
 			token: this.tokens.get(),
+			bust: opts?.bust,
 		});
 	}
 
@@ -159,12 +162,13 @@ export class WorkspacesClient {
 
 	// ── Roles ────────────────────────────────────────────────────────────────────
 
-	listRoles() {
+	listRoles(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IRoleListResult>>({
 			method: 'GET',
 			path: '/workspaces/roles',
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -178,12 +182,13 @@ export class WorkspacesClient {
 		});
 	}
 
-	getRole(roleId: string) {
+	getRole(roleId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IRoleResult>>({
 			method: 'GET',
 			path: `/workspaces/roles/${roleId}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -206,12 +211,13 @@ export class WorkspacesClient {
 		});
 	}
 
-	getRolePermissions(roleId: string) {
+	getRolePermissions(roleId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IRolePermissionsResult>>({
 			method: 'GET',
 			path: `/workspaces/roles/${roleId}/permissions`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -227,12 +233,13 @@ export class WorkspacesClient {
 
 	// ── Members ──────────────────────────────────────────────────────────────────
 
-	listMembers() {
+	listMembers(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IMemberListResult>>({
 			method: 'GET',
 			path: '/workspaces/members',
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -245,12 +252,13 @@ export class WorkspacesClient {
 		});
 	}
 
-	getMemberRoles(userId: string) {
+	getMemberRoles(userId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IRoleListResult>>({
 			method: 'GET',
 			path: `/workspaces/members/${userId}/roles`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -275,12 +283,13 @@ export class WorkspacesClient {
 
 	// ── Invitations ──────────────────────────────────────────────────────────────
 
-	listInvitations() {
+	listInvitations(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IInvitationListResult>>({
 			method: 'GET',
 			path: '/workspaces/invitations',
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -314,12 +323,13 @@ export class WorkspacesClient {
 
 	// ── Settings ─────────────────────────────────────────────────────────────────
 
-	getSettings() {
+	getSettings(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWorkspaceSettingsResult>>({
 			method: 'GET',
 			path: '/workspaces/settings',
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 

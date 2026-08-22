@@ -1,4 +1,4 @@
-import type { ConfigAdminClient, ISecretEntry } from '@fonderie/client';
+import type { ConfigAdminClient, ISecretEntry, ISetSecretInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -7,6 +7,8 @@ export interface IUseSecretsReturn {
 	isLoading: boolean;
 	error: FonderieApiError | null;
 	refresh: () => Promise<void>;
+	saveSecret: (key: string, input: ISetSecretInput) => Promise<ISecretEntry>;
+	removeSecret: (key: string) => Promise<void>;
 }
 
 export function useSecrets(client: ConfigAdminClient, environment?: string): IUseSecretsReturn {
@@ -29,9 +31,42 @@ export function useSecrets(client: ConfigAdminClient, environment?: string): IUs
 		}
 	}, [client, environment]);
 
+	const saveSecret = useCallback(
+		async (key: string, input: ISetSecretInput) => {
+			setError(null);
+			try {
+				const { result } = await client.setSecret(key, input, environment);
+				await refresh();
+				return result;
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+				throw apiError;
+			}
+		},
+		[client, environment, refresh],
+	);
+
+	const removeSecret = useCallback(
+		async (key: string) => {
+			setError(null);
+			try {
+				await client.deleteSecret(key, environment);
+				await refresh();
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+				throw apiError;
+			}
+		},
+		[client, environment, refresh],
+	);
+
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
 
-	return { secrets, isLoading, error, refresh };
+	return { secrets, isLoading, error, refresh, saveSecret, removeSecret };
 }

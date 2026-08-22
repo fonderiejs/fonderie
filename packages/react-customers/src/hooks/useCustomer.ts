@@ -11,7 +11,7 @@ export interface IUseCustomerReturn {
 	customer: ICustomerDetailDTO | ICustomerDetailD2DTO | null;
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateCustomer: (input: IUpdateCustomerInput) => Promise<void>;
 }
 
@@ -37,7 +37,7 @@ export function useCustomer(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		if (!customerId) {
 			setIsLoading(false);
 			return;
@@ -45,7 +45,7 @@ export function useCustomer(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await customers.getCustomer(customerId, { depth });
+			const { result } = await customers.getCustomer(customerId, { depth }, { bust: opts?.force });
 			setCustomer(result);
 		} catch (err) {
 			const apiError =

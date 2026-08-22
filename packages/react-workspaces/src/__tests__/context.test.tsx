@@ -8,7 +8,7 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 
 import type { IUseRolePermissionsReturn } from '../hooks';
-import { useCreateWorkspace, useMemberRoles, useRolePermissions, useWorkspaces } from '../hooks';
+import { useCreateWorkspace, useMemberRoles, useRolePermissions, useWorkspaces, useMembers } from '../hooks';
 
 const fakeWorkspaces = { marker: 'context-workspaces' } as unknown as WorkspacesClient;
 const fakeClient = { workspaces: fakeWorkspaces } as unknown as FonderieClient;
@@ -137,4 +137,38 @@ test('hooks throw a named error without provider or argument', () => {
 			),
 		/useWorkspaces: no client/,
 	);
+});
+
+
+test('refresh({force:true}) passes bust to the client and removeMember folds into useMembers', async () => {
+	const log: unknown[] = [];
+	const fake = {
+		listMembers: async (opts?: { bust?: boolean }) => {
+			log.push(['list', opts?.bust ?? false]);
+			return { reason: 'OK', explanation: '', result: { members: [] } };
+		},
+		removeMember: async (userId: string) => {
+			log.push(['remove', userId]);
+			return { reason: 'OK', explanation: '', result: undefined };
+		},
+	};
+	let captured: ReturnType<typeof useMembers> | undefined;
+	renderToString(
+		createElement(
+			FonderieProvider,
+			{ client: { workspaces: fake } as unknown as FonderieClient },
+			createElement(Probe, {
+				run: () => {
+					captured = useMembers();
+				},
+			}),
+		),
+	);
+	await captured?.refresh({ force: true });
+	await captured?.removeMember('user-9');
+	assert.deepEqual(log, [
+		['list', true],
+		['remove', 'user-9'],
+		['list', false],
+	]);
 });

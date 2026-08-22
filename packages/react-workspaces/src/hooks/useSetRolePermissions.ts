@@ -3,12 +3,14 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+/** @deprecated Use `useRolePermissions(roleId).setRolePermissions` instead — it re-reads the permission set after the write. */
 export interface IUseSetRolePermissionsReturn {
 	setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useRolePermissions(roleId).setRolePermissions` instead — it re-reads the permission set after the write. */
 export function useSetRolePermissions(client?: WorkspacesClient): IUseSetRolePermissionsReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useSetRolePermissions');
 	const [isLoading, setIsLoading] = useState(false);

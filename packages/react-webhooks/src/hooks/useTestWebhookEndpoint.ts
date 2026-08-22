@@ -3,12 +3,14 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+/** @deprecated Use useWebhookDeliveries(endpointId).testEndpoint — it refreshes the delivery list after the test-send. */
 export interface IUseTestWebhookEndpointReturn {
 	testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use useWebhookDeliveries(endpointId).testEndpoint — it refreshes the delivery list after the test-send. */
 export function useTestWebhookEndpoint(client?: WebhooksClient): IUseTestWebhookEndpointReturn {
 	const webhooks = useFonderieSubClient(client, (c) => c.webhooks, 'useTestWebhookEndpoint');
 	const [isLoading, setIsLoading] = useState(false);

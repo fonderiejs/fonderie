@@ -8,7 +8,7 @@ export interface IUseCustomerAddressesReturn {
 	addresses: Ref<ICustomerAddressDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addAddress: (input: IAddAddressInput) => Promise<ICustomerAddressDTO>;
 	updateAddressLabel: (addrId: string, label: string) => Promise<void>;
 	setPrimaryAddress: (addrId: string) => Promise<void>;
@@ -33,7 +33,7 @@ export function useCustomerAddresses(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!customerId) {
 			isLoading.value = false;
 			return;
@@ -41,7 +41,7 @@ export function useCustomerAddresses(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listAddresses(customerId);
+			const { result } = await customers.listAddresses(customerId, { bust: opts?.force });
 			addresses.value = result.addresses;
 		} catch (err) {
 			const apiError =

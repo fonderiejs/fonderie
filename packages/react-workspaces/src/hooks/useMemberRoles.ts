@@ -7,7 +7,7 @@ export interface IUseMemberRolesReturn {
 	roles: IRoleDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addRole: (roleId: string) => Promise<void>;
 	removeRole: (roleId: string) => Promise<void>;
 }
@@ -29,20 +29,23 @@ export function useMemberRoles(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await workspaces.getMemberRoles(userId);
-			setRoles(result.roles);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [workspaces, userId]);
+	const refresh = useCallback(
+		async (opts?: { force?: boolean }) => {
+			setIsLoading(true);
+			setError(null);
+			try {
+				const { result } = await workspaces.getMemberRoles(userId, { bust: opts?.force });
+				setRoles(result.roles);
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[workspaces, userId],
+	);
 
 	const addRole = useCallback(
 		async (roleId: string) => {

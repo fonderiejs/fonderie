@@ -7,7 +7,7 @@ export interface IUseCustomerEmailsReturn {
 	emails: ICustomerEmailDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addEmail: (input: IAddEmailInput) => Promise<ICustomerEmailDTO>;
 	updateEmailLabel: (emailId: string, label: string) => Promise<void>;
 	setPrimaryEmail: (emailId: string) => Promise<void>;
@@ -31,7 +31,7 @@ export function useCustomerEmails(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		if (!customerId) {
 			setIsLoading(false);
 			return;
@@ -39,7 +39,7 @@ export function useCustomerEmails(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await customers.listEmails(customerId);
+			const { result } = await customers.listEmails(customerId, { bust: opts?.force });
 			setEmails(result.emails);
 		} catch (err) {
 			const apiError =

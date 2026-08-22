@@ -1,4 +1,4 @@
-import type { IWebhookDeliveryDTO } from '@fonderie/client';
+import type { ITestWebhookResult, IWebhookDeliveryDTO } from '@fonderie/client';
 import { FonderieApiError, WebhooksClient } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
@@ -7,7 +7,10 @@ export interface IUseWebhookDeliveriesReturn {
 	deliveries: IWebhookDeliveryDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	// Test-sends to this hook's endpoint, then refreshes so the new delivery
+	// appears in the list.
+	testEndpoint: () => Promise<ITestWebhookResult>;
 }
 
 export function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn;
@@ -28,7 +31,7 @@ export function useWebhookDeliveries(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		if (!endpointId) {
 			setIsLoading(false);
 			return;
@@ -36,7 +39,7 @@ export function useWebhookDeliveries(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await webhooks.listDeliveries(endpointId);
+			const { result } = await webhooks.listDeliveries(endpointId, { bust: opts?.force });
 			setDeliveries(result.deliveries);
 		} catch (err) {
 			const apiError =
@@ -47,9 +50,23 @@ export function useWebhookDeliveries(
 		}
 	}, [webhooks, endpointId]);
 
+	const testEndpoint = useCallback(async () => {
+		setError(null);
+		try {
+			const { result } = await webhooks.testEndpoint(endpointId);
+			await refresh();
+			return result;
+		} catch (err) {
+			const apiError =
+				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+			setError(apiError);
+			throw apiError;
+		}
+	}, [webhooks, endpointId, refresh]);
+
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
 
-	return { deliveries, isLoading, error, refresh };
+	return { deliveries, isLoading, error, refresh, testEndpoint };
 }

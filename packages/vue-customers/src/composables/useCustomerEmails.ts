@@ -8,7 +8,7 @@ export interface IUseCustomerEmailsReturn {
 	emails: Ref<ICustomerEmailDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addEmail: (input: IAddEmailInput) => Promise<ICustomerEmailDTO>;
 	updateEmailLabel: (emailId: string, label: string) => Promise<void>;
 	setPrimaryEmail: (emailId: string) => Promise<void>;
@@ -33,7 +33,7 @@ export function useCustomerEmails(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!customerId) {
 			isLoading.value = false;
 			return;
@@ -41,7 +41,7 @@ export function useCustomerEmails(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listEmails(customerId);
+			const { result } = await customers.listEmails(customerId, { bust: opts?.force });
 			emails.value = result.emails;
 		} catch (err) {
 			const apiError =

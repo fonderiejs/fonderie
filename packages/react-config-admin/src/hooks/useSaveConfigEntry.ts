@@ -12,6 +12,7 @@ export interface IUseSaveConfigEntryReturn {
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useConfigEntries().saveEntry` instead — it refreshes the list after saving. */
 export function useSaveConfigEntry(client: ConfigAdminClient): IUseSaveConfigEntryReturn {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);

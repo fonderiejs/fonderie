@@ -3,6 +3,7 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
+/** @deprecated Use useUsage(metric).recordUsage — the list hook self-refreshes after the write. */
 export function useRecordUsage(client?: BillingClient) {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useRecordUsage');
 	const isLoading = ref(false);

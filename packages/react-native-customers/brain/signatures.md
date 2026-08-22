@@ -14,40 +14,40 @@ type CustomerType = 'individual' | 'business';
 new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listCustomers(input?: IListCustomersInput | undefined): Promise<IApiResponse<ICustomerListResult>>
+  .listCustomers(input?: IListCustomersInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerListResult>>
   .createCustomer(input?: ICreateCustomerInput | undefined): Promise<IApiResponse<ICustomerResult>>
-  .getCustomer(customerId: string, input?: IGetCustomerInput | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
+  .getCustomer(customerId: string, input?: IGetCustomerInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
   .updateCustomer(customerId: string, input: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput | undefined): Promise<IApiResponse<undefined>>
   .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
-  .listEmails(customerId: string): Promise<IApiResponse<ICustomerEmailListResult>>
+  .listEmails(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerEmailListResult>>
   .addEmail(customerId: string, input: IAddEmailInput): Promise<IApiResponse<ICustomerEmailResult>>
   .updateEmailLabel(customerId: string, emailId: string, label: string): Promise<IApiResponse<ICustomerEmailResult>>
   .setPrimaryEmail(customerId: string, emailId: string): Promise<IApiResponse<undefined>>
   .removeEmail(customerId: string, emailId: string): Promise<IApiResponse<undefined>>
-  .listPhones(customerId: string): Promise<IApiResponse<ICustomerPhoneListResult>>
+  .listPhones(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerPhoneListResult>>
   .addPhone(customerId: string, input: IAddPhoneInput): Promise<IApiResponse<ICustomerPhoneResult>>
   .updatePhoneLabel(customerId: string, phoneId: string, label: string): Promise<IApiResponse<ICustomerPhoneResult>>
   .setPrimaryPhone(customerId: string, phoneId: string): Promise<IApiResponse<undefined>>
   .removePhone(customerId: string, phoneId: string): Promise<IApiResponse<undefined>>
-  .listAddresses(customerId: string): Promise<IApiResponse<ICustomerAddressListResult>>
+  .listAddresses(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerAddressListResult>>
   .addAddress(customerId: string, input: IAddAddressInput): Promise<IApiResponse<ICustomerAddressResult>>
   .updateAddressLabel(customerId: string, addrId: string, label: string): Promise<IApiResponse<ICustomerAddressResult>>
   .setPrimaryAddress(customerId: string, addrId: string): Promise<IApiResponse<undefined>>
   .removeAddress(customerId: string, addrId: string): Promise<IApiResponse<undefined>>
-  .listNotes(customerId: string): Promise<IApiResponse<ICustomerNoteListResult>>
+  .listNotes(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerNoteListResult>>
   .createNote(customerId: string, body: string): Promise<IApiResponse<ICustomerNoteResult>>
   .updateNote(customerId: string, noteId: string, body: string): Promise<IApiResponse<ICustomerNoteResult>>
   .deleteNote(customerId: string, noteId: string): Promise<IApiResponse<undefined>>
-  .listTags(customerId: string): Promise<IApiResponse<ICustomerTagListResult>>
+  .listTags(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerTagListResult>>
   .addTag(customerId: string, tag: string): Promise<IApiResponse<undefined>>
   .removeTag(customerId: string, tag: string): Promise<IApiResponse<undefined>>
-  .listRelationships(customerId: string): Promise<IApiResponse<ICustomerRelationshipListResult>>
+  .listRelationships(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerRelationshipListResult>>
   .addRelationship(customerId: string, input: IAddRelationshipInput): Promise<IApiResponse<ICustomerRelationshipResult>>
   .setPrimaryRelationship(customerId: string, relatedId: string): Promise<IApiResponse<undefined>>
   .removeRelationship(customerId: string, relatedId: string): Promise<IApiResponse<undefined>>
-  .listLabels(type: CustomerLabelType): Promise<IApiResponse<ICustomerLabelListResult>>
+  .listLabels(type: CustomerLabelType, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerLabelListResult>>
   .removeLabel(labelId: string): Promise<IApiResponse<undefined>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
@@ -233,7 +233,9 @@ interface IUseCustomerAddressesReturn {
     addresses: ICustomerAddressDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     addAddress: (input: IAddAddressInput) => Promise<ICustomerAddressDTO>;
     updateAddressLabel: (addrId: string, label: string) => Promise<void>;
     setPrimaryAddress: (addrId: string) => Promise<void>;
@@ -244,7 +246,9 @@ interface IUseCustomerEmailsReturn {
     emails: ICustomerEmailDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     addEmail: (input: IAddEmailInput) => Promise<ICustomerEmailDTO>;
     updateEmailLabel: (emailId: string, label: string) => Promise<void>;
     setPrimaryEmail: (emailId: string) => Promise<void>;
@@ -255,7 +259,9 @@ interface IUseCustomerLabelsReturn {
     labels: ICustomerLabelDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     removeLabel: (labelId: string) => Promise<void>;
 }
 
@@ -263,7 +269,9 @@ interface IUseCustomerNotesReturn {
     notes: ICustomerNoteDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     createNote: (body: string) => Promise<ICustomerNoteDTO>;
     updateNote: (noteId: string, body: string) => Promise<void>;
     deleteNote: (noteId: string) => Promise<void>;
@@ -273,7 +281,9 @@ interface IUseCustomerPhonesReturn {
     phones: ICustomerPhoneDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     addPhone: (input: IAddPhoneInput) => Promise<ICustomerPhoneDTO>;
     updatePhoneLabel: (phoneId: string, label: string) => Promise<void>;
     setPrimaryPhone: (phoneId: string) => Promise<void>;
@@ -284,7 +294,9 @@ interface IUseCustomerRelationshipsReturn {
     relationships: ICustomerRelationshipDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     addRelationship: (input: IAddRelationshipInput) => Promise<ICustomerRelationshipDTO>;
     setPrimaryRelationship: (relatedId: string) => Promise<void>;
     removeRelationship: (relatedId: string) => Promise<void>;
@@ -294,7 +306,9 @@ interface IUseCustomerReturn {
     customer: ICustomerDetailDTO | ICustomerDetailD2DTO | null;
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     updateCustomer: (input: IUpdateCustomerInput) => Promise<void>;
 }
 
@@ -302,7 +316,9 @@ interface IUseCustomerTagsReturn {
     tags: string[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     addTag: (tag: string) => Promise<void>;
     removeTag: (tag: string) => Promise<void>;
 }
@@ -311,7 +327,9 @@ interface IUseCustomersReturn {
     customers: ICustomerDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     total: number;
     hasMore: boolean;
     loadMore: () => Promise<void>;

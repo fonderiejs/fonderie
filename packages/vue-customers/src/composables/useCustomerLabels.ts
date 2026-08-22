@@ -8,7 +8,7 @@ export interface IUseCustomerLabelsReturn {
 	labels: Ref<ICustomerLabelDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	removeLabel: (labelId: string) => Promise<void>;
 }
 
@@ -33,11 +33,11 @@ export function useCustomerLabels(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listLabels(type);
+			const { result } = await customers.listLabels(type, { bust: opts?.force });
 			labels.value = result.labels;
 		} catch (err) {
 			const apiError =

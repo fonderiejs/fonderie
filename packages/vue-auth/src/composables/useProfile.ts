@@ -11,7 +11,7 @@ import { ref } from 'vue';
 
 export interface IUseProfileReturn {
 	user: Ref<IUserDTO | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateProfile: (input: IUpdateProfileInput) => Promise<IUserDTO>;
 	updatePreferences: (input: IUpdatePreferencesInput) => Promise<IUserDTO>;
 	// Email/phone changes re-fetch the profile (their endpoints don't return it).
@@ -27,11 +27,11 @@ export function useProfile(client?: AuthClient): IUseProfileReturn {
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await auth.getUser();
+			const { result } = await auth.getUser({ bust: opts?.force });
 			user.value = result.user;
 		} catch (err) {
 			const apiError =

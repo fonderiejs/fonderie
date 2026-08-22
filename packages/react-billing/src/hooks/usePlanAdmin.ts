@@ -3,6 +3,7 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+/** @deprecated Use `usePlans().createPlan` / `updatePlan` / `deletePlan` instead — the list hook self-refreshes after each write. */
 export interface IUsePlanAdminReturn {
 	createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
 	updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
@@ -18,6 +19,7 @@ export interface IUsePlanAdminReturn {
 // createPlan/updatePlan/deletePlan with requireAuth or an admin token — the
 // server trusts the caller to authorize access itself. Gate the UI that
 // calls this hook behind your own admin check before shipping it.
+/** @deprecated Use `usePlans().createPlan` / `updatePlan` / `deletePlan` instead — the list hook self-refreshes after each write. */
 export function usePlanAdmin(client?: BillingClient): IUsePlanAdminReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePlanAdmin');
 	const [isLoading, setIsLoading] = useState(false);

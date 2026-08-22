@@ -12,6 +12,7 @@ export interface IUseSaveTemplateReturn {
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useTemplates().saveTemplate` instead — it refreshes the list after saving. */
 export function useSaveTemplate(client: CourierAdminClient): IUseSaveTemplateReturn {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);

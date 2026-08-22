@@ -7,7 +7,7 @@ export interface IUseSessionReturn {
 	user: IUserDTO | null;
 	isLoading: boolean;
 	isAuthenticated: boolean;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	logout: (refreshToken?: string) => Promise<void>;
 }
 
@@ -17,10 +17,10 @@ export function useSession(client?: AuthClient): IUseSessionReturn {
 	const [isLoading, setIsLoading] = useState(true);
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		setIsLoading(true);
 		try {
-			const { result } = await auth.getUser();
+			const { result } = await auth.getUser({ bust: opts?.force });
 			setUser(result.user);
 			setIsAuthenticated(true);
 		} catch {

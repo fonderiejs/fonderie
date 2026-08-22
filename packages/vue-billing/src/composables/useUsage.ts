@@ -1,3 +1,4 @@
+import type { IRecordUsageInput } from '@fonderie/client';
 import { BillingClient, FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
@@ -7,7 +8,8 @@ export interface IUseUsageReturn {
 	total: Ref<number | null>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	recordUsage: (input: IRecordUsageInput) => Promise<void>;
 }
 
 export function useUsage(metric: string): IUseUsageReturn;
@@ -24,11 +26,11 @@ export function useUsage(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await billing.getUsage(metric);
+			const { result } = await billing.getUsage(metric, { bust: opts?.force });
 			total.value = result.total;
 		} catch (err) {
 			const apiError =
@@ -41,5 +43,18 @@ export function useUsage(
 
 	void refresh();
 
-	return { total, isLoading, error, refresh };
+	async function recordUsage(input: IRecordUsageInput) {
+		error.value = null;
+		try {
+			await billing.recordUsage(input);
+			await refresh();
+		} catch (err) {
+			const apiError =
+				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+			error.value = apiError;
+			throw apiError;
+		}
+	}
+
+	return { total, isLoading, error, refresh, recordUsage };
 }
