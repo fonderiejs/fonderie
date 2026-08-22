@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-customers-screens",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Pre-built React customers screens for Fonderie — customer list, customer detail (contact info, notes, tags).",
 	"keywords": [
 		"fonderiejs",

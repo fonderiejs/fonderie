@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-auth-screens",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "Pre-built Vue auth screens for Fonderie — login, register, forgot password.",
 	"keywords": [
 		"fonderiejs",
