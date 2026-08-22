@@ -7,7 +7,7 @@ export interface IUseCustomerNotesReturn {
 	notes: ICustomerNoteDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	createNote: (body: string) => Promise<ICustomerNoteDTO>;
 	updateNote: (noteId: string, body: string) => Promise<void>;
 	deleteNote: (noteId: string) => Promise<void>;
@@ -30,7 +30,7 @@ export function useCustomerNotes(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		if (!customerId) {
 			setIsLoading(false);
 			return;
@@ -38,7 +38,7 @@ export function useCustomerNotes(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await customers.listNotes(customerId);
+			const { result } = await customers.listNotes(customerId, { bust: opts?.force });
 			setNotes(result.notes);
 		} catch (err) {
 			const apiError =

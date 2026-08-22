@@ -3,6 +3,7 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
+/** @deprecated Use useWebhookDeliveries(endpointId).testEndpoint — the list hook self-refreshes after the write. */
 export function useTestWebhookEndpoint(client?: WebhooksClient) {
 	const webhooks = useFonderieSubClient(client, (c) => c.webhooks, 'useTestWebhookEndpoint');
 	const isLoading = ref(false);

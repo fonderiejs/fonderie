@@ -9,11 +9,11 @@ export function useSubscription(client?: BillingClient) {
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await billing.getSubscription();
+			const { result } = await billing.getSubscription({ bust: opts?.force });
 			subscription.value = result.subscription;
 		} catch (err) {
 			const apiError =

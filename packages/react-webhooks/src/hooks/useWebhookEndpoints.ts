@@ -12,7 +12,7 @@ export interface IUseWebhookEndpointsReturn {
 	endpoints: IWebhookEndpointDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	createEndpoint: (input: ICreateWebhookEndpointInput) => Promise<IWebhookEndpointCreatedDTO>;
 	removeEndpoint: (endpointId: string) => Promise<void>;
 }
@@ -23,20 +23,23 @@ export function useWebhookEndpoints(client?: WebhooksClient): IUseWebhookEndpoin
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await webhooks.listEndpoints();
-			setEndpoints(result.endpoints);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [webhooks]);
+	const refresh = useCallback(
+		async (opts?: { force?: boolean }) => {
+			setIsLoading(true);
+			setError(null);
+			try {
+				const { result } = await webhooks.listEndpoints({ bust: opts?.force });
+				setEndpoints(result.endpoints);
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[webhooks],
+	);
 
 	const createEndpoint = useCallback(
 		async (input: ICreateWebhookEndpointInput) => {

@@ -3,12 +3,14 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+/** @deprecated Use `useRoles().updateRole` instead — the list hook self-refreshes after the write. */
 export interface IUseUpdateRoleReturn {
 	updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useRoles().updateRole` instead — the list hook self-refreshes after the write. */
 export function useUpdateRole(client?: WorkspacesClient): IUseUpdateRoleReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useUpdateRole');
 	const [isLoading, setIsLoading] = useState(false);

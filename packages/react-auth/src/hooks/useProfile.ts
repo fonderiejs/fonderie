@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseProfileReturn {
 	user: IUserDTO | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateProfile: (input: IUpdateProfileInput) => Promise<IUserDTO>;
 	updatePreferences: (input: IUpdatePreferencesInput) => Promise<IUserDTO>;
 	// Email/phone changes re-fetch the profile (their endpoints don't return it).
@@ -26,11 +26,11 @@ export function useProfile(client?: AuthClient): IUseProfileReturn {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await auth.getUser();
+			const { result } = await auth.getUser({ bust: opts?.force });
 			setUser(result.user);
 		} catch (err) {
 			const apiError =

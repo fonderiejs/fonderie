@@ -8,7 +8,7 @@ export interface IUseWebhookEndpointReturn {
 	endpoint: Ref<IWebhookEndpointDTO | null>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateEndpoint: (input: IUpdateWebhookEndpointInput) => Promise<void>;
 }
 
@@ -30,7 +30,7 @@ export function useWebhookEndpoint(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!endpointId) {
 			isLoading.value = false;
 			return;
@@ -38,7 +38,7 @@ export function useWebhookEndpoint(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await webhooks.getEndpoint(endpointId);
+			const { result } = await webhooks.getEndpoint(endpointId, { bust: opts?.force });
 			endpoint.value = result;
 		} catch (err) {
 			const apiError =

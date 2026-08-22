@@ -8,6 +8,7 @@ export interface IUseSaveSecretReturn {
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useSecrets().saveSecret` instead — it refreshes the list after saving. */
 export function useSaveSecret(client: ConfigAdminClient): IUseSaveSecretReturn {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);

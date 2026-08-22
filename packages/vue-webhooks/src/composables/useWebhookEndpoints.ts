@@ -13,11 +13,11 @@ export function useWebhookEndpoints(client?: WebhooksClient) {
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await webhooks.listEndpoints();
+			const { result } = await webhooks.listEndpoints({ bust: opts?.force });
 			endpoints.value = result.endpoints;
 		} catch (err) {
 			const apiError =

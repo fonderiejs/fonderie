@@ -3,12 +3,14 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+/** @deprecated Use `useWorkspaces().acceptInvitation` instead — the list hook self-refreshes after the write. */
 export interface IUseAcceptInvitationReturn {
 	acceptInvitation: (pin: string) => Promise<string>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useWorkspaces().acceptInvitation` instead — the list hook self-refreshes after the write. */
 export function useAcceptInvitation(client?: WorkspacesClient): IUseAcceptInvitationReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useAcceptInvitation');
 	const [isLoading, setIsLoading] = useState(false);

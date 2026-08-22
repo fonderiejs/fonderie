@@ -8,7 +8,7 @@ export interface IUsePlanReturn {
 	plan: Ref<IPlanDTO | null>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 }
 
 export function usePlan(planId: string): IUsePlanReturn;
@@ -25,11 +25,11 @@ export function usePlan(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await billing.getPlan(planId);
+			const { result } = await billing.getPlan(planId, { bust: opts?.force });
 			plan.value = result.plan;
 		} catch (err) {
 			const apiError =

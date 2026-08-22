@@ -71,5 +71,5 @@ function useTemplate(client: CourierAdminClient, type: string, locale?: string |
 
 function useTemplateRevisions(client: CourierAdminClient, type: string, locale?: string | null | undefined): { revisions: Ref<{ type: string; locale: string | null; subject: string | null; ... 4 more ...; createdAt: string; }[], ITemplateRevision[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; rollback: (toVersion: number) => Promise<...>; }
 
-function useTemplates(client: CourierAdminClient): { templates: Ref<{ type: string; locale: string | null; subject: string | null; html: string | null; text: string; active: boolean; version: number; updatedBy: string | null; updatedAt: string; }[], ITemplateEntry[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useTemplates(client: CourierAdminClient): { templates: Ref<{ type: string; locale: string | null; subject: string | null; html: string | null; text: string; active: boolean; version: number; updatedBy: string | null; updatedAt: string; }[], ITemplateEntry[] | { ...; }[]>; ... 4 more ...; removeTemplate: (type: string, locale?: string | undefined) => Promise<...>; }
 ```

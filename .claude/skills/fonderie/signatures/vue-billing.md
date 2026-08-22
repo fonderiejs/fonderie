@@ -8,16 +8,16 @@
 new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listPlans(): Promise<IApiResponse<IPlanListResult>>
-  .getPlan(planId: string): Promise<IApiResponse<IPlanResult>>
+  .listPlans(opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanListResult>>
+  .getPlan(planId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanResult>>
   .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
   .updatePlan(planId: string, input: Partial<ICreatePlanInput>): Promise<IApiResponse<IPlanResult>>
   .deletePlan(planId: string): Promise<IApiResponse<undefined>>
-  .getSubscription(): Promise<IApiResponse<ISubscriptionResult>>
+  .getSubscription(opts?: IReadOptions | undefined): Promise<IApiResponse<ISubscriptionResult>>
   .createCheckoutSession(input: ICheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
-  .getUsage(metric: string): Promise<IApiResponse<IUsageResult>>
+  .getUsage(metric: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IUsageResult>>
 
 interface ICheckoutInput {
     plan: string;
@@ -103,11 +103,11 @@ function usePlan(planId: string): IUsePlanReturn
 
 function usePlanAdmin(client?: BillingClient | undefined): { createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>; updatePlan: (planId: string, input: Partial<...>) => Promise<...>; deletePlan: (planId: string) => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
 
-function usePlans(client?: BillingClient | undefined): { plans: Ref<{ id: string; planId: string; name: string; description: string; tier: number; seats: number | null; trialDays: number; pricing: { ...; }; features: { ...; }[]; metadata: Record<...>; }[], IPlanDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function usePlans(client?: BillingClient | undefined): { plans: Ref<{ id: string; planId: string; name: string; description: string; tier: number; seats: number | null; trialDays: number; pricing: { ...; }; features: { ...; }[]; metadata: Record<...>; }[], IPlanDTO[] | { ...; }[]>; ... 5 more ...; deletePlan: (planId: string) => Promise<...>; }
 
 function useRecordUsage(client?: BillingClient | undefined): { recordUsage: (input: IRecordUsageInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
 
-function useSubscription(client?: BillingClient | undefined): { subscription: Ref<{ id: string; subscriberType: SubscriberType; subscriberId: string; plan: string; interval: string; ... 5 more ...; createdAt: string; } | null, ISubscriptionDTO | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useSubscription(client?: BillingClient | undefined): { subscription: Ref<{ id: string; subscriberType: SubscriberType; subscriberId: string; plan: string; interval: string; ... 5 more ...; createdAt: string; } | null, ISubscriptionDTO | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: (opts?: { ...; } | undefined) => Promise<...>; }
 
 function useUsage(metric: string): IUseUsageReturn
 ```

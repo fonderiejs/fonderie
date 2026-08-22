@@ -7,7 +7,7 @@ export interface IUseCustomerAddressesReturn {
 	addresses: ICustomerAddressDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addAddress: (input: IAddAddressInput) => Promise<ICustomerAddressDTO>;
 	updateAddressLabel: (addrId: string, label: string) => Promise<void>;
 	setPrimaryAddress: (addrId: string) => Promise<void>;
@@ -31,7 +31,7 @@ export function useCustomerAddresses(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		if (!customerId) {
 			setIsLoading(false);
 			return;
@@ -39,7 +39,7 @@ export function useCustomerAddresses(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await customers.listAddresses(customerId);
+			const { result } = await customers.listAddresses(customerId, { bust: opts?.force });
 			setAddresses(result.addresses);
 		} catch (err) {
 			const apiError =

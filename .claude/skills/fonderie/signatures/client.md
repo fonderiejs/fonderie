@@ -80,7 +80,7 @@ interface IListAuditEventsInput {
 new AuditClient(http: HttpClient, tokens: TokenStore): AuditClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listEvents(input?: IListAuditEventsInput): Promise<IApiResponse<IAuditPageResult>>
+  .listEvents(input?: IListAuditEventsInput, opts?: IReadOptions | undefined): Promise<IApiResponse<IAuditPageResult>>
 
 interface IChangePasswordInput {
     currentPassword: string;
@@ -130,7 +130,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .verifyEmail(token: string): Promise<IApiResponse<IVerifyEmailResult>>
   .logout(refreshToken?: string | undefined): Promise<IApiResponse<undefined>>
   .sendVerificationEmail(): Promise<IApiResponse<IResendVerificationResult>>
-  .getUser(): Promise<IApiResponse<IMeResult>>
+  .getUser(opts?: IReadOptions | undefined): Promise<IApiResponse<IMeResult>>
   .updateProfile(input: IUpdateProfileInput): Promise<IApiResponse<IMeResult>>
   .updatePreferences(input: IUpdatePreferencesInput): Promise<IApiResponse<IMeResult>>
   .updateEmail(email: string): Promise<IApiResponse<unknown>>
@@ -168,16 +168,16 @@ type IUpdatePlanInput = Partial<ICreatePlanInput>;
 new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listPlans(): Promise<IApiResponse<IPlanListResult>>
-  .getPlan(planId: string): Promise<IApiResponse<IPlanResult>>
+  .listPlans(opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanListResult>>
+  .getPlan(planId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanResult>>
   .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
   .updatePlan(planId: string, input: Partial<ICreatePlanInput>): Promise<IApiResponse<IPlanResult>>
   .deletePlan(planId: string): Promise<IApiResponse<undefined>>
-  .getSubscription(): Promise<IApiResponse<ISubscriptionResult>>
+  .getSubscription(opts?: IReadOptions | undefined): Promise<IApiResponse<ISubscriptionResult>>
   .createCheckoutSession(input: ICheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
-  .getUsage(metric: string): Promise<IApiResponse<IUsageResult>>
+  .getUsage(metric: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IUsageResult>>
 
 interface IConfigAdminClientOptions {
     baseUrl: string;
@@ -303,40 +303,40 @@ type IUpdateCustomerInput = ICreateCustomerInput;
 new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listCustomers(input?: IListCustomersInput): Promise<IApiResponse<ICustomerListResult>>
+  .listCustomers(input?: IListCustomersInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerListResult>>
   .createCustomer(input?: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
-  .getCustomer(customerId: string, input?: IGetCustomerInput): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
+  .getCustomer(customerId: string, input?: IGetCustomerInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
   .updateCustomer(customerId: string, input: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput): Promise<IApiResponse<undefined>>
   .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
-  .listEmails(customerId: string): Promise<IApiResponse<ICustomerEmailListResult>>
+  .listEmails(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerEmailListResult>>
   .addEmail(customerId: string, input: IAddEmailInput): Promise<IApiResponse<ICustomerEmailResult>>
   .updateEmailLabel(customerId: string, emailId: string, label: string): Promise<IApiResponse<ICustomerEmailResult>>
   .setPrimaryEmail(customerId: string, emailId: string): Promise<IApiResponse<undefined>>
   .removeEmail(customerId: string, emailId: string): Promise<IApiResponse<undefined>>
-  .listPhones(customerId: string): Promise<IApiResponse<ICustomerPhoneListResult>>
+  .listPhones(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerPhoneListResult>>
   .addPhone(customerId: string, input: IAddPhoneInput): Promise<IApiResponse<ICustomerPhoneResult>>
   .updatePhoneLabel(customerId: string, phoneId: string, label: string): Promise<IApiResponse<ICustomerPhoneResult>>
   .setPrimaryPhone(customerId: string, phoneId: string): Promise<IApiResponse<undefined>>
   .removePhone(customerId: string, phoneId: string): Promise<IApiResponse<undefined>>
-  .listAddresses(customerId: string): Promise<IApiResponse<ICustomerAddressListResult>>
+  .listAddresses(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerAddressListResult>>
   .addAddress(customerId: string, input: IAddAddressInput): Promise<IApiResponse<ICustomerAddressResult>>
   .updateAddressLabel(customerId: string, addrId: string, label: string): Promise<IApiResponse<ICustomerAddressResult>>
   .setPrimaryAddress(customerId: string, addrId: string): Promise<IApiResponse<undefined>>
   .removeAddress(customerId: string, addrId: string): Promise<IApiResponse<undefined>>
-  .listNotes(customerId: string): Promise<IApiResponse<ICustomerNoteListResult>>
+  .listNotes(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerNoteListResult>>
   .createNote(customerId: string, body: string): Promise<IApiResponse<ICustomerNoteResult>>
   .updateNote(customerId: string, noteId: string, body: string): Promise<IApiResponse<ICustomerNoteResult>>
   .deleteNote(customerId: string, noteId: string): Promise<IApiResponse<undefined>>
-  .listTags(customerId: string): Promise<IApiResponse<ICustomerTagListResult>>
+  .listTags(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerTagListResult>>
   .addTag(customerId: string, tag: string): Promise<IApiResponse<undefined>>
   .removeTag(customerId: string, tag: string): Promise<IApiResponse<undefined>>
-  .listRelationships(customerId: string): Promise<IApiResponse<ICustomerRelationshipListResult>>
+  .listRelationships(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerRelationshipListResult>>
   .addRelationship(customerId: string, input: IAddRelationshipInput): Promise<IApiResponse<ICustomerRelationshipResult>>
   .setPrimaryRelationship(customerId: string, relatedId: string): Promise<IApiResponse<undefined>>
   .removeRelationship(customerId: string, relatedId: string): Promise<IApiResponse<undefined>>
-  .listLabels(type: CustomerLabelType): Promise<IApiResponse<ICustomerLabelListResult>>
+  .listLabels(type: CustomerLabelType, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerLabelListResult>>
   .removeLabel(labelId: string): Promise<IApiResponse<undefined>>
 
 interface ICreateWebhookEndpointInput {
@@ -353,12 +353,12 @@ interface IUpdateWebhookEndpointInput {
 new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listEndpoints(): Promise<IApiResponse<IWebhookEndpointListResult>>
+  .listEndpoints(opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointListResult>>
   .createEndpoint(input: ICreateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointCreatedDTO>>
-  .getEndpoint(endpointId: string): Promise<IApiResponse<IWebhookEndpointDTO>>
+  .getEndpoint(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointDTO>>
   .updateEndpoint(endpointId: string, input: IUpdateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointDTO>>
   .deleteEndpoint(endpointId: string): Promise<undefined>
-  .listDeliveries(endpointId: string): Promise<IApiResponse<IWebhookDeliveryListResult>>
+  .listDeliveries(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookDeliveryListResult>>
   .testEndpoint(endpointId: string): Promise<IApiResponse<ITestWebhookResult>>
 
 interface ICreateRoleInput {
@@ -430,29 +430,29 @@ interface IUpdateWorkspaceInput {
 new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listWorkspaces(): Promise<IApiResponse<IWorkspaceListResult>>
+  .listWorkspaces(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceListResult>>
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
-  .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
+  .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
   .restoreWorkspace(): Promise<IApiResponse<undefined>>
-  .listRoles(): Promise<IApiResponse<IRoleListResult>>
+  .listRoles(opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
-  .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
+  .getRole(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
   .removeRole(roleId: string): Promise<IApiResponse<undefined>>
-  .getRolePermissions(roleId: string): Promise<IApiResponse<IRolePermissionsResult>>
+  .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
-  .listMembers(): Promise<IApiResponse<IMemberListResult>>
+  .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>
-  .getMemberRoles(userId: string): Promise<IApiResponse<IRoleListResult>>
+  .getMemberRoles(userId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
-  .listInvitations(): Promise<IApiResponse<IInvitationListResult>>
+  .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
   .acceptInvitation(pin: string): Promise<IApiResponse<IAcceptInvitationResult>>
-  .getSettings(): Promise<IApiResponse<IWorkspaceSettingsResult>>
+  .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
 type CustomerLabelType = 'phone' | 'email' | 'address';
@@ -777,6 +777,10 @@ interface IPortalUrlResult {
 
 interface IRefreshResult {
     tokens: ITokens;
+}
+
+interface IReadOptions {
+    bust?: boolean | undefined;
 }
 
 interface IRegisterResult {

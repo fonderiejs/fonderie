@@ -10,7 +10,7 @@ export interface IUseAuditEventsReturn {
 	isLoadingMore: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
 	hasMore: Ref<boolean>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	loadMore: () => Promise<void>;
 }
 
@@ -34,11 +34,11 @@ export function useAuditEvents(
 	const isLoadingMore = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await audit.listEvents(filters);
+			const { result } = await audit.listEvents(filters, { bust: opts?.force });
 			events.value = result.events;
 			cursor.value = result.nextCursor;
 			hasMore.value = result.nextCursor !== null;

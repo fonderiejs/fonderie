@@ -16,7 +16,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .verifyEmail(token: string): Promise<IApiResponse<IVerifyEmailResult>>
   .logout(refreshToken?: string | undefined): Promise<IApiResponse<undefined>>
   .sendVerificationEmail(): Promise<IApiResponse<IResendVerificationResult>>
-  .getUser(): Promise<IApiResponse<IMeResult>>
+  .getUser(opts?: IReadOptions | undefined): Promise<IApiResponse<IMeResult>>
   .updateProfile(input: IUpdateProfileInput): Promise<IApiResponse<IMeResult>>
   .updatePreferences(input: IUpdatePreferencesInput): Promise<IApiResponse<IMeResult>>
   .updateEmail(email: string): Promise<IApiResponse<unknown>>
@@ -182,7 +182,9 @@ interface IUseMfaSetupReturn {
 
 interface IUseProfileReturn {
     user: IUserDTO | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     updateProfile: (input: IUpdateProfileInput) => Promise<IUserDTO>;
     updatePreferences: (input: IUpdatePreferencesInput) => Promise<IUserDTO>;
     updateEmail: (email: string) => Promise<void>;
@@ -209,7 +211,9 @@ interface IUseSessionReturn {
     user: IUserDTO | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     logout: (refreshToken?: string) => Promise<void>;
 }
 

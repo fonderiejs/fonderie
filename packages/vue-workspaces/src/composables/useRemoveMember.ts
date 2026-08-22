@@ -3,6 +3,7 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
+/** @deprecated Use useMembers().removeMember — the list hook self-refreshes after the write. */
 export function useRemoveMember(client?: WorkspacesClient) {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRemoveMember');
 	const isLoading = ref(false);

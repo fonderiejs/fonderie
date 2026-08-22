@@ -11,7 +11,7 @@ export interface IUseWorkspaceSettingsReturn {
 	settings: IWorkspaceSettingsDTO | null;
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateSettings: (input: IUpdateSettingsInput) => Promise<void>;
 }
 
@@ -21,20 +21,23 @@ export function useWorkspaceSettings(client?: WorkspacesClient): IUseWorkspaceSe
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await workspaces.getSettings();
-			setSettings(result.settings);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [workspaces]);
+	const refresh = useCallback(
+		async (opts?: { force?: boolean }) => {
+			setIsLoading(true);
+			setError(null);
+			try {
+				const { result } = await workspaces.getSettings({ bust: opts?.force });
+				setSettings(result.settings);
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[workspaces],
+	);
 
 	const updateSettings = useCallback(
 		async (input: IUpdateSettingsInput) => {

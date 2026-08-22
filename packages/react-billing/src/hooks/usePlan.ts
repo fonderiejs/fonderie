@@ -7,7 +7,7 @@ export interface IUsePlanReturn {
 	plan: IPlanDTO | null;
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 }
 
 export function usePlan(planId: string): IUsePlanReturn;
@@ -24,20 +24,23 @@ export function usePlan(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await billing.getPlan(planId);
-			setPlan(result.plan);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [billing, planId]);
+	const refresh = useCallback(
+		async (opts?: { force?: boolean }) => {
+			setIsLoading(true);
+			setError(null);
+			try {
+				const { result } = await billing.getPlan(planId, { bust: opts?.force });
+				setPlan(result.plan);
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[billing, planId],
+	);
 
 	useEffect(() => {
 		void refresh();

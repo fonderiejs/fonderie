@@ -8,7 +8,7 @@ export interface IUseCustomerRelationshipsReturn {
 	relationships: Ref<ICustomerRelationshipDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addRelationship: (input: IAddRelationshipInput) => Promise<ICustomerRelationshipDTO>;
 	setPrimaryRelationship: (relatedId: string) => Promise<void>;
 	removeRelationship: (relatedId: string) => Promise<void>;
@@ -32,7 +32,7 @@ export function useCustomerRelationships(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!customerId) {
 			isLoading.value = false;
 			return;
@@ -40,7 +40,7 @@ export function useCustomerRelationships(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listRelationships(customerId);
+			const { result } = await customers.listRelationships(customerId, { bust: opts?.force });
 			relationships.value = result.relationships;
 		} catch (err) {
 			const apiError =

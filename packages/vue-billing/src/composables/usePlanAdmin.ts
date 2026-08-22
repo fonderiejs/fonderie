@@ -10,6 +10,7 @@ import { ref } from 'vue';
 // createPlan/updatePlan/deletePlan with requireAuth or an admin token — the
 // server trusts the caller to authorize access itself. Gate the UI that
 // calls this composable behind your own admin check before shipping it.
+/** @deprecated Use usePlans() admin mutations — the list hook self-refreshes after the write. */
 export function usePlanAdmin(client?: BillingClient) {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePlanAdmin');
 	const isLoading = ref(false);

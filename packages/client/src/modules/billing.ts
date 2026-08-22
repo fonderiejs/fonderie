@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IReadOptions,
 	IApiResponse,
 	ICheckoutUrlResult,
 	IPlanListResult,
@@ -61,17 +62,19 @@ export class BillingClient {
 
 	// ── Plans — public read-only ────────────────────────────────────────────────
 
-	listPlans() {
+	listPlans(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IPlanListResult>>({
 			method: 'GET',
 			path: '/plans',
+			bust: opts?.bust,
 		});
 	}
 
-	getPlan(planId: string) {
+	getPlan(planId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IPlanResult>>({
 			method: 'GET',
 			path: `/plans/${planId}`,
+			bust: opts?.bust,
 		});
 	}
 
@@ -111,12 +114,13 @@ export class BillingClient {
 
 	// ── Subscription ─────────────────────────────────────────────────────────────
 
-	getSubscription() {
+	getSubscription(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ISubscriptionResult>>({
 			method: 'GET',
 			path: '/billing/subscription',
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -153,12 +157,13 @@ export class BillingClient {
 		});
 	}
 
-	getUsage(metric: string) {
+	getUsage(metric: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IUsageResult>>({
 			method: 'GET',
 			path: `/billing/usage/${metric}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 }

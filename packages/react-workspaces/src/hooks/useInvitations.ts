@@ -7,7 +7,7 @@ export interface IUseInvitationsReturn {
 	invitations: IInvitationDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
 	cancelInvitation: (inviteId: string) => Promise<void>;
 }
@@ -18,20 +18,23 @@ export function useInvitations(client?: WorkspacesClient): IUseInvitationsReturn
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await workspaces.listInvitations();
-			setInvitations(result.invitations);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [workspaces]);
+	const refresh = useCallback(
+		async (opts?: { force?: boolean }) => {
+			setIsLoading(true);
+			setError(null);
+			try {
+				const { result } = await workspaces.listInvitations({ bust: opts?.force });
+				setInvitations(result.invitations);
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[workspaces],
+	);
 
 	const invite = useCallback(
 		async (entries: IInviteEntry | IInviteEntry[]) => {

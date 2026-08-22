@@ -135,29 +135,29 @@ interface IWorkspaceSettingsDTO {
 new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listWorkspaces(): Promise<IApiResponse<IWorkspaceListResult>>
+  .listWorkspaces(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceListResult>>
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
-  .getWorkspace(id: string): Promise<IApiResponse<IWorkspaceResult>>
+  .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
   .restoreWorkspace(): Promise<IApiResponse<undefined>>
-  .listRoles(): Promise<IApiResponse<IRoleListResult>>
+  .listRoles(opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
-  .getRole(roleId: string): Promise<IApiResponse<IRoleResult>>
+  .getRole(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
   .removeRole(roleId: string): Promise<IApiResponse<undefined>>
-  .getRolePermissions(roleId: string): Promise<IApiResponse<IRolePermissionsResult>>
+  .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
-  .listMembers(): Promise<IApiResponse<IMemberListResult>>
+  .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>
-  .getMemberRoles(userId: string): Promise<IApiResponse<IRoleListResult>>
+  .getMemberRoles(userId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
-  .listInvitations(): Promise<IApiResponse<IInvitationListResult>>
+  .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
   .acceptInvitation(pin: string): Promise<IApiResponse<IAcceptInvitationResult>>
-  .getSettings(): Promise<IApiResponse<IWorkspaceSettingsResult>>
+  .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
@@ -174,7 +174,9 @@ interface IUseRolePermissionsReturn {
     permissions: Ref<IRolePermission[]>;
     isLoading: Ref<boolean>;
     error: Ref<FonderieApiError | null>;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
 }
 
@@ -186,13 +188,13 @@ function useInvitations(client?: WorkspacesClient | undefined): { invitations: R
 
 function useMemberRoles(userId: string): IUseMemberRolesReturn
 
-function useMembers(client?: WorkspacesClient | undefined): { members: Ref<{ userId: string; workspaceId: string; roleId: string; roleName: string; confirmed: boolean; createdAt: string; }[], IMemberDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useMembers(client?: WorkspacesClient | undefined): { members: Ref<{ userId: string; workspaceId: string; roleId: string; roleName: string; confirmed: boolean; createdAt: string; }[], IMemberDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: (opts?: { ...; } | undefined) => Promise<...>; removeMember: (userId: string) => Promise<...>; }
 
 function useRemoveMember(client?: WorkspacesClient | undefined): { removeMember: (userId: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
 
 function useRolePermissions(roleId: string): IUseRolePermissionsReturn
 
-function useRoles(client?: WorkspacesClient | undefined): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 4 more ...; removeRole: (roleId: string) => Promise<...>; }
+function useRoles(client?: WorkspacesClient | undefined): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 5 more ...; removeRole: (roleId: string) => Promise<...>; }
 
 function useSetRolePermissions(client?: WorkspacesClient | undefined): { setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>; isLoading: Ref<...>; error: Ref<...>; }
 
@@ -200,7 +202,7 @@ function useUpdateRole(client?: WorkspacesClient | undefined): { updateRole: (ro
 
 function useWorkspaceProfile(client?: WorkspacesClient | undefined): { updateWorkspace: (input: IUpdateWorkspaceInput) => Promise<IWorkspaceDTO>; archiveWorkspace: () => Promise<...>; restoreWorkspace: () => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
 
-function useWorkspaceSettings(client?: WorkspacesClient | undefined): { settings: Ref<{ locale: string; timezone: string; currency: string; dateFormat: string; timeFormat: string; } | null, IWorkspaceSettingsDTO | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; updateSettings: (input: IUpdateSettingsInput) => Promise<...>; }
+function useWorkspaceSettings(client?: WorkspacesClient | undefined): { settings: Ref<{ locale: string; timezone: string; currency: string; dateFormat: string; timeFormat: string; } | null, IWorkspaceSettingsDTO | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: (opts?: { ...; } | undefined) => Promise<...>; updateSettings: (input: IUpdateSettingsInput) => Promise<...>; }
 
-function useWorkspaces(client?: WorkspacesClient | undefined): { workspaces: Ref<{ id: string; name: string; slug: string; type: string; description: string; motto: string; phone: string; businessType: string; ... 7 more ...; updatedAt: string; }[], IWorkspaceDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useWorkspaces(client?: WorkspacesClient | undefined): { workspaces: Ref<{ id: string; name: string; slug: string; type: string; description: string; motto: string; phone: string; businessType: string; ... 7 more ...; updatedAt: string; }[], IWorkspaceDTO[] | { ...; }[]>; ... 4 more ...; acceptInvitation: (pin: string) => Promise<...>; }
 ```

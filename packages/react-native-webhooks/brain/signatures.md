@@ -58,12 +58,12 @@ interface IWebhookEndpointDTO {
 new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listEndpoints(): Promise<IApiResponse<IWebhookEndpointListResult>>
+  .listEndpoints(opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointListResult>>
   .createEndpoint(input: ICreateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointCreatedDTO>>
-  .getEndpoint(endpointId: string): Promise<IApiResponse<IWebhookEndpointDTO>>
+  .getEndpoint(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointDTO>>
   .updateEndpoint(endpointId: string, input: IUpdateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointDTO>>
   .deleteEndpoint(endpointId: string): Promise<undefined>
-  .listDeliveries(endpointId: string): Promise<IApiResponse<IWebhookDeliveryListResult>>
+  .listDeliveries(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookDeliveryListResult>>
   .testEndpoint(endpointId: string): Promise<IApiResponse<ITestWebhookResult>>
 
 interface IUseTestWebhookEndpointReturn {
@@ -76,14 +76,19 @@ interface IUseWebhookDeliveriesReturn {
     deliveries: IWebhookDeliveryDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    testEndpoint: () => Promise<ITestWebhookResult>;
 }
 
 interface IUseWebhookEndpointReturn {
     endpoint: IWebhookEndpointDTO | null;
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     updateEndpoint: (input: IUpdateWebhookEndpointInput) => Promise<void>;
 }
 
@@ -91,7 +96,9 @@ interface IUseWebhookEndpointsReturn {
     endpoints: IWebhookEndpointDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
     createEndpoint: (input: ICreateWebhookEndpointInput) => Promise<IWebhookEndpointCreatedDTO>;
     removeEndpoint: (endpointId: string) => Promise<void>;
 }

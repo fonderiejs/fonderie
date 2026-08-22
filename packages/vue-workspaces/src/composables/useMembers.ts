@@ -9,11 +9,11 @@ export function useMembers(client?: WorkspacesClient) {
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await workspaces.listMembers();
+			const { result } = await workspaces.listMembers({ bust: opts?.force });
 			members.value = result.members;
 		} catch (err) {
 			const apiError =
@@ -26,5 +26,18 @@ export function useMembers(client?: WorkspacesClient) {
 
 	void refresh();
 
-	return { members, isLoading, error, refresh };
+	async function removeMember(userId: string) {
+		error.value = null;
+		try {
+			await workspaces.removeMember(userId);
+			await refresh();
+		} catch (err) {
+			const apiError =
+				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+			error.value = apiError;
+			throw apiError;
+		}
+	}
+
+	return { members, isLoading, error, refresh, removeMember };
 }

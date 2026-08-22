@@ -89,7 +89,7 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useConfigEntries(client: ConfigAdminClient, environment?: string | undefined): { entries: Ref<{ key: string; value: unknown; environment: string; description: string | null; active: boolean; version: number; updatedBy: string | null; updatedAt: string; }[], IConfigEntry[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useConfigEntries(client: ConfigAdminClient, environment?: string | undefined): { entries: Ref<{ key: string; value: unknown; environment: string; description: string | null; active: boolean; version: number; updatedBy: string | null; updatedAt: string; }[], IConfigEntry[] | { ...; }[]>; ... 4 more ...; removeEntry: (key: string) => Promise<...>; }
 
 function useConfigEntry(client: ConfigAdminClient, key: string, environment?: string | undefined): { entry: Ref<{ key: string; value: unknown; environment: string; description: string | null; active: boolean; version: number; updatedBy: string | null; updatedAt: string; } | null, IConfigEntry | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
@@ -109,5 +109,5 @@ function useSecret(client: ConfigAdminClient, key: string, environment?: string 
 
 function useSecretRevisions(client: ConfigAdminClient, key: string, environment?: string | undefined): { revisions: Ref<{ key: string; environment: string; version: number; actor: string | null; createdAt: string; }[], ISecretRevision[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; rollback: (toVersion: number) => Promise<...>; }
 
-function useSecrets(client: ConfigAdminClient, environment?: string | undefined): { secrets: Ref<{ key: string; environment: string; description: string | null; active: boolean; version: number; updatedBy: string | null; updatedAt: string; }[], ISecretEntry[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useSecrets(client: ConfigAdminClient, environment?: string | undefined): { secrets: Ref<{ key: string; environment: string; description: string | null; active: boolean; version: number; updatedBy: string | null; updatedAt: string; }[], ISecretEntry[] | { ...; }[]>; ... 4 more ...; removeSecret: (key: string) => Promise<...>; }
 ```
