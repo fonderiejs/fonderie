@@ -155,11 +155,7 @@ new CustomersModule(store: IStoreAdapter, config?: ICustomersConfig, bus?: Event
   .deps: string[]
   .install(app: IFonderieApp): void
 
-type AddressLabel = 'service' | 'billing' | 'other';
-
 type CustomerType = 'individual' | 'business';
-
-type EmailLabel = 'work' | 'personal' | 'billing';
 
 interface IAddress {
     id: string;
@@ -243,8 +239,6 @@ interface ICustomerTag {
     customerId: string;
     tag: string;
 }
-
-type PhoneLabel = 'mobile' | 'office' | 'home' | 'fax';
 
 namespace schemas — exports: addAddressSchema, addEmailSchema, addPhoneSchema, addRelationshipSchema, addTagSchema, blacklistSchema, createCustomerSchema, noteSchema, updateAddressSchema, updateCustomerSchema, updateEmailSchema, updatePhoneSchema
 ```

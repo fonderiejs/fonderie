@@ -30,9 +30,7 @@ export {
 } from './models';
 export { CustomersModule } from './module';
 export type {
-	AddressLabel,
 	CustomerType,
-	EmailLabel,
 	IAddress,
 	ICustomer,
 	ICustomerAddress,
@@ -41,7 +39,6 @@ export type {
 	ICustomerNote,
 	ICustomerPhone,
 	ICustomerTag,
-	PhoneLabel,
 } from './types';
 
 // Request validation — enforced contract for body-taking routes; exported

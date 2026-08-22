@@ -2,13 +2,6 @@ export type CustomerType = 'individual' | 'business';
 export type CustomerSex = 'UNKNOWN' | 'MALE' | 'FEMALE';
 export type CustomerLabelType = 'email' | 'phone' | 'address';
 
-/** @deprecated resolved dynamically via fonderie_customer_labels */
-export type EmailLabel = 'work' | 'personal' | 'billing';
-/** @deprecated resolved dynamically via fonderie_customer_labels */
-export type PhoneLabel = 'mobile' | 'office' | 'home' | 'fax';
-/** @deprecated resolved dynamically via fonderie_customer_labels */
-export type AddressLabel = 'service' | 'billing' | 'other';
-
 export interface ICustomerLabel {
 	id: string;
 	type: CustomerLabelType;
