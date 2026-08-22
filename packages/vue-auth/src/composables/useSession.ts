@@ -25,9 +25,9 @@ export function useSession(client?: AuthClient) {
 		}
 	}
 
-	async function logout() {
+	async function logout(refreshToken?: string) {
 		try {
-			await auth.logout();
+			await auth.logout(refreshToken);
 		} catch {
 			// Session is being torn down regardless of server response.
 		}

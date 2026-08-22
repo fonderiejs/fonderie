@@ -123,7 +123,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
-  .login(input: ILoginInput): Promise<IApiResponse<ILoginResult>>
+  .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>
@@ -729,6 +729,10 @@ interface IMfaEnabledResult {
     user: IUserDTO;
 }
 
+interface IMfaRequiredResult {
+    mfaToken: string;
+}
+
 interface IMfaSetupResult {
     secret: string;
     uri: string;
@@ -1010,4 +1014,6 @@ interface IWorkspaceSettingsResult {
 }
 
 type SubscriberType = 'user' | 'workspace';
+
+function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult
 ```

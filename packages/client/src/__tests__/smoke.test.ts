@@ -112,3 +112,15 @@ test('auth.mfa.verifyLogin sends the mfaToken as bearer', async () => {
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });
+
+test('isMfaRequired discriminates MFA-required from full login results', async () => {
+	const { isMfaRequired } = await import('../types');
+	assert.equal(isMfaRequired({ mfaToken: 'tmp' }), true);
+	assert.equal(
+		isMfaRequired({
+			tokens: { access: 'a', refresh: 'r' },
+			user: {} as never,
+		}),
+		false,
+	);
+});

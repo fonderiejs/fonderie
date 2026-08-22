@@ -9,7 +9,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
-  .login(input: ILoginInput): Promise<IApiResponse<ILoginResult>>
+  .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>
@@ -94,15 +94,15 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
 
 function useForgotPassword(client?: AuthClient | undefined): { forgotPassword: (email: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; sent: Ref<...>; }
 
-function useLogin(client?: AuthClient | undefined): { login: (input: ILoginInput) => Promise<ILoginResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
+function useLogin(client?: AuthClient | undefined): { login: (input: ILoginInput) => Promise<ILoginResult | IMfaRequiredResult>; isLoading: Ref<...>; error: Ref<...>; data: Ref<...>; mfaPending: Ref<...>; }
 
-function useLogout(client?: AuthClient | undefined): { logout: () => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+function useLogout(client?: AuthClient | undefined): { logout: (refreshToken?: string | undefined) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
 
 function useRegister(client?: AuthClient | undefined): { register: (input: IRegisterInput) => Promise<IRegisterResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
 
 function useResetPassword(client?: AuthClient | undefined): { resetPassword: (input: IResetPasswordInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; done: Ref<...>; }
 
-function useSession(client?: AuthClient | undefined): { user: Ref<{ id: string; email: string; firstName: string; lastName: string; phone: string; profileImageUrl: string; isActive: boolean; lastLogin: string; ... 8 more ...; updatedAt: string; } | null, IUserDTO | ... 1 more ... | null>; isLoading: Ref<...>; isAuthenticated: Ref<...>; refresh: () => Promise<...>; logout: () => Promise<...>; }
+function useSession(client?: AuthClient | undefined): { user: Ref<{ id: string; email: string; firstName: string; lastName: string; phone: string; profileImageUrl: string; isActive: boolean; lastLogin: string; ... 8 more ...; updatedAt: string; } | null, IUserDTO | ... 1 more ... | null>; isLoading: Ref<...>; isAuthenticated: Ref<...>; refresh: () => Promise<...>; logout: (refreshToken?: string | undefined) => Promise<...>; }
 
 function useVerifyEmail(client?: AuthClient | undefined): { verifyEmail: (pin: string) => Promise<IVerifyEmailResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
 ```

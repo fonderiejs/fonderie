@@ -1,4 +1,5 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
+import { isMfaRequired } from '@fonderie/client';
 import { useLogin } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -13,6 +14,8 @@ import {
 export interface ILoginScreenProps {
 	client?: AuthClient;
 	onLoginSuccess?: (result: ILoginResult) => void;
+	// Called instead of onLoginSuccess when the account requires MFA.
+	onMfaRequired?: (mfaToken: string) => void;
 	onNavigateToRegister?: () => void;
 	onNavigateToForgotPassword?: () => void;
 }
@@ -20,6 +23,7 @@ export interface ILoginScreenProps {
 export function LoginScreen({
 	client,
 	onLoginSuccess,
+	onMfaRequired,
 	onNavigateToRegister,
 	onNavigateToForgotPassword,
 }: ILoginScreenProps) {
@@ -30,6 +34,10 @@ export function LoginScreen({
 	const handleSubmit = async () => {
 		try {
 			const result = await login({ email, password });
+			if (isMfaRequired(result)) {
+				onMfaRequired?.(result.mfaToken);
+				return;
+			}
 			onLoginSuccess?.(result);
 		} catch {
 			// Surfaced via `error` from useLogin.
