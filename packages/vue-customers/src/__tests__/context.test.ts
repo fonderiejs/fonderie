@@ -37,8 +37,6 @@ async function runInSetup<T>(run: () => T, plugin?: boolean) {
 	const app = createSSRApp(Root);
 	if (plugin) app.use(FonderiePlugin, fakeClient);
 	await renderToString(app);
-	// Let the void refresh() kicked off in setup() settle.
-	await new Promise((resolve) => setTimeout(resolve, 0));
 	return { value, error };
 }
 
@@ -46,6 +44,10 @@ test('useCustomers resolves the client via app.use(FonderiePlugin, client)', asy
 	const { value, error } = await runInSetup(() => useCustomers(), true);
 	assert.equal(error, undefined);
 	assert.ok(value);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	assert.equal(value.isLoading.value, true);
+	assert.deepEqual(value.customers.value, []);
+	await value.refresh();
 	assert.equal(value.isLoading.value, false);
 	assert.equal(value.error.value, null);
 	assert.deepEqual(value.customers.value, [fakeCustomer]);
@@ -55,6 +57,11 @@ test('useCustomer(customerId) resolves via the plugin without a client argument'
 	const { value, error } = await runInSetup(() => useCustomer('cust-1'), true);
 	assert.equal(error, undefined);
 	assert.ok(value);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	const beforeMount = value.customer.value;
+	assert.equal(beforeMount, null);
+	assert.equal(value.isLoading.value, true);
+	await value.refresh();
 	assert.equal(value.isLoading.value, false);
 	assert.equal(value.customer.value?.id, 'cust-1');
 	// depth defaults to 2 when the client argument is dropped
@@ -64,11 +71,16 @@ test('useCustomer(customerId) resolves via the plugin without a client argument'
 test('an explicit client argument works without any plugin installed', async () => {
 	const { value, error } = await runInSetup(() => useCustomers(fakeCustomers));
 	assert.equal(error, undefined);
-	assert.deepEqual(value?.customers.value, [fakeCustomer]);
+	assert.ok(value);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	await value.refresh();
+	assert.deepEqual(value.customers.value, [fakeCustomer]);
 
 	const tags = await runInSetup(() => useCustomerTags(fakeCustomers, 'cust-1'));
 	assert.equal(tags.error, undefined);
-	assert.deepEqual(tags.value?.tags.value, ['vip']);
+	assert.ok(tags.value);
+	await tags.value.refresh();
+	assert.deepEqual(tags.value.tags.value, ['vip']);
 });
 
 test('throws a composable-named error with no plugin and no argument', async () => {

@@ -1,10 +1,17 @@
 import type { WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
+export interface IUseAcceptInvitationReturn {
+	acceptInvitation: (pin: string) => Promise<string>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+}
+
 /** @deprecated Use useWorkspaces().acceptInvitation — the list hook self-refreshes after the write. */
-export function useAcceptInvitation(client?: WorkspacesClient) {
+export function useAcceptInvitation(client?: WorkspacesClient): IUseAcceptInvitationReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useAcceptInvitation');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);

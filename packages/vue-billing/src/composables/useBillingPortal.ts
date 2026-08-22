@@ -1,9 +1,16 @@
 import type { BillingClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
-export function useBillingPortal(client?: BillingClient) {
+export interface IUseBillingPortalReturn {
+	openPortal: () => Promise<string>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+}
+
+export function useBillingPortal(client?: BillingClient): IUseBillingPortalReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useBillingPortal');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
