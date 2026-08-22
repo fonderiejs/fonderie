@@ -30,6 +30,7 @@ PLAN-*.md
 **/scripts/*
 !scripts/generate-signatures.mjs
 !scripts/audit-validation.mjs
+!scripts/check-hook-coverage.mjs
 !scripts/generate-outcomes.mjs
 !scripts/generate-brain.mjs
 !scripts/brain-query.mjs
