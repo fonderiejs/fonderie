@@ -5,6 +5,7 @@ export type {
 	IInviteEntry,
 	IMemberDTO,
 	IRoleDTO,
+	IRolePermission,
 	IRolePermissionInput,
 	IUpdateRoleInput,
 	IUpdateSettingsInput,
@@ -16,6 +17,7 @@ export type {
 } from '@fonderie/client';
 
 export { FonderieApiError } from '@fonderie/client';
+export type { IUseRolePermissionsReturn } from './composables';
 export {
 	useAcceptInvitation,
 	useCreateWorkspace,
@@ -23,6 +25,7 @@ export {
 	useMemberRoles,
 	useMembers,
 	useRemoveMember,
+	useRolePermissions,
 	useRoles,
 	useSetRolePermissions,
 	useUpdateRole,

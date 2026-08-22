@@ -60,6 +60,14 @@ interface IRoleDTO {
     workspaceId: string;
 }
 
+interface IRolePermission {
+    permissionKey: string;
+    canCreate: boolean;
+    canRead: boolean;
+    canUpdate: boolean;
+    canDelete: boolean;
+}
+
 interface IRolePermissionInput {
     permissionKey: string;
     canCreate?: boolean;
@@ -205,6 +213,14 @@ interface IUseRemoveMemberReturn {
     error: FonderieApiError | null;
 }
 
+interface IUseRolePermissionsReturn {
+    permissions: IRolePermission[];
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
+}
+
 interface IUseRolesReturn {
     roles: IRoleDTO[];
     isLoading: boolean;
@@ -260,6 +276,8 @@ function useMemberRoles(userId: string): IUseMemberRolesReturn
 function useMembers(client?: WorkspacesClient | undefined): IUseMembersReturn
 
 function useRemoveMember(client?: WorkspacesClient | undefined): IUseRemoveMemberReturn
+
+function useRolePermissions(roleId: string): IUseRolePermissionsReturn
 
 function useRoles(client?: WorkspacesClient | undefined): IUseRolesReturn
 

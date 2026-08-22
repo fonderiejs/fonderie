@@ -7,7 +7,8 @@ import { FonderieProvider } from '@fonderie/react';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 
-import { useCreateWorkspace, useMemberRoles, useWorkspaces } from '../hooks';
+import type { IUseRolePermissionsReturn } from '../hooks';
+import { useCreateWorkspace, useMemberRoles, useRolePermissions, useWorkspaces } from '../hooks';
 
 const fakeWorkspaces = { marker: 'context-workspaces' } as unknown as WorkspacesClient;
 const fakeClient = { workspaces: fakeWorkspaces } as unknown as FonderieClient;
@@ -57,6 +58,71 @@ test('an explicit client still works and bypasses context', () => {
 			},
 		}),
 	);
+});
+
+test('useRolePermissions resolves from context and writes then re-reads', async () => {
+	const rpCalls: unknown[] = [];
+	const fake = {
+		getRolePermissions: async (roleId: string) => {
+			rpCalls.push(['get', roleId]);
+			return { reason: 'OK', explanation: '', result: { permissions: [] } };
+		},
+		setRolePermissions: async (roleId: string, permissions: unknown) => {
+			rpCalls.push(['set', roleId, permissions]);
+			return { reason: 'OK', explanation: '', result: undefined };
+		},
+	} as unknown as WorkspacesClient;
+	let returned: unknown;
+	renderToString(
+		createElement(
+			FonderieProvider,
+			{ client: { workspaces: fake } as unknown as FonderieClient },
+			createElement(Probe, {
+				run: () => {
+					returned = useRolePermissions('role-1');
+				},
+			}),
+		),
+	);
+	const { refresh, setRolePermissions } = returned as IUseRolePermissionsReturn;
+	// renderToString does not run effects — drive the initial read manually.
+	await refresh();
+	assert.deepEqual(rpCalls, [['get', 'role-1']]);
+	rpCalls.length = 0;
+	await setRolePermissions([{ permissionKey: 'docs', canRead: true }]);
+	assert.deepEqual(rpCalls, [
+		['set', 'role-1', [{ permissionKey: 'docs', canRead: true }]],
+		['get', 'role-1'],
+	]);
+});
+
+test('useRolePermissions accepts an explicit client without a provider', async () => {
+	const rpCalls: unknown[] = [];
+	const explicit = Object.assign(Object.create(WorkspacesClient.prototype), {
+		getRolePermissions: async (roleId: string) => {
+			rpCalls.push(['get', roleId]);
+			return { reason: 'OK', explanation: '', result: { permissions: [] } };
+		},
+		setRolePermissions: async (roleId: string, permissions: unknown) => {
+			rpCalls.push(['set', roleId, permissions]);
+			return { reason: 'OK', explanation: '', result: undefined };
+		},
+	}) as WorkspacesClient;
+	let returned: unknown;
+	renderToString(
+		createElement(Probe, {
+			run: () => {
+				returned = useRolePermissions(explicit, 'role-2');
+			},
+		}),
+	);
+	const { permissions, setRolePermissions } = returned as IUseRolePermissionsReturn;
+	assert.deepEqual(permissions, []);
+	await setRolePermissions([{ permissionKey: 'docs', canDelete: false }]);
+	assert.deepEqual(rpCalls, [
+		['set', 'role-2', [{ permissionKey: 'docs', canDelete: false }]],
+		['get', 'role-2'],
+	]);
 });
 
 test('hooks throw a named error without provider or argument', () => {

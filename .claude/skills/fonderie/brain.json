@@ -941,7 +941,11 @@
         "useForgotPassword",
         "useLogin",
         "useLogout",
+        "useAccountData",
+        "useChangePassword",
         "useMfaLogin",
+        "useMfaSetup",
+        "useProfile",
         "useRegister",
         "useResetPassword",
         "useSession",
@@ -1157,7 +1161,11 @@
         "useForgotPassword",
         "useLogin",
         "useLogout",
+        "useAccountData",
+        "useChangePassword",
         "useMfaLogin",
+        "useMfaSetup",
+        "useProfile",
         "useRegister",
         "useResetPassword",
         "useSession",
@@ -1340,6 +1348,7 @@
         "useMemberRoles",
         "useMembers",
         "useRemoveMember",
+        "useRolePermissions",
         "useRoles",
         "useSetRolePermissions",
         "useUpdateRole",
@@ -1442,10 +1451,14 @@
       "requires": [],
       "exports": [
         "FonderieApiError",
+        "useAccountData",
+        "useChangePassword",
         "useForgotPassword",
         "useLogin",
         "useLogout",
         "useMfaLogin",
+        "useMfaSetup",
+        "useProfile",
         "useRegister",
         "useResetPassword",
         "useSession",
@@ -1671,6 +1684,7 @@
         "useMemberRoles",
         "useMembers",
         "useRemoveMember",
+        "useRolePermissions",
         "useRoles",
         "useSetRolePermissions",
         "useUpdateRole",
@@ -3643,7 +3657,27 @@
       "react-native-auth",
       "vue-auth"
     ],
+    "useaccountdata": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
+    "usechangepassword": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
     "usemfalogin": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
+    "usemfasetup": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
+    "useprofile": [
       "react-auth",
       "react-native-auth",
       "vue-auth"
@@ -3860,6 +3894,10 @@
       "vue-workspaces"
     ],
     "useremovemember": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "userolepermissions": [
       "react-workspaces",
       "vue-workspaces"
     ],

@@ -24,10 +24,20 @@ function renderHook<T>(use: () => T): T {
 	return value as T;
 }
 
-const calls: { login: unknown[]; logout: (string | undefined)[]; setAccessToken: unknown[] } = {
+const calls: {
+	login: unknown[];
+	logout: (string | undefined)[];
+	setAccessToken: unknown[];
+	getUser: unknown[];
+	deleteUser: unknown[];
+	sendVerificationEmail: unknown[];
+} = {
 	login: [],
 	logout: [],
 	setAccessToken: [],
+	getUser: [],
+	deleteUser: [],
+	sendVerificationEmail: [],
 };
 let loginResult: unknown;
 const fakeAuth = {
@@ -41,6 +51,18 @@ const fakeAuth = {
 	},
 	setAccessToken: (token: unknown) => {
 		calls.setAccessToken.push(token);
+	},
+	getUser: async () => {
+		calls.getUser.push(undefined);
+		return { reason: 'OK', explanation: '', result: { user: { id: 'u1' } } };
+	},
+	deleteUser: async () => {
+		calls.deleteUser.push(undefined);
+		return { reason: 'OK', explanation: '', result: undefined };
+	},
+	sendVerificationEmail: async () => {
+		calls.sendVerificationEmail.push(undefined);
+		return { reason: 'OK', explanation: '', result: undefined };
 	},
 } as unknown as AuthClient;
 
@@ -117,4 +139,54 @@ test('storage primitives are exported from the package index', async () => {
 	assert.equal(typeof index.clearToken, 'function');
 	assert.equal(typeof index.readToken, 'function');
 	assert.equal(index.TOKEN_KEY, 'fonderie_access_token');
+});
+
+
+test('useMfaSetup.verify persists the rotated tokens like a login', async () => {
+	calls.setAccessToken.length = 0;
+	const verifyCalls: unknown[] = [];
+	const authWithMfa = fakeAuth as unknown as { mfa?: Record<string, unknown> };
+	authWithMfa.mfa = authWithMfa.mfa ?? {};
+	const mfa = authWithMfa.mfa;
+	mfa.verify = async (code: string) => {
+		verifyCalls.push([code]);
+		return {
+			reason: 'OK',
+			explanation: '',
+			result: { tokens: { access: 'acc-enroll', refresh: 'r' }, user: { id: 'u1' } },
+		};
+	};
+	const { useMfaSetup } = await import('../index');
+	const { verify } = renderHook(() => useMfaSetup());
+	const result = await verify('123456');
+	assert.deepEqual(verifyCalls, [['123456']]);
+	assert.deepEqual(calls.setAccessToken, ['acc-enroll'], 'enrollment must re-arm the client token');
+	assert.equal(result.tokens.access, 'acc-enroll');
+});
+
+test('useProfile.refresh loads the user through the client', async () => {
+	calls.getUser.length = 0;
+	const { useProfile } = await import('../index');
+	// renderToString does not run effects — drive the initial fetch manually.
+	const { refresh } = renderHook(() => useProfile());
+	await refresh();
+	assert.equal(calls.getUser.length, 1);
+});
+
+test('useAccountData.deleteUser tears the session down after deletion', async () => {
+	calls.deleteUser.length = 0;
+	calls.setAccessToken.length = 0;
+	const { useAccountData } = await import('../index');
+	const { deleteUser } = renderHook(() => useAccountData());
+	await deleteUser();
+	assert.equal(calls.deleteUser.length, 1);
+	assert.deepEqual(calls.setAccessToken, [undefined], 'deletion must disarm the client token');
+});
+
+test('useVerifyEmail.resend re-sends the verification email', async () => {
+	calls.sendVerificationEmail.length = 0;
+	const { useVerifyEmail } = await import('../index');
+	const { resend } = renderHook(() => useVerifyEmail());
+	await resend();
+	assert.equal(calls.sendVerificationEmail.length, 1);
 });

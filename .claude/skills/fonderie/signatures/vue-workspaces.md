@@ -50,6 +50,14 @@ interface IRoleDTO {
     workspaceId: string;
 }
 
+interface IRolePermission {
+    permissionKey: string;
+    canCreate: boolean;
+    canRead: boolean;
+    canUpdate: boolean;
+    canDelete: boolean;
+}
+
 interface IRolePermissionInput {
     permissionKey: string;
     canCreate?: boolean;
@@ -162,6 +170,14 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
+interface IUseRolePermissionsReturn {
+    permissions: Ref<IRolePermission[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: () => Promise<void>;
+    setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
+}
+
 function useAcceptInvitation(client?: WorkspacesClient | undefined): { acceptInvitation: (pin: string) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
 
 function useCreateWorkspace(client?: WorkspacesClient | undefined): { createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>; isLoading: Ref<...>; error: Ref<...>; }
@@ -173,6 +189,8 @@ function useMemberRoles(userId: string): IUseMemberRolesReturn
 function useMembers(client?: WorkspacesClient | undefined): { members: Ref<{ userId: string; workspaceId: string; roleId: string; roleName: string; confirmed: boolean; createdAt: string; }[], IMemberDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useRemoveMember(client?: WorkspacesClient | undefined): { removeMember: (userId: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+
+function useRolePermissions(roleId: string): IUseRolePermissionsReturn
 
 function useRoles(client?: WorkspacesClient | undefined): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 4 more ...; removeRole: (roleId: string) => Promise<...>; }
 

@@ -10,6 +10,8 @@ export type { IUseMembersReturn } from './useMembers';
 export { useMembers } from './useMembers';
 export type { IUseRemoveMemberReturn } from './useRemoveMember';
 export { useRemoveMember } from './useRemoveMember';
+export type { IUseRolePermissionsReturn } from './useRolePermissions';
+export { useRolePermissions } from './useRolePermissions';
 export type { IUseRolesReturn } from './useRoles';
 export { useRoles } from './useRoles';
 export type { IUseSetRolePermissionsReturn } from './useSetRolePermissions';
