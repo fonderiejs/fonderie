@@ -22,8 +22,9 @@
 > `useCustomers` pagination `total`, and a latent `.then(refresh)` arity trap.
 >
 > **Open follow-ups (tracked, out of the audit's scope):**
-> - The app calls `/directions` + `/directions/matrix`, but no backend
->   implementation exists anywhere — pre-existing; needs a proxy like `/places/*`.
+> - ~~The app calls `/directions` + `/directions/matrix`, but no backend
+>   implementation exists anywhere~~ — **resolved 2026-08-22**: proxied behind
+>   the API like `/places/*` (crewfinding/api `627f515`).
 > - `WorkspacesClient.getWorkspace` / `getRole` remain read-hook-less
 >   (allow-listed in `check:hook-coverage` with reasons).
 > - `NavigateCard`/`Map` still embed the Google key for map rendering.
