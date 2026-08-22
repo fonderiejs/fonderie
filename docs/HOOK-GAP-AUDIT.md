@@ -1,15 +1,43 @@
 # Hook Gap Audit — 2026-08-22
 
+> ## ✅ Status: RESOLVED — all five remediation phases shipped 2026-08-22
+>
+> Every finding below was fixed the same day the audit ran, across seven
+> releases and three repos. The findings sections are kept verbatim as the
+> historical record; the ledger here maps each cluster to its fix.
+>
+> | Phase | Findings closed | Shipped as | PRs |
+> |---|---|---|---|
+> | 1 — Stop the bleed | SDK-001/002/003, B-001, B-003, B-004 | `client@0.8.0`, auth pkgs `0.5.0`; app MfaVerifyScreen → `useMfaLogin`, unified 401 logout, refresh-token persistence | #108/#109 |
+> | 2 — Fill the holes | B-002, A-101, A-102, A-103, A-104, A-201…A-205, E-005 | `client@0.9.0`, auth `0.6.0`, workspaces `0.3.0` (`useMfaSetup`, `useProfile`, `useChangePassword`, `useAccountData`, `resend()`, `useRolePermissions`, customers pagination); 4 new screens ×3 frameworks; 35 app bypass sites migrated | #110–#114 |
+> | 3 — Unify lifecycles | B-005…B-009, C-001…C-005, C-009 | `client@0.10.0` + 17 hook packages: `refresh({force})` everywhere, 10 Group-C hooks folded into self-refreshing list hooks (standalones `@deprecated`); app: MFA token out of Redux (nav param), zero screen-level cache pokes | #115/#116 |
+> | 4 — Extract & reuse | A3, C-006/007/008, D1, D2, D3, E-001…E-004, E-006 | App: domain hooks on `useResource`, 6 shared primitives (−326 LOC), dead wrappers deleted; `crewfinding/api`: `/places/*` proxy (key out of the bundle); vue pkgs `0.4–0.8`: reactive params, `onMounted` fetches, exported return types | #117/#119, api `4bdcd6a` |
+> | 5 — Prevent regressions | pattern-library enforcement | CI `check:hook-coverage` (128 methods, reasoned allow-list); app ESLint `no-restricted-imports` on `~api` with 10 inline `@skip-hook` exceptions; display helpers → `~utils/customer` | #118, app `fe1368c` |
+>
+> **Verified end state:** SDK repo-wide typecheck/test/lint green at every
+> release; app tsc 503 → 495 (net −8 pre-existing errors fixed), jest 15 →
+> 27 tests. Bonus bugs fixed beyond the inventory: cached
+> `sendVerificationEmail` swallowing resends, the `IMfaSetupResult` type
+> that never matched the server, per-keystroke fetch in the audit screens,
+> `useCustomers` pagination `total`, and a latent `.then(refresh)` arity trap.
+>
+> **Open follow-ups (tracked, out of the audit's scope):**
+> - The app calls `/directions` + `/directions/matrix`, but no backend
+>   implementation exists anywhere — pre-existing; needs a proxy like `/places/*`.
+> - `WorkspacesClient.getWorkspace` / `getRole` remain read-hook-less
+>   (allow-listed in `check:hook-coverage` with reasons).
+> - `NavigateCard`/`Map` still embed the Google key for map rendering.
+
 Systematic audit of hook ↔ API surface gaps and state-lifecycle inconsistencies
 across the Fonderie SDK (React, React Native, Vue — 45 hooks, 6 typed
 sub-clients, 18 screens packages) and the crewfinding example app (91 raw
 `api.*` call sites in 22 files). Every count below was verified by grep, not
 estimated.
 
-**At a glance:** 4 critical findings (auth/scoping) · 17 SDK client methods
-with no hook · 91 raw `api.*` call sites in app screens · 16 thin hooks
-without refresh semantics · ~4,900 lines of pseudo-hook screen code · 2
-outright client bugs.
+**At a glance (as found):** 4 critical findings (auth/scoping) · 17 SDK client
+methods with no hook · 91 raw `api.*` call sites in app screens · 16 thin
+hooks without refresh semantics · ~4,900 lines of pseudo-hook screen code · 2
+outright client bugs — **all since resolved; see the ledger above.**
 
 ---
 
