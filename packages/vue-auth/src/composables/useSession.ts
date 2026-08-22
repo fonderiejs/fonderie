@@ -1,9 +1,18 @@
 import type { AuthClient, IUserDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { clearToken, readToken } from '../storage';
 
-export function useSession(client?: AuthClient) {
+export interface IUseSessionReturn {
+	user: Ref<IUserDTO | null>;
+	isLoading: Ref<boolean>;
+	isAuthenticated: Ref<boolean>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	logout: (refreshToken?: string) => Promise<void>;
+}
+
+export function useSession(client?: AuthClient): IUseSessionReturn {
 	const auth = useFonderieSubClient(client, (c) => c.auth, 'useSession');
 	const user = ref<IUserDTO | null>(null);
 	const isLoading = ref(true);
@@ -39,7 +48,7 @@ export function useSession(client?: AuthClient) {
 
 	const token = readToken();
 	if (token) auth.setAccessToken(token);
-	void refresh();
+	onMounted(() => void refresh());
 
 	return { user, isLoading, isAuthenticated, refresh, logout };
 }

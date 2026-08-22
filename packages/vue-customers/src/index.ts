@@ -28,6 +28,17 @@ export type {
 } from '@fonderie/client';
 
 export { FonderieApiError } from '@fonderie/client';
+export type {
+	IUseCustomerAddressesReturn,
+	IUseCustomerEmailsReturn,
+	IUseCustomerLabelsReturn,
+	IUseCustomerNotesReturn,
+	IUseCustomerPhonesReturn,
+	IUseCustomerRelationshipsReturn,
+	IUseCustomerReturn,
+	IUseCustomersReturn,
+	IUseCustomerTagsReturn,
+} from './composables';
 export {
 	useCustomer,
 	useCustomerAddresses,

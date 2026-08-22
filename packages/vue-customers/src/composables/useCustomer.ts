@@ -5,8 +5,8 @@ import type {
 } from '@fonderie/client';
 import { CustomersClient, FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseCustomerReturn {
 	customer: Ref<ICustomerDetailDTO | ICustomerDetailD2DTO | null>;
@@ -18,36 +18,48 @@ export interface IUseCustomerReturn {
 
 // depth 2 (default) nests relationships one level deeper than depth 1 — see
 // ICustomerDetailD2DTO. Pass depth: 1 for a flatter shape.
-export function useCustomer(customerId: string, depth?: 1 | 2): IUseCustomerReturn;
 export function useCustomer(
-	client: CustomersClient | undefined,
-	customerId: string,
-	depth?: 1 | 2,
+	customerId: MaybeRefOrGetter<string>,
+	depth?: MaybeRefOrGetter<1 | 2>,
 ): IUseCustomerReturn;
 export function useCustomer(
-	clientOrCustomerId: CustomersClient | string | undefined,
-	customerIdOrDepth?: string | 1 | 2,
-	maybeDepth?: 1 | 2,
+	client: CustomersClient | undefined,
+	customerId: MaybeRefOrGetter<string>,
+	depth?: MaybeRefOrGetter<1 | 2>,
+): IUseCustomerReturn;
+export function useCustomer(
+	clientOrCustomerId: CustomersClient | MaybeRefOrGetter<string> | undefined,
+	customerIdOrDepth?: MaybeRefOrGetter<string> | MaybeRefOrGetter<1 | 2>,
+	maybeDepth?: MaybeRefOrGetter<1 | 2>,
 ): IUseCustomerReturn {
 	const firstIsClient =
 		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (customerIdOrDepth as string) : clientOrCustomerId;
-	const depth = (firstIsClient ? maybeDepth : (customerIdOrDepth as 1 | 2 | undefined)) ?? 2;
+	const customerId = firstIsClient
+		? (customerIdOrDepth as MaybeRefOrGetter<string>)
+		: clientOrCustomerId;
+	const depth = firstIsClient
+		? maybeDepth
+		: (customerIdOrDepth as MaybeRefOrGetter<1 | 2> | undefined);
+	const resolveDepth = () => toValue(depth) ?? 2;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomer');
 	const customer = ref<ICustomerDetailDTO | ICustomerDetailD2DTO | null>(null);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
 	async function refresh(opts?: { force?: boolean }) {
-		if (!customerId) {
+		if (!toValue(customerId)) {
 			isLoading.value = false;
 			return;
 		}
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.getCustomer(customerId, { depth }, { bust: opts?.force });
+			const { result } = await customers.getCustomer(
+				toValue(customerId),
+				{ depth: resolveDepth() },
+				{ bust: opts?.force },
+			);
 			customer.value = result;
 		} catch (err) {
 			const apiError =
@@ -61,7 +73,7 @@ export function useCustomer(
 	async function updateCustomer(input: IUpdateCustomerInput) {
 		error.value = null;
 		try {
-			await customers.updateCustomer(customerId, input);
+			await customers.updateCustomer(toValue(customerId), input);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -71,7 +83,11 @@ export function useCustomer(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => [toValue(customerId), toValue(depth)] as const,
+		() => void refresh(),
+	);
 
 	return { customer, isLoading, error, refresh, updateCustomer };
 }

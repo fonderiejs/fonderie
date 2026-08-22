@@ -1,8 +1,8 @@
 import type { CustomerLabelType, ICustomerLabelDTO } from '@fonderie/client';
 import { CustomersClient, FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseCustomerLabelsReturn {
 	labels: Ref<ICustomerLabelDTO[]>;
@@ -16,18 +16,20 @@ export interface IUseCustomerLabelsReturn {
 // CustomersClient.listLabels) — not tied to a single customer. New labels
 // are created implicitly via addEmail/addPhone/addAddress's `label` string;
 // this composable is for browsing/pruning the vocabulary directly.
-export function useCustomerLabels(type: CustomerLabelType): IUseCustomerLabelsReturn;
 export function useCustomerLabels(
-	client: CustomersClient | undefined,
-	type: CustomerLabelType,
+	type: MaybeRefOrGetter<CustomerLabelType>,
 ): IUseCustomerLabelsReturn;
 export function useCustomerLabels(
-	clientOrType: CustomersClient | CustomerLabelType | undefined,
-	maybeType?: CustomerLabelType,
+	client: CustomersClient | undefined,
+	type: MaybeRefOrGetter<CustomerLabelType>,
+): IUseCustomerLabelsReturn;
+export function useCustomerLabels(
+	clientOrType: CustomersClient | MaybeRefOrGetter<CustomerLabelType> | undefined,
+	maybeType?: MaybeRefOrGetter<CustomerLabelType>,
 ): IUseCustomerLabelsReturn {
 	const firstIsClient = clientOrType === undefined || clientOrType instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrType as CustomersClient | undefined) : undefined;
-	const type = firstIsClient ? (maybeType as CustomerLabelType) : clientOrType;
+	const type = firstIsClient ? (maybeType as MaybeRefOrGetter<CustomerLabelType>) : clientOrType;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerLabels');
 	const labels = ref<ICustomerLabelDTO[]>([]);
 	const isLoading = ref(true);
@@ -37,7 +39,7 @@ export function useCustomerLabels(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listLabels(type, { bust: opts?.force });
+			const { result } = await customers.listLabels(toValue(type), { bust: opts?.force });
 			labels.value = result.labels;
 		} catch (err) {
 			const apiError =
@@ -61,7 +63,11 @@ export function useCustomerLabels(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(type),
+		() => void refresh(),
+	);
 
 	return { labels, isLoading, error, refresh, removeLabel };
 }

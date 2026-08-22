@@ -7,7 +7,7 @@ import type {
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 export interface IUseProfileReturn {
 	user: Ref<IUserDTO | null>;
@@ -84,7 +84,7 @@ export function useProfile(client?: AuthClient): IUseProfileReturn {
 		});
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
 
 	return { user, refresh, updateProfile, updatePreferences, updateEmail, updatePhone, isLoading, error };
 }

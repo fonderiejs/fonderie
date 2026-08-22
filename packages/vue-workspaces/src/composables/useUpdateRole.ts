@@ -1,10 +1,17 @@
-import type { IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
+import type { IRoleDTO, IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
+export interface IUseUpdateRoleReturn {
+	updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+}
+
 /** @deprecated Use useRoles().updateRole — the list hook self-refreshes after the write. */
-export function useUpdateRole(client?: WorkspacesClient) {
+export function useUpdateRole(client?: WorkspacesClient): IUseUpdateRoleReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useUpdateRole');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);

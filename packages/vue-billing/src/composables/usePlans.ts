@@ -1,9 +1,20 @@
 import type { BillingClient, ICreatePlanInput, IPlanDTO, IUpdatePlanInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-export function usePlans(client?: BillingClient) {
+export interface IUsePlansReturn {
+	plans: Ref<IPlanDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
+	updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
+	deletePlan: (planId: string) => Promise<void>;
+}
+
+export function usePlans(client?: BillingClient): IUsePlansReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePlans');
 	const plans = ref<IPlanDTO[]>([]);
 	const isLoading = ref(true);
@@ -24,7 +35,7 @@ export function usePlans(client?: BillingClient) {
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
 
 	async function createPlan(input: ICreatePlanInput) {
 		error.value = null;

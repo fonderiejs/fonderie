@@ -142,6 +142,27 @@ interface IUseChangePasswordReturn {
     done: Ref<boolean>;
 }
 
+interface IUseForgotPasswordReturn {
+    forgotPassword: (email: string) => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    sent: Ref<boolean>;
+}
+
+interface IUseLoginReturn {
+    login: (input: ILoginInput) => Promise<ILoginResult | IMfaRequiredResult>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    data: Ref<ILoginResult | null>;
+    mfaPending: Ref<IMfaRequiredResult | null>;
+}
+
+interface IUseLogoutReturn {
+    logout: (refreshToken?: string) => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
+
 interface IUseMfaLoginReturn {
     verifyLogin: (mfaToken: string, code: string) => Promise<ILoginResult>;
     isLoading: Ref<boolean>;
@@ -172,15 +193,48 @@ interface IUseProfileReturn {
     error: Ref<FonderieApiError | null>;
 }
 
+interface IUseRegisterReturn {
+    register: (input: IRegisterInput) => Promise<IRegisterResult>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    data: Ref<IRegisterResult | null>;
+}
+
+interface IUseResetPasswordReturn {
+    resetPassword: (input: IResetPasswordInput) => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    done: Ref<boolean>;
+}
+
+interface IUseSessionReturn {
+    user: Ref<IUserDTO | null>;
+    isLoading: Ref<boolean>;
+    isAuthenticated: Ref<boolean>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    logout: (refreshToken?: string) => Promise<void>;
+}
+
+interface IUseVerifyEmailReturn {
+    verifyEmail: (pin: string) => Promise<IVerifyEmailResult>;
+    resend: () => Promise<void>;
+    resent: Ref<boolean>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    data: Ref<IVerifyEmailResult | null>;
+}
+
 function useAccountData(client?: AuthClient | undefined): IUseAccountDataReturn
 
 function useChangePassword(client?: AuthClient | undefined): IUseChangePasswordReturn
 
-function useForgotPassword(client?: AuthClient | undefined): { forgotPassword: (email: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; sent: Ref<...>; }
+function useForgotPassword(client?: AuthClient | undefined): IUseForgotPasswordReturn
 
-function useLogin(client?: AuthClient | undefined): { login: (input: ILoginInput) => Promise<ILoginResult | IMfaRequiredResult>; isLoading: Ref<...>; error: Ref<...>; data: Ref<...>; mfaPending: Ref<...>; }
+function useLogin(client?: AuthClient | undefined): IUseLoginReturn
 
-function useLogout(client?: AuthClient | undefined): { logout: (refreshToken?: string | undefined) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+function useLogout(client?: AuthClient | undefined): IUseLogoutReturn
 
 function useMfaLogin(client?: AuthClient | undefined): IUseMfaLoginReturn
 
@@ -188,13 +242,13 @@ function useMfaSetup(client?: AuthClient | undefined): IUseMfaSetupReturn
 
 function useProfile(client?: AuthClient | undefined): IUseProfileReturn
 
-function useRegister(client?: AuthClient | undefined): { register: (input: IRegisterInput) => Promise<IRegisterResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
+function useRegister(client?: AuthClient | undefined): IUseRegisterReturn
 
-function useResetPassword(client?: AuthClient | undefined): { resetPassword: (input: IResetPasswordInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; done: Ref<...>; }
+function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordReturn
 
-function useSession(client?: AuthClient | undefined): { user: Ref<{ id: string; email: string; firstName: string; lastName: string; phone: string; profileImageUrl: string; isActive: boolean; lastLogin: string; ... 8 more ...; updatedAt: string; } | null, IUserDTO | ... 1 more ... | null>; isLoading: Ref<...>; isAuthenticated: Ref<...>; refresh: (opts?: { ...; } | undefined) => Promise<...>; logout: (refreshToken?: string | undefined) => Promise<...>; }
+function useSession(client?: AuthClient | undefined): IUseSessionReturn
 
-function useVerifyEmail(client?: AuthClient | undefined): { verifyEmail: (pin: string) => Promise<IVerifyEmailResult>; resend: () => Promise<void>; resent: Ref<...>; isLoading: Ref<...>; error: Ref<...>; data: Ref<...>; }
+function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn
 
 function clearToken(): void
 

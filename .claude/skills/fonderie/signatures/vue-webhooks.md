@@ -66,11 +66,48 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useTestWebhookEndpoint(client?: WebhooksClient | undefined): { testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
+interface IUseTestWebhookEndpointReturn {
+    testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
 
-function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn
+interface IUseWebhookDeliveriesReturn {
+    deliveries: Ref<IWebhookDeliveryDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    testEndpoint: () => Promise<ITestWebhookResult>;
+}
 
-function useWebhookEndpoint(endpointId: string): IUseWebhookEndpointReturn
+interface IUseWebhookEndpointReturn {
+    endpoint: Ref<IWebhookEndpointDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    updateEndpoint: (input: IUpdateWebhookEndpointInput) => Promise<void>;
+}
 
-function useWebhookEndpoints(client?: WebhooksClient | undefined): { endpoints: Ref<{ id: string; url: string; events: string[]; enabled: boolean; createdAt: string; }[], IWebhookEndpointDTO[] | { ...; }[]>; ... 4 more ...; removeEndpoint: (endpointId: string) => Promise<...>; }
+interface IUseWebhookEndpointsReturn {
+    endpoints: Ref<IWebhookEndpointDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    createEndpoint: (input: ICreateWebhookEndpointInput) => Promise<IWebhookEndpointCreatedDTO>;
+    removeEndpoint: (endpointId: string) => Promise<void>;
+}
+
+function useTestWebhookEndpoint(client?: WebhooksClient | undefined): IUseTestWebhookEndpointReturn
+
+function useWebhookDeliveries(endpointId: MaybeRefOrGetter<string>): IUseWebhookDeliveriesReturn
+
+function useWebhookEndpoint(endpointId: MaybeRefOrGetter<string>): IUseWebhookEndpointReturn
+
+function useWebhookEndpoints(client?: WebhooksClient | undefined): IUseWebhookEndpointsReturn
 ```

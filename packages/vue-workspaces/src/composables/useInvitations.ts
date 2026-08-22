@@ -1,9 +1,19 @@
 import type { IInvitationDTO, IInviteEntry, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-export function useInvitations(client?: WorkspacesClient) {
+export interface IUseInvitationsReturn {
+	invitations: Ref<IInvitationDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
+	cancelInvitation: (inviteId: string) => Promise<void>;
+}
+
+export function useInvitations(client?: WorkspacesClient): IUseInvitationsReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useInvitations');
 	const invitations = ref<IInvitationDTO[]>([]);
 	const isLoading = ref(true);
@@ -50,7 +60,7 @@ export function useInvitations(client?: WorkspacesClient) {
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
 
 	return { invitations, isLoading, error, refresh, invite, cancelInvitation };
 }

@@ -1,7 +1,16 @@
-import type { BillingClient, ICreatePlanInput, IUpdatePlanInput } from '@fonderie/client';
+import type { BillingClient, ICreatePlanInput, IPlanDTO, IUpdatePlanInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
+
+export interface IUsePlanAdminReturn {
+	createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
+	updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
+	deletePlan: (planId: string) => Promise<void>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+}
 
 // Action-only, like useUpdateRole/useWorkspaceProfile — pair with usePlans()
 // for the list and call its refresh() after a write.
@@ -11,7 +20,7 @@ import { ref } from 'vue';
 // server trusts the caller to authorize access itself. Gate the UI that
 // calls this composable behind your own admin check before shipping it.
 /** @deprecated Use usePlans() admin mutations — the list hook self-refreshes after the write. */
-export function usePlanAdmin(client?: BillingClient) {
+export function usePlanAdmin(client?: BillingClient): IUsePlanAdminReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePlanAdmin');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);

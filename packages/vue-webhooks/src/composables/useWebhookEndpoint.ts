@@ -1,8 +1,8 @@
 import type { IUpdateWebhookEndpointInput, IWebhookEndpointDTO } from '@fonderie/client';
 import { FonderieApiError, WebhooksClient } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseWebhookEndpointReturn {
 	endpoint: Ref<IWebhookEndpointDTO | null>;
@@ -12,33 +12,35 @@ export interface IUseWebhookEndpointReturn {
 	updateEndpoint: (input: IUpdateWebhookEndpointInput) => Promise<void>;
 }
 
-export function useWebhookEndpoint(endpointId: string): IUseWebhookEndpointReturn;
+export function useWebhookEndpoint(endpointId: MaybeRefOrGetter<string>): IUseWebhookEndpointReturn;
 export function useWebhookEndpoint(
 	client: WebhooksClient | undefined,
-	endpointId: string,
+	endpointId: MaybeRefOrGetter<string>,
 ): IUseWebhookEndpointReturn;
 export function useWebhookEndpoint(
-	clientOrEndpointId: WebhooksClient | string | undefined,
-	maybeEndpointId?: string,
+	clientOrEndpointId: WebhooksClient | MaybeRefOrGetter<string> | undefined,
+	maybeEndpointId?: MaybeRefOrGetter<string>,
 ): IUseWebhookEndpointReturn {
 	const firstIsClient =
 		clientOrEndpointId === undefined || clientOrEndpointId instanceof WebhooksClient;
 	const explicit = firstIsClient ? (clientOrEndpointId as WebhooksClient | undefined) : undefined;
-	const endpointId = firstIsClient ? (maybeEndpointId as string) : clientOrEndpointId;
+	const endpointId = firstIsClient
+		? (maybeEndpointId as MaybeRefOrGetter<string>)
+		: clientOrEndpointId;
 	const webhooks = useFonderieSubClient(explicit, (c) => c.webhooks, 'useWebhookEndpoint');
 	const endpoint = ref<IWebhookEndpointDTO | null>(null);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
 	async function refresh(opts?: { force?: boolean }) {
-		if (!endpointId) {
+		if (!toValue(endpointId)) {
 			isLoading.value = false;
 			return;
 		}
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await webhooks.getEndpoint(endpointId, { bust: opts?.force });
+			const { result } = await webhooks.getEndpoint(toValue(endpointId), { bust: opts?.force });
 			endpoint.value = result;
 		} catch (err) {
 			const apiError =
@@ -52,7 +54,7 @@ export function useWebhookEndpoint(
 	async function updateEndpoint(input: IUpdateWebhookEndpointInput) {
 		error.value = null;
 		try {
-			const { result } = await webhooks.updateEndpoint(endpointId, input);
+			const { result } = await webhooks.updateEndpoint(toValue(endpointId), input);
 			endpoint.value = result;
 		} catch (err) {
 			const apiError =
@@ -62,7 +64,11 @@ export function useWebhookEndpoint(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(endpointId),
+		() => void refresh(),
+	);
 
 	return { endpoint, isLoading, error, refresh, updateEndpoint };
 }

@@ -1,10 +1,21 @@
 import type { AuthClient, ILoginInput, ILoginResult, IMfaRequiredResult } from '@fonderie/client';
 import { FonderieApiError, isMfaRequired } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { persistToken } from '../storage';
 
-export function useLogin(client?: AuthClient) {
+export interface IUseLoginReturn {
+	login: (input: ILoginInput) => Promise<ILoginResult | IMfaRequiredResult>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	data: Ref<ILoginResult | null>;
+	// Set when the account requires MFA: no tokens were issued — complete the
+	// login with client.auth.mfa.verifyLogin(mfaPending.value.mfaToken, code).
+	mfaPending: Ref<IMfaRequiredResult | null>;
+}
+
+export function useLogin(client?: AuthClient): IUseLoginReturn {
 	const auth = useFonderieSubClient(client, (c) => c.auth, 'useLogin');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
