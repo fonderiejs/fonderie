@@ -47,21 +47,21 @@
     "react-workspaces-screens": "0.3.0",
     "store": "0.2.2",
     "vue": "0.2.0",
-    "vue-audit": "0.3.0",
+    "vue-audit": "0.4.0",
     "vue-audit-screens": "0.2.0",
-    "vue-auth": "0.7.0",
+    "vue-auth": "0.8.0",
     "vue-auth-screens": "0.4.0",
-    "vue-billing": "0.3.0",
+    "vue-billing": "0.4.0",
     "vue-billing-screens": "0.2.0",
     "vue-config-admin": "0.2.0",
     "vue-config-admin-screens": "0.1.0",
     "vue-courier-admin": "0.2.0",
     "vue-courier-admin-screens": "0.1.0",
-    "vue-customers": "0.4.0",
+    "vue-customers": "0.5.0",
     "vue-customers-screens": "0.2.0",
-    "vue-webhooks": "0.3.0",
+    "vue-webhooks": "0.4.0",
     "vue-webhooks-screens": "0.2.0",
-    "vue-workspaces": "0.4.0",
+    "vue-workspaces": "0.5.0",
     "vue-workspaces-screens": "0.3.0",
     "webhooks": "5.0.0",
     "workspaces": "5.1.0"
@@ -1426,7 +1426,7 @@
       "hasOutcomes": false
     },
     "vue-audit": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1455,7 +1455,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.7.0",
+      "version": "0.8.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1501,7 +1501,7 @@
       "hasOutcomes": false
     },
     "vue-billing": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1614,7 +1614,7 @@
       "hasOutcomes": false
     },
     "vue-customers": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1652,7 +1652,7 @@
       "hasOutcomes": false
     },
     "vue-webhooks": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1685,7 +1685,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
