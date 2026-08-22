@@ -25,11 +25,13 @@ export type {
 	IUseMembersReturn,
 	IUseRemoveMemberReturn,
 	IUseRolePermissionsReturn,
+	IUseRoleReturn,
 	IUseRolesReturn,
 	IUseSetRolePermissionsReturn,
 	IUseUpdateRoleReturn,
 	IUseWorkspaceProfileReturn,
 	IUseWorkspaceSettingsReturn,
+	IUseWorkspaceReturn,
 	IUseWorkspacesReturn,
 } from './composables';
 export {
@@ -39,11 +41,13 @@ export {
 	useMemberRoles,
 	useMembers,
 	useRemoveMember,
+	useRole,
 	useRolePermissions,
 	useRoles,
 	useSetRolePermissions,
 	useUpdateRole,
 	useWorkspaceProfile,
 	useWorkspaceSettings,
+	useWorkspace,
 	useWorkspaces,
 } from './composables';

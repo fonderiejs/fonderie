@@ -24,11 +24,13 @@ export type {
 	IUseMembersReturn,
 	IUseRemoveMemberReturn,
 	IUseRolePermissionsReturn,
+	IUseRoleReturn,
 	IUseRolesReturn,
 	IUseSetRolePermissionsReturn,
 	IUseUpdateRoleReturn,
 	IUseWorkspaceProfileReturn,
 	IUseWorkspaceSettingsReturn,
+	IUseWorkspaceReturn,
 	IUseWorkspacesReturn,
 } from './hooks';
 export {
@@ -38,11 +40,13 @@ export {
 	useMemberRoles,
 	useMembers,
 	useRemoveMember,
+	useRole,
 	useRolePermissions,
 	useRoles,
 	useSetRolePermissions,
 	useUpdateRole,
 	useWorkspaceProfile,
 	useWorkspaceSettings,
+	useWorkspace,
 	useWorkspaces,
 } from './hooks';

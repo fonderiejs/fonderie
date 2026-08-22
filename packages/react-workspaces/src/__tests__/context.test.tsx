@@ -8,7 +8,7 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 
 import type { IUseRolePermissionsReturn } from '../hooks';
-import { useCreateWorkspace, useMemberRoles, useRolePermissions, useWorkspaces, useMembers } from '../hooks';
+import { useCreateWorkspace, useMemberRoles, useMembers, useRole, useRolePermissions, useWorkspace, useWorkspaces } from '../hooks';
 
 const fakeWorkspaces = { marker: 'context-workspaces' } as unknown as WorkspacesClient;
 const fakeClient = { workspaces: fakeWorkspaces } as unknown as FonderieClient;
@@ -170,5 +170,40 @@ test('refresh({force:true}) passes bust to the client and removeMember folds int
 		['list', true],
 		['remove', 'user-9'],
 		['list', false],
+	]);
+});
+
+
+test('useWorkspace and useRole read hooks resolve from context and pass force through', async () => {
+	const log: unknown[] = [];
+	const fake = {
+		getWorkspace: async (id: string, opts?: { bust?: boolean }) => {
+			log.push(['ws', id, opts?.bust ?? false]);
+			return { reason: 'OK', explanation: '', result: { workspace: { id } } };
+		},
+		getRole: async (id: string, opts?: { bust?: boolean }) => {
+			log.push(['role', id, opts?.bust ?? false]);
+			return { reason: 'OK', explanation: '', result: { role: { id } } };
+		},
+	};
+	let ws: ReturnType<typeof useWorkspace> | undefined;
+	let role: ReturnType<typeof useRole> | undefined;
+	renderToString(
+		createElement(
+			FonderieProvider,
+			{ client: { workspaces: fake } as unknown as FonderieClient },
+			createElement(Probe, {
+				run: () => {
+					ws = useWorkspace('ws-1');
+					role = useRole('role-1');
+				},
+			}),
+		),
+	);
+	await ws?.refresh({ force: true });
+	await role?.refresh();
+	assert.deepEqual(log, [
+		['ws', 'ws-1', true],
+		['role', 'role-1', false],
 	]);
 });
