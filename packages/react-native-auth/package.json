@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-auth",
-	"version": "0.6.1",
+	"version": "0.7.0",
 	"description": "React Native hooks for Fonderie auth — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
