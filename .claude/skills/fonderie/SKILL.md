@@ -87,10 +87,15 @@ app.listen(3000, { name: 'my-api' });
 Same rule applies: if the app has a frontend, wire auth through these
 instead of hand-rolling a login form and its own token-storage logic. All
 three wrap `@fonderie/client`'s `AuthClient` — construct one `FonderieClient`
-at the app root and pass `client.auth` into the hook/composable (React
-context, Vue provide/inject, or a prop). Token persistence (`localStorage` /
-`AsyncStorage`) and error handling (`FonderieApiError`) are already handled
-inside the hook — don't re-implement either in app code.
+at the app root and register it once: React/React Native wrap the app in
+`<FonderieProvider client={client}>` from `@fonderie/react`; Vue installs
+`app.use(FonderiePlugin, client)` (or `provideFonderie(client)` in a root
+`setup()`) from `@fonderie/vue`. Every hook/composable and pre-built screen
+below then resolves the client from context — `useLogin()` with no argument.
+Passing a sub-client explicitly (`useLogin(client.auth)`) still works and
+takes precedence, for tests and multi-client apps. Token persistence
+(`localStorage` / `AsyncStorage`) and error handling (`FonderieApiError`)
+are already handled inside the hook — don't re-implement either in app code.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|

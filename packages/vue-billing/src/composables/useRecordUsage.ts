@@ -1,8 +1,10 @@
 import type { BillingClient, IRecordUsageInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useRecordUsage(client: BillingClient) {
+export function useRecordUsage(client?: BillingClient) {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'useRecordUsage');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -10,7 +12,7 @@ export function useRecordUsage(client: BillingClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			await client.recordUsage(input);
+			await billing.recordUsage(input);
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);

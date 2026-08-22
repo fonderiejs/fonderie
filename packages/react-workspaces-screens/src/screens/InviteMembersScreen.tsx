@@ -4,7 +4,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
 
 export interface IInviteMembersScreenProps {
-	client: WorkspacesClient;
+	client?: WorkspacesClient;
 	onNavigateToMembers?: () => void;
 }
 

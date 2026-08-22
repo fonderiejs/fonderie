@@ -6,13 +6,13 @@
 
 ```ts
 interface IWebhookDetailScreenProps {
-    client: WebhooksClient;
+    client?: WebhooksClient;
     endpointId: string;
     onNavigateToList?: () => void;
 }
 
 interface IWebhooksListScreenProps {
-    client: WebhooksClient;
+    client?: WebhooksClient;
     onSelectEndpoint?: (endpointId: string) => void;
 }
 

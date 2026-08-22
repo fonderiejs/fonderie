@@ -1,12 +1,33 @@
-import type {
-	CustomersClient,
-	IAddRelationshipInput,
-	ICustomerRelationshipDTO,
-} from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IAddRelationshipInput, ICustomerRelationshipDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
-export function useCustomerRelationships(client: CustomersClient, customerId: string) {
+export interface IUseCustomerRelationshipsReturn {
+	relationships: Ref<ICustomerRelationshipDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: () => Promise<void>;
+	addRelationship: (input: IAddRelationshipInput) => Promise<ICustomerRelationshipDTO>;
+	setPrimaryRelationship: (relatedId: string) => Promise<void>;
+	removeRelationship: (relatedId: string) => Promise<void>;
+}
+
+export function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn;
+export function useCustomerRelationships(
+	client: CustomersClient | undefined,
+	customerId: string,
+): IUseCustomerRelationshipsReturn;
+export function useCustomerRelationships(
+	clientOrCustomerId: CustomersClient | string | undefined,
+	maybeCustomerId?: string,
+): IUseCustomerRelationshipsReturn {
+	const firstIsClient =
+		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeCustomerId as string) : clientOrCustomerId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerRelationships');
 	const relationships = ref<ICustomerRelationshipDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -19,7 +40,7 @@ export function useCustomerRelationships(client: CustomersClient, customerId: st
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listRelationships(customerId);
+			const { result } = await customers.listRelationships(customerId);
 			relationships.value = result.relationships;
 		} catch (err) {
 			const apiError =
@@ -33,7 +54,7 @@ export function useCustomerRelationships(client: CustomersClient, customerId: st
 	async function addRelationship(input: IAddRelationshipInput) {
 		error.value = null;
 		try {
-			const { result } = await client.addRelationship(customerId, input);
+			const { result } = await customers.addRelationship(customerId, input);
 			await refresh();
 			return result.relationship;
 		} catch (err) {
@@ -47,7 +68,7 @@ export function useCustomerRelationships(client: CustomersClient, customerId: st
 	async function setPrimaryRelationship(relatedId: string) {
 		error.value = null;
 		try {
-			await client.setPrimaryRelationship(customerId, relatedId);
+			await customers.setPrimaryRelationship(customerId, relatedId);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -60,7 +81,7 @@ export function useCustomerRelationships(client: CustomersClient, customerId: st
 	async function removeRelationship(relatedId: string) {
 		error.value = null;
 		try {
-			await client.removeRelationship(customerId, relatedId);
+			await customers.removeRelationship(customerId, relatedId);
 			await refresh();
 		} catch (err) {
 			const apiError =

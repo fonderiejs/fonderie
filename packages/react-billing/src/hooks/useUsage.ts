@@ -1,5 +1,5 @@
-import type { BillingClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import { BillingClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseUsageReturn {
@@ -9,7 +9,16 @@ export interface IUseUsageReturn {
 	refresh: () => Promise<void>;
 }
 
-export function useUsage(client: BillingClient, metric: string): IUseUsageReturn {
+export function useUsage(metric: string): IUseUsageReturn;
+export function useUsage(client: BillingClient | undefined, metric: string): IUseUsageReturn;
+export function useUsage(
+	clientOrMetric: BillingClient | string | undefined,
+	maybeMetric?: string,
+): IUseUsageReturn {
+	const firstIsClient = clientOrMetric === undefined || clientOrMetric instanceof BillingClient;
+	const explicit = firstIsClient ? (clientOrMetric as BillingClient | undefined) : undefined;
+	const metric = firstIsClient ? (maybeMetric as string) : clientOrMetric;
+	const billing = useFonderieSubClient(explicit, (c) => c.billing, 'useUsage');
 	const [total, setTotal] = useState<number | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -18,7 +27,7 @@ export function useUsage(client: BillingClient, metric: string): IUseUsageReturn
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.getUsage(metric);
+			const { result } = await billing.getUsage(metric);
 			setTotal(result.total);
 		} catch (err) {
 			const apiError =
@@ -27,7 +36,7 @@ export function useUsage(client: BillingClient, metric: string): IUseUsageReturn
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, metric]);
+	}, [billing, metric]);
 
 	useEffect(() => {
 		void refresh();

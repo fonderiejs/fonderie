@@ -162,27 +162,27 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useAcceptInvitation(client: WorkspacesClient): { acceptInvitation: (pin: string) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+function useAcceptInvitation(client?: WorkspacesClient | undefined): { acceptInvitation: (pin: string) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
 
-function useCreateWorkspace(client: WorkspacesClient): { createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>; isLoading: Ref<...>; error: Ref<...>; }
+function useCreateWorkspace(client?: WorkspacesClient | undefined): { createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>; isLoading: Ref<...>; error: Ref<...>; }
 
-function useInvitations(client: WorkspacesClient): { invitations: Ref<{ id: string; workspaceId: string; email: string; roleId: string; token: string; status: string; expiresAt: string; createdAt: string; }[], IInvitationDTO[] | { ...; }[]>; ... 4 more ...; cancelInvitation: (inviteId: string) => Promise<...>; }
+function useInvitations(client?: WorkspacesClient | undefined): { invitations: Ref<{ id: string; workspaceId: string; email: string; roleId: string; token: string; status: string; expiresAt: string; createdAt: string; }[], IInvitationDTO[] | { ...; }[]>; ... 4 more ...; cancelInvitation: (inviteId: string) => Promise<...>; }
 
-function useMemberRoles(client: WorkspacesClient, userId: string): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 4 more ...; removeRole: (roleId: string) => Promise<...>; }
+function useMemberRoles(userId: string): IUseMemberRolesReturn
 
-function useMembers(client: WorkspacesClient): { members: Ref<{ userId: string; workspaceId: string; roleId: string; roleName: string; confirmed: boolean; createdAt: string; }[], IMemberDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useMembers(client?: WorkspacesClient | undefined): { members: Ref<{ userId: string; workspaceId: string; roleId: string; roleName: string; confirmed: boolean; createdAt: string; }[], IMemberDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useRemoveMember(client: WorkspacesClient): { removeMember: (userId: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+function useRemoveMember(client?: WorkspacesClient | undefined): { removeMember: (userId: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
 
-function useRoles(client: WorkspacesClient): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 4 more ...; removeRole: (roleId: string) => Promise<...>; }
+function useRoles(client?: WorkspacesClient | undefined): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 4 more ...; removeRole: (roleId: string) => Promise<...>; }
 
-function useSetRolePermissions(client: WorkspacesClient): { setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>; isLoading: Ref<...>; error: Ref<...>; }
+function useSetRolePermissions(client?: WorkspacesClient | undefined): { setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>; isLoading: Ref<...>; error: Ref<...>; }
 
-function useUpdateRole(client: WorkspacesClient): { updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>; isLoading: Ref<...>; error: Ref<...>; }
+function useUpdateRole(client?: WorkspacesClient | undefined): { updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>; isLoading: Ref<...>; error: Ref<...>; }
 
-function useWorkspaceProfile(client: WorkspacesClient): { updateWorkspace: (input: IUpdateWorkspaceInput) => Promise<IWorkspaceDTO>; archiveWorkspace: () => Promise<...>; restoreWorkspace: () => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
+function useWorkspaceProfile(client?: WorkspacesClient | undefined): { updateWorkspace: (input: IUpdateWorkspaceInput) => Promise<IWorkspaceDTO>; archiveWorkspace: () => Promise<...>; restoreWorkspace: () => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
 
-function useWorkspaceSettings(client: WorkspacesClient): { settings: Ref<{ locale: string; timezone: string; currency: string; dateFormat: string; timeFormat: string; } | null, IWorkspaceSettingsDTO | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; updateSettings: (input: IUpdateSettingsInput) => Promise<...>; }
+function useWorkspaceSettings(client?: WorkspacesClient | undefined): { settings: Ref<{ locale: string; timezone: string; currency: string; dateFormat: string; timeFormat: string; } | null, IWorkspaceSettingsDTO | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; updateSettings: (input: IUpdateSettingsInput) => Promise<...>; }
 
-function useWorkspaces(client: WorkspacesClient): { workspaces: Ref<{ id: string; name: string; slug: string; type: string; description: string; motto: string; phone: string; businessType: string; ... 7 more ...; updatedAt: string; }[], IWorkspaceDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useWorkspaces(client?: WorkspacesClient | undefined): { workspaces: Ref<{ id: string; name: string; slug: string; type: string; description: string; motto: string; phone: string; businessType: string; ... 7 more ...; updatedAt: string; }[], IWorkspaceDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 ```

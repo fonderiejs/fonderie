@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export interface ICustomerDetailScreenProps {
-	client: CustomersClient;
+	client?: CustomersClient;
 	customerId: string;
 	onNavigateToList?: () => void;
 }

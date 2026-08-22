@@ -6,7 +6,7 @@
 
 ```ts
 interface IAuditLogScreenProps {
-    client: AuditClient;
+    client?: AuditClient;
 }
 
 function AuditLogScreen({ client }: IAuditLogScreenProps): Element

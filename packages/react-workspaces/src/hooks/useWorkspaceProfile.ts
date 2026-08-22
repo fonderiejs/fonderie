@@ -1,5 +1,6 @@
 import type { IUpdateWorkspaceInput, IWorkspaceDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseWorkspaceProfileReturn {
@@ -13,7 +14,8 @@ export interface IUseWorkspaceProfileReturn {
 // Action-only, like useUpdateRole — there's no "get current workspace"
 // route (only getWorkspace(id) for admin/cross-workspace lookups), so the
 // caller already has the workspace object from useWorkspaces()'s list.
-export function useWorkspaceProfile(client: WorkspacesClient): IUseWorkspaceProfileReturn {
+export function useWorkspaceProfile(client?: WorkspacesClient): IUseWorkspaceProfileReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceProfile');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -22,7 +24,7 @@ export function useWorkspaceProfile(client: WorkspacesClient): IUseWorkspaceProf
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.updateWorkspace(input);
+				const { result } = await workspaces.updateWorkspace(input);
 				return result.workspace;
 			} catch (err) {
 				const apiError =
@@ -33,7 +35,7 @@ export function useWorkspaceProfile(client: WorkspacesClient): IUseWorkspaceProf
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[workspaces],
 	);
 
 	// Personal workspaces can't be archived — the server returns 403; surfaced via `error`.
@@ -41,7 +43,7 @@ export function useWorkspaceProfile(client: WorkspacesClient): IUseWorkspaceProf
 		setIsLoading(true);
 		setError(null);
 		try {
-			await client.archiveWorkspace();
+			await workspaces.archiveWorkspace();
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
@@ -50,13 +52,13 @@ export function useWorkspaceProfile(client: WorkspacesClient): IUseWorkspaceProf
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [workspaces]);
 
 	const restoreWorkspace = useCallback(async () => {
 		setIsLoading(true);
 		setError(null);
 		try {
-			await client.restoreWorkspace();
+			await workspaces.restoreWorkspace();
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
@@ -65,7 +67,7 @@ export function useWorkspaceProfile(client: WorkspacesClient): IUseWorkspaceProf
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [workspaces]);
 
 	return { updateWorkspace, archiveWorkspace, restoreWorkspace, isLoading, error };
 }

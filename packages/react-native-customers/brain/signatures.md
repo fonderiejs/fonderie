@@ -318,21 +318,21 @@ interface IUseCustomersReturn {
     unblacklistCustomer: (customerId: string) => Promise<void>;
 }
 
-function useCustomer(client: CustomersClient, customerId: string, depth?: 1 | 2 | undefined): IUseCustomerReturn
+function useCustomer(customerId: string, depth?: 1 | 2 | undefined): IUseCustomerReturn
 
-function useCustomerAddresses(client: CustomersClient, customerId: string): IUseCustomerAddressesReturn
+function useCustomerAddresses(customerId: string): IUseCustomerAddressesReturn
 
-function useCustomerEmails(client: CustomersClient, customerId: string): IUseCustomerEmailsReturn
+function useCustomerEmails(customerId: string): IUseCustomerEmailsReturn
 
-function useCustomerLabels(client: CustomersClient, type: CustomerLabelType): IUseCustomerLabelsReturn
+function useCustomerLabels(type: CustomerLabelType): IUseCustomerLabelsReturn
 
-function useCustomerNotes(client: CustomersClient, customerId: string): IUseCustomerNotesReturn
+function useCustomerNotes(customerId: string): IUseCustomerNotesReturn
 
-function useCustomerPhones(client: CustomersClient, customerId: string): IUseCustomerPhonesReturn
+function useCustomerPhones(customerId: string): IUseCustomerPhonesReturn
 
-function useCustomerRelationships(client: CustomersClient, customerId: string): IUseCustomerRelationshipsReturn
+function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn
 
-function useCustomerTags(client: CustomersClient, customerId: string): IUseCustomerTagsReturn
+function useCustomerTags(customerId: string): IUseCustomerTagsReturn
 
-function useCustomers(client: CustomersClient, rawParams?: IListCustomersInput | undefined): IUseCustomersReturn
+function useCustomers(params?: IListCustomersInput | undefined): IUseCustomersReturn
 ```

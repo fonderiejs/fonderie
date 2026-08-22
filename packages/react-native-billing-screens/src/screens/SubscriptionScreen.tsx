@@ -3,7 +3,7 @@ import { useBillingPortal, useSubscription } from '@fonderie/react-native-billin
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export interface ISubscriptionScreenProps {
-	client: BillingClient;
+	client?: BillingClient;
 	onManageBilling?: (url: string) => void;
 	onNavigateToPricing?: () => void;
 }

@@ -7,7 +7,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
 export interface IRegisterScreenProps {
-	client: AuthClient;
+	client?: AuthClient;
 	onRegisterSuccess?: (result: IRegisterResult) => void;
 	onNavigateToLogin?: () => void;
 }

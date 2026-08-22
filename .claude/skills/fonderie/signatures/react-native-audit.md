@@ -48,5 +48,5 @@ interface IUseAuditEventsReturn {
     loadMore: () => Promise<void>;
 }
 
-function useAuditEvents(client: AuditClient, rawFilters?: IListAuditEventsInput | undefined): IUseAuditEventsReturn
+function useAuditEvents(rawFilters?: IListAuditEventsInput | undefined): IUseAuditEventsReturn
 ```

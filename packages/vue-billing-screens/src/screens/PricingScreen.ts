@@ -11,7 +11,7 @@ function formatPrice(cents: number, currency: string): string {
 export const PricingScreen = defineComponent({
 	name: 'FonderiePricingScreen',
 	props: {
-		client: { type: Object as PropType<BillingClient>, required: true },
+		client: { type: Object as PropType<BillingClient>, required: false },
 	},
 	emits: {
 		'checkout-start': (_url: string) => true,

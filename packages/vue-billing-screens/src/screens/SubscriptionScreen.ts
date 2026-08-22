@@ -7,7 +7,7 @@ import { styles } from '../styles';
 export const SubscriptionScreen = defineComponent({
 	name: 'FonderieSubscriptionScreen',
 	props: {
-		client: { type: Object as PropType<BillingClient>, required: true },
+		client: { type: Object as PropType<BillingClient>, required: false },
 	},
 	emits: {
 		'manage-billing': (_url: string) => true,

@@ -1,8 +1,33 @@
-import type { CustomersClient, ICustomerNoteDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { ICustomerNoteDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
-export function useCustomerNotes(client: CustomersClient, customerId: string) {
+export interface IUseCustomerNotesReturn {
+	notes: Ref<ICustomerNoteDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: () => Promise<void>;
+	createNote: (body: string) => Promise<ICustomerNoteDTO>;
+	updateNote: (noteId: string, body: string) => Promise<void>;
+	deleteNote: (noteId: string) => Promise<void>;
+}
+
+export function useCustomerNotes(customerId: string): IUseCustomerNotesReturn;
+export function useCustomerNotes(
+	client: CustomersClient | undefined,
+	customerId: string,
+): IUseCustomerNotesReturn;
+export function useCustomerNotes(
+	clientOrCustomerId: CustomersClient | string | undefined,
+	maybeCustomerId?: string,
+): IUseCustomerNotesReturn {
+	const firstIsClient =
+		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeCustomerId as string) : clientOrCustomerId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerNotes');
 	const notes = ref<ICustomerNoteDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -15,7 +40,7 @@ export function useCustomerNotes(client: CustomersClient, customerId: string) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listNotes(customerId);
+			const { result } = await customers.listNotes(customerId);
 			notes.value = result.notes;
 		} catch (err) {
 			const apiError =
@@ -29,7 +54,7 @@ export function useCustomerNotes(client: CustomersClient, customerId: string) {
 	async function createNote(body: string) {
 		error.value = null;
 		try {
-			const { result } = await client.createNote(customerId, body);
+			const { result } = await customers.createNote(customerId, body);
 			await refresh();
 			return result.note;
 		} catch (err) {
@@ -43,7 +68,7 @@ export function useCustomerNotes(client: CustomersClient, customerId: string) {
 	async function updateNote(noteId: string, body: string) {
 		error.value = null;
 		try {
-			await client.updateNote(customerId, noteId, body);
+			await customers.updateNote(customerId, noteId, body);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -56,7 +81,7 @@ export function useCustomerNotes(client: CustomersClient, customerId: string) {
 	async function deleteNote(noteId: string) {
 		error.value = null;
 		try {
-			await client.deleteNote(customerId, noteId);
+			await customers.deleteNote(customerId, noteId);
 			await refresh();
 		} catch (err) {
 			const apiError =

@@ -6,19 +6,19 @@
 
 ```ts
 interface IForgotPasswordScreenProps {
-    client: AuthClient;
+    client?: AuthClient;
     onNavigateToLogin?: () => void;
 }
 
 interface ILoginScreenProps {
-    client: AuthClient;
+    client?: AuthClient;
     onLoginSuccess?: (result: ILoginResult) => void;
     onNavigateToRegister?: () => void;
     onNavigateToForgotPassword?: () => void;
 }
 
 interface IRegisterScreenProps {
-    client: AuthClient;
+    client?: AuthClient;
     onRegisterSuccess?: (result: IRegisterResult) => void;
     onNavigateToLogin?: () => void;
 }

@@ -7,7 +7,7 @@ import { styles } from '../styles';
 export const ForgotPasswordScreen = defineComponent({
 	name: 'FonderieForgotPasswordScreen',
 	props: {
-		client: { type: Object as PropType<AuthClient>, required: true },
+		client: { type: Object as PropType<AuthClient>, required: false },
 	},
 	emits: {
 		'navigate-login': () => true,

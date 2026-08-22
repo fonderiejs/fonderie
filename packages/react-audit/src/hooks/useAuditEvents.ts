@@ -1,5 +1,6 @@
-import type { AuditClient, IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
+import { AuditClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export interface IUseAuditEventsReturn {
@@ -12,10 +13,19 @@ export interface IUseAuditEventsReturn {
 	loadMore: () => Promise<void>;
 }
 
+export function useAuditEvents(rawFilters?: IListAuditEventsInput): IUseAuditEventsReturn;
 export function useAuditEvents(
-	client: AuditClient,
-	rawFilters: IListAuditEventsInput = {},
+	client: AuditClient | undefined,
+	rawFilters?: IListAuditEventsInput,
+): IUseAuditEventsReturn;
+export function useAuditEvents(
+	clientOrFilters?: AuditClient | IListAuditEventsInput,
+	maybeFilters?: IListAuditEventsInput,
 ): IUseAuditEventsReturn {
+	const firstIsClient = clientOrFilters === undefined || clientOrFilters instanceof AuditClient;
+	const explicit = firstIsClient ? (clientOrFilters as AuditClient | undefined) : undefined;
+	const rawFilters = (firstIsClient ? maybeFilters : clientOrFilters) ?? {};
+	const audit = useFonderieSubClient(explicit, (c) => c.audit, 'useAuditEvents');
 	// Memoized by value (not reference) — `rawFilters` defaults to a fresh {}
 	// on every render when the caller omits it, which would otherwise refetch
 	// on every render regardless of the dependency list below.
@@ -33,7 +43,7 @@ export function useAuditEvents(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listEvents(filters);
+			const { result } = await audit.listEvents(filters);
 			setEvents(result.events);
 			setCursor(result.nextCursor);
 			setHasMore(result.nextCursor !== null);
@@ -44,14 +54,14 @@ export function useAuditEvents(
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, filters]);
+	}, [audit, filters]);
 
 	const loadMore = useCallback(async () => {
 		if (!cursor || isLoadingMore) return;
 		setIsLoadingMore(true);
 		setError(null);
 		try {
-			const { result } = await client.listEvents({ ...filters, cursor });
+			const { result } = await audit.listEvents({ ...filters, cursor });
 			setEvents((prev) => [...prev, ...result.events]);
 			setCursor(result.nextCursor);
 			setHasMore(result.nextCursor !== null);
@@ -62,7 +72,7 @@ export function useAuditEvents(
 		} finally {
 			setIsLoadingMore(false);
 		}
-	}, [client, filters, cursor, isLoadingMore]);
+	}, [audit, filters, cursor, isLoadingMore]);
 
 	useEffect(() => {
 		void refresh();

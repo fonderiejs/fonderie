@@ -96,11 +96,11 @@ interface IUseWebhookEndpointsReturn {
     removeEndpoint: (endpointId: string) => Promise<void>;
 }
 
-function useTestWebhookEndpoint(client: WebhooksClient): IUseTestWebhookEndpointReturn
+function useTestWebhookEndpoint(client?: WebhooksClient | undefined): IUseTestWebhookEndpointReturn
 
-function useWebhookDeliveries(client: WebhooksClient, endpointId: string): IUseWebhookDeliveriesReturn
+function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn
 
-function useWebhookEndpoint(client: WebhooksClient, endpointId: string): IUseWebhookEndpointReturn
+function useWebhookEndpoint(endpointId: string): IUseWebhookEndpointReturn
 
-function useWebhookEndpoints(client: WebhooksClient): IUseWebhookEndpointsReturn
+function useWebhookEndpoints(client?: WebhooksClient | undefined): IUseWebhookEndpointsReturn
 ```

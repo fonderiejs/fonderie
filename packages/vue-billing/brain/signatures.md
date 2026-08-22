@@ -95,19 +95,19 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useBillingPortal(client: BillingClient): { openPortal: () => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+function useBillingPortal(client?: BillingClient | undefined): { openPortal: () => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
 
-function useCheckout(client: BillingClient): { checkout: (input: ICheckoutInput) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+function useCheckout(client?: BillingClient | undefined): { checkout: (input: ICheckoutInput) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
 
-function usePlan(client: BillingClient, planId: string): { plan: Ref<{ id: string; planId: string; name: string; description: string; tier: number; seats: number | null; trialDays: number; pricing: { ...; }; features: { ...; }[]; metadata: Record<...>; } | null, IPlanDTO | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function usePlan(planId: string): IUsePlanReturn
 
-function usePlanAdmin(client: BillingClient): { createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>; updatePlan: (planId: string, input: Partial<...>) => Promise<...>; deletePlan: (planId: string) => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
+function usePlanAdmin(client?: BillingClient | undefined): { createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>; updatePlan: (planId: string, input: Partial<...>) => Promise<...>; deletePlan: (planId: string) => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
 
-function usePlans(client: BillingClient): { plans: Ref<{ id: string; planId: string; name: string; description: string; tier: number; seats: number | null; trialDays: number; pricing: { monthly: number; yearly: number; currency: string; }; features: { ...; }[]; metadata: Record<...>; }[], IPlanDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function usePlans(client?: BillingClient | undefined): { plans: Ref<{ id: string; planId: string; name: string; description: string; tier: number; seats: number | null; trialDays: number; pricing: { ...; }; features: { ...; }[]; metadata: Record<...>; }[], IPlanDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useRecordUsage(client: BillingClient): { recordUsage: (input: IRecordUsageInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
+function useRecordUsage(client?: BillingClient | undefined): { recordUsage: (input: IRecordUsageInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
 
-function useSubscription(client: BillingClient): { subscription: Ref<{ id: string; subscriberType: SubscriberType; subscriberId: string; plan: string; interval: string; status: string; ... 4 more ...; createdAt: string; } | null, ISubscriptionDTO | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useSubscription(client?: BillingClient | undefined): { subscription: Ref<{ id: string; subscriberType: SubscriberType; subscriberId: string; plan: string; interval: string; ... 5 more ...; createdAt: string; } | null, ISubscriptionDTO | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useUsage(client: BillingClient, metric: string): { total: Ref<number | null, number | null>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; refresh: () => Promise<...>; }
+function useUsage(metric: string): IUseUsageReturn
 ```

@@ -1,5 +1,6 @@
 import type { IInvitationDTO, IInviteEntry, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseInvitationsReturn {
@@ -11,7 +12,8 @@ export interface IUseInvitationsReturn {
 	cancelInvitation: (inviteId: string) => Promise<void>;
 }
 
-export function useInvitations(client: WorkspacesClient): IUseInvitationsReturn {
+export function useInvitations(client?: WorkspacesClient): IUseInvitationsReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useInvitations');
 	const [invitations, setInvitations] = useState<IInvitationDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -20,7 +22,7 @@ export function useInvitations(client: WorkspacesClient): IUseInvitationsReturn 
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listInvitations();
+			const { result } = await workspaces.listInvitations();
 			setInvitations(result.invitations);
 		} catch (err) {
 			const apiError =
@@ -29,13 +31,13 @@ export function useInvitations(client: WorkspacesClient): IUseInvitationsReturn 
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [workspaces]);
 
 	const invite = useCallback(
 		async (entries: IInviteEntry | IInviteEntry[]) => {
 			setError(null);
 			try {
-				await client.invite(entries);
+				await workspaces.invite(entries);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -44,14 +46,14 @@ export function useInvitations(client: WorkspacesClient): IUseInvitationsReturn 
 				throw apiError;
 			}
 		},
-		[client, refresh],
+		[workspaces, refresh],
 	);
 
 	const cancelInvitation = useCallback(
 		async (inviteId: string) => {
 			setError(null);
 			try {
-				await client.cancelInvitation(inviteId);
+				await workspaces.cancelInvitation(inviteId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -60,7 +62,7 @@ export function useInvitations(client: WorkspacesClient): IUseInvitationsReturn 
 				throw apiError;
 			}
 		},
-		[client, refresh],
+		[workspaces, refresh],
 	);
 
 	useEffect(() => {

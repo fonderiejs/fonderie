@@ -1,9 +1,11 @@
 import type { AuthClient, IRegisterInput, IRegisterResult } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 import { persistToken } from '../storage';
 
-export function useRegister(client: AuthClient) {
+export function useRegister(client?: AuthClient) {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useRegister');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 	const data = ref<IRegisterResult | null>(null);
@@ -12,8 +14,8 @@ export function useRegister(client: AuthClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.register(input);
-			client.setAccessToken(result.tokens.access);
+			const { result } = await auth.register(input);
+			auth.setAccessToken(result.tokens.access);
 			persistToken(result.tokens.access);
 			data.value = result;
 			return result;

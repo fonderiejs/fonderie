@@ -1,5 +1,6 @@
 import type { WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseAcceptInvitationReturn {
@@ -8,7 +9,8 @@ export interface IUseAcceptInvitationReturn {
 	error: FonderieApiError | null;
 }
 
-export function useAcceptInvitation(client: WorkspacesClient): IUseAcceptInvitationReturn {
+export function useAcceptInvitation(client?: WorkspacesClient): IUseAcceptInvitationReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useAcceptInvitation');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function useAcceptInvitation(client: WorkspacesClient): IUseAcceptInvitat
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.acceptInvitation(pin);
+				const { result } = await workspaces.acceptInvitation(pin);
 				return result.workspaceId;
 			} catch (err) {
 				const apiError =
@@ -28,7 +30,7 @@ export function useAcceptInvitation(client: WorkspacesClient): IUseAcceptInvitat
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[workspaces],
 	);
 
 	return { acceptInvitation, isLoading, error };

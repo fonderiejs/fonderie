@@ -3,7 +3,7 @@ import { useMembers, useRemoveMember } from '@fonderie/react-workspaces';
 import type { CSSProperties } from 'react';
 
 export interface ITeamMembersScreenProps {
-	client: WorkspacesClient;
+	client?: WorkspacesClient;
 	currentUserId: string;
 	onNavigateToInvite?: () => void;
 }

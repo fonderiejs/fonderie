@@ -1,5 +1,6 @@
-import type { IWebhookDeliveryDTO, WebhooksClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IWebhookDeliveryDTO } from '@fonderie/client';
+import { FonderieApiError, WebhooksClient } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseWebhookDeliveriesReturn {
@@ -9,10 +10,20 @@ export interface IUseWebhookDeliveriesReturn {
 	refresh: () => Promise<void>;
 }
 
+export function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn;
 export function useWebhookDeliveries(
-	client: WebhooksClient,
+	client: WebhooksClient | undefined,
 	endpointId: string,
+): IUseWebhookDeliveriesReturn;
+export function useWebhookDeliveries(
+	clientOrEndpointId: WebhooksClient | string | undefined,
+	maybeEndpointId?: string,
 ): IUseWebhookDeliveriesReturn {
+	const firstIsClient =
+		clientOrEndpointId === undefined || clientOrEndpointId instanceof WebhooksClient;
+	const explicit = firstIsClient ? (clientOrEndpointId as WebhooksClient | undefined) : undefined;
+	const endpointId = firstIsClient ? (maybeEndpointId as string) : clientOrEndpointId;
+	const webhooks = useFonderieSubClient(explicit, (c) => c.webhooks, 'useWebhookDeliveries');
 	const [deliveries, setDeliveries] = useState<IWebhookDeliveryDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -25,7 +36,7 @@ export function useWebhookDeliveries(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listDeliveries(endpointId);
+			const { result } = await webhooks.listDeliveries(endpointId);
 			setDeliveries(result.deliveries);
 		} catch (err) {
 			const apiError =
@@ -34,7 +45,7 @@ export function useWebhookDeliveries(
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, endpointId]);
+	}, [webhooks, endpointId]);
 
 	useEffect(() => {
 		void refresh();

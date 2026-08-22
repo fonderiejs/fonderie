@@ -1,8 +1,10 @@
 import type { AuthClient, IResetPasswordInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useResetPassword(client: AuthClient) {
+export function useResetPassword(client?: AuthClient) {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useResetPassword');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 	const done = ref(false);
@@ -11,7 +13,7 @@ export function useResetPassword(client: AuthClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			await client.resetPassword(input);
+			await auth.resetPassword(input);
 			done.value = true;
 		} catch (err) {
 			const apiError =

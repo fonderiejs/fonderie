@@ -1,8 +1,10 @@
 import type { WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useRemoveMember(client: WorkspacesClient) {
+export function useRemoveMember(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRemoveMember');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -10,7 +12,7 @@ export function useRemoveMember(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			await client.removeMember(userId);
+			await workspaces.removeMember(userId);
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);

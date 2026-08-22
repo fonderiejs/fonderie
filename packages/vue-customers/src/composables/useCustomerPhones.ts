@@ -1,8 +1,34 @@
-import type { CustomersClient, IAddPhoneInput, ICustomerPhoneDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IAddPhoneInput, ICustomerPhoneDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
-export function useCustomerPhones(client: CustomersClient, customerId: string) {
+export interface IUseCustomerPhonesReturn {
+	phones: Ref<ICustomerPhoneDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: () => Promise<void>;
+	addPhone: (input: IAddPhoneInput) => Promise<ICustomerPhoneDTO>;
+	updatePhoneLabel: (phoneId: string, label: string) => Promise<void>;
+	setPrimaryPhone: (phoneId: string) => Promise<void>;
+	removePhone: (phoneId: string) => Promise<void>;
+}
+
+export function useCustomerPhones(customerId: string): IUseCustomerPhonesReturn;
+export function useCustomerPhones(
+	client: CustomersClient | undefined,
+	customerId: string,
+): IUseCustomerPhonesReturn;
+export function useCustomerPhones(
+	clientOrCustomerId: CustomersClient | string | undefined,
+	maybeCustomerId?: string,
+): IUseCustomerPhonesReturn {
+	const firstIsClient =
+		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeCustomerId as string) : clientOrCustomerId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerPhones');
 	const phones = ref<ICustomerPhoneDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -15,7 +41,7 @@ export function useCustomerPhones(client: CustomersClient, customerId: string) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listPhones(customerId);
+			const { result } = await customers.listPhones(customerId);
 			phones.value = result.phones;
 		} catch (err) {
 			const apiError =
@@ -29,7 +55,7 @@ export function useCustomerPhones(client: CustomersClient, customerId: string) {
 	async function addPhone(input: IAddPhoneInput) {
 		error.value = null;
 		try {
-			const { result } = await client.addPhone(customerId, input);
+			const { result } = await customers.addPhone(customerId, input);
 			await refresh();
 			return result.phone;
 		} catch (err) {
@@ -43,7 +69,7 @@ export function useCustomerPhones(client: CustomersClient, customerId: string) {
 	async function updatePhoneLabel(phoneId: string, label: string) {
 		error.value = null;
 		try {
-			await client.updatePhoneLabel(customerId, phoneId, label);
+			await customers.updatePhoneLabel(customerId, phoneId, label);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -56,7 +82,7 @@ export function useCustomerPhones(client: CustomersClient, customerId: string) {
 	async function setPrimaryPhone(phoneId: string) {
 		error.value = null;
 		try {
-			await client.setPrimaryPhone(customerId, phoneId);
+			await customers.setPrimaryPhone(customerId, phoneId);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -69,7 +95,7 @@ export function useCustomerPhones(client: CustomersClient, customerId: string) {
 	async function removePhone(phoneId: string) {
 		error.value = null;
 		try {
-			await client.removePhone(customerId, phoneId);
+			await customers.removePhone(customerId, phoneId);
 			await refresh();
 		} catch (err) {
 			const apiError =

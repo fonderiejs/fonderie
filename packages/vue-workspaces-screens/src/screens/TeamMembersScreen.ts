@@ -7,7 +7,7 @@ import { styles } from '../styles';
 export const TeamMembersScreen = defineComponent({
 	name: 'FonderieTeamMembersScreen',
 	props: {
-		client: { type: Object as PropType<WorkspacesClient>, required: true },
+		client: { type: Object as PropType<WorkspacesClient>, required: false },
 		currentUserId: { type: String, required: true },
 	},
 	emits: {

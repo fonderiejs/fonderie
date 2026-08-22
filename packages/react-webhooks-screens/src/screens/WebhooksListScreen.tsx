@@ -4,7 +4,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
 
 export interface IWebhooksListScreenProps {
-	client: WebhooksClient;
+	client?: WebhooksClient;
 	onSelectEndpoint?: (endpointId: string) => void;
 }
 
