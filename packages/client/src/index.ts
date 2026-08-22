@@ -110,6 +110,7 @@ export type {
 	IMemberListResult,
 	IMeResult,
 	IMfaEnabledResult,
+	IMfaRequiredResult,
 	IMfaSetupResult,
 	IPlanDTO,
 	IPlanFeature,
@@ -149,3 +150,4 @@ export type {
 	IWorkspaceSettingsResult,
 	SubscriberType,
 } from './types';
+export { isMfaRequired } from './types';

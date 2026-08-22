@@ -65,6 +65,16 @@ export interface ILoginResult {
 	user: IUserDTO;
 }
 
+// Login response when the account has MFA enabled: no tokens yet — complete
+// the login with auth.mfa.verifyLogin(mfaToken, code).
+export interface IMfaRequiredResult {
+	mfaToken: string;
+}
+
+export function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult {
+	return !('tokens' in result);
+}
+
 export interface IRefreshResult {
 	tokens: ITokens;
 }

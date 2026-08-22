@@ -3,6 +3,7 @@ import type { TokenStore } from '../token-store';
 import type {
 	IApiResponse,
 	ILoginResult,
+	IMfaRequiredResult,
 	IMeResult,
 	IMfaEnabledResult,
 	IMfaSetupResult,
@@ -139,7 +140,7 @@ export class AuthClient {
 	}
 
 	login(input: ILoginInput) {
-		return this.http.request<IApiResponse<ILoginResult>>({
+		return this.http.request<IApiResponse<ILoginResult | IMfaRequiredResult>>({
 			method: 'POST',
 			path: '/auth/login',
 			body: input,

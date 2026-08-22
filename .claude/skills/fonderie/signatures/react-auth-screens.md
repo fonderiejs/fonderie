@@ -13,6 +13,7 @@ interface IForgotPasswordScreenProps {
 interface ILoginScreenProps {
     client?: AuthClient;
     onLoginSuccess?: (result: ILoginResult) => void;
+    onMfaRequired?: (mfaToken: string) => void;
     onNavigateToRegister?: () => void;
     onNavigateToForgotPassword?: () => void;
 }
@@ -25,7 +26,7 @@ interface IRegisterScreenProps {
 
 function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPasswordScreenProps): Element
 
-function LoginScreen({ client, onLoginSuccess, onNavigateToRegister, onNavigateToForgotPassword, }: ILoginScreenProps): Element
+function LoginScreen({ client, onLoginSuccess, onMfaRequired, onNavigateToRegister, onNavigateToForgotPassword, }: ILoginScreenProps): Element
 
 function RegisterScreen({ client, onRegisterSuccess, onNavigateToLogin, }: IRegisterScreenProps): Element
 ```

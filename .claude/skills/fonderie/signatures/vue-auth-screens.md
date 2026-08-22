@@ -7,7 +7,7 @@
 ```ts
 component ForgotPasswordScreen(props: { client }) — emits: navigate-login
 
-component LoginScreen(props: { client }) — emits: login-success, navigate-register, navigate-forgot-password
+component LoginScreen(props: { client }) — emits: login-success, mfa-required, navigate-register, navigate-forgot-password
 
 component RegisterScreen(props: { client }) — emits: register-success, navigate-login
 ```
