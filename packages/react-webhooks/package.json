@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-webhooks",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "React hooks for Fonderie's outgoing webhooks — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",

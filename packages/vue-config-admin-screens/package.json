@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-config-admin-screens",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Pre-built Vue screens for the Fonderie config admin API — config/secret list, config editor with revision history and rollback.",
 	"keywords": [
 		"fonderiejs",

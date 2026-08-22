@@ -21,12 +21,12 @@
     "react-audit-screens": "0.2.0",
     "react-auth": "0.7.0",
     "react-auth-screens": "0.4.0",
-    "react-billing": "0.3.0",
+    "react-billing": "0.4.0",
     "react-billing-screens": "0.2.0",
-    "react-config-admin": "0.2.0",
-    "react-config-admin-screens": "0.1.0",
-    "react-courier-admin": "0.2.0",
-    "react-courier-admin-screens": "0.1.0",
+    "react-config-admin": "0.3.0",
+    "react-config-admin-screens": "0.2.0",
+    "react-courier-admin": "0.3.0",
+    "react-courier-admin-screens": "0.2.0",
     "react-customers": "0.4.0",
     "react-customers-screens": "0.2.0",
     "react-native-audit": "0.1.0",
@@ -38,31 +38,31 @@
     "react-native-customers": "0.1.0",
     "react-native-customers-screens": "0.2.0",
     "react-native-webhooks": "0.1.0",
-    "react-native-webhooks-screens": "0.2.0",
+    "react-native-webhooks-screens": "0.3.0",
     "react-native-workspaces": "0.1.0",
-    "react-native-workspaces-screens": "0.3.0",
-    "react-webhooks": "0.3.0",
-    "react-webhooks-screens": "0.2.0",
-    "react-workspaces": "0.5.0",
-    "react-workspaces-screens": "0.3.0",
+    "react-native-workspaces-screens": "0.4.0",
+    "react-webhooks": "0.4.0",
+    "react-webhooks-screens": "0.3.0",
+    "react-workspaces": "0.6.0",
+    "react-workspaces-screens": "0.4.0",
     "store": "0.2.2",
     "vue": "0.2.0",
     "vue-audit": "0.4.0",
     "vue-audit-screens": "0.2.0",
     "vue-auth": "0.8.0",
     "vue-auth-screens": "0.4.0",
-    "vue-billing": "0.4.0",
+    "vue-billing": "0.5.0",
     "vue-billing-screens": "0.2.0",
-    "vue-config-admin": "0.2.0",
-    "vue-config-admin-screens": "0.1.0",
-    "vue-courier-admin": "0.2.0",
-    "vue-courier-admin-screens": "0.1.0",
+    "vue-config-admin": "0.3.0",
+    "vue-config-admin-screens": "0.2.0",
+    "vue-courier-admin": "0.3.0",
+    "vue-courier-admin-screens": "0.2.0",
     "vue-customers": "0.5.0",
     "vue-customers-screens": "0.2.0",
-    "vue-webhooks": "0.4.0",
-    "vue-webhooks-screens": "0.2.0",
-    "vue-workspaces": "0.6.0",
-    "vue-workspaces-screens": "0.3.0",
+    "vue-webhooks": "0.5.0",
+    "vue-webhooks-screens": "0.3.0",
+    "vue-workspaces": "0.7.0",
+    "vue-workspaces-screens": "0.4.0",
     "webhooks": "5.0.0",
     "workspaces": "5.1.0"
   },
@@ -980,7 +980,7 @@
       "hasOutcomes": false
     },
     "react-billing": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1015,7 +1015,7 @@
       "hasOutcomes": false
     },
     "react-config-admin": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "ConfigAdminClient",
@@ -1037,7 +1037,7 @@
       "hasOutcomes": false
     },
     "react-config-admin-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "ConfigEditorScreen",
@@ -1052,7 +1052,7 @@
       "hasOutcomes": false
     },
     "react-courier-admin": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "CourierAdminClient",
@@ -1070,7 +1070,7 @@
       "hasOutcomes": false
     },
     "react-courier-admin-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "TemplateEditorScreen",
@@ -1261,7 +1261,7 @@
       "hasOutcomes": false
     },
     "react-native-webhooks-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "WebhookDetailScreen",
@@ -1288,7 +1288,7 @@
       "hasOutcomes": false
     },
     "react-native-workspaces-screens": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "AcceptInvitationScreen",
@@ -1304,7 +1304,7 @@
       "hasOutcomes": false
     },
     "react-webhooks": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1321,7 +1321,7 @@
       "hasOutcomes": false
     },
     "react-webhooks-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "WebhookDetailScreen",
@@ -1336,7 +1336,7 @@
       "hasOutcomes": false
     },
     "react-workspaces": {
-      "version": "0.5.0",
+      "version": "0.6.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1360,7 +1360,7 @@
       "hasOutcomes": false
     },
     "react-workspaces-screens": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "AcceptInvitationScreen",
@@ -1489,7 +1489,7 @@
       "hasOutcomes": false
     },
     "vue-billing": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1524,7 +1524,7 @@
       "hasOutcomes": false
     },
     "vue-config-admin": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "ConfigAdminClient",
@@ -1546,7 +1546,7 @@
       "hasOutcomes": false
     },
     "vue-config-admin-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "ConfigEditorScreen",
@@ -1561,7 +1561,7 @@
       "hasOutcomes": false
     },
     "vue-courier-admin": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "CourierAdminClient",
@@ -1579,7 +1579,7 @@
       "hasOutcomes": false
     },
     "vue-courier-admin-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "TemplateEditorScreen",
@@ -1632,7 +1632,7 @@
       "hasOutcomes": false
     },
     "vue-webhooks": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1649,7 +1649,7 @@
       "hasOutcomes": false
     },
     "vue-webhooks-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "WebhookDetailScreen",
@@ -1664,7 +1664,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces": {
-      "version": "0.6.0",
+      "version": "0.7.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1688,7 +1688,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces-screens": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "AcceptInvitationScreen",

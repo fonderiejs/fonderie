@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-courier-admin-screens",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Pre-built Vue screens for the Fonderie courier admin API — template list, template editor with revision history and rollback.",
 	"keywords": [
 		"fonderiejs",
