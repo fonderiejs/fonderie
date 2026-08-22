@@ -1,12 +1,13 @@
 import type { ConfigAdminClient } from '@fonderie/client';
 import {
+	FonderieApiError,
+	useConfigEntries,
 	useConfigEntry,
 	useConfigRevisions,
 	useRevealSecret,
-	useSaveConfigEntry,
-	useSaveSecret,
 	useSecret,
 	useSecretRevisions,
+	useSecrets,
 } from '@fonderie/vue-config-admin';
 import type { PropType } from 'vue';
 import { computed, defineComponent, h, ref, watch } from 'vue';
@@ -36,8 +37,11 @@ export const ConfigEditorScreen = defineComponent({
 			isSecret.value ? props.configKey : '',
 			props.environment,
 		);
-		const saveConfig = useSaveConfigEntry(props.client);
-		const saveSecret = useSaveSecret(props.client);
+		// Saves go through the list composables (which re-fetch their lists after
+		// each write); mounting them adds a config-list and a secrets-list fetch
+		// to this single-entry editor — acceptable for an admin dashboard.
+		const configEntries = useConfigEntries(props.client, props.environment);
+		const secrets = useSecrets(props.client, props.environment);
 		const configRevisions = useConfigRevisions(
 			props.client,
 			isSecret.value ? '' : props.configKey,
@@ -53,6 +57,10 @@ export const ConfigEditorScreen = defineComponent({
 		const value = ref('');
 		const description = ref('');
 		const revealedValue = ref<string | null>(null);
+		// The list composables' isLoading/error track their list fetches (and are
+		// shared across mutations), so the save action keeps its own state.
+		const isSaving = ref(false);
+		const saveError = ref<FonderieApiError | null>(null);
 
 		watch(
 			() => configEntry.entry.value,
@@ -73,23 +81,30 @@ export const ConfigEditorScreen = defineComponent({
 
 		async function handleSubmit(event: Event) {
 			event.preventDefault();
+			isSaving.value = true;
+			saveError.value = null;
 			try {
 				if (isSecret.value) {
-					const opts: Parameters<typeof saveSecret.saveSecret>[1] = { value: value.value };
+					const opts: Parameters<typeof secrets.saveSecret>[1] = { value: value.value };
 					if (description.value) opts.description = description.value;
-					await saveSecret.saveSecret(props.configKey, opts, props.environment);
+					await secrets.saveSecret(props.configKey, opts);
+					// The list composable refreshes its own list; this screen renders
+					// the single entry, so re-read it too.
 					await secretEntry.refresh();
 				} else {
-					const opts: Parameters<typeof saveConfig.saveConfigEntry>[1] = {
+					const opts: Parameters<typeof configEntries.saveEntry>[1] = {
 						value: JSON.parse(value.value),
 					};
 					if (description.value) opts.description = description.value;
-					await saveConfig.saveConfigEntry(props.configKey, opts, props.environment);
+					await configEntries.saveEntry(props.configKey, opts);
 					await configEntry.refresh();
 				}
 				emit('saved');
-			} catch {
-				// Surfaced via save.error.
+			} catch (err) {
+				// API failures surface inline; JSON.parse errors stay silent as before.
+				if (err instanceof FonderieApiError) saveError.value = err;
+			} finally {
+				isSaving.value = false;
 			}
 		}
 
@@ -103,7 +118,6 @@ export const ConfigEditorScreen = defineComponent({
 
 		return () => {
 			const entry = isSecret.value ? secretEntry : configEntry;
-			const save = isSecret.value ? saveSecret : saveConfig;
 			const revisions = isSecret.value ? secretRevisions : configRevisions;
 
 			if (entry.isLoading.value) return h('p', { style: styles.status }, 'Loading…');
@@ -159,13 +173,13 @@ export const ConfigEditorScreen = defineComponent({
 							description.value = (e.target as HTMLInputElement).value;
 						},
 					}),
-					save.error.value
-						? h('p', { style: styles.error, role: 'alert' }, save.error.value.explanation)
+					saveError.value
+						? h('p', { style: styles.error, role: 'alert' }, saveError.value.explanation)
 						: null,
 					h(
 						'button',
-						{ type: 'submit', disabled: save.isLoading.value, style: styles.button },
-						save.isLoading.value ? 'Saving…' : 'Save',
+						{ type: 'submit', disabled: isSaving.value, style: styles.button },
+						isSaving.value ? 'Saving…' : 'Save',
 					),
 				]),
 

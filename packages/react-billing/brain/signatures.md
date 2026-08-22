@@ -107,14 +107,6 @@ interface IUseCheckoutReturn {
     error: FonderieApiError | null;
 }
 
-interface IUsePlanAdminReturn {
-    createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
-    updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
-    deletePlan: (planId: string) => Promise<void>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
 interface IUsePlanReturn {
     plan: IPlanDTO | null;
     isLoading: boolean;
@@ -134,12 +126,6 @@ interface IUsePlansReturn {
     createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
     updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
     deletePlan: (planId: string) => Promise<void>;
-}
-
-interface IUseRecordUsageReturn {
-    recordUsage: (input: IRecordUsageInput) => Promise<void>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
 }
 
 interface IUseSubscriptionReturn {
@@ -167,11 +153,7 @@ function useCheckout(client?: BillingClient | undefined): IUseCheckoutReturn
 
 function usePlan(planId: string): IUsePlanReturn
 
-function usePlanAdmin(client?: BillingClient | undefined): IUsePlanAdminReturn
-
 function usePlans(client?: BillingClient | undefined): IUsePlansReturn
-
-function useRecordUsage(client?: BillingClient | undefined): IUseRecordUsageReturn
 
 function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
 

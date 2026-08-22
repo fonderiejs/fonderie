@@ -42,7 +42,7 @@ export function usePlans(client?: BillingClient): IUsePlansReturn {
 		[billing],
 	);
 
-	// Like usePlanAdmin, these writes are not auth-gated by @fonderie/billing —
+	// These writes are not auth-gated by @fonderie/billing —
 	// gate the UI that calls them behind your own admin check before shipping it.
 	const createPlan = useCallback(
 		async (input: ICreatePlanInput) => {

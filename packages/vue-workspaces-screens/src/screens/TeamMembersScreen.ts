@@ -1,7 +1,7 @@
-import type { IMemberDTO, WorkspacesClient } from '@fonderie/client';
-import { useMembers, useRemoveMember } from '@fonderie/vue-workspaces';
+import type { FonderieApiError, IMemberDTO, WorkspacesClient } from '@fonderie/client';
+import { useMembers } from '@fonderie/vue-workspaces';
 import type { PropType } from 'vue';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
 
 export const TeamMembersScreen = defineComponent({
@@ -14,19 +14,21 @@ export const TeamMembersScreen = defineComponent({
 		'navigate-invite': () => true,
 	},
 	setup(props, { emit }) {
-		const { members, isLoading, error, refresh } = useMembers(props.client);
-		const {
-			removeMember,
-			isLoading: isRemoving,
-			error: removeError,
-		} = useRemoveMember(props.client);
+		const { members, isLoading, error, removeMember } = useMembers(props.client);
+		const isRemoving = ref(false);
+		const removeError = ref<FonderieApiError | null>(null);
 
 		async function handleRemove(userId: string) {
+			isRemoving.value = true;
+			removeError.value = null;
 			try {
+				// The list composable re-fetches members itself after the write.
 				await removeMember(userId);
-				await refresh();
-			} catch {
-				// Surfaced via removeError.
+			} catch (err) {
+				// useMembers normalizes every failure to FonderieApiError before throwing.
+				removeError.value = err as FonderieApiError;
+			} finally {
+				isRemoving.value = false;
 			}
 		}
 
@@ -53,7 +55,9 @@ export const TeamMembersScreen = defineComponent({
 
 		return () => {
 			if (isLoading.value) return h('p', { style: styles.status }, 'Loading team…');
-			if (error.value)
+			// A failed removal also lands in the composable's shared `error`; it's
+			// surfaced inline via `removeError` below, so don't let it replace the list.
+			if (error.value && !removeError.value)
 				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
 
 			return h('div', { style: styles.container }, [

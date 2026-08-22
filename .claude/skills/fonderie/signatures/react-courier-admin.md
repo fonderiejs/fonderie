@@ -63,18 +63,6 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-interface IUseDeleteTemplateReturn {
-    deleteTemplate: (type: string, locale?: string | null) => Promise<void>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
-interface IUseSaveTemplateReturn {
-    saveTemplate: (type: string, input: ISetTemplateInput, locale?: string | null) => Promise<ITemplateEntry>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
 interface IUseTemplateReturn {
     template: ITemplateEntry | null;
     isLoading: boolean;
@@ -98,10 +86,6 @@ interface IUseTemplatesReturn {
     saveTemplate: (type: string, input: ISetTemplateInput, locale?: string | null) => Promise<ITemplateEntry>;
     removeTemplate: (type: string, locale?: string | null) => Promise<void>;
 }
-
-function useDeleteTemplate(client: CourierAdminClient): IUseDeleteTemplateReturn
-
-function useSaveTemplate(client: CourierAdminClient): IUseSaveTemplateReturn
 
 function useTemplate(client: CourierAdminClient, type: string, locale?: string | null | undefined): IUseTemplateReturn
 

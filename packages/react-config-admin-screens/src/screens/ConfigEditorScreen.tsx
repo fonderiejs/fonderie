@@ -1,12 +1,13 @@
 import type { ConfigAdminClient } from '@fonderie/client';
 import {
+	FonderieApiError,
+	useConfigEntries,
 	useConfigEntry,
 	useConfigRevisions,
 	useRevealSecret,
-	useSaveConfigEntry,
-	useSaveSecret,
 	useSecret,
 	useSecretRevisions,
+	useSecrets,
 } from '@fonderie/react-config-admin';
 import type { CSSProperties, FormEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -30,19 +31,25 @@ export function ConfigEditorScreen({
 
 	const configEntry = useConfigEntry(client, isSecret ? '' : configKey, environment);
 	const secretEntry = useSecret(client, isSecret ? configKey : '', environment);
-	const saveConfig = useSaveConfigEntry(client);
-	const saveSecret = useSaveSecret(client);
+	// Saves go through the list hooks (which re-fetch their lists after each
+	// write); mounting them adds a config-list and a secrets-list fetch to this
+	// single-entry editor — acceptable for an admin dashboard.
+	const configEntries = useConfigEntries(client, environment);
+	const secrets = useSecrets(client, environment);
 	const configRevisions = useConfigRevisions(client, isSecret ? '' : configKey, environment);
 	const secretRevisions = useSecretRevisions(client, isSecret ? configKey : '', environment);
 	const { revealSecret, isLoading: isRevealing } = useRevealSecret(client);
 
 	const entry = isSecret ? secretEntry : configEntry;
-	const save = isSecret ? saveSecret : saveConfig;
 	const revisions = isSecret ? secretRevisions : configRevisions;
 
 	const [value, setValue] = useState('');
 	const [description, setDescription] = useState('');
 	const [revealedValue, setRevealedValue] = useState<string | null>(null);
+	// The list hooks' isLoading/error track their list fetches (and are shared
+	// across mutations), so the save action keeps its own state.
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveError, setSaveError] = useState<FonderieApiError | null>(null);
 
 	useEffect(() => {
 		if (isSecret) return;
@@ -59,20 +66,27 @@ export function ConfigEditorScreen({
 
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
+		setIsSaving(true);
+		setSaveError(null);
 		try {
 			if (isSecret) {
-				const opts: Parameters<typeof saveSecret.saveSecret>[1] = { value };
+				const opts: Parameters<typeof secrets.saveSecret>[1] = { value };
 				if (description) opts.description = description;
-				await saveSecret.saveSecret(configKey, opts, environment);
+				await secrets.saveSecret(configKey, opts);
 			} else {
-				const opts: Parameters<typeof saveConfig.saveConfigEntry>[1] = { value: JSON.parse(value) };
+				const opts: Parameters<typeof configEntries.saveEntry>[1] = { value: JSON.parse(value) };
 				if (description) opts.description = description;
-				await saveConfig.saveConfigEntry(configKey, opts, environment);
+				await configEntries.saveEntry(configKey, opts);
 			}
+			// The list hooks refresh their own lists; this screen renders the
+			// single entry, so re-read it too.
 			await entry.refresh();
 			onSaved?.();
-		} catch {
-			// Surfaced via save.error.
+		} catch (err) {
+			// API failures surface inline; JSON.parse errors stay silent as before.
+			if (err instanceof FonderieApiError) setSaveError(err);
+		} finally {
+			setIsSaving(false);
 		}
 	};
 
@@ -137,14 +151,14 @@ export function ConfigEditorScreen({
 					onChange={(event) => setDescription(event.target.value)}
 				/>
 
-				{save.error && (
+				{saveError && (
 					<p style={styles.error} role="alert">
-						{save.error.explanation}
+						{saveError.explanation}
 					</p>
 				)}
 
-				<button type="submit" disabled={save.isLoading} style={styles.button}>
-					{save.isLoading ? 'Saving…' : 'Save'}
+				<button type="submit" disabled={isSaving} style={styles.button}>
+					{isSaving ? 'Saving…' : 'Save'}
 				</button>
 			</form>
 

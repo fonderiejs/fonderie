@@ -24,7 +24,7 @@ export function useTemplates(client: CourierAdminClient) {
 
 	void refresh();
 
-	async function saveTemplate(type: string, input: ISetTemplateInput, locale?: string) {
+	async function saveTemplate(type: string, input: ISetTemplateInput, locale?: string | null) {
 		error.value = null;
 		try {
 			const { result } = await client.setTemplate(type, input, locale);
@@ -38,7 +38,7 @@ export function useTemplates(client: CourierAdminClient) {
 		}
 	}
 
-	async function removeTemplate(type: string, locale?: string) {
+	async function removeTemplate(type: string, locale?: string | null) {
 		error.value = null;
 		try {
 			await client.deleteTemplate(type, locale);

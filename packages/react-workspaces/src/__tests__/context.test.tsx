@@ -8,7 +8,7 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 
 import type { IUseRolePermissionsReturn } from '../hooks';
-import { useCreateWorkspace, useMemberRoles, useMembers, useRole, useRolePermissions, useWorkspace, useWorkspaces } from '../hooks';
+import { useMemberRoles, useMembers, useRole, useRolePermissions, useWorkspace, useWorkspaces } from '../hooks';
 
 const fakeWorkspaces = { marker: 'context-workspaces' } as unknown as WorkspacesClient;
 const fakeClient = { workspaces: fakeWorkspaces } as unknown as FonderieClient;
@@ -51,13 +51,54 @@ test('an explicit client still works and bypasses context', () => {
 	renderToString(
 		createElement(Probe, {
 			run: () => {
-				const { createWorkspace } = useCreateWorkspace(explicit);
+				const { createWorkspace } = useWorkspaces(explicit);
 				assert.equal(typeof createWorkspace, 'function');
 				const { roles } = useMemberRoles(explicit, 'user-1');
 				assert.deepEqual(roles, []);
 			},
 		}),
 	);
+});
+
+test('useWorkspaces folds createWorkspace and acceptInvitation and re-lists after each write', async () => {
+	const log: unknown[] = [];
+	const fake = {
+		listWorkspaces: async (opts?: { bust?: boolean }) => {
+			log.push(['list', opts?.bust ?? false]);
+			return { reason: 'OK', explanation: '', result: { workspaces: [] } };
+		},
+		createWorkspace: async (input: unknown) => {
+			log.push(['create', input]);
+			return { reason: 'OK', explanation: '', result: { workspace: { id: 'ws-new' } } };
+		},
+		acceptInvitation: async (pin: string) => {
+			log.push(['accept', pin]);
+			return { reason: 'OK', explanation: '', result: { workspaceId: 'ws-9' } };
+		},
+	};
+	let captured: ReturnType<typeof useWorkspaces> | undefined;
+	renderToString(
+		createElement(
+			FonderieProvider,
+			{ client: { workspaces: fake } as unknown as FonderieClient },
+			createElement(Probe, {
+				run: () => {
+					captured = useWorkspaces();
+				},
+			}),
+		),
+	);
+	const created = await captured?.createWorkspace({ name: 'New workspace' });
+	assert.equal(created?.id, 'ws-new');
+	// Screens rely on acceptInvitation resolving to the joined workspace's id.
+	const joined = await captured?.acceptInvitation('pin-1');
+	assert.equal(joined, 'ws-9');
+	assert.deepEqual(log, [
+		['create', { name: 'New workspace' }],
+		['list', false],
+		['accept', 'pin-1'],
+		['list', false],
+	]);
 });
 
 test('useRolePermissions resolves from context and writes then re-reads', async () => {

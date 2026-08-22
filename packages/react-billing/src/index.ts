@@ -13,10 +13,8 @@ export { FonderieApiError } from '@fonderie/client';
 export type {
 	IUseBillingPortalReturn,
 	IUseCheckoutReturn,
-	IUsePlanAdminReturn,
 	IUsePlanReturn,
 	IUsePlansReturn,
-	IUseRecordUsageReturn,
 	IUseSubscriptionReturn,
 	IUseUsageReturn,
 } from './hooks';
@@ -24,9 +22,7 @@ export {
 	useBillingPortal,
 	useCheckout,
 	usePlan,
-	usePlanAdmin,
 	usePlans,
-	useRecordUsage,
 	useSubscription,
 	useUsage,
 } from './hooks';

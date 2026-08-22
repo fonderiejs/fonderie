@@ -1,5 +1,10 @@
-import type { CourierAdminClient, ISetTemplateInput, ITemplateRevision } from '@fonderie/client';
-import { useSaveTemplate, useTemplate, useTemplateRevisions } from '@fonderie/vue-courier-admin';
+import type {
+	CourierAdminClient,
+	FonderieApiError,
+	ISetTemplateInput,
+	ITemplateRevision,
+} from '@fonderie/client';
+import { useTemplate, useTemplateRevisions, useTemplates } from '@fonderie/vue-courier-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref, watch } from 'vue';
 import { styles } from '../styles';
@@ -20,8 +25,14 @@ export const TemplateEditorScreen = defineComponent({
 			props.type,
 			props.locale,
 		);
-		const { saveTemplate, isLoading: isSaving, error: saveError } = useSaveTemplate(props.client);
+		// Saves go through the list composable (which re-fetches the template list
+		// after each write); mounting it adds a template-list fetch to this
+		// single-template editor — acceptable for an admin dashboard. Its
+		// isLoading/error track that list fetch, so the save action keeps local state.
+		const { saveTemplate } = useTemplates(props.client);
 		const { revisions, rollback } = useTemplateRevisions(props.client, props.type, props.locale);
+		const isSaving = ref(false);
+		const saveError = ref<FonderieApiError | null>(null);
 
 		const subject = ref('');
 		const html = ref('');
@@ -38,16 +49,23 @@ export const TemplateEditorScreen = defineComponent({
 
 		async function handleSubmit(event: Event) {
 			event.preventDefault();
+			isSaving.value = true;
+			saveError.value = null;
 			try {
 				const input: ISetTemplateInput = { text: text.value, active: active.value };
 				if (subject.value) input.subject = subject.value;
 				if (html.value) input.html = html.value;
 				if (template.value?.version !== undefined) input.ifVersion = template.value.version;
 				await saveTemplate(props.type, input, props.locale);
+				// The list composable refreshes its own list; this screen renders the
+				// single template, so re-read it too.
 				await refresh();
 				emit('saved');
-			} catch {
-				// Surfaced via saveError.
+			} catch (err) {
+				// useTemplates normalizes every failure to FonderieApiError before throwing.
+				saveError.value = err as FonderieApiError;
+			} finally {
+				isSaving.value = false;
 			}
 		}
 
