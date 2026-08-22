@@ -1,9 +1,19 @@
 import type { ICreateWorkspaceInput, IWorkspaceDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-export function useWorkspaces(client?: WorkspacesClient) {
+export interface IUseWorkspacesReturn {
+	workspaces: Ref<IWorkspaceDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
+	acceptInvitation: (pin: string) => Promise<string>;
+}
+
+export function useWorkspaces(client?: WorkspacesClient): IUseWorkspacesReturn {
 	const workspacesClient = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaces');
 	const workspaces = ref<IWorkspaceDTO[]>([]);
 	const isLoading = ref(true);
@@ -24,7 +34,7 @@ export function useWorkspaces(client?: WorkspacesClient) {
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
 
 	async function createWorkspace(input: ICreateWorkspaceInput) {
 		error.value = null;

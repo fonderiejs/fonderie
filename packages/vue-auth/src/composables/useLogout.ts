@@ -1,10 +1,17 @@
 import type { AuthClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { clearToken } from '../storage';
 
-export function useLogout(client?: AuthClient) {
+export interface IUseLogoutReturn {
+	logout: (refreshToken?: string) => Promise<void>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+}
+
+export function useLogout(client?: AuthClient): IUseLogoutReturn {
 	const auth = useFonderieSubClient(client, (c) => c.auth, 'useLogout');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);

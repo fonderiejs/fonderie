@@ -11,6 +11,16 @@ export type {
 } from '@fonderie/client';
 
 export { FonderieApiError } from '@fonderie/client';
+export type {
+	IUseBillingPortalReturn,
+	IUseCheckoutReturn,
+	IUsePlanAdminReturn,
+	IUsePlanReturn,
+	IUsePlansReturn,
+	IUseRecordUsageReturn,
+	IUseSubscriptionReturn,
+	IUseUsageReturn,
+} from './composables';
 export {
 	useBillingPortal,
 	useCheckout,

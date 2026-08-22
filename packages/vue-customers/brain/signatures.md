@@ -229,21 +229,131 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useCustomer(customerId: string, depth?: 1 | 2 | undefined): IUseCustomerReturn
+interface IUseCustomerAddressesReturn {
+    addresses: Ref<ICustomerAddressDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    addAddress: (input: IAddAddressInput) => Promise<ICustomerAddressDTO>;
+    updateAddressLabel: (addrId: string, label: string) => Promise<void>;
+    setPrimaryAddress: (addrId: string) => Promise<void>;
+    removeAddress: (addrId: string) => Promise<void>;
+}
 
-function useCustomerAddresses(customerId: string): IUseCustomerAddressesReturn
+interface IUseCustomerEmailsReturn {
+    emails: Ref<ICustomerEmailDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    addEmail: (input: IAddEmailInput) => Promise<ICustomerEmailDTO>;
+    updateEmailLabel: (emailId: string, label: string) => Promise<void>;
+    setPrimaryEmail: (emailId: string) => Promise<void>;
+    removeEmail: (emailId: string) => Promise<void>;
+}
 
-function useCustomerEmails(customerId: string): IUseCustomerEmailsReturn
+interface IUseCustomerLabelsReturn {
+    labels: Ref<ICustomerLabelDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    removeLabel: (labelId: string) => Promise<void>;
+}
 
-function useCustomerLabels(type: CustomerLabelType): IUseCustomerLabelsReturn
+interface IUseCustomerNotesReturn {
+    notes: Ref<ICustomerNoteDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    createNote: (body: string) => Promise<ICustomerNoteDTO>;
+    updateNote: (noteId: string, body: string) => Promise<void>;
+    deleteNote: (noteId: string) => Promise<void>;
+}
 
-function useCustomerNotes(customerId: string): IUseCustomerNotesReturn
+interface IUseCustomerPhonesReturn {
+    phones: Ref<ICustomerPhoneDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    addPhone: (input: IAddPhoneInput) => Promise<ICustomerPhoneDTO>;
+    updatePhoneLabel: (phoneId: string, label: string) => Promise<void>;
+    setPrimaryPhone: (phoneId: string) => Promise<void>;
+    removePhone: (phoneId: string) => Promise<void>;
+}
 
-function useCustomerPhones(customerId: string): IUseCustomerPhonesReturn
+interface IUseCustomerRelationshipsReturn {
+    relationships: Ref<ICustomerRelationshipDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    addRelationship: (input: IAddRelationshipInput) => Promise<ICustomerRelationshipDTO>;
+    setPrimaryRelationship: (relatedId: string) => Promise<void>;
+    removeRelationship: (relatedId: string) => Promise<void>;
+}
 
-function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn
+interface IUseCustomerReturn {
+    customer: Ref<ICustomerDetailDTO | ICustomerDetailD2DTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    updateCustomer: (input: IUpdateCustomerInput) => Promise<void>;
+}
 
-function useCustomers(params?: IListCustomersInput | undefined): IUseCustomersReturn
+interface IUseCustomersReturn {
+    customers: Ref<ICustomerDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    total: Ref<number>;
+    hasMore: Ref<boolean>;
+    loadMore: () => Promise<void>;
+    createCustomer: (input?: ICreateCustomerInput) => Promise<ICustomerDTO>;
+    deleteCustomer: (customerId: string) => Promise<void>;
+    blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;
+    unblacklistCustomer: (customerId: string) => Promise<void>;
+}
 
-function useCustomerTags(customerId: string): IUseCustomerTagsReturn
+interface IUseCustomerTagsReturn {
+    tags: Ref<string[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    addTag: (tag: string) => Promise<void>;
+    removeTag: (tag: string) => Promise<void>;
+}
+
+function useCustomer(customerId: MaybeRefOrGetter<string>, depth?: MaybeRefOrGetter<1 | 2> | undefined): IUseCustomerReturn
+
+function useCustomerAddresses(customerId: MaybeRefOrGetter<string>): IUseCustomerAddressesReturn
+
+function useCustomerEmails(customerId: MaybeRefOrGetter<string>): IUseCustomerEmailsReturn
+
+function useCustomerLabels(type: MaybeRefOrGetter<CustomerLabelType>): IUseCustomerLabelsReturn
+
+function useCustomerNotes(customerId: MaybeRefOrGetter<string>): IUseCustomerNotesReturn
+
+function useCustomerPhones(customerId: MaybeRefOrGetter<string>): IUseCustomerPhonesReturn
+
+function useCustomerRelationships(customerId: MaybeRefOrGetter<string>): IUseCustomerRelationshipsReturn
+
+function useCustomers(params?: MaybeRefOrGetter<IListCustomersInput | undefined>): IUseCustomersReturn
+
+function useCustomerTags(customerId: MaybeRefOrGetter<string>): IUseCustomerTagsReturn
 ```

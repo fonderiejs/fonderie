@@ -95,19 +95,85 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useBillingPortal(client?: BillingClient | undefined): { openPortal: () => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+interface IUseBillingPortalReturn {
+    openPortal: () => Promise<string>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
 
-function useCheckout(client?: BillingClient | undefined): { checkout: (input: ICheckoutInput) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
+interface IUseCheckoutReturn {
+    checkout: (input: ICheckoutInput) => Promise<string>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
 
-function usePlan(planId: string): IUsePlanReturn
+interface IUsePlanAdminReturn {
+    createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
+    updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
+    deletePlan: (planId: string) => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
 
-function usePlanAdmin(client?: BillingClient | undefined): { createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>; updatePlan: (planId: string, input: Partial<...>) => Promise<...>; deletePlan: (planId: string) => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
+interface IUsePlanReturn {
+    plan: Ref<IPlanDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
 
-function usePlans(client?: BillingClient | undefined): { plans: Ref<{ id: string; planId: string; name: string; description: string; tier: number; seats: number | null; trialDays: number; pricing: { ...; }; features: { ...; }[]; metadata: Record<...>; }[], IPlanDTO[] | { ...; }[]>; ... 5 more ...; deletePlan: (planId: string) => Promise<...>; }
+interface IUsePlansReturn {
+    plans: Ref<IPlanDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
+    updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
+    deletePlan: (planId: string) => Promise<void>;
+}
 
-function useRecordUsage(client?: BillingClient | undefined): { recordUsage: (input: IRecordUsageInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
+interface IUseRecordUsageReturn {
+    recordUsage: (input: IRecordUsageInput) => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
 
-function useSubscription(client?: BillingClient | undefined): { subscription: Ref<{ id: string; subscriberType: SubscriberType; subscriberId: string; plan: string; interval: string; ... 5 more ...; createdAt: string; } | null, ISubscriptionDTO | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: (opts?: { ...; } | undefined) => Promise<...>; }
+interface IUseSubscriptionReturn {
+    subscription: Ref<ISubscriptionDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
 
-function useUsage(metric: string): IUseUsageReturn
+interface IUseUsageReturn {
+    total: Ref<number | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    recordUsage: (input: IRecordUsageInput) => Promise<void>;
+}
+
+function useBillingPortal(client?: BillingClient | undefined): IUseBillingPortalReturn
+
+function useCheckout(client?: BillingClient | undefined): IUseCheckoutReturn
+
+function usePlan(planId: MaybeRefOrGetter<string>): IUsePlanReturn
+
+function usePlanAdmin(client?: BillingClient | undefined): IUsePlanAdminReturn
+
+function usePlans(client?: BillingClient | undefined): IUsePlansReturn
+
+function useRecordUsage(client?: BillingClient | undefined): IUseRecordUsageReturn
+
+function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
+
+function useUsage(metric: MaybeRefOrGetter<string>): IUseUsageReturn
 ```

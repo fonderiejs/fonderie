@@ -1,8 +1,8 @@
 import type { IAddRelationshipInput, ICustomerRelationshipDTO } from '@fonderie/client';
 import { CustomersClient, FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseCustomerRelationshipsReturn {
 	relationships: Ref<ICustomerRelationshipDTO[]>;
@@ -14,33 +14,39 @@ export interface IUseCustomerRelationshipsReturn {
 	removeRelationship: (relatedId: string) => Promise<void>;
 }
 
-export function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn;
 export function useCustomerRelationships(
-	client: CustomersClient | undefined,
-	customerId: string,
+	customerId: MaybeRefOrGetter<string>,
 ): IUseCustomerRelationshipsReturn;
 export function useCustomerRelationships(
-	clientOrCustomerId: CustomersClient | string | undefined,
-	maybeCustomerId?: string,
+	client: CustomersClient | undefined,
+	customerId: MaybeRefOrGetter<string>,
+): IUseCustomerRelationshipsReturn;
+export function useCustomerRelationships(
+	clientOrCustomerId: CustomersClient | MaybeRefOrGetter<string> | undefined,
+	maybeCustomerId?: MaybeRefOrGetter<string>,
 ): IUseCustomerRelationshipsReturn {
 	const firstIsClient =
 		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeCustomerId as string) : clientOrCustomerId;
+	const customerId = firstIsClient
+		? (maybeCustomerId as MaybeRefOrGetter<string>)
+		: clientOrCustomerId;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerRelationships');
 	const relationships = ref<ICustomerRelationshipDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
 	async function refresh(opts?: { force?: boolean }) {
-		if (!customerId) {
+		if (!toValue(customerId)) {
 			isLoading.value = false;
 			return;
 		}
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listRelationships(customerId, { bust: opts?.force });
+			const { result } = await customers.listRelationships(toValue(customerId), {
+				bust: opts?.force,
+			});
 			relationships.value = result.relationships;
 		} catch (err) {
 			const apiError =
@@ -54,7 +60,7 @@ export function useCustomerRelationships(
 	async function addRelationship(input: IAddRelationshipInput) {
 		error.value = null;
 		try {
-			const { result } = await customers.addRelationship(customerId, input);
+			const { result } = await customers.addRelationship(toValue(customerId), input);
 			await refresh();
 			return result.relationship;
 		} catch (err) {
@@ -68,7 +74,7 @@ export function useCustomerRelationships(
 	async function setPrimaryRelationship(relatedId: string) {
 		error.value = null;
 		try {
-			await customers.setPrimaryRelationship(customerId, relatedId);
+			await customers.setPrimaryRelationship(toValue(customerId), relatedId);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -81,7 +87,7 @@ export function useCustomerRelationships(
 	async function removeRelationship(relatedId: string) {
 		error.value = null;
 		try {
-			await customers.removeRelationship(customerId, relatedId);
+			await customers.removeRelationship(toValue(customerId), relatedId);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -91,7 +97,11 @@ export function useCustomerRelationships(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(customerId),
+		() => void refresh(),
+	);
 
 	return {
 		relationships,

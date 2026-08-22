@@ -32,8 +32,6 @@ async function runInSetup<T>(run: () => T, plugin?: boolean) {
 	const app = createSSRApp(Root);
 	if (plugin) app.use(FonderiePlugin, fakeClient);
 	await renderToString(app);
-	// Let the setup-time refresh() promise chain settle.
-	await new Promise((resolve) => setTimeout(resolve, 0));
 	return { value, error };
 }
 
@@ -43,6 +41,10 @@ test('useAuditEvents resolves the audit client via app.use(FonderiePlugin, clien
 	assert.ok(value);
 	assert.equal(typeof value.refresh, 'function');
 	assert.equal(typeof value.loadMore, 'function');
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	assert.equal(value.isLoading.value, true);
+	assert.deepEqual(value.events.value, []);
+	await value.refresh();
 	assert.equal(value.isLoading.value, false);
 	assert.equal(value.isLoadingMore.value, false);
 	assert.equal(value.error.value, null);
@@ -57,6 +59,7 @@ test('useAuditEvents accepts an explicit client without any plugin installed', a
 	const { value, error } = await runInSetup(() => useAuditEvents(explicit, {}));
 	assert.equal(error, undefined);
 	assert.ok(value);
+	await value.refresh();
 	assert.equal(value.error.value, null);
 	assert.deepEqual(value.events.value, [fakeEvent]);
 });

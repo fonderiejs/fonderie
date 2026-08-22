@@ -1,13 +1,24 @@
 import type {
 	ICreateWebhookEndpointInput,
+	IWebhookEndpointCreatedDTO,
 	IWebhookEndpointDTO,
 	WebhooksClient,
 } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-export function useWebhookEndpoints(client?: WebhooksClient) {
+export interface IUseWebhookEndpointsReturn {
+	endpoints: Ref<IWebhookEndpointDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	createEndpoint: (input: ICreateWebhookEndpointInput) => Promise<IWebhookEndpointCreatedDTO>;
+	removeEndpoint: (endpointId: string) => Promise<void>;
+}
+
+export function useWebhookEndpoints(client?: WebhooksClient): IUseWebhookEndpointsReturn {
 	const webhooks = useFonderieSubClient(client, (c) => c.webhooks, 'useWebhookEndpoints');
 	const endpoints = ref<IWebhookEndpointDTO[]>([]);
 	const isLoading = ref(true);
@@ -55,7 +66,7 @@ export function useWebhookEndpoints(client?: WebhooksClient) {
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
 
 	return { endpoints, isLoading, error, refresh, createEndpoint, removeEndpoint };
 }

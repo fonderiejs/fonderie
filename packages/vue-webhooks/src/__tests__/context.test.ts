@@ -33,8 +33,6 @@ async function runInSetup<T>(run: () => T, plugin?: boolean) {
 	const app = createSSRApp(Root);
 	if (plugin) app.use(FonderiePlugin, fakeClient);
 	await renderToString(app);
-	// Let the setup-time refresh() promise chain settle.
-	await new Promise((resolve) => setTimeout(resolve, 0));
 	return { value, error };
 }
 
@@ -51,6 +49,10 @@ test('useWebhookDeliveries supports the no-client overload via the plugin', asyn
 	const { value, error } = await runInSetup(() => useWebhookDeliveries('ep_1'), true);
 	assert.equal(error, undefined);
 	assert.ok(value);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	assert.deepEqual(value.deliveries.value, []);
+	assert.equal(value.isLoading.value, true);
+	await value.refresh();
 	assert.equal(value.error.value, null);
 	assert.equal(value.isLoading.value, false);
 	assert.deepEqual(value.deliveries.value, [fakeDelivery]);
@@ -63,6 +65,7 @@ test('useWebhookDeliveries accepts an explicit client without any plugin install
 	const { value, error } = await runInSetup(() => useWebhookDeliveries(explicit, 'ep_1'));
 	assert.equal(error, undefined);
 	assert.ok(value);
+	await value.refresh();
 	assert.equal(value.error.value, null);
 	assert.deepEqual(value.deliveries.value, [fakeDelivery]);
 });

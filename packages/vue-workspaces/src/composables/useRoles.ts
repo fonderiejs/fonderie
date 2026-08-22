@@ -1,9 +1,20 @@
 import type { ICreateRoleInput, IRoleDTO, IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-export function useRoles(client?: WorkspacesClient) {
+export interface IUseRolesReturn {
+	roles: Ref<IRoleDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
+	createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
+	removeRole: (roleId: string) => Promise<void>;
+}
+
+export function useRoles(client?: WorkspacesClient): IUseRolesReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRoles');
 	const roles = ref<IRoleDTO[]>([]);
 	const isLoading = ref(true);
@@ -51,7 +62,7 @@ export function useRoles(client?: WorkspacesClient) {
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
 
 	async function updateRole(roleId: string, input: IUpdateRoleInput) {
 		error.value = null;

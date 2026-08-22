@@ -1,9 +1,16 @@
 import type { BillingClient, ICheckoutInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
-export function useCheckout(client?: BillingClient) {
+export interface IUseCheckoutReturn {
+	checkout: (input: ICheckoutInput) => Promise<string>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+}
+
+export function useCheckout(client?: BillingClient): IUseCheckoutReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useCheckout');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
