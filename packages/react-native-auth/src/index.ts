@@ -2,6 +2,7 @@ export type {
 	AuthClient,
 	ILoginInput,
 	ILoginResult,
+	IMfaRequiredResult,
 	IRegisterInput,
 	IRegisterResult,
 	IResetPasswordInput,
@@ -10,7 +11,7 @@ export type {
 	IVerifyEmailResult,
 } from '@fonderie/client';
 
-export { FonderieApiError } from '@fonderie/client';
+export { FonderieApiError, isMfaRequired } from '@fonderie/client';
 export type {
 	IUseForgotPasswordReturn,
 	IUseLoginReturn,

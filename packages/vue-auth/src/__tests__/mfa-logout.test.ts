@@ -82,3 +82,10 @@ test('logout with no argument still works', async () => {
 	await logout();
 	assert.deepEqual(calls.logout, [undefined]);
 });
+
+
+test('isMfaRequired and IMfaRequiredResult are re-exported from the package index', async () => {
+	const index = await import('../index');
+	assert.equal(typeof index.isMfaRequired, 'function');
+	assert.equal(index.isMfaRequired({ mfaToken: 'x' } as never), true);
+});
