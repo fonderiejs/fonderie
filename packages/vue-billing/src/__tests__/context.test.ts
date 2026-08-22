@@ -33,8 +33,6 @@ async function runInSetup<T>(run: () => T, plugin?: boolean) {
 	const app = createSSRApp(Root);
 	if (plugin) app.use(FonderiePlugin, fakeClient);
 	await renderToString(app);
-	// Let the setup-time refresh() promise chain settle.
-	await new Promise((resolve) => setTimeout(resolve, 0));
 	return { value, error };
 }
 
@@ -51,6 +49,11 @@ test('usePlan supports the no-client overload via the plugin', async () => {
 	const { value, error } = await runInSetup(() => usePlan('plan_1'), true);
 	assert.equal(error, undefined);
 	assert.ok(value);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	const beforeMount = value.plan.value;
+	assert.equal(beforeMount, null);
+	assert.equal(value.isLoading.value, true);
+	await value.refresh();
 	assert.equal(value.error.value, null);
 	assert.equal(value.isLoading.value, false);
 	assert.equal(value.plan.value?.id, 'plan_1');
@@ -63,6 +66,7 @@ test('usePlan accepts an explicit client without any plugin installed', async ()
 	const { value, error } = await runInSetup(() => usePlan(explicit, 'plan_1'));
 	assert.equal(error, undefined);
 	assert.ok(value);
+	await value.refresh();
 	assert.equal(value.error.value, null);
 	assert.equal(value.plan.value?.id, 'plan_1');
 });

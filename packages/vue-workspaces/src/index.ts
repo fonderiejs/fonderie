@@ -17,7 +17,21 @@ export type {
 } from '@fonderie/client';
 
 export { FonderieApiError } from '@fonderie/client';
-export type { IUseRolePermissionsReturn } from './composables';
+export type {
+	IUseAcceptInvitationReturn,
+	IUseCreateWorkspaceReturn,
+	IUseInvitationsReturn,
+	IUseMemberRolesReturn,
+	IUseMembersReturn,
+	IUseRemoveMemberReturn,
+	IUseRolePermissionsReturn,
+	IUseRolesReturn,
+	IUseSetRolePermissionsReturn,
+	IUseUpdateRoleReturn,
+	IUseWorkspaceProfileReturn,
+	IUseWorkspaceSettingsReturn,
+	IUseWorkspacesReturn,
+} from './composables';
 export {
 	useAcceptInvitation,
 	useCreateWorkspace,

@@ -178,13 +178,17 @@ test('useVerifyEmail.resend re-sends the verification email and sets resent', as
 	assert.equal(resent.value, true);
 });
 
-test('useProfile fetches on setup and again on refresh()', async () => {
+test('useProfile fetches on mount and again on refresh()', async () => {
 	calls.getUser = 0;
 	const { useProfile } = await import('../index');
-	const { user, refresh } = await renderComposable(() => useProfile());
-	// The composable kicks off one fetch during setup(); let it settle.
-	await new Promise((resolve) => setTimeout(resolve, 0));
-	assert.equal(calls.getUser, 1, 'setup() must fetch the profile once');
+	const { user, isLoading, refresh } = await renderComposable(() => useProfile());
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	const beforeMount = user.value;
+	assert.equal(beforeMount, null);
+	assert.equal(isLoading.value, true);
+	assert.equal(calls.getUser, 0);
+	await refresh();
+	assert.equal(calls.getUser, 1);
 	await refresh();
 	assert.equal(calls.getUser, 2);
 	assert.deepEqual(user.value, { id: 'u1' });

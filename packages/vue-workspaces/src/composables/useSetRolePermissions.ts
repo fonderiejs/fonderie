@@ -1,10 +1,17 @@
 import type { IRolePermissionInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
+export interface IUseSetRolePermissionsReturn {
+	setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+}
+
 /** @deprecated Use useRolePermissions(roleId).setRolePermissions — the list hook self-refreshes after the write. */
-export function useSetRolePermissions(client?: WorkspacesClient) {
+export function useSetRolePermissions(client?: WorkspacesClient): IUseSetRolePermissionsReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useSetRolePermissions');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);

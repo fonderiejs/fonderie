@@ -1,9 +1,18 @@
+export type { IUseCustomerReturn } from './useCustomer';
 export { useCustomer } from './useCustomer';
+export type { IUseCustomerAddressesReturn } from './useCustomerAddresses';
 export { useCustomerAddresses } from './useCustomerAddresses';
+export type { IUseCustomerEmailsReturn } from './useCustomerEmails';
 export { useCustomerEmails } from './useCustomerEmails';
+export type { IUseCustomerLabelsReturn } from './useCustomerLabels';
 export { useCustomerLabels } from './useCustomerLabels';
+export type { IUseCustomerNotesReturn } from './useCustomerNotes';
 export { useCustomerNotes } from './useCustomerNotes';
+export type { IUseCustomerPhonesReturn } from './useCustomerPhones';
 export { useCustomerPhones } from './useCustomerPhones';
+export type { IUseCustomerRelationshipsReturn } from './useCustomerRelationships';
 export { useCustomerRelationships } from './useCustomerRelationships';
+export type { IUseCustomersReturn } from './useCustomers';
 export { useCustomers } from './useCustomers';
+export type { IUseCustomerTagsReturn } from './useCustomerTags';
 export { useCustomerTags } from './useCustomerTags';

@@ -5,9 +5,18 @@ import type {
 } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-export function useWorkspaceSettings(client?: WorkspacesClient) {
+export interface IUseWorkspaceSettingsReturn {
+	settings: Ref<IWorkspaceSettingsDTO | null>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	updateSettings: (input: IUpdateSettingsInput) => Promise<void>;
+}
+
+export function useWorkspaceSettings(client?: WorkspacesClient): IUseWorkspaceSettingsReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceSettings');
 	const settings = ref<IWorkspaceSettingsDTO | null>(null);
 	const isLoading = ref(true);
@@ -41,7 +50,7 @@ export function useWorkspaceSettings(client?: WorkspacesClient) {
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
 
 	return { settings, isLoading, error, refresh, updateSettings };
 }

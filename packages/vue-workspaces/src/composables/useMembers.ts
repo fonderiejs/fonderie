@@ -1,9 +1,18 @@
 import type { IMemberDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import { ref } from 'vue';
+import type { Ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-export function useMembers(client?: WorkspacesClient) {
+export interface IUseMembersReturn {
+	members: Ref<IMemberDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	removeMember: (userId: string) => Promise<void>;
+}
+
+export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useMembers');
 	const members = ref<IMemberDTO[]>([]);
 	const isLoading = ref(true);
@@ -24,7 +33,7 @@ export function useMembers(client?: WorkspacesClient) {
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
 
 	async function removeMember(userId: string) {
 		error.value = null;

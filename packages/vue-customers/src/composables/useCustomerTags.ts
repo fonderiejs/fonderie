@@ -1,7 +1,7 @@
 import { CustomersClient, FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseCustomerTagsReturn {
 	tags: Ref<string[]>;
@@ -12,33 +12,35 @@ export interface IUseCustomerTagsReturn {
 	removeTag: (tag: string) => Promise<void>;
 }
 
-export function useCustomerTags(customerId: string): IUseCustomerTagsReturn;
+export function useCustomerTags(customerId: MaybeRefOrGetter<string>): IUseCustomerTagsReturn;
 export function useCustomerTags(
 	client: CustomersClient | undefined,
-	customerId: string,
+	customerId: MaybeRefOrGetter<string>,
 ): IUseCustomerTagsReturn;
 export function useCustomerTags(
-	clientOrCustomerId: CustomersClient | string | undefined,
-	maybeCustomerId?: string,
+	clientOrCustomerId: CustomersClient | MaybeRefOrGetter<string> | undefined,
+	maybeCustomerId?: MaybeRefOrGetter<string>,
 ): IUseCustomerTagsReturn {
 	const firstIsClient =
 		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeCustomerId as string) : clientOrCustomerId;
+	const customerId = firstIsClient
+		? (maybeCustomerId as MaybeRefOrGetter<string>)
+		: clientOrCustomerId;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerTags');
 	const tags = ref<string[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
 	async function refresh(opts?: { force?: boolean }) {
-		if (!customerId) {
+		if (!toValue(customerId)) {
 			isLoading.value = false;
 			return;
 		}
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listTags(customerId, { bust: opts?.force });
+			const { result } = await customers.listTags(toValue(customerId), { bust: opts?.force });
 			tags.value = result.tags;
 		} catch (err) {
 			const apiError =
@@ -52,7 +54,7 @@ export function useCustomerTags(
 	async function addTag(tag: string) {
 		error.value = null;
 		try {
-			await customers.addTag(customerId, tag);
+			await customers.addTag(toValue(customerId), tag);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -65,7 +67,7 @@ export function useCustomerTags(
 	async function removeTag(tag: string) {
 		error.value = null;
 		try {
-			await customers.removeTag(customerId, tag);
+			await customers.removeTag(toValue(customerId), tag);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -75,7 +77,11 @@ export function useCustomerTags(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(customerId),
+		() => void refresh(),
+	);
 
 	return { tags, isLoading, error, refresh, addTag, removeTag };
 }
