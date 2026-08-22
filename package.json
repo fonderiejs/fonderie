@@ -27,6 +27,7 @@
     "brain:r3-test": "node scripts/brain-r3.test.mjs",
     "audit:validation": "node scripts/audit-validation.mjs",
     "check:evidence": "node scripts/check-evidence.mjs",
+    "check:hook-coverage": "node scripts/check-hook-coverage.mjs",
     "check:routes": "node scripts/check-client-routes.mjs",
     "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer"
   },
