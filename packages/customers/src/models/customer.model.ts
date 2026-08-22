@@ -168,6 +168,32 @@ export class CustomerModel {
 		);
 	}
 
+	async count(opts: Omit<ListCustomersOpts, 'limit' | 'offset'>): Promise<number> {
+		const conditions: string[] = ['workspace_id = $1'];
+		const params: unknown[] = [opts.workspaceId];
+
+		if (opts.blacklisted !== undefined) {
+			params.push(opts.blacklisted);
+			conditions.push(`is_blacklisted = $${params.length}`);
+		}
+
+		if (opts.search) {
+			params.push(`%${opts.search}%`);
+			const idx = params.length;
+			conditions.push(
+				`(first_name ILIKE $${idx} OR last_name ILIKE $${idx} OR company_name ILIKE $${idx} OR reference_code ILIKE $${idx})`,
+			);
+		}
+
+		const [row] = await this.store.query<{ count: string }>(
+			`SELECT COUNT(*) AS count
+			 FROM fonderie_customers
+			 WHERE ${conditions.join(' AND ')}`,
+			params,
+		);
+		return Number(row?.count ?? 0);
+	}
+
 	async findById(id: string, workspaceId: string): Promise<ICustomer | null> {
 		const [row] = await this.store.query<ICustomer>(
 			`SELECT ${SELECT_CUSTOMER}

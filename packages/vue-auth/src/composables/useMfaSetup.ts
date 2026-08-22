@@ -6,7 +6,8 @@ import { ref } from 'vue';
 import { persistToken } from '../storage';
 
 export interface IUseMfaSetupReturn {
-	// Step 1: request a TOTP secret + otpauth URI to show as a QR code.
+	// Step 1: request enrollment — returns a data-URI QR code to scan and the
+	// one-time backup codes generated at setup.
 	setup: () => Promise<IMfaSetupResult>;
 	setupData: Ref<IMfaSetupResult | null>;
 	// Step 2: verify the first TOTP code. The server rotates the session's

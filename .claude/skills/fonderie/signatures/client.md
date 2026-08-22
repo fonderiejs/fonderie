@@ -603,6 +603,7 @@ interface ICustomerLabelListResult {
 
 interface ICustomerListResult {
     customers: ICustomerDTO[];
+    total: number;
 }
 
 interface ICustomerNoteDTO {
@@ -734,8 +735,8 @@ interface IMfaRequiredResult {
 }
 
 interface IMfaSetupResult {
-    secret: string;
-    uri: string;
+    qr: string;
+    backupCodes: string[];
 }
 
 interface IPlanDTO {

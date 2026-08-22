@@ -97,8 +97,8 @@ interface IMfaEnabledResult {
 }
 
 interface IMfaSetupResult {
-    secret: string;
-    uri: string;
+    qr: string;
+    backupCodes: string[];
 }
 
 interface IUpdatePreferencesInput {

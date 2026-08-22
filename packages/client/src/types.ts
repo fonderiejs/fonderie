@@ -99,8 +99,10 @@ export interface IMeResult {
 }
 
 export interface IMfaSetupResult {
-	secret: string;
-	uri: string;
+	// Data-URI QR code to scan, plus the one-time backup codes generated at
+	// setup — matches @fonderie/auth's /auth/mfa/setup response.
+	qr: string;
+	backupCodes: string[];
 }
 
 export interface IMfaEnabledResult {
@@ -540,6 +542,8 @@ export interface ICustomerLabelDTO {
 
 export interface ICustomerListResult {
 	customers: ICustomerDTO[];
+	// Total matching rows regardless of limit/offset — for pagination.
+	total: number;
 }
 
 export interface ICustomerResult {
