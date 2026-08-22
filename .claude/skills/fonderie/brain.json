@@ -941,10 +941,12 @@
         "useForgotPassword",
         "useLogin",
         "useLogout",
+        "useMfaLogin",
         "useRegister",
         "useResetPassword",
         "useSession",
-        "useVerifyEmail"
+        "useVerifyEmail",
+        "TOKEN_KEY"
       ],
       "subpaths": [],
       "tables": [],
@@ -1155,10 +1157,12 @@
         "useForgotPassword",
         "useLogin",
         "useLogout",
+        "useMfaLogin",
         "useRegister",
         "useResetPassword",
         "useSession",
-        "useVerifyEmail"
+        "useVerifyEmail",
+        "TOKEN_KEY"
       ],
       "subpaths": [],
       "tables": [],
@@ -1441,10 +1445,12 @@
         "useForgotPassword",
         "useLogin",
         "useLogout",
+        "useMfaLogin",
         "useRegister",
         "useResetPassword",
         "useSession",
-        "useVerifyEmail"
+        "useVerifyEmail",
+        "TOKEN_KEY"
       ],
       "subpaths": [],
       "tables": [],
@@ -3637,6 +3643,11 @@
       "react-native-auth",
       "vue-auth"
     ],
+    "usemfalogin": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
     "useregister": [
       "react-auth",
       "react-native-auth",
@@ -3648,6 +3659,11 @@
       "vue-auth"
     ],
     "useverifyemail": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
+    "token_key": [
       "react-auth",
       "react-native-auth",
       "vue-auth"

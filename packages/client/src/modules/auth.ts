@@ -127,6 +127,9 @@ export class AuthClient {
 
 	setAccessToken(token: string | undefined) {
 		this.tokens.set(token);
+		// Signing out (token → undefined) also drops the shared response cache,
+		// so the hooks' logout paths can't leak one session's data to the next.
+		if (!token) this.http.clearCache();
 	}
 
 	// ── Public ─────────────────────────────────────────────────────────────────
