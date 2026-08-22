@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-auth",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"description": "Vue composables for Fonderie auth \u2014 thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
