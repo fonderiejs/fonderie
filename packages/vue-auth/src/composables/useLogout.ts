@@ -9,11 +9,11 @@ export function useLogout(client?: AuthClient) {
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function logout() {
+	async function logout(refreshToken?: string) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			await auth.logout();
+			await auth.logout(refreshToken);
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);

@@ -9,7 +9,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
-  .login(input: ILoginInput): Promise<IApiResponse<ILoginResult>>
+  .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>
@@ -100,14 +100,15 @@ interface IUseForgotPasswordReturn {
 }
 
 interface IUseLoginReturn {
-    login: (input: ILoginInput) => Promise<ILoginResult>;
+    login: (input: ILoginInput) => Promise<ILoginResult | IMfaRequiredResult>;
     isLoading: boolean;
     error: FonderieApiError | null;
     data: ILoginResult | null;
+    mfaPending: IMfaRequiredResult | null;
 }
 
 interface IUseLogoutReturn {
-    logout: () => Promise<void>;
+    logout: (refreshToken?: string) => Promise<void>;
     isLoading: boolean;
     error: FonderieApiError | null;
 }
@@ -131,7 +132,7 @@ interface IUseSessionReturn {
     isLoading: boolean;
     isAuthenticated: boolean;
     refresh: () => Promise<void>;
-    logout: () => Promise<void>;
+    logout: (refreshToken?: string) => Promise<void>;
 }
 
 interface IUseVerifyEmailReturn {

@@ -1,4 +1,5 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
+import { isMfaRequired } from '@fonderie/client';
 import { useLogin } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -11,6 +12,7 @@ export const LoginScreen = defineComponent({
 	},
 	emits: {
 		'login-success': (_result: ILoginResult) => true,
+		'mfa-required': (_mfaToken: string) => true,
 		'navigate-register': () => true,
 		'navigate-forgot-password': () => true,
 	},
@@ -23,6 +25,10 @@ export const LoginScreen = defineComponent({
 			event.preventDefault();
 			try {
 				const result = await login({ email: email.value, password: password.value });
+				if (isMfaRequired(result)) {
+					emit('mfa-required', result.mfaToken);
+					return;
+				}
 				emit('login-success', result);
 			} catch {
 				// Surfaced via `error` from useLogin.

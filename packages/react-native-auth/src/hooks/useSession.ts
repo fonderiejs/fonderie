@@ -8,7 +8,7 @@ export interface IUseSessionReturn {
 	isLoading: boolean;
 	isAuthenticated: boolean;
 	refresh: () => Promise<void>;
-	logout: () => Promise<void>;
+	logout: (refreshToken?: string) => Promise<void>;
 }
 
 export function useSession(client?: AuthClient): IUseSessionReturn {
@@ -33,9 +33,9 @@ export function useSession(client?: AuthClient): IUseSessionReturn {
 		}
 	}, [auth]);
 
-	const logout = useCallback(async () => {
+	const logout = useCallback(async (refreshToken?: string) => {
 		try {
-			await auth.logout();
+			await auth.logout(refreshToken);
 		} catch {
 			// Session is being torn down regardless of server response.
 		}

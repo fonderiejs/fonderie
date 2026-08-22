@@ -1,5 +1,5 @@
-import type { AuthClient, ILoginInput, ILoginResult } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { AuthClient, ILoginInput, ILoginResult, IMfaRequiredResult } from '@fonderie/client';
+import { FonderieApiError, isMfaRequired } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 import { persistToken } from '../storage';
@@ -9,12 +9,20 @@ export function useLogin(client?: AuthClient) {
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 	const data = ref<ILoginResult | null>(null);
+	// Set when the account requires MFA: complete the login with
+	// client.auth.mfa.verifyLogin(mfaPending.value.mfaToken, code).
+	const mfaPending = ref<IMfaRequiredResult | null>(null);
 
 	async function login(input: ILoginInput) {
 		isLoading.value = true;
 		error.value = null;
+		mfaPending.value = null;
 		try {
 			const { result } = await auth.login(input);
+			if (isMfaRequired(result)) {
+				mfaPending.value = result;
+				return result;
+			}
 			auth.setAccessToken(result.tokens.access);
 			persistToken(result.tokens.access);
 			data.value = result;
@@ -29,5 +37,5 @@ export function useLogin(client?: AuthClient) {
 		}
 	}
 
-	return { login, isLoading, error, data };
+	return { login, isLoading, error, data, mfaPending };
 }
