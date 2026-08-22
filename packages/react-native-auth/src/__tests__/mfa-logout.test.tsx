@@ -145,7 +145,9 @@ test('storage primitives are exported from the package index', async () => {
 test('useMfaSetup.verify persists the rotated tokens like a login', async () => {
 	calls.setAccessToken.length = 0;
 	const verifyCalls: unknown[] = [];
-	const mfa = ((fakeAuth as unknown as { mfa?: Record<string, unknown> }).mfa ??= {});
+	const authWithMfa = fakeAuth as unknown as { mfa?: Record<string, unknown> };
+	authWithMfa.mfa = authWithMfa.mfa ?? {};
+	const mfa = authWithMfa.mfa;
 	mfa.verify = async (code: string) => {
 		verifyCalls.push([code]);
 		return {
