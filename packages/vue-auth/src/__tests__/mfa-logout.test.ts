@@ -15,10 +15,22 @@ import { useLogin, useLogout } from '../composables';
 	removeItem() {},
 };
 
-const calls: { login: unknown[]; logout: (string | undefined)[]; setAccessToken: unknown[] } = {
+const calls: {
+	login: unknown[];
+	logout: (string | undefined)[];
+	setAccessToken: unknown[];
+	getUser: number;
+	sendVerificationEmail: number;
+	deleteUser: number;
+	mfaVerify: string[];
+} = {
 	login: [],
 	logout: [],
 	setAccessToken: [],
+	getUser: 0,
+	sendVerificationEmail: 0,
+	deleteUser: 0,
+	mfaVerify: [],
 };
 let loginResult: unknown;
 const fakeAuth = {
@@ -32,6 +44,28 @@ const fakeAuth = {
 	},
 	setAccessToken: (token: unknown) => {
 		calls.setAccessToken.push(token);
+	},
+	getUser: async () => {
+		calls.getUser += 1;
+		return { reason: 'OK', explanation: '', result: { user: { id: 'u1' } } };
+	},
+	sendVerificationEmail: async () => {
+		calls.sendVerificationEmail += 1;
+		return { reason: 'OK', explanation: '', result: undefined };
+	},
+	deleteUser: async () => {
+		calls.deleteUser += 1;
+		return { reason: 'OK', explanation: '', result: undefined };
+	},
+	mfa: {
+		verify: async (code: string) => {
+			calls.mfaVerify.push(code);
+			return {
+				reason: 'OK',
+				explanation: '',
+				result: { tokens: { access: 'acc-rotated', refresh: 'ref-rotated' }, backupCodes: [] },
+			};
+		},
 	},
 } as unknown as AuthClient;
 const fakeClient = { auth: fakeAuth } as unknown as FonderieClient;
@@ -95,7 +129,7 @@ test('useMfaLogin persists tokens exactly like a full login', async () => {
 	loginResult = null;
 	calls.setAccessToken.length = 0;
 	const verifyCalls: unknown[] = [];
-	(fakeAuth as unknown as { mfa: unknown }).mfa = {
+	Object.assign((fakeAuth as unknown as { mfa: object }).mfa, {
 		verifyLogin: async (mfaToken: string, code: string) => {
 			verifyCalls.push([mfaToken, code]);
 			return {
@@ -104,13 +138,56 @@ test('useMfaLogin persists tokens exactly like a full login', async () => {
 				result: { tokens: { access: 'acc-mfa', refresh: 'ref-mfa' }, user: { id: 'u1' } },
 			};
 		},
-	};
+	});
 	const { useMfaLogin } = await import('../index');
 	const { verifyLogin } = await renderComposable(() => useMfaLogin());
 	const result = await verifyLogin('mfa-temp-1', '123456');
 	assert.deepEqual(verifyCalls, [['mfa-temp-1', '123456']]);
 	assert.deepEqual(calls.setAccessToken, ['acc-mfa'], 'MFA completion must arm the client token');
 	assert.equal(result.tokens.access, 'acc-mfa');
+});
+
+test('useMfaSetup.verify persists the rotated tokens like a login', async () => {
+	calls.setAccessToken.length = 0;
+	calls.mfaVerify.length = 0;
+	const { useMfaSetup } = await import('../index');
+	const { verify } = await renderComposable(() => useMfaSetup());
+	const result = await verify('654321');
+	assert.deepEqual(calls.mfaVerify, ['654321']);
+	assert.deepEqual(calls.setAccessToken, ['acc-rotated'], 'rotated tokens must re-arm the client');
+	assert.equal((result as { tokens: { access: string } }).tokens.access, 'acc-rotated');
+});
+
+test('useAccountData.deleteUser deletes the account then tears the session down', async () => {
+	calls.setAccessToken.length = 0;
+	calls.deleteUser = 0;
+	const { useAccountData } = await import('../index');
+	const { deleteUser } = await renderComposable(() => useAccountData());
+	await deleteUser();
+	assert.equal(calls.deleteUser, 1);
+	assert.deepEqual(calls.setAccessToken, [undefined], 'the client token must be cleared');
+});
+
+test('useVerifyEmail.resend re-sends the verification email and sets resent', async () => {
+	calls.sendVerificationEmail = 0;
+	const { useVerifyEmail } = await import('../index');
+	const { resend, resent } = await renderComposable(() => useVerifyEmail());
+	assert.equal(resent.value, false);
+	await resend();
+	assert.equal(calls.sendVerificationEmail, 1);
+	assert.equal(resent.value, true);
+});
+
+test('useProfile fetches on setup and again on refresh()', async () => {
+	calls.getUser = 0;
+	const { useProfile } = await import('../index');
+	const { user, refresh } = await renderComposable(() => useProfile());
+	// The composable kicks off one fetch during setup(); let it settle.
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.equal(calls.getUser, 1, 'setup() must fetch the profile once');
+	await refresh();
+	assert.equal(calls.getUser, 2);
+	assert.deepEqual(user.value, { id: 'u1' });
 });
 
 test('storage primitives are exported from the package index', async () => {

@@ -86,6 +86,36 @@ interface IVerifyEmailResult {
     email: string;
 }
 
+interface IChangePasswordInput {
+    currentPassword: string;
+    newPassword: string;
+}
+
+interface IMfaEnabledResult {
+    tokens: ITokens;
+    user: IUserDTO;
+}
+
+interface IMfaSetupResult {
+    secret: string;
+    uri: string;
+}
+
+interface IUpdatePreferencesInput {
+    locale?: string;
+    timezone?: string;
+    notifications?: unknown;
+    emailDigest?: unknown;
+    dateFormat?: unknown;
+    timeFormat?: unknown;
+}
+
+interface IUpdateProfileInput {
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+}
+
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
   .reason: string
   .explanation: string
@@ -119,11 +149,46 @@ interface IUseLogoutReturn {
     error: FonderieApiError | null;
 }
 
+interface IUseAccountDataReturn {
+    exportData: () => Promise<unknown>;
+    deleteUser: () => Promise<void>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
+interface IUseChangePasswordReturn {
+    changePassword: (input: IChangePasswordInput) => Promise<void>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    done: boolean;
+}
+
 interface IUseMfaLoginReturn {
     verifyLogin: (mfaToken: string, code: string) => Promise<ILoginResult>;
     isLoading: boolean;
     error: FonderieApiError | null;
     data: ILoginResult | null;
+}
+
+interface IUseMfaSetupReturn {
+    setup: () => Promise<IMfaSetupResult>;
+    setupData: IMfaSetupResult | null;
+    verify: (code: string) => Promise<IMfaEnabledResult>;
+    disable: (code: string) => Promise<void>;
+    regenerateBackupCodes: (code: string) => Promise<string[]>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
+interface IUseProfileReturn {
+    user: IUserDTO | null;
+    refresh: () => Promise<void>;
+    updateProfile: (input: IUpdateProfileInput) => Promise<IUserDTO>;
+    updatePreferences: (input: IUpdatePreferencesInput) => Promise<IUserDTO>;
+    updateEmail: (email: string) => Promise<void>;
+    updatePhone: (phone: string) => Promise<void>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
 }
 
 interface IUseRegisterReturn {
@@ -150,6 +215,8 @@ interface IUseSessionReturn {
 
 interface IUseVerifyEmailReturn {
     verifyEmail: (pin: string) => Promise<IVerifyEmailResult>;
+    resend: () => Promise<void>;
+    resent: boolean;
     isLoading: boolean;
     error: FonderieApiError | null;
     data: IVerifyEmailResult | null;
@@ -161,7 +228,15 @@ function useLogin(client?: AuthClient | undefined): IUseLoginReturn
 
 function useLogout(client?: AuthClient | undefined): IUseLogoutReturn
 
+function useAccountData(client?: AuthClient | undefined): IUseAccountDataReturn
+
+function useChangePassword(client?: AuthClient | undefined): IUseChangePasswordReturn
+
 function useMfaLogin(client?: AuthClient | undefined): IUseMfaLoginReturn
+
+function useMfaSetup(client?: AuthClient | undefined): IUseMfaSetupReturn
+
+function useProfile(client?: AuthClient | undefined): IUseProfileReturn
 
 function useRegister(client?: AuthClient | undefined): IUseRegisterReturn
 
