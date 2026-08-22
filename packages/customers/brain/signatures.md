@@ -123,6 +123,7 @@ new CustomerEmailModel(store: IStoreAdapter): CustomerEmailModel
 new CustomerModel(store: IStoreAdapter): CustomerModel
   .resolveReferralCode(workspaceId: string, code: string): Promise<string | null>
   .list(opts: ListCustomersOpts): Promise<ICustomer[]>
+  .count(opts: Omit<ListCustomersOpts, "limit" | "offset">): Promise<number>
   .findById(id: string, workspaceId: string): Promise<ICustomer | null>
   .findDetail(id: string, workspaceId: string, depth: 2): Promise<ICustomerDetailD2 | null>
   .create(opts: CreateCustomerOpts): Promise<ICustomer>

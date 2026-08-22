@@ -303,6 +303,9 @@ interface IUseCustomersReturn {
     isLoading: boolean;
     error: FonderieApiError | null;
     refresh: () => Promise<void>;
+    total: number;
+    hasMore: boolean;
+    loadMore: () => Promise<void>;
     createCustomer: (input?: ICreateCustomerInput) => Promise<ICustomerDTO>;
     deleteCustomer: (customerId: string) => Promise<void>;
     blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;

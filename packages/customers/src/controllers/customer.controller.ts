@@ -44,10 +44,15 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				listOpts.blacklisted = archived === 'true' || archived === '1';
 			}
 
-			const list = await customers.list(listOpts);
+			const { limit: _limit, offset: _offset, ...countOpts } = listOpts;
+			const [list, total] = await Promise.all([
+				customers.list(listOpts),
+				customers.count(countOpts),
+			]);
 
 			return setApiResponse(HTTP.OK, 'CUSTOMERS_FETCHED', 'Customers retrieved successfully.', {
 				customers: list.map(toCustomerDTO),
+				total,
 			});
 		},
 
