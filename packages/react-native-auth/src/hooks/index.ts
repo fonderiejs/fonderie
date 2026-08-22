@@ -2,6 +2,8 @@ export type { IUseForgotPasswordReturn } from './useForgotPassword';
 export { useForgotPassword } from './useForgotPassword';
 export type { IUseLoginReturn } from './useLogin';
 export { useLogin } from './useLogin';
+export type { IUseMfaLoginReturn } from './useMfaLogin';
+export { useMfaLogin } from './useMfaLogin';
 export type { IUseLogoutReturn } from './useLogout';
 export { useLogout } from './useLogout';
 export type { IUseRegisterReturn } from './useRegister';

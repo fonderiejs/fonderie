@@ -87,3 +87,34 @@ test('isMfaRequired and IMfaRequiredResult are re-exported from the package inde
 	assert.equal(typeof index.isMfaRequired, 'function');
 	assert.equal(index.isMfaRequired({ mfaToken: 'x' } as never), true);
 });
+
+
+test('useMfaLogin persists tokens exactly like a full login', async () => {
+	loginResult = null;
+	calls.setAccessToken.length = 0;
+	const verifyCalls: unknown[] = [];
+	(fakeAuth as unknown as { mfa: unknown }).mfa = {
+		verifyLogin: async (mfaToken: string, code: string) => {
+			verifyCalls.push([mfaToken, code]);
+			return {
+				reason: 'OK',
+				explanation: '',
+				result: { tokens: { access: 'acc-mfa', refresh: 'ref-mfa' }, user: { id: 'u1' } },
+			};
+		},
+	};
+	const { useMfaLogin } = await import('../index');
+	const { verifyLogin } = renderHook(() => useMfaLogin());
+	const result = await verifyLogin('mfa-temp-1', '123456');
+	assert.deepEqual(verifyCalls, [['mfa-temp-1', '123456']]);
+	assert.deepEqual(calls.setAccessToken, ['acc-mfa'], 'MFA completion must arm the client token');
+	assert.equal(result.tokens.access, 'acc-mfa');
+});
+
+test('storage primitives are exported from the package index', async () => {
+	const index = await import('../index');
+	assert.equal(typeof index.persistToken, 'function');
+	assert.equal(typeof index.clearToken, 'function');
+	assert.equal(typeof index.readToken, 'function');
+	assert.equal(index.TOKEN_KEY, 'fonderie_access_token');
+});

@@ -98,11 +98,20 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
 
 function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult
 
+interface IUseMfaLoginReturn {
+    verifyLogin: (mfaToken: string, code: string) => Promise<ILoginResult>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    data: Ref<ILoginResult | null>;
+}
+
 function useForgotPassword(client?: AuthClient | undefined): { forgotPassword: (email: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; sent: Ref<...>; }
 
 function useLogin(client?: AuthClient | undefined): { login: (input: ILoginInput) => Promise<ILoginResult | IMfaRequiredResult>; isLoading: Ref<...>; error: Ref<...>; data: Ref<...>; mfaPending: Ref<...>; }
 
 function useLogout(client?: AuthClient | undefined): { logout: (refreshToken?: string | undefined) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+
+function useMfaLogin(client?: AuthClient | undefined): IUseMfaLoginReturn
 
 function useRegister(client?: AuthClient | undefined): { register: (input: IRegisterInput) => Promise<IRegisterResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
 
@@ -111,4 +120,12 @@ function useResetPassword(client?: AuthClient | undefined): { resetPassword: (in
 function useSession(client?: AuthClient | undefined): { user: Ref<{ id: string; email: string; firstName: string; lastName: string; phone: string; profileImageUrl: string; isActive: boolean; lastLogin: string; ... 8 more ...; updatedAt: string; } | null, IUserDTO | ... 1 more ... | null>; isLoading: Ref<...>; isAuthenticated: Ref<...>; refresh: () => Promise<...>; logout: (refreshToken?: string | undefined) => Promise<...>; }
 
 function useVerifyEmail(client?: AuthClient | undefined): { verifyEmail: (pin: string) => Promise<IVerifyEmailResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
+
+function clearToken(): void
+
+function persistToken(token: string): void
+
+function readToken(): string | null
+
+const TOKEN_KEY: "fonderie_access_token"
 ```

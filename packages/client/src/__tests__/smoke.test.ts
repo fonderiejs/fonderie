@@ -8,11 +8,16 @@ type Handler = (url: string, init: RequestInit) => { status: number; body: unkno
 
 const realFetch = globalThis.fetch;
 let handler: Handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
-const calls: Array<{ method: string; path: string; auth?: string | undefined }> = [];
+const calls: Array<{ method: string; path: string; auth?: string | undefined; workspace?: string | undefined }> = [];
 
 globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
 	const headers = (init.headers ?? {}) as Record<string, string>;
-	calls.push({ method: init.method ?? 'GET', path: url, auth: headers['Authorization'] });
+	calls.push({
+		method: init.method ?? 'GET',
+		path: url,
+		auth: headers['Authorization'],
+		workspace: headers['X-Workspace-ID'],
+	});
 	const { status, body } = handler(url, init);
 	return {
 		status,
@@ -107,6 +112,51 @@ test('auth.mfa.verifyLogin sends the mfaToken as bearer', async () => {
 	await c.auth.mfa.verifyLogin('mfa-temp', '123456');
 	const call = calls.find((x) => x.path.endsWith('/auth/mfa/verify'));
 	assert.equal(call?.auth, 'Bearer mfa-temp');
+});
+
+
+// ── workspace scoping ────────────────────────────────────────────────────────
+test('setWorkspaceId propagates to every workspace-scoped module, audit and webhooks included', async () => {
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x' });
+	c.setAccessToken('t');
+	c.setWorkspaceId('ws-1');
+
+	await c.audit.listEvents();
+	await c.webhooks.listEndpoints();
+	await c.customers.listCustomers();
+
+	for (const call of calls) {
+		assert.equal(call.workspace, 'ws-1', `${call.path} missing X-Workspace-ID`);
+	}
+});
+
+test('constructor workspaceId scopes the modules without an explicit setWorkspaceId call', async () => {
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x', workspaceId: 'ws-ctor' });
+	c.setAccessToken('t');
+
+	await c.audit.listEvents();
+	await c.billing.getSubscription();
+
+	for (const call of calls) {
+		assert.equal(call.workspace, 'ws-ctor', `${call.path} missing X-Workspace-ID`);
+	}
+});
+
+// ── sign-out cache clearing ──────────────────────────────────────────────────
+test('auth.setAccessToken(undefined) drops the shared response cache', async () => {
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: { jobs: [] } } });
+	const c = new FonderieClient({ baseUrl: 'http://x', cache: createMemoryCache() });
+	c.setAccessToken('t');
+
+	await c.get('/jobs');
+	await c.get('/jobs'); // cached
+	assert.equal(calls.filter((x) => x.method === 'GET').length, 1);
+
+	c.auth.setAccessToken(undefined); // the hooks' sign-out path
+	await c.get('/jobs'); // must refetch — previous session's cache is gone
+	assert.equal(calls.filter((x) => x.method === 'GET').length, 2);
 });
 
 test('restore real fetch', () => {

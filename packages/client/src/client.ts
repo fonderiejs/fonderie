@@ -73,6 +73,9 @@ export class FonderieClient {
 		this.audit = new AuditClient(this.http, this.tokens);
 		this.webhooks = new WebhooksClient(this.http, this.tokens);
 		this.customers = new CustomersClient(this.http, this.tokens);
+		// Route through the setter so the constructor option scopes the
+		// workspace-aware modules exactly like a later setWorkspaceId() call.
+		if (opts.workspaceId !== undefined) this.setWorkspaceId(opts.workspaceId);
 	}
 
 	// Single-flight refresh: POST /auth/refresh with the app-supplied refresh
@@ -122,6 +125,8 @@ export class FonderieClient {
 		this.billing.setWorkspaceId(workspaceId);
 		this.workspaces.setWorkspaceId(workspaceId);
 		this.customers.setWorkspaceId(workspaceId);
+		this.audit.setWorkspaceId(workspaceId);
+		this.webhooks.setWorkspaceId(workspaceId);
 	}
 
 	// ── Generic transport ──────────────────────────────────────────────────────
