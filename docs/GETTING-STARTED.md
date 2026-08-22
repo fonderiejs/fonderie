@@ -1,8 +1,7 @@
 # Getting started
 
 A hands-on guide to standing up a Fonderie backend. For the *why*, read
-[`../README.md`](../README.md); for the canonical reference an assistant
-reads before writing code, see [`../FONDERIE.md`](../FONDERIE.md).
+[`../README.md`](../README.md).
 
 Every brick runs **in your process, against your database** — there is
 no Fonderie server. You compose the bricks you want and boot them into a

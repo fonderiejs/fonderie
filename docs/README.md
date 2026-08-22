@@ -5,8 +5,7 @@ piece does, and how to ship, teach, and measure it without breaking the
 promises the project makes.
 
 > Looking for the pitch or the thesis? That's [`../README.md`](../README.md)
-> (what Fonderie is and why) and [`../FONDERIE.md`](../FONDERIE.md) (the
-> canonical reference an LLM reads before writing code). This handbook is
+> (what Fonderie is and why). This handbook is
 > for the person maintaining the ecosystem.
 
 ## The map
@@ -18,7 +17,6 @@ promises the project makes.
 | Know what each tool/script is for | [TOOLING.md](TOOLING.md) |
 | Publish to npm and handle cross-package versions | [RELEASING.md](RELEASING.md) |
 | Keep the LLM's knowledge of the SDK correct | [BRAIN.md](BRAIN.md) |
-| Prove we still cost fewer tokens than scratch | [BENCHMARKING.md](BENCHMARKING.md) |
 
 ## Architecture in one picture
 
@@ -133,6 +131,5 @@ Configuration, Secrets, and Templates consoles there.
 
 Whenever this handbook cites a count — 19 packages, the version pins above,
 "fewer tokens than scratch" — it's checkable in the repo: run
-`node -e "..."` over the package manifests for versions, and see
-[BENCHMARKING.md](BENCHMARKING.md) for the token claim's harness and data.
+`node -e "..."` over the package manifests for versions.
 Don't cite a number you can't point at.
