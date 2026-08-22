@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-config-admin",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Vue 3 composables for the Fonderie config admin API (feature flags/remote config + secrets) — thin bindings over @fonderie/client's ConfigAdminClient.",
 	"keywords": [
 		"fonderiejs",
