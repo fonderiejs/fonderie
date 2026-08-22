@@ -35,6 +35,10 @@ interface ILoginResult {
     user: IUserDTO;
 }
 
+interface IMfaRequiredResult {
+    mfaToken: string;
+}
+
 interface IRegisterInput {
     email: string;
     password: string;
@@ -91,6 +95,8 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .message: string
   .stack: string
   .cause: unknown
+
+function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult
 
 function useForgotPassword(client?: AuthClient | undefined): { forgotPassword: (email: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; sent: Ref<...>; }
 
