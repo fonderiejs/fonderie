@@ -1,5 +1,6 @@
 import type { IRolePermissionInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseSetRolePermissionsReturn {
@@ -8,7 +9,8 @@ export interface IUseSetRolePermissionsReturn {
 	error: FonderieApiError | null;
 }
 
-export function useSetRolePermissions(client: WorkspacesClient): IUseSetRolePermissionsReturn {
+export function useSetRolePermissions(client?: WorkspacesClient): IUseSetRolePermissionsReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useSetRolePermissions');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function useSetRolePermissions(client: WorkspacesClient): IUseSetRolePerm
 			setIsLoading(true);
 			setError(null);
 			try {
-				await client.setRolePermissions(roleId, permissions);
+				await workspaces.setRolePermissions(roleId, permissions);
 			} catch (err) {
 				const apiError =
 					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
@@ -27,7 +29,7 @@ export function useSetRolePermissions(client: WorkspacesClient): IUseSetRolePerm
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[workspaces],
 	);
 
 	return { setRolePermissions, isLoading, error };

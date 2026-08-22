@@ -1,0 +1,80 @@
+import { strict as assert } from 'node:assert';
+import { test } from 'node:test';
+
+import type { FonderieClient } from '@fonderie/client';
+import { WorkspacesClient } from '@fonderie/client';
+import { FonderiePlugin } from '@fonderie/vue';
+import { createSSRApp, defineComponent, h } from 'vue';
+import { renderToString } from 'vue/server-renderer';
+
+import { useCreateWorkspace, useMemberRoles, useWorkspaces } from '../composables';
+
+const fakeWorkspace = { id: 'ws-1', name: 'Acme' };
+const fakeRole = { id: 'role-1', name: 'admin' };
+// instanceof WorkspacesClient must pass for the overloaded composables.
+const fakeWorkspaces: WorkspacesClient = Object.assign(Object.create(WorkspacesClient.prototype), {
+	listWorkspaces: async () => ({ result: { workspaces: [fakeWorkspace] } }),
+	createWorkspace: async () => ({ result: { workspace: fakeWorkspace } }),
+	getMemberRoles: async () => ({ result: { roles: [fakeRole] } }),
+});
+const fakeClient = { workspaces: fakeWorkspaces } as unknown as FonderieClient;
+
+// Renders `run` inside a component's setup(), capturing its value or error.
+async function runInSetup<T>(run: () => T, plugin?: boolean) {
+	let value: T | undefined;
+	let error: unknown;
+	const Root = defineComponent({
+		setup() {
+			try {
+				value = run();
+			} catch (err) {
+				error = err;
+			}
+			return () => h('div');
+		},
+	});
+	const app = createSSRApp(Root);
+	if (plugin) app.use(FonderiePlugin, fakeClient);
+	await renderToString(app);
+	// Let the void refresh() kicked off in setup() settle.
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	return { value, error };
+}
+
+test('useCreateWorkspace resolves the client via app.use(FonderiePlugin, client)', async () => {
+	const { value, error } = await runInSetup(() => useCreateWorkspace(), true);
+	assert.equal(error, undefined);
+	assert.ok(value);
+	assert.equal(value.isLoading.value, false);
+	assert.equal(value.error.value, null);
+	const workspace = await value.createWorkspace({ name: 'Acme' });
+	assert.equal(workspace, fakeWorkspace);
+});
+
+test('useMemberRoles(userId) resolves via the plugin without a client argument', async () => {
+	const { value, error } = await runInSetup(() => useMemberRoles('user-1'), true);
+	assert.equal(error, undefined);
+	assert.ok(value);
+	assert.equal(value.isLoading.value, false);
+	assert.equal(value.error.value, null);
+	assert.deepEqual(value.roles.value, [fakeRole]);
+});
+
+test('an explicit client argument works without any plugin installed', async () => {
+	const { value, error } = await runInSetup(() => useWorkspaces(fakeWorkspaces));
+	assert.equal(error, undefined);
+	assert.ok(value);
+	assert.deepEqual(value.workspaces.value, [fakeWorkspace]);
+
+	const explicit = await runInSetup(() => useMemberRoles(fakeWorkspaces, 'user-1'));
+	assert.equal(explicit.error, undefined);
+	assert.deepEqual(explicit.value?.roles.value, [fakeRole]);
+});
+
+test('throws a composable-named error with no plugin and no argument', async () => {
+	const { error } = await runInSetup(() => useWorkspaces());
+	assert.match(String(error), /useWorkspaces: no client/);
+
+	const memberRoles = await runInSetup(() => useMemberRoles('user-1'));
+	assert.match(String(memberRoles.error), /useMemberRoles: no client/);
+});

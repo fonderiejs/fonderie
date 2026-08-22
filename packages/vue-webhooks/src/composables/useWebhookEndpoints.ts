@@ -4,9 +4,11 @@ import type {
 	WebhooksClient,
 } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useWebhookEndpoints(client: WebhooksClient) {
+export function useWebhookEndpoints(client?: WebhooksClient) {
+	const webhooks = useFonderieSubClient(client, (c) => c.webhooks, 'useWebhookEndpoints');
 	const endpoints = ref<IWebhookEndpointDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -15,7 +17,7 @@ export function useWebhookEndpoints(client: WebhooksClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listEndpoints();
+			const { result } = await webhooks.listEndpoints();
 			endpoints.value = result.endpoints;
 		} catch (err) {
 			const apiError =
@@ -29,7 +31,7 @@ export function useWebhookEndpoints(client: WebhooksClient) {
 	async function createEndpoint(input: ICreateWebhookEndpointInput) {
 		error.value = null;
 		try {
-			const { result } = await client.createEndpoint(input);
+			const { result } = await webhooks.createEndpoint(input);
 			await refresh();
 			return result;
 		} catch (err) {
@@ -43,7 +45,7 @@ export function useWebhookEndpoints(client: WebhooksClient) {
 	async function removeEndpoint(endpointId: string) {
 		error.value = null;
 		try {
-			await client.deleteEndpoint(endpointId);
+			await webhooks.deleteEndpoint(endpointId);
 			await refresh();
 		} catch (err) {
 			const apiError =

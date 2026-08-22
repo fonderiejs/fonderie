@@ -15,6 +15,25 @@ loading/error state and the request itself, nothing else. Bring your own UI.
 npm install @fonderie/react-workspaces
 ```
 
+## One client at the root (recommended)
+
+Wrap your app in `FonderieProvider` from [`@fonderie/react`](../react) once and
+every hook resolves the client from context — no client argument at call sites:
+
+```tsx
+import { FonderieProvider } from "@fonderie/react";
+
+<FonderieProvider client={client}>
+  <App />
+</FonderieProvider>;
+
+// anywhere below it:
+const { ...state } = useWorkspaces();
+```
+
+Passing a client explicitly (as below) still works everywhere and takes
+precedence over context — handy in tests and multi-client apps.
+
 ## Use
 
 ```tsx

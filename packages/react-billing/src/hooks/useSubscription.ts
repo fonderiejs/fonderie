@@ -1,5 +1,6 @@
 import type { BillingClient, ISubscriptionDTO } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseSubscriptionReturn {
@@ -9,7 +10,8 @@ export interface IUseSubscriptionReturn {
 	refresh: () => Promise<void>;
 }
 
-export function useSubscription(client: BillingClient): IUseSubscriptionReturn {
+export function useSubscription(client?: BillingClient): IUseSubscriptionReturn {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'useSubscription');
 	const [subscription, setSubscription] = useState<ISubscriptionDTO | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -18,7 +20,7 @@ export function useSubscription(client: BillingClient): IUseSubscriptionReturn {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.getSubscription();
+			const { result } = await billing.getSubscription();
 			setSubscription(result.subscription);
 		} catch (err) {
 			const apiError =
@@ -29,7 +31,7 @@ export function useSubscription(client: BillingClient): IUseSubscriptionReturn {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [billing]);
 
 	useEffect(() => {
 		void refresh();

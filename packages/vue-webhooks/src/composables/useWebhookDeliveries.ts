@@ -1,8 +1,30 @@
-import type { IWebhookDeliveryDTO, WebhooksClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IWebhookDeliveryDTO } from '@fonderie/client';
+import { FonderieApiError, WebhooksClient } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
-export function useWebhookDeliveries(client: WebhooksClient, endpointId: string) {
+export interface IUseWebhookDeliveriesReturn {
+	deliveries: Ref<IWebhookDeliveryDTO[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: () => Promise<void>;
+}
+
+export function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn;
+export function useWebhookDeliveries(
+	client: WebhooksClient | undefined,
+	endpointId: string,
+): IUseWebhookDeliveriesReturn;
+export function useWebhookDeliveries(
+	clientOrEndpointId: WebhooksClient | string | undefined,
+	maybeEndpointId?: string,
+): IUseWebhookDeliveriesReturn {
+	const firstIsClient =
+		clientOrEndpointId === undefined || clientOrEndpointId instanceof WebhooksClient;
+	const explicit = firstIsClient ? (clientOrEndpointId as WebhooksClient | undefined) : undefined;
+	const endpointId = firstIsClient ? (maybeEndpointId as string) : clientOrEndpointId;
+	const webhooks = useFonderieSubClient(explicit, (c) => c.webhooks, 'useWebhookDeliveries');
 	const deliveries = ref<IWebhookDeliveryDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -15,7 +37,7 @@ export function useWebhookDeliveries(client: WebhooksClient, endpointId: string)
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listDeliveries(endpointId);
+			const { result } = await webhooks.listDeliveries(endpointId);
 			deliveries.value = result.deliveries;
 		} catch (err) {
 			const apiError =

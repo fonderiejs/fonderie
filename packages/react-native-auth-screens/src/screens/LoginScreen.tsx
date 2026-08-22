@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 export interface ILoginScreenProps {
-	client: AuthClient;
+	client?: AuthClient;
 	onLoginSuccess?: (result: ILoginResult) => void;
 	onNavigateToRegister?: () => void;
 	onNavigateToForgotPassword?: () => void;

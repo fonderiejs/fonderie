@@ -1,8 +1,10 @@
 import type { BillingClient, ISubscriptionDTO } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useSubscription(client: BillingClient) {
+export function useSubscription(client?: BillingClient) {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'useSubscription');
 	const subscription = ref<ISubscriptionDTO | null>(null);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -11,7 +13,7 @@ export function useSubscription(client: BillingClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.getSubscription();
+			const { result } = await billing.getSubscription();
 			subscription.value = result.subscription;
 		} catch (err) {
 			const apiError =

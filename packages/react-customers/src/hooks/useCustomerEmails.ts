@@ -1,5 +1,6 @@
-import type { CustomersClient, IAddEmailInput, ICustomerEmailDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IAddEmailInput, ICustomerEmailDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseCustomerEmailsReturn {
@@ -13,10 +14,19 @@ export interface IUseCustomerEmailsReturn {
 	removeEmail: (emailId: string) => Promise<void>;
 }
 
+export function useCustomerEmails(customerId: string): IUseCustomerEmailsReturn;
 export function useCustomerEmails(
-	client: CustomersClient,
+	client: CustomersClient | undefined,
 	customerId: string,
+): IUseCustomerEmailsReturn;
+export function useCustomerEmails(
+	clientOrId: CustomersClient | string | undefined,
+	maybeId?: string,
 ): IUseCustomerEmailsReturn {
+	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerEmails');
 	const [emails, setEmails] = useState<ICustomerEmailDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -29,7 +39,7 @@ export function useCustomerEmails(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listEmails(customerId);
+			const { result } = await customers.listEmails(customerId);
 			setEmails(result.emails);
 		} catch (err) {
 			const apiError =
@@ -38,13 +48,13 @@ export function useCustomerEmails(
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, customerId]);
+	}, [customers, customerId]);
 
 	const addEmail = useCallback(
 		async (input: IAddEmailInput) => {
 			setError(null);
 			try {
-				const { result } = await client.addEmail(customerId, input);
+				const { result } = await customers.addEmail(customerId, input);
 				await refresh();
 				return result.email;
 			} catch (err) {
@@ -54,14 +64,14 @@ export function useCustomerEmails(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const updateEmailLabel = useCallback(
 		async (emailId: string, label: string) => {
 			setError(null);
 			try {
-				await client.updateEmailLabel(customerId, emailId, label);
+				await customers.updateEmailLabel(customerId, emailId, label);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -70,14 +80,14 @@ export function useCustomerEmails(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const setPrimaryEmail = useCallback(
 		async (emailId: string) => {
 			setError(null);
 			try {
-				await client.setPrimaryEmail(customerId, emailId);
+				await customers.setPrimaryEmail(customerId, emailId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -86,14 +96,14 @@ export function useCustomerEmails(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const removeEmail = useCallback(
 		async (emailId: string) => {
 			setError(null);
 			try {
-				await client.removeEmail(customerId, emailId);
+				await customers.removeEmail(customerId, emailId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -102,7 +112,7 @@ export function useCustomerEmails(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	useEffect(() => {

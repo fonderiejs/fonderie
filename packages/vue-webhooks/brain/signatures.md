@@ -66,11 +66,11 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useTestWebhookEndpoint(client: WebhooksClient): { testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
+function useTestWebhookEndpoint(client?: WebhooksClient | undefined): { testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
 
-function useWebhookDeliveries(client: WebhooksClient, endpointId: string): { deliveries: Ref<{ id: string; eventId: string; eventType: string; status: string; attempts: number; responseStatus: number | null; deliveredAt: string | null; createdAt: string; }[], IWebhookDeliveryDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn
 
-function useWebhookEndpoint(client: WebhooksClient, endpointId: string): { endpoint: Ref<{ id: string; url: string; events: string[]; enabled: boolean; createdAt: string; } | null, IWebhookEndpointDTO | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; updateEndpoint: (input: IUpdateWebhookEndpointInput) => Promise<...>; }
+function useWebhookEndpoint(endpointId: string): IUseWebhookEndpointReturn
 
-function useWebhookEndpoints(client: WebhooksClient): { endpoints: Ref<{ id: string; url: string; events: string[]; enabled: boolean; createdAt: string; }[], IWebhookEndpointDTO[] | { ...; }[]>; ... 4 more ...; removeEndpoint: (endpointId: string) => Promise<...>; }
+function useWebhookEndpoints(client?: WebhooksClient | undefined): { endpoints: Ref<{ id: string; url: string; events: string[]; enabled: boolean; createdAt: string; }[], IWebhookEndpointDTO[] | { ...; }[]>; ... 4 more ...; removeEndpoint: (endpointId: string) => Promise<...>; }
 ```

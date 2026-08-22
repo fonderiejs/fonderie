@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie/react-native-auth",
 	"version": "0.1.0",
-	"description": "React Native hooks for Fonderie auth \u2014 thin bindings over @fonderie/client.",
+	"description": "React Native hooks for Fonderie auth — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
 		"react-native",
@@ -28,12 +28,14 @@
 		"build": "tsup",
 		"dev": "tsup --watch",
 		"typecheck": "tsc --noEmit",
+		"test": "tsx --tsconfig tsconfig.test.json --test src/__tests__/*.test.tsx",
 		"lint": "biome lint src",
 		"format": "biome format --write src",
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*"
+		"@fonderie/client": "*",
+		"@fonderie/react": "*"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0",
@@ -41,11 +43,13 @@
 	},
 	"devDependencies": {
 		"@react-native-async-storage/async-storage": "3.1.1",
-		"react-native": "0.87.0",
 		"@types/node": "^26.2.0",
 		"@types/react": "^19.2.18",
 		"react": "^19.2.8",
+		"react-dom": "^19.2.8",
+		"react-native": "0.87.0",
 		"tsup": "^8.5.1",
+		"tsx": "^4.21.0",
 		"typescript": "^6.0.3"
 	},
 	"publishConfig": {

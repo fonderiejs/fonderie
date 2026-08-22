@@ -1,8 +1,32 @@
-import type { AuditClient, IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
+import { AuditClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
-export function useAuditEvents(client: AuditClient, filters: IListAuditEventsInput = {}) {
+export interface IUseAuditEventsReturn {
+	events: Ref<IAuditEventDTO[]>;
+	isLoading: Ref<boolean>;
+	isLoadingMore: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	hasMore: Ref<boolean>;
+	refresh: () => Promise<void>;
+	loadMore: () => Promise<void>;
+}
+
+export function useAuditEvents(filters?: IListAuditEventsInput): IUseAuditEventsReturn;
+export function useAuditEvents(
+	client: AuditClient | undefined,
+	filters?: IListAuditEventsInput,
+): IUseAuditEventsReturn;
+export function useAuditEvents(
+	clientOrFilters?: AuditClient | IListAuditEventsInput,
+	maybeFilters?: IListAuditEventsInput,
+): IUseAuditEventsReturn {
+	const firstIsClient = clientOrFilters === undefined || clientOrFilters instanceof AuditClient;
+	const explicit = firstIsClient ? (clientOrFilters as AuditClient | undefined) : undefined;
+	const filters = (firstIsClient ? maybeFilters : (clientOrFilters as IListAuditEventsInput)) ?? {};
+	const audit = useFonderieSubClient(explicit, (c) => c.audit, 'useAuditEvents');
 	const events = ref<IAuditEventDTO[]>([]);
 	const cursor = ref<string | null>(null);
 	const hasMore = ref(false);
@@ -14,7 +38,7 @@ export function useAuditEvents(client: AuditClient, filters: IListAuditEventsInp
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listEvents(filters);
+			const { result } = await audit.listEvents(filters);
 			events.value = result.events;
 			cursor.value = result.nextCursor;
 			hasMore.value = result.nextCursor !== null;
@@ -32,7 +56,7 @@ export function useAuditEvents(client: AuditClient, filters: IListAuditEventsInp
 		isLoadingMore.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listEvents({ ...filters, cursor: cursor.value });
+			const { result } = await audit.listEvents({ ...filters, cursor: cursor.value });
 			events.value = [...events.value, ...result.events];
 			cursor.value = result.nextCursor;
 			hasMore.value = result.nextCursor !== null;

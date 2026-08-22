@@ -10,7 +10,7 @@ const MIN_PASSWORD_LENGTH = 8;
 export const RegisterScreen = defineComponent({
 	name: 'FonderieRegisterScreen',
 	props: {
-		client: { type: Object as PropType<AuthClient>, required: true },
+		client: { type: Object as PropType<AuthClient>, required: false },
 	},
 	emits: {
 		'register-success': (_result: IRegisterResult) => true,

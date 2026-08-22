@@ -1,11 +1,13 @@
 import type { IUpdateWorkspaceInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
 // Action-only, like useUpdateRole — there's no "get current workspace"
 // route (only getWorkspace(id) for admin/cross-workspace lookups), so the
 // caller already has the workspace object from useWorkspaces()'s list.
-export function useWorkspaceProfile(client: WorkspacesClient) {
+export function useWorkspaceProfile(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceProfile');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -13,7 +15,7 @@ export function useWorkspaceProfile(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.updateWorkspace(input);
+			const { result } = await workspaces.updateWorkspace(input);
 			return result.workspace;
 		} catch (err) {
 			const apiError =
@@ -30,7 +32,7 @@ export function useWorkspaceProfile(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			await client.archiveWorkspace();
+			await workspaces.archiveWorkspace();
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
@@ -45,7 +47,7 @@ export function useWorkspaceProfile(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			await client.restoreWorkspace();
+			await workspaces.restoreWorkspace();
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);

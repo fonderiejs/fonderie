@@ -64,7 +64,7 @@ const styles = {
 export const AuditLogScreen = defineComponent({
 	name: 'FonderieAuditLogScreen',
 	props: {
-		client: { type: Object as PropType<AuditClient>, required: true },
+		client: { type: Object as PropType<AuditClient>, required: false },
 	},
 	setup(props) {
 		const type = ref('');

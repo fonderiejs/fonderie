@@ -249,27 +249,27 @@ interface IUseWorkspacesReturn {
     refresh: () => Promise<void>;
 }
 
-function useAcceptInvitation(client: WorkspacesClient): IUseAcceptInvitationReturn
+function useAcceptInvitation(client?: WorkspacesClient | undefined): IUseAcceptInvitationReturn
 
-function useCreateWorkspace(client: WorkspacesClient): IUseCreateWorkspaceReturn
+function useCreateWorkspace(client?: WorkspacesClient | undefined): IUseCreateWorkspaceReturn
 
-function useInvitations(client: WorkspacesClient): IUseInvitationsReturn
+function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsReturn
 
-function useMemberRoles(client: WorkspacesClient, userId: string): IUseMemberRolesReturn
+function useMemberRoles(userId: string): IUseMemberRolesReturn
 
-function useMembers(client: WorkspacesClient): IUseMembersReturn
+function useMembers(client?: WorkspacesClient | undefined): IUseMembersReturn
 
-function useRemoveMember(client: WorkspacesClient): IUseRemoveMemberReturn
+function useRemoveMember(client?: WorkspacesClient | undefined): IUseRemoveMemberReturn
 
-function useRoles(client: WorkspacesClient): IUseRolesReturn
+function useRoles(client?: WorkspacesClient | undefined): IUseRolesReturn
 
-function useSetRolePermissions(client: WorkspacesClient): IUseSetRolePermissionsReturn
+function useSetRolePermissions(client?: WorkspacesClient | undefined): IUseSetRolePermissionsReturn
 
-function useUpdateRole(client: WorkspacesClient): IUseUpdateRoleReturn
+function useUpdateRole(client?: WorkspacesClient | undefined): IUseUpdateRoleReturn
 
-function useWorkspaceProfile(client: WorkspacesClient): IUseWorkspaceProfileReturn
+function useWorkspaceProfile(client?: WorkspacesClient | undefined): IUseWorkspaceProfileReturn
 
-function useWorkspaceSettings(client: WorkspacesClient): IUseWorkspaceSettingsReturn
+function useWorkspaceSettings(client?: WorkspacesClient | undefined): IUseWorkspaceSettingsReturn
 
-function useWorkspaces(client: WorkspacesClient): IUseWorkspacesReturn
+function useWorkspaces(client?: WorkspacesClient | undefined): IUseWorkspacesReturn
 ```

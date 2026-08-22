@@ -6,6 +6,13 @@
 import { readFileSync, existsSync } from 'node:fs';
 
 const matrix = 'docs/soc2/control-matrix.md';
+if (!existsSync(matrix)) {
+	// The control matrix moved to the private fonderiejs/fonderie-compliance
+	// repo (2026-08-21); this guard runs there against the matrix. Nothing to
+	// check in the public repo.
+	console.log(`check:evidence — ${matrix} not present in this repo; skipping.`);
+	process.exit(0);
+}
 const text = readFileSync(matrix, 'utf8');
 const tokens = [...text.matchAll(/`((?:packages|\.github|docs)\/[^`]+)`/g)].map((m) => m[1]);
 

@@ -1,5 +1,6 @@
-import type { IRoleDTO, WorkspacesClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IRoleDTO } from '@fonderie/client';
+import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseMemberRolesReturn {
@@ -11,7 +12,19 @@ export interface IUseMemberRolesReturn {
 	removeRole: (roleId: string) => Promise<void>;
 }
 
-export function useMemberRoles(client: WorkspacesClient, userId: string): IUseMemberRolesReturn {
+export function useMemberRoles(userId: string): IUseMemberRolesReturn;
+export function useMemberRoles(
+	client: WorkspacesClient | undefined,
+	userId: string,
+): IUseMemberRolesReturn;
+export function useMemberRoles(
+	clientOrId: WorkspacesClient | string | undefined,
+	maybeId?: string,
+): IUseMemberRolesReturn {
+	const firstIsClient = clientOrId === undefined || clientOrId instanceof WorkspacesClient;
+	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
+	const userId = firstIsClient ? (maybeId as string) : clientOrId;
+	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useMemberRoles');
 	const [roles, setRoles] = useState<IRoleDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -20,7 +33,7 @@ export function useMemberRoles(client: WorkspacesClient, userId: string): IUseMe
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.getMemberRoles(userId);
+			const { result } = await workspaces.getMemberRoles(userId);
 			setRoles(result.roles);
 		} catch (err) {
 			const apiError =
@@ -29,13 +42,13 @@ export function useMemberRoles(client: WorkspacesClient, userId: string): IUseMe
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, userId]);
+	}, [workspaces, userId]);
 
 	const addRole = useCallback(
 		async (roleId: string) => {
 			setError(null);
 			try {
-				await client.addMemberRole(userId, roleId);
+				await workspaces.addMemberRole(userId, roleId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -44,14 +57,14 @@ export function useMemberRoles(client: WorkspacesClient, userId: string): IUseMe
 				throw apiError;
 			}
 		},
-		[client, userId, refresh],
+		[workspaces, userId, refresh],
 	);
 
 	const removeRole = useCallback(
 		async (roleId: string) => {
 			setError(null);
 			try {
-				await client.removeMemberRole(userId, roleId);
+				await workspaces.removeMemberRole(userId, roleId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -60,7 +73,7 @@ export function useMemberRoles(client: WorkspacesClient, userId: string): IUseMe
 				throw apiError;
 			}
 		},
-		[client, userId, refresh],
+		[workspaces, userId, refresh],
 	);
 
 	useEffect(() => {

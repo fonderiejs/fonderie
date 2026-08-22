@@ -1,5 +1,6 @@
-import type { CustomersClient, IAddAddressInput, ICustomerAddressDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IAddAddressInput, ICustomerAddressDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseCustomerAddressesReturn {
@@ -13,10 +14,19 @@ export interface IUseCustomerAddressesReturn {
 	removeAddress: (addrId: string) => Promise<void>;
 }
 
+export function useCustomerAddresses(customerId: string): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
-	client: CustomersClient,
+	client: CustomersClient | undefined,
 	customerId: string,
+): IUseCustomerAddressesReturn;
+export function useCustomerAddresses(
+	clientOrId: CustomersClient | string | undefined,
+	maybeId?: string,
 ): IUseCustomerAddressesReturn {
+	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerAddresses');
 	const [addresses, setAddresses] = useState<ICustomerAddressDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -29,7 +39,7 @@ export function useCustomerAddresses(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listAddresses(customerId);
+			const { result } = await customers.listAddresses(customerId);
 			setAddresses(result.addresses);
 		} catch (err) {
 			const apiError =
@@ -38,13 +48,13 @@ export function useCustomerAddresses(
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, customerId]);
+	}, [customers, customerId]);
 
 	const addAddress = useCallback(
 		async (input: IAddAddressInput) => {
 			setError(null);
 			try {
-				const { result } = await client.addAddress(customerId, input);
+				const { result } = await customers.addAddress(customerId, input);
 				await refresh();
 				return result.address;
 			} catch (err) {
@@ -54,14 +64,14 @@ export function useCustomerAddresses(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const updateAddressLabel = useCallback(
 		async (addrId: string, label: string) => {
 			setError(null);
 			try {
-				await client.updateAddressLabel(customerId, addrId, label);
+				await customers.updateAddressLabel(customerId, addrId, label);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -70,14 +80,14 @@ export function useCustomerAddresses(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const setPrimaryAddress = useCallback(
 		async (addrId: string) => {
 			setError(null);
 			try {
-				await client.setPrimaryAddress(customerId, addrId);
+				await customers.setPrimaryAddress(customerId, addrId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -86,14 +96,14 @@ export function useCustomerAddresses(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const removeAddress = useCallback(
 		async (addrId: string) => {
 			setError(null);
 			try {
-				await client.removeAddress(customerId, addrId);
+				await customers.removeAddress(customerId, addrId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -102,7 +112,7 @@ export function useCustomerAddresses(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	useEffect(() => {

@@ -1,5 +1,6 @@
 import type { ICreateRoleInput, IRoleDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseRolesReturn {
@@ -11,7 +12,8 @@ export interface IUseRolesReturn {
 	removeRole: (roleId: string) => Promise<void>;
 }
 
-export function useRoles(client: WorkspacesClient): IUseRolesReturn {
+export function useRoles(client?: WorkspacesClient): IUseRolesReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRoles');
 	const [roles, setRoles] = useState<IRoleDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -20,7 +22,7 @@ export function useRoles(client: WorkspacesClient): IUseRolesReturn {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listRoles();
+			const { result } = await workspaces.listRoles();
 			setRoles(result.roles);
 		} catch (err) {
 			const apiError =
@@ -29,13 +31,13 @@ export function useRoles(client: WorkspacesClient): IUseRolesReturn {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [workspaces]);
 
 	const createRole = useCallback(
 		async (input: ICreateRoleInput) => {
 			setError(null);
 			try {
-				const { result } = await client.createRole(input);
+				const { result } = await workspaces.createRole(input);
 				await refresh();
 				return result.role;
 			} catch (err) {
@@ -45,14 +47,14 @@ export function useRoles(client: WorkspacesClient): IUseRolesReturn {
 				throw apiError;
 			}
 		},
-		[client, refresh],
+		[workspaces, refresh],
 	);
 
 	const removeRole = useCallback(
 		async (roleId: string) => {
 			setError(null);
 			try {
-				await client.removeRole(roleId);
+				await workspaces.removeRole(roleId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -61,7 +63,7 @@ export function useRoles(client: WorkspacesClient): IUseRolesReturn {
 				throw apiError;
 			}
 		},
-		[client, refresh],
+		[workspaces, refresh],
 	);
 
 	useEffect(() => {

@@ -1,5 +1,6 @@
 import type { BillingClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseBillingPortalReturn {
@@ -8,7 +9,8 @@ export interface IUseBillingPortalReturn {
 	error: FonderieApiError | null;
 }
 
-export function useBillingPortal(client: BillingClient): IUseBillingPortalReturn {
+export function useBillingPortal(client?: BillingClient): IUseBillingPortalReturn {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'useBillingPortal');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -16,7 +18,7 @@ export function useBillingPortal(client: BillingClient): IUseBillingPortalReturn
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.createPortalSession();
+			const { result } = await billing.createPortalSession();
 			return result.url;
 		} catch (err) {
 			const apiError =
@@ -26,7 +28,7 @@ export function useBillingPortal(client: BillingClient): IUseBillingPortalReturn
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [billing]);
 
 	return { openPortal, isLoading, error };
 }

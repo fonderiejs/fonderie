@@ -1,5 +1,6 @@
 import type { BillingClient, ICheckoutInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseCheckoutReturn {
@@ -8,7 +9,8 @@ export interface IUseCheckoutReturn {
 	error: FonderieApiError | null;
 }
 
-export function useCheckout(client: BillingClient): IUseCheckoutReturn {
+export function useCheckout(client?: BillingClient): IUseCheckoutReturn {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'useCheckout');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function useCheckout(client: BillingClient): IUseCheckoutReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.createCheckoutSession(input);
+				const { result } = await billing.createCheckoutSession(input);
 				return result.url;
 			} catch (err) {
 				const apiError =
@@ -28,7 +30,7 @@ export function useCheckout(client: BillingClient): IUseCheckoutReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[billing],
 	);
 
 	return { checkout, isLoading, error };

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 export interface IForgotPasswordScreenProps {
-	client: AuthClient;
+	client?: AuthClient;
 	onNavigateToLogin?: () => void;
 }
 

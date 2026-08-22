@@ -1,5 +1,6 @@
 import type { ITestWebhookResult, WebhooksClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseTestWebhookEndpointReturn {
@@ -8,7 +9,8 @@ export interface IUseTestWebhookEndpointReturn {
 	error: FonderieApiError | null;
 }
 
-export function useTestWebhookEndpoint(client: WebhooksClient): IUseTestWebhookEndpointReturn {
+export function useTestWebhookEndpoint(client?: WebhooksClient): IUseTestWebhookEndpointReturn {
+	const webhooks = useFonderieSubClient(client, (c) => c.webhooks, 'useTestWebhookEndpoint');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function useTestWebhookEndpoint(client: WebhooksClient): IUseTestWebhookE
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.testEndpoint(endpointId);
+				const { result } = await webhooks.testEndpoint(endpointId);
 				return result;
 			} catch (err) {
 				const apiError =
@@ -28,7 +30,7 @@ export function useTestWebhookEndpoint(client: WebhooksClient): IUseTestWebhookE
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[webhooks],
 	);
 
 	return { testEndpoint, isLoading, error };

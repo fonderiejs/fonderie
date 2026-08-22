@@ -1,5 +1,6 @@
 import type { BillingClient, ICreatePlanInput, IPlanDTO, IUpdatePlanInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUsePlanAdminReturn {
@@ -17,7 +18,8 @@ export interface IUsePlanAdminReturn {
 // createPlan/updatePlan/deletePlan with requireAuth or an admin token — the
 // server trusts the caller to authorize access itself. Gate the UI that
 // calls this hook behind your own admin check before shipping it.
-export function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn {
+export function usePlanAdmin(client?: BillingClient): IUsePlanAdminReturn {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePlanAdmin');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -26,7 +28,7 @@ export function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.createPlan(input);
+				const { result } = await billing.createPlan(input);
 				return result.plan;
 			} catch (err) {
 				const apiError =
@@ -37,7 +39,7 @@ export function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[billing],
 	);
 
 	const updatePlan = useCallback(
@@ -45,7 +47,7 @@ export function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.updatePlan(planId, input);
+				const { result } = await billing.updatePlan(planId, input);
 				return result.plan;
 			} catch (err) {
 				const apiError =
@@ -56,7 +58,7 @@ export function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[billing],
 	);
 
 	const deletePlan = useCallback(
@@ -64,7 +66,7 @@ export function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				await client.deletePlan(planId);
+				await billing.deletePlan(planId);
 			} catch (err) {
 				const apiError =
 					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
@@ -74,7 +76,7 @@ export function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[billing],
 	);
 
 	return { createPlan, updatePlan, deletePlan, isLoading, error };

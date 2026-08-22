@@ -1,5 +1,6 @@
 import type { AuthClient, IRegisterInput, IRegisterResult } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 import { persistToken } from '../storage';
 
@@ -10,7 +11,8 @@ export interface IUseRegisterReturn {
 	data: IRegisterResult | null;
 }
 
-export function useRegister(client: AuthClient): IUseRegisterReturn {
+export function useRegister(client?: AuthClient): IUseRegisterReturn {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useRegister');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 	const [data, setData] = useState<IRegisterResult | null>(null);
@@ -20,8 +22,8 @@ export function useRegister(client: AuthClient): IUseRegisterReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.register(input);
-				client.setAccessToken(result.tokens.access);
+				const { result } = await auth.register(input);
+				auth.setAccessToken(result.tokens.access);
 				persistToken(result.tokens.access);
 				setData(result);
 				return result;
@@ -34,7 +36,7 @@ export function useRegister(client: AuthClient): IUseRegisterReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[auth],
 	);
 
 	return { register, isLoading, error, data };
