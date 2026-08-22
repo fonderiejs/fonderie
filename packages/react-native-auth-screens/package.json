@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-auth-screens",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Pre-built React Native auth screens for Fonderie \u2014 login, register, forgot password.",
 	"keywords": [
 		"fonderiejs",

@@ -16,53 +16,53 @@
     "logger": "0.1.2",
     "permissions": "5.0.0",
     "rate-limit": "4.0.0",
-    "react": "0.1.0",
-    "react-audit": "0.1.0",
-    "react-audit-screens": "0.1.0",
-    "react-auth": "0.1.0",
-    "react-auth-screens": "0.1.0",
-    "react-billing": "0.1.0",
-    "react-billing-screens": "0.1.0",
+    "react": "0.2.0",
+    "react-audit": "0.2.0",
+    "react-audit-screens": "0.2.0",
+    "react-auth": "0.2.0",
+    "react-auth-screens": "0.2.0",
+    "react-billing": "0.2.0",
+    "react-billing-screens": "0.2.0",
     "react-config-admin": "0.1.0",
     "react-config-admin-screens": "0.1.0",
     "react-courier-admin": "0.1.0",
     "react-courier-admin-screens": "0.1.0",
-    "react-customers": "0.1.0",
-    "react-customers-screens": "0.1.0",
+    "react-customers": "0.2.0",
+    "react-customers-screens": "0.2.0",
     "react-native-audit": "0.1.0",
-    "react-native-audit-screens": "0.1.0",
-    "react-native-auth": "0.1.0",
-    "react-native-auth-screens": "0.1.0",
+    "react-native-audit-screens": "0.2.0",
+    "react-native-auth": "0.2.0",
+    "react-native-auth-screens": "0.2.0",
     "react-native-billing": "0.1.0",
-    "react-native-billing-screens": "0.1.0",
+    "react-native-billing-screens": "0.2.0",
     "react-native-customers": "0.1.0",
-    "react-native-customers-screens": "0.1.0",
+    "react-native-customers-screens": "0.2.0",
     "react-native-webhooks": "0.1.0",
-    "react-native-webhooks-screens": "0.1.0",
+    "react-native-webhooks-screens": "0.2.0",
     "react-native-workspaces": "0.1.0",
-    "react-native-workspaces-screens": "0.1.0",
-    "react-webhooks": "0.1.0",
-    "react-webhooks-screens": "0.1.1",
-    "react-workspaces": "0.1.0",
-    "react-workspaces-screens": "0.1.0",
+    "react-native-workspaces-screens": "0.2.0",
+    "react-webhooks": "0.2.0",
+    "react-webhooks-screens": "0.2.0",
+    "react-workspaces": "0.2.0",
+    "react-workspaces-screens": "0.2.0",
     "store": "0.2.2",
-    "vue": "0.1.0",
-    "vue-audit": "0.1.0",
-    "vue-audit-screens": "0.1.0",
-    "vue-auth": "0.1.0",
-    "vue-auth-screens": "0.1.1",
-    "vue-billing": "0.1.0",
-    "vue-billing-screens": "0.1.0",
+    "vue": "0.2.0",
+    "vue-audit": "0.2.0",
+    "vue-audit-screens": "0.2.0",
+    "vue-auth": "0.2.0",
+    "vue-auth-screens": "0.2.0",
+    "vue-billing": "0.2.0",
+    "vue-billing-screens": "0.2.0",
     "vue-config-admin": "0.1.0",
     "vue-config-admin-screens": "0.1.0",
     "vue-courier-admin": "0.1.0",
     "vue-courier-admin-screens": "0.1.0",
-    "vue-customers": "0.1.0",
-    "vue-customers-screens": "0.1.0",
-    "vue-webhooks": "0.1.0",
-    "vue-webhooks-screens": "0.1.0",
-    "vue-workspaces": "0.1.0",
-    "vue-workspaces-screens": "0.1.0",
+    "vue-customers": "0.2.0",
+    "vue-customers-screens": "0.2.0",
+    "vue-webhooks": "0.2.0",
+    "vue-webhooks-screens": "0.2.0",
+    "vue-workspaces": "0.2.0",
+    "vue-workspaces-screens": "0.2.0",
     "webhooks": "5.0.0",
     "workspaces": "5.1.0"
   },
@@ -889,7 +889,7 @@
       "hasOutcomes": true
     },
     "react": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieProvider",
@@ -905,7 +905,7 @@
       "hasOutcomes": false
     },
     "react-audit": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -920,7 +920,7 @@
       "hasOutcomes": false
     },
     "react-audit-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "AuditLogScreen"
@@ -934,7 +934,7 @@
       "hasOutcomes": false
     },
     "react-auth": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -955,7 +955,7 @@
       "hasOutcomes": false
     },
     "react-auth-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "ForgotPasswordScreen",
@@ -971,7 +971,7 @@
       "hasOutcomes": false
     },
     "react-billing": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -993,7 +993,7 @@
       "hasOutcomes": false
     },
     "react-billing-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "PricingScreen",
@@ -1084,7 +1084,7 @@
       "hasOutcomes": false
     },
     "react-customers": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1107,7 +1107,7 @@
       "hasOutcomes": false
     },
     "react-customers-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "CustomerDetailScreen",
@@ -1134,7 +1134,7 @@
       "hasOutcomes": false
     },
     "react-native-audit-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "AuditLogScreen"
@@ -1148,7 +1148,7 @@
       "hasOutcomes": false
     },
     "react-native-auth": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1169,7 +1169,7 @@
       "hasOutcomes": false
     },
     "react-native-auth-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "ForgotPasswordScreen",
@@ -1197,7 +1197,7 @@
       "hasOutcomes": false
     },
     "react-native-billing-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "PricingScreen",
@@ -1224,7 +1224,7 @@
       "hasOutcomes": false
     },
     "react-native-customers-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "CustomerDetailScreen",
@@ -1251,7 +1251,7 @@
       "hasOutcomes": false
     },
     "react-native-webhooks-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "WebhookDetailScreen",
@@ -1278,7 +1278,7 @@
       "hasOutcomes": false
     },
     "react-native-workspaces-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "InviteMembersScreen",
@@ -1293,7 +1293,7 @@
       "hasOutcomes": false
     },
     "react-webhooks": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1311,7 +1311,7 @@
       "hasOutcomes": false
     },
     "react-webhooks-screens": {
-      "version": "0.1.1",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "WebhookDetailScreen",
@@ -1326,7 +1326,7 @@
       "hasOutcomes": false
     },
     "react-workspaces": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1352,7 +1352,7 @@
       "hasOutcomes": false
     },
     "react-workspaces-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "InviteMembersScreen",
@@ -1388,7 +1388,7 @@
       "hasOutcomes": false
     },
     "vue": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FONDERIE_INJECTION_KEY",
@@ -1405,7 +1405,7 @@
       "hasOutcomes": false
     },
     "vue-audit": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1420,7 +1420,7 @@
       "hasOutcomes": false
     },
     "vue-audit-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "AuditLogScreen"
@@ -1434,7 +1434,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1455,7 +1455,7 @@
       "hasOutcomes": false
     },
     "vue-auth-screens": {
-      "version": "0.1.1",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "ForgotPasswordScreen",
@@ -1471,7 +1471,7 @@
       "hasOutcomes": false
     },
     "vue-billing": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1493,7 +1493,7 @@
       "hasOutcomes": false
     },
     "vue-billing-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "PricingScreen",
@@ -1584,7 +1584,7 @@
       "hasOutcomes": false
     },
     "vue-customers": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1607,7 +1607,7 @@
       "hasOutcomes": false
     },
     "vue-customers-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "CustomerDetailScreen",
@@ -1622,7 +1622,7 @@
       "hasOutcomes": false
     },
     "vue-webhooks": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1640,7 +1640,7 @@
       "hasOutcomes": false
     },
     "vue-webhooks-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "WebhookDetailScreen",
@@ -1655,7 +1655,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1681,7 +1681,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces-screens": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [
         "InviteMembersScreen",
