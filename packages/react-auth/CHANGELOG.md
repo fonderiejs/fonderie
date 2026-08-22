@@ -1,5 +1,11 @@
 # @fonderie/react-auth
 
+## 0.4.0
+
+### Minor Changes
+
+- 1638dcb: Re-export `isMfaRequired` and `IMfaRequiredResult` from the package index, matching the existing `FonderieApiError`/auth-type re-exports — MFA-aware login now needs only one import: `import { isMfaRequired, useLogin } from '@fonderie/react-native-auth'`. No knowledge of the `@fonderie/client` dependency required (importing from `@fonderie/client` continues to work).
+
 ## 0.3.0
 
 ### Minor Changes
