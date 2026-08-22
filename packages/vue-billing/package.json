@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-billing",
-	"version": "0.4.0",
+	"version": "0.5.0",
 	"description": "Vue 3 composables for Fonderie billing \u2014 thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",

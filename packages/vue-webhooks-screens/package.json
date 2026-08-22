@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-webhooks-screens",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Pre-built Vue screens for Fonderie's outgoing webhooks — endpoint list, endpoint detail with delivery history.",
 	"keywords": [
 		"fonderiejs",

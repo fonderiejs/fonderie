@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-workspaces-screens",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "Pre-built React workspaces screens for Fonderie — team members, invitations.",
 	"keywords": [
 		"fonderiejs",
