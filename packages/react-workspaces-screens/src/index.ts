@@ -1,2 +1,6 @@
-export type { IInviteMembersScreenProps, ITeamMembersScreenProps } from './screens';
-export { InviteMembersScreen, TeamMembersScreen } from './screens';
+export type {
+	IAcceptInvitationScreenProps,
+	IInviteMembersScreenProps,
+	ITeamMembersScreenProps,
+} from './screens';
+export { AcceptInvitationScreen, InviteMembersScreen, TeamMembersScreen } from './screens';

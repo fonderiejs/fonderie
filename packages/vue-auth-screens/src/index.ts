@@ -1,1 +1,8 @@
-export { ForgotPasswordScreen, LoginScreen, RegisterScreen } from './screens';
+export {
+	ForgotPasswordScreen,
+	LoginScreen,
+	MfaChallengeScreen,
+	RegisterScreen,
+	ResetPasswordScreen,
+	VerifyEmailScreen,
+} from './screens';

@@ -1,1 +1,1 @@
-export { InviteMembersScreen, TeamMembersScreen } from './screens';
+export { AcceptInvitationScreen, InviteMembersScreen, TeamMembersScreen } from './screens';

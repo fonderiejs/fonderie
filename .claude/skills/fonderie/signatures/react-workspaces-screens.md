@@ -5,6 +5,13 @@
 ## @fonderie/react-workspaces-screens
 
 ```ts
+interface IAcceptInvitationScreenProps {
+    client?: WorkspacesClient;
+    token: string;
+    onAccepted?: (workspaceId: string) => void;
+    onNavigateBack?: () => void;
+}
+
 interface IInviteMembersScreenProps {
     client?: WorkspacesClient;
     onNavigateToMembers?: () => void;
@@ -15,6 +22,8 @@ interface ITeamMembersScreenProps {
     currentUserId: string;
     onNavigateToInvite?: () => void;
 }
+
+function AcceptInvitationScreen({ client, token, onAccepted, onNavigateBack, }: IAcceptInvitationScreenProps): Element
 
 function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMembersScreenProps): Element
 
