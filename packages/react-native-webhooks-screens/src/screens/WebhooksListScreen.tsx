@@ -1,5 +1,5 @@
 import type { IWebhookEndpointDTO, WebhooksClient } from '@fonderie/client';
-import { useTestWebhookEndpoint, useWebhookEndpoints } from '@fonderie/react-native-webhooks';
+import { useWebhookEndpoints } from '@fonderie/react-native-webhooks';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -9,9 +9,9 @@ export interface IWebhooksListScreenProps {
 }
 
 export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListScreenProps) {
-	const { endpoints, isLoading, error, createEndpoint, removeEndpoint } =
+	const { endpoints, isLoading, error, createEndpoint, removeEndpoint, testEndpoint } =
 		useWebhookEndpoints(client);
-	const { testEndpoint, isLoading: isTesting } = useTestWebhookEndpoint(client);
+	const [isTesting, setIsTesting] = useState(false);
 	const [url, setUrl] = useState('');
 	const [events, setEvents] = useState('');
 	const [newSecret, setNewSecret] = useState<string | null>(null);
@@ -35,13 +35,16 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 	};
 
 	const handleTest = async (endpointId: string) => {
+		setIsTesting(true);
 		try {
 			const result = await testEndpoint(endpointId);
 			setTestResult(
 				`${endpointId}: ${result.ok ? 'OK' : `failed (${result.status ?? result.error})`}`,
 			);
 		} catch {
-			// Surfaced via useTestWebhookEndpoint's error state.
+			// Surfaced via `error` from useWebhookEndpoints.
+		} finally {
+			setIsTesting(false);
 		}
 	};
 

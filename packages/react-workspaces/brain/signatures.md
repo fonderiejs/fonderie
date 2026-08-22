@@ -170,18 +170,6 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-interface IUseAcceptInvitationReturn {
-    acceptInvitation: (pin: string) => Promise<string>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
-interface IUseCreateWorkspaceReturn {
-    createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
 interface IUseInvitationsReturn {
     invitations: IInvitationDTO[];
     isLoading: boolean;
@@ -214,12 +202,6 @@ interface IUseMembersReturn {
     removeMember: (userId: string) => Promise<void>;
 }
 
-interface IUseRemoveMemberReturn {
-    removeMember: (userId: string) => Promise<void>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
 interface IUseRolePermissionsReturn {
     permissions: IRolePermission[];
     isLoading: boolean;
@@ -249,18 +231,6 @@ interface IUseRolesReturn {
     createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
     updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
     removeRole: (roleId: string) => Promise<void>;
-}
-
-interface IUseSetRolePermissionsReturn {
-    setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
-interface IUseUpdateRoleReturn {
-    updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
 }
 
 interface IUseWorkspaceProfileReturn {
@@ -301,27 +271,17 @@ interface IUseWorkspacesReturn {
     acceptInvitation: (pin: string) => Promise<string>;
 }
 
-function useAcceptInvitation(client?: WorkspacesClient | undefined): IUseAcceptInvitationReturn
-
-function useCreateWorkspace(client?: WorkspacesClient | undefined): IUseCreateWorkspaceReturn
-
 function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsReturn
 
 function useMemberRoles(userId: string): IUseMemberRolesReturn
 
 function useMembers(client?: WorkspacesClient | undefined): IUseMembersReturn
 
-function useRemoveMember(client?: WorkspacesClient | undefined): IUseRemoveMemberReturn
-
 function useRole(roleId: string): IUseRoleReturn
 
 function useRolePermissions(roleId: string): IUseRolePermissionsReturn
 
 function useRoles(client?: WorkspacesClient | undefined): IUseRolesReturn
-
-function useSetRolePermissions(client?: WorkspacesClient | undefined): IUseSetRolePermissionsReturn
-
-function useUpdateRole(client?: WorkspacesClient | undefined): IUseUpdateRoleReturn
 
 function useWorkspaceProfile(client?: WorkspacesClient | undefined): IUseWorkspaceProfileReturn
 

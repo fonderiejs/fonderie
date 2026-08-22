@@ -1,5 +1,5 @@
-import type { CourierAdminClient, ISetTemplateInput } from '@fonderie/client';
-import { useSaveTemplate, useTemplate, useTemplateRevisions } from '@fonderie/react-courier-admin';
+import type { CourierAdminClient, FonderieApiError, ISetTemplateInput } from '@fonderie/client';
+import { useTemplate, useTemplateRevisions, useTemplates } from '@fonderie/react-courier-admin';
 import type { CSSProperties, FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 
@@ -17,8 +17,14 @@ export function TemplateEditorScreen({
 	onSaved,
 }: ITemplateEditorScreenProps) {
 	const { template, isLoading, error, refresh } = useTemplate(client, type, locale);
-	const { saveTemplate, isLoading: isSaving, error: saveError } = useSaveTemplate(client);
+	// Saves go through the list hook (which re-fetches the template list after
+	// each write); mounting it adds a template-list fetch to this single-template
+	// editor — acceptable for an admin dashboard. Its isLoading/error track that
+	// list fetch, so the save action keeps local state.
+	const { saveTemplate } = useTemplates(client);
 	const { revisions, rollback } = useTemplateRevisions(client, type, locale);
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveError, setSaveError] = useState<FonderieApiError | null>(null);
 
 	const [subject, setSubject] = useState('');
 	const [html, setHtml] = useState('');
@@ -35,16 +41,23 @@ export function TemplateEditorScreen({
 
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
+		setIsSaving(true);
+		setSaveError(null);
 		try {
 			const input: ISetTemplateInput = { text, active };
 			if (subject) input.subject = subject;
 			if (html) input.html = html;
 			if (template?.version !== undefined) input.ifVersion = template.version;
 			await saveTemplate(type, input, locale);
+			// The list hook refreshes its own list; this screen renders the single
+			// template, so re-read it too.
 			await refresh();
 			onSaved?.();
-		} catch {
-			// Surfaced via `saveError` from useSaveTemplate.
+		} catch (err) {
+			// useTemplates normalizes every failure to FonderieApiError before throwing.
+			setSaveError(err as FonderieApiError);
+		} finally {
+			setIsSaving(false);
 		}
 	};
 

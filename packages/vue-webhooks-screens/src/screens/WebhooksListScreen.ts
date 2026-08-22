@@ -1,5 +1,5 @@
 import type { IWebhookEndpointDTO, WebhooksClient } from '@fonderie/client';
-import { useTestWebhookEndpoint, useWebhookEndpoints } from '@fonderie/vue-webhooks';
+import { useWebhookEndpoints } from '@fonderie/vue-webhooks';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
@@ -13,10 +13,9 @@ export const WebhooksListScreen = defineComponent({
 		'select-endpoint': (_endpointId: string) => true,
 	},
 	setup(props, { emit }) {
-		const { endpoints, isLoading, error, createEndpoint, removeEndpoint } = useWebhookEndpoints(
-			props.client,
-		);
-		const { testEndpoint, isLoading: isTesting } = useTestWebhookEndpoint(props.client);
+		const { endpoints, isLoading, error, createEndpoint, removeEndpoint, testEndpoint } =
+			useWebhookEndpoints(props.client);
+		const isTesting = ref(false);
 		const url = ref('');
 		const events = ref('');
 		const newSecret = ref<string | null>(null);
@@ -41,11 +40,14 @@ export const WebhooksListScreen = defineComponent({
 		}
 
 		async function handleTest(endpointId: string) {
+			isTesting.value = true;
 			try {
 				const result = await testEndpoint(endpointId);
 				testResult.value = `${endpointId}: ${result.ok ? 'OK' : `failed (${result.status ?? result.error})`}`;
 			} catch {
-				// Surfaced via useTestWebhookEndpoint's error state.
+				// Surfaced via `error` from useWebhookEndpoints.
+			} finally {
+				isTesting.value = false;
 			}
 		}
 

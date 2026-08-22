@@ -1,7 +1,3 @@
-export type { IUseDeleteTemplateReturn } from './useDeleteTemplate';
-export { useDeleteTemplate } from './useDeleteTemplate';
-export type { IUseSaveTemplateReturn } from './useSaveTemplate';
-export { useSaveTemplate } from './useSaveTemplate';
 export type { IUseTemplateReturn } from './useTemplate';
 export { useTemplate } from './useTemplate';
 export type { IUseTemplateRevisionsReturn } from './useTemplateRevisions';

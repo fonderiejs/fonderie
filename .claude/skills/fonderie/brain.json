@@ -987,9 +987,7 @@
         "useBillingPortal",
         "useCheckout",
         "usePlan",
-        "usePlanAdmin",
         "usePlans",
-        "useRecordUsage",
         "useSubscription",
         "useUsage"
       ],
@@ -1025,11 +1023,7 @@
         "useConfigEntries",
         "useConfigEntry",
         "useConfigRevisions",
-        "useDeleteConfigEntry",
-        "useDeleteSecret",
         "useRevealSecret",
-        "useSaveConfigEntry",
-        "useSaveSecret",
         "useSecret",
         "useSecretRevisions",
         "useSecrets"
@@ -1063,8 +1057,6 @@
       "exports": [
         "CourierAdminClient",
         "FonderieApiError",
-        "useDeleteTemplate",
-        "useSaveTemplate",
         "useTemplate",
         "useTemplateRevisions",
         "useTemplates"
@@ -1316,7 +1308,6 @@
       "requires": [],
       "exports": [
         "FonderieApiError",
-        "useTestWebhookEndpoint",
         "useWebhookDeliveries",
         "useWebhookEndpoint",
         "useWebhookEndpoints"
@@ -1349,17 +1340,12 @@
       "requires": [],
       "exports": [
         "FonderieApiError",
-        "useAcceptInvitation",
-        "useCreateWorkspace",
         "useInvitations",
         "useMemberRoles",
         "useMembers",
-        "useRemoveMember",
         "useRole",
         "useRolePermissions",
         "useRoles",
-        "useSetRolePermissions",
-        "useUpdateRole",
         "useWorkspaceProfile",
         "useWorkspaceSettings",
         "useWorkspace",
@@ -1510,9 +1496,7 @@
         "useBillingPortal",
         "useCheckout",
         "usePlan",
-        "usePlanAdmin",
         "usePlans",
-        "useRecordUsage",
         "useSubscription",
         "useUsage"
       ],
@@ -1548,11 +1532,7 @@
         "useConfigEntries",
         "useConfigEntry",
         "useConfigRevisions",
-        "useDeleteConfigEntry",
-        "useDeleteSecret",
         "useRevealSecret",
-        "useSaveConfigEntry",
-        "useSaveSecret",
         "useSecret",
         "useSecretRevisions",
         "useSecrets"
@@ -1586,8 +1566,6 @@
       "exports": [
         "CourierAdminClient",
         "FonderieApiError",
-        "useDeleteTemplate",
-        "useSaveTemplate",
         "useTemplate",
         "useTemplateRevisions",
         "useTemplates"
@@ -1658,7 +1636,6 @@
       "requires": [],
       "exports": [
         "FonderieApiError",
-        "useTestWebhookEndpoint",
         "useWebhookDeliveries",
         "useWebhookEndpoint",
         "useWebhookEndpoints"
@@ -1691,17 +1668,12 @@
       "requires": [],
       "exports": [
         "FonderieApiError",
-        "useAcceptInvitation",
-        "useCreateWorkspace",
         "useInvitations",
         "useMemberRoles",
         "useMembers",
-        "useRemoveMember",
         "useRole",
         "useRolePermissions",
         "useRoles",
-        "useSetRolePermissions",
-        "useUpdateRole",
         "useWorkspaceProfile",
         "useWorkspaceSettings",
         "useWorkspace",
@@ -3137,8 +3109,7 @@
       "react-courier-admin"
     ],
     "usesavetemplate": [
-      "react-courier-admin",
-      "vue-courier-admin"
+      "react-courier-admin"
     ],
     "use save template": [
       "react-courier-admin"
@@ -3756,14 +3727,6 @@
       "react-billing",
       "vue-billing"
     ],
-    "useplanadmin": [
-      "react-billing",
-      "vue-billing"
-    ],
-    "userecordusage": [
-      "react-billing",
-      "vue-billing"
-    ],
     "useusage": [
       "react-billing",
       "vue-billing"
@@ -3786,23 +3749,7 @@
       "react-config-admin",
       "vue-config-admin"
     ],
-    "usedeleteconfigentry": [
-      "react-config-admin",
-      "vue-config-admin"
-    ],
-    "usedeletesecret": [
-      "react-config-admin",
-      "vue-config-admin"
-    ],
     "userevealsecret": [
-      "react-config-admin",
-      "vue-config-admin"
-    ],
-    "usesaveconfigentry": [
-      "react-config-admin",
-      "vue-config-admin"
-    ],
-    "usesavesecret": [
       "react-config-admin",
       "vue-config-admin"
     ],
@@ -3821,10 +3768,6 @@
     "configlistscreen": [
       "react-config-admin-screens",
       "vue-config-admin-screens"
-    ],
-    "usedeletetemplate": [
-      "react-courier-admin",
-      "vue-courier-admin"
     ],
     "usetemplate": [
       "react-courier-admin",
@@ -3909,10 +3852,6 @@
       "react-workspaces-screens",
       "vue-workspaces-screens"
     ],
-    "usetestwebhookendpoint": [
-      "react-webhooks",
-      "vue-webhooks"
-    ],
     "usewebhookdeliveries": [
       "react-webhooks",
       "vue-webhooks"
@@ -3921,31 +3860,11 @@
       "react-webhooks",
       "vue-webhooks"
     ],
-    "useacceptinvitation": [
-      "react-workspaces",
-      "vue-workspaces"
-    ],
-    "usecreateworkspace": [
-      "react-workspaces",
-      "vue-workspaces"
-    ],
-    "useremovemember": [
-      "react-workspaces",
-      "vue-workspaces"
-    ],
     "userole": [
       "react-workspaces",
       "vue-workspaces"
     ],
     "userolepermissions": [
-      "react-workspaces",
-      "vue-workspaces"
-    ],
-    "usesetrolepermissions": [
-      "react-workspaces",
-      "vue-workspaces"
-    ],
-    "useupdaterole": [
       "react-workspaces",
       "vue-workspaces"
     ],

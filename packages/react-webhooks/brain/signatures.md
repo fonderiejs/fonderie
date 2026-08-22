@@ -66,12 +66,6 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-interface IUseTestWebhookEndpointReturn {
-    testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
 interface IUseWebhookDeliveriesReturn {
     deliveries: IWebhookDeliveryDTO[];
     isLoading: boolean;
@@ -101,9 +95,8 @@ interface IUseWebhookEndpointsReturn {
     }) => Promise<void>;
     createEndpoint: (input: ICreateWebhookEndpointInput) => Promise<IWebhookEndpointCreatedDTO>;
     removeEndpoint: (endpointId: string) => Promise<void>;
+    testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>;
 }
-
-function useTestWebhookEndpoint(client?: WebhooksClient | undefined): IUseTestWebhookEndpointReturn
 
 function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn
 

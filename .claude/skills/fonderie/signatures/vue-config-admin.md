@@ -95,15 +95,7 @@ function useConfigEntry(client: ConfigAdminClient, key: string, environment?: st
 
 function useConfigRevisions(client: ConfigAdminClient, key: string, environment?: string | undefined): { revisions: Ref<{ key: string; environment: string; value: unknown; version: number; actor: string | null; createdAt: string; }[], IConfigRevision[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; rollback: (toVersion: number) => Promise<...>; }
 
-function useDeleteConfigEntry(client: ConfigAdminClient): { deleteConfigEntry: (key: string, environment?: string | undefined) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
-
-function useDeleteSecret(client: ConfigAdminClient): { deleteSecret: (key: string, environment?: string | undefined) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
-
 function useRevealSecret(client: ConfigAdminClient): { revealSecret: (key: string, environment?: string | undefined) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
-
-function useSaveConfigEntry(client: ConfigAdminClient): { saveConfigEntry: (key: string, input: ISetConfigInput, environment?: string | undefined) => Promise<IConfigEntry>; isLoading: Ref<...>; error: Ref<...>; }
-
-function useSaveSecret(client: ConfigAdminClient): { saveSecret: (key: string, input: ISetSecretInput, environment?: string | undefined) => Promise<ISecretEntry>; isLoading: Ref<...>; error: Ref<...>; }
 
 function useSecret(client: ConfigAdminClient, key: string, environment?: string | undefined): { secret: Ref<{ key: string; environment: string; description: string | null; active: boolean; version: number; updatedBy: string | null; updatedAt: string; } | null, ISecretEntry | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 

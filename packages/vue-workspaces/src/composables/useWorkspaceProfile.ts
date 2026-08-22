@@ -12,7 +12,7 @@ export interface IUseWorkspaceProfileReturn {
 	error: Ref<FonderieApiError | null>;
 }
 
-// Action-only, like useUpdateRole — there's no "get current workspace"
+// Action-only — there's no "get current workspace"
 // route (only getWorkspace(id) for admin/cross-workspace lookups), so the
 // caller already has the workspace object from useWorkspaces()'s list.
 export function useWorkspaceProfile(client?: WorkspacesClient): IUseWorkspaceProfileReturn {

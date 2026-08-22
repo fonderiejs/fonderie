@@ -1,11 +1,7 @@
 export { useConfigEntries } from './useConfigEntries';
 export { useConfigEntry } from './useConfigEntry';
 export { useConfigRevisions } from './useConfigRevisions';
-export { useDeleteConfigEntry } from './useDeleteConfigEntry';
-export { useDeleteSecret } from './useDeleteSecret';
 export { useRevealSecret } from './useRevealSecret';
-export { useSaveConfigEntry } from './useSaveConfigEntry';
-export { useSaveSecret } from './useSaveSecret';
 export { useSecret } from './useSecret';
 export { useSecretRevisions } from './useSecretRevisions';
 export { useSecrets } from './useSecrets';

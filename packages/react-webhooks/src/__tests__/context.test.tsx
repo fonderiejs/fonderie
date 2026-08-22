@@ -7,7 +7,7 @@ import { FonderieProvider } from '@fonderie/react';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 
-import { useTestWebhookEndpoint, useWebhookDeliveries, useWebhookEndpoints } from '../hooks';
+import { useWebhookDeliveries, useWebhookEndpoints } from '../hooks';
 
 const fakeWebhooks = { marker: 'context-webhooks' } as unknown as WebhooksClient;
 const fakeClient = { webhooks: fakeWebhooks } as unknown as FonderieClient;
@@ -65,10 +65,40 @@ test('hooks throw a named error without provider or argument', () => {
 			renderToString(
 				createElement(Probe, {
 					run: () => {
-						useTestWebhookEndpoint();
+						useWebhookEndpoints();
 					},
 				}),
 			),
-		/useTestWebhookEndpoint: no client/,
+		/useWebhookEndpoints: no client/,
 	);
+});
+
+test('testEndpoint folds into useWebhookEndpoints and does not re-list', async () => {
+	const log: unknown[] = [];
+	const fake = {
+		listEndpoints: async (opts?: { bust?: boolean }) => {
+			log.push(['list', opts?.bust ?? false]);
+			return { reason: 'OK', explanation: '', result: { endpoints: [] } };
+		},
+		testEndpoint: async (endpointId: string) => {
+			log.push(['test', endpointId]);
+			return { reason: 'OK', explanation: '', result: { ok: true } };
+		},
+	};
+	let captured: ReturnType<typeof useWebhookEndpoints> | undefined;
+	renderToString(
+		createElement(
+			FonderieProvider,
+			{ client: { webhooks: fake } as unknown as FonderieClient },
+			createElement(Probe, {
+				run: () => {
+					captured = useWebhookEndpoints();
+				},
+			}),
+		),
+	);
+	const result = await captured?.testEndpoint('ep_9');
+	assert.equal(result?.ok, true);
+	// A test delivery doesn't change the endpoints list — no refresh call.
+	assert.deepEqual(log, [['test', 'ep_9']]);
 });

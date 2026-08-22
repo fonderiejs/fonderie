@@ -7,8 +7,8 @@ import { FonderiePlugin } from '@fonderie/vue';
 import { createSSRApp, defineComponent, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
-import { useTestWebhookEndpoint } from '../composables/useTestWebhookEndpoint';
 import { useWebhookDeliveries } from '../composables/useWebhookDeliveries';
+import { useWebhookEndpoints } from '../composables/useWebhookEndpoints';
 
 const fakeDelivery = { id: 'del_1', status: 'succeeded' } as unknown as IWebhookDeliveryDTO;
 const fakeWebhooks = {
@@ -36,12 +36,14 @@ async function runInSetup<T>(run: () => T, plugin?: boolean) {
 	return { value, error };
 }
 
-test('useTestWebhookEndpoint resolves the webhooks client via app.use(FonderiePlugin, client)', async () => {
-	const { value, error } = await runInSetup(() => useTestWebhookEndpoint(), true);
+test('useWebhookEndpoints resolves the webhooks client via app.use(FonderiePlugin, client)', async () => {
+	const { value, error } = await runInSetup(() => useWebhookEndpoints(), true);
 	assert.equal(error, undefined);
 	assert.ok(value);
 	assert.equal(typeof value.testEndpoint, 'function');
-	assert.equal(value.isLoading.value, false);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	assert.deepEqual(value.endpoints.value, []);
+	assert.equal(value.isLoading.value, true);
 	assert.equal(value.error.value, null);
 });
 
@@ -70,7 +72,28 @@ test('useWebhookDeliveries accepts an explicit client without any plugin install
 	assert.deepEqual(value.deliveries.value, [fakeDelivery]);
 });
 
-test('useTestWebhookEndpoint throws without a plugin or explicit client', async () => {
-	const { error } = await runInSetup(() => useTestWebhookEndpoint());
-	assert.match(String(error), /useTestWebhookEndpoint: no client/);
+test('useWebhookEndpoints throws without a plugin or explicit client', async () => {
+	const { error } = await runInSetup(() => useWebhookEndpoints());
+	assert.match(String(error), /useWebhookEndpoints: no client/);
+});
+
+test('testEndpoint folds into useWebhookEndpoints and does not re-list', async () => {
+	const log: unknown[] = [];
+	const explicit = Object.assign(Object.create(WebhooksClient.prototype) as WebhooksClient, {
+		listEndpoints: async (opts?: { bust?: boolean }) => {
+			log.push(['list', opts?.bust ?? false]);
+			return { result: { endpoints: [] } };
+		},
+		testEndpoint: async (endpointId: string) => {
+			log.push(['test', endpointId]);
+			return { result: { ok: true } };
+		},
+	});
+	const { value, error } = await runInSetup(() => useWebhookEndpoints(explicit));
+	assert.equal(error, undefined);
+	assert.ok(value);
+	const result = await value.testEndpoint('ep_9');
+	assert.equal(result.ok, true);
+	// A test delivery doesn't change the endpoints list — no refresh call.
+	assert.deepEqual(log, [['test', 'ep_9']]);
 });
