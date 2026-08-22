@@ -29,6 +29,7 @@ export const styles: Record<string, CSSProperties> = {
 		marginTop: '8px',
 	},
 	error: { color: '#e11d48', marginBottom: '12px', fontSize: '14px' },
+	sent: { marginTop: '16px', textAlign: 'center', color: '#666', fontSize: '14px' },
 	link: {
 		marginTop: '16px',
 		background: 'none',
