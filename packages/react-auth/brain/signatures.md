@@ -119,6 +119,13 @@ interface IUseLogoutReturn {
     error: FonderieApiError | null;
 }
 
+interface IUseMfaLoginReturn {
+    verifyLogin: (mfaToken: string, code: string) => Promise<ILoginResult>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    data: ILoginResult | null;
+}
+
 interface IUseRegisterReturn {
     register: (input: IRegisterInput) => Promise<IRegisterResult>;
     isLoading: boolean;
@@ -154,6 +161,8 @@ function useLogin(client?: AuthClient | undefined): IUseLoginReturn
 
 function useLogout(client?: AuthClient | undefined): IUseLogoutReturn
 
+function useMfaLogin(client?: AuthClient | undefined): IUseMfaLoginReturn
+
 function useRegister(client?: AuthClient | undefined): IUseRegisterReturn
 
 function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordReturn
@@ -161,4 +170,12 @@ function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordRet
 function useSession(client?: AuthClient | undefined): IUseSessionReturn
 
 function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn
+
+function clearToken(): void
+
+function persistToken(token: string): void
+
+function readToken(): string | null
+
+const TOKEN_KEY: "fonderie_access_token"
 ```

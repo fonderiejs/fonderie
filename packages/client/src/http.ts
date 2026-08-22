@@ -55,6 +55,12 @@ export class HttpClient {
 		this.refresh = deps.refresh;
 	}
 
+	// Drop all cached responses — sign-out must not leave one session's data
+	// servable to the next.
+	clearCache(): void {
+		this.cache?.clear();
+	}
+
 	async request<T>(opts: IRequestOptions): Promise<T> {
 		const method = opts.method.toUpperCase();
 
