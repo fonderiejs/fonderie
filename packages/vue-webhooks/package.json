@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-webhooks",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Vue 3 composables for Fonderie's outgoing webhooks — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",

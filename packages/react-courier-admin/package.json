@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-courier-admin",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "React hooks for the Fonderie courier admin API (email/SMS/push template management) — thin bindings over @fonderie/client's CourierAdminClient.",
 	"keywords": [
 		"fonderiejs",
