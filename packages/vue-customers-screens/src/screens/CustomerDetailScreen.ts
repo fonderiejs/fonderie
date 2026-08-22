@@ -18,7 +18,7 @@ import { styles } from '../styles';
 export const CustomerDetailScreen = defineComponent({
 	name: 'FonderieCustomerDetailScreen',
 	props: {
-		client: { type: Object as PropType<CustomersClient>, required: true },
+		client: { type: Object as PropType<CustomersClient>, required: false },
 		customerId: { type: String, required: true },
 	},
 	emits: {

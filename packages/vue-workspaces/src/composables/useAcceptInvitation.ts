@@ -1,8 +1,10 @@
 import type { WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useAcceptInvitation(client: WorkspacesClient) {
+export function useAcceptInvitation(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useAcceptInvitation');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -10,7 +12,7 @@ export function useAcceptInvitation(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.acceptInvitation(pin);
+			const { result } = await workspaces.acceptInvitation(pin);
 			return result.workspaceId;
 		} catch (err) {
 			const apiError =

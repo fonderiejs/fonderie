@@ -1,5 +1,6 @@
 import type { BillingClient, IPlanDTO } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUsePlansReturn {
@@ -9,7 +10,8 @@ export interface IUsePlansReturn {
 	refresh: () => Promise<void>;
 }
 
-export function usePlans(client: BillingClient): IUsePlansReturn {
+export function usePlans(client?: BillingClient): IUsePlansReturn {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePlans');
 	const [plans, setPlans] = useState<IPlanDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -18,7 +20,7 @@ export function usePlans(client: BillingClient): IUsePlansReturn {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listPlans();
+			const { result } = await billing.listPlans();
 			setPlans(result.plans);
 		} catch (err) {
 			const apiError =
@@ -27,7 +29,7 @@ export function usePlans(client: BillingClient): IUsePlansReturn {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [billing]);
 
 	useEffect(() => {
 		void refresh();

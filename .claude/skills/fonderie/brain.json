@@ -16,6 +16,7 @@
     "logger": "0.1.2",
     "permissions": "5.0.0",
     "rate-limit": "4.0.0",
+    "react": "0.1.0",
     "react-audit": "0.1.0",
     "react-audit-screens": "0.1.0",
     "react-auth": "0.1.0",
@@ -45,6 +46,7 @@
     "react-workspaces": "0.1.0",
     "react-workspaces-screens": "0.1.0",
     "store": "0.2.2",
+    "vue": "0.1.0",
     "vue-audit": "0.1.0",
     "vue-audit-screens": "0.1.0",
     "vue-auth": "0.1.0",
@@ -886,6 +888,22 @@
       "hasSignature": true,
       "hasOutcomes": true
     },
+    "react": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FonderieProvider",
+        "useFonderieClient",
+        "useFonderieSubClient"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
     "react-audit": {
       "version": "0.1.0",
       "requires": [],
@@ -1362,6 +1380,23 @@
         "@fonderie/store/types",
         "@fonderie/store/migrations"
       ],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FONDERIE_INJECTION_KEY",
+        "FonderiePlugin",
+        "useFonderieClient",
+        "useFonderieSubClient"
+      ],
+      "subpaths": [],
       "tables": [],
       "routeCount": 0,
       "routes": [],
@@ -2154,6 +2189,9 @@
     "rate-limit": [
       "rate-limit"
     ],
+    "react": [
+      "react"
+    ],
     "react-audit": [
       "react-audit"
     ],
@@ -2240,6 +2278,9 @@
     ],
     "store": [
       "store"
+    ],
+    "vue": [
+      "vue"
     ],
     "vue-audit": [
       "vue-audit"
@@ -3570,6 +3611,17 @@
     "redisstore": [
       "rate-limit"
     ],
+    "fonderieprovider": [
+      "react"
+    ],
+    "usefonderieclient": [
+      "react",
+      "vue"
+    ],
+    "usefonderiesubclient": [
+      "react",
+      "vue"
+    ],
     "auditlogscreen": [
       "react-audit-screens",
       "react-native-audit-screens",
@@ -3822,6 +3874,12 @@
     ],
     "versionconflicterror": [
       "store"
+    ],
+    "fonderie_injection_key": [
+      "vue"
+    ],
+    "fonderieplugin": [
+      "vue"
     ],
     "webhooksmodule": [
       "webhooks"

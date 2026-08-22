@@ -1,5 +1,6 @@
 import type { AuthClient, ILoginInput, ILoginResult } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 import { persistToken } from '../storage';
 
@@ -10,7 +11,8 @@ export interface IUseLoginReturn {
 	data: ILoginResult | null;
 }
 
-export function useLogin(client: AuthClient): IUseLoginReturn {
+export function useLogin(client?: AuthClient): IUseLoginReturn {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useLogin');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 	const [data, setData] = useState<ILoginResult | null>(null);
@@ -20,8 +22,8 @@ export function useLogin(client: AuthClient): IUseLoginReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.login(input);
-				client.setAccessToken(result.tokens.access);
+				const { result } = await auth.login(input);
+				auth.setAccessToken(result.tokens.access);
 				persistToken(result.tokens.access);
 				setData(result);
 				return result;
@@ -34,7 +36,7 @@ export function useLogin(client: AuthClient): IUseLoginReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[auth],
 	);
 
 	return { login, isLoading, error, data };

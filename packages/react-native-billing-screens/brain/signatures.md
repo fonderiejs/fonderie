@@ -6,12 +6,12 @@
 
 ```ts
 interface IPricingScreenProps {
-    client: BillingClient;
+    client?: BillingClient;
     onCheckoutStart?: (url: string) => void;
 }
 
 interface ISubscriptionScreenProps {
-    client: BillingClient;
+    client?: BillingClient;
     onManageBilling?: (url: string) => void;
     onNavigateToPricing?: () => void;
 }

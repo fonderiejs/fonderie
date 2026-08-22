@@ -10,7 +10,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 
 export interface ICustomerDetailScreenProps {
-	client: CustomersClient;
+	client?: CustomersClient;
 	customerId: string;
 	onNavigateToList?: () => void;
 }

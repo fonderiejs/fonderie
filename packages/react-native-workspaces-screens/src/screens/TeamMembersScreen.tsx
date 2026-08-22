@@ -3,7 +3,7 @@ import { useMembers, useRemoveMember } from '@fonderie/react-native-workspaces';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export interface ITeamMembersScreenProps {
-	client: WorkspacesClient;
+	client?: WorkspacesClient;
 	currentUserId: string;
 	onNavigateToInvite?: () => void;
 }

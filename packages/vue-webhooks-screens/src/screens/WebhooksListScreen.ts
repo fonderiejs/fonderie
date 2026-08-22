@@ -7,7 +7,7 @@ import { styles } from '../styles';
 export const WebhooksListScreen = defineComponent({
 	name: 'FonderieWebhooksListScreen',
 	props: {
-		client: { type: Object as PropType<WebhooksClient>, required: true },
+		client: { type: Object as PropType<WebhooksClient>, required: false },
 	},
 	emits: {
 		'select-endpoint': (_endpointId: string) => true,

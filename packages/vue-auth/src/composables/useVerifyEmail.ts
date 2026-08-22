@@ -1,8 +1,10 @@
 import type { AuthClient, IVerifyEmailResult } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useVerifyEmail(client: AuthClient) {
+export function useVerifyEmail(client?: AuthClient) {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useVerifyEmail');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 	const data = ref<IVerifyEmailResult | null>(null);
@@ -11,7 +13,7 @@ export function useVerifyEmail(client: AuthClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.verifyEmail(pin);
+			const { result } = await auth.verifyEmail(pin);
 			data.value = result;
 			return result;
 		} catch (err) {

@@ -1,9 +1,6 @@
-import type {
-	CustomersClient,
-	IAddRelationshipInput,
-	ICustomerRelationshipDTO,
-} from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IAddRelationshipInput, ICustomerRelationshipDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseCustomerRelationshipsReturn {
@@ -16,10 +13,19 @@ export interface IUseCustomerRelationshipsReturn {
 	removeRelationship: (relatedId: string) => Promise<void>;
 }
 
+export function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn;
 export function useCustomerRelationships(
-	client: CustomersClient,
+	client: CustomersClient | undefined,
 	customerId: string,
+): IUseCustomerRelationshipsReturn;
+export function useCustomerRelationships(
+	clientOrId: CustomersClient | string | undefined,
+	maybeId?: string,
 ): IUseCustomerRelationshipsReturn {
+	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerRelationships');
 	const [relationships, setRelationships] = useState<ICustomerRelationshipDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -32,7 +38,7 @@ export function useCustomerRelationships(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listRelationships(customerId);
+			const { result } = await customers.listRelationships(customerId);
 			setRelationships(result.relationships);
 		} catch (err) {
 			const apiError =
@@ -41,13 +47,13 @@ export function useCustomerRelationships(
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, customerId]);
+	}, [customers, customerId]);
 
 	const addRelationship = useCallback(
 		async (input: IAddRelationshipInput) => {
 			setError(null);
 			try {
-				const { result } = await client.addRelationship(customerId, input);
+				const { result } = await customers.addRelationship(customerId, input);
 				await refresh();
 				return result.relationship;
 			} catch (err) {
@@ -57,14 +63,14 @@ export function useCustomerRelationships(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const setPrimaryRelationship = useCallback(
 		async (relatedId: string) => {
 			setError(null);
 			try {
-				await client.setPrimaryRelationship(customerId, relatedId);
+				await customers.setPrimaryRelationship(customerId, relatedId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -73,14 +79,14 @@ export function useCustomerRelationships(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const removeRelationship = useCallback(
 		async (relatedId: string) => {
 			setError(null);
 			try {
-				await client.removeRelationship(customerId, relatedId);
+				await customers.removeRelationship(customerId, relatedId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -89,7 +95,7 @@ export function useCustomerRelationships(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	useEffect(() => {

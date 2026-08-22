@@ -149,19 +149,19 @@ interface IUseUsageReturn {
     refresh: () => Promise<void>;
 }
 
-function useBillingPortal(client: BillingClient): IUseBillingPortalReturn
+function useBillingPortal(client?: BillingClient | undefined): IUseBillingPortalReturn
 
-function useCheckout(client: BillingClient): IUseCheckoutReturn
+function useCheckout(client?: BillingClient | undefined): IUseCheckoutReturn
 
-function usePlan(client: BillingClient, planId: string): IUsePlanReturn
+function usePlan(planId: string): IUsePlanReturn
 
-function usePlanAdmin(client: BillingClient): IUsePlanAdminReturn
+function usePlanAdmin(client?: BillingClient | undefined): IUsePlanAdminReturn
 
-function usePlans(client: BillingClient): IUsePlansReturn
+function usePlans(client?: BillingClient | undefined): IUsePlansReturn
 
-function useRecordUsage(client: BillingClient): IUseRecordUsageReturn
+function useRecordUsage(client?: BillingClient | undefined): IUseRecordUsageReturn
 
-function useSubscription(client: BillingClient): IUseSubscriptionReturn
+function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
 
-function useUsage(client: BillingClient, metric: string): IUseUsageReturn
+function useUsage(metric: string): IUseUsageReturn
 ```

@@ -5,6 +5,7 @@ import type {
 	WebhooksClient,
 } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseWebhookEndpointsReturn {
@@ -16,7 +17,8 @@ export interface IUseWebhookEndpointsReturn {
 	removeEndpoint: (endpointId: string) => Promise<void>;
 }
 
-export function useWebhookEndpoints(client: WebhooksClient): IUseWebhookEndpointsReturn {
+export function useWebhookEndpoints(client?: WebhooksClient): IUseWebhookEndpointsReturn {
+	const webhooks = useFonderieSubClient(client, (c) => c.webhooks, 'useWebhookEndpoints');
 	const [endpoints, setEndpoints] = useState<IWebhookEndpointDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -25,7 +27,7 @@ export function useWebhookEndpoints(client: WebhooksClient): IUseWebhookEndpoint
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listEndpoints();
+			const { result } = await webhooks.listEndpoints();
 			setEndpoints(result.endpoints);
 		} catch (err) {
 			const apiError =
@@ -34,13 +36,13 @@ export function useWebhookEndpoints(client: WebhooksClient): IUseWebhookEndpoint
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [webhooks]);
 
 	const createEndpoint = useCallback(
 		async (input: ICreateWebhookEndpointInput) => {
 			setError(null);
 			try {
-				const { result } = await client.createEndpoint(input);
+				const { result } = await webhooks.createEndpoint(input);
 				await refresh();
 				return result;
 			} catch (err) {
@@ -50,14 +52,14 @@ export function useWebhookEndpoints(client: WebhooksClient): IUseWebhookEndpoint
 				throw apiError;
 			}
 		},
-		[client, refresh],
+		[webhooks, refresh],
 	);
 
 	const removeEndpoint = useCallback(
 		async (endpointId: string) => {
 			setError(null);
 			try {
-				await client.deleteEndpoint(endpointId);
+				await webhooks.deleteEndpoint(endpointId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -66,7 +68,7 @@ export function useWebhookEndpoints(client: WebhooksClient): IUseWebhookEndpoint
 				throw apiError;
 			}
 		},
-		[client, refresh],
+		[webhooks, refresh],
 	);
 
 	useEffect(() => {

@@ -1,8 +1,10 @@
 import type { IMemberDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useMembers(client: WorkspacesClient) {
+export function useMembers(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useMembers');
 	const members = ref<IMemberDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -11,7 +13,7 @@ export function useMembers(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listMembers();
+			const { result } = await workspaces.listMembers();
 			members.value = result.members;
 		} catch (err) {
 			const apiError =

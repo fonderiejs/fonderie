@@ -1,8 +1,10 @@
 import type { WebhooksClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useTestWebhookEndpoint(client: WebhooksClient) {
+export function useTestWebhookEndpoint(client?: WebhooksClient) {
+	const webhooks = useFonderieSubClient(client, (c) => c.webhooks, 'useTestWebhookEndpoint');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -10,7 +12,7 @@ export function useTestWebhookEndpoint(client: WebhooksClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.testEndpoint(endpointId);
+			const { result } = await webhooks.testEndpoint(endpointId);
 			return result;
 		} catch (err) {
 			const apiError =

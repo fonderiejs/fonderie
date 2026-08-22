@@ -12,6 +12,25 @@ with the access token persisted to `AsyncStorage` instead of `localStorage`.
 npm install @fonderie/react-native-auth @react-native-async-storage/async-storage
 ```
 
+## One client at the root (recommended)
+
+Wrap your app in `FonderieProvider` from [`@fonderie/react`](../react) once and
+every hook resolves the client from context — no client argument at call sites:
+
+```tsx
+import { FonderieProvider } from "@fonderie/react";
+
+<FonderieProvider client={client}>
+  <App />
+</FonderieProvider>;
+
+// anywhere below it:
+const { ...state } = useLogin();
+```
+
+Passing a client explicitly (as below) still works everywhere and takes
+precedence over context — handy in tests and multi-client apps.
+
 ## Use
 
 ```tsx

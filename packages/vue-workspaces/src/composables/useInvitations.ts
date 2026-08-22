@@ -1,8 +1,10 @@
 import type { IInvitationDTO, IInviteEntry, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useInvitations(client: WorkspacesClient) {
+export function useInvitations(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useInvitations');
 	const invitations = ref<IInvitationDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -11,7 +13,7 @@ export function useInvitations(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listInvitations();
+			const { result } = await workspaces.listInvitations();
 			invitations.value = result.invitations;
 		} catch (err) {
 			const apiError =
@@ -25,7 +27,7 @@ export function useInvitations(client: WorkspacesClient) {
 	async function invite(entries: IInviteEntry | IInviteEntry[]) {
 		error.value = null;
 		try {
-			await client.invite(entries);
+			await workspaces.invite(entries);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -38,7 +40,7 @@ export function useInvitations(client: WorkspacesClient) {
 	async function cancelInvitation(inviteId: string) {
 		error.value = null;
 		try {
-			await client.cancelInvitation(inviteId);
+			await workspaces.cancelInvitation(inviteId);
 			await refresh();
 		} catch (err) {
 			const apiError =

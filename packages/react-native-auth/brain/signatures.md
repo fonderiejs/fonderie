@@ -141,17 +141,17 @@ interface IUseVerifyEmailReturn {
     data: IVerifyEmailResult | null;
 }
 
-function useForgotPassword(client: AuthClient): IUseForgotPasswordReturn
+function useForgotPassword(client?: AuthClient | undefined): IUseForgotPasswordReturn
 
-function useLogin(client: AuthClient): IUseLoginReturn
+function useLogin(client?: AuthClient | undefined): IUseLoginReturn
 
-function useLogout(client: AuthClient): IUseLogoutReturn
+function useLogout(client?: AuthClient | undefined): IUseLogoutReturn
 
-function useRegister(client: AuthClient): IUseRegisterReturn
+function useRegister(client?: AuthClient | undefined): IUseRegisterReturn
 
-function useResetPassword(client: AuthClient): IUseResetPasswordReturn
+function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordReturn
 
-function useSession(client: AuthClient): IUseSessionReturn
+function useSession(client?: AuthClient | undefined): IUseSessionReturn
 
-function useVerifyEmail(client: AuthClient): IUseVerifyEmailReturn
+function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn
 ```

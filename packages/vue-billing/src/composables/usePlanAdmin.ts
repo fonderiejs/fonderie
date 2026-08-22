@@ -1,5 +1,6 @@
 import type { BillingClient, ICreatePlanInput, IUpdatePlanInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
 // Action-only, like useUpdateRole/useWorkspaceProfile — pair with usePlans()
@@ -9,7 +10,8 @@ import { ref } from 'vue';
 // createPlan/updatePlan/deletePlan with requireAuth or an admin token — the
 // server trusts the caller to authorize access itself. Gate the UI that
 // calls this composable behind your own admin check before shipping it.
-export function usePlanAdmin(client: BillingClient) {
+export function usePlanAdmin(client?: BillingClient) {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePlanAdmin');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function usePlanAdmin(client: BillingClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.createPlan(input);
+			const { result } = await billing.createPlan(input);
 			return result.plan;
 		} catch (err) {
 			const apiError =
@@ -33,7 +35,7 @@ export function usePlanAdmin(client: BillingClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.updatePlan(planId, input);
+			const { result } = await billing.updatePlan(planId, input);
 			return result.plan;
 		} catch (err) {
 			const apiError =
@@ -49,7 +51,7 @@ export function usePlanAdmin(client: BillingClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			await client.deletePlan(planId);
+			await billing.deletePlan(planId);
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);

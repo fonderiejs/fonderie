@@ -6,13 +6,13 @@
 
 ```ts
 interface ICustomerDetailScreenProps {
-    client: CustomersClient;
+    client?: CustomersClient;
     customerId: string;
     onNavigateToList?: () => void;
 }
 
 interface ICustomersListScreenProps {
-    client: CustomersClient;
+    client?: CustomersClient;
     onSelectCustomer?: (customerId: string) => void;
 }
 

@@ -6,12 +6,12 @@
 
 ```ts
 interface IInviteMembersScreenProps {
-    client: WorkspacesClient;
+    client?: WorkspacesClient;
     onNavigateToMembers?: () => void;
 }
 
 interface ITeamMembersScreenProps {
-    client: WorkspacesClient;
+    client?: WorkspacesClient;
     currentUserId: string;
     onNavigateToInvite?: () => void;
 }

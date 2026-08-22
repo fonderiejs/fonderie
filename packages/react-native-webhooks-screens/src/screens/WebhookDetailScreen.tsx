@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export interface IWebhookDetailScreenProps {
-	client: WebhooksClient;
+	client?: WebhooksClient;
 	endpointId: string;
 	onNavigateToList?: () => void;
 }

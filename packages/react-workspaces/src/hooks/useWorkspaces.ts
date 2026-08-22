@@ -1,5 +1,6 @@
 import type { IWorkspaceDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseWorkspacesReturn {
@@ -9,7 +10,9 @@ export interface IUseWorkspacesReturn {
 	refresh: () => Promise<void>;
 }
 
-export function useWorkspaces(client: WorkspacesClient): IUseWorkspacesReturn {
+export function useWorkspaces(client?: WorkspacesClient): IUseWorkspacesReturn {
+	// Named `resolved` (not `workspaces`) to avoid shadowing the list state below.
+	const resolved = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaces');
 	const [workspaces, setWorkspaces] = useState<IWorkspaceDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -18,7 +21,7 @@ export function useWorkspaces(client: WorkspacesClient): IUseWorkspacesReturn {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listWorkspaces();
+			const { result } = await resolved.listWorkspaces();
 			setWorkspaces(result.workspaces);
 		} catch (err) {
 			const apiError =
@@ -27,7 +30,7 @@ export function useWorkspaces(client: WorkspacesClient): IUseWorkspacesReturn {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [resolved]);
 
 	useEffect(() => {
 		void refresh();

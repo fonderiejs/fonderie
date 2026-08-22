@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export interface IInviteMembersScreenProps {
-	client: WorkspacesClient;
+	client?: WorkspacesClient;
 	onNavigateToMembers?: () => void;
 }
 

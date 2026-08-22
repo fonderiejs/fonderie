@@ -1,8 +1,10 @@
 import type { AuthClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useForgotPassword(client: AuthClient) {
+export function useForgotPassword(client?: AuthClient) {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useForgotPassword');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 	const sent = ref(false);
@@ -11,7 +13,7 @@ export function useForgotPassword(client: AuthClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			await client.forgotPassword(email);
+			await auth.forgotPassword(email);
 			sent.value = true;
 		} catch (err) {
 			const apiError =

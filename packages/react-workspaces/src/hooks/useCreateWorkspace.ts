@@ -1,5 +1,6 @@
 import type { ICreateWorkspaceInput, IWorkspaceDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseCreateWorkspaceReturn {
@@ -8,7 +9,8 @@ export interface IUseCreateWorkspaceReturn {
 	error: FonderieApiError | null;
 }
 
-export function useCreateWorkspace(client: WorkspacesClient): IUseCreateWorkspaceReturn {
+export function useCreateWorkspace(client?: WorkspacesClient): IUseCreateWorkspaceReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useCreateWorkspace');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function useCreateWorkspace(client: WorkspacesClient): IUseCreateWorkspac
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.createWorkspace(input);
+				const { result } = await workspaces.createWorkspace(input);
 				return result.workspace;
 			} catch (err) {
 				const apiError =
@@ -28,7 +30,7 @@ export function useCreateWorkspace(client: WorkspacesClient): IUseCreateWorkspac
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[workspaces],
 	);
 
 	return { createWorkspace, isLoading, error };

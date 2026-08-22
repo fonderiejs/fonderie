@@ -1,10 +1,6 @@
-import type {
-	CustomersClient,
-	ICreateCustomerInput,
-	ICustomerDTO,
-	IListCustomersInput,
-} from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { ICreateCustomerInput, ICustomerDTO, IListCustomersInput } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export interface IUseCustomersReturn {
@@ -18,10 +14,20 @@ export interface IUseCustomersReturn {
 	unblacklistCustomer: (customerId: string) => Promise<void>;
 }
 
+export function useCustomers(params?: IListCustomersInput): IUseCustomersReturn;
 export function useCustomers(
-	client: CustomersClient,
-	rawParams: IListCustomersInput = {},
+	client: CustomersClient | undefined,
+	params?: IListCustomersInput,
+): IUseCustomersReturn;
+export function useCustomers(
+	clientOrParams?: CustomersClient | IListCustomersInput,
+	maybeParams?: IListCustomersInput,
 ): IUseCustomersReturn {
+	const firstIsClient = clientOrParams === undefined || clientOrParams instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrParams as CustomersClient | undefined) : undefined;
+	const rawParams = (firstIsClient ? maybeParams : clientOrParams) ?? {};
+	// Named `client` (not `customers`) to avoid shadowing the list state below.
+	const client = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomers');
 	// Memoized by value (not reference) — `rawParams` defaults to a fresh {}
 	// on every render when the caller omits it, which would otherwise refetch
 	// on every render regardless of the dependency list below.

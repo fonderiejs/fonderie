@@ -1,5 +1,6 @@
-import type { CustomerLabelType, CustomersClient, ICustomerLabelDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { CustomerLabelType, ICustomerLabelDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseCustomerLabelsReturn {
@@ -14,10 +15,19 @@ export interface IUseCustomerLabelsReturn {
 // CustomersClient.listLabels) — not tied to a single customer. New labels
 // are created implicitly via addEmail/addPhone/addAddress's `label` string;
 // this hook is for browsing/pruning the vocabulary directly.
+export function useCustomerLabels(type: CustomerLabelType): IUseCustomerLabelsReturn;
 export function useCustomerLabels(
-	client: CustomersClient,
+	client: CustomersClient | undefined,
 	type: CustomerLabelType,
+): IUseCustomerLabelsReturn;
+export function useCustomerLabels(
+	clientOrType: CustomersClient | CustomerLabelType | undefined,
+	maybeType?: CustomerLabelType,
 ): IUseCustomerLabelsReturn {
+	const firstIsClient = clientOrType === undefined || clientOrType instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrType as CustomersClient | undefined) : undefined;
+	const type = firstIsClient ? (maybeType as CustomerLabelType) : clientOrType;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerLabels');
 	const [labels, setLabels] = useState<ICustomerLabelDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -26,7 +36,7 @@ export function useCustomerLabels(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listLabels(type);
+			const { result } = await customers.listLabels(type);
 			setLabels(result.labels);
 		} catch (err) {
 			const apiError =
@@ -35,13 +45,13 @@ export function useCustomerLabels(
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, type]);
+	}, [customers, type]);
 
 	const removeLabel = useCallback(
 		async (labelId: string) => {
 			setError(null);
 			try {
-				await client.removeLabel(labelId);
+				await customers.removeLabel(labelId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -50,7 +60,7 @@ export function useCustomerLabels(
 				throw apiError;
 			}
 		},
-		[client, refresh],
+		[customers, refresh],
 	);
 
 	useEffect(() => {

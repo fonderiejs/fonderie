@@ -1,5 +1,6 @@
-import type { CustomersClient, IAddPhoneInput, ICustomerPhoneDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { IAddPhoneInput, ICustomerPhoneDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseCustomerPhonesReturn {
@@ -13,10 +14,19 @@ export interface IUseCustomerPhonesReturn {
 	removePhone: (phoneId: string) => Promise<void>;
 }
 
+export function useCustomerPhones(customerId: string): IUseCustomerPhonesReturn;
 export function useCustomerPhones(
-	client: CustomersClient,
+	client: CustomersClient | undefined,
 	customerId: string,
+): IUseCustomerPhonesReturn;
+export function useCustomerPhones(
+	clientOrId: CustomersClient | string | undefined,
+	maybeId?: string,
 ): IUseCustomerPhonesReturn {
+	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerPhones');
 	const [phones, setPhones] = useState<ICustomerPhoneDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -29,7 +39,7 @@ export function useCustomerPhones(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listPhones(customerId);
+			const { result } = await customers.listPhones(customerId);
 			setPhones(result.phones);
 		} catch (err) {
 			const apiError =
@@ -38,13 +48,13 @@ export function useCustomerPhones(
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, customerId]);
+	}, [customers, customerId]);
 
 	const addPhone = useCallback(
 		async (input: IAddPhoneInput) => {
 			setError(null);
 			try {
-				const { result } = await client.addPhone(customerId, input);
+				const { result } = await customers.addPhone(customerId, input);
 				await refresh();
 				return result.phone;
 			} catch (err) {
@@ -54,14 +64,14 @@ export function useCustomerPhones(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const updatePhoneLabel = useCallback(
 		async (phoneId: string, label: string) => {
 			setError(null);
 			try {
-				await client.updatePhoneLabel(customerId, phoneId, label);
+				await customers.updatePhoneLabel(customerId, phoneId, label);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -70,14 +80,14 @@ export function useCustomerPhones(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const setPrimaryPhone = useCallback(
 		async (phoneId: string) => {
 			setError(null);
 			try {
-				await client.setPrimaryPhone(customerId, phoneId);
+				await customers.setPrimaryPhone(customerId, phoneId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -86,14 +96,14 @@ export function useCustomerPhones(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const removePhone = useCallback(
 		async (phoneId: string) => {
 			setError(null);
 			try {
-				await client.removePhone(customerId, phoneId);
+				await customers.removePhone(customerId, phoneId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -102,7 +112,7 @@ export function useCustomerPhones(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	useEffect(() => {

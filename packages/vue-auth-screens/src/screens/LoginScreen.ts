@@ -7,7 +7,7 @@ import { styles } from '../styles';
 export const LoginScreen = defineComponent({
 	name: 'FonderieLoginScreen',
 	props: {
-		client: { type: Object as PropType<AuthClient>, required: true },
+		client: { type: Object as PropType<AuthClient>, required: false },
 	},
 	emits: {
 		'login-success': (_result: ILoginResult) => true,

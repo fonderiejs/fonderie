@@ -4,9 +4,11 @@ import type {
 	WorkspacesClient,
 } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useWorkspaceSettings(client: WorkspacesClient) {
+export function useWorkspaceSettings(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceSettings');
 	const settings = ref<IWorkspaceSettingsDTO | null>(null);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -15,7 +17,7 @@ export function useWorkspaceSettings(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.getSettings();
+			const { result } = await workspaces.getSettings();
 			settings.value = result.settings;
 		} catch (err) {
 			const apiError =
@@ -29,7 +31,7 @@ export function useWorkspaceSettings(client: WorkspacesClient) {
 	async function updateSettings(input: IUpdateSettingsInput) {
 		error.value = null;
 		try {
-			const { result } = await client.updateSettings(input);
+			const { result } = await workspaces.updateSettings(input);
 			settings.value = result.settings;
 		} catch (err) {
 			const apiError =

@@ -1,8 +1,10 @@
 import type { IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useUpdateRole(client: WorkspacesClient) {
+export function useUpdateRole(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useUpdateRole');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -10,7 +12,7 @@ export function useUpdateRole(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.updateRole(roleId, input);
+			const { result } = await workspaces.updateRole(roleId, input);
 			return result.role;
 		} catch (err) {
 			const apiError =

@@ -1,5 +1,6 @@
 import type { IMemberDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseMembersReturn {
@@ -9,7 +10,8 @@ export interface IUseMembersReturn {
 	refresh: () => Promise<void>;
 }
 
-export function useMembers(client: WorkspacesClient): IUseMembersReturn {
+export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useMembers');
 	const [members, setMembers] = useState<IMemberDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -18,7 +20,7 @@ export function useMembers(client: WorkspacesClient): IUseMembersReturn {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listMembers();
+			const { result } = await workspaces.listMembers();
 			setMembers(result.members);
 		} catch (err) {
 			const apiError =
@@ -27,7 +29,7 @@ export function useMembers(client: WorkspacesClient): IUseMembersReturn {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [workspaces]);
 
 	useEffect(() => {
 		void refresh();

@@ -229,21 +229,21 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useCustomer(client: CustomersClient, customerId: string, depth?: 1 | 2): { customer: Ref<{ emails: { id: string; email: string; label: string; isPrimary: boolean; createdAt: string; }[]; ... 19 more ...; updatedAt: string; } | { ...; } | null, ICustomerDetailDTO | ... 3 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; updateCustomer: (input: ICreateCustomerInput) => Promise<...>; }
+function useCustomer(customerId: string, depth?: 1 | 2 | undefined): IUseCustomerReturn
 
-function useCustomerAddresses(client: CustomersClient, customerId: string): { addresses: Ref<{ id: string; label: string; isPrimary: boolean; address: { countryIso: string; subdivision1Iso: string; subdivision2Iso: string; zipPostalCode: string; unit: string; line1: string; line2: string; }; }[], ICustomerAddressDTO[] | { ...; }[]>; ... 6 more ...; removeAddress: (addrId: string) => Promise<...>; }
+function useCustomerAddresses(customerId: string): IUseCustomerAddressesReturn
 
-function useCustomerEmails(client: CustomersClient, customerId: string): { emails: Ref<{ id: string; email: string; label: string; isPrimary: boolean; createdAt: string; }[], ICustomerEmailDTO[] | { ...; }[]>; ... 6 more ...; removeEmail: (emailId: string) => Promise<...>; }
+function useCustomerEmails(customerId: string): IUseCustomerEmailsReturn
 
-function useCustomerLabels(client: CustomersClient, type: CustomerLabelType): { labels: Ref<{ id: string; type: CustomerLabelType; value: string; createdAt: string; }[], ICustomerLabelDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; removeLabel: (labelId: string) => Promise<...>; }
+function useCustomerLabels(type: CustomerLabelType): IUseCustomerLabelsReturn
 
-function useCustomerNotes(client: CustomersClient, customerId: string): { notes: Ref<{ id: string; authorId: string; body: string; createdAt: string; updatedAt: string; }[], ICustomerNoteDTO[] | { ...; }[]>; ... 5 more ...; deleteNote: (noteId: string) => Promise<...>; }
+function useCustomerNotes(customerId: string): IUseCustomerNotesReturn
 
-function useCustomerPhones(client: CustomersClient, customerId: string): { phones: Ref<{ id: string; phone: string; label: string; isPrimary: boolean; createdAt: string; }[], ICustomerPhoneDTO[] | { ...; }[]>; ... 6 more ...; removePhone: (phoneId: string) => Promise<...>; }
+function useCustomerPhones(customerId: string): IUseCustomerPhonesReturn
 
-function useCustomerRelationships(client: CustomersClient, customerId: string): { relationships: Ref<{ id: string; relatedId: string; relationship: string; isPrimary: boolean; createdAt: string; }[], ICustomerRelationshipDTO[] | { ...; }[]>; ... 5 more ...; removeRelationship: (relatedId: string) => Promise<...>; }
+function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn
 
-function useCustomers(client: CustomersClient, params?: IListCustomersInput): { customers: Ref<{ id: string; type: string; sex: CustomerSex; firstName: string; ... 10 more ...; updatedAt: string; }[], ICustomerDTO[] | { ...; }[]>; ... 6 more ...; unblacklistCustomer: (customerId: string) => Promise<...>; }
+function useCustomers(params?: IListCustomersInput | undefined): IUseCustomersReturn
 
-function useCustomerTags(client: CustomersClient, customerId: string): { tags: Ref<string[], string[]>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; refresh: () => Promise<...>; addTag: (tag: string) => Promise<...>; removeTag: (tag: string) => Promise<...>; }
+function useCustomerTags(customerId: string): IUseCustomerTagsReturn
 ```

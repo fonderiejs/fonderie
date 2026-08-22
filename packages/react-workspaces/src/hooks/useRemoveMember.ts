@@ -1,5 +1,6 @@
 import type { WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseRemoveMemberReturn {
@@ -8,7 +9,8 @@ export interface IUseRemoveMemberReturn {
 	error: FonderieApiError | null;
 }
 
-export function useRemoveMember(client: WorkspacesClient): IUseRemoveMemberReturn {
+export function useRemoveMember(client?: WorkspacesClient): IUseRemoveMemberReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRemoveMember');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function useRemoveMember(client: WorkspacesClient): IUseRemoveMemberRetur
 			setIsLoading(true);
 			setError(null);
 			try {
-				await client.removeMember(userId);
+				await workspaces.removeMember(userId);
 			} catch (err) {
 				const apiError =
 					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
@@ -27,7 +29,7 @@ export function useRemoveMember(client: WorkspacesClient): IUseRemoveMemberRetur
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[workspaces],
 	);
 
 	return { removeMember, isLoading, error };

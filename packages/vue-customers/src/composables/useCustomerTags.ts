@@ -1,8 +1,31 @@
-import type { CustomersClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
+import type { Ref } from 'vue';
 import { ref } from 'vue';
 
-export function useCustomerTags(client: CustomersClient, customerId: string) {
+export interface IUseCustomerTagsReturn {
+	tags: Ref<string[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<FonderieApiError | null>;
+	refresh: () => Promise<void>;
+	addTag: (tag: string) => Promise<void>;
+	removeTag: (tag: string) => Promise<void>;
+}
+
+export function useCustomerTags(customerId: string): IUseCustomerTagsReturn;
+export function useCustomerTags(
+	client: CustomersClient | undefined,
+	customerId: string,
+): IUseCustomerTagsReturn;
+export function useCustomerTags(
+	clientOrCustomerId: CustomersClient | string | undefined,
+	maybeCustomerId?: string,
+): IUseCustomerTagsReturn {
+	const firstIsClient =
+		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeCustomerId as string) : clientOrCustomerId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerTags');
 	const tags = ref<string[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -15,7 +38,7 @@ export function useCustomerTags(client: CustomersClient, customerId: string) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listTags(customerId);
+			const { result } = await customers.listTags(customerId);
 			tags.value = result.tags;
 		} catch (err) {
 			const apiError =
@@ -29,7 +52,7 @@ export function useCustomerTags(client: CustomersClient, customerId: string) {
 	async function addTag(tag: string) {
 		error.value = null;
 		try {
-			await client.addTag(customerId, tag);
+			await customers.addTag(customerId, tag);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -42,7 +65,7 @@ export function useCustomerTags(client: CustomersClient, customerId: string) {
 	async function removeTag(tag: string) {
 		error.value = null;
 		try {
-			await client.removeTag(customerId, tag);
+			await customers.removeTag(customerId, tag);
 			await refresh();
 		} catch (err) {
 			const apiError =

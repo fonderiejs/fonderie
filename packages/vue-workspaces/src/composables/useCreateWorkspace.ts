@@ -1,8 +1,10 @@
 import type { ICreateWorkspaceInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useCreateWorkspace(client: WorkspacesClient) {
+export function useCreateWorkspace(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useCreateWorkspace');
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -10,7 +12,7 @@ export function useCreateWorkspace(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.createWorkspace(input);
+			const { result } = await workspaces.createWorkspace(input);
 			return result.workspace;
 		} catch (err) {
 			const apiError =

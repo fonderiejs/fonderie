@@ -1,5 +1,6 @@
 import type { BillingClient, IRecordUsageInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseRecordUsageReturn {
@@ -8,7 +9,8 @@ export interface IUseRecordUsageReturn {
 	error: FonderieApiError | null;
 }
 
-export function useRecordUsage(client: BillingClient): IUseRecordUsageReturn {
+export function useRecordUsage(client?: BillingClient): IUseRecordUsageReturn {
+	const billing = useFonderieSubClient(client, (c) => c.billing, 'useRecordUsage');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function useRecordUsage(client: BillingClient): IUseRecordUsageReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				await client.recordUsage(input);
+				await billing.recordUsage(input);
 			} catch (err) {
 				const apiError =
 					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
@@ -27,7 +29,7 @@ export function useRecordUsage(client: BillingClient): IUseRecordUsageReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[billing],
 	);
 
 	return { recordUsage, isLoading, error };

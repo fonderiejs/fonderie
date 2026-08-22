@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react';
 import { useState } from 'react';
 
 export interface IPricingScreenProps {
-	client: BillingClient;
+	client?: BillingClient;
 	onCheckoutStart?: (url: string) => void;
 }
 

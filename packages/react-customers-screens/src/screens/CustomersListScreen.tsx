@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react';
 import { useState } from 'react';
 
 export interface ICustomersListScreenProps {
-	client: CustomersClient;
+	client?: CustomersClient;
 	onSelectCustomer?: (customerId: string) => void;
 }
 

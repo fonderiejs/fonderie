@@ -1,5 +1,6 @@
-import type { CustomersClient, ICustomerNoteDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { ICustomerNoteDTO } from '@fonderie/client';
+import { CustomersClient, FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseCustomerNotesReturn {
@@ -12,10 +13,19 @@ export interface IUseCustomerNotesReturn {
 	deleteNote: (noteId: string) => Promise<void>;
 }
 
+export function useCustomerNotes(customerId: string): IUseCustomerNotesReturn;
 export function useCustomerNotes(
-	client: CustomersClient,
+	client: CustomersClient | undefined,
 	customerId: string,
+): IUseCustomerNotesReturn;
+export function useCustomerNotes(
+	clientOrId: CustomersClient | string | undefined,
+	maybeId?: string,
 ): IUseCustomerNotesReturn {
+	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
+	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
+	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerNotes');
 	const [notes, setNotes] = useState<ICustomerNoteDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -28,7 +38,7 @@ export function useCustomerNotes(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.listNotes(customerId);
+			const { result } = await customers.listNotes(customerId);
 			setNotes(result.notes);
 		} catch (err) {
 			const apiError =
@@ -37,13 +47,13 @@ export function useCustomerNotes(
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client, customerId]);
+	}, [customers, customerId]);
 
 	const createNote = useCallback(
 		async (body: string) => {
 			setError(null);
 			try {
-				const { result } = await client.createNote(customerId, body);
+				const { result } = await customers.createNote(customerId, body);
 				await refresh();
 				return result.note;
 			} catch (err) {
@@ -53,14 +63,14 @@ export function useCustomerNotes(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const updateNote = useCallback(
 		async (noteId: string, body: string) => {
 			setError(null);
 			try {
-				await client.updateNote(customerId, noteId, body);
+				await customers.updateNote(customerId, noteId, body);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -69,14 +79,14 @@ export function useCustomerNotes(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	const deleteNote = useCallback(
 		async (noteId: string) => {
 			setError(null);
 			try {
-				await client.deleteNote(customerId, noteId);
+				await customers.deleteNote(customerId, noteId);
 				await refresh();
 			} catch (err) {
 				const apiError =
@@ -85,7 +95,7 @@ export function useCustomerNotes(
 				throw apiError;
 			}
 		},
-		[client, customerId, refresh],
+		[customers, customerId, refresh],
 	);
 
 	useEffect(() => {

@@ -1,5 +1,6 @@
 import type { IRoleDTO, IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseUpdateRoleReturn {
@@ -8,7 +9,8 @@ export interface IUseUpdateRoleReturn {
 	error: FonderieApiError | null;
 }
 
-export function useUpdateRole(client: WorkspacesClient): IUseUpdateRoleReturn {
+export function useUpdateRole(client?: WorkspacesClient): IUseUpdateRoleReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useUpdateRole');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -17,7 +19,7 @@ export function useUpdateRole(client: WorkspacesClient): IUseUpdateRoleReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.updateRole(roleId, input);
+				const { result } = await workspaces.updateRole(roleId, input);
 				return result.role;
 			} catch (err) {
 				const apiError =
@@ -28,7 +30,7 @@ export function useUpdateRole(client: WorkspacesClient): IUseUpdateRoleReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[workspaces],
 	);
 
 	return { updateRole, isLoading, error };

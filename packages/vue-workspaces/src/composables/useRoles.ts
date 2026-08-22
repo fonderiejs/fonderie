@@ -1,8 +1,10 @@
 import type { ICreateRoleInput, IRoleDTO, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
 
-export function useRoles(client: WorkspacesClient) {
+export function useRoles(client?: WorkspacesClient) {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRoles');
 	const roles = ref<IRoleDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
@@ -11,7 +13,7 @@ export function useRoles(client: WorkspacesClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.listRoles();
+			const { result } = await workspaces.listRoles();
 			roles.value = result.roles;
 		} catch (err) {
 			const apiError =
@@ -25,7 +27,7 @@ export function useRoles(client: WorkspacesClient) {
 	async function createRole(input: ICreateRoleInput) {
 		error.value = null;
 		try {
-			const { result } = await client.createRole(input);
+			const { result } = await workspaces.createRole(input);
 			await refresh();
 			return result.role;
 		} catch (err) {
@@ -39,7 +41,7 @@ export function useRoles(client: WorkspacesClient) {
 	async function removeRole(roleId: string) {
 		error.value = null;
 		try {
-			await client.removeRole(roleId);
+			await workspaces.removeRole(roleId);
 			await refresh();
 		} catch (err) {
 			const apiError =

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 export interface IAuditLogScreenProps {
-	client: AuditClient;
+	client?: AuditClient;
 }
 
 export function AuditLogScreen({ client }: IAuditLogScreenProps) {

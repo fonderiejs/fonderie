@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export interface ICustomersListScreenProps {
-	client: CustomersClient;
+	client?: CustomersClient;
 	onSelectCustomer?: (customerId: string) => void;
 }
 

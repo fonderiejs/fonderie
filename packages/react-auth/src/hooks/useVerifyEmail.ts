@@ -1,5 +1,6 @@
 import type { AuthClient, IVerifyEmailResult } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseVerifyEmailReturn {
@@ -9,7 +10,8 @@ export interface IUseVerifyEmailReturn {
 	data: IVerifyEmailResult | null;
 }
 
-export function useVerifyEmail(client: AuthClient): IUseVerifyEmailReturn {
+export function useVerifyEmail(client?: AuthClient): IUseVerifyEmailReturn {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useVerifyEmail');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 	const [data, setData] = useState<IVerifyEmailResult | null>(null);
@@ -19,7 +21,7 @@ export function useVerifyEmail(client: AuthClient): IUseVerifyEmailReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await client.verifyEmail(pin);
+				const { result } = await auth.verifyEmail(pin);
 				setData(result);
 				return result;
 			} catch (err) {
@@ -31,7 +33,7 @@ export function useVerifyEmail(client: AuthClient): IUseVerifyEmailReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[auth],
 	);
 
 	return { verifyEmail, isLoading, error, data };

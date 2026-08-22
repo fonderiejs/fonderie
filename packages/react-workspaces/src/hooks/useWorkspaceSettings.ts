@@ -4,6 +4,7 @@ import type {
 	WorkspacesClient,
 } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface IUseWorkspaceSettingsReturn {
@@ -14,7 +15,8 @@ export interface IUseWorkspaceSettingsReturn {
 	updateSettings: (input: IUpdateSettingsInput) => Promise<void>;
 }
 
-export function useWorkspaceSettings(client: WorkspacesClient): IUseWorkspaceSettingsReturn {
+export function useWorkspaceSettings(client?: WorkspacesClient): IUseWorkspaceSettingsReturn {
+	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceSettings');
 	const [settings, setSettings] = useState<IWorkspaceSettingsDTO | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
@@ -23,7 +25,7 @@ export function useWorkspaceSettings(client: WorkspacesClient): IUseWorkspaceSet
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.getSettings();
+			const { result } = await workspaces.getSettings();
 			setSettings(result.settings);
 		} catch (err) {
 			const apiError =
@@ -32,13 +34,13 @@ export function useWorkspaceSettings(client: WorkspacesClient): IUseWorkspaceSet
 		} finally {
 			setIsLoading(false);
 		}
-	}, [client]);
+	}, [workspaces]);
 
 	const updateSettings = useCallback(
 		async (input: IUpdateSettingsInput) => {
 			setError(null);
 			try {
-				const { result } = await client.updateSettings(input);
+				const { result } = await workspaces.updateSettings(input);
 				setSettings(result.settings);
 			} catch (err) {
 				const apiError =
@@ -47,7 +49,7 @@ export function useWorkspaceSettings(client: WorkspacesClient): IUseWorkspaceSet
 				throw apiError;
 			}
 		},
-		[client],
+		[workspaces],
 	);
 
 	useEffect(() => {

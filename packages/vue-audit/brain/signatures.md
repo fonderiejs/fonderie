@@ -38,5 +38,5 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useAuditEvents(client: AuditClient, filters?: IListAuditEventsInput): { events: Ref<{ id: string; type: string; actorId: string | null; requestId: string | null; payload: Record<...>; createdAt: string; }[], IAuditEventDTO[] | { ...; }[]>; ... 5 more ...; loadMore: () => Promise<...>; }
+function useAuditEvents(filters?: IListAuditEventsInput | undefined): IUseAuditEventsReturn
 ```

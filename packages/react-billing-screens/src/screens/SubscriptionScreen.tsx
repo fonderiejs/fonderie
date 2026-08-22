@@ -3,7 +3,7 @@ import { useBillingPortal, useSubscription } from '@fonderie/react-billing';
 import type { CSSProperties } from 'react';
 
 export interface ISubscriptionScreenProps {
-	client: BillingClient;
+	client?: BillingClient;
 	onManageBilling?: (url: string) => void;
 	onNavigateToPricing?: () => void;
 }

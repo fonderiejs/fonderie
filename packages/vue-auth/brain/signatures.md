@@ -92,17 +92,17 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useForgotPassword(client: AuthClient): { forgotPassword: (email: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; sent: Ref<...>; }
+function useForgotPassword(client?: AuthClient | undefined): { forgotPassword: (email: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; sent: Ref<...>; }
 
-function useLogin(client: AuthClient): { login: (input: ILoginInput) => Promise<ILoginResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
+function useLogin(client?: AuthClient | undefined): { login: (input: ILoginInput) => Promise<ILoginResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
 
-function useLogout(client: AuthClient): { logout: () => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+function useLogout(client?: AuthClient | undefined): { logout: () => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
 
-function useRegister(client: AuthClient): { register: (input: IRegisterInput) => Promise<IRegisterResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
+function useRegister(client?: AuthClient | undefined): { register: (input: IRegisterInput) => Promise<IRegisterResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
 
-function useResetPassword(client: AuthClient): { resetPassword: (input: IResetPasswordInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; done: Ref<...>; }
+function useResetPassword(client?: AuthClient | undefined): { resetPassword: (input: IResetPasswordInput) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; done: Ref<...>; }
 
-function useSession(client: AuthClient): { user: Ref<{ id: string; email: string; firstName: string; lastName: string; phone: string; profileImageUrl: string; isActive: boolean; lastLogin: string; ... 8 more ...; updatedAt: string; } | null, IUserDTO | ... 1 more ... | null>; isLoading: Ref<...>; isAuthenticated: Ref<...>; refresh: () => Promise<...>; logout: () => Promise<...>; }
+function useSession(client?: AuthClient | undefined): { user: Ref<{ id: string; email: string; firstName: string; lastName: string; phone: string; profileImageUrl: string; isActive: boolean; lastLogin: string; ... 8 more ...; updatedAt: string; } | null, IUserDTO | ... 1 more ... | null>; isLoading: Ref<...>; isAuthenticated: Ref<...>; refresh: () => Promise<...>; logout: () => Promise<...>; }
 
-function useVerifyEmail(client: AuthClient): { verifyEmail: (pin: string) => Promise<IVerifyEmailResult>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; data: Ref<...>; }
+function useVerifyEmail(client?: AuthClient | undefined): { verifyEmail: (pin: string) => Promise<IVerifyEmailResult>; isLoading: Ref<boolean, boolean>; error: Ref<...>; data: Ref<...>; }
 ```

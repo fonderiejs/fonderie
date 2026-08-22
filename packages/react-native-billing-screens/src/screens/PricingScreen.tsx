@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 export interface IPricingScreenProps {
-	client: BillingClient;
+	client?: BillingClient;
 	onCheckoutStart?: (url: string) => void;
 }
 

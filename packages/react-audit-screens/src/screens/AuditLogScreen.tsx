@@ -4,7 +4,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
 
 export interface IAuditLogScreenProps {
-	client: AuditClient;
+	client?: AuditClient;
 }
 
 export function AuditLogScreen({ client }: IAuditLogScreenProps) {

@@ -1,0 +1,9 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"@react-native-async-storage/async-storage": ["./src/__tests__/asyncstorage-stub.ts"]
+		}
+	}
+}

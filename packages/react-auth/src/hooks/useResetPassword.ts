@@ -1,5 +1,6 @@
 import type { AuthClient, IResetPasswordInput } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
 export interface IUseResetPasswordReturn {
@@ -9,7 +10,8 @@ export interface IUseResetPasswordReturn {
 	done: boolean;
 }
 
-export function useResetPassword(client: AuthClient): IUseResetPasswordReturn {
+export function useResetPassword(client?: AuthClient): IUseResetPasswordReturn {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useResetPassword');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 	const [done, setDone] = useState(false);
@@ -19,7 +21,7 @@ export function useResetPassword(client: AuthClient): IUseResetPasswordReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				await client.resetPassword(input);
+				await auth.resetPassword(input);
 				setDone(true);
 			} catch (err) {
 				const apiError =
@@ -30,7 +32,7 @@ export function useResetPassword(client: AuthClient): IUseResetPasswordReturn {
 				setIsLoading(false);
 			}
 		},
-		[client],
+		[auth],
 	);
 
 	return { resetPassword, isLoading, error, done };

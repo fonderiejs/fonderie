@@ -33,7 +33,9 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.8",
     "@changesets/cli": "^3.0.0",
-    "turbo": "^2.10.10"
+    "turbo": "^2.10.10",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "license": "MIT",
   "packageManager": "npm@11.16.0"

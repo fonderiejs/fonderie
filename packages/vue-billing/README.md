@@ -13,6 +13,24 @@ else. Bring your own UI.
 npm install @fonderie/vue-billing
 ```
 
+## One client at the root (recommended)
+
+Install the plugin from [`@fonderie/vue`](../vue) once (or call
+`provideFonderie(client)` in a root `setup()`) and every composable resolves
+the client by injection — no client argument at call sites:
+
+```ts
+import { FonderiePlugin } from "@fonderie/vue";
+
+createApp(App).use(FonderiePlugin, client).mount("#app");
+
+// in any component setup():
+const { ...state } = usePlans();
+```
+
+Passing a client explicitly (as below) still works everywhere and takes
+precedence over injection — handy in tests and multi-client apps.
+
 ## Use
 
 ```vue

@@ -4,7 +4,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
 
 export interface ILoginScreenProps {
-	client: AuthClient;
+	client?: AuthClient;
 	onLoginSuccess?: (result: ILoginResult) => void;
 	onNavigateToRegister?: () => void;
 	onNavigateToForgotPassword?: () => void;

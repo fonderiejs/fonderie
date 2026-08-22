@@ -7,7 +7,7 @@ import { styles } from '../styles';
 export const InviteMembersScreen = defineComponent({
 	name: 'FonderieInviteMembersScreen',
 	props: {
-		client: { type: Object as PropType<WorkspacesClient>, required: true },
+		client: { type: Object as PropType<WorkspacesClient>, required: false },
 	},
 	emits: {
 		'navigate-members': () => true,
