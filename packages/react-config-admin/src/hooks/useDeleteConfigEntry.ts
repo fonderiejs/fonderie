@@ -8,6 +8,7 @@ export interface IUseDeleteConfigEntryReturn {
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useConfigEntries().removeEntry` instead — it refreshes the list after deleting. */
 export function useDeleteConfigEntry(client: ConfigAdminClient): IUseDeleteConfigEntryReturn {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);

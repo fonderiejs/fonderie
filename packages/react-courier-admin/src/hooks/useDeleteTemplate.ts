@@ -8,6 +8,7 @@ export interface IUseDeleteTemplateReturn {
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useTemplates().removeTemplate` instead — it refreshes the list after deleting. */
 export function useDeleteTemplate(client: CourierAdminClient): IUseDeleteTemplateReturn {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);

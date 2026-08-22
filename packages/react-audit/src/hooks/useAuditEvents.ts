@@ -9,7 +9,7 @@ export interface IUseAuditEventsReturn {
 	isLoadingMore: boolean;
 	error: FonderieApiError | null;
 	hasMore: boolean;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	loadMore: () => Promise<void>;
 }
 
@@ -39,22 +39,26 @@ export function useAuditEvents(
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await audit.listEvents(filters);
-			setEvents(result.events);
-			setCursor(result.nextCursor);
-			setHasMore(result.nextCursor !== null);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [audit, filters]);
+	const refresh = useCallback(
+		async (opts?: { force?: boolean }) => {
+			setIsLoading(true);
+			setError(null);
+			try {
+				// Refresh resets the cursor to the first page — bust only that fetch.
+				const { result } = await audit.listEvents(filters, { bust: opts?.force });
+				setEvents(result.events);
+				setCursor(result.nextCursor);
+				setHasMore(result.nextCursor !== null);
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[audit, filters],
+	);
 
 	const loadMore = useCallback(async () => {
 		if (!cursor || isLoadingMore) return;

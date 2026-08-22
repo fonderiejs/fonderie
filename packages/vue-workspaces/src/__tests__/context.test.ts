@@ -106,3 +106,31 @@ test('throws a composable-named error with no plugin and no argument', async () 
 	const memberRoles = await runInSetup(() => useMemberRoles('user-1'));
 	assert.match(String(memberRoles.error), /useMemberRoles: no client/);
 });
+
+
+test('refresh({force:true}) passes bust and removeMember folds into useMembers', async () => {
+	const log: unknown[] = [];
+	const fake = {
+		listMembers: async (opts?: { bust?: boolean }) => {
+			log.push(['list', opts?.bust ?? false]);
+			return { reason: 'OK', explanation: '', result: { members: [] } };
+		},
+		removeMember: async (userId: string) => {
+			log.push(['remove', userId]);
+			return { reason: 'OK', explanation: '', result: undefined };
+		},
+	};
+	const { useMembers } = await import('../composables');
+	const { value: captured } = await runInSetup(() =>
+		useMembers(fake as unknown as WorkspacesClient),
+	);
+	assert.ok(captured);
+	log.length = 0; // drop the setup-time initial fetch
+	await captured.refresh({ force: true });
+	await captured.removeMember('user-9');
+	assert.deepEqual(log, [
+		['list', true],
+		['remove', 'user-9'],
+		['list', false],
+	]);
+});

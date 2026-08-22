@@ -8,16 +8,16 @@
 new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listPlans(): Promise<IApiResponse<IPlanListResult>>
-  .getPlan(planId: string): Promise<IApiResponse<IPlanResult>>
+  .listPlans(opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanListResult>>
+  .getPlan(planId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanResult>>
   .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
   .updatePlan(planId: string, input: Partial<ICreatePlanInput>): Promise<IApiResponse<IPlanResult>>
   .deletePlan(planId: string): Promise<IApiResponse<undefined>>
-  .getSubscription(): Promise<IApiResponse<ISubscriptionResult>>
+  .getSubscription(opts?: IReadOptions | undefined): Promise<IApiResponse<ISubscriptionResult>>
   .createCheckoutSession(input: ICheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
-  .getUsage(metric: string): Promise<IApiResponse<IUsageResult>>
+  .getUsage(metric: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IUsageResult>>
 
 interface ICheckoutInput {
     plan: string;
@@ -119,14 +119,21 @@ interface IUsePlanReturn {
     plan: IPlanDTO | null;
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
 }
 
 interface IUsePlansReturn {
     plans: IPlanDTO[];
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    createPlan: (input: ICreatePlanInput) => Promise<IPlanDTO>;
+    updatePlan: (planId: string, input: IUpdatePlanInput) => Promise<IPlanDTO>;
+    deletePlan: (planId: string) => Promise<void>;
 }
 
 interface IUseRecordUsageReturn {
@@ -139,14 +146,19 @@ interface IUseSubscriptionReturn {
     subscription: ISubscriptionDTO | null;
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
 }
 
 interface IUseUsageReturn {
     total: number | null;
     isLoading: boolean;
     error: FonderieApiError | null;
-    refresh: () => Promise<void>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    recordUsage: (input: IRecordUsageInput) => Promise<void>;
 }
 
 function useBillingPortal(client?: BillingClient | undefined): IUseBillingPortalReturn

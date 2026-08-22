@@ -7,7 +7,7 @@ export interface IUseCustomerRelationshipsReturn {
 	relationships: ICustomerRelationshipDTO[];
 	isLoading: boolean;
 	error: FonderieApiError | null;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addRelationship: (input: IAddRelationshipInput) => Promise<ICustomerRelationshipDTO>;
 	setPrimaryRelationship: (relatedId: string) => Promise<void>;
 	removeRelationship: (relatedId: string) => Promise<void>;
@@ -30,7 +30,7 @@ export function useCustomerRelationships(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (opts?: { force?: boolean }) => {
 		if (!customerId) {
 			setIsLoading(false);
 			return;
@@ -38,7 +38,7 @@ export function useCustomerRelationships(
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await customers.listRelationships(customerId);
+			const { result } = await customers.listRelationships(customerId, { bust: opts?.force });
 			setRelationships(result.relationships);
 		} catch (err) {
 			const apiError =

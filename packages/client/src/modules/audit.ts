@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
-import type { IApiResponse, IAuditPageResult } from '../types';
+import type {
+	IReadOptions, IApiResponse, IAuditPageResult } from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ export class AuditClient {
 		this.workspaceId = workspaceId;
 	}
 
-	listEvents(input: IListAuditEventsInput = {}) {
+	listEvents(input: IListAuditEventsInput = {}, opts?: IReadOptions) {
 		const params = new URLSearchParams();
 		if (input.limit !== undefined) params.set('limit', String(input.limit));
 		if (input.type) params.set('type', input.type);
@@ -48,6 +49,7 @@ export class AuditClient {
 			path: `/audit${qs ? `?${qs}` : ''}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 }

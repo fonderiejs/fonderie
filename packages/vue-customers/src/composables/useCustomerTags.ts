@@ -7,7 +7,7 @@ export interface IUseCustomerTagsReturn {
 	tags: Ref<string[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addTag: (tag: string) => Promise<void>;
 	removeTag: (tag: string) => Promise<void>;
 }
@@ -30,7 +30,7 @@ export function useCustomerTags(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!customerId) {
 			isLoading.value = false;
 			return;
@@ -38,7 +38,7 @@ export function useCustomerTags(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listTags(customerId);
+			const { result } = await customers.listTags(customerId, { bust: opts?.force });
 			tags.value = result.tags;
 		} catch (err) {
 			const apiError =

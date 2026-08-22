@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IReadOptions,
 	IApiResponse,
 	ILoginResult,
 	IMfaRequiredResult,
@@ -202,16 +203,20 @@ export class AuthClient {
 			method: 'GET',
 			path: '/auth/send-verification',
 			token: this.tokens.get(),
+			// A send-action on a GET route: never serve it from the cache, or a
+			// resend inside the TTL would silently no-op.
+			cache: false,
 		});
 	}
 
 	// ── Protected + Verified ───────────────────────────────────────────────────
 
-	getUser() {
+	getUser(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IMeResult>>({
 			method: 'GET',
 			path: '/users',
 			token: this.tokens.get(),
+			bust: opts?.bust,
 		});
 	}
 

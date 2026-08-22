@@ -3,12 +3,14 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+/** @deprecated Use `useMembers().removeMember` instead — the list hook self-refreshes after the write. */
 export interface IUseRemoveMemberReturn {
 	removeMember: (userId: string) => Promise<void>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useMembers().removeMember` instead — the list hook self-refreshes after the write. */
 export function useRemoveMember(client?: WorkspacesClient): IUseRemoveMemberReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRemoveMember');
 	const [isLoading, setIsLoading] = useState(false);

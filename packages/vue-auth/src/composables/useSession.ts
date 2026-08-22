@@ -9,10 +9,10 @@ export function useSession(client?: AuthClient) {
 	const isLoading = ref(true);
 	const isAuthenticated = ref(false);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		try {
-			const { result } = await auth.getUser();
+			const { result } = await auth.getUser({ bust: opts?.force });
 			user.value = result.user;
 			isAuthenticated.value = true;
 		} catch {

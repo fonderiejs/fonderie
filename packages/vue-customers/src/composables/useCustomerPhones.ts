@@ -8,7 +8,7 @@ export interface IUseCustomerPhonesReturn {
 	phones: Ref<ICustomerPhoneDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	addPhone: (input: IAddPhoneInput) => Promise<ICustomerPhoneDTO>;
 	updatePhoneLabel: (phoneId: string, label: string) => Promise<void>;
 	setPrimaryPhone: (phoneId: string) => Promise<void>;
@@ -33,7 +33,7 @@ export function useCustomerPhones(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!customerId) {
 			isLoading.value = false;
 			return;
@@ -41,7 +41,7 @@ export function useCustomerPhones(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listPhones(customerId);
+			const { result } = await customers.listPhones(customerId, { bust: opts?.force });
 			phones.value = result.phones;
 		} catch (err) {
 			const apiError =

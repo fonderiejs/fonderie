@@ -8,7 +8,7 @@
 new AuditClient(http: HttpClient, tokens: TokenStore): AuditClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
-  .listEvents(input?: IListAuditEventsInput | undefined): Promise<IApiResponse<IAuditPageResult>>
+  .listEvents(input?: IListAuditEventsInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<IAuditPageResult>>
 
 interface IAuditEventDTO {
     id: string;

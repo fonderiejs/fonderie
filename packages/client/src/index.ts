@@ -118,6 +118,7 @@ export type {
 	IPlanResult,
 	IPortalUrlResult,
 	IRefreshResult,
+	IReadOptions,
 	IRegisterResult,
 	IResendVerificationResult,
 	IRevealSecretResult,

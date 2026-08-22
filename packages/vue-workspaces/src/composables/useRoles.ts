@@ -1,4 +1,4 @@
-import type { ICreateRoleInput, IRoleDTO, WorkspacesClient } from '@fonderie/client';
+import type { ICreateRoleInput, IRoleDTO, IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import { ref } from 'vue';
@@ -9,11 +9,11 @@ export function useRoles(client?: WorkspacesClient) {
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await workspaces.listRoles();
+			const { result } = await workspaces.listRoles({ bust: opts?.force });
 			roles.value = result.roles;
 		} catch (err) {
 			const apiError =
@@ -53,5 +53,19 @@ export function useRoles(client?: WorkspacesClient) {
 
 	void refresh();
 
-	return { roles, isLoading, error, refresh, createRole, removeRole };
+	async function updateRole(roleId: string, input: IUpdateRoleInput) {
+		error.value = null;
+		try {
+			const { result } = await workspaces.updateRole(roleId, input);
+			await refresh();
+			return result.role;
+		} catch (err) {
+			const apiError =
+				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+			error.value = apiError;
+			throw apiError;
+		}
+	}
+
+	return { roles, isLoading, error, refresh, updateRole, createRole, removeRole };
 }

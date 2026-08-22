@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IReadOptions,
 	CustomerLabelType,
 	CustomerSex,
 	CustomerType,
@@ -107,7 +108,7 @@ export class CustomersClient {
 
 	// ── Core customer CRUD ───────────────────────────────────────────────────────
 
-	listCustomers(input: IListCustomersInput = {}) {
+	listCustomers(input: IListCustomersInput = {}, opts?: IReadOptions) {
 		const params = new URLSearchParams();
 		if (input.search !== undefined) params.set('search', input.search);
 		if (input.blacklisted !== undefined) params.set('blacklisted', String(input.blacklisted));
@@ -120,6 +121,7 @@ export class CustomersClient {
 			path: qs ? `/customers?${qs}` : '/customers',
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -135,13 +137,14 @@ export class CustomersClient {
 
 	// depth defaults to 2 server-side; pass { depth: 1 } for one level of
 	// relationship expansion instead of the D2 (nested-relationships) shape.
-	getCustomer(customerId: string, input: IGetCustomerInput = {}) {
+	getCustomer(customerId: string, input: IGetCustomerInput = {}, opts?: IReadOptions) {
 		const qs = input.depth === 1 ? '?depth=1' : '';
 		return this.http.request<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>({
 			method: 'GET',
 			path: `/customers/${customerId}${qs}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -185,12 +188,13 @@ export class CustomersClient {
 
 	// ── Emails ───────────────────────────────────────────────────────────────────
 
-	listEmails(customerId: string) {
+	listEmails(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerEmailListResult>>({
 			method: 'GET',
 			path: `/customers/${customerId}/emails`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -236,12 +240,13 @@ export class CustomersClient {
 
 	// ── Phones ───────────────────────────────────────────────────────────────────
 
-	listPhones(customerId: string) {
+	listPhones(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerPhoneListResult>>({
 			method: 'GET',
 			path: `/customers/${customerId}/phones`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -286,12 +291,13 @@ export class CustomersClient {
 
 	// ── Addresses ────────────────────────────────────────────────────────────────
 
-	listAddresses(customerId: string) {
+	listAddresses(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerAddressListResult>>({
 			method: 'GET',
 			path: `/customers/${customerId}/addresses`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -336,12 +342,13 @@ export class CustomersClient {
 
 	// ── Notes ────────────────────────────────────────────────────────────────────
 
-	listNotes(customerId: string) {
+	listNotes(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerNoteListResult>>({
 			method: 'GET',
 			path: `/customers/${customerId}/notes`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -376,12 +383,13 @@ export class CustomersClient {
 
 	// ── Tags ─────────────────────────────────────────────────────────────────────
 
-	listTags(customerId: string) {
+	listTags(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerTagListResult>>({
 			method: 'GET',
 			path: `/customers/${customerId}/tags`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -406,12 +414,13 @@ export class CustomersClient {
 
 	// ── Relationships ────────────────────────────────────────────────────────────
 
-	listRelationships(customerId: string) {
+	listRelationships(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerRelationshipListResult>>({
 			method: 'GET',
 			path: `/customers/${customerId}/relationships`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -449,12 +458,13 @@ export class CustomersClient {
 	// string; these two methods are for managing the vocabulary directly
 	// (e.g. an admin screen listing/pruning unused labels).
 
-	listLabels(type: CustomerLabelType) {
+	listLabels(type: CustomerLabelType, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerLabelListResult>>({
 			method: 'GET',
 			path: `/customers/labels?type=${type}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 

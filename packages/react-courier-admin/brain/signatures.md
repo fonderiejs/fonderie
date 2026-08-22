@@ -95,6 +95,8 @@ interface IUseTemplatesReturn {
     isLoading: boolean;
     error: FonderieApiError | null;
     refresh: () => Promise<void>;
+    saveTemplate: (type: string, input: ISetTemplateInput, locale?: string | null) => Promise<ITemplateEntry>;
+    removeTemplate: (type: string, locale?: string | null) => Promise<void>;
 }
 
 function useDeleteTemplate(client: CourierAdminClient): IUseDeleteTemplateReturn

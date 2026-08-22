@@ -94,6 +94,8 @@ interface IUseConfigEntriesReturn {
     isLoading: boolean;
     error: FonderieApiError | null;
     refresh: () => Promise<void>;
+    saveEntry: (key: string, input: ISetConfigInput) => Promise<IConfigEntry>;
+    removeEntry: (key: string) => Promise<void>;
 }
 
 interface IUseConfigEntryReturn {
@@ -161,6 +163,8 @@ interface IUseSecretsReturn {
     isLoading: boolean;
     error: FonderieApiError | null;
     refresh: () => Promise<void>;
+    saveSecret: (key: string, input: ISetSecretInput) => Promise<ISecretEntry>;
+    removeSecret: (key: string) => Promise<void>;
 }
 
 function useConfigEntries(client: ConfigAdminClient, environment?: string | undefined): IUseConfigEntriesReturn

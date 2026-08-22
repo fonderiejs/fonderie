@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IReadOptions,
 	IApiResponse,
 	ITestWebhookResult,
 	IWebhookDeliveryListResult,
@@ -42,12 +43,13 @@ export class WebhooksClient {
 		this.workspaceId = workspaceId;
 	}
 
-	listEndpoints() {
+	listEndpoints(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWebhookEndpointListResult>>({
 			method: 'GET',
 			path: '/webhooks',
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -63,12 +65,13 @@ export class WebhooksClient {
 		});
 	}
 
-	getEndpoint(endpointId: string) {
+	getEndpoint(endpointId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWebhookEndpointDTO>>({
 			method: 'GET',
 			path: `/webhooks/${endpointId}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 
@@ -91,12 +94,13 @@ export class WebhooksClient {
 		});
 	}
 
-	listDeliveries(endpointId: string) {
+	listDeliveries(endpointId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWebhookDeliveryListResult>>({
 			method: 'GET',
 			path: `/webhooks/${endpointId}/deliveries`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 

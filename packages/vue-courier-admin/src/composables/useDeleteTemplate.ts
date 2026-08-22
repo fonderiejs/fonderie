@@ -2,6 +2,7 @@ import type { CourierAdminClient } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { ref } from 'vue';
 
+/** @deprecated Use useTemplates(client).removeTemplate — the list composable self-refreshes after the write. */
 export function useDeleteTemplate(client: CourierAdminClient) {
 	const isLoading = ref(false);
 	const error = ref<FonderieApiError | null>(null);

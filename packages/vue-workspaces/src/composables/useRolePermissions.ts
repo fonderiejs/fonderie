@@ -8,7 +8,7 @@ export interface IUseRolePermissionsReturn {
 	permissions: Ref<IRolePermission[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	// Writes the full permission set for the role, then re-reads it — the
 	// read/write pair lives in one composable so editors can pre-populate.
 	setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
@@ -31,11 +31,11 @@ export function useRolePermissions(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await workspaces.getRolePermissions(roleId);
+			const { result } = await workspaces.getRolePermissions(roleId, { bust: opts?.force });
 			permissions.value = result.permissions;
 		} catch (err) {
 			const apiError =

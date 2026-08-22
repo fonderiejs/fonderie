@@ -3,12 +3,14 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+/** @deprecated Use `useUsage(metric).recordUsage` instead — the usage hook self-refreshes after the write. */
 export interface IUseRecordUsageReturn {
 	recordUsage: (input: IRecordUsageInput) => Promise<void>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 }
 
+/** @deprecated Use `useUsage(metric).recordUsage` instead — the usage hook self-refreshes after the write. */
 export function useRecordUsage(client?: BillingClient): IUseRecordUsageReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useRecordUsage');
 	const [isLoading, setIsLoading] = useState(false);

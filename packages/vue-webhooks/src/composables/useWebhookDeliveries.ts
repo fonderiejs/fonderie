@@ -1,4 +1,4 @@
-import type { IWebhookDeliveryDTO } from '@fonderie/client';
+import type { IWebhookDeliveryDTO, ITestWebhookResult } from '@fonderie/client';
 import { FonderieApiError, WebhooksClient } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
@@ -8,7 +8,8 @@ export interface IUseWebhookDeliveriesReturn {
 	deliveries: Ref<IWebhookDeliveryDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	testEndpoint: () => Promise<ITestWebhookResult>;
 }
 
 export function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn;
@@ -29,7 +30,7 @@ export function useWebhookDeliveries(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!endpointId) {
 			isLoading.value = false;
 			return;
@@ -37,7 +38,7 @@ export function useWebhookDeliveries(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await webhooks.listDeliveries(endpointId);
+			const { result } = await webhooks.listDeliveries(endpointId, { bust: opts?.force });
 			deliveries.value = result.deliveries;
 		} catch (err) {
 			const apiError =
@@ -50,5 +51,19 @@ export function useWebhookDeliveries(
 
 	void refresh();
 
-	return { deliveries, isLoading, error, refresh };
+	async function testEndpoint() {
+		error.value = null;
+		try {
+			const { result } = await webhooks.testEndpoint(endpointId);
+			await refresh();
+			return result;
+		} catch (err) {
+			const apiError =
+				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+			error.value = apiError;
+			throw apiError;
+		}
+	}
+
+	return { deliveries, isLoading, error, refresh, testEndpoint };
 }

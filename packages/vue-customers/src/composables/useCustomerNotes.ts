@@ -8,7 +8,7 @@ export interface IUseCustomerNotesReturn {
 	notes: Ref<ICustomerNoteDTO[]>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
-	refresh: () => Promise<void>;
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	createNote: (body: string) => Promise<ICustomerNoteDTO>;
 	updateNote: (noteId: string, body: string) => Promise<void>;
 	deleteNote: (noteId: string) => Promise<void>;
@@ -32,7 +32,7 @@ export function useCustomerNotes(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
-	async function refresh() {
+	async function refresh(opts?: { force?: boolean }) {
 		if (!customerId) {
 			isLoading.value = false;
 			return;
@@ -40,7 +40,7 @@ export function useCustomerNotes(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listNotes(customerId);
+			const { result } = await customers.listNotes(customerId, { bust: opts?.force });
 			notes.value = result.notes;
 		} catch (err) {
 			const apiError =
