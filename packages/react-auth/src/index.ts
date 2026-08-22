@@ -11,12 +11,23 @@ export type {
 	IVerifyEmailResult,
 } from '@fonderie/client';
 
+export type {
+	IChangePasswordInput,
+	IMfaEnabledResult,
+	IMfaSetupResult,
+	IUpdatePreferencesInput,
+	IUpdateProfileInput,
+} from '@fonderie/client';
 export { FonderieApiError, isMfaRequired } from '@fonderie/client';
 export type {
 	IUseForgotPasswordReturn,
 	IUseLoginReturn,
 	IUseLogoutReturn,
+	IUseAccountDataReturn,
+	IUseChangePasswordReturn,
 	IUseMfaLoginReturn,
+	IUseMfaSetupReturn,
+	IUseProfileReturn,
 	IUseRegisterReturn,
 	IUseResetPasswordReturn,
 	IUseSessionReturn,
@@ -26,7 +37,11 @@ export {
 	useForgotPassword,
 	useLogin,
 	useLogout,
+	useAccountData,
+	useChangePassword,
 	useMfaLogin,
+	useMfaSetup,
+	useProfile,
 	useRegister,
 	useResetPassword,
 	useSession,

@@ -1,8 +1,16 @@
+export type { IUseAccountDataReturn } from './useAccountData';
+export { useAccountData } from './useAccountData';
+export type { IUseChangePasswordReturn } from './useChangePassword';
+export { useChangePassword } from './useChangePassword';
 export { useForgotPassword } from './useForgotPassword';
 export { useLogin } from './useLogin';
 export { useLogout } from './useLogout';
 export type { IUseMfaLoginReturn } from './useMfaLogin';
 export { useMfaLogin } from './useMfaLogin';
+export type { IUseMfaSetupReturn } from './useMfaSetup';
+export { useMfaSetup } from './useMfaSetup';
+export type { IUseProfileReturn } from './useProfile';
+export { useProfile } from './useProfile';
 export { useRegister } from './useRegister';
 export { useResetPassword } from './useResetPassword';
 export { useSession } from './useSession';

@@ -4,6 +4,8 @@ export { useInvitations } from './useInvitations';
 export { useMemberRoles } from './useMemberRoles';
 export { useMembers } from './useMembers';
 export { useRemoveMember } from './useRemoveMember';
+export type { IUseRolePermissionsReturn } from './useRolePermissions';
+export { useRolePermissions } from './useRolePermissions';
 export { useRoles } from './useRoles';
 export { useSetRolePermissions } from './useSetRolePermissions';
 export { useUpdateRole } from './useUpdateRole';
