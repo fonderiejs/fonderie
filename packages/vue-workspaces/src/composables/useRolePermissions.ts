@@ -1,8 +1,8 @@
 import type { IRolePermission, IRolePermissionInput } from '@fonderie/client';
 import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseRolePermissionsReturn {
 	permissions: Ref<IRolePermission[]>;
@@ -14,18 +14,18 @@ export interface IUseRolePermissionsReturn {
 	setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
 }
 
-export function useRolePermissions(roleId: string): IUseRolePermissionsReturn;
+export function useRolePermissions(roleId: MaybeRefOrGetter<string>): IUseRolePermissionsReturn;
 export function useRolePermissions(
 	client: WorkspacesClient | undefined,
-	roleId: string,
+	roleId: MaybeRefOrGetter<string>,
 ): IUseRolePermissionsReturn;
 export function useRolePermissions(
-	clientOrId: WorkspacesClient | string | undefined,
-	maybeId?: string,
+	clientOrId: WorkspacesClient | MaybeRefOrGetter<string> | undefined,
+	maybeId?: MaybeRefOrGetter<string>,
 ): IUseRolePermissionsReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof WorkspacesClient;
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
-	const roleId = firstIsClient ? (maybeId as string) : clientOrId;
+	const roleId = firstIsClient ? (maybeId as MaybeRefOrGetter<string>) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useRolePermissions');
 	const permissions = ref<IRolePermission[]>([]);
 	const isLoading = ref(true);
@@ -35,7 +35,9 @@ export function useRolePermissions(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await workspaces.getRolePermissions(roleId, { bust: opts?.force });
+			const { result } = await workspaces.getRolePermissions(toValue(roleId), {
+				bust: opts?.force,
+			});
 			permissions.value = result.permissions;
 		} catch (err) {
 			const apiError =
@@ -49,7 +51,7 @@ export function useRolePermissions(
 	async function setRolePermissions(input: IRolePermissionInput[]) {
 		error.value = null;
 		try {
-			await workspaces.setRolePermissions(roleId, input);
+			await workspaces.setRolePermissions(toValue(roleId), input);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -59,7 +61,11 @@ export function useRolePermissions(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(roleId),
+		() => void refresh(),
+	);
 
 	return { permissions, isLoading, error, refresh, setRolePermissions };
 }

@@ -1,8 +1,8 @@
 import type { IRecordUsageInput } from '@fonderie/client';
 import { BillingClient, FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseUsageReturn {
 	total: Ref<number | null>;
@@ -12,15 +12,18 @@ export interface IUseUsageReturn {
 	recordUsage: (input: IRecordUsageInput) => Promise<void>;
 }
 
-export function useUsage(metric: string): IUseUsageReturn;
-export function useUsage(client: BillingClient | undefined, metric: string): IUseUsageReturn;
+export function useUsage(metric: MaybeRefOrGetter<string>): IUseUsageReturn;
 export function useUsage(
-	clientOrMetric: BillingClient | string | undefined,
-	maybeMetric?: string,
+	client: BillingClient | undefined,
+	metric: MaybeRefOrGetter<string>,
+): IUseUsageReturn;
+export function useUsage(
+	clientOrMetric: BillingClient | MaybeRefOrGetter<string> | undefined,
+	maybeMetric?: MaybeRefOrGetter<string>,
 ): IUseUsageReturn {
 	const firstIsClient = clientOrMetric === undefined || clientOrMetric instanceof BillingClient;
 	const explicit = firstIsClient ? (clientOrMetric as BillingClient | undefined) : undefined;
-	const metric = firstIsClient ? (maybeMetric as string) : clientOrMetric;
+	const metric = firstIsClient ? (maybeMetric as MaybeRefOrGetter<string>) : clientOrMetric;
 	const billing = useFonderieSubClient(explicit, (c) => c.billing, 'useUsage');
 	const total = ref<number | null>(null);
 	const isLoading = ref(true);
@@ -30,7 +33,7 @@ export function useUsage(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await billing.getUsage(metric, { bust: opts?.force });
+			const { result } = await billing.getUsage(toValue(metric), { bust: opts?.force });
 			total.value = result.total;
 		} catch (err) {
 			const apiError =
@@ -41,7 +44,11 @@ export function useUsage(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(metric),
+		() => void refresh(),
+	);
 
 	async function recordUsage(input: IRecordUsageInput) {
 		error.value = null;

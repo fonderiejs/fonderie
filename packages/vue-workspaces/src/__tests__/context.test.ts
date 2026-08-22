@@ -46,8 +46,6 @@ async function runInSetup<T>(run: () => T, plugin?: boolean) {
 	const app = createSSRApp(Root);
 	if (plugin) app.use(FonderiePlugin, fakeClient);
 	await renderToString(app);
-	// Let the void refresh() kicked off in setup() settle.
-	await new Promise((resolve) => setTimeout(resolve, 0));
 	return { value, error };
 }
 
@@ -65,6 +63,10 @@ test('useMemberRoles(userId) resolves via the plugin without a client argument',
 	const { value, error } = await runInSetup(() => useMemberRoles('user-1'), true);
 	assert.equal(error, undefined);
 	assert.ok(value);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	assert.deepEqual(value.roles.value, []);
+	assert.equal(value.isLoading.value, true);
+	await value.refresh();
 	assert.equal(value.isLoading.value, false);
 	assert.equal(value.error.value, null);
 	assert.deepEqual(value.roles.value, [fakeRole]);
@@ -74,10 +76,12 @@ test('an explicit client argument works without any plugin installed', async () 
 	const { value, error } = await runInSetup(() => useWorkspaces(fakeWorkspaces));
 	assert.equal(error, undefined);
 	assert.ok(value);
+	await value.refresh();
 	assert.deepEqual(value.workspaces.value, [fakeWorkspace]);
 
 	const explicit = await runInSetup(() => useMemberRoles(fakeWorkspaces, 'user-1'));
 	assert.equal(explicit.error, undefined);
+	await explicit.value?.refresh();
 	assert.deepEqual(explicit.value?.roles.value, [fakeRole]);
 });
 
@@ -86,6 +90,10 @@ test('useRolePermissions(roleId) resolves via the plugin and setRolePermissions 
 	const { value, error } = await runInSetup(() => useRolePermissions('role-1'), true);
 	assert.equal(error, undefined);
 	assert.ok(value);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	assert.deepEqual(value.permissions.value, []);
+	assert.equal(value.isLoading.value, true);
+	await value.refresh();
 	assert.equal(value.isLoading.value, false);
 	assert.equal(value.error.value, null);
 	assert.deepEqual(value.permissions.value, [fakePermission]);
@@ -125,7 +133,6 @@ test('refresh({force:true}) passes bust and removeMember folds into useMembers',
 		useMembers(fake as unknown as WorkspacesClient),
 	);
 	assert.ok(captured);
-	log.length = 0; // drop the setup-time initial fetch
 	await captured.refresh({ force: true });
 	await captured.removeMember('user-9');
 	assert.deepEqual(log, [

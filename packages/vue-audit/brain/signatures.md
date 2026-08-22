@@ -38,5 +38,17 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useAuditEvents(filters?: IListAuditEventsInput | undefined): IUseAuditEventsReturn
+interface IUseAuditEventsReturn {
+    events: Ref<IAuditEventDTO[]>;
+    isLoading: Ref<boolean>;
+    isLoadingMore: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    hasMore: Ref<boolean>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    loadMore: () => Promise<void>;
+}
+
+function useAuditEvents(filters?: MaybeRefOrGetter<IListAuditEventsInput | undefined>): IUseAuditEventsReturn
 ```

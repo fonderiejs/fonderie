@@ -1,8 +1,8 @@
 import type { IAddAddressInput, ICustomerAddressDTO } from '@fonderie/client';
 import { CustomersClient, FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseCustomerAddressesReturn {
 	addresses: Ref<ICustomerAddressDTO[]>;
@@ -15,33 +15,37 @@ export interface IUseCustomerAddressesReturn {
 	removeAddress: (addrId: string) => Promise<void>;
 }
 
-export function useCustomerAddresses(customerId: string): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
-	client: CustomersClient | undefined,
-	customerId: string,
+	customerId: MaybeRefOrGetter<string>,
 ): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
-	clientOrCustomerId: CustomersClient | string | undefined,
-	maybeCustomerId?: string,
+	client: CustomersClient | undefined,
+	customerId: MaybeRefOrGetter<string>,
+): IUseCustomerAddressesReturn;
+export function useCustomerAddresses(
+	clientOrCustomerId: CustomersClient | MaybeRefOrGetter<string> | undefined,
+	maybeCustomerId?: MaybeRefOrGetter<string>,
 ): IUseCustomerAddressesReturn {
 	const firstIsClient =
 		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeCustomerId as string) : clientOrCustomerId;
+	const customerId = firstIsClient
+		? (maybeCustomerId as MaybeRefOrGetter<string>)
+		: clientOrCustomerId;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerAddresses');
 	const addresses = ref<ICustomerAddressDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
 	async function refresh(opts?: { force?: boolean }) {
-		if (!customerId) {
+		if (!toValue(customerId)) {
 			isLoading.value = false;
 			return;
 		}
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customers.listAddresses(customerId, { bust: opts?.force });
+			const { result } = await customers.listAddresses(toValue(customerId), { bust: opts?.force });
 			addresses.value = result.addresses;
 		} catch (err) {
 			const apiError =
@@ -55,7 +59,7 @@ export function useCustomerAddresses(
 	async function addAddress(input: IAddAddressInput) {
 		error.value = null;
 		try {
-			const { result } = await customers.addAddress(customerId, input);
+			const { result } = await customers.addAddress(toValue(customerId), input);
 			await refresh();
 			return result.address;
 		} catch (err) {
@@ -69,7 +73,7 @@ export function useCustomerAddresses(
 	async function updateAddressLabel(addrId: string, label: string) {
 		error.value = null;
 		try {
-			await customers.updateAddressLabel(customerId, addrId, label);
+			await customers.updateAddressLabel(toValue(customerId), addrId, label);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -82,7 +86,7 @@ export function useCustomerAddresses(
 	async function setPrimaryAddress(addrId: string) {
 		error.value = null;
 		try {
-			await customers.setPrimaryAddress(customerId, addrId);
+			await customers.setPrimaryAddress(toValue(customerId), addrId);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -95,7 +99,7 @@ export function useCustomerAddresses(
 	async function removeAddress(addrId: string) {
 		error.value = null;
 		try {
-			await customers.removeAddress(customerId, addrId);
+			await customers.removeAddress(toValue(customerId), addrId);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -105,7 +109,11 @@ export function useCustomerAddresses(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(customerId),
+		() => void refresh(),
+	);
 
 	return {
 		addresses,

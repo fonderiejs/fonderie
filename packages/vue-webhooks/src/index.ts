@@ -9,6 +9,12 @@ export type {
 } from '@fonderie/client';
 
 export { FonderieApiError } from '@fonderie/client';
+export type {
+	IUseTestWebhookEndpointReturn,
+	IUseWebhookDeliveriesReturn,
+	IUseWebhookEndpointReturn,
+	IUseWebhookEndpointsReturn,
+} from './composables';
 export {
 	useTestWebhookEndpoint,
 	useWebhookDeliveries,

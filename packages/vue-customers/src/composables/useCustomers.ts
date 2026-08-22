@@ -1,8 +1,8 @@
 import type { ICreateCustomerInput, ICustomerDTO, IListCustomersInput } from '@fonderie/client';
 import { CustomersClient, FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { computed, ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { computed, onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseCustomersReturn {
 	customers: Ref<ICustomerDTO[]>;
@@ -20,18 +20,23 @@ export interface IUseCustomersReturn {
 	unblacklistCustomer: (customerId: string) => Promise<void>;
 }
 
-export function useCustomers(params?: IListCustomersInput): IUseCustomersReturn;
 export function useCustomers(
-	client: CustomersClient | undefined,
-	params?: IListCustomersInput,
+	params?: MaybeRefOrGetter<IListCustomersInput | undefined>,
 ): IUseCustomersReturn;
 export function useCustomers(
-	clientOrParams?: CustomersClient | IListCustomersInput,
-	maybeParams?: IListCustomersInput,
+	client: CustomersClient | undefined,
+	params?: MaybeRefOrGetter<IListCustomersInput | undefined>,
+): IUseCustomersReturn;
+export function useCustomers(
+	clientOrParams?: CustomersClient | MaybeRefOrGetter<IListCustomersInput | undefined>,
+	maybeParams?: MaybeRefOrGetter<IListCustomersInput | undefined>,
 ): IUseCustomersReturn {
 	const firstIsClient = clientOrParams === undefined || clientOrParams instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrParams as CustomersClient | undefined) : undefined;
-	const params = (firstIsClient ? maybeParams : clientOrParams) ?? {};
+	const rawParams = firstIsClient
+		? maybeParams
+		: (clientOrParams as MaybeRefOrGetter<IListCustomersInput | undefined>);
+	const resolveParams = (): IListCustomersInput => toValue(rawParams) ?? {};
 	const customersClient = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomers');
 	const customers = ref<ICustomerDTO[]>([]);
 	const total = ref(0);
@@ -44,7 +49,9 @@ export function useCustomers(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customersClient.listCustomers(params, { bust: opts?.force });
+			const { result } = await customersClient.listCustomers(resolveParams(), {
+				bust: opts?.force,
+			});
 			customers.value = result.customers;
 			total.value = result.total;
 		} catch (err) {
@@ -61,7 +68,10 @@ export function useCustomers(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await customersClient.listCustomers({ ...params, offset: customers.value.length });
+			const { result } = await customersClient.listCustomers({
+				...resolveParams(),
+				offset: customers.value.length,
+			});
 			customers.value = [...customers.value, ...result.customers];
 			total.value = result.total;
 		} catch (err) {
@@ -126,7 +136,14 @@ export function useCustomers(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	// Keyed on content, not identity — a getter returning a fresh object
+	// literal must not refetch unless the filter values actually changed,
+	// mirroring the React hook's JSON.stringify memo.
+	watch(
+		() => JSON.stringify(resolveParams()),
+		() => void refresh(),
+	);
 
 	return {
 		customers,

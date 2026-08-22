@@ -1,8 +1,8 @@
 import type { IRoleDTO } from '@fonderie/client';
 import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseMemberRolesReturn {
 	roles: Ref<IRoleDTO[]>;
@@ -13,18 +13,18 @@ export interface IUseMemberRolesReturn {
 	removeRole: (roleId: string) => Promise<void>;
 }
 
-export function useMemberRoles(userId: string): IUseMemberRolesReturn;
+export function useMemberRoles(userId: MaybeRefOrGetter<string>): IUseMemberRolesReturn;
 export function useMemberRoles(
 	client: WorkspacesClient | undefined,
-	userId: string,
+	userId: MaybeRefOrGetter<string>,
 ): IUseMemberRolesReturn;
 export function useMemberRoles(
-	clientOrId: WorkspacesClient | string | undefined,
-	maybeId?: string,
+	clientOrId: WorkspacesClient | MaybeRefOrGetter<string> | undefined,
+	maybeId?: MaybeRefOrGetter<string>,
 ): IUseMemberRolesReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof WorkspacesClient;
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
-	const userId = firstIsClient ? (maybeId as string) : clientOrId;
+	const userId = firstIsClient ? (maybeId as MaybeRefOrGetter<string>) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useMemberRoles');
 	const roles = ref<IRoleDTO[]>([]);
 	const isLoading = ref(true);
@@ -34,7 +34,7 @@ export function useMemberRoles(
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await workspaces.getMemberRoles(userId, { bust: opts?.force });
+			const { result } = await workspaces.getMemberRoles(toValue(userId), { bust: opts?.force });
 			roles.value = result.roles;
 		} catch (err) {
 			const apiError =
@@ -48,7 +48,7 @@ export function useMemberRoles(
 	async function addRole(roleId: string) {
 		error.value = null;
 		try {
-			await workspaces.addMemberRole(userId, roleId);
+			await workspaces.addMemberRole(toValue(userId), roleId);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -61,7 +61,7 @@ export function useMemberRoles(
 	async function removeRole(roleId: string) {
 		error.value = null;
 		try {
-			await workspaces.removeMemberRole(userId, roleId);
+			await workspaces.removeMemberRole(toValue(userId), roleId);
 			await refresh();
 		} catch (err) {
 			const apiError =
@@ -71,7 +71,11 @@ export function useMemberRoles(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(userId),
+		() => void refresh(),
+	);
 
 	return { roles, isLoading, error, refresh, addRole, removeRole };
 }

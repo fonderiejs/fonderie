@@ -1,8 +1,8 @@
 import type { IWebhookDeliveryDTO, ITestWebhookResult } from '@fonderie/client';
 import { FonderieApiError, WebhooksClient } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
-import type { Ref } from 'vue';
-import { ref } from 'vue';
+import type { MaybeRefOrGetter, Ref } from 'vue';
+import { onMounted, ref, toValue, watch } from 'vue';
 
 export interface IUseWebhookDeliveriesReturn {
 	deliveries: Ref<IWebhookDeliveryDTO[]>;
@@ -12,33 +12,37 @@ export interface IUseWebhookDeliveriesReturn {
 	testEndpoint: () => Promise<ITestWebhookResult>;
 }
 
-export function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn;
 export function useWebhookDeliveries(
-	client: WebhooksClient | undefined,
-	endpointId: string,
+	endpointId: MaybeRefOrGetter<string>,
 ): IUseWebhookDeliveriesReturn;
 export function useWebhookDeliveries(
-	clientOrEndpointId: WebhooksClient | string | undefined,
-	maybeEndpointId?: string,
+	client: WebhooksClient | undefined,
+	endpointId: MaybeRefOrGetter<string>,
+): IUseWebhookDeliveriesReturn;
+export function useWebhookDeliveries(
+	clientOrEndpointId: WebhooksClient | MaybeRefOrGetter<string> | undefined,
+	maybeEndpointId?: MaybeRefOrGetter<string>,
 ): IUseWebhookDeliveriesReturn {
 	const firstIsClient =
 		clientOrEndpointId === undefined || clientOrEndpointId instanceof WebhooksClient;
 	const explicit = firstIsClient ? (clientOrEndpointId as WebhooksClient | undefined) : undefined;
-	const endpointId = firstIsClient ? (maybeEndpointId as string) : clientOrEndpointId;
+	const endpointId = firstIsClient
+		? (maybeEndpointId as MaybeRefOrGetter<string>)
+		: clientOrEndpointId;
 	const webhooks = useFonderieSubClient(explicit, (c) => c.webhooks, 'useWebhookDeliveries');
 	const deliveries = ref<IWebhookDeliveryDTO[]>([]);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
 	async function refresh(opts?: { force?: boolean }) {
-		if (!endpointId) {
+		if (!toValue(endpointId)) {
 			isLoading.value = false;
 			return;
 		}
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await webhooks.listDeliveries(endpointId, { bust: opts?.force });
+			const { result } = await webhooks.listDeliveries(toValue(endpointId), { bust: opts?.force });
 			deliveries.value = result.deliveries;
 		} catch (err) {
 			const apiError =
@@ -49,12 +53,16 @@ export function useWebhookDeliveries(
 		}
 	}
 
-	void refresh();
+	onMounted(() => void refresh());
+	watch(
+		() => toValue(endpointId),
+		() => void refresh(),
+	);
 
 	async function testEndpoint() {
 		error.value = null;
 		try {
-			const { result } = await webhooks.testEndpoint(endpointId);
+			const { result } = await webhooks.testEndpoint(toValue(endpointId));
 			await refresh();
 			return result;
 		} catch (err) {

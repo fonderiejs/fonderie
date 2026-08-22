@@ -170,6 +170,56 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
+interface IUseAcceptInvitationReturn {
+    acceptInvitation: (pin: string) => Promise<string>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
+
+interface IUseCreateWorkspaceReturn {
+    createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
+
+interface IUseInvitationsReturn {
+    invitations: Ref<IInvitationDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
+    cancelInvitation: (inviteId: string) => Promise<void>;
+}
+
+interface IUseMemberRolesReturn {
+    roles: Ref<IRoleDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    addRole: (roleId: string) => Promise<void>;
+    removeRole: (roleId: string) => Promise<void>;
+}
+
+interface IUseMembersReturn {
+    members: Ref<IMemberDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    removeMember: (userId: string) => Promise<void>;
+}
+
+interface IUseRemoveMemberReturn {
+    removeMember: (userId: string) => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
+
 interface IUseRolePermissionsReturn {
     permissions: Ref<IRolePermission[]>;
     isLoading: Ref<boolean>;
@@ -180,29 +230,82 @@ interface IUseRolePermissionsReturn {
     setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
 }
 
-function useAcceptInvitation(client?: WorkspacesClient | undefined): { acceptInvitation: (pin: string) => Promise<string>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+interface IUseRolesReturn {
+    roles: Ref<IRoleDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
+    createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
+    removeRole: (roleId: string) => Promise<void>;
+}
 
-function useCreateWorkspace(client?: WorkspacesClient | undefined): { createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>; isLoading: Ref<...>; error: Ref<...>; }
+interface IUseSetRolePermissionsReturn {
+    setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
 
-function useInvitations(client?: WorkspacesClient | undefined): { invitations: Ref<{ id: string; workspaceId: string; email: string; roleId: string; token: string; status: string; expiresAt: string; createdAt: string; }[], IInvitationDTO[] | { ...; }[]>; ... 4 more ...; cancelInvitation: (inviteId: string) => Promise<...>; }
+interface IUseUpdateRoleReturn {
+    updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
 
-function useMemberRoles(userId: string): IUseMemberRolesReturn
+interface IUseWorkspaceProfileReturn {
+    updateWorkspace: (input: IUpdateWorkspaceInput) => Promise<IWorkspaceDTO>;
+    archiveWorkspace: () => Promise<void>;
+    restoreWorkspace: () => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
 
-function useMembers(client?: WorkspacesClient | undefined): { members: Ref<{ userId: string; workspaceId: string; roleId: string; roleName: string; confirmed: boolean; createdAt: string; }[], IMemberDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: (opts?: { ...; } | undefined) => Promise<...>; removeMember: (userId: string) => Promise<...>; }
+interface IUseWorkspaceSettingsReturn {
+    settings: Ref<IWorkspaceSettingsDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    updateSettings: (input: IUpdateSettingsInput) => Promise<void>;
+}
 
-function useRemoveMember(client?: WorkspacesClient | undefined): { removeMember: (userId: string) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<FonderieApiError | null, FonderieApiError | null>; }
+interface IUseWorkspacesReturn {
+    workspaces: Ref<IWorkspaceDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
+    acceptInvitation: (pin: string) => Promise<string>;
+}
 
-function useRolePermissions(roleId: string): IUseRolePermissionsReturn
+function useAcceptInvitation(client?: WorkspacesClient | undefined): IUseAcceptInvitationReturn
 
-function useRoles(client?: WorkspacesClient | undefined): { roles: Ref<{ id: string; name: string; isSystem: boolean; active: boolean; description: string; workspaceId: string; }[], IRoleDTO[] | { ...; }[]>; ... 5 more ...; removeRole: (roleId: string) => Promise<...>; }
+function useCreateWorkspace(client?: WorkspacesClient | undefined): IUseCreateWorkspaceReturn
 
-function useSetRolePermissions(client?: WorkspacesClient | undefined): { setRolePermissions: (roleId: string, permissions: IRolePermissionInput[]) => Promise<void>; isLoading: Ref<...>; error: Ref<...>; }
+function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsReturn
 
-function useUpdateRole(client?: WorkspacesClient | undefined): { updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>; isLoading: Ref<...>; error: Ref<...>; }
+function useMemberRoles(userId: MaybeRefOrGetter<string>): IUseMemberRolesReturn
 
-function useWorkspaceProfile(client?: WorkspacesClient | undefined): { updateWorkspace: (input: IUpdateWorkspaceInput) => Promise<IWorkspaceDTO>; archiveWorkspace: () => Promise<...>; restoreWorkspace: () => Promise<...>; isLoading: Ref<...>; error: Ref<...>; }
+function useMembers(client?: WorkspacesClient | undefined): IUseMembersReturn
 
-function useWorkspaceSettings(client?: WorkspacesClient | undefined): { settings: Ref<{ locale: string; timezone: string; currency: string; dateFormat: string; timeFormat: string; } | null, IWorkspaceSettingsDTO | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: (opts?: { ...; } | undefined) => Promise<...>; updateSettings: (input: IUpdateSettingsInput) => Promise<...>; }
+function useRemoveMember(client?: WorkspacesClient | undefined): IUseRemoveMemberReturn
 
-function useWorkspaces(client?: WorkspacesClient | undefined): { workspaces: Ref<{ id: string; name: string; slug: string; type: string; description: string; motto: string; phone: string; businessType: string; ... 7 more ...; updatedAt: string; }[], IWorkspaceDTO[] | { ...; }[]>; ... 4 more ...; acceptInvitation: (pin: string) => Promise<...>; }
+function useRolePermissions(roleId: MaybeRefOrGetter<string>): IUseRolePermissionsReturn
+
+function useRoles(client?: WorkspacesClient | undefined): IUseRolesReturn
+
+function useSetRolePermissions(client?: WorkspacesClient | undefined): IUseSetRolePermissionsReturn
+
+function useUpdateRole(client?: WorkspacesClient | undefined): IUseUpdateRoleReturn
+
+function useWorkspaceProfile(client?: WorkspacesClient | undefined): IUseWorkspaceProfileReturn
+
+function useWorkspaceSettings(client?: WorkspacesClient | undefined): IUseWorkspaceSettingsReturn
+
+function useWorkspaces(client?: WorkspacesClient | undefined): IUseWorkspacesReturn
 ```
