@@ -1,1 +1,0 @@
-Add email/password authentication to this app: signup, login, logout, server-side sessions, password reset by email, input validation, and rate limiting on the login endpoint. Production quality.

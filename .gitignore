@@ -61,3 +61,9 @@ experiments/brain-2026-07/eval/candidates.tsv
 experiments/brain-2026-07/eval/candidates-reddit.tsv
 experiments/brain-2026-07/eval/candidates-se.tsv
 !scripts/generate-cli-data.mjs
+
+# internal working files
+experiments/
+docs/soc2/
+research/
+SOC2-readiness.md
