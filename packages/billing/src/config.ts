@@ -8,8 +8,9 @@ export interface IBillingPlanPrice {
 	/** Stripe price id. Used for hydration and as a lookup_key fallback. */
 	priceId?: string;
 	/**
-	 * @deprecated Display amount in cents. When pricing hydration is on and the
-	 * price resolves from Stripe, the live amount wins; this is the fallback only.
+	 * Display amount in cents — the seed value written to fonderie_plans and the
+	 * fallback shown (flagged pricingStale) when hydration is off or Stripe is
+	 * unreachable. When hydration resolves a live price, the live amount wins.
 	 */
 	amount?: number;
 }
@@ -20,7 +21,7 @@ export interface IBillingPlanPrice {
  * See packages/billing/docs/pricing-hydration.md.
  */
 export interface IBillingPricingConfig {
-	/** Kill-switch. When false (default), use the deprecated hardcoded amount/USD path. */
+	/** Kill-switch. When false (default), serve the configured amount/USD directly. */
 	hydration?: boolean;
 	/** Fresh-cache TTL. Default 300_000 (5m). */
 	cacheTtlMs?: number;
