@@ -50,8 +50,8 @@ interface IMfaRequiredResult {
 }
 
 interface IMfaSetupResult {
-    secret: string;
-    uri: string;
+    qr: string;
+    backupCodes: string[];
 }
 
 interface IRegisterInput {

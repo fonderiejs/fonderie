@@ -8,6 +8,11 @@ export interface IUseCustomersReturn {
 	isLoading: boolean;
 	error: FonderieApiError | null;
 	refresh: () => Promise<void>;
+	// Pagination over the same params: total matching rows server-side,
+	// whether more pages exist, and an append-fetch of the next page.
+	total: number;
+	hasMore: boolean;
+	loadMore: () => Promise<void>;
 	createCustomer: (input?: ICreateCustomerInput) => Promise<ICustomerDTO>;
 	deleteCustomer: (customerId: string) => Promise<void>;
 	blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;
@@ -35,6 +40,7 @@ export function useCustomers(
 	const params = useMemo(() => rawParams, [JSON.stringify(rawParams)]);
 
 	const [customers, setCustomers] = useState<ICustomerDTO[]>([]);
+	const [total, setTotal] = useState(0);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -44,6 +50,7 @@ export function useCustomers(
 		try {
 			const { result } = await client.listCustomers(params);
 			setCustomers(result.customers);
+			setTotal(result.total);
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
@@ -52,6 +59,23 @@ export function useCustomers(
 			setIsLoading(false);
 		}
 	}, [client, params]);
+
+	const loadMore = useCallback(async () => {
+		if (isLoading || customers.length >= total) return;
+		setIsLoading(true);
+		setError(null);
+		try {
+			const { result } = await client.listCustomers({ ...params, offset: customers.length });
+			setCustomers((prev) => [...prev, ...result.customers]);
+			setTotal(result.total);
+		} catch (err) {
+			const apiError =
+				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+			setError(apiError);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [client, params, customers.length, total, isLoading]);
 
 	const createCustomer = useCallback(
 		async (input: ICreateCustomerInput = {}) => {
@@ -127,6 +151,9 @@ export function useCustomers(
 		isLoading,
 		error,
 		refresh,
+		total,
+		hasMore: customers.length < total,
+		loadMore,
 		createCustomer,
 		deleteCustomer,
 		blacklistCustomer,
