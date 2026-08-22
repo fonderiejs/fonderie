@@ -7,11 +7,11 @@
     "audit": "5.0.0",
     "auth": "5.0.0",
     "billing": "5.3.0",
-    "client": "0.8.0",
+    "client": "0.9.0",
     "config": "5.0.0",
     "core": "0.5.0",
     "courier": "5.0.0",
-    "customers": "5.0.0",
+    "customers": "5.1.0",
     "events": "5.0.0",
     "logger": "0.1.2",
     "permissions": "5.0.0",
@@ -19,20 +19,20 @@
     "react": "0.2.0",
     "react-audit": "0.2.0",
     "react-audit-screens": "0.2.0",
-    "react-auth": "0.6.0",
-    "react-auth-screens": "0.3.0",
+    "react-auth": "0.6.1",
+    "react-auth-screens": "0.4.0",
     "react-billing": "0.2.0",
     "react-billing-screens": "0.2.0",
     "react-config-admin": "0.1.0",
     "react-config-admin-screens": "0.1.0",
     "react-courier-admin": "0.1.0",
     "react-courier-admin-screens": "0.1.0",
-    "react-customers": "0.2.0",
+    "react-customers": "0.3.0",
     "react-customers-screens": "0.2.0",
     "react-native-audit": "0.1.0",
     "react-native-audit-screens": "0.2.0",
-    "react-native-auth": "0.6.0",
-    "react-native-auth-screens": "0.3.0",
+    "react-native-auth": "0.6.1",
+    "react-native-auth-screens": "0.4.0",
     "react-native-billing": "0.1.0",
     "react-native-billing-screens": "0.2.0",
     "react-native-customers": "0.1.0",
@@ -40,29 +40,29 @@
     "react-native-webhooks": "0.1.0",
     "react-native-webhooks-screens": "0.2.0",
     "react-native-workspaces": "0.1.0",
-    "react-native-workspaces-screens": "0.2.0",
+    "react-native-workspaces-screens": "0.3.0",
     "react-webhooks": "0.2.0",
     "react-webhooks-screens": "0.2.0",
     "react-workspaces": "0.3.0",
-    "react-workspaces-screens": "0.2.0",
+    "react-workspaces-screens": "0.3.0",
     "store": "0.2.2",
     "vue": "0.2.0",
     "vue-audit": "0.2.0",
     "vue-audit-screens": "0.2.0",
-    "vue-auth": "0.6.0",
-    "vue-auth-screens": "0.3.0",
+    "vue-auth": "0.6.1",
+    "vue-auth-screens": "0.4.0",
     "vue-billing": "0.2.0",
     "vue-billing-screens": "0.2.0",
     "vue-config-admin": "0.1.0",
     "vue-config-admin-screens": "0.1.0",
     "vue-courier-admin": "0.1.0",
     "vue-courier-admin-screens": "0.1.0",
-    "vue-customers": "0.2.0",
+    "vue-customers": "0.3.0",
     "vue-customers-screens": "0.2.0",
     "vue-webhooks": "0.2.0",
     "vue-webhooks-screens": "0.2.0",
     "vue-workspaces": "0.3.0",
-    "vue-workspaces-screens": "0.2.0",
+    "vue-workspaces-screens": "0.3.0",
     "webhooks": "5.0.0",
     "workspaces": "5.1.0"
   },
@@ -388,7 +388,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.8.0",
+      "version": "0.9.0",
       "requires": [],
       "exports": [
         "FonderieClient",
@@ -577,7 +577,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "5.0.0",
+      "version": "5.1.0",
       "requires": [
         "core",
         "events",
@@ -934,7 +934,7 @@
       "hasOutcomes": false
     },
     "react-auth": {
-      "version": "0.6.0",
+      "version": "0.6.1",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -961,7 +961,7 @@
       "hasOutcomes": false
     },
     "react-auth-screens": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "ForgotPasswordScreen",
@@ -1093,7 +1093,7 @@
       "hasOutcomes": false
     },
     "react-customers": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1157,7 +1157,7 @@
       "hasOutcomes": false
     },
     "react-native-auth": {
-      "version": "0.6.0",
+      "version": "0.6.1",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1184,7 +1184,7 @@
       "hasOutcomes": false
     },
     "react-native-auth-screens": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "ForgotPasswordScreen",
@@ -1296,7 +1296,7 @@
       "hasOutcomes": false
     },
     "react-native-workspaces-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "AcceptInvitationScreen",
@@ -1372,7 +1372,7 @@
       "hasOutcomes": false
     },
     "react-workspaces-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "AcceptInvitationScreen",
@@ -1455,7 +1455,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.6.0",
+      "version": "0.6.1",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1482,7 +1482,7 @@
       "hasOutcomes": false
     },
     "vue-auth-screens": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "requires": [],
       "exports": [
         "ForgotPasswordScreen",
@@ -1614,7 +1614,7 @@
       "hasOutcomes": false
     },
     "vue-customers": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1712,7 +1712,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "AcceptInvitationScreen",
