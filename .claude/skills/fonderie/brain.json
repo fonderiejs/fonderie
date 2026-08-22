@@ -6,12 +6,12 @@
     "adapter-koa": "5.0.0",
     "audit": "5.0.0",
     "auth": "5.0.0",
-    "billing": "5.3.0",
+    "billing": "5.3.1",
     "client": "0.10.0",
     "config": "5.0.0",
     "core": "0.5.0",
     "courier": "5.0.0",
-    "customers": "5.1.0",
+    "customers": "6.0.0",
     "events": "5.0.0",
     "logger": "0.1.2",
     "permissions": "5.0.0",
@@ -298,7 +298,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "5.3.0",
+      "version": "5.3.1",
       "requires": [
         "core",
         "store"
@@ -577,7 +577,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "5.1.0",
+      "version": "6.0.0",
       "requires": [
         "core",
         "events",
