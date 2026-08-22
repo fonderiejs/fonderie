@@ -7,7 +7,7 @@ import { FonderiePlugin } from '@fonderie/vue';
 import { createSSRApp, defineComponent, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
-import { useCreateWorkspace, useMemberRoles, useRolePermissions, useWorkspaces } from '../composables';
+import { useMemberRoles, useRolePermissions, useWorkspaces } from '../composables';
 
 const fakeWorkspace = { id: 'ws-1', name: 'Acme' };
 const fakeRole = { id: 'role-1', name: 'admin' };
@@ -17,6 +17,7 @@ const permissionCalls: unknown[] = [];
 const fakeWorkspaces: WorkspacesClient = Object.assign(Object.create(WorkspacesClient.prototype), {
 	listWorkspaces: async () => ({ result: { workspaces: [fakeWorkspace] } }),
 	createWorkspace: async () => ({ result: { workspace: fakeWorkspace } }),
+	acceptInvitation: async () => ({ result: { workspaceId: 'ws-1' } }),
 	getMemberRoles: async () => ({ result: { roles: [fakeRole] } }),
 	getRolePermissions: async (roleId: string) => {
 		permissionCalls.push(['get', roleId]);
@@ -49,14 +50,18 @@ async function runInSetup<T>(run: () => T, plugin?: boolean) {
 	return { value, error };
 }
 
-test('useCreateWorkspace resolves the client via app.use(FonderiePlugin, client)', async () => {
-	const { value, error } = await runInSetup(() => useCreateWorkspace(), true);
+test('useWorkspaces resolves the client via app.use(FonderiePlugin, client)', async () => {
+	const { value, error } = await runInSetup(() => useWorkspaces(), true);
 	assert.equal(error, undefined);
 	assert.ok(value);
-	assert.equal(value.isLoading.value, false);
+	// The initial fetch runs in onMounted, which never fires during SSR.
+	assert.equal(value.isLoading.value, true);
 	assert.equal(value.error.value, null);
 	const workspace = await value.createWorkspace({ name: 'Acme' });
 	assert.equal(workspace, fakeWorkspace);
+	// Screens rely on acceptInvitation resolving to the joined workspace's id.
+	const joined = await value.acceptInvitation('pin-1');
+	assert.equal(joined, 'ws-1');
 });
 
 test('useMemberRoles(userId) resolves via the plugin without a client argument', async () => {

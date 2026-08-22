@@ -63,13 +63,9 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useDeleteTemplate(client: CourierAdminClient): { deleteTemplate: (type: string, locale?: string | null | undefined) => Promise<void>; isLoading: Ref<boolean, boolean>; error: Ref<...>; }
-
-function useSaveTemplate(client: CourierAdminClient): { saveTemplate: (type: string, input: ISetTemplateInput, locale?: string | null | undefined) => Promise<ITemplateEntry>; isLoading: Ref<...>; error: Ref<...>; }
-
 function useTemplate(client: CourierAdminClient, type: string, locale?: string | null | undefined): { template: Ref<{ type: string; locale: string | null; subject: string | null; ... 5 more ...; updatedAt: string; } | null, ITemplateEntry | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useTemplateRevisions(client: CourierAdminClient, type: string, locale?: string | null | undefined): { revisions: Ref<{ type: string; locale: string | null; subject: string | null; ... 4 more ...; createdAt: string; }[], ITemplateRevision[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; rollback: (toVersion: number) => Promise<...>; }
 
-function useTemplates(client: CourierAdminClient): { templates: Ref<{ type: string; locale: string | null; subject: string | null; html: string | null; text: string; active: boolean; version: number; updatedBy: string | null; updatedAt: string; }[], ITemplateEntry[] | { ...; }[]>; ... 4 more ...; removeTemplate: (type: string, locale?: string | undefined) => Promise<...>; }
+function useTemplates(client: CourierAdminClient): { templates: Ref<{ type: string; locale: string | null; subject: string | null; html: string | null; text: string; active: boolean; version: number; updatedBy: string | null; updatedAt: string; }[], ITemplateEntry[] | { ...; }[]>; ... 4 more ...; removeTemplate: (type: string, locale?: string | ... 1 more ... | undefined) => Promise<...>; }
 ```

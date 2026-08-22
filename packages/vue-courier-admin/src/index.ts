@@ -8,8 +8,6 @@ export type {
 
 export { CourierAdminClient, FonderieApiError } from '@fonderie/client';
 export {
-	useDeleteTemplate,
-	useSaveTemplate,
 	useTemplate,
 	useTemplateRevisions,
 	useTemplates,

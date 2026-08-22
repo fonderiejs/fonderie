@@ -1,5 +1,6 @@
 import type {
 	ICreateWebhookEndpointInput,
+	ITestWebhookResult,
 	IWebhookEndpointCreatedDTO,
 	IWebhookEndpointDTO,
 	WebhooksClient,
@@ -15,6 +16,7 @@ export interface IUseWebhookEndpointsReturn {
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	createEndpoint: (input: ICreateWebhookEndpointInput) => Promise<IWebhookEndpointCreatedDTO>;
 	removeEndpoint: (endpointId: string) => Promise<void>;
+	testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>;
 }
 
 export function useWebhookEndpoints(client?: WebhooksClient): IUseWebhookEndpointsReturn {
@@ -74,9 +76,29 @@ export function useWebhookEndpoints(client?: WebhooksClient): IUseWebhookEndpoin
 		[webhooks, refresh],
 	);
 
+	// Test-sends to one endpoint from the list — a test delivery doesn't change
+	// the endpoints list, so unlike the other writes there's nothing to refresh.
+	// For a per-endpoint view, useWebhookDeliveries(endpointId).testEndpoint also
+	// re-reads that endpoint's delivery log after the send.
+	const testEndpoint = useCallback(
+		async (endpointId: string) => {
+			setError(null);
+			try {
+				const { result } = await webhooks.testEndpoint(endpointId);
+				return result;
+			} catch (err) {
+				const apiError =
+					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+				setError(apiError);
+				throw apiError;
+			}
+		},
+		[webhooks],
+	);
+
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
 
-	return { endpoints, isLoading, error, refresh, createEndpoint, removeEndpoint };
+	return { endpoints, isLoading, error, refresh, createEndpoint, removeEndpoint, testEndpoint };
 }

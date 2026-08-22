@@ -113,32 +113,8 @@ interface IUseConfigRevisionsReturn {
     rollback: (toVersion: number) => Promise<IConfigEntry>;
 }
 
-interface IUseDeleteConfigEntryReturn {
-    deleteConfigEntry: (key: string, environment?: string) => Promise<void>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
-interface IUseDeleteSecretReturn {
-    deleteSecret: (key: string, environment?: string) => Promise<void>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
 interface IUseRevealSecretReturn {
     revealSecret: (key: string, environment?: string) => Promise<string>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
-interface IUseSaveConfigEntryReturn {
-    saveConfigEntry: (key: string, input: ISetConfigInput, environment?: string) => Promise<IConfigEntry>;
-    isLoading: boolean;
-    error: FonderieApiError | null;
-}
-
-interface IUseSaveSecretReturn {
-    saveSecret: (key: string, input: ISetSecretInput, environment?: string) => Promise<ISecretEntry>;
     isLoading: boolean;
     error: FonderieApiError | null;
 }
@@ -173,15 +149,7 @@ function useConfigEntry(client: ConfigAdminClient, key: string, environment?: st
 
 function useConfigRevisions(client: ConfigAdminClient, key: string, environment?: string | undefined): IUseConfigRevisionsReturn
 
-function useDeleteConfigEntry(client: ConfigAdminClient): IUseDeleteConfigEntryReturn
-
-function useDeleteSecret(client: ConfigAdminClient): IUseDeleteSecretReturn
-
 function useRevealSecret(client: ConfigAdminClient): IUseRevealSecretReturn
-
-function useSaveConfigEntry(client: ConfigAdminClient): IUseSaveConfigEntryReturn
-
-function useSaveSecret(client: ConfigAdminClient): IUseSaveSecretReturn
 
 function useSecret(client: ConfigAdminClient, key: string, environment?: string | undefined): IUseSecretReturn
 

@@ -1,5 +1,5 @@
-import type { WorkspacesClient } from '@fonderie/client';
-import { useAcceptInvitation } from '@fonderie/react-native-workspaces';
+import type { FonderieApiError, WorkspacesClient } from '@fonderie/client';
+import { useWorkspaces } from '@fonderie/react-native-workspaces';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -17,16 +17,26 @@ export function AcceptInvitationScreen({
 	onAccepted,
 	onNavigateBack,
 }: IAcceptInvitationScreenProps) {
-	const { acceptInvitation, isLoading, error } = useAcceptInvitation(client);
+	// Note: mounting useWorkspaces also fetches the workspace list; its shared
+	// isLoading/error track that fetch, so the accept action keeps local state.
+	const { acceptInvitation } = useWorkspaces(client);
 	const [accepted, setAccepted] = useState(false);
+	const [isAccepting, setIsAccepting] = useState(false);
+	const [acceptError, setAcceptError] = useState<FonderieApiError | null>(null);
 
 	const handleAccept = async () => {
+		setIsAccepting(true);
+		setAcceptError(null);
 		try {
+			// acceptInvitation resolves to the joined workspace's id.
 			const workspaceId = await acceptInvitation(token);
 			setAccepted(true);
 			onAccepted?.(workspaceId);
-		} catch {
-			// Surfaced via `error` from useAcceptInvitation.
+		} catch (err) {
+			// useWorkspaces normalizes every failure to FonderieApiError before throwing.
+			setAcceptError(err as FonderieApiError);
+		} finally {
+			setIsAccepting(false);
 		}
 	};
 
@@ -46,20 +56,20 @@ export function AcceptInvitationScreen({
 				You've been invited to join a workspace. Accept the invitation to become a member.
 			</Text>
 
-			{error && (
+			{acceptError && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{acceptError.explanation}
 				</Text>
 			)}
 
 			<TouchableOpacity
 				onPress={handleAccept}
-				disabled={isLoading}
+				disabled={isAccepting}
 				style={styles.button}
 				accessibilityLabel="Accept invitation button"
 				accessibilityRole="button"
 			>
-				{isLoading ? (
+				{isAccepting ? (
 					<ActivityIndicator color="#fff" />
 				) : (
 					<Text style={styles.buttonText}>Accept invitation</Text>

@@ -1,6 +1,7 @@
-import type { WorkspacesClient } from '@fonderie/client';
-import { useMembers, useRemoveMember } from '@fonderie/react-workspaces';
+import type { FonderieApiError, WorkspacesClient } from '@fonderie/client';
+import { useMembers } from '@fonderie/react-workspaces';
 import type { CSSProperties } from 'react';
+import { useState } from 'react';
 
 export interface ITeamMembersScreenProps {
 	client?: WorkspacesClient;
@@ -13,20 +14,28 @@ export function TeamMembersScreen({
 	currentUserId,
 	onNavigateToInvite,
 }: ITeamMembersScreenProps) {
-	const { members, isLoading, error, refresh } = useMembers(client);
-	const { removeMember, isLoading: isRemoving, error: removeError } = useRemoveMember(client);
+	const { members, isLoading, error, removeMember } = useMembers(client);
+	const [isRemoving, setIsRemoving] = useState(false);
+	const [removeError, setRemoveError] = useState<FonderieApiError | null>(null);
 
 	const handleRemove = async (userId: string) => {
+		setIsRemoving(true);
+		setRemoveError(null);
 		try {
+			// The list hook re-fetches members itself after the write.
 			await removeMember(userId);
-			await refresh();
-		} catch {
-			// Surfaced via `removeError` from useRemoveMember.
+		} catch (err) {
+			// useMembers normalizes every failure to FonderieApiError before throwing.
+			setRemoveError(err as FonderieApiError);
+		} finally {
+			setIsRemoving(false);
 		}
 	};
 
 	if (isLoading) return <p style={styles.status}>Loading team…</p>;
-	if (error)
+	// A failed removal also lands in the hook's shared `error`; it's surfaced
+	// inline via `removeError` below, so don't let it replace the list.
+	if (error && !removeError)
 		return (
 			<p style={styles.error} role="alert">
 				{error.explanation}

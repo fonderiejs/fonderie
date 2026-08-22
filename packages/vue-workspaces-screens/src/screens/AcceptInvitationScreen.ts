@@ -1,5 +1,5 @@
-import type { WorkspacesClient } from '@fonderie/client';
-import { useAcceptInvitation } from '@fonderie/vue-workspaces';
+import type { FonderieApiError, WorkspacesClient } from '@fonderie/client';
+import { useWorkspaces } from '@fonderie/vue-workspaces';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
@@ -16,16 +16,26 @@ export const AcceptInvitationScreen = defineComponent({
 		'navigate-back': () => true,
 	},
 	setup(props, { emit }) {
-		const { acceptInvitation, isLoading, error } = useAcceptInvitation(props.client);
+		// Note: mounting useWorkspaces also fetches the workspace list; its shared
+		// isLoading/error track that fetch, so the accept action keeps local state.
+		const { acceptInvitation } = useWorkspaces(props.client);
 		const accepted = ref(false);
+		const isAccepting = ref(false);
+		const acceptError = ref<FonderieApiError | null>(null);
 
 		async function handleAccept() {
+			isAccepting.value = true;
+			acceptError.value = null;
 			try {
+				// acceptInvitation resolves to the joined workspace's id.
 				const workspaceId = await acceptInvitation(props.token);
 				accepted.value = true;
 				emit('accepted', workspaceId);
-			} catch {
-				// Surfaced via `error` from useAcceptInvitation.
+			} catch (err) {
+				// useWorkspaces normalizes every failure to FonderieApiError before throwing.
+				acceptError.value = err as FonderieApiError;
+			} finally {
+				isAccepting.value = false;
 			}
 		}
 
@@ -44,18 +54,18 @@ export const AcceptInvitationScreen = defineComponent({
 					{ style: styles.body },
 					"You've been invited to join a workspace. Accept the invitation to become a member.",
 				),
-				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+				acceptError.value
+					? h('p', { style: styles.error, role: 'alert' }, acceptError.value.explanation)
 					: null,
 				h(
 					'button',
 					{
 						type: 'button',
-						disabled: isLoading.value,
+						disabled: isAccepting.value,
 						style: styles.primaryButton,
 						onClick: handleAccept,
 					},
-					isLoading.value ? 'Accepting…' : 'Accept invitation',
+					isAccepting.value ? 'Accepting…' : 'Accept invitation',
 				),
 				h(
 					'button',
