@@ -966,7 +966,10 @@
       "exports": [
         "ForgotPasswordScreen",
         "LoginScreen",
-        "RegisterScreen"
+        "MfaChallengeScreen",
+        "RegisterScreen",
+        "ResetPasswordScreen",
+        "VerifyEmailScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1186,7 +1189,10 @@
       "exports": [
         "ForgotPasswordScreen",
         "LoginScreen",
-        "RegisterScreen"
+        "MfaChallengeScreen",
+        "RegisterScreen",
+        "ResetPasswordScreen",
+        "VerifyEmailScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1293,6 +1299,7 @@
       "version": "0.2.0",
       "requires": [],
       "exports": [
+        "AcceptInvitationScreen",
         "InviteMembersScreen",
         "TeamMembersScreen"
       ],
@@ -1368,6 +1375,7 @@
       "version": "0.2.0",
       "requires": [],
       "exports": [
+        "AcceptInvitationScreen",
         "InviteMembersScreen",
         "TeamMembersScreen"
       ],
@@ -1479,7 +1487,10 @@
       "exports": [
         "ForgotPasswordScreen",
         "LoginScreen",
-        "RegisterScreen"
+        "MfaChallengeScreen",
+        "RegisterScreen",
+        "ResetPasswordScreen",
+        "VerifyEmailScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1704,6 +1715,7 @@
       "version": "0.2.0",
       "requires": [],
       "exports": [
+        "AcceptInvitationScreen",
         "InviteMembersScreen",
         "TeamMembersScreen"
       ],
@@ -3712,7 +3724,22 @@
       "react-native-auth-screens",
       "vue-auth-screens"
     ],
+    "mfachallengescreen": [
+      "react-auth-screens",
+      "react-native-auth-screens",
+      "vue-auth-screens"
+    ],
     "registerscreen": [
+      "react-auth-screens",
+      "react-native-auth-screens",
+      "vue-auth-screens"
+    ],
+    "resetpasswordscreen": [
+      "react-auth-screens",
+      "react-native-auth-screens",
+      "vue-auth-screens"
+    ],
+    "verifyemailscreen": [
       "react-auth-screens",
       "react-native-auth-screens",
       "vue-auth-screens"
@@ -3862,6 +3889,11 @@
       "react-native-webhooks-screens",
       "react-webhooks-screens",
       "vue-webhooks-screens"
+    ],
+    "acceptinvitationscreen": [
+      "react-native-workspaces-screens",
+      "react-workspaces-screens",
+      "vue-workspaces-screens"
     ],
     "invitemembersscreen": [
       "react-native-workspaces-screens",
