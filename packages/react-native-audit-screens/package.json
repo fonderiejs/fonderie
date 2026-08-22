@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-audit-screens",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Pre-built React Native screen for Fonderie's audit log \u2014 filterable, cursor-paginated event list.",
 	"keywords": [
 		"fonderiejs",

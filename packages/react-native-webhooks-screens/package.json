@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-webhooks-screens",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Pre-built React Native screens for Fonderie's outgoing webhooks \u2014 endpoint list, endpoint detail with delivery history.",
 	"keywords": [
 		"fonderiejs",

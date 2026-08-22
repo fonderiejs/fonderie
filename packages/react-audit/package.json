@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-audit",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "React hooks for Fonderie's audit log — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
