@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-config-admin",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "React hooks for the Fonderie config admin API (feature flags/remote config + secrets) — thin bindings over @fonderie/client's ConfigAdminClient.",
 	"keywords": [
 		"fonderiejs",
