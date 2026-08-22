@@ -7,7 +7,7 @@
     "audit": "5.0.0",
     "auth": "5.0.0",
     "billing": "5.3.0",
-    "client": "0.7.0",
+    "client": "0.8.0",
     "config": "5.0.0",
     "core": "0.5.0",
     "courier": "5.0.0",
@@ -19,7 +19,7 @@
     "react": "0.2.0",
     "react-audit": "0.2.0",
     "react-audit-screens": "0.2.0",
-    "react-auth": "0.4.0",
+    "react-auth": "0.5.0",
     "react-auth-screens": "0.3.0",
     "react-billing": "0.2.0",
     "react-billing-screens": "0.2.0",
@@ -31,7 +31,7 @@
     "react-customers-screens": "0.2.0",
     "react-native-audit": "0.1.0",
     "react-native-audit-screens": "0.2.0",
-    "react-native-auth": "0.4.0",
+    "react-native-auth": "0.5.0",
     "react-native-auth-screens": "0.3.0",
     "react-native-billing": "0.1.0",
     "react-native-billing-screens": "0.2.0",
@@ -49,7 +49,7 @@
     "vue": "0.2.0",
     "vue-audit": "0.2.0",
     "vue-audit-screens": "0.2.0",
-    "vue-auth": "0.4.0",
+    "vue-auth": "0.5.0",
     "vue-auth-screens": "0.3.0",
     "vue-billing": "0.2.0",
     "vue-billing-screens": "0.2.0",
@@ -388,7 +388,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.7.0",
+      "version": "0.8.0",
       "requires": [],
       "exports": [
         "FonderieClient",
@@ -934,7 +934,7 @@
       "hasOutcomes": false
     },
     "react-auth": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1150,7 +1150,7 @@
       "hasOutcomes": false
     },
     "react-native-auth": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1438,7 +1438,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
