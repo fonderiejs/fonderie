@@ -1,5 +1,11 @@
 # @fonderie/vue-billing
 
+## 0.4.0
+
+### Minor Changes
+
+- 0ec38b6: Vue composables now match the React hooks' reactive contract: data parameters accept MaybeRefOrGetter and refetch on change; initial fetches run in onMounted (SSR-safe); every composable exports its IUse*Return interface.
+
 ## 0.3.0
 
 ### Minor Changes
