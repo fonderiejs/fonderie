@@ -95,7 +95,7 @@ fresh:
 1. **Retrieval** — `npm run brain:serve` runs the retrieval server over
    `brain.json`; `npm run brain:test` exercises it. This is how an agent
    queries the graph on demand instead of loading it whole.
-2. **Outcome** — the token-cost benchmark in [BENCHMARKING.md](BENCHMARKING.md)
+2. **Outcome** — the token-cost benchmark
    measures whether an agent *with* the skill builds a correct backend for
    fewer tokens than one building from scratch. A fresh brain that doesn't
    move that number isn't earning its place — and the benchmark has, at

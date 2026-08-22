@@ -227,5 +227,3 @@ Write it — that's the actual product. Fonderie's job stops at the
 boilerplate every SaaS needs on day one; it was never meant to cover what
 makes this particular product different.
 
-For the full architecture spec (package internals, dependency graph, target
-audience, why this exists) see `FONDERIE.md` at the repo root.
