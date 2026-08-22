@@ -1355,12 +1355,14 @@
         "useMemberRoles",
         "useMembers",
         "useRemoveMember",
+        "useRole",
         "useRolePermissions",
         "useRoles",
         "useSetRolePermissions",
         "useUpdateRole",
         "useWorkspaceProfile",
         "useWorkspaceSettings",
+        "useWorkspace",
         "useWorkspaces"
       ],
       "subpaths": [],
@@ -1695,12 +1697,14 @@
         "useMemberRoles",
         "useMembers",
         "useRemoveMember",
+        "useRole",
         "useRolePermissions",
         "useRoles",
         "useSetRolePermissions",
         "useUpdateRole",
         "useWorkspaceProfile",
         "useWorkspaceSettings",
+        "useWorkspace",
         "useWorkspaces"
       ],
       "subpaths": [],
@@ -3929,6 +3933,10 @@
       "react-workspaces",
       "vue-workspaces"
     ],
+    "userole": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
     "userolepermissions": [
       "react-workspaces",
       "vue-workspaces"
@@ -3946,6 +3954,10 @@
       "vue-workspaces"
     ],
     "useworkspacesettings": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "useworkspace": [
       "react-workspaces",
       "vue-workspaces"
     ],

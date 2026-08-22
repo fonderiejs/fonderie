@@ -230,6 +230,15 @@ interface IUseRolePermissionsReturn {
     setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
 }
 
+interface IUseRoleReturn {
+    role: Ref<IRoleDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
+
 interface IUseRolesReturn {
     roles: Ref<IRoleDTO[]>;
     isLoading: Ref<boolean>;
@@ -272,6 +281,15 @@ interface IUseWorkspaceSettingsReturn {
     updateSettings: (input: IUpdateSettingsInput) => Promise<void>;
 }
 
+interface IUseWorkspaceReturn {
+    workspace: Ref<IWorkspaceDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
+
 interface IUseWorkspacesReturn {
     workspaces: Ref<IWorkspaceDTO[]>;
     isLoading: Ref<boolean>;
@@ -295,6 +313,8 @@ function useMembers(client?: WorkspacesClient | undefined): IUseMembersReturn
 
 function useRemoveMember(client?: WorkspacesClient | undefined): IUseRemoveMemberReturn
 
+function useRole(id: MaybeRefOrGetter<string>): IUseRoleReturn
+
 function useRolePermissions(roleId: MaybeRefOrGetter<string>): IUseRolePermissionsReturn
 
 function useRoles(client?: WorkspacesClient | undefined): IUseRolesReturn
@@ -306,6 +326,8 @@ function useUpdateRole(client?: WorkspacesClient | undefined): IUseUpdateRoleRet
 function useWorkspaceProfile(client?: WorkspacesClient | undefined): IUseWorkspaceProfileReturn
 
 function useWorkspaceSettings(client?: WorkspacesClient | undefined): IUseWorkspaceSettingsReturn
+
+function useWorkspace(id: MaybeRefOrGetter<string>): IUseWorkspaceReturn
 
 function useWorkspaces(client?: WorkspacesClient | undefined): IUseWorkspacesReturn
 ```

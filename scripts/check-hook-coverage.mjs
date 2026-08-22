@@ -29,8 +29,6 @@ const ALLOW = new Map([
 	['WebhooksClient.setWorkspaceId', 'propagated by FonderieClient.setWorkspaceId'],
 	['AuthClient.refreshTokens', 'driven by FonderieClient.doRefresh, never by UI'],
 	// Read methods without a dedicated hook yet — tracked audit follow-ups.
-	['WorkspacesClient.getWorkspace', 'audit A-103 follow-up: no read hook yet'],
-	['WorkspacesClient.getRole', 'audit A-103 follow-up: no read hook yet'],
 ]);
 
 // Hook/composable sources to scan for references.
