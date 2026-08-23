@@ -76,3 +76,61 @@ if (failures.length) {
 	process.exit(1);
 }
 console.log(`check:hook-coverage — ${checked} public client methods checked; all covered or allow-listed (${ALLOW.size} allowed).`);
+
+// ── Leg 2: backend route → client method ─────────────────────────────────────
+// Every HTTP route the @fonderie/* server packages register (as documented in
+// the generated *-outcomes.md files) must be reachable through a typed client
+// method — which leg 1 above then proves has a hook. Routes that are not
+// app-code surfaces are allow-listed with reasons.
+const ROUTE_ALLOW = new Map([
+	['POST /billing/webhook', "Stripe's server-to-server callback receiver — only Stripe calls it"],
+	['GET /auth/google', 'browser-redirect OAuth leg — navigated to, never fetched'],
+	['GET /auth/google/callback', 'browser-redirect OAuth leg — navigated to, never fetched'],
+]);
+
+const sigDir = join(root, '.claude/skills/fonderie/signatures');
+const routeRows = readdirSync(sigDir)
+	.filter((f) => f.endsWith('-outcomes.md'))
+	.flatMap((f) =>
+		[...readFileSync(join(sigDir, f), 'utf8').matchAll(/^\| (GET|POST|PUT|PATCH|DELETE) \| `([^`]+)`/gm)].map(
+			(m) => ({ pkg: f.replace('-outcomes.md', ''), method: m[1], path: m[2] }),
+		),
+	);
+
+// Client path templates → normalized candidates. Dynamic segments (`${...}`)
+// become :param; trailing/nested template suffixes are usually query-string
+// builders, so stripped variants are accepted too.
+const clientSrc = readdirSync(modulesDir)
+	.filter((f) => f.endsWith('.ts'))
+	.map((f) => readFileSync(join(modulesDir, f), 'utf8'))
+	.join('\n');
+const clientPathSet = new Set();
+for (const m of clientSrc.matchAll(/path: [`'"]([^`'"]+)[`'"]/g)) {
+	const raw = m[1].split('?')[0];
+	const paramized = raw.replace(/\$\{[^}]+\}/g, ':param');
+	clientPathSet.add(paramized);
+	if (/:param$/.test(paramized)) clientPathSet.add(paramized.replace(/\/?:param$/, ''));
+	const cut = raw.split('$' + '{')[0];
+	if (cut) clientPathSet.add(cut.replace(/\/$/, ''));
+}
+
+const normalizeRoute = (p) => p.split('?')[0].replace(/:[A-Za-z]+/g, ':param');
+
+const uncoveredRoutes = [];
+let routesChecked = 0;
+for (const { method, path } of routeRows) {
+	routesChecked++;
+	const key = `${method} ${path}`;
+	if (ROUTE_ALLOW.has(key)) continue;
+	if (!clientPathSet.has(normalizeRoute(path))) uncoveredRoutes.push(key);
+}
+
+if (uncoveredRoutes.length) {
+	console.error(`check:hook-coverage — ${uncoveredRoutes.length} backend route(s) unreachable from the typed client:`);
+	for (const r of [...new Set(uncoveredRoutes)]) console.error(`  - ${r}`);
+	console.error('\nAdd a client method (leg 1 then requires a hook), or allow-list the route WITH a reason.');
+	process.exit(1);
+}
+console.log(
+	`check:hook-coverage — ${routesChecked} backend routes checked; all client-reachable or allow-listed (${ROUTE_ALLOW.size} allowed).`,
+);
