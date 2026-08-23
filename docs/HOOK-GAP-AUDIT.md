@@ -27,7 +27,11 @@
 >   the API like `/places/*` (crewfinding/api `627f515`).
 > - `WorkspacesClient.getWorkspace` / `getRole` remain read-hook-less
 >   (allow-listed in `check:hook-coverage` with reasons).
-> - `NavigateCard`/`Map` still embed the Google key for map rendering.
+> - ~~`NavigateCard`/`Map` still embed the Google key for map rendering~~ —
+>   **resolved 2026-08-22**: NavigateCard moved to `usePlaceSearch` and Map's
+>   directions render via the `/directions` proxy + decoded polyline
+>   (crewfinding/app `d109cb7`, api `6ac25e1`); both map libraries and the
+>   `GOOGLE_MAPS_APIKEY` config removed — no Google key ships in the app.
 
 Systematic audit of hook ↔ API surface gaps and state-lifecycle inconsistencies
 across the Fonderie SDK (React, React Native, Vue — 45 hooks, 6 typed
