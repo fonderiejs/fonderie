@@ -48,6 +48,28 @@ Fonderie, re-shaped into the paths the mobile app expects.
 `starter.routes.ts` is the whole adapter — about 300 lines, and the only file
 you'd rewrite to change the contract.
 
+### How the re-shaping stays correct
+
+Every read is typed against the DTO the package exports — `IMemberDTO`,
+`IWorkspaceDTO`, `IPlanDTO`, `ISubscriptionDTO`, `IAuditEventDTO` — so a
+misread field is a compile error, not a blank screen. Every write is checked
+against Fonderie's own Zod schema before it is sent, because Zod strips unknown
+keys rather than rejecting them: a misnamed field returns 200 with the value
+silently dropped.
+
+Two shapes are easy to get wrong and worth stating outright:
+
+- `result` is an **object keyed by resource** — `{ members: [...] }`, not a bare
+  array. `internal()` takes that key as an argument so it cannot be guessed.
+- The audit page is `{ events, nextCursor }` — not `{ items }`.
+
+**One known gap.** `GET /workspaces/members` cannot render a member list on its
+own: `listMembers()` joins `fonderie_users` and has the email and name, but
+`toMemberDTO()` drops every identity field. This example reads them from the
+users table directly — the only place it touches Fonderie's schema instead of
+its API. If the members DTO ever carries identity, delete `identitiesFor()` and
+read it from the endpoint.
+
 ### Why it re-shapes instead of exposing Fonderie directly
 
 The mobile app is deliberately backend-agnostic. It calls a flat set of REST

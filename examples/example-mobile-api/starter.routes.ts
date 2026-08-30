@@ -3,6 +3,10 @@ import type { Context }       from 'hono';
 import type { FonderieApp }   from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import { requireAuth, withWorkspace } from '@fonderie/adapter-hono';
+import { schemas } from '@fonderie/workspaces';
+import type { IMemberDTO, IRoleDTO, IWorkspaceDTO } from '@fonderie/workspaces';
+import type { IPlanDTO, ISubscriptionDTO } from '@fonderie/billing';
+import type { IAuditEventDTO } from '@fonderie/audit';
 
 import { ProjectModel } from './project.model.js';
 
@@ -37,26 +41,76 @@ export function buildStarterRouter(
 
 	/**
 	 * Call one of Fonderie's own routes in-process, carrying the caller's
-	 * credentials.
+	 * credentials, and pull the payload out of its envelope.
 	 *
-	 * This goes STRAIGHT to fonderie.handle(), deliberately not back through the
-	 * Hono router. Several paths appear on both sides — /billing/subscription is
-	 * both a route this file serves and a route it calls — so routing an internal
-	 * call through the app would re-enter this handler and recurse until the
-	 * stack overflows.
+	 * Two things this exists to get right, both of which were wrong when they were
+	 * written by hand:
+	 *
+	 * 1. Fonderie replies with { reason, explanation, result }, and `result` is an
+	 *    OBJECT keyed by resource — { members: [...] }, not a bare array. Treating
+	 *    it as an array throws at runtime.
+	 * 2. It goes STRAIGHT to fonderie.handle(), never back through the Hono
+	 *    router. Several paths appear on both sides — /billing/subscription is both
+	 *    served here and called from here — so routing internally would re-enter
+	 *    this handler and recurse until the stack overflows.
+	 *
+	 * `key` names the field inside `result`, and `T` is the DTO type the package
+	 * exports, so the compiler checks every field read downstream.
 	 */
-	const internal = async (c: Context, path: string, init: RequestInit = {}) => {
+	const internal = async <T>(
+		c: Context,
+		path: string,
+		key: string,
+		init: RequestInit = {},
+	): Promise<{ ok: boolean; status: number; data: T | null }> => {
 		const headers = new Headers(init.headers)
 		for (const name of ['authorization', 'x-workspace-id', 'content-type']) {
 			const value = c.req.header(name)
 			if (value && !headers.has(name)) headers.set(name, value)
 		}
+
 		// The origin is irrelevant — Fonderie only reads the path and query.
-		const url = `http://internal${basePath}${path}`
-		const response = await fonderie.handle(new Request(url, { ...init, headers }))
-		const body = await response.json().catch(() => null) as { result?: unknown } | null
-		// Fonderie wraps success payloads in { reason, explanation, result }.
-		return { ok: response.ok, status: response.status, result: body?.result ?? null }
+		const response = await fonderie.handle(
+			new Request(`http://internal${basePath}${path}`, { ...init, headers }),
+		)
+		const body = (await response.json().catch(() => null)) as
+			| { result?: Record<string, unknown> }
+			| null
+
+		return {
+			ok: response.ok,
+			status: response.status,
+			data: (body?.result?.[key] as T | undefined) ?? null,
+		}
+	}
+
+	/**
+	 * Send a body to Fonderie after checking it against Fonderie's own validator.
+	 *
+	 * Zod strips unknown keys rather than rejecting them, so a misnamed field
+	 * produces a 200 with the value silently dropped — an invitation that succeeds
+	 * and grants no role. Validating here turns that into a loud 500 during
+	 * development instead of a mystery in production.
+	 */
+	const send = async <T>(
+		c: Context,
+		path: string,
+		key: string,
+		method: string,
+		body: unknown,
+		schema: { safeParse: (value: unknown) => { success: boolean } },
+	): Promise<{ ok: boolean; status: number; data: T | null }> => {
+		if (!schema.safeParse(body).success) {
+			throw new Error(
+				`${method} ${path} was called with a body Fonderie will not accept: ` +
+					JSON.stringify(body),
+			)
+		}
+		return internal<T>(c, path, key, {
+			method,
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body),
+		})
 	}
 
 	const ctx = (c: Context) => c.get('_fonderie') as {
@@ -125,166 +179,223 @@ export function buildStarterRouter(
 	 * Turn the app's role NAME into the role ID the workspace API requires.
 	 *
 	 * The app speaks names ('admin'); Fonderie's invite and role endpoints both
-	 * validate `roleId`. Sending a name is silently dropped on invitations —
-	 * the person joins with no role — and rejected outright on a role change.
+	 * validate `roleId`. Sending a name is silently dropped on invitations — the
+	 * person joins with no role — and rejected outright on a role change.
 	 */
 	const resolveRoleId = async (c: Context, roleName: string): Promise<string | null> => {
-		const { ok, result } = await internal(c, '/workspaces/roles')
-		if (!ok || !Array.isArray(result)) return null
+		const { ok, data } = await internal<IRoleDTO[]>(c, '/workspaces/roles', 'roles')
+		if (!ok || !data) return null
 		const wanted = roleName.trim().toLowerCase()
-		const match = (result as { id: string; name: string }[])
-			.find((r) => r.name?.trim().toLowerCase() === wanted)
-		return match?.id ?? null
+		return data.find((r) => r.name?.trim().toLowerCase() === wanted)?.id ?? null
 	}
 
-	const toMember = (m: Record<string, unknown>) => {
-		const first = (m['firstName'] as string | null) ?? ''
-		const last  = (m['lastName']  as string | null) ?? ''
-		const name  = `${first} ${last}`.trim()
-		return {
-			id:             m['userId'],
-			userId:         m['userId'],
-			organizationId: m['workspaceId'],
-			email:          m['email'] ?? '',
-			name:           name || null,
-			avatarUrl:      m['profileImageUrl'] ?? null,
-			role:           ROLE_FROM_FONDERIE[String(m['roleName']).toLowerCase()] ?? 'member',
-			// Fonderie tracks acceptance as `confirmed`; the app shows it as a status.
-			status:         m['confirmed'] ? 'active' : 'invited',
-			invitedAt:      m['createdAt'],
-			joinedAt:       m['confirmed'] ? m['createdAt'] : null,
-		}
+	/**
+	 * Email and display name for a set of members.
+	 *
+	 * The workspace API cannot supply these: listMembers() joins fonderie_users and
+	 * has them, but toMemberDTO() drops every identity field, so GET
+	 * /workspaces/members returns ids and roles only. A team screen needs a name to
+	 * render, so this example reads them from the users table directly.
+	 *
+	 * That is the one place this file touches Fonderie's schema rather than its
+	 * API. If the members DTO ever carries identity, delete this and read it there.
+	 */
+	interface Identity { email: string; name: string | null; avatarUrl: string | null }
+
+	const identitiesFor = async (userIds: string[]): Promise<Map<string, Identity>> => {
+		if (userIds.length === 0) return new Map()
+
+		const rows = await store.query<{
+			id: string
+			email: string | null
+			first_name: string | null
+			last_name: string | null
+			profile_image_url: string | null
+		}>(
+			`SELECT id, email, first_name, last_name, profile_image_url
+			   FROM fonderie_users
+			  WHERE id = ANY($1::uuid[])`,
+			[userIds],
+		)
+
+		return new Map(rows.map((r) => {
+			const name = `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim()
+			return [r.id, {
+				email: r.email ?? '',
+				name: name || null,
+				avatarUrl: r.profile_image_url ?? null,
+			}]
+		}))
+	}
+
+	const toMember = (m: IMemberDTO, identity?: Identity) => ({
+		id:             m.userId,
+		userId:         m.userId,
+		organizationId: m.workspaceId,
+		email:          identity?.email ?? '',
+		name:           identity?.name ?? null,
+		avatarUrl:      identity?.avatarUrl ?? null,
+		role:           ROLE_FROM_FONDERIE[m.roleName?.toLowerCase()] ?? 'member',
+		// Fonderie tracks acceptance as `confirmed`; the app shows it as a status.
+		status:         m.confirmed ? 'active' : 'invited',
+		invitedAt:      m.createdAt,
+		joinedAt:       m.confirmed ? m.createdAt : null,
+	})
+
+	const listMembers = async (c: Context) => {
+		const { ok, status, data } = await internal<IMemberDTO[]>(c, '/workspaces/members', 'members')
+		if (!ok || !data) return { ok: false as const, status }
+
+		const identities = await identitiesFor(data.map((m) => m.userId))
+		return { ok: true as const, members: data.map((m) => toMember(m, identities.get(m.userId))) }
 	}
 
 	router.get('/members', ...scoped, async (c) => {
-		const { ok, status, result } = await internal(c, '/workspaces/members')
-		if (!ok) return c.json({ message: 'Could not load members' }, status as never)
-		return c.json((result as Record<string, unknown>[] ?? []).map(toMember))
+		const result = await listMembers(c)
+		if (!result.ok) return c.json({ message: 'Could not load members' }, result.status as never)
+		return c.json(result.members)
 	})
 
 	router.post('/members/invitations', ...scoped, async (c) => {
 		const body = await c.req.json<{ email: string; role: string }>()
+
 		const roleId = await resolveRoleId(c, body.role)
 		if (!roleId) {
 			return c.json({ message: `No role named "${body.role}" in this workspace` }, 422)
 		}
-		const { ok, status, result } = await internal(c, '/workspaces/invitations', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ email: body.email, roleId }),
-		})
+
+		const { ok, status } = await send<unknown>(
+			c, '/workspaces/invitations', 'invitations', 'POST',
+			{ email: body.email, roleId },
+			schemas.createInvitationsSchema,
+		)
 		if (!ok) return c.json({ message: 'Could not send the invitation' }, status as never)
-		return c.json(toMember((result ?? {}) as Record<string, unknown>), 201)
+
+		// The invitation response carries no identity, so report what was asked for.
+		return c.json({
+			id: body.email, userId: body.email, organizationId: ctx(c).workspace!.id,
+			email: body.email, name: null, avatarUrl: null,
+			role: body.role, status: 'invited',
+			invitedAt: new Date().toISOString(), joinedAt: null,
+		}, 201)
 	})
 
 	router.patch('/members/:id', ...scoped, async (c) => {
 		const { role } = await c.req.json<{ role: string }>()
+
 		const roleId = await resolveRoleId(c, role)
-		if (!roleId) {
-			return c.json({ message: `No role named "${role}" in this workspace` }, 422)
-		}
-		const { ok, status } = await internal(c, `/workspaces/members/${c.req.param('id')}/roles`, {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ roleId }),
-		})
+		if (!roleId) return c.json({ message: `No role named "${role}" in this workspace` }, 422)
+
+		const { ok, status } = await send<unknown>(
+			c, `/workspaces/members/${c.req.param('id')}/roles`, 'roles', 'POST',
+			{ roleId },
+			schemas.addMemberRoleSchema,
+		)
 		if (!ok) return c.json({ message: 'Could not change the role' }, status as never)
-		const refreshed = await internal(c, '/workspaces/members')
-		const member = (refreshed.result as Record<string, unknown>[] ?? [])
-			.find((m) => m['userId'] === c.req.param('id'))
-		return c.json(member ? toMember(member) : { id: c.req.param('id'), role })
+
+		const refreshed = await listMembers(c)
+		const member = refreshed.ok
+			? refreshed.members.find((m) => m.userId === c.req.param('id'))
+			: undefined
+		return c.json(member ?? { id: c.req.param('id'), role })
 	})
 
 	router.delete('/members/:id', ...scoped, async (c) => {
-		const { ok, status } = await internal(c, `/workspaces/members/${c.req.param('id')}`, {
-			method: 'DELETE',
-		})
+		const { ok, status } = await internal(
+			c, `/workspaces/members/${c.req.param('id')}`, 'member', { method: 'DELETE' },
+		)
 		if (!ok) return c.json({ message: 'Could not remove the member' }, status as never)
 		return new Response(null, { status: 204 })
 	})
 
 	// ── organization ← workspaces ────────────────────────────────────────────
 
-	const toOrganization = (w: Record<string, unknown>) => ({
-		id:          w['id'],
-		name:        w['name'],
-		slug:        w['slug'],
+	const toOrganization = (w: IWorkspaceDTO) => ({
+		id:          w.id,
+		name:        w.name,
+		slug:        w.slug,
 		// A workspace has no logo field, so this is always null. If you want
 		// organization logos, add a column and surface it here.
 		logoUrl:     null,
-		planId:      w['plan'] ?? 'free',
+		planId:      w.plan || 'free',
 		trialEndsAt: null,
-		createdAt:   w['createdAt'],
+		createdAt:   w.createdAt,
 	})
 
 	router.get('/organization', ...scoped, async (c) => {
-		const { workspace } = ctx(c)
-		const { ok, status, result } = await internal(c, `/workspaces/${workspace!.id}`)
-		if (!ok) return c.json({ message: 'Could not load the organization' }, status as never)
-		return c.json(toOrganization((result ?? {}) as Record<string, unknown>))
+		const { ok, status, data } = await internal<IWorkspaceDTO>(
+			c, `/workspaces/${ctx(c).workspace!.id}`, 'workspace',
+		)
+		if (!ok || !data) {
+			return c.json({ message: 'Could not load the organization' }, status as never)
+		}
+		return c.json(toOrganization(data))
 	})
 
 	router.patch('/organization', ...scoped, async (c) => {
 		const patch = await c.req.json<{ name?: string; description?: string | null }>()
 
-		// Forward only what the workspace API validates. It rejects a body with
-		// no recognised field, so an update carrying nothing else — a logo-only
-		// change, say — would fail rather than no-op.
+		// Forward only what the workspace API validates. It rejects a body with no
+		// recognised field, so an update carrying nothing else — a logo-only change,
+		// say — would fail rather than no-op.
 		const forwarded: Record<string, unknown> = {}
 		if (patch.name !== undefined) forwarded['name'] = patch.name
 		if (patch.description !== undefined) forwarded['description'] = patch.description
 
 		if (Object.keys(forwarded).length === 0) {
-			const current = await internal(c, `/workspaces/${ctx(c).workspace!.id}`)
-			return c.json(toOrganization((current.result ?? {}) as Record<string, unknown>))
+			const current = await internal<IWorkspaceDTO>(
+				c, `/workspaces/${ctx(c).workspace!.id}`, 'workspace',
+			)
+			return current.data
+				? c.json(toOrganization(current.data))
+				: c.json({ message: 'Could not load the organization' }, 502)
 		}
 
-		const { ok, status, result } = await internal(c, '/workspaces', {
-			method: 'PUT',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(forwarded),
-		})
-		if (!ok) return c.json({ message: 'Could not update the organization' }, status as never)
-		return c.json(toOrganization((result ?? {}) as Record<string, unknown>))
+		const { ok, status, data } = await send<IWorkspaceDTO>(
+			c, '/workspaces', 'workspace', 'PUT', forwarded, schemas.updateWorkspaceSchema,
+		)
+		if (!ok || !data) {
+			return c.json({ message: 'Could not update the organization' }, status as never)
+		}
+		return c.json(toOrganization(data))
 	})
 
 	// ── billing ──────────────────────────────────────────────────────────────
 
 	router.get('/billing/plans', ...scoped, async (c) => {
-		const { ok, status, result } = await internal(c, '/plans')
-		if (!ok) return c.json({ message: 'Could not load plans' }, status as never)
-		return c.json((result as Record<string, unknown>[] ?? []).map((p) => {
-			const pricing  = (p['pricing'] ?? {}) as Record<string, number>
-			const metadata = (p['metadata'] ?? {}) as Record<string, unknown>
-			const features = (p['features'] ?? []) as { name: string; enabled: boolean }[]
-			return {
-				// The app keys plans by id and looks up 'free' | 'pro' | 'business'.
-				id:           String(p['planId'] ?? p['id'] ?? '').toLowerCase(),
-				name:         p['name'],
-				// Both sides use minor units (cents), so no conversion.
-				priceMonthly: pricing['monthly'] ?? 0,
-				priceYearly:  pricing['yearly'] ?? 0,
-				currency:     pricing['currency'] ?? 'USD',
-				// Shown verbatim: t() returns its argument when there is no
-				// translation, so a plain sentence renders correctly.
-				featureKeys:  features.filter((f) => f.enabled !== false).map((f) => f.name),
-				seatLimit:    (metadata['seats'] as number | null) ?? (p['seats'] as number | null) ?? null,
-				projectLimit: (metadata['projectLimit'] as number | null) ?? null,
-			}
-		}))
+		const { ok, status, data } = await internal<IPlanDTO[]>(c, '/plans', 'plans')
+		if (!ok || !data) return c.json({ message: 'Could not load plans' }, status as never)
+
+		return c.json(data.map((plan) => ({
+			// The app keys plans by id and looks up 'free' | 'pro' | 'business'.
+			id:           (plan.planId || plan.id || '').toLowerCase(),
+			name:         plan.name,
+			// Both sides use minor units (cents), so no conversion.
+			priceMonthly: plan.pricing?.monthly ?? 0,
+			priceYearly:  plan.pricing?.yearly ?? 0,
+			currency:     plan.pricing?.currency ?? 'USD',
+			// Shown verbatim: t() returns its argument when there is no translation,
+			// so a plain sentence renders correctly.
+			featureKeys:  (plan.features ?? []).filter((f) => f.enabled).map((f) => f.name),
+			seatLimit:    plan.seats ?? null,
+			projectLimit: (plan.metadata?.['projectLimit'] as number | null) ?? null,
+		})))
 	})
 
 	router.get('/billing/subscription', ...scoped, async (c) => {
-		const { ok, result } = await internal(c, '/billing/subscription')
-		// No subscription is a normal state, not an error — the app renders the
-		// free plan. Returning 404 here would surface as a crash banner.
-		if (!ok || !result) {
+		const { data } = await internal<ISubscriptionDTO>(
+			c, '/billing/subscription', 'subscription',
+		)
+
+		// No subscription is a normal state, not an error — the app renders the free
+		// plan. Returning 404 here would surface as a crash banner.
+		if (!data) {
 			return c.json({
 				planId: 'free', status: 'none', interval: 'month',
 				currentPeriodEnd: null, cancelAtPeriodEnd: false, seats: 1,
 			})
 		}
-		const s = result as Record<string, unknown>
+
 		// Fonderie's status vocabulary is wider than the app's; anything the app
 		// does not know about is treated as active rather than shown as an error.
 		const STATUS: Record<string, string> = {
@@ -292,23 +403,19 @@ export function buildStarterRouter(
 			canceled: 'canceled', cancelled: 'canceled', incomplete: 'past_due',
 			unpaid: 'past_due', paused: 'canceled',
 		}
+
+		const members = await listMembers(c)
 		return c.json({
-			planId:            String(s['plan'] ?? 'free').toLowerCase(),
-			status:            STATUS[String(s['status'])] ?? 'active',
-			interval:          s['interval'] ?? 'month',
-			currentPeriodEnd:  s['currentPeriodEnd'] ?? null,
-			cancelAtPeriodEnd: Boolean(s['cancelAtPeriodEnd']),
+			planId:            (data.plan || 'free').toLowerCase(),
+			status:            STATUS[data.status] ?? 'active',
+			interval:          data.interval === 'year' ? 'year' : 'month',
+			currentPeriodEnd:  data.currentPeriodEnd || null,
+			cancelAtPeriodEnd: Boolean(data.cancelAtPeriodEnd),
 			// Fonderie bills per subscription, not per seat, so the app shows the
 			// number of people who actually have access.
-			seats:             await memberCount(c),
+			seats:             members.ok ? members.members.length : 1,
 		})
 	})
-
-	/** How many people are in the workspace — the app displays this as seats. */
-	const memberCount = async (c: Context): Promise<number> => {
-		const { ok, result } = await internal(c, '/workspaces/members')
-		return ok && Array.isArray(result) ? result.length : 1
-	}
 
 	// ── activity ← audit ─────────────────────────────────────────────────────
 
@@ -321,18 +428,19 @@ export function buildStarterRouter(
 	}
 
 	router.get('/activity', ...scoped, async (c) => {
-		const { ok, result } = await internal(c, '/audit?limit=20')
-		if (!ok || !result) return c.json([])
-		const events = (result as { items?: Record<string, unknown>[] }).items ?? []
-		return c.json(events.map((e) => {
-			const payload = (e['payload'] ?? {}) as Record<string, unknown>
+		// The audit page is { events, nextCursor } — not { items }.
+		const { ok, data } = await internal<IAuditEventDTO[]>(c, '/audit?limit=20', 'events')
+		if (!ok || !data) return c.json([])
+
+		return c.json(data.map((event) => {
+			const payload = event.payload ?? {}
 			return {
-				id:              e['id'],
-				type:            ACTIVITY_TYPE[String(e['type'])] ?? 'project.created',
-				actorName:       payload['actorName'] ?? 'Someone',
-				actorAvatarUrl:  null,
-				subject:         payload['name'] ?? payload['subject'] ?? '',
-				createdAt:       e['createdAt'],
+				id:             event.id,
+				type:           ACTIVITY_TYPE[event.type] ?? 'project.created',
+				actorName:      (payload['actorName'] as string) ?? 'Someone',
+				actorAvatarUrl: null,
+				subject:        (payload['name'] as string) ?? (payload['subject'] as string) ?? '',
+				createdAt:      event.createdAt,
 			}
 		}))
 	})
