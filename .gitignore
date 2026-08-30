@@ -70,3 +70,9 @@ research/
 SOC2-readiness.md
 FONDERIE.md
 docs/BENCHMARKING.md
+
+# Standalone starter — developed here, but never committed into this repo's
+# history. It carries its own git repo and MIT license and is destined for a
+# public repository of its own. Ignored (not just excluded) so `git add -A`
+# cannot pull it in and `git clean -fd` cannot delete it.
+examples/saas-starter/
