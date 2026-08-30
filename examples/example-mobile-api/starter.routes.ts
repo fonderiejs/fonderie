@@ -190,15 +190,19 @@ export function buildStarterRouter(
 	}
 
 	/**
-	 * Email and display name for a set of members.
+	 * Email, display name and avatar for a set of members.
 	 *
-	 * The workspace API cannot supply these: listMembers() joins fonderie_users and
-	 * has them, but toMemberDTO() drops every identity field, so GET
-	 * /workspaces/members returns ids and roles only. A team screen needs a name to
-	 * render, so this example reads them from the users table directly.
+	 * TEMPORARY. @fonderie/workspaces 5.1.0 — the version this example installs —
+	 * drops every identity field in toMemberDTO(), so GET /workspaces/members
+	 * returns ids and roles only and a team screen has nothing to render.
 	 *
-	 * That is the one place this file touches Fonderie's schema rather than its
-	 * API. If the members DTO ever carries identity, delete this and read it there.
+	 * That is fixed in the package: IMemberDTO now carries email, firstName,
+	 * lastName and profileImageUrl. Once the release lands, bump the dependency,
+	 * delete this function, and read the fields straight off IMemberDTO in
+	 * toMember() below.
+	 *
+	 * Until then this is the one place in the file that touches Fonderie's schema
+	 * rather than its API.
 	 */
 	interface Identity { email: string; name: string | null; avatarUrl: string | null }
 

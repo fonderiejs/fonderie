@@ -230,6 +230,11 @@ export interface IMemberDTO {
 	roleName: string;
 	confirmed: boolean;
 	createdAt: string;
+	/** Identity, so a member list can be rendered without a second request. */
+	email: string;
+	firstName: string;
+	lastName: string;
+	profileImageUrl: string;
 }
 
 export interface IInvitationDTO {
