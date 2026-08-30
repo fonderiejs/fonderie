@@ -83,11 +83,22 @@ database. You only need one to open a real checkout session.
 npm test
 ```
 
-Runs without a database. It asserts every endpoint the starter calls is routed,
-that each rejects an anonymous caller, and that internal calls cannot recurse.
+12 tests, all without a database:
 
-Testing against real data needs Postgres — start one, run `npm run migrate`, then
-register a user and exercise the endpoints with the token you get back.
+| Suite | What it proves |
+|---|---|
+| `contract.test.ts` | Every endpoint the app calls is routed, rejects anonymous callers, and internal calls cannot recurse |
+| `upstream.test.ts` | Every Fonderie route this backend calls still exists — the table is collected from the modules themselves, so a package upgrade that renames a route fails here |
+| `payload.test.ts` | Every body sent to Fonderie satisfies Fonderie's own Zod schema |
+
+That last one matters more than it looks. Zod strips unknown keys instead of
+failing, so sending `roleName` where `roleId` is expected returns 200 with the
+role silently dropped — the invitation succeeds and the person joins with no
+permissions. Routing tests cannot see that; this one can.
+
+What still needs Postgres: real queries and the response re-shaping against live
+data. Start a database, run `npm run migrate`, register a user, and exercise the
+endpoints with the token you get back.
 
 ---
 

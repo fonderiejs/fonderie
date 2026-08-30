@@ -121,6 +121,22 @@ export function buildStarterRouter(
 		owner: 'owner', admin: 'admin', member: 'member', viewer: 'viewer',
 	}
 
+	/**
+	 * Turn the app's role NAME into the role ID the workspace API requires.
+	 *
+	 * The app speaks names ('admin'); Fonderie's invite and role endpoints both
+	 * validate `roleId`. Sending a name is silently dropped on invitations —
+	 * the person joins with no role — and rejected outright on a role change.
+	 */
+	const resolveRoleId = async (c: Context, roleName: string): Promise<string | null> => {
+		const { ok, result } = await internal(c, '/workspaces/roles')
+		if (!ok || !Array.isArray(result)) return null
+		const wanted = roleName.trim().toLowerCase()
+		const match = (result as { id: string; name: string }[])
+			.find((r) => r.name?.trim().toLowerCase() === wanted)
+		return match?.id ?? null
+	}
+
 	const toMember = (m: Record<string, unknown>) => {
 		const first = (m['firstName'] as string | null) ?? ''
 		const last  = (m['lastName']  as string | null) ?? ''
@@ -148,10 +164,14 @@ export function buildStarterRouter(
 
 	router.post('/members/invitations', ...scoped, async (c) => {
 		const body = await c.req.json<{ email: string; role: string }>()
+		const roleId = await resolveRoleId(c, body.role)
+		if (!roleId) {
+			return c.json({ message: `No role named "${body.role}" in this workspace` }, 422)
+		}
 		const { ok, status, result } = await internal(c, '/workspaces/invitations', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ email: body.email, roleName: body.role }),
+			body: JSON.stringify({ email: body.email, roleId }),
 		})
 		if (!ok) return c.json({ message: 'Could not send the invitation' }, status as never)
 		return c.json(toMember((result ?? {}) as Record<string, unknown>), 201)
@@ -159,10 +179,14 @@ export function buildStarterRouter(
 
 	router.patch('/members/:id', ...scoped, async (c) => {
 		const { role } = await c.req.json<{ role: string }>()
+		const roleId = await resolveRoleId(c, role)
+		if (!roleId) {
+			return c.json({ message: `No role named "${role}" in this workspace` }, 422)
+		}
 		const { ok, status } = await internal(c, `/workspaces/members/${c.req.param('id')}/roles`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ roleName: role }),
+			body: JSON.stringify({ roleId }),
 		})
 		if (!ok) return c.json({ message: 'Could not change the role' }, status as never)
 		const refreshed = await internal(c, '/workspaces/members')
@@ -185,7 +209,9 @@ export function buildStarterRouter(
 		id:          w['id'],
 		name:        w['name'],
 		slug:        w['slug'],
-		logoUrl:     w['profileImageUrl'] ?? null,
+		// A workspace has no logo field, so this is always null. If you want
+		// organization logos, add a column and surface it here.
+		logoUrl:     null,
 		planId:      w['plan'] ?? 'free',
 		trialEndsAt: null,
 		createdAt:   w['createdAt'],
@@ -199,11 +225,24 @@ export function buildStarterRouter(
 	})
 
 	router.patch('/organization', ...scoped, async (c) => {
-		const patch = await c.req.json<{ name?: string; logoUrl?: string | null }>()
+		const patch = await c.req.json<{ name?: string; description?: string | null }>()
+
+		// Forward only what the workspace API validates. It rejects a body with
+		// no recognised field, so an update carrying nothing else — a logo-only
+		// change, say — would fail rather than no-op.
+		const forwarded: Record<string, unknown> = {}
+		if (patch.name !== undefined) forwarded['name'] = patch.name
+		if (patch.description !== undefined) forwarded['description'] = patch.description
+
+		if (Object.keys(forwarded).length === 0) {
+			const current = await internal(c, `/workspaces/${ctx(c).workspace!.id}`)
+			return c.json(toOrganization((current.result ?? {}) as Record<string, unknown>))
+		}
+
 		const { ok, status, result } = await internal(c, '/workspaces', {
 			method: 'PUT',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(patch),
+			body: JSON.stringify(forwarded),
 		})
 		if (!ok) return c.json({ message: 'Could not update the organization' }, status as never)
 		return c.json(toOrganization((result ?? {}) as Record<string, unknown>))
