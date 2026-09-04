@@ -27,7 +27,7 @@ function makeProvider(overrides: Partial<IBillingProvider> = {}): IBillingProvid
 
 		async resolvePriceById(priceId) {
 			return {
-				priceId, lookupKey: null, unitAmount: 1500, currency: 'usd',
+				priceId, lookupKey: null, unitAmount: 1500n, currency: 'usd',
 				interval: 'month' as const, nickname: null, productId: 'prod_stub', active: true,
 			};
 		},
@@ -71,8 +71,8 @@ const config: IBillingConfig = {
 		{
 			name: 'starter',
 			trialDays: 14,
-			monthly: { amount: 2900, priceId: 'price_starter_monthly' },
-			yearly: { amount: 29000, priceId: 'price_starter_yearly' },
+			monthly: { amount: 2900n, priceId: 'price_starter_monthly' },
+			yearly: { amount: 29000n, priceId: 'price_starter_yearly' },
 			defaults: { warnAt: 0.8, buffer: 0 },
 			policy: {
 				'api-calls': { limit: 10_000, buffer: 500, warnAt: 0.9, window: '1d' },
@@ -84,8 +84,8 @@ const config: IBillingConfig = {
 		},
 		{
 			name: 'pro',
-			monthly: { amount: 7900, priceId: 'price_pro_monthly' },
-			yearly: { amount: 79000, priceId: 'price_pro_yearly' },
+			monthly: { amount: 7900n, priceId: 'price_pro_monthly' },
+			yearly: { amount: 79000n, priceId: 'price_pro_yearly' },
 			defaults: { warnAt: 0.85, buffer: 0 },
 			policy: {
 				'api-calls': { limit: 100_000, buffer: 5_000, warnAt: 0.9, window: '1d' },
@@ -873,7 +873,7 @@ test('parseWindowMs: parses hour window', async () => {
 // ── pricing hydration (kill-switch + cache) ───────────────────────
 
 const priced = (id: string) => ({
-	priceId: id, lookupKey: null, unitAmount: 1500, currency: 'usd',
+	priceId: id, lookupKey: null, unitAmount: 1500n, currency: 'usd',
 	interval: 'month' as const, nickname: null, productId: 'p', active: true,
 });
 
@@ -911,9 +911,9 @@ test('PriceCache: serves last-cached on transient miss within grace', async () =
 	const provider = makeProvider({ resolvePriceById: async (id) => (++n === 1 ? priced(id) : null) });
 	const cache = new PriceCache({ ttlMs: 0 }); // force re-resolve each call
 	const first = await cache.byPriceId('price_y', provider);
-	assert.equal(first.price?.unitAmount, 1500);
+	assert.equal(first.price?.unitAmount, 1500n);
 	const second = await cache.byPriceId('price_y', provider); // provider now returns null
-	assert.equal(second.price?.unitAmount, 1500); // served from cache
+	assert.equal(second.price?.unitAmount, 1500n); // served from cache
 	assert.equal(second.stale, true);
 });
 
@@ -1033,7 +1033,7 @@ test('PriceCache: provider outage serves last-cached within maxStale', async () 
 	const cache = new PriceCache({ ttlMs: 0, maxStaleMs: 60_000 });
 	await cache.byPriceId('p', provider);
 	const r = await cache.byPriceId('p', provider);
-	assert.equal(r.price?.unitAmount, 1500);
+	assert.equal(r.price?.unitAmount, 1500n);
 	assert.equal(r.stale, true);
 });
 
@@ -1065,7 +1065,7 @@ test('PriceCache: prime warms the cache without a provider call', async () => {
 	cache.prime([priced('p')]);
 	const r = await cache.byPriceId('p', provider);
 	assert.equal(calls, 0);
-	assert.equal(r.price?.unitAmount, 1500);
+	assert.equal(r.price?.unitAmount, 1500n);
 });
 
 // ── hydration edge cases ──────────────────────────────────────────

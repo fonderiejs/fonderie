@@ -7,6 +7,16 @@ export interface ISubscriber {
 	id: string;
 }
 
+// Narrow a bigint money amount into a JS number for the wire-stable plan
+// pricing DTO (bounded display cents). Loud failure beats silent corruption:
+// a value past 2^53 would round, so refuse it instead.
+export function moneyToNumber(amount: bigint): number {
+	if (amount > BigInt(Number.MAX_SAFE_INTEGER) || amount < -BigInt(Number.MAX_SAFE_INTEGER)) {
+		throw new Error(`[billing] amount ${amount} exceeds Number.MAX_SAFE_INTEGER`);
+	}
+	return Number(amount);
+}
+
 // Converts window strings like '1d', '30d', '1h' to milliseconds.
 export function parseWindowMs(window: string): number {
 	const n = parseInt(window, 10);

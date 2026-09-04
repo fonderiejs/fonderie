@@ -73,7 +73,7 @@ function toResolvedPrice(p: any): IResolvedPrice {
 	return {
 		priceId: p.id,
 		lookupKey: p.lookup_key ?? null,
-		unitAmount: p.unit_amount ?? 0,
+		unitAmount: BigInt(p.unit_amount ?? 0),
 		currency: p.currency,
 		interval: p.recurring?.interval === BILLING_INTERVAL.YEAR ? BILLING_INTERVAL.YEAR : BILLING_INTERVAL.MONTH,
 		nickname: p.nickname ?? null,

@@ -8,11 +8,12 @@ export interface IBillingPlanPrice {
 	/** Stripe price id. Used for hydration and as a lookup_key fallback. */
 	priceId?: string;
 	/**
-	 * Display amount in cents — the seed value written to fonderie_plans and the
-	 * fallback shown (flagged pricingStale) when hydration is off or Stripe is
-	 * unreachable. When hydration resolves a live price, the live amount wins.
+	 * Display amount in the smallest currency unit (bigint, e.g. 1999n = $19.99) —
+	 * the seed value written to fonderie_plans and the fallback shown (flagged
+	 * pricingStale) when hydration is off or Stripe is unreachable. When
+	 * hydration resolves a live price, the live amount wins.
 	 */
-	amount?: number;
+	amount?: bigint;
 }
 
 /**

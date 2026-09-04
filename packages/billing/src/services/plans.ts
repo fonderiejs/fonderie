@@ -45,9 +45,10 @@ export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter
 	const params = plans.flatMap((plan) => [
 		plan.name,
 		plan.trialDays ?? 0,
-		plan.monthly?.amount ?? null,
+		// bigint params go over the wire as strings; pg casts into the column type.
+		plan.monthly?.amount?.toString() ?? null,
 		plan.monthly?.priceId ?? null,
-		plan.yearly?.amount ?? null,
+		plan.yearly?.amount?.toString() ?? null,
 		plan.yearly?.priceId ?? null,
 		plan.description ?? null,
 		plan.tier ?? 0,

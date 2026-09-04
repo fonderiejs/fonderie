@@ -28,7 +28,7 @@ export interface INormalizedSubscription {
 export interface IResolvedPrice {
 	priceId: string;
 	lookupKey: string | null;
-	unitAmount: number; // cents
+	unitAmount: bigint; // smallest currency unit
 	currency: string; // ISO 4217 (Stripe lowercases)
 	interval: 'month' | 'year';
 	nickname: string | null;
