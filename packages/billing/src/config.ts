@@ -57,9 +57,31 @@ export interface IBillingNotificationsConfig {
 }
 
 /**
+ * A purchasable credit top-up, synced to fonderie_credit_packs at boot (same
+ * pattern as plans). Purchases go through the provider's one-time checkout;
+ * the payment webhook credits `credits` to the buyer's wallet.
+ */
+export interface IBillingCreditPack {
+	/** Stable identifier used by POST /billing/wallet/checkout, e.g. 'small'. */
+	id: string;
+	name: string;
+	/** Wallet credits granted on purchase, in the smallest wallet unit. */
+	credits: bigint;
+	/** Purchase price in the provider's smallest currency unit. */
+	priceAmount: bigint;
+	/** ISO 4217. Defaults to the wallet currency. */
+	currency?: string;
+	/** Existing provider Price id — used instead of the ad-hoc priceAmount. */
+	priceId?: string;
+	/** Inactive packs stay in the DB but can no longer be checked out. */
+	active?: boolean;
+	metadata?: Record<string, unknown>;
+}
+
+/**
  * Opt-in stored-value wallet. Presence of this object activates the wallet
- * subsystem (routes, per-plan grants and rates); leaving it out changes
- * nothing for existing subscription-only consumers.
+ * subsystem (routes, credit packs, per-plan grants and rates); leaving it out
+ * changes nothing for existing subscription-only consumers.
  */
 export interface IBillingWalletConfig {
 	/** Default wallet currency when a plan doesn't override it. Default 'USD'. */
@@ -71,6 +93,13 @@ export interface IBillingWalletConfig {
 	 * grants). The route is only registered when a token is configured.
 	 */
 	adminToken?: string;
+	/**
+	 * Signing secret for POST /billing/webhook/payment. Keep it separate from
+	 * the subscription webhook's secret (one provider endpoint each); falls
+	 * back to the top-level webhookSecret when omitted.
+	 */
+	webhookSecret?: string;
+	creditPacks?: IBillingCreditPack[];
 }
 
 export interface IBillingConfig {

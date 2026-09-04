@@ -13,6 +13,7 @@ export { hasFeature, getPlanLimit, getLimitStatus, requireFeature } from './help
 export { MESSAGE_KEYS } from './config';
 export type {
 	IBillingConfig,
+	IBillingCreditPack,
 	IBillingPlan,
 	IBillingPlanDefaults,
 	IBillingPlanPrice,
@@ -30,7 +31,12 @@ export type { ICounterBackend } from './backends';
 export { BILLING_INTERVAL, WALLET_LEDGER_TYPES } from './types';
 export type { BillingInterval, WalletLedgerType } from './types';
 // Types
-export type { IBillingProvider, IBillingEvent, IResolvedPrice } from './providers/types';
+export type {
+	IBillingProvider,
+	IBillingEvent,
+	INormalizedPayment,
+	IResolvedPrice,
+} from './providers/types';
 export type {
 	IPlan,
 	ISubscription,

@@ -715,6 +715,316 @@ test('walletController.grant: 409 when the key belongs to a different subscriber
 	assert.equal(res.status, 409);
 });
 
+// ── credit packs ──────────────────────────────────────────────────
+
+const PACKS = [
+	{ id: 'small', name: 'Small pack', credits: 5000n, priceAmount: 499n },
+	{ id: 'retired', name: 'Retired pack', credits: 1n, priceAmount: 1n, active: false },
+	{ id: 'priced', name: 'Priced pack', credits: 20000n, priceAmount: 1999n, priceId: 'price_pack_20k', currency: 'EUR' },
+];
+
+test('findCreditPack: resolves active packs only', async () => {
+	const { findCreditPack } = await import('../services/credit-packs');
+	const config = walletConfig({ creditPacks: PACKS });
+	assert.equal(findCreditPack('small', config)?.credits, 5000n);
+	assert.equal(findCreditPack('retired', config), null);
+	assert.equal(findCreditPack('nope', config), null);
+});
+
+test('syncCreditPacksToDB: upserts packs with stringified bigint amounts', async () => {
+	const { syncCreditPacksToDB } = await import('../services/credit-packs');
+	let captured: { sql: string; params: unknown[] } | null = null;
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			captured = { sql, params: params ?? [] };
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	await syncCreditPacksToDB(walletConfig({ creditPacks: PACKS }), store);
+	assert.ok(captured!.sql.includes('INSERT INTO fonderie_credit_packs'));
+	assert.ok(captured!.sql.includes('ON CONFLICT (id) DO UPDATE'));
+	// First pack: default currency, stringified amounts, active default true.
+	assert.deepEqual(captured!.params.slice(0, 8), [
+		'small', 'Small pack', 'USD', '5000', '499', null, true, '{}',
+	]);
+	// Retired pack keeps active: false; priced pack keeps its own currency/priceId.
+	assert.equal(captured!.params[14], false);
+	assert.equal(captured!.params[18], 'EUR');
+	assert.equal(captured!.params[21], 'price_pack_20k');
+});
+
+// ── wallet checkout ───────────────────────────────────────────────
+
+function paymentProvider(overrides: Record<string, unknown> = {}) {
+	const calls: { payment?: unknown; customer?: unknown } = {};
+	const provider = {
+		name: 'stub',
+		async createCustomer(opts: unknown) {
+			calls.customer = opts;
+			return { customerId: 'cus_1' };
+		},
+		async createPaymentCheckoutSession(opts: unknown) {
+			calls.payment = opts;
+			return { url: 'https://checkout.stub.com/pay_1', sessionId: 'cs_test_1' };
+		},
+		async constructEvent() {
+			return { type: 'stub', subscription: null };
+		},
+		...overrides,
+	};
+	return { provider: provider as unknown as IBillingConfig['provider'], calls };
+}
+
+test('walletController.checkout: creates a payment session with snapshot metadata', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider, calls } = paymentProvider();
+	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
+	const ctrl = walletController(walletEmulator(), config);
+	const res = await ctrl.checkout(makeCtx({ body: { packId: 'small' } }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.result.url, 'https://checkout.stub.com/pay_1');
+	assert.equal(body.result.sessionId, 'cs_test_1');
+	const opts = calls.payment as any;
+	assert.equal(opts.amount, 499n);
+	assert.equal(opts.currency, 'USD');
+	assert.equal(opts.name, 'Small pack');
+	assert.deepEqual(opts.metadata, {
+		subscriberType: 'user',
+		subscriberId: USER.subscriberId,
+		packId: 'small',
+		credits: '5000',
+		currency: 'USD',
+	});
+});
+
+test('walletController.checkout: pack with a provider priceId passes it through', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider, calls } = paymentProvider();
+	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
+	const ctrl = walletController(walletEmulator(), config);
+	await ctrl.checkout(makeCtx({ body: { packId: 'priced' } }));
+	const opts = calls.payment as any;
+	assert.equal(opts.priceId, 'price_pack_20k');
+	assert.equal(opts.currency, 'EUR');
+	assert.equal(opts.metadata.credits, '20000');
+});
+
+test('walletController.checkout: 422 for unknown or inactive packs', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider } = paymentProvider();
+	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
+	const ctrl = walletController(walletEmulator(), config);
+	assert.equal((await ctrl.checkout(makeCtx({ body: { packId: 'nope' } }))).status, 422);
+	assert.equal((await ctrl.checkout(makeCtx({ body: { packId: 'retired' } }))).status, 422);
+});
+
+test('walletController.checkout: 501 when the provider lacks one-time payments', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider } = paymentProvider({ createPaymentCheckoutSession: undefined });
+	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
+	const ctrl = walletController(walletEmulator(), config);
+	const res = await ctrl.checkout(makeCtx({ body: { packId: 'small' } }));
+	assert.equal(res.status, 501);
+});
+
+// ── payment webhook ───────────────────────────────────────────────
+
+function paymentEvent(metadata: Record<string, string>, over: Record<string, unknown> = {}) {
+	return {
+		type: 'checkout.session.completed',
+		subscription: null,
+		payment: {
+			sessionId: 'cs_evt_1',
+			providerTxId: 'pi_1',
+			amountTotal: 499n,
+			currency: 'usd',
+			metadata,
+			...over,
+		},
+	};
+}
+
+const walletMeta = {
+	subscriberType: 'user',
+	subscriberId: USER.subscriberId,
+	packId: 'small',
+	credits: '5000',
+	currency: 'USD',
+};
+
+function webhookCtx(): import('@fonderie/core').IFonderieContext {
+	return {
+		meta: {},
+		user: null,
+		workspace: null,
+		tenant: null,
+		request: new Request('http://localhost/billing/webhook/payment', {
+			method: 'POST',
+			headers: { 'stripe-signature': 't=1,v1=stub' },
+			body: '{}',
+		}),
+	} as any;
+}
+
+function webhookConfig(event: unknown, over: Record<string, unknown> = {}) {
+	const { provider } = paymentProvider({
+		constructEvent: async () => event,
+	});
+	return {
+		...walletConfig({ webhookSecret: 'whsec_pay', creditPacks: PACKS, ...over }),
+		provider,
+	} as IBillingConfig;
+}
+
+test('payment webhook: credits the buyer wallet from snapshot metadata', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const ctrl = paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)));
+	const res = await ctrl.handle(webhookCtx());
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.received, true);
+	assert.equal(body.duplicate, false);
+	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`)!.amount, 5000n);
+	const row = store.state.ledger[0]!;
+	assert.equal(row.type, 'purchase');
+	assert.equal(row.providerTxId, 'pi_1');
+	assert.equal(row.idempotencyKey, 'stub:checkout:cs_evt_1');
+	assert.equal(row.metadata['packId'], 'small');
+});
+
+test('payment webhook: replayed event is idempotent', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const ctrl = paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)));
+	await ctrl.handle(webhookCtx());
+	const replay = await ctrl.handle(webhookCtx());
+	const body = (await replay.json()) as any;
+	assert.equal(replay.status, 200);
+	assert.equal(body.duplicate, true);
+	assert.equal(store.state.ledger.length, 1);
+	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`)!.amount, 5000n);
+});
+
+test('payment webhook: ignores events without a payment', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const ctrl = paymentWebhookController(
+		store,
+		webhookConfig({ type: 'customer.subscription.updated', subscription: null }),
+	);
+	const res = await ctrl.handle(webhookCtx());
+	assert.equal(res.status, 200);
+	assert.equal(store.state.ledger.length, 0);
+});
+
+test('payment webhook: ignores one-time payments that are not wallet purchases', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const ctrl = paymentWebhookController(store, webhookConfig(paymentEvent({ order: '42' })));
+	const res = await ctrl.handle(webhookCtx());
+	assert.equal(res.status, 200);
+	assert.equal(store.state.ledger.length, 0);
+});
+
+test('payment webhook: 422 for a wallet purchase with malformed metadata', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const ctrl = paymentWebhookController(
+		store,
+		webhookConfig(paymentEvent({ ...walletMeta, credits: '5,000' })),
+	);
+	const res = await ctrl.handle(webhookCtx());
+	assert.equal(res.status, 422);
+	assert.equal(store.state.ledger.length, 0);
+});
+
+test('payment webhook: 500 without a secret, 400 without a signature or on bad signature', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+
+	const noSecret = { ...webhookConfig(paymentEvent(walletMeta)) } as IBillingConfig;
+	delete (noSecret.wallet as { webhookSecret?: string }).webhookSecret;
+	assert.equal((await paymentWebhookController(store, noSecret).handle(webhookCtx())).status, 500);
+
+	const ctrl = paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)));
+	const unsigned = {
+		...webhookCtx(),
+		request: new Request('http://localhost/billing/webhook/payment', { method: 'POST', body: '{}' }),
+	} as any;
+	assert.equal((await ctrl.handle(unsigned)).status, 400);
+
+	const { provider } = paymentProvider({
+		constructEvent: async () => {
+			throw new Error('bad signature');
+		},
+	});
+	const badSig = { ...webhookConfig(null), provider } as IBillingConfig;
+	assert.equal((await paymentWebhookController(store, badSig).handle(webhookCtx())).status, 400);
+});
+
+test('payment webhook: falls back to the subscription webhookSecret', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	let seenSecret = '';
+	const { provider } = paymentProvider({
+		constructEvent: async (opts: { secret: string }) => {
+			seenSecret = opts.secret;
+			return paymentEvent(walletMeta);
+		},
+	});
+	const config = {
+		...walletConfig({ creditPacks: PACKS }),
+		webhookSecret: 'whsec_subscription',
+		provider,
+	} as IBillingConfig;
+	const res = await paymentWebhookController(store, config).handle(webhookCtx());
+	assert.equal(res.status, 200);
+	assert.equal(seenSecret, 'whsec_subscription');
+});
+
+test('payment webhook: 409 when the session key was already used for another subscriber', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const { creditWallet } = await import('../services/wallet');
+	const store = walletEmulator();
+	await creditWallet({ ...OTHER, amount: 1n, idempotencyKey: 'stub:checkout:cs_evt_1' }, store);
+	const ctrl = paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)));
+	const res = await ctrl.handle(webhookCtx());
+	assert.equal(res.status, 409);
+});
+
+// ── Stripe payment-session normalization ──────────────────────────
+
+test('normalizePaymentSession: string and expanded payment_intent, null-safe', async () => {
+	const { normalizePaymentSession } = await import('../providers/stripe');
+	const full = normalizePaymentSession({
+		id: 'cs_1',
+		mode: 'payment',
+		payment_intent: 'pi_9',
+		amount_total: 499,
+		currency: 'usd',
+		metadata: { packId: 'small' },
+	});
+	assert.deepEqual(full, {
+		sessionId: 'cs_1',
+		providerTxId: 'pi_9',
+		amountTotal: 499n,
+		currency: 'usd',
+		metadata: { packId: 'small' },
+	});
+
+	const expanded = normalizePaymentSession({ id: 'cs_2', payment_intent: { id: 'pi_x' } });
+	assert.equal(expanded.providerTxId, 'pi_x');
+
+	const bare = normalizePaymentSession({ id: 'cs_3' });
+	assert.equal(bare.providerTxId, null);
+	assert.equal(bare.amountTotal, null);
+	assert.equal(bare.currency, null);
+	assert.deepEqual(bare.metadata, {});
+});
+
 // ── requireAdminToken ─────────────────────────────────────────────
 
 test('requireAdminToken: 401 without or with a wrong token, passes with the right one', async () => {

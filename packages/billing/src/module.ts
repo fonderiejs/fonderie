@@ -4,6 +4,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { IBillingConfig } from './config';
 import { buildBillingRoutes } from './routes';
 import { syncPlansToDB } from './services/plans';
+import { syncCreditPacksToDB } from './services/credit-packs';
 import { withBilling } from './middlewares/billing';
 import { createBackend } from './backends';
 
@@ -18,6 +19,7 @@ export class BillingModule implements IFonderieModule {
 
 	async install(app: IFonderieApp): Promise<void> {
 		await syncPlansToDB(this.config, this.store);
+		if (this.config.wallet) await syncCreditPacksToDB(this.config, this.store);
 
 		const backend = createBackend(this.config.rateLimit?.backend, this.store);
 

@@ -8,6 +8,7 @@ import {
 	grantWalletSchema,
 	recordUsageSchema,
 	updatePlanSchema,
+	walletCheckoutSchema,
 } from './schemas';
 
 import type { IBillingConfig } from './config';
@@ -18,6 +19,7 @@ import { checkoutController } from './controllers/checkout.controller';
 import { usageController } from './controllers/usage.controller';
 import { walletController } from './controllers/wallet.controller';
 import { webhookController } from './controllers/webhook.controller';
+import { paymentWebhookController } from './controllers/payment-webhook.controller';
 import { requireAdminToken } from './middlewares/admin-token';
 
 type RouteDefinition = [string, string, ...Middleware[]];
@@ -63,9 +65,14 @@ export function buildBillingRoutes(
 	// nothing and changes nothing for subscription-only consumers.
 	if (config.wallet) {
 		const wallet = walletController(store, config);
+		const paymentWebhook = paymentWebhookController(store, config);
 		routes.push(
 			['GET', '/billing/wallet', requireAuth, wallet.get],
 			['GET', '/billing/wallet/transactions', requireAuth, wallet.transactions],
+			['POST', '/billing/wallet/checkout', requireAuth, validate(walletCheckoutSchema), wallet.checkout],
+			// Payment webhook — separate endpoint and secret from the
+			// subscription webhook; signature verified inside the handler.
+			['POST', '/billing/webhook/payment', paymentWebhook.handle],
 		);
 		// Manual grants are an ops surface: bootstrap admin token, not sessions.
 		if (config.wallet.adminToken) {

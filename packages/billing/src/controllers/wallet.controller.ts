@@ -6,6 +6,7 @@ import type { IBillingConfig } from '../config';
 import type { SubscriberType } from '../types';
 import { WalletModel } from '../models/wallet.model';
 import { decodeLedgerCursor } from '../services/wallet';
+import { findCreditPack } from '../services/credit-packs';
 import { DuplicateTransactionError } from '../errors';
 import { toWalletDTO, toWalletTransactionDTO } from '../dtos/billing';
 import { resolveSubscriber } from '../utils';
@@ -94,6 +95,68 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 					nextCursor: page.nextCursor,
 				},
 			);
+		},
+
+		// One-time checkout for a credit pack. The pack's credits and currency
+		// are snapshotted into the session metadata at creation time, so the
+		// webhook credits exactly what was bought even if config changes later.
+		async checkout(ctx: IFonderieContext): Promise<Response> {
+			const body = ctx.meta['body'] as { packId: string };
+			const subscriber = resolveSubscriber(ctx);
+			if (!subscriber) {
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
+			}
+
+			const pack = findCreditPack(body.packId, config);
+			if (!pack) {
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PARAMETER',
+					`Unknown credit pack: ${body.packId}`,
+				);
+			}
+
+			if (!config.provider.createPaymentCheckoutSession) {
+				return setApiResponse(
+					HTTP.NOT_IMPLEMENTED,
+					'PAYMENT_NOT_SUPPORTED',
+					`Provider '${config.provider.name}' does not support one-time payments`,
+				);
+			}
+
+			const currency = pack.currency ?? defaultCurrency();
+			const { customerId } = await config.provider.createCustomer({
+				email: ctx.user!.email ?? '',
+				subscriberType: subscriber.type,
+				subscriberId: subscriber.id,
+				userId: ctx.user!.id,
+			});
+
+			const session = await config.provider.createPaymentCheckoutSession({
+				customerId,
+				amount: pack.priceAmount,
+				currency,
+				name: pack.name,
+				...(pack.priceId ? { priceId: pack.priceId } : {}),
+				metadata: {
+					subscriberType: subscriber.type,
+					subscriberId: subscriber.id,
+					packId: pack.id,
+					credits: pack.credits.toString(),
+					currency,
+				},
+				successUrl: config.successUrl,
+				cancelUrl: config.cancelUrl,
+			});
+
+			return setApiResponse(HTTP.OK, 'CHECKOUT_URL', 'Checkout session created.', {
+				url: session.url,
+				sessionId: session.sessionId,
+			});
 		},
 
 		// Admin-token-guarded manual grant (support/ops). Body is validated and

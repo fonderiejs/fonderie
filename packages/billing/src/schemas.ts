@@ -46,6 +46,10 @@ const walletAmount = z
 	.transform((v) => BigInt(v))
 	.refine((v) => v > 0n, 'amount must be positive');
 
+export const walletCheckoutSchema = z.object({
+	packId: z.string().trim().min(1, 'packId is required').max(100),
+});
+
 export const grantWalletSchema = z.object({
 	subscriberType: z.enum(['user', 'workspace']),
 	subscriberId: z.string().uuid('subscriberId must be a UUID'),
