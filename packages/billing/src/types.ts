@@ -85,6 +85,32 @@ export interface IPlanFeature {
 	limit?: number;
 }
 
+// ── Wallet ────────────────────────────────────────────────────────
+
+export const WALLET_LEDGER_TYPES = ['purchase', 'grant', 'usage', 'refund', 'adjustment'] as const;
+export type WalletLedgerType = (typeof WALLET_LEDGER_TYPES)[number];
+
+export interface IWalletBalance {
+	balance: bigint;
+	version: number;
+	updatedAt: string | null; // ISO string; null when no balance row exists yet
+}
+
+export interface IWalletLedgerEntry {
+	id: string;
+	subscriberType: SubscriberType;
+	subscriberId: string;
+	currency: string;
+	type: WalletLedgerType;
+	amount: bigint; // signed: positive = credit, negative = debit
+	balanceAfter: bigint;
+	description: string | null;
+	idempotencyKey: string;
+	metadata: Record<string, unknown>;
+	providerTxId: string | null;
+	createdAt: string;
+}
+
 // ── Usage ─────────────────────────────────────────────────────────
 
 export interface IUsageRecord {

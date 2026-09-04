@@ -2,7 +2,13 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { Middleware } from '@fonderie/core';
 import { requireAuth, validate } from '@fonderie/core/middlewares';
 
-import { checkoutSchema, createPlanSchema, recordUsageSchema, updatePlanSchema } from './schemas';
+import {
+	checkoutSchema,
+	createPlanSchema,
+	grantWalletSchema,
+	recordUsageSchema,
+	updatePlanSchema,
+} from './schemas';
 
 import type { IBillingConfig } from './config';
 import { PriceCache } from './services/price-cache';
@@ -10,7 +16,9 @@ import { planController } from './controllers/plan.controller';
 import { subscriptionController } from './controllers/subscription.controller';
 import { checkoutController } from './controllers/checkout.controller';
 import { usageController } from './controllers/usage.controller';
+import { walletController } from './controllers/wallet.controller';
 import { webhookController } from './controllers/webhook.controller';
+import { requireAdminToken } from './middlewares/admin-token';
 
 type RouteDefinition = [string, string, ...Middleware[]];
 
@@ -29,7 +37,7 @@ export function buildBillingRoutes(
 	const usage = usageController(store);
 	const webhook = webhookController(store, config, priceCache);
 
-	return [
+	const routes: RouteDefinition[] = [
 		// Plans — public read-only
 		['GET', '/plans', plan.list],
 		['GET', '/plans/:planId', plan.get],
@@ -50,4 +58,26 @@ export function buildBillingRoutes(
 		// Webhook — signature verified inside the handler
 		['POST', '/billing/webhook', webhook.handle],
 	];
+
+	// Stored-value wallet — opt-in via config.wallet; absent config registers
+	// nothing and changes nothing for subscription-only consumers.
+	if (config.wallet) {
+		const wallet = walletController(store, config);
+		routes.push(
+			['GET', '/billing/wallet', requireAuth, wallet.get],
+			['GET', '/billing/wallet/transactions', requireAuth, wallet.transactions],
+		);
+		// Manual grants are an ops surface: bootstrap admin token, not sessions.
+		if (config.wallet.adminToken) {
+			routes.push([
+				'POST',
+				'/billing/wallet/grant',
+				requireAdminToken(config.wallet.adminToken),
+				validate(grantWalletSchema),
+				wallet.grant,
+			]);
+		}
+	}
+
+	return routes;
 }

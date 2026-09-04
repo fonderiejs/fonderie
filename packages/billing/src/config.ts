@@ -56,6 +56,23 @@ export interface IBillingNotificationsConfig {
 	softHit?: boolean; // fire when soft limit crossed
 }
 
+/**
+ * Opt-in stored-value wallet. Presence of this object activates the wallet
+ * subsystem (routes, per-plan grants and rates); leaving it out changes
+ * nothing for existing subscription-only consumers.
+ */
+export interface IBillingWalletConfig {
+	/** Default wallet currency when a plan doesn't override it. Default 'USD'. */
+	currency?: string;
+	/** Display precision — decimal places of the smallest unit. Default 2. */
+	precision?: number;
+	/**
+	 * Bearer token guarding POST /billing/wallet/grant (manual support/ops
+	 * grants). The route is only registered when a token is configured.
+	 */
+	adminToken?: string;
+}
+
 export interface IBillingConfig {
 	provider: IBillingProvider;
 	plans: IBillingPlan[];
@@ -65,6 +82,7 @@ export interface IBillingConfig {
 	rateLimit?: { backend?: RateLimitBackendConfig };
 	notifications?: IBillingNotificationsConfig;
 	pricing?: IBillingPricingConfig;
+	wallet?: IBillingWalletConfig;
 }
 
 export const MESSAGE_KEYS = {

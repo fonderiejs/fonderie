@@ -35,3 +35,22 @@ export const recordUsageSchema = z.object({
 	metric: z.string().min(1, 'metric is required').max(100),
 	quantity: z.number().min(0).optional(),
 });
+
+// Wallet amounts are bigint on the server; the wire carries them as digit
+// strings (JSON numbers accepted too, for small hand-written requests).
+const walletAmount = z
+	.union([
+		z.string().regex(/^\d{1,30}$/, 'amount must be a positive integer string'),
+		z.number().int().min(1),
+	])
+	.transform((v) => BigInt(v))
+	.refine((v) => v > 0n, 'amount must be positive');
+
+export const grantWalletSchema = z.object({
+	subscriberType: z.enum(['user', 'workspace']),
+	subscriberId: z.string().uuid('subscriberId must be a UUID'),
+	amount: walletAmount,
+	currency: z.string().trim().min(3).max(20).optional(),
+	description: z.string().max(500).optional(),
+	idempotencyKey: z.string().min(1, 'idempotencyKey is required').max(255),
+});

@@ -17,6 +17,7 @@ export type {
 	IBillingPlanDefaults,
 	IBillingPlanPrice,
 	IBillingPricingConfig,
+	IBillingWalletConfig,
 	RateLimitBackendConfig,
 	IBillingNotificationsConfig,
 	BillingMessageKey,
@@ -26,24 +27,56 @@ export type {
 export { MemoryCounterBackend, DBCounterBackend } from './backends';
 export type { ICounterBackend } from './backends';
 
-export { BILLING_INTERVAL } from './types';
-export type { BillingInterval } from './types';
+export { BILLING_INTERVAL, WALLET_LEDGER_TYPES } from './types';
+export type { BillingInterval, WalletLedgerType } from './types';
 // Types
 export type { IBillingProvider, IBillingEvent, IResolvedPrice } from './providers/types';
 export type {
 	IPlan,
 	ISubscription,
 	IUsageRecord,
+	IWalletBalance,
+	IWalletLedgerEntry,
 	SubscriptionStatus,
 	PolicyEntry,
 	LimitStatus,
 	IPolicyStatus,
 	IBillingContext,
 } from './types';
-export type { IPlanDTO, ISubscriptionDTO, IUsageRecordDTO } from './dtos/billing';
+export type {
+	IPlanDTO,
+	ISubscriptionDTO,
+	IUsageRecordDTO,
+	IWalletDTO,
+	IWalletTransactionDTO,
+} from './dtos/billing';
 
 // DTOs
-export { toPlanDTO, toSubscriptionDTO, toUsageRecordDTO } from './dtos/billing';
+export {
+	toPlanDTO,
+	toSubscriptionDTO,
+	toUsageRecordDTO,
+	toWalletDTO,
+	toWalletTransactionDTO,
+} from './dtos/billing';
+
+// Wallet — ledger-backed stored value. Product code debits through
+// debitWallet with an idempotency key derived from its own unit of work.
+export {
+	creditWallet,
+	debitWallet,
+	getWalletBalance,
+	getWalletLedger,
+	ensurePeriodicGrant,
+	currentGrantPeriod,
+} from './services/wallet';
+export type {
+	IWalletSubscriber,
+	IWalletMutationResult,
+	IWalletLedgerPage,
+	IGrantResult,
+} from './services/wallet';
+export { InsufficientFundsError, DuplicateTransactionError } from './errors';
 
 // Services (for advanced usage)
 export { recordUsage, getUsage } from './services/usage';

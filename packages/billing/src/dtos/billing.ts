@@ -1,4 +1,12 @@
-import type { IPlan, IPlanFeature, ISubscription, IUsageRecord, SubscriberType } from '../types';
+import type {
+	IPlan,
+	IPlanFeature,
+	ISubscription,
+	IUsageRecord,
+	IWalletLedgerEntry,
+	SubscriberType,
+	WalletLedgerType,
+} from '../types';
 
 export interface IPlanDTO {
 	id: string;
@@ -77,6 +85,44 @@ export function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO {
 		currentPeriodEnd: sub.currentPeriodEnd,
 		trialEndsAt: sub.trialEndsAt,
 		createdAt: sub.createdAt,
+	};
+}
+
+// Wallet amounts are bigint on the server and would throw in JSON.stringify —
+// the DTO layer serializes every money field as a digit string.
+export interface IWalletDTO {
+	balance: string; // smallest currency unit, e.g. '1999' = $19.99 at precision 2
+	currency: string;
+	precision: number;
+}
+
+export interface IWalletTransactionDTO {
+	id: string;
+	type: WalletLedgerType;
+	amount: string; // signed: positive = credit, negative = debit
+	balanceAfter: string;
+	currency: string;
+	description: string | null;
+	providerTxId: string | null;
+	metadata: Record<string, unknown>;
+	createdAt: string;
+}
+
+export function toWalletDTO(balance: bigint, currency: string, precision: number): IWalletDTO {
+	return { balance: balance.toString(), currency, precision };
+}
+
+export function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransactionDTO {
+	return {
+		id: entry.id,
+		type: entry.type,
+		amount: entry.amount.toString(),
+		balanceAfter: entry.balanceAfter.toString(),
+		currency: entry.currency,
+		description: entry.description,
+		providerTxId: entry.providerTxId,
+		metadata: entry.metadata,
+		createdAt: entry.createdAt,
 	};
 }
 
