@@ -33,13 +33,20 @@ export function resolvePlanNameByPrice(
 	return null;
 }
 
+// Plan wallet config carries bigints; the JSONB ops copy stores them as
+// digit strings.
+const walletToJson = (wallet: IBillingPlan['wallet']): string | null =>
+	wallet == null
+		? null
+		: JSON.stringify(wallet, (_key, value) => (typeof value === 'bigint' ? value.toString() : value));
+
 export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter): Promise<void> {
 	const plans = config.plans;
 	if (plans.length === 0) return;
 
 	const values = plans.map((_, i) => {
-		const b = i * 9;
-		return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7}, $${b + 8}, $${b + 9}::jsonb)`;
+		const b = i * 10;
+		return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7}, $${b + 8}, $${b + 9}::jsonb, $${b + 10}::jsonb)`;
 	});
 
 	const params = plans.flatMap((plan) => [
@@ -53,6 +60,7 @@ export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter
 		plan.description ?? null,
 		plan.tier ?? 0,
 		JSON.stringify(plan.metadata ?? {}),
+		walletToJson(plan.wallet),
 	]);
 
 	await store.query(
@@ -60,7 +68,7 @@ export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter
 			(name, trial_days,
 			 monthly_amount, monthly_price_id,
 			 yearly_amount,  yearly_price_id,
-			 description, tier, metadata)
+			 description, tier, metadata, wallet)
 		VALUES ${values.join(', ')}
 		ON CONFLICT (name) DO UPDATE SET
 			trial_days       = EXCLUDED.trial_days,
@@ -70,7 +78,8 @@ export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter
 			yearly_price_id  = EXCLUDED.yearly_price_id,
 			description      = EXCLUDED.description,
 			tier             = EXCLUDED.tier,
-			metadata         = EXCLUDED.metadata`,
+			metadata         = EXCLUDED.metadata,
+			wallet           = EXCLUDED.wallet`,
 		params,
 	);
 }

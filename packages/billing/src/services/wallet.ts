@@ -3,9 +3,11 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type {
 	IWalletBalance,
 	IWalletLedgerEntry,
+	IWalletRate,
 	SubscriberType,
 	WalletLedgerType,
 } from '../types';
+import type { IBillingConfig, IBillingPlan } from '../config';
 import { DuplicateTransactionError, InsufficientFundsError } from '../errors';
 
 // The ledger is the source of truth; fonderie_wallet_balances is a cache that
@@ -384,6 +386,32 @@ export async function getWalletLedger(
 	const nextCursor =
 		rows.length > limit && last ? encodeLedgerCursor(last.createdAt, last.id) : null;
 	return { entries, nextCursor };
+}
+
+// A plan's wallet economics with every default applied. Null when the wallet
+// subsystem is off (no config.wallet) or the plan defines no wallet.
+export interface IResolvedPlanWallet {
+	currency: string;
+	precision: number;
+	overdraftLimit: bigint;
+	grantAmount: bigint | null;
+	grantPeriod: 'month' | 'week' | 'day';
+	rates: Record<string, IWalletRate>;
+}
+
+export function resolvePlanWallet(
+	plan: IBillingPlan,
+	config: IBillingConfig,
+): IResolvedPlanWallet | null {
+	if (!config.wallet || !plan.wallet) return null;
+	return {
+		currency: plan.wallet.currency ?? config.wallet.currency ?? 'USD',
+		precision: plan.wallet.precision ?? config.wallet.precision ?? 2,
+		overdraftLimit: plan.wallet.overdraftLimit ?? 0n,
+		grantAmount: plan.wallet.monthlyGrant ?? null,
+		grantPeriod: plan.wallet.grantPeriod ?? 'month',
+		rates: plan.wallet.rates ?? {},
+	};
 }
 
 // UTC period key for periodic grants: '2026-09' (month), '2026-09-04' (day),

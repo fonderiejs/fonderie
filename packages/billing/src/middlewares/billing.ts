@@ -7,6 +7,12 @@ import type { ICounterBackend } from '../backends/types';
 import { MESSAGE_KEYS } from '../config';
 import { getSubscription } from '../services/subscriptions';
 import { buildBillingContext } from '../services/policy';
+import {
+	currentGrantPeriod,
+	ensurePeriodicGrant,
+	getWalletBalance,
+	resolvePlanWallet,
+} from '../services/wallet';
 import { resolveSubscriber, parseWindowMs } from '../utils';
 
 // In-process de-dup: tracks which threshold notifications have fired this session.
@@ -47,6 +53,41 @@ export function withBilling(
 		// Build and cache billing context on ctx
 		const billingCtx = buildBillingContext({ subscriber, plan, active, counters });
 		ctx.meta['billing'] = billingCtx;
+
+		// Wallet economics — lazy periodic grant, then a balance snapshot for
+		// requireWalletBalance and product code. Non-fatal by design: a wallet
+		// hiccup must not take down unrelated requests.
+		const planWallet = resolvePlanWallet(plan, config);
+		if (planWallet) {
+			try {
+				const sub = {
+					subscriberType: subscriber.type,
+					subscriberId: subscriber.id,
+					currency: planWallet.currency,
+				};
+				if (planWallet.grantAmount !== null && planWallet.grantAmount > 0n) {
+					await ensurePeriodicGrant(
+						{
+							...sub,
+							amount: planWallet.grantAmount,
+							period: currentGrantPeriod(planWallet.grantPeriod),
+						},
+						store,
+					);
+				}
+				const { balance } = await getWalletBalance(sub, store);
+				billingCtx.wallet = {
+					balance,
+					currency: planWallet.currency,
+					precision: planWallet.precision,
+					overdraftLimit: planWallet.overdraftLimit,
+					rates: planWallet.rates,
+				};
+			} catch (err) {
+				// eslint-disable-next-line no-console
+				console.error('[billing] wallet context failed:', (err as Error).message);
+			}
+		}
 
 		// Block requests that have hit a hard limit
 		for (const [key, status] of Object.entries(billingCtx.statuses)) {

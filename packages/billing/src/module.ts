@@ -18,6 +18,13 @@ export class BillingModule implements IFonderieModule {
 	) {}
 
 	async install(app: IFonderieApp): Promise<void> {
+		if (!this.config.wallet && this.config.plans.some((p) => p.wallet)) {
+			// eslint-disable-next-line no-console
+			console.warn(
+				'[billing] plans define wallet economics but config.wallet is not set — wallet features are disabled',
+			);
+		}
+
 		await syncPlansToDB(this.config, this.store);
 		if (this.config.wallet) await syncCreditPacksToDB(this.config, this.store);
 

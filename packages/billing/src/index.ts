@@ -7,7 +7,16 @@ export { requirePlan } from './middlewares/require-plan';
 export { withBilling } from './middlewares/billing';
 
 // Helpers — sync, read from cached ctx.meta['billing']
-export { hasFeature, getPlanLimit, getLimitStatus, requireFeature } from './helpers';
+export {
+	hasFeature,
+	getPlanLimit,
+	getLimitStatus,
+	requireFeature,
+	getWalletStatus,
+	getWalletRate,
+	requireWalletBalance,
+	debitWalletForMetric,
+} from './helpers';
 
 // Config + constants
 export { MESSAGE_KEYS } from './config';
@@ -17,6 +26,7 @@ export type {
 	IBillingPlan,
 	IBillingPlanDefaults,
 	IBillingPlanPrice,
+	IBillingPlanWallet,
 	IBillingPricingConfig,
 	IBillingWalletConfig,
 	RateLimitBackendConfig,
@@ -42,7 +52,9 @@ export type {
 	ISubscription,
 	IUsageRecord,
 	IWalletBalance,
+	IWalletContext,
 	IWalletLedgerEntry,
+	IWalletRate,
 	SubscriptionStatus,
 	PolicyEntry,
 	LimitStatus,
@@ -75,12 +87,14 @@ export {
 	getWalletLedger,
 	ensurePeriodicGrant,
 	currentGrantPeriod,
+	resolvePlanWallet,
 } from './services/wallet';
 export type {
 	IWalletSubscriber,
 	IWalletMutationResult,
 	IWalletLedgerPage,
 	IGrantResult,
+	IResolvedPlanWallet,
 } from './services/wallet';
 export { InsufficientFundsError, DuplicateTransactionError } from './errors';
 

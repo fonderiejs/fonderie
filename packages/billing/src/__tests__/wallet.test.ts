@@ -1025,6 +1025,244 @@ test('normalizePaymentSession: string and expanded payment_intent, null-safe', a
 	assert.deepEqual(bare.metadata, {});
 });
 
+// ── plan wallet economics (phase 3) ───────────────────────────────
+
+function billingStore(
+	emu: ReturnType<typeof walletEmulator>,
+	subscription: unknown = null,
+): IStoreAdapter {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('fonderie_subscriptions')) {
+				return (subscription ? [subscription] : []) as T[];
+			}
+			return emu.query<T>(sql, params);
+		},
+		transaction: (fn) => emu.transaction(fn),
+	};
+	return store;
+}
+
+const FREE_PLAN = {
+	name: 'free',
+	wallet: { monthlyGrant: 50n, rates: { task: { cost: 5n }, 'sms:send': { cost: 75n, unit: 'msg' } } },
+};
+const UNLIMITED_PLAN = { name: 'unlimited', wallet: { rates: { task: { cost: 0n } } } };
+
+function planWalletConfig(plans: unknown[]): IBillingConfig {
+	return { ...walletConfig(), plans } as IBillingConfig;
+}
+
+test('resolvePlanWallet: null without the global opt-in or a plan wallet, defaults otherwise', async () => {
+	const { resolvePlanWallet } = await import('../services/wallet');
+	const config = planWalletConfig([FREE_PLAN]);
+	const noOptIn = { ...config } as IBillingConfig;
+	delete (noOptIn as { wallet?: unknown }).wallet;
+	assert.equal(resolvePlanWallet(FREE_PLAN as any, noOptIn), null);
+	assert.equal(resolvePlanWallet({ name: 'plain' } as any, config), null);
+
+	const resolved = resolvePlanWallet(FREE_PLAN as any, config)!;
+	assert.equal(resolved.currency, 'USD');
+	assert.equal(resolved.precision, 2);
+	assert.equal(resolved.overdraftLimit, 0n);
+	assert.equal(resolved.grantAmount, 50n);
+	assert.equal(resolved.grantPeriod, 'month');
+
+	const custom = resolvePlanWallet(
+		{ name: 'x', wallet: { currency: 'EUR', precision: 0, overdraftLimit: 10n, grantPeriod: 'week' } } as any,
+		config,
+	)!;
+	assert.equal(custom.currency, 'EUR');
+	assert.equal(custom.precision, 0);
+	assert.equal(custom.overdraftLimit, 10n);
+	assert.equal(custom.grantAmount, null);
+	assert.equal(custom.grantPeriod, 'week');
+});
+
+async function runWithBilling(config: IBillingConfig, store: IStoreAdapter) {
+	const { withBilling } = await import('../middlewares/billing');
+	const { MemoryCounterBackend } = await import('../backends/memory');
+	const middleware = withBilling(store, config, new MemoryCounterBackend());
+	const ctx = makeCtx({});
+	let nextCalled = false;
+	await middleware(ctx, async () => {
+		nextCalled = true;
+		return new Response();
+	});
+	return { ctx, nextCalled };
+}
+
+test('withBilling: lazily grants once per period and exposes the wallet context', async () => {
+	const emu = walletEmulator();
+	const config = planWalletConfig([FREE_PLAN]);
+	const store = billingStore(emu);
+
+	const first = await runWithBilling(config, store);
+	assert.equal(first.nextCalled, true);
+	const wallet = (first.ctx.meta['billing'] as any).wallet;
+	assert.equal(wallet.balance, 50n);
+	assert.equal(wallet.currency, 'USD');
+	assert.equal(wallet.rates['sms:send'].cost, 75n);
+	assert.equal(emu.state.ledger.filter((l) => l.type === 'grant').length, 1);
+
+	// Second request in the same period: no second grant, same balance.
+	const second = await runWithBilling(config, store);
+	assert.equal((second.ctx.meta['billing'] as any).wallet.balance, 50n);
+	assert.equal(emu.state.ledger.filter((l) => l.type === 'grant').length, 1);
+});
+
+test('withBilling: no wallet context without plan wallet or global opt-in', async () => {
+	const emu = walletEmulator();
+	const noPlanWallet = await runWithBilling(planWalletConfig([{ name: 'plain' }]), billingStore(emu));
+	assert.equal((noPlanWallet.ctx.meta['billing'] as any).wallet, undefined);
+
+	const noOptIn = planWalletConfig([FREE_PLAN]);
+	delete (noOptIn as { wallet?: unknown }).wallet;
+	const disabled = await runWithBilling(noOptIn, billingStore(emu));
+	assert.equal((disabled.ctx.meta['billing'] as any).wallet, undefined);
+	assert.equal(emu.state.ledger.length, 0);
+});
+
+test('withBilling: wallet failures are non-fatal', async () => {
+	const config = planWalletConfig([FREE_PLAN]);
+	const broken: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('fonderie_subscriptions')) return [] as T[];
+			throw new Error('wallet backend down');
+		},
+		transaction: async (fn) => fn(broken),
+	};
+	const { ctx, nextCalled } = await runWithBilling(config, broken);
+	assert.equal(nextCalled, true);
+	assert.equal((ctx.meta['billing'] as any).wallet, undefined);
+});
+
+test('requireWalletBalance: 402 when the rate exceeds the balance, passes otherwise', async () => {
+	const { requireWalletBalance } = await import('../helpers');
+	const walletCtx = (balance: bigint, overdraft = 0n): any => ({
+		meta: {
+			billing: {
+				subscriber: { type: 'user', id: USER.subscriberId },
+				plan: 'free',
+				active: true,
+				statuses: {},
+				wallet: {
+					balance,
+					currency: 'USD',
+					precision: 2,
+					overdraftLimit: overdraft,
+					rates: { task: { cost: 5n }, free: { cost: 0n } },
+				},
+			},
+		},
+	});
+	const next = async () => new Response();
+
+	const blocked = await requireWalletBalance('task')(walletCtx(4n), next);
+	assert.equal(blocked.status, 402);
+	const body = (await blocked.json()) as any;
+	assert.equal(body.reason, 'INSUFFICIENT_CREDITS');
+	assert.equal(body.details.cost, '5');
+	assert.equal(body.details.balance, '4');
+
+	assert.equal((await requireWalletBalance('task')(walletCtx(5n), next)).status, 200);
+	// Overdraft opens the floor.
+	assert.equal((await requireWalletBalance('task')(walletCtx(0n, 5n), next)).status, 200);
+	// Zero-cost and unpriced metrics fail open.
+	assert.equal((await requireWalletBalance('free')(walletCtx(0n), next)).status, 200);
+	assert.equal((await requireWalletBalance('unknown')(walletCtx(0n), next)).status, 200);
+	// No wallet context (billing off / plan without wallet) fails open.
+	assert.equal((await requireWalletBalance('task')({ meta: {} } as any, next)).status, 200);
+});
+
+test('getWalletStatus / getWalletRate: read the cached context', async () => {
+	const { getWalletStatus, getWalletRate } = await import('../helpers');
+	const ctx: any = {
+		meta: {
+			billing: {
+				subscriber: { type: 'user', id: USER.subscriberId },
+				plan: 'free',
+				active: true,
+				statuses: {},
+				wallet: { balance: 10n, currency: 'USD', precision: 2, overdraftLimit: 0n, rates: { task: { cost: 5n } } },
+			},
+		},
+	};
+	assert.equal(getWalletStatus(ctx)?.balance, 10n);
+	assert.equal(getWalletRate(ctx, 'task'), 5n);
+	assert.equal(getWalletRate(ctx, 'unknown'), null);
+	assert.equal(getWalletStatus({ meta: {} } as any), null);
+});
+
+test('debitWalletForMetric: charges rate x quantity with an idempotency key', async () => {
+	const { debitWalletForMetric } = await import('../helpers');
+	const emu = walletEmulator();
+	const config = planWalletConfig([FREE_PLAN]);
+	const store = billingStore(emu);
+	const { ctx } = await runWithBilling(config, store); // grants 50
+
+	const result = await debitWalletForMetric(
+		ctx,
+		'task',
+		{ idempotencyKey: 'task-42', quantity: 3, metadata: { taskId: '42' } },
+		store,
+	);
+	assert.equal(result!.balance, 35n); // 50 - 3*5
+	const row = emu.state.ledger.at(-1)!;
+	assert.equal(row.amount, -15n);
+	assert.equal(row.metadata['metric'], 'task');
+	assert.equal(row.metadata['quantity'], 3);
+
+	// Replay is a no-op.
+	const replay = await debitWalletForMetric(ctx, 'task', { idempotencyKey: 'task-42', quantity: 3 }, store);
+	assert.equal(replay!.balance, 35n);
+	assert.equal(replay!.duplicate, true);
+});
+
+test('debitWalletForMetric: unlimited plans (zero rate) charge nothing and write no ledger row', async () => {
+	const { debitWalletForMetric } = await import('../helpers');
+	const emu = walletEmulator();
+	const config = planWalletConfig([UNLIMITED_PLAN]);
+	const store = billingStore(emu);
+	const { ctx } = await runWithBilling(config, store);
+
+	const result = await debitWalletForMetric(ctx, 'task', { idempotencyKey: 'u-1' }, store);
+	assert.equal(result, null);
+	assert.equal(await debitWalletForMetric(ctx, 'unpriced', { idempotencyKey: 'u-2' }, store), null);
+	assert.equal(emu.state.ledger.filter((l) => l.type === 'usage').length, 0);
+});
+
+test('debitWalletForMetric: throws InsufficientFundsError past the plan floor', async () => {
+	const { debitWalletForMetric } = await import('../helpers');
+	const { InsufficientFundsError } = await import('../errors');
+	const emu = walletEmulator();
+	const config = planWalletConfig([FREE_PLAN]);
+	const store = billingStore(emu);
+	const { ctx } = await runWithBilling(config, store); // balance 50
+	await assert.rejects(
+		debitWalletForMetric(ctx, 'task', { idempotencyKey: 'big', quantity: 11 }, store),
+		InsufficientFundsError,
+	);
+});
+
+test('syncPlansToDB: serializes plan wallet config with stringified bigints', async () => {
+	const { syncPlansToDB } = await import('../services/plans');
+	let captured: { sql: string; params: unknown[] } | null = null;
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			captured = { sql, params: params ?? [] };
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	await syncPlansToDB(planWalletConfig([FREE_PLAN, { name: 'plain' }]), store);
+	assert.ok(captured!.sql.includes('wallet           = EXCLUDED.wallet'));
+	const walletJson = JSON.parse(captured!.params[9] as string);
+	assert.equal(walletJson.monthlyGrant, '50');
+	assert.equal(walletJson.rates['sms:send'].cost, '75');
+	assert.equal(captured!.params[19], null); // plan without wallet
+});
+
 // ── requireAdminToken ─────────────────────────────────────────────
 
 test('requireAdminToken: 401 without or with a wrong token, passes with the right one', async () => {

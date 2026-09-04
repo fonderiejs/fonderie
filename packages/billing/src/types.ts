@@ -28,11 +28,29 @@ export type IPolicyStatus =
 			resetsAt: string | null; // ISO string for windowed counters, null otherwise
 	  };
 
+// Per-metric wallet pricing (plan-defined unit economics).
+export interface IWalletRate {
+	cost: bigint; // per unit, in the smallest wallet-currency unit
+	unit?: string; // display only, e.g. 'msg', 'min'
+}
+
+// Wallet snapshot cached on ctx.meta['billing'] by withBilling when the
+// subscriber's plan defines wallet economics. Server-side only — bigint
+// values here never hit JSON.stringify; the HTTP surface uses IWalletDTO.
+export interface IWalletContext {
+	balance: bigint;
+	currency: string;
+	precision: number;
+	overdraftLimit: bigint;
+	rates: Record<string, IWalletRate>;
+}
+
 export interface IBillingContext {
 	subscriber: { type: SubscriberType; id: string };
 	plan: string;
 	active: boolean; // subscription is active or trialing
 	statuses: Record<string, IPolicyStatus>;
+	wallet?: IWalletContext;
 }
 
 // ── Subscription ──────────────────────────────────────────────────

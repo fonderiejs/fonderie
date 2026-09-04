@@ -1,5 +1,5 @@
 import type { IBillingProvider } from './providers/types';
-import type { PolicyEntry } from './types';
+import type { IWalletRate, PolicyEntry } from './types';
 import type { ICounterBackend } from './backends/types';
 
 export interface IBillingPlanPrice {
@@ -37,6 +37,28 @@ export interface IBillingPlanDefaults {
 	buffer?: number; // default buffer for counter policies
 }
 
+/**
+ * Per-plan wallet economics. Requires config.wallet to be set — a plan-level
+ * wallet without the global opt-in is ignored (with a boot warning).
+ */
+export interface IBillingPlanWallet {
+	/** Overrides the global wallet currency for this plan's grants and rates. */
+	currency?: string;
+	/** Display precision override. */
+	precision?: number;
+	/**
+	 * Credits auto-granted once per grantPeriod, applied lazily by withBilling
+	 * on the subscriber's first request of the period.
+	 */
+	monthlyGrant?: bigint;
+	/** Grant cadence for monthlyGrant. Default 'month'. */
+	grantPeriod?: 'month' | 'week' | 'day';
+	/** How far below zero rate debits may take the balance. Default 0n (block at zero). */
+	overdraftLimit?: bigint;
+	/** Per-metric unit costs, e.g. { 'sms:send': { cost: 75n, unit: 'msg' } }. */
+	rates?: Record<string, IWalletRate>;
+}
+
 export interface IBillingPlan {
 	name: string;
 	description?: string;
@@ -46,6 +68,7 @@ export interface IBillingPlan {
 	yearly?: IBillingPlanPrice;
 	defaults?: IBillingPlanDefaults;
 	policy?: Record<string, PolicyEntry>;
+	wallet?: IBillingPlanWallet;
 	metadata?: Record<string, unknown>;
 }
 
