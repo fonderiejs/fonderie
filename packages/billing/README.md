@@ -49,7 +49,7 @@ new BillingModule(store, {
   plans: [{
     name: 'payg',
     wallet: {
-      monthlyGrant: 50n, // auto-granted lazily, once per period
+      grantAmount: 50n, // auto-granted lazily, once per period
       rates: { 'sms:send': { cost: 75n, unit: 'msg' } },
     },
   }],

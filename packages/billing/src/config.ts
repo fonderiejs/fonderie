@@ -51,8 +51,8 @@ export interface IBillingPlanWallet {
 	 * on the subscriber's first request of the period. Only granted while the
 	 * subscription is active or trialing (no new credit while payment fails).
 	 */
-	monthlyGrant?: bigint;
-	/** Grant cadence for monthlyGrant. Default 'month'. */
+	grantAmount?: bigint;
+	/** Grant cadence for grantAmount. Default 'month'. */
 	grantPeriod?: 'month' | 'week' | 'day';
 	/** How far below zero rate debits may take the balance. Default 0n (block at zero). */
 	overdraftLimit?: bigint;

@@ -447,7 +447,7 @@ export function resolvePlanWallet(
 		currency: normalizeCurrency(plan.wallet.currency ?? config.wallet.currency ?? 'USD'),
 		precision: plan.wallet.precision ?? config.wallet.precision ?? 2,
 		overdraftLimit: plan.wallet.overdraftLimit ?? 0n,
-		grantAmount: plan.wallet.monthlyGrant ?? null,
+		grantAmount: plan.wallet.grantAmount ?? null,
 		grantPeriod: plan.wallet.grantPeriod ?? 'month',
 		rates: plan.wallet.rates ?? {},
 	};

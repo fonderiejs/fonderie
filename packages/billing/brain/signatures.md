@@ -99,7 +99,7 @@ interface IBillingPlanPrice {
 interface IBillingPlanWallet {
     currency?: string;
     precision?: number;
-    monthlyGrant?: bigint;
+    grantAmount?: bigint;
     grantPeriod?: 'month' | 'week' | 'day';
     overdraftLimit?: bigint;
     rates?: Record<string, IWalletRate>;

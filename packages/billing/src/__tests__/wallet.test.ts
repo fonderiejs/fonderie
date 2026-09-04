@@ -1103,7 +1103,7 @@ function billingStore(
 
 const FREE_PLAN = {
 	name: 'free',
-	wallet: { monthlyGrant: 50n, rates: { task: { cost: 5n }, 'sms:send': { cost: 75n, unit: 'msg' } } },
+	wallet: { grantAmount: 50n, rates: { task: { cost: 5n }, 'sms:send': { cost: 75n, unit: 'msg' } } },
 };
 const UNLIMITED_PLAN = { name: 'unlimited', wallet: { rates: { task: { cost: 0n } } } };
 
@@ -1275,7 +1275,7 @@ test('withBilling: membership check fails closed when the workspaces table is mi
 
 const PRO_PLAN = {
 	name: 'pro',
-	wallet: { monthlyGrant: 500n, rates: { task: { cost: 1n } } },
+	wallet: { grantAmount: 500n, rates: { task: { cost: 1n } } },
 };
 
 const proSubscription = (status: string) => ({
@@ -1321,7 +1321,7 @@ test('wallet reads follow the plan wallet currency and precision, not just the g
 	// bucket or a funded subscriber sees a zero USD wallet.
 	const { walletController } = await import('../controllers/wallet.controller');
 	const emu = walletEmulator();
-	const eurPlan = { name: 'eur', wallet: { currency: 'eur', precision: 0, monthlyGrant: 1000n } };
+	const eurPlan = { name: 'eur', wallet: { currency: 'eur', precision: 0, grantAmount: 1000n } };
 	const config = planWalletConfig([eurPlan]);
 	const store = billingStore(emu);
 	const { ctx } = await runWithBilling(config, store); // grants 1000 EUR
@@ -1717,7 +1717,7 @@ test('syncPlansToDB: serializes plan wallet config with stringified bigints', as
 	await syncPlansToDB(planWalletConfig([FREE_PLAN, { name: 'plain' }]), store);
 	assert.ok(captured!.sql.includes('wallet           = EXCLUDED.wallet'));
 	const walletJson = JSON.parse(captured!.params[9] as string);
-	assert.equal(walletJson.monthlyGrant, '50');
+	assert.equal(walletJson.grantAmount, '50');
 	assert.equal(walletJson.rates['sms:send'].cost, '75');
 	assert.equal(captured!.params[19], null); // plan without wallet
 });
