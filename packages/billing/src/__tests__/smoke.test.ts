@@ -856,6 +856,49 @@ test('requireFeature: blocks when feature disabled', async () => {
 	assert.equal(res.status, 402);
 });
 
+// ── BillingInterval derivation ────────────────────────────────────
+
+test('BILLING_INTERVALS drives the type, the guard, and the checkout schema', async () => {
+	const { BILLING_INTERVAL, BILLING_INTERVALS, isBillingInterval } = await import('../types');
+	const { checkoutSchema } = await import('../schemas');
+
+	// Object and tuple carry the same values (the satisfies clause pins this
+	// at compile time; assert it at runtime too).
+	assert.deepEqual([...BILLING_INTERVALS].sort(), Object.values(BILLING_INTERVAL).sort());
+
+	assert.equal(isBillingInterval('month'), true);
+	assert.equal(isBillingInterval('year'), true);
+	assert.equal(isBillingInterval('week'), false);
+	assert.equal(isBillingInterval(undefined), false);
+
+	// The schema is derived, not a duplicated literal list.
+	assert.equal(checkoutSchema.safeParse({ plan: 'pro', interval: 'year' }).success, true);
+	assert.equal(checkoutSchema.safeParse({ plan: 'pro', interval: 'week' }).success, false);
+});
+
+test('toBillingInterval: passes intervals through and falls back to month for unsupported ones', async () => {
+	const { toBillingInterval } = await import('../providers/stripe');
+	assert.equal(toBillingInterval('year'), 'year');
+	assert.equal(toBillingInterval('month'), 'month');
+	// Historical fallback, now explicit: day/week Stripe prices record as month.
+	assert.equal(toBillingInterval('week'), 'month');
+	assert.equal(toBillingInterval(undefined), 'month');
+});
+
+test('checkoutController: rejects an interval outside BILLING_INTERVALS', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const ctrl = checkoutController(makeStore(), config);
+	const ctx = {
+		meta: { body: { plan: 'pro', interval: 'week' } },
+		user: { id: 'user-1', email: 'a@b.com' },
+		workspace: null,
+		tenant: null,
+		request: new Request('http://localhost/billing/checkout'),
+	} as any;
+	const res = await ctrl.createSession(ctx);
+	assert.equal(res.status, 422);
+});
+
 // ── parseWindowMs ─────────────────────────────────────────────────
 
 test('parseWindowMs: parses day window', async () => {
