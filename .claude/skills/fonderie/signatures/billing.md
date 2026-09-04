@@ -43,6 +43,8 @@ function requireWalletBalance(metric: string): Middleware
 
 function debitWalletForMetric(ctx: IFonderieContext, metric: string, opts: { idempotencyKey: string; quantity?: number; description?: string; metadata?: Record<string, unknown>; }, store: IStoreAdapter): Promise<...>
 
+function insufficientCreditsResponse(err: InsufficientFundsError, metric?: string | undefined): Response
+
 const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; }
 
 interface IBillingConfig {
@@ -424,6 +426,10 @@ function ensurePeriodicGrant(opts: IWalletSubscriber & { amount: bigint; period:
 function currentGrantPeriod(period: "month" | "week" | "day", now?: Date): string
 
 function resolvePlanWallet(plan: IBillingPlan, config: IBillingConfig): IResolvedPlanWallet | null
+
+function encodeLedgerCursor(createdAt: string, id: string): string
+
+function decodeLedgerCursor(cursor: string): { createdAt: string; id: string; } | null
 
 interface IWalletSubscriber {
     subscriberType: SubscriberType;

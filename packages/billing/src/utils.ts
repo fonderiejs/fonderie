@@ -17,6 +17,14 @@ export function moneyToNumber(amount: bigint): number {
 	return Number(amount);
 }
 
+// One canonical form for wallet currency codes. Balances are keyed by the
+// literal string — a lowercase 'usd' would open a second, unreachable bucket
+// next to 'USD', so every boundary (config, schema, query param, webhook
+// metadata) normalizes through here.
+export function normalizeCurrency(currency: string): string {
+	return currency.toUpperCase();
+}
+
 // Converts window strings like '1d', '30d', '1h' to milliseconds.
 export function parseWindowMs(window: string): number {
 	const n = parseInt(window, 10);

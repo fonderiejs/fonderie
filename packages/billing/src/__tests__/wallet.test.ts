@@ -792,7 +792,7 @@ test('walletController.checkout: creates a payment session with snapshot metadat
 	const { walletController } = await import('../controllers/wallet.controller');
 	const { provider, calls } = paymentProvider();
 	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
-	const ctrl = walletController(walletEmulator(), config);
+	const ctrl = walletController(billingStore(walletEmulator()), config);
 	const res = await ctrl.checkout(makeCtx({ body: { packId: 'small' } }));
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
@@ -815,7 +815,7 @@ test('walletController.checkout: pack with a provider priceId passes it through'
 	const { walletController } = await import('../controllers/wallet.controller');
 	const { provider, calls } = paymentProvider();
 	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
-	const ctrl = walletController(walletEmulator(), config);
+	const ctrl = walletController(billingStore(walletEmulator()), config);
 	await ctrl.checkout(makeCtx({ body: { packId: 'priced' } }));
 	const opts = calls.payment as any;
 	assert.equal(opts.priceId, 'price_pack_20k');
@@ -836,7 +836,7 @@ test('walletController.checkout: 501 when the provider lacks one-time payments',
 	const { walletController } = await import('../controllers/wallet.controller');
 	const { provider } = paymentProvider({ createPaymentCheckoutSession: undefined });
 	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
-	const ctrl = walletController(walletEmulator(), config);
+	const ctrl = walletController(billingStore(walletEmulator()), config);
 	const res = await ctrl.checkout(makeCtx({ body: { packId: 'small' } }));
 	assert.equal(res.status, 501);
 });
@@ -1312,6 +1312,63 @@ test('withBilling: past_due subscribers keep their wallet but receive no new gra
 	const wallet = (ctx.meta['billing'] as any).wallet;
 	assert.equal(wallet.balance, 0n); // no grant extended while payment fails
 	assert.equal(emu.state.ledger.length, 0);
+});
+
+// ── round-2 review fixes ──────────────────────────────────────────
+
+test('wallet reads follow the plan wallet currency and precision, not just the global default', async () => {
+	// Writes land in the plan bucket; the read endpoints must read the same
+	// bucket or a funded subscriber sees a zero USD wallet.
+	const { walletController } = await import('../controllers/wallet.controller');
+	const emu = walletEmulator();
+	const eurPlan = { name: 'eur', wallet: { currency: 'eur', precision: 0, monthlyGrant: 1000n } };
+	const config = planWalletConfig([eurPlan]);
+	const store = billingStore(emu);
+	const { ctx } = await runWithBilling(config, store); // grants 1000 EUR
+
+	const res = await walletController(store, config).get(ctx);
+	const body = (await res.json()) as any;
+	assert.deepEqual(body.result.wallet, { balance: '1000', currency: 'EUR', precision: 0 });
+
+	const txRes = await walletController(store, config).transactions(ctx);
+	const txBody = (await txRes.json()) as any;
+	assert.equal(txBody.result.transactions.length, 1);
+});
+
+test('walletController.checkout: reuses the subscription provider customer', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider, calls } = paymentProvider();
+	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
+	const store = billingStore(walletEmulator(), proSubscription('active'));
+	const res = await walletController(store, config).checkout(makeCtx({ body: { packId: 'small' } }));
+	assert.equal(res.status, 200);
+	assert.equal(calls.customer, undefined, 'must not create a second provider customer');
+	assert.equal((calls.payment as any).customerId, 'cus_1');
+});
+
+test('currency codes normalize to one canonical bucket across grant, read, and config', async () => {
+	const { grantWalletSchema } = await import('../schemas');
+	const { walletController } = await import('../controllers/wallet.controller');
+	const emu = walletEmulator();
+	const config = walletConfig();
+	const ctrl = walletController(billingStore(emu), config);
+
+	// A support grant in 'usd' must not open a case-distinct bucket...
+	const parsed = grantWalletSchema.parse({
+		subscriberType: 'user',
+		subscriberId: USER.subscriberId,
+		amount: '300',
+		currency: 'usd',
+		idempotencyKey: 'norm-1',
+	});
+	assert.equal(parsed.currency, 'USD');
+	await ctrl.grant(makeCtx({ body: parsed }));
+	assert.ok(emu.state.balances.has(`user|${USER.subscriberId}|USD`));
+	assert.equal(emu.state.balances.size, 1);
+
+	// ...and reads reach it whatever the query-param casing.
+	const res = await ctrl.get(makeCtx({ url: 'http://localhost/billing/wallet?currency=usd' }));
+	assert.equal(((await res.json()) as any).result.wallet.balance, '300');
 });
 
 // ── idempotency-conflict and rollback paths, deterministically ────

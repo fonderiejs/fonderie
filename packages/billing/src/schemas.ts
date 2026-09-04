@@ -56,7 +56,13 @@ export const grantWalletSchema = z.object({
 	subscriberType: z.enum(['user', 'workspace']),
 	subscriberId: z.string().uuid('subscriberId must be a UUID'),
 	amount: walletAmount,
-	currency: z.string().trim().min(3).max(20).optional(),
+	currency: z
+		.string()
+		.trim()
+		.min(3)
+		.max(20)
+		.transform((s) => s.toUpperCase())
+		.optional(),
 	description: z.string().max(500).optional(),
 	idempotencyKey: z.string().min(1, 'idempotencyKey is required').max(255),
 });

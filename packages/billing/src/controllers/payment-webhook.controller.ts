@@ -6,6 +6,8 @@ import type { IBillingConfig } from '../config';
 import type { SubscriberType } from '../types';
 import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
+import { normalizeCurrency } from '../utils';
+import { readWebhookEvent } from './webhook-shared';
 
 // One-time payment webhook — a SEPARATE endpoint (and secret) from the
 // subscription webhook, so each provider endpoint carries one event family.
@@ -20,30 +22,13 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 			// Deliberately NOT falling back to the subscription webhook's secret:
 			// per-endpoint secrets exist so a delivery captured for one endpoint
 			// can never replay validly against the other.
-			const secret = config.wallet?.webhookSecret;
-			if (!secret) {
-				return setApiResponse(
-					HTTP.SERVER_ERROR,
-					'SERVER_ERROR',
-					'Payment webhook secret not configured — set wallet.webhookSecret',
-				);
-			}
-
-			const signature =
-				ctx.request.headers.get('stripe-signature') ??
-				ctx.request.headers.get('paypal-auth-algo') ??
-				'';
-			if (!signature) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Missing webhook signature');
-			}
-
-			const payload = await ctx.request.text();
-			let event: Awaited<ReturnType<typeof config.provider.constructEvent>>;
-			try {
-				event = await config.provider.constructEvent({ payload, signature, secret });
-			} catch {
-				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Invalid webhook signature');
-			}
+			const event = await readWebhookEvent(
+				ctx,
+				config.wallet?.webhookSecret,
+				config.provider,
+				'Payment webhook secret not configured — set wallet.webhookSecret',
+			);
+			if (event instanceof Response) return event;
 
 			const payment = event.payment;
 			// Not a completed one-time payment (subscription events and other
@@ -82,7 +67,7 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 				return Response.json({ received: true, pending: true });
 			}
 
-			const currency = meta['currency'] ?? config.wallet?.currency ?? 'USD';
+			const currency = normalizeCurrency(meta['currency'] ?? config.wallet?.currency ?? 'USD');
 			try {
 				const result = await wallet.credit({
 					subscriberType: subscriberType as SubscriberType,

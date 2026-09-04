@@ -76,3 +76,10 @@ CREATE TABLE IF NOT EXISTS fonderie_credit_packs (
 -- Per-plan wallet economics (currency/precision/grants/rates) synced from
 -- config for ops visibility; enforcement reads config at runtime like policy.
 ALTER TABLE fonderie_plans ADD COLUMN IF NOT EXISTS wallet JSONB;
+
+-- Plan display prices widen with the config move to bigint — an INT column
+-- would fail boot for currencies whose minor-unit prices exceed 2^31. Reads
+-- convert back to JS numbers behind a 2^53 guard; the wire stays numeric.
+ALTER TABLE fonderie_plans
+	ALTER COLUMN monthly_amount TYPE BIGINT,
+	ALTER COLUMN yearly_amount TYPE BIGINT;

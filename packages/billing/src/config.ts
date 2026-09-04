@@ -122,9 +122,11 @@ export interface IBillingWalletConfig {
 	 */
 	adminToken?: string;
 	/**
-	 * Signing secret for POST /billing/webhook/payment. Keep it separate from
-	 * the subscription webhook's secret (one provider endpoint each); falls
-	 * back to the top-level webhookSecret when omitted.
+	 * Signing secret for POST /billing/webhook/payment. REQUIRED for pack
+	 * purchases: the route answers 500 until it is set, and it deliberately
+	 * does NOT fall back to the subscription webhook's secret — per-endpoint
+	 * secrets keep a delivery captured for one endpoint from replaying
+	 * against the other.
 	 */
 	webhookSecret?: string;
 	creditPacks?: IBillingCreditPack[];

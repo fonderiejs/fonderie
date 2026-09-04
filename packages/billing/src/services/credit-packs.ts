@@ -1,6 +1,7 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IBillingConfig, IBillingCreditPack } from '../config';
+import { normalizeCurrency } from '../utils';
 
 // Credit packs mirror the plans pattern: config is the runtime source of
 // truth (checkout reads it directly); the DB copy exists for ops visibility
@@ -19,7 +20,7 @@ export async function syncCreditPacksToDB(
 	const packs = config.wallet?.creditPacks ?? [];
 	if (packs.length === 0) return;
 
-	const defaultCurrency = config.wallet?.currency ?? 'USD';
+	const defaultCurrency = normalizeCurrency(config.wallet?.currency ?? 'USD');
 	const values = packs.map((_, i) => {
 		const b = i * 8;
 		return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7}, $${b + 8}::jsonb)`;
@@ -28,7 +29,7 @@ export async function syncCreditPacksToDB(
 	const params = packs.flatMap((pack) => [
 		pack.id,
 		pack.name,
-		pack.currency ?? defaultCurrency,
+		normalizeCurrency(pack.currency ?? defaultCurrency),
 		pack.credits.toString(),
 		pack.priceAmount.toString(),
 		pack.priceId ?? null,

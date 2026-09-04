@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import type { IBillingConfig, IBillingPlan } from '../config';
 import { DuplicateTransactionError, InsufficientFundsError } from '../errors';
+import { normalizeCurrency } from '../utils';
 
 // The ledger is the source of truth; fonderie_wallet_balances is a cache that
 // is NEVER written without a ledger row in the same transaction. Every
@@ -99,6 +100,26 @@ async function readBalance(sub: IWalletSubscriber, store: IStoreAdapter): Promis
 	return BigInt(row?.amount ?? '0');
 }
 
+// Atomic upsert-add on the balance cache. tx-scoped: callers pair it with a
+// ledger row in the same transaction, never alone.
+async function applyBalanceCredit(
+	tx: IStoreAdapter,
+	sub: IWalletSubscriber,
+	amount: bigint,
+): Promise<bigint> {
+	const [row] = await tx.query<{ amount: string }>(
+		`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (subscriber_type, subscriber_id, currency) DO UPDATE SET
+			amount     = fonderie_wallet_balances.amount + EXCLUDED.amount,
+			version    = fonderie_wallet_balances.version + 1,
+			updated_at = now()
+		RETURNING amount`,
+		[sub.subscriberType, sub.subscriberId, sub.currency, amount.toString()],
+	);
+	return BigInt(row?.amount ?? '0');
+}
+
 async function insertLedgerRow(
 	tx: IStoreAdapter,
 	sub: IWalletSubscriber,
@@ -159,17 +180,7 @@ export async function creditWallet(
 			const existing = await findByIdempotencyKey(opts, opts.idempotencyKey, tx);
 			if (existing) return { balance: await readBalance(opts, tx), duplicate: true };
 
-			const [row] = await tx.query<{ amount: string }>(
-				`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount)
-				VALUES ($1, $2, $3, $4)
-				ON CONFLICT (subscriber_type, subscriber_id, currency) DO UPDATE SET
-					amount     = fonderie_wallet_balances.amount + EXCLUDED.amount,
-					version    = fonderie_wallet_balances.version + 1,
-					updated_at = now()
-				RETURNING amount`,
-				[opts.subscriberType, opts.subscriberId, opts.currency, opts.amount.toString()],
-			);
-			const balance = BigInt(row?.amount ?? '0');
+			const balance = await applyBalanceCredit(tx, opts, opts.amount);
 
 			await insertLedgerRow(tx, opts, {
 				type: opts.type ?? 'adjustment',
@@ -433,7 +444,7 @@ export function resolvePlanWallet(
 ): IResolvedPlanWallet | null {
 	if (!config.wallet || !plan.wallet) return null;
 	return {
-		currency: plan.wallet.currency ?? config.wallet.currency ?? 'USD',
+		currency: normalizeCurrency(plan.wallet.currency ?? config.wallet.currency ?? 'USD'),
 		precision: plan.wallet.precision ?? config.wallet.precision ?? 2,
 		overdraftLimit: plan.wallet.overdraftLimit ?? 0n,
 		grantAmount: plan.wallet.monthlyGrant ?? null,
@@ -505,17 +516,7 @@ export async function ensurePeriodicGrant(
 			// Lost the race — another request granted this period first.
 			if (!marked) return { granted: false, balance: null };
 
-			const [row] = await tx.query<{ amount: string }>(
-				`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount)
-				VALUES ($1, $2, $3, $4)
-				ON CONFLICT (subscriber_type, subscriber_id, currency) DO UPDATE SET
-					amount     = fonderie_wallet_balances.amount + EXCLUDED.amount,
-					version    = fonderie_wallet_balances.version + 1,
-					updated_at = now()
-				RETURNING amount`,
-				[opts.subscriberType, opts.subscriberId, opts.currency, opts.amount.toString()],
-			);
-			const balance = BigInt(row?.amount ?? '0');
+			const balance = await applyBalanceCredit(tx, opts, opts.amount);
 
 			await insertLedgerRow(tx, opts, {
 				type: 'grant',

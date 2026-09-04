@@ -4,13 +4,14 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IBillingConfig } from '../config';
 import type { SubscriberType } from '../types';
+import { SubscriptionModel } from '../models/subscription.model';
 import { WalletModel } from '../models/wallet.model';
 import { decodeLedgerCursor } from '../services/wallet';
 import { findCreditPack } from '../services/credit-packs';
 import { DuplicateTransactionError } from '../errors';
 import { toWalletDTO, toWalletTransactionDTO } from '../dtos/billing';
 import { getWalletStatus } from '../helpers';
-import { resolveSubscriber } from '../utils';
+import { normalizeCurrency, resolveSubscriber } from '../utils';
 
 // The wallet routes are only registered when config.wallet is present, so
 // config.wallet is always defined on these paths — defaults are still applied
@@ -18,16 +19,22 @@ import { resolveSubscriber } from '../utils';
 
 export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 	const wallet = new WalletModel(store);
+	const subscriptions = new SubscriptionModel(store);
 
-	const defaultCurrency = () => config.wallet?.currency ?? 'USD';
-	const precision = () => config.wallet?.precision ?? 2;
+	const defaultCurrency = () => normalizeCurrency(config.wallet?.currency ?? 'USD');
 
 	// ?currency= lets a multi-currency subscriber address a specific balance;
-	// defaults to the configured wallet currency.
+	// otherwise reads follow the same bucket every write path uses — the
+	// subscriber's plan-wallet currency (cached by withBilling), then the
+	// configured default.
 	const currencyOf = (ctx: IFonderieContext) => {
 		const q = new URL(ctx.request.url).searchParams.get('currency');
-		return q ? q.toUpperCase() : defaultCurrency();
+		if (q) return normalizeCurrency(q);
+		return getWalletStatus(ctx)?.currency ?? defaultCurrency();
 	};
+
+	const precisionOf = (ctx: IFonderieContext) =>
+		getWalletStatus(ctx)?.precision ?? config.wallet?.precision ?? 2;
 
 	return {
 		async get(ctx: IFonderieContext): Promise<Response> {
@@ -48,7 +55,7 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 			});
 
 			return setApiResponse(HTTP.OK, 'WALLET_FETCHED', 'Wallet retrieved successfully.', {
-				wallet: toWalletDTO(balance, currency, precision()),
+				wallet: toWalletDTO(balance, currency, precisionOf(ctx)),
 			});
 		},
 
@@ -137,13 +144,22 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 			// subscriber spends from — otherwise the purchase would land in a
 			// bucket no spend path ever reads.
 			const creditCurrency = getWalletStatus(ctx)?.currency ?? defaultCurrency();
-			const chargeCurrency = pack.currency ?? creditCurrency;
-			const { customerId } = await config.provider.createCustomer({
-				email: ctx.user!.email ?? '',
-				subscriberType: subscriber.type,
-				subscriberId: subscriber.id,
-				userId: ctx.user!.id,
-			});
+			const chargeCurrency = normalizeCurrency(pack.currency ?? creditCurrency);
+
+			// Reuse the subscription's provider customer when one exists (same
+			// convention as the subscription checkout) — pack purchases then
+			// share payment history and saved methods with the subscription.
+			const current = await subscriptions.get(subscriber.type, subscriber.id);
+			const customerId =
+				current?.providerCustomerId ??
+				(
+					await config.provider.createCustomer({
+						email: ctx.user!.email ?? '',
+						subscriberType: subscriber.type,
+						subscriberId: subscriber.id,
+						userId: ctx.user!.id,
+					})
+				).customerId;
 
 			const session = await config.provider.createPaymentCheckoutSession({
 				customerId,
@@ -180,7 +196,7 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 				idempotencyKey: string;
 			};
 
-			const currency = body.currency ?? defaultCurrency();
+			const currency = body.currency ? normalizeCurrency(body.currency) : defaultCurrency();
 			try {
 				const result = await wallet.credit({
 					subscriberType: body.subscriberType,

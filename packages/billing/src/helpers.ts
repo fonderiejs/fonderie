@@ -3,6 +3,7 @@ import type { IFonderieContext } from '@fonderie/core';
 import type { Middleware } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { IBillingContext, IPolicyStatus, IWalletContext } from './types';
+import type { InsufficientFundsError } from './errors';
 import { debitWallet } from './services/wallet';
 import type { IWalletMutationResult } from './services/wallet';
 
@@ -117,6 +118,19 @@ export async function debitWalletForMetric(
 		},
 		store,
 	);
+}
+
+// The 402 a product route should return when a debit loses the race between
+// requireWalletBalance's snapshot and the actual deduction — catch
+// InsufficientFundsError around debitWallet/debitWalletForMetric and reply
+// with this (same shape as requireWalletBalance's own rejection).
+export function insufficientCreditsResponse(err: InsufficientFundsError, metric?: string): Response {
+	return setApiResponse(HTTP.PAYMENT_REQUIRED, 'INSUFFICIENT_CREDITS', 'Insufficient credits', {
+		...(metric ? { metric } : {}),
+		cost: err.required.toString(),
+		balance: err.available.toString(),
+		currency: err.currency,
+	});
 }
 
 // Middleware — gates a route behind a feature flag.

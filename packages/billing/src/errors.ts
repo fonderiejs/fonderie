@@ -1,6 +1,11 @@
-// Typed wallet domain errors. Services throw these; HTTP handlers catch and
-// map them to setApiResponse statuses (402 / 409) — same catch-specific-else-
-// rethrow shape as store's VersionConflictError.
+// Typed wallet domain errors, mapped to HTTP explicitly where they surface
+// (same catch-specific-else-rethrow shape as store's VersionConflictError):
+// DuplicateTransactionError → 409 in the grant and payment-webhook handlers;
+// InsufficientFundsError → 402 in product routes that debit. Note that
+// requireWalletBalance answers its 402 from a pre-check without throwing, so
+// a route that debits inside its unit of work should catch this error and
+// reply with insufficientCreditsResponse() — the pre-check alone cannot
+// reserve funds against a concurrent drain.
 
 export class InsufficientFundsError extends Error {
 	constructor(

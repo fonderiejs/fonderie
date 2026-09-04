@@ -50,6 +50,11 @@ only while the subscription is active or trialing.
 
 Migration `006_wallet.sql` adds `fonderie_wallet_balances`,
 `fonderie_wallet_ledger`, `fonderie_wallet_grants`, `fonderie_credit_packs`,
-and a nullable `wallet` JSONB column on `fonderie_plans`. Subscription-only
-consumers that leave `config.wallet` unset see no behavior change beyond
-the `bigint` config literals.
+a nullable `wallet` JSONB column on `fonderie_plans`, and widens the plan
+display-price columns to BIGINT. Subscription-only consumers that leave
+`config.wallet` unset see no wallet surfaces; the two changes that reach
+them are the `bigint` config literals and the workspace-membership check —
+an app that scopes billing with `X-Workspace-ID` but does NOT run
+`@fonderie/workspaces` (no `fonderie_role_user_workspaces` table) must stop
+sending the header or install the module, since such requests now fail
+closed with 403.

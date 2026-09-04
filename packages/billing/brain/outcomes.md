@@ -155,3 +155,8 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 | DELETE | `/plans/:planId` | `plan.delete` |
 | GET | `/plans/:planId` | `plan.get` |
 | PUT | `/plans/:planId` | `validate(updatePlanSchema) → plan.update` |
+
+## Migration statements not replayed (verify in raw SQL)
+
+- `fonderie_plans: ALTER COLUMN monthly_amount TYPE BIGINT`
+- `fonderie_plans: ALTER COLUMN yearly_amount TYPE BIGINT`

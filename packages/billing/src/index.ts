@@ -16,6 +16,7 @@ export {
 	getWalletRate,
 	requireWalletBalance,
 	debitWalletForMetric,
+	insufficientCreditsResponse,
 } from './helpers';
 
 // Config + constants
@@ -88,6 +89,8 @@ export {
 	ensurePeriodicGrant,
 	currentGrantPeriod,
 	resolvePlanWallet,
+	encodeLedgerCursor,
+	decodeLedgerCursor,
 } from './services/wallet';
 export type {
 	IWalletSubscriber,
