@@ -62,7 +62,7 @@
 	"devDependencies": {
 		"@fonderie/core": "../core",
 		"@fonderie/store": "../store",
-		"@types/node": "^26.2.0",
+		"@types/node": "^26.4.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.12",
 		"typescript": "^6.0.3"
