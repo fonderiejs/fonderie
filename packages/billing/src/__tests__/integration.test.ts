@@ -75,6 +75,39 @@ test(
 );
 
 test(
+	'PostgreSQL: concurrent SAME-KEY debits deduct exactly once (conflict rollback)',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		// The one case where idempotency depends on ROLLING BACK an applied
+		// deduction: concurrent same-key debits can all miss the pre-check
+		// under READ COMMITTED, apply the balance UPDATE serially, and only
+		// the UNIQUE-violation rollback undoes the extra deductions.
+		const store = await connect();
+		try {
+			await creditWallet({ ...SUB, amount: 1000n, type: 'grant', idempotencyKey: 'itest-fund-samekey' }, store);
+			const results = await Promise.allSettled(
+				Array.from({ length: 10 }, () =>
+					debitWallet({ ...SUB, amount: 300n, idempotencyKey: 'itest-debit-same' }, store),
+				),
+			);
+			for (const r of results) {
+				assert.equal(r.status, 'fulfilled', 'same-key replays must all resolve');
+				assert.equal((r as PromiseFulfilledResult<{ balance: bigint }>).value.balance, 700n);
+			}
+			const { balance } = await getWalletBalance(SUB, store);
+			assert.equal(balance, 700n, 'the wallet must be debited exactly once');
+			const rows = await store.query<{ id: string }>(
+				`SELECT id FROM fonderie_wallet_ledger WHERE idempotency_key = $1`,
+				['itest-debit-same'],
+			);
+			assert.equal(rows.length, 1);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
 	'PostgreSQL: concurrent identical credits apply exactly once (UNIQUE idempotency key)',
 	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
 	async () => {

@@ -22,6 +22,20 @@ created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 -- CONSTRAINT fonderie_billing_notifications_unique UNIQUE (subscriber_type, subscriber_id, policy_key, notification, window_key)
 ```
 
+### `fonderie_credit_packs`
+
+```sql
+id                       TEXT PRIMARY KEY
+name                     TEXT NOT NULL
+currency                 TEXT NOT NULL DEFAULT 'USD'
+credits                  BIGINT NOT NULL
+price_amount             BIGINT NOT NULL
+price_id                 TEXT
+active                   BOOLEAN NOT NULL DEFAULT true
+metadata                 JSONB NOT NULL DEFAULT '{}'
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_plans`
 
 ```sql
@@ -39,6 +53,7 @@ description              TEXT
 tier                     INT NOT NULL DEFAULT 0
 features                 JSONB NOT NULL DEFAULT '[]'
 metadata                 JSONB NOT NULL DEFAULT '{}'
+wallet                   JSONB
 ```
 
 ### `fonderie_subscriptions`
@@ -72,6 +87,52 @@ subscriber_id            UUID NOT NULL
 CONSTRAINT               fonderie_usage_records_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
 ```
 
+### `fonderie_wallet_balances`
+
+```sql
+subscriber_type          TEXT NOT NULL
+subscriber_id            UUID NOT NULL
+currency                 TEXT NOT NULL DEFAULT 'USD'
+amount                   BIGINT NOT NULL DEFAULT 0
+version                  BIGINT NOT NULL DEFAULT 1
+updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- CONSTRAINT fonderie_wallet_balances_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
+-- PRIMARY KEY (subscriber_type, subscriber_id, currency)
+```
+
+### `fonderie_wallet_grants`
+
+```sql
+subscriber_type          TEXT NOT NULL
+subscriber_id            UUID NOT NULL
+currency                 TEXT NOT NULL
+period                   TEXT NOT NULL
+amount                   BIGINT NOT NULL
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- CONSTRAINT fonderie_wallet_grants_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
+-- PRIMARY KEY (subscriber_type, subscriber_id, currency, period)
+```
+
+### `fonderie_wallet_ledger`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+subscriber_type          TEXT NOT NULL
+subscriber_id            UUID NOT NULL
+currency                 TEXT NOT NULL DEFAULT 'USD'
+type                     TEXT NOT NULL
+amount                   BIGINT NOT NULL
+balance_after            BIGINT NOT NULL
+description              TEXT
+idempotency_key          TEXT NOT NULL UNIQUE
+metadata                 JSONB NOT NULL DEFAULT '{}'
+provider_tx_id           TEXT
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- CONSTRAINT fonderie_wallet_ledger_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
+-- CONSTRAINT fonderie_wallet_ledger_type_check CHECK (type IN ('purchase', 'grant', 'usage', 'refund', 'adjustment'))
+-- CONSTRAINT fonderie_wallet_ledger_amount_nonzero_check CHECK (amount <> 0)
+```
+
 Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read it there if you must; never download tarballs.
 
 ## HTTP routes registered
@@ -83,7 +144,12 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 | GET | `/billing/subscription` | `requireAuth → subscription.get` |
 | POST | `/billing/usage` | `requireAuth → validate(recordUsageSchema) → usage.record` |
 | GET | `/billing/usage/:metric` | `requireAuth → usage.get` |
+| GET | `/billing/wallet` | `requireAuth → wallet.get` |
+| POST | `/billing/wallet/checkout` | `requireAuth → validate(walletCheckoutSchema) → wallet.checkout` |
+| POST | `/billing/wallet/grant` | `requireAdminToken(config.wallet.adminToken) → validate(grantWalletSchema) → wallet.grant` |
+| GET | `/billing/wallet/transactions` | `requireAuth → wallet.transactions` |
 | POST | `/billing/webhook` | `webhook.handle` |
+| POST | `/billing/webhook/payment` | `paymentWebhook.handle` |
 | GET | `/plans` | `plan.list` |
 | POST | `/plans` | `validate(createPlanSchema) → plan.create` |
 | DELETE | `/plans/:planId` | `plan.delete` |

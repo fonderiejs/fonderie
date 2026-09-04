@@ -16,6 +16,10 @@ export interface INormalizedPayment {
 	providerTxId: string | null; // e.g. the Stripe PaymentIntent id
 	amountTotal: bigint | null; // what the customer paid, smallest currency unit
 	currency: string | null;
+	// 'paid' / 'no_payment_required' when funds are confirmed; other values
+	// (e.g. Stripe's 'unpaid' for delayed-notification methods) mean the money
+	// has NOT moved yet. null when the provider doesn't model it.
+	paymentStatus: string | null;
 	metadata: Record<string, string>;
 }
 

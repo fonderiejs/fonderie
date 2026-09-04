@@ -17,12 +17,15 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 
 	return {
 		async handle(ctx: IFonderieContext): Promise<Response> {
-			const secret = config.wallet?.webhookSecret ?? config.webhookSecret;
+			// Deliberately NOT falling back to the subscription webhook's secret:
+			// per-endpoint secrets exist so a delivery captured for one endpoint
+			// can never replay validly against the other.
+			const secret = config.wallet?.webhookSecret;
 			if (!secret) {
 				return setApiResponse(
 					HTTP.SERVER_ERROR,
 					'SERVER_ERROR',
-					'Payment webhook secret not configured',
+					'Payment webhook secret not configured — set wallet.webhookSecret',
 				);
 			}
 
@@ -68,6 +71,15 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 					'INVALID_PARAMETER',
 					'Malformed wallet checkout metadata',
 				);
+			}
+
+			// Only credit once funds are confirmed. Delayed-notification methods
+			// (ACH/SEPA debit, vouchers…) complete checkout with an unpaid
+			// status; the provider sends a paid follow-up event later (e.g.
+			// checkout.session.async_payment_succeeded) which lands here again.
+			const status = payment.paymentStatus ?? null;
+			if (status !== null && status !== 'paid' && status !== 'no_payment_required') {
+				return Response.json({ received: true, pending: true });
 			}
 
 			const currency = meta['currency'] ?? config.wallet?.currency ?? 'USD';

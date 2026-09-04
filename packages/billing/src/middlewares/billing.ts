@@ -6,6 +6,7 @@ import type { IBillingConfig } from '../config';
 import type { ICounterBackend } from '../backends/types';
 import { MESSAGE_KEYS } from '../config';
 import { getSubscription } from '../services/subscriptions';
+import { isWorkspaceMember } from '../services/membership';
 import { buildBillingContext } from '../services/policy';
 import {
 	currentGrantPeriod,
@@ -29,6 +30,21 @@ export function withBilling(
 
 		// No subscriber (unauthenticated / public route) — skip entirely
 		if (!subscriber) return next();
+
+		// SECURITY — workspace subscribers can come from the raw X-Workspace-ID
+		// header. Trust the id only when it matches ctx.workspace (already
+		// membership-verified by @fonderie/workspaces' withWorkspace) or when
+		// the session user proves active membership here. Anything else would
+		// let any caller read, drain, or rate-limit another tenant's billing.
+		if (subscriber.type === 'workspace' && ctx.workspace?.id !== subscriber.id) {
+			// Anonymous request naming a workspace: no billing context at all —
+			// public routes keep working, and an unverified workspace's counters
+			// and wallet stay untouched.
+			if (!ctx.user) return next();
+			if (!(await isWorkspaceMember(ctx.user.id, subscriber.id, store))) {
+				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Not a member of this workspace');
+			}
+		}
 
 		// Resolve subscription → plan name (fall back to first plan = free)
 		const subscription = await getSubscription(subscriber.type, subscriber.id, store);
@@ -65,7 +81,10 @@ export function withBilling(
 					subscriberId: subscriber.id,
 					currency: planWallet.currency,
 				};
-				if (planWallet.grantAmount !== null && planWallet.grantAmount > 0n) {
+				// Grants require an active (or trialing) subscription — a past_due
+				// or paused subscriber keeps spending existing credits but is not
+				// extended new ones while payment is failing.
+				if (active && planWallet.grantAmount !== null && planWallet.grantAmount > 0n) {
 					await ensurePeriodicGrant(
 						{
 							...sub,

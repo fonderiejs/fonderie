@@ -41,7 +41,9 @@ export const recordUsageSchema = z.object({
 const walletAmount = z
 	.union([
 		z.string().regex(/^\d{1,30}$/, 'amount must be a positive integer string'),
-		z.number().int().min(1),
+		// JSON numbers past 2^53 arrive already rounded — force the digit-string
+		// form for anything larger instead of silently granting a wrong amount.
+		z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
 	])
 	.transform((v) => BigInt(v))
 	.refine((v) => v > 0n, 'amount must be positive');

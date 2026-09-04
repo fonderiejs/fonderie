@@ -40,6 +40,7 @@ export interface IStripeCheckoutSessionRaw {
 	payment_intent?: string | { id: string } | null;
 	amount_total?: number | null;
 	currency?: string | null;
+	payment_status?: string | null;
 	metadata?: Record<string, string> | null;
 }
 
@@ -52,6 +53,7 @@ export function normalizePaymentSession(session: IStripeCheckoutSessionRaw): INo
 		providerTxId: typeof pi === 'string' ? pi : (pi?.id ?? null),
 		amountTotal: session.amount_total != null ? BigInt(session.amount_total) : null,
 		currency: session.currency ?? null,
+		paymentStatus: session.payment_status ?? null,
 		metadata: session.metadata ?? {},
 	};
 }
@@ -279,10 +281,16 @@ export class StripeProvider implements IBillingProvider {
 			throw new Error('[billing:stripe] Invalid webhook signature');
 		}
 
-		// One-time payment completion — normalized for the payment webhook.
-		// Subscription-mode checkout completions pass through untouched (the
-		// subscription lifecycle arrives via customer.subscription.* events).
-		if (raw.type === 'checkout.session.completed') {
+		// One-time payment events — normalized for the payment webhook.
+		// checkout.session.completed can arrive with payment_status 'unpaid'
+		// for delayed-notification methods; the paid follow-up is
+		// checkout.session.async_payment_succeeded. Subscription-mode checkout
+		// completions pass through untouched (the subscription lifecycle
+		// arrives via customer.subscription.* events).
+		if (
+			raw.type === 'checkout.session.completed' ||
+			raw.type === 'checkout.session.async_payment_succeeded'
+		) {
 			const session = raw.data.object as IStripeCheckoutSessionRaw;
 			if (session.mode === 'payment') {
 				return { type: raw.type, subscription: null, payment: normalizePaymentSession(session) };

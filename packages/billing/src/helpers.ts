@@ -94,6 +94,11 @@ export async function debitWalletForMetric(
 	},
 	store: IStoreAdapter,
 ): Promise<IWalletMutationResult | null> {
+	const quantity = opts.quantity ?? 1;
+	if (!Number.isInteger(quantity) || quantity <= 0) {
+		throw new Error('[billing:wallet] quantity must be a positive integer');
+	}
+
 	const billing = getBillingContext(ctx);
 	const wallet = billing?.wallet;
 	const cost = wallet?.rates[metric]?.cost;
@@ -104,11 +109,11 @@ export async function debitWalletForMetric(
 			subscriberType: billing.subscriber.type,
 			subscriberId: billing.subscriber.id,
 			currency: wallet.currency,
-			amount: cost * BigInt(opts.quantity ?? 1),
+			amount: cost * BigInt(quantity),
 			overdraftLimit: wallet.overdraftLimit,
 			idempotencyKey: opts.idempotencyKey,
 			description: opts.description ?? metric,
-			metadata: { metric, quantity: opts.quantity ?? 1, ...(opts.metadata ?? {}) },
+			metadata: { metric, quantity, ...(opts.metadata ?? {}) },
 		},
 		store,
 	);

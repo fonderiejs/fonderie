@@ -49,8 +49,10 @@ export function buildBillingRoutes(
 		['PUT', '/plans/:planId', validate(updatePlanSchema), plan.update],
 		['DELETE', '/plans/:planId', plan.delete],
 
-		// Billing — subscriber resolved from X-Workspace-ID header (workspace) or session (user)
-		// Workspace membership is verified automatically by the withBilling global middleware
+		// Billing — subscriber resolved from X-Workspace-ID header (workspace) or session (user).
+		// The withBilling global middleware verifies workspace membership against
+		// fonderie_role_user_workspaces (403 for non-members, fail-closed) before
+		// any billing surface acts on a header-derived workspace id.
 		['GET', '/billing/subscription', requireAuth, subscription.get],
 		['POST', '/billing/checkout', requireAuth, validate(checkoutSchema), checkout.createSession],
 		['POST', '/billing/portal', requireAuth, checkout.createPortal],

@@ -46,7 +46,7 @@ interface IWalletState {
 function uniqueViolation(): Error {
 	return Object.assign(
 		new Error('duplicate key value violates unique constraint "fonderie_wallet_ledger_idempotency_key_key"'),
-		{ code: '23505' },
+		{ code: '23505', constraint: 'fonderie_wallet_ledger_idempotency_key_key' },
 	);
 }
 
@@ -111,6 +111,7 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 			metadata: l.metadata,
 			providerTxId: l.providerTxId,
 			createdAt: l.createdAt,
+			createdAtRaw: l.createdAt,
 		}));
 	}
 
@@ -524,13 +525,24 @@ test('getWalletLedger: paginates newest-first with a stable cursor', async () =>
 	assert.equal(page3.nextCursor, null);
 });
 
-test('decodeLedgerCursor: rejects garbage', async () => {
+test('decodeLedgerCursor: rejects garbage, non-UUID ids, and oversized cursors', async () => {
 	const { decodeLedgerCursor, encodeLedgerCursor } = await import('../services/wallet');
+	const uuid = '3b241101-e2bb-4255-8caf-4136c566a962';
 	assert.equal(decodeLedgerCursor('not-base64-json'), null);
 	assert.equal(decodeLedgerCursor(Buffer.from('{"a":1}').toString('base64url')), null);
-	assert.equal(decodeLedgerCursor(Buffer.from('["not-a-date","x"]').toString('base64url')), null);
-	const round = decodeLedgerCursor(encodeLedgerCursor('2026-09-04T00:00:00.000Z', 'id-1'));
-	assert.deepEqual(round, { createdAt: '2026-09-04T00:00:00.000Z', id: 'id-1' });
+	assert.equal(decodeLedgerCursor(Buffer.from(`["not-a-date","${uuid}"]`).toString('base64url')), null);
+	// A crafted non-UUID id would otherwise hit the $5::uuid cast as a 500.
+	assert.equal(
+		decodeLedgerCursor(Buffer.from('["2026-01-01T00:00:00Z","not-a-uuid"]').toString('base64url')),
+		null,
+	);
+	assert.equal(decodeLedgerCursor('A'.repeat(300)), null);
+	const round = decodeLedgerCursor(encodeLedgerCursor('2026-09-04T00:00:00.000Z', uuid));
+	assert.deepEqual(round, { createdAt: '2026-09-04T00:00:00.000Z', id: uuid });
+	// Postgres' own text format (microsecond precision) must survive — the
+	// cursor carries it to avoid millisecond truncation between pages.
+	const pg = decodeLedgerCursor(encodeLedgerCursor('2026-09-04 18:50:50.888123+00', uuid));
+	assert.equal(pg?.createdAt, '2026-09-04 18:50:50.888123+00');
 });
 
 // ── wallet DTOs serialize bigint as string ────────────────────────
@@ -606,11 +618,11 @@ const walletConfig = (overrides: Partial<IBillingConfig['wallet']> = {}): IBilli
 		wallet: { currency: 'USD', precision: 2, ...overrides },
 	}) as IBillingConfig;
 
-function makeCtx(opts: { url?: string; user?: unknown; body?: unknown; headers?: Record<string, string> } = {}): import('@fonderie/core').IFonderieContext {
+function makeCtx(opts: { url?: string; user?: unknown; body?: unknown; headers?: Record<string, string>; workspace?: unknown } = {}): import('@fonderie/core').IFonderieContext {
 	return {
 		meta: { body: opts.body ?? {} },
 		user: 'user' in opts ? opts.user : { id: USER.subscriberId, email: 'a@b.com' },
-		workspace: null,
+		workspace: opts.workspace ?? null,
 		tenant: null,
 		request: new Request(opts.url ?? 'http://localhost/billing/wallet', { headers: opts.headers ?? {} }),
 	} as any;
@@ -965,15 +977,14 @@ test('payment webhook: 500 without a secret, 400 without a signature or on bad s
 	assert.equal((await paymentWebhookController(store, badSig).handle(webhookCtx())).status, 400);
 });
 
-test('payment webhook: falls back to the subscription webhookSecret', async () => {
+test('payment webhook: never falls back to the subscription webhookSecret', async () => {
+	// Per-endpoint secrets exist so a delivery captured for one endpoint can't
+	// replay against the other — a missing wallet secret is a config error,
+	// not a cue to reuse the subscription endpoint's secret.
 	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
 	const store = walletEmulator();
-	let seenSecret = '';
 	const { provider } = paymentProvider({
-		constructEvent: async (opts: { secret: string }) => {
-			seenSecret = opts.secret;
-			return paymentEvent(walletMeta);
-		},
+		constructEvent: async () => paymentEvent(walletMeta),
 	});
 	const config = {
 		...walletConfig({ creditPacks: PACKS }),
@@ -981,8 +992,47 @@ test('payment webhook: falls back to the subscription webhookSecret', async () =
 		provider,
 	} as IBillingConfig;
 	const res = await paymentWebhookController(store, config).handle(webhookCtx());
+	assert.equal(res.status, 500);
+	assert.equal(store.state.ledger.length, 0);
+});
+
+test('payment webhook: unpaid delayed-notification completion does not credit', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const ctrl = paymentWebhookController(
+		store,
+		webhookConfig(paymentEvent(walletMeta, { paymentStatus: 'unpaid' })),
+	);
+	const res = await ctrl.handle(webhookCtx());
+	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
-	assert.equal(seenSecret, 'whsec_subscription');
+	assert.equal(body.pending, true);
+	assert.equal(store.state.ledger.length, 0);
+
+	// The paid follow-up (async_payment_succeeded) then credits normally.
+	const paid = paymentWebhookController(
+		store,
+		webhookConfig(paymentEvent(walletMeta, { paymentStatus: 'paid' })),
+	);
+	assert.equal((await paid.handle(webhookCtx())).status, 200);
+	assert.equal(store.state.ledger.length, 1);
+});
+
+test('payment webhook: pins the metadata-trust boundary — credits metadata amount even when amountTotal mismatches', async () => {
+	// The credited amount is the snapshot our checkout wrote, not what the
+	// provider says was paid; the mismatch is recorded in ledger metadata for
+	// reconciliation. This test pins that boundary so a future validation has
+	// a failing test to change.
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const ctrl = paymentWebhookController(
+		store,
+		webhookConfig(paymentEvent(walletMeta, { amountTotal: 1n, currency: 'eur' })),
+	);
+	assert.equal((await ctrl.handle(webhookCtx())).status, 200);
+	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`)!.amount, 5000n);
+	assert.equal(store.state.ledger[0]!.metadata['amountPaid'], '1');
+	assert.equal(store.state.ledger[0]!.metadata['paymentCurrency'], 'eur');
 });
 
 test('payment webhook: 409 when the session key was already used for another subscriber', async () => {
@@ -1005,6 +1055,7 @@ test('normalizePaymentSession: string and expanded payment_intent, null-safe', a
 		payment_intent: 'pi_9',
 		amount_total: 499,
 		currency: 'usd',
+		payment_status: 'paid',
 		metadata: { packId: 'small' },
 	});
 	assert.deepEqual(full, {
@@ -1012,6 +1063,7 @@ test('normalizePaymentSession: string and expanded payment_intent, null-safe', a
 		providerTxId: 'pi_9',
 		amountTotal: 499n,
 		currency: 'usd',
+		paymentStatus: 'paid',
 		metadata: { packId: 'small' },
 	});
 
@@ -1022,6 +1074,7 @@ test('normalizePaymentSession: string and expanded payment_intent, null-safe', a
 	assert.equal(bare.providerTxId, null);
 	assert.equal(bare.amountTotal, null);
 	assert.equal(bare.currency, null);
+	assert.equal(bare.paymentStatus, null);
 	assert.deepEqual(bare.metadata, {});
 });
 
@@ -1030,11 +1083,16 @@ test('normalizePaymentSession: string and expanded payment_intent, null-safe', a
 function billingStore(
 	emu: ReturnType<typeof walletEmulator>,
 	subscription: unknown = null,
+	// 'userId|workspaceId' pairs holding active membership rows.
+	members: Set<string> = new Set(),
 ): IStoreAdapter {
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
 			if (sql.includes('fonderie_subscriptions')) {
 				return (subscription ? [subscription] : []) as T[];
+			}
+			if (sql.includes('fonderie_role_user_workspaces')) {
+				return (members.has(`${params?.[0]}|${params?.[1]}`) ? [{ ok: 1 }] : []) as T[];
 			}
 			return emu.query<T>(sql, params);
 		},
@@ -1079,17 +1137,21 @@ test('resolvePlanWallet: null without the global opt-in or a plan wallet, defaul
 	assert.equal(custom.grantPeriod, 'week');
 });
 
-async function runWithBilling(config: IBillingConfig, store: IStoreAdapter) {
+async function runWithBilling(
+	config: IBillingConfig,
+	store: IStoreAdapter,
+	ctxOpts: Parameters<typeof makeCtx>[0] = {},
+) {
 	const { withBilling } = await import('../middlewares/billing');
 	const { MemoryCounterBackend } = await import('../backends/memory');
 	const middleware = withBilling(store, config, new MemoryCounterBackend());
-	const ctx = makeCtx({});
+	const ctx = makeCtx(ctxOpts);
 	let nextCalled = false;
-	await middleware(ctx, async () => {
+	const response = await middleware(ctx, async () => {
 		nextCalled = true;
 		return new Response();
 	});
-	return { ctx, nextCalled };
+	return { ctx, nextCalled, response };
 }
 
 test('withBilling: lazily grants once per period and exposes the wallet context', async () => {
@@ -1135,6 +1197,346 @@ test('withBilling: wallet failures are non-fatal', async () => {
 	const { ctx, nextCalled } = await runWithBilling(config, broken);
 	assert.equal(nextCalled, true);
 	assert.equal((ctx.meta['billing'] as any).wallet, undefined);
+});
+
+// ── workspace membership enforcement (withBilling) ────────────────
+
+const WS_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
+test('withBilling: 403 for a header-supplied workspace the user is not a member of', async () => {
+	const emu = walletEmulator();
+	const store = billingStore(emu, null, new Set()); // no memberships at all
+	const { ctx, nextCalled, response } = await runWithBilling(planWalletConfig([FREE_PLAN]), store, {
+		headers: { 'x-workspace-id': WS_ID },
+	});
+	assert.equal(nextCalled, false);
+	assert.equal(response.status, 403);
+	assert.equal(ctx.meta['billing'], undefined);
+	assert.equal(emu.state.ledger.length, 0); // no grant minted for the forged workspace
+});
+
+test('withBilling: members reach the workspace wallet; the grant lands on the workspace', async () => {
+	const emu = walletEmulator();
+	const store = billingStore(emu, null, new Set([`${USER.subscriberId}|${WS_ID}`]));
+	const { ctx, nextCalled } = await runWithBilling(planWalletConfig([FREE_PLAN]), store, {
+		headers: { 'x-workspace-id': WS_ID },
+	});
+	assert.equal(nextCalled, true);
+	const billing = ctx.meta['billing'] as any;
+	assert.deepEqual(billing.subscriber, { type: 'workspace', id: WS_ID });
+	assert.equal(billing.wallet.balance, 50n);
+	assert.equal(emu.state.balances.get(`workspace|${WS_ID}|USD`)!.amount, 50n);
+});
+
+test('withBilling: a header matching the verified ctx.workspace skips the membership query', async () => {
+	const emu = walletEmulator();
+	// Empty membership set: if withBilling re-queried membership it would 403 —
+	// passing proves the pre-verified ctx.workspace short-circuits the check.
+	const store = billingStore(emu, null, new Set());
+	const { nextCalled } = await runWithBilling(planWalletConfig([FREE_PLAN]), store, {
+		headers: { 'x-workspace-id': WS_ID },
+		workspace: { id: WS_ID },
+	});
+	assert.equal(nextCalled, true);
+});
+
+test('withBilling: anonymous requests naming a workspace get no billing context at all', async () => {
+	const emu = walletEmulator();
+	const store = billingStore(emu, null, new Set([`${USER.subscriberId}|${WS_ID}`]));
+	const { ctx, nextCalled } = await runWithBilling(planWalletConfig([FREE_PLAN]), store, {
+		user: null,
+		headers: { 'x-workspace-id': WS_ID },
+	});
+	assert.equal(nextCalled, true); // public routes keep working
+	assert.equal(ctx.meta['billing'], undefined); // but no counters, no grants, no wallet
+	assert.equal(emu.state.ledger.length, 0);
+});
+
+test('withBilling: membership check fails closed when the workspaces table is missing', async () => {
+	const emu = walletEmulator();
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('fonderie_role_user_workspaces')) {
+				throw new Error('relation "fonderie_role_user_workspaces" does not exist');
+			}
+			if (sql.includes('fonderie_subscriptions')) return [] as T[];
+			return emu.query<T>(sql, params);
+		},
+		transaction: (fn) => emu.transaction(fn),
+	};
+	const { response, nextCalled } = await runWithBilling(planWalletConfig([FREE_PLAN]), store, {
+		headers: { 'x-workspace-id': WS_ID },
+	});
+	assert.equal(nextCalled, false);
+	assert.equal(response.status, 403);
+});
+
+// ── subscription-holding plan resolution ──────────────────────────
+
+const PRO_PLAN = {
+	name: 'pro',
+	wallet: { monthlyGrant: 500n, rates: { task: { cost: 1n } } },
+};
+
+const proSubscription = (status: string) => ({
+	id: 'sub-1',
+	subscriberType: 'user',
+	subscriberId: USER.subscriberId,
+	plan: 'pro',
+	interval: 'month',
+	status,
+	providerCustomerId: 'cus_1',
+	providerSubscriptionId: 'sub_p1',
+	currentPeriodStart: null,
+	currentPeriodEnd: null,
+	cancelAtPeriodEnd: false,
+	trialEndsAt: null,
+	createdAt: '2026-09-01T00:00:00.000Z',
+});
+
+test("withBilling: a subscription resolves ITS plan's wallet, not the fallback plan's", async () => {
+	const emu = walletEmulator();
+	const store = billingStore(emu, proSubscription('active'));
+	const { ctx } = await runWithBilling(planWalletConfig([FREE_PLAN, PRO_PLAN]), store);
+	const wallet = (ctx.meta['billing'] as any).wallet;
+	assert.equal(wallet.balance, 500n); // pro's grant, not free's 50n
+	assert.equal(wallet.rates['task'].cost, 1n);
+	assert.equal(wallet.rates['sms:send'], undefined);
+});
+
+test('withBilling: past_due subscribers keep their wallet but receive no new grant', async () => {
+	const emu = walletEmulator();
+	const store = billingStore(emu, proSubscription('past_due'));
+	const { ctx, nextCalled } = await runWithBilling(planWalletConfig([FREE_PLAN, PRO_PLAN]), store);
+	assert.equal(nextCalled, true);
+	const wallet = (ctx.meta['billing'] as any).wallet;
+	assert.equal(wallet.balance, 0n); // no grant extended while payment fails
+	assert.equal(emu.state.ledger.length, 0);
+});
+
+// ── idempotency-conflict and rollback paths, deterministically ────
+
+// A store built on the same SQL engine as walletEmulator, with a query
+// interceptor and snapshot rollback — used to force the exact failure
+// orderings the serializing emulator's happy paths never reach.
+function interceptingEmulator(
+	intercept: (sql: string, params: unknown[], state: IWalletState) => unknown[] | undefined | never,
+): IStoreAdapter & { state: IWalletState } {
+	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), seq: 0 };
+	let chain: Promise<unknown> = Promise.resolve();
+	const snapshot = (): IWalletState => ({
+		balances: new Map([...state.balances].map(([k, v]) => [k, { ...v }])),
+		ledger: [...state.ledger],
+		grants: new Map(state.grants),
+		seq: state.seq,
+	});
+	const restore = (s: IWalletState) => {
+		state.balances = s.balances;
+		state.ledger = s.ledger;
+		state.grants = s.grants;
+		state.seq = s.seq;
+	};
+	const adapter = {
+		state,
+		async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
+			const hijacked = intercept(sql, params ?? [], state);
+			if (hijacked !== undefined) return hijacked as T[];
+			return runWalletSql(state, sql, params) as T[];
+		},
+		async transaction<T>(fn: (tx: IStoreAdapter) => Promise<T>): Promise<T> {
+			const run = chain.then(async () => {
+				const snap = snapshot();
+				try {
+					return await fn(adapter as IStoreAdapter);
+				} catch (err) {
+					restore(snap);
+					throw err;
+				}
+			});
+			chain = run.catch(() => {});
+			return run;
+		},
+	};
+	return adapter as IStoreAdapter & { state: IWalletState };
+}
+
+test('creditWallet: a 23505 losing race (pre-check miss, insert conflict) rolls back and reports duplicate', async () => {
+	const { creditWallet } = await import('../services/wallet');
+	// Simulate READ COMMITTED invisibility: the pre-check for the key misses
+	// once even though the row exists, so the mutation proceeds and the ledger
+	// INSERT hits the UNIQUE constraint.
+	let misses = 1;
+	const store = interceptingEmulator((sql) => {
+		if (sql.includes('idempotency_key = $1') && misses > 0) {
+			misses--;
+			return [];
+		}
+		return undefined;
+	});
+	await creditWallet({ ...USER, amount: 100n, idempotencyKey: 'seed' }, store);
+	misses = 1; // next pre-check for 'seed' will miss
+	const replay = await creditWallet({ ...USER, amount: 100n, idempotencyKey: 'seed' }, store);
+	assert.equal(replay.duplicate, true);
+	assert.equal(replay.balance, 100n); // the doubled upsert was rolled back
+	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`)!.amount, 100n);
+	assert.equal(store.state.ledger.length, 1);
+});
+
+test('debitWallet: a 23505 losing race rolls the applied deduction back', async () => {
+	const { creditWallet, debitWallet } = await import('../services/wallet');
+	let misses = 0;
+	const store = interceptingEmulator((sql) => {
+		if (sql.includes('idempotency_key = $1') && misses > 0) {
+			misses--;
+			return [];
+		}
+		return undefined;
+	});
+	await creditWallet({ ...USER, amount: 1000n, idempotencyKey: 'fund' }, store);
+	await debitWallet({ ...USER, amount: 300n, idempotencyKey: 'd1' }, store);
+	misses = 1;
+	const replay = await debitWallet({ ...USER, amount: 300n, idempotencyKey: 'd1' }, store);
+	assert.equal(replay.duplicate, true);
+	assert.equal(replay.balance, 700n); // debited once, not twice
+	assert.equal(store.state.ledger.filter((l) => l.type === 'usage').length, 1);
+});
+
+test('debitWallet: a non-idempotency ledger failure rolls the balance back and rethrows', async () => {
+	const { creditWallet, debitWallet } = await import('../services/wallet');
+	let failLedger = false;
+	const store = interceptingEmulator((sql) => {
+		if (failLedger && sql.includes('fonderie_wallet_ledger') && sql.trimStart().startsWith('INSERT')) {
+			throw new Error('disk full');
+		}
+		return undefined;
+	});
+	await creditWallet({ ...USER, amount: 1000n, idempotencyKey: 'fund' }, store);
+	failLedger = true;
+	await assert.rejects(debitWallet({ ...USER, amount: 300n, idempotencyKey: 'd1' }, store), /disk full/);
+	// The balance UPDATE succeeded before the ledger INSERT failed — the
+	// transaction must have restored it: never a balance write without its row.
+	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`)!.amount, 1000n);
+	assert.equal(store.state.ledger.filter((l) => l.type === 'usage').length, 0);
+});
+
+test('creditWallet: a NOT NULL violation is an error, not a fake duplicate', async () => {
+	const { creditWallet } = await import('../services/wallet');
+	const store = walletEmulator();
+	// Plain-JS callers can omit the key despite the types.
+	await assert.rejects(
+		creditWallet({ ...USER, amount: 100n, idempotencyKey: undefined as unknown as string }, store),
+		/idempotencyKey is required/,
+	);
+	assert.equal(store.state.ledger.length, 0);
+});
+
+// ── ledger cursor: same-timestamp tiebreak ────────────────────────
+
+test('getWalletLedger: rows sharing a timestamp paginate without loss via the id tiebreak', async () => {
+	const { creditWallet, getWalletLedger, decodeLedgerCursor } = await import('../services/wallet');
+	const store = walletEmulator();
+	for (let i = 0; i < 3; i++) {
+		await creditWallet({ ...USER, amount: BigInt(i + 1), idempotencyKey: `t-${i}` }, store);
+	}
+	// Force all three rows onto one timestamp — only the id orders them now.
+	const shared = store.state.ledger[0]!.createdAt;
+	for (const row of store.state.ledger) (row as { createdAt: string }).createdAt = shared;
+
+	const seen: string[] = [];
+	let cursor: string | null = null;
+	do {
+		const page = await getWalletLedger(
+			{ ...USER, limit: 1, ...(cursor ? { cursor: decodeLedgerCursor(cursor)! } : {}) },
+			store,
+		);
+		seen.push(...page.entries.map((e) => e.id));
+		cursor = page.nextCursor;
+	} while (cursor);
+	assert.equal(new Set(seen).size, 3, `every row exactly once, got ${seen.join(',')}`);
+});
+
+// ── composed route chains ─────────────────────────────────────────
+
+function composeChain(handlers: unknown[], ctx: import('@fonderie/core').IFonderieContext): Promise<Response> {
+	const run = (i: number): Promise<Response> => {
+		const handler = handlers[i] as (c: unknown, n: () => Promise<Response>) => Promise<Response>;
+		return handler(ctx, () => run(i + 1));
+	};
+	return run(0);
+}
+
+test('POST /billing/wallet/grant: the composed route chain enforces token then validation then handler', async () => {
+	const { buildBillingRoutes } = await import('../routes');
+	const emu = walletEmulator();
+	const routes = buildBillingRoutes(billingStore(emu), walletConfig({ adminToken: 'ops-token' }));
+	const grant = routes.find(([m, p]) => m === 'POST' && p === '/billing/wallet/grant')!;
+	const handlers = grant.slice(2);
+
+	// Wrong bearer token → 401 before validation or the handler run.
+	const denied = await composeChain(handlers, makeCtx({ headers: { authorization: 'Bearer nope' } }));
+	assert.equal(denied.status, 401);
+	assert.equal(emu.state.ledger.length, 0);
+
+	// Right token, invalid body → 422 from validate(grantWalletSchema).
+	const invalid = await composeChain(
+		handlers,
+		makeCtx({ headers: { authorization: 'Bearer ops-token' }, body: { amount: '100' } }),
+	);
+	assert.equal(invalid.status, 422);
+
+	// Right token, valid body → the grant lands.
+	const ok = await composeChain(
+		handlers,
+		makeCtx({
+			headers: { authorization: 'Bearer ops-token' },
+			body: {
+				subscriberType: 'user',
+				subscriberId: USER.subscriberId,
+				amount: '250',
+				idempotencyKey: 'ops-1',
+			},
+		}),
+	);
+	assert.equal(ok.status, 200);
+	assert.equal(emu.state.ledger[0]!.amount, 250n);
+});
+
+test('walletCheckoutSchema: rejects empty, missing, and non-string packIds', async () => {
+	const { walletCheckoutSchema } = await import('../schemas');
+	assert.equal(walletCheckoutSchema.safeParse({}).success, false);
+	assert.equal(walletCheckoutSchema.safeParse({ packId: '' }).success, false);
+	assert.equal(walletCheckoutSchema.safeParse({ packId: 42 }).success, false);
+	assert.equal(walletCheckoutSchema.safeParse({ packId: 'x'.repeat(101) }).success, false);
+	assert.equal(walletCheckoutSchema.parse({ packId: ' small ' }).packId, 'small');
+});
+
+test('walletController.get: serves a workspace subscriber wallet', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { creditWallet } = await import('../services/wallet');
+	const emu = walletEmulator();
+	await creditWallet(
+		{ subscriberType: 'workspace', subscriberId: WS_ID, currency: 'USD', amount: 777n, idempotencyKey: 'ws' },
+		emu,
+	);
+	const ctrl = walletController(billingStore(emu), walletConfig());
+	const res = await ctrl.get(makeCtx({ headers: { 'x-workspace-id': WS_ID } }));
+	const body = (await res.json()) as any;
+	assert.equal(body.result.wallet.balance, '777');
+});
+
+test('debitWalletForMetric: fractional or non-positive quantities are rejected up front', async () => {
+	const { debitWalletForMetric } = await import('../helpers');
+	const emu = walletEmulator();
+	const store = billingStore(emu);
+	const { ctx } = await runWithBilling(planWalletConfig([FREE_PLAN]), store);
+	await assert.rejects(
+		debitWalletForMetric(ctx, 'task', { idempotencyKey: 'q', quantity: 1.5 }, store),
+		/positive integer/,
+	);
+	await assert.rejects(
+		debitWalletForMetric(ctx, 'task', { idempotencyKey: 'q', quantity: 0 }, store),
+		/positive integer/,
+	);
 });
 
 test('requireWalletBalance: 402 when the rate exceeds the balance, passes otherwise', async () => {

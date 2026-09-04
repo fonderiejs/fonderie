@@ -9,6 +9,7 @@ import { decodeLedgerCursor } from '../services/wallet';
 import { findCreditPack } from '../services/credit-packs';
 import { DuplicateTransactionError } from '../errors';
 import { toWalletDTO, toWalletTransactionDTO } from '../dtos/billing';
+import { getWalletStatus } from '../helpers';
 import { resolveSubscriber } from '../utils';
 
 // The wallet routes are only registered when config.wallet is present, so
@@ -97,9 +98,11 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 			);
 		},
 
-		// One-time checkout for a credit pack. The pack's credits and currency
-		// are snapshotted into the session metadata at creation time, so the
-		// webhook credits exactly what was bought even if config changes later.
+		// One-time checkout for a credit pack. The pack's credits and the
+		// buyer's WALLET currency are snapshotted into the session metadata at
+		// creation time, so the webhook credits exactly what was bought (even
+		// if config changes later) into the bucket the buyer's spend paths
+		// actually read. pack.currency only prices the provider charge.
 		async checkout(ctx: IFonderieContext): Promise<Response> {
 			const body = ctx.meta['body'] as { packId: string };
 			const subscriber = resolveSubscriber(ctx);
@@ -128,7 +131,13 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 				);
 			}
 
-			const currency = pack.currency ?? defaultCurrency();
+			// The wallet bucket to credit: the buyer's plan-wallet currency
+			// (cached by withBilling), falling back to the global default. A
+			// pack priced in EUR must still credit the USD wallet a USD-plan
+			// subscriber spends from — otherwise the purchase would land in a
+			// bucket no spend path ever reads.
+			const creditCurrency = getWalletStatus(ctx)?.currency ?? defaultCurrency();
+			const chargeCurrency = pack.currency ?? creditCurrency;
 			const { customerId } = await config.provider.createCustomer({
 				email: ctx.user!.email ?? '',
 				subscriberType: subscriber.type,
@@ -139,7 +148,7 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 			const session = await config.provider.createPaymentCheckoutSession({
 				customerId,
 				amount: pack.priceAmount,
-				currency,
+				currency: chargeCurrency,
 				name: pack.name,
 				...(pack.priceId ? { priceId: pack.priceId } : {}),
 				metadata: {
@@ -147,7 +156,7 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 					subscriberId: subscriber.id,
 					packId: pack.id,
 					credits: pack.credits.toString(),
-					currency,
+					currency: creditCurrency,
 				},
 				successUrl: config.successUrl,
 				cancelUrl: config.cancelUrl,

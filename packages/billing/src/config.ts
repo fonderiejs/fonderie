@@ -48,7 +48,8 @@ export interface IBillingPlanWallet {
 	precision?: number;
 	/**
 	 * Credits auto-granted once per grantPeriod, applied lazily by withBilling
-	 * on the subscriber's first request of the period.
+	 * on the subscriber's first request of the period. Only granted while the
+	 * subscription is active or trialing (no new credit while payment fails).
 	 */
 	monthlyGrant?: bigint;
 	/** Grant cadence for monthlyGrant. Default 'month'. */
@@ -92,7 +93,11 @@ export interface IBillingCreditPack {
 	credits: bigint;
 	/** Purchase price in the provider's smallest currency unit. */
 	priceAmount: bigint;
-	/** ISO 4217. Defaults to the wallet currency. */
+	/**
+	 * ISO 4217 PAYMENT currency for the provider charge; defaults to the
+	 * buyer's wallet currency. Credits always land in the buyer's wallet
+	 * currency regardless of what the charge was priced in.
+	 */
 	currency?: string;
 	/** Existing provider Price id — used instead of the ad-hoc priceAmount. */
 	priceId?: string;

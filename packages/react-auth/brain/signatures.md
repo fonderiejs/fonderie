@@ -70,9 +70,9 @@ interface IUserDTO {
     profileImageUrl: string;
     isActive: boolean;
     lastLogin: string;
-    skills: IUserSkill[];
     preferences: IUserPreferences;
     isEmailVerified: boolean;
+    isPhoneVerified: boolean;
     mfaEnabled: boolean;
     suspended: boolean;
     whitelist: boolean;

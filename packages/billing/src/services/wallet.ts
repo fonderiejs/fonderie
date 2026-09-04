@@ -17,6 +17,12 @@ import { DuplicateTransactionError, InsufficientFundsError } from '../errors';
 // pre-check catches replays cheaply, and a lost race between two identical
 // replays still resolves safely — the second ledger INSERT violates the
 // constraint and rolls its balance write back with it.
+//
+// CONTRACT: pass the module-level store, never a tx-scoped adapter from an
+// enclosing store.transaction. The wallet manages its own transaction; the
+// pg adapter flattens nested transactions WITHOUT savepoints, so inside a
+// caller's transaction the rollback-on-conflict guarantee above would not
+// hold (and a conflict would poison the caller's whole transaction).
 
 export interface IWalletSubscriber {
 	subscriberType: SubscriberType;
@@ -45,12 +51,15 @@ interface IBalanceRow {
 
 const UNIQUE_VIOLATION = '23505';
 
+// Only the ledger's idempotency-key UNIQUE violation counts as a safe
+// replay. Anything else (NOT NULL violations, other constraints) must
+// surface as the error it is — a loose message match here once turned a
+// rolled-back failure into a fake duplicate-success.
 function isIdempotencyConflict(err: unknown): boolean {
-	const e = err as { code?: string; message?: string };
-	return (
-		e?.code === UNIQUE_VIOLATION ||
-		(typeof e?.message === 'string' && e.message.includes('idempotency_key'))
-	);
+	const e = err as { code?: string; constraint?: string; message?: string };
+	if (e?.code !== UNIQUE_VIOLATION) return false;
+	if (typeof e.constraint === 'string') return e.constraint.includes('idempotency_key');
+	return typeof e.message === 'string' && e.message.includes('idempotency_key');
 }
 
 // Returns the existing ledger row for the key, or null. Throws when the key
@@ -127,6 +136,7 @@ async function insertLedgerRow(
 // duplicate: true. The balance upsert-add is a single atomic statement, so
 // credits need no row lock; the same-transaction ledger row (with its UNIQUE
 // key) is what makes a concurrent identical replay roll back cleanly.
+// Pass the module-level store — never a tx-scoped adapter (see file header).
 export async function creditWallet(
 	opts: IWalletSubscriber & {
 		amount: bigint; // positive
@@ -139,6 +149,7 @@ export async function creditWallet(
 	store: IStoreAdapter,
 ): Promise<IWalletMutationResult> {
 	if (opts.amount < 0n) throw new Error('[billing:wallet] credit amount must be positive');
+	if (!opts.idempotencyKey) throw new Error('[billing:wallet] idempotencyKey is required');
 	if (opts.amount === 0n) {
 		return { balance: await readBalance(opts, store), duplicate: false };
 	}
@@ -187,6 +198,7 @@ export async function creditWallet(
 // and the conditional UPDATE (amount - cost >= floor) re-checks the floor in
 // the same statement — so even a backend without row locks cannot go below
 // the overdraft floor. Throws InsufficientFundsError past the floor.
+// Pass the module-level store — never a tx-scoped adapter (see file header).
 export async function debitWallet(
 	opts: IWalletSubscriber & {
 		amount: bigint; // positive; recorded as negative in the ledger
@@ -199,6 +211,7 @@ export async function debitWallet(
 	store: IStoreAdapter,
 ): Promise<IWalletMutationResult> {
 	if (opts.amount < 0n) throw new Error('[billing:wallet] debit amount must be positive');
+	if (!opts.idempotencyKey) throw new Error('[billing:wallet] idempotencyKey is required');
 	if (opts.amount === 0n) {
 		// Zero-cost debit (e.g. unlimited plan rate) — no ledger row, no-op.
 		return { balance: await readBalance(opts, store), duplicate: false };
@@ -299,13 +312,23 @@ export function encodeLedgerCursor(createdAt: string, id: string): string {
 	return Buffer.from(JSON.stringify([createdAt, id])).toString('base64url');
 }
 
+// Accepts ISO timestamps and Postgres' own text format (microsecond
+// precision, e.g. '2026-09-04 18:50:50.888123+00') — the cursor carries the
+// latter to avoid the JS Date millisecond truncation that would skip
+// same-millisecond ledger rows between pages.
+const CURSOR_TS_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}(:?\d{2})?)?$/;
+const CURSOR_ID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
 export function decodeLedgerCursor(cursor: string): { createdAt: string; id: string } | null {
+	if (cursor.length > 256) return null;
 	try {
 		const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
 		if (!Array.isArray(parsed) || typeof parsed[0] !== 'string' || typeof parsed[1] !== 'string') {
 			return null;
 		}
-		if (Number.isNaN(Date.parse(parsed[0]))) return null;
+		// Both halves feed ::timestamptz / ::uuid casts — validate here so a
+		// crafted cursor yields a 422, not a Postgres cast error.
+		if (!CURSOR_TS_RE.test(parsed[0]) || !CURSOR_ID_RE.test(parsed[1])) return null;
 		return { createdAt: parsed[0], id: parsed[1] };
 	} catch {
 		return null;
@@ -325,6 +348,10 @@ interface ILedgerRow {
 	metadata: Record<string, unknown> | null;
 	providerTxId: string | null;
 	createdAt: string | Date;
+	// created_at::text — full microsecond precision for the keyset cursor
+	// (node-pg parses timestamptz into a millisecond Date, which would make
+	// the cursor skip rows sharing a truncated millisecond).
+	createdAtRaw: string;
 }
 
 export async function getWalletLedger(
@@ -357,7 +384,8 @@ export async function getWalletLedger(
 			idempotency_key AS "idempotencyKey",
 			metadata,
 			provider_tx_id  AS "providerTxId",
-			created_at      AS "createdAt"
+			created_at      AS "createdAt",
+			created_at::text AS "createdAtRaw"
 		FROM fonderie_wallet_ledger
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3
 			${cursorClause}
@@ -382,9 +410,9 @@ export async function getWalletLedger(
 		createdAt: new Date(r.createdAt).toISOString(),
 	}));
 
-	const last = entries[entries.length - 1];
+	const lastRow = page[page.length - 1];
 	const nextCursor =
-		rows.length > limit && last ? encodeLedgerCursor(last.createdAt, last.id) : null;
+		rows.length > limit && lastRow ? encodeLedgerCursor(lastRow.createdAtRaw, lastRow.id) : null;
 	return { entries, nextCursor };
 }
 
