@@ -96,6 +96,10 @@ currency                 TEXT NOT NULL DEFAULT 'USD'
 amount                   BIGINT NOT NULL DEFAULT 0
 version                  BIGINT NOT NULL DEFAULT 1
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+granted_amount           BIGINT NOT NULL DEFAULT 0
+granted_period           TEXT
+granted_expires_at       TIMESTAMPTZ
+spend_purchased          BOOLEAN NOT NULL DEFAULT true
 -- CONSTRAINT fonderie_wallet_balances_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
 -- PRIMARY KEY (subscriber_type, subscriber_id, currency)
 ```
@@ -146,6 +150,7 @@ idempotency_key          TEXT NOT NULL UNIQUE
 metadata                 JSONB NOT NULL DEFAULT '{}'
 provider_tx_id           TEXT
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+CONSTRAINT               fonderie_wallet_ledger_type_check CHECK (type IN ('purchase', 'grant', 'usage', 'refund', 'adjustment', 'expiry'))
 -- CONSTRAINT fonderie_wallet_ledger_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
 -- CONSTRAINT fonderie_wallet_ledger_type_check CHECK (type IN ('purchase', 'grant', 'usage', 'refund', 'adjustment'))
 -- CONSTRAINT fonderie_wallet_ledger_amount_nonzero_check CHECK (amount <> 0)
@@ -180,3 +185,5 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 
 - `fonderie_plans: ALTER COLUMN monthly_amount TYPE BIGINT`
 - `fonderie_plans: ALTER COLUMN yearly_amount TYPE BIGINT`
+- `EXCEPTION WHEN duplicate_object THEN NULL`
+- `END $$`

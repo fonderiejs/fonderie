@@ -105,19 +105,20 @@ export async function debitWalletForMetric(
 	const cost = wallet?.rates[metric]?.cost;
 	if (!billing || !wallet || cost === undefined || cost === 0n) return null;
 
-	return debitWallet(
-		{
-			subscriberType: billing.subscriber.type,
-			subscriberId: billing.subscriber.id,
-			currency: wallet.currency,
-			amount: cost * BigInt(quantity),
-			overdraftLimit: wallet.overdraftLimit,
-			idempotencyKey: opts.idempotencyKey,
-			description: opts.description ?? metric,
-			metadata: { metric, quantity, ...(opts.metadata ?? {}) },
-		},
-		store,
-	);
+	const debitOpts: Parameters<typeof debitWallet>[0] = {
+		subscriberType: billing.subscriber.type,
+		subscriberId: billing.subscriber.id,
+		currency: wallet.currency,
+		amount: cost * BigInt(quantity),
+		overdraftLimit: wallet.overdraftLimit,
+		idempotencyKey: opts.idempotencyKey,
+		description: opts.description ?? metric,
+		metadata: { metric, quantity, ...(opts.metadata ?? {}) },
+	};
+	// Settle a stale allowance in the same transaction as the spend (no
+	// lazy-settle window on a period-boundary-crossing request).
+	if (wallet.allowance) debitOpts.allowance = wallet.allowance;
+	return debitWallet(debitOpts, store);
 }
 
 // The 402 a product route should return when a debit loses the race between

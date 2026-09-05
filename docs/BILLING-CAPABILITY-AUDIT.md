@@ -392,7 +392,15 @@ reversal path got a focused review.
   PLAN_CHANGE_REQUIRES_CANCEL, canceled→resubscribe fresh checkout, grace in/out of
   window + requirePlan, consented-card charge + persistence, real-Postgres round-trip.
 
-#### Phase 5 — Founder-selectable monetization: subscription / credits / hybrid — 📋 planned
+#### Phase 5 — Founder-selectable monetization: subscription / credits / hybrid — 🟡 5a implemented
+
+**Status:** the accounting core (5a) is implemented + real-Postgres verified on
+this branch — the two-column balance, allowance-first debit, expiry/rollover, the
+spend-purchased toggle's storage + enforcement, refund-confined-to-purchased, DTO
+buckets, migration `010`, and `checkReadiness` coherence. **5b pending:** the
+toggle's HTTP setter route + `react/vue/native`-billing client/hooks (deferred
+because a new route ripples through the coverage gates and every billing hook
+package). The checklist below is the full design; ✅ = shipped in 5a.
 
 **Decision (2026-09-05).** Fonderie does not pick a monetization model; it makes
 each one safe and selectable. A founder chooses one of three shapes, and billing

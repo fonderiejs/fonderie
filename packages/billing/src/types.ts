@@ -55,6 +55,15 @@ export interface IWalletContext {
 	precision: number;
 	overdraftLimit: bigint;
 	rates: Record<string, IWalletRate>;
+	// Grant-period context (present only when the plan defines an allowance) so a
+	// metered debit settles a stale allowance in the SAME transaction as the
+	// spend — closing the window between withBilling's request-start settle and a
+	// debit that crosses a period boundary. Server-side only (never JSON).
+	allowance?: {
+		period: string; // currentGrantPeriod()
+		rollover: 'none' | 'full' | { cap: bigint };
+		expiresAt: Date; // startOfNextPeriod()
+	};
 }
 
 export interface IBillingContext {
@@ -126,13 +135,22 @@ export interface IPlanFeature {
 
 // ── Wallet ────────────────────────────────────────────────────────
 
-export const WALLET_LEDGER_TYPES = ['purchase', 'grant', 'usage', 'refund', 'adjustment'] as const;
+export const WALLET_LEDGER_TYPES = ['purchase', 'grant', 'usage', 'refund', 'adjustment', 'expiry'] as const;
 export type WalletLedgerType = (typeof WALLET_LEDGER_TYPES)[number];
 
 export interface IWalletBalance {
-	balance: bigint;
+	balance: bigint; // total spendable (granted + purchased)
 	version: number;
 	updatedAt: string | null; // ISO string; null when no balance row exists yet
+	// Phase 5a bucket split (additive). `granted` is the non-stackable
+	// subscription allowance; `purchased` = balance - granted is the stacking
+	// cash balance. `spendPurchased` is the per-subscriber toggle (default true);
+	// when false, spend is capped at the allowance. Absent on a legacy read that
+	// predates the columns.
+	granted?: bigint;
+	purchased?: bigint;
+	spendPurchased?: boolean;
+	grantedExpiresAt?: string | null;
 }
 
 export interface IWalletLedgerEntry {

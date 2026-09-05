@@ -104,5 +104,37 @@ export function collectBillingReadinessProblems(
 		}
 	}
 
+	// Phase 5a: a plan that configures a wallet allowance but no wallet subsystem
+	// (config.wallet) silently grants nothing — the whole plan.wallet is inert
+	// (resolvePlanWallet returns null without config.wallet). Surface it.
+	if (!config.wallet) {
+		for (const plan of config.plans) {
+			if (plan.wallet?.grantAmount !== undefined || plan.wallet?.grantRollover !== undefined) {
+				problems.push({
+					module: '@fonderie/billing',
+					severity: 'warning',
+					message:
+						`plan '${plan.name}' configures a wallet allowance but config.wallet is not set — ` +
+						'the wallet subsystem is off, so grants/allowance are inert. Set config.wallet to enable it.',
+				});
+			}
+		}
+	}
+
+	// A negative rollover cap is invalid (it would expire more than exists);
+	// treat as a config error so it is caught at boot, not at the period boundary.
+	for (const plan of config.plans) {
+		const rollover = plan.wallet?.grantRollover;
+		if (rollover && typeof rollover === 'object' && rollover.cap < 0n) {
+			problems.push({
+				module: '@fonderie/billing',
+				severity: process.env['NODE_ENV'] === 'production' ? 'error' : 'warning',
+				message:
+					`plan '${plan.name}' has a negative grantRollover cap (${rollover.cap}) — ` +
+					"use { cap: >= 0 }, 'none', or 'full'.",
+			});
+		}
+	}
+
 	return problems;
 }
