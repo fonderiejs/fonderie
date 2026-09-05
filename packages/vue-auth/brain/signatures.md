@@ -41,8 +41,7 @@ interface ILoginResult {
 }
 
 interface IMfaEnabledResult {
-    tokens: ITokens;
-    user: IUserDTO;
+    mfaEnabled: boolean;
 }
 
 interface IMfaRequiredResult {

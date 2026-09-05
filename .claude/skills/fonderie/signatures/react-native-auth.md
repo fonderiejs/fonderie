@@ -92,8 +92,7 @@ interface IChangePasswordInput {
 }
 
 interface IMfaEnabledResult {
-    tokens: ITokens;
-    user: IUserDTO;
+    mfaEnabled: boolean;
 }
 
 interface IMfaSetupResult {
