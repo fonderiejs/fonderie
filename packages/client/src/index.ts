@@ -136,7 +136,6 @@ export type {
 	IUsageResult,
 	IUserDTO,
 	IUserPreferences,
-	IUserSkill,
 	IVerifyEmailResult,
 	IWebhookDeliveryDTO,
 	IWebhookDeliveryListResult,

@@ -1,0 +1,7 @@
+node_modules/
+.env
+dist/
+
+# Not committed, matching the other examples: these track the latest published
+# @fonderie packages, and a pinned lockfile would quietly hold them back.
+package-lock.json

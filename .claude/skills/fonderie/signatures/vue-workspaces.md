@@ -39,6 +39,10 @@ interface IMemberDTO {
     roleName: string;
     confirmed: boolean;
     createdAt: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    profileImageUrl: string;
 }
 
 interface IRoleDTO {
