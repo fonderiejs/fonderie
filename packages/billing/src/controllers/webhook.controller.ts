@@ -3,7 +3,7 @@ import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
-import type { IBillingConfig } from '../config';
+import type { IBillingConfig, BillingEventKey, BillingMessageKey } from '../config';
 import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { PriceCache } from '../services/price-cache';
 import { SubscriptionModel } from '../models/subscription.model';
@@ -11,6 +11,32 @@ import { resolvePlanNameByPrice } from '../services/plans';
 import { subscriberEventFields } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { readWebhookEvent } from './webhook-shared';
+
+// The lifecycle domain-event key for a subscription webhook. The verb reflects
+// the resulting state: a deletion is a cancellation, an unpaid subscription is
+// past_due, otherwise it's created vs. updated straight from the provider event.
+function lifecycleEventKey(eventType: string, status: string): BillingEventKey {
+	if (eventType === 'customer.subscription.deleted') return EVENT_KEYS.subscriptionCanceled;
+	if (status === 'past_due') return EVENT_KEYS.subscriptionPastDue;
+	if (eventType === 'customer.subscription.created') return EVENT_KEYS.subscriptionCreated;
+	return EVENT_KEYS.subscriptionUpdated;
+}
+
+// The customer-facing notice for a subscription webhook, or null when none is
+// warranted. Fires only on the transition INTO the state, so a provider
+// re-delivery of the same status sends nothing: a cancellation confirms access
+// is ending, a fresh past_due is the dunning notice.
+function transitionNotice(
+	eventType: string,
+	status: string,
+	priorStatus: string | null,
+): BillingMessageKey | null {
+	if (eventType === 'customer.subscription.deleted') {
+		return priorStatus === 'canceled' ? null : MESSAGE_KEYS.subscriptionCanceled;
+	}
+	if (status === 'past_due' && priorStatus !== 'past_due') return MESSAGE_KEYS.paymentFailed;
+	return null;
+}
 
 export function webhookController(
 	store: IStoreAdapter,
@@ -73,17 +99,8 @@ export function webhookController(
 
 				// Publish the lifecycle domain event. Fire-and-forget: a bus
 				// hiccup must never fail the webhook (the provider would retry
-				// and double-apply). The verb reflects the resulting state:
-				// deletion → canceled, past_due → past_due, created vs updated
-				// from the provider event type.
-				const key =
-					event.type === 'customer.subscription.deleted'
-						? EVENT_KEYS.subscriptionCanceled
-						: event.subscription.status === 'past_due'
-							? EVENT_KEYS.subscriptionPastDue
-							: event.type === 'customer.subscription.created'
-								? EVENT_KEYS.subscriptionCreated
-								: EVENT_KEYS.subscriptionUpdated;
+				// and double-apply).
+				const key = lifecycleEventKey(event.type, event.subscription.status);
 				bus
 					?.emit(key, {
 						...subscriberEventFields(
@@ -97,18 +114,9 @@ export function webhookController(
 					})
 					.catch(() => {});
 
-				// Customer-facing notice (§ Communication & Record Integrity), only
-				// on the transition into the state so provider retries don't re-email.
-				// A failed payment (past_due) is the dunning notice; a cancellation
-				// confirms access is ending. Fire-and-forget inside notifyBilling.
-				const canceled = event.type === 'customer.subscription.deleted';
-				const messageKey = canceled
-					? priorStatus !== 'canceled'
-						? MESSAGE_KEYS.subscriptionCanceled
-						: null
-					: event.subscription.status === 'past_due' && priorStatus !== 'past_due'
-						? MESSAGE_KEYS.paymentFailed
-						: null;
+				// Customer-facing notice (§ Communication & Record Integrity).
+				// Fire-and-forget inside notifyBilling.
+				const messageKey = transitionNotice(event.type, event.subscription.status, priorStatus);
 				if (messageKey) {
 					void notifyBilling(bus, config, {
 						subscriberType: event.subscription.subscriberType,
