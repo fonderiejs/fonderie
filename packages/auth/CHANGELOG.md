@@ -1,5 +1,77 @@
 # @fonderie/auth
 
+## 5.0.1
+
+### Patch Changes
+
+- 98821fc: Auth mediums from the DTO audit: honest SAR exports, typed preferences, the verify-routing signal
+  
+  The Subject Access Request export (`exportMe`) reported `isPhoneVerified:
+  false` for every user — it called `toUserDTO` without the session's
+  phone-verified claim while `GET /users` passes it; the compliance bundle now
+  agrees with the profile endpoint. The MFA login completion propagates the
+  claim into both the fresh token pair and its user DTO instead of silently
+  dropping it. (The OAuth callback deliberately stays `false`: `phoneVerified`
+  is a session claim, and a fresh browser-redirect session has verified
+  nothing.)
+  
+  `updatePreferencesSchema` typed four fields as `unknown`, so `dateFormat:
+  null` or `notifications: "yes"` validated, got stored, and was then served
+  against string-typed client fields. The schema now validates all four
+  (bounded strings; notifications as the four-boolean object), and `toUserDTO`
+  additionally sanitizes reads — well-typed values survive, garbage falls back
+  to defaults, and a partial stored notifications object deep-merges over the
+  defaults so the promised shape can't shrink. Rows poisoned before this fix
+  are therefore served clean too. `IUpdatePreferencesInput` is typed to match.
+  
+  `IRegisterResult` and `ILoginResult` gain `requiresVerification?: boolean` —
+  the server has always sent it on email register/login (it's the signal for
+  routing to the verify-email screen), but the client types omitted it, so
+  typed frontends couldn't read it.
+- 473a632: DTO audit closeout: config value parity, actor attribution, and the last shape lies
+  
+  Config admin responses now serve the PARSED value the runtime read path
+  serves — previously `setConfig(key, { value: { a: 1 } })` read back as the
+  string `'{"a":1}'` and the shipped editor re-stringified it into a
+  degradation loop on every save. Writes honor `active: false` instead of
+  silently forcing `true` (list reads filter on it), and both admin clients
+  accept an `actor` option sent as `X-Actor` on writes, so `updatedBy` and
+  revision history can attribute changes to a person instead of
+  'admin-token'. `HttpClient` gained per-request extra headers to carry it.
+  
+  Workspaces: `updateWorkspaceSchema`'s address validated `region`/
+  `postalCode` — names nothing writes — while the real `state`/`zip` rode
+  through `.passthrough()` unvalidated; the schema now matches the persisted
+  shape and strips unknowns. `IWorkspaceDTO` exposes `archivedBy` (fetched by
+  every query, dropped by the mapper) beside `isArchived`/`archivedAt`.
+  
+  Webhooks: `IWebhookDeliveryDTO` carries `payload`, `responseBody`, and
+  `nextAttemptAt` — all fetched, all previously discarded, all exactly what a
+  delivery-history UI needs to debug a failing endpoint.
+  
+  Customers: the email/phone/address update schemas shrink to the one field
+  the controllers apply (`label`) — content changes are remove-and-re-add and
+  `setPrimary` has its own route, so the old wider schemas validated bodies
+  that were silently ignored.
+  
+  Auth: `mfa_secret` no longer rides along on every user fetch — `USER_COLUMNS`
+  drops it and `mfa.disable` fetches on demand via `getMfaSecret` like
+  `mfa.verify` always did (removing an untyped cast). `IUpdateProfileInput`
+  models explicit-null clears like the workspaces input already did, and the
+  client documents that the server's phone-auth register/login variant is a
+  deliberate deferral to its own feature cycle.
+- 98e13c1: Constant-time secret comparisons everywhere a secret is compared
+  
+  An audit of every token/secret equality check found two spots still using
+  plain string comparison while config and billing already use
+  `crypto.timingSafeEqual`: courier's template-admin Bearer guard compared
+  `token !== adminToken` (its comment claimed to mirror config's admin
+  surface, but the mirror missed the constant-time compare), and auth's TOTP
+  verification compared the six-digit code with `===`. Both now use the same
+  length-guarded `timingSafeEqual` pattern, closing the response-timing oracle
+  that would let an attacker recover a match byte-by-byte. No behavior change
+  for correct or incorrect credentials.
+
 ## 5.0.0
 
 ### Patch Changes

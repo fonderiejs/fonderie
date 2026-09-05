@@ -1,5 +1,68 @@
 # @fonderie/webhooks
 
+## 5.1.0
+
+### Minor Changes
+
+- 473a632: DTO audit closeout: config value parity, actor attribution, and the last shape lies
+  
+  Config admin responses now serve the PARSED value the runtime read path
+  serves — previously `setConfig(key, { value: { a: 1 } })` read back as the
+  string `'{"a":1}'` and the shipped editor re-stringified it into a
+  degradation loop on every save. Writes honor `active: false` instead of
+  silently forcing `true` (list reads filter on it), and both admin clients
+  accept an `actor` option sent as `X-Actor` on writes, so `updatedBy` and
+  revision history can attribute changes to a person instead of
+  'admin-token'. `HttpClient` gained per-request extra headers to carry it.
+  
+  Workspaces: `updateWorkspaceSchema`'s address validated `region`/
+  `postalCode` — names nothing writes — while the real `state`/`zip` rode
+  through `.passthrough()` unvalidated; the schema now matches the persisted
+  shape and strips unknowns. `IWorkspaceDTO` exposes `archivedBy` (fetched by
+  every query, dropped by the mapper) beside `isArchived`/`archivedAt`.
+  
+  Webhooks: `IWebhookDeliveryDTO` carries `payload`, `responseBody`, and
+  `nextAttemptAt` — all fetched, all previously discarded, all exactly what a
+  delivery-history UI needs to debug a failing endpoint.
+  
+  Customers: the email/phone/address update schemas shrink to the one field
+  the controllers apply (`label`) — content changes are remove-and-re-add and
+  `setPrimary` has its own route, so the old wider schemas validated bodies
+  that were silently ignored.
+  
+  Auth: `mfa_secret` no longer rides along on every user fetch — `USER_COLUMNS`
+  drops it and `mfa.disable` fetches on demand via `getMfaSecret` like
+  `mfa.verify` always did (removing an untyped cast). `IUpdateProfileInput`
+  models explicit-null clears like the workspaces input already did, and the
+  client documents that the server's phone-auth register/login variant is a
+  deliberate deferral to its own feature cycle.
+
+### Patch Changes
+
+- d32b21c: Audit pagination reaches past the max page, and webhook retries actually retry
+  
+  Two silent runtime failures. In @fonderie/audit, the route over-fetched
+  `limit + 1` rows to detect a next page while the model re-clamped to
+  MAX_LIMIT — at the maximum page size the two caps cancelled, `nextCursor`
+  could never be set, and pagination silently ended at the boundary. The +1
+  over-fetch now lives inside the model (which returns `{ events, hasMore }`),
+  so no outer clamp can shave it off. The keyset cursor also now carries
+  `created_at::text` at full microsecond precision instead of a
+  millisecond-truncated JS Date — events created in the same millisecond
+  (e.g. within one transaction) are no longer skipped between pages — and
+  cursor halves are validated (timestamp shape, UUID) so a crafted cursor
+  yields an empty clause instead of a Postgres cast error. The route's limit
+  parse is NaN-safe.
+  
+  In @fonderie/webhooks, `IPendingRetry` declared a nested
+  `{ delivery, url, secret }` shape that the flat claim-query row never
+  produced — `retry()` destructured `delivery` as undefined and threw on
+  every claimed row, swallowed by `Promise.allSettled`. Net effect: failed
+  deliveries were re-claimed every interval and never actually retried, with
+  nothing logged. The type is now the flat row it always was, `retry()`
+  destructures accordingly, and a new test pins the full path: claim →
+  re-attempt with correct URL/signature → marked delivered.
+
 ## 5.0.0
 
 ### Patch Changes

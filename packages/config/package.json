@@ -1,6 +1,6 @@
 {
   "name": "@fonderie/config",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "DB-backed feature flags and remote config — per-environment overrides, TTL-based hot reload, and a typed getConfig helper usable inside any middleware.",
   "keywords": [
     "fonderiejs",

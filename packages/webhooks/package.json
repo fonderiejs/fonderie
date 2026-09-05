@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/webhooks",
-	"version": "5.0.0",
+	"version": "5.1.0",
 	"description": "Outgoing webhook engine — register endpoints, fan out workspace-scoped events, track delivery, and retry on failure.",
 	"keywords": [
 		"fonderiejs",

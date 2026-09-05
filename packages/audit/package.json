@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/audit",
-	"version": "5.0.0",
+	"version": "5.0.1",
 	"description": "Workspace-scoped audit log — query fonderie_events for a human-readable activity trail.",
 	"keywords": [
 		"fonderiejs",
