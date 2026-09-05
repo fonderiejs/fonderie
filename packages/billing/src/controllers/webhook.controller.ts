@@ -1,14 +1,22 @@
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from '../config';
+import { EVENT_KEYS } from '../config';
 import type { PriceCache } from '../services/price-cache';
 import { SubscriptionModel } from '../models/subscription.model';
 import { resolvePlanNameByPrice } from '../services/plans';
+import { subscriberEventFields } from '../utils';
 import { readWebhookEvent } from './webhook-shared';
 
-export function webhookController(store: IStoreAdapter, config: IBillingConfig, priceCache?: PriceCache) {
+export function webhookController(
+	store: IStoreAdapter,
+	config: IBillingConfig,
+	priceCache?: PriceCache,
+	bus?: EventBus,
+) {
 	const subscriptions = new SubscriptionModel(store);
 
 	return {
@@ -49,6 +57,32 @@ export function webhookController(store: IStoreAdapter, config: IBillingConfig, 
 					cancelAtPeriodEnd: event.subscription.cancelAtPeriodEnd,
 					trialEndsAt: event.subscription.trialEndsAt,
 				});
+
+				// Publish the lifecycle domain event. Fire-and-forget: a bus
+				// hiccup must never fail the webhook (the provider would retry
+				// and double-apply). The verb reflects the resulting state:
+				// deletion → canceled, past_due → past_due, created vs updated
+				// from the provider event type.
+				const key =
+					event.type === 'customer.subscription.deleted'
+						? EVENT_KEYS.subscriptionCanceled
+						: event.subscription.status === 'past_due'
+							? EVENT_KEYS.subscriptionPastDue
+							: event.type === 'customer.subscription.created'
+								? EVENT_KEYS.subscriptionCreated
+								: EVENT_KEYS.subscriptionUpdated;
+				bus
+					?.emit(key, {
+						...subscriberEventFields(
+							event.subscription.subscriberType,
+							event.subscription.subscriberId,
+						),
+						plan,
+						status: event.subscription.status,
+						interval: event.subscription.interval,
+						providerSubscriptionId: event.subscription.providerSubscriptionId,
+					})
+					.catch(() => {});
 			}
 
 			return Response.json({ received: true });

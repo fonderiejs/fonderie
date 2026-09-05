@@ -1,8 +1,10 @@
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from '../config';
+import { EVENT_KEYS } from '../config';
 import type { SubscriberType } from '../types';
 import { SubscriptionModel } from '../models/subscription.model';
 import { WalletModel } from '../models/wallet.model';
@@ -11,13 +13,13 @@ import { findCreditPack } from '../services/credit-packs';
 import { DuplicateTransactionError } from '../errors';
 import { toWalletDTO, toWalletTransactionDTO } from '../dtos/billing';
 import { getWalletStatus } from '../helpers';
-import { normalizeCurrency, resolveSubscriber } from '../utils';
+import { normalizeCurrency, resolveSubscriber, subscriberEventFields } from '../utils';
 
 // The wallet routes are only registered when config.wallet is present, so
 // config.wallet is always defined on these paths — defaults are still applied
 // defensively.
 
-export function walletController(store: IStoreAdapter, config: IBillingConfig) {
+export function walletController(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus) {
 	const wallet = new WalletModel(store);
 	const subscriptions = new SubscriptionModel(store);
 
@@ -207,6 +209,20 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig) {
 					description: body.description ?? 'Manual grant',
 					idempotencyKey: body.idempotencyKey,
 				});
+				// Publish only on a real credit — a replayed idempotency key
+				// returns duplicate:true and must not re-emit.
+				if (!result.duplicate) {
+					bus
+						?.emit(EVENT_KEYS.walletCredited, {
+							...subscriberEventFields(body.subscriberType, body.subscriberId),
+							currency,
+							credits: body.amount.toString(),
+							balanceAfter: result.balance.toString(),
+							source: 'manual-grant',
+						})
+						.catch(() => {});
+				}
+
 				return setApiResponse(HTTP.OK, 'WALLET_GRANTED', 'Credits granted.', {
 					balance: result.balance.toString(),
 					currency,

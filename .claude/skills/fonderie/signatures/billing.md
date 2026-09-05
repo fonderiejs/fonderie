@@ -7,7 +7,7 @@
 Subpath exports: `@fonderie/billing/types`, `@fonderie/billing/middleware`, `@fonderie/billing/migrations`
 
 ```ts
-new BillingModule(store: IStoreAdapter, config: IBillingConfig): BillingModule
+new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus | undefined): BillingModule
   .name: "@fonderie/billing"
   .deps: string[]
   .install(app: IFonderieApp): Promise<void>
@@ -25,7 +25,7 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
 
 function requirePlan(plans: string | string[], store: IStoreAdapter): Middleware
 
-function withBilling(store: IStoreAdapter, config: IBillingConfig, backend: ICounterBackend): Middleware
+function withBilling(store: IStoreAdapter, config: IBillingConfig, backend: ICounterBackend, bus?: EventBus | undefined): Middleware
 
 function hasFeature(ctx: IFonderieContext, key: string): boolean
 
@@ -46,6 +46,8 @@ function debitWalletForMetric(ctx: IFonderieContext, metric: string, opts: { ide
 function insufficientCreditsResponse(err: InsufficientFundsError, metric?: string | undefined): Response
 
 const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; }
+
+const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly grantApplied: "fonderie.billing.grant.applied"; }
 
 interface IBillingConfig {
     provider: IBillingProvider;
@@ -128,6 +130,8 @@ interface IBillingNotificationsConfig {
 }
 
 type BillingMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
+
+type BillingEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 new MemoryCounterBackend(): MemoryCounterBackend
   .increment(key: string, windowMs: number | null, quantity?: number): Promise<number>

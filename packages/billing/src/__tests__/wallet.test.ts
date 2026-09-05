@@ -1779,3 +1779,110 @@ test('buildBillingRoutes: wallet reads register with config.wallet; grant needs 
 	// Guard + validation middleware precede the handler.
 	assert.equal(grant!.length - 2, 3);
 });
+
+// ── domain events (Phase 1): wallet credits, purchases, grants ────
+
+function recordingBus() {
+	const calls: { type: string; payload: any }[] = [];
+	return {
+		bus: { emit: async (type: string, payload: unknown) => { calls.push({ type, payload }); } } as any,
+		calls,
+	};
+}
+
+test('payment webhook: emits credit_pack.purchased + wallet.credited on a real credit', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const { EVENT_KEYS } = await import('../config');
+	const store = walletEmulator();
+	const { bus, calls } = recordingBus();
+	const ctrl = paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)), bus);
+	await ctrl.handle(webhookCtx());
+	const types = calls.map((c) => c.type);
+	assert.ok(types.includes(EVENT_KEYS.creditPackPurchased));
+	assert.ok(types.includes(EVENT_KEYS.walletCredited));
+	const purchased = calls.find((c) => c.type === EVENT_KEYS.creditPackPurchased)!;
+	assert.equal(purchased.payload.subscriberType, 'user');
+	assert.equal(purchased.payload.credits, '5000');
+	assert.equal(purchased.payload.balanceAfter, '5000');
+	assert.equal(purchased.payload.packId, 'small');
+	assert.equal(typeof purchased.payload.currency, 'string');
+});
+
+test('payment webhook: a replayed event emits nothing (no double receipt)', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const first = recordingBus();
+	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)), first.bus).handle(webhookCtx());
+	const replay = recordingBus();
+	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)), replay.bus).handle(webhookCtx());
+	assert.ok(first.calls.length >= 2);
+	assert.equal(replay.calls.length, 0, 'duplicate credit must not re-emit');
+});
+
+test('wallet grant: emits wallet.credited (source manual-grant) on a real credit only', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { EVENT_KEYS } = await import('../config');
+	const store = walletEmulator();
+	const { bus, calls } = recordingBus();
+	const ctrl = walletController(store, walletConfig(), bus);
+	const body = { subscriberType: 'user', subscriberId: USER.subscriberId, amount: 500n, idempotencyKey: 'g-1' };
+	await ctrl.grant(makeCtx({ body }));
+	assert.equal(calls.length, 1);
+	assert.equal(calls[0]!.type, EVENT_KEYS.walletCredited);
+	assert.equal(calls[0]!.payload.source, 'manual-grant');
+	assert.equal(calls[0]!.payload.credits, '500');
+	// Replay: same key → duplicate → no emit.
+	await ctrl.grant(makeCtx({ body }));
+	assert.equal(calls.length, 1, 'duplicate grant must not re-emit');
+});
+
+test('withBilling: emits grant.applied + wallet.credited when a periodic grant lands, once per period', async () => {
+	const { EVENT_KEYS } = await import('../config');
+	const emu = walletEmulator();
+	const { bus, calls } = recordingBus();
+	const config = planWalletConfig([FREE_PLAN]);
+	const store = billingStore(emu);
+	// runWithBilling builds withBilling(store, config, backend, bus) — thread the bus.
+	const { withBilling } = await import('../middlewares/billing');
+	const { MemoryCounterBackend } = await import('../backends/memory');
+	const mw = withBilling(store, config, new MemoryCounterBackend(), bus);
+	const run = async () => {
+		const ctx = makeCtx({});
+		await mw(ctx, async () => new Response());
+		return ctx;
+	};
+	await run();
+	const types = calls.map((c) => c.type);
+	assert.ok(types.includes(EVENT_KEYS.grantApplied));
+	assert.ok(types.includes(EVENT_KEYS.walletCredited));
+	const g = calls.find((c) => c.type === EVENT_KEYS.grantApplied)!;
+	assert.equal(g.payload.credits, '50');
+	assert.equal(g.payload.balanceAfter, '50');
+	// Same period again → no new grant → no new emits.
+	const before = calls.length;
+	await run();
+	assert.equal(calls.length, before, 'a second request in the same period must not re-emit');
+});
+
+test('billing events round-trip a real EventBus to an in-process subscriber (webhooks-forwardable shape)', async () => {
+	const { EventBus, MemoryTransport } = await import('@fonderie/events');
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { EVENT_KEYS } = await import('../config');
+	const bus = new EventBus(new MemoryTransport());
+	await bus.start();
+	const received: any[] = [];
+	bus.on(EVENT_KEYS.walletCredited, async (payload: any) => { received.push(payload); }, 'test-subscriber');
+
+	const store = walletEmulator();
+	const ctrl = walletController(store, walletConfig(), bus);
+	await ctrl.grant(makeCtx({
+		body: { subscriberType: 'workspace', subscriberId: '11111111-2222-4333-8444-555566667777', amount: 500n, idempotencyKey: 'rt-1' },
+	}));
+	await new Promise((r) => setTimeout(r, 10));
+	await bus.stop();
+
+	assert.equal(received.length, 1, 'in-process subscriber received the billing event');
+	// The webhooks dispatcher fans out on a top-level workspaceId — present for a workspace subscriber.
+	assert.equal(typeof received[0].workspaceId, 'string');
+	assert.equal(received[0].workspaceId, '11111111-2222-4333-8444-555566667777');
+});
