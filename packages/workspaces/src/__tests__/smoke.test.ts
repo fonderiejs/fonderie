@@ -792,3 +792,27 @@ test('toInvitationDTO: serializes Date expiry and creation as ISO strings', asyn
 	assert.equal(dto.expiresAt, '2026-09-12T10:00:00.000Z');
 	assert.equal(dto.createdAt, '2026-09-05T10:00:00.000Z');
 });
+
+// ── audit closeout: address schema + archivedBy ──────────────────
+
+test('updateWorkspaceSchema: validates the REAL address fields (state/zip), strips unknowns', async () => {
+	const { updateWorkspaceSchema } = await import('../schemas');
+	const ok = updateWorkspaceSchema.safeParse({
+		address: { line1: '1 Main', city: 'Montreal', state: 'QC', zip: 'H2X 1Y4', country: 'CA' },
+	});
+	assert.equal(ok.success, true);
+	// The old schema validated region/postalCode — names nothing wrote —
+	// while state/zip rode through .passthrough() unvalidated.
+	const oversized = updateWorkspaceSchema.safeParse({ address: { state: 'x'.repeat(101) } });
+	assert.equal(oversized.success, false);
+	const stripped = updateWorkspaceSchema.parse({ address: { state: 'QC', region: 'legacy' } });
+	assert.equal((stripped.address as Record<string, unknown>)['region'], undefined);
+});
+
+test('toWorkspaceDTO: exposes archivedBy alongside isArchived/archivedAt', async () => {
+	const { toWorkspaceDTO } = await import('../dtos/workspace');
+	const dto = toWorkspaceDTO({ ...WS, archivedBy: 'user-9' } as never);
+	assert.equal(dto.archivedBy, 'user-9');
+	const live = toWorkspaceDTO({ ...WS, archivedBy: null } as never);
+	assert.equal(live.archivedBy, '');
+});

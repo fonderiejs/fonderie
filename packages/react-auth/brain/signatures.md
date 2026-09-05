@@ -117,9 +117,9 @@ interface IUpdatePreferencesInput {
 }
 
 interface IUpdateProfileInput {
-    firstName?: string;
-    lastName?: string;
-    avatarUrl?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
 }
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
