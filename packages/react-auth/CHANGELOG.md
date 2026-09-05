@@ -1,5 +1,36 @@
 # @fonderie/react-auth
 
+## 0.7.1
+
+### Patch Changes
+
+- 579ad09: Fix two phantom auth client types — and the runtime crash they were hiding
+  
+  `IResendVerificationResult` claimed `{ stat, message, data: { token,
+  expiresAt, email } }` — a shape no server path produces (and whose phantom
+  `data.token` falsely implied the verification pin is sent to the client; it
+  is only ever emailed). It is now `{ email?, verified? }`, matching the
+  server's two success branches. `IMfaEnabledResult` claimed `{ tokens, user }`,
+  but the MFA setup-confirmation endpoint returns `{ mfaEnabled: true }` — the
+  `{ tokens, user }` shape only exists on the mfa-pending login path, which
+  `verifyLogin` already types correctly as `ILoginResult`.
+  
+  The second phantom was hiding a live bug: `useMfaSetup().verify` in
+  react-auth, vue-auth, and react-native-auth all read `result.tokens.access`
+  after enabling MFA, so every successful enrollment through those hooks threw
+  a TypeError at runtime (their own tests asserted the phantom shape against a
+  mocked phantom response). The hooks no longer touch the session token —
+  correctly, since the server never rotates it on setup confirmation (MFA is
+  enforced at login; the current session remains valid unchanged) — and their
+  tests now pin the real contract.
+- Updated dependencies [98821fc]
+- Updated dependencies [579ad09]
+- Updated dependencies [6a03e90]
+- Updated dependencies [ee5c72d]
+- Updated dependencies [473a632]
+- Updated dependencies [6a03e90]
+  - @fonderie/client@0.11.0
+
 ## 0.7.0
 
 ### Minor Changes

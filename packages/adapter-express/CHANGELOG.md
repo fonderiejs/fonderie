@@ -1,5 +1,14 @@
 # @fonderie/adapter-express
 
+## 5.0.1
+
+### Patch Changes
+
+- Updated dependencies [ee4a5fb]
+- Updated dependencies [7f8778f]
+- Updated dependencies [720c47f]
+  - @fonderie/billing@6.0.0
+
 ## 5.0.0
 
 ### Patch Changes
