@@ -2880,3 +2880,86 @@ test('auto-recharge: a credit failure AFTER capture keeps the pending key so the
 	assert.equal(emu.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n, 1000n, 'credited once');
 	assert.equal(emu.state.customers.get(k)!.pendingKey, null, 'pending cleared only after the credit committed');
 });
+
+// ── Phase 3b: invoice + one-time payment-failure normalization ────
+
+test('normalizeInvoice: paid uses amount_paid, failed uses amount_due, refs collapsed', async () => {
+	const { normalizeInvoice } = await import('../providers/stripe');
+	const paid = normalizeInvoice(
+		{ id: 'in_1', currency: 'usd', amount_paid: 1999, amount_due: 0, payment_intent: 'pi_1', subscription: 'sub_1', customer: { id: 'cus_1' } } as any,
+		'paid',
+	);
+	assert.equal(paid.status, 'paid');
+	assert.equal(paid.amount, 1999n);
+	assert.equal(paid.providerTxId, 'pi_1');
+	assert.equal(paid.providerSubscriptionId, 'sub_1');
+	assert.equal(paid.providerCustomerId, 'cus_1');
+	const failed = normalizeInvoice({ id: 'in_2', currency: 'usd', amount_due: 2500, subscription: 'sub_2' } as any, 'payment_failed');
+	assert.equal(failed.status, 'payment_failed');
+	assert.equal(failed.amount, 2500n);
+	assert.equal(failed.providerTxId, null);
+});
+
+test('normalizePaymentFailure: session keeps sessionId; intent is null with a reason', async () => {
+	const { normalizePaymentFailureFromSession, normalizePaymentFailureFromIntent } = await import('../providers/stripe');
+	const s = normalizePaymentFailureFromSession({ id: 'cs_1', payment_intent: 'pi_1', amount_total: 499, currency: 'usd', metadata: { subscriberType: 'user' } } as any);
+	assert.equal(s.sessionId, 'cs_1');
+	assert.equal(s.providerTxId, 'pi_1');
+	assert.equal(s.amount, 499n);
+	const p = normalizePaymentFailureFromIntent({ id: 'pi_9', amount: 500, currency: 'usd', last_payment_error: { message: 'card declined' } } as any);
+	assert.equal(p.sessionId, null);
+	assert.equal(p.providerTxId, 'pi_9');
+	assert.equal(p.reason, 'card declined');
+});
+
+test('payment webhook: a one-time payment failure notifies + emits, or is ignored when unattributable', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const store = walletEmulator();
+	const failEvent = (meta: Record<string, string>) => ({
+		type: 'checkout.session.async_payment_failed',
+		subscription: null,
+		paymentFailure: { sessionId: 'cs_1', providerTxId: 'pi_1', amount: 499n, currency: 'usd', reason: 'insufficient_funds', metadata: meta },
+	});
+	const { bus, calls } = recordingBus();
+	const cfg = {
+		...webhookConfig(failEvent({ subscriberType: 'user', subscriberId: USER.subscriberId, packId: 'small' })),
+		resolveRecipient: () => ({ email: 'z@z.com' }),
+	} as IBillingConfig;
+	await paymentWebhookController(store, cfg, bus).handle(webhookCtx());
+	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.paymentFailed).length, 1);
+	assert.equal(
+		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.paymentFailed).length,
+		1,
+	);
+	// Unattributable (no subscriber metadata) → acked + ignored, nothing emitted.
+	const bare = recordingBus();
+	const res = await paymentWebhookController(store, webhookConfig(failEvent({})), bare.bus).handle(webhookCtx());
+	assert.equal(((await res.json()) as any).ignored, 'unattributable-payment-failure');
+	assert.equal(bare.calls.length, 0);
+});
+
+test('payment webhook: an auto-recharge decline (payment_intent.payment_failed) is NOT double-notified', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	// An auto-recharge off-session PI carries reason:'auto-recharge' — maybeAutoRecharge
+	// already owns that failure, so the payment webhook must ignore it.
+	const failEvent = {
+		type: 'payment_intent.payment_failed',
+		subscription: null,
+		paymentFailure: {
+			sessionId: null,
+			providerTxId: 'pi_ar_1',
+			amount: 500n,
+			currency: 'usd',
+			reason: 'auto-recharge',
+			metadata: { subscriberType: 'workspace', subscriberId: 'ws-1', reason: 'auto-recharge', packId: 'small' },
+		},
+	};
+	const { bus, calls } = recordingBus();
+	const cfg = { ...webhookConfig(failEvent), resolveRecipient: () => ({ email: 'z@z.com' }) } as IBillingConfig;
+	const res = await paymentWebhookController(store, cfg, bus).handle(webhookCtx());
+	assert.equal(((await res.json()) as any).ignored, 'auto-recharge-handled-elsewhere');
+	assert.equal(calls.length, 0, 'no second email + no spurious payment.failed event');
+});

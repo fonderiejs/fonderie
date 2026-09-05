@@ -12,6 +12,39 @@ export interface IBillingEvent {
 	// nullable for the same source-compatibility reason as `payment`; only
 	// providers that normalize refund/dispute events set it.
 	reversal?: INormalizedReversal | null;
+	// A subscription invoice that was paid or failed (renewal receipt / dunning).
+	// Optional/nullable — only providers that normalize invoice events set it.
+	invoice?: INormalizedInvoice | null;
+	// A one-time payment ATTEMPT that failed (a delayed-method pack payment, or a
+	// declined PaymentIntent). Distinct from `payment` (a completion) and from a
+	// subscription's past_due dunning. Optional/nullable.
+	paymentFailure?: INormalizedPaymentFailure | null;
+}
+
+// A subscription invoice event — a successful renewal (status 'paid') or a
+// failed renewal payment (status 'payment_failed'). Notification/record only;
+// no wallet effect.
+export interface INormalizedInvoice {
+	id: string;
+	status: 'paid' | 'payment_failed';
+	amount: bigint | null; // amount_paid (paid) or amount_due (failed), smallest unit
+	currency: string | null;
+	providerTxId: string | null; // the invoice's PaymentIntent
+	providerSubscriptionId: string | null; // correlates to the stored subscription
+	providerCustomerId: string | null;
+	metadata: Record<string, string>;
+}
+
+// A failed one-time payment ATTEMPT (checkout.session.async_payment_failed or a
+// declined payment_intent). `sessionId` is present for the checkout variant and
+// null for a bare PaymentIntent. Notification/record only.
+export interface INormalizedPaymentFailure {
+	sessionId: string | null;
+	providerTxId: string | null; // the PaymentIntent
+	amount: bigint | null;
+	currency: string | null;
+	reason: string | null; // decline code / last_payment_error message where available
+	metadata: Record<string, string>;
 }
 
 // A refund or chargeback that reverses a prior one-time payment (credit-pack
