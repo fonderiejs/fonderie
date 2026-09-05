@@ -38,6 +38,7 @@ interface ILoginInput {
 interface ILoginResult {
     tokens: ITokens;
     user: IUserDTO;
+    requiresVerification?: boolean;
 }
 
 interface IMfaEnabledResult {
@@ -64,6 +65,7 @@ interface IRegisterInput {
 interface IRegisterResult {
     tokens: ITokens;
     user: IUserDTO;
+    requiresVerification?: boolean;
 }
 
 interface IResetPasswordInput {
@@ -79,10 +81,15 @@ interface ITokens {
 interface IUpdatePreferencesInput {
     locale?: string;
     timezone?: string;
-    notifications?: unknown;
-    emailDigest?: unknown;
-    dateFormat?: unknown;
-    timeFormat?: unknown;
+    notifications?: {
+        email?: boolean;
+        inApp?: boolean;
+        sms?: boolean;
+        push?: boolean;
+    };
+    emailDigest?: string;
+    dateFormat?: string;
+    timeFormat?: string;
 }
 
 interface IUpdateProfileInput {
