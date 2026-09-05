@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 // ── TOTP (RFC 6238) — no external dependency ─────────────────────
 
@@ -98,10 +98,20 @@ export function generateTotpUri(email: string, secret: string, issuer: string): 
 	return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?${params}`;
 }
 
+// Constant-time code comparison — a plain === on the code would leak how many
+// leading digits matched through response timing. Length-guard first:
+// timingSafeEqual throws on unequal lengths, and the length is not secret.
+function safeCodeEqual(a: string, b: string): boolean {
+	const bufA = Buffer.from(a);
+	const bufB = Buffer.from(b);
+	if (bufA.length !== bufB.length) return false;
+	return timingSafeEqual(bufA, bufB);
+}
+
 export function verifyTotpToken(token: string, secret: string): boolean {
 	const t = timeCounter();
 	for (let i = -DRIFT; i <= DRIFT; i++) {
-		if (hotp(secret, t + i) === token) {
+		if (safeCodeEqual(hotp(secret, t + i), token)) {
 			return true;
 		}
 	}
