@@ -38,6 +38,7 @@ interface ILedgerRow {
 
 interface ICustomerRow {
 	providerCustomerId: string;
+	paymentMethodId: string | null;
 	disabled: boolean;
 	failures: number;
 	lastRechargeAt: number | null; // epoch ms
@@ -211,11 +212,19 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 	if (sql.includes('fonderie_wallet_customers')) {
 		const ckey = (st: unknown, sid: unknown, prov: unknown) => `${st}|${sid}|${prov}`;
 		if (sql.trimStart().startsWith('INSERT')) {
-			// upsert: [st, sid, provider, providerCustomerId, rearm]
-			const [st, sid, prov, pcid, rearm] = params as [string, string, string, string, boolean];
+			// upsert: [st, sid, provider, providerCustomerId, rearm, paymentMethodId]
+			const [st, sid, prov, pcid, rearm, pm] = params as [
+				string,
+				string,
+				string,
+				string,
+				boolean,
+				string | null,
+			];
 			const existing = state.customers.get(ckey(st, sid, prov));
 			state.customers.set(ckey(st, sid, prov), {
 				providerCustomerId: pcid,
+				paymentMethodId: rearm && pm != null ? pm : (existing?.paymentMethodId ?? null),
 				disabled: rearm ? false : (existing?.disabled ?? false),
 				failures: rearm ? 0 : (existing?.failures ?? 0),
 				lastRechargeAt: existing?.lastRechargeAt ?? null, // purchase doesn't reset the cooldown
@@ -234,6 +243,7 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 			return [
 				{
 					providerCustomerId: row.providerCustomerId,
+					paymentMethodId: row.paymentMethodId,
 					claimedAt: new Date(now).toISOString(),
 					pendingKey: row.pendingKey,
 				},
@@ -2591,10 +2601,21 @@ function autoRechargeConfig(
 	} as IBillingConfig;
 }
 
-async function armCustomer(store: IStoreAdapter, providerCustomerId = 'cus_1'): Promise<void> {
+async function armCustomer(
+	store: IStoreAdapter,
+	providerCustomerId = 'cus_1',
+	paymentMethodId?: string,
+): Promise<void> {
 	const { upsertWalletCustomer } = await import('../services/wallet-customers');
 	await upsertWalletCustomer(
-		{ subscriberType: 'user', subscriberId: USER.subscriberId, provider: 'stub', providerCustomerId, rearm: true },
+		{
+			subscriberType: 'user',
+			subscriberId: USER.subscriberId,
+			provider: 'stub',
+			providerCustomerId,
+			rearm: true,
+			...(paymentMethodId ? { paymentMethodId } : {}),
+		},
 		store,
 	);
 }
@@ -2962,4 +2983,105 @@ test('payment webhook: an auto-recharge decline (payment_intent.payment_failed) 
 	const res = await paymentWebhookController(store, cfg, bus).handle(webhookCtx());
 	assert.equal(((await res.json()) as any).ignored, 'auto-recharge-handled-elsewhere');
 	assert.equal(calls.length, 0, 'no second email + no spurious payment.failed event');
+});
+
+// ── Phase 4b: consented-card auto-recharge, dunning grace ─────────
+
+test('auto-recharge: charges the specifically-consented card, not the newest', async () => {
+	const store = walletEmulator();
+	await armCustomer(store, 'cus_1', 'pm_consented');
+	let chargedPm: string | null | undefined;
+	const config = autoRechargeConfig(
+		{},
+		{
+			chargeOffSession: async (opts: any) => {
+				chargedPm = opts.paymentMethodId;
+				return { providerTxId: 'pi_ar_1', status: 'succeeded' as const };
+			},
+		},
+	);
+	await runRecharge(store, config, 50n);
+	assert.equal(chargedPm, 'pm_consented', 'the stored consented card is charged explicitly');
+	assert.equal(arBal(store), 1000n);
+});
+
+test('payment webhook: persists the resolved payment method for later auto-recharge', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	const cfg = webhookConfig(paymentEvent(walletMeta, { customerId: 'cus_42' }));
+	// The provider resolves the exact card the checkout used.
+	(cfg.provider as any).getPaymentMethodForIntent = async () => 'pm_from_checkout';
+	await paymentWebhookController(store, cfg).handle(webhookCtx());
+	const row = store.state.customers.get(`user|${USER.subscriberId}|stub`);
+	assert.equal(row?.providerCustomerId, 'cus_42');
+	assert.equal(row?.paymentMethodId, 'pm_from_checkout', 'consented card persisted');
+});
+
+test('isWithinDunningGrace: past_due within/without the window, and non-past_due', async () => {
+	const { isWithinDunningGrace } = await import('../services/subscriptions');
+	const periodEnd = new Date('2026-09-01T00:00:00Z');
+	const within = new Date('2026-09-03T00:00:00Z'); // +2d, grace 3
+	const after = new Date('2026-09-05T00:00:00Z'); // +4d, grace 3
+	assert.equal(isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 3, within), true);
+	assert.equal(isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 3, after), false);
+	// Not past_due, no grace configured, or no period end → never in grace.
+	assert.equal(isWithinDunningGrace({ status: 'active', currentPeriodEnd: periodEnd }, 3, within), false);
+	assert.equal(isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 0, within), false);
+	assert.equal(isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: null }, 3, within), false);
+});
+
+test('requirePlan: dunning grace keeps a past_due subscriber authorized within the window', async () => {
+	const { requirePlan } = await import('../middlewares/require-plan');
+	const periodEnd = new Date(Date.now() - 1 * 86_400_000).toISOString(); // ended yesterday
+	const sub = { plan: 'pro', status: 'past_due', currentPeriodEnd: periodEnd };
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> =>
+			(sql.includes('fonderie_subscriptions') ? [sub] : []) as T[],
+		transaction: async (fn) => fn(store),
+	};
+	const ctx = () => makeCtx({ user: { id: USER.subscriberId, email: 'a@b.com' } });
+	const next = async () => new Response('ok');
+	// With grace 3 → still authorized (yesterday is within 3 days).
+	const withGrace = await requirePlan(['pro'], store, { graceDays: 3 })(ctx(), next);
+	assert.equal(withGrace.status, 200);
+	// Without grace → 402 SUBSCRIPTION_INACTIVE.
+	const noGrace = await requirePlan(['pro'], store)(ctx(), next);
+	assert.equal(noGrace.status, 402);
+});
+
+test('dunning grace: a past_due-in-grace subscriber keeps access but gets NO new periodic grant', async () => {
+	const { withBilling } = await import('../middlewares/billing');
+	const { MemoryCounterBackend } = await import('../backends/memory');
+	const emu = walletEmulator();
+	// past_due, period ended yesterday, graceDays 3 → within grace.
+	const sub = {
+		plan: 'free',
+		status: 'past_due',
+		currentPeriodEnd: new Date(Date.now() - 86_400_000).toISOString(),
+	};
+	const store = billingStore(emu, sub);
+	const config = { ...planWalletConfig([FREE_PLAN]), dunning: { graceDays: 3 } } as IBillingConfig;
+	const mw = withBilling(store, config, new MemoryCounterBackend());
+	let nextCalled = false;
+	const ctx = makeCtx({});
+	await mw(ctx, async () => {
+		nextCalled = true;
+		return new Response();
+	});
+	assert.equal(nextCalled, true);
+	// Access preserved (grace), but NO grant issued while payment is failing.
+	assert.equal((ctx.meta['billing'] as any).active, true, 'grace preserves access');
+	assert.equal(emu.state.ledger.filter((l) => l.type === 'grant').length, 0, 'no new credit during dunning');
+});
+
+test('consented card: a rearm purchase with no resolvable PM does not wipe the stored card', async () => {
+	const { upsertWalletCustomer } = await import('../services/wallet-customers');
+	const store = walletEmulator();
+	const key = { subscriberType: 'user' as SubscriberType, subscriberId: USER.subscriberId, provider: 'stub' };
+	const k = `user|${USER.subscriberId}|stub`;
+	await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_1', rearm: true, paymentMethodId: 'pm_1' }, store);
+	assert.equal(store.state.customers.get(k)!.paymentMethodId, 'pm_1');
+	// A later genuine purchase whose PM resolution transiently failed (no pm passed).
+	await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_1', rearm: true }, store);
+	assert.equal(store.state.customers.get(k)!.paymentMethodId, 'pm_1', 'stored card retained, not nulled');
 });

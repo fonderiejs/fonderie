@@ -1616,3 +1616,230 @@ test('buildBillingRoutes: registers first-party cancel + reactivate', async () =
 	assert.ok(paths.includes('POST /billing/subscription/cancel'));
 	assert.ok(paths.includes('POST /billing/subscription/reactivate'));
 });
+
+// ── Phase 4b: upgrade in place (Claude-style), downgrade via cancel+resubscribe ──
+
+function tieredCheckout(): { config: IBillingConfig; calls: { update?: any } } {
+	const calls: { update?: any } = {};
+	const provider = makeProvider({
+		async updateSubscription(opts: any) {
+			calls.update = opts;
+			return { status: 'active', currentPeriodStart: new Date(), currentPeriodEnd: new Date() };
+		},
+	});
+	const cfg = {
+		provider,
+		successUrl: 'https://app.example.com/s',
+		cancelUrl: 'https://app.example.com/c',
+		plans: [
+			{ name: 'starter', tier: 1, monthly: { priceId: 'price_starter_monthly' }, yearly: { priceId: 'price_starter_yearly' } },
+			{ name: 'pro', tier: 2, monthly: { priceId: 'price_pro_monthly' }, yearly: { priceId: 'price_pro_yearly' } },
+		],
+	} as IBillingConfig;
+	return { config: cfg, calls };
+}
+
+function checkoutCtx(body: Record<string, unknown>): import('@fonderie/core').IFonderieContext {
+	return {
+		meta: { body },
+		user: { id: 'u1', email: 'a@b.com' },
+		workspace: null,
+		tenant: null,
+		request: new Request('http://localhost/billing/checkout'),
+	} as any;
+}
+
+const proSub = { ...baseSubscription, plan: 'pro', subscriberType: 'user', subscriberId: 'u1', providerSubscriptionId: 'sub_1', providerCustomerId: 'cus_1' };
+const starterSub = { ...proSub, plan: 'starter' };
+
+const proYearSub = { ...proSub, interval: 'year' };
+const starterYearSub = { ...proSub, plan: 'starter', interval: 'year' };
+const canceledPro = { ...proSub, status: 'canceled' };
+const pastDueStarter = { ...starterSub, status: 'past_due' };
+const scheduledStarter = { ...starterSub, cancelAtPeriodEnd: true, trialEndsAt: '2026-09-08T00:00:00.000Z' };
+
+test('checkout: a downgrade is NOT done in place — it requires cancel + resubscribe (PLAN_CHANGE_REQUIRES_CANCEL)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const ctrl = checkoutController(makeStore({ subscription: proSub as any }), cfg);
+	const res = await ctrl.createSession(checkoutCtx({ plan: 'starter', interval: 'month' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'PLAN_CHANGE_REQUIRES_CANCEL');
+	assert.equal(body.details.reason, 'downgrade_requires_cancel');
+	assert.equal(calls.update, undefined, 'no provider mutation — the plan is not changed in place');
+});
+
+test('checkout: upgrade invoices the difference immediately (always_invoice) — Claude-style', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const ctrl = checkoutController(makeStore({ subscription: starterSub as any }), cfg);
+	const res = await ctrl.createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.result.upgraded, true);
+	assert.equal(calls.update.prorationBehavior, 'always_invoice');
+	assert.equal(calls.update.priceId, 'price_pro_monthly');
+});
+
+test('checkout: a no-op (same plan + interval) is rejected (PLAN_UNCHANGED)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const ctrl = checkoutController(makeStore({ subscription: proSub as any }), cfg);
+	const res = await ctrl.createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'PLAN_UNCHANGED');
+	assert.equal(calls.update, undefined, 'no provider change on a no-op switch');
+});
+
+test('checkout: a same-plan month→year switch is treated as an upgrade (immediate charge)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const { store } = subCtrlStore(proSub); // pro / month
+	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'year' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.result.upgraded, true, 'month→year is an upgrade, charged immediately');
+	assert.equal(calls.update.prorationBehavior, 'always_invoice');
+	assert.equal(calls.update.priceId, 'price_pro_yearly');
+});
+
+test('checkout: a year→month switch on the same plan requires cancel + resubscribe', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const { store } = subCtrlStore(proYearSub); // pro / year
+	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'PLAN_CHANGE_REQUIRES_CANCEL');
+	assert.equal(calls.update, undefined, 'year→month is a downgrade in commitment — not done in place');
+});
+
+test('checkout: a year→month switch to a HIGHER tier is still blocked (no prepaid-annual-to-credit leak)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const { store } = subCtrlStore(starterYearSub); // starter / year (tier 1)
+	// Tier rises (pro=2) but the interval drops year→month: must NOT be an in-place
+	// upgrade, or Stripe would credit the unused prepaid annual value.
+	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'PLAN_CHANGE_REQUIRES_CANCEL');
+	assert.equal(calls.update, undefined, 'interval guard runs before tier — year→month never upgrades in place');
+});
+
+test('checkout: a higher-tier but CHEAPER plan (same interval) is not an in-place upgrade (price backstop)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const calls: { update?: any } = {};
+	const provider = makeProvider({
+		async updateSubscription(opts: any) {
+			calls.update = opts;
+			return { status: 'active', currentPeriodStart: new Date(), currentPeriodEnd: new Date() };
+		},
+	});
+	// tier says premium(2) > standard(1), but premium is priced BELOW standard —
+	// a mis-ordered tier. The amount backstop must refuse the in-place change.
+	const cfg = {
+		provider,
+		successUrl: 'https://x/s',
+		cancelUrl: 'https://x/c',
+		plans: [
+			{ name: 'standard', tier: 1, monthly: { priceId: 'price_standard_monthly', amount: 2000n } },
+			{ name: 'premium', tier: 2, monthly: { priceId: 'price_premium_monthly', amount: 1000n } },
+		],
+	} as IBillingConfig;
+	const onStandard = { ...proSub, plan: 'standard' };
+	const res = await checkoutController(subCtrlStore(onStandard).store, cfg).createSession(
+		checkoutCtx({ plan: 'premium', interval: 'month' }),
+	);
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'PLAN_CHANGE_REQUIRES_CANCEL');
+	assert.equal(calls.update, undefined, 'cheaper target at the same interval is never an in-place upgrade');
+});
+
+test('checkout: a past_due subscriber cannot change plans in place (SUBSCRIPTION_PAST_DUE)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const res = await checkoutController(subCtrlStore(pastDueStarter).store, cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'SUBSCRIPTION_PAST_DUE');
+	assert.equal(calls.update, undefined, 'no plan change while a balance is unpaid');
+});
+
+test('checkout: a scheduled-to-cancel subscriber must reactivate before upgrading (SUBSCRIPTION_SCHEDULED_TO_CANCEL)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	// Otherwise the paid upgrade would still be deleted at period end.
+	const res = await checkoutController(subCtrlStore(scheduledStarter).store, cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'SUBSCRIPTION_SCHEDULED_TO_CANCEL');
+	assert.equal(calls.update, undefined, 'reactivate first — do not charge an upgrade onto a canceling sub');
+});
+
+test('checkout: an untiered plan change is NOT done in place (requires cancel + resubscribe)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const calls: { update?: any } = {};
+	const provider = makeProvider({
+		async updateSubscription(opts: any) {
+			calls.update = opts;
+			return { status: 'active', currentPeriodStart: new Date(), currentPeriodEnd: new Date() };
+		},
+	});
+	const untiered = {
+		provider,
+		successUrl: 'https://x/s',
+		cancelUrl: 'https://x/c',
+		plans: [
+			{ name: 'basic', monthly: { priceId: 'price_basic_monthly' } },
+			{ name: 'plus', monthly: { priceId: 'price_plus_monthly' } },
+		],
+	} as IBillingConfig;
+	const onBasic = { ...proSub, plan: 'basic' };
+	const res = await checkoutController(subCtrlStore(onBasic).store, untiered).createSession(
+		checkoutCtx({ plan: 'plus', interval: 'month' }),
+	);
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422, 'untiered pair cannot be ranked — never changed in place');
+	assert.equal(body.reason, 'PLAN_CHANGE_REQUIRES_CANCEL');
+	assert.equal(calls.update, undefined);
+});
+
+test('checkout: a CANCELED subscriber can subscribe to a lower-tier plan (fresh checkout — the sanctioned downgrade path)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	// Was on pro, now canceled (membership ended). Choosing the lower plan now
+	// opens a brand-new checkout, NOT an in-place change: the existing customer is
+	// reused (saved card survives) and the dead subscription id is cleared.
+	const { store, upserts } = subCtrlStore(canceledPro);
+	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'starter', interval: 'month' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.reason, 'CHECKOUT_URL');
+	assert.ok(body.result.url, 'a fresh checkout session is returned');
+	assert.equal(calls.update, undefined, 'no in-place mutation — a canceled sub resubscribes fresh');
+	// upsert params: [4]=status [5]=providerCustomerId [6]=providerSubscriptionId
+	assert.equal(upserts[0]![4], 'incomplete');
+	assert.equal(upserts[0]![5], 'cus_1', 'existing provider customer reused (card/auto-recharge preserved)');
+	assert.equal(upserts[0]![6], null, 'dead provider subscription id cleared (not retained via COALESCE)');
+});
+
+test('checkout: an in-place UPGRADE clears any pending cancellation and carries the trial forward', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg } = tieredCheckout();
+	// Active, NOT scheduled to cancel, mid-trial. Upgrading keeps the trial and
+	// writes cancelAtPeriodEnd=false (a re-commitment, never a lingering cancel).
+	const trialing = { ...starterSub, cancelAtPeriodEnd: false, trialEndsAt: '2026-09-08T00:00:00.000Z' };
+	const { store, upserts } = subCtrlStore(trialing);
+	await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	// upsert params: [9]=cancelAtPeriodEnd [10]=trialEndsAt
+	assert.equal(upserts[0]![9], false, 'cancelAtPeriodEnd written false on upgrade');
+	assert.ok(upserts[0]![10], 'trialEndsAt carried forward (not nulled)');
+});

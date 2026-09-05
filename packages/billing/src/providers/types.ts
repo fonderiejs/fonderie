@@ -188,6 +188,10 @@ export interface IBillingProvider {
 	//                      the provider dedupes to the original PaymentIntent.
 	chargeOffSession?(opts: {
 		customerId: string;
+		// The specific saved card to charge (the one consented to at the pack
+		// checkout). When omitted, the provider falls back to the customer's most
+		// recently attached card.
+		paymentMethodId?: string | null;
 		amount: bigint; // smallest currency unit
 		currency: string;
 		idempotencyKey: string;
@@ -197,16 +201,25 @@ export interface IBillingProvider {
 		status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
 	}>;
 
+	// Resolve the payment method a completed payment used, so auto-recharge can
+	// persist and later re-charge the exact card the buyer consented to. Optional;
+	// when absent, auto-recharge falls back to the newest card at charge time.
+	getPaymentMethodForIntent?(providerTxId: string): Promise<string | null>;
+
 	// Resolve live price data (source of truth for amount/currency/interval) from
 	// the provider. Used by read-through pricing hydration.
 	resolvePriceById(priceId: string): Promise<IResolvedPrice | null>;
 	resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>;
 
-	// Change an existing subscription's price in place (upgrade), invoicing the
-	// prorated difference immediately.
+	// Change an existing subscription's price in place. prorationBehavior selects
+	// how the prorated difference is settled: 'always_invoice' (default) invoices
+	// it immediately (an upgrade — pay the difference now); 'create_prorations'
+	// accrues it as a credit/debit on the next invoice (a downgrade — credit the
+	// unused higher-plan time).
 	updateSubscription(opts: {
 		subscriptionId: string;
 		priceId: string;
+		prorationBehavior?: 'always_invoice' | 'create_prorations';
 	}): Promise<{
 		status: string;
 		currentPeriodStart: Date | null;

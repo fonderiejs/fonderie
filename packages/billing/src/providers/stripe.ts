@@ -387,6 +387,7 @@ export class StripeProvider implements IBillingProvider {
 	// caller backs off cleanly. Stripe's own idempotency key dedupes retries.
 	async chargeOffSession(opts: {
 		customerId: string;
+		paymentMethodId?: string | null;
 		amount: bigint;
 		currency: string;
 		idempotencyKey: string;
@@ -397,13 +398,17 @@ export class StripeProvider implements IBillingProvider {
 	}> {
 		try {
 			const stripe = await this.client();
-			// Use the most recently attached card on file.
-			const methods = await stripe.paymentMethods.list({
-				customer: opts.customerId,
-				type: 'card',
-				limit: 1,
-			});
-			const paymentMethod = methods.data?.[0]?.id;
+			// Charge the specific consented card when known; otherwise fall back to
+			// the customer's most recently attached card.
+			let paymentMethod = opts.paymentMethodId ?? undefined;
+			if (!paymentMethod) {
+				const methods = await stripe.paymentMethods.list({
+					customer: opts.customerId,
+					type: 'card',
+					limit: 1,
+				});
+				paymentMethod = methods.data?.[0]?.id;
+			}
 			// No card on file is a definitive fail (nothing to reconcile).
 			if (!paymentMethod) return { providerTxId: null, status: 'failed' };
 
@@ -422,17 +427,25 @@ export class StripeProvider implements IBillingProvider {
 			const status = pi.status === 'succeeded' ? 'succeeded' : 'requires_action';
 			return { providerTxId: pi.id ?? null, status };
 		} catch (err) {
-			// Classify by error type. A card-level error (declined / SCA) is a
-			// DEFINITIVE outcome carrying the failed PI. A connection/timeout/API
-			// error is INDETERMINATE — the charge may have captured — so report
-			// 'unknown' and let the caller retry with the SAME idempotency key.
+			// Classify the outcome. DEFINITIVE (do not retry the same charge):
+			// a card error (declined / SCA), or an invalid-request error such as a
+			// stored payment method that was detached/deleted (resource_missing) —
+			// retrying with the same key can't succeed, so record a failure and
+			// back off rather than looping. INDETERMINATE (a connection/timeout/API
+			// error): the charge may have captured, so report 'unknown' and let the
+			// caller retry with the SAME idempotency key.
 			const e = err as {
 				type?: string;
+				rawType?: string;
 				code?: string;
 				payment_intent?: { id?: string };
 			};
-			const isCardError = e?.type === 'StripeCardError' || e?.type === 'card_error';
-			if (!isCardError) return { providerTxId: e?.payment_intent?.id ?? null, status: 'unknown' };
+			const t = e?.type ?? e?.rawType;
+			const isCardError = t === 'StripeCardError' || t === 'card_error';
+			const isInvalidRequest = t === 'StripeInvalidRequestError' || t === 'invalid_request_error';
+			if (!isCardError && !isInvalidRequest) {
+				return { providerTxId: e?.payment_intent?.id ?? null, status: 'unknown' };
+			}
 			const status = e?.code === 'authentication_required' ? 'requires_action' : 'failed';
 			return { providerTxId: e?.payment_intent?.id ?? null, status };
 		}
@@ -467,15 +480,17 @@ export class StripeProvider implements IBillingProvider {
 	async updateSubscription(opts: {
 		subscriptionId: string;
 		priceId: string;
+		prorationBehavior?: 'always_invoice' | 'create_prorations';
 	}): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null }> {
 		const stripe = await this.client();
 		const sub = await stripe.subscriptions.retrieve(opts.subscriptionId);
 		const itemId = sub.items.data[0]?.id;
-		// Swap the price on the existing item and invoice the prorated difference
-		// immediately (upgrade → pay the difference now).
+		// Swap the price on the existing item. Upgrade (default) invoices the
+		// difference now; downgrade ('create_prorations') credits the unused
+		// higher-plan time onto the next invoice rather than issuing a refund.
 		const updated = await stripe.subscriptions.update(opts.subscriptionId, {
 			items: [{ id: itemId, price: opts.priceId }],
-			proration_behavior: 'always_invoice',
+			proration_behavior: opts.prorationBehavior ?? 'always_invoice',
 			payment_behavior: 'error_if_incomplete',
 		});
 		const item = updated.items?.data?.[0];
@@ -509,6 +524,20 @@ export class StripeProvider implements IBillingProvider {
 			cancel_at_period_end: false,
 		});
 		return toSubscriptionChange(sub);
+	}
+
+	// The card a completed PaymentIntent used — persisted so auto-recharge later
+	// re-charges that exact (consented) card. Tolerant: any failure → null (the
+	// caller falls back to the newest card).
+	async getPaymentMethodForIntent(providerTxId: string): Promise<string | null> {
+		try {
+			const stripe = await this.client();
+			const pi = await stripe.paymentIntents.retrieve(providerTxId);
+			const pm = pi?.payment_method;
+			return typeof pm === 'string' ? pm : (pm?.id ?? null);
+		} catch {
+			return null;
+		}
 	}
 
 	async createPortalSession(opts: {

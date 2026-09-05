@@ -6,7 +6,7 @@ import type { EventBus } from '@fonderie/events';
 import type { IBillingConfig } from '../config';
 import type { ICounterBackend } from '../backends/types';
 import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
-import { getSubscription } from '../services/subscriptions';
+import { getSubscription, isWithinDunningGrace } from '../services/subscriptions';
 import { isWorkspaceMember } from '../services/membership';
 import { buildBillingContext } from '../services/policy';
 import {
@@ -53,8 +53,15 @@ export function withBilling(
 		// Resolve subscription → plan name (fall back to first plan = free)
 		const subscription = await getSubscription(subscriber.type, subscriber.id, store);
 		const planName = subscription?.plan ?? config.plans[0]?.name ?? 'free';
-		const active =
-			!subscription || subscription.status === 'active' || subscription.status === 'trialing';
+		// Paying (or free/trialing) — the basis for issuing NEW value (grants).
+			const grantEligible =
+				!subscription || subscription.status === 'active' || subscription.status === 'trialing';
+			// Access — extends `grantEligible` with the dunning grace window, so a
+			// past_due subscriber keeps plan access + can spend during retries. It
+			// must NOT feed the grant gate (grace preserves access, never hands out
+			// new billed credit while payment is failing).
+			const active =
+				grantEligible || isWithinDunningGrace(subscription, config.dunning?.graceDays);
 
 		const plan = config.plans.find((p) => p.name === planName) ?? config.plans[0];
 		if (!plan) return next();
@@ -87,8 +94,9 @@ export function withBilling(
 				};
 				// Grants require an active (or trialing) subscription — a past_due
 				// or paused subscriber keeps spending existing credits but is not
-				// extended new ones while payment is failing.
-				if (active && planWallet.grantAmount !== null && planWallet.grantAmount > 0n) {
+				// extended new ones while payment is failing (grace preserves
+				// ACCESS via `active`, but must not issue new credit → grantEligible).
+				if (grantEligible && planWallet.grantAmount !== null && planWallet.grantAmount > 0n) {
 					const period = currentGrantPeriod(planWallet.grantPeriod);
 					const grant = await ensurePeriodicGrant(
 						{ ...sub, amount: planWallet.grantAmount, period },

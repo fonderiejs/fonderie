@@ -21,19 +21,33 @@ export interface IWalletCustomerKey {
 // already disabled. last_recharge_at is left untouched so a purchase doesn't
 // reset the cooldown window.
 export async function upsertWalletCustomer(
-	key: IWalletCustomerKey & { providerCustomerId: string; rearm: boolean },
+	key: IWalletCustomerKey & {
+		providerCustomerId: string;
+		rearm: boolean;
+		// The card consented to at THIS purchase; refreshed only on a genuine new
+		// purchase (rearm), so a replayed webhook can't overwrite it.
+		paymentMethodId?: string | null;
+	},
 	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
 		`INSERT INTO fonderie_wallet_customers
-			(subscriber_type, subscriber_id, provider, provider_customer_id)
-		VALUES ($1, $2, $3, $4)
+			(subscriber_type, subscriber_id, provider, provider_customer_id, payment_method_id)
+		VALUES ($1, $2, $3, $4, $6)
 		ON CONFLICT (subscriber_type, subscriber_id, provider) DO UPDATE SET
 			provider_customer_id   = EXCLUDED.provider_customer_id,
+			payment_method_id      = CASE WHEN $5 AND $6 IS NOT NULL THEN EXCLUDED.payment_method_id ELSE fonderie_wallet_customers.payment_method_id END,
 			auto_recharge_disabled = CASE WHEN $5 THEN false ELSE fonderie_wallet_customers.auto_recharge_disabled END,
 			consecutive_failures   = CASE WHEN $5 THEN 0 ELSE fonderie_wallet_customers.consecutive_failures END,
 			updated_at             = now()`,
-		[key.subscriberType, key.subscriberId, key.provider, key.providerCustomerId, key.rearm],
+		[
+			key.subscriberType,
+			key.subscriberId,
+			key.provider,
+			key.providerCustomerId,
+			key.rearm,
+			key.paymentMethodId ?? null,
+		],
 	);
 }
 
@@ -45,6 +59,8 @@ export async function upsertWalletCustomer(
 // declined card from being retried every request. null ⇒ do not charge.
 export interface IAutoRechargeClaim {
 	providerCustomerId: string;
+	/** The consented card to charge (null → the provider uses the newest card). */
+	paymentMethodId: string | null;
 	/** The attempt timestamp just written — a stable token for a fresh charge's idempotency key. */
 	claimedAt: string;
 	/**
@@ -61,6 +77,7 @@ export async function claimAutoRecharge(
 ): Promise<IAutoRechargeClaim | null> {
 	const [row] = await store.query<{
 		providerCustomerId: string;
+		paymentMethodId: string | null;
 		claimedAt: string;
 		pendingKey: string | null;
 	}>(
@@ -70,12 +87,18 @@ export async function claimAutoRecharge(
 			AND auto_recharge_disabled = false
 			AND (last_recharge_at IS NULL OR last_recharge_at < now() - make_interval(secs => $4))
 		RETURNING provider_customer_id AS "providerCustomerId",
+			payment_method_id AS "paymentMethodId",
 			last_recharge_at::text AS "claimedAt",
 			pending_recharge_key AS "pendingKey"`,
 		[key.subscriberType, key.subscriberId, key.provider, key.cooldownSeconds],
 	);
 	return row
-		? { providerCustomerId: row.providerCustomerId, claimedAt: row.claimedAt, pendingKey: row.pendingKey }
+		? {
+				providerCustomerId: row.providerCustomerId,
+				paymentMethodId: row.paymentMethodId,
+				claimedAt: row.claimedAt,
+				pendingKey: row.pendingKey,
+			}
 		: null;
 }
 
