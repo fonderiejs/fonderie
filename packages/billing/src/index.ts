@@ -49,6 +49,7 @@ export type {
 	IBillingProvider,
 	IBillingEvent,
 	INormalizedPayment,
+	INormalizedReversal,
 	IResolvedPrice,
 } from './providers/types';
 export type {
@@ -84,6 +85,10 @@ export {
 export {
 	creditWallet,
 	debitWallet,
+	reverseWallet,
+	findPurchaseByProviderTxId,
+	sumReversedCreditsByProviderTxId,
+	findLedgerAmountByKey,
 	getWalletBalance,
 	getWalletLedger,
 	ensurePeriodicGrant,
@@ -95,6 +100,8 @@ export {
 export type {
 	IWalletSubscriber,
 	IWalletMutationResult,
+	IWalletReversalResult,
+	IWalletPurchaseRow,
 	IWalletLedgerPage,
 	IGrantResult,
 	IResolvedPlanWallet,

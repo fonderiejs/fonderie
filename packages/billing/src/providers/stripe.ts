@@ -2,6 +2,7 @@ import type {
 	IBillingProvider,
 	IBillingEvent,
 	INormalizedPayment,
+	INormalizedReversal,
 	INormalizedSubscription,
 	IResolvedPrice,
 } from './types';
@@ -44,17 +45,89 @@ export interface IStripeCheckoutSessionRaw {
 	metadata?: Record<string, string> | null;
 }
 
+// charge.refunded delivers the Charge with its full (cumulative) refunds list.
+interface IStripeChargeRaw {
+	id: string;
+	payment_intent?: string | { id: string } | null;
+	currency?: string | null;
+	amount_refunded?: number | null;
+	refunds?: { data?: Array<{ id: string; amount?: number | null; reason?: string | null }> } | null;
+	metadata?: Record<string, string> | null;
+}
+
+// charge.dispute.created / .closed deliver the Dispute.
+interface IStripeDisputeRaw {
+	id: string;
+	charge?: string | { id: string } | null;
+	payment_intent?: string | { id: string } | null;
+	amount?: number | null;
+	currency?: string | null;
+	reason?: string | null;
+	status?: string | null;
+	metadata?: Record<string, string> | null;
+}
+
+// Stripe reference fields are `string | { id } | null` (id, or the expanded
+// object, or absent). Collapse to the id string, tolerating every shape.
+function refId(ref: string | { id: string } | null | undefined): string | null {
+	return typeof ref === 'string' ? ref : (ref?.id ?? null);
+}
+
 // Pure normalization of a completed payment-mode checkout session — exported
 // for tests (constructEvent itself needs the Stripe SDK for signatures).
 export function normalizePaymentSession(session: IStripeCheckoutSessionRaw): INormalizedPayment {
-	const pi = session.payment_intent;
 	return {
 		sessionId: session.id,
-		providerTxId: typeof pi === 'string' ? pi : (pi?.id ?? null),
+		providerTxId: refId(session.payment_intent),
 		amountTotal: session.amount_total != null ? BigInt(session.amount_total) : null,
 		currency: session.currency ?? null,
 		paymentStatus: session.payment_status ?? null,
 		metadata: session.metadata ?? {},
+	};
+}
+
+// Pure normalization of a charge.refunded event. The event carries the full
+// refunds list, ordered most-recent-first (Stripe list ordering), so data[0]
+// is the refund this event announces. Its own `amount` is the per-event delta
+// — `charge.amount_refunded` is cumulative and would double-count across
+// partial refunds, so prefer the refund's own amount. Keying idempotency off
+// this refund's own id is what makes each partial refund a distinct clawback;
+// picking the wrong (older) entry would collide keys and silently drop every
+// refund after the first.
+export function normalizeChargeRefund(charge: IStripeChargeRaw): INormalizedReversal {
+	const list = charge.refunds?.data ?? [];
+	const latest = list.length > 0 ? list[0] : undefined;
+	const amount =
+		latest?.amount != null
+			? BigInt(latest.amount)
+			: charge.amount_refunded != null
+				? BigInt(charge.amount_refunded)
+				: null;
+	return {
+		kind: 'refund',
+		id: latest?.id ?? charge.id,
+		providerTxId: refId(charge.payment_intent),
+		chargeId: charge.id,
+		amount,
+		currency: charge.currency ?? null,
+		reason: latest?.reason ?? null,
+		status: null,
+		metadata: charge.metadata ?? {},
+	};
+}
+
+// Pure normalization of a charge.dispute.created / .closed event.
+export function normalizeDispute(dispute: IStripeDisputeRaw): INormalizedReversal {
+	return {
+		kind: 'dispute',
+		id: dispute.id,
+		providerTxId: refId(dispute.payment_intent),
+		chargeId: refId(dispute.charge),
+		amount: dispute.amount != null ? BigInt(dispute.amount) : null,
+		currency: dispute.currency ?? null,
+		reason: dispute.reason ?? null,
+		status: dispute.status ?? null,
+		metadata: dispute.metadata ?? {},
 	};
 }
 
@@ -310,6 +383,24 @@ export class StripeProvider implements IBillingProvider {
 				return { type: raw.type, subscription: null, payment: normalizePaymentSession(session) };
 			}
 			return { type: raw.type, subscription: null };
+		}
+
+		// Refund / chargeback events — normalized for the payment webhook's
+		// wallet clawback. Kept before the subscription gate (below) so they are
+		// not swallowed by its type-only pass-through.
+		if (raw.type === 'charge.refunded') {
+			return {
+				type: raw.type,
+				subscription: null,
+				reversal: normalizeChargeRefund(raw.data.object as IStripeChargeRaw),
+			};
+		}
+		if (raw.type === 'charge.dispute.created' || raw.type === 'charge.dispute.closed') {
+			return {
+				type: raw.type,
+				subscription: null,
+				reversal: normalizeDispute(raw.data.object as IStripeDisputeRaw),
+			};
 		}
 
 		const isSubscriptionEvent = [
