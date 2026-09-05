@@ -13,6 +13,7 @@ import {
 	deleteConfigEntry,
 	rollbackConfigEntry,
 	listConfigRevisions,
+	withParsedValue,
 	ConfigConflictError,
 } from './services/config';
 import {
@@ -71,13 +72,22 @@ function body(ctx: IFonderieContext): Record<string, unknown> {
 function writeOpts(
 	ctx: IFonderieContext,
 	b: Record<string, unknown>,
-): { environment?: string; description?: string; ifVersion?: number; actor: string } {
-	const opts: { environment?: string; description?: string; ifVersion?: number; actor: string } = {
+): { environment?: string; description?: string; active?: boolean; ifVersion?: number; actor: string } {
+	const opts: {
+		environment?: string;
+		description?: string;
+		active?: boolean;
+		ifVersion?: number;
+		actor: string;
+	} = {
 		actor: actorOf(ctx),
 	};
 	const env = (b['environment'] as string | undefined) ?? envOf(ctx);
 	if (env !== undefined) opts.environment = env;
 	if (typeof b['description'] === 'string') opts.description = b['description'];
+	// Previously dropped here, silently forcing active=true on every HTTP
+	// write while list reads filter on it.
+	if (typeof b['active'] === 'boolean') opts.active = b['active'];
 	if (typeof b['ifVersion'] === 'number') opts.ifVersion = b['ifVersion'] as number;
 	return opts;
 }
@@ -119,12 +129,12 @@ export function buildAdminRoutes(
 		// ── config ──────────────────────────────────────────────────
 		['GET', '/admin/config', g(async (ctx) => {
 			const rows = await listConfigEntries(envOf(ctx) ?? null, store);
-			return setApiResponse(HTTP.OK, 'CONFIG_LISTED', 'Config entries', rows);
+			return setApiResponse(HTTP.OK, 'CONFIG_LISTED', 'Config entries', rows.map(withParsedValue));
 		})],
 		['GET', '/admin/config/:key', g(async (ctx) => {
 			const row = await getConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store);
 			return row
-				? setApiResponse(HTTP.OK, 'CONFIG_ENTRY', 'Config entry', row)
+				? setApiResponse(HTTP.OK, 'CONFIG_ENTRY', 'Config entry', withParsedValue(row))
 				: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such config entry');
 		})],
 		['PUT', '/admin/config/:key', g(async (ctx) => {
@@ -137,7 +147,7 @@ export function buildAdminRoutes(
 					{ key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) },
 					store,
 				);
-				return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', row);
+				return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', withParsedValue(row));
 			} catch (err) {
 				return conflictOr(err);
 			}
@@ -148,7 +158,7 @@ export function buildAdminRoutes(
 		})],
 		['GET', '/admin/config/:key/revisions', g(async (ctx) => {
 			const revs = await listConfigRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store);
-			return setApiResponse(HTTP.OK, 'REVISIONS', 'Config revisions', revs);
+			return setApiResponse(HTTP.OK, 'REVISIONS', 'Config revisions', revs.map(withParsedValue));
 		})],
 		['POST', '/admin/config/:key/rollback', g(async (ctx) => {
 			const b = body(ctx);
@@ -160,7 +170,7 @@ export function buildAdminRoutes(
 				rollbackOpts(ctx, b, toVersion),
 				store,
 			);
-			return setApiResponse(HTTP.OK, 'ROLLED_BACK', `Rolled back to v${toVersion}`, row);
+			return setApiResponse(HTTP.OK, 'ROLLED_BACK', `Rolled back to v${toVersion}`, withParsedValue(row));
 		})],
 
 		// ── secrets (masked) ────────────────────────────────────────

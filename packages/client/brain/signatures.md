@@ -114,9 +114,9 @@ interface IUpdatePreferencesInput {
 }
 
 interface IUpdateProfileInput {
-    firstName?: string;
-    lastName?: string;
-    avatarUrl?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
 }
 
 new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
@@ -182,6 +182,7 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
 interface IConfigAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    actor?: string;
 }
 
 interface IRollbackInput {
@@ -191,12 +192,14 @@ interface IRollbackInput {
 interface ISetConfigInput {
     value: unknown;
     description?: string;
+    active?: boolean;
     ifVersion?: number;
 }
 
 interface ISetSecretInput {
     value: string;
     description?: string;
+    active?: boolean;
     ifVersion?: number;
 }
 
@@ -218,6 +221,7 @@ new ConfigAdminClient(opts: IConfigAdminClientOptions): ConfigAdminClient
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    actor?: string;
 }
 
 interface IRollbackTemplateInput {
@@ -945,7 +949,10 @@ interface IWebhookDeliveryDTO {
     eventType: string;
     status: string;
     attempts: number;
+    payload: Record<string, unknown>;
     responseStatus: number | null;
+    responseBody: string | null;
+    nextAttemptAt: string | null;
     deliveredAt: string | null;
     createdAt: string;
 }
@@ -994,6 +1001,7 @@ interface IWorkspaceDTO {
     isPersonal: boolean;
     isArchived: boolean;
     archivedAt: string;
+    archivedBy: string;
     createdAt: string;
     updatedAt: string;
 }

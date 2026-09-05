@@ -16,6 +16,11 @@ import type {
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
 
+// NOTE: the server's register/login schemas also accept a { phone } variant
+// (OTP-based phone auth). It is deliberately not surfaced in the typed client
+// yet — doing it properly needs a verifyPhone completion method plus hooks in
+// all three frontend frameworks, which is its own cycle. Tracked in
+// docs/DTO-GAP-AUDIT.md.
 export interface IRegisterInput {
 	email: string;
 	password: string;
@@ -38,9 +43,11 @@ export interface IResetPasswordInput {
 // User updates are split by @fonderie/auth into dedicated, individually
 // validated routes — there is no combined /users/update endpoint.
 export interface IUpdateProfileInput {
-	firstName?: string;
-	lastName?: string;
-	avatarUrl?: string;
+	// Explicit null clears the field server-side (same pattern as
+	// IUpdateWorkspaceInput); undefined leaves it untouched.
+	firstName?: string | null;
+	lastName?: string | null;
+	avatarUrl?: string | null;
 }
 
 export interface IUpdatePreferencesInput {

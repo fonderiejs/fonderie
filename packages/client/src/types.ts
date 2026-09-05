@@ -210,6 +210,8 @@ export interface IWorkspaceDTO {
 	isPersonal: boolean;
 	isArchived: boolean;
 	archivedAt: string;
+	// User id that archived the workspace; '' while unarchived.
+	archivedBy: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -407,7 +409,13 @@ export interface IWebhookDeliveryDTO {
 	eventType: string;
 	status: string;
 	attempts: number;
+	// The event body that was delivered — what the endpoint received.
+	payload: Record<string, unknown>;
 	responseStatus: number | null;
+	// The receiving endpoint's response body (useful when debugging failures).
+	responseBody: string | null;
+	// When the next retry is due; null once delivered or exhausted.
+	nextAttemptAt: string | null;
 	deliveredAt: string | null;
 	createdAt: string;
 }

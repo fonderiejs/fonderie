@@ -33,14 +33,18 @@ export const updateCustomerSchema = z
 export const blacklistSchema = z.object({ reason: z.string().max(1000).optional() });
 
 export const addEmailSchema = z.object({ email, label, isPrimary });
-export const updateEmailSchema = z
-	.object({ email: email.optional(), label, isPrimary })
-	.refine((o) => Object.values(o).some((v) => v !== undefined), 'Provide at least one field');
+// Only the label is editable on an existing email/phone/address — the
+// controllers apply nothing else (value changes are remove-and-re-add, and
+// setPrimary has its own route). The old schemas accepted content fields
+// and isPrimary that were silently ignored.
+export const updateEmailSchema = z.object({
+	label: z.string().trim().min(1, 'label is required').max(100),
+});
 
 export const addPhoneSchema = z.object({ phone, label, isPrimary });
-export const updatePhoneSchema = z
-	.object({ phone: phone.optional(), label, isPrimary })
-	.refine((o) => Object.values(o).some((v) => v !== undefined), 'Provide at least one field');
+export const updatePhoneSchema = z.object({
+	label: z.string().trim().min(1, 'label is required').max(100),
+});
 
 const addressFields = {
 	label,
@@ -54,9 +58,9 @@ const addressFields = {
 	subdivision2Iso: z.string().max(10).nullable().optional(),
 };
 export const addAddressSchema = z.object(addressFields);
-export const updateAddressSchema = z
-	.object(addressFields)
-	.refine((o) => Object.values(o).some((v) => v !== undefined), 'Provide at least one field');
+export const updateAddressSchema = z.object({
+	label: z.string().trim().min(1, 'label is required').max(100),
+});
 
 export const noteSchema = z.object({ body: z.string().trim().min(1, 'body is required').max(10000) });
 

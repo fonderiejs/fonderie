@@ -86,9 +86,9 @@ interface IUpdatePreferencesInput {
 }
 
 interface IUpdateProfileInput {
-    firstName?: string;
-    lastName?: string;
-    avatarUrl?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
 }
 
 interface IUserDTO {
