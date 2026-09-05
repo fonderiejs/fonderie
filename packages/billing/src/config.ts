@@ -207,8 +207,10 @@ export const EVENT_KEYS = {
 	subscriptionCanceled: 'fonderie.billing.subscription.canceled',
 	subscriptionPastDue: 'fonderie.billing.subscription.past_due',
 	walletCredited: 'fonderie.billing.wallet.credited',
+	walletDebited: 'fonderie.billing.wallet.debited',
 	walletLowBalance: 'fonderie.billing.wallet.low_balance',
 	creditPackPurchased: 'fonderie.billing.credit_pack.purchased',
+	paymentRefunded: 'fonderie.billing.payment.refunded',
 	grantApplied: 'fonderie.billing.grant.applied',
 } as const;
 

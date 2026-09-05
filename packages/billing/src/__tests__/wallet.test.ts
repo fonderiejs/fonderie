@@ -53,9 +53,42 @@ function uniqueViolation(): Error {
 function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []): unknown[] {
 	const balKey = (st: unknown, sid: unknown, cur: unknown) => `${st}|${sid}|${cur}`;
 
+	// Advisory lock — the serializing emulator already serializes transactions,
+	// so this is a no-op here; real per-charge serialization is proven on PG.
+	if (sql.includes('pg_advisory_xact_lock')) return [];
+
 	if (sql.includes('fonderie_wallet_ledger')) {
+		// Net reversed credits for a provider tx = SUM of its 'refund' amounts
+		// (negative). Checked before the provider_tx_id branch (its SQL also
+		// carries provider_tx_id = $1).
+		if (sql.includes('SUM(amount)')) {
+			const total = state.ledger
+				.filter((l) => l.providerTxId === params[0] && l.type === 'refund')
+				.reduce((acc, l) => acc + l.amount, 0n);
+			return [{ total: total.toString() }];
+		}
+		// Original purchase lookup by provider tx id (the refund→purchase join).
+		if (sql.includes('provider_tx_id = $1')) {
+			const row = state.ledger.find((l) => l.providerTxId === params[0] && l.type === 'purchase');
+			return row
+				? [
+						{
+							subscriberType: row.subscriberType,
+							subscriberId: row.subscriberId,
+							currency: row.currency,
+							amount: row.amount.toString(),
+							metadata: row.metadata,
+						},
+					]
+				: [];
+		}
 		if (sql.includes('idempotency_key = $1')) {
 			const row = state.ledger.find((l) => l.idempotencyKey === params[0]);
+			// findLedgerAmountByKey selects only `amount`; findByIdempotencyKey
+			// selects the subscriber columns.
+			if (sql.includes('SELECT amount FROM fonderie_wallet_ledger')) {
+				return row ? [{ amount: row.amount.toString() }] : [];
+			}
 			return row
 				? [{ subscriberType: row.subscriberType, subscriberId: row.subscriberId, currency: row.currency }]
 				: [];
@@ -2139,4 +2172,309 @@ test('BillingModule.checkReadiness: clean with a bus + resolver wired', async ()
 	const config = { ...walletConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
 	const mod = new BillingModule(store, config, new EventBus(new MemoryTransport()));
 	assert.deepEqual(mod.checkReadiness(), []);
+});
+
+// ── Phase 3: refund/chargeback clawback (the §C value-leak fix) ────
+
+// Pure provider normalizers, tested the way normalizePaymentSession is.
+test('normalizeChargeRefund: picks the newest refund (Stripe lists most-recent-first)', async () => {
+	const { normalizeChargeRefund } = await import('../providers/stripe');
+	// Stripe orders refunds.data most-recent-first, so data[0] is the refund
+	// this event announces. re_2 is the newer one.
+	const r = normalizeChargeRefund({
+		id: 'ch_1',
+		payment_intent: 'pi_1',
+		currency: 'usd',
+		amount_refunded: 499, // cumulative — deliberately NOT what we key on
+		refunds: { data: [{ id: 're_2', amount: 299, reason: null }, { id: 're_1', amount: 200, reason: 'requested_by_customer' }] },
+	} as any);
+	assert.equal(r.kind, 'refund');
+	assert.equal(r.id, 're_2'); // newest, not the oldest
+	assert.equal(r.amount, 299n); // the per-event delta, not the cumulative 499
+	assert.equal(r.providerTxId, 'pi_1');
+	assert.equal(r.chargeId, 'ch_1');
+	assert.equal(r.currency, 'usd');
+	assert.equal(r.status, null);
+	// Expanded payment_intent object and an empty refunds list are both tolerated.
+	const r2 = normalizeChargeRefund({ id: 'ch_2', payment_intent: { id: 'pi_2' }, amount_refunded: 100 } as any);
+	assert.equal(r2.providerTxId, 'pi_2');
+	assert.equal(r2.id, 'ch_2'); // falls back to charge id when no refund entries
+	assert.equal(r2.amount, 100n);
+});
+
+test('two sequential charge.refunded payloads (real normalizer) each claw a distinct refund', async () => {
+	// Regression guard: Stripe re-sends the FULL cumulative refunds list on each
+	// charge.refunded, newest-first. Picking the wrong entry would collide the
+	// idempotency key and silently drop every refund after the first (the leak).
+	const { normalizeChargeRefund } = await import('../providers/stripe');
+	const store = walletEmulator();
+	await buyPack(store); // 5000 credits, amountPaid 499, pi_1
+
+	// First $2.00 refund: list has only re_1.
+	const first = normalizeChargeRefund({
+		id: 'ch_1',
+		payment_intent: 'pi_1',
+		currency: 'usd',
+		amount_refunded: 200,
+		refunds: { data: [{ id: 're_1', amount: 200, reason: null }] },
+	} as any);
+	await handleReversalEvent(store, { type: 'charge.refunded', subscription: null, reversal: first });
+
+	// Second $2.99 refund: Stripe re-delivers the cumulative list, newest-first.
+	const second = normalizeChargeRefund({
+		id: 'ch_1',
+		payment_intent: 'pi_1',
+		currency: 'usd',
+		amount_refunded: 499,
+		refunds: { data: [{ id: 're_2', amount: 299, reason: null }, { id: 're_1', amount: 200, reason: null }] },
+	} as any);
+	await handleReversalEvent(store, { type: 'charge.refunded', subscription: null, reversal: second });
+
+	// Both partials clawed: 5000*200/499 + 5000*299/499 = 2004 + 2995 = 4999.
+	assert.equal(balOf(store), 5000n - 2004n - 2995n);
+	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 2);
+});
+
+test('normalizeDispute: carries id, amount, status, and both charge + PaymentIntent refs', async () => {
+	const { normalizeDispute } = await import('../providers/stripe');
+	const d = normalizeDispute({
+		id: 'dp_1',
+		charge: 'ch_1',
+		payment_intent: 'pi_1',
+		amount: 499,
+		currency: 'usd',
+		reason: 'fraudulent',
+		status: 'needs_response',
+	} as any);
+	assert.equal(d.kind, 'dispute');
+	assert.equal(d.id, 'dp_1');
+	assert.equal(d.providerTxId, 'pi_1');
+	assert.equal(d.chargeId, 'ch_1');
+	assert.equal(d.amount, 499n);
+	assert.equal(d.status, 'needs_response');
+	assert.equal(d.reason, 'fraudulent');
+});
+
+// A synthetic reversal IBillingEvent the stubbed provider.constructEvent returns.
+function refundEvent(over: Record<string, unknown> = {}, type = 'charge.refunded') {
+	return {
+		type,
+		subscription: null,
+		reversal: {
+			kind: 'refund',
+			id: 're_1',
+			providerTxId: 'pi_1',
+			chargeId: 'ch_1',
+			amount: 499n,
+			currency: 'usd',
+			reason: null,
+			status: null,
+			metadata: {},
+			...over,
+		},
+	};
+}
+
+// Run the purchase webhook once → credits 5000 to USER in USD, provider_tx_id pi_1.
+async function buyPack(store: IStoreAdapter): Promise<void> {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta))).handle(webhookCtx());
+}
+
+async function handleReversalEvent(
+	store: IStoreAdapter,
+	event: unknown,
+	bus?: ReturnType<typeof recordingBus>['bus'],
+	over: Partial<IBillingConfig> = {},
+) {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const cfg = { ...webhookConfig(event), ...over } as IBillingConfig;
+	return paymentWebhookController(store, cfg, bus).handle(webhookCtx());
+}
+
+function balOf(store: ReturnType<typeof walletEmulator>): bigint {
+	return store.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n;
+}
+
+test('refund clawback: a full refund reverses the granted credits', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	assert.equal(balOf(store), 5000n);
+	await handleReversalEvent(store, refundEvent()); // amount 499 == amountPaid → full
+	assert.equal(balOf(store), 0n);
+	const last = store.state.ledger.at(-1)!;
+	assert.equal(last.type, 'refund');
+	assert.equal(last.amount, -5000n);
+	assert.equal(last.providerTxId, 'pi_1');
+});
+
+test('refund clawback: buy → spend → full refund drives the balance NEGATIVE (leak closed)', async () => {
+	const { debitWallet } = await import('../services/wallet');
+	const store = walletEmulator();
+	await buyPack(store);
+	await debitWallet({ ...USER, amount: 3000n, type: 'usage', idempotencyKey: 'spend-1' }, store); // 2000
+	assert.equal(balOf(store), 2000n);
+	await handleReversalEvent(store, refundEvent()); // reverse full 5000
+	assert.equal(balOf(store), -3000n, 'the refunded buyer no longer keeps 2000 free credits');
+});
+
+test('refund clawback: a partial refund reverses a proportional share of the credits', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	// $2.50 of a $4.99 charge → 5000 * 250 / 499 = 2505 credits (bigint floor).
+	await handleReversalEvent(store, refundEvent({ amount: 250n }));
+	assert.equal(balOf(store), 5000n - 2505n);
+});
+
+test('refund clawback: a replayed refund event is idempotent on the refund id (no double clawback)', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	// Partial, so the replay reaches the ledger idempotency guard (a FULL-refund
+	// replay would instead short-circuit at the cumulative cap — covered below).
+	const first = await handleReversalEvent(store, refundEvent({ amount: 250n }));
+	assert.equal(((await first.json()) as any).duplicate, false);
+	const balAfterFirst = balOf(store);
+	const replay = await handleReversalEvent(store, refundEvent({ amount: 250n }));
+	assert.equal(((await replay.json()) as any).duplicate, true);
+	assert.equal(balOf(store), balAfterFirst, 'balance unchanged on replay');
+	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 1);
+});
+
+test('refund clawback: two distinct partial refunds each apply', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	await handleReversalEvent(store, refundEvent({ id: 're_a', amount: 250n })); // 2505
+	await handleReversalEvent(store, refundEvent({ id: 're_b', amount: 249n })); // 2494
+	assert.equal(balOf(store), 5000n - 2505n - 2494n); // == 1
+	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 2);
+});
+
+test('refund clawback: cumulative reversals are capped at the credits granted', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	await handleReversalEvent(store, refundEvent({ id: 're_a' })); // full → 5000, balance 0
+	const second = await handleReversalEvent(store, refundEvent({ id: 're_b' })); // nothing left to reverse
+	assert.equal(((await second.json()) as any).reversed, '0');
+	assert.equal(balOf(store), 0n);
+	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 1);
+});
+
+test('chargeback: a dispute claws back the remaining credits', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	await handleReversalEvent(
+		store,
+		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' }, 'charge.dispute.created'),
+		undefined,
+	);
+	assert.equal(balOf(store), 0n);
+	const last = store.state.ledger.at(-1)!;
+	assert.equal(last.type, 'refund');
+	assert.equal(last.amount, -5000n);
+});
+
+test('chargeback: a dispute won restores exactly what the chargeback clawed', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	await handleReversalEvent(
+		store,
+		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' }, 'charge.dispute.created'),
+	);
+	assert.equal(balOf(store), 0n);
+	await handleReversalEvent(
+		store,
+		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'won' }, 'charge.dispute.closed'),
+	);
+	assert.equal(balOf(store), 5000n, 'won dispute → credits restored');
+});
+
+test('chargeback: a dispute lost after it was opened does not double-claw', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	await handleReversalEvent(
+		store,
+		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' }, 'charge.dispute.created'),
+	);
+	await handleReversalEvent(
+		store,
+		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'lost' }, 'charge.dispute.closed'),
+	);
+	assert.equal(balOf(store), 0n);
+	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 1);
+});
+
+test('reversal: no matching purchase is acknowledged and touches no wallet', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	const res = await handleReversalEvent(store, refundEvent({ providerTxId: 'pi_UNKNOWN' }));
+	assert.equal(((await res.json()) as any).ignored, 'no-matching-purchase');
+	assert.equal(balOf(store), 5000n);
+	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 0);
+});
+
+test('reversal: a refund with no provider tx id is acknowledged and ignored', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	const res = await handleReversalEvent(store, refundEvent({ providerTxId: null }));
+	assert.equal(((await res.json()) as any).ignored, 'no-provider-tx-id');
+	assert.equal(balOf(store), 5000n);
+});
+
+test('reversal: a refund that prorates to zero credits is a no-op', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	const res = await handleReversalEvent(store, refundEvent({ amount: 0n }));
+	assert.equal(((await res.json()) as any).reversed, '0');
+	assert.equal(balOf(store), 5000n);
+	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 0);
+});
+
+test('reversal: a known partial amount with no proration basis refuses to over-claw', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const store = walletEmulator();
+	// Purchase whose amount_total was null → metadata.amountPaid stored null,
+	// so a partial refund has no denominator to prorate against.
+	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta, { amountTotal: null }))).handle(webhookCtx());
+	assert.equal(balOf(store), 5000n);
+	const res = await handleReversalEvent(store, refundEvent({ amount: 250n }));
+	assert.equal(((await res.json()) as any).ignored, 'no-proration-basis');
+	assert.equal(balOf(store), 5000n, 'a partial refund must not claw the whole balance');
+	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 0);
+});
+
+test('reversal: emits payment.refunded + wallet.debited and a refund-processed notice, once', async () => {
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const store = walletEmulator();
+	await buyPack(store); // no bus — purchase events irrelevant here
+	const { bus, calls } = recordingBus();
+	await handleReversalEvent(store, refundEvent(), bus, { resolveRecipient: () => ({ email: 'b@x.com' }) });
+	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.paymentRefunded).length, 1);
+	const debited = calls.filter((c) => c.type === EVENT_KEYS.walletDebited);
+	assert.equal(debited.length, 1);
+	assert.equal(debited[0]!.payload.credits, '5000');
+	assert.equal(debited[0]!.payload.source, 'refund');
+	const notices = calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.refundProcessed);
+	assert.equal(notices.length, 1);
+	assert.equal(notices[0]!.payload.recipient.email, 'b@x.com');
+	// Replay → duplicate → no re-emit, no re-notify.
+	const replay = recordingBus();
+	await handleReversalEvent(store, refundEvent(), replay.bus, { resolveRecipient: () => ({ email: 'b@x.com' }) });
+	assert.equal(replay.calls.length, 0);
+});
+
+test('subscription status: an unpaid subscription is treated as inactive (no new grant)', async () => {
+	const { withBilling } = await import('../middlewares/billing');
+	const { MemoryCounterBackend } = await import('../backends/memory');
+	const emu = walletEmulator();
+	const store = billingStore(emu, { plan: 'free', status: 'unpaid' });
+	const config = planWalletConfig([FREE_PLAN]);
+	const mw = withBilling(store, config, new MemoryCounterBackend());
+	let nextCalled = false;
+	await mw(makeCtx({}), async () => {
+		nextCalled = true;
+		return new Response();
+	});
+	assert.equal(nextCalled, true);
+	assert.equal(emu.state.ledger.filter((l) => l.type === 'grant').length, 0, 'unpaid → no periodic grant');
 });
