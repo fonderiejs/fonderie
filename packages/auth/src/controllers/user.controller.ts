@@ -280,7 +280,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			const sessionRows = await sessions.listByUser(ctx.user!.id);
 			const bundle = {
 				exportedAt: new Date().toISOString(),
-				profile: toUserDTO(user),
+				profile: toUserDTO(user, ctx.user!.phoneVerified),
 				sessions: sessionRows.map((s) => ({
 					id: s.id,
 					userAgent: s.userAgent,

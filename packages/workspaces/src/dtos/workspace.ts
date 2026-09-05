@@ -1,4 +1,4 @@
-import { stringOrEmpty, booleanOrFalse } from '@fonderie/core/parser';
+import { booleanOrFalse, dateOrEmpty, stringOrEmpty } from '@fonderie/core/parser';
 
 import type { IWorkspace, IRole, IMember, IInvitation, IWorkspaceSettings } from '../types';
 
@@ -26,6 +26,8 @@ export interface IWorkspaceDTO {
 	isPersonal: boolean;
 	isArchived: boolean;
 	archivedAt: string;
+	// User id that archived the workspace; '' while unarchived.
+	archivedBy: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -90,9 +92,10 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 		ownerId: stringOrEmpty(ws.ownerId),
 		isPersonal: booleanOrFalse(ws.isPersonal),
 		isArchived: ws.archivedAt !== null,
-		archivedAt: stringOrEmpty(ws.archivedAt),
-		createdAt: stringOrEmpty(ws.createdAt),
-		updatedAt: stringOrEmpty(ws.updatedAt),
+		archivedAt: dateOrEmpty(ws.archivedAt),
+		archivedBy: stringOrEmpty(ws.archivedBy),
+		createdAt: dateOrEmpty(ws.createdAt),
+		updatedAt: dateOrEmpty(ws.updatedAt),
 	};
 }
 
@@ -114,7 +117,7 @@ export function toMemberDTO(m: IMember): IMemberDTO {
 		roleId: stringOrEmpty(m.roleId),
 		roleName: stringOrEmpty(m.roleName),
 		confirmed: booleanOrFalse(m.confirmed),
-		createdAt: stringOrEmpty(m.createdAt),
+		createdAt: dateOrEmpty(m.createdAt),
 	};
 }
 
@@ -126,8 +129,8 @@ export function toInvitationDTO(inv: IInvitation): IInvitationDTO {
 		roleId: stringOrEmpty(inv.roleId),
 		token: stringOrEmpty(inv.token),
 		status: stringOrEmpty(inv.status),
-		expiresAt: stringOrEmpty(inv.expiresAt),
-		createdAt: stringOrEmpty(inv.createdAt),
+		expiresAt: dateOrEmpty(inv.expiresAt),
+		createdAt: dateOrEmpty(inv.createdAt),
 	};
 }
 

@@ -33,17 +33,16 @@ export type { IBillingProvider, IBillingEvent, IResolvedPrice } from './provider
 export type {
 	IPlan,
 	ISubscription,
-	IUsageRecord,
 	SubscriptionStatus,
 	PolicyEntry,
 	LimitStatus,
 	IPolicyStatus,
 	IBillingContext,
 } from './types';
-export type { IPlanDTO, ISubscriptionDTO, IUsageRecordDTO } from './dtos/billing';
+export type { IPlanDTO, ISubscriptionDTO } from './dtos/billing';
 
 // DTOs
-export { toPlanDTO, toSubscriptionDTO, toUsageRecordDTO } from './dtos/billing';
+export { toPlanDTO, toSubscriptionDTO } from './dtos/billing';
 
 // Services (for advanced usage)
 export { recordUsage, getUsage } from './services/usage';

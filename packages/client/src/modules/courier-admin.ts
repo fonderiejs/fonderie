@@ -18,6 +18,9 @@ export interface IRollbackTemplateInput {
 export interface ICourierAdminClientOptions {
 	baseUrl: string;
 	adminToken: string;
+	// Sent as X-Actor on writes — recorded as updatedBy and in revision
+	// history (defaults server-side to 'admin-token').
+	actor?: string;
 }
 
 // ── Courier admin client ─────────────────────────────────────────────────────
@@ -33,10 +36,12 @@ export interface ICourierAdminClientOptions {
 export class CourierAdminClient {
 	private http: HttpClient;
 	private adminToken: string;
+	private actorHeaders: Record<string, string> | undefined;
 
 	constructor(opts: ICourierAdminClientOptions) {
 		this.http = new HttpClient(opts.baseUrl);
 		this.adminToken = opts.adminToken;
+		this.actorHeaders = opts.actor ? { 'X-Actor': opts.actor } : undefined;
 	}
 
 	listTemplates() {
@@ -63,6 +68,7 @@ export class CourierAdminClient {
 			path: `/admin/templates/${type}${q}`,
 			body: input,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 
@@ -72,6 +78,7 @@ export class CourierAdminClient {
 			method: 'DELETE',
 			path: `/admin/templates/${type}${q}`,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 
@@ -91,6 +98,7 @@ export class CourierAdminClient {
 			path: `/admin/templates/${type}/rollback${q}`,
 			body: input,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 }

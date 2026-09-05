@@ -363,6 +363,29 @@ test('bus: dispatcher receives events emitted via MemoryTransport', async () => 
 	assert.equal(store.db.fonderie_webhook_deliveries.length, 1);
 });
 
+// ── audit closeout: delivery DTO carries what the query fetches ──
+
+test('toDeliveryDTO: exposes payload, responseBody, and nextAttemptAt', async () => {
+	const { toDeliveryDTO } = await import('../dtos/webhook');
+	const dto = toDeliveryDTO({
+		id: 'd1',
+		endpointId: 'ep1',
+		eventId: 'ev1',
+		eventType: 'user.created',
+		payload: { workspaceId: 'w1', name: 'Ada' },
+		status: 'failed',
+		attempts: 2,
+		responseStatus: 500,
+		responseBody: 'upstream boom',
+		nextAttemptAt: new Date('2026-09-05T12:00:00.000Z'),
+		deliveredAt: null,
+		createdAt: new Date('2026-09-05T10:00:00.000Z'),
+	} as never);
+	assert.deepEqual(dto.payload, { workspaceId: 'w1', name: 'Ada' });
+	assert.equal(dto.responseBody, 'upstream boom');
+	assert.equal(dto.nextAttemptAt, '2026-09-05T12:00:00.000Z');
+});
+
 // ── retry ─────────────────────────────────────────────────────────
 // The claim query returns FLAT rows (delivery columns + endpoint url/secret).
 // IPendingRetry once claimed a nested { delivery, url, secret } shape no row

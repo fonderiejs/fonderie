@@ -738,3 +738,81 @@ test('deleteUserData: removes a user\'s role/membership rows and returns count',
 	assert.match(captured!.sql, /DELETE FROM fonderie_role_user_workspaces WHERE user_id = \$1/);
 	assert.deepEqual(captured!.params, ['u1']);
 });
+
+// ── DTO date serialization ───────────────────────────────────────
+// In production the pg driver returns TIMESTAMPTZ columns as Date objects
+// (no setTypeParser override exists); stringOrEmpty turned every one of
+// them into '' on the wire. These tests feed Dates — the real row shape —
+// and pin the ISO-string contract the client types declare.
+
+test('toWorkspaceDTO: serializes Date timestamps as ISO strings, not empty strings', async () => {
+	const { toWorkspaceDTO } = await import('../dtos/workspace');
+	const at = new Date('2026-09-05T10:00:00.000Z');
+	const dto = toWorkspaceDTO({
+		...WS,
+		createdAt: at,
+		updatedAt: at,
+		archivedAt: at,
+	} as never);
+	assert.equal(dto.createdAt, '2026-09-05T10:00:00.000Z');
+	assert.equal(dto.updatedAt, '2026-09-05T10:00:00.000Z');
+	assert.equal(dto.archivedAt, '2026-09-05T10:00:00.000Z');
+	assert.equal(dto.isArchived, true);
+	// Non-archived: null stays an empty string, isArchived false.
+	const live = toWorkspaceDTO({ ...WS, archivedAt: null } as never);
+	assert.equal(live.archivedAt, '');
+	assert.equal(live.isArchived, false);
+});
+
+test('toMemberDTO: serializes the Date join timestamp as an ISO string', async () => {
+	const { toMemberDTO } = await import('../dtos/workspace');
+	const dto = toMemberDTO({
+		userId: 'u1',
+		workspaceId: 'w1',
+		roleId: 'r1',
+		roleName: 'ADMIN',
+		confirmed: true,
+		createdAt: new Date('2026-09-05T10:00:00.000Z'),
+	} as never);
+	assert.equal(dto.createdAt, '2026-09-05T10:00:00.000Z');
+});
+
+test('toInvitationDTO: serializes Date expiry and creation as ISO strings', async () => {
+	const { toInvitationDTO } = await import('../dtos/workspace');
+	const dto = toInvitationDTO({
+		id: 'i1',
+		workspaceId: 'w1',
+		email: 'a@b.com',
+		roleId: 'r1',
+		token: 't',
+		status: 'PENDING',
+		expiresAt: new Date('2026-09-12T10:00:00.000Z'),
+		createdAt: new Date('2026-09-05T10:00:00.000Z'),
+	} as never);
+	assert.equal(dto.expiresAt, '2026-09-12T10:00:00.000Z');
+	assert.equal(dto.createdAt, '2026-09-05T10:00:00.000Z');
+});
+
+// ── audit closeout: address schema + archivedBy ──────────────────
+
+test('updateWorkspaceSchema: validates the REAL address fields (state/zip), strips unknowns', async () => {
+	const { updateWorkspaceSchema } = await import('../schemas');
+	const ok = updateWorkspaceSchema.safeParse({
+		address: { line1: '1 Main', city: 'Montreal', state: 'QC', zip: 'H2X 1Y4', country: 'CA' },
+	});
+	assert.equal(ok.success, true);
+	// The old schema validated region/postalCode — names nothing wrote —
+	// while state/zip rode through .passthrough() unvalidated.
+	const oversized = updateWorkspaceSchema.safeParse({ address: { state: 'x'.repeat(101) } });
+	assert.equal(oversized.success, false);
+	const stripped = updateWorkspaceSchema.parse({ address: { state: 'QC', region: 'legacy' } });
+	assert.equal((stripped.address as Record<string, unknown>)['region'], undefined);
+});
+
+test('toWorkspaceDTO: exposes archivedBy alongside isArchived/archivedAt', async () => {
+	const { toWorkspaceDTO } = await import('../dtos/workspace');
+	const dto = toWorkspaceDTO({ ...WS, archivedBy: 'user-9' } as never);
+	assert.equal(dto.archivedBy, 'user-9');
+	const live = toWorkspaceDTO({ ...WS, archivedBy: null } as never);
+	assert.equal(live.archivedBy, '');
+});

@@ -1,4 +1,4 @@
-import type { IPlan, IPlanFeature, ISubscription, IUsageRecord, SubscriberType } from '../types';
+import type { IPlan, IPlanFeature, ISubscription, SubscriberType } from '../types';
 
 export interface IPlanDTO {
 	id: string;
@@ -33,15 +33,6 @@ export interface ISubscriptionDTO {
 	createdAt: string;
 }
 
-export interface IUsageRecordDTO {
-	id: string;
-	subscriberType: SubscriberType;
-	subscriberId: string;
-	metric: string;
-	quantity: number;
-	recordedAt: string;
-}
-
 export function toPlanDTO(plan: IPlan): IPlanDTO {
 	return {
 		id: plan.id,
@@ -64,6 +55,12 @@ export function toPlanDTO(plan: IPlan): IPlanDTO {
 	};
 }
 
+// The pg driver returns TIMESTAMPTZ columns as Date objects (no type-parser
+// override exists); the DTO's string fields were only correct by accident of
+// Date.toJSON. Normalize explicitly, like the wallet path does.
+const isoOrNull = (value: string | Date | null): string | null =>
+	value == null ? null : new Date(value).toISOString();
+
 export function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO {
 	return {
 		id: sub.id,
@@ -73,20 +70,10 @@ export function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO {
 		interval: sub.interval,
 		status: sub.status,
 		cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
-		currentPeriodStart: sub.currentPeriodStart,
-		currentPeriodEnd: sub.currentPeriodEnd,
-		trialEndsAt: sub.trialEndsAt,
-		createdAt: sub.createdAt,
+		currentPeriodStart: isoOrNull(sub.currentPeriodStart),
+		currentPeriodEnd: isoOrNull(sub.currentPeriodEnd),
+		trialEndsAt: isoOrNull(sub.trialEndsAt),
+		createdAt: isoOrNull(sub.createdAt) ?? '',
 	};
 }
 
-export function toUsageRecordDTO(record: IUsageRecord): IUsageRecordDTO {
-	return {
-		id: record.id,
-		subscriberType: record.subscriberType,
-		subscriberId: record.subscriberId,
-		metric: record.metric,
-		quantity: record.quantity,
-		recordedAt: record.recordedAt,
-	};
-}
