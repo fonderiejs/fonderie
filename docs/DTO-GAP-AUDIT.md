@@ -53,15 +53,15 @@ as they are fixed; extend this file, don't fork it.
 
 ## billing
 
-- [ ] **[medium] `ISubscriptionDTO` — currentPeriodStart / currentPeriodEnd / trialEndsAt / createdAt** (serialization-hazard)
+- [x] **[medium] `ISubscriptionDTO` — currentPeriodStart / currentPeriodEnd / trialEndsAt / createdAt** (serialization-hazard) — **fixed in #142**
   - Evidence: packages/billing/src/services/subscriptions.ts:15-19 (SELECT_SUBSCRIPTION selects TIMESTAMPTZ columns with no ::text cast; row typed as ISubscription) + packages/store/src/adapters/pg.ts:59-62 (no pg setTypeParser anywhere, so node-pg returns these as JS Date objects) vs packages/billing/src/types.ts:79-83 (ISubscription declares them string|null / string) and packages/billing/src/dtos/billing.ts:84-87 (toSubscriptionDTO passes them through into ISubscriptionDTO fields declared string at dtos/billing.ts:38-41). Client mirror packages/client/src/types.ts:153-156 declares string. The billing package itself documents the hazard: packages/billing/src/services/wallet.ts:362-364 ('node-pg parses timestamptz into a millisecond Date') and normalizes with new Date(r.createdAt).toISOString() at wallet.ts:421 — the subscription path is the outlier that skips normalization.
   - Fix: Normalize in the mapper or query like the wallet path does: either cast in SQL (created_at::text plus friends, or to_char/ISO) or map with value ? new Date(value).toISOString() : null in toSubscriptionDTO. Today the wire only stays correct because Date.prototype.toJSON happens to emit ISO strings; any non-JSON consumer of ISubscription (string comparison, cursor building, structured logging, cache key) gets a Date where the type says string.
 
-- [ ] **[low] `IUsageResult (client mirror of GET /billing/usage/:metric)` — since** (serialization-hazard)
+- [x] **[low] `IUsageResult (client mirror of GET /billing/usage/:metric)` — since** (serialization-hazard) — **fixed in #142**
   - Evidence: packages/billing/src/controllers/usage.controller.ts:51-59 builds `since` as a raw JS Date (new Date() with setDate/setHours) and passes the Date object straight into the setApiResponse payload, so a Date reaches JSON.stringify; the client type packages/client/src/types.ts:179-183 declares since: string. There is no server-side DTO/mapper for this response at all — the shape exists only in the client.
   - Fix: Return since.toISOString() from the controller (and consider giving this response a server-side DTO so the shape is declared on both ends like every other billing response).
 
-- [ ] **[low] `IUsageRecordDTO` — (entire DTO)** (never-populated)
+- [x] **[low] `IUsageRecordDTO` — (entire DTO)** (never-populated) — **fixed in #142**
   - Evidence: packages/billing/src/dtos/billing.ts:44-51 declares IUsageRecordDTO and dtos/billing.ts:129-138 defines toUsageRecordDTO, but the only reference outside the dtos file is the re-export at packages/billing/src/index.ts:77 — no controller or route ever calls it. The usage routes (packages/billing/src/routes.ts:59-60) return no body on record (usage.controller.ts:35) and {metric,total,since} on get (usage.controller.ts:56-60); packages/client/src/types.ts has no IUsageRecordDTO mirror (only IUsageResult at types.ts:179).
   - Fix: Either wire a route that emits it (e.g. a usage-history listing) or delete the DTO+mapper so the exported surface matches what the API actually sends.
 
