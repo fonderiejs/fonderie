@@ -310,6 +310,7 @@
         "MemoryCounterBackend",
         "DBCounterBackend",
         "BILLING_INTERVAL",
+        "BILLING_INTERVALS",
         "WALLET_LEDGER_TYPES",
         "InsufficientFundsError",
         "DuplicateTransactionError"
@@ -3485,6 +3486,9 @@
       "billing"
     ],
     "billing_interval": [
+      "billing"
+    ],
+    "billing_intervals": [
       "billing"
     ],
     "wallet_ledger_types": [

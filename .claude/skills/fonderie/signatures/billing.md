@@ -144,9 +144,13 @@ interface ICounterBackend {
 
 const BILLING_INTERVAL: { readonly MONTH: "month"; readonly YEAR: "year"; }
 
+const BILLING_INTERVALS: readonly ["month", "year"]
+
+function isBillingInterval(value: unknown): value is "month" | "year"
+
 const WALLET_LEDGER_TYPES: readonly ["purchase", "grant", "usage", "refund", "adjustment"]
 
-type BillingInterval = (typeof BILLING_INTERVAL)[keyof typeof BILLING_INTERVAL];
+type BillingInterval = (typeof BILLING_INTERVALS)[number];
 
 type WalletLedgerType = (typeof WALLET_LEDGER_TYPES)[number];
 
@@ -228,7 +232,7 @@ interface IResolvedPrice {
     lookupKey: string | null;
     unitAmount: bigint;
     currency: string;
-    interval: 'month' | 'year';
+    interval: BillingInterval;
     nickname: string | null;
     productId: string;
     active: boolean;
@@ -254,7 +258,7 @@ interface ISubscription {
     subscriberType: SubscriberType;
     subscriberId: string;
     plan: string;
-    interval: 'month' | 'year';
+    interval: BillingInterval;
     status: SubscriptionStatus;
     providerCustomerId: string | null;
     providerSubscriptionId: string | null;

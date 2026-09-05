@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { BILLING_INTERVALS } from './types';
+
 // Request schemas — the validation contract for billing's body-taking routes
 // (webhook excluded: provider-shaped, signature-verified in the handler).
 // Wired via @fonderie/core's validate(); same pattern as @fonderie/auth.
@@ -28,7 +30,7 @@ export const updatePlanSchema = z
 
 export const checkoutSchema = z.object({
 	plan: z.string().min(1, 'plan is required'),
-	interval: z.enum(['month', 'year']).optional(),
+	interval: z.enum(BILLING_INTERVALS).optional(),
 });
 
 export const recordUsageSchema = z.object({

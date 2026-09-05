@@ -39,7 +39,7 @@ export type {
 export { MemoryCounterBackend, DBCounterBackend } from './backends';
 export type { ICounterBackend } from './backends';
 
-export { BILLING_INTERVAL, WALLET_LEDGER_TYPES } from './types';
+export { BILLING_INTERVAL, BILLING_INTERVALS, isBillingInterval, WALLET_LEDGER_TYPES } from './types';
 export type { BillingInterval, WalletLedgerType } from './types';
 // Types
 export type {

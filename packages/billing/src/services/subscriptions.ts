@@ -1,6 +1,6 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { ISubscription, SubscriberType } from '../types';
+import type { BillingInterval, ISubscription, SubscriberType } from '../types';
 
 const SELECT_SUBSCRIPTION = `
 	SELECT
@@ -36,7 +36,7 @@ export async function upsertSubscription(
 		subscriberType: SubscriberType;
 		subscriberId: string;
 		plan: string;
-		interval?: 'month' | 'year';
+		interval?: BillingInterval;
 		status: string;
 		providerCustomerId?: string;
 		providerSubscriptionId?: string;

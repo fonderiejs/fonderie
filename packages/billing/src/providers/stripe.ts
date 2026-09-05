@@ -5,8 +5,8 @@ import type {
 	INormalizedSubscription,
 	IResolvedPrice,
 } from './types';
-import { BILLING_INTERVAL } from '../types';
-import type { SubscriberType } from '../types';
+import { BILLING_INTERVAL, isBillingInterval } from '../types';
+import type { BillingInterval, SubscriberType } from '../types';
 import { toSafeNumber } from '../utils';
 
 interface IStripeSubscriptionRaw {
@@ -76,6 +76,20 @@ async function getClient(secretKey: string): Promise<unknown> {
 	return _client;
 }
 
+// Stripe also supports 'day' and 'week' recurring prices; the framework's
+// billing model is month/year. Anything else keeps the historical MONTH
+// fallback — loudly, so a weekly price can't silently masquerade as monthly.
+export function toBillingInterval(raw: string | undefined): BillingInterval {
+	if (isBillingInterval(raw)) return raw;
+	if (raw !== undefined) {
+		// eslint-disable-next-line no-console
+		console.warn(
+			`[billing:stripe] unsupported price interval '${raw}' — recording as '${BILLING_INTERVAL.MONTH}'`,
+		);
+	}
+	return BILLING_INTERVAL.MONTH;
+}
+
 function normalizeSubscription(sub: IStripeSubscriptionRaw): INormalizedSubscription {
 	const item = sub.items.data[0];
 	// Period moved from the subscription to the item in Stripe API 2025+; read the
@@ -95,7 +109,7 @@ function normalizeSubscription(sub: IStripeSubscriptionRaw): INormalizedSubscrip
 		currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : new Date(),
 		cancelAtPeriodEnd: sub.cancel_at_period_end,
 		trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-		interval: item?.price.recurring?.interval === BILLING_INTERVAL.YEAR ? BILLING_INTERVAL.YEAR : BILLING_INTERVAL.MONTH,
+		interval: toBillingInterval(item?.price.recurring?.interval),
 	};
 }
 
@@ -106,7 +120,7 @@ function toResolvedPrice(p: any): IResolvedPrice {
 		lookupKey: p.lookup_key ?? null,
 		unitAmount: BigInt(p.unit_amount ?? 0),
 		currency: p.currency,
-		interval: p.recurring?.interval === BILLING_INTERVAL.YEAR ? BILLING_INTERVAL.YEAR : BILLING_INTERVAL.MONTH,
+		interval: toBillingInterval(p.recurring?.interval),
 		nickname: p.nickname ?? null,
 		productId: typeof p.product === 'string' ? p.product : (p.product?.id ?? ''),
 		active: p.active ?? true,

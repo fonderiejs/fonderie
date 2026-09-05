@@ -2,10 +2,27 @@ import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { IBillingConfig } from '../config';
+import type { IBillingConfig, IBillingPlan, IBillingPlanPrice } from '../config';
+import type { BillingInterval } from '../types';
+import { BILLING_INTERVAL, BILLING_INTERVALS, isBillingInterval } from '../types';
 import { PlanModel } from '../models/plan.model';
 import { SubscriptionModel } from '../models/subscription.model';
 import { resolveSubscriber } from '../utils';
+
+// Exhaustive by construction: a new BillingInterval fails compilation here
+// instead of silently falling through to a default price.
+function planPriceFor(plan: IBillingPlan, interval: BillingInterval): IBillingPlanPrice | undefined {
+	switch (interval) {
+		case BILLING_INTERVAL.MONTH:
+			return plan.monthly;
+		case BILLING_INTERVAL.YEAR:
+			return plan.yearly;
+		default: {
+			const unhandled: never = interval;
+			throw new Error(`[billing] unhandled billing interval: ${unhandled}`);
+		}
+	}
+}
 
 export function checkoutController(store: IStoreAdapter, config: IBillingConfig) {
 	const plans = new PlanModel(store);
@@ -15,17 +32,17 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 		async createSession(ctx: IFonderieContext): Promise<Response> {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const planName = body?.['plan'];
-			const interval = (body?.['interval'] ?? 'month') as 'month' | 'year';
+			const interval = body?.['interval'] ?? BILLING_INTERVAL.MONTH;
 			const subscriber = resolveSubscriber(ctx);
 
 			if (typeof planName !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'plan is required');
 			}
-			if (interval !== 'month' && interval !== 'year') {
+			if (!isBillingInterval(interval)) {
 				return setApiResponse(
 					HTTP.UNPROCESSABLE,
 					'INVALID_PARAMETER',
-					'interval must be month or year',
+					`interval must be one of: ${BILLING_INTERVALS.join(', ')}`,
 				);
 			}
 			if (!subscriber) {
@@ -41,7 +58,7 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', `Unknown plan: ${planName}`);
 			}
 
-			const pricing = interval === 'year' ? plan.yearly : plan.monthly;
+			const pricing = planPriceFor(plan, interval);
 			if (!pricing?.priceId) {
 				return setApiResponse(
 					HTTP.UNPROCESSABLE,
