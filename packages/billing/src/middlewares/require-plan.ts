@@ -3,14 +3,24 @@ import type { Middleware } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
-import { getSubscription } from '../services/subscriptions';
+import { getSubscription, isWithinDunningGrace } from '../services/subscriptions';
 import { resolveSubscriber } from '../utils';
 
 // Gates a route behind a minimum plan.
 // Works for both user-level and workspace-level subscriptions.
 // Usage: requirePlan(['pro', 'enterprise'], store)
+// Dunning grace (opt-in): requirePlan(['pro'], store, { graceDays: 3 }) keeps a
+// past_due subscriber inside the grace window authorized (mirrors withBilling).
 
-function makeHandler(plans: string | string[], store: IStoreAdapter): Middleware {
+export interface IRequirePlanOptions {
+	graceDays?: number;
+}
+
+function makeHandler(
+	plans: string | string[],
+	store: IStoreAdapter,
+	opts: IRequirePlanOptions = {},
+): Middleware {
 	const allowed = Array.isArray(plans) ? plans : [plans];
 
 	return async (ctx, next) => {
@@ -34,7 +44,11 @@ function makeHandler(plans: string | string[], store: IStoreAdapter): Middleware
 			);
 		}
 
-		if (subscription.status !== 'active' && subscription.status !== 'trialing') {
+		const active =
+			subscription.status === 'active' ||
+			subscription.status === 'trialing' ||
+			isWithinDunningGrace(subscription, opts.graceDays);
+		if (!active) {
 			return setApiResponse(
 				HTTP.PAYMENT_REQUIRED,
 				'SUBSCRIPTION_INACTIVE',
@@ -51,16 +65,22 @@ export function requirePlan(plans: string | string[], store: IStoreAdapter): Mid
 export function requirePlan(
 	plans: string | string[],
 	store: IStoreAdapter,
+	opts: IRequirePlanOptions,
+): Middleware;
+export function requirePlan(
+	plans: string | string[],
+	store: IStoreAdapter,
 	ctx: IFonderieContext,
 	next: () => Promise<Response>,
 ): Promise<Response>;
 export function requirePlan(
 	plans: string | string[],
 	store: IStoreAdapter,
-	ctx?: IFonderieContext,
+	arg3?: IFonderieContext | IRequirePlanOptions,
 	next?: () => Promise<Response>,
 ): Middleware | Promise<Response> {
-	const handler = makeHandler(plans, store);
-	if (ctx !== undefined && next !== undefined) return handler(ctx, next);
-	return handler;
+	// Direct-call form passes both ctx AND next; the factory form passes at most
+	// an options object as arg3.
+	if (next !== undefined) return makeHandler(plans, store)(arg3 as IFonderieContext, next);
+	return makeHandler(plans, store, (arg3 as IRequirePlanOptions) ?? {});
 }

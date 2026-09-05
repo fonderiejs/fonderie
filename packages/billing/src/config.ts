@@ -202,6 +202,18 @@ export interface IBillingConfig {
 	 * enabled is a production readiness error (see BillingModule.checkReadiness).
 	 */
 	resolveRecipient?: ResolveRecipient;
+	/** Dunning policy — a grace window after a failed renewal before access is cut. */
+	dunning?: IBillingDunningConfig;
+}
+
+export interface IBillingDunningConfig {
+	/**
+	 * Days past the (failed) renewal date that a `past_due` subscriber keeps plan
+	 * access — so a transient card failure doesn't instantly lock out a paying
+	 * customer while the provider retries. 0/omitted = no grace (access ends the
+	 * moment the subscription goes past_due).
+	 */
+	graceDays?: number;
 }
 
 export const MESSAGE_KEYS = {

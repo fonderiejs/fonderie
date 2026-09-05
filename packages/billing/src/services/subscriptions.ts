@@ -19,6 +19,21 @@ const SELECT_SUBSCRIPTION = `
 		created_at               AS "createdAt"
 	FROM fonderie_subscriptions`;
 
+// Dunning grace: a past_due subscriber still counts as having access for
+// `graceDays` beyond the (failed) renewal date, so a transient card failure
+// doesn't instantly lock out a paying customer while the provider retries.
+export function isWithinDunningGrace(
+	sub: { status: string; currentPeriodEnd: string | Date | null },
+	graceDays: number | undefined,
+	now: Date = new Date(),
+): boolean {
+	if (!graceDays || graceDays <= 0) return false;
+	if (sub.status !== 'past_due' || !sub.currentPeriodEnd) return false;
+	const end = sub.currentPeriodEnd instanceof Date ? sub.currentPeriodEnd : new Date(sub.currentPeriodEnd);
+	if (Number.isNaN(end.getTime())) return false;
+	return now.getTime() <= end.getTime() + graceDays * 86_400_000;
+}
+
 // Resolve which subscriber owns a provider subscription id — an invoice event
 // carries the provider subscription (not our subscriber identity), so this is
 // how a renewal receipt / dunning finds who to notify. A provider subscription
@@ -81,7 +96,10 @@ export async function upsertSubscription(
 			 interval                 = $4,
 			 status                   = $5,
 			 provider_customer_id     = COALESCE($6, fonderie_subscriptions.provider_customer_id),
-			 provider_subscription_id = COALESCE($7, fonderie_subscriptions.provider_subscription_id),
+			 -- ASSIGN (not COALESCE): a fresh checkout / resubscribe passes null to
+			 -- clear a prior dead subscription id; every other caller passes the
+			 -- current id, so this never wipes a live one.
+			 provider_subscription_id = $7,
 			 current_period_start     = $8,
 			 current_period_end       = $9,
 			 cancel_at_period_end     = $10,

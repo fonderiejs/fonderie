@@ -113,6 +113,7 @@ last_recharge_at         TIMESTAMPTZ
 pending_recharge_key     TEXT
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+payment_method_id        TEXT
 -- CONSTRAINT fonderie_wallet_customers_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
 -- PRIMARY KEY (subscriber_type, subscriber_id, provider)
 ```

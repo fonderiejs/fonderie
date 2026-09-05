@@ -71,6 +71,7 @@ export async function maybeAutoRecharge(args: {
 	const chargeCurrency = normalizeCurrency(pack.currency ?? creditCurrency);
 	const charge = await config.provider.chargeOffSession({
 		customerId: claim.providerCustomerId,
+		paymentMethodId: claim.paymentMethodId,
 		amount: pack.priceAmount,
 		currency: chargeCurrency,
 		idempotencyKey,

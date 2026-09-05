@@ -248,7 +248,10 @@ test(
 		const store = await connect();
 		try {
 			const key = { subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId, provider: 'stripe' };
-			await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_itest', rearm: true }, store);
+			await upsertWalletCustomer(
+				{ ...key, providerCustomerId: 'cus_itest', rearm: true, paymentMethodId: 'pm_itest' },
+				store,
+			);
 
 			const claims = await Promise.all(
 				Array.from({ length: 12 }, () => claimAutoRecharge({ ...key, cooldownSeconds: 3600 }, store)),
@@ -256,6 +259,7 @@ test(
 			const won = claims.filter((c) => c !== null);
 			assert.equal(won.length, 1, `exactly one claim must win; got ${won.length}`);
 			assert.equal(won[0]!.providerCustomerId, 'cus_itest');
+			assert.equal(won[0]!.paymentMethodId, 'pm_itest', 'consented card round-trips (migration 009 column)');
 
 			// A later claim within the cooldown is still blocked.
 			assert.equal(await claimAutoRecharge({ ...key, cooldownSeconds: 3600 }, store), null);

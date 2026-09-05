@@ -18,16 +18,21 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
   .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>
   .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; }): Promise<{ url: string; }>
   .createPaymentCheckoutSession(opts: { customerId: string; amount: bigint; currency: string; name: string; quantity?: number; priceId?: string; savePaymentMethod?: boolean; metadata: Record<string, string>; successUrl: string; cancelUrl: string; }): Promise<...>
-  .chargeOffSession(opts: { customerId: string; amount: bigint; currency: string; idempotencyKey: string; metadata: Record<string, string>; }): Promise<{ providerTxId: string | null; status: "succeeded" | "requires_action" | "failed" | "unknown"; }>
+  .chargeOffSession(opts: { customerId: string; paymentMethodId?: string | null; amount: bigint; currency: string; idempotencyKey: string; metadata: Record<string, string>; }): Promise<{ providerTxId: string | null; status: "succeeded" | ... 2 more ... | "unknown"; }>
   .resolvePriceById(priceId: string): Promise<IResolvedPrice | null>
   .resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>
-  .updateSubscription(opts: { subscriptionId: string; priceId: string; }): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null; }>
+  .updateSubscription(opts: { subscriptionId: string; priceId: string; prorationBehavior?: "always_invoice" | "create_prorations"; }): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null; }>
   .cancelSubscription(opts: { subscriptionId: string; atPeriodEnd: boolean; }): Promise<ISubscriptionChange>
   .reactivateSubscription(opts: { subscriptionId: string; }): Promise<ISubscriptionChange>
+  .getPaymentMethodForIntent(providerTxId: string): Promise<string | null>
   .createPortalSession(opts: { customerId: string; returnUrl: string; }): Promise<{ url: string; }>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
 
 function requirePlan(plans: string | string[], store: IStoreAdapter): Middleware
+
+interface IRequirePlanOptions {
+    graceDays?: number;
+}
 
 function withBilling(store: IStoreAdapter, config: IBillingConfig, backend: ICounterBackend, bus?: EventBus | undefined): Middleware
 
@@ -66,6 +71,7 @@ interface IBillingConfig {
     pricing?: IBillingPricingConfig;
     wallet?: IBillingWalletConfig;
     resolveRecipient?: ResolveRecipient;
+    dunning?: IBillingDunningConfig;
 }
 
 interface IBillingCreditPack {
@@ -134,6 +140,10 @@ interface IBillingWalletAutoRecharge {
     packId: string;
     cooldownSeconds?: number;
     maxConsecutiveFailures?: number;
+}
+
+interface IBillingDunningConfig {
+    graceDays?: number;
 }
 
 interface IBillingRecipient {
@@ -218,6 +228,7 @@ interface IBillingProvider {
     }>;
     chargeOffSession?(opts: {
         customerId: string;
+        paymentMethodId?: string | null;
         amount: bigint;
         currency: string;
         idempotencyKey: string;
@@ -226,11 +237,13 @@ interface IBillingProvider {
         providerTxId: string | null;
         status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
     }>;
+    getPaymentMethodForIntent?(providerTxId: string): Promise<string | null>;
     resolvePriceById(priceId: string): Promise<IResolvedPrice | null>;
     resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>;
     updateSubscription(opts: {
         subscriptionId: string;
         priceId: string;
+        prorationBehavior?: 'always_invoice' | 'create_prorations';
     }): Promise<{
         status: string;
         currentPeriodStart: Date | null;
@@ -591,9 +604,11 @@ function getSubscription(subscriberType: SubscriberType, subscriberId: string, s
 
 function getSubscriberByProviderSubscriptionId(providerSubscriptionId: string, store: IStoreAdapter): Promise<{ subscriberType: SubscriberType; subscriberId: string; } | null>
 
+function isWithinDunningGrace(sub: { status: string; currentPeriodEnd: string | Date | null; }, graceDays: number | undefined, now?: Date): boolean
+
 function maybeAutoRecharge(args: { store: IStoreAdapter; config: IBillingConfig; bus: EventBus | undefined; subscriberType: SubscriberType; subscriberId: string; balance: bigint; planWallet: IResolvedPlanWallet; }): Promise<...>
 
-function upsertWalletCustomer(key: IWalletCustomerKey & { providerCustomerId: string; rearm: boolean; }, store: IStoreAdapter): Promise<void>
+function upsertWalletCustomer(key: IWalletCustomerKey & { providerCustomerId: string; rearm: boolean; paymentMethodId?: string | null; }, store: IStoreAdapter): Promise<void>
 
 function claimAutoRecharge(key: IWalletCustomerKey & { cooldownSeconds: number; }, store: IStoreAdapter): Promise<IAutoRechargeClaim | null>
 
@@ -609,6 +624,7 @@ interface IWalletCustomerKey {
 
 interface IAutoRechargeClaim {
     providerCustomerId: string;
+    paymentMethodId: string | null;
     claimedAt: string;
     pendingKey: string | null;
 }

@@ -202,7 +202,10 @@ trials, pricing hydration.
 
 - [ ] **No first-party cancel / cancel-at-period-end** *(R, N)* — no
   `cancelSubscription` on `IBillingProvider`; delegated to the hosted portal.
-- [ ] **No downgrade / scheduled plan-change API** *(R, N)*
+- [x] **Plan change** *(R, N)* — resolved in Phase 4b as **upgrade-in-place only**
+  (Claude-style, immediate + prorated charge); downgrade is deliberately *not* an
+  in-place API — it goes through cancel-at-period-end → resubscribe to the lower
+  plan (no consume-then-downgrade-for-a-credit path).
 - [ ] **No reactivate / un-cancel** *(N, –)*
 - [ ] **`seats` is display-only** *(N, –)* — never sent to the provider or
   enforced against membership.
@@ -364,10 +367,30 @@ reversal path got a focused review.
   provider can't; routes behind `requireAuth` + the workspace-membership guard.
   Tests: at-period-end/immediate cancel, reactivate, 501/404, route registration.
 
-#### Phase 4b — Downgrade + dunning grace — pending
-- [ ] Scheduled plan-change (downgrade) — needs Stripe subscription schedules,
-  a bigger lift than the in-place upgrade path; carved out of the cancel PR.
-- [ ] Dunning grace window / retry policy.
+#### Phase 4b — In-place upgrade + dunning grace — ✅ implemented
+- [x] **Upgrade in place** (the mechanism Claude's own subscription uses): a live
+  subscription upgrades immediately, charging the prorated difference
+  (`always_invoice`); a same-plan month→year commitment counts as an upgrade.
+  `updateSubscription` gains an optional `prorationBehavior`.
+- [x] **Downgrade is NOT an in-place operation.** A lower-tier move — or any
+  non-upgrade change (lateral/same-tier, year→month, or an untiered pair that
+  can't be ranked) — returns `422 PLAN_CHANGE_REQUIRES_CANCEL`. The sanctioned
+  path is cancel-at-period-end (Phase 4) → keep access through the paid period →
+  subscribe to the lower plan once membership ends (a `canceled` subscriber's
+  checkout opens a fresh session). This removes any consume-then-downgrade-for-a-
+  credit path; same-plan+interval is still a no-op (`PLAN_UNCHANGED`).
+- [x] **Dunning grace** — `config.dunning.graceDays`: a `past_due` subscriber keeps
+  access that many days past the failed renewal, applied in both `withBilling`'s
+  access gate and `requirePlan` (opt-in). Access only — never a new wallet grant
+  while payment is failing. Helper `isWithinDunningGrace`.
+- [x] **Consented-card fix** (the documented multi-card edge): resolve the exact
+  PaymentMethod at purchase (`getPaymentMethodForIntent`), persist it (migration
+  `009`, refreshed only on a fresh purchase, never nulled by an unresolved retry),
+  and charge it explicitly in auto-recharge (fall back to newest only when absent);
+  a detached/invalid card fails definitively instead of looping.
+- [x] Tests: upgrade + month→year routing, downgrade/lateral/year→month/untiered →
+  PLAN_CHANGE_REQUIRES_CANCEL, canceled→resubscribe fresh checkout, grace in/out of
+  window + requirePlan, consented-card charge + persistence, real-Postgres round-trip.
 
 ### Non-goals (explicit, until a money-transmitter decision is made)
 Peer-to-peer transfers, external payouts/withdrawals, refunds-to-card,
