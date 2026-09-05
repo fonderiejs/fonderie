@@ -1264,3 +1264,113 @@ test('webhook: no bus configured → no throw, still 200', async () => {
 	const res = await ctrl.handle(webhookCtx('{}'));
 	assert.equal(res.status, 200);
 });
+
+// ── communication integrity (Phase 2): subscriber notifications ────
+//
+// The subscription webhook sends a customer-facing NOTIFICATION_EVENT (the
+// outer emit type) only on the transition INTO past_due / canceled, so a
+// provider re-delivery does not re-email. The durable domain event still
+// fires every time (asserted above).
+
+// A store whose subscription SELECT returns a row in `status`, so the
+// controller sees a prior state; writes are ignored.
+function priorSubStore(status: string | null): IStoreAdapter {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('fonderie_subscriptions') && sql.trimStart().startsWith('SELECT')) {
+				return (status === null ? [] : [{ status }]) as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return store;
+}
+
+const withRecipient = (over: Partial<IBillingConfig> = {}): IBillingConfig =>
+	({ ...config, resolveRecipient: () => ({ email: 'buyer@example.com' }), ...over }) as IBillingConfig;
+
+test('webhook: a fresh past_due transition sends a payment-failed notice once', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { MESSAGE_KEYS } = await import('../config');
+	const { bus, calls } = recordingBus();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.updated',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly', status: 'past_due' }) as any,
+		}),
+	});
+	const ctrl = webhookController(
+		priorSubStore('active'), // was active → now past_due: a real transition
+		withRecipient({ provider, webhookSecret: 'whsec_x' }),
+		undefined,
+		bus,
+	);
+	await ctrl.handle(webhookCtx('{}'));
+	const notices = calls.filter((c) => c.type === NOTIFICATION_EVENT);
+	assert.equal(notices.length, 1, 'exactly one customer notice');
+	assert.equal(notices[0]!.payload.type, MESSAGE_KEYS.paymentFailed);
+	assert.equal(notices[0]!.payload.recipient.email, 'buyer@example.com');
+	assert.equal(notices[0]!.payload.data.plan, 'pro');
+});
+
+test('webhook: a re-delivered past_due while already past_due sends no repeat notice', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.updated',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly', status: 'past_due' }) as any,
+		}),
+	});
+	const ctrl = webhookController(
+		priorSubStore('past_due'), // already past_due: not a transition
+		withRecipient({ provider, webhookSecret: 'whsec_x' }),
+		undefined,
+		bus,
+	);
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(calls.filter((c) => c.type === NOTIFICATION_EVENT).length, 0, 'no repeat notice');
+	assert.ok(calls.length >= 1, 'the durable domain event still fires every time');
+});
+
+test('webhook: a cancellation sends a subscription-canceled notice', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { MESSAGE_KEYS } = await import('../config');
+	const { bus, calls } = recordingBus();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.deleted',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly', plan: 'free', status: 'canceled' }) as any,
+		}),
+	});
+	const ctrl = webhookController(
+		priorSubStore('active'),
+		withRecipient({ provider, webhookSecret: 'whsec_x' }),
+		undefined,
+		bus,
+	);
+	await ctrl.handle(webhookCtx('{}'));
+	const notices = calls.filter((c) => c.type === NOTIFICATION_EVENT);
+	assert.equal(notices.length, 1);
+	assert.equal(notices[0]!.payload.type, MESSAGE_KEYS.subscriptionCanceled);
+});
+
+test('webhook: without resolveRecipient, no notice is sent (only the domain event)', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.deleted',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly', plan: 'free', status: 'canceled' }) as any,
+		}),
+	});
+	// Base config has no resolveRecipient.
+	const ctrl = webhookController(priorSubStore('active'), { ...config, provider, webhookSecret: 'whsec_x' }, undefined, bus);
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(calls.filter((c) => c.type === NOTIFICATION_EVENT).length, 0);
+});

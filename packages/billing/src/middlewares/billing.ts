@@ -16,6 +16,7 @@ import {
 	resolvePlanWallet,
 } from '../services/wallet';
 import { resolveSubscriber, parseWindowMs, subscriberEventFields } from '../utils';
+import { notifyBilling } from '../services/notify';
 
 // In-process de-dup: tracks which threshold notifications have fired this session.
 // Acceptable to lose on restart (may send one duplicate after a redeploy).
@@ -117,6 +118,38 @@ export function withBilling(
 					overdraftLimit: planWallet.overdraftLimit,
 					rates: planWallet.rates,
 				};
+
+				// Low-balance signal — emitted once per crossing. The dedup flag
+				// clears when the balance recovers above the threshold (hysteresis),
+				// so a later re-drop signals again rather than staying silent for the
+				// session. Fires the durable wallet.low_balance domain event and the
+				// customer-facing billing.credits-low notice; both fire-and-forget.
+				if (planWallet.lowBalanceAt !== null) {
+					const lowKey = `${subscriber.type}:${subscriber.id}:low-balance`;
+					if (balance > planWallet.lowBalanceAt) {
+						notified.delete(lowKey);
+					} else if (!notified.has(lowKey)) {
+						notified.add(lowKey);
+						const fields = {
+							...subscriberEventFields(subscriber.type, subscriber.id),
+							currency: planWallet.currency,
+							balance: balance.toString(),
+							threshold: planWallet.lowBalanceAt.toString(),
+						};
+						bus?.emit(EVENT_KEYS.walletLowBalance, fields).catch(() => {});
+						void notifyBilling(bus, config, {
+							subscriberType: subscriber.type,
+							subscriberId: subscriber.id,
+							type: MESSAGE_KEYS.creditsLow,
+							data: {
+								plan: plan.name,
+								currency: planWallet.currency,
+								balance: balance.toString(),
+								threshold: planWallet.lowBalanceAt.toString(),
+							},
+						});
+					}
+				}
 			} catch (err) {
 				// eslint-disable-next-line no-console
 				console.error('[billing] wallet context failed:', (err as Error).message);

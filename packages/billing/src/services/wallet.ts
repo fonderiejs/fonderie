@@ -436,6 +436,8 @@ export interface IResolvedPlanWallet {
 	grantAmount: bigint | null;
 	grantPeriod: 'month' | 'week' | 'day';
 	rates: Record<string, IWalletRate>;
+	/** Balance at/below which withBilling signals a low balance. null disables. */
+	lowBalanceAt: bigint | null;
 }
 
 export function resolvePlanWallet(
@@ -450,6 +452,7 @@ export function resolvePlanWallet(
 		grantAmount: plan.wallet.grantAmount ?? null,
 		grantPeriod: plan.wallet.grantPeriod ?? 'month',
 		rates: plan.wallet.rates ?? {},
+		lowBalanceAt: plan.wallet.lowBalanceAt ?? null,
 	};
 }
 

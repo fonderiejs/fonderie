@@ -277,26 +277,41 @@ make "MFA enabled without `mfaSecretKey`" an error in production. Dev/test
 
 ## Scope of work (phased; each phase is a PR)
 
-### Phase 1 — Domain event emission (unblocks webhooks + in-process)
-- [ ] Add `@fonderie/events` peer dep; `BillingModule` accepts optional `bus?: EventBus`.
-- [ ] Add `EVENT_KEYS` (`fonderie.billing.*`) per the taxonomy.
-- [ ] Emit domain events (with `workspaceId` when workspace-scoped) at:
-  subscription webhook upsert; wallet credit/debit/grant; pack purchase;
-  low-balance crossing.
-- [ ] Tests: emitted keys + payloads; `@fonderie/webhooks` forwards a
+### Phase 1 — Domain event emission (unblocks webhooks + in-process) — ✅ shipped (6.1.0)
+- [x] Add `@fonderie/events` peer dep; `BillingModule` accepts optional `bus?: EventBus`.
+- [x] Add `EVENT_KEYS` (`fonderie.billing.*`) per the taxonomy.
+- [x] Emit domain events (with `workspaceId` when workspace-scoped) at:
+  subscription webhook upsert; wallet credit/grant; pack purchase.
+  *(low-balance crossing event `wallet.low_balance` landed with Phase 2.)*
+- [x] Tests: emitted keys + payloads; `@fonderie/webhooks` forwards a
   workspace-scoped billing event end-to-end.
 
-### Phase 2 — Communication integrity (the governing principle)
-- [ ] Add `resolveRecipient?` to `BillingConfig`.
-- [ ] Add `MESSAGE_KEYS`: `billing.payment-receipt`, `billing.refund-processed`,
-  `billing.payment-failed`, `billing.credits-low`, `billing.subscription-canceled`.
-- [ ] Emit `NOTIFICATION_EVENT` for purchase / refund / declined (and past_due,
-  low-balance) when a recipient resolves.
-- [ ] `BillingModule.checkReadiness()`: **error** when payments/wallet enabled
-  but no receipt path configured. Wire into `app.checkProductionReadiness()`.
-- [ ] Ship default templates for the new message types.
-- [ ] Tests: receipt on purchase; notice on refund/declined; readiness error
-  when unwired; non-production tolerated.
+### Phase 2 — Communication integrity (the governing principle) — ✅ implemented
+- [x] Add `resolveRecipient?` to `BillingConfig` (+ `IBillingRecipient`,
+  `ResolveRecipient`). Webhook flows have no session, so the app maps a
+  subscriber id → address; returning `null` sends nothing.
+- [x] Add `MESSAGE_KEYS`: `billing.payment-receipt`, `billing.payment-failed`,
+  `billing.subscription-canceled`, `billing.credits-low`.
+  `billing.refund-processed` is declared for the full contract but **not yet
+  emitted** — it needs the normalized refund event from Phase 3.
+- [x] Emit `NOTIFICATION_EVENT` when a recipient resolves, on the transition
+  INTO the state (so provider retries don't re-send): pack-purchase receipt
+  (payment webhook), past_due dunning + cancellation (subscription webhook),
+  low-balance (withBilling, once per crossing with recovery hysteresis, plus
+  the `wallet.low_balance` domain event). **Refund / one-time-payment declined
+  defer to Phase 3** — the current provider parsing surfaces neither in
+  normalized form, so there is nothing to notify on until normalization lands.
+- [x] `BillingModule.checkReadiness()`: **error** in production (warning
+  elsewhere) when payments/wallet are enabled but no receipt path
+  (bus + `resolveRecipient`) is configured. Aggregated by
+  `app.checkProductionReadiness()` and fail-closed at boot.
+- [x] **Templates NOT shipped — deliberate.** Templates are courier's boundary
+  (`@fonderie/courier` owns rendering + revisions); billing owns the *message
+  contract* (the `type` + `data` payload), documented in the taxonomy above.
+  Shipping billing-side templates would duplicate courier and couple the two.
+- [x] Tests: receipt on purchase (+ replay no-op); past_due/cancel notices with
+  transition dedup; low-balance once-per-crossing + re-arm; readiness
+  error/warning matrix; `notifyBilling` no-bus/no-resolver/null/throw paths.
 
 ### Phase 3 — Provider normalization + refund/chargeback clawback (financial integrity)
 - [ ] Extend `IBillingEvent` to carry invoice / refund / dispute / charge
