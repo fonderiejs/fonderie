@@ -47,9 +47,9 @@ function debitWalletForMetric(ctx: IFonderieContext, metric: string, opts: { ide
 
 function insufficientCreditsResponse(err: InsufficientFundsError, metric?: string | undefined): Response
 
-const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; readonly paymentReceipt: "billing.payment-receipt"; readonly paymentFailed: "billing.payment-failed"; readonly subscriptionCanceled: "billing.subscription-canceled"; readonly creditsLow: "billing.credits-low"; readonly refundProcessed: "billing.refund-processed"; readonly autoRechargeFailed: "billing.auto-recharge-failed"; }
+const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; readonly paymentReceipt: "billing.payment-receipt"; readonly paymentFailed: "billing.payment-failed"; readonly subscriptionCanceled: "billing.subscription-canceled"; readonly creditsLow: "billing.credits-low"; readonly refundProcessed: "billing.refund-processed"; readonly autoRechargeFailed: "billing.auto-recharge-failed"; readonly renewalReceipt: "billing.renewal-receipt"; readonly trialEnding: "billing.trial-ending"; }
 
-const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly walletDebited: "fonderie.billing.wallet.debited"; readonly walletLowBalance: "fonderie.billing.wallet.low_balance"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly paymentRefunded: "fonderie.billing.payment.refunded"; readonly autoRechargeFailed: "fonderie.billing.auto_recharge.failed"; readonly grantApplied: "fonderie.billing.grant.applied"; }
+const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly walletDebited: "fonderie.billing.wallet.debited"; readonly walletLowBalance: "fonderie.billing.wallet.low_balance"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly paymentRefunded: "fonderie.billing.payment.refunded"; readonly paymentFailed: "fonderie.billing.payment.failed"; readonly autoRechargeFailed: "fonderie.billing.auto_recharge.failed"; readonly grantApplied: "fonderie.billing.grant.applied"; readonly invoicePaid: "fonderie.billing.invoice.paid"; readonly invoicePaymentFailed: "fonderie.billing.invoice.payment_failed"; readonly subscriptionTrialWillEnd: "fonderie.billing.subscription.trial_will_end"; }
 
 interface IBillingConfig {
     provider: IBillingProvider;
@@ -252,6 +252,8 @@ interface IBillingEvent {
     subscription: INormalizedSubscription | null;
     payment?: INormalizedPayment | null;
     reversal?: INormalizedReversal | null;
+    invoice?: INormalizedInvoice | null;
+    paymentFailure?: INormalizedPaymentFailure | null;
 }
 
 interface INormalizedPayment {
@@ -273,6 +275,26 @@ interface INormalizedReversal {
     currency: string | null;
     reason: string | null;
     status: string | null;
+    metadata: Record<string, string>;
+}
+
+interface INormalizedInvoice {
+    id: string;
+    status: 'paid' | 'payment_failed';
+    amount: bigint | null;
+    currency: string | null;
+    providerTxId: string | null;
+    providerSubscriptionId: string | null;
+    providerCustomerId: string | null;
+    metadata: Record<string, string>;
+}
+
+interface INormalizedPaymentFailure {
+    sessionId: string | null;
+    providerTxId: string | null;
+    amount: bigint | null;
+    currency: string | null;
+    reason: string | null;
     metadata: Record<string, string>;
 }
 
@@ -551,6 +573,8 @@ function updatePlan(id: string, data: Partial<Omit<IPlan, "id">>, store: IStoreA
 function deletePlan(id: string, store: IStoreAdapter): Promise<boolean>
 
 function getSubscription(subscriberType: SubscriberType, subscriberId: string, store: IStoreAdapter): Promise<ISubscription | null>
+
+function getSubscriberByProviderSubscriptionId(providerSubscriptionId: string, store: IStoreAdapter): Promise<{ subscriberType: SubscriberType; subscriberId: string; } | null>
 
 function maybeAutoRecharge(args: { store: IStoreAdapter; config: IBillingConfig; bus: EventBus | undefined; subscriberType: SubscriberType; subscriberId: string; balance: bigint; planWallet: IResolvedPlanWallet; }): Promise<...>
 

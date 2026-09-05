@@ -6,7 +6,7 @@ import type { EventBus } from '@fonderie/events';
 import type { IBillingConfig } from '../config';
 import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { SubscriberType } from '../types';
-import type { INormalizedReversal } from '../providers/types';
+import type { INormalizedPaymentFailure, INormalizedReversal } from '../providers/types';
 import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
 import { normalizeCurrency, subscriberEventFields } from '../utils';
@@ -160,6 +160,49 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 		});
 	}
 
+	// A failed one-time payment ATTEMPT (delayed-method pack payment, or a
+	// declined PaymentIntent). Notification/record only — no money moved, so
+	// nothing to reverse. Only our wallet-checkout failures carry the subscriber
+	// identity in metadata; an unattributable bare PI failure is acked + ignored.
+	async function handlePaymentFailure(failure: INormalizedPaymentFailure): Promise<Response> {
+		const meta = failure.metadata;
+		// An auto-recharge off-session decline is already owned by
+		// maybeAutoRecharge (it emits auto_recharge.failed + its own notice, and
+		// backs off/disables). Its PaymentIntent carries our subscriber metadata,
+		// so without this guard the provider's payment_intent.payment_failed for
+		// the same charge would send a SECOND email + a mislabeled payment.failed.
+		if (meta['reason'] === 'auto-recharge') {
+			return Response.json({ received: true, ignored: 'auto-recharge-handled-elsewhere' });
+		}
+		const subscriberType = meta['subscriberType'];
+		const subscriberId = meta['subscriberId'];
+		if ((subscriberType !== 'user' && subscriberType !== 'workspace') || !subscriberId) {
+			return Response.json({ received: true, ignored: 'unattributable-payment-failure' });
+		}
+		const packId = typeof meta['packId'] === 'string' ? meta['packId'] : null;
+		const fields = {
+			...subscriberEventFields(subscriberType as SubscriberType, subscriberId),
+			...(packId ? { packId } : {}),
+			amount: failure.amount?.toString() ?? null,
+			currency: failure.currency,
+			reason: failure.reason,
+			...(failure.providerTxId ? { providerTxId: failure.providerTxId } : {}),
+		};
+		bus?.emit(EVENT_KEYS.paymentFailed, fields).catch(() => {});
+		void notifyBilling(bus, config, {
+			subscriberType: subscriberType as SubscriberType,
+			subscriberId,
+			type: MESSAGE_KEYS.paymentFailed,
+			data: {
+				...(packId ? { packId } : {}),
+				amount: failure.amount?.toString() ?? null,
+				currency: failure.currency,
+				reason: failure.reason,
+			},
+		});
+		return Response.json({ received: true });
+	}
+
 	return {
 		async handle(ctx: IFonderieContext): Promise<Response> {
 			// Deliberately NOT falling back to the subscription webhook's secret:
@@ -176,6 +219,7 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 			// Refund/chargeback events carry no event.payment and would otherwise
 			// die at the `if (!payment)` guard below — dispatch them first.
 			if (event.reversal) return handleReversal(event.reversal);
+			if (event.paymentFailure) return handlePaymentFailure(event.paymentFailure);
 
 			const payment = event.payment;
 			// Not a completed one-time payment (subscription events and other

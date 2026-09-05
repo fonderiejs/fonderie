@@ -7,6 +7,7 @@ import type { IBillingConfig, BillingEventKey, BillingMessageKey } from '../conf
 import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { PriceCache } from '../services/price-cache';
 import { SubscriptionModel } from '../models/subscription.model';
+import { getSubscriberByProviderSubscriptionId } from '../services/subscriptions';
 import { resolvePlanNameByPrice } from '../services/plans';
 import { subscriberEventFields } from '../utils';
 import { notifyBilling } from '../services/notify';
@@ -60,6 +61,67 @@ export function webhookController(
 			// regardless of arrival order (invalidate-and-refetch is order-safe).
 			if (priceCache && (event.type.startsWith('price.') || event.type.startsWith('product.'))) {
 				priceCache.invalidate();
+			}
+
+			// A trial about to end — a heads-up notice + domain event WITHOUT
+			// mutating subscription state (nothing has changed yet). Checked before
+			// the generic subscription-upsert path, which this event also feeds.
+			if (event.type === 'customer.subscription.trial_will_end' && event.subscription) {
+				const s = event.subscription;
+				// Resolve the config plan name the same way every other lifecycle
+				// path does — the normalized `plan` is only the price nickname (or
+				// 'unknown' when nickname is unset, the recommended config), so
+				// using it raw would email "your unknown plan trial is ending".
+				const plan = resolvePlanNameByPrice(s, config.plans) ?? s.plan;
+				const trialEndsAt = s.trialEndsAt ? s.trialEndsAt.toISOString() : null;
+				bus
+					?.emit(EVENT_KEYS.subscriptionTrialWillEnd, {
+						...subscriberEventFields(s.subscriberType, s.subscriberId),
+						plan,
+						interval: s.interval,
+						trialEndsAt,
+						providerSubscriptionId: s.providerSubscriptionId,
+					})
+					.catch(() => {});
+				void notifyBilling(bus, config, {
+					subscriberType: s.subscriberType,
+					subscriberId: s.subscriberId,
+					type: MESSAGE_KEYS.trialEnding,
+					data: { plan, trialEndsAt },
+				});
+				return Response.json({ received: true });
+			}
+
+			// Subscription invoice events (Phase 3b). A paid renewal → a receipt; a
+			// failed renewal → a durable domain event ONLY (the dunning EMAIL fires
+			// once on the past_due transition below, so emailing here too would
+			// double-dun). The invoice carries the provider subscription, not our
+			// subscriber identity, so resolve it.
+			if (event.invoice) {
+				const inv = event.invoice;
+				const subscriber = inv.providerSubscriptionId
+					? await getSubscriberByProviderSubscriptionId(inv.providerSubscriptionId, store)
+					: null;
+				if (!subscriber) return Response.json({ received: true, ignored: 'no-matching-subscription' });
+				const fields = {
+					...subscriberEventFields(subscriber.subscriberType, subscriber.subscriberId),
+					invoiceId: inv.id,
+					amount: inv.amount?.toString() ?? null,
+					currency: inv.currency,
+					providerSubscriptionId: inv.providerSubscriptionId,
+				};
+				if (inv.status === 'paid') {
+					bus?.emit(EVENT_KEYS.invoicePaid, fields).catch(() => {});
+					void notifyBilling(bus, config, {
+						subscriberType: subscriber.subscriberType,
+						subscriberId: subscriber.subscriberId,
+						type: MESSAGE_KEYS.renewalReceipt,
+						data: { invoiceId: inv.id, amount: inv.amount?.toString() ?? null, currency: inv.currency },
+					});
+				} else {
+					bus?.emit(EVENT_KEYS.invoicePaymentFailed, fields).catch(() => {});
+				}
+				return Response.json({ received: true });
 			}
 
 			if (event.subscription) {
