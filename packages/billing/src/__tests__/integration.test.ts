@@ -2,7 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { getMigrationsPath } from '../migrations';
-import { creditWallet, debitWallet, ensurePeriodicGrant, getWalletBalance } from '../services/wallet';
+import {
+	creditWallet,
+	debitWallet,
+	ensurePeriodicGrant,
+	findPurchaseByProviderTxId,
+	getWalletBalance,
+	reverseWallet,
+	sumReversedCreditsByProviderTxId,
+} from '../services/wallet';
 import { InsufficientFundsError } from '../errors';
 import type { SubscriberType } from '../types';
 
@@ -128,6 +136,95 @@ test(
 			assert.equal(rows.length, 1);
 			const { balance } = await getWalletBalance(SUB, store);
 			assert.equal(balance, 250n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: buy → spend → refund claws back credits into a NEGATIVE balance, idempotently',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		// The §C value-leak fix on the real engine: proves reverseWallet drives
+		// the balance below zero (bypassing the debit floor), that the refund→
+		// purchase join by provider_tx_id resolves, that the cumulative-reversal
+		// sum is honest, and that the ledger's CHECK constraints (amount<>0, type
+		// IN(...)) accept a negative 'refund' row — none of which the emulator proves.
+		const store = await connect();
+		try {
+			const pi = 'pi_itest_refund';
+			await creditWallet(
+				{ ...SUB, amount: 5000n, type: 'purchase', idempotencyKey: 'itest-buy', providerTxId: pi },
+				store,
+			);
+			await debitWallet({ ...SUB, amount: 3000n, type: 'usage', idempotencyKey: 'itest-spend' }, store);
+			assert.equal((await getWalletBalance(SUB, store)).balance, 2000n);
+
+			const purchase = await findPurchaseByProviderTxId(pi, store);
+			assert.equal(purchase?.credits, 5000n);
+			assert.equal(purchase?.subscriberId, SUB.subscriberId);
+
+			const r1 = await reverseWallet(
+				{ ...SUB, amount: 5000n, idempotencyKey: 'itest-refund-1', providerTxId: pi, description: 'refund' },
+				store,
+			);
+			assert.equal(r1.duplicate, false);
+			assert.equal(r1.balance, -3000n, 'a refunded buyer who spent credits ends up owing them');
+			assert.equal(await sumReversedCreditsByProviderTxId(pi, store), 5000n);
+
+			// Replay the same refund → idempotent no-op, balance unchanged.
+			const r2 = await reverseWallet(
+				{ ...SUB, amount: 5000n, idempotencyKey: 'itest-refund-1', providerTxId: pi },
+				store,
+			);
+			assert.equal(r2.duplicate, true);
+			assert.equal((await getWalletBalance(SUB, store)).balance, -3000n);
+
+			// Ledger consistency: signed amounts (purchase +5000, usage -3000,
+			// refund -5000) sum to the balance.
+			const [sum] = await store.query<{ total: string }>(
+				`SELECT COALESCE(SUM(amount), 0) AS total FROM fonderie_wallet_ledger
+				WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
+				[SUB.subscriberType, SUB.subscriberId, SUB.currency],
+			);
+			assert.equal(BigInt(sum?.total ?? '0'), -3000n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: concurrent reversals for one charge never over-reverse past the granted credits',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		// The per-charge cap must hold even when a chargeback (full amount) and a
+		// partial refund for the SAME PaymentIntent are processed concurrently.
+		// Without the in-transaction advisory lock + re-summed cap, both read a
+		// stale "nothing reversed yet" and together reverse 5000 + 2000 = 7000
+		// for a 5000-credit purchase.
+		const store = await connect();
+		try {
+			const pi = 'pi_itest_concurrent';
+			await creditWallet(
+				{ ...SUB, amount: 5000n, type: 'purchase', idempotencyKey: 'itest-cc-buy', providerTxId: pi },
+				store,
+			);
+			const [dispute, refund] = await Promise.all([
+				reverseWallet(
+					{ ...SUB, amount: 5000n, capToProviderTxId: 5000n, idempotencyKey: 'itest-cc-dispute', providerTxId: pi },
+					store,
+				),
+				reverseWallet(
+					{ ...SUB, amount: 2000n, capToProviderTxId: 5000n, idempotencyKey: 'itest-cc-refund', providerTxId: pi },
+					store,
+				),
+			]);
+			const totalReversed = dispute.reversed + refund.reversed;
+			assert.equal(totalReversed, 5000n, `cumulative reversed must be capped at 5000; got ${totalReversed}`);
+			assert.equal((await getWalletBalance(SUB, store)).balance, 0n, 'never below what was granted');
+			assert.equal(await sumReversedCreditsByProviderTxId(pi, store), 5000n);
 		} finally {
 			await (store as unknown as { end(): Promise<void> }).end();
 		}

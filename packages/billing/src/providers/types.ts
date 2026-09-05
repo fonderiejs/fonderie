@@ -8,6 +8,36 @@ export interface IBillingEvent {
 	// that support one-time payments — optional so existing custom providers
 	// stay source-compatible.
 	payment?: INormalizedPayment | null;
+	// A refund or chargeback reversing a prior one-time payment. Optional and
+	// nullable for the same source-compatibility reason as `payment`; only
+	// providers that normalize refund/dispute events set it.
+	reversal?: INormalizedReversal | null;
+}
+
+// A refund or chargeback that reverses a prior one-time payment (credit-pack
+// purchase). The wallet uses this to claw back the credits that purchase
+// granted (the §C value-leak: buy → spend → refund the card → keep the goods).
+export interface INormalizedReversal {
+	// 'refund' — the merchant/customer refunded the charge. 'dispute' — a
+	// chargeback: funds are withdrawn on creation and returned only if won.
+	kind: 'refund' | 'dispute';
+	// The refund's or dispute's OWN provider id (Stripe re_… / dp_…). This is
+	// the idempotency anchor: a charge can be partially refunded many times,
+	// each a distinct id, so the reversal must key off this, never the charge.
+	id: string;
+	// The reversed PaymentIntent — the join key back to the wallet credit this
+	// reverses (the purchase ledger row stored it as provider_tx_id).
+	providerTxId: string | null;
+	chargeId: string | null;
+	// Amount reversed by THIS event, in the payment currency's smallest unit.
+	// Compared against the original amount paid to prorate the credit clawback.
+	amount: bigint | null;
+	currency: string | null;
+	reason: string | null;
+	// Dispute lifecycle status ('needs_response' | 'won' | 'lost' | …); a 'won'
+	// closure returns the funds, so the clawback is reversed. null for a refund.
+	status: string | null;
+	metadata: Record<string, string>;
 }
 
 // A completed one-time payment, normalized from the provider's checkout event.

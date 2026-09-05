@@ -314,16 +314,37 @@ make "MFA enabled without `mfaSecretKey`" an error in production. Dev/test
   error/warning matrix; `notifyBilling` no-bus/no-resolver/null/throw paths.
 
 ### Phase 3 — Provider normalization + refund/chargeback clawback (financial integrity)
-- [ ] Extend `IBillingEvent` to carry invoice / refund / dispute / charge
-  payloads (amount, currency, id, reason, `providerTxId`).
-- [ ] Normalize in `StripeProvider.constructEvent`: `charge.refunded`,
-  `charge.dispute.created/.closed`, `checkout.session.async_payment_failed`,
-  `invoice.payment_failed` / `invoice.paid`, `payment_intent.payment_failed`.
-- [ ] Payment webhook: on refund/chargeback, **reverse wallet credits**
-  (ledger `type:'refund'`, negative, idempotent on `providerTxId`) — closes
-  the §C value-leak — with the §A/§2 notification.
-- [ ] Widen `SubscriptionStatus` to the states the provider actually sends.
-- [ ] Tests incl. the buy→spend→refund clawback scenario.
+
+Split into 3a (the money-movement clawback — reviewed adversarially and shipped
+on its own) and 3b (notification-only normalization) so the security-critical
+reversal path got a focused review.
+
+#### Phase 3a — Refund/chargeback clawback + status widening — ✅ implemented
+- [x] Extend `IBillingEvent` with `reversal?: INormalizedReversal | null`
+  (kind refund/dispute, id, amount, currency, reason, status, `providerTxId`,
+  chargeId) — additive optional slot, like `payment?`.
+- [x] Normalize `charge.refunded`, `charge.dispute.created/.closed` in
+  `StripeProvider.constructEvent` (newest-refund-first; per-event delta).
+- [x] Payment webhook reverses wallet credits (`reverseWallet` → negative
+  `type:'refund'` ledger row, floor-free so the balance can go negative =
+  "credits owed back"). Prorated to the refunded amount; cumulative reversal
+  **capped at credits granted, enforced in-transaction under a per-PaymentIntent
+  advisory lock** (no over-reverse even under concurrent refund+dispute). Joins
+  refund→purchase by `provider_tx_id` (migration `007` indexes it). Idempotent
+  on the refund/dispute id; a won dispute restores what its chargeback clawed.
+  Emits `payment.refunded` + `wallet.debited` + the `billing.refund-processed`
+  notice, only on a real (non-replay) reversal.
+- [x] Widen `SubscriptionStatus` (+ `incomplete_expired`, `unpaid`).
+- [x] Tests incl. buy→spend→refund (negative balance), partial-refund proration,
+  duplicate no-op, chargeback + dispute-won, cap, and a real-Postgres leg
+  (negative-balance clawback + concurrent-reversal cap).
+
+#### Phase 3b — Dunning / receipt normalization (notification-only) — pending
+- [ ] Extend `IBillingEvent` with `invoice` / `paymentFailure` slots.
+- [ ] Normalize `invoice.paid` (renewal receipt) / `invoice.payment_failed`
+  (dunning) on the subscription webhook; `checkout.session.async_payment_failed`
+  and `payment_intent.payment_failed` (payment-failed notice) on the payment
+  webhook. Reuse `billing.payment-failed`; no money movement.
 
 ### Phase 4 — Subscription lifecycle first-party controls (credit-SaaS polish)
 - [ ] `cancelSubscription` on `IBillingProvider` + first-party cancel /

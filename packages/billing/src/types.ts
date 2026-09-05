@@ -83,12 +83,21 @@ export interface ISubscription {
 	createdAt: string;
 }
 
+// The full set of provider subscription states. The DB column is free-form
+// TEXT (no CHECK) and every write path is typed `string`, so out-of-list
+// values already persist; this union is the honest, documented vocabulary the
+// provider actually sends. 'incomplete_expired' and 'unpaid' are the states a
+// subscription ages into after a failed initial/renewal payment — inactive by
+// default everywhere (the active gates test positive membership of
+// active/trialing), so no consumer needs changing when they appear.
 export type SubscriptionStatus =
 	| 'trialing'
 	| 'active'
 	| 'past_due'
 	| 'canceled'
 	| 'incomplete'
+	| 'incomplete_expired'
+	| 'unpaid'
 	| 'paused';
 
 // ── DB plan (read from fonderie_plans table) ──────────────────────

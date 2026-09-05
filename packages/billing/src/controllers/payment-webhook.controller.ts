@@ -6,11 +6,20 @@ import type { EventBus } from '@fonderie/events';
 import type { IBillingConfig } from '../config';
 import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { SubscriberType } from '../types';
+import type { INormalizedReversal } from '../providers/types';
 import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
 import { normalizeCurrency, subscriberEventFields } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { readWebhookEvent } from './webhook-shared';
+
+// A ledger-stored money amount (JSON metadata) parsed back to bigint, or null
+// when absent/malformed — so a missing amountPaid degrades to "no proration".
+function toBigIntOrNull(v: unknown): bigint | null {
+	if (typeof v === 'string' && /^-?\d+$/.test(v)) return BigInt(v);
+	if (typeof v === 'number' && Number.isInteger(v)) return BigInt(v);
+	return null;
+}
 
 // One-time payment webhook — a SEPARATE endpoint (and secret) from the
 // subscription webhook, so each provider endpoint carries one event family.
@@ -19,6 +28,136 @@ import { readWebhookEvent } from './webhook-shared';
 
 export function paymentWebhookController(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus) {
 	const wallet = new WalletModel(store);
+
+	// Refund / chargeback → claw back the credits the original purchase granted.
+	// Closes the §C value-leak (buy → spend → refund the card → keep the goods).
+	// The reversal event carries no wallet metadata, so we join back to the
+	// purchase by its PaymentIntent (provider_tx_id) and reverse a proportional
+	// share of the granted credits — allowed to drive the balance negative.
+	async function handleReversal(reversal: INormalizedReversal): Promise<Response> {
+		const pi = reversal.providerTxId;
+		// Cannot join back to a purchase → acknowledge and leave the wallet
+		// alone. Never guess a subscriber to debit; the provider dashboard still
+		// records the refund, this only means we have nothing of ours to reverse.
+		if (!pi) return Response.json({ received: true, ignored: 'no-provider-tx-id' });
+		const purchase = await wallet.findPurchase(pi);
+		if (!purchase) return Response.json({ received: true, ignored: 'no-matching-purchase' });
+
+		const sub = {
+			subscriberType: purchase.subscriberType,
+			subscriberId: purchase.subscriberId,
+			currency: purchase.currency,
+		};
+		const packId = typeof purchase.metadata['packId'] === 'string' ? purchase.metadata['packId'] : null;
+
+		// Dispute WON: funds were returned, so restore exactly what this
+		// dispute's chargeback clawed (if anything). Distinct idempotency key.
+		if (reversal.kind === 'dispute' && reversal.status === 'won') {
+			const clawKey = `${config.provider.name}:dispute:${reversal.id}`;
+			const clawed = await wallet.ledgerAmountByKey(clawKey); // negative, or null
+			if (clawed === null || clawed >= 0n) return Response.json({ received: true });
+			const result = await wallet.credit({
+				...sub,
+				amount: -clawed,
+				type: 'refund',
+				idempotencyKey: `${clawKey}:won`,
+				providerTxId: pi,
+				description: `Dispute ${reversal.id} won — credits restored`,
+				metadata: { disputeId: reversal.id, providerTxId: pi, ...(packId ? { packId } : {}) },
+			});
+			if (!result.duplicate) {
+				bus
+					?.emit(EVENT_KEYS.walletCredited, {
+						...subscriberEventFields(sub.subscriberType, sub.subscriberId),
+						currency: sub.currency,
+						credits: (-clawed).toString(),
+						balanceAfter: result.balance.toString(),
+						...(packId ? { packId } : {}),
+						source: 'dispute-won',
+					})
+					.catch(() => {});
+			}
+			return Response.json({ received: true, duplicate: result.duplicate });
+		}
+
+		// Clawback (refund, dispute opened, or dispute lost). Decide the credits
+		// to reverse; reverseWallet enforces the cumulative cap (never reverse
+		// more than was granted for this charge) INSIDE its transaction under a
+		// per-charge lock, so concurrent reversals can't over-reverse.
+		const amountPaid = toBigIntOrNull(purchase.metadata['amountPaid']);
+		let requested: bigint;
+		if (reversal.amount == null) {
+			// No amount ⇒ full reversal (the cap clamps to what remains).
+			requested = purchase.credits;
+		} else if (amountPaid != null && amountPaid > 0n) {
+			// Prorate granted credits to the reversed money (both in the payment
+			// currency's smallest unit); bigint division floors, so we never
+			// over-reverse on rounding.
+			requested = (purchase.credits * reversal.amount) / amountPaid;
+		} else {
+			// A known partial amount with no basis to prorate — refuse to guess
+			// rather than claw the whole balance for a partial refund.
+			return Response.json({ received: true, reversed: '0', ignored: 'no-proration-basis' });
+		}
+		if (requested <= 0n) return Response.json({ received: true, reversed: '0' });
+
+		// Key off the reversal's OWN id — a charge can be partially refunded many
+		// times, each a distinct reversal. dispute.closed 'lost' reuses the
+		// dispute-created key and no-ops (the funds already left on creation).
+		const result = await wallet.reverse({
+			...sub,
+			amount: requested,
+			capToProviderTxId: purchase.credits,
+			idempotencyKey: `${config.provider.name}:${reversal.kind}:${reversal.id}`,
+			providerTxId: pi,
+			description: `Reversal (${reversal.kind}) ${reversal.id}`,
+			metadata: {
+				kind: reversal.kind,
+				reversalId: reversal.id,
+				providerTxId: pi,
+				refundAmount: reversal.amount?.toString() ?? null,
+				refundCurrency: reversal.currency,
+				...(packId ? { packId } : {}),
+				...(reversal.reason ? { reason: reversal.reason } : {}),
+			},
+		});
+
+		// Publish + notify only on a real, non-empty reversal (not a replay and
+		// not a fully-capped no-op), mirroring the purchase path so a re-delivered
+		// refund never double-fires.
+		if (!result.duplicate && result.reversed > 0n) {
+			const fields = {
+				...subscriberEventFields(sub.subscriberType, sub.subscriberId),
+				currency: sub.currency,
+				credits: result.reversed.toString(),
+				balanceAfter: result.balance.toString(),
+				kind: reversal.kind,
+				...(packId ? { packId } : {}),
+				providerTxId: pi,
+			};
+			bus?.emit(EVENT_KEYS.paymentRefunded, fields).catch(() => {});
+			bus?.emit(EVENT_KEYS.walletDebited, { ...fields, source: 'refund' }).catch(() => {});
+			void notifyBilling(bus, config, {
+				subscriberType: sub.subscriberType,
+				subscriberId: sub.subscriberId,
+				type: MESSAGE_KEYS.refundProcessed,
+				data: {
+					...(packId ? { packId } : {}),
+					credits: result.reversed.toString(),
+					currency: sub.currency,
+					balanceAfter: result.balance.toString(),
+					kind: reversal.kind,
+					refundAmount: reversal.amount?.toString() ?? null,
+					refundCurrency: reversal.currency,
+				},
+			});
+		}
+		return Response.json({
+			received: true,
+			duplicate: result.duplicate,
+			reversed: result.reversed.toString(),
+		});
+	}
 
 	return {
 		async handle(ctx: IFonderieContext): Promise<Response> {
@@ -32,6 +171,10 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 				'Payment webhook secret not configured — set wallet.webhookSecret',
 			);
 			if (event instanceof Response) return event;
+
+			// Refund/chargeback events carry no event.payment and would otherwise
+			// die at the `if (!payment)` guard below — dispatch them first.
+			if (event.reversal) return handleReversal(event.reversal);
 
 			const payment = event.payment;
 			// Not a completed one-time payment (subscription events and other

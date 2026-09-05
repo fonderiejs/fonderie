@@ -48,7 +48,7 @@ function insufficientCreditsResponse(err: InsufficientFundsError, metric?: strin
 
 const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; readonly paymentReceipt: "billing.payment-receipt"; readonly paymentFailed: "billing.payment-failed"; readonly subscriptionCanceled: "billing.subscription-canceled"; readonly creditsLow: "billing.credits-low"; readonly refundProcessed: "billing.refund-processed"; }
 
-const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly walletLowBalance: "fonderie.billing.wallet.low_balance"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly grantApplied: "fonderie.billing.grant.applied"; }
+const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly walletDebited: "fonderie.billing.wallet.debited"; readonly walletLowBalance: "fonderie.billing.wallet.low_balance"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly paymentRefunded: "fonderie.billing.payment.refunded"; readonly grantApplied: "fonderie.billing.grant.applied"; }
 
 interface IBillingConfig {
     provider: IBillingProvider;
@@ -231,6 +231,7 @@ interface IBillingEvent {
     type: string;
     subscription: INormalizedSubscription | null;
     payment?: INormalizedPayment | null;
+    reversal?: INormalizedReversal | null;
 }
 
 interface INormalizedPayment {
@@ -239,6 +240,18 @@ interface INormalizedPayment {
     amountTotal: bigint | null;
     currency: string | null;
     paymentStatus: string | null;
+    metadata: Record<string, string>;
+}
+
+interface INormalizedReversal {
+    kind: 'refund' | 'dispute';
+    id: string;
+    providerTxId: string | null;
+    chargeId: string | null;
+    amount: bigint | null;
+    currency: string | null;
+    reason: string | null;
+    status: string | null;
     metadata: Record<string, string>;
 }
 
@@ -318,7 +331,7 @@ interface IWalletRate {
     unit?: string;
 }
 
-type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'paused';
+type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'paused';
 
 type PolicyEntry = {
     enabled: boolean;
@@ -416,6 +429,14 @@ function creditWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey
 
 function debitWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; type?: "purchase" | "grant" | "usage" | "refund" | "adjustment"; overdraftLimit?: bigint; description?: string; metadata?: Record<...>; }, store: IStoreAdapter): Promise<...>
 
+function reverseWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; providerTxId?: string; capToProviderTxId?: bigint; description?: string; metadata?: Record<string, unknown>; }, store: IStoreAdapter): Promise<...>
+
+function findPurchaseByProviderTxId(providerTxId: string, store: IStoreAdapter): Promise<IWalletPurchaseRow | null>
+
+function sumReversedCreditsByProviderTxId(providerTxId: string, store: IStoreAdapter): Promise<bigint>
+
+function findLedgerAmountByKey(idempotencyKey: string, store: IStoreAdapter): Promise<bigint | null>
+
 function getWalletBalance(sub: IWalletSubscriber, store: IStoreAdapter): Promise<IWalletBalance>
 
 function getWalletLedger(opts: IWalletSubscriber & { limit?: number; cursor?: { createdAt: string; id: string; }; }, store: IStoreAdapter): Promise<IWalletLedgerPage>
@@ -439,6 +460,18 @@ interface IWalletSubscriber {
 interface IWalletMutationResult {
     balance: bigint;
     duplicate: boolean;
+}
+
+interface IWalletReversalResult extends IWalletMutationResult {
+    reversed: bigint;
+}
+
+interface IWalletPurchaseRow {
+    subscriberType: SubscriberType;
+    subscriberId: string;
+    currency: string;
+    credits: bigint;
+    metadata: Record<string, unknown>;
 }
 
 interface IWalletLedgerPage {

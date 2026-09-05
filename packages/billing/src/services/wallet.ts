@@ -38,6 +38,13 @@ export interface IWalletMutationResult {
 	duplicate: boolean;
 }
 
+export interface IWalletReversalResult extends IWalletMutationResult {
+	// Credits actually reversed by this call — 0 on a duplicate replay or when
+	// the per-provider-tx cap left nothing to reverse. The caller emits events
+	// and notifies only when this is > 0.
+	reversed: bigint;
+}
+
 interface ILedgerKeyRow {
 	subscriberType: SubscriberType;
 	subscriberId: string;
@@ -293,6 +300,164 @@ export async function debitWallet(
 		}
 		throw err;
 	}
+}
+
+// Reverse credits from a prior purchase — a refund or chargeback clawback.
+// DELIBERATELY floor-free (unlike debitWallet): a clawback must be able to
+// drive the balance negative when the buyer already spent the credits — that
+// is the whole point of closing the "buy → spend → refund" value-leak. A
+// negative balance is "credits owed back"; the next grant/purchase nets against
+// it. Records a negative 'refund' ledger row carrying the reversing provider tx
+// id for reconciliation. Idempotent on idempotencyKey (key off the refund's OWN
+// id, never the charge — partial refunds each need a distinct reversal).
+// Pass the module-level store — never a tx-scoped adapter (see file header).
+export async function reverseWallet(
+	opts: IWalletSubscriber & {
+		amount: bigint; // positive; recorded as a negative 'refund' row
+		idempotencyKey: string;
+		providerTxId?: string;
+		// Ceiling on cumulative reversed credits for providerTxId, enforced
+		// INSIDE the transaction under a per-providerTxId advisory lock so
+		// concurrent reversals for one charge (e.g. a refund and a chargeback)
+		// can never over-reverse past what was granted. Requires providerTxId.
+		// When set, the amount actually applied is clamped to what remains and
+		// returned as `reversed`.
+		capToProviderTxId?: bigint;
+		description?: string;
+		metadata?: Record<string, unknown>;
+	},
+	store: IStoreAdapter,
+): Promise<IWalletReversalResult> {
+	if (opts.amount < 0n) throw new Error('[billing:wallet] reverse amount must be positive');
+	if (!opts.idempotencyKey) throw new Error('[billing:wallet] idempotencyKey is required');
+	if (opts.amount === 0n) {
+		return { balance: await readBalance(opts, store), duplicate: false, reversed: 0n };
+	}
+
+	try {
+		return await store.transaction(async (tx) => {
+			const existing = await findByIdempotencyKey(opts, opts.idempotencyKey, tx);
+			if (existing) return { balance: await readBalance(opts, tx), duplicate: true, reversed: 0n };
+
+			let applied = opts.amount;
+			if (opts.capToProviderTxId != null && opts.providerTxId) {
+				// Serialize all reversals for this charge, then re-check the cap
+				// against the authoritative in-transaction sum — closing the race
+				// where two concurrent reversals both read a stale pre-tx total.
+				await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [opts.providerTxId]);
+				const [row] = await tx.query<{ total: string | null }>(
+					`SELECT COALESCE(SUM(amount), 0) AS total FROM fonderie_wallet_ledger
+					WHERE provider_tx_id = $1 AND type = 'refund'`,
+					[opts.providerTxId],
+				);
+				const remaining = opts.capToProviderTxId + BigInt(row?.total ?? '0'); // total is <= 0
+				if (remaining <= 0n) return { balance: await readBalance(opts, tx), duplicate: false, reversed: 0n };
+				if (applied > remaining) applied = remaining;
+			}
+
+			// Unconditional upsert-add of a negative amount — no floor; a negative
+			// balance is "credits owed back". The same-transaction ledger row with
+			// its UNIQUE key makes a concurrent identical replay roll back cleanly.
+			const balance = await applyBalanceCredit(tx, opts, -applied);
+
+			await insertLedgerRow(tx, opts, {
+				type: 'refund',
+				amount: -applied,
+				balanceAfter: balance,
+				idempotencyKey: opts.idempotencyKey,
+				description: opts.description ?? null,
+				metadata: opts.metadata ?? {},
+				providerTxId: opts.providerTxId ?? null,
+			});
+
+			return { balance, duplicate: false, reversed: applied };
+		});
+	} catch (err) {
+		if (isIdempotencyConflict(err)) {
+			return { balance: await readBalance(opts, store), duplicate: true, reversed: 0n };
+		}
+		throw err;
+	}
+}
+
+export interface IWalletPurchaseRow {
+	subscriberType: SubscriberType;
+	subscriberId: string;
+	currency: string;
+	/** Credits originally granted (the positive purchase ledger amount). */
+	credits: bigint;
+	metadata: Record<string, unknown>;
+}
+
+// Recover the original credit-pack purchase for a provider transaction (the
+// PaymentIntent). A refund/chargeback event carries no wallet metadata — the
+// PaymentIntent is its only link back to who was credited and how much — so
+// this is the join a clawback depends on. Returns the earliest matching
+// purchase (a PI maps to one checkout), or null (unlinked purchase, or the
+// refund arrived before the credit).
+export async function findPurchaseByProviderTxId(
+	providerTxId: string,
+	store: IStoreAdapter,
+): Promise<IWalletPurchaseRow | null> {
+	const [row] = await store.query<{
+		subscriberType: SubscriberType;
+		subscriberId: string;
+		currency: string;
+		amount: string;
+		metadata: Record<string, unknown> | null;
+	}>(
+		`SELECT
+			subscriber_type AS "subscriberType",
+			subscriber_id   AS "subscriberId",
+			currency,
+			amount,
+			metadata
+		FROM fonderie_wallet_ledger
+		WHERE provider_tx_id = $1 AND type = 'purchase'
+		ORDER BY created_at ASC
+		LIMIT 1`,
+		[providerTxId],
+	);
+	if (!row) return null;
+	return {
+		subscriberType: row.subscriberType,
+		subscriberId: row.subscriberId,
+		currency: row.currency,
+		credits: BigInt(row.amount),
+		metadata: row.metadata ?? {},
+	};
+}
+
+// Net credits already reversed for a provider transaction = -(sum of 'refund'
+// row amounts for that PI). Clawbacks are negative 'refund' rows and a
+// dispute-won re-credit is a positive 'refund' row, so this nets correctly and
+// lets the caller cap a new clawback at the originally-credited amount — no
+// combination of partial refunds and disputes can ever over-reverse.
+export async function sumReversedCreditsByProviderTxId(
+	providerTxId: string,
+	store: IStoreAdapter,
+): Promise<bigint> {
+	const [row] = await store.query<{ total: string | null }>(
+		`SELECT COALESCE(SUM(amount), 0) AS total
+		FROM fonderie_wallet_ledger
+		WHERE provider_tx_id = $1 AND type = 'refund'`,
+		[providerTxId],
+	);
+	return -BigInt(row?.total ?? '0');
+}
+
+// The signed amount of a single ledger row by its idempotency key, or null if
+// none. Used to re-credit exactly what a dispute clawback removed when that
+// dispute is later won.
+export async function findLedgerAmountByKey(
+	idempotencyKey: string,
+	store: IStoreAdapter,
+): Promise<bigint | null> {
+	const [row] = await store.query<{ amount: string }>(
+		`SELECT amount FROM fonderie_wallet_ledger WHERE idempotency_key = $1`,
+		[idempotencyKey],
+	);
+	return row ? BigInt(row.amount) : null;
 }
 
 export async function getWalletBalance(
