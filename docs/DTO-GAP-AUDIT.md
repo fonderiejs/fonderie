@@ -1,5 +1,14 @@
 # DTO Gap Audit — 2026-09-05
 
+> **STATUS: COMPLETE (2026-09-05).** All 33 confirmed gaps are addressed across
+> PRs #137 (auth phantom types), #138 (workspaces dates), #139 (audit cursor +
+> webhooks retry), #140 (customers batch), #141 (auth mediums), #142 (billing
+> batch), #143 (closeout: config value parity, actor attribution, workspaces
+> address/archivedBy, webhooks delivery fields, customers update schemas, auth
+> mfa_secret slimming; the phone-auth client variant is closed as a documented
+> deferral to its own feature cycle). Related hardening: #135 (timing-safe
+> comparisons). This file stays as the record — extend it, don't fork it.
+
 Systematic sweep of every server DTO against (a) the SQL that feeds it, (b) the
 mapper that emits it, and (c) the `@fonderie/client` type that mirrors it — the
 detection mechanism that found the `IMemberDTO` identity gap, generalized. One
@@ -42,11 +51,11 @@ as they are fixed; extend this file, don't fork it.
   - Evidence: Server declares dateFormat?: string; timeFormat?: string optional (packages/auth/src/types.ts:11-12); client requires them as string (packages/client/src/types.ts:28-29). The mismatch is reachable, not just declarative: updatePreferencesSchema types all four pref keys as z.unknown() (packages/auth/src/schemas.ts:60-63), the controller patches any non-undefined value including null or wrong-typed JSON (packages/auth/src/controllers/user.controller.ts:83-88), and toUserDTO spreads stored prefs OVER the defaults (packages/auth/src/dtos/user.ts:45-47) — so a stored dateFormat: null overrides DEFAULT_PREFERENCES and reaches a client whose type promises string. The client's own IUpdatePreferencesInput (packages/client/src/modules/auth.ts:46-53) types these as unknown, inviting exactly that write.
   - Fix: Validate the four pref fields in updatePreferencesSchema (dateFormat/timeFormat/emailDigest as bounded strings, notifications as the {email,inApp,sms,push} boolean object) so the round-trip can't poison IUserDTO.preferences; or have toUserDTO sanitize per-key before spreading.
 
-- [ ] **[low] `IUser row (USER_COLUMNS) / toUserDTO` — mfaSecret** (fetched-but-discarded)
+- [x] **[low] `IUser row (USER_COLUMNS) / toUserDTO` — mfaSecret** (fetched-but-discarded) — **fixed in #143**
   - Evidence: USER_COLUMNS selects mfa_secret AS "mfaSecret" (packages/auth/src/models/user.model.ts:31), fetched on every findById/findByEmail/findByPhone (:41-63), but IUser does not declare it (packages/auth/src/types.ts:16-37) and toUserDTO drops it (packages/auth/src/dtos/user.ts:34-60 — correctly). The only consumer reaches it through an unsafe cast: (user as unknown as { mfaSecret: string | null }).mfaSecret at packages/auth/src/controllers/mfa.controller.ts:223, even though a dedicated getMfaSecret() already exists (user.model.ts:242-248).
   - Fix: Drop mfa_secret from USER_COLUMNS and use users.getMfaSecret() in mfa.disable (as mfa.verify already does at mfa.controller.ts:133). This removes the untyped cast and stops hauling the encrypted TOTP secret through every user fetch — including the login and exportMe paths where it is never needed.
 
-- [ ] **[low] `IRegisterInput / ILoginInput` — phone** (client-missing-field)
+- [x] **[low] `IRegisterInput / ILoginInput` — phone** (client-missing-field) — **resolved in #143 as a documented deferral** (surfacing phone auth needs a verifyPhone completion + hooks in three frameworks — its own feature cycle; the client input docs now say so)
   - Evidence: Server registerSchema and loginSchema are unions accepting a { phone } variant (packages/auth/src/schemas.ts:21-34), and the controllers implement full phone OTP flows (auth.controller.ts:157-226, :306-353). Client IRegisterInput requires email+password and ILoginInput requires email+password (packages/client/src/modules/auth.ts:19-29) — phone auth is unreachable from the typed client, and there is no client method for the phone-verify completion (POST /auth/verify phone branch returning { tokens, user }, auth.controller.ts:583-596, vs client verifyEmail typed IVerifyEmailResult at modules/auth.ts:178-187).
   - Fix: If phone auth is meant to be client-reachable, widen the inputs to a union ({ email, password } | { phone }) and add a verifyPhone completion typed { tokens, user }; if email-only is deliberate for this cycle, add it to the allow-list with a reason like the wallet DTOs.
 
@@ -80,7 +89,7 @@ as they are fixed; extend this file, don't fork it.
   - Evidence: packages/workspaces/src/dtos/workspace.ts:129 maps createdAt with stringOrEmpty; SELECT_MEMBER fetches ruw.created_at (packages/workspaces/src/services/members.ts:11) as a raw timestamp, which the pg adapter returns as a Date (packages/store/src/adapters/pg.ts:59-62, no setTypeParser anywhere in the repo), so stringOrEmpty (packages/core/src/parser.ts:1-3) turns the member's join date into ''. Client mirror claims a string (packages/client/src/types.ts:230). Ironic footnote: the just-landed identity fix (commit 3a33e3a) added fields to this exact mapper while the date beside them silently empties.
   - Fix: Use dateOrEmpty for createdAt in toMemberDTO.
 
-- [ ] **[medium] `IWorkspaceDTO` — archivedBy** (fetched-but-discarded)
+- [x] **[medium] `IWorkspaceDTO` — archivedBy** (fetched-but-discarded) — **fixed in #143**
   - Evidence: SQL fetches it in both column lists: packages/workspaces/src/services/workspaces.ts:19 (SELECT_WS, `archived_by AS "archivedBy"`) and :38 (SELECT_WS_W); the row type declares it (packages/workspaces/src/types.ts:28 `archivedBy: string | null`); but toWorkspaceDTO (packages/workspaces/src/dtos/workspace.ts:82-109) never emits it and IWorkspaceDTO (dtos/workspace.ts:14-31) lacks the field, as does the client mirror (packages/client/src/types.ts:196-213). This is the exact IMemberDTO class of bug: the DTO exposes isArchived and archivedAt (dtos/workspace.ts:104-105) but a client can never show who archived the workspace, even though every workspace query already pays for the column.
   - Fix: Either add archivedBy to IWorkspaceDTO + toWorkspaceDTO + the client mirror, or drop archived_by from SELECT_WS/SELECT_WS_W and IWorkspace if it is deliberately internal.
 
@@ -102,15 +111,15 @@ as they are fixed; extend this file, don't fork it.
   - Evidence: packages/webhooks/src/models/delivery.model.ts:17-21 declares nested `delivery: IWebhookDelivery`, but the claimForRetry SQL at delivery.model.ts:82-92 returns flat columns (d.id, endpointId, eventId, ..., url, secret) with no `delivery` key — IStoreAdapter.query (packages/store/src/types.ts:2) does no nesting. Consumer: packages/webhooks/src/dispatcher.ts:40 destructures `{ delivery, url, secret }`, so delivery is undefined and attemptDelivery throws on `delivery.eventId` at dispatcher.ts:68; Promise.allSettled at dispatcher.ts:39 swallows the rejection, so module.ts:34's error logger never fires. Net effect: failed deliveries with a due next_attempt_at are re-claimed every retryInterval and never retried, silently. No test covers retry()/claimForRetry (packages/webhooks/src/__tests__/smoke.test.ts).
   - Fix: Have claimForRetry return flat rows typed as IWebhookDelivery & { url: string; secret: string } (or reassemble the nested shape in TS after the query), and add a retry() test that asserts a claimed failed delivery is actually re-POSTed and markResult is called.
 
-- [ ] **[medium] `IWebhookDeliveryDTO` — responseBody** (fetched-but-discarded)
+- [x] **[medium] `IWebhookDeliveryDTO` — responseBody** (fetched-but-discarded) — **fixed in #143**
   - Evidence: packages/webhooks/src/models/delivery.model.ts:7 selects response_body as "responseBody" in the COLS used by listByEndpoint (delivery.model.ts:70-78), and markResult deliberately persists response bodies and fetch error messages into it (delivery.model.ts:55; dispatcher.ts:93,100) — but toDeliveryDTO (packages/webhooks/src/dtos/webhook.ts:40-51) omits it, and the client IWebhookDeliveryDTO (packages/client/src/types.ts:407-416) lacks it too. The field explaining WHY a delivery failed never reaches the client; not on the known-deliberate list.
   - Fix: Add responseBody: string | null to IWebhookDeliveryDTO in both dtos/webhook.ts and client types.ts, emitting it from toDeliveryDTO (optionally truncated).
 
-- [ ] **[medium] `IWebhookDeliveryDTO` — nextAttemptAt** (fetched-but-discarded)
+- [x] **[medium] `IWebhookDeliveryDTO` — nextAttemptAt** (fetched-but-discarded) — **fixed in #143**
   - Evidence: packages/webhooks/src/models/delivery.model.ts:8 selects next_attempt_at as "nextAttemptAt" in listByEndpoint's COLS, but toDeliveryDTO (packages/webhooks/src/dtos/webhook.ts:40-51) drops it and the client mirror (packages/client/src/types.ts:407-416) has no such field. Clients can see status 'failed' but never whether/when a retry is scheduled.
   - Fix: Add nextAttemptAt: string | null (ISO) to both DTO copies and emit d.nextAttemptAt?.toISOString() ?? null from toDeliveryDTO.
 
-- [ ] **[low] `IWebhookDeliveryDTO` — payload** (fetched-but-discarded)
+- [x] **[low] `IWebhookDeliveryDTO` — payload** (fetched-but-discarded) — **fixed in #143**
   - Evidence: packages/webhooks/src/models/delivery.model.ts:6 selects the full JSONB payload column in the COLS used by listByEndpoint (delivery.model.ts:70-78, limit 50 rows, served by GET /webhooks/:endpointId/deliveries at packages/webhooks/src/routes.ts:157-179), but toDeliveryDTO (packages/webhooks/src/dtos/webhook.ts:40-51) discards it. Even if omitting payload from the DTO is intentional, fetching up to 50 full event payloads per list request and throwing them away is pure query waste.
   - Fix: Either add payload to the DTO if clients should see delivered event bodies, or use a slimmer column list (without payload/responseBody if those stay hidden) for listByEndpoint.
 
@@ -144,31 +153,31 @@ as they are fixed; extend this file, don't fork it.
 
 ## admin-and-inputs
 
-- [ ] **[high] `IConfigEntry / IConfigRevision (config admin)` — value** (type-mismatch)
+- [x] **[high] `IConfigEntry / IConfigRevision (config admin)` — value** (type-mismatch) — **fixed in #143**
   - Evidence: packages/config/src/services/config.ts:12 selects the raw TEXT column (`value TEXT NOT NULL`, packages/config/src/migrations/sql/001_config.sql:4) and returns it unparsed (same for revisions at services/config.ts:101), while the runtime read path JSON.parses it (packages/config/src/manager.ts:102). The client type claims a parsed `value: unknown` (packages/client/src/types.ts:328, :340), so getConfig() after setConfig(key, {value: {a:1}}) returns the string '{"a":1}', not the object sent. The shipped editor then double-encodes: packages/react-config-admin-screens/src/screens/ConfigEditorScreen.tsx:57 does JSON.stringify(entry.value) on an already-stringified value, rendering escaped JSON ('"{\"a\":1}"') in the textarea.
   - Fix: In the admin read/write-returning paths, JSON.parse the value with a raw-string fallback (mirroring manager.ts:102-115) before emitting the entry/revision, so the wire value matches what setConfig accepted and what the runtime resolves; then the client's `value: unknown` and the editor's JSON.stringify become correct.
 
-- [ ] **[medium] `IConfigEntry / ISecretEntry (config admin write path)` — active** (never-populated)
+- [x] **[medium] `IConfigEntry / ISecretEntry (config admin write path)` — active** (never-populated) — **fixed in #143**
   - Evidence: setConfigEntry/setSecret accept `active?: boolean` (packages/config/src/services/config.ts:65, secrets.ts:82) but the admin route's writeOpts only forwards environment/description/ifVersion (packages/config/src/admin.ts:71-83), so every HTTP write forces active=true (services/config.ts:72, services/secrets.ts:91). Client inputs ISetConfigInput/ISetSecretInput also lack `active` (packages/client/src/modules/config-admin.ts:13-17, :19-23). Yet IConfigEntry.active is exposed (packages/client/src/types.ts:331) and environment-scoped list reads filter on `active = true` (services/config.ts:38, secrets.ts:38) — a filter no API caller can ever trip. Courier's parallel surface DOES wire it through (packages/courier/src/templates/admin-routes.ts:76 reads b['active']; client ISetTemplateInput has active?: boolean at packages/client/src/modules/courier-admin.ts:10).
   - Fix: Read b['active'] in writeOpts (or the PUT handlers) like courier does, and add `active?: boolean` to ISetConfigInput and ISetSecretInput; otherwise drop the active filter/field from the admin surface.
 
-- [ ] **[medium] `ITemplateEntry / IConfigEntry / revisions (admin write attribution)` — updatedBy / actor** (client-missing-field)
+- [x] **[medium] `ITemplateEntry / IConfigEntry / revisions (admin write attribution)` — updatedBy / actor** (client-missing-field) — **fixed in #143**
   - Evidence: Both admin surfaces record the writer from the X-Actor header, defaulting to 'admin-token' (packages/courier/src/templates/admin-routes.ts:28, packages/config/src/admin.ts:53-55), and both DTOs surface it (updatedBy at packages/client/src/types.ts:306, :333; revision actor at :317, :342) — the shipped screens render revision history from it. But CourierAdminClient/ConfigAdminClient have no way to send the header: HttpClient builds headers only from token/cookie/workspaceId (packages/client/src/http.ts:97-100), and neither client options object accepts an actor (packages/client/src/modules/courier-admin.ts:18-21, config-admin.ts:29-32). Every write from the admin dashboards is attributed 'admin-token', making the exposed updatedBy/actor fields useless for their purpose.
   - Fix: Add an optional `actor` to ICourierAdminClientOptions/IConfigAdminClientOptions (or per-call), plumb an extra-headers option through HttpClient.exec, and send X-Actor on writes.
 
-- [ ] **[medium] `IWorkspaceDTO.address (updateWorkspaceSchema addressSchema)` — region / postalCode vs state / zip** (never-populated)
+- [x] **[medium] `IWorkspaceDTO.address (updateWorkspaceSchema addressSchema)` — region / postalCode vs state / zip** (never-populated) — **fixed in #143**
   - Evidence: The zod addressSchema validates `region` and `postalCode` (packages/workspaces/src/schemas.ts:24-25), but the persisted/read shape uses `state`/`zip`: toWorkspaceDTO emits addr.state/addr.zip (packages/workspaces/src/dtos/workspace.ts:97-98) and the client sends/reads state/zip (packages/client/src/modules/workspaces.ts:35-36, packages/client/src/types.ts:190-192). The client's keys only survive because of .passthrough() (schemas.ts:28) — so the fields actually used are completely unvalidated (no max length), while a schema-conformant caller sending region/postalCode has them stored in the jsonb column (packages/workspaces/src/services/workspaces.ts:169-170) but silently never returned by any read.
   - Fix: Rename the schema fields to state/zip (matching the DTO and client) so the real fields get the max-length validation, and drop or alias region/postalCode.
 
-- [ ] **[medium] `customers updateEmailSchema / updatePhoneSchema / updateAddressSchema` — email, phone, address fields, isPrimary** (never-populated)
+- [x] **[medium] `customers updateEmailSchema / updatePhoneSchema / updateAddressSchema` — email, phone, address fields, isPrimary** (never-populated) — **fixed in #143**
   - Evidence: The PATCH schemas accept content changes and isPrimary (email.optional() + isPrimary at packages/customers/src/schemas.ts:36-38; phone at :41-43; all address fields at :57-59) and their refine() passes with any one field. But all three controllers only apply `label` and 422 without it: customer-email.controller.ts:100-107, customer-phone.controller.ts:100-107, customer-address.controller.ts:111-118 (all in packages/customers/src/controllers/). A schema-valid body {"isPrimary": true} passes validation then fails 'label is required'; {"label": "work", "isPrimary": true} silently drops isPrimary. The client types are the honest side — updateEmailLabel/updatePhoneLabel/updateAddressLabel take label only (packages/client/src/modules/customers.ts:213, :264, :315).
   - Fix: Shrink the three update schemas to `{ label: z.string().min(1).max(100) }` to match what the controllers implement (setPrimary already has its own route), or implement the extra fields in the controllers.
 
-- [ ] **[low] `IUpdateProfileInput (auth)` — firstName / lastName / avatarUrl nullability** (type-mismatch)
+- [x] **[low] `IUpdateProfileInput (auth)` — firstName / lastName / avatarUrl nullability** (type-mismatch) — **fixed in #143**
   - Evidence: Server updateProfileSchema accepts explicit null to clear each field (.nullable().optional(), packages/auth/src/schemas.ts:47-49), but the client input types them as `string | undefined` only (packages/client/src/modules/auth.ts:41-43), so a typed caller can never clear an avatarUrl or name. The sibling IUpdateWorkspaceInput does model the same server pattern as `string | null` (packages/client/src/modules/workspaces.ts:27-30), so the omission is an inconsistency, not a convention.
   - Fix: Type the three fields as `string | null | undefined` to match the schema, like IUpdateWorkspaceInput does.
 
-- [ ] **[low] `IRegisterInput / ILoginInput (auth)` — phone variant** (client-missing-field)
+- [x] **[low] `IRegisterInput / ILoginInput (auth)` — phone variant** (client-missing-field) — **resolved in #143 as a documented deferral** (surfacing phone auth needs a verifyPhone completion + hooks in three frameworks — its own feature cycle; the client input docs now say so)
   - Evidence: registerSchema and loginSchema are unions whose second branch is `{ phone }` (packages/auth/src/schemas.ts:21-29, :31-34), but the client inputs only model the email branch with required email+password (packages/client/src/modules/auth.ts:19-29), so phone-based register/login is unreachable through the typed client.
   - Fix: If phone auth is client-facing, widen the inputs to the union (`{email, password, ...} | {phone}`); if it is deliberately server/CLI-only, add it to the coverage-gate allow-list with a reason.
 
