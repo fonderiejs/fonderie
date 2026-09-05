@@ -7,7 +7,7 @@ import type {
 } from './types';
 import { BILLING_INTERVAL } from '../types';
 import type { SubscriberType } from '../types';
-import { moneyToNumber } from '../utils';
+import { toSafeNumber } from '../utils';
 
 interface IStripeSubscriptionRaw {
 	id: string;
@@ -187,9 +187,9 @@ export class StripeProvider implements IBillingProvider {
 			: {
 					price_data: {
 						currency: opts.currency.toLowerCase(),
-						// Stripe's SDK takes a JS number; moneyToNumber throws past 2^53
+						// Stripe's SDK takes a JS number; toSafeNumber throws past 2^53
 						// instead of silently rounding.
-						unit_amount: moneyToNumber(opts.amount),
+						unit_amount: toSafeNumber(opts.amount),
 						product_data: { name: opts.name },
 					},
 					quantity: opts.quantity ?? 1,

@@ -7,10 +7,12 @@ export interface ISubscriber {
 	id: string;
 }
 
-// Narrow a bigint money amount into a JS number for the wire-stable plan
-// pricing DTO (bounded display cents). Loud failure beats silent corruption:
-// a value past 2^53 would round, so refuse it instead.
-export function moneyToNumber(amount: bigint): number {
+// Narrow a bigint into a JS number, refusing values past 2^53 — loud failure
+// beats silent rounding. Used where a BOUNDED amount meets a number-typed
+// boundary (the wire-stable plan pricing DTO, the Stripe SDK). Deliberately
+// not named after money: wallet balances are unbounded and must stay bigint —
+// this is a narrowing tool, not a blessed money-to-number escape hatch.
+export function toSafeNumber(amount: bigint): number {
 	if (amount > BigInt(Number.MAX_SAFE_INTEGER) || amount < -BigInt(Number.MAX_SAFE_INTEGER)) {
 		throw new Error(`[billing] amount ${amount} exceeds Number.MAX_SAFE_INTEGER`);
 	}

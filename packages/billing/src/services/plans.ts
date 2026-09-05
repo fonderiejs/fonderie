@@ -2,7 +2,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IPlan } from '../types';
 import type { IBillingConfig, IBillingPlan } from '../config';
-import { moneyToNumber } from '../utils';
+import { toSafeNumber } from '../utils';
 
 // fonderie_plans money columns are BIGINT (int8) since 006_wallet.sql — pg
 // returns those as strings. The read model keeps JS numbers (bounded display
@@ -13,7 +13,7 @@ type IPlanRow = Omit<IPlan, 'monthlyAmount' | 'yearlyAmount'> & {
 };
 
 const planAmount = (v: string | number | null): number | null =>
-	v == null ? null : moneyToNumber(BigInt(v));
+	v == null ? null : toSafeNumber(BigInt(v));
 
 function mapPlanRow(row: IPlanRow): IPlan {
 	return {
