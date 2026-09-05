@@ -4,11 +4,12 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from '../config';
-import { EVENT_KEYS } from '../config';
+import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { SubscriberType } from '../types';
 import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
 import { normalizeCurrency, subscriberEventFields } from '../utils';
+import { notifyBilling } from '../services/notify';
 import { readWebhookEvent } from './webhook-shared';
 
 // One-time payment webhook — a SEPARATE endpoint (and secret) from the
@@ -104,6 +105,25 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 					bus
 						?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' })
 						.catch(() => {});
+
+					// Customer-facing receipt (§ Communication & Record Integrity).
+					// Same guard as the domain events — only on a real credit, so
+					// a webhook replay never double-sends. Fire-and-forget inside
+					// notifyBilling; a resolver/courier error can't fail the credit.
+					void notifyBilling(bus, config, {
+						subscriberType: subscriberType as SubscriberType,
+						subscriberId,
+						type: MESSAGE_KEYS.paymentReceipt,
+						data: {
+							packId,
+							credits,
+							currency,
+							balanceAfter: result.balance.toString(),
+							amountPaid: payment.amountTotal?.toString() ?? null,
+							paymentCurrency: payment.currency,
+							...(payment.providerTxId ? { providerTxId: payment.providerTxId } : {}),
+						},
+					});
 				}
 
 				return Response.json({ received: true, duplicate: result.duplicate });

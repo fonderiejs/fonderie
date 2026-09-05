@@ -11,6 +11,7 @@ new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus |
   .name: "@fonderie/billing"
   .deps: string[]
   .install(app: IFonderieApp): Promise<void>
+  .checkReadiness(): IReadinessProblem[]
 
 new StripeProvider(secretKey: string, webhookSecret?: string | undefined): StripeProvider
   .name: "stripe"
@@ -45,9 +46,9 @@ function debitWalletForMetric(ctx: IFonderieContext, metric: string, opts: { ide
 
 function insufficientCreditsResponse(err: InsufficientFundsError, metric?: string | undefined): Response
 
-const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; }
+const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; readonly paymentReceipt: "billing.payment-receipt"; readonly paymentFailed: "billing.payment-failed"; readonly subscriptionCanceled: "billing.subscription-canceled"; readonly creditsLow: "billing.credits-low"; readonly refundProcessed: "billing.refund-processed"; }
 
-const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly grantApplied: "fonderie.billing.grant.applied"; }
+const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly walletLowBalance: "fonderie.billing.wallet.low_balance"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly grantApplied: "fonderie.billing.grant.applied"; }
 
 interface IBillingConfig {
     provider: IBillingProvider;
@@ -61,6 +62,7 @@ interface IBillingConfig {
     notifications?: IBillingNotificationsConfig;
     pricing?: IBillingPricingConfig;
     wallet?: IBillingWalletConfig;
+    resolveRecipient?: ResolveRecipient;
 }
 
 interface IBillingCreditPack {
@@ -105,6 +107,7 @@ interface IBillingPlanWallet {
     grantPeriod?: 'month' | 'week' | 'day';
     overdraftLimit?: bigint;
     rates?: Record<string, IWalletRate>;
+    lowBalanceAt?: bigint;
 }
 
 interface IBillingPricingConfig {
@@ -121,6 +124,14 @@ interface IBillingWalletConfig {
     webhookSecret?: string;
     creditPacks?: IBillingCreditPack[];
 }
+
+interface IBillingRecipient {
+    email?: string | null;
+    phone?: string | null;
+    deviceToken?: string | null;
+}
+
+type ResolveRecipient = (subscriberType: SubscriberType, subscriberId: string) => IBillingRecipient | null | Promise<IBillingRecipient | null>;
 
 type RateLimitBackendConfig = 'memory' | 'db' | ICounterBackend;
 
@@ -447,6 +458,7 @@ interface IResolvedPlanWallet {
     grantAmount: bigint | null;
     grantPeriod: 'month' | 'week' | 'day';
     rates: Record<string, IWalletRate>;
+    lowBalanceAt: bigint | null;
 }
 
 new InsufficientFundsError(available: bigint, required: bigint, currency: string): InsufficientFundsError

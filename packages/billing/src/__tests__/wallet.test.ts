@@ -1886,3 +1886,257 @@ test('billing events round-trip a real EventBus to an in-process subscriber (web
 	assert.equal(typeof received[0].workspaceId, 'string');
 	assert.equal(received[0].workspaceId, '11111111-2222-4333-8444-555566667777');
 });
+
+// ── communication integrity (Phase 2): notifications + readiness ──
+
+test('notifyBilling: no bus is a silent no-op (never throws)', async () => {
+	const { notifyBilling } = await import('../services/notify');
+	await notifyBilling(undefined, walletConfig(), {
+		subscriberType: 'user',
+		subscriberId: USER.subscriberId,
+		type: 'billing.payment-receipt',
+		data: {},
+	});
+});
+
+test('notifyBilling: no resolveRecipient → nothing emitted', async () => {
+	const { notifyBilling } = await import('../services/notify');
+	const { bus, calls } = recordingBus();
+	await notifyBilling(bus, walletConfig(), {
+		subscriberType: 'user',
+		subscriberId: USER.subscriberId,
+		type: 'billing.payment-receipt',
+		data: {},
+	});
+	assert.equal(calls.length, 0);
+});
+
+test('notifyBilling: an unresolved recipient (null) emits nothing', async () => {
+	const { notifyBilling } = await import('../services/notify');
+	const { bus, calls } = recordingBus();
+	const config = { ...walletConfig(), resolveRecipient: () => null } as IBillingConfig;
+	await notifyBilling(bus, config, {
+		subscriberType: 'user',
+		subscriberId: USER.subscriberId,
+		type: 'billing.payment-receipt',
+		data: {},
+	});
+	assert.equal(calls.length, 0);
+});
+
+test('notifyBilling: a throwing resolver is swallowed (money op is never failed)', async () => {
+	const { notifyBilling } = await import('../services/notify');
+	const { bus, calls } = recordingBus();
+	const config = {
+		...walletConfig(),
+		resolveRecipient: () => {
+			throw new Error('directory down');
+		},
+	} as IBillingConfig;
+	await notifyBilling(bus, config, {
+		subscriberType: 'user',
+		subscriberId: USER.subscriberId,
+		type: 'billing.payment-receipt',
+		data: {},
+	});
+	assert.equal(calls.length, 0);
+});
+
+test('notifyBilling: emits NOTIFICATION_EVENT with a fully-shaped recipient', async () => {
+	const { notifyBilling } = await import('../services/notify');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	// Resolver returns only an email; phone/deviceToken must be filled to null.
+	const config = { ...walletConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	await notifyBilling(bus, config, {
+		subscriberType: 'workspace',
+		subscriberId: 'ws-1',
+		type: 'billing.payment-receipt',
+		data: { amount: '499' },
+	});
+	assert.equal(calls.length, 1);
+	assert.equal(calls[0]!.type, NOTIFICATION_EVENT);
+	assert.equal(calls[0]!.payload.type, 'billing.payment-receipt');
+	assert.deepEqual(calls[0]!.payload.recipient, { email: 'a@b.com', phone: null, deviceToken: null });
+	assert.equal(calls[0]!.payload.data.amount, '499');
+});
+
+test('payment webhook: sends a payment-receipt notice on a real credit, none on replay', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { MESSAGE_KEYS } = await import('../config');
+	const store = walletEmulator();
+	const cfg = {
+		...webhookConfig(paymentEvent(walletMeta)),
+		resolveRecipient: () => ({ email: 'buyer@x.com' }),
+	} as IBillingConfig;
+	const first = recordingBus();
+	await paymentWebhookController(store, cfg, first.bus).handle(webhookCtx());
+	const receipts = first.calls.filter(
+		(c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.paymentReceipt,
+	);
+	assert.equal(receipts.length, 1, 'one receipt on a real credit');
+	assert.equal(receipts[0]!.payload.data.packId, 'small');
+	assert.equal(receipts[0]!.payload.data.credits, '5000');
+	assert.equal(receipts[0]!.payload.data.balanceAfter, '5000');
+	assert.equal(receipts[0]!.payload.recipient.email, 'buyer@x.com');
+	// Replay → duplicate credit → no second receipt.
+	const replay = recordingBus();
+	await paymentWebhookController(store, cfg, replay.bus).handle(webhookCtx());
+	assert.equal(
+		replay.calls.filter((c) => c.type === NOTIFICATION_EVENT).length,
+		0,
+		'a replayed credit must not re-send the receipt',
+	);
+});
+
+const LOW_PLAN = {
+	name: 'low',
+	wallet: { lowBalanceAt: 100n, rates: { task: { cost: 5n } } },
+};
+
+test('withBilling: low balance signals once per crossing and re-arms after recovery', async () => {
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { creditWallet, debitWallet } = await import('../services/wallet');
+	const { withBilling } = await import('../middlewares/billing');
+	const { MemoryCounterBackend } = await import('../backends/memory');
+
+	const emu = walletEmulator();
+	const store = billingStore(emu);
+	// Unique subscriber id — the low-balance dedup Set is module-level.
+	const uid = '5c3d1e00-0000-4000-8000-000000000abc';
+	const sub = { subscriberType: 'user' as SubscriberType, subscriberId: uid, currency: 'USD' };
+	const config = {
+		...planWalletConfig([LOW_PLAN]),
+		resolveRecipient: () => ({ email: 'z@z.com' }),
+	} as IBillingConfig;
+	const { bus, calls } = recordingBus();
+	const mw = withBilling(store, config, new MemoryCounterBackend(), bus);
+	const run = async () => {
+		const ctx = makeCtx({ user: { id: uid, email: 'z@z.com' } });
+		await mw(ctx, async () => new Response());
+	};
+	const lowCount = () => calls.filter((c) => c.type === EVENT_KEYS.walletLowBalance).length;
+	const noticeCount = () =>
+		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.creditsLow)
+			.length;
+
+	// Balance 50 (≤ 100) → fires the domain signal + the customer notice once.
+	await creditWallet({ ...sub, amount: 50n, idempotencyKey: 'lb-c1' }, emu);
+	await run();
+	assert.equal(lowCount(), 1);
+	assert.equal(noticeCount(), 1);
+	const low = calls.find((c) => c.type === EVENT_KEYS.walletLowBalance)!;
+	assert.equal(low.payload.balance, '50');
+	assert.equal(low.payload.threshold, '100');
+
+	// Same session, still low → no repeat.
+	await run();
+	assert.equal(lowCount(), 1, 'deduped within a single crossing');
+
+	// Recover above the threshold → the flag clears, no new signal.
+	await creditWallet({ ...sub, amount: 100n, idempotencyKey: 'lb-c2' }, emu); // 150
+	await run();
+	assert.equal(lowCount(), 1);
+
+	// Drop back below → a fresh crossing re-fires.
+	await debitWallet({ ...sub, amount: 120n, idempotencyKey: 'lb-d1' }, emu); // 30
+	await run();
+	assert.equal(lowCount(), 2, 're-fires after recovery + a fresh crossing');
+	assert.equal(noticeCount(), 2);
+});
+
+test('withBilling: no low-balance signal when the plan sets no threshold', async () => {
+	const { EVENT_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { creditWallet } = await import('../services/wallet');
+	const { withBilling } = await import('../middlewares/billing');
+	const { MemoryCounterBackend } = await import('../backends/memory');
+
+	const emu = walletEmulator();
+	const store = billingStore(emu);
+	const uid = '5c3d1e00-0000-4000-8000-000000000def';
+	const config = {
+		...planWalletConfig([{ name: 'nolow', wallet: { rates: { task: { cost: 5n } } } }]),
+		resolveRecipient: () => ({ email: 'z@z.com' }),
+	} as IBillingConfig;
+	const { bus, calls } = recordingBus();
+	const mw = withBilling(store, config, new MemoryCounterBackend(), bus);
+	await creditWallet(
+		{ subscriberType: 'user', subscriberId: uid, currency: 'USD', amount: 1n, idempotencyKey: 'nl-1' },
+		emu,
+	);
+	await mw(makeCtx({ user: { id: uid, email: 'z@z.com' } }), async () => new Response());
+	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.walletLowBalance).length, 0);
+	assert.equal(calls.filter((c) => c.type === NOTIFICATION_EVENT).length, 0);
+});
+
+// ── production readiness: a receipt path is mandatory when taking money ──
+
+test('collectBillingReadinessProblems: silent when no payments are enabled', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	const noPay = { provider: {}, plans: [{ name: 'free' }], successUrl: 'x', cancelUrl: 'y' } as IBillingConfig;
+	assert.deepEqual(collectBillingReadinessProblems(noPay, false), []);
+	assert.deepEqual(collectBillingReadinessProblems(noPay, true), []);
+});
+
+test('collectBillingReadinessProblems: clean when payments + bus + resolver are all wired', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	const config = { ...walletConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	assert.deepEqual(collectBillingReadinessProblems(config, true), []);
+});
+
+test('collectBillingReadinessProblems: flags a missing bus or resolver when payments are enabled', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	// Wallet enables payments; a paid plan does too.
+	const walletOnly = walletConfig();
+	const paidPlan = {
+		provider: {},
+		plans: [{ name: 'pro', monthly: { priceId: 'price_x' } }],
+		successUrl: 'x',
+		cancelUrl: 'y',
+	} as IBillingConfig;
+
+	// No bus.
+	assert.equal(collectBillingReadinessProblems(walletOnly, false).length, 1);
+	// Bus but no resolver.
+	assert.equal(collectBillingReadinessProblems(walletOnly, true).length, 1);
+	// A paid subscription plan is a payment path too.
+	assert.equal(collectBillingReadinessProblems(paidPlan, false).length, 1);
+	const problem = collectBillingReadinessProblems(walletOnly, false)[0]!;
+	assert.equal(problem.module, '@fonderie/billing');
+});
+
+test('collectBillingReadinessProblems: error in production, warning elsewhere', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	const config = walletConfig(); // payments on, no receipt path
+	const prev = process.env['NODE_ENV'];
+	try {
+		process.env['NODE_ENV'] = 'production';
+		assert.equal(collectBillingReadinessProblems(config, false)[0]!.severity, 'error');
+		process.env['NODE_ENV'] = 'development';
+		assert.equal(collectBillingReadinessProblems(config, false)[0]!.severity, 'warning');
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
+	}
+});
+
+test('BillingModule.checkReadiness: surfaces the missing receipt path (no bus)', async () => {
+	const { BillingModule } = await import('../module');
+	const store = walletEmulator();
+	const mod = new BillingModule(store, walletConfig());
+	const problems = mod.checkReadiness();
+	assert.equal(problems.length, 1);
+	assert.equal(problems[0]!.module, '@fonderie/billing');
+});
+
+test('BillingModule.checkReadiness: clean with a bus + resolver wired', async () => {
+	const { BillingModule } = await import('../module');
+	const { EventBus, MemoryTransport } = await import('@fonderie/events');
+	const store = walletEmulator();
+	const config = { ...walletConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	const mod = new BillingModule(store, config, new EventBus(new MemoryTransport()));
+	assert.deepEqual(mod.checkReadiness(), []);
+});

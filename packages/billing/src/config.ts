@@ -1,5 +1,5 @@
 import type { IBillingProvider } from './providers/types';
-import type { IWalletRate, PolicyEntry } from './types';
+import type { IWalletRate, PolicyEntry, SubscriberType } from './types';
 import type { ICounterBackend } from './backends/types';
 
 export interface IBillingPlanPrice {
@@ -58,6 +58,12 @@ export interface IBillingPlanWallet {
 	overdraftLimit?: bigint;
 	/** Per-metric unit costs, e.g. { 'sms:send': { cost: 75n, unit: 'msg' } }. */
 	rates?: Record<string, IWalletRate>;
+	/**
+	 * Balance at/below which withBilling emits a low-balance signal
+	 * (`wallet.low_balance` domain event + `billing.credits-low` notification),
+	 * once per subscriber per session. Omit to disable.
+	 */
+	lowBalanceAt?: bigint;
 }
 
 export interface IBillingPlan {
@@ -132,6 +138,22 @@ export interface IBillingWalletConfig {
 	creditPacks?: IBillingCreditPack[];
 }
 
+// The party to notify for a subscriber's money events. Resolved by the app —
+// billing's money flows are webhook-driven (no session), so billing has a
+// subscriberId but not an address. Returning null (or omitting the resolver)
+// means no notification is sent; when payments are enabled that is flagged by
+// BillingModule.checkReadiness (§ Communication & Record Integrity).
+export interface IBillingRecipient {
+	email?: string | null;
+	phone?: string | null;
+	deviceToken?: string | null;
+}
+
+export type ResolveRecipient = (
+	subscriberType: SubscriberType,
+	subscriberId: string,
+) => IBillingRecipient | null | Promise<IBillingRecipient | null>;
+
 export interface IBillingConfig {
 	provider: IBillingProvider;
 	plans: IBillingPlan[];
@@ -142,12 +164,32 @@ export interface IBillingConfig {
 	notifications?: IBillingNotificationsConfig;
 	pricing?: IBillingPricingConfig;
 	wallet?: IBillingWalletConfig;
+	/**
+	 * Resolves who to email/SMS for a subscriber's money events (receipt,
+	 * refund, failed payment, low balance). Required, with an EventBus, for
+	 * billing to send customer communications — its absence while payments are
+	 * enabled is a production readiness error (see BillingModule.checkReadiness).
+	 */
+	resolveRecipient?: ResolveRecipient;
 }
 
 export const MESSAGE_KEYS = {
 	limitWarning: 'billing.limit-warning',
 	limitReached: 'billing.limit-reached',
 	limitBlocked: 'billing.limit-blocked',
+	// Money-flow communications. Each is a courier template type; the operator
+	// supplies the template, billing supplies the `data` (see
+	// docs/BILLING-CAPABILITY-AUDIT.md for the payload of each). Emitted now
+	// (Phase 2): paymentReceipt (pack purchase), paymentFailed (past_due
+	// dunning), subscriptionCanceled, creditsLow (low wallet balance).
+	paymentReceipt: 'billing.payment-receipt',
+	paymentFailed: 'billing.payment-failed',
+	subscriptionCanceled: 'billing.subscription-canceled',
+	creditsLow: 'billing.credits-low',
+	// Declared for the full contract but NOT yet emitted — a normalized refund
+	// event (charge.refunded / clawback) arrives with Phase 3 provider
+	// normalization. Templating it early is safe; nothing dispatches it in 6.1.
+	refundProcessed: 'billing.refund-processed',
 } as const;
 
 export type BillingMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -165,6 +207,7 @@ export const EVENT_KEYS = {
 	subscriptionCanceled: 'fonderie.billing.subscription.canceled',
 	subscriptionPastDue: 'fonderie.billing.subscription.past_due',
 	walletCredited: 'fonderie.billing.wallet.credited',
+	walletLowBalance: 'fonderie.billing.wallet.low_balance',
 	creditPackPurchased: 'fonderie.billing.credit_pack.purchased',
 	grantApplied: 'fonderie.billing.grant.applied',
 } as const;

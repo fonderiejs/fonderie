@@ -30,6 +30,8 @@ export type {
 	IBillingPlanWallet,
 	IBillingPricingConfig,
 	IBillingWalletConfig,
+	IBillingRecipient,
+	ResolveRecipient,
 	RateLimitBackendConfig,
 	IBillingNotificationsConfig,
 	BillingMessageKey,
