@@ -4,6 +4,7 @@ import type { EventBus } from '@fonderie/events';
 import { requireAuth, validate } from '@fonderie/core/middlewares';
 
 import {
+	cancelSubscriptionSchema,
 	checkoutSchema,
 	createPlanSchema,
 	grantWalletSchema,
@@ -36,7 +37,7 @@ export function buildBillingRoutes(
 		maxStaleMs: config.pricing?.maxStaleMs,
 	});
 	const plan = planController(store, config, priceCache);
-	const subscription = subscriptionController(store);
+	const subscription = subscriptionController(store, config);
 	const checkout = checkoutController(store, config);
 	const usage = usageController(store);
 	const webhook = webhookController(store, config, priceCache, bus);
@@ -58,6 +59,17 @@ export function buildBillingRoutes(
 		['GET', '/billing/subscription', requireAuth, subscription.get],
 		['POST', '/billing/checkout', requireAuth, validate(checkoutSchema), checkout.createSession],
 		['POST', '/billing/portal', requireAuth, checkout.createPortal],
+		// First-party lifecycle controls (cancel at period end / immediately;
+		// un-cancel). 501 when the provider doesn't implement them; the portal
+		// remains a self-serve fallback.
+		[
+			'POST',
+			'/billing/subscription/cancel',
+			requireAuth,
+			validate(cancelSubscriptionSchema),
+			subscription.cancel,
+		],
+		['POST', '/billing/subscription/reactivate', requireAuth, subscription.reactivate],
 		['POST', '/billing/usage', requireAuth, validate(recordUsageSchema), usage.record],
 		['GET', '/billing/usage/:metric', requireAuth, usage.get],
 

@@ -60,10 +60,12 @@ export async function upsertSubscription(
 		status: string;
 		providerCustomerId?: string;
 		providerSubscriptionId?: string;
-		currentPeriodStart?: Date;
-		currentPeriodEnd?: Date;
+		// Date from the webhook (normalized) or an ISO string when carried forward
+		// from a stored ISubscription row — Postgres accepts either for timestamptz.
+		currentPeriodStart?: Date | string;
+		currentPeriodEnd?: Date | string;
 		cancelAtPeriodEnd?: boolean;
-		trialEndsAt?: Date | null;
+		trialEndsAt?: Date | string | null;
 	},
 	store: IStoreAdapter,
 ): Promise<void> {

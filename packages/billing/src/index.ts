@@ -54,6 +54,7 @@ export type {
 	INormalizedInvoice,
 	INormalizedPaymentFailure,
 	IResolvedPrice,
+	ISubscriptionChange,
 } from './providers/types';
 export type {
 	IPlan,
