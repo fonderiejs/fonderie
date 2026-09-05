@@ -16,6 +16,7 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
   .name: "stripe"
   .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>
   .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; }): Promise<{ url: string; }>
+  .createPaymentCheckoutSession(opts: { customerId: string; amount: bigint; currency: string; name: string; quantity?: number; priceId?: string; metadata: Record<string, string>; successUrl: string; cancelUrl: string; }): Promise<...>
   .resolvePriceById(priceId: string): Promise<IResolvedPrice | null>
   .resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>
   .updateSubscription(opts: { subscriptionId: string; priceId: string; }): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null; }>
@@ -34,6 +35,16 @@ function getLimitStatus(ctx: IFonderieContext, key: string): IPolicyStatus | nul
 
 function requireFeature(key: string): Middleware
 
+function getWalletStatus(ctx: IFonderieContext): IWalletContext | null
+
+function getWalletRate(ctx: IFonderieContext, metric: string): bigint | null
+
+function requireWalletBalance(metric: string): Middleware
+
+function debitWalletForMetric(ctx: IFonderieContext, metric: string, opts: { idempotencyKey: string; quantity?: number; description?: string; metadata?: Record<string, unknown>; }, store: IStoreAdapter): Promise<...>
+
+function insufficientCreditsResponse(err: InsufficientFundsError, metric?: string | undefined): Response
+
 const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; }
 
 interface IBillingConfig {
@@ -47,6 +58,18 @@ interface IBillingConfig {
     };
     notifications?: IBillingNotificationsConfig;
     pricing?: IBillingPricingConfig;
+    wallet?: IBillingWalletConfig;
+}
+
+interface IBillingCreditPack {
+    id: string;
+    name: string;
+    credits: bigint;
+    priceAmount: bigint;
+    currency?: string;
+    priceId?: string;
+    active?: boolean;
+    metadata?: Record<string, unknown>;
 }
 
 interface IBillingPlan {
@@ -58,6 +81,7 @@ interface IBillingPlan {
     yearly?: IBillingPlanPrice;
     defaults?: IBillingPlanDefaults;
     policy?: Record<string, PolicyEntry>;
+    wallet?: IBillingPlanWallet;
     metadata?: Record<string, unknown>;
 }
 
@@ -69,7 +93,16 @@ interface IBillingPlanDefaults {
 interface IBillingPlanPrice {
     lookupKey?: string;
     priceId?: string;
-    amount?: number;
+    amount?: bigint;
+}
+
+interface IBillingPlanWallet {
+    currency?: string;
+    precision?: number;
+    grantAmount?: bigint;
+    grantPeriod?: 'month' | 'week' | 'day';
+    overdraftLimit?: bigint;
+    rates?: Record<string, IWalletRate>;
 }
 
 interface IBillingPricingConfig {
@@ -77,6 +110,14 @@ interface IBillingPricingConfig {
     cacheTtlMs?: number;
     transferGraceMs?: number;
     maxStaleMs?: number;
+}
+
+interface IBillingWalletConfig {
+    currency?: string;
+    precision?: number;
+    adminToken?: string;
+    webhookSecret?: string;
+    creditPacks?: IBillingCreditPack[];
 }
 
 type RateLimitBackendConfig = 'memory' | 'db' | ICounterBackend;
@@ -103,7 +144,11 @@ interface ICounterBackend {
 
 const BILLING_INTERVAL: { readonly MONTH: "month"; readonly YEAR: "year"; }
 
+const WALLET_LEDGER_TYPES: readonly ["purchase", "grant", "usage", "refund", "adjustment"]
+
 type BillingInterval = (typeof BILLING_INTERVAL)[keyof typeof BILLING_INTERVAL];
+
+type WalletLedgerType = (typeof WALLET_LEDGER_TYPES)[number];
 
 interface IBillingProvider {
     name: string;
@@ -125,6 +170,20 @@ interface IBillingProvider {
         cancelUrl: string;
     }): Promise<{
         url: string;
+    }>;
+    createPaymentCheckoutSession?(opts: {
+        customerId: string;
+        amount: bigint;
+        currency: string;
+        name: string;
+        quantity?: number;
+        priceId?: string;
+        metadata: Record<string, string>;
+        successUrl: string;
+        cancelUrl: string;
+    }): Promise<{
+        url: string;
+        sessionId: string;
     }>;
     resolvePriceById(priceId: string): Promise<IResolvedPrice | null>;
     resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>;
@@ -152,12 +211,22 @@ interface IBillingProvider {
 interface IBillingEvent {
     type: string;
     subscription: INormalizedSubscription | null;
+    payment?: INormalizedPayment | null;
+}
+
+interface INormalizedPayment {
+    sessionId: string;
+    providerTxId: string | null;
+    amountTotal: bigint | null;
+    currency: string | null;
+    paymentStatus: string | null;
+    metadata: Record<string, string>;
 }
 
 interface IResolvedPrice {
     priceId: string;
     lookupKey: string | null;
-    unitAmount: number;
+    unitAmount: bigint;
     currency: string;
     interval: 'month' | 'year';
     nickname: string | null;
@@ -196,6 +265,40 @@ interface ISubscription {
     createdAt: string;
 }
 
+interface IWalletBalance {
+    balance: bigint;
+    version: number;
+    updatedAt: string | null;
+}
+
+interface IWalletContext {
+    balance: bigint;
+    currency: string;
+    precision: number;
+    overdraftLimit: bigint;
+    rates: Record<string, IWalletRate>;
+}
+
+interface IWalletLedgerEntry {
+    id: string;
+    subscriberType: SubscriberType;
+    subscriberId: string;
+    currency: string;
+    type: WalletLedgerType;
+    amount: bigint;
+    balanceAfter: bigint;
+    description: string | null;
+    idempotencyKey: string;
+    metadata: Record<string, unknown>;
+    providerTxId: string | null;
+    createdAt: string;
+}
+
+interface IWalletRate {
+    cost: bigint;
+    unit?: string;
+}
+
 type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'paused';
 
 type PolicyEntry = {
@@ -229,6 +332,7 @@ interface IBillingContext {
     plan: string;
     active: boolean;
     statuses: Record<string, IPolicyStatus>;
+    wallet?: IWalletContext;
 }
 
 interface IPlanDTO {
@@ -263,9 +367,95 @@ interface ISubscriptionDTO {
     createdAt: string;
 }
 
+interface IWalletDTO {
+    balance: string;
+    currency: string;
+    precision: number;
+}
+
+interface IWalletTransactionDTO {
+    id: string;
+    type: WalletLedgerType;
+    amount: string;
+    balanceAfter: string;
+    currency: string;
+    description: string | null;
+    providerTxId: string | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+}
+
 function toPlanDTO(plan: IPlan): IPlanDTO
 
 function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO
+
+function toWalletDTO(balance: bigint, currency: string, precision: number): IWalletDTO
+
+function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransactionDTO
+
+function creditWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; type?: "purchase" | "grant" | "usage" | "refund" | "adjustment"; description?: string; metadata?: Record<...>; providerTxId?: string; }, store: IStoreAdapter): Promise<...>
+
+function debitWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; type?: "purchase" | "grant" | "usage" | "refund" | "adjustment"; overdraftLimit?: bigint; description?: string; metadata?: Record<...>; }, store: IStoreAdapter): Promise<...>
+
+function getWalletBalance(sub: IWalletSubscriber, store: IStoreAdapter): Promise<IWalletBalance>
+
+function getWalletLedger(opts: IWalletSubscriber & { limit?: number; cursor?: { createdAt: string; id: string; }; }, store: IStoreAdapter): Promise<IWalletLedgerPage>
+
+function ensurePeriodicGrant(opts: IWalletSubscriber & { amount: bigint; period: string; description?: string; }, store: IStoreAdapter): Promise<IGrantResult>
+
+function currentGrantPeriod(period: "month" | "week" | "day", now?: Date): string
+
+function resolvePlanWallet(plan: IBillingPlan, config: IBillingConfig): IResolvedPlanWallet | null
+
+function encodeLedgerCursor(createdAt: string, id: string): string
+
+function decodeLedgerCursor(cursor: string): { createdAt: string; id: string; } | null
+
+interface IWalletSubscriber {
+    subscriberType: SubscriberType;
+    subscriberId: string;
+    currency: string;
+}
+
+interface IWalletMutationResult {
+    balance: bigint;
+    duplicate: boolean;
+}
+
+interface IWalletLedgerPage {
+    entries: IWalletLedgerEntry[];
+    nextCursor: string | null;
+}
+
+interface IGrantResult {
+    granted: boolean;
+    balance: bigint | null;
+}
+
+interface IResolvedPlanWallet {
+    currency: string;
+    precision: number;
+    overdraftLimit: bigint;
+    grantAmount: bigint | null;
+    grantPeriod: 'month' | 'week' | 'day';
+    rates: Record<string, IWalletRate>;
+}
+
+new InsufficientFundsError(available: bigint, required: bigint, currency: string): InsufficientFundsError
+  .available: bigint
+  .required: bigint
+  .currency: string
+  .name: string
+  .message: string
+  .stack: string
+  .cause: unknown
+
+new DuplicateTransactionError(idempotencyKey: string): DuplicateTransactionError
+  .idempotencyKey: string
+  .name: string
+  .message: string
+  .stack: string
+  .cause: unknown
 
 function recordUsage(opts: { subscriberType: SubscriberType; subscriberId: string; metric: string; quantity: number; }, store: IStoreAdapter): Promise<void>
 
@@ -287,5 +477,5 @@ function deletePlan(id: string, store: IStoreAdapter): Promise<boolean>
 
 function getSubscription(subscriberType: SubscriberType, subscriberId: string, store: IStoreAdapter): Promise<ISubscription | null>
 
-namespace schemas — exports: checkoutSchema, createPlanSchema, recordUsageSchema, updatePlanSchema
+namespace schemas — exports: checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, updatePlanSchema, walletCheckoutSchema
 ```

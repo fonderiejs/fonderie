@@ -8,6 +8,7 @@ import type { IPlanDTO } from '../dtos/billing';
 import { PlanModel } from '../models/plan.model';
 import { toPlanDTO } from '../dtos/billing';
 import { PriceCache } from '../services/price-cache';
+import { toSafeNumber } from '../utils';
 
 // Read-through hydration: override the DTO's amount/currency with live Stripe
 // prices (source of truth). Best-effort per plan — on error (incl. currency
@@ -32,8 +33,8 @@ async function hydratePricing(
 				`[billing] plan "${plan.name}": monthly/yearly currency mismatch (${m.currency} vs ${y.currency})`,
 			);
 		}
-		if (m) dto.pricing.monthly = m.unitAmount;
-		if (y) dto.pricing.yearly = y.unitAmount;
+		if (m) dto.pricing.monthly = toSafeNumber(m.unitAmount);
+		if (y) dto.pricing.yearly = toSafeNumber(y.unitAmount);
 		const currency = m?.currency ?? y?.currency;
 		if (currency) dto.pricing.currency = currency.toUpperCase();
 		if (stale) dto.pricingStale = true;

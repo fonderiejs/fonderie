@@ -15,6 +15,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // verification instead. Adding a route here requires the same verification.
 const EXEMPT = new Map([
 	['POST /billing/webhook', 'Stripe-shaped payload; signature-verified in handler'],
+	['POST /billing/webhook/payment', 'provider-shaped payload; signature-verified in handler'],
 	['POST /courier/delivery/sendgrid', 'provider webhook; signature-verified'],
 	['POST /courier/delivery/mailgun', 'provider webhook; signature-verified'],
 	['POST /courier/delivery/mailtrap', 'provider webhook'],

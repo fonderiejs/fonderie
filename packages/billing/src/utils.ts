@@ -7,6 +7,28 @@ export interface ISubscriber {
 	id: string;
 }
 
+// Narrow a bigint into a JS number, refusing values past 2^53 — loud failure
+// beats silent rounding. Used where a BOUNDED amount meets a number-typed
+// boundary (the wire-stable plan pricing DTO, the Stripe SDK). Deliberately
+// not named after money: wallet balances are unbounded and must stay bigint —
+// this is a narrowing tool, not a blessed money-to-number escape hatch.
+export function toSafeNumber(amount: bigint): number {
+	if (amount > BigInt(Number.MAX_SAFE_INTEGER) || amount < -BigInt(Number.MAX_SAFE_INTEGER)) {
+		throw new Error(`[billing] amount ${amount} exceeds Number.MAX_SAFE_INTEGER`);
+	}
+	return Number(amount);
+}
+
+// One canonical form for wallet currency codes. Balances are keyed by the
+// literal string — a lowercase 'usd' or a padded 'USD ' would open a second,
+// unreachable bucket next to 'USD', so every boundary (config, schema, query
+// param, webhook metadata) normalizes through here. Trim + case only:
+// interior garbage ('U SD') is NOT repaired — write boundaries reject it
+// instead, because silently guessing at a money-bucket key hides caller bugs.
+export function normalizeCurrency(currency: string): string {
+	return currency.trim().toUpperCase();
+}
+
 // Converts window strings like '1d', '30d', '1h' to milliseconds.
 export function parseWindowMs(window: string): number {
 	const n = parseInt(window, 10);
