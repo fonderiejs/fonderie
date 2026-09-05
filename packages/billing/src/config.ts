@@ -221,6 +221,10 @@ export const MESSAGE_KEYS = {
 	// A wallet auto-recharge attempt failed (card declined / needs auth / no
 	// card on file). Success reuses the payment-receipt notice.
 	autoRechargeFailed: 'billing.auto-recharge-failed',
+	// A subscription renewal invoice was paid (a receipt per renewal). Phase 3b.
+	renewalReceipt: 'billing.renewal-receipt',
+	// A trial is about to end (customer.subscription.trial_will_end). Phase 3b.
+	trialEnding: 'billing.trial-ending',
 } as const;
 
 export type BillingMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -242,8 +246,12 @@ export const EVENT_KEYS = {
 	walletLowBalance: 'fonderie.billing.wallet.low_balance',
 	creditPackPurchased: 'fonderie.billing.credit_pack.purchased',
 	paymentRefunded: 'fonderie.billing.payment.refunded',
+	paymentFailed: 'fonderie.billing.payment.failed',
 	autoRechargeFailed: 'fonderie.billing.auto_recharge.failed',
 	grantApplied: 'fonderie.billing.grant.applied',
+	invoicePaid: 'fonderie.billing.invoice.paid',
+	invoicePaymentFailed: 'fonderie.billing.invoice.payment_failed',
+	subscriptionTrialWillEnd: 'fonderie.billing.subscription.trial_will_end',
 } as const;
 
 export type BillingEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];

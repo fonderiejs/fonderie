@@ -1374,3 +1374,103 @@ test('webhook: without resolveRecipient, no notice is sent (only the domain even
 	await ctrl.handle(webhookCtx('{}'));
 	assert.equal(calls.filter((c) => c.type === NOTIFICATION_EVENT).length, 0);
 });
+
+// ── Phase 3b: invoice (renewal receipt / dunning) + trial-ending ──
+
+// A store that resolves a subscriber for the invoice→subscription lookup.
+function subByProviderStore(sub: { subscriberType: string; subscriberId: string } | null): IStoreAdapter {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('provider_subscription_id = $1')) return (sub ? [sub] : []) as T[];
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return store;
+}
+
+test('webhook: invoice.paid sends a renewal receipt', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'invoice.paid',
+			subscription: null,
+			invoice: { id: 'in_1', status: 'paid', amount: 1999n, currency: 'usd', providerTxId: 'pi_1', providerSubscriptionId: 'sub_1', providerCustomerId: 'cus_1', metadata: {} },
+		}),
+	});
+	const ctrl = webhookController(
+		subByProviderStore({ subscriberType: 'workspace', subscriberId: 'ws-1' }),
+		withRecipient({ provider, webhookSecret: 'whsec_x' }),
+		undefined,
+		bus,
+	);
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.invoicePaid).length, 1);
+	const notices = calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.renewalReceipt);
+	assert.equal(notices.length, 1);
+	assert.equal(notices[0]!.payload.data.amount, '1999');
+});
+
+test('webhook: invoice.payment_failed emits an event but NO notice (past_due owns the dunning email)', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { EVENT_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'invoice.payment_failed',
+			subscription: null,
+			invoice: { id: 'in_2', status: 'payment_failed', amount: 2500n, currency: 'usd', providerTxId: 'pi_2', providerSubscriptionId: 'sub_1', providerCustomerId: null, metadata: {} },
+		}),
+	});
+	const ctrl = webhookController(
+		subByProviderStore({ subscriberType: 'workspace', subscriberId: 'ws-1' }),
+		withRecipient({ provider, webhookSecret: 'whsec_x' }),
+		undefined,
+		bus,
+	);
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.invoicePaymentFailed).length, 1);
+	assert.equal(calls.filter((c) => c.type === NOTIFICATION_EVENT).length, 0, 'no double-dun here');
+});
+
+test('webhook: invoice for an unknown subscription is acknowledged and ignored', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'invoice.paid',
+			subscription: null,
+			invoice: { id: 'in_3', status: 'paid', amount: 100n, currency: 'usd', providerTxId: null, providerSubscriptionId: 'sub_unknown', providerCustomerId: null, metadata: {} },
+		}),
+	});
+	const ctrl = webhookController(subByProviderStore(null), withRecipient({ provider, webhookSecret: 'whsec_x' }));
+	const res = await ctrl.handle(webhookCtx('{}'));
+	assert.equal(((await res.json()) as any).ignored, 'no-matching-subscription');
+});
+
+test('webhook: trial_will_end sends a trial-ending notice without upserting the subscription', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	const cap = captureStore();
+	// nickname is the legacy 'wrong-nickname'; the plan must resolve from priceId.
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.trial_will_end',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly', status: 'trialing' }),
+		}),
+	});
+	const ctrl = webhookController(cap.store, withRecipient({ provider, webhookSecret: 'whsec_x' }), undefined, bus);
+	await ctrl.handle(webhookCtx('{}'));
+	const events = calls.filter((c) => c.type === EVENT_KEYS.subscriptionTrialWillEnd);
+	assert.equal(events.length, 1);
+	assert.equal(events[0]!.payload.plan, 'pro', 'plan resolved from priceId, not the nickname');
+	const notices = calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.trialEnding);
+	assert.equal(notices.length, 1);
+	assert.equal(notices[0]!.payload.data.plan, 'pro');
+	assert.equal(cap.plan(), undefined, 'a trial-ending heads-up must not upsert subscription state');
+});

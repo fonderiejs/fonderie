@@ -339,12 +339,21 @@ reversal path got a focused review.
   duplicate no-op, chargeback + dispute-won, cap, and a real-Postgres leg
   (negative-balance clawback + concurrent-reversal cap).
 
-#### Phase 3b — Dunning / receipt normalization (notification-only) — pending
-- [ ] Extend `IBillingEvent` with `invoice` / `paymentFailure` slots.
-- [ ] Normalize `invoice.paid` (renewal receipt) / `invoice.payment_failed`
-  (dunning) on the subscription webhook; `checkout.session.async_payment_failed`
-  and `payment_intent.payment_failed` (payment-failed notice) on the payment
-  webhook. Reuse `billing.payment-failed`; no money movement.
+#### Phase 3b — Dunning / receipt normalization (notification-only) — ✅ implemented
+- [x] Extend `IBillingEvent` with `invoice` / `paymentFailure` slots (+ `trial_will_end`
+  via the subscription slot). Additive/optional, like `reversal`.
+- [x] `invoice.paid` → `billing.renewal-receipt` + `invoice.paid` event.
+- [x] `invoice.payment_failed` → `invoice.payment_failed` event ONLY (no email —
+  the `past_due` transition owns the single dunning notice, so no double-dun).
+- [x] `checkout.session.async_payment_failed` / `payment_intent.payment_failed`
+  → `billing.payment-failed` notice + `payment.failed` event (one-time payments;
+  unattributable failures acked + ignored).
+- [x] `customer.subscription.trial_will_end` → `billing.trial-ending` notice +
+  event, without mutating subscription state.
+- [x] `getSubscriberByProviderSubscriptionId` resolves the invoice→subscriber
+  link. Tests: renewal receipt, event-only dunning (no double-email), trial
+  heads-up (no upsert), one-time payment-failure notice + unattributable-ignore,
+  and the pure normalizers.
 
 ### Phase 4 — Subscription lifecycle first-party controls (credit-SaaS polish)
 - [ ] `cancelSubscription` on `IBillingProvider` + first-party cancel /

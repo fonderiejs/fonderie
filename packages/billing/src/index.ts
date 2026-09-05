@@ -51,6 +51,8 @@ export type {
 	IBillingEvent,
 	INormalizedPayment,
 	INormalizedReversal,
+	INormalizedInvoice,
+	INormalizedPaymentFailure,
 	IResolvedPrice,
 } from './providers/types';
 export type {
@@ -120,7 +122,7 @@ export {
 	updatePlan,
 	deletePlan,
 } from './services/plans';
-export { getSubscription } from './services/subscriptions';
+export { getSubscription, getSubscriberByProviderSubscriptionId } from './services/subscriptions';
 export { maybeAutoRecharge } from './services/auto-recharge';
 export {
 	upsertWalletCustomer,

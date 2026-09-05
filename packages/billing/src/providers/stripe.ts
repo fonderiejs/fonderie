@@ -1,7 +1,9 @@
 import type {
 	IBillingProvider,
 	IBillingEvent,
+	INormalizedInvoice,
 	INormalizedPayment,
+	INormalizedPaymentFailure,
 	INormalizedReversal,
 	INormalizedSubscription,
 	IResolvedPrice,
@@ -68,6 +70,27 @@ interface IStripeDisputeRaw {
 	metadata?: Record<string, string> | null;
 }
 
+// invoice.paid / invoice.payment_failed deliver the Invoice.
+interface IStripeInvoiceRaw {
+	id: string;
+	currency?: string | null;
+	amount_paid?: number | null;
+	amount_due?: number | null;
+	payment_intent?: string | { id: string } | null;
+	subscription?: string | { id: string } | null;
+	customer?: string | { id: string } | null;
+	metadata?: Record<string, string> | null;
+}
+
+// payment_intent.payment_failed delivers the PaymentIntent.
+interface IStripePaymentIntentRaw {
+	id: string;
+	amount?: number | null;
+	currency?: string | null;
+	last_payment_error?: { message?: string | null; code?: string | null } | null;
+	metadata?: Record<string, string> | null;
+}
+
 // Stripe reference fields are `string | { id } | null` (id, or the expanded
 // object, or absent). Collapse to the id string, tolerating every shape.
 function refId(ref: string | { id: string } | null | undefined): string | null {
@@ -130,6 +153,52 @@ export function normalizeDispute(dispute: IStripeDisputeRaw): INormalizedReversa
 		reason: dispute.reason ?? null,
 		status: dispute.status ?? null,
 		metadata: dispute.metadata ?? {},
+	};
+}
+
+// Pure normalization of an invoice.paid / invoice.payment_failed event. The
+// amount comes from amount_paid (paid) or amount_due (failed).
+export function normalizeInvoice(
+	inv: IStripeInvoiceRaw,
+	status: 'paid' | 'payment_failed',
+): INormalizedInvoice {
+	const raw = status === 'paid' ? inv.amount_paid : inv.amount_due;
+	return {
+		id: inv.id,
+		status,
+		amount: raw != null ? BigInt(raw) : null,
+		currency: inv.currency ?? null,
+		providerTxId: refId(inv.payment_intent),
+		providerSubscriptionId: refId(inv.subscription),
+		providerCustomerId: refId(inv.customer),
+		metadata: inv.metadata ?? {},
+	};
+}
+
+// Pure normalization of a failed one-time payment ATTEMPT — the checkout-session
+// variant (async_payment_failed) carries a session id; the PaymentIntent
+// variant does not.
+export function normalizePaymentFailureFromSession(
+	session: IStripeCheckoutSessionRaw,
+): INormalizedPaymentFailure {
+	return {
+		sessionId: session.id,
+		providerTxId: refId(session.payment_intent),
+		amount: session.amount_total != null ? BigInt(session.amount_total) : null,
+		currency: session.currency ?? null,
+		reason: null,
+		metadata: session.metadata ?? {},
+	};
+}
+
+export function normalizePaymentFailureFromIntent(pi: IStripePaymentIntentRaw): INormalizedPaymentFailure {
+	return {
+		sessionId: null,
+		providerTxId: pi.id,
+		amount: pi.amount != null ? BigInt(pi.amount) : null,
+		currency: pi.currency ?? null,
+		reason: pi.last_payment_error?.message ?? pi.last_payment_error?.code ?? null,
+		metadata: pi.metadata ?? {},
 	};
 }
 
@@ -468,10 +537,40 @@ export class StripeProvider implements IBillingProvider {
 			};
 		}
 
+		// Subscription invoice events (renewal receipt / dunning) — Phase 3b.
+		if (raw.type === 'invoice.paid' || raw.type === 'invoice.payment_failed') {
+			const status = raw.type === 'invoice.paid' ? 'paid' : 'payment_failed';
+			return {
+				type: raw.type,
+				subscription: null,
+				invoice: normalizeInvoice(raw.data.object as IStripeInvoiceRaw, status),
+			};
+		}
+
+		// Failed one-time payment ATTEMPTS (delayed-method pack payment, or a
+		// declined PaymentIntent) — distinct from a subscription's past_due dunning.
+		if (raw.type === 'checkout.session.async_payment_failed') {
+			return {
+				type: raw.type,
+				subscription: null,
+				paymentFailure: normalizePaymentFailureFromSession(raw.data.object as IStripeCheckoutSessionRaw),
+			};
+		}
+		if (raw.type === 'payment_intent.payment_failed') {
+			return {
+				type: raw.type,
+				subscription: null,
+				paymentFailure: normalizePaymentFailureFromIntent(raw.data.object as IStripePaymentIntentRaw),
+			};
+		}
+
 		const isSubscriptionEvent = [
 			'customer.subscription.created',
 			'customer.subscription.updated',
 			'customer.subscription.deleted',
+			// A trial about to end — carries the subscription; the webhook emits a
+			// heads-up notice without mutating state (handled before the upsert).
+			'customer.subscription.trial_will_end',
 		].includes(raw.type);
 
 		if (!isSubscriptionEvent) {
