@@ -100,6 +100,23 @@ updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 -- PRIMARY KEY (subscriber_type, subscriber_id, currency)
 ```
 
+### `fonderie_wallet_customers`
+
+```sql
+subscriber_type          TEXT NOT NULL
+subscriber_id            UUID NOT NULL
+provider                 TEXT NOT NULL
+provider_customer_id     TEXT NOT NULL
+auto_recharge_disabled   BOOLEAN NOT NULL DEFAULT false
+consecutive_failures     INT NOT NULL DEFAULT 0
+last_recharge_at         TIMESTAMPTZ
+pending_recharge_key     TEXT
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- CONSTRAINT fonderie_wallet_customers_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
+-- PRIMARY KEY (subscriber_type, subscriber_id, provider)
+```
+
 ### `fonderie_wallet_grants`
 
 ```sql

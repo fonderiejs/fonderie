@@ -38,6 +38,7 @@ interface IStripeEventRaw {
 export interface IStripeCheckoutSessionRaw {
 	id: string;
 	mode?: string;
+	customer?: string | { id: string } | null;
 	payment_intent?: string | { id: string } | null;
 	amount_total?: number | null;
 	currency?: string | null;
@@ -79,6 +80,7 @@ export function normalizePaymentSession(session: IStripeCheckoutSessionRaw): INo
 	return {
 		sessionId: session.id,
 		providerTxId: refId(session.payment_intent),
+		customerId: refId(session.customer),
 		amountTotal: session.amount_total != null ? BigInt(session.amount_total) : null,
 		currency: session.currency ?? null,
 		paymentStatus: session.payment_status ?? null,
@@ -264,6 +266,7 @@ export class StripeProvider implements IBillingProvider {
 		name: string;
 		quantity?: number;
 		priceId?: string;
+		savePaymentMethod?: boolean;
 		metadata: Record<string, string>;
 		successUrl: string;
 		cancelUrl: string;
@@ -288,8 +291,70 @@ export class StripeProvider implements IBillingProvider {
 			success_url: opts.successUrl,
 			cancel_url: opts.cancelUrl,
 			metadata: opts.metadata,
+			// Save the card to the customer for later off-session auto-recharge.
+			// The operator must have surfaced consent to store it for reuse.
+			...(opts.savePaymentMethod
+				? { payment_intent_data: { setup_future_usage: 'off_session' } }
+				: {}),
 		});
 		return { url: session.url ?? '', sessionId: session.id };
+	}
+
+	// Charge the customer's saved card with no user present (wallet auto-recharge).
+	// Resolves the card from the customer when one isn't given; maps a decline /
+	// authentication-required outcome to a status instead of throwing, so the
+	// caller backs off cleanly. Stripe's own idempotency key dedupes retries.
+	async chargeOffSession(opts: {
+		customerId: string;
+		amount: bigint;
+		currency: string;
+		idempotencyKey: string;
+		metadata: Record<string, string>;
+	}): Promise<{
+		providerTxId: string | null;
+		status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
+	}> {
+		try {
+			const stripe = await this.client();
+			// Use the most recently attached card on file.
+			const methods = await stripe.paymentMethods.list({
+				customer: opts.customerId,
+				type: 'card',
+				limit: 1,
+			});
+			const paymentMethod = methods.data?.[0]?.id;
+			// No card on file is a definitive fail (nothing to reconcile).
+			if (!paymentMethod) return { providerTxId: null, status: 'failed' };
+
+			const pi = await stripe.paymentIntents.create(
+				{
+					amount: toSafeNumber(opts.amount),
+					currency: opts.currency.toLowerCase(),
+					customer: opts.customerId,
+					payment_method: paymentMethod,
+					off_session: true,
+					confirm: true,
+					metadata: opts.metadata,
+				},
+				{ idempotencyKey: opts.idempotencyKey },
+			);
+			const status = pi.status === 'succeeded' ? 'succeeded' : 'requires_action';
+			return { providerTxId: pi.id ?? null, status };
+		} catch (err) {
+			// Classify by error type. A card-level error (declined / SCA) is a
+			// DEFINITIVE outcome carrying the failed PI. A connection/timeout/API
+			// error is INDETERMINATE — the charge may have captured — so report
+			// 'unknown' and let the caller retry with the SAME idempotency key.
+			const e = err as {
+				type?: string;
+				code?: string;
+				payment_intent?: { id?: string };
+			};
+			const isCardError = e?.type === 'StripeCardError' || e?.type === 'card_error';
+			if (!isCardError) return { providerTxId: e?.payment_intent?.id ?? null, status: 'unknown' };
+			const status = e?.code === 'authentication_required' ? 'requires_action' : 'failed';
+			return { providerTxId: e?.payment_intent?.id ?? null, status };
+		}
 	}
 
 	async resolvePriceById(priceId: string): Promise<IResolvedPrice | null> {
