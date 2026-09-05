@@ -17,6 +17,7 @@ import {
 } from '../services/wallet';
 import { resolveSubscriber, parseWindowMs, subscriberEventFields } from '../utils';
 import { notifyBilling } from '../services/notify';
+import { maybeAutoRecharge } from '../services/auto-recharge';
 
 // In-process de-dup: tracks which threshold notifications have fired this session.
 // Acceptable to lose on restart (may send one duplicate after a redeploy).
@@ -149,6 +150,22 @@ export function withBilling(
 							},
 						});
 					}
+				}
+
+				// Auto-recharge — fire-and-forget; maybeAutoRecharge owns every
+				// safety property (atomic per-subscriber claim, idempotent credit,
+				// failure backoff + disable). An off-session charge must never block
+				// or fail the request, so its outcome is deliberately ignored here.
+				if (planWallet.autoRecharge) {
+					void maybeAutoRecharge({
+						store,
+						config,
+						bus,
+						subscriberType: subscriber.type,
+						subscriberId: subscriber.id,
+						balance,
+						planWallet,
+					}).catch(() => {});
 				}
 			} catch (err) {
 				// eslint-disable-next-line no-console

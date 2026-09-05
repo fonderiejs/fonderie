@@ -11,6 +11,7 @@ import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
 import { normalizeCurrency, subscriberEventFields } from '../utils';
 import { notifyBilling } from '../services/notify';
+import { upsertWalletCustomer } from '../services/wallet-customers';
 import { readWebhookEvent } from './webhook-shared';
 
 // A ledger-stored money amount (JSON metadata) parsed back to bigint, or null
@@ -267,6 +268,33 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 							...(payment.providerTxId ? { providerTxId: payment.providerTxId } : {}),
 						},
 					});
+				}
+
+				// Persist the customer that holds the saved card so a later
+				// off-session auto-recharge can charge it (re-arming auto-recharge
+				// on this fresh purchase). Runs on every paid delivery (idempotent
+				// upsert) so a retry that skipped the emit block still records it;
+				// wrapped so a persistence hiccup can never fail a webhook whose
+				// credit already committed.
+				if (payment.customerId) {
+					try {
+						await upsertWalletCustomer(
+							{
+								subscriberType: subscriberType as SubscriberType,
+								subscriberId,
+								provider: config.provider.name,
+								providerCustomerId: payment.customerId,
+								// Re-arm auto-recharge (clear disable + failures) only on a
+								// genuinely NEW purchase — a replayed delivery of an old
+								// purchase must not resurrect a card that failures disabled.
+								rearm: !result.duplicate,
+							},
+							store,
+						);
+					} catch {
+						// best-effort; auto-recharge stays un-armed until the next
+						// successful purchase persists the customer.
+					}
 				}
 
 				return Response.json({ received: true, duplicate: result.duplicate });

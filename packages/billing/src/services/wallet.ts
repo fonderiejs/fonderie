@@ -7,7 +7,7 @@ import type {
 	SubscriberType,
 	WalletLedgerType,
 } from '../types';
-import type { IBillingConfig, IBillingPlan } from '../config';
+import type { IBillingConfig, IBillingPlan, IBillingWalletAutoRecharge } from '../config';
 import { DuplicateTransactionError, InsufficientFundsError } from '../errors';
 import { normalizeCurrency } from '../utils';
 
@@ -603,6 +603,8 @@ export interface IResolvedPlanWallet {
 	rates: Record<string, IWalletRate>;
 	/** Balance at/below which withBilling signals a low balance. null disables. */
 	lowBalanceAt: bigint | null;
+	/** Off-session auto-recharge economics. null disables. */
+	autoRecharge: IBillingWalletAutoRecharge | null;
 }
 
 export function resolvePlanWallet(
@@ -618,6 +620,7 @@ export function resolvePlanWallet(
 		grantPeriod: plan.wallet.grantPeriod ?? 'month',
 		rates: plan.wallet.rates ?? {},
 		lowBalanceAt: plan.wallet.lowBalanceAt ?? null,
+		autoRecharge: plan.wallet.autoRecharge ?? null,
 	};
 }
 

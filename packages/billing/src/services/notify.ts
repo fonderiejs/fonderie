@@ -59,18 +59,50 @@ export function collectBillingReadinessProblems(
 	config: IBillingConfig,
 	hasBus: boolean,
 ): IReadinessProblem[] {
-	if (!billingPaymentsEnabled(config)) return [];
-	const receiptPathWired = hasBus && typeof config.resolveRecipient === 'function';
-	if (receiptPathWired) return [];
-	return [
-		{
-			module: '@fonderie/billing',
-			severity: process.env['NODE_ENV'] === 'production' ? 'error' : 'warning',
-			message:
-				'payments are enabled but no customer-communication path is configured — ' +
-				'pass an EventBus to BillingModule and set config.resolveRecipient so ' +
-				'purchase receipts, refund notices, and failed-payment alerts can be ' +
-				'delivered (consumer-protection/tax records; SOC 2 Processing Integrity).',
-		},
-	];
+	const problems: IReadinessProblem[] = [];
+
+	if (billingPaymentsEnabled(config)) {
+		const receiptPathWired = hasBus && typeof config.resolveRecipient === 'function';
+		if (!receiptPathWired) {
+			problems.push({
+				module: '@fonderie/billing',
+				severity: process.env['NODE_ENV'] === 'production' ? 'error' : 'warning',
+				message:
+					'payments are enabled but no customer-communication path is configured — ' +
+					'pass an EventBus to BillingModule and set config.resolveRecipient so ' +
+					'purchase receipts, refund notices, and failed-payment alerts can be ' +
+					'delivered (consumer-protection/tax records; SOC 2 Processing Integrity).',
+			});
+		}
+	}
+
+	// Auto-recharge misconfig degrades silently (the top-up just never fires,
+	// and a subscriber hits zero unexpectedly), so surface it — a warning, since
+	// the low-balance notice still informs and nothing unsafe happens.
+	const packIds = new Set((config.wallet?.creditPacks ?? []).map((p) => p.id));
+	const canChargeOffSession = typeof config.provider.chargeOffSession === 'function';
+	for (const plan of config.plans) {
+		const auto = plan.wallet?.autoRecharge;
+		if (!auto) continue;
+		if (!canChargeOffSession) {
+			problems.push({
+				module: '@fonderie/billing',
+				severity: 'warning',
+				message:
+					`plan '${plan.name}' enables wallet auto-recharge but provider ` +
+					`'${config.provider.name}' does not implement chargeOffSession — auto-recharge will never fire.`,
+			});
+		}
+		if (!packIds.has(auto.packId)) {
+			problems.push({
+				module: '@fonderie/billing',
+				severity: 'warning',
+				message:
+					`plan '${plan.name}' auto-recharge references unknown credit pack '${auto.packId}' — ` +
+					'auto-recharge will never fire. Add it to config.wallet.creditPacks.',
+			});
+		}
+	}
+
+	return problems;
 }

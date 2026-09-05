@@ -44,6 +44,10 @@ export interface INormalizedReversal {
 export interface INormalizedPayment {
 	sessionId: string;
 	providerTxId: string | null; // e.g. the Stripe PaymentIntent id
+	// The provider customer this payment belongs to — persisted so a later
+	// off-session auto-recharge can charge the card saved on that customer.
+	// null when the checkout was not tied to a stored customer.
+	customerId: string | null;
 	amountTotal: bigint | null; // what the customer paid, smallest currency unit
 	currency: string | null;
 	// 'paid' / 'no_payment_required' when funds are confirmed; other values
@@ -120,10 +124,37 @@ export interface IBillingProvider {
 		quantity?: number;
 		// An existing provider Price id to charge instead of the ad-hoc amount.
 		priceId?: string;
+		// Save the card to the customer for later off-session charges (wallet
+		// auto-recharge). Requires the operator to have obtained the buyer's
+		// consent to store it. Ignored by providers without off-session support.
+		savePaymentMethod?: boolean;
 		metadata: Record<string, string>;
 		successUrl: string;
 		cancelUrl: string;
 	}): Promise<{ url: string; sessionId: string }>;
+
+	// Charge a stored customer's saved card off-session (no user present) — the
+	// engine behind wallet auto-recharge. Optional: when absent, auto-recharge
+	// is inert (checkReadiness warns). Must be idempotent on idempotencyKey.
+	// NEVER throws — every outcome resolves to a status so the caller can decide:
+	//   'succeeded'        funds captured (providerTxId set) → credit.
+	//   'requires_action'  SCA needed — a definitive soft-fail; back off.
+	//   'failed'           definitive decline / no card on file; back off.
+	//   'unknown'          INDETERMINATE (network/timeout/API error): the charge
+	//                      MAY have captured. The caller must NOT re-charge with a
+	//                      fresh idempotency key and must NOT count it as a
+	//                      decline — retry later with the SAME idempotencyKey so
+	//                      the provider dedupes to the original PaymentIntent.
+	chargeOffSession?(opts: {
+		customerId: string;
+		amount: bigint; // smallest currency unit
+		currency: string;
+		idempotencyKey: string;
+		metadata: Record<string, string>;
+	}): Promise<{
+		providerTxId: string | null;
+		status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
+	}>;
 
 	// Resolve live price data (source of truth for amount/currency/interval) from
 	// the provider. Used by read-through pricing hydration.

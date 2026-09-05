@@ -64,6 +64,37 @@ export interface IBillingPlanWallet {
 	 * once per subscriber per session. Omit to disable.
 	 */
 	lowBalanceAt?: bigint;
+	/**
+	 * Automatic off-session top-up. When set and the subscriber's balance drops
+	 * to `threshold`, withBilling charges the named credit pack's price against
+	 * the card saved at the last pack purchase and credits its credits — no
+	 * user interaction. Requires: the provider implements chargeOffSession, and
+	 * the buyer previously purchased a pack (so a customer + card is on file;
+	 * that checkout must have obtained consent to store the card for later
+	 * charges). Omit to disable (the low-balance notice still informs).
+	 */
+	autoRecharge?: IBillingWalletAutoRecharge;
+}
+
+export interface IBillingWalletAutoRecharge {
+	/** Balance at/below which a top-up is attempted (wallet's smallest unit). */
+	threshold: bigint;
+	/** A credit pack id from config.wallet.creditPacks — its price is charged, its credits added. */
+	packId: string;
+	/**
+	 * Minimum seconds between top-up ATTEMPTS for one subscriber (a failed
+	 * attempt still consumes the window, so a declined card can't be hammered).
+	 * Default 3600 (1h); floored at 1s. Keep it well under ~24h: a lost-response
+	 * ("unknown") charge is retried with the same provider idempotency key so the
+	 * charge is deduped, and Stripe expires idempotency keys after ~24h — a
+	 * cooldown that long could let the post-expiry retry double-charge.
+	 */
+	cooldownSeconds?: number;
+	/**
+	 * Consecutive failed attempts after which auto-recharge is disabled for the
+	 * subscriber until a new pack purchase re-arms it. Default 3.
+	 */
+	maxConsecutiveFailures?: number;
 }
 
 export interface IBillingPlan {
@@ -186,10 +217,10 @@ export const MESSAGE_KEYS = {
 	paymentFailed: 'billing.payment-failed',
 	subscriptionCanceled: 'billing.subscription-canceled',
 	creditsLow: 'billing.credits-low',
-	// Declared for the full contract but NOT yet emitted — a normalized refund
-	// event (charge.refunded / clawback) arrives with Phase 3 provider
-	// normalization. Templating it early is safe; nothing dispatches it in 6.1.
 	refundProcessed: 'billing.refund-processed',
+	// A wallet auto-recharge attempt failed (card declined / needs auth / no
+	// card on file). Success reuses the payment-receipt notice.
+	autoRechargeFailed: 'billing.auto-recharge-failed',
 } as const;
 
 export type BillingMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -211,6 +242,7 @@ export const EVENT_KEYS = {
 	walletLowBalance: 'fonderie.billing.wallet.low_balance',
 	creditPackPurchased: 'fonderie.billing.credit_pack.purchased',
 	paymentRefunded: 'fonderie.billing.payment.refunded',
+	autoRechargeFailed: 'fonderie.billing.auto_recharge.failed',
 	grantApplied: 'fonderie.billing.grant.applied',
 } as const;
 

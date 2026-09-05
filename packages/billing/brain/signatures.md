@@ -17,7 +17,8 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
   .name: "stripe"
   .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>
   .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; }): Promise<{ url: string; }>
-  .createPaymentCheckoutSession(opts: { customerId: string; amount: bigint; currency: string; name: string; quantity?: number; priceId?: string; metadata: Record<string, string>; successUrl: string; cancelUrl: string; }): Promise<...>
+  .createPaymentCheckoutSession(opts: { customerId: string; amount: bigint; currency: string; name: string; quantity?: number; priceId?: string; savePaymentMethod?: boolean; metadata: Record<string, string>; successUrl: string; cancelUrl: string; }): Promise<...>
+  .chargeOffSession(opts: { customerId: string; amount: bigint; currency: string; idempotencyKey: string; metadata: Record<string, string>; }): Promise<{ providerTxId: string | null; status: "succeeded" | "requires_action" | "failed" | "unknown"; }>
   .resolvePriceById(priceId: string): Promise<IResolvedPrice | null>
   .resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>
   .updateSubscription(opts: { subscriptionId: string; priceId: string; }): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null; }>
@@ -46,9 +47,9 @@ function debitWalletForMetric(ctx: IFonderieContext, metric: string, opts: { ide
 
 function insufficientCreditsResponse(err: InsufficientFundsError, metric?: string | undefined): Response
 
-const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; readonly paymentReceipt: "billing.payment-receipt"; readonly paymentFailed: "billing.payment-failed"; readonly subscriptionCanceled: "billing.subscription-canceled"; readonly creditsLow: "billing.credits-low"; readonly refundProcessed: "billing.refund-processed"; }
+const MESSAGE_KEYS: { readonly limitWarning: "billing.limit-warning"; readonly limitReached: "billing.limit-reached"; readonly limitBlocked: "billing.limit-blocked"; readonly paymentReceipt: "billing.payment-receipt"; readonly paymentFailed: "billing.payment-failed"; readonly subscriptionCanceled: "billing.subscription-canceled"; readonly creditsLow: "billing.credits-low"; readonly refundProcessed: "billing.refund-processed"; readonly autoRechargeFailed: "billing.auto-recharge-failed"; }
 
-const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly walletDebited: "fonderie.billing.wallet.debited"; readonly walletLowBalance: "fonderie.billing.wallet.low_balance"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly paymentRefunded: "fonderie.billing.payment.refunded"; readonly grantApplied: "fonderie.billing.grant.applied"; }
+const EVENT_KEYS: { readonly subscriptionCreated: "fonderie.billing.subscription.created"; readonly subscriptionUpdated: "fonderie.billing.subscription.updated"; readonly subscriptionCanceled: "fonderie.billing.subscription.canceled"; readonly subscriptionPastDue: "fonderie.billing.subscription.past_due"; readonly walletCredited: "fonderie.billing.wallet.credited"; readonly walletDebited: "fonderie.billing.wallet.debited"; readonly walletLowBalance: "fonderie.billing.wallet.low_balance"; readonly creditPackPurchased: "fonderie.billing.credit_pack.purchased"; readonly paymentRefunded: "fonderie.billing.payment.refunded"; readonly autoRechargeFailed: "fonderie.billing.auto_recharge.failed"; readonly grantApplied: "fonderie.billing.grant.applied"; }
 
 interface IBillingConfig {
     provider: IBillingProvider;
@@ -108,6 +109,7 @@ interface IBillingPlanWallet {
     overdraftLimit?: bigint;
     rates?: Record<string, IWalletRate>;
     lowBalanceAt?: bigint;
+    autoRecharge?: IBillingWalletAutoRecharge;
 }
 
 interface IBillingPricingConfig {
@@ -123,6 +125,13 @@ interface IBillingWalletConfig {
     adminToken?: string;
     webhookSecret?: string;
     creditPacks?: IBillingCreditPack[];
+}
+
+interface IBillingWalletAutoRecharge {
+    threshold: bigint;
+    packId: string;
+    cooldownSeconds?: number;
+    maxConsecutiveFailures?: number;
 }
 
 interface IBillingRecipient {
@@ -197,12 +206,23 @@ interface IBillingProvider {
         name: string;
         quantity?: number;
         priceId?: string;
+        savePaymentMethod?: boolean;
         metadata: Record<string, string>;
         successUrl: string;
         cancelUrl: string;
     }): Promise<{
         url: string;
         sessionId: string;
+    }>;
+    chargeOffSession?(opts: {
+        customerId: string;
+        amount: bigint;
+        currency: string;
+        idempotencyKey: string;
+        metadata: Record<string, string>;
+    }): Promise<{
+        providerTxId: string | null;
+        status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
     }>;
     resolvePriceById(priceId: string): Promise<IResolvedPrice | null>;
     resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>;
@@ -237,6 +257,7 @@ interface IBillingEvent {
 interface INormalizedPayment {
     sessionId: string;
     providerTxId: string | null;
+    customerId: string | null;
     amountTotal: bigint | null;
     currency: string | null;
     paymentStatus: string | null;
@@ -492,6 +513,7 @@ interface IResolvedPlanWallet {
     grantPeriod: 'month' | 'week' | 'day';
     rates: Record<string, IWalletRate>;
     lowBalanceAt: bigint | null;
+    autoRecharge: IBillingWalletAutoRecharge | null;
 }
 
 new InsufficientFundsError(available: bigint, required: bigint, currency: string): InsufficientFundsError
@@ -529,6 +551,28 @@ function updatePlan(id: string, data: Partial<Omit<IPlan, "id">>, store: IStoreA
 function deletePlan(id: string, store: IStoreAdapter): Promise<boolean>
 
 function getSubscription(subscriberType: SubscriberType, subscriberId: string, store: IStoreAdapter): Promise<ISubscription | null>
+
+function maybeAutoRecharge(args: { store: IStoreAdapter; config: IBillingConfig; bus: EventBus | undefined; subscriberType: SubscriberType; subscriberId: string; balance: bigint; planWallet: IResolvedPlanWallet; }): Promise<...>
+
+function upsertWalletCustomer(key: IWalletCustomerKey & { providerCustomerId: string; rearm: boolean; }, store: IStoreAdapter): Promise<void>
+
+function claimAutoRecharge(key: IWalletCustomerKey & { cooldownSeconds: number; }, store: IStoreAdapter): Promise<IAutoRechargeClaim | null>
+
+function recordRechargeSuccess(key: IWalletCustomerKey, store: IStoreAdapter): Promise<void>
+
+function recordRechargeFailure(key: IWalletCustomerKey & { maxConsecutiveFailures: number; }, store: IStoreAdapter): Promise<{ disabled: boolean; }>
+
+interface IWalletCustomerKey {
+    subscriberType: SubscriberType;
+    subscriberId: string;
+    provider: string;
+}
+
+interface IAutoRechargeClaim {
+    providerCustomerId: string;
+    claimedAt: string;
+    pendingKey: string | null;
+}
 
 namespace schemas — exports: checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, updatePlanSchema, walletCheckoutSchema
 ```

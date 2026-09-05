@@ -163,12 +163,20 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 					})
 				).customerId;
 
+			// Save the card for later off-session charges only when this
+			// subscriber's plan enables auto-recharge — so we never store a card
+			// (and shoulder its consent burden) unless it will actually be used.
+			const planName = current?.plan ?? config.plans[0]?.name;
+			const plan = config.plans.find((p) => p.name === planName);
+			const savePaymentMethod = plan?.wallet?.autoRecharge != null;
+
 			const session = await config.provider.createPaymentCheckoutSession({
 				customerId,
 				amount: pack.priceAmount,
 				currency: chargeCurrency,
 				name: pack.name,
 				...(pack.priceId ? { priceId: pack.priceId } : {}),
+				...(savePaymentMethod ? { savePaymentMethod: true } : {}),
 				metadata: {
 					subscriberType: subscriber.type,
 					subscriberId: subscriber.id,
