@@ -37,7 +37,7 @@ export class WebhookDispatcher {
 		const deliveries = new DeliveryModel(this.store);
 		const pending = await deliveries.claimForRetry();
 		await Promise.allSettled(
-			pending.map(({ delivery, url, secret }) =>
+			pending.map(({ url, secret, ...delivery }) =>
 				this.attemptDelivery(url, secret, delivery, deliveries),
 			),
 		);
