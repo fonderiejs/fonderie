@@ -1,8 +1,20 @@
 export type SubscriberType = 'user' | 'workspace';
 
-// Billing interval — one source for the 'month' | 'year' literals.
-export const BILLING_INTERVAL = { MONTH: 'month', YEAR: 'year' } as const;
-export type BillingInterval = (typeof BILLING_INTERVAL)[keyof typeof BILLING_INTERVAL];
+// Billing interval — ONE source for the 'month' | 'year' literals. The tuple
+// drives the type, the zod schema, and runtime membership checks; the object
+// is the ergonomic dot-access companion (`satisfies` pins its values to the
+// union). Adding an interval starts here and the compiler walks you through
+// every exhaustive switch that must learn about it.
+export const BILLING_INTERVALS = ['month', 'year'] as const;
+export type BillingInterval = (typeof BILLING_INTERVALS)[number];
+export const BILLING_INTERVAL = {
+	MONTH: 'month',
+	YEAR: 'year',
+} as const satisfies Record<string, BillingInterval>;
+
+export function isBillingInterval(value: unknown): value is BillingInterval {
+	return (BILLING_INTERVALS as readonly unknown[]).includes(value);
+}
 
 // ── Policy ────────────────────────────────────────────────────────
 
@@ -60,7 +72,7 @@ export interface ISubscription {
 	subscriberType: SubscriberType;
 	subscriberId: string;
 	plan: string;
-	interval: 'month' | 'year';
+	interval: BillingInterval;
 	status: SubscriptionStatus;
 	providerCustomerId: string | null;
 	providerSubscriptionId: string | null;

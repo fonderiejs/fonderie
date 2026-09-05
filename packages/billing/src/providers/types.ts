@@ -1,4 +1,4 @@
-import type { SubscriberType } from '../types';
+import type { BillingInterval, SubscriberType } from '../types';
 
 // The normalized event shape — provider-agnostic
 export interface IBillingEvent {
@@ -38,7 +38,7 @@ export interface INormalizedSubscription {
 	currentPeriodEnd: Date;
 	cancelAtPeriodEnd: boolean;
 	trialEndsAt: Date | null;
-	interval: 'month' | 'year';
+	interval: BillingInterval;
 }
 
 // Live price resolved from the provider (Stripe = source of truth).
@@ -47,7 +47,7 @@ export interface IResolvedPrice {
 	lookupKey: string | null;
 	unitAmount: bigint; // smallest currency unit
 	currency: string; // ISO 4217 (Stripe lowercases)
-	interval: 'month' | 'year';
+	interval: BillingInterval;
 	nickname: string | null;
 	productId: string;
 	active: boolean;
