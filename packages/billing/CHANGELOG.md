@@ -1,5 +1,51 @@
 # @fonderie/billing
 
+## 6.2.0
+
+### Minor Changes
+
+- f8d1983: Wallet auto-recharge — automatic off-session top-up when a balance runs low
+  
+  A plan wallet can now opt into auto-recharge:
+  
+  ```ts
+  wallet: { autoRecharge: { threshold: 500n, packId: 'refill_20' } }
+  ```
+  
+  When a subscriber's balance drops to `threshold`, `withBilling` charges the named credit pack's price against the card saved at the last pack purchase and credits its credits — no user interaction. This is the highest-leverage add for prepaid/metered products: users never hit a hard zero mid-usage.
+  
+  Money-safety (the same rigor as the debit and clawback paths):
+  - **Atomic claim** — a single conditional `UPDATE` (`claimAutoRecharge`) row-locks per subscriber, so a burst of low-balance requests fires **exactly one** charge per cooldown window (proven on real Postgres). A failed attempt still consumes the window, so a declined card is never hammered.
+  - **Idempotent credit** — the wallet is credited keyed on the provider charge id, so a retry never double-credits.
+  - **Graceful failure** — a decline resolves to a status (not a throw): it's recorded, backed off, and auto-recharge is **disabled after N consecutive failures** (default 3), re-armed by the next successful purchase. Emits `fonderie.billing.auto_recharge.failed` + a `billing.auto-recharge-failed` notice.
+  - **Fire-and-forget** — triggered from `withBilling` without blocking or failing the request; all safety lives in the service.
+  
+  New surface: `IBillingProvider.chargeOffSession` (Stripe implemented — off-session PaymentIntent), `createPaymentCheckoutSession({ savePaymentMethod })` (sets `setup_future_usage`), `INormalizedPayment.customerId`, migration `008_wallet_customers` (persists the customer holding the saved card + the recharge guard state), and `maybeAutoRecharge` / the `wallet-customers` service helpers. `BillingModule.checkReadiness()` warns when auto-recharge is configured but the provider can't charge off-session or the `packId` is unknown.
+  
+  **Consent note:** enabling auto-recharge makes the pack checkout save the card for later charges — the operator must surface the required consent that the card will be charged automatically. Additive and opt-in: absent `autoRecharge`, nothing changes and no card is saved.
+- 7533061: Phase 3b: invoice, trial-ending, and one-time payment-failure normalization (dunning + renewal receipts, notification-only)
+  
+  The Stripe provider now normalizes four more event families into `IBillingEvent` (additive optional slots `invoice` / `paymentFailure`, plus `trial_will_end` via the existing subscription slot):
+  
+  - **`invoice.paid`** → a **renewal receipt** (`billing.renewal-receipt` notice + `fonderie.billing.invoice.paid` event), one per successful subscription renewal.
+  - **`invoice.payment_failed`** → a durable **`fonderie.billing.invoice.payment_failed` event only, deliberately no email** — the dunning notice already fires exactly once on the `past_due` transition (Phase 2), so emitting here too would double-dun. The richer event lets you build retry cadence.
+  - **`checkout.session.async_payment_failed` / `payment_intent.payment_failed`** → a **`billing.payment-failed`** notice + `fonderie.billing.payment.failed` event for failed *one-time* (credit-pack) payments; unattributable failures are acknowledged and ignored.
+  - **`customer.subscription.trial_will_end`** → a **`billing.trial-ending`** notice + `fonderie.billing.subscription.trial_will_end` event, **without mutating subscription state** (it's a heads-up; nothing changed yet). This is the "your trial ends in 3 days" signal.
+  
+  No money moves. New surface: `INormalizedInvoice`, `INormalizedPaymentFailure`, `getSubscriberByProviderSubscriptionId` (resolves who to notify from an invoice's provider subscription id), and the new `MESSAGE_KEYS`/`EVENT_KEYS`. Additive and opt-in — a provider that doesn't normalize these events is unaffected, and notices only send when `resolveRecipient` + a bus are wired.
+- 1d7e917: Phase 4: first-party subscription cancel & reactivate
+  
+  Two new session-authenticated routes give customers self-serve cancellation without the hosted billing portal:
+  
+  - **`POST /billing/subscription/cancel`** — `atPeriodEnd` defaults to `true` (keep access until the paid-through date); `false` cancels immediately.
+  - **`POST /billing/subscription/reactivate`** — un-cancel a subscription scheduled to cancel at period end (idempotent).
+  
+  New optional provider methods `IBillingProvider.cancelSubscription` / `reactivateSubscription` (Stripe implemented via `cancel_at_period_end` / `subscriptions.cancel`), returning `ISubscriptionChange`. When a provider doesn't implement them the routes answer `501` (the hosted portal remains a fallback).
+  
+  The controller performs the provider change and updates the stored subscription **optimistically** (so the next read reflects it), but deliberately emits **no events and no notices** — the provider webhook (`customer.subscription.updated`/`.deleted`) stays the single source of truth for the lifecycle event + the `billing.subscription-canceled` notice, so a cancellation is announced exactly once. Routes are behind `requireAuth` and the `withBilling` workspace-membership guard, so a caller can only act on their own subscription.
+  
+  This is the "cancel endpoint" from the capability audit. **Downgrade (scheduled plan-change) and dunning-grace remain out of scope** — downgrade needs Stripe subscription schedules and is deferred to a Phase 4b. Additive/opt-in.
+
 ## 6.1.0
 
 ### Minor Changes
