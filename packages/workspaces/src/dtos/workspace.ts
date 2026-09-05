@@ -48,6 +48,18 @@ export interface IMemberDTO {
 	roleName: string;
 	confirmed: boolean;
 	createdAt: string;
+	/**
+	 * Identity, carried so a member list is renderable from this endpoint alone.
+	 *
+	 * listMembers() already joins the users table for these; without them a
+	 * client has no name to show and falls back to printing a user id.
+	 *
+	 * Empty string when absent, matching every other string field in this file.
+	 */
+	email: string;
+	firstName: string;
+	lastName: string;
+	profileImageUrl: string;
 }
 
 export interface IInvitationDTO {
@@ -118,6 +130,10 @@ export function toMemberDTO(m: IMember): IMemberDTO {
 		roleName: stringOrEmpty(m.roleName),
 		confirmed: booleanOrFalse(m.confirmed),
 		createdAt: dateOrEmpty(m.createdAt),
+		email: stringOrEmpty(m.email),
+		firstName: stringOrEmpty(m.firstName),
+		lastName: stringOrEmpty(m.lastName),
+		profileImageUrl: stringOrEmpty(m.profileImageUrl),
 	};
 }
 

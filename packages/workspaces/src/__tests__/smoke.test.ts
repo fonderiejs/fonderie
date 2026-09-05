@@ -816,3 +816,57 @@ test('toWorkspaceDTO: exposes archivedBy alongside isArchived/archivedAt', async
 	const live = toWorkspaceDTO({ ...WS, archivedBy: null } as never);
 	assert.equal(live.archivedBy, '');
 });
+
+// ── toMemberDTO identity (member-list rendering) ──
+
+test('toMemberDTO: carries identity so a member list is renderable', async () => {
+	const { toMemberDTO } = await import('../dtos/workspace');
+
+	const dto = toMemberDTO({
+		userId: 'u1',
+		workspaceId: 'w1',
+		roleId: 'r1',
+		roleName: 'admin',
+		confirmed: true,
+		createdAt: '2026-01-01T00:00:00Z',
+		firstName: 'Alex',
+		lastName: 'Rivera',
+		email: 'alex@example.com',
+		profileImageUrl: 'https://cdn.example.com/a.png',
+	});
+
+	// These four were previously dropped, which left clients with nothing to
+	// display but a user id. GET /workspaces/members is the only call a team
+	// screen makes, so it has to carry them.
+	assert.equal(dto.email, 'alex@example.com');
+	assert.equal(dto.firstName, 'Alex');
+	assert.equal(dto.lastName, 'Rivera');
+	assert.equal(dto.profileImageUrl, 'https://cdn.example.com/a.png');
+
+	assert.equal(dto.userId, 'u1');
+	assert.equal(dto.roleName, 'admin');
+	assert.equal(dto.confirmed, true);
+});
+
+test('toMemberDTO: a member with no profile becomes empty strings, never undefined', async () => {
+	const { toMemberDTO } = await import('../dtos/workspace');
+
+	// The users join is a LEFT JOIN, so every identity field can come back null.
+	const dto = toMemberDTO({
+		userId: 'u2',
+		workspaceId: 'w1',
+		roleId: 'r1',
+		roleName: 'member',
+		confirmed: false,
+		createdAt: '2026-01-01T00:00:00Z',
+		firstName: null,
+		lastName: null,
+		email: null,
+		profileImageUrl: null,
+	});
+
+	assert.equal(dto.email, '');
+	assert.equal(dto.firstName, '');
+	assert.equal(dto.lastName, '');
+	assert.equal(dto.profileImageUrl, '');
+});

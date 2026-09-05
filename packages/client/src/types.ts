@@ -29,11 +29,6 @@ export interface IUserPreferences {
 	timeFormat: string;
 }
 
-export interface IUserSkill {
-	name: string;
-	level: string;
-}
-
 export interface IUserDTO {
 	id: string;
 	email: string;
@@ -43,9 +38,9 @@ export interface IUserDTO {
 	profileImageUrl: string;
 	isActive: boolean;
 	lastLogin: string;
-	skills: IUserSkill[];
 	preferences: IUserPreferences;
 	isEmailVerified: boolean;
+	isPhoneVerified: boolean;
 	mfaEnabled: boolean;
 	suspended: boolean;
 	whitelist: boolean;
@@ -148,6 +143,9 @@ export interface IPlanDTO {
 		yearly: number; // in cents
 		currency: string; // ISO 4217, e.g. 'USD'
 	};
+	/** True when pricing came from a stale cache — a provider outage or a
+	 *  transfer window. Show prices as indicative when set. */
+	pricingStale?: boolean;
 	features: IPlanFeature[];
 	metadata: Record<string, unknown>;
 }
@@ -242,6 +240,11 @@ export interface IMemberDTO {
 	roleName: string;
 	confirmed: boolean;
 	createdAt: string;
+	/** Identity, so a member list can be rendered without a second request. */
+	email: string;
+	firstName: string;
+	lastName: string;
+	profileImageUrl: string;
 }
 
 export interface IInvitationDTO {

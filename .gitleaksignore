@@ -1,0 +1,5 @@
+# The mobile example ships an obviously-fake Stripe fallback key (an
+# sk_test_ prefix with a "this is a stand-in" suffix) that trips the
+# stripe-access-token rule. It is a placeholder, not a credential — the real
+# key comes from STRIPE_SECRET_KEY.
+b0015fa40ac57d6a44d8606c8b9f10a1853dee79:examples/example-mobile-api/fonderie.ts:stripe-access-token:47
