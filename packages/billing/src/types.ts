@@ -141,13 +141,3 @@ export interface IWalletLedgerEntry {
 	createdAt: string;
 }
 
-// ── Usage ─────────────────────────────────────────────────────────
-
-export interface IUsageRecord {
-	id: string;
-	subscriberType: SubscriberType;
-	subscriberId: string;
-	metric: string;
-	quantity: number;
-	recordedAt: string;
-}

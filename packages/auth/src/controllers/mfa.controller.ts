@@ -145,6 +145,7 @@ export function mfaController(
 
 			const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, config, {
 				loginMethod: ctx.user!.loginMethod,
+				phoneVerified: ctx.user!.phoneVerified,
 			});
 			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
@@ -159,7 +160,7 @@ export function mfaController(
 					explanation: 'MFA verified successfully.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
-						user: toUserDTO(fullUser),
+						user: toUserDTO(fullUser, ctx.user!.phoneVerified),
 					},
 				},
 				{
@@ -220,7 +221,9 @@ export function mfaController(
 				return setApiResponse(HTTP.BAD_REQUEST, 'MFA_NOT_ENABLED', 'MFA is not enabled');
 			}
 
-			const storedSecret = (user as unknown as { mfaSecret: string | null }).mfaSecret;
+			// Fetched on demand like mfa.verify — the encrypted secret no longer
+			// rides along on every user row.
+			const storedSecret = await users.getMfaSecret(ctx.user!.id);
 			const secret = storedSecret ? mfaCipher.decrypt(storedSecret) : null;
 			if (!secret || !verifyTotpToken(token, secret)) {
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');

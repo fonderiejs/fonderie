@@ -13,12 +13,16 @@ import type {
 export interface ISetConfigInput {
 	value: unknown;
 	description?: string;
+	// Deactivated entries stay stored but are excluded from runtime reads.
+	active?: boolean;
 	ifVersion?: number;
 }
 
 export interface ISetSecretInput {
 	value: string;
 	description?: string;
+	// Deactivated secrets stay stored but are excluded from runtime reads.
+	active?: boolean;
 	ifVersion?: number;
 }
 
@@ -29,6 +33,9 @@ export interface IRollbackInput {
 export interface IConfigAdminClientOptions {
 	baseUrl: string;
 	adminToken: string;
+	// Sent as X-Actor on writes — recorded as updatedBy and in revision
+	// history (defaults server-side to 'admin-token').
+	actor?: string;
 }
 
 function envQuery(environment?: string): string {
@@ -45,10 +52,12 @@ function envQuery(environment?: string): string {
 export class ConfigAdminClient {
 	private http: HttpClient;
 	private adminToken: string;
+	private actorHeaders: Record<string, string> | undefined;
 
 	constructor(opts: IConfigAdminClientOptions) {
 		this.http = new HttpClient(opts.baseUrl);
 		this.adminToken = opts.adminToken;
+		this.actorHeaders = opts.actor ? { 'X-Actor': opts.actor } : undefined;
 	}
 
 	// ── Config ───────────────────────────────────────────────────────────────
@@ -75,6 +84,7 @@ export class ConfigAdminClient {
 			path: `/admin/config/${key}${envQuery(environment)}`,
 			body: input,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 
@@ -83,6 +93,7 @@ export class ConfigAdminClient {
 			method: 'DELETE',
 			path: `/admin/config/${key}${envQuery(environment)}`,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 
@@ -100,6 +111,7 @@ export class ConfigAdminClient {
 			path: `/admin/config/${key}/rollback${envQuery(environment)}`,
 			body: input,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 
@@ -127,6 +139,7 @@ export class ConfigAdminClient {
 			path: `/admin/secrets/${key}${envQuery(environment)}`,
 			body: input,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 
@@ -135,6 +148,7 @@ export class ConfigAdminClient {
 			method: 'DELETE',
 			path: `/admin/secrets/${key}${envQuery(environment)}`,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 
@@ -152,6 +166,7 @@ export class ConfigAdminClient {
 			path: `/admin/secrets/${key}/rollback${envQuery(environment)}`,
 			body: input,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 
@@ -161,6 +176,7 @@ export class ConfigAdminClient {
 			method: 'POST',
 			path: `/admin/secrets/${key}/reveal${envQuery(environment)}`,
 			token: this.adminToken,
+			headers: this.actorHeaders,
 		});
 	}
 }

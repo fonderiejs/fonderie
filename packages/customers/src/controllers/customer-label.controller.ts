@@ -2,6 +2,7 @@ import type { IFonderieContext } from '@fonderie/core';
 import { HTTP, setApiResponse } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import { CustomerLabelModel } from '../models/customer-label.model';
+import { toCustomerLabelDTO } from '../dtos/customer';
 import type { CustomerLabelType } from '../types';
 import { isUuid } from '../utils';
 
@@ -20,7 +21,9 @@ export function customerLabelController(store: IStoreAdapter) {
 			}
 
 			const rows = await labels.list(type);
-			return setApiResponse(HTTP.OK, 'LABELS_FETCHED', 'Labels retrieved successfully.', { labels: rows });
+			return setApiResponse(HTTP.OK, 'LABELS_FETCHED', 'Labels retrieved successfully.', {
+				labels: rows.map(toCustomerLabelDTO),
+			});
 		},
 
 		async remove(ctx: IFonderieContext): Promise<Response> {

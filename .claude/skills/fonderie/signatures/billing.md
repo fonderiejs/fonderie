@@ -269,15 +269,6 @@ interface ISubscription {
     createdAt: string;
 }
 
-interface IUsageRecord {
-    id: string;
-    subscriberType: SubscriberType;
-    subscriberId: string;
-    metric: string;
-    quantity: number;
-    recordedAt: string;
-}
-
 interface IWalletBalance {
     balance: bigint;
     version: number;
@@ -380,15 +371,6 @@ interface ISubscriptionDTO {
     createdAt: string;
 }
 
-interface IUsageRecordDTO {
-    id: string;
-    subscriberType: SubscriberType;
-    subscriberId: string;
-    metric: string;
-    quantity: number;
-    recordedAt: string;
-}
-
 interface IWalletDTO {
     balance: string;
     currency: string;
@@ -410,8 +392,6 @@ interface IWalletTransactionDTO {
 function toPlanDTO(plan: IPlan): IPlanDTO
 
 function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO
-
-function toUsageRecordDTO(record: IUsageRecord): IUsageRecordDTO
 
 function toWalletDTO(balance: bigint, currency: string, precision: number): IWalletDTO
 

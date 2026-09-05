@@ -521,3 +521,49 @@ test('ConfigModule.checkReadiness: missing encryptor is only a WARNING in prod w
 		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
 	}
 });
+
+// ── admin value parity + active (docs/DTO-GAP-AUDIT.md) ──────────
+
+test('withParsedValue: serves the parsed value the runtime path serves, raw-string fallback', async () => {
+	const { withParsedValue } = await import('../services/config');
+	assert.deepEqual(withParsedValue({ value: '{"a":1}' }).value, { a: 1 });
+	assert.equal(withParsedValue({ value: 'plain text' }).value, 'plain text');
+	assert.deepEqual(withParsedValue({ value: { already: true } }).value, { already: true });
+});
+
+test('admin GET /admin/config/:key: returns the parsed value, not the stored JSON string', async () => {
+	const { buildAdminRoutes } = await import('../admin');
+	const stored = { ...baseEntry, value: '{"nested":{"deep":true}}' };
+	const get = pick(buildAdminRoutes(makeWriteStore(stored), 'sekret'), 'GET', '/admin/config/:key');
+	const res = await get(adminCtx({ token: 'sekret', params: { key: 'k' } }), noNext);
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	// The old behavior returned the raw string — the shipped editor then
+	// re-stringified it into a degradation loop on every save.
+	assert.deepEqual(body.result.value, { nested: { deep: true } });
+});
+
+test('admin PUT: body.active reaches the write instead of being forced true', async () => {
+	const { buildAdminRoutes } = await import('../admin');
+	const captured: unknown[][] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			captured.push([sql, params]);
+			if (sql.includes('SELECT version FROM fonderie_config')) return [] as T[];
+			if (sql.includes('fonderie_config_revisions')) return [] as T[];
+			if (sql.includes('RETURNING') || sql.includes('SELECT')) {
+				return [{ ...baseEntry, active: false }] as unknown as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const put = pick(buildAdminRoutes(store, 'sekret'), 'PUT', '/admin/config/:key');
+	const res = await put(
+		adminCtx({ token: 'sekret', params: { key: 'k' }, body: { value: 1, active: false } }),
+		noNext,
+	);
+	assert.equal(res.status, 200);
+	const flat = captured.map(([sql, params]) => JSON.stringify(params)).join('|');
+	assert.ok(flat.includes('false'), 'active=false must reach the write params');
+});

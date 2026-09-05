@@ -78,11 +78,6 @@ export interface ICustomerNote {
 	updatedAt: string;
 }
 
-export interface ICustomerTag {
-	customerId: string;
-	tag: string;
-}
-
 export interface ICustomerRelationship {
 	id: string;
 	workspaceId: string;
