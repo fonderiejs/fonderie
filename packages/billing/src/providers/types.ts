@@ -108,6 +108,14 @@ export interface INormalizedSubscription {
 	interval: BillingInterval;
 }
 
+// The result of a cancel / reactivate — the resulting subscription state, used
+// to optimistically update the stored row (the webhook later confirms it).
+export interface ISubscriptionChange {
+	status: string;
+	cancelAtPeriodEnd: boolean;
+	currentPeriodEnd: Date | null;
+}
+
 // Live price resolved from the provider (Stripe = source of truth).
 export interface IResolvedPrice {
 	priceId: string;
@@ -204,6 +212,15 @@ export interface IBillingProvider {
 		currentPeriodStart: Date | null;
 		currentPeriodEnd: Date | null;
 	}>;
+
+	// Cancel a subscription — at period end (keep access until paid-through) or
+	// immediately. Optional: when absent, the first-party cancel route answers
+	// 501 (the hosted billing portal remains a self-serve fallback).
+	cancelSubscription?(opts: { subscriptionId: string; atPeriodEnd: boolean }): Promise<ISubscriptionChange>;
+
+	// Un-cancel a subscription scheduled to cancel at period end. Optional; the
+	// reactivate route answers 501 when absent.
+	reactivateSubscription?(opts: { subscriptionId: string }): Promise<ISubscriptionChange>;
 
 	// Generate a hosted billing portal URL
 	createPortalSession(opts: { customerId: string; returnUrl: string }): Promise<{ url: string }>;

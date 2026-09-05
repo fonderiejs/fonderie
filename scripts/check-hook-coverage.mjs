@@ -93,6 +93,11 @@ const ROUTE_ALLOW = new Map([
 	['POST /billing/wallet/checkout', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
 	['GET /auth/google', 'browser-redirect OAuth leg — navigated to, never fetched'],
 	['GET /auth/google/callback', 'browser-redirect OAuth leg — navigated to, never fetched'],
+	// First-party subscription lifecycle (audit Phase 4); client methods + hooks
+	// ship in the billing frontend cycle — server surface landed first by scoped
+	// decision (same as the wallet routes above).
+	['POST /billing/subscription/cancel', 'client/hooks ship next cycle — server-first by scoped decision'],
+	['POST /billing/subscription/reactivate', 'client/hooks ship next cycle — server-first by scoped decision'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');

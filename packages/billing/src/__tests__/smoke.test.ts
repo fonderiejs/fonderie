@@ -1474,3 +1474,145 @@ test('webhook: trial_will_end sends a trial-ending notice without upserting the 
 	assert.equal(notices[0]!.payload.data.plan, 'pro');
 	assert.equal(cap.plan(), undefined, 'a trial-ending heads-up must not upsert subscription state');
 });
+
+// ── Phase 4: first-party cancel / reactivate ──────────────────────
+
+function lifecycleProvider(): { provider: IBillingProvider; calls: { cancel?: any; reactivate?: any } } {
+	const calls: { cancel?: any; reactivate?: any } = {};
+	const provider = makeProvider({
+		async cancelSubscription(opts: any) {
+			calls.cancel = opts;
+			return {
+				status: opts.atPeriodEnd ? 'active' : 'canceled',
+				cancelAtPeriodEnd: opts.atPeriodEnd,
+				currentPeriodEnd: new Date(1_700_000_000_000),
+			};
+		},
+		async reactivateSubscription(opts: any) {
+			calls.reactivate = opts;
+			return { status: 'active', cancelAtPeriodEnd: false, currentPeriodEnd: new Date(1_700_000_000_000) };
+		},
+	});
+	return { provider, calls };
+}
+
+function subCtrlStore(sub: unknown): { store: IStoreAdapter; upserts: unknown[][] } {
+	const upserts: unknown[][] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('fonderie_subscriptions')) {
+				if (sql.trimStart().startsWith('SELECT')) return (sub ? [sub] : []) as T[];
+				upserts.push(params ?? []);
+				return [] as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return { store, upserts };
+}
+
+function subCtx(body: Record<string, unknown> = {}): import('@fonderie/core').IFonderieContext {
+	return {
+		meta: { body },
+		user: { id: 'u1', email: 'a@b.com' },
+		workspace: null,
+		tenant: null,
+		request: new Request('http://localhost/'),
+	} as any;
+}
+
+const activeSub = {
+	subscriberType: 'user', subscriberId: 'u1', plan: 'starter', interval: 'month',
+	status: 'active', providerCustomerId: 'cus_1', providerSubscriptionId: 'sub_1', cancelAtPeriodEnd: false,
+	currentPeriodStart: new Date('2026-09-01T00:00:00Z'),
+	currentPeriodEnd: new Date('2026-10-01T00:00:00Z'),
+	trialEndsAt: new Date('2026-09-08T00:00:00Z'),
+};
+
+test('subscription.cancel: at period end (default) flags cancellation and preserves period/trial fields', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { provider, calls } = lifecycleProvider();
+	const { store, upserts } = subCtrlStore(activeSub);
+	const res = await subscriptionController(store, { ...config, provider }).cancel(subCtx());
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(calls.cancel.atPeriodEnd, true);
+	assert.equal(calls.cancel.subscriptionId, 'sub_1');
+	assert.equal(body.result.atPeriodEnd, true);
+	// [7]=currentPeriodStart [8]=currentPeriodEnd [9]=cancelAtPeriodEnd [10]=trialEndsAt
+	assert.equal(upserts[0]![9], true, 'stored cancelAtPeriodEnd = true');
+	assert.ok(upserts[0]![7], 'currentPeriodStart preserved (not nulled)');
+	assert.ok(upserts[0]![10], 'trialEndsAt preserved (not nulled)');
+});
+
+test('subscription.cancel: immediate (atPeriodEnd:false) does NOT optimistically write status (webhook owns the notice)', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { provider, calls } = lifecycleProvider();
+	const { store, upserts } = subCtrlStore(activeSub);
+	const res = await subscriptionController(store, { ...config, provider }).cancel(subCtx({ atPeriodEnd: false }));
+	const body = (await res.json()) as any;
+	assert.equal(calls.cancel.atPeriodEnd, false);
+	assert.equal(body.result.status, 'canceled');
+	assert.equal(upserts.length, 0, 'no optimistic canceled-status write — the deleted webhook owns the transition + notice');
+});
+
+test('subscription.cancel: an already-canceled subscription is a no-op (no provider call)', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { provider, calls } = lifecycleProvider();
+	const { store, upserts } = subCtrlStore({ ...activeSub, status: 'canceled', cancelAtPeriodEnd: false });
+	const res = await subscriptionController(store, { ...config, provider }).cancel(subCtx());
+	assert.equal(res.status, 200);
+	assert.equal(calls.cancel, undefined, 'provider not re-hit on an already-canceled subscription');
+	assert.equal(upserts.length, 0);
+});
+
+test('subscription.cancel: 501 when the provider has no cancelSubscription', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { store } = subCtrlStore(activeSub);
+	const res = await subscriptionController(store, { ...config, provider: makeProvider() }).cancel(subCtx());
+	assert.equal(res.status, 501);
+});
+
+test('subscription.cancel: 404 when there is no subscription', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { provider } = lifecycleProvider();
+	const { store } = subCtrlStore(null);
+	const res = await subscriptionController(store, { ...config, provider }).cancel(subCtx());
+	assert.equal(res.status, 404);
+});
+
+test('subscription.reactivate: un-cancels and clears cancelAtPeriodEnd', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { provider, calls } = lifecycleProvider();
+	const { store, upserts } = subCtrlStore({ ...activeSub, cancelAtPeriodEnd: true });
+	const res = await subscriptionController(store, { ...config, provider }).reactivate(subCtx());
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(calls.reactivate.subscriptionId, 'sub_1');
+	assert.equal(body.result.cancelAtPeriodEnd, false);
+	assert.equal(upserts[0]![9], false, 'stored cancelAtPeriodEnd = false');
+});
+
+test('subscription.reactivate: 501 when the provider has no reactivateSubscription', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { store } = subCtrlStore({ ...activeSub, cancelAtPeriodEnd: true });
+	const res = await subscriptionController(store, { ...config, provider: makeProvider() }).reactivate(subCtx());
+	assert.equal(res.status, 501);
+});
+
+test('subscription.reactivate: 409 for a fully-canceled subscription (no provider call)', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { provider, calls } = lifecycleProvider();
+	const { store } = subCtrlStore({ ...activeSub, status: 'canceled' });
+	const res = await subscriptionController(store, { ...config, provider }).reactivate(subCtx());
+	assert.equal(res.status, 409);
+	assert.equal(calls.reactivate, undefined, 'provider not called for a canceled subscription');
+});
+
+test('buildBillingRoutes: registers first-party cancel + reactivate', async () => {
+	const { buildBillingRoutes } = await import('../routes');
+	const paths = buildBillingRoutes(subCtrlStore(null).store, config).map(([m, p]) => `${m} ${p}`);
+	assert.ok(paths.includes('POST /billing/subscription/cancel'));
+	assert.ok(paths.includes('POST /billing/subscription/reactivate'));
+});
