@@ -61,9 +61,9 @@ const fakeAuth = {
 		verify: async (code: string) => {
 			calls.mfaVerify.push(code);
 			return {
-				reason: 'OK',
+				reason: 'MFA_ENABLED',
 				explanation: '',
-				result: { tokens: { access: 'acc-rotated', refresh: 'ref-rotated' }, backupCodes: [] },
+				result: { mfaEnabled: true },
 			};
 		},
 	},
@@ -147,15 +147,17 @@ test('useMfaLogin persists tokens exactly like a full login', async () => {
 	assert.equal(result.tokens.access, 'acc-mfa');
 });
 
-test('useMfaSetup.verify persists the rotated tokens like a login', async () => {
+test('useMfaSetup.verify completes enrollment without touching the session token', async () => {
+	// The server does NOT rotate tokens on setup confirmation — MFA is enforced
+	// at login, so the current session stays valid unchanged.
 	calls.setAccessToken.length = 0;
 	calls.mfaVerify.length = 0;
 	const { useMfaSetup } = await import('../index');
 	const { verify } = await renderComposable(() => useMfaSetup());
 	const result = await verify('654321');
 	assert.deepEqual(calls.mfaVerify, ['654321']);
-	assert.deepEqual(calls.setAccessToken, ['acc-rotated'], 'rotated tokens must re-arm the client');
-	assert.equal((result as { tokens: { access: string } }).tokens.access, 'acc-rotated');
+	assert.deepEqual(calls.setAccessToken, [], 'enrollment must not rotate the session token');
+	assert.equal(result.mfaEnabled, true);
 });
 
 test('useAccountData.deleteUser deletes the account then tears the session down', async () => {

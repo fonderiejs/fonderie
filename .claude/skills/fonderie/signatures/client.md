@@ -726,8 +726,7 @@ interface IMeResult {
 }
 
 interface IMfaEnabledResult {
-    tokens: ITokens;
-    user: IUserDTO;
+    mfaEnabled: boolean;
 }
 
 interface IMfaRequiredResult {
@@ -789,13 +788,8 @@ interface IRegisterResult {
 }
 
 interface IResendVerificationResult {
-    stat: string;
-    message: string;
-    data: {
-        token: string;
-        expiresAt: string;
-        email: string;
-    };
+    email?: string;
+    verified?: boolean;
 }
 
 interface IRevealSecretResult {

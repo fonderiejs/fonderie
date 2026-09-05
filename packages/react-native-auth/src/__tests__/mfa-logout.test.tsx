@@ -142,7 +142,9 @@ test('storage primitives are exported from the package index', async () => {
 });
 
 
-test('useMfaSetup.verify persists the rotated tokens like a login', async () => {
+test('useMfaSetup.verify completes enrollment without touching the session token', async () => {
+	// The server does NOT rotate tokens on setup confirmation — MFA is enforced
+	// at login, so the current session stays valid unchanged.
 	calls.setAccessToken.length = 0;
 	const verifyCalls: unknown[] = [];
 	const authWithMfa = fakeAuth as unknown as { mfa?: Record<string, unknown> };
@@ -150,18 +152,14 @@ test('useMfaSetup.verify persists the rotated tokens like a login', async () => 
 	const mfa = authWithMfa.mfa;
 	mfa.verify = async (code: string) => {
 		verifyCalls.push([code]);
-		return {
-			reason: 'OK',
-			explanation: '',
-			result: { tokens: { access: 'acc-enroll', refresh: 'r' }, user: { id: 'u1' } },
-		};
+		return { reason: 'MFA_ENABLED', explanation: '', result: { mfaEnabled: true } };
 	};
 	const { useMfaSetup } = await import('../index');
 	const { verify } = renderHook(() => useMfaSetup());
 	const result = await verify('123456');
 	assert.deepEqual(verifyCalls, [['123456']]);
-	assert.deepEqual(calls.setAccessToken, ['acc-enroll'], 'enrollment must re-arm the client token');
-	assert.equal(result.tokens.access, 'acc-enroll');
+	assert.deepEqual(calls.setAccessToken, [], 'enrollment must not rotate the session token');
+	assert.equal(result.mfaEnabled, true);
 });
 
 test('useProfile.refresh loads the user through the client', async () => {
