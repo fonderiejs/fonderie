@@ -43,7 +43,8 @@ jobs:
       # publishes to npm when that PR is merged. With OIDC there is NO
       # NODE_AUTH_TOKEN / NPM_TOKEN — npm authenticates via the job's id-token,
       # and provenance is emitted automatically (no NPM_CONFIG_PROVENANCE needed).
-      - uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
+      - id: changesets
+        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
           # `version-script` regenerates brain.json after the bumps so its
           # sdkVersions match the new package versions — otherwise the
@@ -56,3 +57,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No NODE_AUTH_TOKEN / NPM_TOKEN / NPM_CONFIG_PROVENANCE — Trusted
           # Publishing supplies auth and provenance from the OIDC id-token.
+
+      # changesets marks the last-created per-package release as Latest —
+      # arbitrary in a multi-package batch. Re-point it at the flagship.
+      # Best-effort: a presentation tweak must never fail the publish.
+      - name: Surface the flagship release as Latest
+        if: steps.changesets.outputs.published == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FLAGSHIP: '@fonderie/billing'
+          PUBLISHED: ${{ steps.changesets.outputs.publishedPackages }}
+        run: |
+          tag=$(node -e "const p=JSON.parse(process.env.PUBLISHED||'[]');const f=p.find(x=>x.name===process.env.FLAGSHIP);if(f)process.stdout.write(f.name+'@'+f.version)")
+          if [ -n "$tag" ]; then
+            echo "Marking $tag as the Latest release"
+            gh release edit "$tag" --latest --repo "$GITHUB_REPOSITORY"
+          else
+            echo "Flagship $FLAGSHIP not published in this batch — leaving GitHub's default Latest."
+          fi
