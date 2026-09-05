@@ -145,6 +145,7 @@ export function mfaController(
 
 			const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, config, {
 				loginMethod: ctx.user!.loginMethod,
+				phoneVerified: ctx.user!.phoneVerified,
 			});
 			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
 
@@ -159,7 +160,7 @@ export function mfaController(
 					explanation: 'MFA verified successfully.',
 					result: {
 						tokens: { access: accessToken, refresh: refreshToken },
-						user: toUserDTO(fullUser),
+						user: toUserDTO(fullUser, ctx.user!.phoneVerified),
 					},
 				},
 				{

@@ -668,6 +668,8 @@ test('login: 200 with user DTO and tokens', async () => {
 	assert.equal(body.result.user.profileImageUrl, 'https://cdn.example.com/avatar.jpg');
 	assert.ok(typeof body.result.tokens.access === 'string');
 	assert.ok(typeof body.result.tokens.refresh === 'string');
+	// The verify-screen routing signal the client types now declare.
+	assert.equal(typeof body.result.requiresVerification, 'boolean');
 });
 
 test('login: rehash-on-login re-stores a legacy-hash user as bcrypt', async () => {
@@ -2420,11 +2422,15 @@ test('purgeSoftDeletedUsers: rejects a negative window', async () => {
 // ── SAR: exportMe ───────────────────────────────────────────────────────
 test('exportMe: returns the user profile + session metadata, no secrets', async () => {
 	const ctrl = userController(makeStore({ userById: BASE_USER, sessionExists: true }), config);
-	const res = await ctrl.exportMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	const res = await ctrl.exportMe(
+		makeCtx({ user: { id: 'user-1', email: 'jane@example.com', phoneVerified: true } }),
+	);
 	assert.equal(res.status, 200);
 	const body = (await res.json()) as any;
 	assert.equal(body.reason, 'DATA_EXPORT');
 	assert.equal(body.result.profile.id, 'user-1');
+	// The SAR bundle must agree with GET /users — it used to hardcode false.
+	assert.equal(body.result.profile.isPhoneVerified, true);
 	assert.ok(Array.isArray(body.result.sessions));
 	assert.ok(body.result.exportedAt);
 	// no secrets anywhere in the serialized bundle
@@ -2507,4 +2513,41 @@ test('exportMe: a failing contributor does not block the export', async () => {
 	assert.equal(res.status, 200);
 	const body = (await res.json()) as any;
 	assert.equal(body.result.modules.billing, null);
+});
+
+
+// ── preferences: typed writes, sanitized reads ──────────────────────────
+
+test('updatePreferencesSchema: rejects the garbage the old unknown-typed schema accepted', async () => {
+	const { updatePreferencesSchema } = await import('../schemas');
+	assert.equal(updatePreferencesSchema.safeParse({ dateFormat: null }).success, false);
+	assert.equal(updatePreferencesSchema.safeParse({ emailDigest: 42 }).success, false);
+	assert.equal(updatePreferencesSchema.safeParse({ notifications: 'yes' }).success, false);
+	assert.equal(updatePreferencesSchema.safeParse({ notifications: { email: 'yes' } }).success, false);
+	assert.equal(
+		updatePreferencesSchema.safeParse({ dateFormat: 'YYYY-MM-DD', notifications: { email: false } })
+			.success,
+		true,
+	);
+});
+
+test('toUserDTO: historical garbage preferences cannot poison the typed shape', async () => {
+	const { toUserDTO } = await import('../dtos/user');
+	const dto = toUserDTO({
+		...BASE_USER,
+		preferences: {
+			dateFormat: null,
+			emailDigest: 42,
+			timeFormat: 'HH:mm',
+			notifications: { email: false, sms: 'yes' },
+		},
+	} as never);
+	const prefs = dto.preferences;
+	// Garbage falls back to defaults; well-typed values survive.
+	assert.equal(prefs.dateFormat, 'MM/DD/YYYY');
+	assert.equal(prefs.emailDigest, 'immediate');
+	assert.equal(prefs.timeFormat, 'HH:mm');
+	// A partial stored notifications object deep-merges over the defaults —
+	// the client type promises all four flags.
+	assert.deepEqual(prefs.notifications, { email: false, inApp: true, sms: false, push: false });
 });

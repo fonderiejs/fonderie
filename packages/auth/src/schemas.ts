@@ -57,10 +57,20 @@ export const updatePreferencesSchema = z
 	.object({
 		locale: z.string().max(35).optional(),
 		timezone: z.string().max(64).optional(),
-		notifications: z.unknown().optional(),
-		emailDigest: z.unknown().optional(),
-		dateFormat: z.unknown().optional(),
-		timeFormat: z.unknown().optional(),
+		// Typed at last — these four accepted `unknown`, letting null and
+		// arbitrary JSON into stored preferences that the user DTO then served
+		// against string-typed client fields.
+		notifications: z
+			.object({
+				email: z.boolean().optional(),
+				inApp: z.boolean().optional(),
+				sms: z.boolean().optional(),
+				push: z.boolean().optional(),
+			})
+			.optional(),
+		emailDigest: z.string().max(20).optional(),
+		dateFormat: z.string().max(30).optional(),
+		timeFormat: z.string().max(30).optional(),
 	})
 	.refine(
 		(o) => Object.values(o).some((v) => v !== undefined),

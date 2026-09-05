@@ -64,11 +64,19 @@ export interface ITokens {
 export interface IRegisterResult {
 	tokens: ITokens;
 	user: IUserDTO;
+	// True when the account still needs email verification (config-dependent;
+	// route the user to the verify screen). Absent on phone and MFA/OAuth
+	// completions, which don't compute it.
+	requiresVerification?: boolean;
 }
 
 export interface ILoginResult {
 	tokens: ITokens;
 	user: IUserDTO;
+	// True when the account still needs email verification (config-dependent;
+	// route the user to the verify screen). Absent on phone and MFA/OAuth
+	// completions, which don't compute it.
+	requiresVerification?: boolean;
 }
 
 // Login response when the account has MFA enabled: no tokens yet — complete
