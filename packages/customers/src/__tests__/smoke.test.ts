@@ -335,21 +335,6 @@ test('customerRelationshipController.list: 200 with relationships array', async 
 	assert.ok(Array.isArray(body.result.relationships));
 });
 
-// ── audit closeout: update schemas match what controllers apply ──
-
-test('email/phone/address update schemas accept only the label (the one editable field)', async () => {
-	const { updateEmailSchema, updatePhoneSchema, updateAddressSchema } = await import('../schemas');
-	for (const schema of [updateEmailSchema, updatePhoneSchema, updateAddressSchema]) {
-		assert.equal(schema.safeParse({ label: 'work' }).success, true);
-		// Content changes are remove-and-re-add; setPrimary has its own route.
-		// The old schemas accepted these and the controllers silently ignored
-		// them (or 422'd on the missing label anyway).
-		assert.equal(schema.safeParse({ isPrimary: true }).success, false);
-		assert.equal(schema.safeParse({}).success, false);
-	}
-	assert.equal(updateEmailSchema.safeParse({ email: 'a@b.com' }).success, false);
-	assert.equal(updatePhoneSchema.safeParse({ phone: '+15550001111' }).success, false);
-
 // ── DTO gap fixes (docs/DTO-GAP-AUDIT.md, customers batch) ────────
 
 test('email/phone/address DTOs expose labelId for label-admin correlation', async () => {
@@ -420,4 +405,20 @@ test('referral codes are create-only: update rejects a referral-only body', asyn
 	// at-least-one-field refinement instead of 200-OK doing nothing.
 	assert.equal(updateCustomerSchema.safeParse({ referralCode: 'REF-1' }).success, false);
 	assert.equal(updateCustomerSchema.safeParse({ firstName: 'Ada' }).success, true);
+});
+
+// ── audit closeout: update schemas match what controllers apply ──
+
+test('email/phone/address update schemas accept only the label (the one editable field)', async () => {
+	const { updateEmailSchema, updatePhoneSchema, updateAddressSchema } = await import('../schemas');
+	for (const schema of [updateEmailSchema, updatePhoneSchema, updateAddressSchema]) {
+		assert.equal(schema.safeParse({ label: 'work' }).success, true);
+		// Content changes are remove-and-re-add; setPrimary has its own route.
+		// The old schemas accepted these and the controllers silently ignored
+		// them (or 422'd on the missing label anyway).
+		assert.equal(schema.safeParse({ isPrimary: true }).success, false);
+		assert.equal(schema.safeParse({}).success, false);
+	}
+	assert.equal(updateEmailSchema.safeParse({ email: 'a@b.com' }).success, false);
+	assert.equal(updatePhoneSchema.safeParse({ phone: '+15550001111' }).success, false);
 });
