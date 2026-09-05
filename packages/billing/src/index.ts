@@ -4,6 +4,7 @@ export { StripeProvider } from './providers/stripe';
 
 // Middleware
 export { requirePlan } from './middlewares/require-plan';
+export type { IRequirePlanOptions } from './middlewares/require-plan';
 export { withBilling } from './middlewares/billing';
 
 // Helpers — sync, read from cached ctx.meta['billing']
@@ -31,6 +32,7 @@ export type {
 	IBillingPricingConfig,
 	IBillingWalletConfig,
 	IBillingWalletAutoRecharge,
+	IBillingDunningConfig,
 	IBillingRecipient,
 	ResolveRecipient,
 	RateLimitBackendConfig,
@@ -123,7 +125,11 @@ export {
 	updatePlan,
 	deletePlan,
 } from './services/plans';
-export { getSubscription, getSubscriberByProviderSubscriptionId } from './services/subscriptions';
+export {
+	getSubscription,
+	getSubscriberByProviderSubscriptionId,
+	isWithinDunningGrace,
+} from './services/subscriptions';
 export { maybeAutoRecharge } from './services/auto-recharge';
 export {
 	upsertWalletCustomer,

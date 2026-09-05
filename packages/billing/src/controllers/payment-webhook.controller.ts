@@ -322,19 +322,28 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 				// credit already committed.
 				if (payment.customerId) {
 					try {
-						await upsertWalletCustomer(
-							{
-								subscriberType: subscriberType as SubscriberType,
-								subscriberId,
-								provider: config.provider.name,
-								providerCustomerId: payment.customerId,
-								// Re-arm auto-recharge (clear disable + failures) only on a
-								// genuinely NEW purchase — a replayed delivery of an old
-								// purchase must not resurrect a card that failures disabled.
-								rearm: !result.duplicate,
-							},
-							store,
-						);
+						// Resolve the exact card this purchase used, so a later
+							// off-session auto-recharge charges the consented card (not
+							// merely the newest one). Only on a fresh purchase, and only
+							// when the provider can resolve it.
+							let paymentMethodId: string | null = null;
+							if (!result.duplicate && payment.providerTxId && config.provider.getPaymentMethodForIntent) {
+								paymentMethodId = await config.provider.getPaymentMethodForIntent(payment.providerTxId);
+							}
+							await upsertWalletCustomer(
+								{
+									subscriberType: subscriberType as SubscriberType,
+									subscriberId,
+									provider: config.provider.name,
+									providerCustomerId: payment.customerId,
+									// Re-arm auto-recharge (clear disable + failures) only on a
+									// genuinely NEW purchase — a replayed delivery of an old
+									// purchase must not resurrect a card that failures disabled.
+									rearm: !result.duplicate,
+									...(paymentMethodId ? { paymentMethodId } : {}),
+								},
+								store,
+							);
 					} catch {
 						// best-effort; auto-recharge stays un-armed until the next
 						// successful purchase persists the customer.
