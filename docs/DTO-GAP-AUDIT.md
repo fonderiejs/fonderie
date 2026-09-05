@@ -117,27 +117,27 @@ as they are fixed; extend this file, don't fork it.
 
 ## customers
 
-- [ ] **[medium] `ICustomerEmailDTO / ICustomerPhoneDTO / ICustomerAddressDTO` — labelId** (fetched-but-discarded)
+- [x] **[medium] `ICustomerEmailDTO / ICustomerPhoneDTO / ICustomerAddressDTO` — labelId** (fetched-but-discarded) — **fixed in #140**
   - Evidence: SQL selects label_id in every path: packages/customers/src/models/customer-email.model.ts:9, customer-phone.model.ts:9, customer-address.model.ts:8, and the detail queries at packages/customers/src/models/customer.model.ts:223,236,248; the mappers drop it: packages/customers/src/dtos/customer.ts:228-236 (toCustomerEmailDTO), 238-246 (toCustomerPhoneDTO), 248-255 (toCustomerAddressDTO). Client mirrors likewise lack it: packages/client/src/types.ts:458-464, 466-472, 484-489.
   - Fix: Emit labelId in the three DTOs (and the client mirrors). Without it the label-admin surface the client already ships (listLabels/removeLabel by label id, packages/client/src/modules/customers.ts:461-478 returning ICustomerLabelDTO.id at packages/client/src/types.ts:545-550) cannot be correlated with which emails/phones/addresses use a label except by fragile string matching on the label value.
 
-- [ ] **[medium] `ICustomerRelationshipExpandedDTO / ICustomerRelationshipExpandedD2DTO` — createdAt** (fetched-but-discarded)
+- [x] **[medium] `ICustomerRelationshipExpandedDTO / ICustomerRelationshipExpandedD2DTO` — createdAt** (fetched-but-discarded) — **fixed in #140**
   - Evidence: The relationship row's created_at is selected (packages/customers/src/models/customer.model.ts:293, carried on ICustomerRelationshipExpanded at packages/customers/src/types.ts:110) but toCustomerRelationshipExpandedDTO (packages/customers/src/dtos/customer.ts:169-178) never reads r.createdAt — the flattened DTO's createdAt/updatedAt come from the related CUSTOMER via the ...customerFields spread (dtos/customer.ts:176, filled by toCustomerDTO at :143-144). Same in toCustomerRelationshipExpandedD2DTO (dtos/customer.ts:192-202). Contrast: the un-expanded ICustomerRelationshipDTO.createdAt IS the relationship's createdAt (dtos/customer.ts:154).
   - Fix: The same field name means 'relationship created' in ICustomerRelationshipDTO but 'customer created' in the expanded variants — a client sorting relationships by createdAt gets customer signup dates. Either add a distinct relationshipCreatedAt field carrying r.createdAt, or document the semantics on both server and client types (packages/client/src/types.ts:510-515).
 
-- [ ] **[medium] `IAddRelationshipInput (client) / addRelationshipSchema (server)` — relationship** (type-mismatch)
+- [x] **[medium] `IAddRelationshipInput (client) / addRelationshipSchema (server)` — relationship** (type-mismatch) — **fixed in #140**
   - Evidence: Client declares it optional: packages/client/src/modules/customers.ts:85 (relationship?: string), matching the zod schema packages/customers/src/schemas.ts:67 (z.string().max(100).optional()); but the controller hard-requires it: packages/customers/src/controllers/customer-relationship.controller.ts:58-60 returns 422 INVALID_PARAMETER when relationship is missing or empty.
   - Fix: A client following the published type and omitting relationship passes schema validation and is then guaranteed a 422. Make relationship required in IAddRelationshipInput and in addRelationshipSchema (min(1)), matching the controller.
 
-- [ ] **[medium] `IUpdateCustomerInput (client) / updateCustomerSchema (server)` — referralCode, referredByCode** (client-phantom-field)
+- [x] **[medium] `IUpdateCustomerInput (client) / updateCustomerSchema (server)` — referralCode, referredByCode** (client-phantom-field) — **fixed in #140**
   - Evidence: packages/client/src/modules/customers.ts:53 aliases IUpdateCustomerInput = ICreateCustomerInput, which includes referralCode/referredByCode (customers.ts:49-50); updateCustomerSchema accepts them and they even satisfy its at-least-one-field refinement (packages/customers/src/schemas.ts:23-24,29-31); but the update controller reads only type/sex/firstName/lastName/companyName/avatarUrl/locale/referenceCode (packages/customers/src/controllers/customer.controller.ts:186-235) and CustomerModel.update has no referral columns (packages/customers/src/models/customer.model.ts:75-85).
   - Fix: updateCustomer(id, { referralCode: 'X' }) validates, returns 200 CUSTOMER_UPDATED, and changes nothing — a silent no-op. Give IUpdateCustomerInput its own shape without the two referral fields (and strip them from updateCustomerSchema), or implement the update path.
 
-- [ ] **[low] `ICustomerLabel / ICustomerLabelDTO` — createdAt** (serialization-hazard)
+- [x] **[low] `ICustomerLabel / ICustomerLabelDTO` — createdAt** (serialization-hazard) — **fixed in #140**
   - Evidence: GET /customers/labels is the only customers response that bypasses DTO mapping: the controller returns raw model rows (packages/customers/src/controllers/customer-label.controller.ts:22-23); the query selects created_at with no normalization (packages/customers/src/models/customer-label.model.ts:10) and the pg adapter registers no type parsers (packages/store/src/adapters/pg.ts:59-62), so createdAt is a JS Date at runtime despite ICustomerLabel.createdAt: string (packages/customers/src/types.ts:9). Every other DTO runs dateOrEmpty (packages/core/src/parser.ts:20-24).
   - Fix: Date.prototype.toJSON happens to emit ISO-8601 so the wire matches ICustomerLabelDTO.createdAt: string (packages/client/src/types.ts:549) today, but any server-side consumer of labels.list() doing string ops on createdAt breaks, and a driver/serializer change breaks the wire. Add a toCustomerLabelDTO mapper using dateOrEmpty like every sibling.
 
-- [ ] **[low] `ICustomerTagDTO` — tag (entire DTO)** (never-populated)
+- [x] **[low] `ICustomerTagDTO` — tag (entire DTO)** (never-populated) — **fixed in #140**
   - Evidence: ICustomerTagDTO and toCustomerTagDTO are defined (packages/customers/src/dtos/customer.ts:122-124, 267-271) and exported (packages/customers/src/index.ts:11,21) but no controller uses them — the tag routes emit plain string[] (packages/customers/src/controllers/customer-tag.controller.ts:41-44, model returns string[] at packages/customers/src/models/customer-tag.model.ts:6-14), which is what the client declares (packages/client/src/types.ts:594-596).
   - Fix: Dead public surface: a consumer importing ICustomerTagDTO from @fonderie/customers will type tag responses as { tag: string }[] and be wrong. Delete the DTO+mapper or actually use them.
 
