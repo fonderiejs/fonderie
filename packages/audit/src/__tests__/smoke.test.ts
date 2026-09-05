@@ -6,6 +6,7 @@ import { defineConfig } from '@fonderie/core';
 
 import { toAuditEventDTO, encodeCursor, decodeCursor } from '../dtos/audit';
 import { AuditEventModel } from '../models/event.model';
+import { buildAuditRoutes } from '../routes';
 import { AuditModule } from '../module';
 import type { IAuditEvent } from '../types';
 
@@ -80,12 +81,27 @@ test('toAuditEventDTO: requestId is null when meta has no requestId', () => {
 
 test('cursor: encode then decode round-trips', () => {
 	const date = new Date('2026-01-01T00:00:00Z');
-	const id = 'evt-abc';
+	const id = 'aaaaaaaa-bbbb-4ccc-8ddd-000000000001';
 	const decoded = decodeCursor(encodeCursor(date, id));
 
 	assert.ok(decoded !== null);
 	assert.equal(decoded.id, id);
 	assert.equal(decoded.createdAt, date.toISOString());
+});
+
+test('cursor: carries Postgres text timestamps verbatim (microsecond precision)', () => {
+	// The keyset cursor must not round-trip through a millisecond JS Date —
+	// same-millisecond events would be skipped between pages.
+	const raw = '2026-01-01 00:00:00.123456+00';
+	const id = 'aaaaaaaa-bbbb-4ccc-8ddd-000000000001';
+	const decoded = decodeCursor(encodeCursor(raw, id));
+	assert.equal(decoded?.createdAt, raw);
+});
+
+test('cursor: rejects non-UUID ids and oversized cursors instead of hitting the ::uuid cast', () => {
+	const iso = '2026-01-01T00:00:00Z';
+	assert.equal(decodeCursor(Buffer.from(`${iso},evt-abc`).toString('base64')), null);
+	assert.equal(decodeCursor('A'.repeat(300)), null);
 });
 
 test('cursor: decodeCursor returns null for garbage input', () => {
@@ -145,7 +161,7 @@ test('AuditEventModel.list: appends cursor filter when valid cursor provided', a
 		},
 	};
 
-	const cursor = encodeCursor(new Date('2026-01-01T00:00:00Z'), 'evt-1');
+	const cursor = encodeCursor(new Date('2026-01-01T00:00:00Z'), 'aaaaaaaa-bbbb-4ccc-8ddd-000000000001');
 	await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', cursor });
 
 	assert.ok(sqls[0]?.includes('(created_at, id) <'));
@@ -162,33 +178,67 @@ test('AuditEventModel.list: clamps limit to 200', async () => {
 
 	await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', limit: 9999 });
 
+	// Clamped to MAX_LIMIT, plus the internal +1 over-fetch that detects a
+	// next page (kept inside the model so no outer clamp can shave it off).
 	const limit = params[0]?.[params[0].length - 1];
-	assert.equal(limit, 200);
+	assert.equal(limit, 201);
 });
 
 // ── pagination ────────────────────────────────────────────────────
 
-test('route pagination: nextCursor is set when results exceed limit', () => {
-	const events = Array.from({ length: 51 }, (_, i) =>
-		makeEvent({ id: `evt-${i}`, createdAt: new Date(Date.now() - i * 1000) }),
+test('AuditEventModel.list: reports hasMore and slices the page', async () => {
+	const rows = Array.from({ length: 51 }, (_, i) =>
+		makeEvent({ id: `aaaaaaaa-bbbb-4ccc-8ddd-${String(i).padStart(12, '0')}` }),
 	);
+	const store = { query: async <T>(): Promise<T[]> => rows as T[] };
+	const page = await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', limit: 50 });
+	assert.equal(page.events.length, 50);
+	assert.equal(page.hasMore, true);
 
-	const page = events.slice(0, 50);
-	const hasMore = events.length > 50;
-	const lastEvent = page[page.length - 1]!;
-	const nextCursor = hasMore ? encodeCursor(lastEvent.createdAt, lastEvent.id) : null;
-
-	assert.ok(nextCursor !== null);
-	const decoded = decodeCursor(nextCursor);
-	assert.equal(decoded?.id, 'evt-49');
+	const small = { query: async <T>(): Promise<T[]> => [makeEvent()] as T[] };
+	const one = await new AuditEventModel(small as never).list({ workspaceId: 'ws-1', limit: 50 });
+	assert.equal(one.hasMore, false);
 });
 
-test('route pagination: nextCursor is null when results fit in one page', () => {
-	const events = [makeEvent()];
-	const hasMore = events.length > 50;
-	const nextCursor = hasMore ? encodeCursor(events[0]!.createdAt, events[0]!.id) : null;
+test('AuditEventModel.list: hasMore survives the MAX page size (the nextCursor regression)', async () => {
+	// Previously the route over-fetched limit+1 and the model re-clamped to
+	// 200, cancelling the over-fetch — nextCursor could never be set at
+	// limit=200 and pagination silently ended at the boundary.
+	const rows = Array.from({ length: 201 }, (_, i) =>
+		makeEvent({ id: `aaaaaaaa-bbbb-4ccc-8ddd-${String(i).padStart(12, '0')}` }),
+	);
+	const store = { query: async <T>(): Promise<T[]> => rows as T[] };
+	const page = await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', limit: 200 });
+	assert.equal(page.events.length, 200);
+	assert.equal(page.hasMore, true);
+});
 
-	assert.equal(nextCursor, null);
+test('GET /audit: emits a microsecond-precise nextCursor at the page boundary', async () => {
+	const raw = '2026-01-01 00:00:00.123456+00';
+	const rows = Array.from({ length: 3 }, (_, i) => ({
+		...makeEvent({ id: `aaaaaaaa-bbbb-4ccc-8ddd-${String(i).padStart(12, '0')}` }),
+		createdAtRaw: raw,
+	}));
+	const store = { query: async <T>(): Promise<T[]> => rows as T[] };
+	const routes = buildAuditRoutes(store as never);
+	const handler = routes[0]![routes[0]!.length - 1] as (
+		ctx: unknown,
+		next: () => Promise<Response>,
+	) => Promise<Response>;
+	const ctx = {
+		workspace: { id: 'ws-1' },
+		user: { id: 'u-1' },
+		meta: {},
+		request: new Request('http://localhost/audit?limit=2'),
+	};
+	const res = await handler(ctx, async () => new Response());
+	const body = (await res.json()) as {
+		result: { events: unknown[]; nextCursor: string | null };
+	};
+	assert.equal(body.result.events.length, 2);
+	assert.ok(body.result.nextCursor);
+	const decoded = decodeCursor(body.result.nextCursor!);
+	assert.equal(decoded?.createdAt, raw, 'cursor must carry created_at::text, not a truncated Date');
 });
 
 // ── model: date filters ───────────────────────────────────────────
