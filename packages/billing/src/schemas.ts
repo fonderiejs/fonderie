@@ -38,6 +38,12 @@ export const recordUsageSchema = z.object({
 	quantity: z.number().min(0).optional(),
 });
 
+// Cancel a subscription. atPeriodEnd defaults to true (keep access until the
+// paid-through date); false cancels immediately.
+export const cancelSubscriptionSchema = z.object({
+	atPeriodEnd: z.boolean().optional(),
+});
+
 // Wallet amounts are bigint on the server; the wire carries them as digit
 // strings (JSON numbers accepted too, for small hand-written requests).
 const walletAmount = z

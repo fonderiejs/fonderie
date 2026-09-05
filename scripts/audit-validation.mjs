@@ -20,6 +20,7 @@ const EXEMPT = new Map([
 	['POST /courier/delivery/mailgun', 'provider webhook; signature-verified'],
 	['POST /courier/delivery/mailtrap', 'provider webhook'],
 	['POST /billing/portal', 'no body read — subscriber resolved from ctx'],
+	['POST /billing/subscription/reactivate', 'no body read — subscriber + subscription from ctx'],
 	['POST /webhooks/:endpointId/test', 'no body read — builds outgoing payload'],
 	['POST /auth/mfa/setup', 'no body read — generates TOTP secret'],
 	['POST /workspaces/archive', 'no body read — workspace from ctx'],

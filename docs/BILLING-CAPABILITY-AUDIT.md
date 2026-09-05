@@ -356,8 +356,18 @@ reversal path got a focused review.
   and the pure normalizers.
 
 ### Phase 4 — Subscription lifecycle first-party controls (credit-SaaS polish)
-- [ ] `cancelSubscription` on `IBillingProvider` + first-party cancel /
-  cancel-at-period-end / reactivate / downgrade endpoints; dunning grace.
+- [x] `cancelSubscription` / `reactivateSubscription` (optional) on
+  `IBillingProvider`; first-party `POST /billing/subscription/cancel`
+  (atPeriodEnd default true; false = immediate) and `.../reactivate`. Optimistic
+  stored-state update; the provider webhook stays the single source of the
+  lifecycle event + cancellation notice (announced once). `501` when the
+  provider can't; routes behind `requireAuth` + the workspace-membership guard.
+  Tests: at-period-end/immediate cancel, reactivate, 501/404, route registration.
+
+#### Phase 4b — Downgrade + dunning grace — pending
+- [ ] Scheduled plan-change (downgrade) — needs Stripe subscription schedules,
+  a bigger lift than the in-place upgrade path; carved out of the cancel PR.
+- [ ] Dunning grace window / retry policy.
 
 ### Non-goals (explicit, until a money-transmitter decision is made)
 Peer-to-peer transfers, external payouts/withdrawals, refunds-to-card,

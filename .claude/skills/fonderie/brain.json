@@ -333,7 +333,7 @@
         "fonderie_wallet_grants",
         "fonderie_wallet_ledger"
       ],
-      "routeCount": 16,
+      "routeCount": 18,
       "routes": [
         {
           "method": "POST",
@@ -349,6 +349,16 @@
           "method": "GET",
           "path": "/billing/subscription",
           "mw": "requireAuth → subscription.get"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/subscription/cancel",
+          "mw": "requireAuth → validate(cancelSubscriptionSchema) → subscription.cancel"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/subscription/reactivate",
+          "mw": "requireAuth → subscription.reactivate"
         },
         {
           "method": "POST",

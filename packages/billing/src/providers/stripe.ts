@@ -7,6 +7,7 @@ import type {
 	INormalizedReversal,
 	INormalizedSubscription,
 	IResolvedPrice,
+	ISubscriptionChange,
 } from './types';
 import { BILLING_INTERVAL, isBillingInterval } from '../types';
 import type { BillingInterval, SubscriberType } from '../types';
@@ -271,6 +272,17 @@ function toResolvedPrice(p: any): IResolvedPrice {
 	};
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toSubscriptionChange(sub: any): ISubscriptionChange {
+	const item = sub.items?.data?.[0];
+	const cpe = item?.current_period_end ?? sub.current_period_end;
+	return {
+		status: sub.status,
+		cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+		currentPeriodEnd: cpe ? new Date(cpe * 1000) : null,
+	};
+}
+
 export class StripeProvider implements IBillingProvider {
 	readonly name = 'stripe';
 
@@ -474,6 +486,29 @@ export class StripeProvider implements IBillingProvider {
 			currentPeriodStart: cps ? new Date(cps * 1000) : null,
 			currentPeriodEnd: cpe ? new Date(cpe * 1000) : null,
 		};
+	}
+
+	async cancelSubscription(opts: {
+		subscriptionId: string;
+		atPeriodEnd: boolean;
+	}): Promise<ISubscriptionChange> {
+		const stripe = await this.client();
+		// At period end: flag it (access continues until paid-through). Immediate:
+		// end now. Stripe emits customer.subscription.updated / .deleted for both,
+		// so the webhook confirms state + owns the customer notice — this method
+		// only performs the change and returns the resulting state.
+		const sub = opts.atPeriodEnd
+			? await stripe.subscriptions.update(opts.subscriptionId, { cancel_at_period_end: true })
+			: await stripe.subscriptions.cancel(opts.subscriptionId);
+		return toSubscriptionChange(sub);
+	}
+
+	async reactivateSubscription(opts: { subscriptionId: string }): Promise<ISubscriptionChange> {
+		const stripe = await this.client();
+		const sub = await stripe.subscriptions.update(opts.subscriptionId, {
+			cancel_at_period_end: false,
+		});
+		return toSubscriptionChange(sub);
 	}
 
 	async createPortalSession(opts: {

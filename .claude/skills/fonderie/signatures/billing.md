@@ -22,6 +22,8 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
   .resolvePriceById(priceId: string): Promise<IResolvedPrice | null>
   .resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>
   .updateSubscription(opts: { subscriptionId: string; priceId: string; }): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null; }>
+  .cancelSubscription(opts: { subscriptionId: string; atPeriodEnd: boolean; }): Promise<ISubscriptionChange>
+  .reactivateSubscription(opts: { subscriptionId: string; }): Promise<ISubscriptionChange>
   .createPortalSession(opts: { customerId: string; returnUrl: string; }): Promise<{ url: string; }>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
 
@@ -234,6 +236,13 @@ interface IBillingProvider {
         currentPeriodStart: Date | null;
         currentPeriodEnd: Date | null;
     }>;
+    cancelSubscription?(opts: {
+        subscriptionId: string;
+        atPeriodEnd: boolean;
+    }): Promise<ISubscriptionChange>;
+    reactivateSubscription?(opts: {
+        subscriptionId: string;
+    }): Promise<ISubscriptionChange>;
     createPortalSession(opts: {
         customerId: string;
         returnUrl: string;
@@ -307,6 +316,12 @@ interface IResolvedPrice {
     nickname: string | null;
     productId: string;
     active: boolean;
+}
+
+interface ISubscriptionChange {
+    status: string;
+    cancelAtPeriodEnd: boolean;
+    currentPeriodEnd: Date | null;
 }
 
 interface IPlan {
@@ -598,5 +613,5 @@ interface IAutoRechargeClaim {
     pendingKey: string | null;
 }
 
-namespace schemas — exports: checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, updatePlanSchema, walletCheckoutSchema
+namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, updatePlanSchema, walletCheckoutSchema
 ```
