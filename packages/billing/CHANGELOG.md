@@ -1,5 +1,84 @@
 # @fonderie/billing
 
+## 6.1.0
+
+### Minor Changes
+
+- 5cce49d: Phase 2: billing communicates money events to the customer (governing principle: no money moves without a durable record AND a clear customer communication)
+  
+  `IBillingConfig` gains `resolveRecipient?(subscriberType, subscriberId)` (with
+  the `IBillingRecipient` / `ResolveRecipient` types). Billing's money flows are
+  webhook-driven and have no session, so the app maps a subscriber id to an
+  email/phone/deviceToken; returning `null` (or omitting the resolver) sends
+  nothing. When a recipient resolves and a `bus` is wired, billing emits
+  courier's `NOTIFICATION_EVENT` for:
+  
+  - **pack-purchase receipt** — on a real (non-replay) wallet credit
+    (`billing.payment-receipt`);
+  - **failed-payment dunning** — on the transition into `past_due`
+    (`billing.payment-failed`);
+  - **cancellation** — on the transition into `canceled`
+    (`billing.subscription-canceled`);
+  - **low balance** — once per crossing, with recovery hysteresis, alongside a
+    new `fonderie.billing.wallet.low_balance` domain event
+    (`billing.credits-low`).
+  
+  Notices fire only on the state transition (not on every provider retry) and
+  only on a real credit (not on an idempotent replay), so no customer is
+  double-emailed. Message keys are exported as `MESSAGE_KEYS`; the operator
+  supplies the courier templates, billing supplies the `type` + `data` payload.
+  
+  `BillingModule.checkReadiness()` now fails closed: when payments are enabled (a
+  paid plan or the wallet) but no communication path is configured
+  (`bus` + `resolveRecipient`), it raises a production **error** (a warning
+  outside production), aggregated by `app.checkProductionReadiness()` and
+  enforced at boot. Taking money with no way to inform the customer is a SOC 2
+  Processing-Integrity / consumer-protection failure, not an integrator's later
+  choice.
+  
+  Per-plan `IBillingPlanWallet.lowBalanceAt?: bigint` sets the low-balance
+  threshold (omit to disable).
+  
+  Additive and opt-in: with no `bus`/`resolveRecipient`, billing behaves exactly
+  as before (outside production). `@fonderie/events` remains an optional peer.
+  Refund/chargeback notices (`billing.refund-processed`, declared but not yet
+  emitted) and one-time-payment-declined notices need the normalized provider
+  events from Phase 3.
+- 63d1036: Phase 1: billing publishes `fonderie.billing.*` domain events on the EventBus
+  
+  `BillingModule` now accepts an optional `bus?: EventBus` (third constructor
+  argument) and, when given one, publishes domain events at its money-movement
+  points — subscription lifecycle (`subscription.created/updated/canceled/past_due`
+  from the webhook), credit-pack purchases (`credit_pack.purchased` +
+  `wallet.credited`), manual grants (`wallet.credited`), and periodic plan
+  grants (`grant.applied` + `wallet.credited`). Event keys are exported as
+  `EVENT_KEYS` / `BillingEventKey`.
+  
+  This closes the "billing emits nothing subscribable" gap from the billing
+  capability audit: in-process consumers can now subscribe, and — because each
+  workspace-scoped payload carries a top-level `workspaceId` — `@fonderie/webhooks`
+  fans the same events out to a customer's own endpoints with no billing→webhooks
+  coupling. Money amounts are serialized as strings (payloads are JSON: persisted
+  and forwarded). Emission is fire-and-forget and skipped on idempotent replays,
+  so a bus hiccup or a webhook retry never breaks billing or double-fires.
+  
+  Additive: `@fonderie/events` is an optional peer dependency; billing behaves
+  exactly as before when no `bus` is provided. Customer-facing receipts/notices
+  (courier `NOTIFICATION_EVENT`) and the refund/chargeback clawback are Phase 2/3.
+- e89d5f6: Phase 3a: refund/chargeback wallet clawback — closes the value-leak where a buyer could purchase credits, spend them, then refund the card (or file a chargeback) and keep the goods
+  
+  The Stripe provider now normalizes `charge.refunded` and `charge.dispute.created` / `.closed` into a new `IBillingEvent.reversal` (`INormalizedReversal`), and the payment webhook reverses the credits the original purchase granted:
+  
+  - A refund/chargeback carries no wallet metadata, so billing joins back to the purchase by its PaymentIntent (`provider_tx_id`, now indexed via migration `007`). New helpers: `reverseWallet`, `findPurchaseByProviderTxId`, `sumReversedCreditsByProviderTxId`, `findLedgerAmountByKey`.
+  - The reversal is a negative `type:'refund'` ledger row that **deliberately bypasses the balance floor** — a clawback must be able to drive the wallet negative when the credits were already spent (a negative balance is "credits owed back"; the next grant/purchase nets against it).
+  - Credits are prorated to the refunded amount and the **cumulative reversal is capped at the credits granted, enforced inside the transaction under a per-PaymentIntent advisory lock**, so no mix of partial refunds and a chargeback — even delivered concurrently — can ever over-reverse.
+  - Idempotent on the refund's/dispute's own id (a charge can be partially refunded many times, each distinct). A won dispute restores exactly what its chargeback clawed.
+  - Emits `fonderie.billing.payment.refunded` + `fonderie.billing.wallet.debited` and the (previously reserved) `billing.refund-processed` customer notice — only on a real, non-replayed reversal.
+  
+  `SubscriptionStatus` is widened to the full provider vocabulary (adds `incomplete_expired`, `unpaid`) — the DB column is already free-form text, so this only makes the type honest; the new states are inactive by default.
+  
+  Additive and opt-in: the new event slot and helpers don't affect existing flows, and refunds only act when the provider normalizes them. Proven against real PostgreSQL (negative-balance clawback, idempotent replay, and the concurrent dispute+refund cap). The remaining Phase 3 items — `invoice.paid`/`invoice.payment_failed` and `checkout.session.async_payment_failed`/`payment_intent.payment_failed` normalization (notification-only) — land in a follow-up.
+
 ## 6.0.0
 
 ### Major Changes
