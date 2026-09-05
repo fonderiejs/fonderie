@@ -8,7 +8,7 @@ export type {
 	ICustomerEmailDTO,
 	ICustomerNoteDTO,
 	ICustomerPhoneDTO,
-	ICustomerTagDTO,
+	ICustomerLabelDTO,
 } from './dtos/customer';
 export {
 	toAddressDTO,
@@ -18,7 +18,7 @@ export {
 	toCustomerEmailDTO,
 	toCustomerNoteDTO,
 	toCustomerPhoneDTO,
-	toCustomerTagDTO,
+	toCustomerLabelDTO,
 } from './dtos/customer';
 export {
 	CustomerAddressModel,
@@ -38,7 +38,6 @@ export type {
 	ICustomerEmail,
 	ICustomerNote,
 	ICustomerPhone,
-	ICustomerTag,
 } from './types';
 
 // Request validation — enforced contract for body-taking routes; exported

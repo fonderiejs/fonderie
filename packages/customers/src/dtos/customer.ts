@@ -1,6 +1,6 @@
 import { arrayOrEmpty, booleanOrFalse, dateOrEmpty, stringOrEmpty } from '@fonderie/core';
 
-import type { CustomerSex } from '../types';
+import type { CustomerLabelType, CustomerSex } from '../types';
 import type {
 	IAddress,
 	ICustomer,
@@ -14,7 +14,7 @@ import type {
 	ICustomerRelationshipExpanded,
 	ICustomerRelationshipExpandedD2,
 	ICustomerShallow,
-	ICustomerTag,
+	ICustomerLabel,
 } from '../types';
 
 export interface ICustomerDTO {
@@ -52,12 +52,16 @@ export interface ICustomerShallowDTO extends ICustomerDTO {
 }
 
 // Flat merge: relationship metadata + customer fields spread at the same level.
-// `id` is the relationship record id; `customerId` is the related customer's id.
+// `id` is the relationship record id; `customerId` is the related customer's
+// id. NOTE: the spread customer fields include the related CUSTOMER's
+// createdAt/updatedAt — `relationshipCreatedAt` is when the relationship
+// itself was created (what ICustomerRelationshipDTO.createdAt means).
 export type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
 	id: string;
 	customerId: string;
 	relationship: string;
 	isPrimary: boolean;
+	relationshipCreatedAt: string;
 };
 
 export interface ICustomerDetailDTO extends ICustomerDTO {
@@ -82,6 +86,8 @@ export interface ICustomerEmailDTO {
 	id: string;
 	email: string;
 	label: string;
+	// Id of the shared label row (see /customers/labels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	createdAt: string;
 }
@@ -90,6 +96,8 @@ export interface ICustomerPhoneDTO {
 	id: string;
 	phone: string;
 	label: string;
+	// Id of the shared label row (see /customers/labels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	createdAt: string;
 }
@@ -107,6 +115,8 @@ export interface IAddressDTO {
 export interface ICustomerAddressDTO {
 	id: string;
 	label: string;
+	// Id of the shared label row (see /customers/labels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	address: IAddressDTO;
 }
@@ -119,8 +129,13 @@ export interface ICustomerNoteDTO {
 	updatedAt: string;
 }
 
-export interface ICustomerTagDTO {
-	tag: string;
+// Serialized shared label (GET /customers/labels) — the one customers
+// response that previously bypassed DTO mapping and leaked raw Date rows.
+export interface ICustomerLabelDTO {
+	id: string;
+	type: CustomerLabelType;
+	value: string;
+	createdAt: string;
 }
 
 const VALID_SEX: CustomerSex[] = ['UNKNOWN', 'MALE', 'FEMALE'];
@@ -173,6 +188,7 @@ export function toCustomerRelationshipExpandedDTO(r: ICustomerRelationshipExpand
 		customerId,
 		relationship: stringOrEmpty(r.relationship),
 		isPrimary: booleanOrFalse(r.isPrimary),
+		relationshipCreatedAt: dateOrEmpty(r.createdAt),
 		...customerFields,
 	};
 }
@@ -196,6 +212,7 @@ export function toCustomerRelationshipExpandedD2DTO(r: ICustomerRelationshipExpa
 		customerId,
 		relationship: stringOrEmpty(r.relationship),
 		isPrimary: booleanOrFalse(r.isPrimary),
+		relationshipCreatedAt: dateOrEmpty(r.createdAt),
 		...customerFields,
 		relationships: arrayOrEmpty<ICustomerRelationshipExpanded>(r.customer.relationships).map(toCustomerRelationshipExpandedDTO),
 	};
@@ -230,6 +247,7 @@ export function toCustomerEmailDTO(e: ICustomerEmail): ICustomerEmailDTO {
 		id: stringOrEmpty(e.id),
 		email: stringOrEmpty(e.email),
 		label: stringOrEmpty(e.label),
+		labelId: e.labelId ?? null,
 		isPrimary: booleanOrFalse(e.isPrimary),
 		createdAt: dateOrEmpty(e.createdAt),
 	};
@@ -240,6 +258,7 @@ export function toCustomerPhoneDTO(p: ICustomerPhone): ICustomerPhoneDTO {
 		id: stringOrEmpty(p.id),
 		phone: stringOrEmpty(p.phone),
 		label: stringOrEmpty(p.label),
+		labelId: p.labelId ?? null,
 		isPrimary: booleanOrFalse(p.isPrimary),
 		createdAt: dateOrEmpty(p.createdAt),
 	};
@@ -249,6 +268,7 @@ export function toCustomerAddressDTO(ca: ICustomerAddress): ICustomerAddressDTO 
 	return {
 		id: stringOrEmpty(ca.addrId),
 		label: stringOrEmpty(ca.label),
+		labelId: ca.labelId ?? null,
 		isPrimary: booleanOrFalse(ca.isPrimary),
 		address: toAddressDTO(ca.address),
 	};
@@ -264,8 +284,11 @@ export function toCustomerNoteDTO(n: ICustomerNote): ICustomerNoteDTO {
 	};
 }
 
-export function toCustomerTagDTO(t: ICustomerTag): ICustomerTagDTO {
+export function toCustomerLabelDTO(l: ICustomerLabel): ICustomerLabelDTO {
 	return {
-		tag: stringOrEmpty(t.tag),
+		id: stringOrEmpty(l.id),
+		type: l.type,
+		value: stringOrEmpty(l.value),
+		createdAt: dateOrEmpty(l.createdAt),
 	};
 }

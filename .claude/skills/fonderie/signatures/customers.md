@@ -28,6 +28,7 @@ interface IAddressDTO {
 interface ICustomerAddressDTO {
     id: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     address: IAddressDTO;
 }
@@ -66,6 +67,7 @@ interface ICustomerEmailDTO {
     id: string;
     email: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     createdAt: string;
 }
@@ -82,12 +84,16 @@ interface ICustomerPhoneDTO {
     id: string;
     phone: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     createdAt: string;
 }
 
-interface ICustomerTagDTO {
-    tag: string;
+interface ICustomerLabelDTO {
+    id: string;
+    type: CustomerLabelType;
+    value: string;
+    createdAt: string;
 }
 
 function toAddressDTO(a: IAddress): IAddressDTO
@@ -104,7 +110,7 @@ function toCustomerNoteDTO(n: ICustomerNote): ICustomerNoteDTO
 
 function toCustomerPhoneDTO(p: ICustomerPhone): ICustomerPhoneDTO
 
-function toCustomerTagDTO(t: ICustomerTag): ICustomerTagDTO
+function toCustomerLabelDTO(l: ICustomerLabel): ICustomerLabelDTO
 
 new CustomerAddressModel(store: IStoreAdapter): CustomerAddressModel
   .list(customerId: string): Promise<ICustomerAddress[]>
@@ -233,11 +239,6 @@ interface ICustomerPhone {
     label: string;
     isPrimary: boolean;
     createdAt: string;
-}
-
-interface ICustomerTag {
-    customerId: string;
-    tag: string;
 }
 
 namespace schemas — exports: addAddressSchema, addEmailSchema, addPhoneSchema, addRelationshipSchema, addTagSchema, blacklistSchema, createCustomerSchema, noteSchema, updateAddressSchema, updateCustomerSchema, updateEmailSchema, updatePhoneSchema
