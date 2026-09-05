@@ -334,3 +334,91 @@ test('customerRelationshipController.list: 200 with relationships array', async 
 	const body = (await res.json()) as any;
 	assert.ok(Array.isArray(body.result.relationships));
 });
+
+// ── DTO gap fixes (docs/DTO-GAP-AUDIT.md, customers batch) ────────
+
+test('email/phone/address DTOs expose labelId for label-admin correlation', async () => {
+	const { toCustomerEmailDTO, toCustomerPhoneDTO, toCustomerAddressDTO } = await import(
+		'../dtos/customer'
+	);
+	const email = toCustomerEmailDTO({
+		id: 'e1', email: 'a@b.com', label: 'work', labelId: 'lab-1', isPrimary: true,
+		createdAt: '2026-09-05T00:00:00.000Z',
+	} as never);
+	assert.equal(email.labelId, 'lab-1');
+	const phone = toCustomerPhoneDTO({
+		id: 'p1', phone: '+15550001111', label: 'work', labelId: null, isPrimary: false,
+		createdAt: '2026-09-05T00:00:00.000Z',
+	} as never);
+	assert.equal(phone.labelId, null);
+	const addr = toCustomerAddressDTO({
+		addrId: 'a1', label: 'home', labelId: 'lab-2', isPrimary: false,
+		address: { countryIso: 'CA', zipPostalCode: 'H2X 1Y4' },
+	} as never);
+	assert.equal(addr.labelId, 'lab-2');
+});
+
+test('expanded relationships carry relationshipCreatedAt distinct from the customer dates', async () => {
+	const { toCustomerRelationshipExpandedDTO } = await import('../dtos/customer');
+	const dto = toCustomerRelationshipExpandedDTO({
+		id: 'r1',
+		relationship: 'spouse',
+		isPrimary: true,
+		createdAt: new Date('2026-09-01T00:00:00.000Z'),
+		customer: {
+			id: 'c2', type: 'individual', sex: 'UNKNOWN', firstName: 'Ada', lastName: 'L',
+			companyName: '', avatarUrl: '', locale: '', referenceCode: '', referralCode: '',
+			referredBy: null, isBlacklisted: false, blacklistReason: null, createdBy: 'u1',
+			createdAt: new Date('2020-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2020-01-01T00:00:00.000Z'),
+			emails: [], phones: [], addresses: [], notes: [], tags: [],
+		},
+	} as never);
+	// The relationship's own date — NOT the related customer's signup date.
+	assert.equal(dto.relationshipCreatedAt, '2026-09-01T00:00:00.000Z');
+	assert.equal(dto.createdAt, '2020-01-01T00:00:00.000Z');
+});
+
+test('toCustomerLabelDTO serializes the Date row the label route used to leak raw', async () => {
+	const { toCustomerLabelDTO } = await import('../dtos/customer');
+	const dto = toCustomerLabelDTO({
+		id: 'lab-1', type: 'email', value: 'work',
+		createdAt: new Date('2026-09-05T00:00:00.000Z'),
+	} as never);
+	assert.equal(dto.createdAt, '2026-09-05T00:00:00.000Z');
+});
+
+test('addRelationshipSchema requires relationship (the controller always did)', async () => {
+	const { addRelationshipSchema } = await import('../schemas');
+	assert.equal(addRelationshipSchema.safeParse({ relatedId: 'c2' }).success, false);
+	assert.equal(addRelationshipSchema.safeParse({ relatedId: 'c2', relationship: ' ' }).success, false);
+	assert.equal(
+		addRelationshipSchema.safeParse({ relatedId: 'c2', relationship: 'spouse' }).success,
+		true,
+	);
+});
+
+test('referral codes are create-only: update rejects a referral-only body', async () => {
+	const { createCustomerSchema, updateCustomerSchema } = await import('../schemas');
+	assert.equal(createCustomerSchema.safeParse({ referralCode: 'REF-1' }).success, true);
+	// Unknown keys are stripped, so a referral-only update fails the
+	// at-least-one-field refinement instead of 200-OK doing nothing.
+	assert.equal(updateCustomerSchema.safeParse({ referralCode: 'REF-1' }).success, false);
+	assert.equal(updateCustomerSchema.safeParse({ firstName: 'Ada' }).success, true);
+});
+
+// ── audit closeout: update schemas match what controllers apply ──
+
+test('email/phone/address update schemas accept only the label (the one editable field)', async () => {
+	const { updateEmailSchema, updatePhoneSchema, updateAddressSchema } = await import('../schemas');
+	for (const schema of [updateEmailSchema, updatePhoneSchema, updateAddressSchema]) {
+		assert.equal(schema.safeParse({ label: 'work' }).success, true);
+		// Content changes are remove-and-re-add; setPrimary has its own route.
+		// The old schemas accepted these and the controllers silently ignored
+		// them (or 422'd on the missing label anyway).
+		assert.equal(schema.safeParse({ isPrimary: true }).success, false);
+		assert.equal(schema.safeParse({}).success, false);
+	}
+	assert.equal(updateEmailSchema.safeParse({ email: 'a@b.com' }).success, false);
+	assert.equal(updatePhoneSchema.safeParse({ phone: '+15550001111' }).success, false);
+});

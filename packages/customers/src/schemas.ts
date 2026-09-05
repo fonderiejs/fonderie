@@ -20,11 +20,16 @@ const customerFields = {
 	avatarUrl: z.string().trim().pipe(z.url()).nullable().optional(),
 	locale: z.string().max(35).nullable().optional(),
 	referenceCode: z.string().max(100).nullable().optional(),
+};
+
+// Referral codes are create-time only: the update controller never writes
+// them, so accepting them on update produced 200-OK silent no-ops.
+const referralFields = {
 	referralCode: z.string().max(100).nullable().optional(),
 	referredByCode: z.string().max(100).nullable().optional(),
 };
 
-export const createCustomerSchema = z.object(customerFields);
+export const createCustomerSchema = z.object({ ...customerFields, ...referralFields });
 
 export const updateCustomerSchema = z
 	.object(customerFields)
@@ -33,14 +38,18 @@ export const updateCustomerSchema = z
 export const blacklistSchema = z.object({ reason: z.string().max(1000).optional() });
 
 export const addEmailSchema = z.object({ email, label, isPrimary });
-export const updateEmailSchema = z
-	.object({ email: email.optional(), label, isPrimary })
-	.refine((o) => Object.values(o).some((v) => v !== undefined), 'Provide at least one field');
+// Only the label is editable on an existing email/phone/address — the
+// controllers apply nothing else (value changes are remove-and-re-add, and
+// setPrimary has its own route). The old schemas accepted content fields
+// and isPrimary that were silently ignored.
+export const updateEmailSchema = z.object({
+	label: z.string().trim().min(1, 'label is required').max(100),
+});
 
 export const addPhoneSchema = z.object({ phone, label, isPrimary });
-export const updatePhoneSchema = z
-	.object({ phone: phone.optional(), label, isPrimary })
-	.refine((o) => Object.values(o).some((v) => v !== undefined), 'Provide at least one field');
+export const updatePhoneSchema = z.object({
+	label: z.string().trim().min(1, 'label is required').max(100),
+});
 
 const addressFields = {
 	label,
@@ -54,9 +63,9 @@ const addressFields = {
 	subdivision2Iso: z.string().max(10).nullable().optional(),
 };
 export const addAddressSchema = z.object(addressFields);
-export const updateAddressSchema = z
-	.object(addressFields)
-	.refine((o) => Object.values(o).some((v) => v !== undefined), 'Provide at least one field');
+export const updateAddressSchema = z.object({
+	label: z.string().trim().min(1, 'label is required').max(100),
+});
 
 export const noteSchema = z.object({ body: z.string().trim().min(1, 'body is required').max(10000) });
 
@@ -64,6 +73,8 @@ export const addTagSchema = z.object({ tag: z.string().trim().min(1, 'tag is req
 
 export const addRelationshipSchema = z.object({
 	relatedId: z.string().min(1, 'relatedId is required'),
-	relationship: z.string().max(100).optional(),
+	// The controller has always required this — an optional schema let a
+	// type-correct client walk straight into a guaranteed 422.
+	relationship: z.string().trim().min(1, 'relationship is required').max(100),
 	isPrimary,
 });

@@ -362,3 +362,89 @@ test('bus: dispatcher receives events emitted via MemoryTransport', async () => 
 
 	assert.equal(store.db.fonderie_webhook_deliveries.length, 1);
 });
+
+// ── audit closeout: delivery DTO carries what the query fetches ──
+
+test('toDeliveryDTO: exposes payload, responseBody, and nextAttemptAt', async () => {
+	const { toDeliveryDTO } = await import('../dtos/webhook');
+	const dto = toDeliveryDTO({
+		id: 'd1',
+		endpointId: 'ep1',
+		eventId: 'ev1',
+		eventType: 'user.created',
+		payload: { workspaceId: 'w1', name: 'Ada' },
+		status: 'failed',
+		attempts: 2,
+		responseStatus: 500,
+		responseBody: 'upstream boom',
+		nextAttemptAt: new Date('2026-09-05T12:00:00.000Z'),
+		deliveredAt: null,
+		createdAt: new Date('2026-09-05T10:00:00.000Z'),
+	} as never);
+	assert.deepEqual(dto.payload, { workspaceId: 'w1', name: 'Ada' });
+	assert.equal(dto.responseBody, 'upstream boom');
+	assert.equal(dto.nextAttemptAt, '2026-09-05T12:00:00.000Z');
+});
+
+// ── retry ─────────────────────────────────────────────────────────
+// The claim query returns FLAT rows (delivery columns + endpoint url/secret).
+// IPendingRetry once claimed a nested { delivery, url, secret } shape no row
+// ever produced — retry() then threw on `delivery.eventId` for every claimed
+// row (swallowed by Promise.allSettled), so failed deliveries were re-claimed
+// forever and never actually retried. This pins the working contract.
+
+test('retry: a claimed failed delivery is actually re-attempted and marked delivered', async () => {
+	const captured: { sql: string; params: unknown[] }[] = [];
+	const flatRow = {
+		id: 'd1',
+		endpointId: 'ep1',
+		eventId: 'ev1',
+		eventType: 'user.created',
+		payload: { workspaceId: 'w1' },
+		status: 'failed',
+		attempts: 1,
+		responseStatus: 500,
+		responseBody: '',
+		nextAttemptAt: new Date(),
+		deliveredAt: null,
+		createdAt: new Date(),
+		url: 'https://hooks.example.com/sink',
+		secret: 'whsec_retry',
+	};
+	const store = {
+		query: async <T>(sql: string, params?: unknown[]): Promise<T[]> => {
+			captured.push({ sql, params: params ?? [] });
+			if (sql.includes('JOIN') && sql.includes('fonderie_webhook_endpoints')) {
+				return [flatRow] as unknown as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
+	};
+
+	const fetchMock = mock.method(
+		globalThis,
+		'fetch',
+		async () => new Response('ok', { status: 200 }),
+	);
+	try {
+		await new WebhookDispatcher(store as never).retry();
+	} finally {
+		fetchMock.mock.restore();
+	}
+
+	assert.equal(fetchMock.mock.callCount(), 1, 'the claimed delivery must be re-attempted');
+	const [url, init] = fetchMock.mock.calls[0]!.arguments as [string, RequestInit];
+	assert.equal(url, 'https://hooks.example.com/sink');
+	const sent = JSON.parse(String(init.body));
+	assert.equal(sent.id, 'ev1');
+	assert.equal(sent.type, 'user.created');
+	const headers = init.headers as Record<string, string>;
+	assert.equal(headers['X-Webhook-Signature'], signPayload('whsec_retry', String(init.body)));
+	assert.equal(headers['X-Webhook-ID'], 'd1');
+
+	const update = captured.find((c) => c.sql.includes('UPDATE fonderie_webhook_deliveries'));
+	assert.ok(update, 'markResult must record the outcome');
+	assert.equal(update!.params[0], 'd1');
+	assert.equal(update!.params[1], 'delivered');
+});

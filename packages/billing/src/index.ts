@@ -51,7 +51,6 @@ export type {
 export type {
 	IPlan,
 	ISubscription,
-	IUsageRecord,
 	IWalletBalance,
 	IWalletContext,
 	IWalletLedgerEntry,
@@ -65,7 +64,6 @@ export type {
 export type {
 	IPlanDTO,
 	ISubscriptionDTO,
-	IUsageRecordDTO,
 	IWalletDTO,
 	IWalletTransactionDTO,
 } from './dtos/billing';
@@ -74,7 +72,6 @@ export type {
 export {
 	toPlanDTO,
 	toSubscriptionDTO,
-	toUsageRecordDTO,
 	toWalletDTO,
 	toWalletTransactionDTO,
 } from './dtos/billing';

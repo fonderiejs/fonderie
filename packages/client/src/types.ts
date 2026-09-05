@@ -59,11 +59,19 @@ export interface ITokens {
 export interface IRegisterResult {
 	tokens: ITokens;
 	user: IUserDTO;
+	// True when the account still needs email verification (config-dependent;
+	// route the user to the verify screen). Absent on phone and MFA/OAuth
+	// completions, which don't compute it.
+	requiresVerification?: boolean;
 }
 
 export interface ILoginResult {
 	tokens: ITokens;
 	user: IUserDTO;
+	// True when the account still needs email verification (config-dependent;
+	// route the user to the verify screen). Absent on phone and MFA/OAuth
+	// completions, which don't compute it.
+	requiresVerification?: boolean;
 }
 
 // Login response when the account has MFA enabled: no tokens yet — complete
@@ -85,14 +93,13 @@ export interface IVerifyEmailResult {
 	email: string;
 }
 
+// GET /auth/send-verification: `{ email }` after a resend, `{ verified: true,
+// email }` when the address was already verified, and no result at all on the
+// phone branch — hence both fields optional. The verification pin itself is
+// only ever emailed; it never appears in the response.
 export interface IResendVerificationResult {
-	stat: string;
-	message: string;
-	data: {
-		token: string;
-		expiresAt: string;
-		email: string;
-	};
+	email?: string;
+	verified?: boolean;
 }
 
 export interface IMeResult {
@@ -106,9 +113,12 @@ export interface IMfaSetupResult {
 	backupCodes: string[];
 }
 
+// POST /auth/mfa/verify with a full session token (setup confirmation). The
+// session token is NOT rotated — MFA is enforced at login, so the existing
+// session stays valid unchanged. The `{ tokens, user }` response only exists
+// on the mfa-pending login path, typed separately as ILoginResult (verifyLogin).
 export interface IMfaEnabledResult {
-	tokens: ITokens;
-	user: IUserDTO;
+	mfaEnabled: boolean;
 }
 
 // ── Billing ──────────────────────────────────────────────────────────────────
@@ -208,6 +218,8 @@ export interface IWorkspaceDTO {
 	isPersonal: boolean;
 	isArchived: boolean;
 	archivedAt: string;
+	// User id that archived the workspace; '' while unarchived.
+	archivedBy: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -410,7 +422,13 @@ export interface IWebhookDeliveryDTO {
 	eventType: string;
 	status: string;
 	attempts: number;
+	// The event body that was delivered — what the endpoint received.
+	payload: Record<string, unknown>;
 	responseStatus: number | null;
+	// The receiving endpoint's response body (useful when debugging failures).
+	responseBody: string | null;
+	// When the next retry is due; null once delivered or exhausted.
+	nextAttemptAt: string | null;
 	deliveredAt: string | null;
 	createdAt: string;
 }
@@ -459,6 +477,8 @@ export interface ICustomerEmailDTO {
 	id: string;
 	email: string;
 	label: string;
+	// Id of the shared label row (see listLabels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	createdAt: string;
 }
@@ -467,6 +487,8 @@ export interface ICustomerPhoneDTO {
 	id: string;
 	phone: string;
 	label: string;
+	// Id of the shared label row (see listLabels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	createdAt: string;
 }
@@ -484,6 +506,8 @@ export interface IAddressDTO {
 export interface ICustomerAddressDTO {
 	id: string;
 	label: string;
+	// Id of the shared label row (see listLabels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	address: IAddressDTO;
 }
@@ -512,6 +536,10 @@ export type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> &
 	customerId: string;
 	relationship: string;
 	isPrimary: boolean;
+	// When the relationship itself was created. The spread customer fields
+	// include the related CUSTOMER's createdAt/updatedAt — don't sort
+	// relationships by those.
+	relationshipCreatedAt: string;
 };
 
 export type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {

@@ -28,7 +28,6 @@ const USER_COLUMNS = `
 	whitelist,
 	ip_whitelist       AS "ipWhitelist",
 	mfa_enabled        AS "mfaEnabled",
-	mfa_secret         AS "mfaSecret",
 	email_verified_at  AS "emailVerifiedAt",
 	deleted_at         AS "deletedAt",
 	created_at         AS "createdAt",

@@ -1117,3 +1117,41 @@ test('webhook: falls back to nickname when price matches no config plan', async 
 	await ctrl.handle(webhookCtx('{}'));
 	assert.equal(cap.plan(), 'legacy-nick');
 });
+
+// ── DTO date honesty (docs/DTO-GAP-AUDIT.md, billing batch) ───────
+
+test('toSubscriptionDTO: serializes pg Date rows as ISO strings, not accidental toJSON', async () => {
+	const { toSubscriptionDTO } = await import('../dtos/billing');
+	const at = new Date('2026-05-01T00:00:00.000Z');
+	const dto = toSubscriptionDTO({
+		...baseSubscription,
+		currentPeriodStart: at,
+		currentPeriodEnd: at,
+		trialEndsAt: at,
+		createdAt: at,
+	} as never);
+	assert.equal(dto.currentPeriodStart, '2026-05-01T00:00:00.000Z');
+	assert.equal(dto.currentPeriodEnd, '2026-05-01T00:00:00.000Z');
+	assert.equal(dto.trialEndsAt, '2026-05-01T00:00:00.000Z');
+	assert.equal(dto.createdAt, '2026-05-01T00:00:00.000Z');
+	// Nullables stay null, not ''.
+	const bare = toSubscriptionDTO({ ...baseSubscription, trialEndsAt: null } as never);
+	assert.equal(bare.trialEndsAt, null);
+});
+
+test('usageController.get: since is an explicit ISO string on the wire', async () => {
+	const { usageController } = await import('../controllers/usage.controller');
+	const ctrl = usageController(makeStore());
+	const ctx = {
+		meta: { params: { metric: 'api-calls' } },
+		user: { id: 'user-1', email: 'a@b.com' },
+		workspace: null,
+		tenant: null,
+		request: new Request('http://localhost/billing/usage/api-calls'),
+	} as any;
+	const res = await ctrl.get(ctx);
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(typeof body.result.since, 'string');
+	assert.equal(new Date(body.result.since).toISOString(), body.result.since);
+});

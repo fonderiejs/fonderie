@@ -31,8 +31,33 @@ const DEFAULT_PREFERENCES: IUserPreferences = {
 	timeFormat: 'hh:mm A',
 };
 
+// Historical rows may hold garbage preferences (the update schema accepted
+// `unknown` for four keys until it was typed). Only well-typed values
+// survive into the DTO, and notifications deep-merge over the defaults so a
+// partial stored object can't shrink the shape the client type promises.
+function cleanPreferences(prefs: IUserPreferences): Partial<IUserPreferences> {
+	const out: Partial<IUserPreferences> = {};
+	if (typeof prefs.locale === 'string') out.locale = prefs.locale;
+	if (typeof prefs.timezone === 'string') out.timezone = prefs.timezone;
+	if (typeof prefs.emailDigest === 'string') out.emailDigest = prefs.emailDigest;
+	if (typeof prefs.dateFormat === 'string') out.dateFormat = prefs.dateFormat;
+	if (typeof prefs.timeFormat === 'string') out.timeFormat = prefs.timeFormat;
+	return out;
+}
+
+function cleanNotifications(value: unknown): Partial<IUserPreferences['notifications']> {
+	if (!value || typeof value !== 'object') return {};
+	const out: Partial<IUserPreferences['notifications']> = {};
+	for (const key of ['email', 'inApp', 'sms', 'push'] as const) {
+		const v = (value as Record<string, unknown>)[key];
+		if (typeof v === 'boolean') out[key] = v;
+	}
+	return out;
+}
+
 export function toUserDTO(user: IUser, phoneVerified = false): IUserDTO {
 	const prefs = user.preferences ?? ({} as IUserPreferences);
+	const cleaned = cleanPreferences(prefs);
 	return {
 		id: stringOrEmpty(user.id),
 		email: stringOrEmpty(user.email),
@@ -44,9 +69,13 @@ export function toUserDTO(user: IUser, phoneVerified = false): IUserDTO {
 		lastLogin: user.lastLogin instanceof Date ? user.lastLogin.toISOString() : '',
 		preferences: {
 			...DEFAULT_PREFERENCES,
-			...prefs,
-			locale: user.locale || prefs.locale || 'en-US',
-			timezone: user.timezone || prefs.timezone || 'UTC',
+			...cleaned,
+			notifications: {
+				...DEFAULT_PREFERENCES.notifications,
+				...cleanNotifications(prefs.notifications),
+			},
+			locale: user.locale || cleaned.locale || 'en-US',
+			timezone: user.timezone || cleaned.timezone || 'UTC',
 		},
 		isEmailVerified: user.emailVerifiedAt !== null,
 		isPhoneVerified: phoneVerified,

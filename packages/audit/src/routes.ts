@@ -25,7 +25,10 @@ export function buildAuditRoutes(store: IStoreAdapter): Route[] {
 				const url = new URL(ctx.request.url);
 				const params = url.searchParams;
 
-				const limit = Math.min(Number(params.get('limit') ?? 50), 200);
+				const rawLimit = Number(params.get('limit') ?? 50);
+				const limit = Number.isFinite(rawLimit)
+					? Math.min(Math.max(Math.trunc(rawLimit), 1), 200)
+					: 50;
 				const type = params.get('type') ?? undefined;
 				const actor = params.get('actorId') ?? undefined;
 				const from = params.get('from') ? new Date(params.get('from')!) : undefined;
@@ -34,7 +37,7 @@ export function buildAuditRoutes(store: IStoreAdapter): Route[] {
 
 				const query: Parameters<AuditEventModel['list']>[0] = {
 					workspaceId: ctx.workspace.id,
-					limit: limit + 1,
+					limit,
 				};
 				if (type) query.type = type;
 				if (actor) query.actorId = actor;
@@ -42,17 +45,18 @@ export function buildAuditRoutes(store: IStoreAdapter): Route[] {
 				if (to) query.to = to;
 				if (cursor) query.cursor = cursor;
 
-				const events = await new AuditEventModel(store).list(query);
-
-				// fetch one extra to determine if there's a next page
-				const hasMore = events.length > limit;
-				const page = hasMore ? events.slice(0, limit) : events;
-				const lastEvent = page[page.length - 1];
+				// The model over-fetches internally to detect a next page; the
+				// cursor carries the row's created_at::text at full microsecond
+				// precision so same-millisecond events can't be skipped.
+				const { events, hasMore } = await new AuditEventModel(store).list(query);
+				const lastEvent = events[events.length - 1];
 				const nextCursor =
-					hasMore && lastEvent ? encodeCursor(lastEvent.createdAt, lastEvent.id) : null;
+					hasMore && lastEvent
+						? encodeCursor(lastEvent.createdAtRaw ?? lastEvent.createdAt, lastEvent.id)
+						: null;
 
 				return setApiResponse(HTTP.OK, 'AUDIT_FETCHED', 'Audit events retrieved.', {
-					events: page.map(toAuditEventDTO),
+					events: events.map(toAuditEventDTO),
 					nextCursor,
 				});
 			},
