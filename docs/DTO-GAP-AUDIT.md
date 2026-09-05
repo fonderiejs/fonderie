@@ -87,18 +87,18 @@ as they are fixed; extend this file, don't fork it.
 
 ## audit
 
-- [ ] **[high] `IAuditPageDTO` — nextCursor** (never-populated)
+- [x] **[high] `IAuditPageDTO` — nextCursor** (never-populated) — **fixed in #139**
   - Evidence: packages/audit/src/routes.ts:28 caps limit at 200 and routes.ts:37 queries limit+1 to detect a next page, but packages/audit/src/models/event.model.ts:6,12 clamps the query to MAX_LIMIT=200, so at limit=200 the model returns at most 200 rows and the hasMore check at routes.ts:48 (events.length > limit) is never true
   - Fix: Make the route's over-fetch survive the model clamp: either raise MAX_LIMIT to 201, clamp the route's client-facing limit to MAX_LIMIT-1, or move the +1 over-fetch inside the model so the two caps can't cancel each other. Add a boundary test at limit=200 with 201 rows expecting a non-null nextCursor.
 
-- [ ] **[medium] `IAuditPageDTO` — nextCursor (cursor encoding)** (serialization-hazard)
+- [x] **[medium] `IAuditPageDTO` — nextCursor (cursor encoding)** (serialization-hazard) — **fixed in #139**
   - Evidence: packages/audit/src/dtos/audit.ts:29 encodes the cursor with createdAt.toISOString() (millisecond precision) while packages/events/src/migrations/sql/001_events.sql:6 stores created_at as TIMESTAMPTZ (microsecond precision); the keyset predicate at packages/audit/src/models/event.model.ts:41 compares (created_at, id) < ($ts, $id) against the truncated value, so events sharing the last row's millisecond but with nonzero sub-millisecond digits (e.g. all events emitted in one transaction, which share now() exactly) fail the tuple comparison and are silently skipped on the next page
   - Fix: Encode the cursor from a lossless representation: select created_at::text (or extract epoch microseconds) in AuditEventModel.list and feed that verbatim into encodeCursor, instead of round-tripping through a JS Date.
 
 
 ## webhooks
 
-- [ ] **[high] `IPendingRetry` — delivery** (never-populated)
+- [x] **[high] `IPendingRetry` — delivery** (never-populated) — **fixed in #139**
   - Evidence: packages/webhooks/src/models/delivery.model.ts:17-21 declares nested `delivery: IWebhookDelivery`, but the claimForRetry SQL at delivery.model.ts:82-92 returns flat columns (d.id, endpointId, eventId, ..., url, secret) with no `delivery` key — IStoreAdapter.query (packages/store/src/types.ts:2) does no nesting. Consumer: packages/webhooks/src/dispatcher.ts:40 destructures `{ delivery, url, secret }`, so delivery is undefined and attemptDelivery throws on `delivery.eventId` at dispatcher.ts:68; Promise.allSettled at dispatcher.ts:39 swallows the rejection, so module.ts:34's error logger never fires. Net effect: failed deliveries with a due next_attempt_at are re-claimed every retryInterval and never retried, silently. No test covers retry()/claimForRetry (packages/webhooks/src/__tests__/smoke.test.ts).
   - Fix: Have claimForRetry return flat rows typed as IWebhookDelivery & { url: string; secret: string } (or reassemble the nested shape in TS after the query), and add a retry() test that asserts a claimed failed delivery is actually re-POSTed and markResult is called.
 
