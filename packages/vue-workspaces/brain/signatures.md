@@ -120,6 +120,7 @@ interface IWorkspaceDTO {
     isPersonal: boolean;
     isArchived: boolean;
     archivedAt: string;
+    archivedBy: string;
     createdAt: string;
     updatedAt: string;
 }

@@ -16,16 +16,17 @@ export const createWorkspaceSchema = z.object({
 	type: z.string().max(40).optional(),
 });
 
-const addressSchema = z
-	.object({
-		line1: z.string().max(200).optional(),
-		line2: z.string().max(200).optional(),
-		city: z.string().max(100).optional(),
-		region: z.string().max(100).optional(),
-		postalCode: z.string().max(20).optional(),
-		country: z.string().max(60).optional(),
-	})
-	.passthrough();
+// Field names match the persisted/read shape (toWorkspaceDTO emits
+// state/zip) — the old region/postalCode names validated fields nothing
+// wrote while the real ones rode through .passthrough() unvalidated.
+const addressSchema = z.object({
+	line1: z.string().max(200).optional(),
+	line2: z.string().max(200).optional(),
+	city: z.string().max(100).optional(),
+	state: z.string().max(100).optional(),
+	zip: z.string().max(20).optional(),
+	country: z.string().max(60).optional(),
+});
 
 export const updateWorkspaceSchema = z
 	.object({

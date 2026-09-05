@@ -8,6 +8,7 @@
 interface IConfigAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    actor?: string;
 }
 
 interface IConfigEntry {
@@ -55,12 +56,14 @@ interface ISecretRevision {
 interface ISetConfigInput {
     value: unknown;
     description?: string;
+    active?: boolean;
     ifVersion?: number;
 }
 
 interface ISetSecretInput {
     value: string;
     description?: string;
+    active?: boolean;
     ifVersion?: number;
 }
 

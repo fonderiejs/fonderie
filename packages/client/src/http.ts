@@ -22,6 +22,8 @@ export interface IRequestOptions {
 	// Resolves the billing subscriber to a workspace (@fonderie/billing's
 	// resolveSubscriber falls back to the session user when omitted).
 	workspaceId?: string | undefined;
+	// Extra request headers (e.g. the admin surfaces' X-Actor attribution).
+	headers?: Record<string, string> | undefined;
 	// Cache control (only applies when the client was given a cache):
 	//   cache: number  → cache this GET for that many ms
 	//   cache: false   → skip the cache for this GET
@@ -98,6 +100,7 @@ export class HttpClient {
 		if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
 		if (opts.cookie) headers['Cookie'] = opts.cookie;
 		if (opts.workspaceId) headers['X-Workspace-ID'] = opts.workspaceId;
+		Object.assign(headers, opts.headers ?? {});
 
 		const fetchInit: RequestInit = { method: opts.method, headers, credentials: 'include' };
 		if (opts.body !== undefined) fetchInit.body = JSON.stringify(opts.body);

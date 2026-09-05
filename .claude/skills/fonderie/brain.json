@@ -438,7 +438,7 @@
         {
           "method": "GET",
           "path": "/admin/config",
-          "mw": "g(async (ctx) => { const rows = await listConfigEntries(envOf(ctx) ?? null, store); return setApiResponse(HTTP.OK, 'CONFIG_LISTED', 'Config entries', rows); })"
+          "mw": "g(async (ctx) => { const rows = await listConfigEntries(envOf(ctx) ?? null, store); return setApiResponse(HTTP.OK, 'CONFIG_LISTED', 'Config entries', rows.map(withParsedValue)); })"
         },
         {
           "method": "DELETE",
@@ -448,17 +448,17 @@
         {
           "method": "GET",
           "path": "/admin/config/:key",
-          "mw": "g(async (ctx) => { const row = await getConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store); return row ? setApiResponse(HTTP.OK, 'CONFIG_ENTRY', 'Config entry', row) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such config entry'); })"
+          "mw": "g(async (ctx) => { const row = await getConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store); return row ? setApiResponse(HTTP.OK, 'CONFIG_ENTRY', 'Config entry', withParsedValue(row)) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such config entry'); })"
         },
         {
           "method": "PUT",
           "path": "/admin/config/:key",
-          "mw": "g(async (ctx) => { const b = body(ctx); if (!('value' in b)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value is required'); } try { const row = await setConfigEntry( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, ); return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', row); } catch (err) { return conflictOr(err); } })"
+          "mw": "g(async (ctx) => { const b = body(ctx); if (!('value' in b)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value is required'); } try { const row = await setConfigEntry( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, ); return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', withParsedValue(row)); } catch (err) { return conflictOr(err); } })"
         },
         {
           "method": "GET",
           "path": "/admin/config/:key/revisions",
-          "mw": "g(async (ctx) => { const revs = await listConfigRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(HTTP.OK, 'REVISIONS', 'Config revisions', revs); })"
+          "mw": "g(async (ctx) => { const revs = await listConfigRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(HTTP.OK, 'REVISIONS', 'Config revisions', revs.map(withParsedValue)); })"
         },
         {
           "method": "GET",

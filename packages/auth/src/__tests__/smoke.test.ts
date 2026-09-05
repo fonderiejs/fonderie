@@ -1888,7 +1888,9 @@ test('mfa.disable: 200 MFA_DISABLED and emits NOTIFICATION_EVENT with mfaDisable
 	const secret = generateTotpSecret();
 	const code = generateTotpCode(secret);
 	const bus = makeBus();
-	const ctrl = makeMfa({ userById: { ...MFA_USER, mfaSecret: secret } as any }, bus);
+	// The secret is fetched on demand via getMfaSecret now — it no longer
+	// rides on the user row.
+	const ctrl = makeMfa({ userById: MFA_USER, mfaSecret: secret }, bus);
 	const response = await ctrl.disable(makeCtx({ user: MFA_USER, body: { token: code } }));
 	assert.equal(response.status, 200);
 	const body = (await response.json()) as any;

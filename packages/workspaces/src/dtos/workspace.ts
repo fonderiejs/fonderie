@@ -26,6 +26,8 @@ export interface IWorkspaceDTO {
 	isPersonal: boolean;
 	isArchived: boolean;
 	archivedAt: string;
+	// User id that archived the workspace; '' while unarchived.
+	archivedBy: string;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -91,6 +93,7 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 		isPersonal: booleanOrFalse(ws.isPersonal),
 		isArchived: ws.archivedAt !== null,
 		archivedAt: dateOrEmpty(ws.archivedAt),
+		archivedBy: stringOrEmpty(ws.archivedBy),
 		createdAt: dateOrEmpty(ws.createdAt),
 		updatedAt: dateOrEmpty(ws.updatedAt),
 	};

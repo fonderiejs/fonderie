@@ -7,6 +7,20 @@ import { versionedWrite, versionedRollback } from './versioned';
 // Re-exported for the public API (the shared primitive owns the class).
 export { ConfigConflictError } from './versioned';
 
+// The column stores JSON-encoded text; the runtime read path (manager)
+// parses it with a raw-string fallback. The admin surface must serve the
+// same parsed shape — otherwise setConfig({a: 1}) reads back as the string
+// '{"a":1}' and the shipped editor re-stringifies it into a degradation
+// loop on every save.
+export function withParsedValue<T extends { value: unknown }>(row: T): T {
+	if (typeof row.value !== 'string') return row;
+	try {
+		return { ...row, value: JSON.parse(row.value) };
+	} catch {
+		return row;
+	}
+}
+
 const ENTRY_COLS = `
 	key,
 	value,

@@ -28,7 +28,10 @@ interface IWebhookDeliveryDTO {
     eventType: string;
     status: string;
     attempts: number;
+    payload: Record<string, unknown>;
     responseStatus: number | null;
+    responseBody: string | null;
+    nextAttemptAt: string | null;
     deliveredAt: string | null;
     createdAt: string;
 }

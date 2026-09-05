@@ -18,7 +18,13 @@ export interface IWebhookDeliveryDTO {
 	eventType: string;
 	status: string;
 	attempts: number;
+	// The event body that was delivered — what the endpoint received.
+	payload: Record<string, unknown>;
 	responseStatus: number | null;
+	// The receiving endpoint's response body (useful when debugging failures).
+	responseBody: string | null;
+	// When the next retry is due; null once delivered or exhausted.
+	nextAttemptAt: string | null;
 	deliveredAt: string | null;
 	createdAt: string;
 }
@@ -44,7 +50,10 @@ export function toDeliveryDTO(d: IWebhookDelivery): IWebhookDeliveryDTO {
 		eventType: d.eventType,
 		status: d.status,
 		attempts: d.attempts,
+		payload: d.payload ?? {},
 		responseStatus: d.responseStatus,
+		responseBody: d.responseBody ?? null,
+		nextAttemptAt: d.nextAttemptAt?.toISOString() ?? null,
 		deliveredAt: d.deliveredAt?.toISOString() ?? null,
 		createdAt: d.createdAt.toISOString(),
 	};

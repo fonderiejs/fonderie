@@ -8,6 +8,7 @@
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    actor?: string;
 }
 
 interface IRollbackTemplateInput {
