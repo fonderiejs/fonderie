@@ -22,11 +22,11 @@ as they are fixed; extend this file, don't fork it.
 
 ## auth
 
-- [ ] **[high] `IResendVerificationResult` — stat, message, data.token, data.expiresAt, data.email** (client-phantom-field)
+- [x] **[high] `IResendVerificationResult` — stat, message, data.token, data.expiresAt, data.email** (client-phantom-field) — **fixed in #137**
   - Evidence: packages/client/src/types.ts:88-96 declares { stat, message, data: { token, expiresAt, email } }, but the server's sendVerification never sends any of those: packages/auth/src/controllers/auth.controller.ts:713-715 returns result { email }, :682-686 returns { verified, email } when already verified, and the phone branch :666-670 returns no result at all. The 429 branch puts { retryAfter } into `details`, not `result` (packages/core/src/response.ts:43).
   - Fix: Replace IResendVerificationResult with { email?: string; verified?: boolean } (used by AuthClient.sendVerificationEmail at packages/client/src/modules/auth.ts:200-210). Any consumer reading result.data.token today gets a runtime TypeError — and the phantom `data.token` field falsely implies the server leaks the verification pin to the client.
 
-- [ ] **[high] `IMfaEnabledResult (MfaClient.verify response)` — tokens, user (phantom) / mfaEnabled (missing)** (client-phantom-field)
+- [x] **[high] `IMfaEnabledResult (MfaClient.verify response)` — tokens, user (phantom) / mfaEnabled (missing)** (client-phantom-field) — **fixed in #137** (also removed the hooks' phantom token rotation in react-auth/vue-auth/react-native-auth and rewrote their tests)
   - Evidence: packages/client/src/modules/auth.ts:76-83 types POST /auth/mfa/verify (setup confirmation, full session token) as IMfaEnabledResult { tokens, user } (packages/client/src/types.ts:109-112), but the setup-confirmation branch returns only { mfaEnabled: true } — packages/auth/src/controllers/mfa.controller.ts:94-96. The { tokens, user } shape is only produced on the mfaPending login path (mfa.controller.ts:156-169), which the client already types separately as ILoginResult in verifyLogin (modules/auth.ts:88-95). With a full session token and no pending secret, verify() can never reach the tokens branch (403 MFA_NOT_PENDING at mfa.controller.ts:100-104/126-131).
   - Fix: Retype MfaClient.verify's result as { mfaEnabled: boolean } (or split the endpoint's two personas into two result types). Code doing `result.tokens.access` or `result.user` after enabling MFA crashes at runtime.
 
