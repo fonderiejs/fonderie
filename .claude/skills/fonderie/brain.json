@@ -309,7 +309,10 @@
         "MESSAGE_KEYS",
         "MemoryCounterBackend",
         "DBCounterBackend",
-        "BILLING_INTERVAL"
+        "BILLING_INTERVAL",
+        "WALLET_LEDGER_TYPES",
+        "InsufficientFundsError",
+        "DuplicateTransactionError"
       ],
       "subpaths": [
         "@fonderie/billing/types",
@@ -318,11 +321,15 @@
       ],
       "tables": [
         "fonderie_billing_notifications",
+        "fonderie_credit_packs",
         "fonderie_plans",
         "fonderie_subscriptions",
-        "fonderie_usage_records"
+        "fonderie_usage_records",
+        "fonderie_wallet_balances",
+        "fonderie_wallet_grants",
+        "fonderie_wallet_ledger"
       ],
-      "routeCount": 11,
+      "routeCount": 16,
       "routes": [
         {
           "method": "POST",
@@ -350,9 +357,34 @@
           "mw": "requireAuth → usage.get"
         },
         {
+          "method": "GET",
+          "path": "/billing/wallet",
+          "mw": "requireAuth → wallet.get"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/wallet/checkout",
+          "mw": "requireAuth → validate(walletCheckoutSchema) → wallet.checkout"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/wallet/grant",
+          "mw": "requireAdminToken(config.wallet.adminToken) → validate(grantWalletSchema) → wallet.grant"
+        },
+        {
+          "method": "GET",
+          "path": "/billing/wallet/transactions",
+          "mw": "requireAuth → wallet.transactions"
+        },
+        {
           "method": "POST",
           "path": "/billing/webhook",
           "mw": "webhook.handle"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/webhook/payment",
+          "mw": "paymentWebhook.handle"
         },
         {
           "method": "GET",
@@ -3453,6 +3485,15 @@
       "billing"
     ],
     "billing_interval": [
+      "billing"
+    ],
+    "wallet_ledger_types": [
+      "billing"
+    ],
+    "insufficientfundserror": [
+      "billing"
+    ],
+    "duplicatetransactionerror": [
       "billing"
     ],
     "fonderieclient": [

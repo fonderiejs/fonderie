@@ -84,6 +84,13 @@ console.log(`check:hook-coverage — ${checked} public client methods checked; a
 // app-code surfaces are allow-listed with reasons.
 const ROUTE_ALLOW = new Map([
 	['POST /billing/webhook', "Stripe's server-to-server callback receiver — only Stripe calls it"],
+	['POST /billing/webhook/payment', "the payment provider's server-to-server callback — only the provider calls it"],
+	['POST /billing/wallet/grant', 'admin-token-guarded ops surface (support grants) — not a user-client call'],
+	// Wallet client methods + hooks ship in the wallet frontend cycle (audit
+	// phase 5); the server surface landed first by scoped decision.
+	['GET /billing/wallet', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
+	['GET /billing/wallet/transactions', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
+	['POST /billing/wallet/checkout', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
 	['GET /auth/google', 'browser-redirect OAuth leg — navigated to, never fetched'],
 	['GET /auth/google/callback', 'browser-redirect OAuth leg — navigated to, never fetched'],
 ]);

@@ -6,7 +6,14 @@ import type { IBillingConfig } from '../config';
 import type { ICounterBackend } from '../backends/types';
 import { MESSAGE_KEYS } from '../config';
 import { getSubscription } from '../services/subscriptions';
+import { isWorkspaceMember } from '../services/membership';
 import { buildBillingContext } from '../services/policy';
+import {
+	currentGrantPeriod,
+	ensurePeriodicGrant,
+	getWalletBalance,
+	resolvePlanWallet,
+} from '../services/wallet';
 import { resolveSubscriber, parseWindowMs } from '../utils';
 
 // In-process de-dup: tracks which threshold notifications have fired this session.
@@ -23,6 +30,21 @@ export function withBilling(
 
 		// No subscriber (unauthenticated / public route) — skip entirely
 		if (!subscriber) return next();
+
+		// SECURITY — workspace subscribers can come from the raw X-Workspace-ID
+		// header. Trust the id only when it matches ctx.workspace (already
+		// membership-verified by @fonderie/workspaces' withWorkspace) or when
+		// the session user proves active membership here. Anything else would
+		// let any caller read, drain, or rate-limit another tenant's billing.
+		if (subscriber.type === 'workspace' && ctx.workspace?.id !== subscriber.id) {
+			// Anonymous request naming a workspace: no billing context at all —
+			// public routes keep working, and an unverified workspace's counters
+			// and wallet stay untouched.
+			if (!ctx.user) return next();
+			if (!(await isWorkspaceMember(ctx.user.id, subscriber.id, store))) {
+				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Not a member of this workspace');
+			}
+		}
 
 		// Resolve subscription → plan name (fall back to first plan = free)
 		const subscription = await getSubscription(subscriber.type, subscriber.id, store);
@@ -47,6 +69,44 @@ export function withBilling(
 		// Build and cache billing context on ctx
 		const billingCtx = buildBillingContext({ subscriber, plan, active, counters });
 		ctx.meta['billing'] = billingCtx;
+
+		// Wallet economics — lazy periodic grant, then a balance snapshot for
+		// requireWalletBalance and product code. Non-fatal by design: a wallet
+		// hiccup must not take down unrelated requests.
+		const planWallet = resolvePlanWallet(plan, config);
+		if (planWallet) {
+			try {
+				const sub = {
+					subscriberType: subscriber.type,
+					subscriberId: subscriber.id,
+					currency: planWallet.currency,
+				};
+				// Grants require an active (or trialing) subscription — a past_due
+				// or paused subscriber keeps spending existing credits but is not
+				// extended new ones while payment is failing.
+				if (active && planWallet.grantAmount !== null && planWallet.grantAmount > 0n) {
+					await ensurePeriodicGrant(
+						{
+							...sub,
+							amount: planWallet.grantAmount,
+							period: currentGrantPeriod(planWallet.grantPeriod),
+						},
+						store,
+					);
+				}
+				const { balance } = await getWalletBalance(sub, store);
+				billingCtx.wallet = {
+					balance,
+					currency: planWallet.currency,
+					precision: planWallet.precision,
+					overdraftLimit: planWallet.overdraftLimit,
+					rates: planWallet.rates,
+				};
+			} catch (err) {
+				// eslint-disable-next-line no-console
+				console.error('[billing] wallet context failed:', (err as Error).message);
+			}
+		}
 
 		// Block requests that have hit a hard limit
 		for (const [key, status] of Object.entries(billingCtx.statuses)) {

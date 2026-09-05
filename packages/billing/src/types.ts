@@ -28,11 +28,29 @@ export type IPolicyStatus =
 			resetsAt: string | null; // ISO string for windowed counters, null otherwise
 	  };
 
+// Per-metric wallet pricing (plan-defined unit economics).
+export interface IWalletRate {
+	cost: bigint; // per unit, in the smallest wallet-currency unit
+	unit?: string; // display only, e.g. 'msg', 'min'
+}
+
+// Wallet snapshot cached on ctx.meta['billing'] by withBilling when the
+// subscriber's plan defines wallet economics. Server-side only — bigint
+// values here never hit JSON.stringify; the HTTP surface uses IWalletDTO.
+export interface IWalletContext {
+	balance: bigint;
+	currency: string;
+	precision: number;
+	overdraftLimit: bigint;
+	rates: Record<string, IWalletRate>;
+}
+
 export interface IBillingContext {
 	subscriber: { type: SubscriberType; id: string };
 	plan: string;
 	active: boolean; // subscription is active or trialing
 	statuses: Record<string, IPolicyStatus>;
+	wallet?: IWalletContext;
 }
 
 // ── Subscription ──────────────────────────────────────────────────
@@ -83,5 +101,31 @@ export interface IPlanFeature {
 	description: string;
 	enabled: boolean;
 	limit?: number;
+}
+
+// ── Wallet ────────────────────────────────────────────────────────
+
+export const WALLET_LEDGER_TYPES = ['purchase', 'grant', 'usage', 'refund', 'adjustment'] as const;
+export type WalletLedgerType = (typeof WALLET_LEDGER_TYPES)[number];
+
+export interface IWalletBalance {
+	balance: bigint;
+	version: number;
+	updatedAt: string | null; // ISO string; null when no balance row exists yet
+}
+
+export interface IWalletLedgerEntry {
+	id: string;
+	subscriberType: SubscriberType;
+	subscriberId: string;
+	currency: string;
+	type: WalletLedgerType;
+	amount: bigint; // signed: positive = credit, negative = debit
+	balanceAfter: bigint;
+	description: string | null;
+	idempotencyKey: string;
+	metadata: Record<string, unknown>;
+	providerTxId: string | null;
+	createdAt: string;
 }
 

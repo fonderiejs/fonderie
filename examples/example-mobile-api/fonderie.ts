@@ -53,19 +53,19 @@ export const fonderie = new FonderieApp(config)
 		plans: [
 			{
 				name: 'Free', tier: 0, description: 'For trying things out',
-				monthly: { amount: 0 }, yearly: { amount: 0 },
+				monthly: { amount: 0n }, yearly: { amount: 0n },
 				metadata: { seats: 2, projectLimit: 3 },
 			},
 			{
 				name: 'Pro', tier: 1, description: 'For a growing team',
-				monthly: { amount: 1900, lookupKey: 'pro_monthly' },
-				yearly:  { amount: 19000, lookupKey: 'pro_yearly' },
+				monthly: { amount: 1900n, lookupKey: 'pro_monthly' },
+				yearly:  { amount: 19000n, lookupKey: 'pro_yearly' },
 				metadata: { seats: 10, projectLimit: null },
 			},
 			{
 				name: 'Business', tier: 2, description: 'For a whole company',
-				monthly: { amount: 4900, lookupKey: 'business_monthly' },
-				yearly:  { amount: 49000, lookupKey: 'business_yearly' },
+				monthly: { amount: 4900n, lookupKey: 'business_monthly' },
+				yearly:  { amount: 49000n, lookupKey: 'business_yearly' },
 				metadata: { seats: null, projectLimit: null },
 			},
 		],

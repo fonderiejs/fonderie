@@ -2,6 +2,26 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IPlan } from '../types';
 import type { IBillingConfig, IBillingPlan } from '../config';
+import { toSafeNumber } from '../utils';
+
+// fonderie_plans money columns are BIGINT (int8) since 006_wallet.sql — pg
+// returns those as strings. The read model keeps JS numbers (bounded display
+// cents; the wire format stays numeric), guarded loudly at 2^53.
+type IPlanRow = Omit<IPlan, 'monthlyAmount' | 'yearlyAmount'> & {
+	monthlyAmount: string | number | null;
+	yearlyAmount: string | number | null;
+};
+
+const planAmount = (v: string | number | null): number | null =>
+	v == null ? null : toSafeNumber(BigInt(v));
+
+function mapPlanRow(row: IPlanRow): IPlan {
+	return {
+		...row,
+		monthlyAmount: planAmount(row.monthlyAmount),
+		yearlyAmount: planAmount(row.yearlyAmount),
+	};
+}
 
 export function getPlans(config: IBillingConfig): IBillingPlan[] {
 	return config.plans;
@@ -33,25 +53,34 @@ export function resolvePlanNameByPrice(
 	return null;
 }
 
+// Plan wallet config carries bigints; the JSONB ops copy stores them as
+// digit strings.
+const walletToJson = (wallet: IBillingPlan['wallet']): string | null =>
+	wallet == null
+		? null
+		: JSON.stringify(wallet, (_key, value) => (typeof value === 'bigint' ? value.toString() : value));
+
 export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter): Promise<void> {
 	const plans = config.plans;
 	if (plans.length === 0) return;
 
 	const values = plans.map((_, i) => {
-		const b = i * 9;
-		return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7}, $${b + 8}, $${b + 9}::jsonb)`;
+		const b = i * 10;
+		return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7}, $${b + 8}, $${b + 9}::jsonb, $${b + 10}::jsonb)`;
 	});
 
 	const params = plans.flatMap((plan) => [
 		plan.name,
 		plan.trialDays ?? 0,
-		plan.monthly?.amount ?? null,
+		// bigint params go over the wire as strings; pg casts into the column type.
+		plan.monthly?.amount?.toString() ?? null,
 		plan.monthly?.priceId ?? null,
-		plan.yearly?.amount ?? null,
+		plan.yearly?.amount?.toString() ?? null,
 		plan.yearly?.priceId ?? null,
 		plan.description ?? null,
 		plan.tier ?? 0,
 		JSON.stringify(plan.metadata ?? {}),
+		walletToJson(plan.wallet),
 	]);
 
 	await store.query(
@@ -59,7 +88,7 @@ export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter
 			(name, trial_days,
 			 monthly_amount, monthly_price_id,
 			 yearly_amount,  yearly_price_id,
-			 description, tier, metadata)
+			 description, tier, metadata, wallet)
 		VALUES ${values.join(', ')}
 		ON CONFLICT (name) DO UPDATE SET
 			trial_days       = EXCLUDED.trial_days,
@@ -69,7 +98,8 @@ export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter
 			yearly_price_id  = EXCLUDED.yearly_price_id,
 			description      = EXCLUDED.description,
 			tier             = EXCLUDED.tier,
-			metadata         = EXCLUDED.metadata`,
+			metadata         = EXCLUDED.metadata,
+			wallet           = EXCLUDED.wallet`,
 		params,
 	);
 }
@@ -91,14 +121,15 @@ const SELECT_PLAN = `
 	FROM fonderie_plans`;
 
 export async function getDBPlans(store: IStoreAdapter): Promise<IPlan[]> {
-	return store.query<IPlan>(
+	const rows = await store.query<IPlanRow>(
 		`${SELECT_PLAN} WHERE active = true ORDER BY tier ASC, monthly_amount ASC NULLS LAST`,
 	);
+	return rows.map(mapPlanRow);
 }
 
 export async function getPlanById(id: string, store: IStoreAdapter): Promise<IPlan | null> {
-	const [row] = await store.query<IPlan>(`${SELECT_PLAN} WHERE id = $1`, [id]);
-	return row ?? null;
+	const [row] = await store.query<IPlanRow>(`${SELECT_PLAN} WHERE id = $1`, [id]);
+	return row ? mapPlanRow(row) : null;
 }
 
 export async function createPlan(
@@ -117,7 +148,7 @@ export async function createPlan(
 	},
 	store: IStoreAdapter,
 ): Promise<IPlan> {
-	const [row] = await store.query<IPlan>(
+	const [row] = await store.query<IPlanRow>(
 		`INSERT INTO fonderie_plans
 			(name, seats, trial_days, monthly_amount, monthly_price_id,
 			 yearly_amount, yearly_price_id, description, tier, features, metadata)
@@ -145,7 +176,7 @@ export async function createPlan(
 		],
 	);
 	if (!row) throw new Error('Failed to create plan');
-	return row;
+	return mapPlanRow(row);
 }
 
 export async function updatePlan(
@@ -185,7 +216,7 @@ export async function updatePlan(
 
 	if (setClauses.length === 0) return getPlanById(id, store);
 
-	const [row] = await store.query<IPlan>(
+	const [row] = await store.query<IPlanRow>(
 		`UPDATE fonderie_plans SET ${setClauses.join(', ')}
 		WHERE id = $1
 		RETURNING
@@ -198,7 +229,7 @@ export async function updatePlan(
 			description, tier, features, metadata`,
 		params,
 	);
-	return row ?? null;
+	return row ? mapPlanRow(row) : null;
 }
 
 export async function deletePlan(id: string, store: IStoreAdapter): Promise<boolean> {

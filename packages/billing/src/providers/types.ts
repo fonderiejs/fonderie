@@ -4,6 +4,23 @@ import type { SubscriberType } from '../types';
 export interface IBillingEvent {
 	type: string;
 	subscription: INormalizedSubscription | null;
+	// One-time payment completion (credit pack purchase). Only set by providers
+	// that support one-time payments — optional so existing custom providers
+	// stay source-compatible.
+	payment?: INormalizedPayment | null;
+}
+
+// A completed one-time payment, normalized from the provider's checkout event.
+export interface INormalizedPayment {
+	sessionId: string;
+	providerTxId: string | null; // e.g. the Stripe PaymentIntent id
+	amountTotal: bigint | null; // what the customer paid, smallest currency unit
+	currency: string | null;
+	// 'paid' / 'no_payment_required' when funds are confirmed; other values
+	// (e.g. Stripe's 'unpaid' for delayed-notification methods) mean the money
+	// has NOT moved yet. null when the provider doesn't model it.
+	paymentStatus: string | null;
+	metadata: Record<string, string>;
 }
 
 export interface INormalizedSubscription {
@@ -28,7 +45,7 @@ export interface INormalizedSubscription {
 export interface IResolvedPrice {
 	priceId: string;
 	lookupKey: string | null;
-	unitAmount: number; // cents
+	unitAmount: bigint; // smallest currency unit
 	currency: string; // ISO 4217 (Stripe lowercases)
 	interval: 'month' | 'year';
 	nickname: string | null;
@@ -58,6 +75,25 @@ export interface IBillingProvider {
 		successUrl: string;
 		cancelUrl: string;
 	}): Promise<{ url: string }>;
+
+	// Generate a hosted checkout URL for a ONE-TIME payment (credit packs).
+	// Deliberately a separate optional method rather than a mode flag on
+	// createCheckoutSession: an existing provider that ignored an added flag
+	// would silently open a subscription checkout for a payment request. When
+	// absent, the wallet checkout route returns 501.
+	createPaymentCheckoutSession?(opts: {
+		customerId: string;
+		// Ad-hoc price in the smallest currency unit; ignored when priceId is set.
+		amount: bigint;
+		currency: string;
+		name: string;
+		quantity?: number;
+		// An existing provider Price id to charge instead of the ad-hoc amount.
+		priceId?: string;
+		metadata: Record<string, string>;
+		successUrl: string;
+		cancelUrl: string;
+	}): Promise<{ url: string; sessionId: string }>;
 
 	// Resolve live price data (source of truth for amount/currency/interval) from
 	// the provider. Used by read-through pricing hydration.

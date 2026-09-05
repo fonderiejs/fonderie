@@ -1,6 +1,13 @@
-import type { IBillingProvider, IBillingEvent, INormalizedSubscription, IResolvedPrice } from './types';
+import type {
+	IBillingProvider,
+	IBillingEvent,
+	INormalizedPayment,
+	INormalizedSubscription,
+	IResolvedPrice,
+} from './types';
 import { BILLING_INTERVAL } from '../types';
 import type { SubscriberType } from '../types';
+import { toSafeNumber } from '../utils';
 
 interface IStripeSubscriptionRaw {
 	id: string;
@@ -25,6 +32,30 @@ interface IStripeSubscriptionRaw {
 interface IStripeEventRaw {
 	type: string;
 	data: { object: unknown };
+}
+
+export interface IStripeCheckoutSessionRaw {
+	id: string;
+	mode?: string;
+	payment_intent?: string | { id: string } | null;
+	amount_total?: number | null;
+	currency?: string | null;
+	payment_status?: string | null;
+	metadata?: Record<string, string> | null;
+}
+
+// Pure normalization of a completed payment-mode checkout session — exported
+// for tests (constructEvent itself needs the Stripe SDK for signatures).
+export function normalizePaymentSession(session: IStripeCheckoutSessionRaw): INormalizedPayment {
+	const pi = session.payment_intent;
+	return {
+		sessionId: session.id,
+		providerTxId: typeof pi === 'string' ? pi : (pi?.id ?? null),
+		amountTotal: session.amount_total != null ? BigInt(session.amount_total) : null,
+		currency: session.currency ?? null,
+		paymentStatus: session.payment_status ?? null,
+		metadata: session.metadata ?? {},
+	};
 }
 
 // Lazy singleton — Stripe SDK is optional
@@ -73,7 +104,7 @@ function toResolvedPrice(p: any): IResolvedPrice {
 	return {
 		priceId: p.id,
 		lookupKey: p.lookup_key ?? null,
-		unitAmount: p.unit_amount ?? 0,
+		unitAmount: BigInt(p.unit_amount ?? 0),
 		currency: p.currency,
 		interval: p.recurring?.interval === BILLING_INTERVAL.YEAR ? BILLING_INTERVAL.YEAR : BILLING_INTERVAL.MONTH,
 		nickname: p.nickname ?? null,
@@ -137,6 +168,41 @@ export class StripeProvider implements IBillingProvider {
 			},
 		});
 		return { url: session.url ?? '' };
+	}
+
+	async createPaymentCheckoutSession(opts: {
+		customerId: string;
+		amount: bigint;
+		currency: string;
+		name: string;
+		quantity?: number;
+		priceId?: string;
+		metadata: Record<string, string>;
+		successUrl: string;
+		cancelUrl: string;
+	}): Promise<{ url: string; sessionId: string }> {
+		const stripe = await this.client();
+		const lineItem = opts.priceId
+			? { price: opts.priceId, quantity: opts.quantity ?? 1 }
+			: {
+					price_data: {
+						currency: opts.currency.toLowerCase(),
+						// Stripe's SDK takes a JS number; toSafeNumber throws past 2^53
+						// instead of silently rounding.
+						unit_amount: toSafeNumber(opts.amount),
+						product_data: { name: opts.name },
+					},
+					quantity: opts.quantity ?? 1,
+				};
+		const session = await stripe.checkout.sessions.create({
+			customer: opts.customerId,
+			mode: 'payment',
+			line_items: [lineItem],
+			success_url: opts.successUrl,
+			cancel_url: opts.cancelUrl,
+			metadata: opts.metadata,
+		});
+		return { url: session.url ?? '', sessionId: session.id };
 	}
 
 	async resolvePriceById(priceId: string): Promise<IResolvedPrice | null> {
@@ -213,6 +279,23 @@ export class StripeProvider implements IBillingProvider {
 			raw = stripe.webhooks.constructEvent(opts.payload, opts.signature, opts.secret);
 		} catch {
 			throw new Error('[billing:stripe] Invalid webhook signature');
+		}
+
+		// One-time payment events — normalized for the payment webhook.
+		// checkout.session.completed can arrive with payment_status 'unpaid'
+		// for delayed-notification methods; the paid follow-up is
+		// checkout.session.async_payment_succeeded. Subscription-mode checkout
+		// completions pass through untouched (the subscription lifecycle
+		// arrives via customer.subscription.* events).
+		if (
+			raw.type === 'checkout.session.completed' ||
+			raw.type === 'checkout.session.async_payment_succeeded'
+		) {
+			const session = raw.data.object as IStripeCheckoutSessionRaw;
+			if (session.mode === 'payment') {
+				return { type: raw.type, subscription: null, payment: normalizePaymentSession(session) };
+			}
+			return { type: raw.type, subscription: null };
 		}
 
 		const isSubscriptionEvent = [
