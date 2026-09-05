@@ -90,14 +90,13 @@ export interface IVerifyEmailResult {
 	email: string;
 }
 
+// GET /auth/send-verification: `{ email }` after a resend, `{ verified: true,
+// email }` when the address was already verified, and no result at all on the
+// phone branch — hence both fields optional. The verification pin itself is
+// only ever emailed; it never appears in the response.
 export interface IResendVerificationResult {
-	stat: string;
-	message: string;
-	data: {
-		token: string;
-		expiresAt: string;
-		email: string;
-	};
+	email?: string;
+	verified?: boolean;
 }
 
 export interface IMeResult {
@@ -111,9 +110,12 @@ export interface IMfaSetupResult {
 	backupCodes: string[];
 }
 
+// POST /auth/mfa/verify with a full session token (setup confirmation). The
+// session token is NOT rotated — MFA is enforced at login, so the existing
+// session stays valid unchanged. The `{ tokens, user }` response only exists
+// on the mfa-pending login path, typed separately as ILoginResult (verifyLogin).
 export interface IMfaEnabledResult {
-	tokens: ITokens;
-	user: IUserDTO;
+	mfaEnabled: boolean;
 }
 
 // ── Billing ──────────────────────────────────────────────────────────────────
