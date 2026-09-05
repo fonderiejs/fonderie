@@ -56,7 +56,8 @@ export function usageController(store: IStoreAdapter) {
 			return setApiResponse(HTTP.OK, 'USAGE_FETCHED', 'Usage retrieved successfully.', {
 				metric,
 				total,
-				since,
+				// Explicit ISO — the client's IUsageResult.since promises a string.
+				since: since.toISOString(),
 			});
 		},
 	};

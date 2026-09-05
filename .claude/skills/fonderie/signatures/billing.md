@@ -196,15 +196,6 @@ interface ISubscription {
     createdAt: string;
 }
 
-interface IUsageRecord {
-    id: string;
-    subscriberType: SubscriberType;
-    subscriberId: string;
-    metric: string;
-    quantity: number;
-    recordedAt: string;
-}
-
 type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'paused';
 
 type PolicyEntry = {
@@ -272,20 +263,9 @@ interface ISubscriptionDTO {
     createdAt: string;
 }
 
-interface IUsageRecordDTO {
-    id: string;
-    subscriberType: SubscriberType;
-    subscriberId: string;
-    metric: string;
-    quantity: number;
-    recordedAt: string;
-}
-
 function toPlanDTO(plan: IPlan): IPlanDTO
 
 function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO
-
-function toUsageRecordDTO(record: IUsageRecord): IUsageRecordDTO
 
 function recordUsage(opts: { subscriberType: SubscriberType; subscriberId: string; metric: string; quantity: number; }, store: IStoreAdapter): Promise<void>
 
