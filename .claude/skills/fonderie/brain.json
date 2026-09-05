@@ -1,17 +1,17 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.0.0",
-    "adapter-hono": "5.0.0",
-    "adapter-koa": "5.0.0",
-    "audit": "5.0.0",
-    "auth": "5.0.0",
-    "billing": "5.3.1",
-    "client": "0.10.0",
-    "config": "5.0.0",
+    "adapter-express": "5.0.1",
+    "adapter-hono": "5.0.1",
+    "adapter-koa": "5.0.1",
+    "audit": "5.0.1",
+    "auth": "5.0.1",
+    "billing": "6.0.0",
+    "client": "0.11.0",
+    "config": "5.1.0",
     "core": "0.5.0",
-    "courier": "5.0.0",
-    "customers": "6.0.0",
+    "courier": "5.0.1",
+    "customers": "6.1.0",
     "events": "5.0.0",
     "logger": "0.1.2",
     "permissions": "5.0.0",
@@ -19,7 +19,7 @@
     "react": "0.2.0",
     "react-audit": "0.3.0",
     "react-audit-screens": "0.2.0",
-    "react-auth": "0.7.0",
+    "react-auth": "0.7.1",
     "react-auth-screens": "0.4.0",
     "react-billing": "0.4.0",
     "react-billing-screens": "0.2.0",
@@ -31,7 +31,7 @@
     "react-customers-screens": "0.2.0",
     "react-native-audit": "0.1.0",
     "react-native-audit-screens": "0.2.0",
-    "react-native-auth": "0.7.0",
+    "react-native-auth": "0.7.1",
     "react-native-auth-screens": "0.4.0",
     "react-native-billing": "0.1.0",
     "react-native-billing-screens": "0.2.0",
@@ -49,7 +49,7 @@
     "vue": "0.2.0",
     "vue-audit": "0.4.0",
     "vue-audit-screens": "0.2.0",
-    "vue-auth": "0.8.0",
+    "vue-auth": "0.8.1",
     "vue-auth-screens": "0.4.0",
     "vue-billing": "0.5.0",
     "vue-billing-screens": "0.2.0",
@@ -63,12 +63,12 @@
     "vue-webhooks-screens": "0.3.0",
     "vue-workspaces": "0.7.0",
     "vue-workspaces-screens": "0.4.0",
-    "webhooks": "5.0.0",
-    "workspaces": "5.1.0"
+    "webhooks": "5.1.0",
+    "workspaces": "5.2.0"
   },
   "packages": {
     "adapter-express": {
-      "version": "5.0.0",
+      "version": "5.0.1",
       "requires": [
         "core",
         "workspaces",
@@ -87,7 +87,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "5.0.0",
+      "version": "5.0.1",
       "requires": [
         "core",
         "workspaces",
@@ -106,7 +106,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.0.0",
+      "version": "5.0.1",
       "requires": [
         "core",
         "workspaces",
@@ -125,7 +125,7 @@
       "hasOutcomes": false
     },
     "audit": {
-      "version": "5.0.0",
+      "version": "5.0.1",
       "requires": [
         "core",
         "store"
@@ -150,7 +150,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "5.0.0",
+      "version": "5.0.1",
       "requires": [
         "core",
         "events",
@@ -298,7 +298,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "5.3.1",
+      "version": "6.0.0",
       "requires": [
         "core",
         "store"
@@ -421,7 +421,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.10.0",
+      "version": "0.11.0",
       "requires": [],
       "exports": [
         "FonderieClient",
@@ -444,7 +444,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "5.0.0",
+      "version": "5.1.0",
       "requires": [
         "core",
         "store"
@@ -552,7 +552,7 @@
       "hasOutcomes": false
     },
     "courier": {
-      "version": "5.0.0",
+      "version": "5.0.1",
       "requires": [
         "core",
         "store",
@@ -610,7 +610,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.0.0",
+      "version": "6.1.0",
       "requires": [
         "core",
         "events",
@@ -967,7 +967,7 @@
       "hasOutcomes": false
     },
     "react-auth": {
-      "version": "0.7.0",
+      "version": "0.7.1",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1182,7 +1182,7 @@
       "hasOutcomes": false
     },
     "react-native-auth": {
-      "version": "0.7.0",
+      "version": "0.7.1",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1476,7 +1476,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.8.0",
+      "version": "0.8.1",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1737,7 +1737,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "5.0.0",
+      "version": "5.1.0",
       "requires": [
         "core",
         "events",
@@ -1794,7 +1794,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "5.1.0",
+      "version": "5.2.0",
       "requires": [
         "core",
         "events",

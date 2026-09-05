@@ -1,5 +1,133 @@
 # @fonderie/client
 
+## 0.11.0
+
+### Minor Changes
+
+- 98821fc: Auth mediums from the DTO audit: honest SAR exports, typed preferences, the verify-routing signal
+  
+  The Subject Access Request export (`exportMe`) reported `isPhoneVerified:
+  false` for every user — it called `toUserDTO` without the session's
+  phone-verified claim while `GET /users` passes it; the compliance bundle now
+  agrees with the profile endpoint. The MFA login completion propagates the
+  claim into both the fresh token pair and its user DTO instead of silently
+  dropping it. (The OAuth callback deliberately stays `false`: `phoneVerified`
+  is a session claim, and a fresh browser-redirect session has verified
+  nothing.)
+  
+  `updatePreferencesSchema` typed four fields as `unknown`, so `dateFormat:
+  null` or `notifications: "yes"` validated, got stored, and was then served
+  against string-typed client fields. The schema now validates all four
+  (bounded strings; notifications as the four-boolean object), and `toUserDTO`
+  additionally sanitizes reads — well-typed values survive, garbage falls back
+  to defaults, and a partial stored notifications object deep-merges over the
+  defaults so the promised shape can't shrink. Rows poisoned before this fix
+  are therefore served clean too. `IUpdatePreferencesInput` is typed to match.
+  
+  `IRegisterResult` and `ILoginResult` gain `requiresVerification?: boolean` —
+  the server has always sent it on email register/login (it's the signal for
+  routing to the verify-email screen), but the client types omitted it, so
+  typed frontends couldn't read it.
+- 579ad09: Fix two phantom auth client types — and the runtime crash they were hiding
+  
+  `IResendVerificationResult` claimed `{ stat, message, data: { token,
+  expiresAt, email } }` — a shape no server path produces (and whose phantom
+  `data.token` falsely implied the verification pin is sent to the client; it
+  is only ever emailed). It is now `{ email?, verified? }`, matching the
+  server's two success branches. `IMfaEnabledResult` claimed `{ tokens, user }`,
+  but the MFA setup-confirmation endpoint returns `{ mfaEnabled: true }` — the
+  `{ tokens, user }` shape only exists on the mfa-pending login path, which
+  `verifyLogin` already types correctly as `ILoginResult`.
+  
+  The second phantom was hiding a live bug: `useMfaSetup().verify` in
+  react-auth, vue-auth, and react-native-auth all read `result.tokens.access`
+  after enabling MFA, so every successful enrollment through those hooks threw
+  a TypeError at runtime (their own tests asserted the phantom shape against a
+  mocked phantom response). The hooks no longer touch the session token —
+  correctly, since the server never rotates it on setup confirmation (MFA is
+  enforced at login; the current session remains valid unchanged) — and their
+  tests now pin the real contract.
+- 6a03e90: Align `IUserDTO` and `IPlanDTO` with what the server actually sends
+  
+  Three drifts between the client types and the server DTOs:
+  
+  - `IUserDTO.skills` was declared as a required `IUserSkill[]`, but no endpoint has
+    ever returned it — the server never mentions `skills` anywhere. Any code
+    trusting the type and reading `user.skills.map(...)` would throw on undefined.
+    Removed, along with the now-unused `IUserSkill` type and its export.
+  - `IUserDTO.isPhoneVerified` is sent by the server but was not declared, so it
+    was invisible to hooks and screens.
+  - `IPlanDTO.pricingStale` is sent when pricing came from a stale cache during a
+    provider outage. Now declared as optional so a billing screen can mark prices
+    as indicative.
+- ee5c72d: Customers DTO batch: label correlation, honest relationship dates, no more silent no-ops
+  
+  Six gaps from the DTO audit, fixed together. Email, phone, and address DTOs
+  now expose `labelId` (fetched by every query, previously dropped by the
+  mappers) so the label-admin surface — `listLabels`/`removeLabel` operate on
+  label ids — can finally be correlated with the rows using a label without
+  string-matching on the label value. Expanded relationship DTOs gain
+  `relationshipCreatedAt`: their spread `createdAt`/`updatedAt` are the
+  related CUSTOMER's dates, so sorting relationships by `createdAt` silently
+  sorted by customer signup date; the new field carries the relationship
+  row's own date (what the un-expanded DTO's `createdAt` always meant), and
+  both sides now document the semantics.
+  
+  Contract honesty: `addRelationshipSchema` requires `relationship` (the
+  controller always 422'd without it — an optional schema let a type-correct
+  client walk into a guaranteed 422), and referral codes are create-time only:
+  `IUpdateCustomerInput` drops `referralCode`/`referredByCode` and
+  `updateCustomerSchema` no longer accepts them, so `updateCustomer({
+  referralCode })` fails validation instead of returning 200 and changing
+  nothing. `GET /customers/labels` responses now go through a proper
+  `toCustomerLabelDTO` (the one customers route that leaked raw Date rows),
+  and the dead `ICustomerTagDTO`/`toCustomerTagDTO`/`ICustomerTag` exports are
+  removed — tag routes emit plain `string[]` and always have.
+- 473a632: DTO audit closeout: config value parity, actor attribution, and the last shape lies
+  
+  Config admin responses now serve the PARSED value the runtime read path
+  serves — previously `setConfig(key, { value: { a: 1 } })` read back as the
+  string `'{"a":1}'` and the shipped editor re-stringified it into a
+  degradation loop on every save. Writes honor `active: false` instead of
+  silently forcing `true` (list reads filter on it), and both admin clients
+  accept an `actor` option sent as `X-Actor` on writes, so `updatedBy` and
+  revision history can attribute changes to a person instead of
+  'admin-token'. `HttpClient` gained per-request extra headers to carry it.
+  
+  Workspaces: `updateWorkspaceSchema`'s address validated `region`/
+  `postalCode` — names nothing writes — while the real `state`/`zip` rode
+  through `.passthrough()` unvalidated; the schema now matches the persisted
+  shape and strips unknowns. `IWorkspaceDTO` exposes `archivedBy` (fetched by
+  every query, dropped by the mapper) beside `isArchived`/`archivedAt`.
+  
+  Webhooks: `IWebhookDeliveryDTO` carries `payload`, `responseBody`, and
+  `nextAttemptAt` — all fetched, all previously discarded, all exactly what a
+  delivery-history UI needs to debug a failing endpoint.
+  
+  Customers: the email/phone/address update schemas shrink to the one field
+  the controllers apply (`label`) — content changes are remove-and-re-add and
+  `setPrimary` has its own route, so the old wider schemas validated bodies
+  that were silently ignored.
+  
+  Auth: `mfa_secret` no longer rides along on every user fetch — `USER_COLUMNS`
+  drops it and `mfa.disable` fetches on demand via `getMfaSecret` like
+  `mfa.verify` always did (removing an untyped cast). `IUpdateProfileInput`
+  models explicit-null clears like the workspaces input already did, and the
+  client documents that the server's phone-auth register/login variant is a
+  deliberate deferral to its own feature cycle.
+- 6a03e90: Carry member identity in `IMemberDTO`
+  
+  `GET /workspaces/members` returned ids and roles only. `listMembers()` already
+  joins the users table and selects the email, name and avatar, but `toMemberDTO()`
+  discarded all four — so a client had nothing to display and fell back to printing
+  a truncated user id.
+  
+  `IMemberDTO` now includes `email`, `firstName`, `lastName` and `profileImageUrl`,
+  so a team screen renders from that one call with no second request. Absent values
+  are empty strings, matching every other string field in the DTO.
+  
+  Additive: existing fields and their types are unchanged.
+
 ## 0.10.0
 
 ### Minor Changes
