@@ -53,10 +53,12 @@ export interface IUpdateProfileInput {
 export interface IUpdatePreferencesInput {
 	locale?: string;
 	timezone?: string;
-	notifications?: unknown;
-	emailDigest?: unknown;
-	dateFormat?: unknown;
-	timeFormat?: unknown;
+	// Replaces the stored notifications object; flags left out fall back to
+	// the server defaults on read.
+	notifications?: { email?: boolean; inApp?: boolean; sms?: boolean; push?: boolean };
+	emailDigest?: string;
+	dateFormat?: string;
+	timeFormat?: string;
 }
 
 export interface IChangePasswordInput {

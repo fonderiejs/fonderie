@@ -20,11 +20,16 @@ const customerFields = {
 	avatarUrl: z.string().trim().pipe(z.url()).nullable().optional(),
 	locale: z.string().max(35).nullable().optional(),
 	referenceCode: z.string().max(100).nullable().optional(),
+};
+
+// Referral codes are create-time only: the update controller never writes
+// them, so accepting them on update produced 200-OK silent no-ops.
+const referralFields = {
 	referralCode: z.string().max(100).nullable().optional(),
 	referredByCode: z.string().max(100).nullable().optional(),
 };
 
-export const createCustomerSchema = z.object(customerFields);
+export const createCustomerSchema = z.object({ ...customerFields, ...referralFields });
 
 export const updateCustomerSchema = z
 	.object(customerFields)
@@ -68,6 +73,8 @@ export const addTagSchema = z.object({ tag: z.string().trim().min(1, 'tag is req
 
 export const addRelationshipSchema = z.object({
 	relatedId: z.string().min(1, 'relatedId is required'),
-	relationship: z.string().max(100).optional(),
+	// The controller has always required this — an optional schema let a
+	// type-correct client walk straight into a guaranteed 422.
+	relationship: z.string().trim().min(1, 'relationship is required').max(100),
 	isPrimary,
 });
