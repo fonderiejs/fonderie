@@ -329,6 +329,7 @@
         "fonderie_subscriptions",
         "fonderie_usage_records",
         "fonderie_wallet_balances",
+        "fonderie_wallet_customers",
         "fonderie_wallet_grants",
         "fonderie_wallet_ledger"
       ],

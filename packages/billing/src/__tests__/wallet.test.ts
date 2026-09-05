@@ -36,10 +36,19 @@ interface ILedgerRow {
 	createdAt: string;
 }
 
+interface ICustomerRow {
+	providerCustomerId: string;
+	disabled: boolean;
+	failures: number;
+	lastRechargeAt: number | null; // epoch ms
+	pendingKey: string | null;
+}
+
 interface IWalletState {
 	balances: Map<string, IBalRow>;
 	ledger: ILedgerRow[];
 	grants: Map<string, bigint>;
+	customers: Map<string, ICustomerRow>;
 	seq: number;
 }
 
@@ -199,25 +208,91 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 		return state.grants.has(key) ? [{ period }] : [];
 	}
 
+	if (sql.includes('fonderie_wallet_customers')) {
+		const ckey = (st: unknown, sid: unknown, prov: unknown) => `${st}|${sid}|${prov}`;
+		if (sql.trimStart().startsWith('INSERT')) {
+			// upsert: [st, sid, provider, providerCustomerId, rearm]
+			const [st, sid, prov, pcid, rearm] = params as [string, string, string, string, boolean];
+			const existing = state.customers.get(ckey(st, sid, prov));
+			state.customers.set(ckey(st, sid, prov), {
+				providerCustomerId: pcid,
+				disabled: rearm ? false : (existing?.disabled ?? false),
+				failures: rearm ? 0 : (existing?.failures ?? 0),
+				lastRechargeAt: existing?.lastRechargeAt ?? null, // purchase doesn't reset the cooldown
+				pendingKey: existing?.pendingKey ?? null,
+			});
+			return [];
+		}
+		if (sql.includes('make_interval')) {
+			// claim: [st, sid, provider, cooldownSeconds]
+			const [st, sid, prov, cooldown] = params as [string, string, string, number];
+			const row = state.customers.get(ckey(st, sid, prov));
+			if (!row || row.disabled) return [];
+			const now = Date.now();
+			if (row.lastRechargeAt !== null && now - row.lastRechargeAt < Number(cooldown) * 1000) return [];
+			row.lastRechargeAt = now;
+			return [
+				{
+					providerCustomerId: row.providerCustomerId,
+					claimedAt: new Date(now).toISOString(),
+					pendingKey: row.pendingKey,
+				},
+			];
+		}
+		if (sql.includes('pending_recharge_key = NULL')) {
+			// clearPendingRechargeKey: [st, sid, provider]
+			const [st, sid, prov] = params as [string, string, string];
+			const row = state.customers.get(ckey(st, sid, prov));
+			if (row) row.pendingKey = null;
+			return [];
+		}
+		if (sql.includes('pending_recharge_key = $4')) {
+			// setPendingRechargeKey: [st, sid, provider, key]
+			const [st, sid, prov, k] = params as [string, string, string, string];
+			const row = state.customers.get(ckey(st, sid, prov));
+			if (row) row.pendingKey = k;
+			return [];
+		}
+		if (sql.includes('consecutive_failures + 1')) {
+			// recordFailure: [st, sid, provider, maxFailures]
+			const [st, sid, prov, maxF] = params as [string, string, string, number];
+			const row = state.customers.get(ckey(st, sid, prov));
+			if (!row) return [];
+			row.failures += 1;
+			row.disabled = row.failures >= Number(maxF);
+			return [{ autoRechargeDisabled: row.disabled }];
+		}
+		if (sql.includes('consecutive_failures = 0')) {
+			// recordSuccess: [st, sid, provider]
+			const [st, sid, prov] = params as [string, string, string];
+			const row = state.customers.get(ckey(st, sid, prov));
+			if (row) row.failures = 0;
+			return [];
+		}
+		return [];
+	}
+
 	throw new Error(`walletEmulator: unhandled SQL: ${sql.slice(0, 80)}`);
 }
 
 // Serializing emulator: transactions queue on one chain (the row-lock model)
 // and roll back to a snapshot on throw.
 function walletEmulator(): IStoreAdapter & { state: IWalletState } {
-	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), seq: 0 };
+	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), customers: new Map(), seq: 0 };
 	let chain: Promise<unknown> = Promise.resolve();
 
 	const snapshot = (): IWalletState => ({
 		balances: new Map([...state.balances].map(([k, v]) => [k, { ...v }])),
 		ledger: [...state.ledger],
 		grants: new Map(state.grants),
+		customers: new Map([...state.customers].map(([k, v]) => [k, { ...v }])),
 		seq: state.seq,
 	});
 	const restore = (s: IWalletState) => {
 		state.balances = s.balances;
 		state.ledger = s.ledger;
 		state.grants = s.grants;
+		state.customers = s.customers;
 		state.seq = s.seq;
 	};
 
@@ -247,7 +322,7 @@ function walletEmulator(): IStoreAdapter & { state: IWalletState } {
 // worst-case backend. Only the conditional UPDATE's own atomicity remains,
 // which is exactly the second safety layer under test.
 function interleavedEmulator(): IStoreAdapter & { state: IWalletState } {
-	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), seq: 0 };
+	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), customers: new Map(), seq: 0 };
 	const adapter = {
 		state,
 		async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
@@ -1086,6 +1161,7 @@ test('normalizePaymentSession: string and expanded payment_intent, null-safe', a
 		id: 'cs_1',
 		mode: 'payment',
 		payment_intent: 'pi_9',
+		customer: 'cus_9',
 		amount_total: 499,
 		currency: 'usd',
 		payment_status: 'paid',
@@ -1094,17 +1170,21 @@ test('normalizePaymentSession: string and expanded payment_intent, null-safe', a
 	assert.deepEqual(full, {
 		sessionId: 'cs_1',
 		providerTxId: 'pi_9',
+		customerId: 'cus_9',
 		amountTotal: 499n,
 		currency: 'usd',
 		paymentStatus: 'paid',
 		metadata: { packId: 'small' },
 	});
 
-	const expanded = normalizePaymentSession({ id: 'cs_2', payment_intent: { id: 'pi_x' } });
+	// customer as an expanded object, and absent → null.
+	const expanded = normalizePaymentSession({ id: 'cs_2', payment_intent: { id: 'pi_x' }, customer: { id: 'cus_x' } });
 	assert.equal(expanded.providerTxId, 'pi_x');
+	assert.equal(expanded.customerId, 'cus_x');
 
 	const bare = normalizePaymentSession({ id: 'cs_3' });
 	assert.equal(bare.providerTxId, null);
+	assert.equal(bare.customerId, null);
 	assert.equal(bare.amountTotal, null);
 	assert.equal(bare.currency, null);
 	assert.equal(bare.paymentStatus, null);
@@ -1423,18 +1503,20 @@ test('currency codes normalize to one canonical bucket across grant, read, and c
 function interceptingEmulator(
 	intercept: (sql: string, params: unknown[], state: IWalletState) => unknown[] | undefined | never,
 ): IStoreAdapter & { state: IWalletState } {
-	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), seq: 0 };
+	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), customers: new Map(), seq: 0 };
 	let chain: Promise<unknown> = Promise.resolve();
 	const snapshot = (): IWalletState => ({
 		balances: new Map([...state.balances].map(([k, v]) => [k, { ...v }])),
 		ledger: [...state.ledger],
 		grants: new Map(state.grants),
+		customers: new Map([...state.customers].map(([k, v]) => [k, { ...v }])),
 		seq: state.seq,
 	});
 	const restore = (s: IWalletState) => {
 		state.balances = s.balances;
 		state.ledger = s.ledger;
 		state.grants = s.grants;
+		state.customers = s.customers;
 		state.seq = s.seq;
 	};
 	const adapter = {
@@ -2477,4 +2559,324 @@ test('subscription status: an unpaid subscription is treated as inactive (no new
 	});
 	assert.equal(nextCalled, true);
 	assert.equal(emu.state.ledger.filter((l) => l.type === 'grant').length, 0, 'unpaid → no periodic grant');
+});
+
+// ── auto-recharge: off-session top-up at a threshold ──────────────
+
+const AR_PACK = { id: 'refill', name: 'Refill', credits: 1000n, priceAmount: 500n };
+
+function rechargeProvider(over: Record<string, unknown> = {}) {
+	const calls: { charge?: any } = {};
+	const provider = {
+		name: 'stub',
+		async chargeOffSession(opts: unknown) {
+			calls.charge = opts;
+			return { providerTxId: 'pi_ar_1', status: 'succeeded' as const };
+		},
+		...over,
+	};
+	return { provider: provider as unknown as IBillingConfig['provider'], calls };
+}
+
+function autoRechargeConfig(
+	autoOver: Record<string, unknown> = {},
+	providerOver: Record<string, unknown> = {},
+): IBillingConfig {
+	const { provider } = rechargeProvider(providerOver);
+	const plan = { name: 'metered', wallet: { autoRecharge: { threshold: 100n, packId: 'refill', ...autoOver } } };
+	return {
+		...walletConfig({ creditPacks: [AR_PACK] }),
+		plans: [plan],
+		provider,
+	} as IBillingConfig;
+}
+
+async function armCustomer(store: IStoreAdapter, providerCustomerId = 'cus_1'): Promise<void> {
+	const { upsertWalletCustomer } = await import('../services/wallet-customers');
+	await upsertWalletCustomer(
+		{ subscriberType: 'user', subscriberId: USER.subscriberId, provider: 'stub', providerCustomerId, rearm: true },
+		store,
+	);
+}
+
+// The cooldown is floored at 1s, so sequential test attempts clear the last
+// attempt time to simulate the window having elapsed (rather than sleeping).
+function elapseCooldown(store: ReturnType<typeof walletEmulator>): void {
+	const row = store.state.customers.get(`user|${USER.subscriberId}|stub`);
+	if (row) row.lastRechargeAt = null;
+}
+
+async function runRecharge(store: IStoreAdapter, config: IBillingConfig, balance: bigint, bus?: any): Promise<void> {
+	const { maybeAutoRecharge } = await import('../services/auto-recharge');
+	const { resolvePlanWallet } = await import('../services/wallet');
+	const planWallet = resolvePlanWallet(config.plans[0] as any, config)!;
+	await maybeAutoRecharge({
+		store,
+		config,
+		bus,
+		subscriberType: 'user',
+		subscriberId: USER.subscriberId,
+		balance,
+		planWallet,
+	});
+}
+
+const arBal = (store: ReturnType<typeof walletEmulator>): bigint =>
+	store.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n;
+
+test('auto-recharge: below threshold with a card on file charges the pack and credits its credits', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	const config = autoRechargeConfig();
+	await runRecharge(store, config, 50n);
+	assert.equal(arBal(store), 1000n);
+	const row = store.state.ledger.at(-1)!;
+	assert.equal(row.type, 'purchase');
+	assert.equal(row.amount, 1000n);
+	assert.equal(row.providerTxId, 'pi_ar_1');
+	assert.equal(row.idempotencyKey, 'stub:autorecharge:pi_ar_1');
+});
+
+test('auto-recharge: above threshold does nothing', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	await runRecharge(store, autoRechargeConfig(), 200n);
+	assert.equal(arBal(store), 0n);
+	assert.equal(store.state.ledger.length, 0);
+});
+
+test('auto-recharge: no card on file does nothing', async () => {
+	const store = walletEmulator();
+	await runRecharge(store, autoRechargeConfig(), 50n); // never armed
+	assert.equal(arBal(store), 0n);
+});
+
+test('auto-recharge: no chargeOffSession on the provider is a no-op', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	// provider without chargeOffSession
+	const config = autoRechargeConfig({}, { chargeOffSession: undefined });
+	await runRecharge(store, config, 50n);
+	assert.equal(arBal(store), 0n);
+});
+
+test('auto-recharge: the cooldown allows only one charge per window', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	const config = autoRechargeConfig({ cooldownSeconds: 3600 });
+	await runRecharge(store, config, 50n);
+	await runRecharge(store, config, 50n); // still low, but within cooldown
+	assert.equal(arBal(store), 1000n, 'charged once');
+	assert.equal(store.state.ledger.filter((l) => l.type === 'purchase').length, 1);
+});
+
+test('auto-recharge: a duplicate provider tx id never double-credits', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	// provider returns the SAME pi both times; elapse the cooldown between them.
+	const config = autoRechargeConfig();
+	await runRecharge(store, config, 50n);
+	elapseCooldown(store);
+	await runRecharge(store, config, 50n);
+	assert.equal(arBal(store), 1000n, 'idempotent on the charge id');
+	assert.equal(store.state.ledger.filter((l) => l.type === 'purchase').length, 1);
+});
+
+test('auto-recharge: a declined card records a failure and does not credit', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	const config = {
+		...autoRechargeConfig({}, { chargeOffSession: async () => ({ providerTxId: null, status: 'failed' as const }) }),
+		resolveRecipient: () => ({ email: 'z@z.com' }),
+	} as IBillingConfig;
+	await runRecharge(store, config, 50n, bus);
+	assert.equal(arBal(store), 0n, 'no credit on decline');
+	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.autoRechargeFailed).length, 1);
+	assert.equal(
+		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.autoRechargeFailed).length,
+		1,
+	);
+});
+
+test('auto-recharge: disables after N consecutive failures, then stops attempting', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	let charges = 0;
+	const config = autoRechargeConfig(
+		{ maxConsecutiveFailures: 2 },
+		{
+			chargeOffSession: async () => {
+				charges++;
+				return { providerTxId: null, status: 'failed' as const };
+			},
+		},
+	);
+	await runRecharge(store, config, 50n); // fail 1
+	elapseCooldown(store);
+	await runRecharge(store, config, 50n); // fail 2 → disabled
+	elapseCooldown(store);
+	await runRecharge(store, config, 50n); // disabled → claim returns null, no charge
+	assert.equal(charges, 2, 'stops charging once disabled');
+	assert.equal(store.state.customers.get(`user|${USER.subscriberId}|stub`)!.disabled, true);
+});
+
+test('auto-recharge: a successful charge resets the failure counter', async () => {
+	const { recordRechargeFailure, recordRechargeSuccess, claimAutoRecharge } = await import(
+		'../services/wallet-customers'
+	);
+	const store = walletEmulator();
+	await armCustomer(store);
+	const key = { subscriberType: 'user' as SubscriberType, subscriberId: USER.subscriberId, provider: 'stub' };
+	await recordRechargeFailure({ ...key, maxConsecutiveFailures: 5 }, store);
+	assert.equal(store.state.customers.get(`user|${USER.subscriberId}|stub`)!.failures, 1);
+	await recordRechargeSuccess(key, store);
+	assert.equal(store.state.customers.get(`user|${USER.subscriberId}|stub`)!.failures, 0);
+	// claim returns the customer when eligible.
+	const claim = await claimAutoRecharge({ ...key, cooldownSeconds: 0 }, store);
+	assert.equal(claim?.providerCustomerId, 'cus_1');
+});
+
+test('payment webhook: a pack purchase persists the customer (arming auto-recharge)', async () => {
+	const store = walletEmulator();
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta, { customerId: 'cus_42' }))).handle(webhookCtx());
+	const row = store.state.customers.get(`user|${USER.subscriberId}|stub`);
+	assert.equal(row?.providerCustomerId, 'cus_42');
+	assert.equal(row?.disabled, false);
+});
+
+test('withBilling: a low balance with auto-recharge armed tops the wallet up', async () => {
+	const { withBilling } = await import('../middlewares/billing');
+	const { MemoryCounterBackend } = await import('../backends/memory');
+	const emu = walletEmulator();
+	const store = billingStore(emu);
+	await armCustomer(store);
+	// Pre-fund below threshold so withBilling sees a low balance.
+	const { creditWallet } = await import('../services/wallet');
+	await creditWallet({ ...USER, amount: 50n, type: 'grant', idempotencyKey: 'wb-seed' }, store);
+	const config = autoRechargeConfig();
+	const mw = withBilling(store, config, new MemoryCounterBackend());
+	await mw(makeCtx({}), async () => new Response());
+	// Auto-recharge is fire-and-forget; let the microtasks settle.
+	await new Promise((r) => setTimeout(r, 20));
+	assert.equal(arBal(emu), 50n + 1000n, 'withBilling triggered the top-up');
+});
+
+test('readiness: auto-recharge without provider chargeOffSession is flagged', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	const config = autoRechargeConfig({}, { chargeOffSession: undefined });
+	const problems = collectBillingReadinessProblems(config, true);
+	assert.ok(problems.some((p) => p.message.includes('does not implement chargeOffSession')));
+});
+
+test('readiness: auto-recharge referencing an unknown pack is flagged', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	const problems = collectBillingReadinessProblems(autoRechargeConfig({ packId: 'nope' }), true);
+	assert.ok(problems.some((p) => p.message.includes("unknown credit pack 'nope'")));
+});
+
+test('readiness: correctly-wired auto-recharge adds no problems', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	const config = { ...autoRechargeConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	assert.equal(collectBillingReadinessProblems(config, true).length, 0);
+});
+
+test('auto-recharge: a refund of an auto-recharge charge claws back the full credits (amountPaid recorded)', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	await runRecharge(store, autoRechargeConfig(), 50n); // +1000 credits, pi_ar_1, amountPaid 500
+	assert.equal(arBal(store), 1000n);
+	// A full refund of the auto-recharge charge must reverse all 1000 credits —
+	// only possible because the credit row now carries amountPaid to prorate on.
+	await handleReversalEvent(store, refundEvent({ providerTxId: 'pi_ar_1', amount: 500n }));
+	assert.equal(arBal(store), 0n, 'refund reverses the full auto-recharged credits, not zero');
+});
+
+test('auto-recharge: a rearm=false upsert (duplicate webhook) never resurrects a disabled customer', async () => {
+	const { upsertWalletCustomer, recordRechargeFailure } = await import('../services/wallet-customers');
+	const store = walletEmulator();
+	const key = { subscriberType: 'user' as SubscriberType, subscriberId: USER.subscriberId, provider: 'stub' };
+	const k = `user|${USER.subscriberId}|stub`;
+	await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_1', rearm: true }, store);
+	await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
+	assert.equal(store.state.customers.get(k)!.disabled, true);
+	// Duplicate purchase delivery (rearm=false) must NOT clear the disable.
+	await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_1', rearm: false }, store);
+	assert.equal(store.state.customers.get(k)!.disabled, true, 'a replay does not re-arm');
+	// A genuinely new purchase (rearm=true) re-arms.
+	await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_1', rearm: true }, store);
+	assert.equal(store.state.customers.get(k)!.disabled, false);
+});
+
+test('auto-recharge: an indeterminate charge retries with the SAME key and never double-charges', async () => {
+	const store = walletEmulator();
+	await armCustomer(store);
+	const keys: string[] = [];
+	let attempt = 0;
+	const config = autoRechargeConfig(
+		{},
+		{
+			chargeOffSession: async (opts: any) => {
+				keys.push(opts.idempotencyKey);
+				attempt++;
+				// 1st: capture lost (unknown). 2nd: the same charge resolves.
+				return attempt === 1
+					? { providerTxId: null, status: 'unknown' as const }
+					: { providerTxId: 'pi_ar_1', status: 'succeeded' as const };
+			},
+		},
+	);
+	const k = `user|${USER.subscriberId}|stub`;
+	await runRecharge(store, config, 50n); // unknown → no credit, no failure, pending retained
+	assert.equal(arBal(store), 0n);
+	assert.equal(store.state.customers.get(k)!.failures, 0, 'unknown is not counted as a decline');
+	assert.equal(store.state.customers.get(k)!.pendingKey, keys[0], 'pending key retained for reuse');
+	elapseCooldown(store);
+	await runRecharge(store, config, 50n); // reuses the same key → resolves → credits once
+	assert.equal(keys[0], keys[1], 'the same idempotency key is reused so the provider dedupes');
+	assert.equal(arBal(store), 1000n, 'credited exactly once after reconciliation');
+	assert.equal(store.state.customers.get(k)!.pendingKey, null, 'pending cleared on the definitive outcome');
+});
+
+test('auto-recharge: a credit failure AFTER capture keeps the pending key so the retry never double-charges', async () => {
+	// Simulate creditWallet throwing a transient DB error the first time (after
+	// Stripe already captured): the pending key must remain so the next window
+	// reuses it and the provider dedupes to the same PaymentIntent.
+	let failNextCredit = true;
+	const emu = interceptingEmulator((sql, params) => {
+		if (
+			failNextCredit &&
+			sql.trimStart().startsWith('INSERT') &&
+			sql.includes('fonderie_wallet_ledger') &&
+			params[3] === 'purchase'
+		) {
+			failNextCredit = false;
+			throw new Error('transient db error');
+		}
+		return undefined;
+	});
+	await armCustomer(emu);
+	const keys: string[] = [];
+	const config = autoRechargeConfig(
+		{},
+		{
+			chargeOffSession: async (opts: any) => {
+				keys.push(opts.idempotencyKey);
+				return { providerTxId: 'pi_ar_1', status: 'succeeded' as const };
+			},
+		},
+	);
+	const k = `user|${USER.subscriberId}|stub`;
+	await assert.rejects(runRecharge(emu, config, 50n), /transient db error/);
+	assert.equal(emu.state.customers.get(k)!.pendingKey, keys[0], 'pending key retained after credit throw');
+	assert.equal(emu.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n, 0n, 'credit rolled back');
+	// Next window: same key reused → same PI → credit finally lands.
+	elapseCooldown(emu);
+	await runRecharge(emu, config, 50n);
+	assert.equal(keys[0], keys[1], 'reused the same idempotency key — no second charge');
+	assert.equal(emu.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n, 1000n, 'credited once');
+	assert.equal(emu.state.customers.get(k)!.pendingKey, null, 'pending cleared only after the credit committed');
 });

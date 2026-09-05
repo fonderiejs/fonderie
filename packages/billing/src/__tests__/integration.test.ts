@@ -11,6 +11,11 @@ import {
 	reverseWallet,
 	sumReversedCreditsByProviderTxId,
 } from '../services/wallet';
+import {
+	claimAutoRecharge,
+	recordRechargeFailure,
+	upsertWalletCustomer,
+} from '../services/wallet-customers';
 import { InsufficientFundsError } from '../errors';
 import type { SubscriberType } from '../types';
 
@@ -39,6 +44,7 @@ async function connect() {
 	await store.query(`DELETE FROM fonderie_wallet_ledger WHERE subscriber_id = $1`, [SUB.subscriberId]);
 	await store.query(`DELETE FROM fonderie_wallet_balances WHERE subscriber_id = $1`, [SUB.subscriberId]);
 	await store.query(`DELETE FROM fonderie_wallet_grants WHERE subscriber_id = $1`, [SUB.subscriberId]);
+	await store.query(`DELETE FROM fonderie_wallet_customers WHERE subscriber_id = $1`, [SUB.subscriberId]);
 	return store;
 }
 
@@ -225,6 +231,38 @@ test(
 			assert.equal(totalReversed, 5000n, `cumulative reversed must be capped at 5000; got ${totalReversed}`);
 			assert.equal((await getWalletBalance(SUB, store)).balance, 0n, 'never below what was granted');
 			assert.equal(await sumReversedCreditsByProviderTxId(pi, store), 5000n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: concurrent auto-recharge claims yield exactly one (per-charge dedup)',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		// The claim is what guarantees a burst of low-balance requests fires ONE
+		// charge, not N. On real Postgres the single conditional UPDATE row-locks:
+		// the winner sets last_recharge_at, and every loser re-evaluates the
+		// cooldown predicate against the new row and matches nothing.
+		const store = await connect();
+		try {
+			const key = { subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId, provider: 'stripe' };
+			await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_itest', rearm: true }, store);
+
+			const claims = await Promise.all(
+				Array.from({ length: 12 }, () => claimAutoRecharge({ ...key, cooldownSeconds: 3600 }, store)),
+			);
+			const won = claims.filter((c) => c !== null);
+			assert.equal(won.length, 1, `exactly one claim must win; got ${won.length}`);
+			assert.equal(won[0]!.providerCustomerId, 'cus_itest');
+
+			// A later claim within the cooldown is still blocked.
+			assert.equal(await claimAutoRecharge({ ...key, cooldownSeconds: 3600 }, store), null);
+
+			// Failures disable after the limit, and a disabled row never claims.
+			await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
+			assert.equal(await claimAutoRecharge({ ...key, cooldownSeconds: 0 }, store), null);
 		} finally {
 			await (store as unknown as { end(): Promise<void> }).end();
 		}

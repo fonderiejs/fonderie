@@ -30,6 +30,7 @@ export type {
 	IBillingPlanWallet,
 	IBillingPricingConfig,
 	IBillingWalletConfig,
+	IBillingWalletAutoRecharge,
 	IBillingRecipient,
 	ResolveRecipient,
 	RateLimitBackendConfig,
@@ -120,6 +121,14 @@ export {
 	deletePlan,
 } from './services/plans';
 export { getSubscription } from './services/subscriptions';
+export { maybeAutoRecharge } from './services/auto-recharge';
+export {
+	upsertWalletCustomer,
+	claimAutoRecharge,
+	recordRechargeSuccess,
+	recordRechargeFailure,
+} from './services/wallet-customers';
+export type { IWalletCustomerKey, IAutoRechargeClaim } from './services/wallet-customers';
 
 // Request validation — enforced contract for body-taking routes (webhook
 // excluded: provider-shaped, signature-verified). Exported for docs/clients.
