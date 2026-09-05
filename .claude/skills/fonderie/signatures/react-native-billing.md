@@ -61,6 +61,7 @@ interface IPlanDTO {
         yearly: number;
         currency: string;
     };
+    pricingStale?: boolean;
     features: IPlanFeature[];
     metadata: Record<string, unknown>;
 }

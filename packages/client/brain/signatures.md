@@ -715,6 +715,10 @@ interface IMemberDTO {
     roleName: string;
     confirmed: boolean;
     createdAt: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    profileImageUrl: string;
 }
 
 interface IMemberListResult {
@@ -752,6 +756,7 @@ interface IPlanDTO {
         yearly: number;
         currency: string;
     };
+    pricingStale?: boolean;
     features: IPlanFeature[];
     metadata: Record<string, unknown>;
 }
@@ -904,9 +909,9 @@ interface IUserDTO {
     profileImageUrl: string;
     isActive: boolean;
     lastLogin: string;
-    skills: IUserSkill[];
     preferences: IUserPreferences;
     isEmailVerified: boolean;
+    isPhoneVerified: boolean;
     mfaEnabled: boolean;
     suspended: boolean;
     whitelist: boolean;
@@ -927,11 +932,6 @@ interface IUserPreferences {
     emailDigest: string;
     dateFormat: string;
     timeFormat: string;
-}
-
-interface IUserSkill {
-    name: string;
-    level: string;
 }
 
 interface IVerifyEmailResult {
