@@ -3,6 +3,7 @@
 
 # Dependencies
 **/node_modules/
+node_modules
 
 # TypeScript incremental build
 **/*.tsbuildinfo

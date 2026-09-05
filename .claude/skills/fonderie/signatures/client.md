@@ -107,16 +107,21 @@ interface IResetPasswordInput {
 interface IUpdatePreferencesInput {
     locale?: string;
     timezone?: string;
-    notifications?: unknown;
-    emailDigest?: unknown;
-    dateFormat?: unknown;
-    timeFormat?: unknown;
+    notifications?: {
+        email?: boolean;
+        inApp?: boolean;
+        sms?: boolean;
+        push?: boolean;
+    };
+    emailDigest?: string;
+    dateFormat?: string;
+    timeFormat?: string;
 }
 
 interface IUpdateProfileInput {
-    firstName?: string;
-    lastName?: string;
-    avatarUrl?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatarUrl?: string | null;
 }
 
 new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
@@ -182,6 +187,7 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
 interface IConfigAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    actor?: string;
 }
 
 interface IRollbackInput {
@@ -191,12 +197,14 @@ interface IRollbackInput {
 interface ISetConfigInput {
     value: unknown;
     description?: string;
+    active?: boolean;
     ifVersion?: number;
 }
 
 interface ISetSecretInput {
     value: string;
     description?: string;
+    active?: boolean;
     ifVersion?: number;
 }
 
@@ -218,6 +226,7 @@ new ConfigAdminClient(opts: IConfigAdminClientOptions): ConfigAdminClient
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    actor?: string;
 }
 
 interface IRollbackTemplateInput {
@@ -266,7 +275,7 @@ interface IAddPhoneInput {
 
 interface IAddRelationshipInput {
     relatedId: string;
-    relationship?: string;
+    relationship: string;
     isPrimary?: boolean;
 }
 
@@ -298,7 +307,7 @@ interface IListCustomersInput {
     offset?: number;
 }
 
-type IUpdateCustomerInput = ICreateCustomerInput;
+type IUpdateCustomerInput = Omit<ICreateCustomerInput, 'referralCode' | 'referredByCode'>;
 
 new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .setAccessToken(token: string | undefined): void
@@ -306,7 +315,7 @@ new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .listCustomers(input?: IListCustomersInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerListResult>>
   .createCustomer(input?: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .getCustomer(customerId: string, input?: IGetCustomerInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
-  .updateCustomer(customerId: string, input: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
+  .updateCustomer(customerId: string, input: IUpdateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput): Promise<IApiResponse<undefined>>
   .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
@@ -528,6 +537,7 @@ interface IConfigRevision {
 interface ICustomerAddressDTO {
     id: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     address: IAddressDTO;
 }
@@ -578,6 +588,7 @@ interface ICustomerEmailDTO {
     id: string;
     email: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     createdAt: string;
 }
@@ -626,6 +637,7 @@ interface ICustomerPhoneDTO {
     id: string;
     phone: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     createdAt: string;
 }
@@ -655,6 +667,7 @@ type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
     customerId: string;
     relationship: string;
     isPrimary: boolean;
+    relationshipCreatedAt: string;
 };
 
 interface ICustomerRelationshipListResult {
@@ -706,6 +719,7 @@ interface IInviteResult {
 interface ILoginResult {
     tokens: ITokens;
     user: IUserDTO;
+    requiresVerification?: boolean;
 }
 
 interface IMemberDTO {
@@ -730,8 +744,7 @@ interface IMeResult {
 }
 
 interface IMfaEnabledResult {
-    tokens: ITokens;
-    user: IUserDTO;
+    mfaEnabled: boolean;
 }
 
 interface IMfaRequiredResult {
@@ -791,16 +804,12 @@ interface IReadOptions {
 interface IRegisterResult {
     tokens: ITokens;
     user: IUserDTO;
+    requiresVerification?: boolean;
 }
 
 interface IResendVerificationResult {
-    stat: string;
-    message: string;
-    data: {
-        token: string;
-        expiresAt: string;
-        email: string;
-    };
+    email?: string;
+    verified?: boolean;
 }
 
 interface IRevealSecretResult {
@@ -945,7 +954,10 @@ interface IWebhookDeliveryDTO {
     eventType: string;
     status: string;
     attempts: number;
+    payload: Record<string, unknown>;
     responseStatus: number | null;
+    responseBody: string | null;
+    nextAttemptAt: string | null;
     deliveredAt: string | null;
     createdAt: string;
 }
@@ -994,6 +1006,7 @@ interface IWorkspaceDTO {
     isPersonal: boolean;
     isArchived: boolean;
     archivedAt: string;
+    archivedBy: string;
     createdAt: string;
     updatedAt: string;
 }

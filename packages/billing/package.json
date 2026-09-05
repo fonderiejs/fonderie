@@ -52,7 +52,7 @@
 		"check": "biome check --write src"
 	},
 	"optionalDependencies": {
-		"stripe": "^22.5.0"
+		"stripe": "^22.6.0"
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.5.0",
@@ -61,7 +61,7 @@
 	"devDependencies": {
 		"@fonderie/core": "../core",
 		"@fonderie/store": "../store",
-		"@types/node": "^26.2.0",
+		"@types/node": "^26.4.0",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.12",
 		"typescript": "^6.0.3"
@@ -85,6 +85,6 @@
 		"url": "https://github.com/fonderiejs/fonderie/issues"
 	},
 	"dependencies": {
-		"zod": "^4.4.3"
+		"zod": "^4.5.1"
 	}
 }
