@@ -68,15 +68,15 @@ as they are fixed; extend this file, don't fork it.
 
 ## workspaces
 
-- [ ] **[high] `IWorkspaceDTO` — createdAt / updatedAt / archivedAt** (serialization-hazard)
+- [x] **[high] `IWorkspaceDTO` — createdAt / updatedAt / archivedAt** (serialization-hazard) — **fixed in #138**
   - Evidence: packages/workspaces/src/dtos/workspace.ts:105-107 maps these with stringOrEmpty(); packages/core/src/parser.ts:1-3 shows stringOrEmpty returns '' for anything that is not already a string; packages/store/src/adapters/pg.ts:59-62 returns pg driver rows verbatim and a repo-wide grep finds no pg setTypeParser override, so timestamp/timestamptz columns arrive as Date objects, not strings. Result: in production every workspace timestamp serializes as ''. The client mirror claims real strings (packages/client/src/types.ts:210-212), and dtos/workspace.ts:104 proves the inconsistency is live — isArchived is derived true while archivedAt is emitted as ''. The core parser already has the correct helper, dateOrEmpty (packages/core/src/parser.ts:20-24), which the customers package uses for identical fields (packages/customers/src/dtos/customer.ts:143-144).
   - Fix: Replace stringOrEmpty with dateOrEmpty for the three timestamp fields in toWorkspaceDTO, matching the customers-package convention.
 
-- [ ] **[high] `IInvitationDTO` — expiresAt / createdAt** (serialization-hazard)
+- [x] **[high] `IInvitationDTO` — expiresAt / createdAt** (serialization-hazard) — **fixed in #138**
   - Evidence: packages/workspaces/src/dtos/workspace.ts:145-146 uses stringOrEmpty on both; SELECT_INV fetches expires_at/created_at as raw timestamp columns (packages/workspaces/src/services/invitations.ts:36-37) which the pg adapter (packages/store/src/adapters/pg.ts:59-62, no type parsers configured) returns as Date objects, so stringOrEmpty (packages/core/src/parser.ts:1-3) emits ''. Client mirror declares them as real strings (packages/client/src/types.ts:245-246). expiresAt is the field a UI needs to show invite expiry — it will always be blank.
   - Fix: Use dateOrEmpty (packages/core/src/parser.ts:20-24) for both fields in toInvitationDTO.
 
-- [ ] **[high] `IMemberDTO` — createdAt** (serialization-hazard)
+- [x] **[high] `IMemberDTO` — createdAt** (serialization-hazard) — **fixed in #138**
   - Evidence: packages/workspaces/src/dtos/workspace.ts:129 maps createdAt with stringOrEmpty; SELECT_MEMBER fetches ruw.created_at (packages/workspaces/src/services/members.ts:11) as a raw timestamp, which the pg adapter returns as a Date (packages/store/src/adapters/pg.ts:59-62, no setTypeParser anywhere in the repo), so stringOrEmpty (packages/core/src/parser.ts:1-3) turns the member's join date into ''. Client mirror claims a string (packages/client/src/types.ts:230). Ironic footnote: the just-landed identity fix (commit 3a33e3a) added fields to this exact mapper while the date beside them silently empties.
   - Fix: Use dateOrEmpty for createdAt in toMemberDTO.
 
