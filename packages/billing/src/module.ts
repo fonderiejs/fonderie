@@ -1,4 +1,4 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
@@ -6,6 +6,7 @@ import type { IBillingConfig } from './config';
 import { buildBillingRoutes } from './routes';
 import { syncPlansToDB } from './services/plans';
 import { syncCreditPacksToDB } from './services/credit-packs';
+import { collectBillingReadinessProblems } from './services/notify';
 import { withBilling } from './middlewares/billing';
 import { createBackend } from './backends';
 
@@ -44,5 +45,13 @@ export class BillingModule implements IFonderieModule {
 		for (const [method, path, ...handlers] of routes) {
 			app.addRoute(method, path, ...handlers);
 		}
+	}
+
+	// Fail-closed at boot in production: taking money without a path to inform
+	// the customer (an EventBus + config.resolveRecipient reaching courier) is a
+	// Processing-Integrity failure, not an integrator's later choice. Warns —
+	// rather than errors — outside production so dev/test needn't wire courier.
+	checkReadiness(): IReadinessProblem[] {
+		return collectBillingReadinessProblems(this.config, this.bus !== undefined);
 	}
 }
