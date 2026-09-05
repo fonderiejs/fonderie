@@ -14,11 +14,12 @@ const D_COLS = `d.id, d.endpoint_id as "endpointId", d.event_id as "eventId",
                 d.next_attempt_at as "nextAttemptAt", d.delivered_at as "deliveredAt",
                 d.created_at as "createdAt"`;
 
-export interface IPendingRetry {
-	delivery: IWebhookDelivery;
-	url: string;
-	secret: string;
-}
+// A failed delivery joined with its endpoint's url/secret — FLAT, exactly as
+// the claim query's row comes back. (This was once declared as a nested
+// { delivery, url, secret } shape that no SQL row ever produced; the retry
+// loop then threw on `delivery.eventId` for every claimed row, so failed
+// deliveries were re-claimed forever and never actually retried.)
+export type IPendingRetry = IWebhookDelivery & { url: string; secret: string };
 
 export class DeliveryModel {
 	constructor(private readonly store: IStoreAdapter) {}
