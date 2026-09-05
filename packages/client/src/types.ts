@@ -456,6 +456,8 @@ export interface ICustomerEmailDTO {
 	id: string;
 	email: string;
 	label: string;
+	// Id of the shared label row (see listLabels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	createdAt: string;
 }
@@ -464,6 +466,8 @@ export interface ICustomerPhoneDTO {
 	id: string;
 	phone: string;
 	label: string;
+	// Id of the shared label row (see listLabels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	createdAt: string;
 }
@@ -481,6 +485,8 @@ export interface IAddressDTO {
 export interface ICustomerAddressDTO {
 	id: string;
 	label: string;
+	// Id of the shared label row (see listLabels) — null when unlabeled.
+	labelId: string | null;
 	isPrimary: boolean;
 	address: IAddressDTO;
 }
@@ -509,6 +515,10 @@ export type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> &
 	customerId: string;
 	relationship: string;
 	isPrimary: boolean;
+	// When the relationship itself was created. The spread customer fields
+	// include the related CUSTOMER's createdAt/updatedAt — don't sort
+	// relationships by those.
+	relationshipCreatedAt: string;
 };
 
 export type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {

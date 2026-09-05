@@ -50,7 +50,10 @@ export interface ICreateCustomerInput {
 	referredByCode?: string | null;
 }
 
-export type IUpdateCustomerInput = ICreateCustomerInput;
+// Referral codes are create-time only — the server's update path never
+// writes them, so including them here made updateCustomer({ referralCode })
+// a type-correct 200-OK silent no-op.
+export type IUpdateCustomerInput = Omit<ICreateCustomerInput, 'referralCode' | 'referredByCode'>;
 
 export interface IBlacklistCustomerInput {
 	reason?: string;
@@ -82,7 +85,8 @@ export interface IAddAddressInput {
 
 export interface IAddRelationshipInput {
 	relatedId: string;
-	relationship?: string;
+	// Required — the server rejects relationship-less links with a 422.
+	relationship: string;
 	isPrimary?: boolean;
 }
 

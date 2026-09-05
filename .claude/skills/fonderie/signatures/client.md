@@ -266,7 +266,7 @@ interface IAddPhoneInput {
 
 interface IAddRelationshipInput {
     relatedId: string;
-    relationship?: string;
+    relationship: string;
     isPrimary?: boolean;
 }
 
@@ -298,7 +298,7 @@ interface IListCustomersInput {
     offset?: number;
 }
 
-type IUpdateCustomerInput = ICreateCustomerInput;
+type IUpdateCustomerInput = Omit<ICreateCustomerInput, 'referralCode' | 'referredByCode'>;
 
 new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .setAccessToken(token: string | undefined): void
@@ -306,7 +306,7 @@ new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .listCustomers(input?: IListCustomersInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerListResult>>
   .createCustomer(input?: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .getCustomer(customerId: string, input?: IGetCustomerInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
-  .updateCustomer(customerId: string, input: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
+  .updateCustomer(customerId: string, input: IUpdateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput): Promise<IApiResponse<undefined>>
   .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
@@ -528,6 +528,7 @@ interface IConfigRevision {
 interface ICustomerAddressDTO {
     id: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     address: IAddressDTO;
 }
@@ -578,6 +579,7 @@ interface ICustomerEmailDTO {
     id: string;
     email: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     createdAt: string;
 }
@@ -626,6 +628,7 @@ interface ICustomerPhoneDTO {
     id: string;
     phone: string;
     label: string;
+    labelId: string | null;
     isPrimary: boolean;
     createdAt: string;
 }
@@ -655,6 +658,7 @@ type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
     customerId: string;
     relationship: string;
     isPrimary: boolean;
+    relationshipCreatedAt: string;
 };
 
 interface ICustomerRelationshipListResult {
