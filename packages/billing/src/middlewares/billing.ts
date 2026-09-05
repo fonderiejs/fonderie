@@ -1,10 +1,11 @@
 import type { Middleware, ICourierMessage } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from '../config';
 import type { ICounterBackend } from '../backends/types';
-import { MESSAGE_KEYS } from '../config';
+import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { getSubscription } from '../services/subscriptions';
 import { isWorkspaceMember } from '../services/membership';
 import { buildBillingContext } from '../services/policy';
@@ -14,7 +15,7 @@ import {
 	getWalletBalance,
 	resolvePlanWallet,
 } from '../services/wallet';
-import { resolveSubscriber, parseWindowMs } from '../utils';
+import { resolveSubscriber, parseWindowMs, subscriberEventFields } from '../utils';
 
 // In-process de-dup: tracks which threshold notifications have fired this session.
 // Acceptable to lose on restart (may send one duplicate after a redeploy).
@@ -24,6 +25,7 @@ export function withBilling(
 	store: IStoreAdapter,
 	config: IBillingConfig,
 	backend: ICounterBackend,
+	bus?: EventBus,
 ): Middleware {
 	return async (ctx, next) => {
 		const subscriber = resolveSubscriber(ctx);
@@ -85,14 +87,27 @@ export function withBilling(
 				// or paused subscriber keeps spending existing credits but is not
 				// extended new ones while payment is failing.
 				if (active && planWallet.grantAmount !== null && planWallet.grantAmount > 0n) {
-					await ensurePeriodicGrant(
-						{
-							...sub,
-							amount: planWallet.grantAmount,
-							period: currentGrantPeriod(planWallet.grantPeriod),
-						},
+					const period = currentGrantPeriod(planWallet.grantPeriod);
+					const grant = await ensurePeriodicGrant(
+						{ ...sub, amount: planWallet.grantAmount, period },
 						store,
 					);
+					// Emit only when the grant was newly applied this period —
+					// ensurePeriodicGrant is idempotent per period, so a repeat
+					// request returns granted:false and must not re-emit.
+					if (grant.granted) {
+						const fields = {
+							...subscriberEventFields(subscriber.type, subscriber.id),
+							currency: planWallet.currency,
+							credits: planWallet.grantAmount.toString(),
+							balanceAfter: grant.balance?.toString() ?? null,
+							period,
+						};
+						bus?.emit(EVENT_KEYS.grantApplied, fields).catch(() => {});
+						bus
+							?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'periodic-grant' })
+							.catch(() => {});
+					}
 				}
 				const { balance } = await getWalletBalance(sub, store);
 				billingCtx.wallet = {

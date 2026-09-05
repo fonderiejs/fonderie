@@ -151,3 +151,22 @@ export const MESSAGE_KEYS = {
 } as const;
 
 export type BillingMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
+
+// Domain events published on the @fonderie/events EventBus (§ Phase 1 of
+// docs/BILLING-CAPABILITY-AUDIT.md). Consumed in-process by any subscriber
+// and — when the payload carries a top-level workspaceId — fanned out to
+// customer endpoints by @fonderie/webhooks. Naming mirrors auth/customers
+// (fonderie.<domain>.<entity>.<verb>). These are the durable "what happened"
+// records; the customer-facing email/SMS is a separate NOTIFICATION_EVENT
+// (Phase 2).
+export const EVENT_KEYS = {
+	subscriptionCreated: 'fonderie.billing.subscription.created',
+	subscriptionUpdated: 'fonderie.billing.subscription.updated',
+	subscriptionCanceled: 'fonderie.billing.subscription.canceled',
+	subscriptionPastDue: 'fonderie.billing.subscription.past_due',
+	walletCredited: 'fonderie.billing.wallet.credited',
+	creditPackPurchased: 'fonderie.billing.credit_pack.purchased',
+	grantApplied: 'fonderie.billing.grant.applied',
+} as const;
+
+export type BillingEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];

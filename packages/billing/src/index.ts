@@ -20,7 +20,7 @@ export {
 } from './helpers';
 
 // Config + constants
-export { MESSAGE_KEYS } from './config';
+export { MESSAGE_KEYS, EVENT_KEYS } from './config';
 export type {
 	IBillingConfig,
 	IBillingCreditPack,
@@ -33,6 +33,7 @@ export type {
 	RateLimitBackendConfig,
 	IBillingNotificationsConfig,
 	BillingMessageKey,
+	BillingEventKey,
 } from './config';
 
 // Backends

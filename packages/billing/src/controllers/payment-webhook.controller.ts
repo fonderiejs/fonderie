@@ -1,12 +1,14 @@
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from '../config';
+import { EVENT_KEYS } from '../config';
 import type { SubscriberType } from '../types';
 import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
-import { normalizeCurrency } from '../utils';
+import { normalizeCurrency, subscriberEventFields } from '../utils';
 import { readWebhookEvent } from './webhook-shared';
 
 // One-time payment webhook — a SEPARATE endpoint (and secret) from the
@@ -14,7 +16,7 @@ import { readWebhookEvent } from './webhook-shared';
 // Idempotency: the ledger key `<provider>:checkout:<sessionId>` makes event
 // replays no-ops.
 
-export function paymentWebhookController(store: IStoreAdapter, config: IBillingConfig) {
+export function paymentWebhookController(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus) {
 	const wallet = new WalletModel(store);
 
 	return {
@@ -84,6 +86,26 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 					},
 					...(payment.providerTxId ? { providerTxId: payment.providerTxId } : {}),
 				});
+
+				// Publish only on a real credit — a webhook replay returns
+				// duplicate:true and must not re-emit (which would double-send a
+				// receipt / re-fire downstream automation). bigints go out as
+				// strings (payloads are JSON — persisted and forwarded).
+				if (!result.duplicate) {
+					const fields = {
+						...subscriberEventFields(subscriberType as SubscriberType, subscriberId),
+						currency,
+						credits,
+						balanceAfter: result.balance.toString(),
+						packId,
+						...(payment.providerTxId ? { providerTxId: payment.providerTxId } : {}),
+					};
+					bus?.emit(EVENT_KEYS.creditPackPurchased, fields).catch(() => {});
+					bus
+						?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' })
+						.catch(() => {});
+				}
+
 				return Response.json({ received: true, duplicate: result.duplicate });
 			} catch (err) {
 				if (err instanceof DuplicateTransactionError) {

@@ -7,6 +7,21 @@ export interface ISubscriber {
 	id: string;
 }
 
+// Common subscriber fields for a billing domain event. A top-level
+// workspaceId is what @fonderie/webhooks fans out on, so workspace
+// subscribers get one and user subscribers don't (a user-level billing event
+// is not a workspace webhook, but in-process subscribers still receive it).
+export function subscriberEventFields(
+	subscriberType: SubscriberType,
+	subscriberId: string,
+): { subscriberType: SubscriberType; subscriberId: string; workspaceId?: string } {
+	return {
+		subscriberType,
+		subscriberId,
+		...(subscriberType === 'workspace' ? { workspaceId: subscriberId } : {}),
+	};
+}
+
 // Narrow a bigint into a JS number, refusing values past 2^53 — loud failure
 // beats silent rounding. Used where a BOUNDED amount meets a number-typed
 // boundary (the wire-stable plan pricing DTO, the Stripe SDK). Deliberately

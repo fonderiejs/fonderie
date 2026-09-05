@@ -1,5 +1,6 @@
 import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from './config';
 import { buildBillingRoutes } from './routes';
@@ -15,6 +16,10 @@ export class BillingModule implements IFonderieModule {
 	constructor(
 		private store: IStoreAdapter,
 		private config: IBillingConfig,
+		// Optional — when provided, billing publishes fonderie.billing.* domain
+		// events (subscription lifecycle, wallet credits, pack purchases,
+		// grants) that in-process subscribers and @fonderie/webhooks consume.
+		private bus?: EventBus,
 	) {}
 
 	async install(app: IFonderieApp): Promise<void> {
@@ -33,9 +38,9 @@ export class BillingModule implements IFonderieModule {
 		// Global middleware — resolves subscriber + plan, enforces rate limits,
 		// caches IBillingContext on ctx.meta['billing'] for every request.
 		// Runs after auth (ctx.user available), before route handlers.
-		app.use(withBilling(this.store, this.config, backend));
+		app.use(withBilling(this.store, this.config, backend, this.bus));
 
-		const routes = buildBillingRoutes(this.store, this.config);
+		const routes = buildBillingRoutes(this.store, this.config, this.bus);
 		for (const [method, path, ...handlers] of routes) {
 			app.addRoute(method, path, ...handlers);
 		}

@@ -1198,3 +1198,69 @@ test('usageController.get: since is an explicit ISO string on the wire', async (
 	assert.equal(typeof body.result.since, 'string');
 	assert.equal(new Date(body.result.since).toISOString(), body.result.since);
 });
+
+// ── domain events (Phase 1): subscription lifecycle on the bus ────
+
+function recordingBus() {
+	const calls: { type: string; payload: any }[] = [];
+	return {
+		bus: { emit: async (type: string, payload: unknown) => { calls.push({ type, payload }); } } as any,
+		calls,
+	};
+}
+
+test('webhook: emits the subscription lifecycle domain event with workspaceId', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { EVENT_KEYS } = await import('../config');
+	const cases: Array<[string, string, string]> = [
+		// [provider event type, status override, expected EVENT_KEY]
+		['customer.subscription.created', 'active', EVENT_KEYS.subscriptionCreated],
+		['customer.subscription.updated', 'active', EVENT_KEYS.subscriptionUpdated],
+		['customer.subscription.updated', 'past_due', EVENT_KEYS.subscriptionPastDue],
+		['customer.subscription.deleted', 'canceled', EVENT_KEYS.subscriptionCanceled],
+	];
+	for (const [type, status, expected] of cases) {
+		const { bus, calls } = recordingBus();
+		const provider = makeProvider({
+			constructEvent: async () => ({
+				type,
+				subscription: normalizedSub({ priceId: 'price_pro_monthly', status }) as any,
+			}),
+		});
+		const ctrl = webhookController(captureStore().store, { ...config, provider, webhookSecret: 'whsec_x' }, undefined, bus);
+		await ctrl.handle(webhookCtx('{}'));
+		assert.equal(calls.length, 1, `${type}/${status} should emit once`);
+		assert.equal(calls[0]!.type, expected);
+		assert.equal(calls[0]!.payload.subscriberType, 'workspace');
+		assert.equal(calls[0]!.payload.workspaceId, 'ws-1', 'workspace subscriber carries top-level workspaceId (webhooks fan-out contract)');
+		assert.equal(calls[0]!.payload.status, status);
+	}
+});
+
+test('webhook: a user subscriber emits no top-level workspaceId', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { bus, calls } = recordingBus();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.updated',
+			subscription: normalizedSub({ subscriberType: 'user', subscriberId: 'user-1', priceId: 'price_pro_monthly' }) as any,
+		}),
+	});
+	const ctrl = webhookController(captureStore().store, { ...config, provider, webhookSecret: 'whsec_x' }, undefined, bus);
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(calls[0]!.payload.subscriberType, 'user');
+	assert.equal('workspaceId' in calls[0]!.payload, false);
+});
+
+test('webhook: no bus configured → no throw, still 200', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.updated',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly' }) as any,
+		}),
+	});
+	const ctrl = webhookController(captureStore().store, { ...config, provider, webhookSecret: 'whsec_x' });
+	const res = await ctrl.handle(webhookCtx('{}'));
+	assert.equal(res.status, 200);
+});

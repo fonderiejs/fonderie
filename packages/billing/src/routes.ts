@@ -1,5 +1,6 @@
 import type { IStoreAdapter } from '@fonderie/store';
 import type { Middleware } from '@fonderie/core';
+import type { EventBus } from '@fonderie/events';
 import { requireAuth, validate } from '@fonderie/core/middlewares';
 
 import {
@@ -27,6 +28,7 @@ type RouteDefinition = [string, string, ...Middleware[]];
 export function buildBillingRoutes(
 	store: IStoreAdapter,
 	config: IBillingConfig,
+	bus?: EventBus,
 ): RouteDefinition[] {
 	const priceCache = new PriceCache({
 		ttlMs: config.pricing?.cacheTtlMs,
@@ -37,7 +39,7 @@ export function buildBillingRoutes(
 	const subscription = subscriptionController(store);
 	const checkout = checkoutController(store, config);
 	const usage = usageController(store);
-	const webhook = webhookController(store, config, priceCache);
+	const webhook = webhookController(store, config, priceCache, bus);
 
 	const routes: RouteDefinition[] = [
 		// Plans — public read-only
@@ -66,8 +68,8 @@ export function buildBillingRoutes(
 	// Stored-value wallet — opt-in via config.wallet; absent config registers
 	// nothing and changes nothing for subscription-only consumers.
 	if (config.wallet) {
-		const wallet = walletController(store, config);
-		const paymentWebhook = paymentWebhookController(store, config);
+		const wallet = walletController(store, config, bus);
+		const paymentWebhook = paymentWebhookController(store, config, bus);
 		routes.push(
 			['GET', '/billing/wallet', requireAuth, wallet.get],
 			['GET', '/billing/wallet/transactions', requireAuth, wallet.transactions],

@@ -301,12 +301,14 @@
       "version": "6.0.0",
       "requires": [
         "core",
+        "events",
         "store"
       ],
       "exports": [
         "BillingModule",
         "StripeProvider",
         "MESSAGE_KEYS",
+        "EVENT_KEYS",
         "MemoryCounterBackend",
         "DBCounterBackend",
         "BILLING_INTERVAL",
@@ -2055,6 +2057,11 @@
     },
     {
       "from": "billing",
+      "to": "events",
+      "type": "requires"
+    },
+    {
+      "from": "billing",
       "to": "store",
       "type": "requires"
     },
@@ -3479,6 +3486,11 @@
     "stripeprovider": [
       "billing"
     ],
+    "event_keys": [
+      "billing",
+      "customers",
+      "workspaces"
+    ],
     "memorycounterbackend": [
       "billing"
     ],
@@ -3595,10 +3607,6 @@
     ],
     "channel": [
       "courier"
-    ],
-    "event_keys": [
-      "customers",
-      "workspaces"
     ],
     "customeraddressmodel": [
       "customers"
