@@ -59,8 +59,7 @@ export const grantWalletSchema = z.object({
 	currency: z
 		.string()
 		.trim()
-		.min(3)
-		.max(20)
+		.regex(/^[A-Za-z]{3,20}$/, 'currency must be a 3-20 letter code')
 		.transform((s) => s.toUpperCase())
 		.optional(),
 	description: z.string().max(500).optional(),

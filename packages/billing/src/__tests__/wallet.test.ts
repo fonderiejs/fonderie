@@ -1353,21 +1353,32 @@ test('currency codes normalize to one canonical bucket across grant, read, and c
 	const config = walletConfig();
 	const ctrl = walletController(billingStore(emu), config);
 
-	// A support grant in 'usd' must not open a case-distinct bucket...
+	// A support grant in ' usd ' must not open a case- or padding-distinct
+	// bucket — and interior garbage is rejected, never repaired.
 	const parsed = grantWalletSchema.parse({
 		subscriberType: 'user',
 		subscriberId: USER.subscriberId,
 		amount: '300',
-		currency: 'usd',
+		currency: ' usd ',
 		idempotencyKey: 'norm-1',
 	});
 	assert.equal(parsed.currency, 'USD');
+	assert.equal(
+		grantWalletSchema.safeParse({
+			subscriberType: 'user',
+			subscriberId: USER.subscriberId,
+			amount: '300',
+			currency: 'U SD',
+			idempotencyKey: 'norm-2',
+		}).success,
+		false,
+	);
 	await ctrl.grant(makeCtx({ body: parsed }));
 	assert.ok(emu.state.balances.has(`user|${USER.subscriberId}|USD`));
 	assert.equal(emu.state.balances.size, 1);
 
-	// ...and reads reach it whatever the query-param casing.
-	const res = await ctrl.get(makeCtx({ url: 'http://localhost/billing/wallet?currency=usd' }));
+	// ...and reads reach it whatever the query-param casing or padding.
+	const res = await ctrl.get(makeCtx({ url: 'http://localhost/billing/wallet?currency=%20usd%20' }));
 	assert.equal(((await res.json()) as any).result.wallet.balance, '300');
 });
 
