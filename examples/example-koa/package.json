@@ -16,7 +16,7 @@
 		"koa-bodyparser": "^4.4.1",
 		"@fonderie/adapter-koa": "^5.0.0",
 		"@fonderie/auth": "^5.0.0",
-		"@fonderie/core": "^0.6.0 || ^0.7.0",
+		"@fonderie/core": ">=0.8.0",
 		"@fonderie/events": "^5.0.0",
 		"@fonderie/store": "^0.2.2",
 		"@fonderie/courier": "^5.0.0"

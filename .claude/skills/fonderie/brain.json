@@ -159,7 +159,8 @@
       "exports": [
         "AuthModule",
         "AUTH_CONFIG_KEYS",
-        "MESSAGE_KEYS"
+        "MESSAGE_KEYS",
+        "DEFAULT_TEMPLATES"
       ],
       "subpaths": [
         "@fonderie/auth/types",
@@ -3500,6 +3501,9 @@
       "auth",
       "billing",
       "workspaces"
+    ],
+    "default_templates": [
+      "auth"
     ],
     "billingmodule": [
       "billing"

@@ -4,6 +4,10 @@ export { AuthModule } from './module';
 export type { IAuthConfig, IAuthSecrets, IAuthRuntimeConfig, IDataExportContributor } from './config';
 export { AUTH_CONFIG_KEYS, MESSAGE_KEYS } from './config';
 export type { AuthMessageKey } from './config';
+// Built-in default templates for auth's notifications. Pass to courier via
+// config.templates.defaults so the emails render out of the box; override any
+// key per-app with a DB row / FS file.
+export { DEFAULT_TEMPLATES } from './templates';
 
 // DTOs
 export type { IUserDTO } from './dtos/user';
