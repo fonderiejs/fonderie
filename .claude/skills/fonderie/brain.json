@@ -6,8 +6,8 @@
     "adapter-koa": "5.0.6",
     "audit": "5.1.1",
     "auth": "5.1.0",
-    "billing": "8.0.0",
-    "client": "0.12.0",
+    "billing": "8.2.0",
+    "client": "0.13.0",
     "config": "5.1.3",
     "core": "0.8.0",
     "courier": "5.2.0",
@@ -21,7 +21,7 @@
     "react-audit-screens": "0.2.0",
     "react-auth": "0.7.1",
     "react-auth-screens": "0.4.0",
-    "react-billing": "0.5.0",
+    "react-billing": "0.6.0",
     "react-billing-screens": "0.2.0",
     "react-config-admin": "0.3.0",
     "react-config-admin-screens": "0.2.0",
@@ -299,7 +299,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "8.0.0",
+      "version": "8.2.0",
       "requires": [
         "core",
         "events",
@@ -451,7 +451,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.12.0",
+      "version": "0.13.0",
       "requires": [],
       "exports": [
         "FonderieClient",
@@ -1046,7 +1046,7 @@
       "hasOutcomes": false
     },
     "react-billing": {
-      "version": "0.5.0",
+      "version": "0.6.0",
       "requires": [],
       "exports": [
         "FonderieApiError",

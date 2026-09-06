@@ -1,5 +1,21 @@
 # @fonderie/billing
 
+## 8.2.0
+
+### Minor Changes
+
+- 7cacd67: Add `config.wallet.blockPacksWhileSubscribed` (default `false`). When enabled, `POST /billing/wallet/checkout` is rejected with `409 PACKS_BLOCKED` for a subscriber on an **active or trialing paid plan** — a paid plan already includes its credits, so selling one-time packs on top would charge for something the subscription covers.
+  
+  Declarative config, not a hook. Off by default, so the allowance + top-up shape is unchanged. Free / pay-as-you-go / unpriced plans are never blocked (a plan with no `monthly` or `yearly` price is treated as free), and a `past_due` subscriber is not blocked (they may top up while payment is retried).
+
+## 8.1.0
+
+### Minor Changes
+
+- d08ff1a: Add read-only billing-account endpoints for in-app billing pages: `GET /billing/payment-method` (the customer's card on file — brand/last4/expiry) and `GET /billing/invoices` (invoice history, each linking out to the provider-hosted invoice). Both resolve the provider customer from the wallet customer first (so pay-as-you-go users with no subscription still see their card) then the subscription.
+  
+  Backed by two new optional `IBillingProvider` methods — `getPaymentMethod` and `listInvoices` — implemented by `StripeProvider`. They follow the existing optional-capability convention: when a provider implements neither, the routes answer `501`, so this is additive and non-breaking for existing providers. Adds `IPaymentMethodDTO`/`IInvoiceDTO` (+ `toPaymentMethodDTO`/`toInvoiceDTO`) and the `INormalizedCard`/`INormalizedInvoiceSummary` provider types.
+
 ## 8.0.0
 
 ### Major Changes
