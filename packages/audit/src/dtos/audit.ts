@@ -1,3 +1,5 @@
+import { encodeKeysetCursor, decodeKeysetCursor } from '@fonderie/core';
+
 import type { IAuditEvent } from '../types';
 
 export interface IAuditEventDTO {
@@ -30,27 +32,14 @@ export function toAuditEventDTO(e: IAuditEvent): IAuditEventDTO {
 // latter, because round-tripping through a millisecond JS Date truncates
 // sub-millisecond digits and silently skips same-millisecond events (rows
 // created in one transaction all share now() exactly) between pages.
-const CURSOR_TS_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}(:?\d{2})?)?$/;
-const CURSOR_ID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-
+// The audit event log's keyset cursor is the shared @fonderie/core primitive.
+// decodeKeysetCursor RANGE-checks the timestamp, so a crafted in-shape-but-out-
+// of-range cursor now decodes to null — the model drops the keyset predicate and
+// returns the first (newest) page — instead of reaching the ::timestamptz cast
+// as a 500, the bug the old lax local regex had.
 export function encodeCursor(createdAt: Date | string, id: string): string {
 	const ts = typeof createdAt === 'string' ? createdAt : createdAt.toISOString();
-	return Buffer.from(`${ts},${id}`).toString('base64');
+	return encodeKeysetCursor(ts, id);
 }
 
-export function decodeCursor(cursor: string): { createdAt: string; id: string } | null {
-	if (cursor.length > 256) return null;
-	try {
-		const raw = Buffer.from(cursor, 'base64').toString();
-		const commaIdx = raw.indexOf(',');
-		if (commaIdx === -1) return null;
-		const createdAt = raw.slice(0, commaIdx);
-		const id = raw.slice(commaIdx + 1);
-		// Both halves feed ::timestamptz / ::uuid casts — validate here so a
-		// crafted cursor yields an empty page, not a Postgres cast error.
-		if (!CURSOR_TS_RE.test(createdAt) || !CURSOR_ID_RE.test(id)) return null;
-		return { createdAt, id };
-	} catch {
-		return null;
-	}
-}
+export const decodeCursor = decodeKeysetCursor;

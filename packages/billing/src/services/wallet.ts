@@ -1,3 +1,4 @@
+import { encodeKeysetCursor, decodeKeysetCursor } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type {
@@ -562,38 +563,12 @@ export interface IWalletLedgerPage {
 	nextCursor: string | null;
 }
 
-export function encodeLedgerCursor(createdAt: string, id: string): string {
-	return Buffer.from(JSON.stringify([createdAt, id])).toString('base64url');
-}
-
-// Accepts ISO timestamps and Postgres' own text format (microsecond
-// precision, e.g. '2026-09-04 18:50:50.888123+00') — the cursor carries the
-// latter to avoid the JS Date millisecond truncation that would skip
-// same-millisecond ledger rows between pages.
-// Range-checked (month 01-12, day 01-31, hour 00-23, min/sec 00-59) so a crafted
-// cursor with in-shape-but-out-of-range fields (e.g. 2026-13-40T25:61:99) yields
-// a 422 (decode → null) instead of a Postgres ::timestamptz cast error (500).
-// Deliberately regex, not new Date(): it must accept PG's own text format
-// ('2026-09-04 18:50:50.888123+00') without a JS-parse false-negative.
-const CURSOR_TS_RE =
-	/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[T ]([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,6})?(Z|[+-]\d{2}(:?\d{2})?)?$/;
-const CURSOR_ID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-
-export function decodeLedgerCursor(cursor: string): { createdAt: string; id: string } | null {
-	if (cursor.length > 256) return null;
-	try {
-		const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
-		if (!Array.isArray(parsed) || typeof parsed[0] !== 'string' || typeof parsed[1] !== 'string') {
-			return null;
-		}
-		// Both halves feed ::timestamptz / ::uuid casts — validate here so a
-		// crafted cursor yields a 422, not a Postgres cast error.
-		if (!CURSOR_TS_RE.test(parsed[0]) || !CURSOR_ID_RE.test(parsed[1])) return null;
-		return { createdAt: parsed[0], id: parsed[1] };
-	} catch {
-		return null;
-	}
-}
+// The wallet ledger's keyset cursor is the shared @fonderie/core primitive
+// (range-checked decode → 422 not a ::timestamptz 500; accepts PG's text form).
+// Aliased to the historical names so billing's public API + internal callers
+// are unchanged.
+export const encodeLedgerCursor = encodeKeysetCursor;
+export const decodeLedgerCursor = decodeKeysetCursor;
 
 interface ILedgerRow {
 	id: string;

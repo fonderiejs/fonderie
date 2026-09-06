@@ -108,6 +108,14 @@ test('cursor: decodeCursor returns null for garbage input', () => {
 	assert.equal(decodeCursor('!!!not-base64!!!'), null);
 });
 
+test('cursor: an in-shape but OUT-OF-RANGE timestamp decodes to null (no ::timestamptz 500)', () => {
+	// The old audit regex lacked field-range checks and passed this straight into
+	// the cast → 500. The shared @fonderie/core cursor range-checks it → null.
+	const uuid = '3b241101-e2bb-4255-8caf-4136c566a962';
+	const crafted = Buffer.from(JSON.stringify(['2026-13-40T25:61:99Z', uuid])).toString('base64url');
+	assert.equal(decodeCursor(crafted), null);
+});
+
 // ── model ─────────────────────────────────────────────────────────
 
 test('AuditEventModel.list: passes workspaceId filter', async () => {
