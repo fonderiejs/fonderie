@@ -15,7 +15,7 @@ import {
 	setPendingRechargeKey,
 } from './wallet-customers';
 import { notifyBilling } from './notify';
-import { normalizeCurrency, subscriberEventFields } from '../utils';
+import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
 
 const DEFAULT_COOLDOWN_SECONDS = 3600;
 const DEFAULT_MAX_FAILURES = 3;
@@ -169,6 +169,8 @@ export async function maybeAutoRecharge(args: {
 				credits: pack.credits.toString(),
 				currency: creditCurrency,
 				balanceAfter: result.balance.toString(),
+				creditsDisplay: formatWalletAmount(pack.credits, creditCurrency, planWallet.precision),
+				balanceAfterDisplay: formatWalletAmount(result.balance, creditCurrency, planWallet.precision),
 				source: 'auto-recharge',
 			},
 		});

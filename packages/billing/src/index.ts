@@ -22,6 +22,9 @@ export {
 
 // Config + constants
 export { MESSAGE_KEYS, EVENT_KEYS } from './config';
+// Built-in default templates for billing's notifications. Pass to courier via
+// config.templates.defaults; override any key per-app with a DB row / FS file.
+export { DEFAULT_TEMPLATES } from './templates';
 export type {
 	IBillingConfig,
 	IBillingCreditPack,

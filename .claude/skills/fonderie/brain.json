@@ -310,6 +310,7 @@
         "StripeProvider",
         "MESSAGE_KEYS",
         "EVENT_KEYS",
+        "DEFAULT_TEMPLATES",
         "MemoryCounterBackend",
         "DBCounterBackend",
         "BILLING_INTERVAL",
@@ -3505,6 +3506,7 @@
     ],
     "default_templates": [
       "auth",
+      "billing",
       "workspaces"
     ],
     "billingmodule": [

@@ -9,7 +9,7 @@ import type { SubscriberType } from '../types';
 import type { INormalizedPaymentFailure, INormalizedReversal } from '../providers/types';
 import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
-import { normalizeCurrency, subscriberEventFields } from '../utils';
+import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { upsertWalletCustomer } from '../services/wallet-customers';
 import { readWebhookEvent } from './webhook-shared';
@@ -147,6 +147,8 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 					credits: result.reversed.toString(),
 					currency: sub.currency,
 					balanceAfter: result.balance.toString(),
+					creditsDisplay: formatWalletAmount(result.reversed, sub.currency, config.wallet?.precision ?? 2),
+					balanceAfterDisplay: formatWalletAmount(result.balance, sub.currency, config.wallet?.precision ?? 2),
 					kind: reversal.kind,
 					refundAmount: reversal.amount?.toString() ?? null,
 					refundCurrency: reversal.currency,
@@ -307,6 +309,8 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 							credits,
 							currency,
 							balanceAfter: result.balance.toString(),
+							creditsDisplay: formatWalletAmount(BigInt(credits), currency, config.wallet?.precision ?? 2),
+							balanceAfterDisplay: formatWalletAmount(result.balance, currency, config.wallet?.precision ?? 2),
 							amountPaid: payment.amountTotal?.toString() ?? null,
 							paymentCurrency: payment.currency,
 							...(payment.providerTxId ? { providerTxId: payment.providerTxId } : {}),
