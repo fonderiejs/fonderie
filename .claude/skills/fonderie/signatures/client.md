@@ -183,12 +183,18 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .updatePlan(planId: string, input: Partial<ICreatePlanInput>): Promise<IApiResponse<IPlanResult>>
   .deletePlan(planId: string): Promise<IApiResponse<undefined>>
   .getSubscription(opts?: IReadOptions | undefined): Promise<IApiResponse<ISubscriptionResult>>
+  .cancelSubscription(input?: ICancelSubscriptionInput | undefined): Promise<IApiResponse<ISubscriptionChangeResult>>
+  .reactivateSubscription(): Promise<IApiResponse<ISubscriptionChangeResult>>
   .createCheckoutSession(input: ICheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IUsageResult>>
   .getWallet(opts?: IReadOptions | undefined): Promise<IApiResponse<IWalletResult>>
   .setWalletPreferences(input: IWalletPreferencesInput): Promise<IApiResponse<IWalletResult>>
+  .createWalletCheckout(input: IWalletCheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
+  .getWalletTransactions(opts?: (IReadOptions & { cursor?: string; limit?: number; }) | undefined): Promise<IApiResponse<IWalletTransactionsResult>>
+  .getPaymentMethod(opts?: IReadOptions | undefined): Promise<IApiResponse<IPaymentMethodResult>>
+  .listInvoices(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvoicesResult>>
 
 interface IConfigAdminClientOptions {
     baseUrl: string;
@@ -516,6 +522,10 @@ interface IAuditPageResult {
     nextCursor: string | null;
 }
 
+interface ICancelSubscriptionInput {
+    atPeriodEnd?: boolean;
+}
+
 interface ICheckoutUrlResult {
     url: string;
 }
@@ -722,6 +732,22 @@ interface IInviteResult {
     }>;
 }
 
+interface IInvoiceDTO {
+    id: string;
+    number: string | null;
+    amountDue: string;
+    amountPaid: string;
+    currency: string;
+    status: string;
+    created: string;
+    hostedInvoiceUrl: string | null;
+    invoicePdf: string | null;
+}
+
+interface IInvoicesResult {
+    invoices: IInvoiceDTO[];
+}
+
 interface ILoginResult {
     tokens: ITokens;
     user: IUserDTO;
@@ -760,6 +786,17 @@ interface IMfaRequiredResult {
 interface IMfaSetupResult {
     qr: string;
     backupCodes: string[];
+}
+
+interface IPaymentMethodDTO {
+    brand: string;
+    last4: string;
+    expMonth: number;
+    expYear: number;
+}
+
+interface IPaymentMethodResult {
+    paymentMethod: IPaymentMethodDTO | null;
 }
 
 interface IPlanDTO {
@@ -855,6 +892,12 @@ interface ISecretRevision {
     version: number;
     actor: string | null;
     createdAt: string;
+}
+
+interface ISubscriptionChangeResult {
+    atPeriodEnd: boolean;
+    status: string;
+    currentPeriodEnd: string | null;
 }
 
 interface ISubscriptionDTO {
@@ -954,6 +997,10 @@ interface IVerifyEmailResult {
     email: string;
 }
 
+interface IWalletCheckoutInput {
+    packId: string;
+}
+
 interface IWalletDTO {
     balance: string;
     currency: string;
@@ -966,6 +1013,23 @@ interface IWalletDTO {
 
 interface IWalletResult {
     wallet: IWalletDTO;
+}
+
+interface IWalletTransactionDTO {
+    id: string;
+    type: string;
+    amount: string;
+    balanceAfter: string;
+    currency: string;
+    description: string | null;
+    providerTxId: string | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+}
+
+interface IWalletTransactionsResult {
+    transactions: IWalletTransactionDTO[];
+    nextCursor: string | null;
 }
 
 interface IWebhookDeliveryDTO {

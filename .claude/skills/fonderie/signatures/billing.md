@@ -26,6 +26,8 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
   .reactivateSubscription(opts: { subscriptionId: string; }): Promise<ISubscriptionChange>
   .getPaymentMethodForIntent(providerTxId: string): Promise<string | null>
   .createPortalSession(opts: { customerId: string; returnUrl: string; }): Promise<{ url: string; }>
+  .getPaymentMethod(opts: { customerId: string; paymentMethodId?: string | null; }): Promise<INormalizedCard | null>
+  .listInvoices(opts: { customerId: string; limit?: number; }): Promise<INormalizedInvoiceSummary[]>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
 
 function requirePlan(plans: string | string[], store: IStoreAdapter): Middleware
@@ -265,6 +267,14 @@ interface IBillingProvider {
     reactivateSubscription?(opts: {
         subscriptionId: string;
     }): Promise<ISubscriptionChange>;
+    getPaymentMethod?(opts: {
+        customerId: string;
+        paymentMethodId?: string | null;
+    }): Promise<INormalizedCard | null>;
+    listInvoices?(opts: {
+        customerId: string;
+        limit?: number;
+    }): Promise<INormalizedInvoiceSummary[]>;
     createPortalSession(opts: {
         customerId: string;
         returnUrl: string;
@@ -318,6 +328,25 @@ interface INormalizedInvoice {
     providerSubscriptionId: string | null;
     providerCustomerId: string | null;
     metadata: Record<string, string>;
+}
+
+interface INormalizedInvoiceSummary {
+    id: string;
+    number: string | null;
+    amountDue: bigint;
+    amountPaid: bigint;
+    currency: string;
+    status: string;
+    created: string;
+    hostedInvoiceUrl: string | null;
+    invoicePdf: string | null;
+}
+
+interface INormalizedCard {
+    brand: string;
+    last4: string;
+    expMonth: number;
+    expYear: number;
 }
 
 interface INormalizedPaymentFailure {
@@ -512,6 +541,25 @@ interface IWalletTransactionDTO {
     createdAt: string;
 }
 
+interface IPaymentMethodDTO {
+    brand: string;
+    last4: string;
+    expMonth: number;
+    expYear: number;
+}
+
+interface IInvoiceDTO {
+    id: string;
+    number: string | null;
+    amountDue: string;
+    amountPaid: string;
+    currency: string;
+    status: string;
+    created: string;
+    hostedInvoiceUrl: string | null;
+    invoicePdf: string | null;
+}
+
 function toPlanDTO(plan: IPlan): IPlanDTO
 
 function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO
@@ -519,6 +567,10 @@ function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO
 function toWalletDTO(balance: bigint, currency: string, precision: number, buckets?: { granted?: bigint | undefined; purchased?: bigint | undefined; spendPurchased?: boolean | undefined; grantedExpiresAt?: string | ... 1 more ... | undefined; } | undefined): IWalletDTO
 
 function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransactionDTO
+
+function toPaymentMethodDTO(card: INormalizedCard): IPaymentMethodDTO
+
+function toInvoiceDTO(inv: INormalizedInvoiceSummary): IInvoiceDTO
 
 function creditWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; type?: "purchase" | "grant" | "usage" | "refund" | "adjustment" | "expiry"; description?: string; metadata?: Record<...>; providerTxId?: string; }, store: IStoreAdapter): Promise<...>
 

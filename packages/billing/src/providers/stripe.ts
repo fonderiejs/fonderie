@@ -1,7 +1,9 @@
 import type {
 	IBillingProvider,
 	IBillingEvent,
+	INormalizedCard,
 	INormalizedInvoice,
+	INormalizedInvoiceSummary,
 	INormalizedPayment,
 	INormalizedPaymentFailure,
 	INormalizedReversal,
@@ -74,6 +76,11 @@ interface IStripeDisputeRaw {
 // invoice.paid / invoice.payment_failed deliver the Invoice.
 interface IStripeInvoiceRaw {
 	id: string;
+	number?: string | null;
+	status?: string | null;
+	created?: number | null;
+	hosted_invoice_url?: string | null;
+	invoice_pdf?: string | null;
 	currency?: string | null;
 	amount_paid?: number | null;
 	amount_due?: number | null;
@@ -81,6 +88,14 @@ interface IStripeInvoiceRaw {
 	subscription?: string | { id: string } | null;
 	customer?: string | { id: string } | null;
 	metadata?: Record<string, string> | null;
+}
+
+// A PaymentMethod's card block (display fields only).
+interface IStripeCardRaw {
+	brand: string;
+	last4: string;
+	exp_month: number;
+	exp_year: number;
 }
 
 // payment_intent.payment_failed delivers the PaymentIntent.
@@ -550,6 +565,77 @@ export class StripeProvider implements IBillingProvider {
 			return_url: opts.returnUrl,
 		});
 		return { url: session.url };
+	}
+
+	// Card on file for display. Prefer the explicitly consented card id when
+	// given (the one saved at pack checkout); else the customer's default
+	// invoice payment method; else the newest attached card. Tolerant — any
+	// lookup failure degrades to null (the UI shows "no card on file").
+	async getPaymentMethod(opts: {
+		customerId: string;
+		paymentMethodId?: string | null;
+	}): Promise<INormalizedCard | null> {
+		const stripe = await this.client();
+		const toCard = (pm: { card?: IStripeCardRaw } | null): INormalizedCard | null =>
+			pm?.card
+				? {
+						brand: pm.card.brand,
+						last4: pm.card.last4,
+						expMonth: pm.card.exp_month,
+						expYear: pm.card.exp_year,
+					}
+				: null;
+		try {
+			if (opts.paymentMethodId) {
+				const pm = await stripe.paymentMethods
+					.retrieve(opts.paymentMethodId)
+					.catch(() => null);
+				const card = toCard(pm);
+				if (card) return card;
+			}
+			const customer = await stripe.customers.retrieve(opts.customerId).catch(() => null);
+			const defaultPm =
+				customer && !customer.deleted
+					? (customer.invoice_settings?.default_payment_method ?? null)
+					: null;
+			const defaultPmId = typeof defaultPm === 'string' ? defaultPm : (defaultPm?.id ?? null);
+			if (defaultPmId) {
+				const pm = await stripe.paymentMethods.retrieve(defaultPmId).catch(() => null);
+				const card = toCard(pm);
+				if (card) return card;
+			}
+			const list = await stripe.paymentMethods
+				.list({ customer: opts.customerId, type: 'card', limit: 1 })
+				.catch(() => null);
+			return toCard(list?.data?.[0] ?? null);
+		} catch {
+			return null;
+		}
+	}
+
+	// The customer's invoices, newest first (Stripe returns them so). Amounts
+	// stay in the smallest currency unit; currency is upper-cased to match the
+	// wallet/ledger DTO convention.
+	async listInvoices(opts: {
+		customerId: string;
+		limit?: number;
+	}): Promise<INormalizedInvoiceSummary[]> {
+		const stripe = await this.client();
+		const res = await stripe.invoices.list({
+			customer: opts.customerId,
+			limit: opts.limit ?? 20,
+		});
+		return (res.data as IStripeInvoiceRaw[]).map((inv) => ({
+			id: inv.id,
+			number: inv.number ?? null,
+			amountDue: BigInt(inv.amount_due ?? 0),
+			amountPaid: BigInt(inv.amount_paid ?? 0),
+			currency: (inv.currency ?? 'usd').toUpperCase(),
+			status: inv.status ?? 'unknown',
+			created: new Date((inv.created ?? 0) * 1000).toISOString(),
+			hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
+			invoicePdf: inv.invoice_pdf ?? null,
+		}));
 	}
 
 	async constructEvent(opts: {

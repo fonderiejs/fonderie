@@ -163,6 +163,8 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 | Method | Path | Middleware chain (auth / validation / handler) |
 |---|---|---|
 | POST | `/billing/checkout` | `requireAuth → validate(checkoutSchema) → checkout.createSession` |
+| GET | `/billing/invoices` | `requireAuth → account.listInvoices` |
+| GET | `/billing/payment-method` | `requireAuth → account.getPaymentMethod` |
 | POST | `/billing/portal` | `requireAuth → checkout.createPortal` |
 | GET | `/billing/subscription` | `requireAuth → subscription.get` |
 | POST | `/billing/subscription/cancel` | `requireAuth → validate(cancelSubscriptionSchema) → subscription.cancel` |

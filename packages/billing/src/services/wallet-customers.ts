@@ -51,6 +51,23 @@ export async function upsertWalletCustomer(
 	);
 }
 
+// Read the provider customer + saved card for a subscriber (null when none has
+// been recorded — i.e. the subscriber never made a wallet payment). Used by the
+// account controller to resolve the card on file and the Stripe customer for
+// invoice listing.
+export async function getWalletCustomer(
+	key: IWalletCustomerKey,
+	store: IStoreAdapter,
+): Promise<{ providerCustomerId: string; paymentMethodId: string | null } | null> {
+	const [row] = await store.query<{ providerCustomerId: string; paymentMethodId: string | null }>(
+		`SELECT provider_customer_id AS "providerCustomerId", payment_method_id AS "paymentMethodId"
+		 FROM fonderie_wallet_customers
+		 WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3`,
+		[key.subscriberType, key.subscriberId, key.provider],
+	);
+	return row ?? null;
+}
+
 // Atomically claim a top-up slot. Returns the provider customer id ONLY when a
 // recharge is eligible (a card is on file, auto-recharge is not disabled, and
 // the cooldown has elapsed) and records the attempt time in the same statement,

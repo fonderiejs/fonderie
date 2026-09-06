@@ -164,6 +164,35 @@ test('billing.getWallet + setWalletPreferences hit the wallet routes with worksp
 	assert.equal(set!.auth, 'Bearer t');
 });
 
+test('billing: cancel/reactivate, wallet checkout/transactions, payment-method, invoices hit their routes', async () => {
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x', workspaceId: 'ws-1' });
+	c.setAccessToken('t');
+
+	await c.billing.cancelSubscription({ atPeriodEnd: false });
+	await c.billing.reactivateSubscription();
+	await c.billing.createWalletCheckout({ packId: 'small' });
+	await c.billing.getWalletTransactions({ cursor: 'abc', limit: 25 });
+	await c.billing.getPaymentMethod();
+	await c.billing.listInvoices();
+
+	const hit = (method: string, endsWith: string) =>
+		calls.find((x) => x.method === method && x.path.includes(endsWith));
+	assert.ok(hit('POST', '/billing/subscription/cancel'), 'cancel');
+	assert.ok(hit('POST', '/billing/subscription/reactivate'), 'reactivate');
+	assert.ok(hit('POST', '/billing/wallet/checkout'), 'wallet checkout');
+	const tx = hit('GET', '/billing/wallet/transactions');
+	assert.ok(tx, 'wallet transactions');
+	assert.ok(tx!.path.includes('cursor=abc') && tx!.path.includes('limit=25'), 'transactions carry cursor + limit');
+	assert.ok(hit('GET', '/billing/payment-method'), 'payment method');
+	assert.ok(hit('GET', '/billing/invoices'), 'invoices');
+	// All authed + workspace-scoped like the rest of the billing surface.
+	for (const call of calls) {
+		assert.equal(call.auth, 'Bearer t', `${call.path} missing bearer`);
+		assert.equal(call.workspace, 'ws-1', `${call.path} missing workspace`);
+	}
+});
+
 // ── sign-out cache clearing ──────────────────────────────────────────────────
 test('auth.setAccessToken(undefined) drops the shared response cache', async () => {
 	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: { jobs: [] } } });

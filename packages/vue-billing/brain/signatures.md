@@ -14,12 +14,18 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .updatePlan(planId: string, input: Partial<ICreatePlanInput>): Promise<IApiResponse<IPlanResult>>
   .deletePlan(planId: string): Promise<IApiResponse<undefined>>
   .getSubscription(opts?: IReadOptions | undefined): Promise<IApiResponse<ISubscriptionResult>>
+  .cancelSubscription(input?: ICancelSubscriptionInput | undefined): Promise<IApiResponse<ISubscriptionChangeResult>>
+  .reactivateSubscription(): Promise<IApiResponse<ISubscriptionChangeResult>>
   .createCheckoutSession(input: ICheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IUsageResult>>
   .getWallet(opts?: IReadOptions | undefined): Promise<IApiResponse<IWalletResult>>
   .setWalletPreferences(input: IWalletPreferencesInput): Promise<IApiResponse<IWalletResult>>
+  .createWalletCheckout(input: IWalletCheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
+  .getWalletTransactions(opts?: (IReadOptions & { cursor?: string; limit?: number; }) | undefined): Promise<IApiResponse<IWalletTransactionsResult>>
+  .getPaymentMethod(opts?: IReadOptions | undefined): Promise<IApiResponse<IPaymentMethodResult>>
+  .listInvoices(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvoicesResult>>
 
 interface ICheckoutInput {
     plan: string;
