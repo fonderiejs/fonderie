@@ -586,6 +586,7 @@
         "EmailChannel",
         "DBTemplateResolver",
         "FSTemplateResolver",
+        "DefaultTemplates",
         "Channel"
       ],
       "subpaths": [
@@ -3629,6 +3630,9 @@
       "courier"
     ],
     "fstemplateresolver": [
+      "courier"
+    ],
+    "defaulttemplates": [
       "courier"
     ],
     "channel": [

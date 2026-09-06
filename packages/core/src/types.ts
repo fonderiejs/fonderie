@@ -41,6 +41,17 @@ export interface ICourierMessage {
 	data: Record<string, unknown>;
 }
 
+// A module's built-in default copy for one message type — what ships so a
+// notification renders out of the box, before any app override. Same shape a
+// courier template (DB row / FS file) resolves to: `text` is required (every
+// channel), `subject`/`html` are email-only. A module exports a
+// Record<ItsMessageKey, IDefaultTemplate> so an unfilled key is a compile error.
+export interface IDefaultTemplate {
+	subject?: string;
+	text: string;
+	html?: string;
+}
+
 // ── Router interface — avoids circular dep with router.ts ────────
 export interface IRouteMatch {
 	handler: Middleware;
