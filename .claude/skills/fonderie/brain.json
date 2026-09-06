@@ -6,8 +6,8 @@
     "adapter-koa": "5.0.1",
     "audit": "5.0.1",
     "auth": "5.0.1",
-    "billing": "6.4.0",
-    "client": "0.11.0",
+    "billing": "6.5.0",
+    "client": "0.12.0",
     "config": "5.1.0",
     "core": "0.5.0",
     "courier": "5.0.1",
@@ -21,7 +21,7 @@
     "react-audit-screens": "0.2.0",
     "react-auth": "0.7.1",
     "react-auth-screens": "0.4.0",
-    "react-billing": "0.4.0",
+    "react-billing": "0.5.0",
     "react-billing-screens": "0.2.0",
     "react-config-admin": "0.3.0",
     "react-config-admin-screens": "0.2.0",
@@ -33,7 +33,7 @@
     "react-native-audit-screens": "0.2.0",
     "react-native-auth": "0.7.1",
     "react-native-auth-screens": "0.4.0",
-    "react-native-billing": "0.1.0",
+    "react-native-billing": "0.2.0",
     "react-native-billing-screens": "0.2.0",
     "react-native-customers": "0.1.0",
     "react-native-customers-screens": "0.2.0",
@@ -51,7 +51,7 @@
     "vue-audit-screens": "0.2.0",
     "vue-auth": "0.8.1",
     "vue-auth-screens": "0.4.0",
-    "vue-billing": "0.5.0",
+    "vue-billing": "0.6.0",
     "vue-billing-screens": "0.2.0",
     "vue-config-admin": "0.3.0",
     "vue-config-admin-screens": "0.2.0",
@@ -298,7 +298,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "6.4.0",
+      "version": "6.5.0",
       "requires": [
         "core",
         "events",
@@ -439,7 +439,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.11.0",
+      "version": "0.12.0",
       "requires": [],
       "exports": [
         "FonderieClient",
@@ -1031,7 +1031,7 @@
       "hasOutcomes": false
     },
     "react-billing": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1247,7 +1247,7 @@
       "hasOutcomes": false
     },
     "react-native-billing": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "requires": [],
       "exports": [],
       "subpaths": [],
@@ -1541,7 +1541,7 @@
       "hasOutcomes": false
     },
     "vue-billing": {
-      "version": "0.5.0",
+      "version": "0.6.0",
       "requires": [],
       "exports": [
         "FonderieApiError",
