@@ -570,7 +570,13 @@ export function encodeLedgerCursor(createdAt: string, id: string): string {
 // precision, e.g. '2026-09-04 18:50:50.888123+00') — the cursor carries the
 // latter to avoid the JS Date millisecond truncation that would skip
 // same-millisecond ledger rows between pages.
-const CURSOR_TS_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}(:?\d{2})?)?$/;
+// Range-checked (month 01-12, day 01-31, hour 00-23, min/sec 00-59) so a crafted
+// cursor with in-shape-but-out-of-range fields (e.g. 2026-13-40T25:61:99) yields
+// a 422 (decode → null) instead of a Postgres ::timestamptz cast error (500).
+// Deliberately regex, not new Date(): it must accept PG's own text format
+// ('2026-09-04 18:50:50.888123+00') without a JS-parse false-negative.
+const CURSOR_TS_RE =
+	/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[T ]([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,6})?(Z|[+-]\d{2}(:?\d{2})?)?$/;
 const CURSOR_ID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export function decodeLedgerCursor(cursor: string): { createdAt: string; id: string } | null {

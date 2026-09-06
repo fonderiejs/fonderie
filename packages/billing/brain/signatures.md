@@ -63,6 +63,7 @@ interface IBillingConfig {
     plans: IBillingPlan[];
     successUrl: string;
     cancelUrl: string;
+    planAdminToken?: string;
     webhookSecret?: string;
     rateLimit?: {
         backend?: RateLimitBackendConfig;

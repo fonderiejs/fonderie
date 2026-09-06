@@ -120,14 +120,25 @@ const SELECT_PLAN = `
 		metadata
 	FROM fonderie_plans`;
 
+// A public pricing catalog is a handful of plans; cap the read so it can never
+// be amplified into an unbounded load (defense-in-depth alongside the admin-only
+// write API).
+const MAX_PLANS = 500;
+
+// Plan ids are UUIDs (fonderie_plans.id). Reject a non-UUID before it reaches
+// the ::uuid-typed column, so a crafted :planId yields NOT_FOUND (null), not a
+// Postgres 22P02 cast error (500).
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
 export async function getDBPlans(store: IStoreAdapter): Promise<IPlan[]> {
 	const rows = await store.query<IPlanRow>(
-		`${SELECT_PLAN} WHERE active = true ORDER BY tier ASC, monthly_amount ASC NULLS LAST`,
+		`${SELECT_PLAN} WHERE active = true ORDER BY tier ASC, monthly_amount ASC NULLS LAST LIMIT ${MAX_PLANS}`,
 	);
 	return rows.map(mapPlanRow);
 }
 
 export async function getPlanById(id: string, store: IStoreAdapter): Promise<IPlan | null> {
+	if (!UUID_RE.test(id)) return null;
 	const [row] = await store.query<IPlanRow>(`${SELECT_PLAN} WHERE id = $1`, [id]);
 	return row ? mapPlanRow(row) : null;
 }
@@ -184,6 +195,7 @@ export async function updatePlan(
 	data: Partial<Omit<IPlan, 'id'>>,
 	store: IStoreAdapter,
 ): Promise<IPlan | null> {
+	if (!UUID_RE.test(id)) return null;
 	const fieldMap: Record<string, string> = {
 		name: 'name',
 		seats: 'seats',
@@ -233,6 +245,7 @@ export async function updatePlan(
 }
 
 export async function deletePlan(id: string, store: IStoreAdapter): Promise<boolean> {
+	if (!UUID_RE.test(id)) return false;
 	const rows = await store.query<{ id: string }>(
 		`DELETE FROM fonderie_plans WHERE id = $1 RETURNING id`,
 		[id],

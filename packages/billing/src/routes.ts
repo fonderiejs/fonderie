@@ -48,11 +48,6 @@ export function buildBillingRoutes(
 		['GET', '/plans', plan.list],
 		['GET', '/plans/:planId', plan.get],
 
-		// Plans — admin write (caller is responsible for authorization)
-		['POST', '/plans', validate(createPlanSchema), plan.create],
-		['PUT', '/plans/:planId', validate(updatePlanSchema), plan.update],
-		['DELETE', '/plans/:planId', plan.delete],
-
 		// Billing — subscriber resolved from X-Workspace-ID header (workspace) or session (user).
 		// The withBilling global middleware verifies workspace membership against
 		// fonderie_role_user_workspaces (403 for non-members, fail-closed) before
@@ -77,6 +72,24 @@ export function buildBillingRoutes(
 		// Webhook — signature verified inside the handler
 		['POST', '/billing/webhook', webhook.handle],
 	];
+
+	// DB-plan write API — an ops surface, guarded by a bootstrap admin token like
+	// wallet.grant, and only registered when the token is set. Unset ⇒ the write
+	// routes don't exist (404); GET /plans stays public. Runtime billing reads
+	// config.plans in memory, so this never affects charges or access.
+	if (config.planAdminToken) {
+		routes.push(
+			['POST', '/plans', requireAdminToken(config.planAdminToken), validate(createPlanSchema), plan.create],
+			[
+				'PUT',
+				'/plans/:planId',
+				requireAdminToken(config.planAdminToken),
+				validate(updatePlanSchema),
+				plan.update,
+			],
+			['DELETE', '/plans/:planId', requireAdminToken(config.planAdminToken), plan.delete],
+		);
+	}
 
 	// Stored-value wallet — opt-in via config.wallet; absent config registers
 	// nothing and changes nothing for subscription-only consumers.

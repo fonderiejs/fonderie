@@ -413,12 +413,12 @@
         {
           "method": "POST",
           "path": "/plans",
-          "mw": "validate(createPlanSchema) → plan.create"
+          "mw": "requireAdminToken(config.planAdminToken) → validate(createPlanSchema) → plan.create"
         },
         {
           "method": "DELETE",
           "path": "/plans/:planId",
-          "mw": "plan.delete"
+          "mw": "requireAdminToken(config.planAdminToken) → plan.delete"
         },
         {
           "method": "GET",
@@ -428,7 +428,7 @@
         {
           "method": "PUT",
           "path": "/plans/:planId",
-          "mw": "validate(updatePlanSchema) → plan.update"
+          "mw": "requireAdminToken(config.planAdminToken) → validate(updatePlanSchema) → plan.update"
         }
       ],
       "secures": [

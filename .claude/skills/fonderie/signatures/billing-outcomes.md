@@ -177,10 +177,10 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 | POST | `/billing/webhook` | `webhook.handle` |
 | POST | `/billing/webhook/payment` | `paymentWebhook.handle` |
 | GET | `/plans` | `plan.list` |
-| POST | `/plans` | `validate(createPlanSchema) → plan.create` |
-| DELETE | `/plans/:planId` | `plan.delete` |
+| POST | `/plans` | `requireAdminToken(config.planAdminToken) → validate(createPlanSchema) → plan.create` |
+| DELETE | `/plans/:planId` | `requireAdminToken(config.planAdminToken) → plan.delete` |
 | GET | `/plans/:planId` | `plan.get` |
-| PUT | `/plans/:planId` | `validate(updatePlanSchema) → plan.update` |
+| PUT | `/plans/:planId` | `requireAdminToken(config.planAdminToken) → validate(updatePlanSchema) → plan.update` |
 
 ## Migration statements not replayed (verify in raw SQL)
 

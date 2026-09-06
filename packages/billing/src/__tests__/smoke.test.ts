@@ -215,7 +215,7 @@ test('getPlanByName: returns null for unknown plan', async () => {
 test('getPlanById: returns plan when found', async () => {
 	const { getPlanById } = await import('../services/plans');
 	const store = makeStore({ plan: basePlan });
-	const plan = await getPlanById('plan-1', store);
+	const plan = await getPlanById('11111111-1111-4111-8111-111111111111', store);
 	assert.equal(plan?.name, 'pro');
 	assert.equal(plan?.monthlyAmount, 7900);
 });
@@ -223,8 +223,36 @@ test('getPlanById: returns plan when found', async () => {
 test('getPlanById: returns null when not found', async () => {
 	const { getPlanById } = await import('../services/plans');
 	const store = makeStore({ plan: null });
-	const plan = await getPlanById('missing', store);
+	const plan = await getPlanById('22222222-2222-4222-8222-222222222222', store);
 	assert.equal(plan, null);
+});
+
+test('getPlanById: returns null for a non-UUID id without querying (avoids a 22P02 500)', async () => {
+	const { getPlanById } = await import('../services/plans');
+	let queried = false;
+	const store = {
+		query: async () => {
+			queried = true;
+			return [] as unknown[];
+		},
+	} as unknown as import('@fonderie/store').IStoreAdapter;
+	const plan = await getPlanById('not-a-uuid', store);
+	assert.equal(plan, null);
+	assert.equal(queried, false, 'a malformed id must not reach the ::uuid-typed query');
+});
+
+test('updatePlan / deletePlan: reject a non-UUID id before querying (no 22P02 500)', async () => {
+	const { updatePlan, deletePlan } = await import('../services/plans');
+	let queried = false;
+	const store = {
+		query: async () => {
+			queried = true;
+			return [] as unknown[];
+		},
+	} as unknown as import('@fonderie/store').IStoreAdapter;
+	assert.equal(await updatePlan('not-a-uuid', { name: 'x' }, store), null);
+	assert.equal(await deletePlan('not-a-uuid', store), false);
+	assert.equal(queried, false, 'neither write reaches the ::uuid-typed query for a malformed id');
 });
 
 test('createPlan: returns created plan', async () => {
@@ -238,21 +266,21 @@ test('updatePlan: returns updated plan', async () => {
 	const { updatePlan } = await import('../services/plans');
 	const updated = { ...basePlan, monthlyAmount: 9900 };
 	const store = makeStore({ plan: updated });
-	const plan = await updatePlan('plan-1', { monthlyAmount: 9900 }, store);
+	const plan = await updatePlan('11111111-1111-4111-8111-111111111111', { monthlyAmount: 9900 }, store);
 	assert.equal(plan?.monthlyAmount, 9900);
 });
 
 test('deletePlan: returns true when deleted', async () => {
 	const { deletePlan } = await import('../services/plans');
 	const store = makeStore({ plan: basePlan });
-	const deleted = await deletePlan('plan-1', store);
+	const deleted = await deletePlan('11111111-1111-4111-8111-111111111111', store);
 	assert.ok(deleted);
 });
 
 test('deletePlan: returns false when not found', async () => {
 	const { deletePlan } = await import('../services/plans');
 	const store = makeStore({ plan: null });
-	const deleted = await deletePlan('missing', store);
+	const deleted = await deletePlan('22222222-2222-4222-8222-222222222222', store);
 	assert.ok(!deleted);
 });
 
@@ -285,7 +313,7 @@ test('planController.get: returns 200 when plan found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: basePlan });
 	const ctrl = planController(store, config, priceCache);
-	const res = await ctrl.get(makeCtx({ planId: 'plan-1' }));
+	const res = await ctrl.get(makeCtx({ planId: '11111111-1111-4111-8111-111111111111' }));
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
 	assert.equal(body.result?.plan.name, 'pro');
@@ -295,7 +323,7 @@ test('planController.get: 404 when not found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: null });
 	const ctrl = planController(store, config, priceCache);
-	const res = await ctrl.get(makeCtx({ planId: 'missing' }));
+	const res = await ctrl.get(makeCtx({ planId: '22222222-2222-4222-8222-222222222222' }));
 	assert.equal(res.status, 404);
 });
 
@@ -327,7 +355,7 @@ test('planController.update: 200 with updated plan', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: { ...basePlan, monthlyAmount: 9900 } });
 	const ctrl = planController(store, config, priceCache);
-	const res = await ctrl.update(makeCtx({ planId: 'plan-1' }, { monthlyAmount: 9900 }));
+	const res = await ctrl.update(makeCtx({ planId: '11111111-1111-4111-8111-111111111111' }, { monthlyAmount: 9900 }));
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
 	assert.ok(body.result?.plan);
@@ -337,14 +365,14 @@ test('planController.update: 404 when plan not found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: null });
 	const ctrl = planController(store, config, priceCache);
-	const res = await ctrl.update(makeCtx({ planId: 'missing' }, { name: 'x' }));
+	const res = await ctrl.update(makeCtx({ planId: '22222222-2222-4222-8222-222222222222' }, { name: 'x' }));
 	assert.equal(res.status, 404);
 });
 
 test('planController.update: 422 when body is empty', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const ctrl = planController(makeStore(), config, priceCache);
-	const res = await ctrl.update(makeCtx({ planId: 'plan-1' }, {}));
+	const res = await ctrl.update(makeCtx({ planId: '11111111-1111-4111-8111-111111111111' }, {}));
 	assert.equal(res.status, 422);
 });
 
@@ -352,7 +380,7 @@ test('planController.delete: 200 when deleted', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: basePlan });
 	const ctrl = planController(store, config, priceCache);
-	const res = await ctrl.delete(makeCtx({ planId: 'plan-1' }));
+	const res = await ctrl.delete(makeCtx({ planId: '11111111-1111-4111-8111-111111111111' }));
 	assert.equal(res.status, 200);
 });
 
@@ -360,7 +388,7 @@ test('planController.delete: 404 when not found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: null });
 	const ctrl = planController(store, config, priceCache);
-	const res = await ctrl.delete(makeCtx({ planId: 'missing' }));
+	const res = await ctrl.delete(makeCtx({ planId: '22222222-2222-4222-8222-222222222222' }));
 	assert.equal(res.status, 404);
 });
 
@@ -1615,6 +1643,28 @@ test('buildBillingRoutes: registers first-party cancel + reactivate', async () =
 	const paths = buildBillingRoutes(subCtrlStore(null).store, config).map(([m, p]) => `${m} ${p}`);
 	assert.ok(paths.includes('POST /billing/subscription/cancel'));
 	assert.ok(paths.includes('POST /billing/subscription/reactivate'));
+});
+
+test('buildBillingRoutes: plan-write routes are gated on config.planAdminToken', async () => {
+	const { buildBillingRoutes } = await import('../routes');
+	const store = subCtrlStore(null).store;
+
+	// No token → the write routes are NOT registered (404); GET stays public.
+	const open = buildBillingRoutes(store, config).map(([m, p]) => `${m} ${p}`);
+	assert.ok(open.includes('GET /plans'), 'GET /plans stays public');
+	assert.ok(!open.includes('POST /plans'), 'POST /plans not registered without a token');
+	assert.ok(!open.includes('PUT /plans/:planId'));
+	assert.ok(!open.includes('DELETE /plans/:planId'));
+
+	// With a token → the write routes register (guarded by requireAdminToken).
+	const guarded = buildBillingRoutes(store, { ...config, planAdminToken: 'ops-secret' } as typeof config);
+	const guardedPaths = guarded.map(([m, p]) => `${m} ${p}`);
+	assert.ok(guardedPaths.includes('POST /plans'));
+	assert.ok(guardedPaths.includes('PUT /plans/:planId'));
+	assert.ok(guardedPaths.includes('DELETE /plans/:planId'));
+	// The POST /plans chain carries an auth middleware before the handler.
+	const postPlans = guarded.find(([m, p]) => m === 'POST' && p === '/plans')!;
+	assert.ok(postPlans.length >= 4, 'POST /plans has requireAdminToken + validate + handler');
 });
 
 // ── Phase 4b: upgrade in place (Claude-style), downgrade via cancel+resubscribe ──
