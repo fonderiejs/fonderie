@@ -31,7 +31,10 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 	// configured default.
 	const currencyOf = (ctx: IFonderieContext) => {
 		const q = new URL(ctx.request.url).searchParams.get('currency');
-		if (q) return normalizeCurrency(q);
+		// Only honor a well-formed currency code; a junk ?currency= otherwise
+		// creates inert zero-amount balance rows under arbitrary keys. Falls back
+		// to the subscriber's plan-wallet currency, then the configured default.
+		if (q && /^[A-Za-z]{3,20}$/.test(q)) return normalizeCurrency(q);
 		return getWalletStatus(ctx)?.currency ?? defaultCurrency();
 	};
 
@@ -57,6 +60,37 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 			});
 
 			return setApiResponse(HTTP.OK, 'WALLET_FETCHED', 'Wallet retrieved successfully.', {
+				wallet: toWalletDTO(snapshot.balance, currency, precisionOf(ctx), {
+					granted: snapshot.granted,
+					purchased: snapshot.purchased,
+					spendPurchased: snapshot.spendPurchased,
+					grantedExpiresAt: snapshot.grantedExpiresAt,
+				}),
+			});
+		},
+
+		// Set the per-subscriber spend-purchased toggle, then return the refreshed
+		// wallet (same { wallet } shape as get, so a client can update its view
+		// from the response without a second fetch). Currency-scoped like get.
+		async setPreferences(ctx: IFonderieContext): Promise<Response> {
+			const subscriber = resolveSubscriber(ctx);
+			if (!subscriber) {
+				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+			}
+			const body = ctx.meta['body'] as { spendPurchased: boolean };
+			const currency = currencyOf(ctx);
+			await wallet.setSpendPurchased({
+				subscriberType: subscriber.type,
+				subscriberId: subscriber.id,
+				currency,
+				spendPurchased: body.spendPurchased,
+			});
+			const snapshot = await wallet.balance({
+				subscriberType: subscriber.type,
+				subscriberId: subscriber.id,
+				currency,
+			});
+			return setApiResponse(HTTP.OK, 'WALLET_PREFERENCES_UPDATED', 'Wallet preferences updated.', {
 				wallet: toWalletDTO(snapshot.balance, currency, precisionOf(ctx), {
 					granted: snapshot.granted,
 					purchased: snapshot.purchased,
