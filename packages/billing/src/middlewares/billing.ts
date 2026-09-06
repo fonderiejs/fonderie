@@ -156,18 +156,22 @@ export function withBilling(
 							balance: balance.toString(),
 							threshold: planWallet.lowBalanceAt.toString(),
 						};
+						// The durable domain event always fires; the customer EMAIL is
+						// opt-out via config.notifications.creditsLow (default on).
 						bus?.emit(EVENT_KEYS.walletLowBalance, fields).catch(() => {});
-						void notifyBilling(bus, config, {
-							subscriberType: subscriber.type,
-							subscriberId: subscriber.id,
-							type: MESSAGE_KEYS.creditsLow,
-							data: {
-								plan: plan.name,
-								currency: planWallet.currency,
-								balance: balance.toString(),
-								threshold: planWallet.lowBalanceAt.toString(),
-							},
-						});
+						if (config.notifications?.creditsLow !== false) {
+							void notifyBilling(bus, config, {
+								subscriberType: subscriber.type,
+								subscriberId: subscriber.id,
+								type: MESSAGE_KEYS.creditsLow,
+								data: {
+									plan: plan.name,
+									currency: planWallet.currency,
+									balance: balance.toString(),
+									threshold: planWallet.lowBalanceAt.toString(),
+								},
+							});
+						}
 					}
 				}
 

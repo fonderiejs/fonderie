@@ -120,9 +120,19 @@ export interface IBillingPlan {
 
 export type RateLimitBackendConfig = 'memory' | 'db' | ICounterBackend;
 
+// Toggles for the OPTIONAL, informational notifications. The mandatory
+// money-movement notices (payment receipt, renewal receipt, refund, failed
+// payment) and account-state notices (cancellation, auto-recharge failure) are
+// NOT configurable — they fire whenever a recipient resolves, per the governing
+// principle "no money movement without a clear communication".
 export interface IBillingNotificationsConfig {
-	warnAt?: boolean; // fire courier message when warnAt threshold crossed
-	softHit?: boolean; // fire when soft limit crossed
+	warnAt?: boolean; // fire the limit-warning notice (opt-in; default off)
+	softHit?: boolean; // fire the soft-limit-reached notice (opt-in; default off)
+	// Low wallet-balance heads-up. Default ON (fires when a recipient resolves);
+	// set false to suppress.
+	creditsLow?: boolean;
+	// Trial-ending reminder. Default ON; set false to suppress.
+	trialEnding?: boolean;
 }
 
 /**
@@ -162,8 +172,9 @@ export interface IBillingWalletConfig {
 	/** Display precision — decimal places of the smallest unit. Default 2. */
 	precision?: number;
 	/**
-	 * Bearer token guarding POST /billing/wallet/grant (manual support/ops
-	 * grants). The route is only registered when a token is configured.
+	 * @deprecated Use the top-level `config.adminToken`, which guards all billing
+	 * ops routes (wallet grant + plan writes). Still honored as a fallback for
+	 * POST /billing/wallet/grant; will be removed in a future major.
 	 */
 	adminToken?: string;
 	/**
@@ -199,12 +210,18 @@ export interface IBillingConfig {
 	successUrl: string;
 	cancelUrl: string;
 	/**
-	 * Bearer token guarding the DB-plan write API (POST/PUT/DELETE /plans), an
-	 * ops surface for managing the persisted plan catalog. The write routes are
-	 * only registered when this is set (mirroring wallet.adminToken); GET /plans
-	 * stays public. Runtime billing (checkout, requirePlan, withBilling) reads
-	 * `config.plans` in memory, not this table, so leaving it unset just disables
-	 * remote plan editing — it does not affect charges or access.
+	 * One bearer token guarding ALL billing ops routes — the DB-plan write API
+	 * (POST/PUT/DELETE /plans) and the wallet manual-grant (POST /billing/wallet/grant),
+	 * compared in constant time. Each route is registered ONLY when a token is
+	 * available; unset ⇒ those routes 404 (GET /plans stays public). Runtime
+	 * billing reads `config.plans` in memory and persists it at boot
+	 * (syncPlansToDB), so leaving this unset only disables remote ops editing —
+	 * it never affects charges or access.
+	 */
+	adminToken?: string;
+	/**
+	 * @deprecated Use `config.adminToken`. Still honored as a fallback for the
+	 * plan-write routes; will be removed in a future major.
 	 */
 	planAdminToken?: string;
 	webhookSecret?: string;
