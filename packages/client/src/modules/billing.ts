@@ -3,13 +3,19 @@ import type { TokenStore } from '../token-store';
 import type {
 	IReadOptions,
 	IApiResponse,
+	ICancelSubscriptionInput,
 	ICheckoutUrlResult,
+	IInvoicesResult,
+	IPaymentMethodResult,
 	IPlanListResult,
 	IPlanResult,
 	IPortalUrlResult,
+	ISubscriptionChangeResult,
 	ISubscriptionResult,
 	IUsageResult,
+	IWalletCheckoutInput,
 	IWalletResult,
+	IWalletTransactionsResult,
 } from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
@@ -131,6 +137,30 @@ export class BillingClient {
 		});
 	}
 
+	// First-party cancel — no portal round-trip. Default keeps access until the
+	// paid-through date; pass { atPeriodEnd: false } to end it immediately. 501
+	// when the provider has no first-party cancel (the portal remains a fallback).
+	cancelSubscription(input?: ICancelSubscriptionInput) {
+		return this.http.request<IApiResponse<ISubscriptionChangeResult>>({
+			method: 'POST',
+			path: '/billing/subscription/cancel',
+			body: input ?? {},
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Un-cancel a subscription scheduled to cancel at period end. Idempotent; 409
+	// when the subscription is already fully canceled (start a new checkout).
+	reactivateSubscription() {
+		return this.http.request<IApiResponse<ISubscriptionChangeResult>>({
+			method: 'POST',
+			path: '/billing/subscription/reactivate',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
 	// ── Checkout / portal ────────────────────────────────────────────────────────
 
 	createCheckoutSession(input: ICheckoutInput) {
@@ -193,6 +223,60 @@ export class BillingClient {
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Start a one-time credit-pack purchase. Returns a hosted checkout URL to
+	// redirect the buyer to; the wallet is credited by the payment webhook.
+	createWalletCheckout(input: IWalletCheckoutInput) {
+		return this.http.request<IApiResponse<ICheckoutUrlResult>>({
+			method: 'POST',
+			path: '/billing/wallet/checkout',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// The wallet ledger, newest first — every credit/debit with a running
+	// balanceAfter. Cursor-paginated: pass the previous result's `nextCursor`.
+	getWalletTransactions(opts?: IReadOptions & { cursor?: string; limit?: number }) {
+		const params = new URLSearchParams();
+		if (opts?.cursor) params.set('cursor', opts.cursor);
+		if (opts?.limit !== undefined) params.set('limit', String(opts.limit));
+		const query = params.toString();
+		return this.http.request<IApiResponse<IWalletTransactionsResult>>({
+			method: 'GET',
+			path: `/billing/wallet/transactions${query ? `?${query}` : ''}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	// ── Account ──────────────────────────────────────────────────────────────────
+
+	// The customer's card on file (brand/last4/expiry), or { paymentMethod: null }
+	// when none is stored. 501 when the provider can't retrieve it.
+	getPaymentMethod(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IPaymentMethodResult>>({
+			method: 'GET',
+			path: '/billing/payment-method',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	// The customer's invoices, newest first — each links out to the hosted
+	// invoice / PDF. 501 when the provider can't list them.
+	listInvoices(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IInvoicesResult>>({
+			method: 'GET',
+			path: '/billing/invoices',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
 		});
 	}
 }

@@ -209,6 +209,73 @@ export interface IWalletResult {
 	wallet: IWalletDTO;
 }
 
+// One wallet ledger entry. Money fields are digit strings (server bigint →
+// string); `balanceAfter` is the running balance, so a history UI can show a
+// trustworthy per-row balance without re-deriving it.
+export interface IWalletTransactionDTO {
+	id: string;
+	type: string; // 'purchase' | 'grant' | 'usage' | 'refund' | 'adjustment' | 'expiry'
+	amount: string; // signed: positive = credit, negative = debit
+	balanceAfter: string;
+	currency: string;
+	description: string | null;
+	providerTxId: string | null;
+	metadata: Record<string, unknown>;
+	createdAt: string;
+}
+
+export interface IWalletTransactionsResult {
+	transactions: IWalletTransactionDTO[];
+	nextCursor: string | null;
+}
+
+export interface IWalletCheckoutInput {
+	packId: string;
+}
+
+export interface ICancelSubscriptionInput {
+	// Default true — keep access until the paid-through date. false ends it now.
+	atPeriodEnd?: boolean;
+}
+
+// Result of a first-party cancel/reactivate — the subscription's new lifecycle
+// state, read straight back without waiting for the provider webhook.
+export interface ISubscriptionChangeResult {
+	atPeriodEnd: boolean;
+	status: string;
+	currentPeriodEnd: string | null;
+}
+
+// The customer's card on file, for display. Never carries the full number.
+export interface IPaymentMethodDTO {
+	brand: string;
+	last4: string;
+	expMonth: number;
+	expYear: number;
+}
+
+export interface IPaymentMethodResult {
+	paymentMethod: IPaymentMethodDTO | null;
+}
+
+// One invoice for an in-app history list; `hostedInvoiceUrl`/`invoicePdf` link
+// out to the provider. Amounts are digit strings (smallest currency unit).
+export interface IInvoiceDTO {
+	id: string;
+	number: string | null;
+	amountDue: string;
+	amountPaid: string;
+	currency: string;
+	status: string;
+	created: string;
+	hostedInvoiceUrl: string | null;
+	invoicePdf: string | null;
+}
+
+export interface IInvoicesResult {
+	invoices: IInvoiceDTO[];
+}
+
 // ── Workspaces ───────────────────────────────────────────────────────────────
 
 export interface IWorkspaceAddressDTO {
