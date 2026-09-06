@@ -39,11 +39,17 @@ new EmailChannel(config: IEmailChannelConfig): EmailChannel
   .name: "email"
   .send(message: ICourierMessage, template: IRenderedTemplate): Promise<void>
 
-new DBTemplateResolver(store: IStoreAdapter): DBTemplateResolver
+new DBTemplateResolver(store: IStoreAdapter, defaults?: DefaultTemplates | undefined): DBTemplateResolver
   .resolve(type: string, data: Record<string, unknown>, locale?: string | undefined): Promise<IRenderedTemplate>
 
-new FSTemplateResolver(directory: string): FSTemplateResolver
+new FSTemplateResolver(directory: string, defaults?: DefaultTemplates | undefined): FSTemplateResolver
   .resolve(type: string, data: Record<string, unknown>, locale?: string | undefined): Promise<IRenderedTemplate>
+
+new DefaultTemplates(maps?: DefaultTemplateMap[]): DefaultTemplates
+  .get(type: string): IDefaultTemplate | undefined
+  .size: number
+
+function renderFragment(frag: { subject?: string | null; text: string; html?: string | null; }, layoutHtml: string | undefined, data: Record<string, unknown>): IRenderedTemplate
 
 function setTemplate(opts: { type: string; text: string; locale?: string | null; subject?: string | null; html?: string | null; active?: boolean; ifVersion?: number; actor?: string; }, store: IStoreAdapter): Promise<...>
 
@@ -129,6 +135,14 @@ interface ITemplateResolver {
     resolve(type: string, data: Record<string, unknown>, locale?: string): Promise<IRenderedTemplate>;
 }
 
+interface IDefaultTemplate {
+    subject?: string;
+    text: string;
+    html?: string;
+}
+
+type DefaultTemplateMap = Record<string, IDefaultTemplate>;
+
 const Channel: { readonly EMAIL: "email"; readonly SMS: "sms"; readonly PUSH: "push"; }
 
 interface ICourierConfig {
@@ -140,6 +154,7 @@ interface ICourierConfig {
     templates?: {
         source: 'db' | 'fs';
         directory?: string;
+        defaults?: DefaultTemplateMap | DefaultTemplateMap[];
     };
     delivery?: {
         signingKeys?: {

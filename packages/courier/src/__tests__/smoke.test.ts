@@ -7,7 +7,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import { Channel } from '../config';
 import { Dispatcher } from '../dispatcher';
-import { FSTemplateResolver } from '../templates/resolver';
+import { FSTemplateResolver, DBTemplateResolver, DefaultTemplates } from '../templates/resolver';
 
 // ── Stub channel ─────────────────────────────────────────────────
 
@@ -183,6 +183,90 @@ test('FSTemplateResolver: passes locale to file lookup (no error on missing)', a
 	const resolver = new FSTemplateResolver('/tmp/nonexistent-templates');
 	const result = await resolver.resolve('some-type', { key: 'value' }, 'fr-FR');
 	assert.ok(result.text.includes('some-type'));
+});
+
+// ── Default-template fallback chain (app override → module default → JSON) ──
+
+const DEF = new DefaultTemplates([
+	{
+		'billing.credits-low': {
+			subject: 'Low balance: {{plan}}',
+			text: '{{balance}} credits left on {{plan}}.',
+			html: '<h1>{{balance}} credits left</h1><p>on {{plan}}</p>',
+		},
+	},
+]);
+
+test('fallback: FS resolver renders the module default when the app ships no file', async () => {
+	const resolver = new FSTemplateResolver('/tmp/nonexistent-templates', DEF);
+	const r = await resolver.resolve('billing.credits-low', { plan: 'Pro', balance: '3' });
+	assert.equal(r.subject, 'Low balance: Pro');
+	assert.equal(r.text, '3 credits left on Pro.');
+	assert.ok(r.html?.includes('<!DOCTYPE html>'), 'default html is wrapped in the layout shell');
+	assert.ok(r.html?.includes('3 credits left'), 'default html interpolated');
+	assert.ok(!r.html?.includes('{{'), 'no unresolved vars');
+});
+
+test('fallback: FS resolver falls to JSON only when neither app file nor default exists', async () => {
+	const resolver = new FSTemplateResolver('/tmp/nonexistent-templates', DEF);
+	const r = await resolver.resolve('some.unknown-key', { x: 1 });
+	assert.ok(r.text.includes('some.unknown-key'), 'last-resort JSON dump for a key nobody provides');
+});
+
+test('fallback: an app FS file wins over the module default', async () => {
+	const { mkdtemp, writeFile } = await import('node:fs/promises');
+	const { tmpdir } = await import('node:os');
+	const { join } = await import('node:path');
+	const dir = await mkdtemp(join(tmpdir(), 'courier-tmpl-'));
+	await writeFile(join(dir, 'billing.credits-low.txt'), 'APP OVERRIDE: {{balance}}');
+
+	const resolver = new FSTemplateResolver(dir, DEF);
+	const r = await resolver.resolve('billing.credits-low', { plan: 'Pro', balance: '3' });
+	assert.equal(r.text, 'APP OVERRIDE: 3', 'per-key app file wins over the default');
+});
+
+test('fallback: DB resolver renders the module default when no row matches', async () => {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(): Promise<T[]> => [] as T[], // no rows for anything
+		transaction: async (fn) => fn(store),
+	};
+	const resolver = new DBTemplateResolver(store, DEF);
+	const r = await resolver.resolve('billing.credits-low', { plan: 'Pro', balance: '3' });
+	assert.equal(r.subject, 'Low balance: Pro');
+	assert.equal(r.text, '3 credits left on Pro.');
+	assert.ok(r.html?.includes('3 credits left'), 'default html rendered');
+});
+
+test('fallback: a DB row wins over the module default', async () => {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(_sql: string, params?: unknown[]): Promise<T[]> =>
+			(params?.[0] === 'billing.credits-low'
+				? [{ subject: 'ROW', html: null, text: 'row text {{balance}}' }]
+				: []) as T[],
+		transaction: async (fn) => fn(store),
+	};
+	const resolver = new DBTemplateResolver(store, DEF);
+	const r = await resolver.resolve('billing.credits-low', { balance: '3' });
+	assert.equal(r.text, 'row text 3', 'DB row wins over the default');
+	assert.equal(r.subject, 'ROW');
+});
+
+test('fallback: an empty app file is the app path, not the default (presence, not truthiness)', async () => {
+	const { mkdtemp, writeFile } = await import('node:fs/promises');
+	const { tmpdir } = await import('node:os');
+	const { join } = await import('node:path');
+	const dir = await mkdtemp(join(tmpdir(), 'courier-empty-'));
+	await writeFile(join(dir, 'billing.credits-low.txt'), ''); // app shipped a (degenerate) empty file
+	const resolver = new FSTemplateResolver(dir, DEF);
+	const r = await resolver.resolve('billing.credits-low', { plan: 'Pro', balance: '3' });
+	assert.ok(!r.text.includes('credits left on Pro'), 'the module default must NOT override a shipped (even empty) app file');
+	assert.ok(r.text.includes('billing.credits-low'), 'empty app file falls to JSON, mirroring the DB row-presence check');
+});
+
+test('fallback: empty defaults + no template behaves exactly as before (JSON dump)', async () => {
+	const resolver = new FSTemplateResolver('/tmp/nonexistent-templates', new DefaultTemplates());
+	const r = await resolver.resolve('some-type', { key: 'value' });
+	assert.ok(r.text.includes('some-type'), 'behavior-neutral when no defaults are wired');
 });
 
 // ── Layout composition ───────────────────────────────────────────

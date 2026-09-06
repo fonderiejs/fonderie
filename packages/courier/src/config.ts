@@ -1,3 +1,5 @@
+import type { DefaultTemplateMap } from './types';
+
 export interface IEmailChannelConfig {
 	provider: 'resend' | 'ses' | 'smtp';
 	from: string;
@@ -50,6 +52,12 @@ export interface ICourierConfig {
 	templates?: {
 		source: 'db' | 'fs';
 		directory?: string; // for 'fs' source
+		// Module-shipped default templates. The app imports each module's
+		// DEFAULT_TEMPLATES (auth, workspaces, billing, …) and passes them here;
+		// the resolver falls back to a default when no app override (DB row / FS
+		// file) exists, before the last-resort JSON dump. Aggregated like
+		// getMigrationsPath() — pass one map or an array of them.
+		defaults?: DefaultTemplateMap | DefaultTemplateMap[];
 	};
 
 	// Signing keys for verifying inbound delivery webhook payloads
