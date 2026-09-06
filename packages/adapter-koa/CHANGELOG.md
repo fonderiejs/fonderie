@@ -1,5 +1,12 @@
 # @fonderie/adapter-koa
 
+## 5.0.2
+
+### Patch Changes
+
+- Updated dependencies [49eeef0]
+  - @fonderie/billing@7.0.0
+
 ## 5.0.1
 
 ### Patch Changes
