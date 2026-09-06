@@ -1568,12 +1568,19 @@
       "exports": [
         "FonderieApiError",
         "useBillingPortal",
+        "useCancelSubscription",
         "useCheckout",
+        "useInvoices",
+        "usePaymentMethod",
         "usePlan",
         "usePlans",
+        "useReactivateSubscription",
         "useSubscription",
         "useUsage",
-        "useWalletPreferences"
+        "useWallet",
+        "useWalletCheckout",
+        "useWalletPreferences",
+        "useWalletTransactions"
       ],
       "subpaths": [],
       "tables": [],
@@ -3832,37 +3839,44 @@
       "vue-billing"
     ],
     "usecancelsubscription": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "useinvoices": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "usepaymentmethod": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "useplan": [
       "react-billing",
       "vue-billing"
     ],
     "usereactivatesubscription": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "useusage": [
       "react-billing",
       "vue-billing"
     ],
     "usewallet": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "usewalletcheckout": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "usewalletpreferences": [
       "react-billing",
       "vue-billing"
     ],
     "usewallettransactions": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "pricingscreen": [
       "react-billing-screens",
