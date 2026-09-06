@@ -9,6 +9,7 @@ import type {
 	IPortalUrlResult,
 	ISubscriptionResult,
 	IUsageResult,
+	IWalletResult,
 } from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
@@ -21,6 +22,12 @@ export interface ICheckoutInput {
 export interface IRecordUsageInput {
 	metric: string;
 	quantity?: number;
+}
+
+export interface IWalletPreferencesInput {
+	// When false, a debit stops at the free allowance (402) rather than drawing
+	// down purchased credits.
+	spendPurchased: boolean;
 }
 
 export interface ICreatePlanInput {
@@ -164,6 +171,28 @@ export class BillingClient {
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
+		});
+	}
+
+	// ── Wallet ─────────────────────────────────────────────────────────────────────
+
+	getWallet(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IWalletResult>>({
+			method: 'GET',
+			path: '/billing/wallet',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	setWalletPreferences(input: IWalletPreferencesInput) {
+		return this.http.request<IApiResponse<IWalletResult>>({
+			method: 'POST',
+			path: '/billing/wallet/preferences',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
 		});
 	}
 }

@@ -534,6 +534,8 @@ function ensurePeriodicGrant(opts: IWalletSubscriber & { amount: bigint; period:
 
 function settleAllowance(opts: IWalletSubscriber & { period: string; rollover: "none" | "full" | { cap: bigint; }; expiresAt: Date; }, store: IStoreAdapter): Promise<{ ...; }>
 
+function setSpendPurchased(opts: IWalletSubscriber & { spendPurchased: boolean; }, store: IStoreAdapter): Promise<void>
+
 function currentGrantPeriod(period: "month" | "week" | "day", now?: Date): string
 
 function startOfNextPeriod(period: "month" | "week" | "day", now?: Date): Date
@@ -654,5 +656,5 @@ interface IAutoRechargeClaim {
     pendingKey: string | null;
 }
 
-namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, updatePlanSchema, walletCheckoutSchema
+namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, updatePlanSchema, walletCheckoutSchema, walletPreferencesSchema
 ```

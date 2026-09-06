@@ -192,6 +192,23 @@ export interface IUsageResult {
 	since: string;
 }
 
+// Wallet balance snapshot. Money fields are digit strings (server bigint →
+// string); spendPurchased is a real boolean. granted/purchased/spendPurchased/
+// grantedExpiresAt are omitted on a legacy read that predates the bucket split.
+export interface IWalletDTO {
+	balance: string;
+	currency: string;
+	precision: number;
+	granted?: string;
+	purchased?: string;
+	spendPurchased?: boolean;
+	grantedExpiresAt?: string | null;
+}
+
+export interface IWalletResult {
+	wallet: IWalletDTO;
+}
+
 // ── Workspaces ───────────────────────────────────────────────────────────────
 
 export interface IWorkspaceAddressDTO {

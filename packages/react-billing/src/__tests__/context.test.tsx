@@ -7,7 +7,7 @@ import { FonderieProvider } from '@fonderie/react';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 
-import { useCheckout, usePlan, usePlans } from '../hooks';
+import { useCheckout, usePlan, usePlans, useWalletPreferences } from '../hooks';
 
 const fakeBilling = { marker: 'context-billing' } as unknown as BillingClient;
 const fakeClient = { billing: fakeBilling } as unknown as FonderieClient;
@@ -71,4 +71,23 @@ test('hooks throw a named error without provider or argument', () => {
 			),
 		/useCheckout: no client/,
 	);
+});
+
+test('useWalletPreferences resolves from context with a read+mutate shape', () => {
+	let returned: unknown;
+	renderWithProvider(() => {
+		returned = useWalletPreferences();
+	});
+	const shape = returned as {
+		spendPurchased: boolean | null;
+		isLoading: boolean;
+		error: unknown;
+		refresh: unknown;
+		setSpendPurchased: unknown;
+	};
+	assert.equal(shape.spendPurchased, null);
+	assert.equal(shape.isLoading, true);
+	assert.equal(shape.error, null);
+	assert.equal(typeof shape.refresh, 'function');
+	assert.equal(typeof shape.setSpendPurchased, 'function');
 });

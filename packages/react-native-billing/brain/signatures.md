@@ -18,6 +18,8 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IUsageResult>>
+  .getWallet(opts?: IReadOptions | undefined): Promise<IApiResponse<IWalletResult>>
+  .setWalletPreferences(input: IWalletPreferencesInput): Promise<IApiResponse<IWalletResult>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
   .reason: string
