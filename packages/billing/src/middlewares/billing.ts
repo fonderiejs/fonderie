@@ -14,6 +14,8 @@ import {
 	ensurePeriodicGrant,
 	getWalletBalance,
 	resolvePlanWallet,
+	settleAllowance,
+	startOfNextPeriod,
 } from '../services/wallet';
 import { resolveSubscriber, parseWindowMs, subscriberEventFields } from '../utils';
 import { notifyBilling } from '../services/notify';
@@ -92,14 +94,20 @@ export function withBilling(
 					subscriberId: subscriber.id,
 					currency: planWallet.currency,
 				};
+				// Settle a stale allowance FIRST (expire last period's unspent
+				// granted credits per the rollover policy), regardless of grant
+				// eligibility — so a past_due/downgraded subscriber can't keep
+				// spending last period's allowance. Then grant this period.
+				const period = currentGrantPeriod(planWallet.grantPeriod);
+				const expiresAt = startOfNextPeriod(planWallet.grantPeriod);
+				await settleAllowance({ ...sub, period, rollover: planWallet.grantRollover, expiresAt }, store);
 				// Grants require an active (or trialing) subscription — a past_due
 				// or paused subscriber keeps spending existing credits but is not
 				// extended new ones while payment is failing (grace preserves
 				// ACCESS via `active`, but must not issue new credit → grantEligible).
 				if (grantEligible && planWallet.grantAmount !== null && planWallet.grantAmount > 0n) {
-					const period = currentGrantPeriod(planWallet.grantPeriod);
 					const grant = await ensurePeriodicGrant(
-						{ ...sub, amount: planWallet.grantAmount, period },
+						{ ...sub, amount: planWallet.grantAmount, period, expiresAt },
 						store,
 					);
 					// Emit only when the grant was newly applied this period —
@@ -126,6 +134,9 @@ export function withBilling(
 					precision: planWallet.precision,
 					overdraftLimit: planWallet.overdraftLimit,
 					rates: planWallet.rates,
+					// Carry the grant-period context so debitWalletForMetric can settle
+					// a stale allowance in the same transaction as the spend.
+					allowance: { period, rollover: planWallet.grantRollover, expiresAt },
 				};
 
 				// Low-balance signal — emitted once per crossing. The dedup flag

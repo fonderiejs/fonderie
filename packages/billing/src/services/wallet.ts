@@ -55,6 +55,9 @@ interface IBalanceRow {
 	amount: string;
 	version: string;
 	updatedAt: string | Date | null;
+	grantedAmount?: string;
+	grantedExpiresAt?: string | Date | null;
+	spendPurchased?: boolean;
 }
 
 const UNIQUE_VIOLATION = '23505';
@@ -225,6 +228,14 @@ export async function debitWallet(
 		overdraftLimit?: bigint; // >= 0; how far below zero the balance may go
 		description?: string;
 		metadata?: Record<string, unknown>;
+		// When set, a stale allowance is settled in the SAME transaction before
+		// spending, so expired credits can never be spent (no lazy-settle window).
+		// debitWalletForMetric always passes this; pass it from any hybrid debit.
+		allowance?: {
+			period: string; // currentGrantPeriod()
+			rollover: 'none' | 'full' | { cap: bigint };
+			expiresAt: Date; // startOfNextPeriod()
+		};
 	},
 	store: IStoreAdapter,
 ): Promise<IWalletMutationResult> {
@@ -241,40 +252,64 @@ export async function debitWallet(
 			const existing = await findByIdempotencyKey(opts, opts.idempotencyKey, tx);
 			if (existing) return { balance: await readBalance(opts, tx), duplicate: true };
 
-			// Make sure the row exists so FOR UPDATE has something to lock, then
-			// lock it — concurrent debits for this subscriber serialize here.
-			await tx.query(
-				`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount)
-				VALUES ($1, $2, $3, 0)
-				ON CONFLICT (subscriber_type, subscriber_id, currency) DO NOTHING`,
-				[opts.subscriberType, opts.subscriberId, opts.currency],
-			);
-			const [locked] = await tx.query<{ amount: string }>(
-				`SELECT amount FROM fonderie_wallet_balances
-				WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3
-				FOR UPDATE`,
-				[opts.subscriberType, opts.subscriberId, opts.currency],
-			);
-			const current = BigInt(locked?.amount ?? '0');
+			// Lock the row (creating it first so FOR UPDATE has something to lock)
+			// and read the allowance columns — concurrent debits serialize here.
+			const locked = await lockAllowance(tx, opts);
+			let current = locked.amount;
+			let granted = locked.granted;
 
-			if (current - opts.amount < floor) {
-				throw new InsufficientFundsError(current, opts.amount, opts.currency);
+			// Settle a stale allowance in THIS transaction before spending, so
+			// expired credits can never be spent (no lazy-settle window).
+			if (opts.allowance) {
+				const s = await applySettleInTx(
+					tx,
+					opts,
+					locked,
+					opts.allowance.period,
+					opts.allowance.rollover,
+					opts.allowance.expiresAt,
+				);
+				current = s.amount;
+				granted = s.granted;
+			}
+			const spendPurchased = locked.spendPurchased;
+
+			// Allowance-first: draw the free allowance before purchased credits.
+			const fromGranted = granted <= 0n ? 0n : opts.amount < granted ? opts.amount : granted;
+			const fromPurchased = opts.amount - fromGranted;
+
+			// Guard: with the toggle ON the overdraft floor bounds the TOTAL (so
+			// overdraft eats purchased, never granted); with it OFF a debit may only
+			// consume the allowance and is refused once it is exhausted.
+			if (spendPurchased) {
+				if (current - opts.amount < floor) {
+					throw new InsufficientFundsError(current, opts.amount, opts.currency);
+				}
+			} else if (opts.amount > granted) {
+				throw new InsufficientFundsError(granted, opts.amount, opts.currency);
 			}
 
-			const [updated] = await tx.query<{ amount: string }>(
-				`UPDATE fonderie_wallet_balances
-				SET amount = amount - $4, version = version + 1, updated_at = now()
-				WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3
-					AND amount - $4 >= $5
-				RETURNING amount`,
-				[
-					opts.subscriberType,
-					opts.subscriberId,
-					opts.currency,
-					opts.amount.toString(),
-					floor.toString(),
-				],
-			);
+			const [updated] = spendPurchased
+				? await tx.query<{ amount: string; grantedAmount: string }>(
+						`UPDATE fonderie_wallet_balances
+						SET amount = amount - $4::bigint,
+							granted_amount = granted_amount - LEAST($4::bigint, GREATEST(granted_amount, 0)),
+							version = version + 1, updated_at = now()
+						WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3
+							AND amount - $4::bigint >= $5::bigint
+						RETURNING amount, granted_amount AS "grantedAmount"`,
+						[opts.subscriberType, opts.subscriberId, opts.currency, opts.amount.toString(), floor.toString()],
+					)
+				: await tx.query<{ amount: string; grantedAmount: string }>(
+						`UPDATE fonderie_wallet_balances
+						SET amount = amount - $4::bigint,
+							granted_amount = granted_amount - $4::bigint,
+							version = version + 1, updated_at = now()
+						WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3
+							AND granted_amount - $4::bigint >= 0
+						RETURNING amount, granted_amount AS "grantedAmount"`,
+						[opts.subscriberType, opts.subscriberId, opts.currency, opts.amount.toString()],
+					);
 			// Belt and braces: with row locking this cannot miss after the check
 			// above; without it, this is the statement that holds the floor.
 			if (!updated) {
@@ -288,7 +323,12 @@ export async function debitWallet(
 				balanceAfter: balance,
 				idempotencyKey: opts.idempotencyKey,
 				description: opts.description ?? null,
-				metadata: opts.metadata ?? {},
+				metadata: {
+					...(opts.metadata ?? {}),
+					fromGranted: fromGranted.toString(),
+					fromPurchased: fromPurchased.toString(),
+					grantedAfter: updated.grantedAmount,
+				},
 				providerTxId: null,
 			});
 
@@ -465,16 +505,33 @@ export async function getWalletBalance(
 	store: IStoreAdapter,
 ): Promise<IWalletBalance> {
 	const [row] = await store.query<IBalanceRow>(
-		`SELECT amount, version, updated_at AS "updatedAt"
+		`SELECT amount, version, updated_at AS "updatedAt",
+			granted_amount AS "grantedAmount",
+			granted_expires_at AS "grantedExpiresAt",
+			spend_purchased AS "spendPurchased"
 		FROM fonderie_wallet_balances
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
 		[sub.subscriberType, sub.subscriberId, sub.currency],
 	);
-	if (!row) return { balance: 0n, version: 0, updatedAt: null };
+	if (!row) return { balance: 0n, version: 0, updatedAt: null, granted: 0n, purchased: 0n, spendPurchased: true, grantedExpiresAt: null };
+	const balance = BigInt(row.amount);
+	const storedGranted = BigInt(row.grantedAmount ?? '0');
+	const expiresAt = row.grantedExpiresAt ? new Date(row.grantedExpiresAt) : null;
+	// A metered debit / withBilling settles a stale allowance before it is spent.
+	// For a read that no settle reached (e.g. a subscriber who downgraded to a
+	// plan with no wallet keeps a stale granted_amount), don't advertise an
+	// EXPIRED allowance as live — report granted 0 once past its expiry. The
+	// stored credits still sit in `balance`; they are burned by the next settle.
+	const expired = expiresAt !== null && expiresAt.getTime() <= Date.now();
+	const granted = expired ? 0n : storedGranted;
 	return {
-		balance: BigInt(row.amount),
+		balance,
 		version: Number(row.version),
 		updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+		granted,
+		purchased: balance - granted,
+		spendPurchased: row.spendPurchased ?? true,
+		grantedExpiresAt: expired ? null : (expiresAt ? expiresAt.toISOString() : null),
 	};
 }
 
@@ -605,6 +662,8 @@ export interface IResolvedPlanWallet {
 	lowBalanceAt: bigint | null;
 	/** Off-session auto-recharge economics. null disables. */
 	autoRecharge: IBillingWalletAutoRecharge | null;
+	/** Rollover policy for unspent granted (allowance) credits at period end. */
+	grantRollover: 'none' | 'full' | { cap: bigint };
 }
 
 export function resolvePlanWallet(
@@ -621,7 +680,30 @@ export function resolvePlanWallet(
 		rates: plan.wallet.rates ?? {},
 		lowBalanceAt: plan.wallet.lowBalanceAt ?? null,
 		autoRecharge: plan.wallet.autoRecharge ?? null,
+		grantRollover: plan.wallet.grantRollover ?? 'none',
 	};
+}
+
+// The instant the current grant period ends (== start of the next period), UTC.
+// Advisory: stored as granted_expires_at for display; the authority for expiry
+// is a granted_period vs currentGrantPeriod() mismatch, settled before spend.
+export function startOfNextPeriod(period: 'month' | 'week' | 'day', now = new Date()): Date {
+	const y = now.getUTCFullYear();
+	const mo = now.getUTCMonth();
+	const d = now.getUTCDate();
+	if (period === 'month') return new Date(Date.UTC(y, mo + 1, 1));
+	if (period === 'day') return new Date(Date.UTC(y, mo, d + 1));
+	// Week: next ISO week starts on the coming Monday (UTC).
+	const dow = now.getUTCDay() || 7; // 1..7, Monday..Sunday
+	return new Date(Date.UTC(y, mo, d + (8 - dow)));
+}
+
+// How much of an unspent allowance survives into the next period under a policy.
+function rolloverKept(granted: bigint, rollover: 'none' | 'full' | { cap: bigint }): bigint {
+	if (granted <= 0n) return 0n;
+	if (rollover === 'full') return granted;
+	if (rollover === 'none') return 0n;
+	return granted < rollover.cap ? granted : rollover.cap;
 }
 
 // UTC period key for periodic grants: '2026-09' (month), '2026-09-04' (day),
@@ -648,13 +730,136 @@ export interface IGrantResult {
 	balance: bigint | null; // new balance when granted, null otherwise
 }
 
-// Apply a periodic grant exactly once per (subscriber, currency, period).
-// The grant marker and the credit commit in ONE transaction, so a crash
-// between them cannot mark a period as granted without crediting it.
+// Locked-row view of a balance's allowance columns.
+interface ILockedAllowance {
+	amount: bigint;
+	granted: bigint;
+	grantedPeriod: string | null;
+	spendPurchased: boolean;
+}
+
+// Read + lock the allowance columns (creating the row first so FOR UPDATE has
+// something to lock). Serializes with concurrent debits/settles/grants.
+async function lockAllowance(tx: IStoreAdapter, sub: IWalletSubscriber): Promise<ILockedAllowance> {
+	await tx.query(
+		`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount)
+		VALUES ($1, $2, $3, 0)
+		ON CONFLICT (subscriber_type, subscriber_id, currency) DO NOTHING`,
+		[sub.subscriberType, sub.subscriberId, sub.currency],
+	);
+	const [row] = await tx.query<{
+		amount: string;
+		grantedAmount: string;
+		grantedPeriod: string | null;
+		spendPurchased: boolean;
+	}>(
+		`SELECT amount, granted_amount AS "grantedAmount", granted_period AS "grantedPeriod",
+			spend_purchased AS "spendPurchased"
+		FROM fonderie_wallet_balances
+		WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3
+		FOR UPDATE`,
+		[sub.subscriberType, sub.subscriberId, sub.currency],
+	);
+	return {
+		amount: BigInt(row?.amount ?? '0'),
+		granted: BigInt(row?.grantedAmount ?? '0'),
+		grantedPeriod: row?.grantedPeriod ?? null,
+		spendPurchased: row?.spendPurchased ?? true,
+	};
+}
+
+// Expire a stale allowance under an already-held FOR UPDATE lock. When the
+// stored granted_period differs from the current period, unspent granted credits
+// are burned per the rollover policy (a negative 'expiry' ledger row + a reduced
+// total), the surviving amount stays 'granted', and granted_period advances. When
+// granted_period is null (never granted) or already current, this is a no-op.
+// Returns the post-settle amount + granted. PURCHASED (amount - granted) is never
+// touched. The expiry key is stable per stale period, so it is replay-safe.
+async function applySettleInTx(
+	tx: IStoreAdapter,
+	sub: IWalletSubscriber,
+	cur: ILockedAllowance,
+	period: string,
+	rollover: 'none' | 'full' | { cap: bigint },
+	expiresAt: Date,
+): Promise<{ amount: bigint; granted: bigint; settled: boolean }> {
+	if (cur.grantedPeriod === null || cur.grantedPeriod === period) {
+		return { amount: cur.amount, granted: cur.granted, settled: false };
+	}
+	const kept = rolloverKept(cur.granted, rollover);
+	const expired = cur.granted - kept;
+	let amount = cur.amount;
+	if (expired > 0n) {
+		amount = cur.amount - expired;
+		await insertLedgerRow(tx, sub, {
+			type: 'expiry',
+			amount: -expired,
+			balanceAfter: amount,
+			idempotencyKey: `expiry:${sub.subscriberType}:${sub.subscriberId}:${sub.currency}:${cur.grantedPeriod}`,
+			description: `Allowance expiry ${cur.grantedPeriod}`,
+			metadata: {
+				period: cur.grantedPeriod,
+				keptAfter: kept.toString(),
+				rollover: typeof rollover === 'object' ? { cap: rollover.cap.toString() } : rollover,
+			},
+			providerTxId: null,
+		});
+	}
+	await tx.query(
+		`UPDATE fonderie_wallet_balances
+		SET amount = $4, granted_amount = $5, granted_period = $6, granted_expires_at = $7,
+			version = version + 1, updated_at = now()
+		WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
+		[sub.subscriberType, sub.subscriberId, sub.currency, amount.toString(), kept.toString(), period, expiresAt.toISOString()],
+	);
+	return { amount, granted: kept, settled: expired > 0n };
+}
+
+// Expire a stale allowance (settle-only, no grant). Idempotent + cheap: a fast
+// indexed read short-circuits when granted_period is already current. Called
+// before every debit entry point and before a balance read, so a stale allowance
+// is burned before it can be spent or reported. Pass the module-level store.
+export async function settleAllowance(
+	opts: IWalletSubscriber & {
+		period: string; // currentGrantPeriod()
+		rollover: 'none' | 'full' | { cap: bigint };
+		expiresAt: Date; // startOfNextPeriod()
+	},
+	store: IStoreAdapter,
+): Promise<{ settled: boolean }> {
+	// Fast path: nothing to expire when the row is fresh or was never granted.
+	const [row] = await store.query<{ grantedPeriod: string | null; grantedAmount: string }>(
+		`SELECT granted_period AS "grantedPeriod", granted_amount AS "grantedAmount"
+		FROM fonderie_wallet_balances
+		WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
+		[opts.subscriberType, opts.subscriberId, opts.currency],
+	);
+	if (!row || row.grantedPeriod === null || row.grantedPeriod === opts.period) {
+		return { settled: false };
+	}
+	try {
+		return await store.transaction(async (tx) => {
+			const cur = await lockAllowance(tx, opts);
+			const res = await applySettleInTx(tx, opts, cur, opts.period, opts.rollover, opts.expiresAt);
+			return { settled: res.settled };
+		});
+	} catch (err) {
+		if (isIdempotencyConflict(err)) return { settled: false };
+		throw err;
+	}
+}
+
+// Apply a periodic grant exactly once per (subscriber, currency, period). The
+// grant marker and the credit commit in ONE transaction, so a crash between them
+// cannot mark a period as granted without crediting it. The credited amount goes
+// into the ALLOWANCE (granted) bucket — non-stackable, expires next period. The
+// caller must settle the prior period first (withBilling does); pass expiresAt so
+// this period's allowance carries its expiry.
 export async function ensurePeriodicGrant(
 	opts: IWalletSubscriber & {
 		amount: bigint; // positive
 		period: string; // from currentGrantPeriod()
+		expiresAt?: Date; // startOfNextPeriod(); stored as granted_expires_at
 		description?: string;
 	},
 	store: IStoreAdapter,
@@ -687,7 +892,30 @@ export async function ensurePeriodicGrant(
 			// Lost the race — another request granted this period first.
 			if (!marked) return { granted: false, balance: null };
 
-			const balance = await applyBalanceCredit(tx, opts, opts.amount);
+			// Credit BOTH the total and the allowance bucket, and stamp the period
+			// so the next period's settle knows what to expire.
+			const [row] = await tx.query<{ amount: string }>(
+				`INSERT INTO fonderie_wallet_balances
+					(subscriber_type, subscriber_id, currency, amount, granted_amount, granted_period, granted_expires_at)
+				VALUES ($1, $2, $3, $4, $4, $5, $6)
+				ON CONFLICT (subscriber_type, subscriber_id, currency) DO UPDATE SET
+					amount             = fonderie_wallet_balances.amount + EXCLUDED.amount,
+					granted_amount     = fonderie_wallet_balances.granted_amount + EXCLUDED.granted_amount,
+					granted_period     = EXCLUDED.granted_period,
+					granted_expires_at = EXCLUDED.granted_expires_at,
+					version            = fonderie_wallet_balances.version + 1,
+					updated_at         = now()
+				RETURNING amount`,
+				[
+					opts.subscriberType,
+					opts.subscriberId,
+					opts.currency,
+					opts.amount.toString(),
+					opts.period,
+					opts.expiresAt?.toISOString() ?? null,
+				],
+			);
+			const balance = BigInt(row?.amount ?? '0');
 
 			await insertLedgerRow(tx, opts, {
 				type: 'grant',

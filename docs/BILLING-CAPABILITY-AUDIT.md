@@ -392,6 +392,120 @@ reversal path got a focused review.
   PLAN_CHANGE_REQUIRES_CANCEL, canceled→resubscribe fresh checkout, grace in/out of
   window + requirePlan, consented-card charge + persistence, real-Postgres round-trip.
 
+#### Phase 5 — Founder-selectable monetization: subscription / credits / hybrid — 🟡 5a implemented
+
+**Status:** the accounting core (5a) is implemented + real-Postgres verified on
+this branch — the two-column balance, allowance-first debit, expiry/rollover, the
+spend-purchased toggle's storage + enforcement, refund-confined-to-purchased, DTO
+buckets, migration `010`, and `checkReadiness` coherence. **5b pending:** the
+toggle's HTTP setter route + `react/vue/native`-billing client/hooks (deferred
+because a new route ripples through the coverage gates and every billing hook
+package). The checklist below is the full design; ✅ = shipped in 5a.
+
+**Decision (2026-09-05).** Fonderie does not pick a monetization model; it makes
+each one safe and selectable. A founder chooses one of three shapes, and billing
+guarantees it can't be wired unsafely. Opinionated about the *mechanics* (bigint
+money, atomic floored debits, idempotent mutations, ledger-as-truth, credits are
+non-refundable service credits), never about the *shape*.
+
+1. **Subscription-only** — plans + `requirePlan`/`withBilling` gating +
+   cancel/upgrade/reactivate. No wallet. *Already supported* (example-mobile-api).
+2. **Credits/wallet-only** — prepaid balance, per-metric debit, packs,
+   auto-recharge, low-balance notices; no subscription. *Already supported* (the
+   wallet runs with no subscription; all credits are `purchased`).
+3. **Hybrid** — a plan includes a periodic credit **allowance** *and* sells paid
+   **top-ups**. *Works today but accounting-naive* — this phase makes it correct.
+
+**The hybrid problem (verified).** Grants `+=` the balance unconditionally and
+**never expire**; the balance is a single commingled BIGINT so grant vs purchase
+is indistinguishable when spending; debit has **no allowance-first ordering**;
+and `reverseWallet` is floor-free, so a refund can drive the shared balance
+negative by clawing into granted credits. Net: no use-it-or-lose-it allowance,
+and a cash refund can consume an allowance it never paid for.
+
+**Product semantics (locked 2026-09-05).** Think crypto wallet: two kinds of
+credit, **free/granted** and **purchased**, and we always spend free first.
+- Free (subscription allowance, e.g. the default Free plan grants 50/month) is
+  **non-stackable** — it resets each period (`grantRollover: 'none'`), never
+  accumulates. Purchased credits **stack and carry over** indefinitely.
+- **Allowance-first**: a debit draws down granted before purchased.
+- **Spend-purchased toggle** (per-subscriber preference, default **on**): when a
+  user turns it **off**, debits draw only from the free allowance and **block
+  with 402 once it's exhausted, even if purchased credits remain** — a paid
+  balance is never consumed unless the user has opted in. Apps may or may not
+  expose the toggle; unset ⇒ on (auto-spend purchased after free).
+- Worked example: Free plan → granted 50, spend 12 → 38 granted / 0 purchased /
+  38 total; buy 100 → 38 granted / 100 purchased / 138 total; spend 50 → 0
+  granted / 88 purchased / 88 total (free drained first).
+
+**Chosen model — two-column balance** (design panel: 3 approaches, judged;
+beat a grant-allocation table and a ledger-derived scheme by perturbing the
+locked money core the least):
+- [ ] `fonderie_wallet_balances.amount` keeps its EXACT meaning = total spendable
+  (`purchased + granted`). Add `granted_amount BIGINT NOT NULL DEFAULT 0` (the
+  allowance sub-portion), `granted_period TEXT`, `granted_expires_at TIMESTAMPTZ`.
+  `purchased` is derived (`amount - granted_amount`). Every existing reader and
+  `ledger.balance_after` stay byte-identical → subscription-only and wallet-only
+  are unchanged; legacy balances classify wholly as `purchased` (nothing anyone
+  already holds ever expires). Migration `010_wallet_allowance.sql`.
+- [ ] **Grant becomes settle-then-set, not add.** `ensurePeriodicAllowance`
+  replaces `ensurePeriodicGrant`: in one `SELECT … FOR UPDATE` tx, first SETTLE
+  the prior period (expire stale allowance per `grantRollover`), then GRANT the
+  new period's amount. Settle runs whenever a plan wallet exists (even for
+  `past_due`/downgraded, so stale allowance can't linger); the GRANT leg fires
+  only when `grantEligible` (active/trialing) — preserving Phase 4b's "grace is
+  access, never a new grant".
+- [ ] **Allowance-first debit, one atomic guarded UPDATE.** `debitWallet` stays a
+  single floor-rechecked statement, now also decrementing
+  `granted_amount = granted_amount - LEAST($cost, GREATEST(granted_amount,0))`
+  (clamped in SQL — can never trip a CHECK on the hot path; no new lock/race).
+  Overdraft floor applies to the **total** only → overdraft eats `purchased`,
+  never `granted`. Wallet-only degenerates byte-for-byte to today (granted 0).
+- [ ] **Spend-purchased toggle.** Per-subscriber preference `spend_purchased`
+  (default true), read in the debit. When **true**: the guarded floor is the
+  total overdraft floor (granted-first, then purchased) — today's behavior. When
+  **false**: the floor becomes "purchased untouched", i.e. the UPDATE requires
+  `cost <= granted_amount` and throws `InsufficientFundsError` (402) otherwise, so
+  a debit can only ever consume the free allowance. Same single atomic statement,
+  a conditional floor expression — no extra lock. Stored on `fonderie_wallet_balances`
+  (or a tiny prefs row); additive GET/PUT to read/set it; DTO surfaces it.
+- [ ] **Authoritative expiry (graft from the runner-up — the must-fix).** Expiry
+  must gate **spend**, not just lazy-settle on the next request: the debit UPDATE
+  and `getWalletBalance` count `granted` as 0 once `granted_period !=
+  currentGrantPeriod` (or `now() > granted_expires_at`). Otherwise stale
+  allowance is spendable in the window between period rollover and the next
+  `withBilling` request. Applies at **every** debit entry point (wallet route +
+  usage paths), not just `withBilling` — settle-at-top-of-debit or expiry-aware
+  debit. Expiry writes one `expiry` ledger row (new type; add to the DB CHECK via
+  a guarded drop/re-add and to `WALLET_LEDGER_TYPES`); a zero-expiry period only
+  advances metadata under the lock (no ledger row — `amount<>0` CHECK).
+- [ ] **Refund clawback confined to purchased by construction.** `reverseWallet`
+  body is unchanged: `applyBalanceCredit` touches only `amount`+`version`, never
+  `granted_amount`, so a clawback lands entirely on `purchased` (may go negative =
+  "owed"), and is structurally incapable of consuming or negativing the allowance.
+  The per-`provider_tx_id` cumulative cap still bounds reversal to credits
+  actually purchased. Manual/ops + dispute-won grants route to `purchased`
+  (non-expiring) by rule.
+- [ ] **Config surface + boot validation.** `IBillingPlanWallet.grantRollover?:
+  'none' | 'full' | { cap: bigint }` (default `'none'` = use-it-or-lose-it).
+  Additive DTO fields `grantedBalance` / `purchasedBalance` / `grantedExpiresAt`
+  (purchased may be negative; `total = amount` stays authoritative).
+  `checkReadiness()` fails closed on incoherent configs — e.g. `grantAmount` set
+  without a wallet, or a wallet without the durable-record + comms rails.
+- [ ] **Caveats to document, not hide.** `currentGrantPeriod` is UTC-calendar
+  (month/week/day), NOT the Stripe billing anniversary — state it for founders
+  expecting anniversary resets. `grantRollover:'full'` is unbounded accumulation
+  unless capped — document it.
+- [ ] **Verification.** Unit + real-Postgres: allowance-first debit, expiry/rollover
+  (none/capped/full), refund-touches-purchased-only (granted bit-identical),
+  concurrent debit + concurrent settle/grant, overdraft-eats-purchased-only,
+  legacy-balance-is-purchased migration, DTO purchased-negative reconciliation.
+  Reconciliation invariants in CI (`granted_amount ≥ 0`; buckets reconstruct from
+  metadata). Update existing single-balance tests for the new `usage` metadata
+  (`fromGranted`/`fromPurchased`/`grantedAfter`). Three-round adversarial review —
+  the gate that caught every money bug in Phases 4/4b (every money-path change is
+  adversarially verified before merge).
+
 ### Non-goals (explicit, until a money-transmitter decision is made)
 Peer-to-peer transfers, external payouts/withdrawals, refunds-to-card,
 escrow/holds, KYC/Connect onboarding, fee-splitting, settlement
