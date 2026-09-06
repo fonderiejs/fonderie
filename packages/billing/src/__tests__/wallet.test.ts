@@ -2221,6 +2221,40 @@ test('withBilling: low balance signals once per crossing and re-arms after recov
 	assert.equal(noticeCount(), 2);
 });
 
+test('withBilling: notifications.creditsLow=false suppresses the EMAIL but keeps the domain event', async () => {
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { creditWallet } = await import('../services/wallet');
+	const { withBilling } = await import('../middlewares/billing');
+	const { MemoryCounterBackend } = await import('../backends/memory');
+
+	const emu = walletEmulator();
+	const store = billingStore(emu);
+	const uid = '5c3d1e00-0000-4000-8000-000000000def';
+	const sub = { subscriberType: 'user' as SubscriberType, subscriberId: uid, currency: 'USD' };
+	const config = {
+		...planWalletConfig([LOW_PLAN]),
+		resolveRecipient: () => ({ email: 'z@z.com' }),
+		notifications: { creditsLow: false }, // opt out of the low-balance email
+	} as IBillingConfig;
+	const { bus, calls } = recordingBus();
+	const mw = withBilling(store, config, new MemoryCounterBackend(), bus);
+
+	await creditWallet({ ...sub, amount: 50n, idempotencyKey: 'lbx-c1' }, emu); // ≤ 100
+	await mw(makeCtx({ user: { id: uid, email: 'z@z.com' } }), async () => new Response());
+
+	assert.equal(
+		calls.filter((c) => c.type === EVENT_KEYS.walletLowBalance).length,
+		1,
+		'the durable domain event still fires',
+	);
+	assert.equal(
+		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.creditsLow).length,
+		0,
+		'the customer email is suppressed by the toggle',
+	);
+});
+
 test('withBilling: no low-balance signal when the plan sets no threshold', async () => {
 	const { EVENT_KEYS } = await import('../config');
 	const { NOTIFICATION_EVENT } = await import('@fonderie/events');

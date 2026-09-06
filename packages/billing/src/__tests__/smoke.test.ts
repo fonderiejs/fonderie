@@ -1503,6 +1503,36 @@ test('webhook: trial_will_end sends a trial-ending notice without upserting the 
 	assert.equal(cap.plan(), undefined, 'a trial-ending heads-up must not upsert subscription state');
 });
 
+test('webhook: notifications.trialEnding=false suppresses the EMAIL but keeps the domain event', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.trial_will_end',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly', status: 'trialing' }),
+		}),
+	});
+	const ctrl = webhookController(
+		captureStore().store,
+		withRecipient({ provider, webhookSecret: 'whsec_x', notifications: { trialEnding: false } }),
+		undefined,
+		bus,
+	);
+	await ctrl.handle(webhookCtx('{}'));
+	assert.equal(
+		calls.filter((c) => c.type === EVENT_KEYS.subscriptionTrialWillEnd).length,
+		1,
+		'the durable domain event still fires',
+	);
+	assert.equal(
+		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.trialEnding).length,
+		0,
+		'the reminder email is suppressed by the toggle',
+	);
+});
+
 // ── Phase 4: first-party cancel / reactivate ──────────────────────
 
 function lifecycleProvider(): { provider: IBillingProvider; calls: { cancel?: any; reactivate?: any } } {
@@ -1665,6 +1695,37 @@ test('buildBillingRoutes: plan-write routes are gated on config.planAdminToken',
 	// The POST /plans chain carries an auth middleware before the handler.
 	const postPlans = guarded.find(([m, p]) => m === 'POST' && p === '/plans')!;
 	assert.ok(postPlans.length >= 4, 'POST /plans has requireAdminToken + validate + handler');
+});
+
+test('buildBillingRoutes: unified config.adminToken guards BOTH plan writes and wallet grant', async () => {
+	const { buildBillingRoutes } = await import('../routes');
+	const store = subCtrlStore(null).store;
+	// Wallet must be configured for the grant route to be in scope at all.
+	const withWallet = { ...config, wallet: { currency: 'USD' } } as unknown as IBillingConfig;
+
+	// One unified token enables both ops surfaces.
+	const unified = buildBillingRoutes(store, { ...withWallet, adminToken: 'one-token' } as IBillingConfig)
+		.map(([m, p]) => `${m} ${p}`);
+	assert.ok(unified.includes('POST /plans'), 'plan writes enabled by config.adminToken');
+	assert.ok(unified.includes('POST /billing/wallet/grant'), 'wallet grant enabled by config.adminToken');
+
+	// Neither token → neither ops route exists.
+	const none = buildBillingRoutes(store, withWallet).map(([m, p]) => `${m} ${p}`);
+	assert.ok(!none.includes('POST /plans'));
+	assert.ok(!none.includes('POST /billing/wallet/grant'));
+
+	// Legacy fields still work as fallbacks (deprecated, non-breaking).
+	const legacyPlan = buildBillingRoutes(store, { ...withWallet, planAdminToken: 'legacy' } as IBillingConfig)
+		.map(([m, p]) => `${m} ${p}`);
+	assert.ok(legacyPlan.includes('POST /plans'), 'deprecated planAdminToken still enables plan writes');
+	assert.ok(!legacyPlan.includes('POST /billing/wallet/grant'), 'plan token does not enable wallet grant');
+
+	const legacyWallet = buildBillingRoutes(store, {
+		...config,
+		wallet: { currency: 'USD', adminToken: 'legacy-wallet' },
+	} as unknown as IBillingConfig).map(([m, p]) => `${m} ${p}`);
+	assert.ok(legacyWallet.includes('POST /billing/wallet/grant'), 'deprecated wallet.adminToken still enables grant');
+	assert.ok(!legacyWallet.includes('POST /plans'), 'wallet token does not enable plan writes');
 });
 
 // ── Phase 4b: upgrade in place (Claude-style), downgrade via cancel+resubscribe ──
