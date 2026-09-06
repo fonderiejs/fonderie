@@ -63,6 +63,7 @@ interface IBillingConfig {
     plans: IBillingPlan[];
     successUrl: string;
     cancelUrl: string;
+    adminToken?: string;
     planAdminToken?: string;
     webhookSecret?: string;
     rateLimit?: {
@@ -163,6 +164,8 @@ type RateLimitBackendConfig = 'memory' | 'db' | ICounterBackend;
 interface IBillingNotificationsConfig {
     warnAt?: boolean;
     softHit?: boolean;
+    creditsLow?: boolean;
+    trialEnding?: boolean;
 }
 
 type BillingMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];

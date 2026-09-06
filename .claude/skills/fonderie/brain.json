@@ -383,7 +383,7 @@
         {
           "method": "POST",
           "path": "/billing/wallet/grant",
-          "mw": "requireAdminToken(config.wallet.adminToken) → validate(grantWalletSchema) → wallet.grant"
+          "mw": "requireAdminToken(walletAdminToken) → validate(grantWalletSchema) → wallet.grant"
         },
         {
           "method": "POST",
@@ -413,12 +413,12 @@
         {
           "method": "POST",
           "path": "/plans",
-          "mw": "requireAdminToken(config.planAdminToken) → validate(createPlanSchema) → plan.create"
+          "mw": "requireAdminToken(planAdminToken) → validate(createPlanSchema) → plan.create"
         },
         {
           "method": "DELETE",
           "path": "/plans/:planId",
-          "mw": "requireAdminToken(config.planAdminToken) → plan.delete"
+          "mw": "requireAdminToken(planAdminToken) → plan.delete"
         },
         {
           "method": "GET",
@@ -428,7 +428,7 @@
         {
           "method": "PUT",
           "path": "/plans/:planId",
-          "mw": "requireAdminToken(config.planAdminToken) → validate(updatePlanSchema) → plan.update"
+          "mw": "requireAdminToken(planAdminToken) → validate(updatePlanSchema) → plan.update"
         }
       ],
       "secures": [

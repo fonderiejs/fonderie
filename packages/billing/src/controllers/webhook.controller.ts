@@ -83,12 +83,16 @@ export function webhookController(
 						providerSubscriptionId: s.providerSubscriptionId,
 					})
 					.catch(() => {});
-				void notifyBilling(bus, config, {
-					subscriberType: s.subscriberType,
-					subscriberId: s.subscriberId,
-					type: MESSAGE_KEYS.trialEnding,
-					data: { plan, trialEndsAt },
-				});
+				// The durable domain event always fires; the reminder EMAIL is
+				// opt-out via config.notifications.trialEnding (default on).
+				if (config.notifications?.trialEnding !== false) {
+					void notifyBilling(bus, config, {
+						subscriberType: s.subscriberType,
+						subscriberId: s.subscriberId,
+						type: MESSAGE_KEYS.trialEnding,
+						data: { plan, trialEndsAt },
+					});
+				}
 				return Response.json({ received: true });
 			}
 

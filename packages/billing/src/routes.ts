@@ -73,21 +73,17 @@ export function buildBillingRoutes(
 		['POST', '/billing/webhook', webhook.handle],
 	];
 
-	// DB-plan write API — an ops surface, guarded by a bootstrap admin token like
-	// wallet.grant, and only registered when the token is set. Unset ⇒ the write
-	// routes don't exist (404); GET /plans stays public. Runtime billing reads
+	// DB-plan write API — an ops surface, guarded by the unified admin token
+	// (config.adminToken, with the deprecated config.planAdminToken as fallback),
+	// and only registered when a token is available. Unset ⇒ the write routes
+	// don't exist (404); GET /plans stays public. Runtime billing reads
 	// config.plans in memory, so this never affects charges or access.
-	if (config.planAdminToken) {
+	const planAdminToken = config.adminToken ?? config.planAdminToken;
+	if (planAdminToken) {
 		routes.push(
-			['POST', '/plans', requireAdminToken(config.planAdminToken), validate(createPlanSchema), plan.create],
-			[
-				'PUT',
-				'/plans/:planId',
-				requireAdminToken(config.planAdminToken),
-				validate(updatePlanSchema),
-				plan.update,
-			],
-			['DELETE', '/plans/:planId', requireAdminToken(config.planAdminToken), plan.delete],
+			['POST', '/plans', requireAdminToken(planAdminToken), validate(createPlanSchema), plan.create],
+			['PUT', '/plans/:planId', requireAdminToken(planAdminToken), validate(updatePlanSchema), plan.update],
+			['DELETE', '/plans/:planId', requireAdminToken(planAdminToken), plan.delete],
 		);
 	}
 
@@ -106,11 +102,14 @@ export function buildBillingRoutes(
 			['POST', '/billing/webhook/payment', paymentWebhook.handle],
 		);
 		// Manual grants are an ops surface: bootstrap admin token, not sessions.
-		if (config.wallet.adminToken) {
+		// Unified config.adminToken, with the deprecated config.wallet.adminToken
+		// as fallback.
+		const walletAdminToken = config.adminToken ?? config.wallet.adminToken;
+		if (walletAdminToken) {
 			routes.push([
 				'POST',
 				'/billing/wallet/grant',
-				requireAdminToken(config.wallet.adminToken),
+				requireAdminToken(walletAdminToken),
 				validate(grantWalletSchema),
 				wallet.grant,
 			]);

@@ -171,16 +171,16 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 | GET | `/billing/usage/:metric` | `requireAuth → usage.get` |
 | GET | `/billing/wallet` | `requireAuth → wallet.get` |
 | POST | `/billing/wallet/checkout` | `requireAuth → validate(walletCheckoutSchema) → wallet.checkout` |
-| POST | `/billing/wallet/grant` | `requireAdminToken(config.wallet.adminToken) → validate(grantWalletSchema) → wallet.grant` |
+| POST | `/billing/wallet/grant` | `requireAdminToken(walletAdminToken) → validate(grantWalletSchema) → wallet.grant` |
 | POST | `/billing/wallet/preferences` | `requireAuth → validate(walletPreferencesSchema) → wallet.setPreferences` |
 | GET | `/billing/wallet/transactions` | `requireAuth → wallet.transactions` |
 | POST | `/billing/webhook` | `webhook.handle` |
 | POST | `/billing/webhook/payment` | `paymentWebhook.handle` |
 | GET | `/plans` | `plan.list` |
-| POST | `/plans` | `requireAdminToken(config.planAdminToken) → validate(createPlanSchema) → plan.create` |
-| DELETE | `/plans/:planId` | `requireAdminToken(config.planAdminToken) → plan.delete` |
+| POST | `/plans` | `requireAdminToken(planAdminToken) → validate(createPlanSchema) → plan.create` |
+| DELETE | `/plans/:planId` | `requireAdminToken(planAdminToken) → plan.delete` |
 | GET | `/plans/:planId` | `plan.get` |
-| PUT | `/plans/:planId` | `requireAdminToken(config.planAdminToken) → validate(updatePlanSchema) → plan.update` |
+| PUT | `/plans/:planId` | `requireAdminToken(planAdminToken) → validate(updatePlanSchema) → plan.update` |
 
 ## Migration statements not replayed (verify in raw SQL)
 
