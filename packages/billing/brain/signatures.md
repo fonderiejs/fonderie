@@ -142,6 +142,7 @@ interface IBillingWalletConfig {
     adminToken?: string;
     webhookSecret?: string;
     creditPacks?: IBillingCreditPack[];
+    blockPacksWhileSubscribed?: boolean;
 }
 
 interface IBillingWalletAutoRecharge {

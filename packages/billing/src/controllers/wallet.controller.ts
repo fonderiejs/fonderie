@@ -191,6 +191,23 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 			// convention as the subscription checkout) — pack purchases then
 			// share payment history and saved methods with the subscription.
 			const current = await subscriptions.get(subscriber.type, subscriber.id);
+
+			// GAP-1 (opt-in): block packs for an active/trialing subscriber on a
+			// PAID plan — that plan already includes its credits, so a pack would
+			// charge for something the subscription covers. Default off; free /
+			// pay-as-you-go / unpriced / past_due subscribers are never blocked.
+			if (config.wallet?.blockPacksWhileSubscribed && current) {
+				const subPlan = config.plans.find((p) => p.name === current.plan);
+				const paidPlan = !!(subPlan?.monthly || subPlan?.yearly);
+				if (paidPlan && (current.status === 'active' || current.status === 'trialing')) {
+					return setApiResponse(
+						HTTP.CONFLICT,
+						'PACKS_BLOCKED',
+						'Credit packs are not available on your current plan — it already includes credits.',
+					);
+				}
+			}
+
 			const customerId =
 				current?.providerCustomerId ??
 				(

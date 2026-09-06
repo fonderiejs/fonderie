@@ -186,6 +186,16 @@ export interface IBillingWalletConfig {
 	 */
 	webhookSecret?: string;
 	creditPacks?: IBillingCreditPack[];
+	/**
+	 * When true, POST /billing/wallet/checkout is rejected (409 PACKS_BLOCKED)
+	 * for a subscriber on an ACTIVE or TRIALING PAID plan — a paid plan already
+	 * includes its credits, so selling packs on top would charge for something
+	 * the subscription covers. Default false: packs stay available to everyone
+	 * (the allowance + top-up shape), including free / pay-as-you-go / unpriced
+	 * plans. A plan with no monthly or yearly price never blocks; a past_due
+	 * subscriber is not blocked (they may top up while payment is retried).
+	 */
+	blockPacksWhileSubscribed?: boolean;
 }
 
 // The party to notify for a subscriber's money events. Resolved by the app —

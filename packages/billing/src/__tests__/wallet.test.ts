@@ -1000,6 +1000,58 @@ test('walletController.checkout: 501 when the provider lacks one-time payments',
 	assert.equal(res.status, 501);
 });
 
+// ── wallet checkout: blockPacksWhileSubscribed (GAP-1) ────────────
+
+const BLOCK_PLANS = [{ name: 'free' }, { name: 'pro', monthly: { priceId: 'price_pro' } }];
+const blockConfig = (block: boolean, provider: IBillingConfig['provider']): IBillingConfig =>
+	({
+		...walletConfig({ creditPacks: PACKS, blockPacksWhileSubscribed: block }),
+		plans: BLOCK_PLANS,
+		provider,
+	}) as IBillingConfig;
+
+test('walletController.checkout: blocks (409) an active PAID subscriber when configured', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider, calls } = paymentProvider();
+	const store = billingStore(walletEmulator(), { plan: 'pro', status: 'active' });
+	const ctrl = walletController(store, blockConfig(true, provider));
+	const res = await ctrl.checkout(makeCtx({ body: { packId: 'small' } }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 409);
+	assert.equal(body.reason, 'PACKS_BLOCKED');
+	assert.equal(calls.payment, undefined); // never reached the provider
+});
+
+test('walletController.checkout: default (flag off) lets a paid subscriber buy packs', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider } = paymentProvider();
+	const store = billingStore(walletEmulator(), { plan: 'pro', status: 'active' });
+	const ctrl = walletController(store, blockConfig(false, provider));
+	const res = await ctrl.checkout(makeCtx({ body: { packId: 'small' } }));
+	assert.equal(res.status, 200);
+});
+
+test('walletController.checkout: block flag does NOT block free / no-subscription buyers', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider } = paymentProvider();
+	// No subscription row → pay-as-you-go; and an unpriced 'free' plan sub.
+	for (const sub of [null, { plan: 'free', status: 'active' }]) {
+		const store = billingStore(walletEmulator(), sub);
+		const ctrl = walletController(store, blockConfig(true, provider));
+		const res = await ctrl.checkout(makeCtx({ body: { packId: 'small' } }));
+		assert.equal(res.status, 200, `sub=${JSON.stringify(sub)} should not be blocked`);
+	}
+});
+
+test('walletController.checkout: block flag does NOT block a past_due paid subscriber', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const { provider } = paymentProvider();
+	const store = billingStore(walletEmulator(), { plan: 'pro', status: 'past_due' });
+	const ctrl = walletController(store, blockConfig(true, provider));
+	const res = await ctrl.checkout(makeCtx({ body: { packId: 'small' } }));
+	assert.equal(res.status, 200); // only active/trialing are blocked
+});
+
 // ── payment webhook ───────────────────────────────────────────────
 
 function paymentEvent(metadata: Record<string, string>, over: Record<string, unknown> = {}) {
