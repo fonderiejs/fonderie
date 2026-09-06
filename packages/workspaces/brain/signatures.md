@@ -26,6 +26,8 @@ const MESSAGE_KEYS: { readonly workspaceInvitation: "workspace-invitation"; }
 
 const EVENT_KEYS: { readonly personalWorkspaceCreated: "fonderie.workspace.personal.created"; }
 
+const DEFAULT_TEMPLATES: { "workspace-invitation": { subject: string; html: string; text: string; }; }
+
 type WorkspaceType = 'ORGANIZATION' | 'PERSONAL' | 'TEAM' | 'COMMUNITY' | 'VENDOR';
 
 type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
