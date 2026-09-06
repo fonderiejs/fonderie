@@ -34,6 +34,44 @@ export function toSafeNumber(amount: bigint): number {
 	return Number(amount);
 }
 
+// Format a smallest-unit wallet amount into a human display string for a
+// customer notification — courier's render() does pure {{var}} substitution
+// with no formatting, so notices carry a pre-formatted `*Display` field
+// alongside the raw value. `precision` is the wallet's configured decimal
+// places (smallest unit = 10^-precision of the major unit; default 2).
+//
+// Currency-format via Intl (USD → "$19.99", JPY → "¥500" at precision 0, and
+// code-symbol currencies like CHF/SEK → "CHF 5.00"). If the code isn't a
+// well-formed currency (e.g. a credits wallet's 'CREDITS'), Intl throws and we
+// fall back to the bare major-unit number. Never throws: an out-of-range amount
+// or a bad code degrades to a plain string rather than break the
+// (fire-and-forget) notification.
+//
+// We deliberately do NOT try to strip the currency label for "credits" wallets:
+// there's no reliable way to tell a non-ISO 3-letter credits code (CRD) from a
+// real ISO currency whose en-US symbol IS its code (CHF, SEK, …) by inspecting
+// the output, and dropping the label from real currencies is worse than
+// carrying a code. A credits app that wants a bare unit overrides the template.
+export function formatWalletAmount(amount: bigint, currency: string, precision = 2): string {
+	const cur = normalizeCurrency(currency);
+	let major: number;
+	try {
+		major = toSafeNumber(amount) / 10 ** precision;
+	} catch {
+		return amount.toString(); // unbounded balance past 2^53 — show the raw integer
+	}
+	try {
+		return new Intl.NumberFormat('en-US', {
+			style: 'currency',
+			currency: cur,
+			minimumFractionDigits: precision,
+			maximumFractionDigits: precision,
+		}).format(major);
+	} catch {
+		return precision > 0 ? major.toFixed(precision) : major.toString();
+	}
+}
+
 // One canonical form for wallet currency codes. Balances are keyed by the
 // literal string — a lowercase 'usd' or a padded 'USD ' would open a second,
 // unreachable bucket next to 'USD', so every boundary (config, schema, query

@@ -253,7 +253,6 @@ export interface IBillingDunningConfig {
 export const MESSAGE_KEYS = {
 	limitWarning: 'billing.limit-warning',
 	limitReached: 'billing.limit-reached',
-	limitBlocked: 'billing.limit-blocked',
 	// Money-flow communications. Each is a courier template type; the operator
 	// supplies the template, billing supplies the `data` (see
 	// docs/BILLING-CAPABILITY-AUDIT.md for the payload of each). Emitted now
