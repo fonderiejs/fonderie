@@ -248,6 +248,13 @@ export function withBilling(
 							},
 						});
 					}
+				} else {
+					// Hysteresis (mirrors the low-balance dedup): once a counter is back
+					// below its warning threshold — typically when its window resets —
+					// drop the per-key dedup markers so a later re-crossing notifies
+					// again, and the module-level Set cannot grow unbounded.
+					notified.delete(`${base}:reached`);
+					notified.delete(`${base}:warning`);
 				}
 			}
 
