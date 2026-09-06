@@ -87,6 +87,12 @@ interface ICourierMessage {
     data: Record<string, unknown>;
 }
 
+interface IDefaultTemplate {
+    subject?: string;
+    text: string;
+    html?: string;
+}
+
 interface IFonderieContextMeta {
     params?: Record<string, string>;
     body?: unknown;

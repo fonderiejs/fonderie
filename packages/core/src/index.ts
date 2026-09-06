@@ -11,6 +11,7 @@ export type {
 	IFonderieModule,
 	IFonderieContext,
 	ICourierMessage,
+	IDefaultTemplate,
 	IFonderieContextMeta,
 	IReadinessProblem,
 	IReadinessReport,

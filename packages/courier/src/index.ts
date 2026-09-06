@@ -8,7 +8,7 @@ export { Dispatcher } from './dispatcher';
 export { SmsChannel } from './channels/sms';
 export { PushChannel } from './channels/push';
 export { EmailChannel } from './channels/email';
-export { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
+export { DBTemplateResolver, FSTemplateResolver, DefaultTemplates, renderFragment } from './templates/resolver';
 // Versioned template management (on the @fonderie/store primitive): edit with
 // optimistic concurrency, revision history, rollback. The resolver is unchanged.
 export {
@@ -27,6 +27,8 @@ export type {
 	ICourierChannel,
 	IRenderedTemplate,
 	ITemplateResolver,
+	IDefaultTemplate,
+	DefaultTemplateMap,
 } from './types';
 export { Channel } from './config';
 export type {

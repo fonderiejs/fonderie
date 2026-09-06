@@ -12,7 +12,7 @@ import { PushChannel } from './channels/push';
 import { EmailChannel } from './channels/email';
 import type { IReadinessProblem } from '@fonderie/core';
 import { validateAdminToken } from '@fonderie/core/middlewares';
-import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
+import { DBTemplateResolver, FSTemplateResolver, DefaultTemplates } from './templates/resolver';
 import { validateCourierConfig, collectCourierConfigProblems } from './config-guard';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 import { buildTemplateAdminRoutes } from './templates/admin-routes';
@@ -90,13 +90,18 @@ function createTemplateResolver(
 	config: ICourierConfig,
 	store?: IStoreAdapter,
 ): ITemplateResolver {
+	// Aggregate the module-shipped defaults (one map or an array) into a single
+	// lookup, mirroring how getMigrationsPath() results are collected at boot.
+	const input = config.templates?.defaults;
+	const defaults = new DefaultTemplates(input ? (Array.isArray(input) ? input : [input]) : []);
+
 	if (source === 'fs') {
-		return new FSTemplateResolver(config.templates?.directory ?? './templates');
+		return new FSTemplateResolver(config.templates?.directory ?? './templates', defaults);
 	}
 
 	if (!store) {
 		throw new Error('[courier] store is required for DB template resolution');
 	}
 
-	return new DBTemplateResolver(store);
+	return new DBTemplateResolver(store, defaults);
 }
