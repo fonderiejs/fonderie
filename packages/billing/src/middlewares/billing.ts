@@ -17,7 +17,7 @@ import {
 	settleAllowance,
 	startOfNextPeriod,
 } from '../services/wallet';
-import { resolveSubscriber, parseWindowMs, subscriberEventFields } from '../utils';
+import { resolveSubscriber, parseWindowMs, subscriberEventFields, formatWalletAmount } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { maybeAutoRecharge } from '../services/auto-recharge';
 
@@ -169,6 +169,12 @@ export function withBilling(
 									currency: planWallet.currency,
 									balance: balance.toString(),
 									threshold: planWallet.lowBalanceAt.toString(),
+									balanceDisplay: formatWalletAmount(balance, planWallet.currency, planWallet.precision ?? 2),
+									thresholdDisplay: formatWalletAmount(
+										planWallet.lowBalanceAt,
+										planWallet.currency,
+										planWallet.precision ?? 2,
+									),
 								},
 							});
 						}
