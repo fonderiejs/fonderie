@@ -150,6 +150,16 @@ interface IUseUsageReturn {
     recordUsage: (input: IRecordUsageInput) => Promise<void>;
 }
 
+interface IUseWalletPreferencesReturn {
+    spendPurchased: boolean | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    setSpendPurchased: (spendPurchased: boolean) => Promise<void>;
+}
+
 function useBillingPortal(client?: BillingClient | undefined): IUseBillingPortalReturn
 
 function useCheckout(client?: BillingClient | undefined): IUseCheckoutReturn
@@ -161,4 +171,6 @@ function usePlans(client?: BillingClient | undefined): IUsePlansReturn
 function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
 
 function useUsage(metric: string): IUseUsageReturn
+
+function useWalletPreferences(client?: BillingClient | undefined): IUseWalletPreferencesReturn
 ```
