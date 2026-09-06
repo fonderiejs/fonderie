@@ -28,6 +28,9 @@ export type { FonderieConfig } from './config';
 
 // Parser utilities
 export { stringOrEmpty, booleanOrFalse, arrayOrEmpty, numberOrZero, dateOrEmpty } from './parser';
+export { constantTimeEqual } from './crypto';
+export { MIN_SECRET_LENGTH, PLACEHOLDER_SECRET, secretStrengthProblem } from './secret-strength';
+export { encodeKeysetCursor, decodeKeysetCursor } from './keyset-cursor';
 
 // Response helpers
 export type { IApiError, HttpStatus } from './response';

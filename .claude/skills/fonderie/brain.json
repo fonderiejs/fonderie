@@ -552,6 +552,8 @@
       "exports": [
         "OPERATIONS",
         "FonderieApp",
+        "MIN_SECRET_LENGTH",
+        "PLACEHOLDER_SECRET",
         "HTTP",
         "MetricsRegistry"
       ],
@@ -3594,6 +3596,12 @@
       "config"
     ],
     "fonderieapp": [
+      "core"
+    ],
+    "min_secret_length": [
+      "core"
+    ],
+    "placeholder_secret": [
       "core"
     ],
     "http": [

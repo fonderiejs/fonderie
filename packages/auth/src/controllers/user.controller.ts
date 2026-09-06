@@ -1,7 +1,7 @@
 import { clearedTokenCookies, cookieHeaders } from '../services/cookies';
 import { randomInt } from 'node:crypto';
 
-import { setApiResponse, HTTP } from '@fonderie/core';
+import { setApiResponse, HTTP, dateOrEmpty } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { IAuthConfig } from '../config';
@@ -285,8 +285,8 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					id: s.id,
 					userAgent: s.userAgent,
 					ipAddress: s.ipAddress,
-					createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
-					expiresAt: s.expiresAt instanceof Date ? s.expiresAt.toISOString() : s.expiresAt,
+					createdAt: dateOrEmpty(s.createdAt),
+					expiresAt: dateOrEmpty(s.expiresAt),
 				})),
 				security: {
 					mfaEnabled: user.mfaEnabled === true,
