@@ -10,12 +10,25 @@ import { renderToString } from 'vue/server-renderer';
 import { useBillingPortal } from '../composables/useBillingPortal';
 import { usePlan } from '../composables/usePlan';
 import { useWalletPreferences } from '../composables/useWalletPreferences';
+import { useWallet } from '../composables/useWallet';
+import { useWalletTransactions } from '../composables/useWalletTransactions';
+import { useWalletCheckout } from '../composables/useWalletCheckout';
+import { useCancelSubscription } from '../composables/useCancelSubscription';
+import { useReactivateSubscription } from '../composables/useReactivateSubscription';
+import { usePaymentMethod } from '../composables/usePaymentMethod';
+import { useInvoices } from '../composables/useInvoices';
 
 const fakePlan = { id: 'plan_1', name: 'Pro' } as unknown as IPlanDTO;
 const fakeBilling = {
 	getPlan: async () => ({ result: { plan: fakePlan } }),
 	getWallet: async () => ({ result: { wallet: { balance: '0', currency: 'USD', precision: 2, spendPurchased: true } } }),
 	setWalletPreferences: async () => ({ result: { wallet: { balance: '0', currency: 'USD', precision: 2, spendPurchased: false } } }),
+	getWalletTransactions: async () => ({ result: { transactions: [], nextCursor: null } }),
+	createWalletCheckout: async () => ({ result: { url: 'https://checkout.stub/pay', sessionId: 'cs_1' } }),
+	cancelSubscription: async () => ({ result: { atPeriodEnd: true, status: 'active', currentPeriodEnd: null } }),
+	reactivateSubscription: async () => ({ result: { atPeriodEnd: false, status: 'active', currentPeriodEnd: null } }),
+	getPaymentMethod: async () => ({ result: { paymentMethod: null } }),
+	listInvoices: async () => ({ result: { invoices: [] } }),
 };
 const fakeClient = { billing: fakeBilling } as unknown as FonderieClient;
 
@@ -117,4 +130,36 @@ test('useWalletPreferences surfaces + rethrows a setter error without leaving st
 	await assert.rejects(() => value.setSpendPurchased(false), /nope/);
 	assert.ok(value.error.value, 'error surfaced');
 	assert.equal(value.spendPurchased.value, true, 'toggle not optimistically mutated on failure');
+});
+
+test('wallet + account + lifecycle composables resolve from context and read/act', async () => {
+	// Reads — onMounted doesn't fire under SSR, so drive refresh() explicitly.
+	const w = (await runInSetup(() => useWallet(), true)).value!;
+	await w.refresh();
+	assert.equal(w.wallet.value?.balance, '0');
+	assert.equal(w.isLoading.value, false);
+
+	const tx = (await runInSetup(() => useWalletTransactions(), true)).value!;
+	await tx.refresh();
+	assert.deepEqual(tx.transactions.value, []);
+	assert.equal(tx.hasMore.value, false);
+	assert.equal(typeof tx.loadMore, 'function');
+
+	const card = (await runInSetup(() => usePaymentMethod(), true)).value!;
+	await card.refresh();
+	assert.equal(card.paymentMethod.value, null);
+
+	const inv = (await runInSetup(() => useInvoices(), true)).value!;
+	await inv.refresh();
+	assert.deepEqual(inv.invoices.value, []);
+
+	// Mutations — the action resolves to the fixture result.
+	const wc = (await runInSetup(() => useWalletCheckout(), true)).value!;
+	assert.equal(await wc.checkout({ packId: 'small' }), 'https://checkout.stub/pay');
+
+	const cancel = (await runInSetup(() => useCancelSubscription(), true)).value!;
+	assert.equal((await cancel.cancel()).status, 'active');
+
+	const react = (await runInSetup(() => useReactivateSubscription(), true)).value!;
+	assert.equal((await react.reactivate()).atPeriodEnd, false);
 });
