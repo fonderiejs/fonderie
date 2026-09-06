@@ -198,6 +198,15 @@ export interface IBillingConfig {
 	plans: IBillingPlan[];
 	successUrl: string;
 	cancelUrl: string;
+	/**
+	 * Bearer token guarding the DB-plan write API (POST/PUT/DELETE /plans), an
+	 * ops surface for managing the persisted plan catalog. The write routes are
+	 * only registered when this is set (mirroring wallet.adminToken); GET /plans
+	 * stays public. Runtime billing (checkout, requirePlan, withBilling) reads
+	 * `config.plans` in memory, not this table, so leaving it unset just disables
+	 * remote plan editing — it does not affect charges or access.
+	 */
+	planAdminToken?: string;
 	webhookSecret?: string;
 	rateLimit?: { backend?: RateLimitBackendConfig };
 	notifications?: IBillingNotificationsConfig;

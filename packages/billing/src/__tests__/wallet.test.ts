@@ -681,6 +681,12 @@ test('decodeLedgerCursor: rejects garbage, non-UUID ids, and oversized cursors',
 		decodeLedgerCursor(Buffer.from('["2026-01-01T00:00:00Z","not-a-uuid"]').toString('base64url')),
 		null,
 	);
+	// In-shape-but-out-of-range date fields must be rejected (a 422), not passed
+	// to the ::timestamptz cast where they 500.
+	assert.equal(
+		decodeLedgerCursor(Buffer.from(`["2026-13-40T25:61:99Z","${uuid}"]`).toString('base64url')),
+		null,
+	);
 	assert.equal(decodeLedgerCursor('A'.repeat(300)), null);
 	const round = decodeLedgerCursor(encodeLedgerCursor('2026-09-04T00:00:00.000Z', uuid));
 	assert.deepEqual(round, { createdAt: '2026-09-04T00:00:00.000Z', id: uuid });
