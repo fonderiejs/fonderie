@@ -57,6 +57,8 @@ export type {
 	INormalizedPayment,
 	INormalizedReversal,
 	INormalizedInvoice,
+	INormalizedInvoiceSummary,
+	INormalizedCard,
 	INormalizedPaymentFailure,
 	IResolvedPrice,
 	ISubscriptionChange,
@@ -79,6 +81,8 @@ export type {
 	ISubscriptionDTO,
 	IWalletDTO,
 	IWalletTransactionDTO,
+	IPaymentMethodDTO,
+	IInvoiceDTO,
 } from './dtos/billing';
 
 // DTOs
@@ -87,6 +91,8 @@ export {
 	toSubscriptionDTO,
 	toWalletDTO,
 	toWalletTransactionDTO,
+	toPaymentMethodDTO,
+	toInvoiceDTO,
 } from './dtos/billing';
 
 // Wallet — ledger-backed stored value. Product code debits through

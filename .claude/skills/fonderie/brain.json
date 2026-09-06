@@ -335,12 +335,22 @@
         "fonderie_wallet_grants",
         "fonderie_wallet_ledger"
       ],
-      "routeCount": 19,
+      "routeCount": 21,
       "routes": [
         {
           "method": "POST",
           "path": "/billing/checkout",
           "mw": "requireAuth → validate(checkoutSchema) → checkout.createSession"
+        },
+        {
+          "method": "GET",
+          "path": "/billing/invoices",
+          "mw": "requireAuth → account.listInvoices"
+        },
+        {
+          "method": "GET",
+          "path": "/billing/payment-method",
+          "mw": "requireAuth → account.getPaymentMethod"
         },
         {
           "method": "POST",
