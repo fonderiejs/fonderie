@@ -244,10 +244,10 @@ export class BillingClient {
 		const params = new URLSearchParams();
 		if (opts?.cursor) params.set('cursor', opts.cursor);
 		if (opts?.limit !== undefined) params.set('limit', String(opts.limit));
-		const query = params.toString();
+		const qs = params.toString();
 		return this.http.request<IApiResponse<IWalletTransactionsResult>>({
 			method: 'GET',
-			path: `/billing/wallet/transactions${query ? `?${query}` : ''}`,
+			path: `/billing/wallet/transactions${qs ? '?' + qs : ''}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
