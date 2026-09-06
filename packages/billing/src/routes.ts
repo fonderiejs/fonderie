@@ -19,6 +19,7 @@ import { PriceCache } from './services/price-cache';
 import { planController } from './controllers/plan.controller';
 import { subscriptionController } from './controllers/subscription.controller';
 import { checkoutController } from './controllers/checkout.controller';
+import { accountController } from './controllers/account.controller';
 import { usageController } from './controllers/usage.controller';
 import { walletController } from './controllers/wallet.controller';
 import { webhookController } from './controllers/webhook.controller';
@@ -39,6 +40,7 @@ export function buildBillingRoutes(
 	const plan = planController(store, config, priceCache);
 	const subscription = subscriptionController(store, config);
 	const checkout = checkoutController(store, config);
+	const account = accountController(store, config);
 	const usage = usageController(store);
 	const webhook = webhookController(store, config, priceCache, bus);
 
@@ -65,6 +67,10 @@ export function buildBillingRoutes(
 			subscription.cancel,
 		],
 		['POST', '/billing/subscription/reactivate', requireAuth, subscription.reactivate],
+		// Read-only billing-account surface for an in-app billing page: card on
+		// file + invoice history. 501 when the provider implements neither.
+		['GET', '/billing/payment-method', requireAuth, account.getPaymentMethod],
+		['GET', '/billing/invoices', requireAuth, account.listInvoices],
 		['POST', '/billing/usage', requireAuth, validate(recordUsageSchema), usage.record],
 		['GET', '/billing/usage/:metric', requireAuth, usage.get],
 

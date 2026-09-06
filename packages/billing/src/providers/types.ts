@@ -129,6 +129,28 @@ export interface IResolvedPrice {
 }
 
 // The one interface every handler calls
+// The customer's card on file, for display only — never the full number.
+export interface INormalizedCard {
+	brand: string; // 'visa' | 'mastercard' | 'amex' | …
+	last4: string;
+	expMonth: number;
+	expYear: number;
+}
+
+// One invoice as a list summary, for an in-app billing history that links out
+// to the provider-hosted invoice. Amounts are in the smallest currency unit.
+export interface INormalizedInvoiceSummary {
+	id: string;
+	number: string | null;
+	amountDue: bigint;
+	amountPaid: bigint;
+	currency: string;
+	status: string; // 'paid' | 'open' | 'draft' | 'void' | 'uncollectible' | …
+	created: string; // ISO-8601
+	hostedInvoiceUrl: string | null;
+	invoicePdf: string | null;
+}
+
 export interface IBillingProvider {
 	name: string;
 
@@ -234,6 +256,21 @@ export interface IBillingProvider {
 	// Un-cancel a subscription scheduled to cancel at period end. Optional; the
 	// reactivate route answers 501 when absent.
 	reactivateSubscription?(opts: { subscriptionId: string }): Promise<ISubscriptionChange>;
+
+	// Retrieve the customer's card on file (the "last added" payment method) for
+	// display — brand/last4/expiry only, never the full number. When a specific
+	// consented card id is known (from the wallet customer) it is retrieved
+	// directly; otherwise the provider resolves the customer's default/newest
+	// card. Optional; when absent, the payment-method route answers 501.
+	getPaymentMethod?(opts: {
+		customerId: string;
+		paymentMethodId?: string | null;
+	}): Promise<INormalizedCard | null>;
+
+	// List the customer's invoices, newest first, for an in-app billing history
+	// that links out to the provider-hosted invoice. Optional; when absent, the
+	// invoices route answers 501.
+	listInvoices?(opts: { customerId: string; limit?: number }): Promise<INormalizedInvoiceSummary[]>;
 
 	// Generate a hosted billing portal URL
 	createPortalSession(opts: { customerId: string; returnUrl: string }): Promise<{ url: string }>;

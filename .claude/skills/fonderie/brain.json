@@ -335,12 +335,22 @@
         "fonderie_wallet_grants",
         "fonderie_wallet_ledger"
       ],
-      "routeCount": 19,
+      "routeCount": 21,
       "routes": [
         {
           "method": "POST",
           "path": "/billing/checkout",
           "mw": "requireAuth → validate(checkoutSchema) → checkout.createSession"
+        },
+        {
+          "method": "GET",
+          "path": "/billing/invoices",
+          "mw": "requireAuth → account.listInvoices"
+        },
+        {
+          "method": "GET",
+          "path": "/billing/payment-method",
+          "mw": "requireAuth → account.getPaymentMethod"
         },
         {
           "method": "POST",
@@ -1041,12 +1051,19 @@
       "exports": [
         "FonderieApiError",
         "useBillingPortal",
+        "useCancelSubscription",
         "useCheckout",
+        "useInvoices",
+        "usePaymentMethod",
         "usePlan",
         "usePlans",
+        "useReactivateSubscription",
         "useSubscription",
         "useUsage",
-        "useWalletPreferences"
+        "useWallet",
+        "useWalletCheckout",
+        "useWalletPreferences",
+        "useWalletTransactions"
       ],
       "subpaths": [],
       "tables": [],
@@ -3814,17 +3831,38 @@
       "react-billing",
       "vue-billing"
     ],
+    "usecancelsubscription": [
+      "react-billing"
+    ],
+    "useinvoices": [
+      "react-billing"
+    ],
+    "usepaymentmethod": [
+      "react-billing"
+    ],
     "useplan": [
       "react-billing",
       "vue-billing"
+    ],
+    "usereactivatesubscription": [
+      "react-billing"
     ],
     "useusage": [
       "react-billing",
       "vue-billing"
     ],
+    "usewallet": [
+      "react-billing"
+    ],
+    "usewalletcheckout": [
+      "react-billing"
+    ],
     "usewalletpreferences": [
       "react-billing",
       "vue-billing"
+    ],
+    "usewallettransactions": [
+      "react-billing"
     ],
     "pricingscreen": [
       "react-billing-screens",

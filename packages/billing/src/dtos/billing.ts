@@ -6,6 +6,7 @@ import type {
 	SubscriberType,
 	WalletLedgerType,
 } from '../types';
+import type { INormalizedCard, INormalizedInvoiceSummary } from '../providers/types';
 
 export interface IPlanDTO {
 	id: string;
@@ -145,5 +146,46 @@ export function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransa
 		providerTxId: entry.providerTxId,
 		metadata: entry.metadata,
 		createdAt: entry.createdAt,
+	};
+}
+
+// The customer's card on file, for display. Never carries the full number.
+export interface IPaymentMethodDTO {
+	brand: string;
+	last4: string;
+	expMonth: number;
+	expYear: number;
+}
+
+export function toPaymentMethodDTO(card: INormalizedCard): IPaymentMethodDTO {
+	return { brand: card.brand, last4: card.last4, expMonth: card.expMonth, expYear: card.expYear };
+}
+
+// One invoice for an in-app history list; `hostedInvoiceUrl`/`invoicePdf` link
+// out to the provider. Amounts are strings (smallest currency unit) to match
+// the wallet DTO's bigint-as-string convention.
+export interface IInvoiceDTO {
+	id: string;
+	number: string | null;
+	amountDue: string;
+	amountPaid: string;
+	currency: string;
+	status: string;
+	created: string;
+	hostedInvoiceUrl: string | null;
+	invoicePdf: string | null;
+}
+
+export function toInvoiceDTO(inv: INormalizedInvoiceSummary): IInvoiceDTO {
+	return {
+		id: inv.id,
+		number: inv.number,
+		amountDue: inv.amountDue.toString(),
+		amountPaid: inv.amountPaid.toString(),
+		currency: inv.currency,
+		status: inv.status,
+		created: inv.created,
+		hostedInvoiceUrl: inv.hostedInvoiceUrl,
+		invoicePdf: inv.invoicePdf,
 	};
 }
