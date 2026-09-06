@@ -29,6 +29,7 @@
     "check:evidence": "node scripts/check-evidence.mjs",
     "check:hook-coverage": "node scripts/check-hook-coverage.mjs",
     "check:routes": "node scripts/check-client-routes.mjs",
+    "check:template-coverage": "node scripts/check-template-coverage.mjs",
     "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer"
   },
   "devDependencies": {
