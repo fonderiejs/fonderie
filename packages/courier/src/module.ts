@@ -11,6 +11,7 @@ import { SmsChannel } from './channels/sms';
 import { PushChannel } from './channels/push';
 import { EmailChannel } from './channels/email';
 import type { IReadinessProblem } from '@fonderie/core';
+import { validateAdminToken } from '@fonderie/core/middlewares';
 import { DBTemplateResolver, FSTemplateResolver } from './templates/resolver';
 import { validateCourierConfig, collectCourierConfigProblems } from './config-guard';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
@@ -46,7 +47,12 @@ export class CourierModule implements IFonderieModule {
 
 	// Report config problems for app.checkProductionReadiness() (data, not warn).
 	checkReadiness(): IReadinessProblem[] {
-		return collectCourierConfigProblems(this.config, this.dispatcher.channelNames());
+		return [
+			...collectCourierConfigProblems(this.config, this.dispatcher.channelNames()),
+			// Shared admin-token strength rule (@fonderie/core/middlewares) — the
+			// /admin/templates surface must not be guarded by a weak/placeholder token.
+			...validateAdminToken(this.config.adminToken, { module: this.name }),
+		];
 	}
 
 	install(app: IFonderieApp): void {

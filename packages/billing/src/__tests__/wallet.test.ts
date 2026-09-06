@@ -1907,27 +1907,9 @@ test('syncPlansToDB: serializes plan wallet config with stringified bigints', as
 	assert.equal(captured!.params[19], null); // plan without wallet
 });
 
-// ── requireAdminToken ─────────────────────────────────────────────
-
-test('requireAdminToken: 401 without or with a wrong token, passes with the right one', async () => {
-	const { requireAdminToken } = await import('../middlewares/admin-token');
-	const middleware = requireAdminToken('secret-token');
-	let called = false;
-	const next = async () => {
-		called = true;
-		return new Response();
-	};
-
-	const missing = await middleware(makeCtx(), next);
-	assert.equal(missing.status, 401);
-
-	const wrong = await middleware(makeCtx({ headers: { authorization: 'Bearer nope' } }), next);
-	assert.equal(wrong.status, 401);
-	assert.equal(called, false);
-
-	await middleware(makeCtx({ headers: { authorization: 'Bearer secret-token' } }), next);
-	assert.equal(called, true);
-});
+// requireAdminToken moved to @fonderie/core/middlewares (shared across billing/
+// config/courier); its behavior is tested in packages/core. Billing's own
+// admin-token coverage is the route-gating + strength-readiness tests above.
 
 // ── route registration is opt-in ──────────────────────────────────
 

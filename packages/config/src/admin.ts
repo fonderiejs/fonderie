@@ -1,7 +1,6 @@
-import { timingSafeEqual } from 'node:crypto';
-
 import type { IFonderieContext, Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
+import { requireAdminToken } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { ISecretEncryptor } from './crypto';
@@ -27,27 +26,6 @@ import {
 } from './services/secrets';
 
 // Bootstrap-token guard. Returns null when authorized, else the 401/503 Response.
-// The admin surface is only registered when a token is configured, so a missing
-// config here is defensive.
-function checkAdmin(ctx: IFonderieContext, adminToken: string): Response | null {
-	const header = ctx.request.headers.get('authorization') ?? '';
-	const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-	if (!token || !safeTokenEqual(token, adminToken)) {
-		return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Missing or invalid admin token');
-	}
-	return null;
-}
-
-// Constant-time comparison so a wrong token can't be recovered byte-by-byte
-// from response-timing. Encode to bytes and length-guard first: timingSafeEqual
-// throws on unequal lengths, and that early return is itself acceptable — the
-// secret's length is not the sensitive part.
-function safeTokenEqual(a: string, b: string): boolean {
-	const bufA = Buffer.from(a);
-	const bufB = Buffer.from(b);
-	if (bufA.length !== bufB.length) return false;
-	return timingSafeEqual(bufA, bufB);
-}
 
 // The actor recorded on writes/audit — an optional `X-Actor` header lets the
 // caller (or the LLM) identify who; defaults to a generic admin label.
@@ -108,12 +86,11 @@ function rollbackOpts(
 	return opts;
 }
 
-// Wrap a handler in the admin-token guard.
+// Wrap a handler in the shared admin-token guard (@fonderie/core/middlewares) —
+// one constant-time Bearer check across billing/config/courier.
 function guarded(adminToken: string, handler: Middleware): Middleware {
-	return async (ctx, next) => {
-		const denied = checkAdmin(ctx, adminToken);
-		return denied ?? handler(ctx, next);
-	};
+	const guard = requireAdminToken(adminToken);
+	return (ctx, next) => guard(ctx, () => handler(ctx, next));
 }
 
 // Build the admin route table. Registered by ConfigModule.install only when an
