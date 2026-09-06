@@ -1,7 +1,6 @@
-import { timingSafeEqual } from 'node:crypto';
-
 import type { IFonderieContext, Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
+import { requireAdminToken } from '@fonderie/core/middlewares';
 import { VersionConflictError } from '@fonderie/store';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -16,24 +15,11 @@ import {
 
 // Bearer-token guard (mirrors @fonderie/config's admin surface). Only registered
 // when a token is configured — no token, no exposed template admin routes.
-// Constant-time comparison so a wrong token can't be recovered byte-by-byte
-// from response timing (same mechanism as @fonderie/config's admin surface).
-function safeTokenEqual(a: string, b: string): boolean {
-	const bufA = Buffer.from(a);
-	const bufB = Buffer.from(b);
-	if (bufA.length !== bufB.length) return false;
-	return timingSafeEqual(bufA, bufB);
-}
-
+// Wrap a handler in the shared admin-token guard (@fonderie/core/middlewares) —
+// one constant-time Bearer check across billing/config/courier.
 function guarded(adminToken: string, handler: Middleware): Middleware {
-	return async (ctx, next) => {
-		const header = ctx.request.headers.get('authorization') ?? '';
-		const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-		if (!token || !safeTokenEqual(token, adminToken)) {
-			return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Missing or invalid admin token');
-		}
-		return handler(ctx, next);
-	};
+	const guard = requireAdminToken(adminToken);
+	return (ctx, next) => guard(ctx, () => handler(ctx, next));
 }
 
 const actorOf = (ctx: IFonderieContext) => ctx.request.headers.get('x-actor') || 'admin-token';

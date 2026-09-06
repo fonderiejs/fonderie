@@ -1,7 +1,7 @@
 import type { IStoreAdapter } from '@fonderie/store';
 import type { Middleware } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
-import { requireAuth, validate } from '@fonderie/core/middlewares';
+import { requireAdminToken, requireAuth, validate } from '@fonderie/core/middlewares';
 
 import {
 	cancelSubscriptionSchema,
@@ -23,7 +23,6 @@ import { usageController } from './controllers/usage.controller';
 import { walletController } from './controllers/wallet.controller';
 import { webhookController } from './controllers/webhook.controller';
 import { paymentWebhookController } from './controllers/payment-webhook.controller';
-import { requireAdminToken } from './middlewares/admin-token';
 
 type RouteDefinition = [string, string, ...Middleware[]];
 
