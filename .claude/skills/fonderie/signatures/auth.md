@@ -94,6 +94,8 @@ const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly
 
 type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
 
+const DEFAULT_TEMPLATES: { "email-registration": { subject: string; html: string; text: string; }; "email-verification": { subject: string; html: string; text: string; }; "password-reset": { subject: string; html: string; text: string; }; "phone-otp": { text: string; }; "mfa-enabled": { subject: string; html: string; text: string; }; "mfa-disabled": { subject: string; html: string; text: string; }; "mfa-backup-codes-regenerated": { subject: string; html: string; text: string; }; "email-changed": { subject: string; html: string; text: string; }; "phone-changed": { subject: string; html: string; text: string; }; }
+
 interface IUserDTO {
     id: string;
     email: string;
