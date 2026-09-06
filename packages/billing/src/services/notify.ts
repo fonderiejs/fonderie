@@ -1,6 +1,7 @@
 import type { EventBus } from '@fonderie/events';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
 import type { IReadinessProblem } from '@fonderie/core';
+import { validateAdminToken } from '@fonderie/core/middlewares';
 
 import type { IBillingConfig } from '../config';
 import type { SubscriberType } from '../types';
@@ -60,6 +61,18 @@ export function collectBillingReadinessProblems(
 	hasBus: boolean,
 ): IReadinessProblem[] {
 	const problems: IReadinessProblem[] = [];
+
+	// Every admin token actually guarding a surface must be strong (shared rule).
+	// The routes resolve config.adminToken ?? <legacy>, so validate each distinct
+	// in-use token once.
+	const adminTokens = new Set<string>();
+	const planTok = config.adminToken ?? config.planAdminToken;
+	const walletTok = config.adminToken ?? config.wallet?.adminToken;
+	if (planTok) adminTokens.add(planTok);
+	if (walletTok) adminTokens.add(walletTok);
+	for (const tok of adminTokens) {
+		problems.push(...validateAdminToken(tok, { module: '@fonderie/billing' }));
+	}
 
 	if (billingPaymentsEnabled(config)) {
 		const receiptPathWired = hasBus && typeof config.resolveRecipient === 'function';

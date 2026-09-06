@@ -7,6 +7,7 @@ export { withSecurityHeaders } from './security-headers';
 export type { SecurityHeadersOptions } from './security-headers';
 export { defaultErrorHandler } from './error-handler';
 export { requireAuth, requireAnyAuth } from './require-auth';
+export { requireAdminToken, validateAdminToken } from './require-admin-token';
 export { requireVerified } from './require-verified';
 export { validate } from './validate';
 export type { IRequestSchema } from './validate';
