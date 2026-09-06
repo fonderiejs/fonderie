@@ -1,4 +1,4 @@
-import { stringOrEmpty, booleanOrFalse } from '@fonderie/core';
+import { stringOrEmpty, booleanOrFalse, dateOrEmpty } from '@fonderie/core';
 
 import type { IUser, IUserPreferences } from '../types';
 
@@ -66,7 +66,7 @@ export function toUserDTO(user: IUser, phoneVerified = false): IUserDTO {
 		phone: stringOrEmpty(user.phone),
 		profileImageUrl: stringOrEmpty(user.profileImageUrl),
 		isActive: typeof user.isActive === 'boolean' ? user.isActive : true,
-		lastLogin: user.lastLogin instanceof Date ? user.lastLogin.toISOString() : '',
+		lastLogin: dateOrEmpty(user.lastLogin),
 		preferences: {
 			...DEFAULT_PREFERENCES,
 			...cleaned,
@@ -83,7 +83,7 @@ export function toUserDTO(user: IUser, phoneVerified = false): IUserDTO {
 		suspended: booleanOrFalse(user.suspended),
 		whitelist: booleanOrFalse(user.whitelist),
 		ipWhitelist: Array.isArray(user.ipWhitelist) ? user.ipWhitelist : [],
-		createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : '',
-		updatedAt: user.updatedAt instanceof Date ? user.updatedAt.toISOString() : '',
+		createdAt: dateOrEmpty(user.createdAt),
+		updatedAt: dateOrEmpty(user.updatedAt),
 	};
 }

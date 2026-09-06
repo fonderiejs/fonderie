@@ -1,32 +1,25 @@
 import type { IReadinessProblem } from '@fonderie/core';
+import { MIN_SECRET_LENGTH, PLACEHOLDER_SECRET, secretStrengthProblem } from '@fonderie/core';
 import type { IAuthConfig } from '../config';
 
 const MODULE = '@fonderie/auth';
 
-// Placeholder / dev-default secrets we never want signing tokens in production.
-// These distinctive fragments won't appear in a real random secret (e.g. the
-// output of `openssl rand -base64 32`), so matching one is a strong signal the
-// secret was copy-pasted from an example rather than generated.
-const PLACEHOLDER_SECRET =
-	/dev-secret|test-secret|changeme|change-me|your[-_]secret|placeholder|example|insecure|min-32-chars/i;
-
-// Minimum length for an HS256 signing secret — 256 bits.
-const MIN_SECRET_LENGTH = 32;
-
 // Pure production-readiness assessment (no side effects) — shared by the
 // boot-time guard and `AuthModule.checkReadiness`. Evaluates "is this ready for
-// production?" regardless of the current NODE_ENV.
+// production?" regardless of the current NODE_ENV. Secret-strength rule
+// (min length + placeholder denylist) is the shared @fonderie/core one.
 export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProblem[] {
 	const problems: IReadinessProblem[] = [];
 	const secret = config.jwtSecret ?? '';
 
-	if (secret.length < MIN_SECRET_LENGTH) {
+	const secretProblem = secretStrengthProblem(secret);
+	if (secretProblem === 'too-short') {
 		problems.push({
 			module: MODULE,
 			severity: 'error',
 			message: `jwtSecret must be at least ${MIN_SECRET_LENGTH} characters (got ${secret.length})`,
 		});
-	} else if (PLACEHOLDER_SECRET.test(secret)) {
+	} else if (secretProblem === 'placeholder') {
 		problems.push({
 			module: MODULE,
 			severity: 'error',

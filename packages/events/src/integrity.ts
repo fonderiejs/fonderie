@@ -1,4 +1,6 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
+
+import { constantTimeEqual } from '@fonderie/core';
 
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -52,12 +54,6 @@ export function computeEventHmac(key: string, event: IHashableEvent): string {
 		.digest('hex');
 }
 
-function hmacEquals(a: string, b: string): boolean {
-	const bufA = Buffer.from(a);
-	const bufB = Buffer.from(b);
-	return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
-}
-
 export interface IIntegrityReport {
 	// True when every HMAC-carrying row verified.
 	ok: boolean;
@@ -93,7 +89,7 @@ export async function verifyEventChain(store: IStoreAdapter, key: string): Promi
 		}
 		report.checked += 1;
 		const expected = computeEventHmac(key, row);
-		if (!hmacEquals(expected, row.hmac)) {
+		if (!constantTimeEqual(expected, row.hmac)) {
 			report.ok = false;
 			report.tampered.push(row.id);
 		}

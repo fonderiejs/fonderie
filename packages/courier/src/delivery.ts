@@ -1,4 +1,6 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
+
+import { constantTimeEqual } from '@fonderie/core';
 
 import type { IStoreAdapter } from '@fonderie/store';
 import {
@@ -51,10 +53,7 @@ function verifySendGridSignature(
 	try {
 		const payload = timestamp + body;
 		const expected = createHmac('sha256', secret).update(payload).digest('base64');
-		const sigBuf = Buffer.from(signature, 'base64');
-		const expBuf = Buffer.from(expected, 'base64');
-		if (sigBuf.length !== expBuf.length) return false;
-		return timingSafeEqual(sigBuf, expBuf);
+		return constantTimeEqual(Buffer.from(signature, 'base64'), Buffer.from(expected, 'base64'));
 	} catch {
 		return false;
 	}
@@ -126,10 +125,7 @@ function verifyMailgunSignature(
 	try {
 		const value = timestamp + token;
 		const expected = createHmac('sha256', signingKey).update(value).digest('hex');
-		const expBuf = Buffer.from(expected, 'hex');
-		const sigBuf = Buffer.from(signature, 'hex');
-		if (expBuf.length !== sigBuf.length) return false;
-		return timingSafeEqual(expBuf, sigBuf);
+		return constantTimeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'));
 	} catch {
 		return false;
 	}

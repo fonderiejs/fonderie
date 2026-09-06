@@ -171,6 +171,18 @@ function numberOrZero(value: unknown): number
 
 function dateOrEmpty(value: unknown): string
 
+function constantTimeEqual(a: string | Buffer<ArrayBufferLike>, b: string | Buffer<ArrayBufferLike>): boolean
+
+const MIN_SECRET_LENGTH: 32
+
+const PLACEHOLDER_SECRET: RegExp
+
+function secretStrengthProblem(secret: string): "too-short" | "placeholder" | null
+
+function encodeKeysetCursor(createdAt: string, id: string): string
+
+function decodeKeysetCursor(cursor: string): { createdAt: string; id: string; } | null
+
 interface IApiError {
     reason: string;
     explanation: string;
