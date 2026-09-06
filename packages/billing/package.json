@@ -51,16 +51,17 @@
 		"format": "biome format --write src",
 		"check": "biome check --write src"
 	},
-	"optionalDependencies": {
-		"stripe": "^22.6.0"
-	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.8.0",
 		"@fonderie/events": "^5.0.0",
-		"@fonderie/store": "^0.2.0"
+		"@fonderie/store": "^0.2.0",
+		"stripe": ">=17"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/events": {
+			"optional": true
+		},
+		"stripe": {
 			"optional": true
 		}
 	},
