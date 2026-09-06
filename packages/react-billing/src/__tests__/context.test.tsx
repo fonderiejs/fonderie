@@ -7,7 +7,19 @@ import { FonderieProvider } from '@fonderie/react';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 
-import { useCheckout, usePlan, usePlans, useWalletPreferences } from '../hooks';
+import {
+	useCancelSubscription,
+	useCheckout,
+	useInvoices,
+	usePaymentMethod,
+	usePlan,
+	usePlans,
+	useReactivateSubscription,
+	useWallet,
+	useWalletCheckout,
+	useWalletPreferences,
+	useWalletTransactions,
+} from '../hooks';
 
 const fakeBilling = { marker: 'context-billing' } as unknown as BillingClient;
 const fakeClient = { billing: fakeBilling } as unknown as FonderieClient;
@@ -90,4 +102,47 @@ test('useWalletPreferences resolves from context with a read+mutate shape', () =
 	assert.equal(shape.error, null);
 	assert.equal(typeof shape.refresh, 'function');
 	assert.equal(typeof shape.setSpendPurchased, 'function');
+});
+
+test('wallet + account + lifecycle hooks resolve from context with their shapes', () => {
+	let wallet!: ReturnType<typeof useWallet>;
+	let tx!: ReturnType<typeof useWalletTransactions>;
+	let checkout!: ReturnType<typeof useWalletCheckout>;
+	let cancel!: ReturnType<typeof useCancelSubscription>;
+	let reactivate!: ReturnType<typeof useReactivateSubscription>;
+	let card!: ReturnType<typeof usePaymentMethod>;
+	let invoices!: ReturnType<typeof useInvoices>;
+	renderWithProvider(() => {
+		wallet = useWallet();
+		tx = useWalletTransactions();
+		checkout = useWalletCheckout();
+		cancel = useCancelSubscription();
+		reactivate = useReactivateSubscription();
+		card = usePaymentMethod();
+		invoices = useInvoices();
+	});
+
+	// Reads start loading with an empty value + a refresh.
+	assert.equal(wallet.wallet, null);
+	assert.equal(wallet.isLoading, true);
+	assert.equal(typeof wallet.refresh, 'function');
+
+	assert.deepEqual(tx.transactions, []);
+	assert.equal(tx.nextCursor, null);
+	assert.equal(tx.hasMore, false);
+	assert.equal(typeof tx.loadMore, 'function');
+
+	assert.deepEqual(card.paymentMethod, null);
+	assert.equal(typeof card.refresh, 'function');
+
+	assert.deepEqual(invoices.invoices, []);
+	assert.equal(typeof invoices.refresh, 'function');
+
+	// Mutations expose their action + start idle.
+	assert.equal(typeof checkout.checkout, 'function');
+	assert.equal(checkout.isLoading, false);
+	assert.equal(typeof cancel.cancel, 'function');
+	assert.equal(cancel.isLoading, false);
+	assert.equal(typeof reactivate.reactivate, 'function');
+	assert.equal(reactivate.isLoading, false);
 });
