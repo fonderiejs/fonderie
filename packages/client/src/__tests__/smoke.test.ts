@@ -144,6 +144,26 @@ test('constructor workspaceId scopes the modules without an explicit setWorkspac
 	}
 });
 
+test('billing.getWallet + setWalletPreferences hit the wallet routes with workspace scope', async () => {
+	handler = () => ({
+		status: 200,
+		body: { reason: 'OK', explanation: '', result: { wallet: { balance: '0', currency: 'USD', precision: 2, spendPurchased: false } } },
+	});
+	const c = new FonderieClient({ baseUrl: 'http://x', workspaceId: 'ws-1' });
+	c.setAccessToken('t');
+
+	const read = await c.billing.getWallet();
+	assert.equal(read.result.wallet.spendPurchased, false);
+	await c.billing.setWalletPreferences({ spendPurchased: false });
+
+	const get = calls.find((x) => x.path.endsWith('/billing/wallet') && x.method === 'GET');
+	const set = calls.find((x) => x.path.endsWith('/billing/wallet/preferences') && x.method === 'POST');
+	assert.ok(get, 'GET /billing/wallet was called');
+	assert.ok(set, 'POST /billing/wallet/preferences was called');
+	assert.equal(set!.workspace, 'ws-1');
+	assert.equal(set!.auth, 'Bearer t');
+});
+
 // ── sign-out cache clearing ──────────────────────────────────────────────────
 test('auth.setAccessToken(undefined) drops the shared response cache', async () => {
 	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: { jobs: [] } } });

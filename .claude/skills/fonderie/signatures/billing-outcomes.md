@@ -172,6 +172,7 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 | GET | `/billing/wallet` | `requireAuth → wallet.get` |
 | POST | `/billing/wallet/checkout` | `requireAuth → validate(walletCheckoutSchema) → wallet.checkout` |
 | POST | `/billing/wallet/grant` | `requireAdminToken(config.wallet.adminToken) → validate(grantWalletSchema) → wallet.grant` |
+| POST | `/billing/wallet/preferences` | `requireAuth → validate(walletPreferencesSchema) → wallet.setPreferences` |
 | GET | `/billing/wallet/transactions` | `requireAuth → wallet.transactions` |
 | POST | `/billing/webhook` | `webhook.handle` |
 | POST | `/billing/webhook/payment` | `paymentWebhook.handle` |

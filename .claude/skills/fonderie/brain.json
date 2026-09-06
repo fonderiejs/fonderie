@@ -333,7 +333,7 @@
         "fonderie_wallet_grants",
         "fonderie_wallet_ledger"
       ],
-      "routeCount": 18,
+      "routeCount": 19,
       "routes": [
         {
           "method": "POST",
@@ -384,6 +384,11 @@
           "method": "POST",
           "path": "/billing/wallet/grant",
           "mw": "requireAdminToken(config.wallet.adminToken) → validate(grantWalletSchema) → wallet.grant"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/wallet/preferences",
+          "mw": "requireAuth → validate(walletPreferencesSchema) → wallet.setPreferences"
         },
         {
           "method": "GET",
@@ -1035,7 +1040,8 @@
         "usePlan",
         "usePlans",
         "useSubscription",
-        "useUsage"
+        "useUsage",
+        "useWalletPreferences"
       ],
       "subpaths": [],
       "tables": [],
@@ -1544,7 +1550,8 @@
         "usePlan",
         "usePlans",
         "useSubscription",
-        "useUsage"
+        "useUsage",
+        "useWalletPreferences"
       ],
       "subpaths": [],
       "tables": [],
@@ -3792,6 +3799,10 @@
       "vue-billing"
     ],
     "useusage": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "usewalletpreferences": [
       "react-billing",
       "vue-billing"
     ],

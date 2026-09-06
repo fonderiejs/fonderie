@@ -10,6 +10,7 @@ import {
 	getWalletBalance,
 	getWalletLedger,
 	reverseWallet,
+	setSpendPurchased,
 	sumReversedCreditsByProviderTxId,
 } from '../services/wallet';
 import type {
@@ -50,6 +51,10 @@ export class WalletModel {
 
 	balance(sub: Parameters<typeof getWalletBalance>[0]): Promise<IWalletBalance> {
 		return getWalletBalance(sub, this.store);
+	}
+
+	setSpendPurchased(opts: Parameters<typeof setSpendPurchased>[0]): Promise<void> {
+		return setSpendPurchased(opts, this.store);
 	}
 
 	ledger(opts: Parameters<typeof getWalletLedger>[0]): Promise<IWalletLedgerPage> {

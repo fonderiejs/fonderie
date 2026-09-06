@@ -535,6 +535,27 @@ export async function getWalletBalance(
 	};
 }
 
+// Set the per-subscriber spend-purchased toggle for one (subscriber, currency)
+// bucket. UPSERT, not UPDATE: a subscriber who has never been credited has no
+// balance row, so a bare UPDATE would silently persist nothing — the created row
+// starts at amount 0. Naturally idempotent (a boolean, no ledger row); still
+// bumps version/updated_at like every balance write. Targets the SAME bucket the
+// spend paths read (getWalletBalance / lockAllowance).
+export async function setSpendPurchased(
+	opts: IWalletSubscriber & { spendPurchased: boolean },
+	store: IStoreAdapter,
+): Promise<void> {
+	await store.query(
+		`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount, spend_purchased)
+		VALUES ($1, $2, $3, 0, $4)
+		ON CONFLICT (subscriber_type, subscriber_id, currency) DO UPDATE SET
+			spend_purchased = EXCLUDED.spend_purchased,
+			version         = fonderie_wallet_balances.version + 1,
+			updated_at      = now()`,
+		[opts.subscriberType, opts.subscriberId, opts.currency, opts.spendPurchased],
+	);
+}
+
 export interface IWalletLedgerPage {
 	entries: IWalletLedgerEntry[];
 	// Opaque cursor for the next (older) page, or null when exhausted.

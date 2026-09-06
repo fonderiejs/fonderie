@@ -18,6 +18,8 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IUsageResult>>
+  .getWallet(opts?: IReadOptions | undefined): Promise<IApiResponse<IWalletResult>>
+  .setWalletPreferences(input: IWalletPreferencesInput): Promise<IApiResponse<IWalletResult>>
 
 interface ICheckoutInput {
     plan: string;
@@ -148,6 +150,16 @@ interface IUseUsageReturn {
     recordUsage: (input: IRecordUsageInput) => Promise<void>;
 }
 
+interface IUseWalletPreferencesReturn {
+    spendPurchased: boolean | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    setSpendPurchased: (spendPurchased: boolean) => Promise<void>;
+}
+
 function useBillingPortal(client?: BillingClient | undefined): IUseBillingPortalReturn
 
 function useCheckout(client?: BillingClient | undefined): IUseCheckoutReturn
@@ -159,4 +171,6 @@ function usePlans(client?: BillingClient | undefined): IUsePlansReturn
 function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
 
 function useUsage(metric: string): IUseUsageReturn
+
+function useWalletPreferences(client?: BillingClient | undefined): IUseWalletPreferencesReturn
 ```

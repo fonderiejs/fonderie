@@ -10,3 +10,5 @@ export type { IUseSubscriptionReturn } from './useSubscription';
 export { useSubscription } from './useSubscription';
 export type { IUseUsageReturn } from './useUsage';
 export { useUsage } from './useUsage';
+export type { IUseWalletPreferencesReturn } from './useWalletPreferences';
+export { useWalletPreferences } from './useWalletPreferences';

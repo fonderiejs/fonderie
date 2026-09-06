@@ -99,6 +99,7 @@ export {
 	getWalletLedger,
 	ensurePeriodicGrant,
 	settleAllowance,
+	setSpendPurchased,
 	currentGrantPeriod,
 	startOfNextPeriod,
 	resolvePlanWallet,

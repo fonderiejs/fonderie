@@ -170,6 +170,10 @@ interface IRecordUsageInput {
 
 type IUpdatePlanInput = Partial<ICreatePlanInput>;
 
+interface IWalletPreferencesInput {
+    spendPurchased: boolean;
+}
+
 new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -183,6 +187,8 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .createPortalSession(): Promise<IApiResponse<IPortalUrlResult>>
   .recordUsage(input: IRecordUsageInput): Promise<IApiResponse<undefined>>
   .getUsage(metric: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IUsageResult>>
+  .getWallet(opts?: IReadOptions | undefined): Promise<IApiResponse<IWalletResult>>
+  .setWalletPreferences(input: IWalletPreferencesInput): Promise<IApiResponse<IWalletResult>>
 
 interface IConfigAdminClientOptions {
     baseUrl: string;
@@ -946,6 +952,20 @@ interface IUserPreferences {
 interface IVerifyEmailResult {
     verified: boolean;
     email: string;
+}
+
+interface IWalletDTO {
+    balance: string;
+    currency: string;
+    precision: number;
+    granted?: string;
+    purchased?: string;
+    spendPurchased?: boolean;
+    grantedExpiresAt?: string | null;
+}
+
+interface IWalletResult {
+    wallet: IWalletDTO;
 }
 
 interface IWebhookDeliveryDTO {

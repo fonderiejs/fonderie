@@ -9,6 +9,7 @@ import {
 	findPurchaseByProviderTxId,
 	getWalletBalance,
 	reverseWallet,
+	setSpendPurchased,
 	settleAllowance,
 	startOfNextPeriod,
 	sumReversedCreditsByProviderTxId,
@@ -487,6 +488,52 @@ test(
 			assert.equal(bal.granted, 0n);
 			assert.equal(bal.purchased, 500n, 'legacy balance classifies wholly as purchased');
 			assert.equal(bal.balance, 500n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: setSpendPurchased upserts a preference for a subscriber with no balance row',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			// No credit ever → no balance row. The setter must UPSERT, not no-op.
+			await setSpendPurchased({ ...SUB, spendPurchased: false }, store);
+			const bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.spendPurchased, false, 'preference persisted on a freshly-created row');
+			assert.equal(bal.balance, 0n, 'the created row starts at zero');
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: setSpendPurchased toggles the debit hard-stop end to end',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+			await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5b-buy' }, store);
+
+			// OFF via the service → a debit past the allowance is refused.
+			await setSpendPurchased({ ...SUB, spendPurchased: false }, store);
+			await assert.rejects(
+				() => debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5b-blocked' }, store),
+				InsufficientFundsError,
+			);
+
+			// ON via the service → the overflow reaches purchased.
+			await setSpendPurchased({ ...SUB, spendPurchased: true }, store);
+			await debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5b-ok' }, store);
+			const bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 0n);
+			assert.equal(bal.purchased, 90n, '10 of the 60 came from purchased after the allowance');
+			assert.equal(bal.spendPurchased, true);
 		} finally {
 			await (store as unknown as { end(): Promise<void> }).end();
 		}

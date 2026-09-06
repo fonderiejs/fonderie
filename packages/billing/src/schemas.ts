@@ -60,6 +60,12 @@ export const walletCheckoutSchema = z.object({
 	packId: z.string().trim().min(1, 'packId is required').max(100),
 });
 
+// Per-subscriber wallet preferences. spendPurchased=false makes a debit stop at
+// the free allowance (402) rather than drawing down purchased credits.
+export const walletPreferencesSchema = z.object({
+	spendPurchased: z.boolean(),
+});
+
 export const grantWalletSchema = z.object({
 	subscriberType: z.enum(['user', 'workspace']),
 	subscriberId: z.string().uuid('subscriberId must be a UUID'),

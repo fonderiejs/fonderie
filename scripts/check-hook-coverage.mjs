@@ -88,7 +88,6 @@ const ROUTE_ALLOW = new Map([
 	['POST /billing/wallet/grant', 'admin-token-guarded ops surface (support grants) — not a user-client call'],
 	// Wallet client methods + hooks ship in the wallet frontend cycle (audit
 	// phase 5); the server surface landed first by scoped decision.
-	['GET /billing/wallet', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
 	['GET /billing/wallet/transactions', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
 	['POST /billing/wallet/checkout', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
 	['GET /auth/google', 'browser-redirect OAuth leg — navigated to, never fetched'],

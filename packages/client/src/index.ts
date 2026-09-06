@@ -19,6 +19,7 @@ export type {
 	ICreatePlanInput,
 	IRecordUsageInput,
 	IUpdatePlanInput,
+	IWalletPreferencesInput,
 } from './modules/billing';
 export { BillingClient } from './modules/billing';
 export type {
@@ -137,6 +138,8 @@ export type {
 	IUserDTO,
 	IUserPreferences,
 	IVerifyEmailResult,
+	IWalletDTO,
+	IWalletResult,
 	IWebhookDeliveryDTO,
 	IWebhookDeliveryListResult,
 	IWebhookEndpointCreatedDTO,

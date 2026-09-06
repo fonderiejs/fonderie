@@ -18,6 +18,7 @@ export type {
 	IUsePlansReturn,
 	IUseSubscriptionReturn,
 	IUseUsageReturn,
+	IUseWalletPreferencesReturn,
 } from './composables';
 export {
 	useBillingPortal,
@@ -26,4 +27,5 @@ export {
 	usePlans,
 	useSubscription,
 	useUsage,
+	useWalletPreferences,
 } from './composables';

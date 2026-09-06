@@ -17,6 +17,7 @@ export type {
 	IUsePlansReturn,
 	IUseSubscriptionReturn,
 	IUseUsageReturn,
+	IUseWalletPreferencesReturn,
 } from './hooks';
 export {
 	useBillingPortal,
@@ -25,4 +26,5 @@ export {
 	usePlans,
 	useSubscription,
 	useUsage,
+	useWalletPreferences,
 } from './hooks';
