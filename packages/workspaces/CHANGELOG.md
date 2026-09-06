@@ -1,5 +1,12 @@
 # @fonderie/workspaces
 
+## 5.2.3
+
+### Patch Changes
+
+- Updated dependencies [ca7777f]
+  - @fonderie/core@0.8.0
+
 ## 5.2.2
 
 ### Patch Changes
