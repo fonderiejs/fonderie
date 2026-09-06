@@ -1,5 +1,12 @@
 # @fonderie/billing
 
+## 7.2.2
+
+### Patch Changes
+
+- Updated dependencies [ca7777f]
+  - @fonderie/core@0.8.0
+
 ## 7.2.1
 
 ### Patch Changes
