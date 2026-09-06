@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/audit",
-	"version": "5.0.2",
+	"version": "5.1.0",
 	"description": "Workspace-scoped audit log — query fonderie_events for a human-readable activity trail.",
 	"keywords": [
 		"fonderiejs",
@@ -34,7 +34,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.6.0",
+		"@fonderie/core": "^0.7.0",
 		"@fonderie/store": "^0.2.0"
 	},
 	"devDependencies": {

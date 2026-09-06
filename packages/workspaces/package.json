@@ -1,6 +1,6 @@
 {
   "name": "@fonderie/workspaces",
-  "version": "5.2.1",
+  "version": "5.2.2",
   "description": "Multi-tenant team layer — create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
   "keywords": [
     "fonderiejs",
@@ -52,7 +52,7 @@
     "check": "biome check --write src"
   },
   "peerDependencies": {
-    "@fonderie/core": "^0.6.0",
+    "@fonderie/core": "^0.7.0",
     "@fonderie/events": "^5.0.0",
     "@fonderie/store": "^0.2.0"
   },
