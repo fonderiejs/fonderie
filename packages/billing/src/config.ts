@@ -54,6 +54,14 @@ export interface IBillingPlanWallet {
 	grantAmount?: bigint;
 	/** Grant cadence for grantAmount. Default 'month'. */
 	grantPeriod?: 'month' | 'week' | 'day';
+	/**
+	 * What happens to UNSPENT granted (allowance) credits at period end:
+	 * - 'none' (default) — use-it-or-lose-it; the allowance resets each period.
+	 * - 'full' — carry the entire remainder forward (unbounded accumulation).
+	 * - { cap } — carry up to `cap`, expire the rest.
+	 * Only ever affects granted credits; PURCHASED credits always carry over.
+	 */
+	grantRollover?: 'none' | 'full' | { cap: bigint };
 	/** How far below zero rate debits may take the balance. Default 0n (block at zero). */
 	overdraftLimit?: bigint;
 	/** Per-metric unit costs, e.g. { 'sms:send': { cost: 75n, unit: 'msg' } }. */

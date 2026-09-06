@@ -50,14 +50,19 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 			}
 
 			const currency = currencyOf(ctx);
-			const { balance } = await wallet.balance({
+			const snapshot = await wallet.balance({
 				subscriberType: subscriber.type,
 				subscriberId: subscriber.id,
 				currency,
 			});
 
 			return setApiResponse(HTTP.OK, 'WALLET_FETCHED', 'Wallet retrieved successfully.', {
-				wallet: toWalletDTO(balance, currency, precisionOf(ctx)),
+				wallet: toWalletDTO(snapshot.balance, currency, precisionOf(ctx), {
+					granted: snapshot.granted,
+					purchased: snapshot.purchased,
+					spendPurchased: snapshot.spendPurchased,
+					grantedExpiresAt: snapshot.grantedExpiresAt,
+				}),
 			});
 		},
 

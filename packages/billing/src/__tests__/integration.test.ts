@@ -9,6 +9,8 @@ import {
 	findPurchaseByProviderTxId,
 	getWalletBalance,
 	reverseWallet,
+	settleAllowance,
+	startOfNextPeriod,
 	sumReversedCreditsByProviderTxId,
 } from '../services/wallet';
 import {
@@ -287,6 +289,204 @@ test(
 			assert.equal(results.filter((r) => r.granted).length, 1);
 			const { balance } = await getWalletBalance(SUB, store);
 			assert.equal(balance, 500n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+// ── Phase 5a: allowance (granted) vs purchased buckets ────────────────────────
+
+const OCT = startOfNextPeriod('month', new Date(Date.UTC(2026, 8, 15))); // 2026-10-01
+const NOV = startOfNextPeriod('month', new Date(Date.UTC(2026, 9, 15))); // 2026-11-01
+
+test(
+	'PostgreSQL: allowance-first debit — free credits spend before purchased',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+			await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
+			let bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.balance, 150n);
+			assert.equal(bal.granted, 50n);
+			assert.equal(bal.purchased, 100n);
+
+			await debitWallet({ ...SUB, amount: 30n, idempotencyKey: 'p5-d1' }, store);
+			bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 20n, 'debit drew from the allowance first');
+			assert.equal(bal.purchased, 100n, 'purchased untouched while allowance remains');
+
+			await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-d2' }, store);
+			bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 0n, 'allowance exhausted');
+			assert.equal(bal.purchased, 80n, 'the overflow spilled onto purchased');
+
+			const [row] = await store.query<{ metadata: Record<string, string> }>(
+				`SELECT metadata FROM fonderie_wallet_ledger WHERE idempotency_key = 'p5-d2'`,
+			);
+			assert.equal(row?.metadata?.['fromGranted'], '20');
+			assert.equal(row?.metadata?.['fromPurchased'], '20');
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: expiry (none) burns the unspent allowance and leaves purchased intact',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+			await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
+			await debitWallet({ ...SUB, amount: 12n, idempotencyKey: 'p5-d1' }, store); // granted 38
+
+			const res = await settleAllowance({ ...SUB, period: '2026-10', rollover: 'none', expiresAt: NOV }, store);
+			assert.equal(res.settled, true);
+			const bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 0n, 'use-it-or-lose-it: allowance expired');
+			assert.equal(bal.purchased, 100n, 'purchased survives the period boundary');
+			assert.equal(bal.balance, 100n);
+
+			const [exp] = await store.query<{ amount: string }>(
+				`SELECT amount FROM fonderie_wallet_ledger WHERE subscriber_id = $1 AND type = 'expiry'`,
+				[SUB.subscriberId],
+			);
+			assert.equal(exp?.amount, '-38');
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: expiry (full and cap) rollover policies',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			// full: entire remainder carries forward, no expiry row.
+			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+			await debitWallet({ ...SUB, amount: 12n, idempotencyKey: 'p5-d1' }, store); // granted 38
+			await settleAllowance({ ...SUB, period: '2026-10', rollover: 'full', expiresAt: NOV }, store);
+			let bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 38n, 'full rollover keeps the whole remainder');
+			assert.equal(bal.balance, 38n);
+
+			// cap: carry up to the cap, expire the rest.
+			await settleAllowance({ ...SUB, period: '2026-11', rollover: { cap: 20n }, expiresAt: NOV }, store);
+			bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 20n, 'cap rollover keeps min(remainder, cap)');
+			assert.equal(bal.balance, 20n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: spend_purchased=false hard-stops at the allowance even with purchased credits',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+			await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
+			await store.query(
+				`UPDATE fonderie_wallet_balances SET spend_purchased = false WHERE subscriber_id = $1`,
+				[SUB.subscriberId],
+			);
+
+			await assert.rejects(
+				() => debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5-blocked' }, store),
+				InsufficientFundsError,
+				'a 60 debit is refused: only the 50 allowance is spendable, not the 100 purchased',
+			);
+
+			await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-ok' }, store);
+			let bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 10n);
+			assert.equal(bal.purchased, 100n, 'purchased never touched while the toggle is off');
+
+			// Re-enable and the overflow reaches purchased.
+			await store.query(
+				`UPDATE fonderie_wallet_balances SET spend_purchased = true WHERE subscriber_id = $1`,
+				[SUB.subscriberId],
+			);
+			await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-on' }, store);
+			bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 0n);
+			assert.equal(bal.purchased, 70n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: a refund claws back purchased ONLY — the allowance is untouched',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+			await creditWallet(
+				{ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy', providerTxId: 'pi_x' },
+				store,
+			);
+			await reverseWallet(
+				{ ...SUB, amount: 100n, capToProviderTxId: 100n, providerTxId: 'pi_x', idempotencyKey: 'p5-refund' },
+				store,
+			);
+			const bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 50n, 'the granted allowance is structurally untouched by a refund');
+			assert.equal(bal.purchased, 0n, 'the refund consumed only the purchased credits');
+			assert.equal(bal.balance, 50n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: overdraft eats purchased, never drives the allowance negative',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			await ensurePeriodicGrant({ ...SUB, amount: 30n, period: '2026-09', expiresAt: OCT }, store);
+			await debitWallet({ ...SUB, amount: 60n, overdraftLimit: 50n, idempotencyKey: 'p5-od' }, store);
+			const bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 0n, 'granted floored at 0, never negative');
+			assert.equal(bal.balance, -30n, 'overdraft drove the total (purchased) negative');
+			assert.equal(bal.purchased, -30n);
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: a legacy single-balance row is all purchased and never expires',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			// Simulate a pre-Phase-5 balance: amount only, granted columns at defaults.
+			await store.query(
+				`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount)
+				VALUES ($1, $2, $3, 500)`,
+				[SUB.subscriberType, SUB.subscriberId, SUB.currency],
+			);
+			const res = await settleAllowance({ ...SUB, period: '2026-10', rollover: 'none', expiresAt: NOV }, store);
+			assert.equal(res.settled, false, 'never-granted balance has nothing to expire');
+			const bal = await getWalletBalance(SUB, store);
+			assert.equal(bal.granted, 0n);
+			assert.equal(bal.purchased, 500n, 'legacy balance classifies wholly as purchased');
+			assert.equal(bal.balance, 500n);
 		} finally {
 			await (store as unknown as { end(): Promise<void> }).end();
 		}

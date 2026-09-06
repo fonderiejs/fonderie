@@ -90,6 +90,15 @@ export interface IWalletDTO {
 	balance: string; // smallest currency unit, e.g. '1999' = $19.99 at precision 2
 	currency: string;
 	precision: number;
+	// Phase 5a bucket split (present when the balance read supplies it): `granted`
+	// is the non-stackable subscription allowance, `purchased` the stacking cash
+	// balance (balance = granted + purchased). `spendPurchased` is the per-subscriber
+	// toggle; when false, spend stops at the allowance. `grantedExpiresAt` is when
+	// the current allowance lapses (ISO), or null.
+	granted?: string;
+	purchased?: string;
+	spendPurchased?: boolean;
+	grantedExpiresAt?: string | null;
 }
 
 export interface IWalletTransactionDTO {
@@ -104,8 +113,25 @@ export interface IWalletTransactionDTO {
 	createdAt: string;
 }
 
-export function toWalletDTO(balance: bigint, currency: string, precision: number): IWalletDTO {
-	return { balance: balance.toString(), currency, precision };
+export function toWalletDTO(
+	balance: bigint,
+	currency: string,
+	precision: number,
+	buckets?: {
+		granted?: bigint | undefined;
+		purchased?: bigint | undefined;
+		spendPurchased?: boolean | undefined;
+		grantedExpiresAt?: string | null | undefined;
+	},
+): IWalletDTO {
+	const dto: IWalletDTO = { balance: balance.toString(), currency, precision };
+	if (buckets) {
+		if (buckets.granted !== undefined) dto.granted = buckets.granted.toString();
+		if (buckets.purchased !== undefined) dto.purchased = buckets.purchased.toString();
+		if (buckets.spendPurchased !== undefined) dto.spendPurchased = buckets.spendPurchased;
+		if (buckets.grantedExpiresAt !== undefined) dto.grantedExpiresAt = buckets.grantedExpiresAt;
+	}
+	return dto;
 }
 
 export function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransactionDTO {

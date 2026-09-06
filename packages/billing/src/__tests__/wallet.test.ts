@@ -603,6 +603,33 @@ test('currentGrantPeriod: month, day, and ISO week formats', async () => {
 	assert.equal(currentGrantPeriod('week', new Date('2024-12-30T00:00:00Z')), '2025-W01');
 });
 
+test('startOfNextPeriod: the instant the current period ends (UTC)', async () => {
+	const { startOfNextPeriod } = await import('../services/wallet');
+	assert.equal(startOfNextPeriod('month', new Date('2026-09-15T12:00:00Z')).toISOString(), '2026-10-01T00:00:00.000Z');
+	assert.equal(startOfNextPeriod('month', new Date('2026-12-20T00:00:00Z')).toISOString(), '2027-01-01T00:00:00.000Z');
+	assert.equal(startOfNextPeriod('day', new Date('2026-09-15T23:59:00Z')).toISOString(), '2026-09-16T00:00:00.000Z');
+	// Week rolls to the coming Monday: 2026-09-15 is a Tuesday → next Monday 09-21.
+	assert.equal(startOfNextPeriod('week', new Date('2026-09-15T00:00:00Z')).toISOString(), '2026-09-21T00:00:00.000Z');
+});
+
+test('toWalletDTO: surfaces the bucket split + toggle when supplied', async () => {
+	const { toWalletDTO } = await import('../dtos/billing');
+	// Legacy 3-arg call stays a plain balance DTO (no bucket fields).
+	assert.deepEqual(toWalletDTO(1500n, 'USD', 2), { balance: '1500', currency: 'USD', precision: 2 });
+	assert.deepEqual(
+		toWalletDTO(138n, 'USD', 2, { granted: 38n, purchased: 100n, spendPurchased: false, grantedExpiresAt: '2026-10-01T00:00:00.000Z' }),
+		{
+			balance: '138',
+			currency: 'USD',
+			precision: 2,
+			granted: '38',
+			purchased: '100',
+			spendPurchased: false,
+			grantedExpiresAt: '2026-10-01T00:00:00.000Z',
+		},
+	);
+});
+
 // ── balance + ledger reads ────────────────────────────────────────
 
 test('getWalletBalance: zero for an unknown subscriber', async () => {
@@ -755,7 +782,15 @@ test('walletController.get: returns balance as a string with currency and precis
 	const res = await ctrl.get(makeCtx());
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
-	assert.deepEqual(body.result.wallet, { balance: '1999', currency: 'USD', precision: 2 });
+	assert.deepEqual(body.result.wallet, {
+		balance: '1999',
+		currency: 'USD',
+		precision: 2,
+		granted: '0',
+		purchased: '1999',
+		spendPurchased: true,
+		grantedExpiresAt: null,
+	});
 });
 
 test('walletController.get: 400 without a subscriber', async () => {
@@ -1451,7 +1486,15 @@ test('wallet reads follow the plan wallet currency and precision, not just the g
 
 	const res = await walletController(store, config).get(ctx);
 	const body = (await res.json()) as any;
-	assert.deepEqual(body.result.wallet, { balance: '1000', currency: 'EUR', precision: 0 });
+	assert.deepEqual(body.result.wallet, {
+		balance: '1000',
+		currency: 'EUR',
+		precision: 0,
+		granted: '0',
+		purchased: '1000',
+		spendPurchased: true,
+		grantedExpiresAt: null,
+	});
 
 	const txRes = await walletController(store, config).transactions(ctx);
 	const txBody = (await txRes.json()) as any;
@@ -2231,6 +2274,45 @@ test('collectBillingReadinessProblems: flags a missing bus or resolver when paym
 	assert.equal(collectBillingReadinessProblems(paidPlan, false).length, 1);
 	const problem = collectBillingReadinessProblems(walletOnly, false)[0]!;
 	assert.equal(problem.module, '@fonderie/billing');
+});
+
+test('collectBillingReadinessProblems: flags a wallet allowance configured with no config.wallet', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	// A free plan with a grant but no wallet subsystem → grants are inert. No
+	// paid plan + no config.wallet ⇒ payments off, so this is the only problem.
+	const orphan = {
+		provider: {},
+		plans: [{ name: 'free', wallet: { grantAmount: 50n } }],
+		successUrl: 'x',
+		cancelUrl: 'y',
+	} as IBillingConfig;
+	const probs = collectBillingReadinessProblems(orphan, true);
+	assert.equal(probs.length, 1);
+	assert.equal(probs[0]!.severity, 'warning');
+	assert.match(probs[0]!.message, /config\.wallet is not set/);
+});
+
+test('collectBillingReadinessProblems: a negative rollover cap errors in production', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	const negCap = {
+		provider: {},
+		successUrl: 'x',
+		cancelUrl: 'y',
+		resolveRecipient: () => ({ email: 'a@b.com' }),
+		wallet: { currency: 'USD' },
+		plans: [{ name: 'pro', monthly: { priceId: 'p' }, wallet: { grantAmount: 50n, grantRollover: { cap: -5n } } }],
+	} as unknown as IBillingConfig;
+	const prev = process.env['NODE_ENV'];
+	try {
+		process.env['NODE_ENV'] = 'production';
+		const probs = collectBillingReadinessProblems(negCap, true); // bus + resolver ⇒ receipt path wired
+		assert.equal(probs.length, 1, 'only the negative-cap problem, receipt path is wired');
+		assert.equal(probs[0]!.severity, 'error');
+		assert.match(probs[0]!.message, /negative grantRollover cap/);
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
+	}
 });
 
 test('collectBillingReadinessProblems: error in production, warning elsewhere', async () => {

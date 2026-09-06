@@ -114,6 +114,9 @@ interface IBillingPlanWallet {
     precision?: number;
     grantAmount?: bigint;
     grantPeriod?: 'month' | 'week' | 'day';
+    grantRollover?: 'none' | 'full' | {
+        cap: bigint;
+    };
     overdraftLimit?: bigint;
     rates?: Record<string, IWalletRate>;
     lowBalanceAt?: bigint;
@@ -184,7 +187,7 @@ const BILLING_INTERVALS: readonly ["month", "year"]
 
 function isBillingInterval(value: unknown): value is "month" | "year"
 
-const WALLET_LEDGER_TYPES: readonly ["purchase", "grant", "usage", "refund", "adjustment"]
+const WALLET_LEDGER_TYPES: readonly ["purchase", "grant", "usage", "refund", "adjustment", "expiry"]
 
 type BillingInterval = (typeof BILLING_INTERVALS)[number];
 
@@ -372,6 +375,10 @@ interface IWalletBalance {
     balance: bigint;
     version: number;
     updatedAt: string | null;
+    granted?: bigint;
+    purchased?: bigint;
+    spendPurchased?: boolean;
+    grantedExpiresAt?: string | null;
 }
 
 interface IWalletContext {
@@ -380,6 +387,13 @@ interface IWalletContext {
     precision: number;
     overdraftLimit: bigint;
     rates: Record<string, IWalletRate>;
+    allowance?: {
+        period: string;
+        rollover: 'none' | 'full' | {
+            cap: bigint;
+        };
+        expiresAt: Date;
+    };
 }
 
 interface IWalletLedgerEntry {
@@ -474,6 +488,10 @@ interface IWalletDTO {
     balance: string;
     currency: string;
     precision: number;
+    granted?: string;
+    purchased?: string;
+    spendPurchased?: boolean;
+    grantedExpiresAt?: string | null;
 }
 
 interface IWalletTransactionDTO {
@@ -492,13 +510,13 @@ function toPlanDTO(plan: IPlan): IPlanDTO
 
 function toSubscriptionDTO(sub: ISubscription): ISubscriptionDTO
 
-function toWalletDTO(balance: bigint, currency: string, precision: number): IWalletDTO
+function toWalletDTO(balance: bigint, currency: string, precision: number, buckets?: { granted?: bigint | undefined; purchased?: bigint | undefined; spendPurchased?: boolean | undefined; grantedExpiresAt?: string | ... 1 more ... | undefined; } | undefined): IWalletDTO
 
 function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransactionDTO
 
-function creditWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; type?: "purchase" | "grant" | "usage" | "refund" | "adjustment"; description?: string; metadata?: Record<...>; providerTxId?: string; }, store: IStoreAdapter): Promise<...>
+function creditWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; type?: "purchase" | "grant" | "usage" | "refund" | "adjustment" | "expiry"; description?: string; metadata?: Record<...>; providerTxId?: string; }, store: IStoreAdapter): Promise<...>
 
-function debitWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; type?: "purchase" | "grant" | "usage" | "refund" | "adjustment"; overdraftLimit?: bigint; description?: string; metadata?: Record<...>; }, store: IStoreAdapter): Promise<...>
+function debitWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; type?: "purchase" | "grant" | "usage" | "refund" | "adjustment" | "expiry"; overdraftLimit?: bigint; description?: string; metadata?: Record<...>; allowance?: { ...; }; }, store: IStoreAdapter): Promise<...>
 
 function reverseWallet(opts: IWalletSubscriber & { amount: bigint; idempotencyKey: string; providerTxId?: string; capToProviderTxId?: bigint; description?: string; metadata?: Record<string, unknown>; }, store: IStoreAdapter): Promise<...>
 
@@ -512,9 +530,13 @@ function getWalletBalance(sub: IWalletSubscriber, store: IStoreAdapter): Promise
 
 function getWalletLedger(opts: IWalletSubscriber & { limit?: number; cursor?: { createdAt: string; id: string; }; }, store: IStoreAdapter): Promise<IWalletLedgerPage>
 
-function ensurePeriodicGrant(opts: IWalletSubscriber & { amount: bigint; period: string; description?: string; }, store: IStoreAdapter): Promise<IGrantResult>
+function ensurePeriodicGrant(opts: IWalletSubscriber & { amount: bigint; period: string; expiresAt?: Date; description?: string; }, store: IStoreAdapter): Promise<IGrantResult>
+
+function settleAllowance(opts: IWalletSubscriber & { period: string; rollover: "none" | "full" | { cap: bigint; }; expiresAt: Date; }, store: IStoreAdapter): Promise<{ ...; }>
 
 function currentGrantPeriod(period: "month" | "week" | "day", now?: Date): string
+
+function startOfNextPeriod(period: "month" | "week" | "day", now?: Date): Date
 
 function resolvePlanWallet(plan: IBillingPlan, config: IBillingConfig): IResolvedPlanWallet | null
 
@@ -564,6 +586,9 @@ interface IResolvedPlanWallet {
     rates: Record<string, IWalletRate>;
     lowBalanceAt: bigint | null;
     autoRecharge: IBillingWalletAutoRecharge | null;
+    grantRollover: 'none' | 'full' | {
+        cap: bigint;
+    };
 }
 
 new InsufficientFundsError(available: bigint, required: bigint, currency: string): InsufficientFundsError
