@@ -1,6 +1,9 @@
 export { WorkspacesModule } from './module';
 export type { IWorkspacesConfig, WorkspacesMessageKey, WorkspacesEventKey } from './config';
 export { MESSAGE_KEYS, EVENT_KEYS } from './config';
+// Built-in default templates for workspaces' notifications. Pass to courier via
+// config.templates.defaults; override per-app with a DB row / FS file.
+export { DEFAULT_TEMPLATES } from './templates';
 export type {
 	WorkspaceType,
 	InvitationStatus,

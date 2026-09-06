@@ -1827,7 +1827,8 @@
       "exports": [
         "WorkspacesModule",
         "MESSAGE_KEYS",
-        "EVENT_KEYS"
+        "EVENT_KEYS",
+        "DEFAULT_TEMPLATES"
       ],
       "subpaths": [
         "@fonderie/workspaces/types",
@@ -3503,7 +3504,8 @@
       "workspaces"
     ],
     "default_templates": [
-      "auth"
+      "auth",
+      "workspaces"
     ],
     "billingmodule": [
       "billing"
