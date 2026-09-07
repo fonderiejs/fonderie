@@ -866,3 +866,70 @@ test(
 		}
 	},
 );
+
+test(
+	'PostgreSQL: invoice.paid heals an orphaned pack purchase exactly once (dedupes with the sync credit)',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			const { webhookController } = await import('../controllers/webhook.controller');
+			const { applyPackCredit } = await import('../services/purchase');
+			const PI = 'pi_invpaid_fixed';
+			const invoiceEvent = {
+				type: 'invoice.paid',
+				subscription: null,
+				invoice: {
+					id: 'in_itest',
+					status: 'paid',
+					amount: 499n,
+					currency: 'usd',
+					providerTxId: PI,
+					providerSubscriptionId: null,
+					metadata: {
+						reason: 'purchase',
+						subscriberType: SUB.subscriberType,
+						subscriberId: SUB.subscriberId,
+						packId: 'small',
+						credits: '500',
+						currency: 'USD',
+					},
+				},
+			};
+			const cfg = {
+				provider: { name: 'stub', async constructEvent() { return invoiceEvent; } },
+				webhookSecret: 'whsec_x',
+				wallet: { currency: 'USD', precision: 2, creditPacks: [] },
+				plans: [],
+			} as any;
+			const ctx = () =>
+				({
+					request: new Request('http://localhost/webhook', {
+						method: 'POST',
+						headers: { 'stripe-signature': 't=1,v1=stub' },
+						body: '{}',
+					}),
+					meta: {},
+				}) as any;
+			const ctrl = webhookController(store, cfg, undefined, undefined);
+
+			// Orphan: the synchronous credit never ran — invoice.paid heals it.
+			await ctrl.handle(ctx());
+			assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'heal credits the orphan');
+			// Redelivery of the same invoice.paid → dedupe (keyed on the PI).
+			await ctrl.handle(ctx());
+			assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'redelivery does not double-credit');
+			// A late synchronous credit for the SAME PaymentIntent → duplicate, no third credit.
+			const r = await applyPackCredit({
+				store, config: cfg, bus: undefined,
+				subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId,
+				creditCurrency: 'USD', precision: 2, credits: 500n, packId: 'small',
+				providerTxId: PI, amountPaid: 499n, paymentCurrency: 'usd',
+			});
+			assert.equal(r.duplicate, true, 'sync credit dedupes against the webhook heal');
+			assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'exactly one credit across webhook + sync');
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
