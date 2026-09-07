@@ -42,11 +42,14 @@ function Account() {
 
 `PricingScreen` lists plans with a monthly/yearly toggle and starts Stripe
 Checkout on choose. `SubscriptionScreen` shows the caller's current plan,
-status, and renewal date, with a button into the Stripe billing portal. Both
-default to redirecting via `window.location.href` — pass `onCheckoutStart`
-/ `onManageBilling` to handle navigation yourself (e.g. inside a client-side
-router). Need just the state management without the markup? Use
-`@fonderie/react-billing`'s hooks directly.
+status, and renewal date, with a button into the Stripe billing portal, plus a
+**payment-method** section: it shows the card on file and removes it, and
+delegates add/update through an optional `onAddPaymentMethod` prop — mounting
+the Stripe Payment Element (publishable key + `<Elements>`) is your app's job,
+so the screen stays provider-agnostic. Both screens default to redirecting via
+`window.location.href` — pass `onCheckoutStart` / `onManageBilling` to handle
+navigation yourself (e.g. inside a client-side router). Need just the state
+management without the markup? Use `@fonderie/react-billing`'s hooks directly.
 
 ## Why this exists
 
