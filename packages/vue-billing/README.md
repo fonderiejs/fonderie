@@ -1,8 +1,10 @@
 # @fonderie/vue-billing
 
 Vue 3 composables for Fonderie billing — `usePlans`, `usePlan`,
-`useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage`, and
-`useRecordUsage`. Thin bindings over
+`useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage`,
+`useRecordUsage`, and in-app card management (`usePaymentMethod`,
+`useSetupPaymentMethod`, `useSavePaymentMethod`, `useRemovePaymentMethod`).
+Thin bindings over
 [`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client):
 reactive `ref`s for loading/error/data state and the request itself, nothing
 else. Bring your own UI.
@@ -65,8 +67,31 @@ construct one `FonderieClient` at the app root and pass it down
 is enough to authenticate billing requests too. Billing by workspace instead
 of by user? Call `client.billing.setWorkspaceId(id)`.
 
-Want pre-built screens instead of wiring your own pricing table?
-See [`@fonderie/vue-billing-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-billing-screens).
+### Manage a card in-app (no redirect)
+
+Let users add a card without leaving the site. `useSetupPaymentMethod`
+resolves to a provider SetupIntent client secret you hand to a Stripe Payment
+Element; after it confirms client-side, `useSavePaymentMethod` records the card
+as the default. `usePaymentMethod` reads the card on file and
+`useRemovePaymentMethod` detaches it.
+
+```ts
+import { useSetupPaymentMethod, useSavePaymentMethod } from '@fonderie/vue-billing';
+
+const { setup } = useSetupPaymentMethod();
+const { save } = useSavePaymentMethod();
+
+const clientSecret = await setup(); // → mount a Stripe Payment Element with it
+// after the element confirms the SetupIntent client-side:
+await save(paymentMethodId); // records it as the default
+```
+
+The Payment Element and the publishable key live in your app (a generic
+package can't own them). Want pre-built screens instead of wiring your own
+pricing table? See
+[`@fonderie/vue-billing-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-billing-screens) —
+its `SubscriptionScreen` shows and removes the card and delegates add/update
+via an `add-payment-method` emit.
 
 ## Why this exists
 

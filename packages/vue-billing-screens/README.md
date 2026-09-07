@@ -34,12 +34,15 @@ const client = new FonderieClient({ baseUrl: 'https://api.example.com/v1' });
 
 `PricingScreen` lists plans with a monthly/yearly toggle and starts Stripe
 Checkout on choose. `SubscriptionScreen` shows the caller's current plan,
-status, and renewal date, with a button into the Stripe billing portal.
-Neither screen navigates on your behalf — both emit the Stripe-hosted URL
-(`checkout-start` / `manage-billing`) and leave navigation to you, so the
-component works the same in SSR and client-only apps. Need just the state
-management without the markup? Use `@fonderie/vue-billing`'s composables
-directly.
+status, and renewal date, with a button into the Stripe billing portal, plus a
+**payment-method** section: it shows the card on file and removes it, and
+delegates add/update through an `add-payment-method` emit — mounting the Stripe
+Payment Element (publishable key + `<Elements>`) is your app's job, so the
+screen stays provider-agnostic. Neither screen navigates on your behalf — both
+emit the Stripe-hosted URL (`checkout-start` / `manage-billing`) and leave
+navigation to you, so the component works the same in SSR and client-only apps.
+Need just the state management without the markup? Use `@fonderie/vue-billing`'s
+composables directly.
 
 ## Why this exists
 

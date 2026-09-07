@@ -1,8 +1,10 @@
 # @fonderie/react-billing
 
 React hooks for Fonderie billing — `usePlans`, `usePlan`, `useSubscription`,
-`useCheckout`, `useBillingPortal`, `useUsage`, and `useRecordUsage`. Thin
-bindings over [`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client):
+`useCheckout`, `useBillingPortal`, `useUsage`, `useRecordUsage`, and in-app
+card management (`usePaymentMethod`, `useSetupPaymentMethod`,
+`useSavePaymentMethod`, `useRemovePaymentMethod`). Thin bindings over
+[`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client):
 loading/error state and the request itself, nothing else. Bring your own UI.
 
 ## Install
@@ -70,8 +72,35 @@ automatically, so signing in via
 is enough to authenticate billing requests too. Billing by workspace instead
 of by user? Call `client.billing.setWorkspaceId(id)`.
 
+### Manage a card in-app (no redirect)
+
+Let users add a card without leaving the site. `useSetupPaymentMethod` returns
+a provider SetupIntent client secret you hand to a Stripe Payment Element;
+after it confirms client-side, `useSavePaymentMethod` records the card as the
+default. `usePaymentMethod` reads the card on file and `useRemovePaymentMethod`
+detaches it.
+
+```tsx
+import { useSetupPaymentMethod, useSavePaymentMethod } from '@fonderie/react-billing';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+
+// 1. start the SetupIntent, mount <Elements> with its clientSecret, then:
+const { save } = useSavePaymentMethod();
+const stripe = useStripe();
+const elements = useElements();
+
+const { setupIntent } = await stripe.confirmSetup({ elements, redirect: 'if_required' });
+await save(setupIntent.payment_method); // records it as the default
+```
+
+The Payment Element and the publishable key live in your app (a generic
+package can't own them). See the fully-wired reference in
+[`examples/leadeasygen`](https://github.com/fonderiejs/sdk/tree/main/examples).
+
 Want pre-built screens instead of wiring your own pricing table?
-See [`@fonderie/react-billing-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/react-billing-screens).
+See [`@fonderie/react-billing-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/react-billing-screens) —
+its `SubscriptionScreen` shows and removes the card and delegates add/update
+via an `onAddPaymentMethod` prop.
 
 ## Why this exists
 
