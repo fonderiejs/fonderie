@@ -622,8 +622,10 @@ export class StripeProvider implements IBillingProvider {
 
 	// In-app card entry: a SetupIntent the client confirms with the Payment
 	// Element. usage:'off_session' so the saved card can back future wallet
-	// auto-recharge / renewals; automatic_payment_methods lets the Element show
-	// whatever the account has enabled.
+	// auto-recharge / renewals. allow_redirects:'never' keeps this in-page — it
+	// restricts the Element to methods that need no off-site redirect, which is
+	// exactly what an off-session-chargeable saved card must be; without it a
+	// redirect-based method would bounce the user off the site on confirm.
 	async createSetupIntent(opts: {
 		customerId: string;
 	}): Promise<{ clientSecret: string; setupIntentId: string }> {
@@ -631,7 +633,7 @@ export class StripeProvider implements IBillingProvider {
 		const si = await stripe.setupIntents.create({
 			customer: opts.customerId,
 			usage: 'off_session',
-			automatic_payment_methods: { enabled: true },
+			automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
 		});
 		return { clientSecret: si.client_secret ?? '', setupIntentId: si.id };
 	}
