@@ -117,6 +117,39 @@ Wire the UI with the framework hooks — `usePaymentMethod`,
 `*-billing-screens` packages, which shows and removes the card and delegates
 add/update to your own Payment Element.
 
+## Buying credits in-app (charge the saved card)
+
+Once a card is on file, a subscriber can buy a credit pack **without leaving the
+site** — no redirect to hosted checkout. `POST /billing/wallet/purchase`
+(`{ packId, idempotencyKey }`) charges the saved card and credits the wallet:
+
+| Outcome (`result.status`) | Meaning | What the client does |
+|---|---|---|
+| `credited` | charged + wallet credited | show success, refresh the balance — no redirect |
+| `checkout_required` | no saved card, or the card needs 3-D Secure | fall back to `POST /billing/wallet/checkout` (hosted) |
+| `declined` | card declined | surface the error / offer another card |
+| `processing` | indeterminate (network/timeout) | retry with the **same** `idempotencyKey` — never a new payment |
+
+`StripeProvider` bills through a real **invoice** (`chargeViaInvoice`: draft →
+line item → finalize → pay off-session), so the buyer gets an invoice — number +
+downloadable PDF + hosted page — alongside the card receipt, and it appears in
+`GET /billing/invoices`. A provider without `chargeViaInvoice` falls back to
+`chargeOffSession` (a bare charge — receipt only). Either way the wallet credit is
+idempotent on the resulting PaymentIntent (a double-submit or retry credits once),
+and an `invoice.paid` webhook heals an indeterminate charge, keyed on the same
+PaymentIntent so it still credits exactly once.
+
+Set `wallet.blockPacksWhileSubscribed: true` to refuse pack purchases for an
+active/trialing subscriber on a paid plan (server-enforced on **both** the hosted
+and in-app paths) — their plan already includes its credits.
+
+Wire the UI with `usePurchasePack` in
+[`@fonderie/react-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/react-billing)
+/ [`@fonderie/vue-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-billing)
+/ `@fonderie/react-native-billing` — it charges the card, retries `processing`
+in place with one key, and resolves to the outcome so you fall back to hosted
+checkout on `checkout_required`.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
