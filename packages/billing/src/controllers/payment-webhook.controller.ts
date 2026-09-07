@@ -42,7 +42,22 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 		// records the refund, this only means we have nothing of ours to reverse.
 		if (!pi) return Response.json({ received: true, ignored: 'no-provider-tx-id' });
 		const purchase = await wallet.findPurchase(pi);
-		if (!purchase) return Response.json({ received: true, ignored: 'no-matching-purchase' });
+		if (!purchase) {
+			// A reversal can legitimately arrive BEFORE its purchase credit (webhooks
+			// are unordered). If this is one of OUR pack charges (it carries a packId
+			// in its metadata), fail with a retryable error so the provider redelivers
+			// and the clawback lands once the credit exists — dropping it here would
+			// leak the refunded value. A reversal with no packId isn't ours to
+			// reverse: acknowledge and leave the wallet alone.
+			if (typeof reversal.metadata['packId'] === 'string' && reversal.metadata['packId'] !== '') {
+				return setApiResponse(
+					HTTP.SERVER_ERROR,
+					'CLAWBACK_DEFERRED',
+					'Reversal received before its purchase credit; provider will retry',
+				);
+			}
+			return Response.json({ received: true, ignored: 'no-matching-purchase' });
+		}
 
 		const sub = {
 			subscriberType: purchase.subscriberType,

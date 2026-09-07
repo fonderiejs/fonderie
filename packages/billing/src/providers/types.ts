@@ -3,6 +3,12 @@ import type { BillingInterval, SubscriberType } from '../types';
 // The normalized event shape — provider-agnostic
 export interface IBillingEvent {
 	type: string;
+	// When the provider emitted this event (provider clock). Used to order
+	// at-least-once, unordered subscription webhooks: the subscription upsert
+	// no-ops any event older than the one already applied. Optional/nullable —
+	// only set by providers that expose an event timestamp (Stripe's
+	// `event.created`); a null leaves the row's ordering guard permissive.
+	eventAt?: Date | null;
 	subscription: INormalizedSubscription | null;
 	// One-time payment completion (credit pack purchase). Only set by providers
 	// that support one-time payments — optional so existing custom providers

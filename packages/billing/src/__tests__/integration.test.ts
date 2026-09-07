@@ -539,3 +539,97 @@ test(
 		}
 	},
 );
+
+// ── subscription webhook ordering guard (provider_event_at) ───────────────────
+
+test(
+	'PostgreSQL: a stale/out-of-order subscription event never resurrects a canceled row',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		// Providers deliver customer.subscription.* at-least-once with NO ordering
+		// guarantee, so a retried "updated" arriving after "deleted" would overwrite
+		// the canceled row back to active/paid — a customer keeps paid access after
+		// cancelling. The provider_event_at guard makes the stale upsert a no-op and
+		// reports not-applied. This is an ENGINE claim (the WHERE lives in SQL).
+		const { upsertSubscription, getSubscription } = await import('../services/subscriptions');
+		const store = await connect();
+		const clear = () =>
+			store.query(`DELETE FROM fonderie_subscriptions WHERE subscriber_id = $1`, [SUB.subscriberId]);
+		try {
+			await clear();
+			const base = {
+				subscriberType: SUB.subscriberType,
+				subscriberId: SUB.subscriberId,
+				providerCustomerId: 'cus_sub_order',
+				providerSubscriptionId: 'sub_order',
+			};
+			const t1 = new Date('2026-09-01T00:00:00Z');
+			const t2 = new Date('2026-09-01T00:05:00Z');
+			const t3 = new Date('2026-09-01T00:10:00Z');
+			const get = () => getSubscription(SUB.subscriberType, SUB.subscriberId, store);
+
+			// T1: active on pro. The write applies (fresh row).
+			assert.equal(
+				await upsertSubscription({ ...base, plan: 'pro', status: 'active', providerEventAt: t1 }, store),
+				true,
+			);
+			assert.equal((await get())?.status, 'active');
+
+			// T2 (> T1): the cancellation lands (deleted → free/canceled).
+			assert.equal(
+				await upsertSubscription({ ...base, plan: 'free', status: 'canceled', providerEventAt: t2 }, store),
+				true,
+			);
+			let row = await get();
+			assert.equal(row?.status, 'canceled');
+			assert.equal(row?.plan, 'free');
+
+			// STALE retry of the T1 "updated" arriving late — MUST be a no-op, and the
+			// upsert must REPORT not-applied so the controller skips its side effects.
+			assert.equal(
+				await upsertSubscription({ ...base, plan: 'pro', status: 'active', providerEventAt: t1 }, store),
+				false,
+				'a stale event reports not-applied',
+			);
+			row = await get();
+			assert.equal(row?.status, 'canceled', 'a stale event must NOT resurrect the subscription');
+			assert.equal(row?.plan, 'free');
+
+			// A genuinely newer event (re-subscribe at T3) still applies.
+			assert.equal(
+				await upsertSubscription(
+					{ ...base, plan: 'pro', status: 'active', providerSubscriptionId: 'sub_order_2', providerEventAt: t3 },
+					store,
+				),
+				true,
+			);
+			row = await get();
+			assert.equal(row?.status, 'active', 'a newer event still applies');
+			assert.equal(row?.plan, 'pro');
+
+			// A non-webhook write (no providerEventAt) applies unconditionally and
+			// PRESERVES the stored ordering token (COALESCE, not assign).
+			assert.equal(
+				await upsertSubscription(
+					{ ...base, plan: 'pro', status: 'active', cancelAtPeriodEnd: true, providerSubscriptionId: 'sub_order_2' },
+					store,
+				),
+				true,
+			);
+			row = await get();
+			assert.equal(row?.cancelAtPeriodEnd, true, 'an app-initiated write always applies');
+
+			// Because the T3 token survived that null write, a T1 stale retry is still rejected.
+			assert.equal(
+				await upsertSubscription({ ...base, plan: 'starter', status: 'active', providerEventAt: t1 }, store),
+				false,
+				'ordering token preserved across the non-webhook write',
+			);
+			row = await get();
+			assert.equal(row?.plan, 'pro', 'ordering token preserved across the non-webhook write');
+		} finally {
+			await clear();
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);

@@ -149,7 +149,7 @@ export function webhookController(
 					)
 				)?.status ?? null;
 
-				await subscriptions.upsert({
+				const applied = await subscriptions.upsert({
 					subscriberType: event.subscription.subscriberType,
 					subscriberId: event.subscription.subscriberId,
 					plan,
@@ -161,7 +161,18 @@ export function webhookController(
 					currentPeriodEnd: event.subscription.currentPeriodEnd,
 					cancelAtPeriodEnd: event.subscription.cancelAtPeriodEnd,
 					trialEndsAt: event.subscription.trialEndsAt,
+					// Ordering key: a stale/out-of-order retry no-ops the upsert.
+					providerEventAt: event.eventAt ?? null,
 				});
+
+				// The ordering guard rejected this event as stale — the stored row is
+				// correctly unchanged. Skip the lifecycle event + customer notice too:
+				// firing them would let a downstream consumer act on stale state (e.g.
+				// re-grant access on a subscriptionUpdated:active that arrived after the
+				// cancellation), resurrecting the subscription via the event bus.
+				if (!applied) {
+					return Response.json({ received: true, ignored: 'stale-subscription-event' });
+				}
 
 				// Publish the lifecycle domain event. Fire-and-forget: a bus
 				// hiccup must never fail the webhook (the provider would retry

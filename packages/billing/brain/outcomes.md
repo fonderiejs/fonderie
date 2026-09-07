@@ -73,6 +73,7 @@ created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 subscriber_type          TEXT NOT NULL
 subscriber_id            UUID NOT NULL
 CONSTRAINT               fonderie_subscriptions_subscriber_unique UNIQUE (subscriber_type, subscriber_id)
+provider_event_at        TIMESTAMPTZ
 ```
 
 ### `fonderie_usage_records`
@@ -118,6 +119,7 @@ pending_recharge_key     TEXT
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 payment_method_id        TEXT
+pending_recharge_key_at  TIMESTAMPTZ
 -- CONSTRAINT fonderie_wallet_customers_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
 -- PRIMARY KEY (subscriber_type, subscriber_id, provider)
 ```
