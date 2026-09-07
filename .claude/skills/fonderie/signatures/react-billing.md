@@ -25,6 +25,9 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .createWalletCheckout(input: IWalletCheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .getWalletTransactions(opts?: (IReadOptions & { cursor?: string; limit?: number; }) | undefined): Promise<IApiResponse<IWalletTransactionsResult>>
   .getPaymentMethod(opts?: IReadOptions | undefined): Promise<IApiResponse<IPaymentMethodResult>>
+  .setupPaymentMethod(): Promise<IApiResponse<ISetupIntentResult>>
+  .savePaymentMethod(input: ISavePaymentMethodInput): Promise<IApiResponse<IPaymentMethodResult>>
+  .removePaymentMethod(): Promise<IApiResponse<IPaymentMethodResult>>
   .listInvoices(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvoicesResult>>
 
 interface ICancelSubscriptionInput {
@@ -222,6 +225,24 @@ interface IUseReactivateSubscriptionReturn {
     error: FonderieApiError | null;
 }
 
+interface IUseRemovePaymentMethodReturn {
+    remove: () => Promise<void>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
+interface IUseSavePaymentMethodReturn {
+    save: (paymentMethodId: string) => Promise<IPaymentMethodDTO | null>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
+interface IUseSetupPaymentMethodReturn {
+    setup: () => Promise<string>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
 interface IUseSubscriptionReturn {
     subscription: ISubscriptionDTO | null;
     isLoading: boolean;
@@ -293,6 +314,12 @@ function usePlan(planId: string): IUsePlanReturn
 function usePlans(client?: BillingClient | undefined): IUsePlansReturn
 
 function useReactivateSubscription(client?: BillingClient | undefined): IUseReactivateSubscriptionReturn
+
+function useRemovePaymentMethod(client?: BillingClient | undefined): IUseRemovePaymentMethodReturn
+
+function useSavePaymentMethod(client?: BillingClient | undefined): IUseSavePaymentMethodReturn
+
+function useSetupPaymentMethod(client?: BillingClient | undefined): IUseSetupPaymentMethodReturn
 
 function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
 

@@ -194,6 +194,9 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .createWalletCheckout(input: IWalletCheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
   .getWalletTransactions(opts?: (IReadOptions & { cursor?: string; limit?: number; }) | undefined): Promise<IApiResponse<IWalletTransactionsResult>>
   .getPaymentMethod(opts?: IReadOptions | undefined): Promise<IApiResponse<IPaymentMethodResult>>
+  .setupPaymentMethod(): Promise<IApiResponse<ISetupIntentResult>>
+  .savePaymentMethod(input: ISavePaymentMethodInput): Promise<IApiResponse<IPaymentMethodResult>>
+  .removePaymentMethod(): Promise<IApiResponse<IPaymentMethodResult>>
   .listInvoices(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvoicesResult>>
 
 interface IConfigAdminClientOptions {

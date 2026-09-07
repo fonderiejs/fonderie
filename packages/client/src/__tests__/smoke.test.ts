@@ -8,7 +8,13 @@ type Handler = (url: string, init: RequestInit) => { status: number; body: unkno
 
 const realFetch = globalThis.fetch;
 let handler: Handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
-const calls: Array<{ method: string; path: string; auth?: string | undefined; workspace?: string | undefined }> = [];
+const calls: Array<{
+	method: string;
+	path: string;
+	auth?: string | undefined;
+	workspace?: string | undefined;
+	body?: unknown;
+}> = [];
 
 globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
 	const headers = (init.headers ?? {}) as Record<string, string>;
@@ -17,6 +23,7 @@ globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
 		path: url,
 		auth: headers['Authorization'],
 		workspace: headers['X-Workspace-ID'],
+		body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
 	});
 	const { status, body } = handler(url, init);
 	return {
@@ -175,6 +182,9 @@ test('billing: cancel/reactivate, wallet checkout/transactions, payment-method, 
 	await c.billing.getWalletTransactions({ cursor: 'abc', limit: 25 });
 	await c.billing.getPaymentMethod();
 	await c.billing.listInvoices();
+	await c.billing.setupPaymentMethod();
+	await c.billing.savePaymentMethod({ paymentMethodId: 'pm_1' });
+	await c.billing.removePaymentMethod();
 
 	const hit = (method: string, endsWith: string) =>
 		calls.find((x) => x.method === method && x.path.includes(endsWith));
@@ -186,6 +196,11 @@ test('billing: cancel/reactivate, wallet checkout/transactions, payment-method, 
 	assert.ok(tx!.path.includes('cursor=abc') && tx!.path.includes('limit=25'), 'transactions carry cursor + limit');
 	assert.ok(hit('GET', '/billing/payment-method'), 'payment method');
 	assert.ok(hit('GET', '/billing/invoices'), 'invoices');
+	assert.ok(hit('POST', '/billing/payment-method/setup'), 'setup payment method');
+	const saved = hit('PUT', '/billing/payment-method');
+	assert.ok(saved, 'save payment method (PUT)');
+	assert.equal((saved!.body as { paymentMethodId?: string })?.paymentMethodId, 'pm_1', 'save carries the pm id');
+	assert.ok(hit('DELETE', '/billing/payment-method'), 'remove payment method (DELETE)');
 	// All authed + workspace-scoped like the rest of the billing surface.
 	for (const call of calls) {
 		assert.equal(call.auth, 'Bearer t', `${call.path} missing bearer`);
