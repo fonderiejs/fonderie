@@ -42,7 +42,7 @@ interface IRateLimitOptions {
 
 type KeyFn = (ctx: IFonderieContext) => string | null;
 
-new MemoryStore(): MemoryStore
+new MemoryStore(options?: { now?: () => number; } | undefined): MemoryStore
   .consume(key: string, rule: IRateLimitRule): Promise<IConsumeResult>
   .size: number
 

@@ -8,13 +8,20 @@ import type { IConsumeResult, IRateLimitRule, IRateLimitStore } from '../types';
 export class MemoryStore implements IRateLimitStore {
 	private buckets = new Map<string, IBucketState>();
 	private ops = 0;
+	private readonly now: () => number;
 
 	// Sweep lazily every N operations rather than on a timer, so the store
 	// holds no open handle that keeps short-lived processes (tests, CLIs) alive.
 	private static SWEEP_EVERY = 1024;
 
+	// `now` is injectable so the time-based sweep is deterministically testable
+	// (drive a fake clock instead of racing the wall clock); defaults to Date.now.
+	constructor(options?: { now?: () => number }) {
+		this.now = options?.now ?? (() => Date.now());
+	}
+
 	async consume(key: string, rule: IRateLimitRule): Promise<IConsumeResult> {
-		const now = Date.now();
+		const now = this.now();
 		const { next, result } = consumeFromBucket(this.buckets.get(key) ?? null, rule, now);
 		this.buckets.set(key, next);
 

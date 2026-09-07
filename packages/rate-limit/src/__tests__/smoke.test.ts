@@ -281,17 +281,21 @@ test('byIp: IPv4 keys on the full address', async () => {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 test('memory: sweep evicts idle keys, keeps fresh ones', async () => {
-	const store = new MemoryStore();
+	// Deterministic clock: with a fake `now`, every consume in the loop shares one
+	// timestamp, so the sweep can't race a slow event loop (the old wall-clock
+	// version could let early "fresh" keys age past the 100ms window under CI load
+	// and be swept, dropping size below the threshold — the source of the flake).
+	let clock = 0;
+	const store = new MemoryStore({ now: () => clock });
 	// fullRefillMs = capacity/refillPerSec*1000 = 5/50*1000 = 100ms.
 	const rule: IRateLimitRule = { capacity: 5, refillPerSec: 50 };
-	await store.consume('stale', rule);
-	await sleep(130); // 'stale' now idle past a full refill
+	await store.consume('stale', rule); // stale.lastRefillMs = 0
+	clock = 130; // 'stale' now idle 130ms > 100ms; every key below is created at t=130
 	// Drive exactly one sweep (SWEEP_EVERY=1024) with fresh rotating keys.
 	for (let i = 0; i < 1024; i++) await store.consume(`k${i}`, rule);
-	// 1 stale + 1024 fresh would be 1025 without a sweep; the sweep drops
-	// 'stale' (idle) while keeping the just-created keys.
-	assert.ok(store.size <= 1024, `sweep should have evicted the idle key (size ${store.size})`);
-	assert.ok(store.size >= 1000, 'fresh keys must survive the sweep');
+	// The sweep (at op 1024) drops 'stale' (idle 130ms) and keeps every fresh key
+	// (idle 0ms), leaving exactly the 1024 rotating keys.
+	assert.equal(store.size, 1024, `stale evicted, all fresh kept (size ${store.size})`);
 });
 
 test('store-adapter: opportunistic cleanup deletes idle rows', async () => {
