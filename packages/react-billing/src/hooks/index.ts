@@ -18,6 +18,8 @@ export type { IUseWalletTransactionsReturn } from './useWalletTransactions';
 export { useWalletTransactions } from './useWalletTransactions';
 export type { IUseWalletCheckoutReturn } from './useWalletCheckout';
 export { useWalletCheckout } from './useWalletCheckout';
+export type { IUsePurchasePackReturn } from './usePurchasePack';
+export { usePurchasePack } from './usePurchasePack';
 export type { IUseCancelSubscriptionReturn } from './useCancelSubscription';
 export { useCancelSubscription } from './useCancelSubscription';
 export type { IUseReactivateSubscriptionReturn } from './useReactivateSubscription';

@@ -1079,6 +1079,7 @@
         "usePaymentMethod",
         "usePlan",
         "usePlans",
+        "usePurchasePack",
         "useReactivateSubscription",
         "useRemovePaymentMethod",
         "useSavePaymentMethod",
@@ -1599,6 +1600,7 @@
         "usePaymentMethod",
         "usePlan",
         "usePlans",
+        "usePurchasePack",
         "useReactivateSubscription",
         "useRemovePaymentMethod",
         "useSavePaymentMethod",
@@ -3882,6 +3884,10 @@
       "vue-billing"
     ],
     "useplan": [
+      "react-billing",
+      "vue-billing"
+    ],
+    "usepurchasepack": [
       "react-billing",
       "vue-billing"
     ],
