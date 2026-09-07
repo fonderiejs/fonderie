@@ -7,8 +7,7 @@ import { FonderiePlugin } from '@fonderie/vue';
 import { createSSRApp, defineComponent, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
-import { useWebhookDeliveries } from '../composables/useWebhookDeliveries';
-import { useWebhookEndpoints } from '../composables/useWebhookEndpoints';
+import { useWebhookDeliveries, useWebhookEndpoints } from '../composables';
 
 const fakeDelivery = { id: 'del_1', status: 'succeeded' } as unknown as IWebhookDeliveryDTO;
 const fakeWebhooks = {
