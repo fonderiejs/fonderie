@@ -302,6 +302,7 @@ export interface IInvoiceDTO {
 	currency: string;
 	status: string;
 	created: string;
+	dueDate: string | null; // ISO-8601 when the invoice has payment terms; null when paid on charge
 	hostedInvoiceUrl: string | null;
 	invoicePdf: string | null;
 }
