@@ -72,8 +72,8 @@ trial_ends_at            TIMESTAMPTZ
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 subscriber_type          TEXT NOT NULL
 subscriber_id            UUID NOT NULL
-provider_event_at        TIMESTAMPTZ  -- provider event clock; the upsert no-ops any event older than the one applied
 CONSTRAINT               fonderie_subscriptions_subscriber_unique UNIQUE (subscriber_type, subscriber_id)
+provider_event_at        TIMESTAMPTZ
 ```
 
 ### `fonderie_usage_records`
@@ -116,10 +116,10 @@ auto_recharge_disabled   BOOLEAN NOT NULL DEFAULT false
 consecutive_failures     INT NOT NULL DEFAULT 0
 last_recharge_at         TIMESTAMPTZ
 pending_recharge_key     TEXT
-pending_recharge_key_at  TIMESTAMPTZ  -- when the pending key was minted; the claim refuses to reuse one past the provider idempotency TTL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 payment_method_id        TEXT
+pending_recharge_key_at  TIMESTAMPTZ
 -- CONSTRAINT fonderie_wallet_customers_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
 -- PRIMARY KEY (subscriber_type, subscriber_id, provider)
 ```
