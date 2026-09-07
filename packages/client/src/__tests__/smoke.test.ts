@@ -179,6 +179,7 @@ test('billing: cancel/reactivate, wallet checkout/transactions, payment-method, 
 	await c.billing.cancelSubscription({ atPeriodEnd: false });
 	await c.billing.reactivateSubscription();
 	await c.billing.createWalletCheckout({ packId: 'small' });
+	await c.billing.purchaseWalletPack({ packId: 'small', idempotencyKey: 'k1' });
 	await c.billing.getWalletTransactions({ cursor: 'abc', limit: 25 });
 	await c.billing.getPaymentMethod();
 	await c.billing.listInvoices();
@@ -191,6 +192,7 @@ test('billing: cancel/reactivate, wallet checkout/transactions, payment-method, 
 	assert.ok(hit('POST', '/billing/subscription/cancel'), 'cancel');
 	assert.ok(hit('POST', '/billing/subscription/reactivate'), 'reactivate');
 	assert.ok(hit('POST', '/billing/wallet/checkout'), 'wallet checkout');
+	assert.ok(hit('POST', '/billing/wallet/purchase'), 'wallet in-app purchase');
 	const tx = hit('GET', '/billing/wallet/transactions');
 	assert.ok(tx, 'wallet transactions');
 	assert.ok(tx!.path.includes('cursor=abc') && tx!.path.includes('limit=25'), 'transactions carry cursor + limit');

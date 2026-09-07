@@ -146,6 +146,8 @@ export type {
 	IVerifyEmailResult,
 	IWalletCheckoutInput,
 	IWalletDTO,
+	IWalletPurchaseInput,
+	IWalletPurchaseResult,
 	IWalletResult,
 	IWalletTransactionDTO,
 	IWalletTransactionsResult,

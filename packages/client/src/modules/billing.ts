@@ -16,6 +16,8 @@ import type {
 	ISubscriptionResult,
 	IUsageResult,
 	IWalletCheckoutInput,
+	IWalletPurchaseInput,
+	IWalletPurchaseResult,
 	IWalletResult,
 	IWalletTransactionsResult,
 } from '../types';
@@ -234,6 +236,22 @@ export class BillingClient {
 		return this.http.request<IApiResponse<ICheckoutUrlResult>>({
 			method: 'POST',
 			path: '/billing/wallet/checkout',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Buy a credit pack in-app by charging the saved card — no redirect. Inspect
+	// `result.status`: 'credited' (done — refresh the wallet), 'checkout_required'
+	// (no saved card or the card needs 3-D Secure → fall back to
+	// createWalletCheckout), 'declined', or 'processing' (indeterminate — retry
+	// with the SAME idempotencyKey). Generate one idempotencyKey per attempt and
+	// reuse it on retry so a double-submit can't double-charge.
+	purchaseWalletPack(input: IWalletPurchaseInput) {
+		return this.http.request<IApiResponse<IWalletPurchaseResult>>({
+			method: 'POST',
+			path: '/billing/wallet/purchase',
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
