@@ -382,6 +382,7 @@ interface INormalizedInvoiceSummary {
     currency: string;
     status: string;
     created: string;
+    dueDate: string | null;
     hostedInvoiceUrl: string | null;
     invoicePdf: string | null;
 }
@@ -600,6 +601,7 @@ interface IInvoiceDTO {
     currency: string;
     status: string;
     created: string;
+    dueDate: string | null;
     hostedInvoiceUrl: string | null;
     invoicePdf: string | null;
 }
