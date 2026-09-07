@@ -13,6 +13,7 @@ import {
 	updatePlanSchema,
 	walletCheckoutSchema,
 	walletPreferencesSchema,
+	walletPurchaseSchema,
 } from './schemas';
 
 import type { IBillingConfig } from './config';
@@ -105,6 +106,7 @@ export function buildBillingRoutes(
 			['GET', '/billing/wallet', requireAuth, wallet.get],
 			['GET', '/billing/wallet/transactions', requireAuth, wallet.transactions],
 			['POST', '/billing/wallet/checkout', requireAuth, validate(walletCheckoutSchema), wallet.checkout],
+			['POST', '/billing/wallet/purchase', requireAuth, validate(walletPurchaseSchema), wallet.purchase],
 			['POST', '/billing/wallet/preferences', requireAuth, validate(walletPreferencesSchema), wallet.setPreferences],
 			// Payment webhook — separate endpoint and secret from the
 			// subscription webhook; signature verified inside the handler.

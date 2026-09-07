@@ -337,7 +337,7 @@
         "fonderie_wallet_grants",
         "fonderie_wallet_ledger"
       ],
-      "routeCount": 24,
+      "routeCount": 25,
       "routes": [
         {
           "method": "POST",
@@ -418,6 +418,11 @@
           "method": "POST",
           "path": "/billing/wallet/preferences",
           "mw": "requireAuth → validate(walletPreferencesSchema) → wallet.setPreferences"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/wallet/purchase",
+          "mw": "requireAuth → validate(walletPurchaseSchema) → wallet.purchase"
         },
         {
           "method": "GET",

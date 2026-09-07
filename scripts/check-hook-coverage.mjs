@@ -90,6 +90,7 @@ const ROUTE_ALLOW = new Map([
 	// phase 5); the server surface landed first by scoped decision.
 	['GET /billing/wallet/transactions', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
 	['POST /billing/wallet/checkout', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
+	['POST /billing/wallet/purchase', 'in-app pack purchase — client method + hook ship next cycle; remove this entry then'],
 	['GET /auth/google', 'browser-redirect OAuth leg — navigated to, never fetched'],
 	['GET /auth/google/callback', 'browser-redirect OAuth leg — navigated to, never fetched'],
 	// First-party subscription lifecycle (audit Phase 4); client methods + hooks
