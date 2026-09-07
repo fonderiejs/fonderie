@@ -81,15 +81,24 @@ export interface IAutoRechargeClaim {
 	/** The attempt timestamp just written — a stable token for a fresh charge's idempotency key. */
 	claimedAt: string;
 	/**
-	 * The idempotency key of a still-unresolved prior charge, if any. When set,
-	 * the caller MUST reuse it (not mint a fresh one from claimedAt) so the
-	 * provider dedupes to the original PaymentIntent instead of double-charging.
+	 * The idempotency key of a still-unresolved prior charge, if any. When set
+	 * AND not stale, the caller MUST reuse it (not mint a fresh one from
+	 * claimedAt) so the provider dedupes to the original PaymentIntent instead of
+	 * double-charging.
 	 */
 	pendingKey: string | null;
+	/**
+	 * True when a pending key exists but was minted longer ago than the provider's
+	 * idempotency retention (idempotencyKeyTtlSeconds). Reusing it would NO LONGER
+	 * dedupe — the caller must NOT charge with it (that would double-charge if the
+	 * original captured); it stops and surfaces the charge for reconciliation.
+	 * Always false when no TTL is supplied.
+	 */
+	pendingKeyStale: boolean;
 }
 
 export async function claimAutoRecharge(
-	key: IWalletCustomerKey & { cooldownSeconds: number },
+	key: IWalletCustomerKey & { cooldownSeconds: number; idempotencyKeyTtlSeconds?: number },
 	store: IStoreAdapter,
 ): Promise<IAutoRechargeClaim | null> {
 	const [row] = await store.query<{
@@ -97,6 +106,7 @@ export async function claimAutoRecharge(
 		paymentMethodId: string | null;
 		claimedAt: string;
 		pendingKey: string | null;
+		pendingKeyStale: boolean;
 	}>(
 		`UPDATE fonderie_wallet_customers
 		SET last_recharge_at = now(), updated_at = now()
@@ -106,8 +116,12 @@ export async function claimAutoRecharge(
 		RETURNING provider_customer_id AS "providerCustomerId",
 			payment_method_id AS "paymentMethodId",
 			last_recharge_at::text AS "claimedAt",
-			pending_recharge_key AS "pendingKey"`,
-		[key.subscriberType, key.subscriberId, key.provider, key.cooldownSeconds],
+			pending_recharge_key AS "pendingKey",
+			($5 > 0
+				AND pending_recharge_key IS NOT NULL
+				AND pending_recharge_key_at IS NOT NULL
+				AND pending_recharge_key_at < now() - make_interval(secs => $5)) AS "pendingKeyStale"`,
+		[key.subscriberType, key.subscriberId, key.provider, key.cooldownSeconds, key.idempotencyKeyTtlSeconds ?? 0],
 	);
 	return row
 		? {
@@ -115,6 +129,7 @@ export async function claimAutoRecharge(
 				paymentMethodId: row.paymentMethodId,
 				claimedAt: row.claimedAt,
 				pendingKey: row.pendingKey,
+				pendingKeyStale: row.pendingKeyStale,
 			}
 		: null;
 }
@@ -127,16 +142,17 @@ export async function setPendingRechargeKey(
 	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
-		`UPDATE fonderie_wallet_customers SET pending_recharge_key = $4, updated_at = now()
+		`UPDATE fonderie_wallet_customers SET pending_recharge_key = $4, pending_recharge_key_at = now(), updated_at = now()
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3`,
 		[key.subscriberType, key.subscriberId, key.provider, idempotencyKey],
 	);
 }
 
-// Clear the pending key once a charge resolves definitively.
+// Clear the pending key (and its mint timestamp) once a charge resolves
+// definitively, or once it has aged past the provider's idempotency retention.
 export async function clearPendingRechargeKey(key: IWalletCustomerKey, store: IStoreAdapter): Promise<void> {
 	await store.query(
-		`UPDATE fonderie_wallet_customers SET pending_recharge_key = NULL, updated_at = now()
+		`UPDATE fonderie_wallet_customers SET pending_recharge_key = NULL, pending_recharge_key_at = NULL, updated_at = now()
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3`,
 		[key.subscriberType, key.subscriberId, key.provider],
 	);

@@ -37,6 +37,9 @@ interface IStripeSubscriptionRaw {
 
 interface IStripeEventRaw {
 	type: string;
+	// Unix seconds when Stripe emitted the event — the ordering key for
+	// at-least-once, unordered subscription webhooks.
+	created?: number;
 	data: { object: unknown };
 }
 
@@ -387,11 +390,15 @@ export class StripeProvider implements IBillingProvider {
 			success_url: opts.successUrl,
 			cancel_url: opts.cancelUrl,
 			metadata: opts.metadata,
-			// Save the card to the customer for later off-session auto-recharge.
-			// The operator must have surfaced consent to store it for reuse.
-			...(opts.savePaymentMethod
-				? { payment_intent_data: { setup_future_usage: 'off_session' } }
-				: {}),
+			// The charge (PaymentIntent) must carry the pack metadata itself, not
+			// only the session: a refund/chargeback normalizes from the CHARGE, and
+			// without its own metadata the wallet clawback has no packId to attribute
+			// (the value-leak). Also save the card for later off-session auto-recharge
+			// when the operator has surfaced consent to store it for reuse.
+			payment_intent_data: {
+				metadata: opts.metadata,
+				...(opts.savePaymentMethod ? { setup_future_usage: 'off_session' } : {}),
+			},
 		});
 		return { url: session.url ?? '', sessionId: session.id };
 	}
@@ -728,14 +735,17 @@ export class StripeProvider implements IBillingProvider {
 		}
 
 		const sub = raw.data.object as IStripeSubscriptionRaw;
+		// Provider event clock — orders the upsert against out-of-order retries.
+		const eventAt = typeof raw.created === 'number' ? new Date(raw.created * 1000) : null;
 
 		if (raw.type === 'customer.subscription.deleted') {
 			return {
 				type: raw.type,
+				eventAt,
 				subscription: { ...normalizeSubscription(sub), plan: 'free', status: 'canceled' },
 			};
 		}
 
-		return { type: raw.type, subscription: normalizeSubscription(sub) };
+		return { type: raw.type, eventAt, subscription: normalizeSubscription(sub) };
 	}
 }

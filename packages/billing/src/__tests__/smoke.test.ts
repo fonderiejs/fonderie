@@ -1015,6 +1015,7 @@ function captureStore(): { store: IStoreAdapter; plan: () => string | undefined 
 		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
 			if (sql.includes('fonderie_subscriptions') && !sql.trimStart().startsWith('SELECT')) {
 				capturedPlan = params?.[2] as string; // (subscriber_type, subscriber_id, plan, …)
+				return [{ applied: 1 }] as T[]; // upsert applied (ordering guard passed)
 			}
 			return [] as T[];
 		},
@@ -1265,6 +1266,32 @@ test('webhook: emits the subscription lifecycle domain event with workspaceId', 
 	}
 });
 
+test('webhook: a stale/out-of-order subscription event fires NO lifecycle event or notice', async () => {
+	// The DB ordering guard rejects the stale upsert (returns not-applied). The
+	// controller must then skip the lifecycle domain event AND the customer notice
+	// — otherwise a downstream consumer acting on subscriptionUpdated:active would
+	// resurrect the cancellation through the event bus.
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const { bus, calls } = recordingBus();
+	// Store whose ordering guard REJECTS the write: the upsert RETURNING yields no row.
+	const staleStore: IStoreAdapter = {
+		query: async <T = unknown>(): Promise<T[]> => [] as T[],
+		transaction: async (fn) => fn(staleStore),
+	};
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'customer.subscription.updated',
+			subscription: normalizedSub({ priceId: 'price_pro_monthly', status: 'active' }) as any,
+			eventAt: new Date('2020-01-01T00:00:00Z'), // ancient → the guard rejects it
+		}),
+	});
+	const ctrl = webhookController(staleStore, { ...config, provider, webhookSecret: 'whsec_x' }, undefined, bus);
+	const res = await ctrl.handle(webhookCtx('{}'));
+	const body = (await res.json()) as any;
+	assert.equal(body.ignored, 'stale-subscription-event');
+	assert.equal(calls.length, 0, 'a stale retry emits neither a lifecycle event nor a customer notice');
+});
+
 test('webhook: a user subscriber emits no top-level workspaceId', async () => {
 	const { webhookController } = await import('../controllers/webhook.controller');
 	const { bus, calls } = recordingBus();
@@ -1301,12 +1328,16 @@ test('webhook: no bus configured → no throw, still 200', async () => {
 // fires every time (asserted above).
 
 // A store whose subscription SELECT returns a row in `status`, so the
-// controller sees a prior state; writes are ignored.
+// controller sees a prior state; the upsert reports applied (ordering guard
+// passed) so the lifecycle event + transition notice run.
 function priorSubStore(status: string | null): IStoreAdapter {
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
-			if (sql.includes('fonderie_subscriptions') && sql.trimStart().startsWith('SELECT')) {
-				return (status === null ? [] : [{ status }]) as T[];
+			if (sql.includes('fonderie_subscriptions')) {
+				if (sql.trimStart().startsWith('SELECT')) {
+					return (status === null ? [] : [{ status }]) as T[];
+				}
+				return [{ applied: 1 }] as T[]; // upsert applied
 			}
 			return [] as T[];
 		},
@@ -1561,7 +1592,7 @@ function subCtrlStore(sub: unknown): { store: IStoreAdapter; upserts: unknown[][
 			if (sql.includes('fonderie_subscriptions')) {
 				if (sql.trimStart().startsWith('SELECT')) return (sub ? [sub] : []) as T[];
 				upserts.push(params ?? []);
-				return [] as T[];
+				return [{ applied: 1 }] as T[]; // upsert applied (ordering guard passed)
 			}
 			return [] as T[];
 		},
@@ -1880,6 +1911,32 @@ test('checkout: a past_due subscriber cannot change plans in place (SUBSCRIPTION
 	assert.equal(res.status, 422);
 	assert.equal(body.reason, 'SUBSCRIPTION_PAST_DUE');
 	assert.equal(calls.update, undefined, 'no plan change while a balance is unpaid');
+});
+
+test('checkout: an UNPAID subscriber cannot change plans in place, and is NOT orphaned (SUBSCRIPTION_PAST_DUE)', async () => {
+	// unpaid still exists at the provider. It must be refused like past_due —
+	// never fall through to a fresh checkout that nulls provider_subscription_id.
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const { store, upserts } = subCtrlStore({ ...starterSub, status: 'unpaid' });
+	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'SUBSCRIPTION_PAST_DUE');
+	assert.equal(calls.update, undefined, 'no plan change while a balance is unpaid');
+	assert.equal(upserts.length, 0, 'the live provider subscription is NOT orphaned by a fresh checkout');
+});
+
+test('checkout: a PAUSED subscriber must resume before changing plans, and is NOT orphaned (SUBSCRIPTION_PAUSED)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = tieredCheckout();
+	const { store, upserts } = subCtrlStore({ ...starterSub, status: 'paused' });
+	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'SUBSCRIPTION_PAUSED');
+	assert.equal(calls.update, undefined, 'no in-place change onto a paused subscription');
+	assert.equal(upserts.length, 0, 'the paused provider subscription is NOT orphaned by a fresh checkout');
 });
 
 test('checkout: a scheduled-to-cancel subscriber must reactivate before upgrading (SUBSCRIPTION_SCHEDULED_TO_CANCEL)', async () => {

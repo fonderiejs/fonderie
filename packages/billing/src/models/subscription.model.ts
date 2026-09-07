@@ -10,7 +10,7 @@ export class SubscriptionModel {
 		return getSubscription(subscriberType, subscriberId, this.store);
 	}
 
-	upsert(data: Parameters<typeof upsertSubscription>[0]): Promise<void> {
+	upsert(data: Parameters<typeof upsertSubscription>[0]): Promise<boolean> {
 		return upsertSubscription(data, this.store);
 	}
 }

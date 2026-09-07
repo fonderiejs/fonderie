@@ -111,17 +111,23 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			}
 
 			// A member with a LIVE provider subscription (active / trialing /
-			// past_due) may only UPGRADE in place — immediate, prorated charge. We
-			// never open a second checkout against a live subscription, so anything
-			// that isn't a clean upgrade is refused here rather than duplicated:
+			// past_due / unpaid / paused) may only UPGRADE in place — immediate,
+			// prorated charge. We never open a second checkout against a live
+			// subscription, so anything that isn't a clean upgrade is refused here
+			// rather than duplicated:
 			//   - same plan AND interval → no-op (PLAN_UNCHANGED);
-			//   - past_due → resolve the unpaid balance (or cancel) first;
+			//   - past_due / unpaid → resolve the unpaid balance (or cancel) first;
+			//   - paused → resume it first;
 			//   - scheduled to cancel → reactivate first (else the paid upgrade
 			//     would still be deleted at period end);
 			//   - a downgrade / non-upgrade → cancel, keep access to period end,
 			//     then subscribe to the lower plan once membership is over.
+			// unpaid and paused subscriptions STILL EXIST at the provider (they keep
+			// a live providerSubscriptionId), so they must never fall through to the
+			// resubscribe branch below — that assigns provider_subscription_id = null
+			// and orphans the real provider subscription.
 			const current = await subscriptions.get(subscriber.type, subscriber.id);
-			const LIVE = ['active', 'trialing', 'past_due'];
+			const LIVE = ['active', 'trialing', 'past_due', 'unpaid', 'paused'];
 			if (current?.providerSubscriptionId && LIVE.includes(current.status)) {
 				if (current.plan === planName && current.interval === interval) {
 					return setApiResponse(
@@ -130,12 +136,20 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 						`Already on ${planName} (${interval}); nothing to change.`,
 					);
 				}
-				if (current.status === 'past_due') {
+				if (current.status === 'past_due' || current.status === 'unpaid') {
 					return setApiResponse(
 						HTTP.UNPROCESSABLE,
 						'SUBSCRIPTION_PAST_DUE',
 						`There's an unpaid balance on your current plan. Resolve it (or cancel) before changing plans.`,
-						{ reason: 'past_due', currentPlan: current.plan },
+						{ reason: current.status, currentPlan: current.plan },
+					);
+				}
+				if (current.status === 'paused') {
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'SUBSCRIPTION_PAUSED',
+						`Your ${current.plan} plan is paused. Resume it before changing plans.`,
+						{ reason: 'paused', currentPlan: current.plan },
 					);
 				}
 				if (current.cancelAtPeriodEnd) {
@@ -194,10 +208,11 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				);
 			}
 
-			// No live subscription (new, or a canceled/incomplete/unpaid prior one).
-			// Reuse the subscriber's existing provider customer when present so the
-			// saved card + wallet auto-recharge survive a resubscribe, instead of
-			// orphaning it with a brand-new customer.
+			// No live subscription (new, or a canceled / incomplete / incomplete_expired
+			// prior one — all genuinely dead at the provider). Reuse the subscriber's
+			// existing provider customer when present so the saved card + wallet
+			// auto-recharge survive a resubscribe, instead of orphaning it with a
+			// brand-new customer.
 			const customerId =
 				current?.providerCustomerId ??
 				(

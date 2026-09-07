@@ -43,6 +43,7 @@ interface ICustomerRow {
 	failures: number;
 	lastRechargeAt: number | null; // epoch ms
 	pendingKey: string | null;
+	pendingKeyAt: number | null; // epoch ms the pending key was minted
 }
 
 interface IWalletState {
@@ -66,6 +67,11 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 	// Advisory lock — the serializing emulator already serializes transactions,
 	// so this is a no-op here; real per-charge serialization is proven on PG.
 	if (sql.includes('pg_advisory_xact_lock')) return [];
+
+	// Subscription lookup (used by the admin grant to resolve a subscriber's
+	// plan-wallet currency). These wallet tests never seed a subscription, so the
+	// grant correctly falls back to the plan[0]/default currency.
+	if (sql.includes('fonderie_subscriptions')) return [];
 
 	if (sql.includes('fonderie_wallet_ledger')) {
 		// Net reversed credits for a provider tx = SUM of its 'refund' amounts
@@ -229,23 +235,31 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 				failures: rearm ? 0 : (existing?.failures ?? 0),
 				lastRechargeAt: existing?.lastRechargeAt ?? null, // purchase doesn't reset the cooldown
 				pendingKey: existing?.pendingKey ?? null,
+				pendingKeyAt: existing?.pendingKeyAt ?? null,
 			});
 			return [];
 		}
 		if (sql.includes('make_interval')) {
-			// claim: [st, sid, provider, cooldownSeconds]
-			const [st, sid, prov, cooldown] = params as [string, string, string, number];
+			// claim: [st, sid, provider, cooldownSeconds, idempotencyKeyTtlSeconds]
+			const [st, sid, prov, cooldown, ttl] = params as [string, string, string, number, number];
 			const row = state.customers.get(ckey(st, sid, prov));
 			if (!row || row.disabled) return [];
 			const now = Date.now();
 			if (row.lastRechargeAt !== null && now - row.lastRechargeAt < Number(cooldown) * 1000) return [];
 			row.lastRechargeAt = now;
+			const ttlSecs = Number(ttl ?? 0);
+			const pendingKeyStale =
+				ttlSecs > 0 &&
+				row.pendingKey !== null &&
+				row.pendingKeyAt !== null &&
+				now - row.pendingKeyAt > ttlSecs * 1000;
 			return [
 				{
 					providerCustomerId: row.providerCustomerId,
 					paymentMethodId: row.paymentMethodId,
 					claimedAt: new Date(now).toISOString(),
 					pendingKey: row.pendingKey,
+					pendingKeyStale,
 				},
 			];
 		}
@@ -253,14 +267,20 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 			// clearPendingRechargeKey: [st, sid, provider]
 			const [st, sid, prov] = params as [string, string, string];
 			const row = state.customers.get(ckey(st, sid, prov));
-			if (row) row.pendingKey = null;
+			if (row) {
+				row.pendingKey = null;
+				row.pendingKeyAt = null;
+			}
 			return [];
 		}
 		if (sql.includes('pending_recharge_key = $4')) {
 			// setPendingRechargeKey: [st, sid, provider, key]
 			const [st, sid, prov, k] = params as [string, string, string, string];
 			const row = state.customers.get(ckey(st, sid, prov));
-			if (row) row.pendingKey = k;
+			if (row) {
+				row.pendingKey = k;
+				row.pendingKeyAt = Date.now();
+			}
 			return [];
 		}
 		if (sql.includes('consecutive_failures + 1')) {
@@ -884,6 +904,49 @@ test('walletController.grant: 409 when the key belongs to a different subscriber
 		}),
 	);
 	assert.equal(res.status, 409);
+});
+
+test('walletController.grant: with no currency, targets the subscriber PLAN-WALLET currency, not the global default', async () => {
+	// Global default is USD, but the (only) plan's wallet is EUR — so the bucket
+	// the subscriber actually spends from is EUR. A grant that omits currency must
+	// land there, not strand credits in a USD bucket the subscriber never reads.
+	const { walletController } = await import('../controllers/wallet.controller');
+	const store = walletEmulator();
+	const config = {
+		...walletConfig(),
+		plans: [{ name: 'euro', wallet: { currency: 'EUR' } }],
+	} as IBillingConfig;
+	const ctrl = walletController(store, config);
+	const res = await ctrl.grant(
+		makeCtx({
+			body: { subscriberType: 'user', subscriberId: USER.subscriberId, amount: 500n, idempotencyKey: 'g-eur' },
+		}),
+	);
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.result.currency, 'EUR', 'granted into the plan-wallet currency');
+	assert.ok(store.state.balances.get(`user|${USER.subscriberId}|EUR`), 'the EUR bucket was credited');
+	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`), undefined, 'no stranded USD bucket');
+});
+
+test('walletController.grant: an explicit body.currency still overrides the plan-wallet currency', async () => {
+	const { walletController } = await import('../controllers/wallet.controller');
+	const store = walletEmulator();
+	const config = { ...walletConfig(), plans: [{ name: 'euro', wallet: { currency: 'EUR' } }] } as IBillingConfig;
+	const res = await walletController(store, config).grant(
+		makeCtx({
+			body: {
+				subscriberType: 'user',
+				subscriberId: USER.subscriberId,
+				amount: 500n,
+				currency: 'gbp',
+				idempotencyKey: 'g-gbp',
+			},
+		}),
+	);
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.result.currency, 'GBP', 'explicit currency (normalized) wins');
 });
 
 // ── credit packs ──────────────────────────────────────────────────
@@ -3016,6 +3079,65 @@ test('auto-recharge: an indeterminate charge retries with the SAME key and never
 	assert.equal(keys[0], keys[1], 'the same idempotency key is reused so the provider dedupes');
 	assert.equal(arBal(store), 1000n, 'credited exactly once after reconciliation');
 	assert.equal(store.state.customers.get(k)!.pendingKey, null, 'pending cleared on the definitive outcome');
+});
+
+test('auto-recharge: a pending key aged past the provider idempotency TTL is NOT reused (no double charge)', async () => {
+	// The unknown-outcome retry only dedupes while the provider still honors the
+	// idempotency key (~24h). Once it ages out, reuse would mint a NEW charge and
+	// double-charge if the original captured. The claim must flag it stale so the
+	// recharge STOPS (disables + notifies) instead of charging blindly.
+	const store = walletEmulator();
+	await armCustomer(store);
+	const { EVENT_KEYS, MESSAGE_KEYS } = await import('../config');
+	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
+	const { bus, calls } = recordingBus();
+	let charges = 0;
+	const config = {
+		...autoRechargeConfig(
+			{},
+			{
+				chargeOffSession: async () => {
+					charges++;
+					return { providerTxId: null, status: 'unknown' as const };
+				},
+			},
+		),
+		resolveRecipient: () => ({ email: 'z@z.com' }),
+	} as IBillingConfig;
+	const k = `user|${USER.subscriberId}|stub`;
+
+	// 1st window: indeterminate outcome → pending key retained, one charge attempt.
+	await runRecharge(store, config, 50n, bus);
+	assert.equal(charges, 1);
+	assert.ok(store.state.customers.get(k)!.pendingKey, 'pending key retained after unknown');
+
+	// Age the pending key past the 23h TTL, then let the cooldown elapse.
+	store.state.customers.get(k)!.pendingKeyAt = Date.now() - 24 * 3600 * 1000;
+	elapseCooldown(store);
+
+	// 2nd window: the stale key is NOT reused — no further charge; auto-recharge
+	// is disabled and a failure notice fires for reconciliation.
+	await runRecharge(store, config, 50n, bus);
+	assert.equal(charges, 1, 'the stale key is never reused — no second charge');
+	assert.equal(arBal(store), 0n, 'nothing credited');
+	const row = store.state.customers.get(k)!;
+	assert.equal(row.disabled, true, 'auto-recharge disabled pending reconciliation');
+	assert.equal(row.pendingKey, null, 'the dead key is cleared');
+	assert.equal(
+		calls.filter((c) => c.type === EVENT_KEYS.autoRechargeFailed).length,
+		1,
+		'a single failed event surfaces the stuck charge',
+	);
+	assert.equal(
+		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.autoRechargeFailed).length,
+		1,
+		'the customer/ops is notified',
+	);
+
+	// 3rd window: disabled → the claim returns null, still no charge.
+	elapseCooldown(store);
+	await runRecharge(store, config, 50n, bus);
+	assert.equal(charges, 1, 'disabled subscriber is never charged again until re-armed');
 });
 
 test('auto-recharge: a credit failure AFTER capture keeps the pending key so the retry never double-charges', async () => {

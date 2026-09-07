@@ -291,6 +291,7 @@ interface IBillingProvider {
 
 interface IBillingEvent {
     type: string;
+    eventAt?: Date | null;
     subscription: INormalizedSubscription | null;
     payment?: INormalizedPayment | null;
     reversal?: INormalizedReversal | null;
@@ -696,7 +697,7 @@ function maybeAutoRecharge(args: { store: IStoreAdapter; config: IBillingConfig;
 
 function upsertWalletCustomer(key: IWalletCustomerKey & { providerCustomerId: string; rearm: boolean; paymentMethodId?: string | null; }, store: IStoreAdapter): Promise<void>
 
-function claimAutoRecharge(key: IWalletCustomerKey & { cooldownSeconds: number; }, store: IStoreAdapter): Promise<IAutoRechargeClaim | null>
+function claimAutoRecharge(key: IWalletCustomerKey & { cooldownSeconds: number; idempotencyKeyTtlSeconds?: number; }, store: IStoreAdapter): Promise<IAutoRechargeClaim | null>
 
 function recordRechargeSuccess(key: IWalletCustomerKey, store: IStoreAdapter): Promise<void>
 
@@ -713,6 +714,7 @@ interface IAutoRechargeClaim {
     paymentMethodId: string | null;
     claimedAt: string;
     pendingKey: string | null;
+    pendingKeyStale: boolean;
 }
 
 namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, updatePlanSchema, walletCheckoutSchema, walletPreferencesSchema
