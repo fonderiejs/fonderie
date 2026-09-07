@@ -2133,3 +2133,135 @@ test('checkout: an in-place UPGRADE clears any pending cancellation and carries 
 	assert.equal(upserts[0]![9], false, 'cancelAtPeriodEnd written false on upgrade');
 	assert.ok(upserts[0]![10], 'trialEndsAt carried forward (not nulled)');
 });
+
+// ── in-app payment method: setup / save / remove ──────────────────
+
+// A Map-backed fonderie_wallet_customers emulator for the account controller:
+// SELECT (getWalletCustomer), INSERT (upsertWalletCustomer), and the
+// payment_method_id UPDATE (setWalletCustomerCard). No subscription rows.
+function pmStore(seed: { customerId?: string; card?: string | null } = {}): {
+	store: IStoreAdapter
+	state: { customerId: string | null; card: string | null }
+} {
+	const state = { customerId: seed.customerId ?? null, card: seed.card ?? null }
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('fonderie_wallet_customers')) {
+				const t = sql.trimStart()
+				if (t.startsWith('SELECT')) {
+					return (state.customerId
+						? [{ providerCustomerId: state.customerId, paymentMethodId: state.card }]
+						: []) as T[]
+				}
+				if (t.startsWith('INSERT')) {
+					// upsertWalletCustomer: [st, sid, provider, providerCustomerId, rearm, pm]
+					state.customerId = (params?.[3] as string) ?? state.customerId
+					return [] as T[]
+				}
+				if (sql.includes('payment_method_id = $4')) {
+					// setWalletCustomerCard: [st, sid, provider, pm|null]
+					state.card = (params?.[3] as string | null) ?? null
+					return [] as T[]
+				}
+				return [] as T[]
+			}
+			if (sql.includes('fonderie_subscriptions')) return [] as T[]
+			return [] as T[]
+		},
+		transaction: async (fn) => fn(store),
+	}
+	return { store, state }
+}
+
+test('account.setupPaymentMethod: creates a customer and returns a SetupIntent client secret', async () => {
+	const { accountController } = await import('../controllers/account.controller')
+	const calls: any = {}
+	const provider = makeProvider({
+		async createCustomer() {
+			calls.created = true
+			return { customerId: 'cus_new' }
+		},
+		async createSetupIntent(o: any) {
+			calls.setup = o
+			return { clientSecret: 'seti_secret_123', setupIntentId: 'seti_1' }
+		},
+	})
+	const { store, state } = pmStore()
+	const res = await accountController(store, ({ ...config, wallet: { currency: 'USD', precision: 2 }, provider }) as IBillingConfig).setupPaymentMethod(subCtx())
+	const body = (await res.json()) as any
+	assert.equal(res.status, 200)
+	assert.equal(body.result.clientSecret, 'seti_secret_123')
+	assert.equal(calls.created, true, 'a customer was created for the pay-as-you-go user')
+	assert.equal(calls.setup.customerId, 'cus_new')
+	assert.equal(state.customerId, 'cus_new', 'customer recorded so later reads resolve it')
+})
+
+test('account.savePaymentMethod: sets default, records the card, returns it', async () => {
+	const { accountController } = await import('../controllers/account.controller')
+	const calls: any = {}
+	const provider = makeProvider({
+		async setDefaultPaymentMethod(o: any) {
+			calls.def = o
+		},
+		async getPaymentMethod() {
+			return { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030 }
+		},
+	})
+	const { store, state } = pmStore({ customerId: 'cus_1' })
+	const res = await accountController(store, ({ ...config, wallet: { currency: 'USD', precision: 2 }, provider }) as IBillingConfig).savePaymentMethod(
+		subCtx({ paymentMethodId: 'pm_1' }),
+	)
+	const body = (await res.json()) as any
+	assert.equal(res.status, 200)
+	assert.equal(calls.def.customerId, 'cus_1')
+	assert.equal(calls.def.paymentMethodId, 'pm_1')
+	assert.equal(body.result.paymentMethod.last4, '4242')
+	assert.equal(state.card, 'pm_1', 'consented card recorded')
+})
+
+test('account.savePaymentMethod: a card not attached to the customer is rejected (422)', async () => {
+	const { accountController } = await import('../controllers/account.controller')
+	const provider = makeProvider({
+		async setDefaultPaymentMethod() {
+			throw new Error('not attached to this customer')
+		},
+	})
+	const { store, state } = pmStore({ customerId: 'cus_1' })
+	const res = await accountController(store, ({ ...config, wallet: { currency: 'USD', precision: 2 }, provider }) as IBillingConfig).savePaymentMethod(
+		subCtx({ paymentMethodId: 'pm_someone_else' }),
+	)
+	const body = (await res.json()) as any
+	assert.equal(res.status, 422)
+	assert.equal(body.reason, 'INVALID_PAYMENT_METHOD')
+	assert.equal(state.card, null, 'nothing recorded on rejection')
+})
+
+test('account.removePaymentMethod: detaches and clears the recorded card', async () => {
+	const { accountController } = await import('../controllers/account.controller')
+	const calls: any = {}
+	const provider = makeProvider({
+		async detachPaymentMethod(o: any) {
+			calls.detach = o
+		},
+	})
+	const { store, state } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
+	const res = await accountController(store, ({ ...config, wallet: { currency: 'USD', precision: 2 }, provider }) as IBillingConfig).removePaymentMethod(subCtx())
+	const body = (await res.json()) as any
+	assert.equal(res.status, 200)
+	assert.equal(calls.detach.paymentMethodId, 'pm_1')
+	assert.equal(body.result.paymentMethod, null)
+	assert.equal(state.card, null, 'record cleared')
+})
+
+test('account payment-method mutations: 501 when the provider lacks support', async () => {
+	const { accountController } = await import('../controllers/account.controller')
+	const { store } = pmStore({ customerId: 'cus_1' })
+	const ctrl = accountController(store, ({
+		...config,
+		wallet: { currency: 'USD', precision: 2 },
+		provider: makeProvider(),
+	}) as IBillingConfig)
+	assert.equal((await ctrl.setupPaymentMethod(subCtx())).status, 501)
+	assert.equal((await ctrl.savePaymentMethod(subCtx({ paymentMethodId: 'pm_1' }))).status, 501)
+	assert.equal((await ctrl.removePaymentMethod(subCtx())).status, 501)
+})

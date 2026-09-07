@@ -620,6 +620,48 @@ export class StripeProvider implements IBillingProvider {
 		}
 	}
 
+	// In-app card entry: a SetupIntent the client confirms with the Payment
+	// Element. usage:'off_session' so the saved card can back future wallet
+	// auto-recharge / renewals; automatic_payment_methods lets the Element show
+	// whatever the account has enabled.
+	async createSetupIntent(opts: {
+		customerId: string;
+	}): Promise<{ clientSecret: string; setupIntentId: string }> {
+		const stripe = await this.client();
+		const si = await stripe.setupIntents.create({
+			customer: opts.customerId,
+			usage: 'off_session',
+			automatic_payment_methods: { enabled: true },
+		});
+		return { clientSecret: si.client_secret ?? '', setupIntentId: si.id };
+	}
+
+	// Set an attached card as the customer's default. Verifies ownership first —
+	// the card must already be attached to THIS customer (the SetupIntent confirm
+	// attaches it) — so a caller can't hijack another customer's payment method.
+	async setDefaultPaymentMethod(opts: { customerId: string; paymentMethodId: string }): Promise<void> {
+		const stripe = await this.client();
+		const pm = await stripe.paymentMethods.retrieve(opts.paymentMethodId).catch(() => null);
+		if (!pm || pm.customer !== opts.customerId) {
+			throw new Error('[billing:stripe] payment method is not attached to this customer');
+		}
+		await stripe.customers.update(opts.customerId, {
+			invoice_settings: { default_payment_method: opts.paymentMethodId },
+		});
+	}
+
+	// Remove a saved card. Same ownership check; a card already detached/absent is
+	// a no-op (idempotent remove).
+	async detachPaymentMethod(opts: { customerId: string; paymentMethodId: string }): Promise<void> {
+		const stripe = await this.client();
+		const pm = await stripe.paymentMethods.retrieve(opts.paymentMethodId).catch(() => null);
+		if (!pm) return;
+		if (pm.customer !== opts.customerId) {
+			throw new Error('[billing:stripe] payment method is not attached to this customer');
+		}
+		await stripe.paymentMethods.detach(opts.paymentMethodId);
+	}
+
 	// The customer's invoices, newest first (Stripe returns them so). Amounts
 	// stay in the smallest currency unit; currency is upper-cased to match the
 	// wallet/ledger DTO convention.

@@ -27,6 +27,9 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
   .getPaymentMethodForIntent(providerTxId: string): Promise<string | null>
   .createPortalSession(opts: { customerId: string; returnUrl: string; }): Promise<{ url: string; }>
   .getPaymentMethod(opts: { customerId: string; paymentMethodId?: string | null; }): Promise<INormalizedCard | null>
+  .createSetupIntent(opts: { customerId: string; }): Promise<{ clientSecret: string; setupIntentId: string; }>
+  .setDefaultPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
+  .detachPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
   .listInvoices(opts: { customerId: string; limit?: number; }): Promise<INormalizedInvoiceSummary[]>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
 
@@ -272,6 +275,20 @@ interface IBillingProvider {
         customerId: string;
         paymentMethodId?: string | null;
     }): Promise<INormalizedCard | null>;
+    createSetupIntent?(opts: {
+        customerId: string;
+    }): Promise<{
+        clientSecret: string;
+        setupIntentId: string;
+    }>;
+    setDefaultPaymentMethod?(opts: {
+        customerId: string;
+        paymentMethodId: string;
+    }): Promise<void>;
+    detachPaymentMethod?(opts: {
+        customerId: string;
+        paymentMethodId: string;
+    }): Promise<void>;
     listInvoices?(opts: {
         customerId: string;
         limit?: number;
@@ -717,5 +734,5 @@ interface IAutoRechargeClaim {
     pendingKeyStale: boolean;
 }
 
-namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, updatePlanSchema, walletCheckoutSchema, walletPreferencesSchema
+namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, savePaymentMethodSchema, updatePlanSchema, walletCheckoutSchema, walletPreferencesSchema
 ```

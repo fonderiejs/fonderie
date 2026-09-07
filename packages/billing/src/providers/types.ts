@@ -273,6 +273,26 @@ export interface IBillingProvider {
 		paymentMethodId?: string | null;
 	}): Promise<INormalizedCard | null>;
 
+	// Create a SetupIntent so a card can be added/replaced IN-APP via the
+	// provider's embedded card element (e.g. Stripe Payment Element) with NO
+	// hosted-checkout redirect. The client confirms it with the returned client
+	// secret, which attaches the card to the customer. Optional; the in-app
+	// setup route answers 501 when absent.
+	createSetupIntent?(opts: {
+		customerId: string;
+	}): Promise<{ clientSecret: string; setupIntentId: string }>;
+
+	// Make an already-attached card the customer's default for off-session +
+	// invoice charges. MUST verify the card is attached to THIS customer and
+	// reject otherwise, so a caller can never point the default at a card that
+	// isn't theirs. Optional; the save route answers 501 when absent.
+	setDefaultPaymentMethod?(opts: { customerId: string; paymentMethodId: string }): Promise<void>;
+
+	// Detach (remove) a saved card from the customer — the in-app "remove card".
+	// MUST verify the card belongs to this customer. Optional; the remove route
+	// answers 501 when absent.
+	detachPaymentMethod?(opts: { customerId: string; paymentMethodId: string }): Promise<void>;
+
 	// List the customer's invoices, newest first, for an in-app billing history
 	// that links out to the provider-hosted invoice. Optional; when absent, the
 	// invoices route answers 501.

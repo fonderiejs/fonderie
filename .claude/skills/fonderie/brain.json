@@ -336,7 +336,7 @@
         "fonderie_wallet_grants",
         "fonderie_wallet_ledger"
       ],
-      "routeCount": 21,
+      "routeCount": 24,
       "routes": [
         {
           "method": "POST",
@@ -349,9 +349,24 @@
           "mw": "requireAuth → account.listInvoices"
         },
         {
+          "method": "DELETE",
+          "path": "/billing/payment-method",
+          "mw": "requireAuth → account.removePaymentMethod"
+        },
+        {
           "method": "GET",
           "path": "/billing/payment-method",
           "mw": "requireAuth → account.getPaymentMethod"
+        },
+        {
+          "method": "PUT",
+          "path": "/billing/payment-method",
+          "mw": "requireAuth → validate(savePaymentMethodSchema) → account.savePaymentMethod"
+        },
+        {
+          "method": "POST",
+          "path": "/billing/payment-method/setup",
+          "mw": "requireAuth → account.setupPaymentMethod"
         },
         {
           "method": "POST",

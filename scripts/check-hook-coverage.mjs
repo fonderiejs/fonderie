@@ -97,6 +97,7 @@ const ROUTE_ALLOW = new Map([
 	// decision (same as the wallet routes above).
 	['POST /billing/subscription/cancel', 'client/hooks ship next cycle — server-first by scoped decision'],
 	['POST /billing/subscription/reactivate', 'client/hooks ship next cycle — server-first by scoped decision'],
+	['POST /billing/payment-method/setup', 'client/hooks ship next cycle — server-first by scoped decision'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');
