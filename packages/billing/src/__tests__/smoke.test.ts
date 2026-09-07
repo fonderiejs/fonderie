@@ -2354,7 +2354,51 @@ test('purchase: passes the consented card + a purchase-scoped idempotency key to
 	await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider), { idempotencyKey: 'k-42' }))
 	assert.equal(seen.customerId, 'cus_9')
 	assert.equal(seen.paymentMethodId, 'pm_9')
-	assert.equal(seen.idempotencyKey, 'stub:purchase:k-42', 'charge key is purchase-scoped + client key (double-submit safe)')
+	assert.equal(seen.idempotencyKey, 'stub:purchase:user:user-1:k-42', 'charge key is purchase-scoped + subscriber-namespaced + client key (double-submit safe, no cross-subscriber collision)')
 	assert.equal(seen.metadata.reason, 'purchase')
 	assert.equal(seen.amount, 499n)
+})
+
+// ── In-app purchase: webhook safety-net + failure suppression ─────
+
+test('normalizePaymentIntentSucceeded: bare PI maps to a paid payment keyed by PI id', async () => {
+	const { normalizePaymentIntentSucceeded } = await import('../providers/stripe')
+	const p = normalizePaymentIntentSucceeded({
+		id: 'pi_abc',
+		amount: 499,
+		currency: 'usd',
+		customer: 'cus_1',
+		metadata: { reason: 'purchase', packId: 'small', credits: '5000', subscriberType: 'user', subscriberId: 'u1', currency: 'USD' },
+	} as any)
+	assert.equal(p.providerTxId, 'pi_abc')
+	assert.equal(p.sessionId, 'pi_abc', 'no session — PI id stands in')
+	assert.equal(p.paymentStatus, 'paid')
+	assert.equal(p.customerId, 'cus_1')
+	assert.equal(p.amountTotal, 499n)
+	assert.equal(p.metadata.reason, 'purchase')
+})
+
+test('payment webhook: a declined in-app purchase (reason:purchase) sends NO payment-failed notice', async () => {
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller')
+	const { bus, calls } = recordingBus()
+	const provider = makeProvider({
+		constructEvent: async () => ({
+			type: 'payment_intent.payment_failed',
+			subscription: null,
+			paymentFailure: {
+				sessionId: null,
+				providerTxId: 'pi_declined',
+				amount: 499n,
+				currency: 'usd',
+				reason: 'card_declined',
+				metadata: { reason: 'purchase', subscriberType: 'user', subscriberId: 'u1', packId: 'small' },
+			},
+		}),
+	})
+	const cfg = { ...config, provider, wallet: { currency: 'USD', precision: 2, webhookSecret: 'whsec_x', creditPacks: [] } } as IBillingConfig
+	const ctrl = paymentWebhookController(makeStore(), cfg, bus)
+	const res = await ctrl.handle(webhookCtx('{}'))
+	const body = (await res.json()) as any
+	assert.equal(body.ignored, 'purchase-handled-elsewhere', 'the interactive caller owns the decline UX')
+	assert.equal(calls.length, 0, 'no payment.failed event → no duplicate customer email')
 })

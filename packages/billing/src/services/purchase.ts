@@ -71,7 +71,10 @@ export async function purchasePackWithSavedCard(args: {
 		paymentMethodId: customer.paymentMethodId,
 		amount: pack.priceAmount,
 		currency: chargeCurrency,
-		idempotencyKey: `${provider}:purchase:${idempotencyKey}`,
+		// Namespace the client key by subscriber: provider idempotency keys are
+		// account-scoped, so two subscribers reusing the same client string must not
+		// collide (the loser would be rejected as a param mismatch → a bogus decline).
+		idempotencyKey: `${provider}:purchase:${subscriberType}:${subscriberId}:${idempotencyKey}`,
 		metadata: {
 			subscriberType,
 			subscriberId,

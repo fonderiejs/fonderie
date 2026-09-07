@@ -106,6 +106,7 @@ interface IStripePaymentIntentRaw {
 	id: string;
 	amount?: number | null;
 	currency?: string | null;
+	customer?: string | { id: string } | null;
 	last_payment_error?: { message?: string | null; code?: string | null } | null;
 	metadata?: Record<string, string> | null;
 }
@@ -217,6 +218,22 @@ export function normalizePaymentFailureFromIntent(pi: IStripePaymentIntentRaw): 
 		amount: pi.amount != null ? BigInt(pi.amount) : null,
 		currency: pi.currency ?? null,
 		reason: pi.last_payment_error?.message ?? pi.last_payment_error?.code ?? null,
+		metadata: pi.metadata ?? {},
+	};
+}
+
+// A succeeded bare PaymentIntent (no checkout session) — the shape the payment
+// webhook credits as the in-app-purchase safety net. sessionId has no session to
+// carry, so the PaymentIntent id stands in; the webhook keys the credit off the
+// metadata reason, not the sessionId, so it dedupes with the synchronous credit.
+export function normalizePaymentIntentSucceeded(pi: IStripePaymentIntentRaw): INormalizedPayment {
+	return {
+		sessionId: pi.id,
+		providerTxId: pi.id,
+		customerId: refId(pi.customer),
+		amountTotal: pi.amount != null ? BigInt(pi.amount) : null,
+		currency: pi.currency ?? null,
+		paymentStatus: 'paid', // payment_intent.succeeded ⇒ funds captured
 		metadata: pi.metadata ?? {},
 	};
 }
@@ -783,6 +800,22 @@ export class StripeProvider implements IBillingProvider {
 				subscription: null,
 				paymentFailure: normalizePaymentFailureFromSession(raw.data.object as IStripeCheckoutSessionRaw),
 			};
+		}
+		// A succeeded bare PaymentIntent — the safety net for an in-app pack purchase
+		// whose synchronous credit was lost to an indeterminate response. ONLY our
+		// in-app purchases (metadata.reason==='purchase') are surfaced to credit:
+		// hosted-checkout PaymentIntents (credited via checkout.session.completed) and
+		// auto-recharge PaymentIntents (credited synchronously by maybeAutoRecharge)
+		// carry no 'purchase' reason and pass through, so this can never double-credit
+		// them. The webhook keys the credit off the PaymentIntent id — the same key
+		// the synchronous purchase credit uses — so a normal (already-credited)
+		// purchase's success event no-ops.
+		if (raw.type === 'payment_intent.succeeded') {
+			const pi = raw.data.object as IStripePaymentIntentRaw;
+			if (pi.metadata?.reason === 'purchase') {
+				return { type: raw.type, subscription: null, payment: normalizePaymentIntentSucceeded(pi) };
+			}
+			return { type: raw.type, subscription: null };
 		}
 		if (raw.type === 'payment_intent.payment_failed') {
 			return {
