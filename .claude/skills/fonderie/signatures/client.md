@@ -192,6 +192,7 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .getWallet(opts?: IReadOptions | undefined): Promise<IApiResponse<IWalletResult>>
   .setWalletPreferences(input: IWalletPreferencesInput): Promise<IApiResponse<IWalletResult>>
   .createWalletCheckout(input: IWalletCheckoutInput): Promise<IApiResponse<ICheckoutUrlResult>>
+  .purchaseWalletPack(input: IWalletPurchaseInput): Promise<IApiResponse<IWalletPurchaseResult>>
   .getWalletTransactions(opts?: (IReadOptions & { cursor?: string; limit?: number; }) | undefined): Promise<IApiResponse<IWalletTransactionsResult>>
   .getPaymentMethod(opts?: IReadOptions | undefined): Promise<IApiResponse<IPaymentMethodResult>>
   .setupPaymentMethod(): Promise<IApiResponse<ISetupIntentResult>>
@@ -1012,6 +1013,20 @@ interface IWalletDTO {
     purchased?: string;
     spendPurchased?: boolean;
     grantedExpiresAt?: string | null;
+}
+
+interface IWalletPurchaseInput {
+    packId: string;
+    idempotencyKey: string;
+}
+
+interface IWalletPurchaseResult {
+    status: 'credited' | 'checkout_required' | 'declined' | 'processing';
+    balance?: string;
+    currency?: string;
+    credits?: string;
+    duplicate?: boolean;
+    reason?: 'no_saved_card' | 'authentication_required';
 }
 
 interface IWalletResult {

@@ -20,6 +20,7 @@ import {
 	useSetupPaymentMethod,
 	useSavePaymentMethod,
 	useRemovePaymentMethod,
+	usePurchasePack,
 	useInvoices,
 } from '../composables';
 
@@ -33,6 +34,7 @@ const fakeBilling = {
 	cancelSubscription: async () => ({ result: { atPeriodEnd: true, status: 'active', currentPeriodEnd: null } }),
 	reactivateSubscription: async () => ({ result: { atPeriodEnd: false, status: 'active', currentPeriodEnd: null } }),
 	getPaymentMethod: async () => ({ result: { paymentMethod: null } }),
+	purchaseWalletPack: async () => ({ result: { status: 'credited', balance: '5000', currency: 'USD', credits: '5000', duplicate: false } }),
 	setupPaymentMethod: async () => ({ result: { clientSecret: 'seti_1_secret_abc' } }),
 	savePaymentMethod: async () => ({
 		result: { paymentMethod: { brand: 'visa', last4: '4242', expMonth: 9, expYear: 2027 } },
@@ -187,4 +189,11 @@ test('wallet + account + lifecycle composables resolve from context and read/act
 	await removePm.remove();
 	assert.equal(removePm.error.value, null);
 	assert.equal(removePm.isLoading.value, false);
+
+	// In-app purchase: resolves to the outcome status (credited here).
+	const buy = (await runInSetup(() => usePurchasePack(), true)).value!;
+	const outcome = await buy.purchase('small');
+	assert.equal(outcome.status, 'credited');
+	assert.equal(outcome.balance, '5000');
+	assert.equal(buy.isLoading.value, false);
 });

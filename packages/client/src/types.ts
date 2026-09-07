@@ -233,6 +233,28 @@ export interface IWalletCheckoutInput {
 	packId: string;
 }
 
+export interface IWalletPurchaseInput {
+	packId: string;
+	// One per purchase attempt, REUSED on retry: a double-submit or a retry after
+	// a `processing` result dedupes to the same charge instead of charging twice.
+	idempotencyKey: string;
+}
+
+// Outcome of an in-app pack purchase charged to the saved card. `status` is the
+// discriminator: 'credited' carries the new balance; 'checkout_required' means
+// fall back to createWalletCheckout (no saved card, or the card needs 3-D
+// Secure); 'declined' is a hard decline; 'processing' is indeterminate — retry
+// with the SAME idempotencyKey (never a fresh hosted checkout, or you'd risk a
+// double-charge).
+export interface IWalletPurchaseResult {
+	status: 'credited' | 'checkout_required' | 'declined' | 'processing';
+	balance?: string;
+	currency?: string;
+	credits?: string;
+	duplicate?: boolean;
+	reason?: 'no_saved_card' | 'authentication_required';
+}
+
 export interface ICancelSubscriptionInput {
 	// Default true — keep access until the paid-through date. false ends it now.
 	atPeriodEnd?: boolean;
