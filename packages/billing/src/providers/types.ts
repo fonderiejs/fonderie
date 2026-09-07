@@ -229,6 +229,31 @@ export interface IBillingProvider {
 		status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
 	}>;
 
+	// Like chargeOffSession, but bills the saved card through a real INVOICE so the
+	// buyer gets a proper invoice (number + downloadable PDF + hosted page) plus the
+	// card receipt — the record a one-time charge alone can't provide. Same status
+	// contract as chargeOffSession, and same idempotency requirement: the key must
+	// be reused on retry so a double-submit dedupes to one invoice/charge. Returns
+	// the invoice artifacts for reference; `providerTxId` is the invoice's
+	// PaymentIntent (the wallet credit + refund clawback key). Optional — a provider
+	// without it falls back to chargeOffSession (receipt only).
+	chargeViaInvoice?(opts: {
+		customerId: string;
+		paymentMethodId?: string | null;
+		amount: bigint; // smallest currency unit
+		currency: string;
+		description: string;
+		idempotencyKey: string;
+		metadata: Record<string, string>;
+	}): Promise<{
+		status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
+		providerTxId: string | null;
+		invoiceId: string | null;
+		invoiceNumber: string | null;
+		hostedInvoiceUrl: string | null;
+		invoicePdf: string | null;
+	}>;
+
 	// Resolve the payment method a completed payment used, so auto-recharge can
 	// persist and later re-charge the exact card the buyer consented to. Optional;
 	// when absent, auto-recharge falls back to the newest card at charge time.

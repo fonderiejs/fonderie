@@ -614,6 +614,114 @@ export class StripeProvider implements IBillingProvider {
 		}
 	}
 
+	// Charge the saved card via a real Stripe INVOICE (not a bare PaymentIntent),
+	// so the buyer gets a proper invoice — number + downloadable PDF + hosted page —
+	// alongside the card receipt (Anthropic-style). Flow: draft invoice (currency
+	// pinned to the charge currency — the account default may differ) → line item →
+	// finalize → pay off-session. Idempotent per step on the caller's key so a
+	// double-submit or retry never creates a second invoice/charge. `invoice.metadata`
+	// carries the purchase attribution so the invoice.paid webhook can heal an
+	// indeterminate outcome. SCA/decline resolve to a status (not a throw); the
+	// finalized-but-unpaid invoice is voided so it doesn't linger as "open".
+	async chargeViaInvoice(opts: {
+		customerId: string;
+		paymentMethodId?: string | null;
+		amount: bigint;
+		currency: string;
+		description: string;
+		idempotencyKey: string;
+		metadata: Record<string, string>;
+	}): Promise<{
+		status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
+		providerTxId: string | null;
+		invoiceId: string | null;
+		invoiceNumber: string | null;
+		hostedInvoiceUrl: string | null;
+		invoicePdf: string | null;
+	}> {
+		const stripe = await this.client();
+		const currency = opts.currency.toLowerCase();
+		const pm = opts.paymentMethodId ?? undefined;
+		const k = opts.idempotencyKey;
+
+		// Extract the PaymentIntent id from a paid invoice. The current API exposes
+		// it under `payments[].payment.payment_intent`, not the legacy
+		// `invoice.payment_intent`; support both defensively.
+		const piIdOf = (invoice: any): string | null => {
+			const legacy = invoice?.payment_intent;
+			if (legacy) return typeof legacy === 'string' ? legacy : (legacy.id ?? null);
+			const pay = invoice?.payments?.data?.[0]?.payment?.payment_intent;
+			return typeof pay === 'string' ? pay : (pay?.id ?? null);
+		};
+		const summaryOf = (invoice: any) => ({
+			invoiceId: invoice?.id ?? null,
+			invoiceNumber: invoice?.number ?? null,
+			hostedInvoiceUrl: invoice?.hosted_invoice_url ?? null,
+			invoicePdf: invoice?.invoice_pdf ?? null,
+		});
+
+		// Draft → item → finalize. A failure here is definitive (no charge yet).
+		let invoiceId: string;
+		try {
+			const draft = await stripe.invoices.create(
+				{
+					customer: opts.customerId,
+					currency,
+					collection_method: 'charge_automatically',
+					auto_advance: false,
+					...(pm ? { default_payment_method: pm } : {}),
+					metadata: opts.metadata,
+				},
+				{ idempotencyKey: `${k}:invoice` },
+			);
+			invoiceId = draft.id;
+			await stripe.invoiceItems.create(
+				{
+					customer: opts.customerId,
+					invoice: invoiceId,
+					amount: toSafeNumber(opts.amount),
+					currency,
+					description: opts.description,
+				},
+				{ idempotencyKey: `${k}:item` },
+			);
+			await stripe.invoices.finalizeInvoice(invoiceId, { auto_advance: false }, { idempotencyKey: `${k}:finalize` });
+		} catch {
+			return { status: 'failed', providerTxId: null, invoiceId: null, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null };
+		}
+
+		// Pay off-session.
+		try {
+			const paid = await stripe.invoices.pay(
+				invoiceId,
+				{ off_session: true, ...(pm ? { payment_method: pm } : {}), expand: ['payments'] },
+				{ idempotencyKey: `${k}:pay` },
+			);
+			if (paid.status === 'paid') {
+				return { status: 'succeeded', providerTxId: piIdOf(paid), ...summaryOf(paid) };
+			}
+			// Finalized but not paid (e.g. needs action) — void so it doesn't linger.
+			await stripe.invoices.voidInvoice(invoiceId).catch(() => {});
+			return { status: 'requires_action', providerTxId: piIdOf(paid), ...summaryOf(paid) };
+		} catch (err) {
+			const e = err as { type?: string; rawType?: string; code?: string };
+			const t = e?.type ?? e?.rawType;
+			const isCard = t === 'StripeCardError' || t === 'card_error';
+			const isInvalid = t === 'StripeInvalidRequestError' || t === 'invalid_request_error';
+			// Card needs 3-D Secure off-session → the buyer is present, fall back to
+			// hosted checkout. A plain decline is a hard failure. Both are definitive
+			// (no capture) so the finalized invoice is voided.
+			if (isCard || isInvalid) {
+				await stripe.invoices.voidInvoice(invoiceId).catch(() => {});
+				const status = isCard && e.code === 'authentication_required' ? 'requires_action' : 'failed';
+				return { status, providerTxId: null, invoiceId: null, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null };
+			}
+			// Network/timeout — the pay MAY have captured. Leave the invoice as-is and
+			// report unknown; the invoice.paid webhook heals it if it did capture.
+			return { status: 'unknown', providerTxId: null, invoiceId, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null };
+		}
+	}
+
 	async createPortalSession(opts: {
 		customerId: string;
 		returnUrl: string;

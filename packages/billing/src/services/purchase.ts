@@ -52,9 +52,13 @@ export async function purchasePackWithSavedCard(args: {
 	const pack = findCreditPack(packId, config);
 	if (!pack) return { status: 'invalid_pack' };
 
-	// Needs a saved card AND a provider that can charge off-session; absent either,
-	// fall back to hosted checkout (which collects a card itself).
-	if (typeof config.provider.chargeOffSession !== 'function') {
+	// Needs a saved card AND a provider that can charge it in-app. Prefer a real
+	// invoice (chargeViaInvoice → the buyer gets an invoice + PDF, Anthropic-style);
+	// fall back to a bare off-session charge (receipt only). Absent both — or no
+	// card on file — fall back to hosted checkout (which collects a card itself).
+	const canInvoice = typeof config.provider.chargeViaInvoice === 'function';
+	const canCharge = typeof config.provider.chargeOffSession === 'function';
+	if (!canInvoice && !canCharge) {
 		return { status: 'checkout_required', reason: 'no_saved_card' };
 	}
 	const provider = config.provider.name;
@@ -66,24 +70,38 @@ export async function purchasePackWithSavedCard(args: {
 	// pack.currency prices the provider charge; creditCurrency is the wallet bucket
 	// the buyer actually spends from (their plan-wallet currency).
 	const chargeCurrency = normalizeCurrency(pack.currency ?? creditCurrency);
-	const charge = await config.provider.chargeOffSession({
-		customerId: customer.providerCustomerId,
-		paymentMethodId: customer.paymentMethodId,
-		amount: pack.priceAmount,
-		currency: chargeCurrency,
-		// Namespace the client key by subscriber: provider idempotency keys are
-		// account-scoped, so two subscribers reusing the same client string must not
-		// collide (the loser would be rejected as a param mismatch → a bogus decline).
-		idempotencyKey: `${provider}:purchase:${subscriberType}:${subscriberId}:${idempotencyKey}`,
-		metadata: {
-			subscriberType,
-			subscriberId,
-			packId: pack.id,
-			credits: pack.credits.toString(),
-			currency: creditCurrency,
-			reason: 'purchase',
-		},
-	});
+	// Namespace the client key by subscriber: provider idempotency keys are
+	// account-scoped, so two subscribers reusing the same client string must not
+	// collide (the loser would be rejected as a param mismatch → a bogus decline).
+	const chargeKey = `${provider}:purchase:${subscriberType}:${subscriberId}:${idempotencyKey}`;
+	// The invoice metadata also lets the invoice.paid webhook heal an indeterminate
+	// outcome (credit keyed on the same PaymentIntent id → no double-credit).
+	const chargeMetadata = {
+		subscriberType,
+		subscriberId,
+		packId: pack.id,
+		credits: pack.credits.toString(),
+		currency: creditCurrency,
+		reason: 'purchase',
+	};
+	const charge = canInvoice
+		? await config.provider.chargeViaInvoice!({
+				customerId: customer.providerCustomerId,
+				paymentMethodId: customer.paymentMethodId,
+				amount: pack.priceAmount,
+				currency: chargeCurrency,
+				description: pack.name,
+				idempotencyKey: chargeKey,
+				metadata: chargeMetadata,
+			})
+		: await config.provider.chargeOffSession!({
+				customerId: customer.providerCustomerId,
+				paymentMethodId: customer.paymentMethodId,
+				amount: pack.priceAmount,
+				currency: chargeCurrency,
+				idempotencyKey: chargeKey,
+				metadata: chargeMetadata,
+			});
 
 	// The card needs 3-D Secure: an off-session charge can't authenticate it, but
 	// the buyer is present — hand off to hosted checkout, which does 3DS in-flow.

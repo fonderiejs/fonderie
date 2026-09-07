@@ -25,6 +25,7 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined, option
   .cancelSubscription(opts: { subscriptionId: string; atPeriodEnd: boolean; }): Promise<ISubscriptionChange>
   .reactivateSubscription(opts: { subscriptionId: string; }): Promise<ISubscriptionChange>
   .getPaymentMethodForIntent(providerTxId: string): Promise<string | null>
+  .chargeViaInvoice(opts: { customerId: string; paymentMethodId?: string | null; amount: bigint; currency: string; description: string; idempotencyKey: string; metadata: Record<string, string>; }): Promise<...>
   .createPortalSession(opts: { customerId: string; returnUrl: string; }): Promise<{ url: string; }>
   .getPaymentMethod(opts: { customerId: string; paymentMethodId?: string | null; }): Promise<INormalizedCard | null>
   .createSetupIntent(opts: { customerId: string; }): Promise<{ clientSecret: string; setupIntentId: string; }>
@@ -259,6 +260,22 @@ interface IBillingProvider {
     }): Promise<{
         providerTxId: string | null;
         status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
+    }>;
+    chargeViaInvoice?(opts: {
+        customerId: string;
+        paymentMethodId?: string | null;
+        amount: bigint;
+        currency: string;
+        description: string;
+        idempotencyKey: string;
+        metadata: Record<string, string>;
+    }): Promise<{
+        status: 'succeeded' | 'requires_action' | 'failed' | 'unknown';
+        providerTxId: string | null;
+        invoiceId: string | null;
+        invoiceNumber: string | null;
+        hostedInvoiceUrl: string | null;
+        invoicePdf: string | null;
     }>;
     getPaymentMethodForIntent?(providerTxId: string): Promise<string | null>;
     resolvePriceById(priceId: string): Promise<IResolvedPrice | null>;
