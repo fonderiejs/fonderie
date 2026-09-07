@@ -691,3 +691,178 @@ test(
 		}
 	},
 );
+
+test(
+	'PostgreSQL: in-app purchase credits once and is idempotent on a double-submit',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			const { purchasePackWithSavedCard } = await import('../services/purchase');
+			// Seed the saved card the charge will use.
+			await upsertWalletCustomer(
+				{
+					subscriberType: SUB.subscriberType,
+					subscriberId: SUB.subscriberId,
+					provider: 'stub',
+					providerCustomerId: 'cus_itest',
+					rearm: false,
+					paymentMethodId: 'pm_itest',
+				},
+				store,
+			);
+			// A provider that returns ONE fixed PaymentIntent id — so the second call
+			// (same client idempotencyKey) credits with the SAME provider-tx key and
+			// must dedupe to a single credit.
+			let charges = 0;
+			const config = {
+				provider: {
+					name: 'stub',
+					async chargeOffSession() {
+						charges++;
+						return { providerTxId: 'pi_itest_fixed', status: 'succeeded' as const };
+					},
+				},
+				wallet: {
+					currency: 'USD',
+					precision: 2,
+					creditPacks: [{ id: 'small', name: 'Small', credits: 500n, priceAmount: 499n }],
+				},
+				plans: [],
+			} as unknown as Parameters<typeof purchasePackWithSavedCard>[0]['config'];
+
+			const args = {
+				store,
+				config,
+				bus: undefined,
+				subscriberType: SUB.subscriberType,
+				subscriberId: SUB.subscriberId,
+				packId: 'small',
+				creditCurrency: 'USD',
+				precision: 2,
+				idempotencyKey: 'buy-once',
+			};
+
+			const first = await purchasePackWithSavedCard(args);
+			assert.equal(first.status, 'credited');
+			if (first.status === 'credited') {
+				assert.equal(first.duplicate, false);
+				assert.equal(first.balance, 500n);
+			}
+
+			// Double-submit with the SAME client key → same PI → single credit.
+			const second = await purchasePackWithSavedCard(args);
+			assert.equal(second.status, 'credited');
+			if (second.status === 'credited') {
+				assert.equal(second.duplicate, true, 'the resubmit must not create a second credit');
+				assert.equal(second.balance, 500n, 'balance unchanged on the duplicate');
+			}
+
+			const { balance } = await getWalletBalance(SUB, store);
+			assert.equal(balance, 500n, 'exactly one pack credited');
+
+			// The credit is joinable back to the charge for refund clawback.
+			const purchase = await findPurchaseByProviderTxId('pi_itest_fixed', store);
+			assert.ok(purchase, 'purchase is findable by provider tx id');
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
+
+test(
+	'PostgreSQL: webhook safety-net credits an orphaned in-app purchase exactly once (dedupes with the sync credit)',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+			const { purchasePackWithSavedCard } = await import('../services/purchase');
+
+			// A payment webhook that constructs a succeeded in-app-purchase PI event
+			// (reason:'purchase') for a fixed PaymentIntent id.
+			const PI = 'pi_orphan_fixed';
+			const meta = {
+				reason: 'purchase',
+				subscriberType: SUB.subscriberType,
+				subscriberId: SUB.subscriberId,
+				packId: 'small',
+				credits: '500',
+				currency: 'USD',
+			};
+			const webhookProvider = {
+				name: 'stub',
+				async constructEvent() {
+					return {
+						type: 'payment_intent.succeeded',
+						subscription: null,
+						payment: {
+							sessionId: PI,
+							providerTxId: PI,
+							customerId: 'cus_itest',
+							amountTotal: 499n,
+							currency: 'usd',
+							paymentStatus: 'paid',
+							metadata: meta,
+						},
+					};
+				},
+			};
+			const cfg = {
+				provider: webhookProvider,
+				wallet: { currency: 'USD', precision: 2, webhookSecret: 'whsec_x', creditPacks: [] },
+				plans: [],
+			} as any;
+			// A fresh context per delivery — a Request body is a one-shot stream, so
+			// each webhook handle() needs its own (mirrors the provider redelivering).
+			const mkCtx = () =>
+				({
+					request: new Request('http://localhost/webhook', {
+						method: 'POST',
+						headers: { 'stripe-signature': 't=1,v1=stub' },
+						body: '{}',
+					}),
+					meta: {},
+				}) as any;
+
+			// The card was saved during setup, before any purchase (production order).
+			await upsertWalletCustomer(
+				{ subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId, provider: 'stub', providerCustomerId: 'cus_itest', rearm: false, paymentMethodId: 'pm_itest' },
+				store,
+			);
+
+			// Orphan case: the client dropped after an indeterminate charge, so the
+			// SYNC credit never ran — the webhook delivery credits it.
+			const first = await paymentWebhookController(store, cfg, undefined).handle(mkCtx());
+			assert.equal((await first.json()).duplicate, false, 'safety-net credits the orphaned capture');
+			assert.equal((await getWalletBalance(SUB, store)).balance, 500n);
+
+			// Now the synchronous purchase path runs for the SAME PaymentIntent id
+			// (e.g. a late client retry). It must dedupe — no second credit.
+			const syncProvider = {
+				name: 'stub',
+				async chargeOffSession() {
+					return { providerTxId: PI, status: 'succeeded' as const };
+				},
+			};
+			const syncCfg = {
+				provider: syncProvider,
+				wallet: { currency: 'USD', precision: 2, creditPacks: [{ id: 'small', name: 'S', credits: 500n, priceAmount: 499n }] },
+				plans: [],
+			} as unknown as Parameters<typeof purchasePackWithSavedCard>[0]['config'];
+			const sync = await purchasePackWithSavedCard({
+				store, config: syncCfg, bus: undefined,
+				subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId,
+				packId: 'small', creditCurrency: 'USD', precision: 2, idempotencyKey: 'late-retry',
+			});
+			assert.equal(sync.status, 'credited');
+			if (sync.status === 'credited') assert.equal(sync.duplicate, true, 'sync retry dedupes on the PI-id credit key');
+
+			// Redeliver the webhook too — still one credit.
+			await paymentWebhookController(store, cfg, undefined).handle(mkCtx());
+			assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'exactly one credit across sync + webhook + redelivery');
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);

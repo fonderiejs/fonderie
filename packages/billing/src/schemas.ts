@@ -60,6 +60,15 @@ export const walletCheckoutSchema = z.object({
 	packId: z.string().trim().min(1, 'packId is required').max(100),
 });
 
+// Body for an in-app pack purchase charged against the saved card. The
+// idempotencyKey is client-generated per purchase attempt and MUST be reused on
+// retry so a double-submit (or a retry after an indeterminate response) dedupes
+// to the same provider charge instead of charging twice.
+export const walletPurchaseSchema = z.object({
+	packId: z.string().trim().min(1, 'packId is required').max(100),
+	idempotencyKey: z.string().trim().min(1, 'idempotencyKey is required').max(200),
+});
+
 // Body for saving a card after the client confirms the in-app SetupIntent — the
 // provider payment-method id the Payment Element produced.
 export const savePaymentMethodSchema = z.object({

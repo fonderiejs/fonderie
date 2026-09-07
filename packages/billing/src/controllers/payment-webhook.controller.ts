@@ -183,13 +183,15 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 	// identity in metadata; an unattributable bare PI failure is acked + ignored.
 	async function handlePaymentFailure(failure: INormalizedPaymentFailure): Promise<Response> {
 		const meta = failure.metadata;
-		// An auto-recharge off-session decline is already owned by
-		// maybeAutoRecharge (it emits auto_recharge.failed + its own notice, and
-		// backs off/disables). Its PaymentIntent carries our subscriber metadata,
-		// so without this guard the provider's payment_intent.payment_failed for
-		// the same charge would send a SECOND email + a mislabeled payment.failed.
-		if (meta['reason'] === 'auto-recharge') {
-			return Response.json({ received: true, ignored: 'auto-recharge-handled-elsewhere' });
+		// A decline already owned by a synchronous caller carries our subscriber
+		// metadata, so without this guard the provider's payment_intent.payment_failed
+		// for the same charge would send a SECOND email + a mislabeled payment.failed.
+		//   - 'auto-recharge': maybeAutoRecharge emits auto_recharge.failed + its own
+		//     notice and backs off/disables.
+		//   - 'purchase': the in-app purchase returned `declined` to the buyer, who
+		//     saw it live and may have already completed the hosted-checkout fallback.
+		if (meta['reason'] === 'auto-recharge' || meta['reason'] === 'purchase') {
+			return Response.json({ received: true, ignored: `${meta['reason']}-handled-elsewhere` });
 		}
 		const subscriberType = meta['subscriberType'];
 		const subscriberId = meta['subscriberId'];
@@ -276,6 +278,16 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 			}
 
 			const currency = normalizeCurrency(meta['currency'] ?? config.wallet?.currency ?? 'USD');
+			// An in-app purchase (reason:'purchase') is a bare PaymentIntent with no
+			// checkout session; key its credit off the PaymentIntent id so this
+			// safety-net delivery dedupes with the SYNCHRONOUS purchase credit
+			// (${provider}:purchase:${PI}) — the same PI id, so at most one credit
+			// whether the client confirmed or dropped. A hosted-checkout completion
+			// keys off its session id, exactly as before.
+			const idempotencyKey =
+				meta['reason'] === 'purchase' && payment.providerTxId
+					? `${config.provider.name}:purchase:${payment.providerTxId}`
+					: `${config.provider.name}:checkout:${payment.sessionId}`;
 			try {
 				const result = await wallet.credit({
 					subscriberType: subscriberType as SubscriberType,
@@ -283,7 +295,7 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 					currency,
 					amount: BigInt(credits),
 					type: 'purchase',
-					idempotencyKey: `${config.provider.name}:checkout:${payment.sessionId}`,
+					idempotencyKey,
 					description: `Credit pack ${packId}`,
 					metadata: {
 						packId,
