@@ -22,7 +22,7 @@
     "react-auth": "0.7.1",
     "react-auth-screens": "0.4.0",
     "react-billing": "0.7.0",
-    "react-billing-screens": "0.2.0",
+    "react-billing-screens": "0.3.0",
     "react-config-admin": "0.3.0",
     "react-config-admin-screens": "0.2.0",
     "react-courier-admin": "0.3.0",
@@ -52,7 +52,7 @@
     "vue-auth": "0.8.1",
     "vue-auth-screens": "0.4.0",
     "vue-billing": "0.8.0",
-    "vue-billing-screens": "0.2.0",
+    "vue-billing-screens": "0.3.0",
     "vue-config-admin": "0.3.0",
     "vue-config-admin-screens": "0.2.0",
     "vue-courier-admin": "0.3.0",
@@ -1093,7 +1093,7 @@
       "hasOutcomes": false
     },
     "react-billing-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "PricingScreen",
@@ -1613,7 +1613,7 @@
       "hasOutcomes": false
     },
     "vue-billing-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "PricingScreen",
