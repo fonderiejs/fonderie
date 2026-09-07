@@ -7,5 +7,5 @@
 ```ts
 component PricingScreen(props: { client }) — emits: checkout-start
 
-component SubscriptionScreen(props: { client }) — emits: manage-billing, navigate-pricing
+component SubscriptionScreen(props: { client }) — emits: manage-billing, navigate-pricing, add-payment-method
 ```
