@@ -108,12 +108,26 @@ export function subscriptionController(store: IStoreAdapter, config: IBillingCon
 					providerSubscriptionId,
 					cancelAtPeriodEnd: res.cancelAtPeriodEnd,
 					trialEndsAt: current.trialEndsAt,
+					// Don't resurrect a row a terminal deleted webhook already canceled
+					// while this request was in flight (see guardNotWebhookCanceled).
+					guardNotWebhookCanceled: true,
 				};
 				if (current.providerCustomerId) upsert.providerCustomerId = current.providerCustomerId;
 				if (current.currentPeriodStart) upsert.currentPeriodStart = current.currentPeriodStart;
 				const cpe = res.currentPeriodEnd ?? current.currentPeriodEnd;
 				if (cpe) upsert.currentPeriodEnd = cpe;
-				await subscriptions.upsert(upsert);
+				const applied = await subscriptions.upsert(upsert);
+				// A webhook terminated the subscription mid-request — report the
+				// truthful terminal state rather than a phantom scheduled-cancel.
+				if (!applied) {
+					return setApiResponse(HTTP.OK, 'SUBSCRIPTION_CANCELED', 'Subscription is already canceled.', {
+						atPeriodEnd: false,
+						status: 'canceled',
+						currentPeriodEnd: current.currentPeriodEnd
+							? new Date(current.currentPeriodEnd).toISOString()
+							: null,
+					});
+				}
 			}
 
 			return setApiResponse(
@@ -170,12 +184,24 @@ export function subscriptionController(store: IStoreAdapter, config: IBillingCon
 				providerSubscriptionId,
 				cancelAtPeriodEnd: res.cancelAtPeriodEnd,
 				trialEndsAt: current.trialEndsAt,
+				// If a terminal deleted webhook canceled the row while this reactivate
+				// was in flight (e.g. a concurrent immediate-cancel), do NOT resurrect
+				// it to active/paid — that would hand out unbilled paid access with no
+				// later webhook to correct it (deleted is terminal).
+				guardNotWebhookCanceled: true,
 			};
 			if (current.providerCustomerId) upsert.providerCustomerId = current.providerCustomerId;
 			if (current.currentPeriodStart) upsert.currentPeriodStart = current.currentPeriodStart;
 			const cpe = res.currentPeriodEnd ?? current.currentPeriodEnd;
 			if (cpe) upsert.currentPeriodEnd = cpe;
-			await subscriptions.upsert(upsert);
+			const applied = await subscriptions.upsert(upsert);
+			if (!applied) {
+				return setApiResponse(
+					HTTP.CONFLICT,
+					'SUBSCRIPTION_CANCELED',
+					'A canceled subscription cannot be reactivated; start a new checkout.',
+				);
+			}
 
 			return setApiResponse(HTTP.OK, 'SUBSCRIPTION_REACTIVATED', 'Subscription reactivated.', {
 				status: res.status,

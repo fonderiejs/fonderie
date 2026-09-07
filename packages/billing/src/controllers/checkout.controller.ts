@@ -232,7 +232,16 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				successUrl: config.successUrl,
 				cancelUrl: config.cancelUrl,
 			};
-			if (plan.trialDays !== undefined) sessionOpts.trialDays = plan.trialDays;
+			// Offer the trial only to a subscriber who has never consumed one. Without
+			// this, a canceled subscriber re-entering checkout gets plan.trialDays
+			// applied again every time — farming unlimited free paid-plan access (and,
+			// since trialing is grant-eligible, a fresh wallet grant each period).
+			if (
+				plan.trialDays !== undefined &&
+				!(await subscriptions.hasConsumedTrial(subscriber.type, subscriber.id))
+			) {
+				sessionOpts.trialDays = plan.trialDays;
+			}
 
 			const { url } = await config.provider.createCheckoutSession(sessionOpts);
 

@@ -174,6 +174,17 @@ export function webhookController(
 					return Response.json({ received: true, ignored: 'stale-subscription-event' });
 				}
 
+				// Durably record a consumed trial so a later cancel → resubscribe can't
+				// farm a fresh one (checkout consults this before applying trialDays).
+				// Idempotent; awaited so a transient failure retries with the webhook
+				// rather than silently leaving the subscriber trial-eligible again.
+				if (event.subscription.trialEndsAt) {
+					await subscriptions.markTrialConsumed(
+						event.subscription.subscriberType,
+						event.subscription.subscriberId,
+					);
+				}
+
 				// Publish the lifecycle domain event. Fire-and-forget: a bus
 				// hiccup must never fail the webhook (the provider would retry
 				// and double-apply).
