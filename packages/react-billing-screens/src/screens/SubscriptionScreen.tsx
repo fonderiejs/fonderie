@@ -1,20 +1,38 @@
 import type { BillingClient } from '@fonderie/client';
-import { useBillingPortal, useSubscription } from '@fonderie/react-billing';
+import {
+	useBillingPortal,
+	usePaymentMethod,
+	useRemovePaymentMethod,
+	useSubscription,
+} from '@fonderie/react-billing';
 import type { CSSProperties } from 'react';
 
 export interface ISubscriptionScreenProps {
 	client?: BillingClient;
 	onManageBilling?: (url: string) => void;
 	onNavigateToPricing?: () => void;
+	// The host owns the Stripe Payment Element (publishable key + <Elements>), so
+	// adding/replacing a card is delegated up — same way onManageBilling receives
+	// a portal URL. useSetupPaymentMethod/useSavePaymentMethod live there; this
+	// provider-agnostic screen only shows + removes the card.
+	onAddPaymentMethod?: () => void;
 }
 
 export function SubscriptionScreen({
 	client,
 	onManageBilling,
 	onNavigateToPricing,
+	onAddPaymentMethod,
 }: ISubscriptionScreenProps) {
 	const { subscription, isLoading, error } = useSubscription(client);
 	const { openPortal, isLoading: isOpeningPortal, error: portalError } = useBillingPortal(client);
+	const {
+		paymentMethod,
+		isLoading: isLoadingCard,
+		error: cardError,
+		refresh: refreshCard,
+	} = usePaymentMethod(client);
+	const { remove, isLoading: isRemoving, error: removeError } = useRemovePaymentMethod(client);
 
 	const handleManage = async () => {
 		try {
@@ -23,6 +41,15 @@ export function SubscriptionScreen({
 			else window.location.href = url;
 		} catch {
 			// Surfaced via `portalError` from useBillingPortal.
+		}
+	};
+
+	const handleRemove = async () => {
+		try {
+			await remove();
+			await refreshCard({ force: true });
+		} catch {
+			// Surfaced via `removeError` from useRemovePaymentMethod.
 		}
 	};
 
@@ -44,6 +71,10 @@ export function SubscriptionScreen({
 			</div>
 		);
 	}
+
+	const brand = paymentMethod
+		? paymentMethod.brand.charAt(0).toUpperCase() + paymentMethod.brand.slice(1)
+		: '';
 
 	return (
 		<div style={styles.container}>
@@ -68,6 +99,49 @@ export function SubscriptionScreen({
 			<button type="button" disabled={isOpeningPortal} onClick={handleManage} style={styles.button}>
 				{isOpeningPortal ? 'Opening…' : 'Manage billing'}
 			</button>
+
+			<div style={styles.section}>
+				<h2 style={styles.sectionTitle}>Payment method</h2>
+				{isLoadingCard && !paymentMethod ? (
+					<p style={styles.status}>Loading payment method…</p>
+				) : (
+					<>
+						{cardError && (
+							<p style={styles.error} role="alert">
+								{cardError.explanation}
+							</p>
+						)}
+						{removeError && (
+							<p style={styles.error} role="alert">
+								{removeError.explanation}
+							</p>
+						)}
+						{paymentMethod ? (
+							<p style={styles.cardLine}>
+								{brand} •••• {paymentMethod.last4} · expires {paymentMethod.expMonth}/
+								{paymentMethod.expYear}
+							</p>
+						) : (
+							<p style={styles.status}>No card on file.</p>
+						)}
+						<div style={styles.buttonRow}>
+							<button type="button" onClick={onAddPaymentMethod} style={styles.secondaryButton}>
+								{paymentMethod ? 'Update card' : 'Add card'}
+							</button>
+							{paymentMethod && (
+								<button
+									type="button"
+									disabled={isRemoving}
+									onClick={handleRemove}
+									style={styles.dangerButton}
+								>
+									{isRemoving ? 'Removing…' : 'Remove'}
+								</button>
+							)}
+						</div>
+					</>
+				)}
+			</div>
 		</div>
 	);
 }
@@ -85,6 +159,30 @@ const styles: Record<string, CSSProperties> = {
 		padding: '12px 20px',
 		borderRadius: 8,
 		border: 'none',
+		fontSize: 14,
+		fontWeight: 600,
+		cursor: 'pointer',
+	},
+	section: { marginTop: 24, paddingTop: 24, borderTop: '1px solid #eee' },
+	sectionTitle: { fontSize: 16, fontWeight: 600, marginBottom: 8 },
+	cardLine: { fontSize: 14, color: '#333', marginBottom: 12 },
+	buttonRow: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+	secondaryButton: {
+		backgroundColor: '#fff',
+		color: '#000',
+		padding: '8px 16px',
+		borderRadius: 8,
+		border: '1px solid #ddd',
+		fontSize: 14,
+		fontWeight: 600,
+		cursor: 'pointer',
+	},
+	dangerButton: {
+		backgroundColor: '#fff',
+		color: '#e11d48',
+		padding: '8px 16px',
+		borderRadius: 8,
+		border: '1px solid #f3c0cb',
 		fontSize: 14,
 		fontWeight: 600,
 		cursor: 'pointer',
