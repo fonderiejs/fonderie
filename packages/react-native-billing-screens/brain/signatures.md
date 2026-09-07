@@ -14,9 +14,10 @@ interface ISubscriptionScreenProps {
     client?: BillingClient;
     onManageBilling?: (url: string) => void;
     onNavigateToPricing?: () => void;
+    onAddPaymentMethod?: () => void;
 }
 
 function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps): Element
 
-function SubscriptionScreen({ client, onManageBilling, onNavigateToPricing, }: ISubscriptionScreenProps): Element
+function SubscriptionScreen({ client, onManageBilling, onNavigateToPricing, onAddPaymentMethod, }: ISubscriptionScreenProps): Element
 ```

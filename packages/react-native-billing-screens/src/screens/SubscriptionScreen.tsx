@@ -1,20 +1,38 @@
 import type { BillingClient } from '@fonderie/client';
-import { useBillingPortal, useSubscription } from '@fonderie/react-native-billing';
+import {
+	useBillingPortal,
+	usePaymentMethod,
+	useRemovePaymentMethod,
+	useSubscription,
+} from '@fonderie/react-native-billing';
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export interface ISubscriptionScreenProps {
 	client?: BillingClient;
 	onManageBilling?: (url: string) => void;
 	onNavigateToPricing?: () => void;
+	// The host owns the card-entry surface (a native Stripe SDK / payment sheet),
+	// so adding/replacing a card is delegated up — same way onManageBilling
+	// receives a portal URL. useSetupPaymentMethod/useSavePaymentMethod live
+	// there; this provider-agnostic screen only shows + removes the card.
+	onAddPaymentMethod?: () => void;
 }
 
 export function SubscriptionScreen({
 	client,
 	onManageBilling,
 	onNavigateToPricing,
+	onAddPaymentMethod,
 }: ISubscriptionScreenProps) {
 	const { subscription, isLoading, error } = useSubscription(client);
 	const { openPortal, isLoading: isOpeningPortal, error: portalError } = useBillingPortal(client);
+	const {
+		paymentMethod,
+		isLoading: isLoadingCard,
+		error: cardError,
+		refresh: refreshCard,
+	} = usePaymentMethod(client);
+	const { remove, isLoading: isRemoving, error: removeError } = useRemovePaymentMethod(client);
 
 	const handleManage = async () => {
 		try {
@@ -23,6 +41,15 @@ export function SubscriptionScreen({
 			else await Linking.openURL(url);
 		} catch {
 			// Surfaced via `portalError` from useBillingPortal.
+		}
+	};
+
+	const handleRemove = async () => {
+		try {
+			await remove();
+			await refreshCard({ force: true });
+		} catch {
+			// Surfaced via `removeError` from useRemovePaymentMethod.
 		}
 	};
 
@@ -48,6 +75,10 @@ export function SubscriptionScreen({
 			</View>
 		);
 	}
+
+	const brand = paymentMethod
+		? paymentMethod.brand.charAt(0).toUpperCase() + paymentMethod.brand.slice(1)
+		: '';
 
 	return (
 		<View style={styles.container}>
@@ -81,6 +112,59 @@ export function SubscriptionScreen({
 					<Text style={styles.buttonText}>Manage billing</Text>
 				)}
 			</TouchableOpacity>
+
+			<View style={styles.section}>
+				<Text style={styles.sectionTitle}>Payment method</Text>
+				{isLoadingCard && !paymentMethod ? (
+					<Text style={styles.status}>Loading payment method…</Text>
+				) : (
+					<>
+						{cardError && (
+							<Text style={styles.error} accessibilityRole="alert">
+								{cardError.explanation}
+							</Text>
+						)}
+						{removeError && (
+							<Text style={styles.error} accessibilityRole="alert">
+								{removeError.explanation}
+							</Text>
+						)}
+						{paymentMethod ? (
+							<Text style={styles.cardLine}>
+								{brand} •••• {paymentMethod.last4} · expires {paymentMethod.expMonth}/
+								{paymentMethod.expYear}
+							</Text>
+						) : (
+							<Text style={styles.status}>No card on file.</Text>
+						)}
+						<View style={styles.buttonRow}>
+							<TouchableOpacity
+								onPress={onAddPaymentMethod}
+								style={styles.secondaryButton}
+								accessibilityRole="button"
+							>
+								<Text style={styles.secondaryButtonText}>
+									{paymentMethod ? 'Update card' : 'Add card'}
+								</Text>
+							</TouchableOpacity>
+							{paymentMethod && (
+								<TouchableOpacity
+									disabled={isRemoving}
+									onPress={handleRemove}
+									style={styles.dangerButton}
+									accessibilityRole="button"
+								>
+									{isRemoving ? (
+										<ActivityIndicator color="#e11d48" />
+									) : (
+										<Text style={styles.dangerButtonText}>Remove</Text>
+									)}
+								</TouchableOpacity>
+							)}
+						</View>
+					</>
+				)}
+			</View>
 		</View>
 	);
 }
@@ -100,4 +184,28 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 	},
 	buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+	section: { marginTop: 24, paddingTop: 24, borderTopWidth: 1, borderTopColor: '#eee' },
+	sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+	cardLine: { fontSize: 14, color: '#333', marginBottom: 12 },
+	buttonRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+	secondaryButton: {
+		backgroundColor: '#fff',
+		borderWidth: 1,
+		borderColor: '#ddd',
+		paddingVertical: 8,
+		paddingHorizontal: 16,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	secondaryButtonText: { color: '#000', fontSize: 14, fontWeight: '600' },
+	dangerButton: {
+		backgroundColor: '#fff',
+		borderWidth: 1,
+		borderColor: '#f3c0cb',
+		paddingVertical: 8,
+		paddingHorizontal: 16,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	dangerButtonText: { color: '#e11d48', fontSize: 14, fontWeight: '600' },
 });
