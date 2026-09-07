@@ -225,6 +225,24 @@ interface IUseReactivateSubscriptionReturn {
     error: Ref<FonderieApiError | null>;
 }
 
+interface IUseRemovePaymentMethodReturn {
+    remove: () => Promise<void>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
+
+interface IUseSavePaymentMethodReturn {
+    save: (paymentMethodId: string) => Promise<IPaymentMethodDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
+
+interface IUseSetupPaymentMethodReturn {
+    setup: () => Promise<string>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
+
 interface IUseSubscriptionReturn {
     subscription: Ref<ISubscriptionDTO | null>;
     isLoading: Ref<boolean>;
@@ -296,6 +314,12 @@ function usePlan(planId: MaybeRefOrGetter<string>): IUsePlanReturn
 function usePlans(client?: BillingClient | undefined): IUsePlansReturn
 
 function useReactivateSubscription(client?: BillingClient | undefined): IUseReactivateSubscriptionReturn
+
+function useRemovePaymentMethod(client?: BillingClient | undefined): IUseRemovePaymentMethodReturn
+
+function useSavePaymentMethod(client?: BillingClient | undefined): IUseSavePaymentMethodReturn
+
+function useSetupPaymentMethod(client?: BillingClient | undefined): IUseSetupPaymentMethodReturn
 
 function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
 
