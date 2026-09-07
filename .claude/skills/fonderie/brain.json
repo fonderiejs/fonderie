@@ -1594,6 +1594,9 @@
         "usePlan",
         "usePlans",
         "useReactivateSubscription",
+        "useRemovePaymentMethod",
+        "useSavePaymentMethod",
+        "useSetupPaymentMethod",
         "useSubscription",
         "useUsage",
         "useWallet",
@@ -3878,13 +3881,16 @@
       "vue-billing"
     ],
     "useremovepaymentmethod": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "usesavepaymentmethod": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "usesetuppaymentmethod": [
-      "react-billing"
+      "react-billing",
+      "vue-billing"
     ],
     "useusage": [
       "react-billing",

@@ -24,5 +24,11 @@ export type { IUseReactivateSubscriptionReturn } from './useReactivateSubscripti
 export { useReactivateSubscription } from './useReactivateSubscription';
 export type { IUsePaymentMethodReturn } from './usePaymentMethod';
 export { usePaymentMethod } from './usePaymentMethod';
+export type { IUseSetupPaymentMethodReturn } from './useSetupPaymentMethod';
+export { useSetupPaymentMethod } from './useSetupPaymentMethod';
+export type { IUseSavePaymentMethodReturn } from './useSavePaymentMethod';
+export { useSavePaymentMethod } from './useSavePaymentMethod';
+export type { IUseRemovePaymentMethodReturn } from './useRemovePaymentMethod';
+export { useRemovePaymentMethod } from './useRemovePaymentMethod';
 export type { IUseInvoicesReturn } from './useInvoices';
 export { useInvoices } from './useInvoices';
