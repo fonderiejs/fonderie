@@ -64,6 +64,42 @@ of work, `debitWalletForMetric(ctx, 'sms:send', { idempotencyKey: taskId }, stor
 charges the plan rate exactly once. Wallet amounts cross HTTP as digit
 strings (`IWalletDTO`).
 
+## Payment methods (in-app card management)
+
+Let subscribers add and manage a card **without leaving your site** — no
+redirect to a hosted portal. Four routes, all `requireAuth` and scoped to the
+caller's own provider customer (created lazily on first use):
+
+| Route | Does |
+|---|---|
+| `POST /billing/payment-method/setup` | Starts card entry — returns a provider **SetupIntent** `{ clientSecret }` for an embedded card element (Stripe Payment Element) to confirm. |
+| `PUT /billing/payment-method` | After the element confirms, records `{ paymentMethodId }` as the default and returns the saved card `{ paymentMethod }`. |
+| `GET /billing/payment-method` | The card on file (`brand` / `last4` / `expMonth` / `expYear`), or `null`. |
+| `DELETE /billing/payment-method` | Detaches the card at the provider and clears the record. |
+
+The flow is three steps and stays on-page:
+
+1. `POST …/payment-method/setup` → hand the `clientSecret` to a Stripe Payment Element.
+2. The element confirms the SetupIntent client-side (`confirmSetup({ redirect: 'if_required' })`) — no off-site bounce.
+3. `PUT …/payment-method` with the resulting `paymentMethodId` → it becomes the default, ready to charge off-session.
+
+`StripeProvider` implements this through optional `IBillingProvider` methods —
+`createSetupIntent` / `setDefaultPaymentMethod` / `detachPaymentMethod`; a
+provider that omits them answers `501` and the UI reads that as "in-app entry
+unavailable" (fall back to the hosted portal). Every write is ownership-checked
+— the payment method must belong to the caller's customer — and the SetupIntent
+is created with `allow_redirects: 'never'`, so only off-session-chargeable
+methods (cards/wallets) are offered, which is exactly what a stored default must
+be.
+
+Wire the UI with the framework hooks — `usePaymentMethod`,
+`useSetupPaymentMethod`, `useSavePaymentMethod`, `useRemovePaymentMethod` in
+[`@fonderie/react-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/react-billing)
+/ [`@fonderie/vue-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-billing)
+/ `@fonderie/react-native-billing` — or drop in `SubscriptionScreen` from the
+`*-billing-screens` packages, which shows and removes the card and delegates
+add/update to your own Payment Element.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
