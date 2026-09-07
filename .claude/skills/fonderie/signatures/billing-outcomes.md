@@ -56,6 +56,16 @@ metadata                 JSONB NOT NULL DEFAULT '{}'
 wallet                   JSONB
 ```
 
+### `fonderie_subscription_trials`
+
+```sql
+subscriber_type          TEXT NOT NULL
+subscriber_id            UUID NOT NULL
+consumed_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+-- PRIMARY KEY (subscriber_type, subscriber_id)
+-- CONSTRAINT fonderie_subscription_trials_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
+```
+
 ### `fonderie_subscriptions`
 
 ```sql

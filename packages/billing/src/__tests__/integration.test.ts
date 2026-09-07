@@ -633,3 +633,61 @@ test(
 		}
 	},
 );
+
+test(
+	'PostgreSQL: a guarded optimistic write cannot resurrect a webhook-canceled subscription',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		// The reactivate/cancel optimistic writes carry no providerEventAt, so the
+		// ordering guard's null-token clause always applies — which would let a write
+		// still in flight resurrect a row a TERMINAL customer.subscription.deleted
+		// webhook already canceled (no later webhook ever corrects it). guardNotWebhookCanceled
+		// makes such a write no-op. Proven on the real engine (the WHERE lives in SQL).
+		const { upsertSubscription, getSubscription } = await import('../services/subscriptions');
+		const store = await connect();
+		const clear = () =>
+			store.query(`DELETE FROM fonderie_subscriptions WHERE subscriber_id = $1`, [SUB.subscriberId]);
+		try {
+			await clear();
+			const base = {
+				subscriberType: SUB.subscriberType,
+				subscriberId: SUB.subscriberId,
+				providerCustomerId: 'cus_guard',
+				providerSubscriptionId: 'sub_guard',
+			};
+			// Terminal deleted webhook: canceled/free with a provider_event_at token.
+			assert.equal(
+				await upsertSubscription(
+					{ ...base, plan: 'free', status: 'canceled', providerEventAt: new Date('2026-09-01T00:05:00Z') },
+					store,
+				),
+				true,
+			);
+
+			// A guarded optimistic reactivate (no providerEventAt) must NOT resurrect it.
+			assert.equal(
+				await upsertSubscription(
+					{ ...base, plan: 'pro', status: 'active', cancelAtPeriodEnd: false, guardNotWebhookCanceled: true },
+					store,
+				),
+				false,
+				'guarded optimistic write no-ops over a webhook-canceled row',
+			);
+			let row = await getSubscription(SUB.subscriberType, SUB.subscriberId, store);
+			assert.equal(row?.status, 'canceled', 'the terminal cancellation stands');
+			assert.equal(row?.plan, 'free');
+
+			// Contrast: the SAME write WITHOUT the guard would apply — proving the guard
+			// is exactly what closes the resurrection, not some other condition.
+			assert.equal(
+				await upsertSubscription({ ...base, plan: 'pro', status: 'active', cancelAtPeriodEnd: false }, store),
+				true,
+			);
+			row = await getSubscription(SUB.subscriberType, SUB.subscriberId, store);
+			assert.equal(row?.status, 'active', 'unguarded optimistic write does resurrect (the original bug)');
+		} finally {
+			await clear();
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);
