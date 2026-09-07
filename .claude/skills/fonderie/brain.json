@@ -34,7 +34,7 @@
     "react-native-auth": "0.7.1",
     "react-native-auth-screens": "0.4.0",
     "react-native-billing": "0.2.0",
-    "react-native-billing-screens": "0.2.0",
+    "react-native-billing-screens": "0.3.0",
     "react-native-customers": "0.1.0",
     "react-native-customers-screens": "0.2.0",
     "react-native-webhooks": "0.1.0",
@@ -1300,7 +1300,7 @@
       "hasOutcomes": false
     },
     "react-native-billing-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "PricingScreen",
