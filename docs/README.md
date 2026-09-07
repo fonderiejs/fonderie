@@ -16,6 +16,7 @@ promises the project makes.
 | Understand the architecture and every component | This file |
 | Know what each tool/script is for | [TOOLING.md](TOOLING.md) |
 | Publish to npm and handle cross-package versions | [RELEASING.md](RELEASING.md) |
+| Adopt the billing wallet from a legacy balance system | [WALLET-ADOPTION.md](WALLET-ADOPTION.md) |
 | Keep the LLM's knowledge of the SDK correct | [BRAIN.md](BRAIN.md) |
 
 ## Architecture in one picture
