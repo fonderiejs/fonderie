@@ -6,7 +6,7 @@
     "adapter-koa": "5.0.6",
     "audit": "5.1.1",
     "auth": "5.1.0",
-    "billing": "8.7.1",
+    "billing": "8.7.2",
     "client": "0.14.0",
     "config": "5.1.3",
     "core": "0.8.0",
@@ -21,8 +21,8 @@
     "react-audit-screens": "0.2.0",
     "react-auth": "0.7.1",
     "react-auth-screens": "0.4.0",
-    "react-billing": "0.7.0",
-    "react-billing-screens": "0.3.0",
+    "react-billing": "0.7.1",
+    "react-billing-screens": "0.3.1",
     "react-config-admin": "0.3.0",
     "react-config-admin-screens": "0.2.0",
     "react-courier-admin": "0.3.0",
@@ -33,8 +33,8 @@
     "react-native-audit-screens": "0.2.0",
     "react-native-auth": "0.7.1",
     "react-native-auth-screens": "0.4.0",
-    "react-native-billing": "0.2.0",
-    "react-native-billing-screens": "0.3.0",
+    "react-native-billing": "0.2.1",
+    "react-native-billing-screens": "0.3.1",
     "react-native-customers": "0.1.0",
     "react-native-customers-screens": "0.2.0",
     "react-native-webhooks": "0.1.0",
@@ -51,8 +51,8 @@
     "vue-audit-screens": "0.2.0",
     "vue-auth": "0.8.1",
     "vue-auth-screens": "0.4.0",
-    "vue-billing": "0.8.0",
-    "vue-billing-screens": "0.3.0",
+    "vue-billing": "0.8.1",
+    "vue-billing-screens": "0.3.1",
     "vue-config-admin": "0.3.0",
     "vue-config-admin-screens": "0.2.0",
     "vue-courier-admin": "0.3.0",
@@ -299,7 +299,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "8.7.1",
+      "version": "8.7.2",
       "requires": [
         "core",
         "events",
@@ -1062,7 +1062,7 @@
       "hasOutcomes": false
     },
     "react-billing": {
-      "version": "0.7.0",
+      "version": "0.7.1",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1093,7 +1093,7 @@
       "hasOutcomes": false
     },
     "react-billing-screens": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "requires": [],
       "exports": [
         "PricingScreen",
@@ -1288,7 +1288,7 @@
       "hasOutcomes": false
     },
     "react-native-billing": {
-      "version": "0.2.0",
+      "version": "0.2.1",
       "requires": [],
       "exports": [],
       "subpaths": [],
@@ -1300,7 +1300,7 @@
       "hasOutcomes": false
     },
     "react-native-billing-screens": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "requires": [],
       "exports": [
         "PricingScreen",
@@ -1582,7 +1582,7 @@
       "hasOutcomes": false
     },
     "vue-billing": {
-      "version": "0.8.0",
+      "version": "0.8.1",
       "requires": [],
       "exports": [
         "FonderieApiError",
@@ -1613,7 +1613,7 @@
       "hasOutcomes": false
     },
     "vue-billing-screens": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "requires": [],
       "exports": [
         "PricingScreen",
