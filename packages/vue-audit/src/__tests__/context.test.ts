@@ -7,7 +7,7 @@ import { FonderiePlugin } from '@fonderie/vue';
 import { createSSRApp, defineComponent, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
-import { useAuditEvents } from '../composables/useAuditEvents';
+import { useAuditEvents } from '../composables';
 
 const fakeEvent = { id: 'evt_1', action: 'user.login' } as unknown as IAuditEventDTO;
 const fakeAudit = {
