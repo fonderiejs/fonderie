@@ -176,7 +176,10 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 |---|---|---|
 | POST | `/billing/checkout` | `requireAuth → validate(checkoutSchema) → checkout.createSession` |
 | GET | `/billing/invoices` | `requireAuth → account.listInvoices` |
+| DELETE | `/billing/payment-method` | `requireAuth → account.removePaymentMethod` |
 | GET | `/billing/payment-method` | `requireAuth → account.getPaymentMethod` |
+| PUT | `/billing/payment-method` | `requireAuth → validate(savePaymentMethodSchema) → account.savePaymentMethod` |
+| POST | `/billing/payment-method/setup` | `requireAuth → account.setupPaymentMethod` |
 | POST | `/billing/portal` | `requireAuth → checkout.createPortal` |
 | GET | `/billing/subscription` | `requireAuth → subscription.get` |
 | POST | `/billing/subscription/cancel` | `requireAuth → validate(cancelSubscriptionSchema) → subscription.cancel` |

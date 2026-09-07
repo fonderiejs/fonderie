@@ -9,6 +9,7 @@ import {
 	createPlanSchema,
 	grantWalletSchema,
 	recordUsageSchema,
+	savePaymentMethodSchema,
 	updatePlanSchema,
 	walletCheckoutSchema,
 	walletPreferencesSchema,
@@ -70,6 +71,9 @@ export function buildBillingRoutes(
 		// Read-only billing-account surface for an in-app billing page: card on
 		// file + invoice history. 501 when the provider implements neither.
 		['GET', '/billing/payment-method', requireAuth, account.getPaymentMethod],
+		['POST', '/billing/payment-method/setup', requireAuth, account.setupPaymentMethod],
+		['PUT', '/billing/payment-method', requireAuth, validate(savePaymentMethodSchema), account.savePaymentMethod],
+		['DELETE', '/billing/payment-method', requireAuth, account.removePaymentMethod],
 		['GET', '/billing/invoices', requireAuth, account.listInvoices],
 		['POST', '/billing/usage', requireAuth, validate(recordUsageSchema), usage.record],
 		['GET', '/billing/usage/:metric', requireAuth, usage.get],
