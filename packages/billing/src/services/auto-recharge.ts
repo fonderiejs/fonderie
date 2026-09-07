@@ -20,6 +20,12 @@ import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '..
 const DEFAULT_COOLDOWN_SECONDS = 3600;
 const DEFAULT_MAX_FAILURES = 3;
 
+// Providers retain idempotency keys for a bounded window (Stripe: 24h). Past it,
+// reusing the pending key of an unresolved charge no longer dedupes to the
+// original PaymentIntent — the provider mints a NEW charge. We stay a safe hour
+// inside that window: a pending key older than this is treated as unusable.
+const PROVIDER_IDEMPOTENCY_TTL_SECONDS = 23 * 3600;
+
 // Automatic off-session top-up. Called fire-and-forget by withBilling when a
 // subscriber's balance is at/below the plan's autoRecharge threshold. Every
 // safety property lives here so the caller can ignore the outcome:
@@ -57,8 +63,37 @@ export async function maybeAutoRecharge(args: {
 	// claim's mutual exclusion relies on the window exceeding the burst's time
 	// skew, so a 0/sub-second cooldown would let concurrent requests all win.
 	const cooldownSeconds = Math.max(1, auto.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS);
-	const claim = await claimAutoRecharge({ ...key, cooldownSeconds }, store);
+	const claim = await claimAutoRecharge(
+		{ ...key, cooldownSeconds, idempotencyKeyTtlSeconds: PROVIDER_IDEMPOTENCY_TTL_SECONDS },
+		store,
+	);
 	if (!claim) return;
+
+	// A pending key that has aged past the provider's idempotency retention can no
+	// longer dedupe: reusing it would mint a NEW charge (double-charging if the
+	// original captured), and we can't tell whether it did. So we STOP rather than
+	// charge — clear the dead key, DISABLE auto-recharge (a new purchase re-arms
+	// it), and surface the stuck charge for reconciliation via the failed notice.
+	if (claim.pendingKeyStale) {
+		await clearPendingRechargeKey(key, store);
+		const { disabled } = await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
+		bus
+			?.emit(EVENT_KEYS.autoRechargeFailed, {
+				...subscriberEventFields(subscriberType, subscriberId),
+				currency: planWallet.currency,
+				packId: pack.id,
+				status: 'indeterminate_expired',
+				disabled,
+			})
+			.catch(() => {});
+		void notifyBilling(bus, config, {
+			subscriberType,
+			subscriberId,
+			type: MESSAGE_KEYS.autoRechargeFailed,
+			data: { packId: pack.id, status: 'indeterminate_expired', disabled },
+		});
+		return;
+	}
 
 	// Reuse the key of an unresolved prior charge (so the provider dedupes to
 	// the same PaymentIntent — no double charge); otherwise mint a fresh one and

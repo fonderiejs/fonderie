@@ -8,7 +8,7 @@ import { EVENT_KEYS } from '../config';
 import type { SubscriberType } from '../types';
 import { SubscriptionModel } from '../models/subscription.model';
 import { WalletModel } from '../models/wallet.model';
-import { decodeLedgerCursor } from '../services/wallet';
+import { decodeLedgerCursor, resolvePlanWallet } from '../services/wallet';
 import { findCreditPack } from '../services/credit-packs';
 import { DuplicateTransactionError } from '../errors';
 import { toWalletDTO, toWalletTransactionDTO } from '../dtos/billing';
@@ -40,6 +40,19 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 
 	const precisionOf = (ctx: IFonderieContext) =>
 		getWalletStatus(ctx)?.precision ?? config.wallet?.precision ?? 2;
+
+	// The wallet bucket a subscriber actually spends from is their PLAN-wallet
+	// currency — the exact chain withBilling uses to snapshot ctx. A manual grant
+	// with no explicit currency must target THIS, not the global default, or a
+	// subscriber on a non-default-currency plan gets credits stranded in a bucket
+	// they never spend from. Falls back to the default when the subscriber has no
+	// subscription/plan or the plan carries no wallet block.
+	const planWalletCurrencyOf = async (subscriberType: SubscriberType, subscriberId: string) => {
+		const subscription = await subscriptions.get(subscriberType, subscriberId);
+		const planName = subscription?.plan ?? config.plans[0]?.name ?? 'free';
+		const plan = config.plans.find((p) => p.name === planName) ?? config.plans[0];
+		return (plan ? resolvePlanWallet(plan, config)?.currency : undefined) ?? defaultCurrency();
+	};
 
 	return {
 		async get(ctx: IFonderieContext): Promise<Response> {
@@ -262,7 +275,9 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 				idempotencyKey: string;
 			};
 
-			const currency = body.currency ? normalizeCurrency(body.currency) : defaultCurrency();
+			const currency = body.currency
+				? normalizeCurrency(body.currency)
+				: await planWalletCurrencyOf(body.subscriberType, body.subscriberId);
 			try {
 				const result = await wallet.credit({
 					subscriberType: body.subscriberType,

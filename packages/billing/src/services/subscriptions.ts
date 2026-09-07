@@ -81,16 +81,26 @@ export async function upsertSubscription(
 		currentPeriodEnd?: Date | string;
 		cancelAtPeriodEnd?: boolean;
 		trialEndsAt?: Date | string | null;
+		// The provider event's own timestamp (Stripe `event.created`). Set only by
+		// the webhook path; non-webhook writers (checkout / cancel / reactivate)
+		// leave it undefined. Guards the UPDATE against at-least-once, out-of-order
+		// redelivery — a stale event is a no-op instead of resurrecting a
+		// canceled/downgraded row.
+		providerEventAt?: Date | string | null;
 	},
 	store: IStoreAdapter,
-): Promise<void> {
-	await store.query(
+): Promise<boolean> {
+	// Returns whether the row was written. A stale/out-of-order webhook fails the
+	// ordering guard below, updates nothing, and returns false — so the caller can
+	// skip lifecycle events + customer notices that would otherwise act on the
+	// stale state (the event-bus twin of the DB resurrection this guards against).
+	const rows = await store.query<{ applied: number }>(
 		`INSERT INTO fonderie_subscriptions
 			(subscriber_type, subscriber_id, plan, interval, status,
 			 provider_customer_id, provider_subscription_id,
 			 current_period_start, current_period_end,
-			 cancel_at_period_end, trial_ends_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			 cancel_at_period_end, trial_ends_at, provider_event_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		 ON CONFLICT (subscriber_type, subscriber_id) DO UPDATE SET
 			 plan                     = $3,
 			 interval                 = $4,
@@ -103,7 +113,15 @@ export async function upsertSubscription(
 			 current_period_start     = $8,
 			 current_period_end       = $9,
 			 cancel_at_period_end     = $10,
-			 trial_ends_at            = $11`,
+			 trial_ends_at            = $11,
+			 -- COALESCE (not ASSIGN): keep the stored ordering token when a
+			 -- non-webhook write ($12 null) applies, so a later stale webhook still
+			 -- sees the last-applied event time and is rejected.
+			 provider_event_at        = COALESCE($12, fonderie_subscriptions.provider_event_at)
+		 WHERE fonderie_subscriptions.provider_event_at IS NULL
+		    OR $12::timestamptz IS NULL
+		    OR $12::timestamptz >= fonderie_subscriptions.provider_event_at
+		 RETURNING 1 AS applied`,
 		[
 			data.subscriberType,
 			data.subscriberId,
@@ -116,6 +134,8 @@ export async function upsertSubscription(
 			data.currentPeriodEnd ?? null,
 			data.cancelAtPeriodEnd ?? false,
 			data.trialEndsAt ?? null,
+			data.providerEventAt ?? null,
 		],
 	);
+	return rows.length > 0;
 }
