@@ -17,6 +17,9 @@ import {
 	useCancelSubscription,
 	useReactivateSubscription,
 	usePaymentMethod,
+	useSetupPaymentMethod,
+	useSavePaymentMethod,
+	useRemovePaymentMethod,
 	useInvoices,
 } from '../composables';
 
@@ -30,6 +33,11 @@ const fakeBilling = {
 	cancelSubscription: async () => ({ result: { atPeriodEnd: true, status: 'active', currentPeriodEnd: null } }),
 	reactivateSubscription: async () => ({ result: { atPeriodEnd: false, status: 'active', currentPeriodEnd: null } }),
 	getPaymentMethod: async () => ({ result: { paymentMethod: null } }),
+	setupPaymentMethod: async () => ({ result: { clientSecret: 'seti_1_secret_abc' } }),
+	savePaymentMethod: async () => ({
+		result: { paymentMethod: { brand: 'visa', last4: '4242', expMonth: 9, expYear: 2027 } },
+	}),
+	removePaymentMethod: async () => ({ result: { removed: true } }),
 	listInvoices: async () => ({ result: { invoices: [] } }),
 };
 const fakeClient = { billing: fakeBilling } as unknown as FonderieClient;
@@ -164,4 +172,19 @@ test('wallet + account + lifecycle composables resolve from context and read/act
 
 	const react = (await runInSetup(() => useReactivateSubscription(), true)).value!;
 	assert.equal((await react.reactivate()).atPeriodEnd, false);
+
+	// In-app payment-method composables — setup returns the SetupIntent secret,
+	// save resolves to the recorded card, remove completes without error.
+	const setup = (await runInSetup(() => useSetupPaymentMethod(), true)).value!;
+	assert.equal(await setup.setup(), 'seti_1_secret_abc');
+	assert.equal(setup.isLoading.value, false);
+
+	const savePm = (await runInSetup(() => useSavePaymentMethod(), true)).value!;
+	assert.equal((await savePm.save('pm_card_visa'))?.last4, '4242');
+	assert.equal(savePm.error.value, null);
+
+	const removePm = (await runInSetup(() => useRemovePaymentMethod(), true)).value!;
+	await removePm.remove();
+	assert.equal(removePm.error.value, null);
+	assert.equal(removePm.isLoading.value, false);
 });
