@@ -10,6 +10,8 @@ import type {
 	IPlanListResult,
 	IPlanResult,
 	IPortalUrlResult,
+	ISavePaymentMethodInput,
+	ISetupIntentResult,
 	ISubscriptionChangeResult,
 	ISubscriptionResult,
 	IUsageResult,
@@ -265,6 +267,40 @@ export class BillingClient {
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
+		});
+	}
+
+	// Begin in-app card entry — returns a SetupIntent client secret for the
+	// provider's embedded card element (Stripe Payment Element); the user never
+	// leaves the site. 501 when the provider has no in-app card support.
+	setupPaymentMethod() {
+		return this.http.request<IApiResponse<ISetupIntentResult>>({
+			method: 'POST',
+			path: '/billing/payment-method/setup',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Save the card after the client confirms the SetupIntent: makes it the
+	// default and records it. 422 when the card isn't attached to this customer.
+	savePaymentMethod(input: ISavePaymentMethodInput) {
+		return this.http.request<IApiResponse<IPaymentMethodResult>>({
+			method: 'PUT',
+			path: '/billing/payment-method',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Remove the saved card (detach at the provider + clear the record).
+	removePaymentMethod() {
+		return this.http.request<IApiResponse<IPaymentMethodResult>>({
+			method: 'DELETE',
+			path: '/billing/payment-method',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
 		});
 	}
 

@@ -258,6 +258,18 @@ export interface IPaymentMethodResult {
 	paymentMethod: IPaymentMethodDTO | null;
 }
 
+// Begin in-app card entry: the provider SetupIntent client secret the embedded
+// card element (Stripe Payment Element) confirms — no hosted-checkout redirect.
+export interface ISetupIntentResult {
+	clientSecret: string;
+}
+
+// Save a card after the client confirms the SetupIntent — the provider payment
+// method id the Payment Element produced.
+export interface ISavePaymentMethodInput {
+	paymentMethodId: string;
+}
+
 // One invoice for an in-app history list; `hostedInvoiceUrl`/`invoicePdf` link
 // out to the provider. Amounts are digit strings (smallest currency unit).
 export interface IInvoiceDTO {

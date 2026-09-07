@@ -15,6 +15,9 @@ import {
 	usePlan,
 	usePlans,
 	useReactivateSubscription,
+	useRemovePaymentMethod,
+	useSavePaymentMethod,
+	useSetupPaymentMethod,
 	useWallet,
 	useWalletCheckout,
 	useWalletPreferences,
@@ -145,4 +148,36 @@ test('wallet + account + lifecycle hooks resolve from context with their shapes'
 	assert.equal(cancel.isLoading, false);
 	assert.equal(typeof reactivate.reactivate, 'function');
 	assert.equal(reactivate.isLoading, false);
+});
+
+test('in-app payment-method hooks resolve from context (setup / save / remove)', () => {
+	let setup!: ReturnType<typeof useSetupPaymentMethod>;
+	let save!: ReturnType<typeof useSavePaymentMethod>;
+	let remove!: ReturnType<typeof useRemovePaymentMethod>;
+	renderWithProvider(() => {
+		setup = useSetupPaymentMethod();
+		save = useSavePaymentMethod();
+		remove = useRemovePaymentMethod();
+	});
+	assert.equal(typeof setup.setup, 'function');
+	assert.equal(setup.isLoading, false);
+	assert.equal(setup.error, null);
+	assert.equal(typeof save.save, 'function');
+	assert.equal(save.isLoading, false);
+	assert.equal(typeof remove.remove, 'function');
+	assert.equal(remove.isLoading, false);
+});
+
+test('useSetupPaymentMethod throws a named error without provider or argument', () => {
+	assert.throws(
+		() =>
+			renderToString(
+				createElement(Probe, {
+					run: () => {
+						useSetupPaymentMethod();
+					},
+				}),
+			),
+		/useSetupPaymentMethod: no client/,
+	);
 });
