@@ -308,6 +308,7 @@
       "exports": [
         "BillingModule",
         "StripeProvider",
+        "SUPPORTED_PAYMENT_OPTIONS",
         "MESSAGE_KEYS",
         "EVENT_KEYS",
         "DEFAULT_TEMPLATES",
@@ -3559,6 +3560,9 @@
       "billing"
     ],
     "stripeprovider": [
+      "billing"
+    ],
+    "supported_payment_options": [
       "billing"
     ],
     "event_keys": [
