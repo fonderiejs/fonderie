@@ -328,6 +328,7 @@
         "fonderie_billing_notifications",
         "fonderie_credit_packs",
         "fonderie_plans",
+        "fonderie_subscription_trials",
         "fonderie_subscriptions",
         "fonderie_usage_records",
         "fonderie_wallet_balances",

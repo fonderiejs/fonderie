@@ -1585,14 +1585,17 @@ function lifecycleProvider(): { provider: IBillingProvider; calls: { cancel?: an
 	return { provider, calls };
 }
 
-function subCtrlStore(sub: unknown): { store: IStoreAdapter; upserts: unknown[][] } {
+function subCtrlStore(sub: unknown, applied = true): { store: IStoreAdapter; upserts: unknown[][] } {
 	const upserts: unknown[][] = [];
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
 			if (sql.includes('fonderie_subscriptions')) {
 				if (sql.trimStart().startsWith('SELECT')) return (sub ? [sub] : []) as T[];
 				upserts.push(params ?? []);
-				return [{ applied: 1 }] as T[]; // upsert applied (ordering guard passed)
+				// applied=false simulates the ON CONFLICT ... WHERE guard rejecting the
+				// write (RETURNING yields no row) — e.g. an optimistic reactivate/cancel
+				// landing after a terminal deleted webhook already canceled the row.
+				return (applied ? [{ applied: 1 }] : []) as T[];
 			}
 			return [] as T[];
 		},
@@ -1697,6 +1700,35 @@ test('subscription.reactivate: 409 for a fully-canceled subscription (no provide
 	const res = await subscriptionController(store, { ...config, provider }).reactivate(subCtx());
 	assert.equal(res.status, 409);
 	assert.equal(calls.reactivate, undefined, 'provider not called for a canceled subscription');
+});
+
+test('subscription.reactivate: a terminal deleted webhook mid-request → guard no-ops the write → 409, NOT a phantom reactivation', async () => {
+	// The read saw an active/scheduled-to-cancel row (so the line-150 guard passes
+	// and the provider is called), but by the time the optimistic write lands the
+	// deleted webhook has canceled the row. The guarded upsert returns not-applied;
+	// the controller must report the truthful terminal state, not "reactivated".
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { provider, calls } = lifecycleProvider();
+	const { store, upserts } = subCtrlStore({ ...activeSub, cancelAtPeriodEnd: true }, false);
+	const res = await subscriptionController(store, { ...config, provider }).reactivate(subCtx());
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 409);
+	assert.equal(body.reason, 'SUBSCRIPTION_CANCELED');
+	assert.ok(calls.reactivate, 'provider WAS called (the read looked reactivatable)');
+	// the guarded write was attempted and carried the terminal guard flag
+	assert.equal(upserts.length, 1, 'the optimistic write was attempted (and guard-rejected)');
+});
+
+test('subscription.cancel (atPeriodEnd): a terminal deleted webhook mid-request → guard no-ops → already-canceled 200, NOT a phantom scheduled-cancel', async () => {
+	const { subscriptionController } = await import('../controllers/subscription.controller');
+	const { provider } = lifecycleProvider();
+	const { store } = subCtrlStore(activeSub, false);
+	const res = await subscriptionController(store, { ...config, provider }).cancel(subCtx());
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.reason, 'SUBSCRIPTION_CANCELED');
+	assert.equal(body.result.status, 'canceled', 'reports the truthful terminal state');
+	assert.equal(body.result.atPeriodEnd, false);
 });
 
 test('buildBillingRoutes: registers first-party cancel + reactivate', async () => {
@@ -1997,6 +2029,96 @@ test('checkout: a CANCELED subscriber can subscribe to a lower-tier plan (fresh 
 	assert.equal(upserts[0]![4], 'incomplete');
 	assert.equal(upserts[0]![5], 'cus_1', 'existing provider customer reused (card/auto-recharge preserved)');
 	assert.equal(upserts[0]![6], null, 'dead provider subscription id cleared (not retained via COALESCE)');
+});
+
+// A store for the trial-eligibility tests: no current subscription (so checkout
+// takes the fresh-checkout branch), and the trials ledger reports consumed or not.
+function trialStore(consumed: boolean): IStoreAdapter {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('fonderie_subscription_trials')) {
+				return (sql.trimStart().startsWith('SELECT') && consumed ? [{ one: 1 }] : []) as T[];
+			}
+			if (sql.includes('fonderie_subscriptions')) {
+				return (sql.trimStart().startsWith('SELECT') ? [] : [{ applied: 1 }]) as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return store;
+}
+
+function trialCheckoutConfig(): { config: IBillingConfig; calls: { session?: any } } {
+	const calls: { session?: any } = {};
+	const provider = makeProvider({
+		async createCustomer() {
+			return { customerId: 'cus_new' };
+		},
+		async createCheckoutSession(opts: any) {
+			calls.session = opts;
+			return { url: 'https://x/pay', sessionId: 'cs_1' };
+		},
+	});
+	const config = {
+		provider,
+		successUrl: 'https://x/s',
+		cancelUrl: 'https://x/c',
+		plans: [{ name: 'pro', monthly: { priceId: 'price_pro_monthly' }, trialDays: 14 }],
+	} as IBillingConfig;
+	return { config, calls };
+}
+
+test('checkout: a first-time subscriber gets the plan trial (trialDays applied)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = trialCheckoutConfig();
+	const res = await checkoutController(trialStore(false), cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
+	assert.equal(res.status, 200);
+	assert.equal(calls.session.trialDays, 14, 'a never-trialed subscriber gets the trial');
+});
+
+test('checkout: a subscriber who already consumed a trial gets NO new trial (farming blocked)', async () => {
+	const { checkoutController } = await import('../controllers/checkout.controller');
+	const { config: cfg, calls } = trialCheckoutConfig();
+	const res = await checkoutController(trialStore(true), cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
+	assert.equal(res.status, 200);
+	assert.equal(calls.session.trialDays, undefined, 'a returning trialer is not granted another trial');
+});
+
+test('webhook: a subscription carrying a trial records it as consumed (farming guard); no trial → no record', async () => {
+	const { webhookController } = await import('../controllers/webhook.controller');
+	const drive = async (trialEndsAt: Date | null) => {
+		const inserts: string[] = [];
+		const store: IStoreAdapter = {
+			query: async <T = unknown>(sql: string): Promise<T[]> => {
+				if (sql.includes('fonderie_subscription_trials')) {
+					if (!sql.trimStart().startsWith('SELECT')) inserts.push('mark');
+					return [] as T[];
+				}
+				if (sql.includes('fonderie_subscriptions')) {
+					return (sql.trimStart().startsWith('SELECT') ? [] : [{ applied: 1 }]) as T[];
+				}
+				return [] as T[];
+			},
+			transaction: async (fn) => fn(store),
+		};
+		const provider = makeProvider({
+			constructEvent: async () => ({
+				type: 'customer.subscription.created',
+				subscription: normalizedSub({ priceId: 'price_pro_monthly', status: 'trialing', trialEndsAt }) as any,
+			}),
+		});
+		await webhookController(store, { ...config, provider, webhookSecret: 'whsec_x' }, undefined, recordingBus().bus).handle(
+			webhookCtx('{}'),
+		);
+		return inserts.length;
+	};
+	assert.equal(await drive(new Date('2026-10-01T00:00:00Z')), 1, 'a trialing subscription is recorded as consumed');
+	assert.equal(await drive(null), 0, 'a non-trial subscription records nothing');
 });
 
 test('checkout: an in-place UPGRADE clears any pending cancellation and carries the trial forward', async () => {

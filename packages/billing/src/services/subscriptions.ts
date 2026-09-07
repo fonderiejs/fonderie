@@ -87,6 +87,14 @@ export async function upsertSubscription(
 		// redelivery — a stale event is a no-op instead of resurrecting a
 		// canceled/downgraded row.
 		providerEventAt?: Date | string | null;
+		// Set by the optimistic non-webhook writers (cancel-at-period-end,
+		// reactivate) that carry no providerEventAt. Their null token would
+		// otherwise make the ordering guard always apply — so a write still
+		// in-flight when a TERMINAL customer.subscription.deleted webhook lands
+		// would resurrect the canceled row to active/paid, with no later webhook
+		// to correct it (deleted is terminal). When true, the UPDATE additionally
+		// refuses to touch a row a webhook has already canceled.
+		guardNotWebhookCanceled?: boolean;
 	},
 	store: IStoreAdapter,
 ): Promise<boolean> {
@@ -94,6 +102,12 @@ export async function upsertSubscription(
 	// ordering guard below, updates nothing, and returns false — so the caller can
 	// skip lifecycle events + customer notices that would otherwise act on the
 	// stale state (the event-bus twin of the DB resurrection this guards against).
+	// An optimistic write with guardNotWebhookCanceled likewise returns false when
+	// a webhook already terminated the subscription, so the caller can report the
+	// truthful (canceled) state instead of a phantom reactivation.
+	const terminalGuard = data.guardNotWebhookCanceled
+		? `\n\t\t    AND NOT (fonderie_subscriptions.status = 'canceled' AND fonderie_subscriptions.provider_event_at IS NOT NULL)`
+		: '';
 	const rows = await store.query<{ applied: number }>(
 		`INSERT INTO fonderie_subscriptions
 			(subscriber_type, subscriber_id, plan, interval, status,
@@ -118,9 +132,9 @@ export async function upsertSubscription(
 			 -- non-webhook write ($12 null) applies, so a later stale webhook still
 			 -- sees the last-applied event time and is rejected.
 			 provider_event_at        = COALESCE($12, fonderie_subscriptions.provider_event_at)
-		 WHERE fonderie_subscriptions.provider_event_at IS NULL
+		 WHERE (fonderie_subscriptions.provider_event_at IS NULL
 		    OR $12::timestamptz IS NULL
-		    OR $12::timestamptz >= fonderie_subscriptions.provider_event_at
+		    OR $12::timestamptz >= fonderie_subscriptions.provider_event_at)${terminalGuard}
 		 RETURNING 1 AS applied`,
 		[
 			data.subscriberType,
@@ -136,6 +150,39 @@ export async function upsertSubscription(
 			data.trialEndsAt ?? null,
 			data.providerEventAt ?? null,
 		],
+	);
+	return rows.length > 0;
+}
+
+// Durably record that a subscriber has consumed a free trial. Idempotent — the
+// subscription webhook calls it every time a subscription carries a trial, so it
+// must survive re-delivery and the cancel → resubscribe cycle. This is the memory
+// the (overwritten) subscription row cannot keep.
+export async function markTrialConsumed(
+	subscriberType: SubscriberType,
+	subscriberId: string,
+	store: IStoreAdapter,
+): Promise<void> {
+	await store.query(
+		`INSERT INTO fonderie_subscription_trials (subscriber_type, subscriber_id)
+		 VALUES ($1, $2)
+		 ON CONFLICT (subscriber_type, subscriber_id) DO NOTHING`,
+		[subscriberType, subscriberId],
+	);
+}
+
+// Whether a subscriber has already consumed a free trial. Checkout consults this
+// before applying a plan's trialDays, so a returning subscriber can't farm a new
+// trial on every re-subscribe.
+export async function hasConsumedTrial(
+	subscriberType: SubscriberType,
+	subscriberId: string,
+	store: IStoreAdapter,
+): Promise<boolean> {
+	const rows = await store.query<{ one: number }>(
+		`SELECT 1 AS one FROM fonderie_subscription_trials
+		 WHERE subscriber_type = $1 AND subscriber_id = $2`,
+		[subscriberType, subscriberId],
 	);
 	return rows.length > 0;
 }
