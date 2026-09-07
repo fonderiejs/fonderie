@@ -9,7 +9,8 @@ import type { PriceCache } from '../services/price-cache';
 import { SubscriptionModel } from '../models/subscription.model';
 import { getSubscriberByProviderSubscriptionId } from '../services/subscriptions';
 import { resolvePlanNameByPrice } from '../services/plans';
-import { subscriberEventFields } from '../utils';
+import { applyPackCredit } from '../services/purchase';
+import { normalizeCurrency, subscriberEventFields } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { readWebhookEvent } from './webhook-shared';
 
@@ -103,6 +104,49 @@ export function webhookController(
 			// subscriber identity, so resolve it.
 			if (event.invoice) {
 				const inv = event.invoice;
+
+				// In-app pack-purchase invoice (metadata.reason==='purchase') — the
+				// orphan safety-net: heal-credit the wallet if the synchronous purchase
+				// credit was lost to an indeterminate outcome. Idempotent on the
+				// invoice's PaymentIntent — the SAME key applyPackCredit uses in the
+				// synchronous path — so a normal (already-credited) purchase's
+				// invoice.paid no-ops and this can never double-credit. These invoices
+				// carry no subscription id, so they'd otherwise fall through below.
+				if (inv.status === 'paid' && inv.metadata['reason'] === 'purchase') {
+					const st = inv.metadata['subscriberType'];
+					const sid = inv.metadata['subscriberId'];
+					const packId = inv.metadata['packId'];
+					const credits = inv.metadata['credits'] ?? '';
+					if (
+						(st === 'user' || st === 'workspace') &&
+						sid &&
+						packId &&
+						/^\d{1,30}$/.test(credits) &&
+						inv.providerTxId
+					) {
+						const creditCurrency = normalizeCurrency(
+							inv.metadata['currency'] ?? config.wallet?.currency ?? 'USD',
+						);
+						await applyPackCredit({
+							store,
+							config,
+							bus,
+							subscriberType: st,
+							subscriberId: sid,
+							creditCurrency,
+							precision: config.wallet?.precision ?? 2,
+							credits: BigInt(credits),
+							packId,
+							providerTxId: inv.providerTxId,
+							amountPaid: inv.amount ?? 0n,
+							paymentCurrency: inv.currency ?? creditCurrency,
+						});
+						return Response.json({ received: true });
+					}
+					// Ours (reason:purchase) but malformed — surface so the provider flags it.
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Malformed pack invoice metadata');
+				}
+
 				const subscriber = inv.providerSubscriptionId
 					? await getSubscriberByProviderSubscriptionId(inv.providerSubscriptionId, store)
 					: null;

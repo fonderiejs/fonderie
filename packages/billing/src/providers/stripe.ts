@@ -660,7 +660,18 @@ export class StripeProvider implements IBillingProvider {
 			invoicePdf: invoice?.invoice_pdf ?? null,
 		});
 
-		// Draft → item → finalize. A failure here is definitive (no charge yet).
+		const nulls = { providerTxId: null, invoiceId: null, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null } as const;
+		// Best-effort void/delete of a created-but-unpaid invoice so it doesn't
+		// linger as a dangling draft/open invoice. A draft (item/finalize failed)
+		// must be deleted; a finalized one is voided — try both, swallow errors.
+		const discard = async (id: string) => {
+			await stripe.invoices.voidInvoice(id).catch(async () => {
+				await stripe.invoices.del(id).catch(() => {});
+			});
+		};
+
+		// Draft → item → finalize. A failure here is definitive (no charge yet);
+		// discard any invoice we created before returning.
 		let invoiceId: string;
 		try {
 			const draft = await stripe.invoices.create(
@@ -687,22 +698,32 @@ export class StripeProvider implements IBillingProvider {
 			);
 			await stripe.invoices.finalizeInvoice(invoiceId, { auto_advance: false }, { idempotencyKey: `${k}:finalize` });
 		} catch {
-			return { status: 'failed', providerTxId: null, invoiceId: null, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null };
+			// invoiceId is only set once create succeeded; TS-narrow via a guard.
+			if (typeof invoiceId! === 'string') await discard(invoiceId!);
+			return { status: 'failed', ...nulls };
 		}
 
-		// Pay off-session.
+		// Pay off-session. NOTE: no `expand` here — the pinned API returns the PI on
+		// the legacy `invoice.payment_intent`, which piIdOf reads (with a
+		// payments[]-shape fallback for newer API versions).
 		try {
 			const paid = await stripe.invoices.pay(
 				invoiceId,
-				{ off_session: true, ...(pm ? { payment_method: pm } : {}), expand: ['payments'] },
+				{ off_session: true, ...(pm ? { payment_method: pm } : {}) },
 				{ idempotencyKey: `${k}:pay` },
 			);
 			if (paid.status === 'paid') {
-				return { status: 'succeeded', providerTxId: piIdOf(paid), ...summaryOf(paid) };
+				const pi = piIdOf(paid);
+				// Paid but the PaymentIntent id didn't resolve (unexpected). Do NOT
+				// report succeeded-with-null — the caller would map that to a false
+				// "declined" and invite a second charge. Report unknown so it shows
+				// "processing" and the invoice.paid webhook / a same-key retry heals it.
+				if (!pi) return { status: 'unknown', ...summaryOf(paid), providerTxId: null };
+				return { status: 'succeeded', providerTxId: pi, ...summaryOf(paid) };
 			}
 			// Finalized but not paid (e.g. needs action) — void so it doesn't linger.
-			await stripe.invoices.voidInvoice(invoiceId).catch(() => {});
-			return { status: 'requires_action', providerTxId: piIdOf(paid), ...summaryOf(paid) };
+			await discard(invoiceId);
+			return { status: 'requires_action', ...nulls };
 		} catch (err) {
 			const e = err as { type?: string; rawType?: string; code?: string };
 			const t = e?.type ?? e?.rawType;
@@ -712,13 +733,14 @@ export class StripeProvider implements IBillingProvider {
 			// hosted checkout. A plain decline is a hard failure. Both are definitive
 			// (no capture) so the finalized invoice is voided.
 			if (isCard || isInvalid) {
-				await stripe.invoices.voidInvoice(invoiceId).catch(() => {});
+				await discard(invoiceId);
 				const status = isCard && e.code === 'authentication_required' ? 'requires_action' : 'failed';
-				return { status, providerTxId: null, invoiceId: null, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null };
+				return { status, ...nulls };
 			}
-			// Network/timeout — the pay MAY have captured. Leave the invoice as-is and
-			// report unknown; the invoice.paid webhook heals it if it did capture.
-			return { status: 'unknown', providerTxId: null, invoiceId, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null };
+			// Network/timeout — the pay MAY have captured. Leave the invoice as-is
+			// (do NOT void — that could cancel a real payment) and report unknown; a
+			// same-key retry (idempotent) or the invoice.paid webhook heals it.
+			return { status: 'unknown', ...nulls, invoiceId };
 		}
 	}
 

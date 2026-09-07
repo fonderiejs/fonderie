@@ -26,6 +26,89 @@ export type IPurchaseOutcome =
 	| { status: 'processing' }
 	| { status: 'invalid_pack' };
 
+// Credit a completed pack purchase into the wallet, idempotent on the provider
+// PaymentIntent id — the SAME key whether the credit lands from the synchronous
+// purchase or the invoice.paid webhook heal, so an orphaned capture credits
+// exactly once. Emits the domain events + receipt only on a fresh (non-duplicate)
+// credit. Shared by purchasePackWithSavedCard and the webhook heal.
+export async function applyPackCredit(args: {
+	store: IStoreAdapter;
+	config: IBillingConfig;
+	bus: EventBus | undefined;
+	subscriberType: SubscriberType;
+	subscriberId: string;
+	creditCurrency: string;
+	precision: number;
+	credits: bigint;
+	packId: string;
+	providerTxId: string;
+	amountPaid: bigint;
+	paymentCurrency: string;
+}): Promise<{ balance: bigint; duplicate: boolean }> {
+	const {
+		store,
+		config,
+		bus,
+		subscriberType,
+		subscriberId,
+		creditCurrency,
+		precision,
+		credits,
+		packId,
+		providerTxId,
+		amountPaid,
+		paymentCurrency,
+	} = args;
+	const provider = config.provider.name;
+	const result = await creditWallet(
+		{
+			subscriberType,
+			subscriberId,
+			currency: creditCurrency,
+			amount: credits,
+			type: 'purchase',
+			idempotencyKey: `${provider}:purchase:${providerTxId}`,
+			description: `Credit pack ${packId}`,
+			providerTxId,
+			metadata: {
+				packId,
+				source: 'in-app-purchase',
+				providerTxId,
+				amountPaid: amountPaid.toString(),
+				paymentCurrency,
+			},
+		},
+		store,
+	);
+	if (!result.duplicate) {
+		const fields = {
+			...subscriberEventFields(subscriberType, subscriberId),
+			currency: creditCurrency,
+			credits: credits.toString(),
+			balanceAfter: result.balance.toString(),
+			packId,
+			providerTxId,
+		};
+		bus?.emit(EVENT_KEYS.creditPackPurchased, fields).catch(() => {});
+		bus?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' }).catch(() => {});
+		void notifyBilling(bus, config, {
+			subscriberType,
+			subscriberId,
+			type: MESSAGE_KEYS.paymentReceipt,
+			data: {
+				packId,
+				credits: credits.toString(),
+				currency: creditCurrency,
+				balanceAfter: result.balance.toString(),
+				creditsDisplay: formatWalletAmount(credits, creditCurrency, precision),
+				balanceAfterDisplay: formatWalletAmount(result.balance, creditCurrency, precision),
+				source: 'in-app-purchase',
+			},
+		});
+	}
+	return { balance: result.balance, duplicate: result.duplicate };
+}
+
 // Interactive credit-pack purchase charged against the subscriber's saved card —
 // the in-app alternative to hosted checkout, so a buyer with a card on file never
 // leaves the site. Money-safety mirrors maybeAutoRecharge:
@@ -115,31 +198,26 @@ export async function purchasePackWithSavedCard(args: {
 	// Definitive decline — no funds moved.
 	if (charge.status !== 'succeeded' || !charge.providerTxId) return { status: 'declined' };
 
-	// Funds captured — credit the wallet, idempotent on the charge id so neither a
-	// double-submit nor a redelivered event double-credits. amountPaid +
-	// paymentCurrency mirror the hosted-checkout credit so a later refund/chargeback
-	// of THIS charge can prorate the clawback (handleReversal joins back by
-	// providerTxId).
-	const result = await creditWallet(
-		{
-			subscriberType,
-			subscriberId,
-			currency: creditCurrency,
-			amount: pack.credits,
-			type: 'purchase',
-			idempotencyKey: `${provider}:purchase:${charge.providerTxId}`,
-			description: `Credit pack ${pack.id}`,
-			providerTxId: charge.providerTxId,
-			metadata: {
-				packId: pack.id,
-				source: 'in-app-purchase',
-				providerTxId: charge.providerTxId,
-				amountPaid: pack.priceAmount.toString(),
-				paymentCurrency: chargeCurrency,
-			},
-		},
+	// Funds captured — credit the wallet (idempotent on the PaymentIntent id) and
+	// emit the receipt + events via the shared helper. The invoice.paid webhook
+	// heal uses the SAME helper + key, so an orphaned capture credits exactly once
+	// whichever path lands first. amountPaid + paymentCurrency mirror the
+	// hosted-checkout credit so a later refund/chargeback prorates the clawback
+	// (handleReversal joins back by providerTxId).
+	const { balance, duplicate } = await applyPackCredit({
 		store,
-	);
+		config,
+		bus,
+		subscriberType,
+		subscriberId,
+		creditCurrency,
+		precision,
+		credits: pack.credits,
+		packId: pack.id,
+		providerTxId: charge.providerTxId,
+		amountPaid: pack.priceAmount,
+		paymentCurrency: chargeCurrency,
+	});
 
 	// Persist the customer + card and re-arm auto-recharge on a genuine purchase —
 	// mirrors the hosted-checkout webhook so both purchase paths behave alike.
@@ -151,7 +229,7 @@ export async function purchasePackWithSavedCard(args: {
 				subscriberId,
 				provider,
 				providerCustomerId: customer.providerCustomerId,
-				rearm: !result.duplicate,
+				rearm: !duplicate,
 				paymentMethodId: customer.paymentMethodId,
 			},
 			store,
@@ -160,39 +238,12 @@ export async function purchasePackWithSavedCard(args: {
 		// auto-recharge stays as-is until the next successful purchase re-arms it.
 	}
 
-	if (!result.duplicate) {
-		const fields = {
-			...subscriberEventFields(subscriberType, subscriberId),
-			currency: creditCurrency,
-			credits: pack.credits.toString(),
-			balanceAfter: result.balance.toString(),
-			packId: pack.id,
-			providerTxId: charge.providerTxId,
-		};
-		bus?.emit(EVENT_KEYS.creditPackPurchased, fields).catch(() => {});
-		bus?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' }).catch(() => {});
-		void notifyBilling(bus, config, {
-			subscriberType,
-			subscriberId,
-			type: MESSAGE_KEYS.paymentReceipt,
-			data: {
-				packId: pack.id,
-				credits: pack.credits.toString(),
-				currency: creditCurrency,
-				balanceAfter: result.balance.toString(),
-				creditsDisplay: formatWalletAmount(pack.credits, creditCurrency, precision),
-				balanceAfterDisplay: formatWalletAmount(result.balance, creditCurrency, precision),
-				source: 'in-app-purchase',
-			},
-		});
-	}
-
 	return {
 		status: 'credited',
-		balance: result.balance,
+		balance,
 		credits: pack.credits,
 		currency: creditCurrency,
-		duplicate: result.duplicate,
+		duplicate,
 		providerTxId: charge.providerTxId,
 	};
 }
