@@ -59,7 +59,17 @@ interface IStripeChargeRaw {
 	id: string;
 	payment_intent?: string | { id: string } | null;
 	currency?: string | null;
+	amount?: number | null;
+	amount_captured?: number | null;
 	amount_refunded?: number | null;
+	created?: number | null;
+	status?: string | null;
+	paid?: boolean | null;
+	receipt_url?: string | null;
+	// The invoice this charge settles, if any. One-time payments (credit-pack
+	// purchases, whether hosted checkout or an in-app PaymentIntent) have none —
+	// that's how we tell them apart from subscription-invoice charges.
+	invoice?: string | { id: string } | null;
 	refunds?: { data?: Array<{ id: string; amount?: number | null; reason?: string | null }> } | null;
 	metadata?: Record<string, string> | null;
 }
@@ -716,21 +726,50 @@ export class StripeProvider implements IBillingProvider {
 		limit?: number;
 	}): Promise<INormalizedInvoiceSummary[]> {
 		const stripe = await this.client();
-		const res = await stripe.invoices.list({
-			customer: opts.customerId,
-			limit: opts.limit ?? 20,
-		});
-		return (res.data as IStripeInvoiceRaw[]).map((inv) => ({
-			id: inv.id,
-			number: inv.number ?? null,
-			amountDue: BigInt(inv.amount_due ?? 0),
-			amountPaid: BigInt(inv.amount_paid ?? 0),
-			currency: (inv.currency ?? 'usd').toUpperCase(),
-			status: inv.status ?? 'unknown',
-			created: new Date((inv.created ?? 0) * 1000).toISOString(),
-			hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
-			invoicePdf: inv.invoice_pdf ?? null,
-		}));
+		const limit = opts.limit ?? 20;
+
+		// Subscription invoices (renewals) — the classic invoice with a number + PDF.
+		const invoiceRes = await stripe.invoices.list({ customer: opts.customerId, limit });
+		const invoices: INormalizedInvoiceSummary[] = (invoiceRes.data as IStripeInvoiceRaw[]).map(
+			(inv) => ({
+				id: inv.id,
+				number: inv.number ?? null,
+				amountDue: BigInt(inv.amount_due ?? 0),
+				amountPaid: BigInt(inv.amount_paid ?? 0),
+				currency: (inv.currency ?? 'usd').toUpperCase(),
+				status: inv.status ?? 'unknown',
+				created: new Date((inv.created ?? 0) * 1000).toISOString(),
+				hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
+				invoicePdf: inv.invoice_pdf ?? null,
+			}),
+		);
+
+		// One-time payments (credit-pack purchases) never become Stripe invoices —
+		// they are bare charges. Surface them too so the buyer has a record of the
+		// money they paid, linkable to Stripe's hosted receipt. Exclude charges that
+		// settle a subscription invoice (already listed above) and any that didn't
+		// capture, so this is a clean union with no double-counting.
+		const chargeRes = await stripe.charges
+			.list({ customer: opts.customerId, limit })
+			.catch(() => null);
+		const oneTime: INormalizedInvoiceSummary[] = ((chargeRes?.data ?? []) as IStripeChargeRaw[])
+			.filter((c) => !c.invoice && (c.paid === true || c.status === 'succeeded'))
+			.map((c) => ({
+				id: c.id,
+				number: null, // charges carry no invoice number
+				amountDue: BigInt(c.amount ?? 0),
+				amountPaid: BigInt(c.amount_captured ?? c.amount ?? 0),
+				currency: (c.currency ?? 'usd').toUpperCase(),
+				status: c.status === 'succeeded' ? 'paid' : (c.status ?? 'unknown'),
+				created: new Date((c.created ?? 0) * 1000).toISOString(),
+				hostedInvoiceUrl: c.receipt_url ?? null, // Stripe-hosted receipt to view/link
+				invoicePdf: null,
+			}));
+
+		// Newest first (ISO-8601 sorts lexically), capped to the requested page size.
+		return [...invoices, ...oneTime]
+			.sort((a, b) => (a.created < b.created ? 1 : a.created > b.created ? -1 : 0))
+			.slice(0, limit);
 	}
 
 	async constructEvent(opts: {
