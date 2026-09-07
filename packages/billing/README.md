@@ -87,10 +87,27 @@ The flow is three steps and stays on-page:
 `createSetupIntent` / `setDefaultPaymentMethod` / `detachPaymentMethod`; a
 provider that omits them answers `501` and the UI reads that as "in-app entry
 unavailable" (fall back to the hosted portal). Every write is ownership-checked
-— the payment method must belong to the caller's customer — and the SetupIntent
-is created with `allow_redirects: 'never'`, so only off-session-chargeable
-methods (cards/wallets) are offered, which is exactly what a stored default must
-be.
+— the payment method must belong to the caller's customer.
+
+The SetupIntent offers the payment method types you configure on the provider,
+defaulting to card only:
+
+```ts
+import { StripeProvider, SUPPORTED_PAYMENT_OPTIONS } from '@fonderie/billing';
+
+// default — card only: displayable ("Visa •••• 4242"), off-session-chargeable, on-page
+new StripeProvider(secretKey, webhookSecret);
+// equivalent explicit form, and how to broaden it:
+new StripeProvider(secretKey, webhookSecret, {
+  setupPaymentMethodTypes: [SUPPORTED_PAYMENT_OPTIONS.CARD],
+});
+```
+
+Card is the default because it is the only method that yields a payment method
+with a `card` object — one that shows as a card on file and reads back. Wallet
+methods like Stripe `LINK` are off-session-chargeable but produce a `type:'link'`
+PM with no card details, so they can't be displayed as a stored card. The brick
+doesn't hard-code this — it's your policy.
 
 Wire the UI with the framework hooks — `usePaymentMethod`,
 `useSetupPaymentMethod`, `useSavePaymentMethod`, `useRemovePaymentMethod` in

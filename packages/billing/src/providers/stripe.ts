@@ -301,12 +301,37 @@ function toSubscriptionChange(sub: any): ISubscriptionChange {
 	};
 }
 
+// The payment method types the in-app card-save SetupIntent can offer. Reference
+// these instead of raw strings for `setupPaymentMethodTypes`. Both stay on-page
+// (neither needs an off-site redirect), but only CARD yields a payment method with
+// a `card` object — one that shows as "Visa •••• 4242" and reads back as a card on
+// file. LINK (Stripe Link) is off-session-chargeable, but its PM is type:'link'
+// with no card details, so it can't be displayed as a stored card.
+export const SUPPORTED_PAYMENT_OPTIONS = {
+	CARD: 'card',
+	LINK: 'link',
+} as const;
+
+export type SupportedPaymentOption =
+	(typeof SUPPORTED_PAYMENT_OPTIONS)[keyof typeof SUPPORTED_PAYMENT_OPTIONS];
+
+export interface IStripeProviderOptions {
+	// Payment method types the in-app card-save SetupIntent (`createSetupIntent`)
+	// offers. Defaults to `[SUPPORTED_PAYMENT_OPTIONS.CARD]` — a concrete,
+	// displayable, off-session-chargeable card that stays on-page. Broaden it (e.g.
+	// `[SUPPORTED_PAYMENT_OPTIONS.CARD, SUPPORTED_PAYMENT_OPTIONS.LINK]`) to offer
+	// wallets, accepting that non-card methods won't render as a card on file. This
+	// is the consumer's policy — the brick doesn't hard-code it.
+	setupPaymentMethodTypes?: SupportedPaymentOption[];
+}
+
 export class StripeProvider implements IBillingProvider {
 	readonly name = 'stripe';
 
 	constructor(
 		private secretKey: string,
 		private webhookSecret?: string,
+		private options: IStripeProviderOptions = {},
 	) {}
 
 	private async client(): Promise<any> {
@@ -622,10 +647,12 @@ export class StripeProvider implements IBillingProvider {
 
 	// In-app card entry: a SetupIntent the client confirms with the Payment
 	// Element. usage:'off_session' so the saved card can back future wallet
-	// auto-recharge / renewals. allow_redirects:'never' keeps this in-page — it
-	// restricts the Element to methods that need no off-site redirect, which is
-	// exactly what an off-session-chargeable saved card must be; without it a
-	// redirect-based method would bounce the user off the site on confirm.
+	// auto-recharge / renewals. The offered methods come from
+	// `options.setupPaymentMethodTypes` (default `['card']`): explicit
+	// payment_method_types rather than automatic_payment_methods, because the
+	// default of card keeps entry on-page AND avoids wallet methods like Stripe
+	// Link — whose confirmed PM is type:'link' with no `card` object, so it can't
+	// be shown as a card on file. Consumers who want wallets set the option.
 	async createSetupIntent(opts: {
 		customerId: string;
 	}): Promise<{ clientSecret: string; setupIntentId: string }> {
@@ -633,7 +660,7 @@ export class StripeProvider implements IBillingProvider {
 		const si = await stripe.setupIntents.create({
 			customer: opts.customerId,
 			usage: 'off_session',
-			automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+			payment_method_types: this.options.setupPaymentMethodTypes ?? [SUPPORTED_PAYMENT_OPTIONS.CARD],
 		});
 		return { clientSecret: si.client_secret ?? '', setupIntentId: si.id };
 	}

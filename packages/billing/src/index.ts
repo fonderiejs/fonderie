@@ -1,6 +1,7 @@
 // ── Public API ───────────────────────────────────────────────────
 export { BillingModule } from './module';
-export { StripeProvider } from './providers/stripe';
+export { StripeProvider, SUPPORTED_PAYMENT_OPTIONS } from './providers/stripe';
+export type { IStripeProviderOptions, SupportedPaymentOption } from './providers/stripe';
 
 // Middleware
 export { requirePlan } from './middlewares/require-plan';

@@ -13,7 +13,7 @@ new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus |
   .install(app: IFonderieApp): Promise<void>
   .checkReadiness(): IReadinessProblem[]
 
-new StripeProvider(secretKey: string, webhookSecret?: string | undefined): StripeProvider
+new StripeProvider(secretKey: string, webhookSecret?: string | undefined, options?: IStripeProviderOptions): StripeProvider
   .name: "stripe"
   .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>
   .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; }): Promise<{ url: string; }>
@@ -32,6 +32,14 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined): Strip
   .detachPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
   .listInvoices(opts: { customerId: string; limit?: number; }): Promise<INormalizedInvoiceSummary[]>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
+
+const SUPPORTED_PAYMENT_OPTIONS: { readonly CARD: "card"; readonly LINK: "link"; }
+
+interface IStripeProviderOptions {
+    setupPaymentMethodTypes?: SupportedPaymentOption[];
+}
+
+type SupportedPaymentOption = (typeof SUPPORTED_PAYMENT_OPTIONS)[keyof typeof SUPPORTED_PAYMENT_OPTIONS];
 
 function requirePlan(plans: string | string[], store: IStoreAdapter): Middleware
 
