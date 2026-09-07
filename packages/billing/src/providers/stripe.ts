@@ -97,6 +97,7 @@ interface IStripeInvoiceRaw {
 	currency?: string | null;
 	amount_paid?: number | null;
 	amount_due?: number | null;
+	due_date?: number | null;
 	payment_intent?: string | { id: string } | null;
 	subscription?: string | { id: string } | null;
 	customer?: string | { id: string } | null;
@@ -869,6 +870,7 @@ export class StripeProvider implements IBillingProvider {
 				currency: (inv.currency ?? 'usd').toUpperCase(),
 				status: inv.status ?? 'unknown',
 				created: new Date((inv.created ?? 0) * 1000).toISOString(),
+				dueDate: inv.due_date ? new Date(inv.due_date * 1000).toISOString() : null,
 				hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
 				invoicePdf: inv.invoice_pdf ?? null,
 			}),
@@ -892,6 +894,7 @@ export class StripeProvider implements IBillingProvider {
 				currency: (c.currency ?? 'usd').toUpperCase(),
 				status: c.status === 'succeeded' ? 'paid' : (c.status ?? 'unknown'),
 				created: new Date((c.created ?? 0) * 1000).toISOString(),
+				dueDate: null, // a one-time charge is paid on capture — no due date
 				hostedInvoiceUrl: c.receipt_url ?? null, // Stripe-hosted receipt to view/link
 				invoicePdf: null,
 			}));

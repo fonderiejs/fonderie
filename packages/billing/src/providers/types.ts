@@ -153,6 +153,7 @@ export interface INormalizedInvoiceSummary {
 	currency: string;
 	status: string; // 'paid' | 'open' | 'draft' | 'void' | 'uncollectible' | …
 	created: string; // ISO-8601
+	dueDate: string | null; // ISO-8601 when the invoice has payment terms; null otherwise (paid-on-charge)
 	hostedInvoiceUrl: string | null;
 	invoicePdf: string | null;
 }

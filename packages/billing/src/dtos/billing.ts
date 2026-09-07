@@ -172,6 +172,7 @@ export interface IInvoiceDTO {
 	currency: string;
 	status: string;
 	created: string;
+	dueDate: string | null; // ISO-8601 when the invoice has payment terms; null when paid on charge
 	hostedInvoiceUrl: string | null;
 	invoicePdf: string | null;
 }
@@ -185,6 +186,7 @@ export function toInvoiceDTO(inv: INormalizedInvoiceSummary): IInvoiceDTO {
 		currency: inv.currency,
 		status: inv.status,
 		created: inv.created,
+		dueDate: inv.dueDate,
 		hostedInvoiceUrl: inv.hostedInvoiceUrl,
 		invoicePdf: inv.invoicePdf,
 	};
