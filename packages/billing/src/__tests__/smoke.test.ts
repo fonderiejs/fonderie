@@ -2402,3 +2402,28 @@ test('payment webhook: a declined in-app purchase (reason:purchase) sends NO pay
 	assert.equal(body.ignored, 'purchase-handled-elsewhere', 'the interactive caller owns the decline UX')
 	assert.equal(calls.length, 0, 'no payment.failed event → no duplicate customer email')
 })
+
+test('purchase: prefers chargeViaInvoice over chargeOffSession, maps requires_action → checkout', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	const calls: string[] = []
+	const provider = makeProvider({
+		chargeViaInvoice: async () => { calls.push('invoice'); return { status: 'requires_action', providerTxId: null, invoiceId: null, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null } },
+		chargeOffSession: async () => { calls.push('charge'); return { providerTxId: 'pi', status: 'succeeded' } },
+	})
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
+	assert.deepEqual(calls, ['invoice'], 'invoice path preferred; off-session not called')
+	assert.deepEqual(out, { status: 'checkout_required', reason: 'authentication_required' })
+})
+
+test('purchase: falls back to chargeOffSession when the provider has no chargeViaInvoice', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	const calls: string[] = []
+	const provider = makeProvider({
+		chargeOffSession: async () => { calls.push('charge'); return { providerTxId: null, status: 'failed' } },
+	})
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
+	assert.deepEqual(calls, ['charge'])
+	assert.equal(out.status, 'declined')
+})
