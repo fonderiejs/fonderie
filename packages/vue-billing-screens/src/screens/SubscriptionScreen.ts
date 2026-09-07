@@ -1,5 +1,10 @@
 import type { BillingClient } from '@fonderie/client';
-import { useBillingPortal, useSubscription } from '@fonderie/vue-billing';
+import {
+	useBillingPortal,
+	usePaymentMethod,
+	useRemovePaymentMethod,
+	useSubscription,
+} from '@fonderie/vue-billing';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
 import { styles } from '../styles';
@@ -12,6 +17,11 @@ export const SubscriptionScreen = defineComponent({
 	emits: {
 		'manage-billing': (_url: string) => true,
 		'navigate-pricing': () => true,
+		// The host owns the Stripe Payment Element (publishable key + <Elements>),
+		// so adding/replacing a card is delegated up — same way `manage-billing`
+		// hands a portal URL to the host. `useSetupPaymentMethod`/`useSavePaymentMethod`
+		// live there; this provider-agnostic screen only shows + removes the card.
+		'add-payment-method': () => true,
 	},
 	setup(props, { emit }) {
 		const { subscription, isLoading, error } = useSubscription(props.client);
@@ -20,6 +30,13 @@ export const SubscriptionScreen = defineComponent({
 			isLoading: isOpeningPortal,
 			error: portalError,
 		} = useBillingPortal(props.client);
+		const {
+			paymentMethod,
+			isLoading: isLoadingCard,
+			error: cardError,
+			refresh: refreshCard,
+		} = usePaymentMethod(props.client);
+		const { remove, isLoading: isRemoving, error: removeError } = useRemovePaymentMethod(props.client);
 
 		async function handleManage() {
 			try {
@@ -28,6 +45,64 @@ export const SubscriptionScreen = defineComponent({
 			} catch {
 				// Surfaced via portalError.
 			}
+		}
+
+		async function handleRemove() {
+			try {
+				await remove();
+				await refreshCard({ force: true });
+			} catch {
+				// Surfaced via removeError.
+			}
+		}
+
+		function renderPaymentMethod() {
+			// A card can't render until its read resolves; the initial read runs in
+			// onMounted, so isLoadingCard starts true.
+			if (isLoadingCard.value && !paymentMethod.value) {
+				return [h('p', { style: styles.status }, 'Loading payment method…')];
+			}
+
+			const pm = paymentMethod.value;
+			const brand = pm ? pm.brand.charAt(0).toUpperCase() + pm.brand.slice(1) : '';
+			return [
+				cardError.value
+					? h('p', { style: styles.error, role: 'alert' }, cardError.value.explanation)
+					: null,
+				removeError.value
+					? h('p', { style: styles.error, role: 'alert' }, removeError.value.explanation)
+					: null,
+				pm
+					? h(
+							'p',
+							{ style: styles.cardLine },
+							`${brand} •••• ${pm.last4} · expires ${pm.expMonth}/${pm.expYear}`,
+						)
+					: h('p', { style: styles.status }, 'No card on file.'),
+				h('div', { style: styles.buttonRow }, [
+					h(
+						'button',
+						{
+							type: 'button',
+							style: styles.secondaryButton,
+							onClick: () => emit('add-payment-method'),
+						},
+						pm ? 'Update card' : 'Add card',
+					),
+					pm
+						? h(
+								'button',
+								{
+									type: 'button',
+									disabled: isRemoving.value,
+									style: styles.dangerButton,
+									onClick: handleRemove,
+								},
+								isRemoving.value ? 'Removing…' : 'Remove',
+							)
+						: null,
+				]),
+			];
 		}
 
 		return () => {
@@ -75,6 +150,10 @@ export const SubscriptionScreen = defineComponent({
 					},
 					isOpeningPortal.value ? 'Opening…' : 'Manage billing',
 				),
+				h('div', { style: styles.section }, [
+					h('h2', { style: styles.sectionTitle }, 'Payment method'),
+					...renderPaymentMethod(),
+				]),
 			]);
 		};
 	},
