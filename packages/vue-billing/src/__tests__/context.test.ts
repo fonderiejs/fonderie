@@ -7,16 +7,18 @@ import { FonderiePlugin } from '@fonderie/vue';
 import { createSSRApp, defineComponent, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
-import { useBillingPortal } from '../composables/useBillingPortal';
-import { usePlan } from '../composables/usePlan';
-import { useWalletPreferences } from '../composables/useWalletPreferences';
-import { useWallet } from '../composables/useWallet';
-import { useWalletTransactions } from '../composables/useWalletTransactions';
-import { useWalletCheckout } from '../composables/useWalletCheckout';
-import { useCancelSubscription } from '../composables/useCancelSubscription';
-import { useReactivateSubscription } from '../composables/useReactivateSubscription';
-import { usePaymentMethod } from '../composables/usePaymentMethod';
-import { useInvoices } from '../composables/useInvoices';
+import {
+	useBillingPortal,
+	usePlan,
+	useWalletPreferences,
+	useWallet,
+	useWalletTransactions,
+	useWalletCheckout,
+	useCancelSubscription,
+	useReactivateSubscription,
+	usePaymentMethod,
+	useInvoices,
+} from '../composables';
 
 const fakePlan = { id: 'plan_1', name: 'Pro' } as unknown as IPlanDTO;
 const fakeBilling = {

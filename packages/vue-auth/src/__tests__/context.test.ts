@@ -6,7 +6,7 @@ import { FonderiePlugin } from '@fonderie/vue';
 import { createSSRApp, defineComponent, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
-import { useLogin } from '../composables/useLogin';
+import { useLogin } from '../composables';
 
 const fakeAuth = { marker: 'context-auth' } as unknown as AuthClient;
 const fakeClient = { auth: fakeAuth } as unknown as FonderieClient;
