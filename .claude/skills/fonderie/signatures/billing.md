@@ -742,5 +742,5 @@ interface IAutoRechargeClaim {
     pendingKeyStale: boolean;
 }
 
-namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, savePaymentMethodSchema, updatePlanSchema, walletCheckoutSchema, walletPreferencesSchema
+namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, savePaymentMethodSchema, updatePlanSchema, walletCheckoutSchema, walletPreferencesSchema, walletPurchaseSchema
 ```

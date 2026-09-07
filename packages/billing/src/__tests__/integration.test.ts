@@ -691,3 +691,81 @@ test(
 		}
 	},
 );
+
+test(
+	'PostgreSQL: in-app purchase credits once and is idempotent on a double-submit',
+	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
+	async () => {
+		const store = await connect();
+		try {
+			const { purchasePackWithSavedCard } = await import('../services/purchase');
+			// Seed the saved card the charge will use.
+			await upsertWalletCustomer(
+				{
+					subscriberType: SUB.subscriberType,
+					subscriberId: SUB.subscriberId,
+					provider: 'stub',
+					providerCustomerId: 'cus_itest',
+					rearm: false,
+					paymentMethodId: 'pm_itest',
+				},
+				store,
+			);
+			// A provider that returns ONE fixed PaymentIntent id — so the second call
+			// (same client idempotencyKey) credits with the SAME provider-tx key and
+			// must dedupe to a single credit.
+			let charges = 0;
+			const config = {
+				provider: {
+					name: 'stub',
+					async chargeOffSession() {
+						charges++;
+						return { providerTxId: 'pi_itest_fixed', status: 'succeeded' as const };
+					},
+				},
+				wallet: {
+					currency: 'USD',
+					precision: 2,
+					creditPacks: [{ id: 'small', name: 'Small', credits: 500n, priceAmount: 499n }],
+				},
+				plans: [],
+			} as unknown as Parameters<typeof purchasePackWithSavedCard>[0]['config'];
+
+			const args = {
+				store,
+				config,
+				bus: undefined,
+				subscriberType: SUB.subscriberType,
+				subscriberId: SUB.subscriberId,
+				packId: 'small',
+				creditCurrency: 'USD',
+				precision: 2,
+				idempotencyKey: 'buy-once',
+			};
+
+			const first = await purchasePackWithSavedCard(args);
+			assert.equal(first.status, 'credited');
+			if (first.status === 'credited') {
+				assert.equal(first.duplicate, false);
+				assert.equal(first.balance, 500n);
+			}
+
+			// Double-submit with the SAME client key → same PI → single credit.
+			const second = await purchasePackWithSavedCard(args);
+			assert.equal(second.status, 'credited');
+			if (second.status === 'credited') {
+				assert.equal(second.duplicate, true, 'the resubmit must not create a second credit');
+				assert.equal(second.balance, 500n, 'balance unchanged on the duplicate');
+			}
+
+			const { balance } = await getWalletBalance(SUB, store);
+			assert.equal(balance, 500n, 'exactly one pack credited');
+
+			// The credit is joinable back to the charge for refund clawback.
+			const purchase = await findPurchaseByProviderTxId('pi_itest_fixed', store);
+			assert.ok(purchase, 'purchase is findable by provider tx id');
+		} finally {
+			await (store as unknown as { end(): Promise<void> }).end();
+		}
+	},
+);

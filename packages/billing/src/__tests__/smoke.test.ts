@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { IPlan, ISubscription } from '../types';
+import type { IPlan, ISubscription, SubscriberType } from '../types';
 import type { IBillingConfig } from '../config';
 import type { IBillingProvider, IBillingEvent } from '../providers/types';
 
@@ -2264,4 +2264,97 @@ test('account payment-method mutations: 501 when the provider lacks support', as
 	assert.equal((await ctrl.setupPaymentMethod(subCtx())).status, 501)
 	assert.equal((await ctrl.savePaymentMethod(subCtx({ paymentMethodId: 'pm_1' }))).status, 501)
 	assert.equal((await ctrl.removePaymentMethod(subCtx())).status, 501)
+})
+
+// ── In-app purchase (charge saved card) ───────────────────────────
+// Branch logic only — the outcomes that DON'T credit (so no ledger SQL). The
+// credited + idempotency path runs against real Postgres in integration.test.ts.
+
+function purchaseConfig(provider: IBillingProvider): IBillingConfig {
+	return {
+		...config,
+		provider,
+		wallet: {
+			currency: 'USD',
+			precision: 2,
+			creditPacks: [{ id: 'small', name: 'Small pack', credits: 5000n, priceAmount: 499n }],
+		},
+	} as IBillingConfig
+}
+
+const purchaseArgs = (store: IStoreAdapter, config: IBillingConfig, extra: Record<string, unknown> = {}) => ({
+	store,
+	config,
+	bus: undefined,
+	subscriberType: 'user' as SubscriberType,
+	subscriberId: 'user-1',
+	packId: 'small',
+	creditCurrency: 'USD',
+	precision: 2,
+	idempotencyKey: 'attempt-1',
+	...extra,
+})
+
+test('purchase: unknown packId resolves to invalid_pack (no charge)', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	let charged = false
+	const provider = makeProvider({ chargeOffSession: async () => { charged = true; return { providerTxId: 'pi', status: 'succeeded' } } })
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider), { packId: 'nope' }))
+	assert.equal(out.status, 'invalid_pack')
+	assert.equal(charged, false, 'never charge for an unknown pack')
+})
+
+test('purchase: no saved card → checkout_required (fall back to hosted checkout)', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	const provider = makeProvider({ chargeOffSession: async () => ({ providerTxId: 'pi', status: 'succeeded' }) })
+	const { store } = pmStore() // no customer / no card
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
+	assert.deepEqual(out, { status: 'checkout_required', reason: 'no_saved_card' })
+})
+
+test('purchase: provider without chargeOffSession → checkout_required', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	const provider = makeProvider() // no chargeOffSession
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
+	assert.deepEqual(out, { status: 'checkout_required', reason: 'no_saved_card' })
+})
+
+test('purchase: SCA required → checkout_required(authentication_required), never credits', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	const provider = makeProvider({ chargeOffSession: async () => ({ providerTxId: 'pi_ra', status: 'requires_action' }) })
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
+	assert.deepEqual(out, { status: 'checkout_required', reason: 'authentication_required' })
+})
+
+test('purchase: indeterminate charge → processing (retry same key, NOT a checkout fallback)', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	const provider = makeProvider({ chargeOffSession: async () => ({ providerTxId: null, status: 'unknown' }) })
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
+	// MUST NOT be checkout_required — falling back to a new hosted payment could double-charge.
+	assert.equal(out.status, 'processing')
+})
+
+test('purchase: definitive decline → declined', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	const provider = makeProvider({ chargeOffSession: async () => ({ providerTxId: null, status: 'failed' }) })
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
+	assert.equal(out.status, 'declined')
+})
+
+test('purchase: passes the consented card + a purchase-scoped idempotency key to the charge', async () => {
+	const { purchasePackWithSavedCard } = await import('../services/purchase')
+	let seen: any = null
+	const provider = makeProvider({ chargeOffSession: async (o: any) => { seen = o; return { providerTxId: null, status: 'failed' } } })
+	const { store } = pmStore({ customerId: 'cus_9', card: 'pm_9' })
+	await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider), { idempotencyKey: 'k-42' }))
+	assert.equal(seen.customerId, 'cus_9')
+	assert.equal(seen.paymentMethodId, 'pm_9')
+	assert.equal(seen.idempotencyKey, 'stub:purchase:k-42', 'charge key is purchase-scoped + client key (double-submit safe)')
+	assert.equal(seen.metadata.reason, 'purchase')
+	assert.equal(seen.amount, 499n)
 })

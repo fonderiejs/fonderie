@@ -10,6 +10,7 @@ import { SubscriptionModel } from '../models/subscription.model';
 import { WalletModel } from '../models/wallet.model';
 import { decodeLedgerCursor, resolvePlanWallet } from '../services/wallet';
 import { findCreditPack } from '../services/credit-packs';
+import { purchasePackWithSavedCard } from '../services/purchase';
 import { DuplicateTransactionError } from '../errors';
 import { toWalletDTO, toWalletTransactionDTO } from '../dtos/billing';
 import { getWalletStatus } from '../helpers';
@@ -52,6 +53,18 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 		const planName = subscription?.plan ?? config.plans[0]?.name ?? 'free';
 		const plan = config.plans.find((p) => p.name === planName) ?? config.plans[0];
 		return (plan ? resolvePlanWallet(plan, config)?.currency : undefined) ?? defaultCurrency();
+	};
+
+	// GAP-1 (opt-in): block packs for an active/trialing subscriber on a PAID plan
+	// — that plan already includes its credits, so a pack would charge for coverage
+	// the subscription provides. Shared by hosted checkout and in-app purchase so
+	// they can't drift. Default off; free / pay-as-you-go / unpriced / past_due
+	// subscribers are never blocked.
+	const packsBlocked = (current: Awaited<ReturnType<typeof subscriptions.get>>): boolean => {
+		if (!config.wallet?.blockPacksWhileSubscribed || !current) return false;
+		const subPlan = config.plans.find((p) => p.name === current.plan);
+		const paidPlan = !!(subPlan?.monthly || subPlan?.yearly);
+		return paidPlan && (current.status === 'active' || current.status === 'trialing');
 	};
 
 	return {
@@ -205,20 +218,13 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 			// share payment history and saved methods with the subscription.
 			const current = await subscriptions.get(subscriber.type, subscriber.id);
 
-			// GAP-1 (opt-in): block packs for an active/trialing subscriber on a
-			// PAID plan — that plan already includes its credits, so a pack would
-			// charge for something the subscription covers. Default off; free /
-			// pay-as-you-go / unpriced / past_due subscribers are never blocked.
-			if (config.wallet?.blockPacksWhileSubscribed && current) {
-				const subPlan = config.plans.find((p) => p.name === current.plan);
-				const paidPlan = !!(subPlan?.monthly || subPlan?.yearly);
-				if (paidPlan && (current.status === 'active' || current.status === 'trialing')) {
-					return setApiResponse(
-						HTTP.CONFLICT,
-						'PACKS_BLOCKED',
-						'Credit packs are not available on your current plan — it already includes credits.',
-					);
-				}
+			// GAP-1 (opt-in): a paid subscription already includes its credits.
+			if (packsBlocked(current)) {
+				return setApiResponse(
+					HTTP.CONFLICT,
+					'PACKS_BLOCKED',
+					'Credit packs are not available on your current plan — it already includes credits.',
+				);
 			}
 
 			const customerId =
@@ -261,6 +267,78 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 				url: session.url,
 				sessionId: session.sessionId,
 			});
+		},
+
+		// One-time pack purchase charged against the saved card — the in-app path
+		// so a buyer with a card on file never leaves the site. Resolves to a
+		// status the client acts on: `credited` (done, no redirect),
+		// `checkout_required` (no saved card / SCA needed → fall back to hosted
+		// checkout), `declined`, or `processing` (indeterminate — retry with the
+		// SAME idempotencyKey). Money-safety lives in purchasePackWithSavedCard.
+		async purchase(ctx: IFonderieContext): Promise<Response> {
+			const body = ctx.meta['body'] as { packId: string; idempotencyKey: string };
+			const subscriber = resolveSubscriber(ctx);
+			if (!subscriber) {
+				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+			}
+
+			const pack = findCreditPack(body.packId, config);
+			if (!pack) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', `Unknown credit pack: ${body.packId}`);
+			}
+
+			const current = await subscriptions.get(subscriber.type, subscriber.id);
+			if (packsBlocked(current)) {
+				return setApiResponse(
+					HTTP.CONFLICT,
+					'PACKS_BLOCKED',
+					'Credit packs are not available on your current plan — it already includes credits.',
+				);
+			}
+
+			const outcome = await purchasePackWithSavedCard({
+				store,
+				config,
+				bus,
+				subscriberType: subscriber.type,
+				subscriberId: subscriber.id,
+				packId: pack.id,
+				// Credit the bucket the buyer spends from — their plan-wallet currency.
+				creditCurrency: getWalletStatus(ctx)?.currency ?? defaultCurrency(),
+				precision: precisionOf(ctx),
+				idempotencyKey: body.idempotencyKey,
+			});
+
+			switch (outcome.status) {
+				case 'credited':
+					return setApiResponse(HTTP.OK, 'WALLET_PURCHASED', 'Credit pack purchased.', {
+						status: 'credited',
+						balance: outcome.balance.toString(),
+						currency: outcome.currency,
+						credits: outcome.credits.toString(),
+						duplicate: outcome.duplicate,
+					});
+				case 'checkout_required':
+					// A normal outcome, not an error: the client falls back to
+					// POST /billing/wallet/checkout (hosted, which collects a card / does 3DS).
+					return setApiResponse(HTTP.OK, 'CHECKOUT_REQUIRED', 'Hosted checkout required.', {
+						status: 'checkout_required',
+						reason: outcome.reason,
+					});
+				case 'declined':
+					return setApiResponse(HTTP.OK, 'PAYMENT_DECLINED', 'The saved card was declined.', {
+						status: 'declined',
+					});
+				case 'processing':
+					return setApiResponse(
+						HTTP.OK,
+						'PURCHASE_PROCESSING',
+						'Payment is processing — retry with the same idempotencyKey.',
+						{ status: 'processing' },
+					);
+				default:
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', `Unknown credit pack: ${body.packId}`);
+			}
 		},
 
 		// Admin-token-guarded manual grant (support/ops). Body is validated and
