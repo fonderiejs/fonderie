@@ -68,6 +68,23 @@ export async function getWalletCustomer(
 	return row ?? null;
 }
 
+// Set (or clear, with null) the recorded card id for a wallet customer, WITHOUT
+// touching the auto-recharge disable flag or failure counter. Used by the in-app
+// add/remove-card flow: `upsertWalletCustomer` only writes payment_method_id on a
+// rearm (a genuine new purchase), so this is the seam for recording a card the
+// user saved directly. The row must already exist (the setup step creates it).
+export async function setWalletCustomerCard(
+	key: IWalletCustomerKey,
+	paymentMethodId: string | null,
+	store: IStoreAdapter,
+): Promise<void> {
+	await store.query(
+		`UPDATE fonderie_wallet_customers SET payment_method_id = $4, updated_at = now()
+		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3`,
+		[key.subscriberType, key.subscriberId, key.provider, paymentMethodId],
+	);
+}
+
 // Atomically claim a top-up slot. Returns the provider customer id ONLY when a
 // recharge is eligible (a card is on file, auto-recharge is not disabled, and
 // the cooldown has elapsed) and records the attempt time in the same statement,

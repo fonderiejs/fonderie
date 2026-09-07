@@ -60,6 +60,12 @@ export const walletCheckoutSchema = z.object({
 	packId: z.string().trim().min(1, 'packId is required').max(100),
 });
 
+// Body for saving a card after the client confirms the in-app SetupIntent — the
+// provider payment-method id the Payment Element produced.
+export const savePaymentMethodSchema = z.object({
+	paymentMethodId: z.string().trim().min(1, 'paymentMethodId is required').max(255),
+});
+
 // Per-subscriber wallet preferences. spendPurchased=false makes a debit stop at
 // the free allowance (402) rather than drawing down purchased credits.
 export const walletPreferencesSchema = z.object({
