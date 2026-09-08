@@ -24,6 +24,13 @@ export class SessionModel {
 		await this.store.query(`DELETE FROM fonderie_sessions WHERE token = $1`, [token]);
 	}
 
+	// Delete the session an access token is bound to (by its sid claim). Lets
+	// logout revoke the current session without the client resending the refresh
+	// token — the access token already identifies its session.
+	async deleteBySid(sid: string): Promise<void> {
+		await this.store.query(`DELETE FROM fonderie_sessions WHERE sid = $1`, [sid]);
+	}
+
 	// Revoke every session for a user (e.g. on password change). Access tokens
 	// bound to these sessions via the sid claim die on their next request.
 	async deleteByUser(userId: string): Promise<void> {

@@ -275,3 +275,26 @@ test('terminateSession: 404 when the id belongs to no session of the caller', as
 	const res = await userController(store, config).terminateSession(ctx);
 	assert.equal(res.status, 404);
 });
+
+// ── logout kills the authenticated session by sid ────────────────
+
+test('logout: deletes the current session by sid (no refresh token needed)', async () => {
+	const deletes: Captured[] = [];
+	const { store } = capturingStore((c) => {
+		if (c.sql.includes('DELETE FROM fonderie_sessions')) deletes.push(c);
+		return [];
+	});
+	const ctrl = authController(store, config);
+	const res = await ctrl.logout({
+		user: { id: 'u1', email: 'u1@example.com', sid: 'sid-current' },
+		workspace: null,
+		tenant: null,
+		meta: { body: {} },
+		request: new Request('http://localhost/auth/logout'),
+	} as any);
+	assert.equal(res.status, 200);
+	// A DELETE by sid must have run with the request's sid.
+	const bySid = deletes.find((d) => /WHERE sid = \$1/.test(d.sql));
+	assert.ok(bySid, 'logout deletes the session by sid');
+	assert.deepEqual(bySid!.params, ['sid-current']);
+});

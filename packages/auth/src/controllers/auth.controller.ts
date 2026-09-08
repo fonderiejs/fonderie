@@ -390,6 +390,17 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 		},
 
 		logout: async (ctx: IFonderieContext): Promise<Response> => {
+			// Kill the session this request is authenticated on — by its sid claim,
+			// which is always present under requireAuth. This is the reliable path:
+			// clients that don't resend the refresh token (most, since only the
+			// access token is persisted) previously left the session row alive, so
+			// it lingered in Active Sessions and its refresh token stayed valid.
+			const sid = (ctx.user as { sid?: string | null } | null)?.sid;
+			if (sid) {
+				await sessions.deleteBySid(sid).catch(() => undefined);
+			}
+			// Also honour an explicitly-passed refresh token (covers pre-sid tokens
+			// and callers that log out a specific refresh session).
 			const token = extractRefreshToken(ctx);
 			if (token) {
 				await sessions.delete(token).catch(() => undefined);
