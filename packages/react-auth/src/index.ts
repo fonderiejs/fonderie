@@ -17,6 +17,9 @@ export type {
 	IMfaSetupResult,
 	IUpdatePreferencesInput,
 	IUpdateProfileInput,
+	IGetLoginHistoryInput,
+	ILoginEventDTO,
+	ISessionDTO,
 } from '@fonderie/client';
 export { FonderieApiError, isMfaRequired } from '@fonderie/client';
 export type {
@@ -32,6 +35,8 @@ export type {
 	IUseResetPasswordReturn,
 	IUseSessionReturn,
 	IUseVerifyEmailReturn,
+	IUseLoginHistoryReturn,
+	IUseSessionsReturn,
 } from './hooks';
 export {
 	useForgotPassword,
@@ -46,6 +51,8 @@ export {
 	useResetPassword,
 	useSession,
 	useVerifyEmail,
+	useLoginHistory,
+	useSessions,
 } from './hooks';
 
 // Token persistence primitives — for wiring app-level flows (e.g. the
