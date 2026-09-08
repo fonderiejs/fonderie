@@ -60,9 +60,9 @@
 		"check": "biome check --write src"
 	},
 	"devDependencies": {
-		"@types/node": "^26.4.0",
+		"@types/node": "^26.4.1",
 		"tsup": "^8.5.1",
-		"tsx": "^4.23.12",
+		"tsx": "^4.23.13",
 		"typescript": "^6.0.3"
 	},
 	"publishConfig": {
