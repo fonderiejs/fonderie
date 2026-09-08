@@ -67,10 +67,10 @@
 		"@fonderie/core": "../core",
 		"@fonderie/events": "../events",
 		"@fonderie/store": "../store",
-		"@types/node": "^26.4.0",
+		"@types/node": "^26.4.1",
 		"@types/nodemailer": "^8.0.1",
 		"tsup": "^8.5.1",
-		"tsx": "^4.23.12",
+		"tsx": "^4.23.13",
 		"typescript": "^6.0.3"
 	},
 	"publishConfig": {
