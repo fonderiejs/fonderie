@@ -5,7 +5,22 @@ date, device, IP, method, success/failed, export) and **Active Sessions**
 (devices signed in now, current badge, terminate one / all others) — as
 `@fonderie/auth` features, not app code.
 
-Status: PLANNED (no phase started). Written 2026-09-08 from the findings below.
+Status (updated 2026-09-08):
+- Phase 1 — SHIPPED (`@fonderie/auth` minor). Session ip/ua persisted +
+  `fonderie_login_events` table + recording across password/MFA/OAuth.
+- Phase 2 — SHIPPED (`@fonderie/auth` + `@fonderie/client` minor). Four
+  caller-scoped routes + AuthClient methods.
+- Phase 3 — SHIPPED (`@fonderie/react-auth` minor). `useLoginHistory`,
+  `useSessions`.
+- Phase 4 — BLOCKED ON RELEASE. The LeadEasyGen app consumes the *published*
+  `@fonderie/react-auth` (0.7.0), not the workspace source, so the screens
+  can't be built until Phases 1–3 are versioned + published to npm and the
+  app bumps its dependency. Changesets are staged; publishing is the
+  user-gated release train, not an autonomous step.
+- Phase 5 — deferred as designed.
+
+239 package tests green (auth 207 / client 13 / react-auth 19); all three
+typecheck clean.
 
 ## Findings this plan is built on
 
