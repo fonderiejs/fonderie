@@ -3,3 +3,9 @@
 # stripe-access-token rule. It is a placeholder, not a credential — the real
 # key comes from STRIPE_SECRET_KEY.
 b0015fa40ac57d6a44d8606c8b9f10a1853dee79:examples/example-mobile-api/fonderie.ts:stripe-access-token:47
+
+# A test-only fake JWT secret in the auth login-activity test config. It signs
+# tokens for unit tests, is not a credential, and a later commit already
+# replaced it with a low-entropy placeholder — this suppresses the finding in
+# the commit that first introduced it (history can't be rewritten post-review).
+ed7ce31dde4d500ed773f123b9832373ca4ce4a3:packages/auth/src/__tests__/login-activity.test.ts:generic-api-key:12

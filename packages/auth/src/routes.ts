@@ -94,6 +94,14 @@ export function buildAuthRoutes(
 		R('deleteMe', 'DELETE', '/users', requireAuth, verifyGate, user.deleteMe),
 		R('exportMe', 'GET', '/users/export', requireAuth, user.exportMe),
 
+		// Security surfaces (Protected; the caller's own login history + sessions).
+		// The literal /others route is registered before /:id so it isn't
+		// captured as an id.
+		R('loginHistory', 'GET', '/auth/login-history', requireAuth, user.loginHistory),
+		R('listSessions', 'GET', '/auth/sessions', requireAuth, user.listSessions),
+		R('terminateOtherSessions', 'DELETE', '/auth/sessions/others', requireAuth, user.terminateOtherSessions),
+		R('terminateSession', 'DELETE', '/auth/sessions/:id', requireAuth, user.terminateSession),
+
 		// MFA (email sessions only — requireVerified is always enforced here
 		// because MFA is a security feature and email verification is meaningful)
 		R('mfaSetup', 'POST', '/auth/mfa/setup', requireAuth, requireEmailLogin, requireVerified, mfa.setup),
