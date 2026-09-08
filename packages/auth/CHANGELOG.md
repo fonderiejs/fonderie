@@ -1,5 +1,16 @@
 # @fonderie/auth
 
+## 5.2.0
+
+### Minor Changes
+
+- afb418c: Read/manage APIs for login activity. `@fonderie/auth` adds four caller-scoped routes: `GET /auth/login-history` (the caller's own attempts, newest first, keyset-paginated on `(created_at, id)` — the same cursor contract as audit's event log, reused from `@fonderie/core`); `GET /auth/sessions` (live sessions, with the current one flagged via the request's `sid`); `DELETE /auth/sessions/:id` (revoke one session, scoped to its owner); and `DELETE /auth/sessions/others` (revoke every session except the current). Because access tokens are already bound to their session's `sid`, terminating a session revokes its access token on the next request, not just its refresh. `@fonderie/client`'s `AuthClient` gains `getLoginHistory`, `listSessions`, `terminateSession`, and `terminateOtherSessions`, sharing the existing auth token.
+- afb418c: Capture login activity for security surfaces. `fonderie_sessions` now persists `ip_address` and `user_agent` on every session create (previously these columns existed but were always NULL — a bug that left the SAR export and any session UI blank). A new append-only `fonderie_login_events` table records one row per login attempt — success or failure — across the password, MFA, and Google-OAuth paths, with `method`, `outcome`, `failure_reason`, IP, and user-agent; `user_id` is nullable so attempts against unknown emails still record. Recording is fire-and-forget: a logging failure can never block or fail a login. This is the data layer for the forthcoming login-history and active-sessions read APIs; no new routes yet.
+
+### Patch Changes
+
+- afb418c: Fix: logout now revokes the current session by its `sid`, not only by a resent refresh token. Because clients typically persist only the access token, `POST /auth/logout` previously received no refresh token and deleted nothing — the session row survived logout (lingering in `GET /auth/sessions`) and its refresh token stayed valid until expiry. Logout runs under `requireAuth`, so the access token's `sid` already identifies the session; it is now deleted directly, which also invalidates that access token via the existing sid-liveness check. An explicitly-passed refresh token is still honoured.
+
 ## 5.1.0
 
 ### Minor Changes
