@@ -87,6 +87,14 @@ interface IChangePasswordInput {
     newPassword: string;
 }
 
+interface IGetLoginHistoryInput {
+    outcome?: 'success' | 'failed';
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    cursor?: string;
+}
+
 interface ILoginInput {
     email: string;
     password: string;
@@ -143,6 +151,10 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
   .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
+  .getLoginHistory(input?: IGetLoginHistoryInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
+  .listSessions(opts?: IReadOptions | undefined): Promise<IApiResponse<ISessionsResult>>
+  .terminateSession(id: string): Promise<IApiResponse<{ id: string; }>>
+  .terminateOtherSessions(): Promise<IApiResponse<{ count: number; }>>
 
 interface ICheckoutInput {
     plan: string;
@@ -524,6 +536,34 @@ interface IAuditEventDTO {
 interface IAuditPageResult {
     events: IAuditEventDTO[];
     nextCursor: string | null;
+}
+
+interface ILoginEventDTO {
+    id: string;
+    method: string;
+    outcome: string;
+    failureReason: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+}
+
+interface ILoginHistoryPageResult {
+    events: ILoginEventDTO[];
+    nextCursor: string | null;
+}
+
+interface ISessionDTO {
+    id: string;
+    current: boolean;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+    expiresAt: string;
+}
+
+interface ISessionsResult {
+    sessions: ISessionDTO[];
 }
 
 interface ICancelSubscriptionInput {

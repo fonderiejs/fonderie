@@ -169,6 +169,7 @@
       ],
       "tables": [
         "fonderie_email_verifications",
+        "fonderie_login_events",
         "fonderie_mfa_backup_codes",
         "fonderie_mfa_challenges",
         "fonderie_password_resets",
@@ -176,7 +177,7 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 22,
+      "routeCount": 26,
       "routes": [
         {
           "method": "POST",
@@ -202,6 +203,11 @@
           "method": "POST",
           "path": "/auth/login",
           "mw": "ipLimit('login') → validate(loginSchema) → acctLimit('login') → auth.login"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/login-history",
+          "mw": "requireAuth → user.loginHistory"
         },
         {
           "method": "POST",
@@ -242,6 +248,21 @@
           "method": "GET",
           "path": "/auth/send-verification",
           "mw": "requireAuth → auth.sendVerification"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/sessions",
+          "mw": "requireAuth → user.listSessions"
+        },
+        {
+          "method": "DELETE",
+          "path": "/auth/sessions/:id",
+          "mw": "requireAuth → user.terminateSession"
+        },
+        {
+          "method": "DELETE",
+          "path": "/auth/sessions/others",
+          "mw": "requireAuth → user.terminateOtherSessions"
         },
         {
           "method": "POST",
@@ -1038,6 +1059,8 @@
         "useResetPassword",
         "useSession",
         "useVerifyEmail",
+        "useLoginHistory",
+        "useSessions",
         "TOKEN_KEY"
       ],
       "subpaths": [],
@@ -3831,6 +3854,12 @@
       "react-auth",
       "react-native-auth",
       "vue-auth"
+    ],
+    "useloginhistory": [
+      "react-auth"
+    ],
+    "usesessions": [
+      "react-auth"
     ],
     "token_key": [
       "react-auth",
