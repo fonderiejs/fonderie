@@ -15,14 +15,17 @@ export interface IUseSessionsReturn {
 }
 
 // The caller's live sessions (one flagged `current`) plus the terminate actions.
+// Pure; hoisted out of the hook so it isn't a changing dependency of the
+// callbacks below (react's exhaustive-deps otherwise flags it every render).
+function toApiError(err: unknown): FonderieApiError {
+	return err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+}
+
 export function useSessions(client?: AuthClient): IUseSessionsReturn {
 	const auth = useFonderieSubClient(client, (c) => c.auth, 'useSessions');
 	const [sessions, setSessions] = useState<ISessionDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const toApiError = (err: unknown) =>
-		err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
 
 	const refresh = useCallback(
 		async (opts?: { force?: boolean }) => {

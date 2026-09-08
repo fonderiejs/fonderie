@@ -10,7 +10,9 @@ import { authController } from '../controllers/auth.controller';
 import { userController } from '../controllers/user.controller';
 
 const config: IAuthConfig = {
-	jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
+	// Low-entropy placeholder (≥32 chars for validateAuthConfig) — obviously not
+	// a real key, so the secret scanner doesn't flag it.
+	jwtSecret: 'unit-test-jwt-secret-000000000000000',
 	sessionDuration: '7d',
 	providers: ['email'],
 };
