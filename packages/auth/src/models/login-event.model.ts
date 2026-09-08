@@ -43,4 +43,74 @@ export class LoginEventModel {
 	recordSafe(e: ILoginEventInput): void {
 		void this.record(e).catch(() => {});
 	}
+
+	// One page of a user's own login history, newest first. Keyset-paginated on
+	// (created_at, id) — mirrors audit's event list so the two log UIs share a
+	// cursor contract. The +1 over-fetch that detects a next page lives here so
+	// no outer clamp can shave it off.
+	async listByUser(query: ILoginEventQuery): Promise<ILoginEventPage> {
+		const limit = Math.min(query.limit ?? 50, MAX_HISTORY_LIMIT);
+		const params: unknown[] = [query.userId];
+		const where: string[] = ['user_id = $1'];
+
+		if (query.outcome) {
+			params.push(query.outcome);
+			where.push(`outcome = $${params.length}`);
+		}
+		if (query.from) {
+			params.push(query.from);
+			where.push(`created_at >= $${params.length}`);
+		}
+		if (query.to) {
+			params.push(query.to);
+			where.push(`created_at <= $${params.length}`);
+		}
+		if (query.cursor) {
+			params.push(query.cursor.createdAt, query.cursor.id);
+			where.push(`(created_at, id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
+		}
+
+		params.push(limit + 1);
+		const rows = await this.store.query<ILoginEventRow>(
+			`SELECT id, method, outcome, failure_reason AS "failureReason",
+			        ip_address AS "ipAddress", user_agent AS "userAgent",
+			        created_at AS "createdAt", created_at::text AS "createdAtRaw"
+			 FROM   fonderie_login_events
+			 WHERE  ${where.join(' AND ')}
+			 ORDER  BY created_at DESC, id DESC
+			 LIMIT  $${params.length}`,
+			params,
+		);
+		return { events: rows.slice(0, limit), hasMore: rows.length > limit };
+	}
+}
+
+const MAX_HISTORY_LIMIT = 200;
+
+export interface ILoginEventQuery {
+	userId: string;
+	outcome?: LoginOutcome;
+	from?: Date;
+	to?: Date;
+	cursor?: { createdAt: string; id: string } | null;
+	limit?: number;
+}
+
+export interface ILoginEventRow {
+	id: string;
+	method: LoginMethod;
+	outcome: LoginOutcome;
+	failureReason: string | null;
+	ipAddress: string | null;
+	userAgent: string | null;
+	createdAt: Date;
+	// created_at::text — full microsecond precision for the keyset cursor
+	// (node-pg parses timestamptz into a millisecond Date, which would make the
+	// cursor skip same-millisecond rows between pages).
+	createdAtRaw: string;
+}
+
+export interface ILoginEventPage {
+	events: ILoginEventRow[];
+	hasMore: boolean;
 }

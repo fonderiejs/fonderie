@@ -12,6 +12,8 @@ import type {
 	IRegisterResult,
 	IResendVerificationResult,
 	IVerifyEmailResult,
+	ILoginHistoryPageResult,
+	ISessionsResult,
 } from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
@@ -26,6 +28,14 @@ export interface IRegisterInput {
 	password: string;
 	firstName?: string;
 	lastName?: string;
+}
+
+export interface IGetLoginHistoryInput {
+	outcome?: 'success' | 'failed';
+	from?: Date;
+	to?: Date;
+	limit?: number;
+	cursor?: string;
 }
 
 export interface ILoginInput {
@@ -287,6 +297,54 @@ export class AuthClient {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
 			path: '/users',
+			token: this.tokens.get(),
+		});
+	}
+
+	// ── Security surfaces (login history + active sessions) ─────────────────────
+
+	// GET /auth/login-history — the caller's own attempts, newest first,
+	// keyset-paginated (pass the previous page's nextCursor to continue).
+	getLoginHistory(input: IGetLoginHistoryInput = {}, opts?: IReadOptions) {
+		const params = new URLSearchParams();
+		if (input.limit !== undefined) params.set('limit', String(input.limit));
+		if (input.outcome) params.set('outcome', input.outcome);
+		if (input.from) params.set('from', input.from.toISOString());
+		if (input.to) params.set('to', input.to.toISOString());
+		if (input.cursor) params.set('cursor', input.cursor);
+		const qs = params.toString();
+		return this.http.request<IApiResponse<ILoginHistoryPageResult>>({
+			method: 'GET',
+			path: `/auth/login-history${qs ? `?${qs}` : ''}`,
+			token: this.tokens.get(),
+			bust: opts?.bust,
+		});
+	}
+
+	// GET /auth/sessions — the caller's live sessions; one is flagged current.
+	listSessions(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<ISessionsResult>>({
+			method: 'GET',
+			path: '/auth/sessions',
+			token: this.tokens.get(),
+			bust: opts?.bust,
+		});
+	}
+
+	// DELETE /auth/sessions/:id — revoke one of the caller's sessions.
+	terminateSession(id: string) {
+		return this.http.request<IApiResponse<{ id: string }>>({
+			method: 'DELETE',
+			path: `/auth/sessions/${encodeURIComponent(id)}`,
+			token: this.tokens.get(),
+		});
+	}
+
+	// DELETE /auth/sessions/others — revoke every session except the current one.
+	terminateOtherSessions() {
+		return this.http.request<IApiResponse<{ count: number }>>({
+			method: 'DELETE',
+			path: '/auth/sessions/others',
 			token: this.tokens.get(),
 		});
 	}

@@ -7,6 +7,7 @@ export type { IListAuditEventsInput } from './modules/audit';
 export { AuditClient } from './modules/audit';
 export type {
 	IChangePasswordInput,
+	IGetLoginHistoryInput,
 	ILoginInput,
 	IRegisterInput,
 	IResetPasswordInput,
@@ -74,6 +75,10 @@ export type {
 	IApiResponse,
 	IAuditEventDTO,
 	IAuditPageResult,
+	ILoginEventDTO,
+	ILoginHistoryPageResult,
+	ISessionDTO,
+	ISessionsResult,
 	ICancelSubscriptionInput,
 	ICheckoutUrlResult,
 	IConfigEntry,
