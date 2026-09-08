@@ -45,6 +45,9 @@ export function withSession(store: IStoreAdapter, config: IAuthConfig): Middlewa
 				loginMethod: payload.loginMethod ?? 'email',
 				phoneVerified: payload.phoneVerified ?? false,
 				mfaPending: (payload as IAccessPayload).mfaPending ?? false,
+				// The session this request is authenticated on, so the sessions
+				// API can flag the current row and "terminate others" can spare it.
+				sid: payload.sid ?? null,
 			},
 		});
 

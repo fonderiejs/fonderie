@@ -19,6 +19,20 @@ created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 PRIMARY                  KEY (user_id)
 ```
 
+### `fonderie_login_events`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id                  UUID REFERENCES fonderie_users(id) ON DELETE CASCADE
+email_attempted          TEXT
+method                   TEXT NOT NULL
+outcome                  TEXT NOT NULL
+failure_reason           TEXT
+ip_address               TEXT
+user_agent               TEXT
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_mfa_backup_codes`
 
 ```sql
@@ -119,6 +133,7 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | GET | `/auth/google` | `oauth.googleInit` |
 | GET | `/auth/google/callback` | `oauth.googleCallback` |
 | POST | `/auth/login` | `ipLimit('login') → validate(loginSchema) → acctLimit('login') → auth.login` |
+| GET | `/auth/login-history` | `requireAuth → user.loginHistory` |
 | POST | `/auth/logout` | `requireAuth → validate(refreshSchema) → auth.logout` |
 | POST | `/auth/mfa/backup-codes` | `requireAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.regenerateBackupCodes` |
 | POST | `/auth/mfa/disable` | `requireAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.disable` |
@@ -127,6 +142,9 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | POST | `/auth/refresh` | `validate(refreshSchema) → auth.refresh` |
 | POST | `/auth/register` | `ipLimit('register') → validate(registerSchema) → auth.register` |
 | GET | `/auth/send-verification` | `requireAuth → auth.sendVerification` |
+| GET | `/auth/sessions` | `requireAuth → user.listSessions` |
+| DELETE | `/auth/sessions/:id` | `requireAuth → user.terminateSession` |
+| DELETE | `/auth/sessions/others` | `requireAuth → user.terminateOtherSessions` |
 | POST | `/auth/verify` | `requireAuth → validate(verifySchema) → auth.verify` |
 | DELETE | `/users` | `requireAuth → verifyGate → user.deleteMe` |
 | GET | `/users` | `requireAuth → user.me` |

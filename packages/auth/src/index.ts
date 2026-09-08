@@ -13,6 +13,12 @@ export { DEFAULT_TEMPLATES } from './templates';
 export type { IUserDTO } from './dtos/user';
 export { toUserDTO } from './dtos/user';
 
+export type {
+	ILoginEventDTO,
+	ILoginHistoryPageDTO,
+	ISessionDTO,
+} from './dtos/login-activity';
+
 // Request validation — schemas are the enforced contract for every
 // body-taking route; exported for docs generation and typed clients.
 export { validate } from './middlewares/validate';

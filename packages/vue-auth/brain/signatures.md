@@ -24,6 +24,10 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
   .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
+  .getLoginHistory(input?: IGetLoginHistoryInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
+  .listSessions(opts?: IReadOptions | undefined): Promise<IApiResponse<ISessionsResult>>
+  .terminateSession(id: string): Promise<IApiResponse<{ id: string; }>>
+  .terminateOtherSessions(): Promise<IApiResponse<{ count: number; }>>
 
 interface IChangePasswordInput {
     currentPassword: string;

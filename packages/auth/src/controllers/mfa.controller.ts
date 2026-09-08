@@ -22,6 +22,8 @@ import { toUserDTO } from '../dtos/user';
 import { UserModel } from '../models/user.model';
 import { SessionModel } from '../models/session.model';
 import { BackupCodeModel } from '../models/backup-code.model';
+import { LoginEventModel } from '../models/login-event.model';
+import { requestMeta } from '../services/request-meta';
 
 export function mfaController(
 	store: IStoreAdapter,
@@ -32,6 +34,7 @@ export function mfaController(
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store);
 	const backupCodes = new BackupCodeModel(store);
+	const loginEvents = new LoginEventModel(store);
 	// Encrypts/decrypts TOTP secrets at rest. Passthrough when no key is set.
 	const mfaCipher = makeMfaCipher(config.mfaSecretKey);
 
@@ -67,6 +70,19 @@ export function mfaController(
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const token = body?.['token'];
+			// Only the login-completion path (a pending MFA challenge) belongs in
+			// login history; enrollment confirmation is not a login attempt.
+			const isLoginCompletion = ctx.user!.mfaPending === true;
+			const meta = requestMeta(ctx);
+			const failedMfa = () =>
+				loginEvents.recordSafe({
+					userId: ctx.user!.id,
+					emailAttempted: ctx.user!.email,
+					method: 'mfa',
+					outcome: 'failed',
+					failureReason: 'invalid_code',
+					...meta,
+				});
 
 			if (typeof token !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'token is required');
@@ -117,6 +133,7 @@ export function mfaController(
 				const matched = checks.find((r) => r.match);
 
 				if (!matched) {
+					if (isLoginCompletion) failedMfa();
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid backup code');
 				}
 
@@ -136,6 +153,7 @@ export function mfaController(
 				}
 				const secret = mfaCipher.decrypt(storedSecret);
 				if (!verifyTotpToken(token, secret)) {
+					if (isLoginCompletion) failedMfa();
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
 				}
 				if (!ctx.user!.mfaEnabled) {
@@ -147,7 +165,16 @@ export function mfaController(
 				loginMethod: ctx.user!.loginMethod,
 				phoneVerified: ctx.user!.phoneVerified,
 			});
-			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
+			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
+			if (isLoginCompletion) {
+				loginEvents.recordSafe({
+					userId: ctx.user!.id,
+					emailAttempted: ctx.user!.email,
+					method: 'mfa',
+					outcome: 'success',
+					...meta,
+				});
+			}
 
 			const fullUser = await users.findById(ctx.user!.id);
 			if (!fullUser) {

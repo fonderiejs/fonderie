@@ -118,6 +118,30 @@ interface IUserDTO {
 
 function toUserDTO(user: IUser, phoneVerified?: boolean): IUserDTO
 
+interface ILoginEventDTO {
+    id: string;
+    method: string;
+    outcome: string;
+    failureReason: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+}
+
+interface ILoginHistoryPageDTO {
+    events: ILoginEventDTO[];
+    nextCursor: string | null;
+}
+
+interface ISessionDTO {
+    id: string;
+    current: boolean;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+    expiresAt: string;
+}
+
 function validate(schema: IRequestSchema): Middleware
 
 namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, changePasswordSchema, forgotPasswordSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, resetPasswordSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema

@@ -24,6 +24,10 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
   .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
+  .getLoginHistory(input?: IGetLoginHistoryInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
+  .listSessions(opts?: IReadOptions | undefined): Promise<IApiResponse<ISessionsResult>>
+  .terminateSession(id: string): Promise<IApiResponse<{ id: string; }>>
+  .terminateOtherSessions(): Promise<IApiResponse<{ count: number; }>>
 
 interface ILoginInput {
     email: string;
@@ -120,6 +124,33 @@ interface IUpdateProfileInput {
     firstName?: string | null;
     lastName?: string | null;
     avatarUrl?: string | null;
+}
+
+interface IGetLoginHistoryInput {
+    outcome?: 'success' | 'failed';
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    cursor?: string;
+}
+
+interface ILoginEventDTO {
+    id: string;
+    method: string;
+    outcome: string;
+    failureReason: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+}
+
+interface ISessionDTO {
+    id: string;
+    current: boolean;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+    expiresAt: string;
 }
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
@@ -232,6 +263,29 @@ interface IUseVerifyEmailReturn {
     data: IVerifyEmailResult | null;
 }
 
+interface IUseLoginHistoryReturn {
+    events: ILoginEventDTO[];
+    isLoading: boolean;
+    isLoadingMore: boolean;
+    error: FonderieApiError | null;
+    hasMore: boolean;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    loadMore: () => Promise<void>;
+}
+
+interface IUseSessionsReturn {
+    sessions: ISessionDTO[];
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    terminate: (id: string) => Promise<void>;
+    terminateOthers: () => Promise<void>;
+}
+
 function useForgotPassword(client?: AuthClient | undefined): IUseForgotPasswordReturn
 
 function useLogin(client?: AuthClient | undefined): IUseLoginReturn
@@ -255,6 +309,10 @@ function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordRet
 function useSession(client?: AuthClient | undefined): IUseSessionReturn
 
 function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn
+
+function useLoginHistory(rawFilters?: IGetLoginHistoryInput | undefined): IUseLoginHistoryReturn
+
+function useSessions(client?: AuthClient | undefined): IUseSessionsReturn
 
 function clearToken(): void
 

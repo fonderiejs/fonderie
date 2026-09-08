@@ -108,6 +108,7 @@ export type AuthRouteId =
 	| 'verifyEmail' | 'sendVerification'
 	| 'logout'
 	| 'me' | 'updateProfile' | 'updatePreferences' | 'updateEmail' | 'updatePhone' | 'changePassword' | 'deleteMe' | 'exportMe'
+	| 'loginHistory' | 'listSessions' | 'terminateSession' | 'terminateOtherSessions'
 	| 'mfaSetup' | 'mfaVerify' | 'mfaDisable' | 'mfaBackupCodes';
 
 export type AuthRouteOverride = string | { method?: string; path?: string };

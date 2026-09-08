@@ -517,6 +517,38 @@ export interface IAuditPageResult {
 	nextCursor: string | null;
 }
 
+// ── Login activity (auth security surfaces) ──────────────────────────────────
+// Session-authenticated; the caller's own history + sessions (shares the
+// AuthClient token). Login history is append-only; sessions are the live list.
+
+export interface ILoginEventDTO {
+	id: string;
+	method: string;
+	outcome: string;
+	failureReason: string | null;
+	ipAddress: string | null;
+	userAgent: string | null;
+	createdAt: string;
+}
+
+export interface ILoginHistoryPageResult {
+	events: ILoginEventDTO[];
+	nextCursor: string | null;
+}
+
+export interface ISessionDTO {
+	id: string;
+	current: boolean;
+	ipAddress: string | null;
+	userAgent: string | null;
+	createdAt: string;
+	expiresAt: string;
+}
+
+export interface ISessionsResult {
+	sessions: ISessionDTO[];
+}
+
 // ── Webhooks ─────────────────────────────────────────────────────────────────
 // Session-authenticated (shares FonderieClient's TokenStore, scoped via
 // setWorkspaceId like billing/workspaces/audit).
