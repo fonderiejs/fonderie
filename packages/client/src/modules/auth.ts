@@ -313,9 +313,11 @@ export class AuthClient {
 		if (input.to) params.set('to', input.to.toISOString());
 		if (input.cursor) params.set('cursor', input.cursor);
 		const qs = params.toString();
+		// Single-level template (no nested backtick) so the client/route drift
+		// checker can normalise the ${qs…} suffix away and match the server route.
 		return this.http.request<IApiResponse<ILoginHistoryPageResult>>({
 			method: 'GET',
-			path: `/auth/login-history${qs ? `?${qs}` : ''}`,
+			path: `/auth/login-history${qs ? '?' + qs : ''}`,
 			token: this.tokens.get(),
 			bust: opts?.bust,
 		});
