@@ -11,9 +11,16 @@ import { NOTIFICATION_EVENT } from '@fonderie/events';
 
 import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { toUserDTO } from '../dtos/user';
+import {
+	toLoginHistoryPageDTO,
+	decodeLoginCursor,
+	toSessionDTO,
+} from '../dtos/login-activity';
 import type { IUser } from '../types';
 import { UserModel } from '../models/user.model';
 import { SessionModel } from '../models/session.model';
+import { LoginEventModel } from '../models/login-event.model';
+import type { LoginOutcome } from '../models/login-event.model';
 import { EmailVerificationModel } from '../models/email-verification.model';
 import { PhoneVerificationModel } from '../models/phone-verification.model';
 import { normalizeEmailSafe } from '../services/email';
@@ -29,6 +36,7 @@ function isValidPhone(phone: unknown): phone is string {
 export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store);
+	const loginEvents = new LoginEventModel(store);
 	const emailVerif = new EmailVerificationModel(store);
 	const phoneVerif = new PhoneVerificationModel(store);
 
@@ -42,6 +50,79 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			return setApiResponse(HTTP.OK, 'USER_ACCOUNT_FETCHED', 'User account fetched successful.', {
 				user: toUserDTO(user, ctx.user!.phoneVerified),
 			});
+		},
+
+		// ── Login history (append-only; the caller's own attempts) ────────
+		loginHistory: async (ctx: IFonderieContext): Promise<Response> => {
+			const params = new URL(ctx.request.url).searchParams;
+			const rawLimit = Number(params.get('limit') ?? 50);
+			const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 200) : 50;
+
+			const outcomeParam = params.get('outcome');
+			if (outcomeParam !== null && outcomeParam !== 'success' && outcomeParam !== 'failed') {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', "outcome must be 'success' or 'failed'");
+			}
+
+			const cursorParam = params.get('cursor');
+			let cursor: { createdAt: string; id: string } | null = null;
+			if (cursorParam) {
+				cursor = decodeLoginCursor(cursorParam);
+				if (!cursor) {
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor');
+				}
+			}
+
+			const query: Parameters<LoginEventModel['listByUser']>[0] = { userId: ctx.user!.id, limit };
+			if (outcomeParam) query.outcome = outcomeParam as LoginOutcome;
+			if (cursor) query.cursor = cursor;
+			const from = params.get('from');
+			const to = params.get('to');
+			if (from) query.from = new Date(from);
+			if (to) query.to = new Date(to);
+
+			const page = await loginEvents.listByUser(query);
+			return setApiResponse(
+				HTTP.OK,
+				'LOGIN_HISTORY_FETCHED',
+				'Login history retrieved.',
+				toLoginHistoryPageDTO(page),
+			);
+		},
+
+		// ── Active sessions (live only; the caller's own) ─────────────────
+		listSessions: async (ctx: IFonderieContext): Promise<Response> => {
+			const rows = await sessions.listLiveByUser(ctx.user!.id);
+			const currentSid = (ctx.user as { sid?: string | null }).sid ?? null;
+			return setApiResponse(HTTP.OK, 'SESSIONS_FETCHED', 'Active sessions retrieved.', {
+				sessions: rows.map((r) => toSessionDTO(r, currentSid)),
+			});
+		},
+
+		terminateSession: async (ctx: IFonderieContext): Promise<Response> => {
+			const id = (ctx.meta['params'] as Record<string, string> | undefined)?.['id'];
+			if (!id) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Session not found');
+			}
+			const removed = await sessions.terminateById(ctx.user!.id, id);
+			if (!removed) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Session not found');
+			}
+			return setApiResponse(HTTP.OK, 'SESSION_TERMINATED', 'Session terminated.', { id });
+		},
+
+		terminateOtherSessions: async (ctx: IFonderieContext): Promise<Response> => {
+			const currentSid = (ctx.user as { sid?: string | null }).sid ?? null;
+			if (!currentSid) {
+				// Without a resolvable current session there is nothing to spare, so
+				// refuse rather than nuke every session (which would include this one).
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'NO_CURRENT_SESSION',
+					'Cannot terminate others without a current session context',
+				);
+			}
+			const count = await sessions.terminateOthers(ctx.user!.id, currentSid);
+			return setApiResponse(HTTP.OK, 'SESSIONS_TERMINATED', 'Other sessions terminated.', { count });
 		},
 
 		updateProfile: async (ctx: IFonderieContext): Promise<Response> => {

@@ -8,11 +8,14 @@ import { issueTokenPair, refreshTokenExpiry } from '../services/jwt';
 import { toUserDTO } from '../dtos/user';
 import { UserModel } from '../models/user.model';
 import { SessionModel } from '../models/session.model';
+import { LoginEventModel } from '../models/login-event.model';
+import { requestMeta } from '../services/request-meta';
 import { normalizeEmailSafe } from '../services/email';
 
 export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store);
+	const loginEvents = new LoginEventModel(store);
 
 	return {
 		googleInit: async (_ctx: IFonderieContext): Promise<Response> => {
@@ -93,8 +96,18 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'GOOGLE_AUTH_FAILED', 'Invalid email in OAuth response');
 			}
 
+			const meta = requestMeta(ctx);
+
 			const upserted = await users.upsertByProvider(normalizedEmail, 'google', payload.sub ?? '');
 			if (!upserted) {
+				loginEvents.recordSafe({
+					userId: null,
+					emailAttempted: normalizedEmail,
+					method: 'oauth-google',
+					outcome: 'failed',
+					failureReason: 'provider_upsert_failed',
+					...meta,
+				});
 				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
 			}
 
@@ -106,7 +119,14 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 			const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, config, {
 				loginMethod: 'google',
 			});
-			await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
+			await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
+			loginEvents.recordSafe({
+				userId: upserted.id,
+				emailAttempted: normalizedEmail,
+				method: 'oauth-google',
+				outcome: 'success',
+				...meta,
+			});
 
 			return Response.json(
 				{

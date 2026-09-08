@@ -13,6 +13,8 @@ import type { IAuthConfig } from '../config';
 import { UserModel } from '../models/user.model';
 import { checkCooldown } from '../services/cooldown';
 import { SessionModel } from '../models/session.model';
+import { LoginEventModel } from '../models/login-event.model';
+import { requestMeta } from '../services/request-meta';
 import { hashPassword, verifyPasswordForLogin } from '../services/password';
 import { normalizeEmailSafe } from '../services/email';
 import { PasswordResetModel } from '../models/password-reset.model';
@@ -49,6 +51,7 @@ function extractRefreshToken(ctx: IFonderieContext): string | null {
 export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store);
+	const loginEvents = new LoginEventModel(store);
 	const passwordReset = new PasswordResetModel(store);
 	const emailVerif = new EmailVerificationModel(store);
 	const phoneVerif = new PhoneVerificationModel(store);
@@ -132,7 +135,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'email',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, requestMeta(ctx));
 
 				const resolvedRegister = { ...config, ...config.resolve?.(ctx) };
 				const requiresVerification = !!(resolvedRegister.requireVerification) && !user.emailVerifiedAt;
@@ -207,7 +210,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'phone',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, requestMeta(ctx));
 
 				return Response.json(
 					{
@@ -234,6 +237,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 		login: async (ctx: IFonderieContext): Promise<Response> => {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const meta = requestMeta(ctx);
 
 			// ── Email branch takes priority (cheaper than SMS) ────────
 			if (typeof body?.['email'] === 'string' && typeof body?.['password'] === 'string') {
@@ -245,6 +249,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 				const user = await users.findByEmail(email);
 				if (!user || !user.passwordHash) {
+					loginEvents.recordSafe({
+						userId: null,
+						emailAttempted: email,
+						method: 'password',
+						outcome: 'failed',
+						failureReason: 'unknown_email',
+						...meta,
+					});
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 				}
 
@@ -254,6 +266,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					config.legacyVerify,
 				);
 				if (!valid) {
+					loginEvents.recordSafe({
+						userId: user.id,
+						emailAttempted: email,
+						method: 'password',
+						outcome: 'failed',
+						failureReason: 'bad_password',
+						...meta,
+					});
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 				}
 
@@ -272,6 +292,9 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				}
 
 				if (user.mfaEnabled) {
+					// Password verified; MFA still pending. The completed login is
+					// recorded on mfa/verify — recording success here would log a
+					// login that hasn't happened yet.
 					const mfaToken = issueMfaPendingToken(user.id, config, 'email');
 					return setApiResponse(HTTP.OK, 'MFA_REQUIRED', 'Multi-factor authentication required', {
 						mfaToken,
@@ -281,7 +304,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'email',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
+				loginEvents.recordSafe({
+					userId: user.id,
+					emailAttempted: email,
+					method: 'password',
+					outcome: 'success',
+					...meta,
+				});
 
 				const resolvedLogin = { ...config, ...config.resolve?.(ctx) };
 				const requiresVerification = !!(resolvedLogin.requireVerification) && !user.emailVerifiedAt;
@@ -334,7 +364,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'phone',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
 
 				return Response.json(
 					{
@@ -360,6 +390,17 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 		},
 
 		logout: async (ctx: IFonderieContext): Promise<Response> => {
+			// Kill the session this request is authenticated on — by its sid claim,
+			// which is always present under requireAuth. This is the reliable path:
+			// clients that don't resend the refresh token (most, since only the
+			// access token is persisted) previously left the session row alive, so
+			// it lingered in Active Sessions and its refresh token stayed valid.
+			const sid = (ctx.user as { sid?: string | null } | null)?.sid;
+			if (sid) {
+				await sessions.deleteBySid(sid).catch(() => undefined);
+			}
+			// Also honour an explicitly-passed refresh token (covers pre-sid tokens
+			// and callers that log out a specific refresh session).
 			const token = extractRefreshToken(ctx);
 			if (token) {
 				await sessions.delete(token).catch(() => undefined);
@@ -404,7 +445,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				loginMethod: payload.loginMethod ?? 'email',
 				phoneVerified: payload.phoneVerified ?? false,
 			});
-			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
+			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, requestMeta(ctx));
 
 			return Response.json(
 				{
@@ -566,7 +607,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					loginMethod: 'phone',
 					phoneVerified: true,
 				});
-				await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid);
+				await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid, requestMeta(ctx));
 
 				const verifiedUser = await users.findById(ctx.user!.id);
 				if (!verifiedUser) {
