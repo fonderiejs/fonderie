@@ -35,6 +35,27 @@ Status: PLANNED (no phase started). Written 2026-09-08 from the findings below.
   DB writes for last-active; no new package — auth/client/react-auth grow
   a feature each.
 
+## Screen coverage — every mockup element, mapped to its phase
+
+| Screen element | Powered by | Phase |
+|---|---|---|
+| Login History: date & time | `fonderie_login_events.created_at` | 1 |
+| Login History: device | raw UA stored (1), parsed in UI (4) | 1 + 4 |
+| Login History: IP address | `requestMeta` helper → events row | 1 |
+| Login History: method (password/2fa/oauth) | `method` column at each outcome point | 1 |
+| Login History: status success/failed | `outcome` + `failure_reason` | 1 |
+| Login History: list + pagination | `GET /auth/login-history` → `useLoginHistory` | 2 + 3 |
+| Login History: Export History button | client-side CSV from loaded rows | 4 |
+| Login History: location | "Unknown" until GeoIP is chosen | (5) |
+| Active Sessions: device cards (UA, IP) | session INSERT fix + `GET /auth/sessions` | 1 + 2 |
+| Active Sessions: "Current" badge | row sid = JWT `sid` claim | 2 |
+| Active Sessions: Terminate (one) | `DELETE /auth/sessions/:id` → `useSessions` | 2 + 3 |
+| Active Sessions: Terminate All Others | `DELETE /auth/sessions/others` → `useSessions` | 2 + 3 |
+| Active Sessions: "Last active" line | refresh-touch `last_active_at` — shows "Signed in <date>" until then | (5) |
+| Active Sessions: location | same GeoIP decision as above | (5) |
+
+Both screens ride the same Phase 1 capture; neither ships without it.
+
 ## Phase 1 — Capture (auth: the data both screens need)
 
 1. One `requestMeta(ctx)` helper (x-forwarded-for-aware IP + user-agent),
