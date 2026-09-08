@@ -48,12 +48,12 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"nodemailer": "^9.0.6"
+		"nodemailer": "^10.0.1"
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.8.0",
-		"@fonderie/store": "^0.2.0",
-		"@fonderie/events": "^5.0.0"
+		"@fonderie/events": "^5.0.0",
+		"@fonderie/store": "^0.2.0"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/store": {
@@ -65,8 +65,8 @@
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
-		"@fonderie/store": "../store",
 		"@fonderie/events": "../events",
+		"@fonderie/store": "../store",
 		"@types/node": "^26.4.0",
 		"@types/nodemailer": "^8.0.1",
 		"tsup": "^8.5.1",
