@@ -50,9 +50,9 @@
 	"devDependencies": {
 		"@fonderie/core": "../core",
 		"@fonderie/store": "../store",
-		"@types/node": "^26.4.0",
+		"@types/node": "^26.4.1",
 		"tsup": "^8.5.1",
-		"tsx": "^4.23.12",
+		"tsx": "^4.23.13",
 		"typescript": "^6.0.3",
 		"pg": "^8.23.0",
 		"@types/pg": "^8.21.0",

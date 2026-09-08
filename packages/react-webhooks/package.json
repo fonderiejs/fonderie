@@ -41,12 +41,12 @@
 		"react": ">=18.0.0"
 	},
 	"devDependencies": {
-		"@types/node": "^26.4.0",
+		"@types/node": "^26.4.1",
 		"@types/react": "^19.2.18",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
 		"tsup": "^8.5.1",
-		"tsx": "^4.21.0",
+		"tsx": "^4.23.13",
 		"typescript": "^6.0.3"
 	},
 	"publishConfig": {
