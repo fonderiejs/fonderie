@@ -630,8 +630,8 @@
       "version": "5.2.0",
       "requires": [
         "core",
-        "store",
-        "events"
+        "events",
+        "store"
       ],
       "exports": [
         "CourierModule",
@@ -2188,12 +2188,12 @@
     },
     {
       "from": "courier",
-      "to": "store",
+      "to": "events",
       "type": "requires"
     },
     {
       "from": "courier",
-      "to": "events",
+      "to": "store",
       "type": "requires"
     },
     {

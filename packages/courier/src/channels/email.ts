@@ -65,12 +65,15 @@ export class EmailChannel implements ICourierChannel {
 			throw new Error('SMTP transport not initialised — check smtp config');
 		}
 
+		// Omit `html` when the template has none rather than passing `undefined`:
+		// nodemailer 10's SendMailOptions is an exact-optional type, so an explicit
+		// `html: undefined` is a type error (and was never meaningful at runtime).
 		await this.transport.sendMail({
 			from: this.config.from,
 			to,
 			subject: template.subject ?? '(no subject)',
-			html: template.html,
 			text: template.text,
+			...(template.html !== undefined ? { html: template.html } : {}),
 		});
 	}
 }
