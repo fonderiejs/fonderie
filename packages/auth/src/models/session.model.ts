@@ -1,14 +1,22 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
+import type { IRequestMeta } from '../services/request-meta';
+
 export class SessionModel {
 	constructor(private store: IStoreAdapter) {}
 
-	async create(userId: string, token: string, expiresAt: Date, sid?: string): Promise<void> {
+	async create(
+		userId: string,
+		token: string,
+		expiresAt: Date,
+		sid?: string,
+		meta?: IRequestMeta,
+	): Promise<void> {
 		await this.store.query(
-			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid)
-			VALUES ($1, $2, $3, $4)
+			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid, user_agent, ip_address)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT (token) DO NOTHING`,
-			[userId, token, expiresAt, sid ?? null],
+			[userId, token, expiresAt, sid ?? null, meta?.userAgent ?? null, meta?.ipAddress ?? null],
 		);
 	}
 

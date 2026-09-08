@@ -19,6 +19,20 @@ created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 PRIMARY                  KEY (user_id)
 ```
 
+### `fonderie_login_events`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id                  UUID REFERENCES fonderie_users(id) ON DELETE CASCADE
+email_attempted          TEXT
+method                   TEXT NOT NULL
+outcome                  TEXT NOT NULL
+failure_reason           TEXT
+ip_address               TEXT
+user_agent               TEXT
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_mfa_backup_codes`
 
 ```sql
