@@ -29,17 +29,38 @@ a new hook in a re-exported family, **twice** (react/vue).
    an idempotency key, another doesn't). NOT caught by a name diff; needs review
    when touching a hook. This is the sneakier kind.
 
-## Audit command (export-name diff)
+## Audit command
+
+Run the full cross-check — every hooks family and every screens family, across
+all three frameworks, with RN re-export detection:
 
 ```sh
-for fam in auth billing workspaces audit webhooks customers; do
-  r=packages/react-$fam/src/index.ts; v=packages/vue-$fam/src/index.ts
-  [ -f "$r" ] && [ -f "$v" ] || continue
-  diff <(grep -oE '\buse[A-Z][A-Za-z]+' "$r" | sort -u) \
-       <(grep -oE '\buse[A-Z][A-Za-z]+' "$v" | sort -u) \
-    && echo "[$fam] parity" || echo "[$fam] ^ divergence above"
-done
+node scripts/check-frontend-parity.mjs
 ```
+
+It diffs the `use*` capability set (hooks/composables) and the `*Screen`
+public exports of each `react-*` package against its `vue-*` and
+`react-native-*` siblings. RN packages that are pure `export * from
+'@fonderie/react-*'` are reported as inheriting (no drift possible); RN auth,
+which has its own `AsyncStorage` hooks, is diffed like Vue.
+
+## Full sweep result — 2026-09-08
+
+Eight hooks families (auth, billing, workspaces, audit, webhooks, customers,
+courier-admin, config-admin) and all eight screens families were cross-checked.
+
+- **Hooks / composables: at parity everywhere EXCEPT auth.** Only
+  `useLoginHistory` + `useSessions` diverge (missing in vue-auth and
+  react-native-auth). Every other family — including the wide billing (18
+  hooks) and customers (9 hooks) surfaces — matches across all three
+  frameworks.
+- **Screens: at full parity, all eight families, all frameworks.** (Vue
+  components carry an internal `Fonderie*Screen` name but export the same
+  unprefixed screen names as React; React additionally exports `I*Screen`
+  prop-type interfaces Vue/RN don't need — neither is a capability gap.)
+
+So the *only* export-level divergence in the entire frontend SDK is the two
+auth hooks below.
 
 ## Current gaps
 
@@ -54,11 +75,11 @@ parity beyond `useCheckout` has not been exhaustively reviewed.
 
 ## Recommended: a CI gate
 
-The export-name diff above is a good candidate for a `check:framework-parity`
-script alongside `check:hook-coverage` / `check:routes`, failing CI when a
-`use*` export exists in `react-X` but not `vue-X`. It would have caught the two
-open auth gaps at PR time. It would NOT catch behavioural drift — that stays a
-review-time concern (call it out whenever editing a hook that has siblings).
+`scripts/check-frontend-parity.mjs` already does the diff; wiring it as a
+`check:framework-parity` gate (alongside `check:hook-coverage` / `check:routes`)
+that exits non-zero on any missing export would have caught the two open auth
+gaps at PR time. It would NOT catch behavioural drift — that stays a review-time
+concern (call it out whenever editing a hook that has siblings).
 
 ## Closing the open gaps
 
