@@ -80,7 +80,8 @@ app.listen(3000, { name: 'my-api' });
 | Event bus | `@fonderie/events` | Cross-module events |
 | Structured logging | `@fonderie/logger` | Pluggable transports, request-logging middleware |
 | Customer records | `@fonderie/customers` | Workspace-scoped customer data (contact CRUD + blacklist; frontend hooks under `react-customers`/`vue-customers` below) |
-| Image/asset upload + serving (avatars, logos) | `@fonderie/media` | Base64 upload (magic-byte + size guards, SVG rejected), public cached serve-by-URL; `IStorageProvider` seam — `DbBlobProvider`/`LocalFsProvider` (zero infra) built in, object storage a one-line swap |
+| Object storage (files, blobs, archives) | `@fonderie/storage` | Content-agnostic `IStorageProvider` (put/get/delete) — `DbBlobProvider`/`LocalFsProvider` (zero infra, Node+Postgres) built in, `S3Provider` (S3/MinIO/R2/B2) at the `/s3` subpath; the low-dep foundation media and archival build on |
+| Image/asset upload + serving (avatars, logos) | `@fonderie/media` | Base64 upload (magic-byte + size guards, SVG rejected), public cached serve-by-URL; built on `@fonderie/storage` — swap DB-blob → object storage in one config line |
 | Typed client for a Fonderie API | `@fonderie/client` | Isomorphic TS client |
 
 ## Frontend — auth hooks and pre-built screens
