@@ -97,6 +97,12 @@ const ROUTE_ALLOW = new Map([
 	// decision (same as the wallet routes above).
 	['POST /billing/subscription/cancel', 'client/hooks ship next cycle — server-first by scoped decision'],
 	['POST /billing/subscription/reactivate', 'client/hooks ship next cycle — server-first by scoped decision'],
+	// @fonderie/media backend brick landed first; the client.media sub-client +
+	// upload hook ship next cycle (server-first, same convention as above). The
+	// public GET is an <img src> target — navigated to, never a typed client call.
+	['POST /media', 'client/hooks ship next cycle — server-first by scoped decision'],
+	['GET /media/:id', 'public image-serve endpoint — an <img src> target, navigated to, never fetched via the typed client'],
+	['DELETE /media/:id', 'client/hooks ship next cycle — server-first by scoped decision'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');
