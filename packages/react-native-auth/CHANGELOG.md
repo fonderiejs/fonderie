@@ -1,5 +1,21 @@
 # @fonderie/react-native-auth
 
+## 0.8.0
+
+### Minor Changes
+
+- 4eff0f5: Add `useLoginHistory` and `useSessions` to vue-auth and react-native-auth,
+  closing the framework-parity gap with react-auth (the login-activity hooks
+  shipped React-only in #229). Same contract as the React hooks — keyset-paginated
+  login history and live-session listing with `terminate`/`terminateOthers`. Also
+  re-exports the `IGetLoginHistoryInput` / `ILoginEventDTO` / `ISessionDTO` client
+  types these hooks return, which both packages were previously missing.
+
+### Patch Changes
+
+- Updated dependencies [4eff0f5]
+  - @fonderie/client@0.17.0
+
 ## 0.7.1
 
 ### Patch Changes
