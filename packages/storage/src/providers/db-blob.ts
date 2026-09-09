@@ -2,6 +2,12 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IFetched, IStorageProvider, IStoredRef } from './types';
 
+// Refs we mint are UUIDs. Guard reads/deletes so a foreign or malformed ref
+// resolves to "not found" (null / no-op) instead of a Postgres
+// "invalid input syntax for type uuid" error — the interface contract is
+// null-on-missing, and a foundation provider shouldn't throw on a bad ref.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Zero-infra provider: bytes live in Postgres (`fonderie_storage_blobs`, created
  * by this package's migration). Great for getting started and self-hosting — the
@@ -24,6 +30,7 @@ export class DbBlobProvider implements IStorageProvider {
 	}
 
 	async get(ref: string): Promise<IFetched | null> {
+		if (!UUID_RE.test(ref)) return null;
 		const rows = await this.store.query<{ bytes: Buffer }>(
 			'SELECT bytes FROM fonderie_storage_blobs WHERE id = $1',
 			[ref],
@@ -33,6 +40,7 @@ export class DbBlobProvider implements IStorageProvider {
 	}
 
 	async delete(ref: string): Promise<void> {
+		if (!UUID_RE.test(ref)) return; // nothing to delete for a ref we never minted
 		await this.store.query('DELETE FROM fonderie_storage_blobs WHERE id = $1', [ref]);
 	}
 }

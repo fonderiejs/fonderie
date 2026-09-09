@@ -20,6 +20,10 @@ interface IMediaConfig {
     provider: IStorageProvider;
     maxBytes?: number;
     allowedTypes?: string[];
+    authorizeOwner?(ctx: IFonderieContext, owner: {
+        ownerType: string;
+        ownerId: string;
+    }): boolean | Promise<boolean>;
 }
 
 new DbBlobProvider(store: IStoreAdapter): DbBlobProvider

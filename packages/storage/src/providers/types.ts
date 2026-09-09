@@ -31,7 +31,16 @@ export interface IStorageProvider {
 	readonly name: string;
 	/** Persist bytes; `contentType` is passed for backends that store it natively (S3). */
 	put(input: { bytes: Uint8Array; contentType: string }): Promise<IStoredRef>;
-	/** Resolve a ref to bytes or a redirect URL, or null if it's gone. */
+	/**
+	 * Resolve a ref to bytes or a redirect URL, or null if it's gone.
+	 *
+	 * NOTE on `null`: DbBlob/LocalFs verify existence and return `null` for a
+	 * missing ref. `S3Provider` returns a presigned `redirect` WITHOUT a
+	 * round-trip to check existence, so a missing key yields a redirect URL that
+	 * 404s when followed rather than `null`. Consumers that must detect "gone"
+	 * without following the URL should keep their own metadata (as
+	 * `@fonderie/media` does with its asset row) rather than rely on `null`.
+	 */
 	get(ref: string): Promise<IFetched | null>;
 	/** Remove the stored object. Idempotent — deleting a missing ref must not throw. */
 	delete(ref: string): Promise<void>;
