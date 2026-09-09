@@ -339,3 +339,37 @@ test('mount: fonderie.handle() called for unmatched routes', async () => {
 	assert.equal(status, 200);
 	assert.equal((body as any).from, 'fonderie');
 });
+
+// ── request-body size limit (DoS guard) ───────────────────────────
+
+test('expressRequestToWeb: rejects a declared-oversize body before reading (Content-Length fast path)', async () => {
+	const req = makeIncomingMessage({
+		method: 'POST',
+		headers: { 'content-length': '100' },
+		body: 'x'.repeat(100),
+	});
+	await assert.rejects(expressRequestToWeb(req, 10), /exceeds the 10-byte limit/);
+});
+
+test('expressRequestToWeb: allows a body within the limit', async () => {
+	const req = makeIncomingMessage({ method: 'POST', body: '{"ok":true}' });
+	const webReq = await expressRequestToWeb(req, 1000);
+	assert.deepEqual(await webReq.json(), { ok: true });
+});
+
+test('mount: oversized request body gets a 413 (not passed to handlers)', async () => {
+	let handlerRan = false;
+	const app = mount(express(), makeApp(), undefined, { maxBodyBytes: 10 });
+	app.post('/upload', (_req, res) => {
+		handlerRan = true;
+		res.json({ ok: true });
+	});
+
+	const { status } = await request(app, '/upload', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: 'x'.repeat(200),
+	});
+	assert.equal(status, 413);
+	assert.ok(!handlerRan, 'handler must not run for an oversized body');
+});

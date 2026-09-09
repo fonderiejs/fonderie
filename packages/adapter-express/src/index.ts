@@ -34,9 +34,28 @@ export type ExpressRequest = IncomingMessage & { body?: unknown; _fonderie?: IFo
 export type ExpressResponse = ServerResponse;
 export type ExpressNext = (err?: unknown) => void;
 
+/**
+ * Default cap on the request body this adapter will buffer, in bytes (5 MiB).
+ * Without it, `readStream` would read an arbitrarily large body fully into
+ * memory before any handler (or even auth) runs — a memory-exhaustion DoS.
+ * Raise it via `mount()`/`bridge()` options if you accept larger uploads (e.g.
+ * big `@fonderie/media` images); lower it to tighten the limit.
+ */
+export const DEFAULT_MAX_BODY_BYTES = 5 * 1024 * 1024;
+
+class PayloadTooLargeError extends Error {
+	readonly fonderiePayloadTooLarge = true as const;
+}
+
+const isPayloadTooLarge = (err: unknown): boolean =>
+	!!(err as { fonderiePayloadTooLarge?: boolean } | undefined)?.fonderiePayloadTooLarge;
+
 // ── Web Standard ↔ Express translation ───────────────────────────
 
-export async function expressRequestToWeb(req: ExpressRequest): Promise<Request> {
+export async function expressRequestToWeb(
+	req: ExpressRequest,
+	maxBytes = DEFAULT_MAX_BODY_BYTES,
+): Promise<Request> {
 	const encrypted = (req.socket as { encrypted?: boolean }).encrypted;
 	const protocol = encrypted ? 'https' : 'http';
 	const host = req.headers['host'] ?? 'localhost';
@@ -54,7 +73,12 @@ export async function expressRequestToWeb(req: ExpressRequest): Promise<Request>
 
 	const method = req.method ?? 'GET';
 	const hasBody = !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
-	const body = hasBody ? await readStream(req) : null;
+	// Fast path: reject a declared-oversize body before reading a single byte.
+	const declared = Number(req.headers['content-length']);
+	if (hasBody && Number.isFinite(declared) && declared > maxBytes) {
+		throw new PayloadTooLargeError(`Request body of ${declared} bytes exceeds the ${maxBytes}-byte limit`);
+	}
+	const body = hasBody ? await readStream(req, maxBytes) : null;
 
 	return new Request(url, { method, headers, body });
 }
@@ -72,10 +96,21 @@ export async function webResponseToExpress(webRes: Response, res: ExpressRespons
 	res.end(Buffer.from(await webRes.arrayBuffer()));
 }
 
-function readStream(req: IncomingMessage): Promise<ArrayBuffer> {
+function readStream(req: IncomingMessage, maxBytes: number): Promise<ArrayBuffer> {
 	return new Promise((resolve, reject) => {
 		const chunks: Buffer[] = [];
-		req.on('data', (chunk: Buffer) => chunks.push(chunk));
+		let total = 0;
+		req.on('data', (chunk: Buffer) => {
+			total += chunk.length;
+			// Backstop for chunked / missing / lying Content-Length: stop buffering
+			// the moment we cross the cap rather than reading the whole body.
+			if (total > maxBytes) {
+				req.destroy();
+				reject(new PayloadTooLargeError(`Request body exceeds the ${maxBytes}-byte limit`));
+				return;
+			}
+			chunks.push(chunk);
+		});
 		req.on('end', () => {
 			const buf = Buffer.concat(chunks);
 			// slice creates a correctly-sized ArrayBuffer (buf.buffer is a shared pool)
@@ -93,10 +128,11 @@ function readStream(req: IncomingMessage): Promise<ArrayBuffer> {
 //
 //   app.use(bridge(fonderie))
 
-export function bridge(fonderie: FonderieApp) {
-	return async (req: ExpressRequest, _res: ExpressResponse, next: ExpressNext) => {
+export function bridge(fonderie: FonderieApp, options?: { maxBodyBytes?: number }) {
+	const maxBytes = options?.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+	return async (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => {
 		try {
-			const webReq = await expressRequestToWeb(req);
+			const webReq = await expressRequestToWeb(req, maxBytes);
 			// Cache so the infra handler in mount() can reuse it without re-reading
 			// the body stream (which can only be consumed once).
 			(req as any)._fonterieReq = webReq;
@@ -108,6 +144,12 @@ export function bridge(fonderie: FonderieApp) {
 			}
 			next();
 		} catch (err) {
+			if (isPayloadTooLarge(err)) {
+				res.statusCode = 413;
+				res.setHeader('content-type', 'application/json');
+				res.end(JSON.stringify({ reason: 'PAYLOAD_TOO_LARGE', explanation: 'Request body too large' }));
+				return;
+			}
 			next(err);
 		}
 	};
@@ -229,14 +271,18 @@ export function mount<T extends ExpressApp>(
 	app: T,
 	fonderie: FonderieApp,
 	register?: (app: T) => void,
+	options?: { maxBodyBytes?: number },
 ): T {
+	const maxBytes = options?.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
 	const infraHandler = async (req: ExpressRequest, res: ExpressResponse) => {
-		const webReq = (req as any)._fonterieReq as Request ?? await expressRequestToWeb(req);
+		// bridge() (below) already read + capped the body and cached the request;
+		// the fallback only runs if it somehow didn't, so apply the same cap.
+		const webReq = (req as any)._fonterieReq as Request ?? await expressRequestToWeb(req, maxBytes);
 		const webRes = await fonderie.handle(webReq);
 		await webResponseToExpress(webRes, res);
 	};
 
-	app.use(bridge(fonderie));
+	app.use(bridge(fonderie, options));
 
 	if (register) {
 		register(app);
