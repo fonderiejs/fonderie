@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-billing",
-	"version": "0.8.0",
+	"version": "0.9.0",
 	"description": "React hooks for Fonderie billing — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
