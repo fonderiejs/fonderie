@@ -34,6 +34,24 @@ interface IChangePasswordInput {
     newPassword: string;
 }
 
+interface IGetLoginHistoryInput {
+    outcome?: 'success' | 'failed';
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    cursor?: string;
+}
+
+interface ILoginEventDTO {
+    id: string;
+    method: string;
+    outcome: string;
+    failureReason: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+}
+
 interface ILoginInput {
     email: string;
     password: string;
@@ -74,6 +92,15 @@ interface IRegisterResult {
 interface IResetPasswordInput {
     pin: string;
     password: string;
+}
+
+interface ISessionDTO {
+    id: string;
+    current: boolean;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+    expiresAt: string;
 }
 
 interface ITokens {
@@ -159,6 +186,18 @@ interface IUseForgotPasswordReturn {
     sent: Ref<boolean>;
 }
 
+interface IUseLoginHistoryReturn {
+    events: Ref<ILoginEventDTO[]>;
+    isLoading: Ref<boolean>;
+    isLoadingMore: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    hasMore: Ref<boolean>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    loadMore: () => Promise<void>;
+}
+
 interface IUseLoginReturn {
     login: (input: ILoginInput) => Promise<ILoginResult | IMfaRequiredResult>;
     isLoading: Ref<boolean>;
@@ -227,6 +266,17 @@ interface IUseSessionReturn {
     logout: (refreshToken?: string) => Promise<void>;
 }
 
+interface IUseSessionsReturn {
+    sessions: Ref<ISessionDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    terminate: (id: string) => Promise<void>;
+    terminateOthers: () => Promise<void>;
+}
+
 interface IUseVerifyEmailReturn {
     verifyEmail: (pin: string) => Promise<IVerifyEmailResult>;
     resend: () => Promise<void>;
@@ -244,6 +294,8 @@ function useForgotPassword(client?: AuthClient | undefined): IUseForgotPasswordR
 
 function useLogin(client?: AuthClient | undefined): IUseLoginReturn
 
+function useLoginHistory(rawFilters?: IGetLoginHistoryInput | undefined): IUseLoginHistoryReturn
+
 function useLogout(client?: AuthClient | undefined): IUseLogoutReturn
 
 function useMfaLogin(client?: AuthClient | undefined): IUseMfaLoginReturn
@@ -257,6 +309,8 @@ function useRegister(client?: AuthClient | undefined): IUseRegisterReturn
 function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordReturn
 
 function useSession(client?: AuthClient | undefined): IUseSessionReturn
+
+function useSessions(client?: AuthClient | undefined): IUseSessionsReturn
 
 function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn
 

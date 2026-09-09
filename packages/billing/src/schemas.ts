@@ -31,6 +31,9 @@ export const updatePlanSchema = z
 export const checkoutSchema = z.object({
 	plan: z.string().min(1, 'plan is required'),
 	interval: z.enum(BILLING_INTERVALS).optional(),
+	// Idempotency key: kept in the schema so validate() doesn't strip it as an
+	// unknown key before the controller passes it to the provider.
+	idempotencyKey: z.string().min(1).max(255).optional(),
 });
 
 export const recordUsageSchema = z.object({

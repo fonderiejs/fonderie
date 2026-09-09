@@ -16,7 +16,7 @@ new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus |
 new StripeProvider(secretKey: string, webhookSecret?: string | undefined, options?: IStripeProviderOptions): StripeProvider
   .name: "stripe"
   .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>
-  .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; }): Promise<{ url: string; }>
+  .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; idempotencyKey?: string; }): Promise<...>
   .createPaymentCheckoutSession(opts: { customerId: string; amount: bigint; currency: string; name: string; quantity?: number; priceId?: string; savePaymentMethod?: boolean; metadata: Record<string, string>; successUrl: string; cancelUrl: string; }): Promise<...>
   .chargeOffSession(opts: { customerId: string; paymentMethodId?: string | null; amount: bigint; currency: string; idempotencyKey: string; metadata: Record<string, string>; }): Promise<{ providerTxId: string | null; status: "succeeded" | ... 2 more ... | "unknown"; }>
   .resolvePriceById(priceId: string): Promise<IResolvedPrice | null>
@@ -232,6 +232,7 @@ interface IBillingProvider {
         trialDays?: number;
         successUrl: string;
         cancelUrl: string;
+        idempotencyKey?: string;
     }): Promise<{
         url: string;
     }>;

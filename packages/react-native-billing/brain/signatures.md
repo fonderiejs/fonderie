@@ -48,6 +48,7 @@ interface ICancelSubscriptionInput {
 interface ICheckoutInput {
     plan: string;
     interval?: 'month' | 'year';
+    idempotencyKey?: string;
 }
 
 interface ICreatePlanInput {

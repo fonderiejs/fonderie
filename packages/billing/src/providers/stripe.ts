@@ -392,22 +392,28 @@ export class StripeProvider implements IBillingProvider {
 		trialDays?: number;
 		successUrl: string;
 		cancelUrl: string;
+		idempotencyKey?: string;
 	}): Promise<{ url: string }> {
 		const stripe = await this.client();
-		const session = await stripe.checkout.sessions.create({
-			customer: opts.customerId,
-			mode: 'subscription',
-			line_items: [{ price: opts.priceId, quantity: 1 }],
-			success_url: opts.successUrl,
-			cancel_url: opts.cancelUrl,
-			subscription_data: {
-				metadata: {
-					subscriberType: opts.subscriberType,
-					subscriberId: opts.subscriberId,
+		const session = await stripe.checkout.sessions.create(
+			{
+				customer: opts.customerId,
+				mode: 'subscription',
+				line_items: [{ price: opts.priceId, quantity: 1 }],
+				success_url: opts.successUrl,
+				cancel_url: opts.cancelUrl,
+				subscription_data: {
+					metadata: {
+						subscriberType: opts.subscriberType,
+						subscriberId: opts.subscriberId,
+					},
+					...(opts.trialDays && opts.trialDays > 0 ? { trial_period_days: opts.trialDays } : {}),
 				},
-				...(opts.trialDays && opts.trialDays > 0 ? { trial_period_days: opts.trialDays } : {}),
 			},
-		});
+			// Retried session-create requests carrying the same key dedupe to one
+			// session instead of a second subscription.
+			opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined,
+		);
 		return { url: session.url ?? '' };
 	}
 
