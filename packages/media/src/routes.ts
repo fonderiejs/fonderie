@@ -38,6 +38,13 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 				if (typeof body.dataBase64 !== 'string' || body.dataBase64.length === 0) {
 					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'dataBase64 (a base64 string) is required.');
 				}
+				// Reject oversized uploads BEFORE decoding — base64 inflates ~4/3, so a
+				// string longer than maxBytes*1.4 cannot fit the cap. Bounds the decode
+				// allocation instead of materializing a huge buffer only to reject it.
+				// (A request-body-size limit at the adapter is the complementary guard.)
+				if (body.dataBase64.length > Math.ceil(maxBytes * 1.4)) {
+					return setApiResponse(HTTP.UNPROCESSABLE, 'ASSET_TOO_LARGE', `Image exceeds the ${maxBytes}-byte limit.`);
+				}
 
 				let bytes: Uint8Array;
 				try {
@@ -65,16 +72,33 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 				const ownerId = typeof body.ownerId === 'string' ? body.ownerId : userId;
 				const purpose = typeof body.purpose === 'string' ? body.purpose : 'avatar';
 
+				// Authorize the target owner. Default policy: self-owned user assets
+				// only; a consumer opts into other owners (workspace logos, customer
+				// photos) via config.authorizeOwner.
+				const authorized = config.authorizeOwner
+					? await config.authorizeOwner(ctx, { ownerType, ownerId })
+					: ownerType === 'user' && ownerId === userId;
+				if (!authorized) {
+					return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Not allowed to upload for that owner.');
+				}
+
 				const { ref } = await config.provider.put({ bytes, contentType });
-				const asset = await assets.create({
-					ownerType,
-					ownerId,
-					purpose,
-					contentType,
-					byteSize: bytes.byteLength,
-					storageRef: ref,
-					createdBy: userId,
-				});
+				let asset: Awaited<ReturnType<typeof assets.create>>;
+				try {
+					asset = await assets.create({
+						ownerType,
+						ownerId,
+						purpose,
+						contentType,
+						byteSize: bytes.byteLength,
+						storageRef: ref,
+						createdBy: userId,
+					});
+				} catch (err) {
+					// Metadata insert failed — don't orphan the bytes we just stored.
+					await config.provider.delete(ref).catch(() => {});
+					throw err;
+				}
 
 				// Build the URL at whatever prefix this route is mounted under
 				// (e.g. '/v1/media/:id'), derived from the request path.

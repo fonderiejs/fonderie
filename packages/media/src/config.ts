@@ -1,3 +1,4 @@
+import type { IFonderieContext } from '@fonderie/core';
 import type { IStorageProvider } from '@fonderie/storage';
 
 export interface IMediaConfig {
@@ -11,6 +12,17 @@ export interface IMediaConfig {
 	 * it's a stored-XSS vector.
 	 */
 	allowedTypes?: string[];
+	/**
+	 * Authorize an upload's target owner. Return false to reject with 403. When
+	 * omitted, the default policy allows only **self-owned user assets**
+	 * (`ownerType: 'user'`, `ownerId` = the authenticated caller). Provide this
+	 * to permit other owners — e.g. a workspace logo the caller may administer, a
+	 * customer photo in the caller's workspace.
+	 */
+	authorizeOwner?(
+		ctx: IFonderieContext,
+		owner: { ownerType: string; ownerId: string },
+	): boolean | Promise<boolean>;
 }
 
 export const DEFAULT_MAX_BYTES = 1_000_000;

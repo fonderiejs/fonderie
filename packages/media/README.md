@@ -31,23 +31,33 @@ app.register(new MediaModule(store, {
 }));
 ```
 
-Run its migration alongside the others (it owns `fonderie_*` tables):
+Run **both** migrations — media's (`fonderie_media_assets` metadata) and
+`@fonderie/storage`'s (`fonderie_storage_blobs`, where `DbBlobProvider` writes).
+Forgetting storage's makes DbBlob uploads fail at runtime:
 
 ```ts
-import { getMigrationsPath } from '@fonderie/media/migrations';
-await new InternalMigrationRunner(store, getMigrationsPath()).run();
+import { getMigrationsPath as mediaMigrations }   from '@fonderie/media/migrations';
+import { getMigrationsPath as storageMigrations } from '@fonderie/storage/migrations';
+await new InternalMigrationRunner(store, storageMigrations()).run();
+await new InternalMigrationRunner(store, mediaMigrations()).run();
 ```
 
-## Storage providers
+## Storage & access
 
-`IStorageProvider` is the seam — `put` / `get` / `delete`, with `get` returning
-either bytes (app serves them) or a redirect URL (backend serves them, e.g. an
-S3 signed URL). Two zero-infra backends ship built in:
+Byte storage lives in **`@fonderie/storage`** (media re-exports the zero-infra
+providers for convenience):
 
-- **`DbBlobProvider`** — bytes in Postgres (`fonderie_media_blobs`). One process,
-  one database, atomic backups. The default.
-- **`LocalFsProvider`** — bytes on the server filesystem.
+- **`DbBlobProvider`** — bytes in Postgres. Zero infra; the default.
+- **`LocalFsProvider`** — bytes on disk.
+- **`S3Provider`** (S3 / MinIO / R2) — `import { S3Provider } from '@fonderie/storage/s3'`.
 
-Implement the interface to add object storage (`S3Provider`, etc.) without
-touching product code — the same pattern `@fonderie/billing` uses for payment
-providers.
+Swapping backends is one config line; the `/media/:id` URL contract is unchanged.
+
+**Access model:** `GET /media/:id` is **public** — an `<img src>` can't carry a
+Bearer token, and ids are unguessable UUIDs (capability URLs). Right for
+avatars/logos; it is **not** an access-controlled store for private or sensitive
+files — serve those through your own authenticated route.
+
+**Owner authorization:** uploads default to self-owned user assets only
+(`ownerType: 'user'`, `ownerId` = the caller). To allow workspace logos, customer
+photos, etc., pass `authorizeOwner(ctx, owner)` in the module config.
