@@ -1,4 +1,4 @@
-import type { IStorageProvider } from './providers/types';
+import type { IStorageProvider } from '@fonderie/storage';
 
 export interface IMediaConfig {
 	/** Where bytes are stored. `DbBlobProvider` (zero infra) by default; swap for S3 at scale. */

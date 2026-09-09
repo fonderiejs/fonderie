@@ -6,13 +6,12 @@ import type { IFetched, IStorageProvider, IStoredRef } from './types';
 
 /**
  * Zero-infra provider: bytes live on the server's filesystem under `dir`. Useful
- * for a single-box deployment that wants images off the database without
- * standing up object storage. The `ref` is an opaque filename; the asset's
- * content type is tracked in `fonderie_media_assets`, so nothing about the
- * bytes-on-disk needs to encode it.
+ * for a single-box deployment that wants objects off the database without
+ * standing up object storage. The `ref` is an opaque filename; content type is
+ * the consumer's concern, so nothing about the bytes-on-disk needs to encode it.
  *
- * (Serves inline through the app like `DbBlobProvider`. It has no CDN in front,
- * so at real scale prefer `S3Provider` — same interface, one config line.)
+ * Serves inline through the app like `DbBlobProvider` (no CDN in front), so at
+ * real scale prefer `S3Provider` — same interface, one config line.
  */
 export class LocalFsProvider implements IStorageProvider {
 	readonly name = 'local-fs';
@@ -31,7 +30,7 @@ export class LocalFsProvider implements IStorageProvider {
 	// Reject any ref that isn't a bare id, so a ref can never escape `dir`
 	// (path traversal). Ids we mint are UUIDs.
 	private pathFor(ref: string): string {
-		if (!/^[A-Za-z0-9_-]+$/.test(ref)) throw new Error('invalid media ref');
+		if (!/^[A-Za-z0-9_-]+$/.test(ref)) throw new Error('invalid storage ref');
 		return join(this.dir, ref);
 	}
 

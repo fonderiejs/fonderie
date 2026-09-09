@@ -23,14 +23,6 @@ created_by               UUID
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
-### `fonderie_media_blobs`
-
-```sql
-id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
-bytes                    BYTEA NOT NULL
-created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
-```
-
 Raw SQL ships in `node_modules/@fonderie/media/dist/migrations/sql/` — read it there if you must; never download tarballs.
 
 ## HTTP routes registered

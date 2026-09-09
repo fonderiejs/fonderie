@@ -46,6 +46,7 @@
     "react-webhooks-screens": "0.3.0",
     "react-workspaces": "0.6.0",
     "react-workspaces-screens": "0.4.0",
+    "storage": "0.0.0",
     "store": "0.2.2",
     "vue": "0.2.0",
     "vue-audit": "0.4.0",
@@ -951,7 +952,8 @@
       "version": "0.1.0",
       "requires": [
         "core",
-        "store"
+        "store",
+        "storage"
       ],
       "exports": [
         "MediaModule",
@@ -965,8 +967,7 @@
         "@fonderie/media/migrations"
       ],
       "tables": [
-        "fonderie_media_assets",
-        "fonderie_media_blobs"
+        "fonderie_media_assets"
       ],
       "routeCount": 1,
       "routes": [
@@ -1535,6 +1536,28 @@
       "secures": [],
       "hasSignature": true,
       "hasOutcomes": false
+    },
+    "storage": {
+      "version": "0.0.0",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "DbBlobProvider",
+        "LocalFsProvider"
+      ],
+      "subpaths": [
+        "@fonderie/storage/migrations"
+      ],
+      "tables": [
+        "fonderie_storage_blobs"
+      ],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": true
     },
     "store": {
       "version": "0.2.2",
@@ -2283,6 +2306,11 @@
     },
     {
       "from": "media",
+      "to": "storage",
+      "type": "requires"
+    },
+    {
+      "from": "media",
       "to": "auth",
       "type": "secures-with"
     },
@@ -2303,6 +2331,16 @@
     },
     {
       "from": "rate-limit",
+      "to": "store",
+      "type": "requires"
+    },
+    {
+      "from": "storage",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "storage",
       "to": "store",
       "type": "requires"
     },
@@ -2482,6 +2520,9 @@
     ],
     "react-workspaces-screens": [
       "react-workspaces-screens"
+    ],
+    "storage": [
+      "storage"
     ],
     "store": [
       "store"
@@ -3836,10 +3877,12 @@
       "media"
     ],
     "dbblobprovider": [
-      "media"
+      "media",
+      "storage"
     ],
     "localfsprovider": [
-      "media"
+      "media",
+      "storage"
     ],
     "mediaassetmodel": [
       "media"
