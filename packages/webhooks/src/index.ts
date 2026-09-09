@@ -14,3 +14,7 @@ export type {
 // Request validation — enforced contract for body-taking routes; exported
 // for docs generation and typed clients.
 export * as schemas from './schemas';
+
+// SSRF guard — reject webhook URLs that resolve to non-public addresses.
+// Exported so consumers can pre-validate a URL before registering it.
+export { assertPublicHttpUrl, isBlockedAddress, SsrfError } from './ssrf';

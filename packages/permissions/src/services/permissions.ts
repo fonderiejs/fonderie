@@ -23,6 +23,7 @@ export async function checkPermission(
 		   AND rp.permission_key = $3
 		   AND ruw.removed    = false
 		   AND ruw.suspended  = false
+		   AND r.active       = true
 		   AND (r.workspace_id = $2 OR r.is_system = true)
 		 GROUP BY ruw.user_id, ruw.workspace_id`,
 		[userId, workspaceId, permissionKey],

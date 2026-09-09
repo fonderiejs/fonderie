@@ -33,10 +33,20 @@ export async function findSystemRole(name: string, store: IStoreAdapter): Promis
 	return row ?? null;
 }
 
-export async function getRoleById(id: string, store: IStoreAdapter): Promise<IRole | null> {
+/**
+ * Fetch a role by id, scoped to a workspace. A role is visible only when it
+ * belongs to the given workspace OR is a (global) system role — otherwise a
+ * member of workspace A could read/mutate workspace B's roles by id (IDOR).
+ */
+export async function getRoleById(
+	id: string,
+	workspaceId: string,
+	store: IStoreAdapter,
+): Promise<IRole | null> {
 	const [row] = await store.query<IRole>(
-		`SELECT ${SELECT_ROLE} FROM fonderie_roles WHERE id = $1`,
-		[id],
+		`SELECT ${SELECT_ROLE} FROM fonderie_roles
+		 WHERE id = $1 AND (workspace_id = $2 OR is_system = true)`,
+		[id, workspaceId],
 	);
 	return row ?? null;
 }
@@ -56,11 +66,14 @@ export async function listWorkspaceRoles(
 
 export async function updateRole(
 	id: string,
+	workspaceId: string,
 	opts: { name?: string; description?: string | null; active?: boolean },
 	store: IStoreAdapter,
 ): Promise<IRole | null> {
+	// $1 = id, $2 = workspaceId — the mutation is scoped to the caller's
+	// workspace so a member can't rename/deactivate another workspace's role.
 	const sets: string[] = [];
-	const params: unknown[] = [id];
+	const params: unknown[] = [id, workspaceId];
 
 	if (opts.name !== undefined) {
 		params.push(opts.name);
@@ -75,12 +88,12 @@ export async function updateRole(
 		sets.push(`active = $${params.length}`);
 	}
 
-	if (sets.length === 0) return getRoleById(id, store);
+	if (sets.length === 0) return getRoleById(id, workspaceId, store);
 
 	const [row] = await store.query<IRole>(
 		`UPDATE fonderie_roles
 		 SET ${sets.join(', ')}
-		 WHERE id = $1 AND is_system = false
+		 WHERE id = $1 AND workspace_id = $2 AND is_system = false
 		 RETURNING ${SELECT_ROLE}`,
 		params,
 	);

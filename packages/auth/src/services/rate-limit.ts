@@ -27,7 +27,7 @@ export interface IAuthRateLimitConfig {
 	rules?: Partial<Record<AuthLimitedRoute, IRateLimitRule | false>>;
 }
 
-export type AuthLimitedRoute = 'login' | 'register' | 'forgot' | 'mfaVerify';
+export type AuthLimitedRoute = 'login' | 'register' | 'forgot' | 'reset' | 'mfaVerify';
 
 // capacity = burst; refillPerSec = capacity / windowSeconds.
 const min = (n: number) => n * 60;
@@ -50,6 +50,12 @@ const DEFAULTS: Record<
 		account: { capacity: 3, refillPerSec: 3 / min(60) },
 		accountField: 'email',
 	},
+	// reset: 10/15min per IP — the reset PIN is a 6-digit code looked up
+	// globally, so an unthrottled endpoint is brute-forceable into an account
+	// takeover. There's no email in the reset body to key an account bucket on,
+	// so this IP bucket is the guard. (Moving reset to a high-entropy opaque
+	// token is tracked as a follow-up hardening.)
+	reset: { ip: { capacity: 10, refillPerSec: 10 / min(15) } },
 	// mfaVerify: 10/15min per IP — TOTP brute-force.
 	mfaVerify: { ip: { capacity: 10, refillPerSec: 10 / min(15) } },
 };

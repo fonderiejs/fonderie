@@ -72,4 +72,16 @@ interface IWebhookDeliveryDTO {
 }
 
 namespace schemas — exports: createEndpointSchema, updateEndpointSchema
+
+function assertPublicHttpUrl(raw: string): Promise<void>
+
+function isBlockedAddress(ip: string): boolean
+
+new SsrfError(message?: string | undefined): SsrfError
+new SsrfError(message?: string | undefined, options?: ErrorOptions | undefined): SsrfError
+  .fonderieSsrf: true
+  .name: string
+  .message: string
+  .stack: string
+  .cause: unknown
 ```

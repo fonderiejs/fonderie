@@ -64,7 +64,7 @@ export function roleController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
 			}
 
-			const role = await roles.findById(roleId);
+			const role = await roles.findById(roleId, ctx.workspace.id);
 			if (!role) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found');
 			}
@@ -104,7 +104,7 @@ export function roleController(store: IStoreAdapter) {
 				opts.active = body['active'];
 			}
 
-			const role = await roles.update(roleId, opts);
+			const role = await roles.update(roleId, ctx.workspace.id, opts);
 			if (!role) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found or is a system role');
 			}
@@ -141,7 +141,7 @@ export function roleController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
 			}
 
-			const role = await roles.findById(roleId);
+			const role = await roles.findById(roleId, ctx.workspace.id);
 			if (!role) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found');
 			}
@@ -162,6 +162,14 @@ export function roleController(store: IStoreAdapter) {
 			const roleId = params?.['roleId'];
 			if (!roleId) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
+			}
+
+			// Confirm the role belongs to this workspace before writing permissions —
+			// without this, a member could seed permission rows against another
+			// workspace's role id (IDOR). System roles are read-only here too.
+			const target = await roles.findById(roleId, ctx.workspace.id);
+			if (!target || target.isSystem) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found');
 			}
 
 			const perms = body?.['permissions'];
