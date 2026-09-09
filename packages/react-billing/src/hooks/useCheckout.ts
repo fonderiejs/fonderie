@@ -3,6 +3,13 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
+// A V4 UUID (with a fallback) — one per checkout attempt, so a retried request
+// dedupes to a single session server-side. Mirrors usePurchasePack.
+function newIdempotencyKey(): string {
+	const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+	return c?.randomUUID ? c.randomUUID() : `co-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export interface IUseCheckoutReturn {
 	checkout: (input: ICheckoutInput) => Promise<string>;
 	isLoading: boolean;
@@ -19,7 +26,11 @@ export function useCheckout(client?: BillingClient): IUseCheckoutReturn {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await billing.createCheckoutSession(input);
+				// Generate a key per attempt; a caller-supplied one still wins.
+				const { result } = await billing.createCheckoutSession({
+					idempotencyKey: newIdempotencyKey(),
+					...input,
+				});
 				return result.url;
 			} catch (err) {
 				const apiError =

@@ -4,6 +4,13 @@ import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 
+// A V4 UUID (with a fallback) — one per checkout attempt, so a retried request
+// dedupes to a single session server-side. Mirrors usePurchasePack.
+function newIdempotencyKey(): string {
+	const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+	return c?.randomUUID ? c.randomUUID() : `co-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export interface IUseCheckoutReturn {
 	checkout: (input: ICheckoutInput) => Promise<string>;
 	isLoading: Ref<boolean>;
@@ -19,7 +26,11 @@ export function useCheckout(client?: BillingClient): IUseCheckoutReturn {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await billing.createCheckoutSession(input);
+			// Generate a key per attempt; a caller-supplied one still wins.
+			const { result } = await billing.createCheckoutSession({
+				idempotencyKey: newIdempotencyKey(),
+				...input,
+			});
 			return result.url;
 		} catch (err) {
 			const apiError =

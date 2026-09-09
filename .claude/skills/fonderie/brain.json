@@ -1288,6 +1288,8 @@
         "useResetPassword",
         "useSession",
         "useVerifyEmail",
+        "useLoginHistory",
+        "useSessions",
         "TOKEN_KEY"
       ],
       "subpaths": [],
@@ -1574,6 +1576,7 @@
         "useChangePassword",
         "useForgotPassword",
         "useLogin",
+        "useLoginHistory",
         "useLogout",
         "useMfaLogin",
         "useMfaSetup",
@@ -1581,6 +1584,7 @@
         "useRegister",
         "useResetPassword",
         "useSession",
+        "useSessions",
         "useVerifyEmail",
         "TOKEN_KEY"
       ],
@@ -3856,10 +3860,14 @@
       "vue-auth"
     ],
     "useloginhistory": [
-      "react-auth"
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
     ],
     "usesessions": [
-      "react-auth"
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
     ],
     "token_key": [
       "react-auth",

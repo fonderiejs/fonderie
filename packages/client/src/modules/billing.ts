@@ -27,6 +27,9 @@ import type {
 export interface ICheckoutInput {
 	plan: string;
 	interval?: 'month' | 'year';
+	// Optional idempotency key — a retried checkout with the same key dedupes to
+	// one session (and one subscription) server-side. Generate once per attempt.
+	idempotencyKey?: string;
 }
 
 export interface IRecordUsageInput {
