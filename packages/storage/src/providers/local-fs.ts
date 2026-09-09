@@ -23,7 +23,17 @@ export class LocalFsProvider implements IStorageProvider {
 	}
 
 	private ensureDir(): Promise<void> {
-		if (!this.ready) this.ready = mkdir(this.dir, { recursive: true }).then(() => undefined);
+		// Clear the cached promise on failure so a transient mkdir error (e.g. a
+		// briefly-unmounted volume) doesn't stick a rejected promise that fails
+		// every later put; the next call retries.
+		if (!this.ready) {
+			this.ready = mkdir(this.dir, { recursive: true })
+				.then(() => undefined)
+				.catch((err) => {
+					this.ready = null;
+					throw err;
+				});
+		}
 		return this.ready;
 	}
 

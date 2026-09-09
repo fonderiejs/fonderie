@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { DbBlobProvider } from '../providers/db-blob';
 import { LocalFsProvider } from '../providers/local-fs';
 import { S3Provider } from '../providers/s3';
 
@@ -21,6 +22,22 @@ test('LocalFsProvider round-trips arbitrary bytes and is delete-idempotent', asy
 test('LocalFsProvider refuses a path-traversal ref', async () => {
 	const provider = new LocalFsProvider('/tmp/fonderie-storage-guard');
 	assert.equal(await provider.get('../../etc/passwd'), null);
+});
+
+test('DbBlobProvider treats a non-UUID ref as not-found without touching the DB', async () => {
+	let queried = false;
+	// Store stub that fails the test if any query runs — the UUID guard must
+	// short-circuit before Postgres sees "invalid input syntax for type uuid".
+	const store = {
+		query: async () => {
+			queried = true;
+			throw new Error('query should not run for a non-UUID ref');
+		},
+	} as never;
+	const provider = new DbBlobProvider(store);
+	assert.equal(await provider.get('../../etc/passwd'), null);
+	await provider.delete('not-a-uuid'); // no-op, no throw
+	assert.equal(queried, false);
 });
 
 test('S3Provider constructs (MinIO endpoint) and exposes the provider shape', () => {
