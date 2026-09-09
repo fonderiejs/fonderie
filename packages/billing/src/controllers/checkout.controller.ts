@@ -232,6 +232,11 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				successUrl: config.successUrl,
 				cancelUrl: config.cancelUrl,
 			};
+			// Idempotency: a client-supplied key makes a retried checkout dedupe to
+			// one session (and therefore one subscription) instead of a duplicate.
+			if (typeof body?.['idempotencyKey'] === 'string') {
+				sessionOpts.idempotencyKey = body['idempotencyKey'];
+			}
 			// Offer the trial only to a subscriber who has never consumed one. Without
 			// this, a canceled subscriber re-entering checkout gets plan.trialDays
 			// applied again every time — farming unlimited free paid-plan access (and,

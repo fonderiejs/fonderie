@@ -159,6 +159,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
 interface ICheckoutInput {
     plan: string;
     interval?: 'month' | 'year';
+    idempotencyKey?: string;
 }
 
 interface ICreatePlanInput {

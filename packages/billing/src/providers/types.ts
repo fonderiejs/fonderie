@@ -178,6 +178,8 @@ export interface IBillingProvider {
 		trialDays?: number;
 		successUrl: string;
 		cancelUrl: string;
+		// Client-supplied idempotency key: retries dedupe to one session.
+		idempotencyKey?: string;
 	}): Promise<{ url: string }>;
 
 	// Generate a hosted checkout URL for a ONE-TIME payment (credit packs).
