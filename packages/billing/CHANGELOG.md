@@ -1,5 +1,15 @@
 # @fonderie/billing
 
+## 8.12.0
+
+### Minor Changes
+
+- 4eff0f5: Idempotent subscription checkout. `POST /billing/checkout` now accepts an optional `idempotencyKey` (added to `checkoutSchema` so `validate` doesn't strip it, threaded into `StripeProvider.createCheckoutSession` as the Stripe idempotency key). `@fonderie/client`'s `ICheckoutInput` gains the field, and `@fonderie/react-billing`'s `useCheckout` generates a V4 UUID per attempt (mirroring `usePurchasePack`) — so a retried checkout dedupes to a single session (and one subscription) instead of a duplicate. Verified: same key → same Stripe session; different key → different session.
+
+### Patch Changes
+
+- ec1105c: Fix: `GET /billing/invoices` now unions invoices across all of a subscriber's provider customers, not just one. A pay-as-you-go buyer gets a wallet customer from their first credit-pack purchase, and a later subscription checkout can resolve/create its own customer — splitting invoices across two Stripe customers. `listInvoices` previously queried only the wallet customer (via `resolveCustomer`), so subscription invoices were invisible. It now gathers the wallet customer and the subscription customer, queries each, and merges (deduped by id, newest first) so pack and subscription invoices appear together.
+
 ## 8.11.1
 
 ### Patch Changes
