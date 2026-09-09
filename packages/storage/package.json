@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/storage",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Content-agnostic, provider-abstracted object storage — store any bytes on Postgres, disk, or S3-compatible object storage (S3/MinIO/R2) behind one interface. The low-dependency foundation for media, archives, and more.",
 	"keywords": [
 		"fonderiejs",
