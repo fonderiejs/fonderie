@@ -49,40 +49,32 @@ which has its own `AsyncStorage` hooks, is diffed like Vue.
 Eight hooks families (auth, billing, workspaces, audit, webhooks, customers,
 courier-admin, config-admin) and all eight screens families were cross-checked.
 
-- **Hooks / composables: at parity everywhere EXCEPT auth.** Only
-  `useLoginHistory` + `useSessions` diverge (missing in vue-auth and
-  react-native-auth). Every other family — including the wide billing (18
-  hooks) and customers (9 hooks) surfaces — matches across all three
-  frameworks.
+- **Hooks / composables: at parity everywhere.** The auth gap below
+  (`useLoginHistory` + `useSessions`, previously react-only) is now closed in
+  vue-auth and react-native-auth. Every family — including the wide billing (18
+  hooks) and customers (9 hooks) surfaces — matches across all three frameworks.
+  `node scripts/check-frontend-parity.mjs` exits 0.
 - **Screens: at full parity, all eight families, all frameworks.** (Vue
   components carry an internal `Fonderie*Screen` name but export the same
   unprefixed screen names as React; React additionally exports `I*Screen`
   prop-type interfaces Vue/RN don't need — neither is a capability gap.)
 
-So the *only* export-level divergence in the entire frontend SDK is the two
-auth hooks below.
+## Resolved gaps
 
-## Current gaps
+| Gap | Kind | Status |
+|---|---|---|
+| `useLoginHistory` (auth) | missing export | **FIXED** — added to vue-auth + react-native-auth mirroring react-auth (shipped react-only in #229) |
+| `useSessions` (auth) | missing export | **FIXED** — same |
+| `useCheckout` idempotency key | behavioural drift | **FIXED** in PR #234 — vue-billing's own `useCheckout` didn't send `idempotencyKey`; now mirrors react-billing |
 
-| Gap | Kind | react | vue | react-native | Status |
-|---|---|---|---|---|---|
-| `useLoginHistory` | missing export | ✅ | ❌ | ❌ | **OPEN** — added to react-auth in the login-activity feature (#229); vue-auth + react-native-auth never got it |
-| `useSessions` | missing export | ✅ | ❌ | ❌ | **OPEN** — same as above |
-| `useCheckout` idempotency key | behavioural drift | ✅ | ✅ | ✅ (re-export) | **FIXED** in PR #234 — vue-billing's own `useCheckout` didn't send `idempotencyKey`; now mirrors react-billing |
-
-All other families are at export-level parity as of the audit date. Behavioural
-parity beyond `useCheckout` has not been exhaustively reviewed.
+No known export-level gaps remain. Behavioural parity beyond `useCheckout` has
+not been exhaustively reviewed — see the caveat under "Two kinds of gap".
 
 ## Recommended: a CI gate
 
 `scripts/check-frontend-parity.mjs` already does the diff; wiring it as a
 `check:framework-parity` gate (alongside `check:hook-coverage` / `check:routes`)
-that exits non-zero on any missing export would have caught the two open auth
-gaps at PR time. It would NOT catch behavioural drift — that stays a review-time
-concern (call it out whenever editing a hook that has siblings).
-
-## Closing the open gaps
-
-`useLoginHistory` / `useSessions` need Vue composables (`vue-auth`) and RN hooks
-(`react-native-auth`) mirroring the react-auth implementations, plus their
-re-exported client types. Tracked here until done.
+that exits non-zero on any missing export would catch a future react-only hook
+at PR time — which is how the two auth gaps above slipped in. It would NOT catch
+behavioural drift — that stays a review-time concern (call it out whenever
+editing a hook that has siblings).

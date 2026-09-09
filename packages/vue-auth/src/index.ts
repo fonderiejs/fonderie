@@ -1,6 +1,8 @@
 export type {
 	AuthClient,
 	IChangePasswordInput,
+	IGetLoginHistoryInput,
+	ILoginEventDTO,
 	ILoginInput,
 	ILoginResult,
 	IMfaEnabledResult,
@@ -9,6 +11,7 @@ export type {
 	IRegisterInput,
 	IRegisterResult,
 	IResetPasswordInput,
+	ISessionDTO,
 	ITokens,
 	IUpdatePreferencesInput,
 	IUpdateProfileInput,
@@ -22,6 +25,7 @@ export type {
 	IUseAccountDataReturn,
 	IUseChangePasswordReturn,
 	IUseForgotPasswordReturn,
+	IUseLoginHistoryReturn,
 	IUseLoginReturn,
 	IUseLogoutReturn,
 	IUseMfaLoginReturn,
@@ -30,6 +34,7 @@ export type {
 	IUseRegisterReturn,
 	IUseResetPasswordReturn,
 	IUseSessionReturn,
+	IUseSessionsReturn,
 	IUseVerifyEmailReturn,
 } from './composables';
 export {
@@ -37,6 +42,7 @@ export {
 	useChangePassword,
 	useForgotPassword,
 	useLogin,
+	useLoginHistory,
 	useLogout,
 	useMfaLogin,
 	useMfaSetup,
@@ -44,6 +50,7 @@ export {
 	useRegister,
 	useResetPassword,
 	useSession,
+	useSessions,
 	useVerifyEmail,
 } from './composables';
 
