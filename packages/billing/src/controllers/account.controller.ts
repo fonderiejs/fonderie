@@ -42,6 +42,27 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		return null;
 	}
 
+	// Every provider customer a subscriber has. The wallet customer and the
+	// subscription's customer CAN differ — a pay-as-you-go buyer gets a wallet
+	// customer from their first pack, and a later subscription checkout may
+	// resolve/create its own — which splits invoices across two customers.
+	// Invoice listing must union both, or subscription invoices go unseen.
+	async function resolveCustomerIds(ctx: IFonderieContext): Promise<string[]> {
+		const subscriber = resolveSubscriber(ctx);
+		if (!subscriber) return [];
+		const ids = new Set<string>();
+		if (config.wallet) {
+			const wc = await getWalletCustomer(
+				{ subscriberType: subscriber.type, subscriberId: subscriber.id, provider: config.provider.name },
+				store,
+			);
+			if (wc?.providerCustomerId) ids.add(wc.providerCustomerId);
+		}
+		const subscription = await subscriptions.get(subscriber.type, subscriber.id);
+		if (subscription?.providerCustomerId) ids.add(subscription.providerCustomerId);
+		return [...ids];
+	}
+
 	// Resolve the subscriber's provider customer, creating + recording one when
 	// they have none yet (a pay-as-you-go user adding a card before any purchase).
 	// Recording it via the wallet-customer row means later reads resolve it.
@@ -118,11 +139,17 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 					'Provider does not support invoice listing',
 				);
 			}
-			const customer = await resolveCustomer(ctx);
-			if (!customer) {
+			const customerIds = await resolveCustomerIds(ctx);
+			if (customerIds.length === 0) {
 				return setApiResponse(HTTP.OK, 'INVOICES', 'No invoices.', { invoices: [] });
 			}
-			const invoices = await config.provider.listInvoices({ customerId: customer.customerId });
+			// Union invoices across all the subscriber's customers (wallet + subscription),
+			// dedupe by id, newest first — so pack and subscription invoices show together.
+			const perCustomer = await Promise.all(
+				customerIds.map((customerId) => config.provider.listInvoices!({ customerId })),
+			);
+			const byId = new Map(perCustomer.flat().map((inv) => [inv.id, inv]));
+			const invoices = [...byId.values()].sort((a, b) => b.created.localeCompare(a.created));
 			return setApiResponse(HTTP.OK, 'INVOICES', `Retrieved ${invoices.length} invoices`, {
 				invoices: invoices.map(toInvoiceDTO),
 			});
