@@ -5,11 +5,11 @@
 ## @fonderie/adapter-express
 
 ```ts
-function expressRequestToWeb(req: ExpressRequest): Promise<Request>
+function expressRequestToWeb(req: ExpressRequest, maxBytes?: number): Promise<Request>
 
 function webResponseToExpress(webRes: Response, res: ExpressResponse): Promise<void>
 
-function bridge(fonderie: FonderieApp): (req: ExpressRequest, _res: ExpressResponse, next: ExpressNext) => Promise<void>
+function bridge(fonderie: FonderieApp, options?: { maxBodyBytes?: number; } | undefined): (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => Promise<void>
 
 function adapt(middleware: Middleware): (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => Promise<void>
 
@@ -19,7 +19,7 @@ function requirePermission(operation: Operation, permissionKey: string): (req: E
 
 function requireFeature(key: string): (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => Promise<void>
 
-function mount<T extends ExpressApp>(app: T, fonderie: FonderieApp, register?: ((app: T) => void) | undefined): T
+function mount<T extends ExpressApp>(app: T, fonderie: FonderieApp, register?: ((app: T) => void) | undefined, options?: { maxBodyBytes?: number; } | undefined): T
 
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
@@ -31,6 +31,8 @@ type ExpressRequest = IncomingMessage & {
 type ExpressResponse = ServerResponse;
 
 type ExpressNext = (err?: unknown) => void;
+
+const DEFAULT_MAX_BODY_BYTES: number
 
 function requireAuth(req: ExpressRequest, res: ExpressResponse, next: ExpressNext): Promise<void>
 ```
