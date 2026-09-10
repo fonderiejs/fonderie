@@ -34,7 +34,7 @@ export class MemberModel {
 		return getUserRoles(userId, workspaceId, this.store);
 	}
 
-	addRole(userId: string, workspaceId: string, roleId: string): Promise<void> {
+	addRole(userId: string, workspaceId: string, roleId: string): Promise<boolean> {
 		return addRoleToMember(userId, workspaceId, roleId, this.store);
 	}
 

@@ -75,7 +75,7 @@ export function buildAuthRoutes(
 
 		// Email — Password Recovery (Public)
 		R('forgotPassword', 'POST', '/auth/email/forgot', ipLimit('forgot'), validate(forgotPasswordSchema), acctLimit('forgot'), auth.forgotPassword),
-		R('resetPassword', 'POST', '/auth/email/reset', validate(resetPasswordSchema), auth.resetPassword),
+		R('resetPassword', 'POST', '/auth/email/reset', ipLimit('reset'), validate(resetPasswordSchema), auth.resetPassword),
 
 		// Verification (Protected — email or phone, determined by loginMethod)
 		R('verifyEmail', 'POST', '/auth/verify', requireAuth, validate(verifySchema), auth.verify),

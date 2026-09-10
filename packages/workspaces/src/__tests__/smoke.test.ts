@@ -870,3 +870,100 @@ test('toMemberDTO: a member with no profile becomes empty strings, never undefin
 	assert.equal(dto.lastName, '');
 	assert.equal(dto.profileImageUrl, '');
 });
+
+// ── Security: role-assignment privilege escalation (C2) ──────────────
+// Any workspace member could hit POST /workspaces/members/:userId/roles with an
+// arbitrary roleId. Assigning the seeded system ADMIN role would grant the
+// super-role bypass; assigning a foreign workspace's role id is cross-tenant.
+// addRoleToMember now only inserts for a same-workspace, non-system role.
+
+// Captures the SQL + params of the single query a service issues, and lets the
+// test choose what the "insert ... returning" yields (row = assigned).
+function captureStore(rows: unknown[] = []) {
+	const state = { sql: '', params: [] as unknown[] };
+	const store = {
+		query: async (sql: string, params?: unknown[]) => {
+			state.sql = sql;
+			state.params = params ?? [];
+			return rows;
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	return { store, state };
+}
+
+test('addRoleToMember: guarded insert is scoped to a workspace-local, non-system role', async () => {
+	const { addRoleToMember } = await import('../services/members');
+	const { store, state } = captureStore([{ user_id: 'user-2' }]);
+	const assigned = await addRoleToMember('user-2', 'ws-1', 'r-local', store);
+	assert.equal(assigned, true);
+	assert.match(state.sql, /WHERE EXISTS/i);
+	assert.match(state.sql, /is_system\s*=\s*false/i);
+	assert.match(state.sql, /workspace_id\s*=\s*\$2/i);
+	assert.deepEqual(state.params, ['user-2', 'ws-1', 'r-local']);
+});
+
+test('addRoleToMember: returns false when the role is not assignable (no row inserted)', async () => {
+	const { addRoleToMember } = await import('../services/members');
+	const { store } = captureStore([]); // EXISTS false → no RETURNING row
+	const assigned = await addRoleToMember('user-2', 'ws-1', 'role-system-admin', store);
+	assert.equal(assigned, false);
+});
+
+test('member.addRole: 422 INVALID_ROLE when the role is a system/foreign role', async () => {
+	const { memberController } = await import('../controllers/member.controller');
+	const { store } = captureStore([]);
+	const ctrl = memberController(store);
+	const res = await ctrl.addRole(
+		makeCtx({
+			workspace: WS,
+			user: { id: 'user-1', email: 'a@b.com' },
+			params: { userId: 'user-2' },
+			body: { roleId: 'role-system-admin' },
+		}),
+	);
+	assert.equal(res.status, 422);
+	const body = (await res.json()) as any;
+	assert.equal(body.reason, 'INVALID_ROLE');
+});
+
+test('member.addRole: 200 ROLE_ASSIGNED when the role is assignable', async () => {
+	const { memberController } = await import('../controllers/member.controller');
+	const { store } = captureStore([{ user_id: 'user-2' }]);
+	const ctrl = memberController(store);
+	const res = await ctrl.addRole(
+		makeCtx({
+			workspace: WS,
+			user: { id: 'user-1', email: 'a@b.com' },
+			params: { userId: 'user-2' },
+			body: { roleId: 'r-local' },
+		}),
+	);
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as any;
+	assert.equal(body.reason, 'ROLE_ASSIGNED');
+});
+
+// ── Security: role IDOR — cross-workspace read/mutate (C4) ───────────
+// getRoleById and updateRole took only the role id, so a member of workspace A
+// could read or rename/deactivate workspace B's roles. Both are now scoped.
+
+test('getRoleById: lookup is scoped to workspace-or-system', async () => {
+	const { getRoleById } = await import('../services/roles');
+	const { store, state } = captureStore([]);
+	const role = await getRoleById('r-foreign', 'ws-1', store);
+	assert.equal(role, null);
+	assert.match(state.sql, /workspace_id\s*=\s*\$2\s+OR\s+is_system\s*=\s*true/i);
+	assert.deepEqual(state.params, ['r-foreign', 'ws-1']);
+});
+
+test('updateRole: mutation is scoped to workspace and refuses system roles', async () => {
+	const { updateRole } = await import('../services/roles');
+	const { store, state } = captureStore([]); // foreign/system role → no row updated
+	const role = await updateRole('r-foreign', 'ws-1', { name: 'hijacked' }, store);
+	assert.equal(role, null);
+	assert.match(state.sql, /workspace_id\s*=\s*\$2/i);
+	assert.match(state.sql, /is_system\s*=\s*false/i);
+	assert.equal(state.params[0], 'r-foreign');
+	assert.equal(state.params[1], 'ws-1');
+});

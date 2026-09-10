@@ -23,16 +23,20 @@ export class RoleModel {
 		return findSystemRole(name, this.store);
 	}
 
-	findById(id: string): Promise<IRole | null> {
-		return getRoleById(id, this.store);
+	findById(id: string, workspaceId: string): Promise<IRole | null> {
+		return getRoleById(id, workspaceId, this.store);
 	}
 
 	list(workspaceId: string): Promise<IRole[]> {
 		return listWorkspaceRoles(workspaceId, this.store);
 	}
 
-	update(id: string, opts: Parameters<typeof updateRole>[1]): Promise<IRole | null> {
-		return updateRole(id, opts, this.store);
+	update(
+		id: string,
+		workspaceId: string,
+		opts: Parameters<typeof updateRole>[2],
+	): Promise<IRole | null> {
+		return updateRole(id, workspaceId, opts, this.store);
 	}
 
 	delete(id: string, workspaceId: string): Promise<void> {
