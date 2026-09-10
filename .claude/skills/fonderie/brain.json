@@ -11,7 +11,7 @@
     "config": "5.1.6",
     "core": "0.10.2",
     "courier": "7.0.0",
-    "customers": "6.1.6",
+    "customers": "6.2.0",
     "events": "5.0.6",
     "logger": "0.1.2",
     "media": "0.2.4",
@@ -689,7 +689,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.1.6",
+      "version": "6.2.0",
       "requires": [
         "core",
         "events",
