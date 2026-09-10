@@ -1,6 +1,6 @@
 {
   "name": "@fonderie/config",
-  "version": "5.1.3",
+  "version": "5.1.4",
   "description": "DB-backed feature flags and remote config — per-environment overrides, TTL-based hot reload, and a typed getConfig helper usable inside any middleware.",
   "keywords": [
     "fonderiejs",
@@ -49,7 +49,7 @@
     "check": "biome check --write src"
   },
   "peerDependencies": {
-    "@fonderie/core": "^0.8.0",
+    "@fonderie/core": "^0.9.0",
     "@fonderie/store": "^0.2.0",
     "pg": "^8.0.0"
   },
