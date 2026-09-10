@@ -373,3 +373,54 @@ test('mount: oversized request body gets a 413 (not passed to handlers)', async 
 	assert.equal(status, 413);
 	assert.ok(!handlerRan, 'handler must not run for an oversized body');
 });
+
+// ── Regression: large bodies must flow through bridge without a tee-stall,
+// and parser short-circuits (413) must reach the client (audit №2 follow-up).
+
+test('bridge: a multi-MiB in-cap body reaches the context without stalling', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	await fonderie.boot();
+
+	const pad = 'x'.repeat(4 * 1024 * 1024); // 4 MiB — inside the 5 MiB cap
+	const req = makeIncomingMessage({
+		method: 'POST',
+		url: '/echo',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ pad }),
+	});
+	const res = makeServerResponse();
+
+	await new Promise<void>((resolve) => {
+		bridge(fonderie)(req, res as never, (err?: unknown) => {
+			assert.ok(!err, `unexpected error: ${err}`);
+			const parsed = (req as any)._fonderie.meta.body as { pad: string };
+			assert.equal(parsed.pad.length, pad.length, 'body fully parsed, no stall');
+			resolve();
+		});
+	});
+});
+
+test('bridge: parser 413 short-circuit is sent, not swallowed', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 64 * 1024 }),
+	);
+	await fonderie.boot();
+
+	// Transport cap (bridge option) is 1 MiB but the PARSER cap is 64 KiB —
+	// the parser's 413 must reach the client through the bridge.
+	const req = makeIncomingMessage({
+		method: 'POST',
+		url: '/echo',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ pad: 'x'.repeat(128 * 1024) }),
+	});
+	const res = makeServerResponse();
+	let nextCalled = false;
+	await bridge(fonderie, { maxBodyBytes: 1024 * 1024 })(req, res as never, () => {
+		nextCalled = true;
+	});
+	assert.ok(!nextCalled, 'pipeline answered; next must not run');
+	assert.equal((res as any).statusCode, 413);
+});
