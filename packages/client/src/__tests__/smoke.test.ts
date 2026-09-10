@@ -225,6 +225,39 @@ test('auth.setAccessToken(undefined) drops the shared response cache', async () 
 	assert.equal(calls.filter((x) => x.method === 'GET').length, 2);
 });
 
+// ── media ──────────────────────────────────────────────────────────────────
+test('media: upload POSTs base64 to /media, delete DELETEs /media/:id, assetUrl is absolute', async () => {
+	handler = () => ({
+		status: 200,
+		body: { reason: 'OK', explanation: '', result: { asset: { id: 'a1', url: '/media/a1' } } },
+	});
+	const c = new FonderieClient({ baseUrl: 'http://x' });
+	c.setAccessToken('t');
+
+	await c.media.upload({ dataBase64: 'AAAA', purpose: 'avatar' });
+	await c.media.delete('a1');
+
+	const up = calls.find((x) => x.method === 'POST' && x.path.endsWith('/media'));
+	assert.ok(up, 'upload hits POST /media');
+	assert.equal((up!.body as { dataBase64?: string; purpose?: string })?.dataBase64, 'AAAA');
+	assert.equal((up!.body as { purpose?: string })?.purpose, 'avatar');
+	assert.equal(up!.auth, 'Bearer t', 'upload is authed');
+
+	const del = calls.find((x) => x.method === 'DELETE' && x.path.endsWith('/media/a1'));
+	assert.ok(del, 'delete hits DELETE /media/:id');
+	assert.equal(del!.auth, 'Bearer t', 'delete is authed');
+
+	// assetUrl builds an absolute, tokenless <img src> against the client origin.
+	assert.equal(c.media.assetUrl('a1'), 'http://x/media/a1');
+
+	// assetIdFromUrl is the inverse — but only for our own UUID asset URLs.
+	const uuid = '3ee8424d-d2d7-44a4-8fbd-3251e76971a2';
+	assert.equal(c.media.assetIdFromUrl(`http://x/media/${uuid}`), uuid);
+	assert.equal(c.media.assetIdFromUrl('/media/' + uuid), uuid);
+	assert.equal(c.media.assetIdFromUrl('https://cdn.example.com/pic.png'), null);
+	assert.equal(c.media.assetIdFromUrl(''), null);
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });

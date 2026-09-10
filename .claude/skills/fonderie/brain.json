@@ -30,6 +30,7 @@
     "react-courier-admin-screens": "0.2.0",
     "react-customers": "0.4.0",
     "react-customers-screens": "0.2.0",
+    "react-media": "0.1.0",
     "react-native-audit": "0.1.0",
     "react-native-audit-screens": "0.2.0",
     "react-native-auth": "0.8.0",
@@ -38,6 +39,7 @@
     "react-native-billing-screens": "0.3.1",
     "react-native-customers": "0.1.0",
     "react-native-customers-screens": "0.2.0",
+    "react-native-media": "0.1.0",
     "react-native-webhooks": "0.1.0",
     "react-native-webhooks-screens": "0.3.0",
     "react-native-workspaces": "0.1.0",
@@ -61,6 +63,7 @@
     "vue-courier-admin-screens": "0.2.0",
     "vue-customers": "0.5.0",
     "vue-customers-screens": "0.2.0",
+    "vue-media": "0.1.0",
     "vue-webhooks": "0.5.0",
     "vue-webhooks-screens": "0.3.0",
     "vue-workspaces": "0.7.0",
@@ -507,6 +510,7 @@
         "ConfigAdminClient",
         "CourierAdminClient",
         "CustomersClient",
+        "MediaClient",
         "WebhooksClient",
         "WorkspacesClient"
       ],
@@ -1283,6 +1287,23 @@
       "hasSignature": true,
       "hasOutcomes": false
     },
+    "react-media": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FonderieApiError",
+        "useDeleteMedia",
+        "useUploadAvatar",
+        "useUploadMedia"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
     "react-native-audit": {
       "version": "0.1.0",
       "requires": [],
@@ -1403,6 +1424,18 @@
         "CustomerDetailScreen",
         "CustomersListScreen"
       ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-native-media": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [],
       "subpaths": [],
       "tables": [],
       "routeCount": 0,
@@ -1821,6 +1854,23 @@
       "exports": [
         "CustomerDetailScreen",
         "CustomersListScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-media": {
+      "version": "0.1.0",
+      "requires": [],
+      "exports": [
+        "FonderieApiError",
+        "useDeleteMedia",
+        "useUploadAvatar",
+        "useUploadMedia"
       ],
       "subpaths": [],
       "tables": [],
@@ -2475,6 +2525,9 @@
     "react-customers-screens": [
       "react-customers-screens"
     ],
+    "react-media": [
+      "react-media"
+    ],
     "react-native-audit": [
       "react-native-audit"
     ],
@@ -2498,6 +2551,9 @@
     ],
     "react-native-customers-screens": [
       "react-native-customers-screens"
+    ],
+    "react-native-media": [
+      "react-native-media"
     ],
     "react-native-webhooks": [
       "react-native-webhooks"
@@ -2567,6 +2623,9 @@
     ],
     "vue-customers-screens": [
       "vue-customers-screens"
+    ],
+    "vue-media": [
+      "vue-media"
     ],
     "vue-webhooks": [
       "vue-webhooks"
@@ -3733,6 +3792,7 @@
       "react-config-admin",
       "react-courier-admin",
       "react-customers",
+      "react-media",
       "react-native-auth",
       "react-webhooks",
       "react-workspaces",
@@ -3742,6 +3802,7 @@
       "vue-config-admin",
       "vue-courier-admin",
       "vue-customers",
+      "vue-media",
       "vue-webhooks",
       "vue-workspaces"
     ],
@@ -3765,6 +3826,9 @@
       "vue-courier-admin"
     ],
     "customersclient": [
+      "client"
+    ],
+    "mediaclient": [
       "client"
     ],
     "webhooksclient": [
@@ -4179,6 +4243,18 @@
       "react-customers-screens",
       "react-native-customers-screens",
       "vue-customers-screens"
+    ],
+    "usedeletemedia": [
+      "react-media",
+      "vue-media"
+    ],
+    "useuploadavatar": [
+      "react-media",
+      "vue-media"
+    ],
+    "useuploadmedia": [
+      "react-media",
+      "vue-media"
     ],
     "webhookdetailscreen": [
       "react-native-webhooks-screens",

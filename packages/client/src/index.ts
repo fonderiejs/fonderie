@@ -48,6 +48,8 @@ export type {
 	IUpdateCustomerInput,
 } from './modules/customers';
 export { CustomersClient } from './modules/customers';
+export type { IUploadMediaInput } from './modules/media';
+export { MediaClient } from './modules/media';
 export type {
 	ICreateWebhookEndpointInput,
 	IUpdateWebhookEndpointInput,
@@ -115,6 +117,8 @@ export type {
 	IInvoiceDTO,
 	IInvoicesResult,
 	ILoginResult,
+	IMediaAssetDTO,
+	IMediaAssetResult,
 	IMemberDTO,
 	IMemberListResult,
 	IMeResult,

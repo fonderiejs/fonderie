@@ -57,6 +57,13 @@ export class HttpClient {
 		this.refresh = deps.refresh;
 	}
 
+	// Absolute URL for a path on this client's origin — for endpoints a browser
+	// navigates to or embeds (e.g. a public `<img src>`) rather than fetches
+	// through request(). Mirrors the `${baseUrl}${path}` join request() uses.
+	absolute(path: string): string {
+		return `${this.baseUrl}${path}`;
+	}
+
 	// Drop all cached responses — sign-out must not leave one session's data
 	// servable to the next.
 	clearCache(): void {
