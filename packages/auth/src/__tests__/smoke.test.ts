@@ -272,6 +272,7 @@ type AuthStoreOpts = {
 	insertedId?: string;
 	sessionExists?: boolean;
 	resetRow?: { user_id: string; expires_at: Date } | null;
+	resetTokenRow?: { user_id: string; expires_at: Date } | null;
 	resetLastSentAt?: Date | null;
 	verifyRow?: { expires_at: Date } | null;
 	phoneVerifRow?: { phone: string; expires_at: Date } | null;
@@ -312,6 +313,9 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 
 			if (sql.includes('fonderie_password_resets') && sql.includes('WHERE pin'))
 				return (opts.resetRow != null ? [opts.resetRow] : []) as unknown as T[];
+
+			if (sql.includes('fonderie_password_resets') && sql.includes('WHERE token'))
+				return (opts.resetTokenRow != null ? [opts.resetTokenRow] : []) as unknown as T[];
 
 			if (sql.includes('fonderie_email_verifications') && sql.includes('AND token'))
 				return (opts.verifyRow != null ? [opts.verifyRow] : []) as unknown as T[];
@@ -906,6 +910,48 @@ test('resetPassword: 200 with PASSWORD_RESET_SUCCESSFUL on valid pin', async () 
 	assert.equal(response.status, 200);
 	const body = (await response.json()) as any;
 	assert.equal(body.reason, 'PASSWORD_RESET_SUCCESSFUL');
+});
+
+// ── Reset by high-entropy token (additive strong-token path) ─────
+
+test('resetPassword: 200 on a valid reset token (link path, no pin)', async () => {
+	const ctrl = makeAuth({
+		resetTokenRow: { user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) },
+	});
+	const response = await ctrl.resetPassword(
+		makeCtx({ body: { token: 'a'.repeat(64), password: 'newpass123' } }),
+	);
+	assert.equal(response.status, 200);
+	assert.equal(((await response.json()) as any).reason, 'PASSWORD_RESET_SUCCESSFUL');
+});
+
+test('resetPassword: 400 on an unknown/expired token', async () => {
+	const ctrl = makeAuth({ resetTokenRow: null });
+	const response = await ctrl.resetPassword(
+		makeCtx({ body: { token: 'b'.repeat(64), password: 'newpass123' } }),
+	);
+	assert.equal(response.status, 400);
+});
+
+test('resetPassword: 422 when neither a 6-digit pin nor a token is supplied', async () => {
+	const ctrl = makeAuth();
+	const response = await ctrl.resetPassword(
+		makeCtx({ body: { token: 'short', password: 'newpass123' } }),
+	);
+	assert.equal(response.status, 422);
+});
+
+test('PasswordResetModel.findByToken: refuses a short/blank token before querying', async () => {
+	const { PasswordResetModel } = await import('../models/password-reset.model');
+	let queried = false;
+	const store = {
+		query: async () => { queried = true; return []; },
+		transaction: async (fn: any) => fn(store),
+	} as any;
+	const model = new PasswordResetModel(store);
+	assert.equal(await model.findByToken(''), null);
+	assert.equal(await model.findByToken('tooshort'), null);
+	assert.equal(queried, false, 'a blank token must never hit the DB (would match a NULL column)');
 });
 
 // ── AuthController.verify (unified) ──────────────────────────────
@@ -1956,6 +2002,22 @@ test('forgotPassword: emits NOTIFICATION_EVENT with passwordReset payload', asyn
 	assert.equal(p.type, MESSAGE_KEYS.passwordReset);
 	assert.equal(p.recipient.email, 'jane@example.com');
 	assert.ok(typeof p.data.pin === 'string');
+	// Additive strong-token path: a high-entropy token also rides the payload.
+	assert.match(p.data.token, /^[0-9a-f]{64}$/, 'a 32-byte hex reset token is emitted');
+	// No passwordResetUrl configured → resetUrl is empty (pin-only behaviour).
+	assert.equal(p.data.resetUrl, '');
+});
+
+test('forgotPassword: builds a resetUrl link when passwordResetUrl is configured', async () => {
+	const bus = makeBus();
+	const ctrl = authController(
+		makeStore({ userByEmail: BASE_USER }),
+		{ ...config, passwordResetUrl: 'https://app.example.com/reset' },
+		bus as never,
+	);
+	await ctrl.forgotPassword(makeCtx({ body: { email: 'jane@example.com' } }));
+	const p = bus.emitted.find((e) => e.type === NOTIFICATION_EVENT)!.payload as any;
+	assert.match(p.data.resetUrl, /^https:\/\/app\.example\.com\/reset\?token=[0-9a-f]{64}$/);
 });
 
 test('sendVerification (email): emits NOTIFICATION_EVENT with emailVerification payload', async () => {
