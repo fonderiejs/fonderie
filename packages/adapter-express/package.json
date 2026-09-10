@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/adapter-express",
-	"version": "5.1.0",
+	"version": "5.1.1",
 	"description": "Express adapter for fonderiejs — bridge(), adapt(), mount() to use fonderie middleware in native Express routes.",
 	"keywords": [
 		"fonderiejs",
@@ -35,7 +35,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.8.0",
+		"@fonderie/core": "^0.9.0",
 		"@fonderie/workspaces": "^5.0.0",
 		"@fonderie/permissions": "^5.0.0",
 		"@fonderie/billing": "^8.0.0",

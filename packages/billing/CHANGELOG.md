@@ -1,5 +1,12 @@
 # @fonderie/billing
 
+## 8.12.1
+
+### Patch Changes
+
+- Updated dependencies [2a22d14]
+  - @fonderie/core@0.9.0
+
 ## 8.12.0
 
 ### Minor Changes
