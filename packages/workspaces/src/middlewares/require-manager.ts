@@ -7,15 +7,22 @@ import type { IWorkspacesConfig } from '../config';
 // RBAC gate for PRIVILEGED workspace routes (role CRUD, member/invitation
 // management, settings, archive). withWorkspace verifies *membership*; this
 // verifies MANAGEMENT: the workspace OWNER, or a member holding an ACTIVE
-// SYSTEM role (the seeded ADMIN — matching the hardened super-role rule in
-// @fonderie/permissions: is_system AND active).
+// SYSTEM role whose NAME is in the manager list (default ['ADMIN']).
+//
+// The name match matters on BOTH axes: is_system alone is NOT enough — GUEST
+// is also a seeded system role, and every default invitation lands on it, so
+// "any system role" would make every member a manager. And a name match
+// without is_system would reopen the C2 escalation (a member-created
+// workspace-local role named 'ADMIN' must grant nothing).
 //
 // - Runs AFTER withWorkspace: no ctx.workspace → pass through, the
 //   controllers' own 404 answers.
 // - Personal workspaces pass via owner_id (sole member).
 // - config.management: 'any-member' restores the legacy behaviour for apps
-//   that deliberately run flat teams.
+//   that deliberately run flat teams; config.managerRoles overrides the
+//   accepted system-role names.
 export function requireManager(store: IStoreAdapter, config: IWorkspacesConfig): Middleware {
+	const managerRoles = config.managerRoles ?? ['ADMIN'];
 	return async (ctx, next) => {
 		if (config.management === 'any-member') return next();
 
@@ -37,8 +44,9 @@ export function requireManager(store: IStoreAdapter, config: IWorkspacesConfig):
 			   AND ruw.suspended    = false
 			   AND r.is_system    = true
 			   AND r.active       = true
+			   AND r.name         = ANY($3)
 			 LIMIT 1`,
-			[ctx.user.id, ctx.workspace.id],
+			[ctx.user.id, ctx.workspace.id, managerRoles],
 		);
 		if (!row) {
 			return setApiResponse(

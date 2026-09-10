@@ -2515,3 +2515,15 @@ test('buildBillingRoutes: money mutations carry the manager gate, reads do not',
 	assert.equal(chain('DELETE', '/billing/payment-method').length, 5, 'card removal is manager-gated');
 	assert.equal(chain('GET', '/billing/invoices').length, 4, 'invoice read is not');
 });
+
+test('isWorkspaceManager: matches system-role NAMES (GUEST must not manage money)', async () => {
+	const { isWorkspaceManager } = await import('../services/membership');
+	let captured: unknown[] = [];
+	const store = {
+		query: async (_sql: string, params?: unknown[]) => { captured = params ?? []; return []; },
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as import('@fonderie/store').IStoreAdapter;
+	const ok = await isWorkspaceManager('u-guest', 'ws-1', store);
+	assert.equal(ok, false);
+	assert.deepEqual(captured[2], ['ADMIN'], 'default manager list is ADMIN only');
+});

@@ -82,6 +82,7 @@ interface IBillingConfig {
     successUrl: string;
     cancelUrl: string;
     management?: 'owner-or-admin' | 'any-member';
+    managerRoles?: string[];
     adminToken?: string;
     planAdminToken?: string;
     webhookSecret?: string;

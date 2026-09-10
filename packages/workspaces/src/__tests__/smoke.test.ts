@@ -1153,3 +1153,48 @@ test('buildWorkspaceRoutes: privileged mutations carry the manager gate, reads d
 	assert.ok(chainLen('DELETE', '/workspaces/members/:userId') > chainLen('GET', '/workspaces/members'), 'removeMember gated beyond list');
 	assert.ok(chainLen('PUT', '/workspaces/settings') > chainLen('GET', '/workspaces/settings'), 'updateSettings gated beyond read');
 });
+
+// ── Security: GUEST (system role) must NOT be a manager ──────────────
+// Both ADMIN and GUEST are seeded system roles, and every default invitation
+// lands on GUEST — so the manager check must match the role NAME against the
+// manager list (default ['ADMIN']), not just is_system.
+
+test('requireManager: role lookup matches system-role NAMES against the manager list', async () => {
+	const { requireManager } = await import('../middlewares/require-manager');
+	const captured: { sql: string; params: unknown[] }[] = [];
+	const store = {
+		query: async (sql: string, params?: unknown[]) => {
+			captured.push({ sql, params: params ?? [] });
+			return []; // holder's roles don't match the list → not a manager
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+
+	const mw = requireManager(store, {});
+	const res = await mw(
+		makeCtx({ workspace: WS, user: { id: 'user-guest', email: 'g@x.com' } }),
+		async () => new Response(),
+	);
+	assert.equal(res.status, 403, 'a non-matching system role (e.g. GUEST) is not a manager');
+	const lookup = captured[0]!;
+	assert.match(lookup.sql, /r\.name\s*=\s*ANY\(\$3\)/i, 'name-list match present');
+	assert.match(lookup.sql, /is_system\s*=\s*true/i, 'still restricted to system roles');
+	assert.deepEqual(lookup.params[2], ['ADMIN'], 'default manager list is ADMIN only');
+});
+
+test('requireManager: managerRoles config overrides the accepted names', async () => {
+	const { requireManager } = await import('../middlewares/require-manager');
+	let params: unknown[] = [];
+	const store = {
+		query: async (_sql: string, p?: unknown[]) => { params = p ?? []; return [{ ok: 1 }]; },
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	const mw = requireManager(store, { managerRoles: ['ADMIN', 'SUPERVISOR'] });
+	let called = false;
+	await mw(
+		makeCtx({ workspace: WS, user: { id: 'user-9', email: 'x@y.com' } }),
+		async () => { called = true; return new Response(); },
+	);
+	assert.ok(called);
+	assert.deepEqual(params[2], ['ADMIN', 'SUPERVISOR']);
+});

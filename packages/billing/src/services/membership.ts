@@ -35,14 +35,17 @@ export async function isWorkspaceMember(
 }
 
 // Manager check for money-mutating billing surfaces: the workspace OWNER, or a
-// member holding an ACTIVE SYSTEM role (the seeded ADMIN — matching the
-// hardened super-role rule in @fonderie/permissions: is_system AND active).
+// member holding an ACTIVE SYSTEM role whose NAME is in `managerRoles`
+// (default ['ADMIN']). is_system alone is NOT enough — GUEST is also a seeded
+// system role and every default invitation lands on it; and a name match
+// without is_system would reopen the C2 escalation (member-created 'ADMIN').
 // Same cross-module DATA dependency and fail-closed posture as
 // isWorkspaceMember above. Personal workspaces pass via owner_id.
 export async function isWorkspaceManager(
 	userId: string,
 	workspaceId: string,
 	store: IStoreAdapter,
+	managerRoles: string[] = ['ADMIN'],
 ): Promise<boolean> {
 	try {
 		const rows = await store.query<{ ok: number }>(
@@ -61,10 +64,11 @@ export async function isWorkspaceManager(
 			         AND ruw.suspended    = false
 			         AND r.is_system    = true
 			         AND r.active       = true
+			         AND r.name         = ANY($3)
 			     )
 			   )
 			 LIMIT 1`,
-			[userId, workspaceId],
+			[userId, workspaceId, managerRoles],
 		);
 		return rows.length > 0;
 	} catch {
