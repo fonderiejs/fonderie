@@ -1,5 +1,15 @@
 # @fonderie/adapter-koa
 
+## 5.0.8
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+- Updated dependencies [cd2706a]
+- Updated dependencies [cd2706a]
+  - @fonderie/billing@9.0.0
+  - @fonderie/workspaces@6.0.0
+
 ## 5.0.7
 
 ### Patch Changes

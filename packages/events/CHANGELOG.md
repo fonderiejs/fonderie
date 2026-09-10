@@ -1,5 +1,12 @@
 # @fonderie/events
 
+## 5.0.5
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+  - @fonderie/store@0.3.0
+
 ## 5.0.4
 
 ### Patch Changes
