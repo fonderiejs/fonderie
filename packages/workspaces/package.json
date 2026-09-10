@@ -1,6 +1,6 @@
 {
   "name": "@fonderie/workspaces",
-  "version": "6.0.2",
+  "version": "6.0.3",
   "description": "Multi-tenant team layer — create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
   "keywords": [
     "fonderiejs",
