@@ -3,6 +3,8 @@ import type { Middleware } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
 import { requireAdminToken, requireAuth, validate } from '@fonderie/core/middlewares';
 
+import { requireBillingManager } from './middlewares/require-manager';
+
 import {
 	cancelSubscriptionSchema,
 	checkoutSchema,
@@ -46,6 +48,12 @@ export function buildBillingRoutes(
 	const usage = usageController(store);
 	const webhook = webhookController(store, config, priceCache, bus);
 
+	// RBAC (M1): money-mutating routes are MANAGER actions for workspace
+	// subscribers — withBilling only verifies membership, and a plain member
+	// must not spend the workspace's card or cancel its subscription. Reads,
+	// usage metering, and user-scoped billing are unaffected.
+	const manager = requireBillingManager(store, config);
+
 	const routes: RouteDefinition[] = [
 		// Plans — public read-only
 		['GET', '/plans', plan.list],
@@ -56,8 +64,8 @@ export function buildBillingRoutes(
 		// fonderie_role_user_workspaces (403 for non-members, fail-closed) before
 		// any billing surface acts on a header-derived workspace id.
 		['GET', '/billing/subscription', requireAuth, subscription.get],
-		['POST', '/billing/checkout', requireAuth, validate(checkoutSchema), checkout.createSession],
-		['POST', '/billing/portal', requireAuth, checkout.createPortal],
+		['POST', '/billing/checkout', requireAuth, manager, validate(checkoutSchema), checkout.createSession],
+		['POST', '/billing/portal', requireAuth, manager, checkout.createPortal],
 		// First-party lifecycle controls (cancel at period end / immediately;
 		// un-cancel). 501 when the provider doesn't implement them; the portal
 		// remains a self-serve fallback.
@@ -65,16 +73,17 @@ export function buildBillingRoutes(
 			'POST',
 			'/billing/subscription/cancel',
 			requireAuth,
+			manager,
 			validate(cancelSubscriptionSchema),
 			subscription.cancel,
 		],
-		['POST', '/billing/subscription/reactivate', requireAuth, subscription.reactivate],
+		['POST', '/billing/subscription/reactivate', requireAuth, manager, subscription.reactivate],
 		// Read-only billing-account surface for an in-app billing page: card on
 		// file + invoice history. 501 when the provider implements neither.
 		['GET', '/billing/payment-method', requireAuth, account.getPaymentMethod],
-		['POST', '/billing/payment-method/setup', requireAuth, account.setupPaymentMethod],
-		['PUT', '/billing/payment-method', requireAuth, validate(savePaymentMethodSchema), account.savePaymentMethod],
-		['DELETE', '/billing/payment-method', requireAuth, account.removePaymentMethod],
+		['POST', '/billing/payment-method/setup', requireAuth, manager, account.setupPaymentMethod],
+		['PUT', '/billing/payment-method', requireAuth, manager, validate(savePaymentMethodSchema), account.savePaymentMethod],
+		['DELETE', '/billing/payment-method', requireAuth, manager, account.removePaymentMethod],
 		['GET', '/billing/invoices', requireAuth, account.listInvoices],
 		['POST', '/billing/usage', requireAuth, validate(recordUsageSchema), usage.record],
 		['GET', '/billing/usage/:metric', requireAuth, usage.get],
@@ -105,9 +114,9 @@ export function buildBillingRoutes(
 		routes.push(
 			['GET', '/billing/wallet', requireAuth, wallet.get],
 			['GET', '/billing/wallet/transactions', requireAuth, wallet.transactions],
-			['POST', '/billing/wallet/checkout', requireAuth, validate(walletCheckoutSchema), wallet.checkout],
-			['POST', '/billing/wallet/purchase', requireAuth, validate(walletPurchaseSchema), wallet.purchase],
-			['POST', '/billing/wallet/preferences', requireAuth, validate(walletPreferencesSchema), wallet.setPreferences],
+			['POST', '/billing/wallet/checkout', requireAuth, manager, validate(walletCheckoutSchema), wallet.checkout],
+			['POST', '/billing/wallet/purchase', requireAuth, manager, validate(walletPurchaseSchema), wallet.purchase],
+			['POST', '/billing/wallet/preferences', requireAuth, manager, validate(walletPreferencesSchema), wallet.setPreferences],
 			// Payment webhook — separate endpoint and secret from the
 			// subscription webhook; signature verified inside the handler.
 			['POST', '/billing/webhook/payment', paymentWebhook.handle],
