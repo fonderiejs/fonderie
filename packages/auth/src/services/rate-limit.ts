@@ -27,7 +27,7 @@ export interface IAuthRateLimitConfig {
 	rules?: Partial<Record<AuthLimitedRoute, IRateLimitRule | false>>;
 }
 
-export type AuthLimitedRoute = 'login' | 'register' | 'forgot' | 'reset' | 'mfaVerify';
+export type AuthLimitedRoute = 'login' | 'register' | 'forgot' | 'reset' | 'verify' | 'mfaVerify';
 
 // capacity = burst; refillPerSec = capacity / windowSeconds.
 const min = (n: number) => n * 60;
@@ -56,6 +56,9 @@ const DEFAULTS: Record<
 	// so this IP bucket is the guard. (Moving reset to a high-entropy opaque
 	// token is tracked as a follow-up hardening.)
 	reset: { ip: { capacity: 10, refillPerSec: 10 / min(15) } },
+	// verify: 10/15min per IP — /auth/verify checks a 6-digit email/phone OTP,
+	// and in the phone flow that OTP is the login credential itself.
+	verify: { ip: { capacity: 10, refillPerSec: 10 / min(15) } },
 	// mfaVerify: 10/15min per IP — TOTP brute-force.
 	mfaVerify: { ip: { capacity: 10, refillPerSec: 10 / min(15) } },
 };

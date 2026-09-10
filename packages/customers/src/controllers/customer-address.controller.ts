@@ -155,7 +155,10 @@ export function customerAddressController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'addrId must be a valid UUID');
 			}
 
-			await addresses.remove(addrId, r.customer.id);
+			const removed = await addresses.remove(addrId, r.customer.id);
+			if (!removed) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Address not found');
+			}
 			return setApiResponse(HTTP.OK, 'ADDRESS_REMOVED', 'Address removed successfully.');
 		},
 	};
