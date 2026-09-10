@@ -5,11 +5,11 @@
 ## @fonderie/adapter-koa
 
 ```ts
-function koaContextToWeb(ctx: KoaContext): Request
+function koaContextToWeb(ctx: KoaContext, maxBytes?: number): Promise<Request>
 
 function webResponseToKoa(webRes: Response, ctx: KoaContext): Promise<void>
 
-function bridge(fonderie: FonderieApp): KoaMiddleware<any, any>
+function bridge(fonderie: FonderieApp, options?: { maxBodyBytes?: number; }): KoaMiddleware<any, any>
 
 function adapt(middleware: Middleware): KoaMiddleware<any, any>
 
@@ -19,7 +19,7 @@ function requirePermission(operation: Operation, permissionKey: string): KoaMidd
 
 function requireFeature(key: string): KoaMiddleware<any, any>
 
-function mount(app: Application<DefaultState, DefaultContext>, fonderie: FonderieApp): Application<DefaultState, DefaultContext>
+function mount(app: Application<DefaultState, DefaultContext>, fonderie: FonderieApp, options?: { maxBodyBytes?: number; }): Application<DefaultState, DefaultContext>
 
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
@@ -40,6 +40,8 @@ interface KoaContext {
 }
 
 type KoaNext = () => Promise<void>;
+
+const DEFAULT_MAX_BODY_BYTES: number
 
 function requireAuth(context: any, next: Next): any
 ```

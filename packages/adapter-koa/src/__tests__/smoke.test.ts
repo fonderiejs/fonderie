@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 
 import {
 	bridge,
@@ -33,7 +34,14 @@ function makeApp(user: unknown = null, meta: Record<string, unknown> = {}): Fond
 }
 
 function makeKoaCtx(
-	opts: { method?: string; url?: string; headers?: Record<string, string>; rawBody?: string } = {},
+	opts: {
+		method?: string;
+		url?: string;
+		headers?: Record<string, string>;
+		rawBody?: string;
+		// Raw socket bytes to stream from ctx.req (simulates NO koa-bodyparser).
+		reqBody?: string;
+	} = {},
 ) {
 	const response = {
 		body: undefined as unknown,
@@ -43,6 +51,14 @@ function makeKoaCtx(
 			this.headers[k] = v;
 		},
 	};
+	// req doubles as the node IncomingMessage the adapter reads when rawBody
+	// is absent (no koa-bodyparser) — an EventEmitter that streams reqBody
+	// then ends. When rawBody IS set, the adapter never touches this stream.
+	const req = Object.assign(new EventEmitter(), { socket: {} }) as any;
+	setImmediate(() => {
+		if (opts.reqBody !== undefined) req.emit('data', Buffer.from(opts.reqBody));
+		req.emit('end');
+	});
 	// Mirror Koa's ctx.body ↔ ctx.response.body delegation so the
 	// mount() fallback check (ctx.body === undefined) behaves correctly.
 	const ctx = {
@@ -53,7 +69,7 @@ function makeKoaCtx(
 			rawBody: opts.rawBody,
 		},
 		response,
-		req: { socket: {} } as any,
+		req,
 		state: {} as Record<string, unknown>,
 		get body() { return response.body; },
 		set body(v: unknown) { response.body = v; },
@@ -75,17 +91,17 @@ function collectMiddleware(fonderie: FonderieApp) {
 
 // ── koaContextToWeb ───────────────────────────────────────────────
 
-test('koaContextToWeb: preserves method and URL', () => {
+test('koaContextToWeb: preserves method and URL', async () => {
 	const ctx = makeKoaCtx({ method: 'PUT', url: '/v1/users/5' });
-	const webReq = koaContextToWeb(ctx as unknown as KoaContext);
+	const webReq = await koaContextToWeb(ctx as unknown as KoaContext);
 
 	assert.equal(webReq.method, 'PUT');
 	assert.ok(webReq.url.endsWith('/v1/users/5'));
 });
 
-test('koaContextToWeb: copies request headers', () => {
+test('koaContextToWeb: copies request headers', async () => {
 	const ctx = makeKoaCtx({ headers: { 'x-tenant': 'acme', authorization: 'Bearer tok' } });
-	const webReq = koaContextToWeb(ctx as unknown as KoaContext);
+	const webReq = await koaContextToWeb(ctx as unknown as KoaContext);
 
 	assert.equal(webReq.headers.get('x-tenant'), 'acme');
 	assert.equal(webReq.headers.get('authorization'), 'Bearer tok');
@@ -93,27 +109,42 @@ test('koaContextToWeb: copies request headers', () => {
 
 test('koaContextToWeb: uses rawBody when present', async () => {
 	const ctx = makeKoaCtx({ method: 'POST', rawBody: '{"name":"fonderie"}' });
-	const webReq = koaContextToWeb(ctx as unknown as KoaContext);
+	const webReq = await koaContextToWeb(ctx as unknown as KoaContext);
 	const body = (await webReq.json()) as any;
 
 	assert.equal(body.name, 'fonderie');
 });
 
-test('koaContextToWeb: body is null when rawBody is absent', async () => {
-	const ctx = makeKoaCtx({ method: 'POST' });
-	const webReq = koaContextToWeb(ctx as unknown as KoaContext);
+test('koaContextToWeb: reads the socket when rawBody is absent (no koa-bodyparser)', async () => {
+	// The silent-drop fix: without bodyparser, the body must NOT vanish.
+	const ctx = makeKoaCtx({ method: 'POST', reqBody: '{"name":"from-socket"}' });
+	const webReq = await koaContextToWeb(ctx as unknown as KoaContext);
+	const body = (await webReq.json()) as any;
+	assert.equal(body.name, 'from-socket');
+});
 
+test('koaContextToWeb: body is null when there is no rawBody and no socket bytes', async () => {
+	const ctx = makeKoaCtx({ method: 'POST' });
+	const webReq = await koaContextToWeb(ctx as unknown as KoaContext);
 	assert.equal(webReq.body, null);
 });
 
-test('koaContextToWeb: GET with rawBody does not throw (body suppressed)', () => {
-	const ctx = makeKoaCtx({ method: 'GET', rawBody: '{"should":"be ignored"}' });
-	assert.doesNotThrow(() => koaContextToWeb(ctx as unknown as KoaContext));
+test('koaContextToWeb: 413 when a declared body exceeds the cap', async () => {
+	const ctx = makeKoaCtx({
+		method: 'POST',
+		headers: { 'content-length': String(10 * 1024 * 1024) },
+	});
+	await assert.rejects(() => koaContextToWeb(ctx as unknown as KoaContext, 1024));
 });
 
-test('koaContextToWeb: HEAD with rawBody does not throw (body suppressed)', () => {
+test('koaContextToWeb: GET with rawBody does not throw (body suppressed)', async () => {
+	const ctx = makeKoaCtx({ method: 'GET', rawBody: '{"should":"be ignored"}' });
+	await assert.doesNotReject(() => koaContextToWeb(ctx as unknown as KoaContext));
+});
+
+test('koaContextToWeb: HEAD with rawBody does not throw (body suppressed)', async () => {
 	const ctx = makeKoaCtx({ method: 'HEAD', rawBody: 'data' });
-	assert.doesNotThrow(() => koaContextToWeb(ctx as unknown as KoaContext));
+	await assert.doesNotReject(() => koaContextToWeb(ctx as unknown as KoaContext));
 });
 
 // ── webResponseToKoa ──────────────────────────────────────────────

@@ -56,7 +56,42 @@ export type KoaNext = () => Promise<void>;
 
 // ── Web Standard ↔ Koa translation ───────────────────────────────
 
-export function koaContextToWeb(ctx: KoaContext): Request {
+/**
+ * Default cap (5 MiB) on a body this adapter reads from the socket itself —
+ * i.e. when koa-bodyparser did NOT run. When it did, its own limit governs
+ * `rawBody`. Configurable via bridge()/mount() options.
+ */
+export const DEFAULT_MAX_BODY_BYTES = 5 * 1024 * 1024;
+
+class PayloadTooLargeError extends Error {
+	readonly fonderiePayloadTooLarge = true as const;
+}
+
+const isPayloadTooLarge = (err: unknown): boolean =>
+	!!(err as { fonderiePayloadTooLarge?: boolean } | undefined)?.fonderiePayloadTooLarge;
+
+function readStreamCapped(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+	return new Promise((resolve, reject) => {
+		const chunks: Buffer[] = [];
+		let total = 0;
+		req.on('data', (chunk: Buffer) => {
+			total += chunk.length;
+			if (total > maxBytes) {
+				req.destroy();
+				reject(new PayloadTooLargeError());
+				return;
+			}
+			chunks.push(chunk);
+		});
+		req.on('end', () => resolve(Buffer.concat(chunks)));
+		req.on('error', reject);
+	});
+}
+
+export async function koaContextToWeb(
+	ctx: KoaContext,
+	maxBytes: number = DEFAULT_MAX_BODY_BYTES,
+): Promise<Request> {
 	const encrypted = (ctx.req.socket as { encrypted?: boolean }).encrypted;
 	const protocol = encrypted ? 'https' : 'http';
 	const host = ctx.request.headers['host'] ?? 'localhost';
@@ -75,10 +110,31 @@ export function koaContextToWeb(ctx: KoaContext): Request {
 	const method = ctx.request.method.toUpperCase();
 	const hasBody = method !== 'GET' && method !== 'HEAD';
 
+	// Prefer koa-bodyparser's rawBody; otherwise read the socket ourselves
+	// (capped) so a body isn't SILENTLY DROPPED when bodyparser is absent —
+	// the adapter no longer hard-depends on it. Declared-oversize is refused
+	// before reading a byte.
+	let body: string | Uint8Array | null = null;
+	if (hasBody) {
+		if (ctx.request.rawBody !== undefined) {
+			body = ctx.request.rawBody;
+		} else {
+			const declared = Number(ctx.request.headers['content-length']);
+			if (Number.isFinite(declared) && declared > maxBytes) {
+				throw new PayloadTooLargeError();
+			}
+			const buf = await readStreamCapped(ctx.req, maxBytes);
+			// New Uint8Array to satisfy BodyInit (Buffer's typing isn't accepted).
+			body = buf.length > 0 ? new Uint8Array(buf) : null;
+		}
+	}
+
 	return new Request(url, {
 		headers,
 		method,
-		body: hasBody ? (ctx.request.rawBody ?? null) : null,
+		// Cast: a Uint8Array<ArrayBufferLike> is a valid BodyInit at runtime,
+		// but the lib's BodyInit union is narrower than our body variable's type.
+		body: body as BodyInit | null,
 	});
 }
 
@@ -103,9 +159,20 @@ export async function webResponseToKoa(webRes: Response, ctx: KoaContext): Promi
 //   app.use(bodyParser())
 //   app.use(bridge(fonderie))
 
-export function bridge(fonderie: FonderieApp): KoaMiddleware {
+export function bridge(fonderie: FonderieApp, options: { maxBodyBytes?: number } = {}): KoaMiddleware {
+	const maxBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
 	return async (ctx, next) => {
-		const webReq = koaContextToWeb(ctx as unknown as KoaContext);
+		let webReq: Request;
+		try {
+			webReq = await koaContextToWeb(ctx as unknown as KoaContext, maxBytes);
+		} catch (err) {
+			if (isPayloadTooLarge(err)) {
+				ctx.response.status = 413;
+				ctx.response.body = { reason: 'PAYLOAD_TOO_LARGE', explanation: 'Request body too large' };
+				return;
+			}
+			throw err;
+		}
 		// No clone(): a teed request whose second branch goes unread stalls
 		// past the stream's high-water mark. buildContext consumes the body
 		// and core's parser re-materializes fCtx.request for downstream use.
@@ -242,9 +309,20 @@ export function requireFeature(key: string): KoaMiddleware<any, any> {
 //   api.use(router.allowedMethods())
 //   app.listen(port)
 
-export function mount(app: Koa, fonderie: FonderieApp): Koa {
+export function mount(app: Koa, fonderie: FonderieApp, options: { maxBodyBytes?: number } = {}): Koa {
+	const maxBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
 	app.use(async (ctx, next) => {
-		const webReq = koaContextToWeb(ctx as unknown as KoaContext);
+		let webReq: Request;
+		try {
+			webReq = await koaContextToWeb(ctx as unknown as KoaContext, maxBytes);
+		} catch (err) {
+			if (isPayloadTooLarge(err)) {
+				ctx.response.status = 413;
+				ctx.response.body = { reason: 'PAYLOAD_TOO_LARGE', explanation: 'Request body too large' };
+				return;
+			}
+			throw err;
+		}
 		// No clone() — see bridge(). The parser re-materializes fCtx.request,
 		// which the fonderie fallback below hands to handle().
 		const fCtx = await fonderie.buildContext(webReq);
