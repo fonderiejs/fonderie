@@ -489,19 +489,76 @@ test('CustomerLabelModel.remove: refuses to delete a label still in use', async 
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
 	} as unknown as IStoreAdapter;
 
-	const removed = await new CustomerLabelModel(store).remove('label-1');
+	let capturedParams: unknown[] = [];
+	(store as any).query = async (sql: string, params?: unknown[]) => {
+		capturedSql = sql;
+		capturedParams = params ?? [];
+		return [];
+	};
+	const removed = await new CustomerLabelModel(store).remove('label-1', 'ws-1');
 	assert.equal(removed, false);
 	assert.match(capturedSql, /NOT EXISTS/i, 'delete is guarded by reference checks');
+	assert.match(capturedSql, /workspace_id\s*=\s*\$2/i, 'delete is scoped to the owning workspace');
 	assert.match(capturedSql, /fonderie_customer_emails/i);
 	assert.match(capturedSql, /fonderie_customer_phones/i);
 	assert.match(capturedSql, /fonderie_customer_addresses/i);
+	assert.deepEqual(capturedParams, ['label-1', 'ws-1']);
 });
 
-test('CustomerLabelModel.remove: deletes an unreferenced label', async () => {
+test('CustomerLabelModel.remove: deletes an unreferenced label owned by the workspace', async () => {
 	const { CustomerLabelModel } = await import('../models/customer-label.model');
 	const store = {
 		query: async () => [{ id: 'label-1' }],
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
 	} as unknown as IStoreAdapter;
-	assert.equal(await new CustomerLabelModel(store).remove('label-1'), true);
+	assert.equal(await new CustomerLabelModel(store).remove('label-1', 'ws-1'), true);
+});
+
+test('CustomerLabelModel.list: returns shared defaults + own workspace labels only', async () => {
+	const { CustomerLabelModel } = await import('../models/customer-label.model');
+	let capturedSql = '';
+	let params: unknown[] = [];
+	const store = {
+		query: async (sql: string, p?: unknown[]) => { capturedSql = sql; params = p ?? []; return []; },
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	await new CustomerLabelModel(store).list('email', 'ws-1');
+	assert.match(capturedSql, /workspace_id\s+IS\s+NULL\s+OR\s+workspace_id\s*=\s*\$2/i);
+	assert.deepEqual(params, ['email', 'ws-1']);
+});
+
+test('CustomerLabelModel.findOrCreate: reuses a shared default before creating a private label', async () => {
+	const { CustomerLabelModel } = await import('../models/customer-label.model');
+	const calls: string[] = [];
+	const store = {
+		query: async (sql: string) => {
+			calls.push(sql);
+			// A shared default exists → return it, skip the insert.
+			if (sql.includes('workspace_id IS NULL') && sql.includes('SELECT')) return [{ id: 'shared-work', type: 'email', value: 'work' }];
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	const label = await new CustomerLabelModel(store).findOrCreate('email', 'Work', 'ws-1');
+	assert.equal((label as any).id, 'shared-work');
+	assert.ok(!calls.some((s) => s.includes('INSERT INTO fonderie_customer_labels')), 'no private dup of a shared default');
+});
+
+test('CustomerLabelModel.findOrCreate: creates a workspace-private label for a custom value', async () => {
+	const { CustomerLabelModel } = await import('../models/customer-label.model');
+	let insertParams: unknown[] = [];
+	const store = {
+		query: async (sql: string, p?: unknown[]) => {
+			if (sql.includes('SELECT') && sql.includes('workspace_id IS NULL')) return []; // no shared default
+			if (sql.includes('INSERT INTO fonderie_customer_labels')) {
+				insertParams = p ?? [];
+				return [{ id: 'ws-label', type: 'email', value: 'onboarding' }];
+			}
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	const label = await new CustomerLabelModel(store).findOrCreate('email', 'Onboarding', 'ws-1');
+	assert.equal((label as any).id, 'ws-label');
+	assert.deepEqual(insertParams, ['email', 'onboarding', 'ws-1'], 'insert is workspace-scoped + lowercased');
 });

@@ -19,8 +19,9 @@ export function customerLabelController(store: IStoreAdapter) {
 			if (!type || !VALID_TYPES.includes(type)) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'type must be phone, email, or address');
 			}
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
-			const rows = await labels.list(type);
+			const rows = await labels.list(type, ctx.workspace.id);
 			return setApiResponse(HTTP.OK, 'LABELS_FETCHED', 'Labels retrieved successfully.', {
 				labels: rows.map(toCustomerLabelDTO),
 			});
@@ -33,13 +34,15 @@ export function customerLabelController(store: IStoreAdapter) {
 			if (!isUuid(labelId)) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'labelId must be a valid UUID');
 			}
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
-			const removed = await labels.remove(labelId);
+			const removed = await labels.remove(labelId, ctx.workspace.id);
 			if (!removed) {
+				// Not this workspace's label, a shared default, or still in use.
 				return setApiResponse(
 					HTTP.CONFLICT,
 					'LABEL_IN_USE',
-					'Label is still referenced by customer records and cannot be deleted.',
+					'Label cannot be deleted — it is a shared default, not owned by this workspace, or still referenced.',
 				);
 			}
 			return setApiResponse(HTTP.OK, 'LABEL_DELETED', 'Label deleted successfully.');

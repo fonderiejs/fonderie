@@ -65,7 +65,7 @@ export function customerEmailController(store: IStoreAdapter) {
 
 			const rawLabel = typeof body?.['label'] === 'string' ? body['label'] : 'work';
 			const isPrimary = body?.['isPrimary'] === true;
-			const { id: labelId } = await labels.findOrCreate('email', rawLabel);
+			const { id: labelId } = await labels.findOrCreate('email', rawLabel, r.workspaceId);
 
 			let created: Awaited<ReturnType<typeof emails.add>>;
 			try {
@@ -103,7 +103,7 @@ export function customerEmailController(store: IStoreAdapter) {
 			}
 
 			try {
-				const { id: labelId } = await labels.findOrCreate('email', body['label'].trim());
+				const { id: labelId } = await labels.findOrCreate('email', body['label'].trim(), r.workspaceId);
 				const updated = await emails.updateLabel(emailId, r.customer.id, labelId);
 				return setApiResponse(HTTP.OK, 'EMAIL_UPDATED', 'Email updated successfully.', {
 					email: toCustomerEmailDTO(updated),
