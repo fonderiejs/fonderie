@@ -1,5 +1,12 @@
 # @fonderie/adapter-express
 
+## 5.1.1
+
+### Patch Changes
+
+- Updated dependencies [2a22d14]
+  - @fonderie/core@0.9.0
+
 ## 5.1.0
 
 ### Minor Changes
