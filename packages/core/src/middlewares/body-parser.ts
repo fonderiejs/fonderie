@@ -69,6 +69,18 @@ export function bodyParser(maxBytes: number = DEFAULT_MAX_BODY_BYTES): Middlewar
 			return next();
 		}
 
+		// Universal Content-Length cap — regardless of content-type. The parser
+		// only READS json/form bodies (so only those get the streamed cap), but
+		// a declared-oversize body of ANY type (notably multipart, which the
+		// parser hands to the route) must be refused here — otherwise, on an
+		// adapter with no transport-level cap (adapter-hono on node-server), a
+		// large multipart upload buffered by the route is an unbounded-memory
+		// DoS. The route still owns the chunked/no-Content-Length streaming case.
+		const declared = Number(ctx.request.headers.get('content-length'));
+		if (Number.isFinite(declared) && declared > maxBytes) {
+			return setApiResponse(HTTP.PAYLOAD_TOO_LARGE, 'PAYLOAD_TOO_LARGE', 'Request body too large');
+		}
+
 		const ct = ctx.request.headers.get('content-type') ?? '';
 
 		try {

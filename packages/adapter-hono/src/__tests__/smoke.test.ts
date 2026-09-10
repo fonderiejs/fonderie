@@ -219,3 +219,45 @@ test('bridge + mount: an oversize body is rejected 413 by the parser', async () 
 	});
 	assert.equal(res.status, 413);
 });
+
+// ── Audit-3 M2: native hono handlers must still read the body after bridge ──
+// bridge() consumes c.req.raw (no clone). Regression: an app's own route doing
+// c.req.json() hit a drained stream. bridge now repoints c.req.raw at the
+// re-materialized (buffered) request.
+
+test('bridge: a native hono handler can still c.req.json() the body', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	await fonderie.boot();
+
+	const app = new Hono();
+	app.use('*', bridge(fonderie));
+	// A NATIVE hono route (not fonderie/mount) that reads the body itself:
+	app.post('/native', async (c) => {
+		const body = await c.req.json<{ hello: string }>();
+		return c.json({ echoed: body.hello });
+	});
+
+	const res = await app.request('/native', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ hello: 'world' }),
+	});
+	assert.equal(res.status, 200);
+	assert.equal(((await res.json()) as any).echoed, 'world', 'native c.req.json() reads the buffered body');
+});
+
+test('bridge: native c.req.text() also works post-bridge', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	await fonderie.boot();
+	const app = new Hono();
+	app.use('*', bridge(fonderie));
+	app.post('/raw', async (c) => c.text(await c.req.text()));
+	const res = await app.request('/raw', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: '{"a":1}',
+	});
+	assert.equal(await res.text(), '{"a":1}');
+});
