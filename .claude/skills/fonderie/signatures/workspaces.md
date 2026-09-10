@@ -15,6 +15,7 @@ new WorkspacesModule(store: IStoreAdapter, config?: IWorkspacesConfig, bus?: Eve
 interface IWorkspacesConfig {
     invitationTtl?: string;
     management?: 'owner-or-admin' | 'any-member';
+    managerRoles?: string[];
     personalWorkspace?: boolean;
     routes?: Partial<Record<WorkspaceRouteId, WorkspaceRouteOverride>>;
 }
