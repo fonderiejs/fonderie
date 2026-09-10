@@ -169,16 +169,24 @@ export function adapt(middleware: Middleware) {
 			return;
 		}
 
-		let continued = false;
-		const result = await middleware(ctx, async () => {
-			continued = true;
-			return new Response();
-		});
+		// The whole invocation is guarded: under Express 4 a rejection from an
+		// async middleware is an UNHANDLED rejection (possible process crash),
+		// not a routed error — so throws (e.g. a store outage inside a guard)
+		// must be funneled to next(err) explicitly.
+		try {
+			let continued = false;
+			const result = await middleware(ctx, async () => {
+				continued = true;
+				return new Response();
+			});
 
-		if (continued) {
-			next();
-		} else {
-			await webResponseToExpress(result, res);
+			if (continued) {
+				next();
+			} else {
+				await webResponseToExpress(result, res);
+			}
+		} catch (err) {
+			next(err);
 		}
 	};
 }
@@ -200,15 +208,19 @@ export const requireAuth = adapt(_requireAuth);
 export function withWorkspace(store: Parameters<typeof _withWorkspace>[0]) {
 	let inner: ReturnType<typeof adapt> | undefined;
 	return async (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => {
-		if (!inner) {
-			const mod = await loadOptionalPeer(
-				() => import('@fonderie/workspaces'),
-				'@fonderie/workspaces',
-				'withWorkspace()',
-			);
-			inner = adapt(mod.withWorkspace(store));
+		try {
+			if (!inner) {
+				const mod = await loadOptionalPeer(
+					() => import('@fonderie/workspaces'),
+					'@fonderie/workspaces',
+					'withWorkspace()',
+				);
+				inner = adapt(mod.withWorkspace(store));
+			}
+			return await inner(req, res, next);
+		} catch (err) {
+			next(err);
 		}
-		return inner(req, res, next);
 	};
 }
 
@@ -218,30 +230,38 @@ export function requirePermission(
 ) {
 	let inner: ReturnType<typeof adapt> | undefined;
 	return async (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => {
-		if (!inner) {
-			const mod = await loadOptionalPeer(
-				() => import('@fonderie/permissions'),
-				'@fonderie/permissions',
-				'requirePermission()',
-			);
-			inner = adapt(mod.requirePermission(operation, permissionKey));
+		try {
+			if (!inner) {
+				const mod = await loadOptionalPeer(
+					() => import('@fonderie/permissions'),
+					'@fonderie/permissions',
+					'requirePermission()',
+				);
+				inner = adapt(mod.requirePermission(operation, permissionKey));
+			}
+			return await inner(req, res, next);
+		} catch (err) {
+			next(err);
 		}
-		return inner(req, res, next);
 	};
 }
 
 export function requireFeature(key: string) {
 	let inner: ReturnType<typeof adapt> | undefined;
 	return async (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => {
-		if (!inner) {
-			const mod = await loadOptionalPeer(
-				() => import('@fonderie/billing'),
-				'@fonderie/billing',
-				'requireFeature()',
-			);
-			inner = adapt(mod.requireFeature(key));
+		try {
+			if (!inner) {
+				const mod = await loadOptionalPeer(
+					() => import('@fonderie/billing'),
+					'@fonderie/billing',
+					'requireFeature()',
+				);
+				inner = adapt(mod.requireFeature(key));
+			}
+			return await inner(req, res, next);
+		} catch (err) {
+			next(err);
 		}
-		return inner(req, res, next);
 	};
 }
 

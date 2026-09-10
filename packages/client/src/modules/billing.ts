@@ -93,7 +93,7 @@ export class BillingClient {
 	getPlan(planId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IPlanResult>>({
 			method: 'GET',
-			path: `/plans/${planId}`,
+			path: `/plans/${encodeURIComponent(planId)}`,
 			bust: opts?.bust,
 		});
 	}
@@ -118,7 +118,7 @@ export class BillingClient {
 	updatePlan(planId: string, input: IUpdatePlanInput) {
 		return this.http.request<IApiResponse<IPlanResult>>({
 			method: 'PUT',
-			path: `/plans/${planId}`,
+			path: `/plans/${encodeURIComponent(planId)}`,
 			body: input,
 			token: this.tokens.get(),
 		});
@@ -127,7 +127,7 @@ export class BillingClient {
 	deletePlan(planId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/plans/${planId}`,
+			path: `/plans/${encodeURIComponent(planId)}`,
 			token: this.tokens.get(),
 		});
 	}
@@ -204,7 +204,7 @@ export class BillingClient {
 	getUsage(metric: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IUsageResult>>({
 			method: 'GET',
-			path: `/billing/usage/${metric}`,
+			path: `/billing/usage/${encodeURIComponent(metric)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,

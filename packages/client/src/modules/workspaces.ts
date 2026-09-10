@@ -125,7 +125,7 @@ export class WorkspacesClient {
 	getWorkspace(id: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWorkspaceResult>>({
 			method: 'GET',
-			path: `/workspaces/${id}`,
+			path: `/workspaces/${encodeURIComponent(id)}`,
 			token: this.tokens.get(),
 			bust: opts?.bust,
 		});
@@ -185,7 +185,7 @@ export class WorkspacesClient {
 	getRole(roleId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IRoleResult>>({
 			method: 'GET',
-			path: `/workspaces/roles/${roleId}`,
+			path: `/workspaces/roles/${encodeURIComponent(roleId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -195,7 +195,7 @@ export class WorkspacesClient {
 	updateRole(roleId: string, input: IUpdateRoleInput) {
 		return this.http.request<IApiResponse<IRoleResult>>({
 			method: 'PUT',
-			path: `/workspaces/roles/${roleId}`,
+			path: `/workspaces/roles/${encodeURIComponent(roleId)}`,
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -205,7 +205,7 @@ export class WorkspacesClient {
 	removeRole(roleId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/workspaces/roles/${roleId}`,
+			path: `/workspaces/roles/${encodeURIComponent(roleId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -214,7 +214,7 @@ export class WorkspacesClient {
 	getRolePermissions(roleId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IRolePermissionsResult>>({
 			method: 'GET',
-			path: `/workspaces/roles/${roleId}/permissions`,
+			path: `/workspaces/roles/${encodeURIComponent(roleId)}/permissions`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -224,7 +224,7 @@ export class WorkspacesClient {
 	setRolePermissions(roleId: string, permissions: IRolePermissionInput[]) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path: `/workspaces/roles/${roleId}/permissions`,
+			path: `/workspaces/roles/${encodeURIComponent(roleId)}/permissions`,
 			body: { permissions },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -246,7 +246,7 @@ export class WorkspacesClient {
 	removeMember(userId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/workspaces/members/${userId}`,
+			path: `/workspaces/members/${encodeURIComponent(userId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -255,7 +255,7 @@ export class WorkspacesClient {
 	getMemberRoles(userId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IRoleListResult>>({
 			method: 'GET',
-			path: `/workspaces/members/${userId}/roles`,
+			path: `/workspaces/members/${encodeURIComponent(userId)}/roles`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -265,7 +265,7 @@ export class WorkspacesClient {
 	addMemberRole(userId: string, roleId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path: `/workspaces/members/${userId}/roles`,
+			path: `/workspaces/members/${encodeURIComponent(userId)}/roles`,
 			body: { roleId },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -275,7 +275,7 @@ export class WorkspacesClient {
 	removeMemberRole(userId: string, roleId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/workspaces/members/${userId}/roles/${roleId}`,
+			path: `/workspaces/members/${encodeURIComponent(userId)}/roles/${encodeURIComponent(roleId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -306,7 +306,7 @@ export class WorkspacesClient {
 	cancelInvitation(inviteId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/workspaces/invitations/${inviteId}`,
+			path: `/workspaces/invitations/${encodeURIComponent(inviteId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

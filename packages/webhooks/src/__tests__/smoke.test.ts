@@ -550,3 +550,31 @@ test('attemptDelivery: real guard blocks an internal URL and never calls fetch',
 	assert.equal(updated['status'], 'failed');
 	assert.equal(updated['responseStatus'], null);
 });
+
+// ── Security: delivery response bodies are capped at storage (audit №2 M3) ──
+// The receiving endpoint is caller-controlled — an unbounded res.text() let it
+// bloat memory and the deliveries table on every attempt.
+
+test('attemptDelivery: oversized endpoint response is truncated before storage', async () => {
+	const store = makeStore();
+	store.db.fonderie_webhook_deliveries.push({
+		id: 'del-1', endpointId: 'ep-1', eventId: 'evt-1', eventType: 'project.created',
+		payload: { workspaceId: 'ws-1' }, status: 'pending', attempts: 0,
+		responseStatus: null, responseBody: null, nextAttemptAt: null, deliveredAt: null,
+		createdAt: new Date(),
+	});
+	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
+
+	const huge = 'x'.repeat(1024 * 1024); // 1 MiB response
+	const fetchMock = mock.method(globalThis, 'fetch', async () => new Response(huge, { status: 200 }));
+	try {
+		const d = new WebhookDispatcher(store as never, {}, PASS);
+		const { DeliveryModel } = await import('../models/delivery.model');
+		await d.attemptDelivery('https://example.com', 'secret', delivery, new DeliveryModel(store as never));
+	} finally {
+		fetchMock.mock.restore();
+	}
+	const stored = store.db.fonderie_webhook_deliveries[0]!['responseBody'] as string;
+	assert.ok(stored.length <= 4 * 1024, `stored ${stored.length} bytes — must be ≤ 4 KiB`);
+	assert.equal(store.db.fonderie_webhook_deliveries[0]!['status'], 'delivered');
+});
