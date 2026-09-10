@@ -122,6 +122,27 @@ async function processSendGridEvents(
 // Verifies signature using token + timestamp + signing key (HMAC-SHA256).
 // https://documentation.mailgun.com/docs/mailgun/user-manual/tracking-messages/#securing-webhooks
 
+// Mailgun signs only timestamp+token (NOT the body), so within the freshness
+// window a captured signature could be replayed with a forged body. We record
+// each accepted token until its freshness window elapses and reject a reuse.
+// NOTE: this is per-PROCESS (in-memory) — a multi-instance deployment behind a
+// load balancer only gets same-instance protection; the ±window bound still
+// caps the exposure everywhere. Impact of a replay is log/analytics integrity
+// only (no send-time suppression gate consumes these events).
+const seenMailgunTokens = new Map<string, number>();
+
+function rememberMailgunToken(token: string): boolean {
+	const now = Date.now();
+	// Opportunistic prune so the map can't grow unbounded.
+	if (seenMailgunTokens.size > 4096) {
+		for (const [t, exp] of seenMailgunTokens) if (exp <= now) seenMailgunTokens.delete(t);
+	}
+	const existing = seenMailgunTokens.get(token);
+	if (existing !== undefined && existing > now) return false; // replay within window
+	seenMailgunTokens.set(token, now + TIMESTAMP_TOLERANCE_S * 1000);
+	return true;
+}
+
 export async function handleMailgunDelivery(
 	req: Request,
 	store: IStoreAdapter,
@@ -139,6 +160,9 @@ export async function handleMailgunDelivery(
 	}
 	if (!verifyMailgunSignature(signingKey, signature.timestamp, signature.token, signature.signature)) {
 		return Response.json({ error: 'INVALID_SIGNATURE' }, { status: 401 });
+	}
+	if (!rememberMailgunToken(signature.token)) {
+		return Response.json({ error: 'REPLAYED_TOKEN' }, { status: 401 });
 	}
 
 	const event = body['event-data'];

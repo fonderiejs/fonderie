@@ -1,4 +1,14 @@
+import { createHash } from 'node:crypto';
+
 import type { IStoreAdapter } from '@fonderie/store';
+
+// Store only a hash of the reset credentials — never the plaintext. A DB read
+// (SQLi elsewhere, a backup/log leak) then yields nothing directly usable
+// within the 1h window. SHA-256 is sufficient: the token carries 256 bits of
+// entropy (unguessable), and the 6-digit pin's real protection is the route
+// rate-limiter + short TTL + all-session-revoke, not the hash. Deterministic
+// (unsalted) so the lookup is a single indexed equality on the hash.
+const hashSecret = (value: string): string => createHash('sha256').update(value).digest('hex');
 
 export class PasswordResetModel {
 	constructor(private store: IStoreAdapter) {}
@@ -9,7 +19,7 @@ export class PasswordResetModel {
 			VALUES ($1, $2, $3, $4, now())
 			ON CONFLICT (user_id) DO UPDATE
 			SET pin = $2, token = $3, expires_at = $4, created_at = now()`,
-			[userId, pin, token, expiresAt],
+			[userId, hashSecret(pin), hashSecret(token), expiresAt],
 		);
 	}
 
@@ -25,7 +35,7 @@ export class PasswordResetModel {
 	async findByPin(pin: string): Promise<{ userId: string; expiresAt: Date } | null> {
 		const [row] = await this.store.query<{ user_id: string; expires_at: Date }>(
 			`SELECT user_id, expires_at FROM fonderie_password_resets WHERE pin = $1`,
-			[pin],
+			[hashSecret(pin)],
 		);
 		if (!row) return null;
 		return { userId: row.user_id, expiresAt: new Date(row.expires_at) };
@@ -39,7 +49,7 @@ export class PasswordResetModel {
 		if (typeof token !== 'string' || token.length < 32) return null;
 		const [row] = await this.store.query<{ user_id: string; expires_at: Date }>(
 			`SELECT user_id, expires_at FROM fonderie_password_resets WHERE token = $1`,
-			[token],
+			[hashSecret(token)],
 		);
 		if (!row) return null;
 		return { userId: row.user_id, expiresAt: new Date(row.expires_at) };

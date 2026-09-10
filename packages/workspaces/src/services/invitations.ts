@@ -97,6 +97,30 @@ export async function cancelInvitation(
 	);
 }
 
+// Defense-in-depth re-check at ACCEPT time: the stored roleId was validated at
+// invite time, but re-confirm here so a role that has since become
+// non-assignable (or a hypothetical bad row written directly / by a future
+// invite-path bug) can never grant a privileged membership. Assignable =
+// exactly what an invitation may target: a workspace-local NON-system role, or
+// the seeded least-privilege system GUEST default. A system ADMIN (or any other
+// system role) and a foreign workspace's role are refused.
+async function assertRoleAssignable(
+	roleId: string,
+	workspaceId: string,
+	store: IStoreAdapter,
+): Promise<void> {
+	const rows = await store.query<{ id: string }>(
+		`SELECT id FROM fonderie_roles
+		 WHERE id = $1
+		   AND (
+		     (workspace_id = $2 AND is_system = false)
+		     OR (is_system = true AND name = 'GUEST')
+		   )`,
+		[roleId, workspaceId],
+	);
+	if (rows.length === 0) throw new Error('Invitation role is no longer assignable');
+}
+
 export async function acceptInvitationByPin(
 	opts: { pin: string; userId: string; email: string },
 	store: IStoreAdapter,
@@ -120,6 +144,7 @@ export async function acceptInvitationByPin(
 
 	if (!inv) throw new Error('Invalid PIN');
 	if (new Date() > new Date(inv.expiresAt)) throw new Error('Invitation expired');
+	await assertRoleAssignable(inv.roleId, inv.workspaceId, store);
 
 	await store.transaction(async (tx) => {
 		await Promise.all([
@@ -158,6 +183,7 @@ export async function acceptInvitationByToken(
 
 	if (!inv) throw new Error('Invalid token');
 	if (new Date() > new Date(inv.expiresAt)) throw new Error('Invitation expired');
+	await assertRoleAssignable(inv.roleId, inv.workspaceId, store);
 
 	await store.transaction(async (tx) => {
 		await Promise.all([
