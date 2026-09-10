@@ -70,6 +70,12 @@ export class RemoteConfigManager {
 			return fallback;
 		}
 
+		// Own-property guard: a plain-record lookup would resolve prototype
+		// members for keys like 'constructor'/'toString' — truthy functions, so
+		// a flag check with an attacker-influenced key would FAIL OPEN.
+		if (!Object.hasOwn(this.snapshot.entries, key)) {
+			return fallback;
+		}
 		const value = this.snapshot.entries[key];
 		return value !== undefined ? (value as T) : fallback;
 	}
@@ -93,7 +99,9 @@ export class RemoteConfigManager {
 				[this.environment],
 			);
 
-			const entries: Record<string, unknown> = {};
+			// Null prototype: DB-sourced keys land here verbatim, and a row keyed
+			// "__proto__" on a {}-literal would pollute the object's prototype.
+			const entries: Record<string, unknown> = Object.create(null);
 
 			// First pass — load 'all' entries as base
 			for (const row of rows) {

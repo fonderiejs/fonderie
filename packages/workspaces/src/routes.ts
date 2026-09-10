@@ -2,6 +2,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { Middleware } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
 import { requireAuth, validate } from '@fonderie/core/middlewares';
+import { byIp, rateLimit, StoreAdapterStore } from '@fonderie/rate-limit';
 
 import {
 	createRoleSchema,
@@ -33,6 +34,15 @@ export function buildWorkspaceRoutes(
 	const ttl = config.invitationTtl ?? '7d';
 	const wsCtx = withWorkspace(store);
 
+	// Brute-force guard for invitation acceptance: the PIN variant is a 6-digit
+	// code (email-bound, but still low-entropy), so the route is IP-throttled —
+	// 10 attempts / 15 min, same shape as auth's login/verify limiters.
+	const acceptLimit = rateLimit({
+		store: new StoreAdapterStore(store),
+		rule: { capacity: 10, refillPerSec: 10 / (15 * 60) },
+		key: byIp('workspaces:invitation-accept'),
+	});
+
 	const workspace = workspaceController(store, config);
 	const member = memberController(store);
 	const role = roleController(store);
@@ -63,7 +73,7 @@ export function buildWorkspaceRoutes(
 		R('listInvitations', 'GET', '/workspaces/invitations', requireAuth, wsCtx, invitation.list),
 		R('invite', 'POST', '/workspaces/invitations', requireAuth, wsCtx, validate(createInvitationsSchema), invitation.invite),
 		R('cancelInvitation', 'DELETE', '/workspaces/invitations/:inviteId', requireAuth, wsCtx, invitation.cancel),
-		R('acceptInvitation', 'POST', '/workspaces/invitations/accept', requireAuth, validate(acceptInvitationSchema), invitation.accept),
+		R('acceptInvitation', 'POST', '/workspaces/invitations/accept', acceptLimit, requireAuth, validate(acceptInvitationSchema), invitation.accept),
 
 		// ── Roles
 		R('createRole', 'POST', '/workspaces/roles', requireAuth, wsCtx, validate(createRoleSchema), role.create),

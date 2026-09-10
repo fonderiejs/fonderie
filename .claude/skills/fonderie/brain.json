@@ -2029,7 +2029,7 @@
         {
           "method": "POST",
           "path": "/workspaces/invitations/accept",
-          "mw": "requireAuth → validate(acceptInvitationSchema) → invitation.accept"
+          "mw": "acceptLimit → requireAuth → validate(acceptInvitationSchema) → invitation.accept"
         },
         {
           "method": "GET",

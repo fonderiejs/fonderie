@@ -432,18 +432,43 @@ function makeDeliveryStore() {
 	return { stub, updates };
 }
 
-test('handleSendGridDelivery: processes open event', async () => {
+// SendGrid signs its event webhook with ECDSA (P-256 over timestamp+body, base64
+// DER signature) — the tests sign with a real generated keypair, exactly like
+// SendGrid does, and the handler verifies against the base64 SPKI public key.
+import { generateKeyPairSync, sign as cryptoSign, createHmac as cryptoCreateHmac } from 'node:crypto';
+
+function makeSendGridSigner() {
+	const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+	const publicKeyB64 = publicKey.export({ format: 'der', type: 'spki' }).toString('base64');
+	return {
+		publicKeyB64,
+		signedRequest(payload: unknown): Request {
+			const body = JSON.stringify(payload);
+			const ts = String(Math.floor(Date.now() / 1000));
+			const signature = cryptoSign('sha256', Buffer.from(ts + body), privateKey).toString('base64');
+			return new Request('http://localhost/courier/delivery/sendgrid', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					'x-twilio-email-event-webhook-signature': signature,
+					'x-twilio-email-event-webhook-timestamp': ts,
+				},
+				body,
+			});
+		},
+	};
+}
+
+test('handleSendGridDelivery: verifies ECDSA signature and processes open event', async () => {
 	const { handleSendGridDelivery } = await import('../delivery');
 	const { stub, updates } = makeDeliveryStore();
+	const sg = makeSendGridSigner();
 
-	const payload = [{ event: 'open', sg_message_id: 'abc123.filterXxx' }];
-	const req = new Request('http://localhost/courier/delivery/sendgrid', {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify(payload),
-	});
-
-	const res = await handleSendGridDelivery(req, stub);
+	const res = await handleSendGridDelivery(
+		sg.signedRequest([{ event: 'open', sg_message_id: 'abc123.filterXxx' }]),
+		stub,
+		sg.publicKeyB64,
+	);
 	assert.equal(res.status, 200);
 	assert.ok(updates.includes('abc123'));
 });
@@ -451,15 +476,13 @@ test('handleSendGridDelivery: processes open event', async () => {
 test('handleSendGridDelivery: processes bounce event', async () => {
 	const { handleSendGridDelivery } = await import('../delivery');
 	const { stub, updates } = makeDeliveryStore();
+	const sg = makeSendGridSigner();
 
-	const payload = [{ event: 'bounce', sg_message_id: 'msg456', reason: 'Invalid address' }];
-	const req = new Request('http://localhost/courier/delivery/sendgrid', {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify(payload),
-	});
-
-	const res = await handleSendGridDelivery(req, stub);
+	const res = await handleSendGridDelivery(
+		sg.signedRequest([{ event: 'bounce', sg_message_id: 'msg456', reason: 'Invalid address' }]),
+		stub,
+		sg.publicKeyB64,
+	);
 	assert.equal(res.status, 200);
 	assert.ok(updates.includes('msg456'));
 });
@@ -467,24 +490,55 @@ test('handleSendGridDelivery: processes bounce event', async () => {
 test('handleSendGridDelivery: skips events with no sg_message_id', async () => {
 	const { handleSendGridDelivery } = await import('../delivery');
 	const { stub, updates } = makeDeliveryStore();
+	const sg = makeSendGridSigner();
 
-	const payload = [{ event: 'open' }];
-	const req = new Request('http://localhost/courier/delivery/sendgrid', {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify(payload),
-	});
-
-	const res = await handleSendGridDelivery(req, stub);
+	const res = await handleSendGridDelivery(sg.signedRequest([{ event: 'open' }]), stub, sg.publicKeyB64);
 	assert.equal(res.status, 200);
 	assert.equal(updates.length, 0);
 });
 
-test('handleMailgunDelivery: processes delivered event', async () => {
+// Fail closed (H8): no verification key → 401, nothing processed. Unverified
+// endpoints would accept forged delivered/opened/bounced events from anyone.
+
+test('handleSendGridDelivery: 401 without a verification key (fail closed)', async () => {
+	const { handleSendGridDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+	const req = new Request('http://localhost/courier/delivery/sendgrid', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify([{ event: 'open', sg_message_id: 'forged' }]),
+	});
+	const res = await handleSendGridDelivery(req, stub, undefined);
+	assert.equal(res.status, 401);
+	assert.equal(updates.length, 0);
+});
+
+test('handleSendGridDelivery: 401 on a forged/mis-signed payload', async () => {
+	const { handleSendGridDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+	const sg = makeSendGridSigner();
+	const other = makeSendGridSigner(); // attacker's own keypair
+
+	const res = await handleSendGridDelivery(
+		other.signedRequest([{ event: 'bounce', sg_message_id: 'victim-msg' }]),
+		stub,
+		sg.publicKeyB64, // configured key ≠ signer
+	);
+	assert.equal(res.status, 401);
+	assert.equal(updates.length, 0);
+});
+
+test('handleMailgunDelivery: verifies HMAC signature and processes delivered event', async () => {
 	const { handleMailgunDelivery } = await import('../delivery');
 	const { stub, updates } = makeDeliveryStore();
 
+	const signingKey = 'mg-signing-key';
+	const timestamp = String(Math.floor(Date.now() / 1000));
+	const token = 'tok-123';
+	const signature = cryptoCreateHmac('sha256', signingKey).update(timestamp + token).digest('hex');
+
 	const payload = {
+		signature: { timestamp, token, signature },
 		'event-data': {
 			event: 'delivered',
 			message: { headers: { 'message-id': 'mg-msg-id-789' } },
@@ -496,9 +550,22 @@ test('handleMailgunDelivery: processes delivered event', async () => {
 		body: JSON.stringify(payload),
 	});
 
-	const res = await handleMailgunDelivery(req, stub);
+	const res = await handleMailgunDelivery(req, stub, signingKey);
 	assert.equal(res.status, 200);
 	assert.ok(updates.includes('mg-msg-id-789'));
+});
+
+test('handleMailgunDelivery: 401 without a signing key (fail closed)', async () => {
+	const { handleMailgunDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+	const req = new Request('http://localhost/courier/delivery/mailgun', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ 'event-data': { event: 'delivered', message: { headers: { 'message-id': 'forged' } } } }),
+	});
+	const res = await handleMailgunDelivery(req, stub, undefined);
+	assert.equal(res.status, 401);
+	assert.equal(updates.length, 0);
 });
 
 test('handleMailtrapDelivery: processes open event', async () => {
@@ -703,4 +770,74 @@ test('listTemplateRevisions: null-safe key match (base locale)', async () => {
 	await listTemplateRevisions('email-verification', null, store);
 	assert.match(sql, /locale IS NOT DISTINCT FROM \$2/);
 	assert.match(sql, /FROM fonderie_courier_template_revisions/);
+});
+
+// ── Security/correctness: provider message id persisted (H7) ─────────────────
+// The delivery webhooks above match on provider_message_id — but the send path
+// never persisted it, so every delivered/opened/bounced UPDATE matched zero
+// rows and delivery tracking was silently dead. The dispatcher must write the
+// id a channel returns.
+
+test('dispatcher: persists the providerMessageId a channel returns', async () => {
+	const executed: { sql: string; params: unknown[] }[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			executed.push({ sql, params: params ?? [] });
+			if (sql.includes('INSERT INTO fonderie_message_log')) return [{ id: 'log-42' }] as T[];
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+
+	const channel = {
+		name: 'email',
+		send: async () => ({ providerMessageId: 'prov-msg-9' }),
+	};
+	const dispatcher = new Dispatcher(
+		{ channels: { 'password-reset': [Channel.EMAIL] } },
+		makeResolver(),
+		store,
+	);
+	dispatcher.registerChannel(channel);
+
+	await dispatcher.dispatch({
+		type: 'password-reset',
+		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
+		data: {},
+	});
+
+	const providerUpdate = executed.find(
+		(q) => q.sql.includes('provider_message_id') && q.sql.includes('UPDATE'),
+	);
+	assert.ok(providerUpdate, 'provider_message_id UPDATE must run');
+	assert.deepEqual(providerUpdate!.params, ['log-42', 'prov-msg-9']);
+});
+
+test('dispatcher: a channel returning void still marks the message sent', async () => {
+	const executed: string[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			executed.push(sql);
+			if (sql.includes('INSERT INTO fonderie_message_log')) return [{ id: 'log-1' }] as T[];
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const channel = { name: 'email', send: async () => undefined };
+	const dispatcher = new Dispatcher(
+		{ channels: { 'password-reset': [Channel.EMAIL] } },
+		makeResolver(),
+		store,
+	);
+	dispatcher.registerChannel(channel);
+	await dispatcher.dispatch({
+		type: 'password-reset',
+		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
+		data: {},
+	});
+	assert.ok(executed.some((s) => s.includes("status = 'sent'")), 'markMessageSent ran');
+	assert.ok(
+		!executed.some((s) => s.includes('provider_message_id') && s.includes('UPDATE')),
+		'no provider-id UPDATE when the channel returned none',
+	);
 });

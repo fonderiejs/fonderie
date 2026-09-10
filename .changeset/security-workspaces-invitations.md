@@ -1,0 +1,5 @@
+---
+"@fonderie/workspaces": major
+---
+
+Invitation hardening + last-owner guard (BREAKING for the PIN flow). (1) H4: the 6-digit invitation PIN was minted with `Math.random()` and looked up **globally** with no throttle — any authenticated user could brute-force any pending invitation and join arbitrary workspaces. The PIN now comes from a CSPRNG, only redeems an invitation addressed to the **accepting user's email**, and `POST /workspaces/invitations/accept` is IP rate-limited (10/15 min; backed by `@fonderie/rate-limit`, new dependency). The accept body now also takes `{ token }` (the 32-byte secret from the email link) as an alternative to `{ pin }` — the path for accounts without an email address. (2) H5: `DELETE /workspaces/members/:userId` refused to let you remove yourself but happily removed the workspace **owner**, orphaning the tenant — now `400 INVALID_OPERATION`. (3) The invitation list/DTO leaked the accept `token` — a bearer credential meant only for the invitee's inbox — letting any member hijack a pending invite; the DTO field remains for shape compatibility but is now always empty.
