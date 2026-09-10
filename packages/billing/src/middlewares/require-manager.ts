@@ -27,7 +27,7 @@ export function requireBillingManager(store: IStoreAdapter, config: IBillingConf
 			return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 		}
 
-		if (!(await isWorkspaceManager(ctx.user.id, subscriber.id, store))) {
+		if (!(await isWorkspaceManager(ctx.user.id, subscriber.id, store, config.managerRoles ?? ['ADMIN']))) {
 			return setApiResponse(
 				HTTP.FORBIDDEN,
 				'MANAGER_REQUIRED',

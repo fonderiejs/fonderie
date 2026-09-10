@@ -229,6 +229,12 @@ export interface IBillingConfig {
 	 */
 	management?: 'owner-or-admin' | 'any-member';
 	/**
+	 * System-role NAMES that count as billing managers (default ['ADMIN']).
+	 * Matched only against is_system roles — GUEST is also a system role and
+	 * must not manage money; a member-created local 'ADMIN' grants nothing.
+	 */
+	managerRoles?: string[];
+	/**
 	 * One bearer token guarding ALL billing ops routes — the DB-plan write API
 	 * (POST/PUT/DELETE /plans) and the wallet manual-grant (POST /billing/wallet/grant),
 	 * compared in constant time. Each route is registered ONLY when a token is

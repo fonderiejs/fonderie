@@ -16,10 +16,15 @@ export interface IWorkspacesConfig {
 
 	// Who may hit PRIVILEGED workspace routes (role CRUD, member/invitation
 	// management, settings, archive). Default 'owner-or-admin': the workspace
-	// owner or a holder of an active system role. 'any-member' restores the
-	// legacy behaviour where every member could manage the workspace. Reads
-	// are never gated by this.
+	// owner or a holder of an active system role named in `managerRoles`.
+	// 'any-member' restores the legacy behaviour where every member could
+	// manage the workspace. Reads are never gated by this.
 	management?: 'owner-or-admin' | 'any-member';
+
+	// System-role NAMES that count as managers (default ['ADMIN']). Matched
+	// only against is_system roles — GUEST is also a system role and must not
+	// manage, and a member-created local role named 'ADMIN' must grant nothing.
+	managerRoles?: string[];
 
 	// Auto-create a personal workspace when user.registered fires.
 	// Requires an EventBus to be passed to WorkspacesModule. Default: true
