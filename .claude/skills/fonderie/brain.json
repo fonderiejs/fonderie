@@ -7,7 +7,7 @@
     "audit": "5.1.4",
     "auth": "7.1.1",
     "billing": "9.0.2",
-    "client": "0.17.1",
+    "client": "0.18.0",
     "config": "5.1.6",
     "core": "0.10.4",
     "courier": "7.0.1",
@@ -499,7 +499,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.17.1",
+      "version": "0.18.0",
       "requires": [],
       "exports": [
         "FonderieClient",
