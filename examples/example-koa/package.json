@@ -14,12 +14,12 @@
     "koa": "^2.16.1",
     "@koa/router": "^13.1.0",
     "koa-bodyparser": "^4.4.1",
-    "@fonderie/adapter-koa": "^5.0.8",
-    "@fonderie/auth": "^7.0.0",
-    "@fonderie/core": ">=0.9.0",
-    "@fonderie/events": "^5.0.5",
+    "@fonderie/adapter-koa": "^5.0.9",
+    "@fonderie/auth": "^7.0.1",
+    "@fonderie/core": ">=0.10.0",
+    "@fonderie/events": "^5.0.6",
     "@fonderie/store": "^0.3.0",
-    "@fonderie/courier": "^6.0.0"
+    "@fonderie/courier": "^7.0.0"
   },
   "devDependencies": {
     "@types/koa": "^2.15.0",
