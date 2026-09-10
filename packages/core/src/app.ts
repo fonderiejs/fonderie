@@ -18,6 +18,23 @@ import { withBody } from './middlewares/body-parser';
 import { withSecurityHeaders } from './middlewares/security-headers';
 import { MetricsRegistry, withMetrics } from './metrics';
 
+/**
+ * Default cap on the request body the built-in `listen()` server will buffer,
+ * in bytes (5 MiB) — same default as the adapter packages. Override per app
+ * via `config.maxBodyBytes`.
+ */
+export const DEFAULT_MAX_BODY_BYTES = 5 * 1024 * 1024;
+
+class PayloadTooLargeError extends Error {
+	readonly fonderiePayloadTooLarge = true as const;
+}
+
+function payloadTooLarge(res: { statusCode: number; setHeader(k: string, v: string): void; end(body?: string): void }): void {
+	res.statusCode = 413;
+	res.setHeader('content-type', 'application/json');
+	res.end(JSON.stringify({ reason: 'PAYLOAD_TOO_LARGE', explanation: 'Request body too large' }));
+}
+
 export class FonderieApp implements IFonderieApp {
 	private config: FonderieConfig;
 	private prefix: string;
@@ -51,6 +68,8 @@ export class FonderieApp implements IFonderieApp {
 			quiet = false,
 		} = options;
 
+		const maxBodyBytes = this.config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+
 		const server = createServer(async (req, res) => {
 			const host = req.headers.host ?? 'localhost';
 			const url = `http://${host}${req.url ?? '/'}`;
@@ -68,16 +87,47 @@ export class FonderieApp implements IFonderieApp {
 				}
 			}
 
-			// Read the body stream — this was missing
-			const body = await new Promise<Buffer>((resolve, reject) => {
-				const chunks: Buffer[] = [];
-				req.on('data', (chunk: Buffer) => chunks.push(chunk));
-				req.on('end', () => resolve(Buffer.concat(chunks)));
-				req.on('error', reject);
-			});
-
 			const method = req.method ?? 'GET';
 			const hasBody = !['GET', 'HEAD'].includes(method.toUpperCase());
+
+			// Body cap — without it a single unauthenticated request could stream
+			// an arbitrarily large body fully into memory before any handler runs.
+			// Fast path: reject a declared-oversize body before reading a byte.
+			const declared = Number(req.headers['content-length']);
+			if (hasBody && Number.isFinite(declared) && declared > maxBodyBytes) {
+				payloadTooLarge(res);
+				req.destroy();
+				return;
+			}
+
+			// Read the body stream, capped as a backstop for chunked / missing /
+			// lying Content-Length: stop buffering the moment the cap is crossed.
+			let body: Buffer;
+			try {
+				body = await new Promise<Buffer>((resolve, reject) => {
+					const chunks: Buffer[] = [];
+					let total = 0;
+					req.on('data', (chunk: Buffer) => {
+						total += chunk.length;
+						if (total > maxBodyBytes) {
+							reject(new PayloadTooLargeError());
+							req.destroy();
+							return;
+						}
+						chunks.push(chunk);
+					});
+					req.on('end', () => resolve(Buffer.concat(chunks)));
+					req.on('error', reject);
+				});
+			} catch (err) {
+				if (err instanceof PayloadTooLargeError) {
+					payloadTooLarge(res);
+					return;
+				}
+				res.statusCode = 400;
+				res.end();
+				return;
+			}
 
 			const request = new Request(url, {
 				method,

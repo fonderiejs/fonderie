@@ -147,6 +147,80 @@ test('listen() returns the server and forwards MULTIPLE Set-Cookie headers', asy
 	}
 });
 
+// ── Security: request-body cap on the built-in server (H3) ─────────
+// Without a cap, one unauthenticated request could stream an arbitrarily large
+// body fully into memory before any handler runs — a memory-exhaustion DoS.
+
+test('listen(): 413 for a declared-oversize body; in-cap bodies still parse', async () => {
+	const app = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 1024 }),
+	);
+	app.addRoute('POST', '/echo', async (ctx) =>
+		Response.json({ got: (ctx.meta['body'] as { n?: number } | undefined)?.n ?? null }),
+	);
+	await app.boot();
+	const server = app.listen(0, { quiet: true });
+	await new Promise((r) => (server.listening ? r(undefined) : server.once('listening', r)));
+	try {
+		const { port } = server.address() as { port: number };
+		const base = `http://127.0.0.1:${port}`;
+
+		// Content-Length over the cap → 413 without reading the body.
+		const big = JSON.stringify({ n: 1, pad: 'x'.repeat(4096) });
+		const over = await fetch(`${base}/echo`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: big,
+		});
+		assert.equal(over.status, 413);
+		assert.equal(((await over.json()) as any).reason, 'PAYLOAD_TOO_LARGE');
+
+		// A body inside the cap flows through withBody as before.
+		const ok = await fetch(`${base}/echo`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ n: 7 }),
+		});
+		assert.equal(ok.status, 200);
+		assert.equal(((await ok.json()) as any).got, 7);
+	} finally {
+		await new Promise((r) => server.close(() => r(undefined)));
+	}
+});
+
+test('listen(): chunked body with no Content-Length is capped mid-stream (413)', async () => {
+	const app = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 1024 }),
+	);
+	app.addRoute('POST', '/echo', async () => Response.json({ ok: true }));
+	await app.boot();
+	const server = app.listen(0, { quiet: true });
+	await new Promise((r) => (server.listening ? r(undefined) : server.once('listening', r)));
+	try {
+		const { port } = server.address() as { port: number };
+		// A streamed body advertises no Content-Length → the fast path can't see
+		// it; the capped reader must stop buffering the moment the cap is crossed.
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				const chunk = new Uint8Array(512).fill(120); // 'x'
+				for (let i = 0; i < 8; i++) controller.enqueue(chunk); // 4 KiB total
+				controller.close();
+			},
+		});
+		const res = await fetch(`http://127.0.0.1:${port}/echo`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/octet-stream' },
+			body: stream,
+			duplex: 'half',
+		} as RequestInit).catch(() => null);
+		// Depending on timing the server may 413 or destroy the socket mid-send;
+		// both are acceptable — what must NOT happen is a 200 from a 4 KiB body.
+		if (res) assert.equal(res.status, 413);
+	} finally {
+		await new Promise((r) => server.close(() => r(undefined)));
+	}
+});
+
 test('module installs its route on boot', async () => {
 	const pingModule: IFonderieModule = {
 		name: 'ping',

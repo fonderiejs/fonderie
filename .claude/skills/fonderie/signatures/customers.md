@@ -117,7 +117,7 @@ new CustomerAddressModel(store: IStoreAdapter): CustomerAddressModel
   .add(opts: { customerId: string; countryIso: string; subdivision1Iso?: string | null; subdivision2Iso?: string | null; zipPostalCode: string; unit?: string | null; line1?: string | null; line2?: string | null; labelId: string; isPrimary?: boolean; }): Promise<...>
   .updateLabel(addrId: string, customerId: string, labelId: string): Promise<ICustomerAddress>
   .setPrimary(addrId: string, customerId: string): Promise<void>
-  .remove(addrId: string, customerId: string): Promise<void>
+  .remove(addrId: string, customerId: string): Promise<boolean>
 
 new CustomerEmailModel(store: IStoreAdapter): CustomerEmailModel
   .list(customerId: string): Promise<ICustomerEmail[]>

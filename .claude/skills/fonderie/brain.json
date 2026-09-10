@@ -249,7 +249,7 @@
         {
           "method": "GET",
           "path": "/auth/send-verification",
-          "mw": "requireAuth → auth.sendVerification"
+          "mw": "requireAnyAuth → auth.sendVerification"
         },
         {
           "method": "GET",
@@ -269,7 +269,7 @@
         {
           "method": "POST",
           "path": "/auth/verify",
-          "mw": "requireAuth → validate(verifySchema) → auth.verify"
+          "mw": "ipLimit('verify') → requireAnyAuth → validate(verifySchema) → auth.verify"
         },
         {
           "method": "DELETE",
@@ -609,6 +609,7 @@
       "exports": [
         "OPERATIONS",
         "FonderieApp",
+        "DEFAULT_MAX_BODY_BYTES",
         "MIN_SECRET_LENGTH",
         "PLACEHOLDER_SECRET",
         "HTTP",
@@ -3785,6 +3786,9 @@
       "config"
     ],
     "fonderieapp": [
+      "core"
+    ],
+    "default_max_body_bytes": [
       "core"
     ],
     "min_secret_length": [

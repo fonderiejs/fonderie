@@ -422,3 +422,53 @@ test('email/phone/address update schemas accept only the label (the one editable
 	assert.equal(updateEmailSchema.safeParse({ email: 'a@b.com' }).success, false);
 	assert.equal(updatePhoneSchema.safeParse({ phone: '+15550001111' }).success, false);
 });
+
+// ── Security: cross-tenant address destruction (H6) ──────────────────────────
+// remove() once deleted the shared fonderie_addresses row UNCONDITIONALLY by
+// id — even when the scoped link delete matched nothing — so any caller could
+// destroy another customer's/tenant's address with a guessed id. The base-row
+// delete must only run when the link delete actually matched.
+
+test('CustomerAddressModel.remove: base-row delete only after a matching scoped link delete', async () => {
+	const { CustomerAddressModel } = await import('../models/customer-address.model');
+	const executed: { sql: string; params: unknown[] }[] = [];
+	const store = {
+		query: async (sql: string, params?: unknown[]) => {
+			executed.push({ sql, params: params ?? [] });
+			if (sql.includes('DELETE FROM fonderie_customer_addresses')) {
+				return [{ isPrimary: false }]; // scoped link delete matched
+			}
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+
+	const removed = await new CustomerAddressModel(store).remove('addr-1', CUST_ID);
+	assert.equal(removed, true);
+	const link = executed.find((q) => q.sql.includes('DELETE FROM fonderie_customer_addresses'));
+	assert.ok(link, 'scoped link delete ran');
+	assert.match(link!.sql, /customer_id\s*=\s*\$2/i, 'link delete is customer-scoped');
+	assert.ok(
+		executed.some((q) => q.sql.includes('DELETE FROM fonderie_addresses')),
+		'base row deleted after a matching link delete',
+	);
+});
+
+test('CustomerAddressModel.remove: foreign addrId → returns false, base row untouched', async () => {
+	const { CustomerAddressModel } = await import('../models/customer-address.model');
+	const executed: string[] = [];
+	const store = {
+		query: async (sql: string) => {
+			executed.push(sql);
+			return []; // link delete matches nothing: address belongs to someone else
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+
+	const removed = await new CustomerAddressModel(store).remove('addr-foreign', CUST_ID);
+	assert.equal(removed, false);
+	assert.ok(
+		!executed.some((sql) => sql.includes('DELETE FROM fonderie_addresses')),
+		'the shared fonderie_addresses row must NOT be deleted for a foreign id',
+	);
+});

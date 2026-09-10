@@ -161,16 +161,22 @@ export class CustomerAddressModel {
 		});
 	}
 
-	async remove(addrId: string, customerId: string): Promise<void> {
-		await this.store.transaction(async (tx) => {
+	/** Returns false when the address is not linked to THIS customer (no-op). */
+	async remove(addrId: string, customerId: string): Promise<boolean> {
+		return this.store.transaction(async (tx) => {
 			const [deleted] = await tx.query<{ isPrimary: boolean }>(
 				`DELETE FROM fonderie_customer_addresses
 				 WHERE addr_id = $1 AND customer_id = $2
 				 RETURNING is_primary AS "isPrimary"`,
 				[addrId, customerId],
 			);
+			// Only delete the underlying fonderie_addresses row when the scoped
+			// link delete above actually matched. Deleting unconditionally by id
+			// would let any caller destroy ANOTHER customer's/tenant's address
+			// (the shared-table row + their link via cascade) with a guessed id.
+			if (!deleted) return false;
 			await tx.query(`DELETE FROM fonderie_addresses WHERE id = $1`, [addrId]);
-			if (deleted?.isPrimary) {
+			if (deleted.isPrimary) {
 				await tx.query(
 					`UPDATE fonderie_customer_addresses
 					 SET is_primary = true
@@ -183,6 +189,7 @@ export class CustomerAddressModel {
 					[customerId],
 				);
 			}
+			return true;
 		});
 	}
 }
