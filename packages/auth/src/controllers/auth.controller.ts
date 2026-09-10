@@ -555,6 +555,9 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 						row.userId,
 					]),
 					tx.query(`DELETE FROM fonderie_password_resets WHERE user_id = $1`, [row.userId]),
+					// Revoke every session: the reset exists because the account may
+					// be compromised — a stolen session must not survive it.
+					tx.query(`DELETE FROM fonderie_sessions WHERE user_id = $1`, [row.userId]),
 				]);
 			});
 

@@ -967,3 +967,113 @@ test('updateRole: mutation is scoped to workspace and refuses system roles', asy
 	assert.equal(state.params[0], 'r-foreign');
 	assert.equal(state.params[1], 'ws-1');
 });
+
+// ── Security: invitation PIN binding + CSPRNG (H4) ───────────────────
+// The 6-digit invitation PIN was minted with Math.random() and looked up
+// globally — any authenticated user could brute-force ANY pending invitation
+// and join arbitrary workspaces. The PIN now (a) comes from a CSPRNG and
+// (b) only redeems an invitation addressed to the accepting user's email.
+
+test('acceptInvitationByPin: lookup is bound to the accepting email', async () => {
+	const { acceptInvitationByPin } = await import('../services/invitations');
+	const captured: { sql: string; params: unknown[] }[] = [];
+	const store = {
+		query: async (sql: string, params?: unknown[]) => {
+			captured.push({ sql, params: params ?? [] });
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+
+	await assert.rejects(
+		acceptInvitationByPin({ pin: '123456', userId: 'u-1', email: 'me@example.com' }, store),
+		/Invalid PIN/,
+	);
+	const lookup = captured[0]!;
+	assert.match(lookup.sql, /lower\(email\)\s*=\s*lower\(\$2\)/i, 'PIN lookup is email-bound');
+	assert.deepEqual(lookup.params, ['123456', 'me@example.com']);
+});
+
+test('generatePin path: createInvitation mints a CSPRNG 6-digit pin', async () => {
+	const { createInvitation } = await import('../services/invitations');
+	let pinParam = '';
+	const store = {
+		query: async (sql: string, params?: unknown[]) => {
+			if (sql.includes('INSERT INTO fonderie_workspace_invitations')) {
+				pinParam = params?.[4] as string;
+				return [{ id: 'inv-1', pin: pinParam, token: params?.[3] }];
+			}
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	await createInvitation({ workspaceId: 'ws-1', email: 'a@b.com', roleId: 'r-1' }, store);
+	assert.match(pinParam, /^\d{6}$/, 'pin is 6 digits');
+});
+
+test('invitation.accept: token path admits accounts without an email', async () => {
+	const { invitationController } = await import('../controllers/invitation.controller');
+	const store = {
+		query: async (sql: string) => {
+			if (sql.includes('WHERE token = $1')) {
+				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'r-1', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
+			}
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	const ctrl = invitationController(store, '7d');
+	const res = await ctrl.accept(
+		makeCtx({ user: { id: 'u-phone', email: null as never }, body: { token: 'a'.repeat(64) } }),
+	);
+	assert.equal(res.status, 200);
+});
+
+test('invitation.accept: PIN without an account email → 400, not a global redeem', async () => {
+	const { invitationController } = await import('../controllers/invitation.controller');
+	const store = {
+		query: async () => [],
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	const ctrl = invitationController(store, '7d');
+	const res = await ctrl.accept(
+		makeCtx({ user: { id: 'u-phone', email: null as never }, body: { pin: '123456' } }),
+	);
+	assert.equal(res.status, 400);
+});
+
+// ── Security: last-owner removal guard (H5) ──────────────────────────
+
+test('member.remove: 400 when removing the workspace owner', async () => {
+	const { memberController } = await import('../controllers/member.controller');
+	const ctrl = memberController(makeStore());
+	const res = await ctrl.remove(
+		makeCtx({
+			workspace: WS, // ownerId: 'user-1'
+			user: { id: 'user-2', email: 'b@c.com' },
+			params: { userId: 'user-1' },
+		}),
+	);
+	assert.equal(res.status, 400);
+	const body = (await res.json()) as any;
+	assert.equal(body.reason, 'INVALID_OPERATION');
+});
+
+// ── Security: invitation token must not leak through the API ─────────
+
+test('toInvitationDTO: never exposes the accept token', async () => {
+	const { toInvitationDTO } = await import('../dtos/workspace');
+	const dto = toInvitationDTO({
+		id: 'inv-1',
+		workspaceId: 'ws-1',
+		email: 'a@b.com',
+		roleId: 'r-1',
+		token: 'super-secret-bearer-token',
+		pin: '123456',
+		status: 'PENDING',
+		expiresAt: new Date().toISOString(),
+		createdAt: new Date().toISOString(),
+	} as never);
+	assert.equal(dto.token, '', 'the accept token is a bearer credential for the invitee only');
+	assert.ok(!('pin' in dto), 'the pin never appears in the DTO');
+});

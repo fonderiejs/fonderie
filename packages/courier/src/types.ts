@@ -7,9 +7,17 @@ export type { ICourierMessage, IDefaultTemplate };
 // and the resolver falls back to it before the last-resort JSON dump.
 export type DefaultTemplateMap = Record<string, IDefaultTemplate>;
 
+// What a channel learned from the provider about a successful send. The
+// provider message id is what delivery webhooks key their updates on — a
+// channel that doesn't return it leaves delivery tracking permanently
+// 'sent' (the webhook UPDATE matches zero rows).
+export interface ISendResult {
+	providerMessageId?: string;
+}
+
 export interface ICourierChannel {
 	name: string;
-	send(message: ICourierMessage, template: IRenderedTemplate): Promise<void>;
+	send(message: ICourierMessage, template: IRenderedTemplate): Promise<ISendResult | void>;
 }
 
 export interface IRenderedTemplate {

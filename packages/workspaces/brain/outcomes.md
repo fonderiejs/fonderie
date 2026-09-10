@@ -90,7 +90,7 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | GET | `/workspaces/invitations` | `requireAuth → wsCtx → invitation.list` |
 | POST | `/workspaces/invitations` | `requireAuth → wsCtx → validate(createInvitationsSchema) → invitation.invite` |
 | DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → invitation.cancel` |
-| POST | `/workspaces/invitations/accept` | `requireAuth → validate(acceptInvitationSchema) → invitation.accept` |
+| POST | `/workspaces/invitations/accept` | `acceptLimit → requireAuth → validate(acceptInvitationSchema) → invitation.accept` |
 | GET | `/workspaces/members` | `requireAuth → wsCtx → member.list` |
 | DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → member.remove` |
 | GET | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → member.getUserRoles` |

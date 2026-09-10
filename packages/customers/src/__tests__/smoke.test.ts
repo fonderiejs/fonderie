@@ -472,3 +472,36 @@ test('CustomerAddressModel.remove: foreign addrId → returns false, base row un
 		'the shared fonderie_addresses row must NOT be deleted for a foreign id',
 	);
 });
+
+// ── Security: shared labels — no cross-tenant destruction ────────────
+// fonderie_customer_labels has NO workspace column (shared vocabulary), so an
+// unconditional DELETE by id let one tenant destroy a label other tenants'
+// records point at. Only an unreferenced label may be deleted.
+
+test('CustomerLabelModel.remove: refuses to delete a label still in use', async () => {
+	const { CustomerLabelModel } = await import('../models/customer-label.model');
+	let capturedSql = '';
+	const store = {
+		query: async (sql: string) => {
+			capturedSql = sql;
+			return []; // NOT EXISTS guards failed → nothing deleted
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+
+	const removed = await new CustomerLabelModel(store).remove('label-1');
+	assert.equal(removed, false);
+	assert.match(capturedSql, /NOT EXISTS/i, 'delete is guarded by reference checks');
+	assert.match(capturedSql, /fonderie_customer_emails/i);
+	assert.match(capturedSql, /fonderie_customer_phones/i);
+	assert.match(capturedSql, /fonderie_customer_addresses/i);
+});
+
+test('CustomerLabelModel.remove: deletes an unreferenced label', async () => {
+	const { CustomerLabelModel } = await import('../models/customer-label.model');
+	const store = {
+		query: async () => [{ id: 'label-1' }],
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	assert.equal(await new CustomerLabelModel(store).remove('label-1'), true);
+});
