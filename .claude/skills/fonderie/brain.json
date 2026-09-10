@@ -65,7 +65,7 @@
     "vue-webhooks-screens": "0.3.0",
     "vue-workspaces": "0.7.0",
     "vue-workspaces-screens": "0.4.0",
-    "webhooks": "5.2.3",
+    "webhooks": "5.3.0",
     "workspaces": "6.0.2"
   },
   "packages": {
@@ -1903,7 +1903,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "5.2.3",
+      "version": "5.3.0",
       "requires": [
         "core",
         "events",
