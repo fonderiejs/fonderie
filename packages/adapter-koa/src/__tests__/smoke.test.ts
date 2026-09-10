@@ -160,7 +160,7 @@ test('webResponseToKoa: writes status, headers, and body', async () => {
 
 	assert.equal(ctx.response.status, 202);
 	assert.equal(ctx.response.headers['x-trace'], 'abc');
-	assert.equal(ctx.response.body, '{"ok":true}');
+	assert.equal(ctx.response.body?.toString(), '{"ok":true}');
 });
 
 test('webResponseToKoa: forwards MULTIPLE Set-Cookie headers as a list', async () => {
@@ -298,7 +298,7 @@ test('mount: user route response is preserved — fonderie infra does not overwr
 		ctx.response.body = '{"mine":true}';   // user route handles request
 	});
 
-	assert.equal(ctx.response.body, '{"mine":true}');
+	assert.equal(ctx.response.body?.toString(), '{"mine":true}');
 });
 
 test('mount: fonderie.handle() called as fallback when no user route responds', async () => {
@@ -307,5 +307,27 @@ test('mount: fonderie.handle() called as fallback when no user route responds', 
 
 	await mw(ctx, async () => {});             // next() leaves ctx.body undefined
 
-	assert.equal(ctx.response.body, '{"from":"fonderie"}');
+	assert.equal(ctx.response.body?.toString(), '{"from":"fonderie"}');
+});
+
+// ── Audit-3 M3/M4: binary-faithful responses + no drained-stream hang ──
+test('webResponseToKoa: binary response bytes are preserved (not UTF-8 mangled)', async () => {
+	const bin = new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0x80, 0xfe]); // invalid UTF-8
+	const webRes = new Response(bin, { status: 200, headers: { 'content-type': 'image/jpeg' } });
+	const ctx = makeKoaCtx();
+	await webResponseToKoa(webRes, ctx as unknown as KoaContext);
+	assert.ok(Buffer.isBuffer(ctx.response.body), 'body is a Buffer');
+	assert.deepEqual([...(ctx.response.body as Buffer)], [...bin], 'bytes byte-faithful');
+});
+
+test('koaContextToWeb: does not hang when the request stream was already ended', async () => {
+	// Simulate an upstream parser that drained ctx.req without setting rawBody.
+	const ctx = makeKoaCtx({ method: 'POST' }) as any;
+	ctx.req.readableEnded = true;
+	// Would hang before the readableEnded guard; must resolve promptly to null body.
+	const webReq = await Promise.race([
+		koaContextToWeb(ctx as unknown as KoaContext),
+		new Promise<Request>((_r, rej) => setTimeout(() => rej(new Error('HANG')), 2000)),
+	]);
+	assert.equal(webReq.body, null);
 });

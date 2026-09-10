@@ -104,8 +104,10 @@ function readStream(req: IncomingMessage, maxBytes: number): Promise<ArrayBuffer
 			total += chunk.length;
 			// Backstop for chunked / missing / lying Content-Length: stop buffering
 			// the moment we cross the cap rather than reading the whole body.
+			// Reject WITHOUT destroying — the bridge writes the 413 first (a
+			// destroy here tears down the socket, so the client would see a reset
+			// instead of the 413).
 			if (total > maxBytes) {
-				req.destroy();
 				reject(new PayloadTooLargeError(`Request body exceeds the ${maxBytes}-byte limit`));
 				return;
 			}

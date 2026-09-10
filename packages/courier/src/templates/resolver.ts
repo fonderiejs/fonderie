@@ -13,6 +13,14 @@ const LAYOUT_TYPE = '_layout';
 // inject markup/links into platform-branded emails (phishing content with the
 // platform's own sender reputation). Text/subject parts stay raw: they are
 // not HTML contexts.
+//
+// SCOPE: this escaping is correct for element content and QUOTED attribute
+// values (it escapes & < > " '). It is NOT a URL/scheme sanitizer and does not
+// cover UNQUOTED attributes. A template must therefore never interpolate a
+// value into an unquoted attribute, and any `<a href="{{url}}">` link template
+// must validate the scheme itself (allow http/https only) — a `{{url}}` of
+// `javascript:…` passes this escaper unchanged. No shipped module template
+// interpolates into an attribute; this is a guardrail for app authors.
 function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, '&amp;')

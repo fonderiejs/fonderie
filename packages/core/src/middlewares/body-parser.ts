@@ -25,7 +25,7 @@ class PayloadTooLargeError extends Error {
 // high-water mark stalls the read forever. The caller re-materializes
 // ctx.request from the buffered text so downstream raw-body readers (e.g.
 // webhook signature verification) keep working.
-async function readTextCapped(req: Request, maxBytes: number): Promise<string | null> {
+async function readBytesCapped(req: Request, maxBytes: number): Promise<Uint8Array | null> {
 	const declared = Number(req.headers.get('content-length'));
 	if (Number.isFinite(declared) && declared > maxBytes) {
 		throw new PayloadTooLargeError();
@@ -53,7 +53,7 @@ async function readTextCapped(req: Request, maxBytes: number): Promise<string | 
 		merged.set(c, offset);
 		offset += c.byteLength;
 	}
-	return new TextDecoder().decode(merged);
+	return merged;
 }
 
 /**
@@ -85,22 +85,27 @@ export function bodyParser(maxBytes: number = DEFAULT_MAX_BODY_BYTES): Middlewar
 
 		try {
 			if (ct.includes('application/json') || ct.includes('application/x-www-form-urlencoded')) {
-				const raw = await readTextCapped(ctx.request, maxBytes);
+				const bytes = await readBytesCapped(ctx.request, maxBytes);
 				// The read consumed the original stream — re-materialize the request
-				// so handlers that need the RAW body (webhook signature checks)
-				// can still read it.
-				if (raw !== null) {
+				// with the ORIGINAL BYTES (not a re-encoded string) so a handler
+				// that reads the raw body for signature verification (Stripe /
+				// SendGrid webhooks) gets byte-identical input, even for payloads
+				// with a BOM or non-UTF-8 bytes.
+				if (bytes !== null) {
 					ctx.request = new Request(ctx.request.url, {
 						method: ctx.request.method,
 						headers: ctx.request.headers,
-						body: raw.length > 0 ? raw : null,
+						// Cast: a Uint8Array is a valid BodyInit at runtime; the lib's
+						// BodyInit union is narrower than Uint8Array<ArrayBufferLike>.
+						body: bytes.length > 0 ? (bytes as unknown as BodyInit) : null,
 					});
 				}
+				const text = bytes ? new TextDecoder().decode(bytes) : '';
 				if (ct.includes('application/json')) {
-					const text = raw?.trim() ?? '';
-					ctx.meta.body = text ? JSON.parse(text) : {};
+					const trimmed = text.trim();
+					ctx.meta.body = trimmed ? JSON.parse(trimmed) : {};
 				} else {
-					ctx.meta.body = Object.fromEntries(new URLSearchParams(raw ?? ''));
+					ctx.meta.body = Object.fromEntries(new URLSearchParams(text));
 				}
 			}
 			// multipart/form-data left to the handler — no dep-free way to parse it

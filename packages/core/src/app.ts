@@ -333,6 +333,15 @@ export class FonderieApp implements IFonderieApp {
 	// ─── The core handler ──────────────────────────────────
 	// This is the ONE thing every adapter calls.
 	// Takes a Web Standard Request, returns a Web Standard Response.
+	//
+	// NOTE (known limitation): adapters call buildContext() to populate their
+	// native context (running the global middleware stack) AND then call
+	// handle() for requests that fall through to fonderie's own routes — so for
+	// those fonderie-routed requests the global stack runs TWICE. bodyParser /
+	// security-headers are idempotent, but `withMetrics` double-counts and a
+	// user-added `.use()` rate-limiter consumes two tokens per request (stricter,
+	// never a bypass). Deduplicating this without changing the handle(Request)
+	// contract is a deliberate follow-up.
 
 	async handle(request: Request): Promise<Response> {
 		const ctx: IFonderieContext = {

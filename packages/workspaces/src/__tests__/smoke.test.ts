@@ -1021,6 +1021,10 @@ test('invitation.accept: token path admits accounts without an email', async () 
 			if (sql.includes('WHERE token = $1')) {
 				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'r-1', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
 			}
+			// accept-time role re-check: r-1 is an assignable workspace-local role
+			if (sql.includes('FROM fonderie_roles') && sql.includes("name = 'GUEST'")) {
+				return [{ id: 'r-1' }];
+			}
 			return [];
 		},
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
@@ -1030,6 +1034,19 @@ test('invitation.accept: token path admits accounts without an email', async () 
 		makeCtx({ user: { id: 'u-phone', email: null as never }, body: { token: 'a'.repeat(64) } }),
 	);
 	assert.equal(res.status, 200);
+});
+
+test('acceptInvitationByToken: refuses a role that is no longer assignable (system ADMIN / foreign)', async () => {
+	const { acceptInvitationByToken } = await import('../services/invitations');
+	const store = {
+		query: async (sql: string) => {
+			if (sql.includes('WHERE token = $1'))
+				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'sys-admin', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
+			return []; // role re-check finds nothing assignable
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	await assert.rejects(acceptInvitationByToken('a'.repeat(64), 'u-1', store), /no longer assignable/);
 });
 
 test('invitation.accept: PIN without an account email → 400, not a global redeem', async () => {
