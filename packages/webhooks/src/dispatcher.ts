@@ -8,6 +8,40 @@ import { DeliveryModel } from './models/delivery.model';
 import { signPayload } from './signing';
 import { assertPublicHttpUrl } from './ssrf';
 
+// Cap on the delivery response body we buffer AND store per attempt. The
+// receiving endpoint is caller-controlled: without a cap it can return
+// arbitrarily large bodies that we'd hold in memory and persist on every
+// delivery + retry (memory pressure + unbounded fonderie_webhook_deliveries
+// growth). 4 KiB is plenty for the diagnostic purpose the field serves.
+const MAX_RESPONSE_BODY_BYTES = 4 * 1024;
+
+async function readBodyCapped(res: Response): Promise<string> {
+	if (!res.body) return '';
+	const reader = res.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		const room = MAX_RESPONSE_BODY_BYTES - total;
+		if (value.byteLength >= room) {
+			chunks.push(value.slice(0, room));
+			total += room;
+			await reader.cancel().catch(() => undefined);
+			break;
+		}
+		chunks.push(value);
+		total += value.byteLength;
+	}
+	const merged = new Uint8Array(total);
+	let offset = 0;
+	for (const c of chunks) {
+		merged.set(c, offset);
+		offset += c.byteLength;
+	}
+	return new TextDecoder().decode(merged);
+}
+
 export class WebhookDispatcher {
 	private readonly maxAttempts: number;
 	private readonly retryDelays: number[];
@@ -95,7 +129,7 @@ export class WebhookDispatcher {
 				signal: AbortSignal.timeout(10_000),
 			});
 
-			const responseBody = await res.text().catch(() => '');
+			const responseBody = await readBodyCapped(res).catch(() => '');
 
 			await deliveries.markResult(delivery.id, {
 				ok: res.ok,

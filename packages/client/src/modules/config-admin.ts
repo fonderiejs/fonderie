@@ -73,7 +73,7 @@ export class ConfigAdminClient {
 	getConfig(key: string, environment?: string) {
 		return this.http.request<IApiResponse<IConfigEntry>>({
 			method: 'GET',
-			path: `/admin/config/${key}${envQuery(environment)}`,
+			path: `/admin/config/${encodeURIComponent(key)}${envQuery(environment)}`,
 			token: this.adminToken,
 		});
 	}
@@ -81,7 +81,7 @@ export class ConfigAdminClient {
 	setConfig(key: string, input: ISetConfigInput, environment?: string) {
 		return this.http.request<IApiResponse<IConfigEntry>>({
 			method: 'PUT',
-			path: `/admin/config/${key}${envQuery(environment)}`,
+			path: `/admin/config/${encodeURIComponent(key)}${envQuery(environment)}`,
 			body: input,
 			token: this.adminToken,
 			headers: this.actorHeaders,
@@ -91,7 +91,7 @@ export class ConfigAdminClient {
 	deleteConfig(key: string, environment?: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/admin/config/${key}${envQuery(environment)}`,
+			path: `/admin/config/${encodeURIComponent(key)}${envQuery(environment)}`,
 			token: this.adminToken,
 			headers: this.actorHeaders,
 		});
@@ -100,7 +100,7 @@ export class ConfigAdminClient {
 	listConfigRevisions(key: string, environment?: string) {
 		return this.http.request<IApiResponse<IConfigRevision[]>>({
 			method: 'GET',
-			path: `/admin/config/${key}/revisions${envQuery(environment)}`,
+			path: `/admin/config/${encodeURIComponent(key)}/revisions${envQuery(environment)}`,
 			token: this.adminToken,
 		});
 	}
@@ -108,7 +108,7 @@ export class ConfigAdminClient {
 	rollbackConfig(key: string, input: IRollbackInput, environment?: string) {
 		return this.http.request<IApiResponse<IConfigEntry>>({
 			method: 'POST',
-			path: `/admin/config/${key}/rollback${envQuery(environment)}`,
+			path: `/admin/config/${encodeURIComponent(key)}/rollback${envQuery(environment)}`,
 			body: input,
 			token: this.adminToken,
 			headers: this.actorHeaders,
@@ -128,7 +128,7 @@ export class ConfigAdminClient {
 	getSecret(key: string, environment?: string) {
 		return this.http.request<IApiResponse<ISecretEntry>>({
 			method: 'GET',
-			path: `/admin/secrets/${key}${envQuery(environment)}`,
+			path: `/admin/secrets/${encodeURIComponent(key)}${envQuery(environment)}`,
 			token: this.adminToken,
 		});
 	}
@@ -136,7 +136,7 @@ export class ConfigAdminClient {
 	setSecret(key: string, input: ISetSecretInput, environment?: string) {
 		return this.http.request<IApiResponse<ISecretEntry>>({
 			method: 'PUT',
-			path: `/admin/secrets/${key}${envQuery(environment)}`,
+			path: `/admin/secrets/${encodeURIComponent(key)}${envQuery(environment)}`,
 			body: input,
 			token: this.adminToken,
 			headers: this.actorHeaders,
@@ -146,7 +146,7 @@ export class ConfigAdminClient {
 	deleteSecret(key: string, environment?: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/admin/secrets/${key}${envQuery(environment)}`,
+			path: `/admin/secrets/${encodeURIComponent(key)}${envQuery(environment)}`,
 			token: this.adminToken,
 			headers: this.actorHeaders,
 		});
@@ -155,7 +155,7 @@ export class ConfigAdminClient {
 	listSecretRevisions(key: string, environment?: string) {
 		return this.http.request<IApiResponse<ISecretRevision[]>>({
 			method: 'GET',
-			path: `/admin/secrets/${key}/revisions${envQuery(environment)}`,
+			path: `/admin/secrets/${encodeURIComponent(key)}/revisions${envQuery(environment)}`,
 			token: this.adminToken,
 		});
 	}
@@ -163,7 +163,7 @@ export class ConfigAdminClient {
 	rollbackSecret(key: string, input: IRollbackInput, environment?: string) {
 		return this.http.request<IApiResponse<ISecretEntry>>({
 			method: 'POST',
-			path: `/admin/secrets/${key}/rollback${envQuery(environment)}`,
+			path: `/admin/secrets/${encodeURIComponent(key)}/rollback${envQuery(environment)}`,
 			body: input,
 			token: this.adminToken,
 			headers: this.actorHeaders,
@@ -174,7 +174,7 @@ export class ConfigAdminClient {
 	revealSecret(key: string, environment?: string) {
 		return this.http.request<IApiResponse<IRevealSecretResult>>({
 			method: 'POST',
-			path: `/admin/secrets/${key}/reveal${envQuery(environment)}`,
+			path: `/admin/secrets/${encodeURIComponent(key)}/reveal${envQuery(environment)}`,
 			token: this.adminToken,
 			headers: this.actorHeaders,
 		});

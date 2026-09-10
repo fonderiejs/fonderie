@@ -21,10 +21,14 @@ export function withCors(options: CorsOptions = {}): Middleware {
 
 		const corsHeaders: Record<string, string> = {
 			'Access-Control-Max-Age': '86400',
-			'Access-Control-Allow-Origin': allowOrigin,
 			'Access-Control-Allow-Methods': methods.join(', '),
 			'Access-Control-Allow-Headers': headers.join(', '),
 		};
+		// Omit the header entirely for a denied origin (an empty ACAO value is
+		// invalid); when the value varies by request origin, say so — otherwise a
+		// shared cache can serve one origin's ACAO to another.
+		if (allowOrigin) corsHeaders['Access-Control-Allow-Origin'] = allowOrigin;
+		if (typeof origin === 'function') corsHeaders['Vary'] = 'Origin';
 
 		// Preflight — respond immediately, skip the pipeline
 		if (ctx.request.method === 'OPTIONS') {

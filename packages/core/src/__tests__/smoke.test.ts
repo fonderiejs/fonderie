@@ -688,3 +688,101 @@ test('metrics: /metrics is 404 when disabled', async () => {
 	const res = await app.handle(makeRequest('GET', '/metrics'));
 	assert.equal(res.status, 404);
 });
+
+// ── Security: body cap lives in the PARSER (every adapter inherits it) ──
+// The 5 MiB cap was previously only in listen()'s transport, so adapters
+// whose bridge runs handle()/buildContext() directly (e.g. adapter-hono)
+// buffered unbounded bodies. The cap now sits in bodyParser itself.
+
+test('handle(): oversize body is rejected 413 by the parser, no transport needed', async () => {
+	const app = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 1024 }),
+	);
+	app.addRoute('POST', '/echo', async (ctx) => Response.json({ got: ctx.meta['body'] }));
+	await app.boot();
+
+	const over = await app.handle(
+		new Request('http://localhost/echo', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pad: 'x'.repeat(4096) }),
+		}),
+	);
+	assert.equal(over.status, 413);
+	assert.equal(((await over.json()) as any).reason, 'PAYLOAD_TOO_LARGE');
+
+	const ok = await app.handle(
+		new Request('http://localhost/echo', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ n: 7 }),
+		}),
+	);
+	assert.equal(ok.status, 200);
+});
+
+// ── Security: hostile request lines must not crash the process (H2) ──
+
+test('listen(): TRACE and absolute-form targets get 400, server survives', async () => {
+	const { request: httpRequest } = await import('node:http');
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	app.addRoute('GET', '/ping', async () => Response.json({ pong: true }));
+	await app.boot();
+	const server = app.listen(0, { quiet: true });
+	await new Promise((r) => (server.listening ? r(undefined) : server.once('listening', r)));
+	try {
+		const { port } = server.address() as { port: number };
+		// TRACE: undici's Request constructor throws on forbidden methods.
+		const traceStatus = await new Promise<number>((resolve, reject) => {
+			const r = httpRequest({ host: '127.0.0.1', port, method: 'TRACE', path: '/' }, (res) => {
+				res.resume();
+				resolve(res.statusCode ?? 0);
+			});
+			r.on('error', reject);
+			r.end();
+		});
+		assert.equal(traceStatus, 400, 'TRACE answered, not crashed');
+		// Absolute-form request-target: makes the synthesized URL invalid.
+		const absStatus = await new Promise<number>((resolve, reject) => {
+			const r = httpRequest({ host: '127.0.0.1', port, method: 'GET', path: 'http://evil.example/' }, (res) => {
+				res.resume();
+				resolve(res.statusCode ?? 0);
+			});
+			r.on('error', reject);
+			r.end();
+		});
+		assert.equal(absStatus, 400, 'absolute-form answered, not crashed');
+		// …and the server still serves normal traffic afterward.
+		const ok = await fetch(`http://127.0.0.1:${port}/ping`);
+		assert.equal(ok.status, 200, 'server alive after hostile requests');
+	} finally {
+		await new Promise((r) => server.close(() => r(undefined)));
+	}
+});
+
+// ── Security: /readyz posture details hidden in production (M2) ──
+
+test('/readyz: problems list omitted in production unless opted in', async () => {
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		const app = new FonderieApp(
+			defineConfig({ db: { url: 'postgres://localhost/test' }, skipProductionReadinessGate: true }),
+		);
+		app.register({
+			name: 'leaky',
+			install() {},
+			checkReadiness: () => [
+				{ module: 'leaky', severity: 'warning' as const, message: 'adminToken looks like a placeholder' },
+			],
+		});
+		await app.boot();
+		const res = await app.handle(new Request('http://localhost/readyz'));
+		const body = (await res.json()) as any;
+		assert.equal(body.problems, undefined, 'no posture details in production');
+		assert.ok(typeof body.status === 'string');
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
+	}
+});

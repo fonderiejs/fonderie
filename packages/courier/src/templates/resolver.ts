@@ -7,10 +7,31 @@ import { wrapLayout } from './layout';
 // FS file `_layout.html`). Absent → the built-in DEFAULT_EMAIL_LAYOUT is used.
 const LAYOUT_TYPE = '_layout';
 
-function render(template: string, data: Record<string, unknown>): string {
+// HTML-entity-escape interpolated VALUES in html templates. Template markup
+// itself is trusted (authored by the app/module); the DATA is not — e.g.
+// {{firstName}} is registration-controlled, and unescaped it lets a user
+// inject markup/links into platform-branded emails (phishing content with the
+// platform's own sender reputation). Text/subject parts stay raw: they are
+// not HTML contexts.
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function render(
+	template: string,
+	data: Record<string, unknown>,
+	opts: { escapeHtml?: boolean } = {},
+): string {
 	return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
 		const value = data[key];
-		return value !== undefined && value !== null ? String(value) : '';
+		if (value === undefined || value === null) return '';
+		const s = String(value);
+		return opts.escapeHtml ? escapeHtml(s) : s;
 	});
 }
 
@@ -24,7 +45,7 @@ function composeHtml(
 	data: Record<string, unknown>,
 ): string {
 	const wrapped = wrapLayout(bodyHtml, layoutHtml);
-	return render(wrapped, { subject: subject ?? '', preheader: '', ...data });
+	return render(wrapped, { subject: subject ?? '', preheader: '', ...data }, { escapeHtml: true });
 }
 
 // Render a resolved fragment — a DB row, an FS file set, or a MODULE DEFAULT —

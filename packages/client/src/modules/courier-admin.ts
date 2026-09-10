@@ -56,7 +56,7 @@ export class CourierAdminClient {
 		const q = locale ? `?locale=${encodeURIComponent(locale)}` : '';
 		return this.http.request<IApiResponse<ITemplateEntry>>({
 			method: 'GET',
-			path: `/admin/templates/${type}${q}`,
+			path: `/admin/templates/${encodeURIComponent(type)}${q}`,
 			token: this.adminToken,
 		});
 	}
@@ -65,7 +65,7 @@ export class CourierAdminClient {
 		const q = locale ? `?locale=${encodeURIComponent(locale)}` : '';
 		return this.http.request<IApiResponse<ITemplateEntry>>({
 			method: 'PUT',
-			path: `/admin/templates/${type}${q}`,
+			path: `/admin/templates/${encodeURIComponent(type)}${q}`,
 			body: input,
 			token: this.adminToken,
 			headers: this.actorHeaders,
@@ -76,7 +76,7 @@ export class CourierAdminClient {
 		const q = locale ? `?locale=${encodeURIComponent(locale)}` : '';
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/admin/templates/${type}${q}`,
+			path: `/admin/templates/${encodeURIComponent(type)}${q}`,
 			token: this.adminToken,
 			headers: this.actorHeaders,
 		});
@@ -86,7 +86,7 @@ export class CourierAdminClient {
 		const q = locale ? `?locale=${encodeURIComponent(locale)}` : '';
 		return this.http.request<IApiResponse<ITemplateRevision[]>>({
 			method: 'GET',
-			path: `/admin/templates/${type}/revisions${q}`,
+			path: `/admin/templates/${encodeURIComponent(type)}/revisions${q}`,
 			token: this.adminToken,
 		});
 	}
@@ -95,7 +95,7 @@ export class CourierAdminClient {
 		const q = locale ? `?locale=${encodeURIComponent(locale)}` : '';
 		return this.http.request<IApiResponse<ITemplateEntry>>({
 			method: 'POST',
-			path: `/admin/templates/${type}/rollback${q}`,
+			path: `/admin/templates/${encodeURIComponent(type)}/rollback${q}`,
 			body: input,
 			token: this.adminToken,
 			headers: this.actorHeaders,

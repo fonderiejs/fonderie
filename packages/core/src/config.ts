@@ -53,6 +53,11 @@ export interface FonderieConfig {
 	// Optional dependency probe for /readyz — e.g. `() => store.testConnection()`.
 	// Throwing or returning false makes /readyz report 503.
 	readyProbe?: () => boolean | Promise<boolean>;
+	// /readyz's `problems` list names weak secrets and placeholder tokens — a
+	// security-posture map — so in production it is omitted unless this is
+	// explicitly true. Probes only need the status code. Non-production always
+	// includes details.
+	exposeReadyzDetails?: boolean;
 
 	// Enable Prometheus-format metrics: counts requests by status class and
 	// serves them at GET /metrics (unprefixed). Off by default. Access to

@@ -5,7 +5,7 @@
 ## @fonderie/adapter-hono
 
 ```ts
-function bridge(fonderie: FonderieApp): MiddlewareHandler
+function bridge(fonderie: FonderieApp, options?: IBridgeOptions): MiddlewareHandler
 
 function adapt(middleware: Middleware): MiddlewareHandler
 
@@ -22,6 +22,10 @@ const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly U
 type FonderieVariables = {
     _fonderie: IFonderieContext;
 };
+
+interface IBridgeOptions {
+    ipHeader?: string;
+}
 
 function requireAuth(c: Context<any, string, {}>, next: Next): Promise<void | Response>
 ```

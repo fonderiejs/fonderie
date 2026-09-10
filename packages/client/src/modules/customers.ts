@@ -145,7 +145,7 @@ export class CustomersClient {
 		const qs = input.depth === 1 ? '?depth=1' : '';
 		return this.http.request<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>({
 			method: 'GET',
-			path: `/customers/${customerId}${qs}`,
+			path: `/customers/${encodeURIComponent(customerId)}${qs}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -155,7 +155,7 @@ export class CustomersClient {
 	updateCustomer(customerId: string, input: IUpdateCustomerInput) {
 		return this.http.request<IApiResponse<ICustomerResult>>({
 			method: 'PUT',
-			path: `/customers/${customerId}`,
+			path: `/customers/${encodeURIComponent(customerId)}`,
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -165,7 +165,7 @@ export class CustomersClient {
 	deleteCustomer(customerId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/customers/${customerId}`,
+			path: `/customers/${encodeURIComponent(customerId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -174,7 +174,7 @@ export class CustomersClient {
 	blacklistCustomer(customerId: string, input: IBlacklistCustomerInput = {}) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path: `/customers/${customerId}/blacklist`,
+			path: `/customers/${encodeURIComponent(customerId)}/blacklist`,
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -184,7 +184,7 @@ export class CustomersClient {
 	unblacklistCustomer(customerId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path: `/customers/${customerId}/unblacklist`,
+			path: `/customers/${encodeURIComponent(customerId)}/unblacklist`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -195,7 +195,7 @@ export class CustomersClient {
 	listEmails(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerEmailListResult>>({
 			method: 'GET',
-			path: `/customers/${customerId}/emails`,
+			path: `/customers/${encodeURIComponent(customerId)}/emails`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -205,7 +205,7 @@ export class CustomersClient {
 	addEmail(customerId: string, input: IAddEmailInput) {
 		return this.http.request<IApiResponse<ICustomerEmailResult>>({
 			method: 'POST',
-			path: `/customers/${customerId}/emails`,
+			path: `/customers/${encodeURIComponent(customerId)}/emails`,
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -217,7 +217,7 @@ export class CustomersClient {
 	updateEmailLabel(customerId: string, emailId: string, label: string) {
 		return this.http.request<IApiResponse<ICustomerEmailResult>>({
 			method: 'PATCH',
-			path: `/customers/${customerId}/emails/${emailId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/emails/${encodeURIComponent(emailId)}`,
 			body: { label },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -227,7 +227,7 @@ export class CustomersClient {
 	setPrimaryEmail(customerId: string, emailId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'PUT',
-			path: `/customers/${customerId}/emails/${emailId}/primary`,
+			path: `/customers/${encodeURIComponent(customerId)}/emails/${encodeURIComponent(emailId)}/primary`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -236,7 +236,7 @@ export class CustomersClient {
 	removeEmail(customerId: string, emailId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/customers/${customerId}/emails/${emailId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/emails/${encodeURIComponent(emailId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -247,7 +247,7 @@ export class CustomersClient {
 	listPhones(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerPhoneListResult>>({
 			method: 'GET',
-			path: `/customers/${customerId}/phones`,
+			path: `/customers/${encodeURIComponent(customerId)}/phones`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -257,7 +257,7 @@ export class CustomersClient {
 	addPhone(customerId: string, input: IAddPhoneInput) {
 		return this.http.request<IApiResponse<ICustomerPhoneResult>>({
 			method: 'POST',
-			path: `/customers/${customerId}/phones`,
+			path: `/customers/${encodeURIComponent(customerId)}/phones`,
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -268,7 +268,7 @@ export class CustomersClient {
 	updatePhoneLabel(customerId: string, phoneId: string, label: string) {
 		return this.http.request<IApiResponse<ICustomerPhoneResult>>({
 			method: 'PATCH',
-			path: `/customers/${customerId}/phones/${phoneId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/phones/${encodeURIComponent(phoneId)}`,
 			body: { label },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -278,7 +278,7 @@ export class CustomersClient {
 	setPrimaryPhone(customerId: string, phoneId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'PUT',
-			path: `/customers/${customerId}/phones/${phoneId}/primary`,
+			path: `/customers/${encodeURIComponent(customerId)}/phones/${encodeURIComponent(phoneId)}/primary`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -287,7 +287,7 @@ export class CustomersClient {
 	removePhone(customerId: string, phoneId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/customers/${customerId}/phones/${phoneId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/phones/${encodeURIComponent(phoneId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -298,7 +298,7 @@ export class CustomersClient {
 	listAddresses(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerAddressListResult>>({
 			method: 'GET',
-			path: `/customers/${customerId}/addresses`,
+			path: `/customers/${encodeURIComponent(customerId)}/addresses`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -308,7 +308,7 @@ export class CustomersClient {
 	addAddress(customerId: string, input: IAddAddressInput) {
 		return this.http.request<IApiResponse<ICustomerAddressResult>>({
 			method: 'POST',
-			path: `/customers/${customerId}/addresses`,
+			path: `/customers/${encodeURIComponent(customerId)}/addresses`,
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -319,7 +319,7 @@ export class CustomersClient {
 	updateAddressLabel(customerId: string, addrId: string, label: string) {
 		return this.http.request<IApiResponse<ICustomerAddressResult>>({
 			method: 'PATCH',
-			path: `/customers/${customerId}/addresses/${addrId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/addresses/${encodeURIComponent(addrId)}`,
 			body: { label },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -329,7 +329,7 @@ export class CustomersClient {
 	setPrimaryAddress(customerId: string, addrId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'PUT',
-			path: `/customers/${customerId}/addresses/${addrId}/primary`,
+			path: `/customers/${encodeURIComponent(customerId)}/addresses/${encodeURIComponent(addrId)}/primary`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -338,7 +338,7 @@ export class CustomersClient {
 	removeAddress(customerId: string, addrId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/customers/${customerId}/addresses/${addrId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/addresses/${encodeURIComponent(addrId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -349,7 +349,7 @@ export class CustomersClient {
 	listNotes(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerNoteListResult>>({
 			method: 'GET',
-			path: `/customers/${customerId}/notes`,
+			path: `/customers/${encodeURIComponent(customerId)}/notes`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -359,7 +359,7 @@ export class CustomersClient {
 	createNote(customerId: string, body: string) {
 		return this.http.request<IApiResponse<ICustomerNoteResult>>({
 			method: 'POST',
-			path: `/customers/${customerId}/notes`,
+			path: `/customers/${encodeURIComponent(customerId)}/notes`,
 			body: { body },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -369,7 +369,7 @@ export class CustomersClient {
 	updateNote(customerId: string, noteId: string, body: string) {
 		return this.http.request<IApiResponse<ICustomerNoteResult>>({
 			method: 'PUT',
-			path: `/customers/${customerId}/notes/${noteId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/notes/${encodeURIComponent(noteId)}`,
 			body: { body },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -379,7 +379,7 @@ export class CustomersClient {
 	deleteNote(customerId: string, noteId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/customers/${customerId}/notes/${noteId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/notes/${encodeURIComponent(noteId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -390,7 +390,7 @@ export class CustomersClient {
 	listTags(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerTagListResult>>({
 			method: 'GET',
-			path: `/customers/${customerId}/tags`,
+			path: `/customers/${encodeURIComponent(customerId)}/tags`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -400,7 +400,7 @@ export class CustomersClient {
 	addTag(customerId: string, tag: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'POST',
-			path: `/customers/${customerId}/tags`,
+			path: `/customers/${encodeURIComponent(customerId)}/tags`,
 			body: { tag },
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -421,7 +421,7 @@ export class CustomersClient {
 	listRelationships(customerId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerRelationshipListResult>>({
 			method: 'GET',
-			path: `/customers/${customerId}/relationships`,
+			path: `/customers/${encodeURIComponent(customerId)}/relationships`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -431,7 +431,7 @@ export class CustomersClient {
 	addRelationship(customerId: string, input: IAddRelationshipInput) {
 		return this.http.request<IApiResponse<ICustomerRelationshipResult>>({
 			method: 'POST',
-			path: `/customers/${customerId}/relationships`,
+			path: `/customers/${encodeURIComponent(customerId)}/relationships`,
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -441,7 +441,7 @@ export class CustomersClient {
 	setPrimaryRelationship(customerId: string, relatedId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'PUT',
-			path: `/customers/${customerId}/relationships/${relatedId}/primary`,
+			path: `/customers/${encodeURIComponent(customerId)}/relationships/${encodeURIComponent(relatedId)}/primary`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -450,7 +450,7 @@ export class CustomersClient {
 	removeRelationship(customerId: string, relatedId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/customers/${customerId}/relationships/${relatedId}`,
+			path: `/customers/${encodeURIComponent(customerId)}/relationships/${encodeURIComponent(relatedId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -465,7 +465,7 @@ export class CustomersClient {
 	listLabels(type: CustomerLabelType, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<ICustomerLabelListResult>>({
 			method: 'GET',
-			path: `/customers/labels?type=${type}`,
+			path: `/customers/labels?type=${encodeURIComponent(type)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -475,7 +475,7 @@ export class CustomersClient {
 	removeLabel(labelId: string) {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
-			path: `/customers/labels/${labelId}`,
+			path: `/customers/labels/${encodeURIComponent(labelId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

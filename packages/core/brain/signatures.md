@@ -161,6 +161,7 @@ interface FonderieConfig {
     skipProductionReadinessGate?: boolean;
     healthChecks?: boolean;
     readyProbe?: () => boolean | Promise<boolean>;
+    exposeReadyzDetails?: boolean;
     metrics?: boolean;
     maxBodyBytes?: number;
     onError?: (err: unknown) => Response;
@@ -200,7 +201,7 @@ interface IApiError {
 
 type HttpStatus = (typeof HTTP)[keyof typeof HTTP];
 
-const HTTP: { readonly OK: 200; readonly CREATED: 201; readonly ACCEPTED: 202; readonly NO_CONTENT: 204; readonly BAD_REQUEST: 400; readonly UNAUTHORIZED: 401; readonly PAYMENT_REQUIRED: 402; readonly FORBIDDEN: 403; readonly NOT_FOUND: 404; readonly CONFLICT: 409; readonly GONE: 410; readonly UNPROCESSABLE: 422; readonly TOO_MANY_REQUESTS: 429; readonly SERVER_ERROR: 500; readonly NOT_IMPLEMENTED: 501; readonly BAD_GATEWAY: 502; readonly SERVICE_UNAVAILABLE: 503; }
+const HTTP: { readonly OK: 200; readonly CREATED: 201; readonly ACCEPTED: 202; readonly NO_CONTENT: 204; readonly BAD_REQUEST: 400; readonly UNAUTHORIZED: 401; readonly PAYMENT_REQUIRED: 402; readonly FORBIDDEN: 403; readonly NOT_FOUND: 404; readonly CONFLICT: 409; readonly GONE: 410; readonly PAYLOAD_TOO_LARGE: 413; readonly UNPROCESSABLE: 422; readonly TOO_MANY_REQUESTS: 429; readonly SERVER_ERROR: 500; readonly NOT_IMPLEMENTED: 501; readonly BAD_GATEWAY: 502; readonly SERVICE_UNAVAILABLE: 503; }
 
 function setApiResponse<T>(status: number, reason: string, explanation: string, payload?: T | undefined): Response
 

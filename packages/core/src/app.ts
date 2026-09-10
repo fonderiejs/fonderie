@@ -14,16 +14,14 @@ import type { FonderieConfig } from './config';
 import { Router, routerMiddleware } from './router';
 import { compose } from './compose';
 import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
-import { withBody } from './middlewares/body-parser';
+import { bodyParser, DEFAULT_MAX_BODY_BYTES } from './middlewares/body-parser';
 import { withSecurityHeaders } from './middlewares/security-headers';
 import { MetricsRegistry, withMetrics } from './metrics';
 
-/**
- * Default cap on the request body the built-in `listen()` server will buffer,
- * in bytes (5 MiB) — same default as the adapter packages. Override per app
- * via `config.maxBodyBytes`.
- */
-export const DEFAULT_MAX_BODY_BYTES = 5 * 1024 * 1024;
+// Re-exported from the body parser, which is where the cap is actually
+// enforced (so every adapter's buildContext()/handle() inherits it — not
+// just listen()'s transport). Kept here for import-path compatibility.
+export { DEFAULT_MAX_BODY_BYTES };
 
 class PayloadTooLargeError extends Error {
 	readonly fonderiePayloadTooLarge = true as const;
@@ -46,9 +44,10 @@ export class FonderieApp implements IFonderieApp {
 	constructor(config: FonderieConfig) {
 		this.config = config;
 		this.prefix = (config.basePath ?? '').replace(/\/$/, '');
-		// Body parsing first, then baseline security headers (nosniff always; HSTS
-		// over HTTPS). Apps can layer more via `.use()`.
-		this.middlewares = [withBody, withSecurityHeaders()];
+		// Body parsing first (capped at config.maxBodyBytes — the cap lives in
+		// the parser so every adapter inherits it), then baseline security
+		// headers (nosniff always; HSTS over HTTPS). Apps can layer more via `.use()`.
+		this.middlewares = [bodyParser(config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES), withSecurityHeaders()];
 		if (config.metrics) this.middlewares.push(withMetrics(this.metrics));
 	}
 
@@ -71,6 +70,12 @@ export class FonderieApp implements IFonderieApp {
 		const maxBodyBytes = this.config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
 
 		const server = createServer(async (req, res) => {
+			// The whole callback is guarded below (see the catch at the bottom): an
+			// exception ANYWHERE here — e.g. `new Request()` throwing on a
+			// fetch-spec-forbidden method like TRACE, or an absolute-form
+			// request-target producing an invalid URL — would otherwise be an
+			// unhandled rejection and crash the PROCESS on a single request.
+			try {
 			const host = req.headers.host ?? 'localhost';
 			const url = `http://${host}${req.url ?? '/'}`;
 			const headers = new Headers();
@@ -95,8 +100,10 @@ export class FonderieApp implements IFonderieApp {
 			// Fast path: reject a declared-oversize body before reading a byte.
 			const declared = Number(req.headers['content-length']);
 			if (hasBody && Number.isFinite(declared) && declared > maxBodyBytes) {
+				// Answer FIRST, then drop the connection — destroying before the
+				// write means the client sees a reset instead of the 413.
 				payloadTooLarge(res);
-				req.destroy();
+				res.once('close', () => req.destroy());
 				return;
 			}
 
@@ -146,6 +153,20 @@ export class FonderieApp implements IFonderieApp {
 				if (k.toLowerCase() !== 'set-cookie') res.setHeader(k, v);
 			});
 			res.end(Buffer.from(await response.arrayBuffer()));
+			} catch (err) {
+				// Malformed/hostile request (TRACE, absolute-form target, bad
+				// headers): answer 400 and keep the process alive.
+				console.error('[fonderie] request handling failed:', (err as Error)?.message);
+				try {
+					if (!res.headersSent) {
+						res.statusCode = 400;
+						res.setHeader('content-type', 'application/json');
+					}
+					res.end(JSON.stringify({ reason: 'BAD_REQUEST', explanation: 'Malformed request' }));
+				} catch {
+					req.destroy();
+				}
+			}
 		}).listen(port, () => {
 			if (quiet) return;
 			const ip = getLocalIPv4();
@@ -238,8 +259,18 @@ export class FonderieApp implements IFonderieApp {
 						}
 					}
 					const ready = report.ok && dependencies;
+					// The problems list names weak secrets, placeholder tokens, and
+					// dependency state — a security-posture map. It is only exposed
+					// outside production (or with an explicit opt-in); the probe
+					// consumer (k8s, LB) needs nothing beyond the status code.
+					const exposeDetails =
+						process.env['NODE_ENV'] !== 'production' || this.config.exposeReadyzDetails === true;
 					return Response.json(
-						{ status: ready ? 'ready' : 'not_ready', dependencies, problems: report.problems },
+						{
+							status: ready ? 'ready' : 'not_ready',
+							dependencies,
+							...(exposeDetails ? { problems: report.problems } : {}),
+						},
 						{ status: ready ? 200 : 503 },
 					);
 				},

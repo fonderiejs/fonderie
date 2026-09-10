@@ -582,6 +582,9 @@ test('invite: emits NOTIFICATION_EVENT with workspaceInvitation payload', async 
 
 	const invStore: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// r-1 is an assignable (workspace-local, non-system) role
+			if (sql.includes('is_system = false') && sql.includes('ANY($1)'))
+				return [{ id: 'r-1' }] as unknown as T[];
 			if (sql.includes('fonderie_workspace_invitations'))
 				return [FAKE_INVITATION] as unknown as T[];
 			return [] as T[];
@@ -1197,4 +1200,53 @@ test('requireManager: managerRoles config overrides the accepted names', async (
 	);
 	assert.ok(called);
 	assert.deepEqual(params[2], ['ADMIN', 'SUPERVISOR']);
+});
+
+// ── Security: invitation roleId must obey the assignment rules (audit №2 M1) ──
+// An explicit roleId flowed unvalidated into the membership INSERT on accept,
+// bypassing addRoleToMember's workspace-local + non-system rule.
+
+test('invitation.invite: 422 INVALID_ROLE for a system or foreign roleId', async () => {
+	const { invitationController } = await import('../controllers/invitation.controller');
+	const store = {
+		query: async (sql: string) => {
+			// validation query finds no assignable row for the requested id
+			if (sql.includes('is_system = false') && sql.includes('ANY($1)')) return [];
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	const ctrl = invitationController(store, '7d');
+	const res = await ctrl.invite(
+		makeCtx({
+			workspace: WS,
+			user: { id: 'user-1', email: 'a@b.com' },
+			body: { email: 'x@y.com', roleId: 'role-system-admin' },
+		}),
+	);
+	assert.equal(res.status, 422);
+	const body = (await res.json()) as any;
+	assert.equal(body.reason, 'INVALID_ROLE');
+});
+
+test('invitation.invite: a workspace-local non-system roleId passes validation', async () => {
+	const { invitationController } = await import('../controllers/invitation.controller');
+	const store = {
+		query: async (sql: string, params?: unknown[]) => {
+			if (sql.includes('is_system = false') && sql.includes('ANY($1)')) return [{ id: 'r-local' }];
+			if (sql.includes('INSERT INTO fonderie_workspace_invitations'))
+				return [{ id: 'inv-1', token: 't', pin: '123456' }];
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	const ctrl = invitationController(store, '7d');
+	const res = await ctrl.invite(
+		makeCtx({
+			workspace: WS,
+			user: { id: 'user-1', email: 'a@b.com' },
+			body: { email: 'x@y.com', roleId: 'r-local' },
+		}),
+	);
+	assert.equal(res.status, 201);
 });
