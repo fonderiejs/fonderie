@@ -51,6 +51,22 @@ export async function insertMessageLog(
 	return row?.id ?? '';
 }
 
+// Persist the provider's message id AFTER the send (the id is only known once
+// the provider responds). Delivery webhooks match on this column — without it
+// every delivered/opened/bounced update targets zero rows.
+export async function setMessageProviderId(
+	id: string,
+	providerMessageId: string,
+	store: IStoreAdapter,
+): Promise<void> {
+	await store.query(
+		`UPDATE fonderie_message_log
+		 SET provider_message_id = $2
+		 WHERE id = $1`,
+		[id, providerMessageId],
+	);
+}
+
 export async function markMessageSent(id: string, store: IStoreAdapter): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_message_log

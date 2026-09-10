@@ -32,6 +32,17 @@ export function assertProductionDbConfig(options: IPoolConfig): void {
 			console.warn('[store] database is using well-known default credentials in production');
 		}
 	}
+
+	// The same explicit-disable rule for the CONFIG-OBJECT form — previously
+	// only the connection-string form was checked, so `{ host, ssl: false }`
+	// sailed through the production TLS gate.
+	if (options.ssl === false) {
+		throw new Error(
+			'[store] database TLS is disabled (ssl: false) in production — traffic to ' +
+				'Postgres would be unencrypted. Enable ssl, or set NODE_ENV appropriately ' +
+				'for non-production.',
+		);
+	}
 }
 
 export class PGAdapter implements IStoreAdapter {

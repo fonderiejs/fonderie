@@ -84,25 +84,25 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 |---|---|---|
 | GET | `/workspaces` | `requireAuth → workspace.list` |
 | POST | `/workspaces` | `requireAuth → validate(createWorkspaceSchema) → workspace.create` |
-| PUT | `/workspaces` | `requireAuth → wsCtx → validate(updateWorkspaceSchema) → workspace.update` |
+| PUT | `/workspaces` | `requireAuth → wsCtx → manager → validate(updateWorkspaceSchema) → workspace.update` |
 | GET | `/workspaces/:id` | `requireAuth → wsCtx → workspace.get` |
-| POST | `/workspaces/archive` | `requireAuth → wsCtx → workspace.archive` |
+| POST | `/workspaces/archive` | `requireAuth → wsCtx → manager → workspace.archive` |
 | GET | `/workspaces/invitations` | `requireAuth → wsCtx → invitation.list` |
-| POST | `/workspaces/invitations` | `requireAuth → wsCtx → validate(createInvitationsSchema) → invitation.invite` |
-| DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → invitation.cancel` |
-| POST | `/workspaces/invitations/accept` | `requireAuth → validate(acceptInvitationSchema) → invitation.accept` |
+| POST | `/workspaces/invitations` | `requireAuth → wsCtx → manager → validate(createInvitationsSchema) → invitation.invite` |
+| DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → invitation.cancel` |
+| POST | `/workspaces/invitations/accept` | `acceptLimit → requireAuth → validate(acceptInvitationSchema) → invitation.accept` |
 | GET | `/workspaces/members` | `requireAuth → wsCtx → member.list` |
-| DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → member.remove` |
+| DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → manager → member.remove` |
 | GET | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → member.getUserRoles` |
-| POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → validate(addMemberRoleSchema) → member.addRole` |
-| DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → member.removeRole` |
-| POST | `/workspaces/restore` | `requireAuth → wsCtx → workspace.restore` |
+| POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → member.addRole` |
+| DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → manager → member.removeRole` |
+| POST | `/workspaces/restore` | `requireAuth → wsCtx → manager → workspace.restore` |
 | GET | `/workspaces/roles` | `requireAuth → wsCtx → role.list` |
-| POST | `/workspaces/roles` | `requireAuth → wsCtx → validate(createRoleSchema) → role.create` |
-| DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → role.remove` |
+| POST | `/workspaces/roles` | `requireAuth → wsCtx → manager → validate(createRoleSchema) → role.create` |
+| DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → role.remove` |
 | GET | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → role.get` |
-| PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → validate(updateRoleSchema) → role.update` |
+| PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → validate(updateRoleSchema) → role.update` |
 | GET | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → role.getPermissions` |
-| POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → validate(setRolePermissionsSchema) → role.setPermissions` |
+| POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → role.setPermissions` |
 | GET | `/workspaces/settings` | `requireAuth → wsCtx → workspace.getSettings` |
-| PUT | `/workspaces/settings` | `requireAuth → wsCtx → validate(updateSettingsSchema) → workspace.updateSettings` |
+| PUT | `/workspaces/settings` | `requireAuth → wsCtx → manager → validate(updateSettingsSchema) → workspace.updateSettings` |

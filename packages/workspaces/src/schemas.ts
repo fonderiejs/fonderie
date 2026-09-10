@@ -62,7 +62,13 @@ export const createInvitationsSchema = z.union([
 	z.array(inviteEntry).min(1, 'at least one invite is required'),
 ]);
 
-export const acceptInvitationSchema = z.object({ pin: z.string().trim().min(1, 'pin is required') });
+// Accept by 6-digit PIN (typed from the email; bound to the invited email at
+// lookup) or by the high-entropy token (from the email's link; usable by
+// accounts without an email address, e.g. phone-registered users).
+export const acceptInvitationSchema = z.union([
+	z.object({ pin: z.string().trim().min(1, 'pin is required') }),
+	z.object({ token: z.string().trim().min(1, 'token is required') }),
+]);
 
 export const createRoleSchema = z.object({
 	name,

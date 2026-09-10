@@ -7,6 +7,7 @@ export type { IStripeProviderOptions, SupportedPaymentOption } from './providers
 export { requirePlan } from './middlewares/require-plan';
 export type { IRequirePlanOptions } from './middlewares/require-plan';
 export { withBilling } from './middlewares/billing';
+export { requireBillingManager } from './middlewares/require-manager';
 
 // Helpers — sync, read from cached ctx.meta['billing']
 export {

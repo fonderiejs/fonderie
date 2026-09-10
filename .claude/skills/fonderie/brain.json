@@ -365,7 +365,7 @@
         {
           "method": "POST",
           "path": "/billing/checkout",
-          "mw": "requireAuth → validate(checkoutSchema) → checkout.createSession"
+          "mw": "requireAuth → manager → validate(checkoutSchema) → checkout.createSession"
         },
         {
           "method": "GET",
@@ -375,7 +375,7 @@
         {
           "method": "DELETE",
           "path": "/billing/payment-method",
-          "mw": "requireAuth → account.removePaymentMethod"
+          "mw": "requireAuth → manager → account.removePaymentMethod"
         },
         {
           "method": "GET",
@@ -385,17 +385,17 @@
         {
           "method": "PUT",
           "path": "/billing/payment-method",
-          "mw": "requireAuth → validate(savePaymentMethodSchema) → account.savePaymentMethod"
+          "mw": "requireAuth → manager → validate(savePaymentMethodSchema) → account.savePaymentMethod"
         },
         {
           "method": "POST",
           "path": "/billing/payment-method/setup",
-          "mw": "requireAuth → account.setupPaymentMethod"
+          "mw": "requireAuth → manager → account.setupPaymentMethod"
         },
         {
           "method": "POST",
           "path": "/billing/portal",
-          "mw": "requireAuth → checkout.createPortal"
+          "mw": "requireAuth → manager → checkout.createPortal"
         },
         {
           "method": "GET",
@@ -405,12 +405,12 @@
         {
           "method": "POST",
           "path": "/billing/subscription/cancel",
-          "mw": "requireAuth → validate(cancelSubscriptionSchema) → subscription.cancel"
+          "mw": "requireAuth → manager → validate(cancelSubscriptionSchema) → subscription.cancel"
         },
         {
           "method": "POST",
           "path": "/billing/subscription/reactivate",
-          "mw": "requireAuth → subscription.reactivate"
+          "mw": "requireAuth → manager → subscription.reactivate"
         },
         {
           "method": "POST",
@@ -430,7 +430,7 @@
         {
           "method": "POST",
           "path": "/billing/wallet/checkout",
-          "mw": "requireAuth → validate(walletCheckoutSchema) → wallet.checkout"
+          "mw": "requireAuth → manager → validate(walletCheckoutSchema) → wallet.checkout"
         },
         {
           "method": "POST",
@@ -440,12 +440,12 @@
         {
           "method": "POST",
           "path": "/billing/wallet/preferences",
-          "mw": "requireAuth → validate(walletPreferencesSchema) → wallet.setPreferences"
+          "mw": "requireAuth → manager → validate(walletPreferencesSchema) → wallet.setPreferences"
         },
         {
           "method": "POST",
           "path": "/billing/wallet/purchase",
-          "mw": "requireAuth → validate(walletPurchaseSchema) → wallet.purchase"
+          "mw": "requireAuth → manager → validate(walletPurchaseSchema) → wallet.purchase"
         },
         {
           "method": "GET",
@@ -1999,7 +1999,7 @@
         {
           "method": "PUT",
           "path": "/workspaces",
-          "mw": "requireAuth → wsCtx → validate(updateWorkspaceSchema) → workspace.update"
+          "mw": "requireAuth → wsCtx → manager → validate(updateWorkspaceSchema) → workspace.update"
         },
         {
           "method": "GET",
@@ -2009,7 +2009,7 @@
         {
           "method": "POST",
           "path": "/workspaces/archive",
-          "mw": "requireAuth → wsCtx → workspace.archive"
+          "mw": "requireAuth → wsCtx → manager → workspace.archive"
         },
         {
           "method": "GET",
@@ -2019,17 +2019,17 @@
         {
           "method": "POST",
           "path": "/workspaces/invitations",
-          "mw": "requireAuth → wsCtx → validate(createInvitationsSchema) → invitation.invite"
+          "mw": "requireAuth → wsCtx → manager → validate(createInvitationsSchema) → invitation.invite"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/invitations/:inviteId",
-          "mw": "requireAuth → wsCtx → invitation.cancel"
+          "mw": "requireAuth → wsCtx → manager → invitation.cancel"
         },
         {
           "method": "POST",
           "path": "/workspaces/invitations/accept",
-          "mw": "requireAuth → validate(acceptInvitationSchema) → invitation.accept"
+          "mw": "acceptLimit → requireAuth → validate(acceptInvitationSchema) → invitation.accept"
         },
         {
           "method": "GET",
@@ -2039,7 +2039,7 @@
         {
           "method": "DELETE",
           "path": "/workspaces/members/:userId",
-          "mw": "requireAuth → wsCtx → member.remove"
+          "mw": "requireAuth → wsCtx → manager → member.remove"
         },
         {
           "method": "GET",
@@ -2049,17 +2049,17 @@
         {
           "method": "POST",
           "path": "/workspaces/members/:userId/roles",
-          "mw": "requireAuth → wsCtx → validate(addMemberRoleSchema) → member.addRole"
+          "mw": "requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → member.addRole"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/members/:userId/roles/:roleId",
-          "mw": "requireAuth → wsCtx → member.removeRole"
+          "mw": "requireAuth → wsCtx → manager → member.removeRole"
         },
         {
           "method": "POST",
           "path": "/workspaces/restore",
-          "mw": "requireAuth → wsCtx → workspace.restore"
+          "mw": "requireAuth → wsCtx → manager → workspace.restore"
         },
         {
           "method": "GET",
@@ -2069,12 +2069,12 @@
         {
           "method": "POST",
           "path": "/workspaces/roles",
-          "mw": "requireAuth → wsCtx → validate(createRoleSchema) → role.create"
+          "mw": "requireAuth → wsCtx → manager → validate(createRoleSchema) → role.create"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/roles/:roleId",
-          "mw": "requireAuth → wsCtx → role.remove"
+          "mw": "requireAuth → wsCtx → manager → role.remove"
         },
         {
           "method": "GET",
@@ -2084,7 +2084,7 @@
         {
           "method": "PUT",
           "path": "/workspaces/roles/:roleId",
-          "mw": "requireAuth → wsCtx → validate(updateRoleSchema) → role.update"
+          "mw": "requireAuth → wsCtx → manager → validate(updateRoleSchema) → role.update"
         },
         {
           "method": "GET",
@@ -2094,7 +2094,7 @@
         {
           "method": "POST",
           "path": "/workspaces/roles/:roleId/permissions",
-          "mw": "requireAuth → wsCtx → validate(setRolePermissionsSchema) → role.setPermissions"
+          "mw": "requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → role.setPermissions"
         },
         {
           "method": "GET",
@@ -2104,7 +2104,7 @@
         {
           "method": "PUT",
           "path": "/workspaces/settings",
-          "mw": "requireAuth → wsCtx → validate(updateSettingsSchema) → workspace.updateSettings"
+          "mw": "requireAuth → wsCtx → manager → validate(updateSettingsSchema) → workspace.updateSettings"
         }
       ],
       "secures": [

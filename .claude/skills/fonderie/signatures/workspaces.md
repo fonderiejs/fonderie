@@ -14,6 +14,7 @@ new WorkspacesModule(store: IStoreAdapter, config?: IWorkspacesConfig, bus?: Eve
 
 interface IWorkspacesConfig {
     invitationTtl?: string;
+    management?: 'owner-or-admin' | 'any-member';
     personalWorkspace?: boolean;
     routes?: Partial<Record<WorkspaceRouteId, WorkspaceRouteOverride>>;
 }
@@ -167,6 +168,8 @@ function toSettingsDTO(s: IWorkspaceSettings): IWorkspaceSettingsDTO
 function withWorkspace(store: IStoreAdapter): Middleware
 
 function requireWorkspace(ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
+
+function requireManager(store: IStoreAdapter, config: IWorkspacesConfig): Middleware
 
 namespace schemas — exports: acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
 
