@@ -841,3 +841,57 @@ test('dispatcher: a channel returning void still marks the message sent', async 
 		'no provider-id UPDATE when the channel returned none',
 	);
 });
+
+// ── Security: HTML injection in email templates (audit №2 H4) ────────
+// {{var}} values are user-influenced (e.g. registration firstName). Unescaped
+// interpolation let a user inject markup/links into platform-branded emails.
+
+test('renderFragment: interpolated values are HTML-escaped in the html part, raw in text', async () => {
+	const { renderFragment } = await import('../templates/resolver');
+	const hostile = '<a href="https://evil.example">Reset now</a>';
+	const out = renderFragment(
+		{ subject: 'Hi {{firstName}}', text: 'Hi {{firstName}}', html: '<p>Hi {{firstName}}</p>' },
+		undefined,
+		{ firstName: hostile },
+	);
+	assert.ok(!out.html!.includes('<a href="https://evil.example">'), 'no raw injected markup in html');
+	assert.ok(out.html!.includes('&lt;a href=&quot;https://evil.example&quot;&gt;'), 'entities escaped');
+	assert.equal(out.text, `Hi ${hostile}`, 'text part is not an HTML context — stays raw');
+	assert.equal(out.subject, `Hi ${hostile}`, 'subject is a header, not HTML — stays raw');
+});
+
+test('renderFragment: benign values render unchanged in html', async () => {
+	const { renderFragment } = await import('../templates/resolver');
+	const out = renderFragment(
+		{ text: '{{n}} credits', html: '<b>{{n}} credits on {{plan}}</b>' },
+		undefined,
+		{ n: 3, plan: 'Pro' },
+	);
+	assert.ok(out.html!.includes('<b>3 credits on Pro</b>'));
+});
+
+test('delivery webhooks: stale signed timestamps are rejected (replay guard)', async () => {
+	const { handleSendGridDelivery } = await import('../delivery');
+	const { stub, updates } = makeDeliveryStore();
+	const { generateKeyPairSync: gen, sign: sgn } = await import('node:crypto');
+	const { publicKey, privateKey } = gen('ec', { namedCurve: 'P-256' });
+	const publicKeyB64 = publicKey.export({ format: 'der', type: 'spki' }).toString('base64');
+	const body = JSON.stringify([{ event: 'bounce', sg_message_id: 'replayed' }]);
+	const staleTs = String(Math.floor(Date.now() / 1000) - 3600); // 1h old
+	const signature = sgn('sha256', Buffer.from(staleTs + body), privateKey).toString('base64');
+	const res = await handleSendGridDelivery(
+		new Request('http://localhost/courier/delivery/sendgrid', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				'x-twilio-email-event-webhook-signature': signature,
+				'x-twilio-email-event-webhook-timestamp': staleTs,
+			},
+			body,
+		}),
+		stub,
+		publicKeyB64,
+	);
+	assert.equal(res.status, 401, 'a validly-signed but stale payload must not replay');
+	assert.equal(updates.length, 0);
+});

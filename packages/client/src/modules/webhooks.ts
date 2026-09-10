@@ -68,7 +68,7 @@ export class WebhooksClient {
 	getEndpoint(endpointId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWebhookEndpointDTO>>({
 			method: 'GET',
-			path: `/webhooks/${endpointId}`,
+			path: `/webhooks/${encodeURIComponent(endpointId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -78,7 +78,7 @@ export class WebhooksClient {
 	updateEndpoint(endpointId: string, input: IUpdateWebhookEndpointInput) {
 		return this.http.request<IApiResponse<IWebhookEndpointDTO>>({
 			method: 'PATCH',
-			path: `/webhooks/${endpointId}`,
+			path: `/webhooks/${encodeURIComponent(endpointId)}`,
 			body: input,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
@@ -88,7 +88,7 @@ export class WebhooksClient {
 	deleteEndpoint(endpointId: string) {
 		return this.http.request<undefined>({
 			method: 'DELETE',
-			path: `/webhooks/${endpointId}`,
+			path: `/webhooks/${encodeURIComponent(endpointId)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
@@ -97,7 +97,7 @@ export class WebhooksClient {
 	listDeliveries(endpointId: string, opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IWebhookDeliveryListResult>>({
 			method: 'GET',
-			path: `/webhooks/${endpointId}/deliveries`,
+			path: `/webhooks/${encodeURIComponent(endpointId)}/deliveries`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -107,7 +107,7 @@ export class WebhooksClient {
 	testEndpoint(endpointId: string) {
 		return this.http.request<IApiResponse<ITestWebhookResult>>({
 			method: 'POST',
-			path: `/webhooks/${endpointId}/test`,
+			path: `/webhooks/${encodeURIComponent(endpointId)}/test`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

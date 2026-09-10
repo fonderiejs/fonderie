@@ -52,16 +52,37 @@ export type FonderieVariables = {
 //
 //   hono.use('*', bridge(fonderie))
 
-export function bridge(fonderie: FonderieApp): MiddlewareHandler {
+export interface IBridgeOptions {
+	/**
+	 * Name of the header that carries the PLATFORM-VERIFIED client IP — e.g.
+	 * 'cf-connecting-ip' on Cloudflare, 'x-real-ip' behind an nginx that sets
+	 * it. This is an explicit opt-in: request headers are attacker-settable,
+	 * so trusting one by default would let any client spoof its IP and dodge
+	 * per-IP rate limits (auth brute-force limiters key on this). Only set it
+	 * when your platform/proxy STRIPS the header from client requests and
+	 * injects its own value.
+	 */
+	ipHeader?: string;
+}
+
+export function bridge(fonderie: FonderieApp, options: IBridgeOptions = {}): MiddlewareHandler {
 	return async (c, next) => {
 		const ctx = await fonderie.buildContext(c.req.raw.clone());
-		// Hono runs on web-standard runtimes with no socket handle; edge
-		// platforms hand the verified client IP via their own header.
-		const platformIp =
-			c.req.raw.headers.get('cf-connecting-ip') ??
-			c.req.raw.headers.get('x-real-ip') ??
-			undefined;
-		const clientIp = resolveClientIp(platformIp, c.req.raw.headers);
+		// Client IP, spoof-safe by default (mirrors core's trustProxy model):
+		//   1. The real socket address when the runtime exposes one
+		//      (@hono/node-server puts the node request on c.env.incoming).
+		//   2. A platform header ONLY when explicitly configured via ipHeader.
+		//   3. X-Forwarded-For only per core's TRUST_PROXY hop count.
+		// Previously cf-connecting-ip/x-real-ip were trusted UNCONDITIONALLY,
+		// which let any direct client forge its IP (fresh rate-limit bucket per
+		// request) or omit it (limiter skipped) on self-hosted deployments.
+		const socketIp = (
+			c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined
+		)?.incoming?.socket?.remoteAddress;
+		const headerIp = options.ipHeader
+			? (c.req.raw.headers.get(options.ipHeader) ?? undefined)
+			: undefined;
+		const clientIp = resolveClientIp(headerIp ?? socketIp ?? undefined, c.req.raw.headers);
 		if (clientIp) ctx.meta.clientIp = clientIp;
 		c.set('_fonderie', ctx);
 		await next();

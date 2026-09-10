@@ -99,6 +99,32 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 				}
 			}
 
+			// An EXPLICIT roleId must obey the same rule as direct role assignment
+			// (addRoleToMember): a role of THIS workspace that is not a system
+			// role. Without this, an invitation smuggled an arbitrary role id —
+			// the system ADMIN, or another workspace's role — straight into the
+			// membership INSERT on accept, bypassing the guarded-assignment path.
+			// The least-privilege default (system GUEST) flows via defaultRoleId.
+			const explicitRoleIds = [...new Set(
+				entries.map((e) => e['roleId']).filter((r): r is string => typeof r === 'string'),
+			)];
+			if (explicitRoleIds.length > 0) {
+				const rows = await store.query<{ id: string }>(
+					`SELECT id FROM fonderie_roles
+					 WHERE id = ANY($1) AND workspace_id = $2 AND is_system = false`,
+					[explicitRoleIds, ctx.workspace.id],
+				);
+				const assignable = new Set(rows.map((r) => r.id));
+				const bad = explicitRoleIds.find((id) => !assignable.has(id));
+				if (bad) {
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_ROLE',
+						'Role is not assignable in this workspace.',
+					);
+				}
+			}
+
 			const results = await Promise.all(
 				entries.map(async (entry) => {
 					const email = entry['email'] as string;

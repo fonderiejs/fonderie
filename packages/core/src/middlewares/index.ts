@@ -2,7 +2,7 @@ export type { CorsOptions } from './cors';
 export { withCors } from './cors';
 export { withLogger } from './logger';
 export { notFoundMiddleware } from './not-found';
-export { withBody } from './body-parser';
+export { withBody, bodyParser, DEFAULT_MAX_BODY_BYTES } from './body-parser';
 export { withSecurityHeaders } from './security-headers';
 export type { SecurityHeadersOptions } from './security-headers';
 export { defaultErrorHandler } from './error-handler';

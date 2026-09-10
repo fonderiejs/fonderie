@@ -15,6 +15,19 @@ import {
 // who finds the endpoint can forge delivered/opened/bounced events — poisoning
 // the message log and (via bounce handling) suppressing real mail. The module
 // additionally only registers a delivery route when its key is configured.
+//
+// Signed timestamps must also be FRESH: both providers sign a timestamp, and
+// without a freshness window a captured payload replays forever — and
+// Mailgun's scheme signs only timestamp+token (never the body), so a stale
+// signature could be replayed with a FORGED body.
+
+const TIMESTAMP_TOLERANCE_S = 5 * 60;
+
+function isFreshTimestamp(unixSeconds: string): boolean {
+	const ts = Number(unixSeconds);
+	if (!Number.isFinite(ts)) return false;
+	return Math.abs(Date.now() / 1000 - ts) <= TIMESTAMP_TOLERANCE_S;
+}
 
 // ── SendGrid ──────────────────────────────────────────────────────
 //
@@ -37,6 +50,9 @@ export async function handleSendGridDelivery(
 	const ts  = req.headers.get('x-twilio-email-event-webhook-timestamp') ?? '';
 	const body = await req.text();
 
+	if (!isFreshTimestamp(ts)) {
+		return Response.json({ error: 'STALE_TIMESTAMP' }, { status: 401 });
+	}
 	if (!verifySendGridSignature(publicKey, ts, body, sig)) {
 		return Response.json({ error: 'INVALID_SIGNATURE' }, { status: 401 });
 	}
@@ -118,7 +134,10 @@ export async function handleMailgunDelivery(
 	const body = (await req.json()) as MailgunPayload;
 
 	const { signature } = body;
-	if (!signature || !verifyMailgunSignature(signingKey, signature.timestamp, signature.token, signature.signature)) {
+	if (!signature || !isFreshTimestamp(signature.timestamp)) {
+		return Response.json({ error: 'STALE_TIMESTAMP' }, { status: 401 });
+	}
+	if (!verifyMailgunSignature(signingKey, signature.timestamp, signature.token, signature.signature)) {
 		return Response.json({ error: 'INVALID_SIGNATURE' }, { status: 401 });
 	}
 
