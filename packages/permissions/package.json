@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/permissions",
-	"version": "5.0.5",
+	"version": "5.0.6",
 	"description": "Role-based access control for SaaS — define roles, assign CRUD permissions per resource, and gate any route with requirePermission. Supports multiple roles per user via BOOL_OR aggregation.",
 	"keywords": [
 		"fonderiejs",
@@ -57,7 +57,7 @@
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.9.0",
-		"@fonderie/store": "^0.2.0"
+		"@fonderie/store": "^0.3.0"
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",

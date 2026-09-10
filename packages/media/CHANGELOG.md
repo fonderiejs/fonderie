@@ -1,5 +1,12 @@
 # @fonderie/media
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+  - @fonderie/store@0.3.0
+
 ## 0.2.2
 
 ### Patch Changes

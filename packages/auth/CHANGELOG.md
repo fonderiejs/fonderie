@@ -1,5 +1,17 @@
 # @fonderie/auth
 
+## 7.0.0
+
+### Major Changes
+
+- cd2706a: Google OAuth hardening (BREAKING: the callback now requires the CSRF `state`). (1) Login CSRF: `GET /auth/google` now generates a random `state`, binds it to the browser via a short-lived `oauth_state` cookie (HttpOnly, SameSite=Lax), and puts it in the auth URL; the callback rejects any request whose echoed state doesn't match the cookie — without this, an attacker could complete the callback with a code from their own Google account and silently log the victim's browser into the attacker's account. Standard browser flows keep working unchanged; non-browser scripts driving the flow must now carry the cookie. (2) id_token claim checks: `aud` must equal the configured client id, `iss` must be Google, `exp` must be in the future. (3) Account linking is by email (`upsertByProvider`), so the callback now requires `email_verified: true` — an unverified Google email could otherwise take over an existing account registered with that address. (4) Password reset now revokes **all** of the user's sessions in the same transaction — a reset exists because the account may be compromised, and a stolen session must not survive it.
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+  - @fonderie/store@0.3.0
+  - @fonderie/rate-limit@4.0.6
+
 ## 6.0.0
 
 ### Major Changes

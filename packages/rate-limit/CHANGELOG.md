@@ -1,5 +1,12 @@
 # @fonderie/rate-limit
 
+## 4.0.6
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+  - @fonderie/store@0.3.0
+
 ## 4.0.5
 
 ### Patch Changes
