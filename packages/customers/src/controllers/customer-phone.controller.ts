@@ -65,7 +65,7 @@ export function customerPhoneController(store: IStoreAdapter) {
 
 			const rawLabel = typeof body?.['label'] === 'string' ? body['label'] : 'mobile';
 			const isPrimary = body?.['isPrimary'] === true;
-			const { id: labelId } = await labels.findOrCreate('phone', rawLabel);
+			const { id: labelId } = await labels.findOrCreate('phone', rawLabel, r.workspaceId);
 
 			let created: Awaited<ReturnType<typeof phones.add>>;
 			try {
@@ -103,7 +103,7 @@ export function customerPhoneController(store: IStoreAdapter) {
 			}
 
 			try {
-				const { id: labelId } = await labels.findOrCreate('phone', body['label'].trim());
+				const { id: labelId } = await labels.findOrCreate('phone', body['label'].trim(), r.workspaceId);
 				const updated = await phones.updateLabel(phoneId, r.customer.id, labelId);
 				return setApiResponse(HTTP.OK, 'PHONE_UPDATED', 'Phone updated successfully.', {
 					phone: toCustomerPhoneDTO(updated),

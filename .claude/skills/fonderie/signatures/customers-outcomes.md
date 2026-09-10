@@ -54,7 +54,9 @@ id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
 type                     fonderie_customer_label_type NOT NULL
 value                    TEXT NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+workspace_id             UUID
 -- CONSTRAINT uq_fcl_type_value UNIQUE (type, value)
+-- INDEX idx_fcl_workspace (workspace_id)
 ```
 
 ### `fonderie_customer_notes`
