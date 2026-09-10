@@ -3,13 +3,13 @@
   "sdkVersions": {
     "adapter-express": "5.1.4",
     "adapter-hono": "6.0.1",
-    "adapter-koa": "5.0.10",
+    "adapter-koa": "5.1.0",
     "audit": "5.1.4",
     "auth": "7.0.1",
     "billing": "9.0.2",
     "client": "0.17.1",
     "config": "5.1.6",
-    "core": "0.10.1",
+    "core": "0.10.2",
     "courier": "7.0.0",
     "customers": "6.1.6",
     "events": "5.0.6",
@@ -108,7 +108,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.0.10",
+      "version": "5.1.0",
       "requires": [
         "core",
         "workspaces",
@@ -604,7 +604,7 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.10.1",
+      "version": "0.10.2",
       "requires": [],
       "exports": [
         "OPERATIONS",
