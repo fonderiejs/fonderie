@@ -71,13 +71,18 @@ const isPayloadTooLarge = (err: unknown): boolean =>
 	!!(err as { fonderiePayloadTooLarge?: boolean } | undefined)?.fonderiePayloadTooLarge;
 
 function readStreamCapped(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+	// If the stream was already consumed/ended by an upstream middleware (some
+	// body parser other than koa-bodyparser), attaching 'data'/'end' here would
+	// wait for an 'end' that never re-fires → the request hangs. Resolve empty.
+	if (req.readableEnded || req.destroyed) return Promise.resolve(Buffer.alloc(0));
 	return new Promise((resolve, reject) => {
 		const chunks: Buffer[] = [];
 		let total = 0;
 		req.on('data', (chunk: Buffer) => {
 			total += chunk.length;
 			if (total > maxBytes) {
-				req.destroy();
+				// Reject WITHOUT destroying — the bridge writes the 413 first, then
+				// tears the socket down, so the client sees the 413 not a reset.
 				reject(new PayloadTooLargeError());
 				return;
 			}
@@ -147,7 +152,10 @@ export async function webResponseToKoa(webRes: Response, ctx: KoaContext): Promi
 	webRes.headers.forEach((value, key) => {
 		if (key.toLowerCase() !== 'set-cookie') ctx.response.set(key, value);
 	});
-	ctx.response.body = await webRes.text();
+	// Buffer, not text(): .text() UTF-8-decodes the body, corrupting any binary
+	// response (a @fonderie/media image, an invoice PDF, gzip). arrayBuffer →
+	// Buffer is byte-faithful, matching the express/core-listen adapters.
+	ctx.response.body = Buffer.from(await webRes.arrayBuffer());
 }
 
 // ── bridge ────────────────────────────────────────────────────────

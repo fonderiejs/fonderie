@@ -895,3 +895,24 @@ test('delivery webhooks: stale signed timestamps are rejected (replay guard)', a
 	assert.equal(res.status, 401, 'a validly-signed but stale payload must not replay');
 	assert.equal(updates.length, 0);
 });
+
+// ── Audit-3 C3: Mailgun token replay is rejected within the window ──
+test('handleMailgunDelivery: a replayed (timestamp,token,signature) is rejected', async () => {
+	const { handleMailgunDelivery } = await import('../delivery');
+	const { stub } = makeDeliveryStore();
+	const signingKey = 'mg-key';
+	const timestamp = String(Math.floor(Date.now() / 1000));
+	const token = 'nonce-once';
+	const signature = cryptoCreateHmac('sha256', signingKey).update(timestamp + token).digest('hex');
+	const payload = {
+		signature: { timestamp, token, signature },
+		'event-data': { event: 'delivered', message: { headers: { 'message-id': 'mg-1' } } },
+	};
+	const mk = () => new Request('http://localhost/courier/delivery/mailgun', {
+		method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
+	});
+	const first = await handleMailgunDelivery(mk(), stub, signingKey);
+	assert.equal(first.status, 200, 'first delivery accepted');
+	const replay = await handleMailgunDelivery(mk(), stub, signingKey);
+	assert.equal(replay.status, 401, 'same token replayed → rejected');
+});
