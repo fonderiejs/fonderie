@@ -67,7 +67,18 @@ export interface IBridgeOptions {
 
 export function bridge(fonderie: FonderieApp, options: IBridgeOptions = {}): MiddlewareHandler {
 	return async (c, next) => {
-		const ctx = await fonderie.buildContext(c.req.raw.clone());
+		// No clone(): teeing a request and fully reading ONE branch while the
+		// other sits unread stalls once the body crosses the stream's
+		// high-water mark (undici's tee applies backpressure from the slower
+		// consumer). buildContext consumes the body and core's parser
+		// re-materializes ctx.request from the buffered bytes, so mount() and
+		// app routes read from THAT instead of the spent raw request.
+		const ctx = await fonderie.buildContext(c.req.raw);
+		// A global middleware short-circuited while building context (e.g. the
+		// body parser's 413) — that response must reach the client, not be
+		// swallowed by context-building.
+		const early = ctx.meta['pipelineResponse'];
+		if (early instanceof Response) return early;
 		// Client IP, spoof-safe by default (mirrors core's trustProxy model):
 		//   1. The real socket address when the runtime exposes one
 		//      (@hono/node-server puts the node request on c.env.incoming).
@@ -190,6 +201,13 @@ export function requireFeature(key: string): MiddlewareHandler {
 // user routes always take priority. Call bridge() yourself before your routes
 // to ensure _fonderie is populated for them.
 export function mount(hono: Hono, fonderie: FonderieApp): Hono {
-	hono.notFound((c) => fonderie.handle(c.req.raw));
+	hono.notFound((c) => {
+		// bridge() consumed the raw body (see its no-clone note) and core's
+		// parser re-materialized ctx.request with the buffered bytes — route
+		// fonderie's handling through THAT. Without bridge (no ctx), the raw
+		// request is untouched and safe to hand over directly.
+		const ctx = c.get('_fonderie') as IFonderieContext | undefined;
+		return fonderie.handle(ctx?.request ?? c.req.raw);
+	});
 	return hono;
 }

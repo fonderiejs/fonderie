@@ -304,7 +304,16 @@ export class FonderieApp implements IFonderieApp {
 			workspace: null,
 			meta: { _buildContext: true },
 		};
-		await compose(this.middlewares)(ctx, async () => new Response());
+		let completed = false;
+		const out = await compose(this.middlewares)(ctx, async () => {
+			completed = true;
+			return new Response();
+		});
+		// A global middleware that answered WITHOUT calling next() (e.g. the
+		// body parser's 413) produced a real response the adapter must send —
+		// context-building normally discards middleware output, so surface the
+		// short-circuit explicitly for bridges to check.
+		if (!completed) ctx.meta['pipelineResponse'] = out;
 		delete ctx.meta['_buildContext'];
 		return ctx;
 	}
