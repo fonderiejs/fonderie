@@ -38,7 +38,19 @@ function matchPath(pattern: string, path: string): Record<string, string> | null
 		const ps = pp[i] ?? '';
 		const vs = vp[i] ?? '';
 		if (ps.startsWith(':')) {
-			params[ps.slice(1)] = decodeURIComponent(vs);
+			// A malformed percent-encoding (e.g. a lone '%') makes
+			// decodeURIComponent throw — treat it as no-match (404) rather than
+			// letting it bubble to a 500. A decoded NUL byte is rejected too:
+			// it has no legitimate place in a path param and is a classic
+			// truncation/injection primitive for downstream consumers.
+			let decoded: string;
+			try {
+				decoded = decodeURIComponent(vs);
+			} catch {
+				return null;
+			}
+			if (decoded.includes('\0')) return null;
+			params[ps.slice(1)] = decoded;
 		} else if (ps !== vs) {
 			return null;
 		}
