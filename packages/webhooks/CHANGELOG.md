@@ -1,5 +1,11 @@
 # @fonderie/webhooks
 
+## 5.3.0
+
+### Minor Changes
+
+- b093e3e: Close the webhook SSRF DNS-rebinding TOCTOU by pinning the delivery connection to the validated IP. The guard resolved + validated the endpoint's addresses, but the subsequent `fetch` re-resolved the name — a hostile host could rebind to an internal address in that window. Delivery and test-send now go through `pinnedTransport`: it resolves + validates the URL, then connects via an `undici` Agent whose connector always returns the pre-validated IP, so the socket can only reach the address that passed the check. TLS SNI / certificate validation still use the URL hostname, so HTTPS endpoints work normally; redirects are never followed and the response body is capped (4 KiB). Adds `undici` as a dependency and exports `resolvePinnedTarget`, `pinnedTransport`, `readCappedText`, and the `WebhookTransport`/`IWebhookResponse`/`IPinnedTarget` types. Verified live: an HTTPS POST completes over a pinned connection with hostname cert validation, while a cloud-metadata IP is refused before any connect.
+
 ## 5.2.3
 
 ### Patch Changes
