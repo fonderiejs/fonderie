@@ -2,14 +2,14 @@
   "schema": 1,
   "sdkVersions": {
     "adapter-express": "5.1.4",
-    "adapter-hono": "6.0.1",
+    "adapter-hono": "6.0.2",
     "adapter-koa": "5.1.0",
     "audit": "5.1.4",
     "auth": "7.1.0",
     "billing": "9.0.2",
     "client": "0.17.1",
     "config": "5.1.6",
-    "core": "0.10.2",
+    "core": "0.10.3",
     "courier": "7.0.0",
     "customers": "6.2.0",
     "events": "5.0.6",
@@ -65,7 +65,7 @@
     "vue-webhooks-screens": "0.3.0",
     "vue-workspaces": "0.7.0",
     "vue-workspaces-screens": "0.4.0",
-    "webhooks": "5.3.0",
+    "webhooks": "5.3.1",
     "workspaces": "6.0.2"
   },
   "packages": {
@@ -89,7 +89,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "6.0.1",
+      "version": "6.0.2",
       "requires": [
         "core",
         "workspaces",
@@ -604,7 +604,7 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.10.2",
+      "version": "0.10.3",
       "requires": [],
       "exports": [
         "OPERATIONS",
@@ -1903,7 +1903,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "5.3.0",
+      "version": "5.3.1",
       "requires": [
         "core",
         "events",
