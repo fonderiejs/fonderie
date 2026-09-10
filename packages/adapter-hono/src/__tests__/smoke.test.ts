@@ -172,3 +172,50 @@ test('mount: unmatched routes are delegated to fonderie.handle()', async () => {
 	assert.equal(res.status, 200);
 	assert.equal(body.from, 'fonderie');
 });
+
+// ── Regression: large bodies must flow through bridge+mount without a
+// tee-stall (audit №2 follow-up). bridge() used to clone() the raw request;
+// undici's tee stalls once ONE branch reads past the high-water mark while
+// the other sits unread — so any body over ~a few KiB hung the request.
+
+test('bridge + mount: a multi-MiB in-cap body completes and reaches fonderie', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	fonderie.addRoute('POST', '/echo', async (ctx) =>
+		Response.json({ len: ((ctx.meta['body'] as { pad?: string })?.pad ?? '').length }),
+	);
+	await fonderie.boot();
+
+	const app = new Hono();
+	app.use('*', bridge(fonderie));
+	mount(app, fonderie);
+
+	const pad = 'x'.repeat(4 * 1024 * 1024); // 4 MiB — inside the 5 MiB cap
+	const res = await app.request('/echo', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ pad }),
+	});
+	assert.equal(res.status, 200);
+	assert.equal(((await res.json()) as any).len, pad.length);
+});
+
+test('bridge + mount: an oversize body is rejected 413 by the parser', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 1024 }),
+	);
+	fonderie.addRoute('POST', '/echo', async () => Response.json({ ok: true }));
+	await fonderie.boot();
+
+	const app = new Hono();
+	app.use('*', bridge(fonderie));
+	mount(app, fonderie);
+
+	const res = await app.request('/echo', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ pad: 'x'.repeat(8192) }),
+	});
+	assert.equal(res.status, 413);
+});

@@ -106,7 +106,17 @@ export async function webResponseToKoa(webRes: Response, ctx: KoaContext): Promi
 export function bridge(fonderie: FonderieApp): KoaMiddleware {
 	return async (ctx, next) => {
 		const webReq = koaContextToWeb(ctx as unknown as KoaContext);
-		const fCtx = await fonderie.buildContext(webReq.clone());
+		// No clone(): a teed request whose second branch goes unread stalls
+		// past the stream's high-water mark. buildContext consumes the body
+		// and core's parser re-materializes fCtx.request for downstream use.
+		const fCtx = await fonderie.buildContext(webReq);
+		// A global middleware short-circuited (e.g. the parser's 413) — send
+		// that response instead of swallowing it.
+		const early = fCtx.meta['pipelineResponse'];
+		if (early instanceof Response) {
+			await webResponseToKoa(early, ctx as unknown as KoaContext);
+			return;
+		}
 		const clientIp = resolveClientIp(
 			(ctx as unknown as KoaContext).req.socket?.remoteAddress ?? undefined,
 			webReq.headers,
@@ -235,7 +245,14 @@ export function requireFeature(key: string): KoaMiddleware<any, any> {
 export function mount(app: Koa, fonderie: FonderieApp): Koa {
 	app.use(async (ctx, next) => {
 		const webReq = koaContextToWeb(ctx as unknown as KoaContext);
-		const fCtx = await fonderie.buildContext(webReq.clone());
+		// No clone() — see bridge(). The parser re-materializes fCtx.request,
+		// which the fonderie fallback below hands to handle().
+		const fCtx = await fonderie.buildContext(webReq);
+		const early = fCtx.meta['pipelineResponse'];
+		if (early instanceof Response) {
+			await webResponseToKoa(early, ctx as unknown as KoaContext);
+			return;
+		}
 		const clientIp = resolveClientIp(
 			(ctx as unknown as KoaContext).req.socket?.remoteAddress ?? undefined,
 			webReq.headers,
@@ -244,7 +261,7 @@ export function mount(app: Koa, fonderie: FonderieApp): Koa {
 		ctx.state['_fonderie'] = fCtx;
 		await next();
 		if (ctx.body === undefined) {
-			const webRes = await fonderie.handle(webReq);
+			const webRes = await fonderie.handle(fCtx.request);
 			await webResponseToKoa(webRes, ctx as unknown as KoaContext);
 		}
 	});

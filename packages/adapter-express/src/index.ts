@@ -133,10 +133,20 @@ export function bridge(fonderie: FonderieApp, options?: { maxBodyBytes?: number 
 	return async (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => {
 		try {
 			const webReq = await expressRequestToWeb(req, maxBytes);
-			// Cache so the infra handler in mount() can reuse it without re-reading
-			// the body stream (which can only be consumed once).
-			(req as any)._fonterieReq = webReq;
-			req._fonderie = await fonderie.buildContext(webReq.clone());
+			// No clone(): teeing a request and fully reading one branch while the
+			// other sits unread stalls past the stream's high-water mark — so a
+			// legal multi-MiB body would hang here. buildContext consumes the
+			// body and core's parser re-materializes ctx.request; the infra
+			// handler in mount() reuses THAT.
+			req._fonderie = await fonderie.buildContext(webReq);
+			(req as any)._fonterieReq = req._fonderie.request;
+			// A global middleware short-circuited during context-building (e.g.
+			// the parser's 413) — send that response, don't swallow it.
+			const early = req._fonderie.meta['pipelineResponse'];
+			if (early instanceof Response) {
+				await webResponseToExpress(early, res);
+				return;
+			}
 			const clientIp = resolveClientIp(req.socket?.remoteAddress ?? undefined, webReq.headers);
 			if (clientIp) req._fonderie.meta.clientIp = clientIp;
 			if (req._fonderie.meta['body'] !== undefined) {
