@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.1.3",
-    "adapter-hono": "6.0.0",
-    "adapter-koa": "5.0.9",
+    "adapter-express": "5.1.4",
+    "adapter-hono": "6.0.1",
+    "adapter-koa": "5.0.10",
     "audit": "5.1.4",
     "auth": "7.0.1",
     "billing": "9.0.2",
     "client": "0.17.1",
     "config": "5.1.6",
-    "core": "0.10.0",
+    "core": "0.10.1",
     "courier": "7.0.0",
     "customers": "6.1.6",
     "events": "5.0.6",
@@ -70,7 +70,7 @@
   },
   "packages": {
     "adapter-express": {
-      "version": "5.1.3",
+      "version": "5.1.4",
       "requires": [
         "core",
         "workspaces",
@@ -89,7 +89,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "6.0.0",
+      "version": "6.0.1",
       "requires": [
         "core",
         "workspaces",
@@ -108,7 +108,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.0.9",
+      "version": "5.0.10",
       "requires": [
         "core",
         "workspaces",
@@ -604,7 +604,7 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.10.0",
+      "version": "0.10.1",
       "requires": [],
       "exports": [
         "OPERATIONS",
