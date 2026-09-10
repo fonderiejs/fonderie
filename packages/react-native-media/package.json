@@ -1,0 +1,69 @@
+{
+	"name": "@fonderie/react-native-media",
+	"version": "0.1.0",
+	"description": "React Native media hooks for Fonderie — re-exports @fonderie/react-media (no platform-specific code: FileReader/Blob exist on both).",
+	"keywords": [
+		"fonderiejs",
+		"react-native",
+		"media",
+		"avatar",
+		"upload",
+		"image",
+		"hooks",
+		"typescript"
+	],
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
+	},
+	"dependencies": {
+		"@fonderie/client": "*",
+		"@fonderie/react-media": "*"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^26.4.1",
+		"@types/react": "^19.2.18",
+		"react": "^19.2.8",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE",
+		"README.md"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
+		"directory": "packages/react-native-media"
+	},
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/react-native-media#readme",
+	"bugs": {
+		"url": "https://github.com/fonderiejs/fonderie/issues"
+	}
+}

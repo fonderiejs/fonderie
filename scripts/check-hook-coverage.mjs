@@ -22,6 +22,7 @@ const ALLOW = new Map([
 	['CustomersClient.setAccessToken', 'redundant setter; shared TokenStore'],
 	['AuditClient.setAccessToken', 'redundant setter; shared TokenStore'],
 	['WebhooksClient.setAccessToken', 'redundant setter; shared TokenStore'],
+	['MediaClient.setAccessToken', 'redundant setter; shared TokenStore'],
 	['BillingClient.setWorkspaceId', 'propagated by FonderieClient.setWorkspaceId'],
 	['WorkspacesClient.setWorkspaceId', 'propagated by FonderieClient.setWorkspaceId'],
 	['CustomersClient.setWorkspaceId', 'propagated by FonderieClient.setWorkspaceId'],
@@ -97,12 +98,11 @@ const ROUTE_ALLOW = new Map([
 	// decision (same as the wallet routes above).
 	['POST /billing/subscription/cancel', 'client/hooks ship next cycle — server-first by scoped decision'],
 	['POST /billing/subscription/reactivate', 'client/hooks ship next cycle — server-first by scoped decision'],
-	// @fonderie/media backend brick landed first; the client.media sub-client +
-	// upload hook ship next cycle (server-first, same convention as above). The
-	// public GET is an <img src> target — navigated to, never a typed client call.
-	['POST /media', 'client/hooks ship next cycle — server-first by scoped decision'],
+	// @fonderie/media: POST /media (upload) and DELETE /media/:id are covered by
+	// client.media.upload/delete + the react/vue-media hooks (useUploadAvatar,
+	// useUploadMedia, useDeleteMedia). Only the public GET remains allow-listed:
+	// it's an <img src> target — navigated to, never a typed client call.
 	['GET /media/:id', 'public image-serve endpoint — an <img src> target, navigated to, never fetched via the typed client'],
-	['DELETE /media/:id', 'client/hooks ship next cycle — server-first by scoped decision'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');
