@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, createPublicKey, verify as cryptoVerify } from 'node:crypto';
 
 import { constantTimeEqual } from '@fonderie/core';
 
@@ -10,34 +10,38 @@ import {
 	markMessageBounced,
 } from './log';
 
+// Delivery webhooks are FAIL-CLOSED: every handler requires its verification
+// key and rejects unverified payloads with 401. Without verification, anyone
+// who finds the endpoint can forge delivered/opened/bounced events — poisoning
+// the message log and (via bounce handling) suppressing real mail. The module
+// additionally only registers a delivery route when its key is configured.
+
 // ── SendGrid ──────────────────────────────────────────────────────
 //
-// Verifies the X-Twilio-Email-Event-Webhook-Signature header.
+// Verifies the X-Twilio-Email-Event-Webhook-Signature header. SendGrid signs
+// with ECDSA (P-256 over `timestamp + body`, base64 DER signature) — NOT HMAC;
+// `publicKey` is the base64 "Verification Key" from the SendGrid dashboard.
 // Expects an array of event objects in the request body.
-// https://docs.sendgrid.com/for-developers/tracking-events/getting-started-event-webhook-security-features
+// https://www.twilio.com/docs/sendgrid/for-developers/tracking-events/getting-started-event-webhook-security-features
 
 export async function handleSendGridDelivery(
 	req: Request,
 	store: IStoreAdapter,
-	webhookSecret?: string,
+	publicKey?: string,
 ): Promise<Response> {
-	if (webhookSecret) {
-		const sig = req.headers.get('x-twilio-email-event-webhook-signature') ?? '';
-		const ts  = req.headers.get('x-twilio-email-event-webhook-timestamp') ?? '';
-		const body = await req.text();
-
-		if (!verifySendGridSignature(webhookSecret, ts, body, sig)) {
-			return Response.json({ error: 'INVALID_SIGNATURE' }, { status: 401 });
-		}
-
-		const events = parseJson(body) as SendGridEvent[] | null;
-		if (!Array.isArray(events)) return Response.json({ ok: true });
-
-		await processSendGridEvents(events, store);
-		return Response.json({ ok: true });
+	if (!publicKey) {
+		return Response.json({ error: 'VERIFICATION_NOT_CONFIGURED' }, { status: 401 });
 	}
 
-	const events = (await req.json()) as SendGridEvent[];
+	const sig = req.headers.get('x-twilio-email-event-webhook-signature') ?? '';
+	const ts  = req.headers.get('x-twilio-email-event-webhook-timestamp') ?? '';
+	const body = await req.text();
+
+	if (!verifySendGridSignature(publicKey, ts, body, sig)) {
+		return Response.json({ error: 'INVALID_SIGNATURE' }, { status: 401 });
+	}
+
+	const events = parseJson(body) as SendGridEvent[] | null;
 	if (!Array.isArray(events)) return Response.json({ ok: true });
 
 	await processSendGridEvents(events, store);
@@ -45,15 +49,23 @@ export async function handleSendGridDelivery(
 }
 
 function verifySendGridSignature(
-	secret: string,
+	publicKeyB64: string,
 	timestamp: string,
 	body: string,
 	signature: string,
 ): boolean {
 	try {
-		const payload = timestamp + body;
-		const expected = createHmac('sha256', secret).update(payload).digest('base64');
-		return constantTimeEqual(Buffer.from(signature, 'base64'), Buffer.from(expected, 'base64'));
+		const key = createPublicKey({
+			key: Buffer.from(publicKeyB64, 'base64'),
+			format: 'der',
+			type: 'spki',
+		});
+		return cryptoVerify(
+			'sha256',
+			Buffer.from(timestamp + body),
+			key,
+			Buffer.from(signature, 'base64'),
+		);
 	} catch {
 		return false;
 	}
@@ -99,13 +111,15 @@ export async function handleMailgunDelivery(
 	store: IStoreAdapter,
 	signingKey?: string,
 ): Promise<Response> {
+	if (!signingKey) {
+		return Response.json({ error: 'VERIFICATION_NOT_CONFIGURED' }, { status: 401 });
+	}
+
 	const body = (await req.json()) as MailgunPayload;
 
-	if (signingKey) {
-		const { signature } = body;
-		if (!signature || !verifyMailgunSignature(signingKey, signature.timestamp, signature.token, signature.signature)) {
-			return Response.json({ error: 'INVALID_SIGNATURE' }, { status: 401 });
-		}
+	const { signature } = body;
+	if (!signature || !verifyMailgunSignature(signingKey, signature.timestamp, signature.token, signature.signature)) {
+		return Response.json({ error: 'INVALID_SIGNATURE' }, { status: 401 });
 	}
 
 	const event = body['event-data'];
@@ -161,7 +175,11 @@ async function processMailgunEvent(event: MailgunEvent, store: IStoreAdapter): P
 	}
 }
 
-// ── Mailtrap (testing only, no signature) ────────────────────────
+// ── Mailtrap (testing only — has NO signature scheme) ────────────
+//
+// Registered only when config.delivery.allowUnverifiedMailtrap is explicitly
+// true: with no signature to verify, the route accepts forged events by
+// construction, so it must be a deliberate dev/test opt-in, never a default.
 
 export async function handleMailtrapDelivery(
 	req: Request,

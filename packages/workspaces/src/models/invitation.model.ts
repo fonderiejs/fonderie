@@ -6,6 +6,7 @@ import {
 	listInvitations,
 	cancelInvitation,
 	acceptInvitationByPin,
+	acceptInvitationByToken,
 } from '../services/invitations';
 
 export class InvitationModel {
@@ -27,5 +28,9 @@ export class InvitationModel {
 		opts: Parameters<typeof acceptInvitationByPin>[0],
 	): Promise<{ workspaceId: string; roleId: string }> {
 		return acceptInvitationByPin(opts, this.store);
+	}
+
+	acceptByToken(token: string, userId: string): Promise<{ workspaceId: string; roleId: string }> {
+		return acceptInvitationByToken(token, userId, this.store);
 	}
 }

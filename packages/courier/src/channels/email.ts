@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-import type { ICourierChannel, ICourierMessage, IRenderedTemplate } from '../types';
+import type { ICourierChannel, ICourierMessage, IRenderedTemplate, ISendResult } from '../types';
 import type { IEmailChannelConfig } from '../config';
 
 export class EmailChannel implements ICourierChannel {
@@ -18,7 +18,7 @@ export class EmailChannel implements ICourierChannel {
 		}
 	}
 
-	async send(message: ICourierMessage, template: IRenderedTemplate): Promise<void> {
+	async send(message: ICourierMessage, template: IRenderedTemplate): Promise<ISendResult | void> {
 		const to = message.recipient.email;
 		if (!to) {
 			console.warn('[courier:email] no email address for recipient — skipping');
@@ -26,15 +26,15 @@ export class EmailChannel implements ICourierChannel {
 		}
 
 		if (this.config.provider === 'resend') {
-			await this.sendViaResend(to, template);
-		} else if (this.config.provider === 'smtp') {
-			await this.sendViaSMTP(to, template);
-		} else {
-			console.warn(`[courier:email] provider ${this.config.provider} not implemented`);
+			return this.sendViaResend(to, template);
 		}
+		if (this.config.provider === 'smtp') {
+			return this.sendViaSMTP(to, template);
+		}
+		console.warn(`[courier:email] provider ${this.config.provider} not implemented`);
 	}
 
-	private async sendViaResend(to: string, template: IRenderedTemplate): Promise<void> {
+	private async sendViaResend(to: string, template: IRenderedTemplate): Promise<ISendResult> {
 		if (!this.config.apiKey) {
 			throw new Error('Resend apiKey is required');
 		}
@@ -58,9 +58,13 @@ export class EmailChannel implements ICourierChannel {
 			const body = await res.text();
 			throw new Error(`[courier:email] Resend error ${res.status}: ${body}`);
 		}
+
+		// Resend returns { id } — persist it so delivery webhooks can correlate.
+		const data = (await res.json().catch(() => null)) as { id?: string } | null;
+		return typeof data?.id === 'string' ? { providerMessageId: data.id } : {};
 	}
 
-	private async sendViaSMTP(to: string, template: IRenderedTemplate): Promise<void> {
+	private async sendViaSMTP(to: string, template: IRenderedTemplate): Promise<ISendResult> {
 		if (!this.transport) {
 			throw new Error('SMTP transport not initialised — check smtp config');
 		}
@@ -68,12 +72,19 @@ export class EmailChannel implements ICourierChannel {
 		// Omit `html` when the template has none rather than passing `undefined`:
 		// nodemailer 10's SendMailOptions is an exact-optional type, so an explicit
 		// `html: undefined` is a type error (and was never meaningful at runtime).
-		await this.transport.sendMail({
+		const info = await this.transport.sendMail({
 			from: this.config.from,
 			to,
 			subject: template.subject ?? '(no subject)',
 			text: template.text,
 			...(template.html !== undefined ? { html: template.html } : {}),
 		});
+
+		// nodemailer reports the Message-ID as "<id@host>"; providers' delivery
+		// events reference it WITHOUT the angle brackets (e.g. Mailgun's
+		// message.headers.message-id) — strip them so the lookup matches.
+		const raw = typeof info?.messageId === 'string' ? info.messageId : '';
+		const providerMessageId = raw.replace(/^<|>$/g, '');
+		return providerMessageId ? { providerMessageId } : {};
 	}
 }

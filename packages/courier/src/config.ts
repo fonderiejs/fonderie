@@ -60,11 +60,19 @@ export interface ICourierConfig {
 		defaults?: DefaultTemplateMap | DefaultTemplateMap[];
 	};
 
-	// Signing keys for verifying inbound delivery webhook payloads
+	// Inbound delivery-webhook verification. FAIL-CLOSED: a provider's route is
+	// only registered when its key is set (an unverified endpoint would accept
+	// forged delivered/opened/bounced events from anyone who finds the URL).
 	delivery?: {
 		signingKeys?: {
-			sendgrid?: string; // HMAC-SHA256 key from SendGrid dashboard
-			mailgun?: string;  // Mailgun HTTP webhook signing key
+			// SendGrid signs with ECDSA, not HMAC: this is the base64
+			// "Verification Key" (public key) from Settings → Mail Settings →
+			// Event Webhook → Signature Verification.
+			sendgrid?: string;
+			mailgun?: string; // Mailgun HTTP webhook signing key (HMAC-SHA256)
 		};
+		// Mailtrap's webhook has NO signature scheme, so its route accepts
+		// forged events by construction. Explicit dev/test opt-in only.
+		allowUnverifiedMailtrap?: boolean;
 	};
 }

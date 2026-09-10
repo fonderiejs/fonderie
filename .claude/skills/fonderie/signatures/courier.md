@@ -16,7 +16,7 @@ new CourierModule(config: ICourierConfig, store?: IStoreAdapter | undefined, bus
 
 function validateCourierConfig(config: ICourierConfig, registeredChannels: Iterable<string>): void
 
-function handleSendGridDelivery(req: Request, store: IStoreAdapter, webhookSecret?: string | undefined): Promise<Response>
+function handleSendGridDelivery(req: Request, store: IStoreAdapter, publicKey?: string | undefined): Promise<Response>
 
 function handleMailgunDelivery(req: Request, store: IStoreAdapter, signingKey?: string | undefined): Promise<Response>
 
@@ -37,7 +37,7 @@ new PushChannel(config: IPushChannelConfig): PushChannel
 
 new EmailChannel(config: IEmailChannelConfig): EmailChannel
   .name: "email"
-  .send(message: ICourierMessage, template: IRenderedTemplate): Promise<void>
+  .send(message: ICourierMessage, template: IRenderedTemplate): Promise<void | ISendResult>
 
 new DBTemplateResolver(store: IStoreAdapter, defaults?: DefaultTemplates | undefined): DBTemplateResolver
   .resolve(type: string, data: Record<string, unknown>, locale?: string | undefined): Promise<IRenderedTemplate>
@@ -122,7 +122,7 @@ interface ICourierMessage {
 
 interface ICourierChannel {
     name: string;
-    send(message: ICourierMessage, template: IRenderedTemplate): Promise<void>;
+    send(message: ICourierMessage, template: IRenderedTemplate): Promise<ISendResult | void>;
 }
 
 interface IRenderedTemplate {
@@ -161,6 +161,7 @@ interface ICourierConfig {
             sendgrid?: string;
             mailgun?: string;
         };
+        allowUnverifiedMailtrap?: boolean;
     };
 }
 

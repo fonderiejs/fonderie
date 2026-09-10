@@ -2,7 +2,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { ICourierConfig } from './config';
 import type { ICourierMessage, ICourierChannel, ITemplateResolver } from './types';
-import { insertMessageLog, markMessageSent, markMessageFailed } from './log';
+import { insertMessageLog, markMessageSent, markMessageFailed, setMessageProviderId } from './log';
 
 function resolveRecipient(message: ICourierMessage, channel: string): string {
 	if (channel === 'email') return message.recipient.email ?? '';
@@ -62,9 +62,16 @@ export class Dispatcher {
 					: '';
 
 				try {
-					await channel.send(message, template);
+					const result = await channel.send(message, template);
 
 					if (this.store && logId) {
+						// Persist the provider id FIRST — delivery webhooks key on it,
+						// and they can arrive within seconds of the send.
+						if (result?.providerMessageId) {
+							await setMessageProviderId(logId, result.providerMessageId, this.store).catch(
+								() => undefined,
+							);
+						}
 						markMessageSent(logId, this.store).catch(() => undefined);
 					}
 				} catch (err) {

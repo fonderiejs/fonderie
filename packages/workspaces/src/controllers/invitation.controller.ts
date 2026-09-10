@@ -148,13 +148,34 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 		async accept(ctx: IFonderieContext): Promise<Response> {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const pin = body?.['pin'];
-
-			if (typeof pin !== 'string') {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin is required');
-			}
+			const token = body?.['token'];
 
 			try {
-				const { workspaceId } = await invitations.acceptByPin({ pin, userId: ctx.user!.id });
+				// Token path (32-byte secret from the email link) — also the route
+				// for accounts without an email address (phone-registered users).
+				if (typeof token === 'string') {
+					const { workspaceId } = await invitations.acceptByToken(token, ctx.user!.id);
+					return setApiResponse(HTTP.OK, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', {
+						workspaceId,
+					});
+				}
+
+				if (typeof pin !== 'string') {
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'pin or token is required');
+				}
+
+				// PIN path — the 6-digit PIN only redeems an invitation addressed to
+				// the ACCEPTING account's email (see acceptInvitationByPin).
+				const email = ctx.user!.email;
+				if (!email) {
+					return setApiResponse(
+						HTTP.BAD_REQUEST,
+						'INVITATION_FAILED',
+						'This account has no email address — use the invitation link instead of the PIN',
+					);
+				}
+
+				const { workspaceId } = await invitations.acceptByPin({ pin, userId: ctx.user!.id, email });
 				return setApiResponse(HTTP.OK, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', {
 					workspaceId,
 				});

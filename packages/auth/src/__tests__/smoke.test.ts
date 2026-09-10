@@ -1677,12 +1677,81 @@ test('googleCallback: 400 INVALID_PARAMETER when code is missing', async () => {
 	assert.equal(body.reason, 'INVALID_PARAMETER');
 });
 
+// Builds a callback ctx with the CSRF state round-tripped correctly: the same
+// value in the query (echoed by Google) and in the oauth_state cookie (set by
+// googleInit on this browser).
+function callbackCtx(state = 'state-abc'): any {
+	const ctx = makeCtx();
+	ctx.request = new Request(`http://localhost/auth/google/callback?code=test-code&state=${state}`, {
+		headers: { cookie: `oauth_state=${state}` },
+	});
+	return ctx;
+}
+
+// Valid Google id_token claims — individual tests override to hit each check.
+const ID_CLAIMS = {
+	email: 'jane@example.com',
+	sub: 'google-123',
+	aud: 'test-client-id',
+	iss: 'https://accounts.google.com',
+	exp: Math.floor(Date.now() / 1000) + 3600,
+	email_verified: true,
+};
+
+test('googleInit: sets the oauth_state cookie and puts state in the URL (CSRF)', async () => {
+	const ctrl = makeOauth();
+	const response = await ctrl.googleInit(makeCtx());
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as any;
+	const urlState = new URL(body.result.url).searchParams.get('state');
+	assert.ok(urlState, 'state present in the auth URL');
+	const cookie = response.headers.get('set-cookie') ?? '';
+	assert.match(cookie, /oauth_state=/, 'state bound to the browser via cookie');
+	assert.ok(cookie.includes(urlState!), 'cookie carries the same state value');
+	assert.match(cookie, /SameSite=Lax/, 'Lax so the cookie survives the redirect back');
+});
+
+test('googleCallback: 400 on state mismatch or missing state (login CSRF)', async () => {
+	const ctrl = makeOauth();
+	// No state at all
+	const noState = makeCtx();
+	noState.request = new Request('http://localhost/auth/google/callback?code=test-code');
+	assert.equal((await ctrl.googleCallback(noState)).status, 400);
+	// Query state ≠ cookie state
+	const mismatched = makeCtx();
+	mismatched.request = new Request('http://localhost/auth/google/callback?code=test-code&state=attacker', {
+		headers: { cookie: 'oauth_state=victim' },
+	});
+	const response = await ctrl.googleCallback(mismatched);
+	assert.equal(response.status, 400);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'GOOGLE_AUTH_FAILED');
+});
+
 test('googleCallback: 400 GOOGLE_AUTH_FAILED when token exchange returns no id_token', async () => {
 	const fetchMock = mockFetch({});
 	const ctrl = makeOauth();
-	const ctx = makeCtx();
-	ctx.request = new Request('http://localhost/auth/google/callback?code=test-code');
-	const response = await ctrl.googleCallback(ctx);
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 400);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'GOOGLE_AUTH_FAILED');
+});
+
+test('googleCallback: 400 when the token audience is another client (aud check)', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken({ ...ID_CLAIMS, aud: 'other-app' }) });
+	const ctrl = makeOauth();
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 400);
+});
+
+test('googleCallback: 400 when the Google email is not verified (account-linking guard)', async () => {
+	// upsertByProvider links BY EMAIL — an unverified Google email would let its
+	// holder take over an existing account registered with that address.
+	const fetchMock = mockFetch({ id_token: fakeIdToken({ ...ID_CLAIMS, email_verified: false }) });
+	const ctrl = makeOauth({ insertedId: 'user-1', userById: BASE_USER });
+	const response = await ctrl.googleCallback(callbackCtx());
 	fetchMock.mock.restore();
 	assert.equal(response.status, 400);
 	const body = (await response.json()) as any;
@@ -1690,11 +1759,9 @@ test('googleCallback: 400 GOOGLE_AUTH_FAILED when token exchange returns no id_t
 });
 
 test('googleCallback: 400 GOOGLE_AUTH_FAILED when id_token has no email', async () => {
-	const fetchMock = mockFetch({ id_token: fakeIdToken({ sub: 'google-123' }) });
+	const fetchMock = mockFetch({ id_token: fakeIdToken({ ...ID_CLAIMS, email: undefined }) });
 	const ctrl = makeOauth();
-	const ctx = makeCtx();
-	ctx.request = new Request('http://localhost/auth/google/callback?code=test-code');
-	const response = await ctrl.googleCallback(ctx);
+	const response = await ctrl.googleCallback(callbackCtx());
 	fetchMock.mock.restore();
 	assert.equal(response.status, 400);
 	const body = (await response.json()) as any;
@@ -1702,13 +1769,9 @@ test('googleCallback: 400 GOOGLE_AUTH_FAILED when id_token has no email', async 
 });
 
 test('googleCallback: 500 SERVER_ERROR when upsert returns null', async () => {
-	const fetchMock = mockFetch({
-		id_token: fakeIdToken({ email: 'jane@example.com', sub: 'google-123' }),
-	});
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
 	const ctrl = makeOauth({}); // no insertedId → upsertByProvider returns null
-	const ctx = makeCtx();
-	ctx.request = new Request('http://localhost/auth/google/callback?code=test-code');
-	const response = await ctrl.googleCallback(ctx);
+	const response = await ctrl.googleCallback(callbackCtx());
 	fetchMock.mock.restore();
 	assert.equal(response.status, 500);
 	const body = (await response.json()) as any;
@@ -1716,13 +1779,9 @@ test('googleCallback: 500 SERVER_ERROR when upsert returns null', async () => {
 });
 
 test('googleCallback: 200 GOOGLE_AUTH_SUCCESS with tokens and user on valid OAuth code', async () => {
-	const fetchMock = mockFetch({
-		id_token: fakeIdToken({ email: 'jane@example.com', sub: 'google-123' }),
-	});
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
 	const ctrl = makeOauth({ insertedId: 'user-1', userById: BASE_USER });
-	const ctx = makeCtx();
-	ctx.request = new Request('http://localhost/auth/google/callback?code=test-code');
-	const response = await ctrl.googleCallback(ctx);
+	const response = await ctrl.googleCallback(callbackCtx());
 	fetchMock.mock.restore();
 	assert.equal(response.status, 200);
 	const body = (await response.json()) as any;
@@ -2677,4 +2736,29 @@ test('toUserDTO: historical garbage preferences cannot poison the typed shape', 
 	// A partial stored notifications object deep-merges over the defaults —
 	// the client type promises all four flags.
 	assert.deepEqual(prefs.notifications, { email: false, inApp: true, sms: false, push: false });
+});
+
+// ── Security: password reset revokes every session ───────────────────
+// A reset happens because the account may be compromised — any session the
+// attacker already holds must die with the old password.
+
+test('resetPassword: revokes all of the user\'s sessions', async () => {
+	const executed: { sql: string; params: unknown[] }[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			executed.push({ sql, params: params ?? [] });
+			if (sql.includes('fonderie_password_resets') && sql.includes('WHERE pin'))
+				return [{ user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) }] as unknown as T[];
+			return [] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const ctrl = authController(store, config);
+	const response = await ctrl.resetPassword(
+		makeCtx({ body: { pin: '123456', password: 'new-password-123' } }),
+	);
+	assert.equal(response.status, 200);
+	const sessionDelete = executed.find((q) => q.sql.includes('DELETE FROM fonderie_sessions'));
+	assert.ok(sessionDelete, 'all sessions must be revoked on reset');
+	assert.deepEqual(sessionDelete!.params, ['user-1']);
 });

@@ -143,7 +143,11 @@ export function toInvitationDTO(inv: IInvitation): IInvitationDTO {
 		workspaceId: stringOrEmpty(inv.workspaceId),
 		email: stringOrEmpty(inv.email),
 		roleId: stringOrEmpty(inv.roleId),
-		token: stringOrEmpty(inv.token),
+		// The accept token is a bearer credential delivered to the INVITEE by
+		// email — never expose it through the API. Listing invitations used to
+		// leak it, letting any member accept (hijack) someone else's pending
+		// invite. The field stays for DTO-shape compatibility, always empty.
+		token: '',
 		status: stringOrEmpty(inv.status),
 		expiresAt: dateOrEmpty(inv.expiresAt),
 		createdAt: dateOrEmpty(inv.createdAt),

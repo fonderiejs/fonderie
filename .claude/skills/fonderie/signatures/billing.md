@@ -50,6 +50,8 @@ interface IRequirePlanOptions {
 
 function withBilling(store: IStoreAdapter, config: IBillingConfig, backend: ICounterBackend, bus?: EventBus | undefined): Middleware
 
+function requireBillingManager(store: IStoreAdapter, config: IBillingConfig): Middleware
+
 function hasFeature(ctx: IFonderieContext, key: string): boolean
 
 function getPlanLimit(ctx: IFonderieContext, key: string): number | null
@@ -79,6 +81,7 @@ interface IBillingConfig {
     plans: IBillingPlan[];
     successUrl: string;
     cancelUrl: string;
+    management?: 'owner-or-admin' | 'any-member';
     adminToken?: string;
     planAdminToken?: string;
     webhookSecret?: string;

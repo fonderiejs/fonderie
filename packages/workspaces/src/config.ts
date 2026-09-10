@@ -14,6 +14,13 @@ export interface IWorkspacesConfig {
 	// How long invitations are valid. Default: '7d'
 	invitationTtl?: string;
 
+	// Who may hit PRIVILEGED workspace routes (role CRUD, member/invitation
+	// management, settings, archive). Default 'owner-or-admin': the workspace
+	// owner or a holder of an active system role. 'any-member' restores the
+	// legacy behaviour where every member could manage the workspace. Reads
+	// are never gated by this.
+	management?: 'owner-or-admin' | 'any-member';
+
 	// Auto-create a personal workspace when user.registered fires.
 	// Requires an EventBus to be passed to WorkspacesModule. Default: true
 	personalWorkspace?: boolean;

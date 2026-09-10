@@ -60,17 +60,29 @@ export class CourierModule implements IFonderieModule {
 		validateCourierConfig(this.config, this.dispatcher.channelNames());
 
 		const store = this.store;
-		const signingKeys = this.config.delivery?.signingKeys;
+		const delivery = this.config.delivery;
+		const signingKeys = delivery?.signingKeys;
 
-		app.addRoute('POST', '/courier/delivery/sendgrid', (ctx) =>
-			handleSendGridDelivery(ctx.request, store!, signingKeys?.sendgrid),
-		);
-		app.addRoute('POST', '/courier/delivery/mailgun', (ctx) =>
-			handleMailgunDelivery(ctx.request, store!, signingKeys?.mailgun),
-		);
-		app.addRoute('POST', '/courier/delivery/mailtrap', (ctx) =>
-			handleMailtrapDelivery(ctx.request, store!),
-		);
+		// Fail closed: a delivery route only exists when its verification key is
+		// configured — an unverified endpoint would accept forged delivered/
+		// opened/bounced events from anyone who finds the URL. (The handlers
+		// also 401 without a key, as defense in depth.)
+		if (signingKeys?.sendgrid) {
+			app.addRoute('POST', '/courier/delivery/sendgrid', (ctx) =>
+				handleSendGridDelivery(ctx.request, store!, signingKeys.sendgrid),
+			);
+		}
+		if (signingKeys?.mailgun) {
+			app.addRoute('POST', '/courier/delivery/mailgun', (ctx) =>
+				handleMailgunDelivery(ctx.request, store!, signingKeys.mailgun),
+			);
+		}
+		// Mailtrap has NO signature scheme — explicit dev/test opt-in only.
+		if (delivery?.allowUnverifiedMailtrap) {
+			app.addRoute('POST', '/courier/delivery/mailtrap', (ctx) =>
+				handleMailtrapDelivery(ctx.request, store!),
+			);
+		}
 
 		// Versioned template admin routes — only when a token is configured and a
 		// store is present (db templates). Mirrors @fonderie/config's admin surface.

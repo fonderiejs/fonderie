@@ -15,11 +15,23 @@ export class CustomerLabelModel {
 		);
 	}
 
-	remove(id: string): Promise<void> {
-		return this.store.query(
-			`DELETE FROM fonderie_customer_labels WHERE id = $1`,
+	/**
+	 * Returns false when the label is still referenced. Labels are a SHARED
+	 * table (no workspace column), so an unconditional delete would let one
+	 * tenant destroy a label other tenants' emails/phones/addresses point at.
+	 * Until labels are workspace-scoped, only an unreferenced label may go.
+	 */
+	async remove(id: string): Promise<boolean> {
+		const rows = await this.store.query<{ id: string }>(
+			`DELETE FROM fonderie_customer_labels l
+			 WHERE l.id = $1
+			   AND NOT EXISTS (SELECT 1 FROM fonderie_customer_emails    WHERE label_id = l.id)
+			   AND NOT EXISTS (SELECT 1 FROM fonderie_customer_phones    WHERE label_id = l.id)
+			   AND NOT EXISTS (SELECT 1 FROM fonderie_customer_addresses WHERE label_id = l.id)
+			 RETURNING l.id`,
 			[id],
-		).then(() => undefined);
+		);
+		return rows.length > 0;
 	}
 
 	async findOrCreate(type: CustomerLabelType, raw: string): Promise<ICustomerLabel> {

@@ -30,6 +30,18 @@ export class MigrationRunner {
 			this.assertNoReservedPrefix(file, sql);
 
 			await this.store.transaction(async (tx) => {
+				// Cross-process serialization: several instances booting at once all
+				// see the same pending list. The advisory xact-lock makes appliers
+				// queue, and the in-lock recheck turns the loser's attempt into a
+				// no-op instead of a duplicate DDL failure (or worse, a partial
+				// double-application on non-idempotent SQL).
+				await tx.query(`SELECT pg_advisory_xact_lock(hashtext('${MIGRATIONS_TABLE}'))`);
+				const already = await tx.query<{ name: string }>(
+					`SELECT name FROM ${MIGRATIONS_TABLE} WHERE name = $1`,
+					[file],
+				);
+				if (already.length > 0) return;
+
 				await tx.query(sql);
 				await tx.query(`INSERT INTO ${MIGRATIONS_TABLE} (name, applied_at) VALUES ($1, now())`, [
 					file,

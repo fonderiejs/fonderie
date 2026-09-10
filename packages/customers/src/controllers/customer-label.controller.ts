@@ -34,7 +34,14 @@ export function customerLabelController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'labelId must be a valid UUID');
 			}
 
-			await labels.remove(labelId);
+			const removed = await labels.remove(labelId);
+			if (!removed) {
+				return setApiResponse(
+					HTTP.CONFLICT,
+					'LABEL_IN_USE',
+					'Label is still referenced by customer records and cannot be deleted.',
+				);
+			}
 			return setApiResponse(HTTP.OK, 'LABEL_DELETED', 'Label deleted successfully.');
 		},
 	};

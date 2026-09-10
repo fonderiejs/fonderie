@@ -2427,3 +2427,91 @@ test('purchase: falls back to chargeOffSession when the provider has no chargeVi
 	assert.deepEqual(calls, ['charge'])
 	assert.equal(out.status, 'declined')
 })
+
+// ── Security: manager gate on money-mutating routes (M1) ─────────────
+// withBilling verifies MEMBERSHIP; spending the workspace's card, cancelling
+// its subscription, or buying credits are MANAGER actions — the owner or a
+// holder of an active system role.
+
+function billingCtx(opts: {
+	userId?: string | null;
+	workspaceHeader?: string;
+}): import('@fonderie/core').IFonderieContext {
+	return {
+		meta: {},
+		user: opts.userId ? ({ id: opts.userId, email: 'a@b.com' } as never) : null,
+		workspace: null,
+		tenant: null,
+		request: new Request('http://localhost/billing/checkout', {
+			headers: opts.workspaceHeader ? { 'x-workspace-id': opts.workspaceHeader } : {},
+		}),
+	} as any;
+}
+
+function managerGateStore(isManager: boolean) {
+	const stub = {
+		query: async (sql: string) => {
+			if (sql.includes('fonderie_workspaces') && sql.includes('owner_id')) {
+				return isManager ? [{ ok: 1 }] : [];
+			}
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(stub),
+	};
+	return stub as unknown as import('@fonderie/store').IStoreAdapter;
+}
+
+test('requireBillingManager: user-scoped billing passes (own money)', async () => {
+	const { requireBillingManager } = await import('../middlewares/require-manager');
+	const mw = requireBillingManager(managerGateStore(false), config);
+	let called = false;
+	await mw(billingCtx({ userId: 'u-1' }), async () => { called = true; return new Response(); });
+	assert.ok(called);
+});
+
+test('requireBillingManager: workspace member without manager rights gets 403', async () => {
+	const { requireBillingManager } = await import('../middlewares/require-manager');
+	const mw = requireBillingManager(managerGateStore(false), config);
+	const res = await mw(
+		billingCtx({ userId: 'u-1', workspaceHeader: 'ws-1' }),
+		async () => new Response(),
+	);
+	assert.equal(res.status, 403);
+	const body = (await res.json()) as any;
+	assert.equal(body.reason, 'MANAGER_REQUIRED');
+});
+
+test('requireBillingManager: owner/admin of the workspace passes', async () => {
+	const { requireBillingManager } = await import('../middlewares/require-manager');
+	const mw = requireBillingManager(managerGateStore(true), config);
+	let called = false;
+	await mw(
+		billingCtx({ userId: 'u-1', workspaceHeader: 'ws-1' }),
+		async () => { called = true; return new Response(); },
+	);
+	assert.ok(called);
+});
+
+test('requireBillingManager: management "any-member" opts out', async () => {
+	const { requireBillingManager } = await import('../middlewares/require-manager');
+	const mw = requireBillingManager(managerGateStore(false), { ...config, management: 'any-member' });
+	let called = false;
+	await mw(
+		billingCtx({ userId: 'u-1', workspaceHeader: 'ws-1' }),
+		async () => { called = true; return new Response(); },
+	);
+	assert.ok(called);
+});
+
+test('buildBillingRoutes: money mutations carry the manager gate, reads do not', async () => {
+	const { buildBillingRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const routes = buildBillingRoutes(stub, config);
+	const chain = (method: string, path: string) => routes.find(([m, p]) => m === method && p === path)!;
+	// checkout: [m, p, requireAuth, manager, validate, handler] — one more than
+	// the read-only subscription GET's [m, p, requireAuth, handler].
+	assert.equal(chain('POST', '/billing/checkout').length, 6);
+	assert.equal(chain('GET', '/billing/subscription').length, 4);
+	assert.equal(chain('DELETE', '/billing/payment-method').length, 5, 'card removal is manager-gated');
+	assert.equal(chain('GET', '/billing/invoices').length, 4, 'invoice read is not');
+});

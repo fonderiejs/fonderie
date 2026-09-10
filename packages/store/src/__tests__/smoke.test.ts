@@ -203,3 +203,56 @@ test('assertProductionDbConfig: THROWS on sslmode=disable in production (A4)', (
 		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
 	}
 });
+
+// ── Security: migration runner cross-process serialization ──────────
+// Several instances booting at once all read the same pending list; without
+// an advisory lock + in-lock recheck, both apply the same migration.
+
+test('MigrationRunner: takes the advisory lock and rechecks inside it', async () => {
+	const { mkdtemp, writeFile } = await import('node:fs/promises');
+	const { tmpdir } = await import('node:os');
+	const { join: pjoin } = await import('node:path');
+	const dir = await mkdtemp(pjoin(tmpdir(), 'fonderie-mig-'));
+	await writeFile(pjoin(dir, '001_init.sql'), 'CREATE TABLE app_things (id INT)');
+
+	const executed: { sql: string; params: unknown[] }[] = [];
+	const store = {
+		query: async (sql: string, params?: unknown[]) => {
+			executed.push({ sql, params: params ?? [] });
+			// applied-recheck inside the lock: report ALREADY applied
+			if (sql.includes('WHERE name = $1')) return [{ name: '001_init.sql' }];
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+
+	await new MigrationRunner(store, dir).run();
+
+	assert.ok(
+		executed.some((q) => q.sql.includes('pg_advisory_xact_lock')),
+		'advisory lock taken before applying',
+	);
+	assert.ok(
+		!executed.some((q) => q.sql.includes('CREATE TABLE app_things')),
+		'migration NOT re-applied when the in-lock recheck says another process won',
+	);
+});
+
+// ── Security: production TLS gate covers the config-object form ─────
+
+test('assertProductionDbConfig: throws on ssl:false object config in production', async () => {
+	const { assertProductionDbConfig } = await import('../adapters/pg');
+	const prev = process.env['NODE_ENV'];
+	process.env['NODE_ENV'] = 'production';
+	try {
+		assert.throws(
+			() => assertProductionDbConfig({ host: 'db.internal', ssl: false } as never),
+			/TLS is disabled/,
+		);
+		// Explicitly-enabled ssl passes.
+		assert.doesNotThrow(() => assertProductionDbConfig({ host: 'db.internal', ssl: true } as never));
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
+	}
+});

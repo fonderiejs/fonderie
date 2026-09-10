@@ -36,6 +36,18 @@ export function memberController(store: IStoreAdapter) {
 			if (userId === ctx.user?.id) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_OPERATION', 'Cannot remove yourself');
 			}
+			// Last-owner guard: removing the workspace owner would orphan the
+			// tenant (no member can administer it anymore). Ownership transfer,
+			// not removal, is the path for changing who owns a workspace.
+			// (withWorkspace assigns the full row; core's IWorkspace type is minimal.)
+			const ownerId = (ctx.workspace as { ownerId?: string }).ownerId;
+			if (ownerId && userId === ownerId) {
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'INVALID_OPERATION',
+					'Cannot remove the workspace owner',
+				);
+			}
 
 			await members.remove(userId, ctx.workspace.id);
 			return setApiResponse(HTTP.OK, 'MEMBER_REMOVED', 'Member removed successfully.');

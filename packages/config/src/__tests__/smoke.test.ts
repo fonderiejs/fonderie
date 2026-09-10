@@ -567,3 +567,34 @@ test('admin PUT: body.active reaches the write instead of being forced true', as
 	const flat = captured.map(([sql, params]) => JSON.stringify(params)).join('|');
 	assert.ok(flat.includes('false'), 'active=false must reach the write params');
 });
+
+// ── Security: flag lookups must not fail open via the prototype ──────
+// entries was a {}-literal, so get('constructor', false) resolved
+// Object.prototype.constructor — a truthy function — and any flag gate with an
+// attacker-influenced key failed OPEN. Keys like "__proto__" from DB rows
+// could also pollute the prototype.
+
+test('get: prototype keys return the fallback, never inherited members', async () => {
+	const store = makeStore([{ key: 'feature.enabled', value: 'true', environment: 'all' }]);
+	const manager = new RemoteConfigManager(store, { ttl: 60_000 });
+	await manager.refresh();
+
+	assert.equal(manager.get('constructor', false), false);
+	assert.equal(manager.get('toString', false), false);
+	assert.equal(manager.get('hasOwnProperty', false), false);
+	assert.equal(manager.get('__proto__', false), false);
+	// real keys still resolve
+	assert.equal(manager.get('feature.enabled', false), true);
+});
+
+test('refresh: a "__proto__" row cannot pollute the entries object', async () => {
+	const store = makeStore([
+		{ key: '__proto__', value: '{"polluted":true}', environment: 'all' },
+		{ key: 'safe.key', value: '1', environment: 'all' },
+	]);
+	const manager = new RemoteConfigManager(store, { ttl: 60_000 });
+	await manager.refresh();
+
+	assert.equal(({} as Record<string, unknown>)['polluted'], undefined, 'global prototype untouched');
+	assert.equal(manager.get('safe.key', 0), 1);
+});

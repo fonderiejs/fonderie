@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -8,8 +8,9 @@ function generateToken(): string {
 	return randomBytes(32).toString('hex');
 }
 
+// CSPRNG — Math.random() is predictable and must never mint a credential.
 function generatePin(): string {
-	return Math.floor(100000 + Math.random() * 900000).toString();
+	return randomInt(100000, 1000000).toString();
 }
 
 function parseTtl(ttl: string): number {
@@ -97,9 +98,14 @@ export async function cancelInvitation(
 }
 
 export async function acceptInvitationByPin(
-	opts: { pin: string; userId: string },
+	opts: { pin: string; userId: string; email: string },
 	store: IStoreAdapter,
 ): Promise<{ workspaceId: string; roleId: string }> {
+	// The PIN is 6 digits, so on its own it is guessable. Binding the lookup to
+	// the ACCEPTING user's email means a PIN can only redeem an invitation that
+	// was actually addressed to that account — a guessed PIN for someone else's
+	// invite matches nothing. (The token path carries 32 bytes of entropy and
+	// needs no such binding.)
 	const [inv] = await store.query<{
 		id: string;
 		workspaceId: string;
@@ -108,8 +114,8 @@ export async function acceptInvitationByPin(
 	}>(
 		`SELECT id, workspace_id AS "workspaceId", role_id AS "roleId", expires_at AS "expiresAt"
 		 FROM fonderie_workspace_invitations
-		 WHERE pin = $1 AND status = 'PENDING'`,
-		[opts.pin],
+		 WHERE pin = $1 AND lower(email) = lower($2) AND status = 'PENDING'`,
+		[opts.pin, opts.email],
 	);
 
 	if (!inv) throw new Error('Invalid PIN');

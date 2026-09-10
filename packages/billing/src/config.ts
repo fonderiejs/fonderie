@@ -220,6 +220,15 @@ export interface IBillingConfig {
 	successUrl: string;
 	cancelUrl: string;
 	/**
+	 * Who may hit MONEY-MUTATING routes (checkout, cancel/reactivate, payment
+	 * methods, wallet purchases) for a WORKSPACE subscriber. Default
+	 * 'owner-or-admin': the workspace owner or a holder of an active system
+	 * role. 'any-member' restores the legacy behaviour where every member
+	 * could spend the workspace's card. Reads and user-scoped billing are
+	 * never gated by this.
+	 */
+	management?: 'owner-or-admin' | 'any-member';
+	/**
 	 * One bearer token guarding ALL billing ops routes — the DB-plan write API
 	 * (POST/PUT/DELETE /plans) and the wallet manual-grant (POST /billing/wallet/grant),
 	 * compared in constant time. Each route is registered ONLY when a token is
