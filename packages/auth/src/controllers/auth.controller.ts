@@ -1,5 +1,5 @@
 import { tokenPairCookies, clearedTokenCookies, cookieHeaders } from '../services/cookies';
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 
 import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
@@ -493,15 +493,23 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			}
 
 			const pin = randomInt(100000, 1000000).toString();
+			// High-entropy token backing a reset LINK (32 bytes → 64 hex chars).
+			// Not brute-forceable, so its reset path needs no rate limit.
+			const token = randomBytes(32).toString('hex');
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
-			await passwordReset.create(user.id, pin, expiresAt);
+			await passwordReset.create(user.id, pin, token, expiresAt);
+
+			// Ready-built reset link when the app configured a base URL; '' means
+			// the app only surfaces the pin (a blank {{resetUrl}} renders empty).
+			const base = resolved.passwordResetUrl;
+			const resetUrl = base ? `${base}${base.includes('?') ? '&' : '?'}token=${token}` : '';
 
 			bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.passwordReset,
 					locale: user.locale,
 					recipient: { email, phone: null, deviceToken: null },
-					data: { pin },
+					data: { pin, token, resetUrl },
 				} satisfies ICourierMessage)
 				.catch(() => {});
 
@@ -517,22 +525,11 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			const raw = body?.['pin'];
 			const password = body?.['password'];
 
-			if (typeof raw !== 'string' || typeof password !== 'string') {
-				return setApiResponse(
-					HTTP.UNPROCESSABLE,
-					'INVALID_PARAMETER',
-					'pin and password are required',
-				);
-			}
+			const rawToken = body?.['token'];
 
-			if (!/^\d{6}$/.test(raw.trim())) {
-				return setApiResponse(
-					HTTP.UNPROCESSABLE,
-					'INVALID_PARAMETER',
-					'pin must be a 6-digit code',
-				);
+			if (typeof password !== 'string') {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'password is required');
 			}
-
 			if (password.length < 8) {
 				return setApiResponse(
 					HTTP.UNPROCESSABLE,
@@ -541,10 +538,29 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				);
 			}
 
-			const pin = raw.trim();
-			const row = await passwordReset.findByPin(pin);
+			// Two credentials redeem a reset: the strong TOKEN (from the email
+			// link — not brute-forceable) or the 6-digit PIN (route is
+			// IP-rate-limited). Token takes precedence when both are supplied.
+			let row: { userId: string; expiresAt: Date } | null;
+			if (typeof rawToken === 'string' && rawToken.trim().length >= 32) {
+				row = await passwordReset.findByToken(rawToken.trim());
+			} else {
+				if (typeof raw !== 'string' || !/^\d{6}$/.test(raw.trim())) {
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_PARAMETER',
+						'a 6-digit pin or a reset token is required',
+					);
+				}
+				row = await passwordReset.findByPin(raw.trim());
+			}
+
 			if (!row || new Date() > row.expiresAt) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'PASSWORD_RESET_FAILED', 'Invalid or expired pin');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'PASSWORD_RESET_FAILED',
+					'Invalid or expired reset credentials',
+				);
 			}
 
 			const passwordHash = await hashPassword(password);

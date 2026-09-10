@@ -72,6 +72,13 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	accessTokenDuration?: string;
 	providers: ('email' | 'phone' | 'google' | 'github')[];
 	appName?: string;
+	// Base URL for the password-reset LINK. When set, forgot-password emits a
+	// ready-built `resetUrl` (base + `token=<high-entropy token>`) in the
+	// notification payload, so a template can offer a click-to-reset link
+	// instead of only the 6-digit code. Unset → resetUrl is '' and only the
+	// pin flows (unchanged behaviour). The token backs POST /auth/email/reset
+	// with `{ token, password }`.
+	passwordResetUrl?: string;
 	resolve?: (ctx: { meta: Record<string, unknown> }) => Partial<IAuthRuntimeConfig>;
 	// Override the HTTP path (and optionally method) of any auth route, keyed by a
 	// stable id. Lets an app match an existing frontend's contract without a

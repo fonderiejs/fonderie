@@ -131,7 +131,11 @@ If you made this change, you're all set. If not, contact support right away — 
 export const SAMPLE_PAYLOADS: Record<AuthMessageKey, Record<string, unknown>> = {
 	[MESSAGE_KEYS.emailRegistration]: { firstName: '', pin: '123456' },
 	[MESSAGE_KEYS.emailVerification]: { firstName: 'Ada', pin: '123456' },
-	[MESSAGE_KEYS.passwordReset]: { pin: '123456' },
+	[MESSAGE_KEYS.passwordReset]: {
+		pin: '123456',
+		token: '0'.repeat(64),
+		resetUrl: 'https://app.example.com/reset?token=' + '0'.repeat(64),
+	},
 	[MESSAGE_KEYS.phoneOtp]: { otp: '123456' },
 	[MESSAGE_KEYS.mfaEnabled]: {},
 	[MESSAGE_KEYS.mfaDisabled]: {},

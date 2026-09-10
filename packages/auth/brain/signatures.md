@@ -58,6 +58,7 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     accessTokenDuration?: string;
     providers: ('email' | 'phone' | 'google' | 'github')[];
     appName?: string;
+    passwordResetUrl?: string;
     resolve?: (ctx: {
         meta: Record<string, unknown>;
     }) => Partial<IAuthRuntimeConfig>;

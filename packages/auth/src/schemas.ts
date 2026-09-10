@@ -38,7 +38,13 @@ export const refreshSchema = z.object({ refreshToken: z.string().min(1).optional
 
 export const forgotPasswordSchema = z.object({ email });
 
-export const resetPasswordSchema = z.object({ pin: sixDigitPin, password });
+// Reset by the 6-digit pin (typed from the email; route is IP-rate-limited)
+// or by the high-entropy token (from the email's reset link; not
+// brute-forceable, so it needs no rate limit).
+export const resetPasswordSchema = z.union([
+	z.object({ pin: sixDigitPin, password }),
+	z.object({ token: z.string().trim().min(32, 'invalid reset token'), password }),
+]);
 
 export const verifySchema = z.object({ token: sixDigitPin });
 

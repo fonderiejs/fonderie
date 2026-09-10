@@ -61,6 +61,7 @@ user_id                  UUID PRIMARY KEY REFERENCES fonderie_users(id) ON DELET
 expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 pin                      TEXT NOT NULL UNIQUE
+token                    TEXT
 -- INDEX idx_fonderie_password_resets_pin (pin)
 ```
 
