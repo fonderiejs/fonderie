@@ -48,6 +48,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .audit: AuditClient
   .webhooks: WebhooksClient
   .customers: CustomersClient
+  .media: MediaClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -376,6 +377,20 @@ new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .removeRelationship(customerId: string, relatedId: string): Promise<IApiResponse<undefined>>
   .listLabels(type: CustomerLabelType, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerLabelListResult>>
   .removeLabel(labelId: string): Promise<IApiResponse<undefined>>
+
+interface IUploadMediaInput {
+    dataBase64: string;
+    purpose?: string;
+    ownerType?: string;
+    ownerId?: string;
+}
+
+new MediaClient(http: HttpClient, tokens: TokenStore): MediaClient
+  .setAccessToken(token: string | undefined): void
+  .upload(input: IUploadMediaInput): Promise<IApiResponse<IMediaAssetResult>>
+  .delete(id: string): Promise<IApiResponse<{ id: string; }>>
+  .assetUrl(id: string): string
+  .assetIdFromUrl(url: string | null | undefined): string | null
 
 interface ICreateWebhookEndpointInput {
     url: string;
@@ -798,6 +813,21 @@ interface ILoginResult {
     tokens: ITokens;
     user: IUserDTO;
     requiresVerification?: boolean;
+}
+
+interface IMediaAssetDTO {
+    id: string;
+    url: string;
+    contentType: string;
+    byteSize: number;
+    ownerType: string;
+    ownerId: string;
+    purpose: string;
+    createdAt: string;
+}
+
+interface IMediaAssetResult {
+    asset: IMediaAssetDTO;
 }
 
 interface IMemberDTO {

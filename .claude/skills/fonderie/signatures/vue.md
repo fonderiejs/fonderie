@@ -12,6 +12,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .audit: AuditClient
   .webhooks: WebhooksClient
   .customers: CustomersClient
+  .media: MediaClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void

@@ -549,6 +549,26 @@ export interface ISessionsResult {
 	sessions: ISessionDTO[];
 }
 
+// ── Media ────────────────────────────────────────────────────────────────────
+// Session-authenticated image storage (avatars, logos). `url` is the
+// monomorphic, backend-relative /media/:id path; call client.media.assetUrl(id)
+// for an absolute `<img src>`.
+
+export interface IMediaAssetDTO {
+	id: string;
+	url: string;
+	contentType: string;
+	byteSize: number;
+	ownerType: string;
+	ownerId: string;
+	purpose: string;
+	createdAt: string;
+}
+
+export interface IMediaAssetResult {
+	asset: IMediaAssetDTO;
+}
+
 // ── Webhooks ─────────────────────────────────────────────────────────────────
 // Session-authenticated (shares FonderieClient's TokenStore, scoped via
 // setWorkspaceId like billing/workspaces/audit).
