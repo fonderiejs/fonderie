@@ -70,7 +70,7 @@ export function customerAddressController(store: IStoreAdapter) {
 			}
 
 			const rawLabel = typeof body?.['label'] === 'string' ? body['label'] : 'service';
-			const { id: labelId } = await labels.findOrCreate('address', rawLabel);
+			const { id: labelId } = await labels.findOrCreate('address', rawLabel, r.workspaceId);
 
 			let created: Awaited<ReturnType<typeof addresses.add>>;
 			try {
@@ -114,7 +114,7 @@ export function customerAddressController(store: IStoreAdapter) {
 			}
 
 			try {
-				const { id: labelId } = await labels.findOrCreate('address', body['label'].trim());
+				const { id: labelId } = await labels.findOrCreate('address', body['label'].trim(), r.workspaceId);
 				const updated = await addresses.updateLabel(addrId, r.customer.id, labelId);
 				return setApiResponse(HTTP.OK, 'ADDRESS_UPDATED', 'Address updated successfully.', {
 					address: toCustomerAddressDTO(updated),
