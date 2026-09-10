@@ -17,4 +17,5 @@ export * as schemas from './schemas';
 
 // SSRF guard — reject webhook URLs that resolve to non-public addresses.
 // Exported so consumers can pre-validate a URL before registering it.
-export { assertPublicHttpUrl, isBlockedAddress, SsrfError } from './ssrf';
+export { assertPublicHttpUrl, isBlockedAddress, resolvePinnedTarget, pinnedTransport, SsrfError } from './ssrf';
+export type { IPinnedTarget, IWebhookResponse, WebhookTransport } from './ssrf';

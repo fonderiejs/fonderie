@@ -1,4 +1,4 @@
-import { test, mock } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { MemoryTransport } from '@fonderie/events';
@@ -7,11 +7,28 @@ import type { IEventMeta } from '@fonderie/events';
 
 import { WebhookDispatcher } from '../dispatcher';
 import { signPayload } from '../signing';
-import { assertPublicHttpUrl, isBlockedAddress, SsrfError } from '../ssrf';
+import {
+	assertPublicHttpUrl,
+	isBlockedAddress,
+	resolvePinnedTarget,
+	SsrfError,
+	type IWebhookResponse,
+	type WebhookTransport,
+} from '../ssrf';
 
-// Pass-through SSRF guard for tests that mock fetch — keeps them hermetic by
-// skipping the real DNS lookup. The real guard is exercised separately below.
-const PASS = async (): Promise<void> => {};
+// Canned, call-recording delivery transport for hermetic tests — no DNS,
+// no sockets. Replaces the old globalThis.fetch mock + pass-through guard.
+function fakeTransport(
+	result: Partial<IWebhookResponse> = {},
+): WebhookTransport & { calls: Array<{ url: string; init: Parameters<WebhookTransport>[1] }> } {
+	const calls: Array<{ url: string; init: Parameters<WebhookTransport>[1] }> = [];
+	const fn = (async (url, init) => {
+		calls.push({ url, init });
+		return { ok: result.ok ?? true, status: result.status ?? 200, body: result.body ?? '' };
+	}) as WebhookTransport & { calls: typeof calls };
+	fn.calls = calls;
+	return fn;
+}
 
 // ── stub store ────────────────────────────────────────────────────
 
@@ -165,13 +182,8 @@ test('dispatch: creates delivery and marks it delivered on 2xx', async () => {
 		createdAt: new Date(),
 	});
 
-	const origFetch = globalThis.fetch;
-	globalThis.fetch = async () => new Response('ok', { status: 200 }) as never;
-
-	const d = new WebhookDispatcher(store as never, {}, PASS);
+	const d = new WebhookDispatcher(store as never, {}, fakeTransport({ ok: true, status: 200 }));
 	await d.dispatch({ workspaceId: 'ws-1' }, makeMeta('project.created'));
-
-	globalThis.fetch = origFetch;
 
 	assert.equal(store.db.fonderie_webhook_deliveries.length, 1);
 	assert.equal(store.db.fonderie_webhook_deliveries[0]!['status'], 'delivered');
@@ -210,13 +222,8 @@ test('dispatch: filters endpoints by event type', async () => {
 		},
 	);
 
-	const origFetch = globalThis.fetch;
-	globalThis.fetch = async () => new Response('ok', { status: 200 }) as never;
-
-	const d = new WebhookDispatcher(store as never, {}, PASS);
+	const d = new WebhookDispatcher(store as never, {}, fakeTransport({ ok: true, status: 200 }));
 	await d.dispatch({ workspaceId: 'ws-1' }, makeMeta('project.created'));
-
-	globalThis.fetch = origFetch;
 
 	// ep-1 (matches) + ep-3 (all events) should receive delivery — ep-2 should not
 	const delivered = store.db.fonderie_webhook_deliveries.map((r) => r['endpointId']);
@@ -245,10 +252,7 @@ test('attemptDelivery: marks delivery as delivered on 2xx response', async () =>
 
 	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
 
-	const origFetch = globalThis.fetch;
-	globalThis.fetch = async () => new Response('ok', { status: 200 }) as never;
-
-	const d = new WebhookDispatcher(store as never, {}, PASS);
+	const d = new WebhookDispatcher(store as never, {}, fakeTransport({ ok: true, status: 200 }));
 	const { DeliveryModel } = await import('../models/delivery.model');
 	await d.attemptDelivery(
 		'https://example.com',
@@ -256,8 +260,6 @@ test('attemptDelivery: marks delivery as delivered on 2xx response', async () =>
 		delivery,
 		new DeliveryModel(store as never),
 	);
-
-	globalThis.fetch = origFetch;
 
 	const updated = store.db.fonderie_webhook_deliveries[0]!;
 	assert.equal(updated['status'], 'delivered');
@@ -284,10 +286,11 @@ test('attemptDelivery: marks delivery as failed with next retry on non-2xx', asy
 
 	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
 
-	const origFetch = globalThis.fetch;
-	globalThis.fetch = async () => new Response('error', { status: 500 }) as never;
-
-	const d = new WebhookDispatcher(store as never, { maxAttempts: 3, retryDelays: [60_000] }, PASS);
+	const d = new WebhookDispatcher(
+		store as never,
+		{ maxAttempts: 3, retryDelays: [60_000] },
+		fakeTransport({ ok: false, status: 500 }),
+	);
 	const { DeliveryModel } = await import('../models/delivery.model');
 	await d.attemptDelivery(
 		'https://example.com',
@@ -295,8 +298,6 @@ test('attemptDelivery: marks delivery as failed with next retry on non-2xx', asy
 		delivery,
 		new DeliveryModel(store as never),
 	);
-
-	globalThis.fetch = origFetch;
 
 	const updated = store.db.fonderie_webhook_deliveries[0]!;
 	assert.equal(updated['status'], 'failed');
@@ -323,10 +324,7 @@ test('attemptDelivery: sets nextAttemptAt to null when max attempts exhausted', 
 
 	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
 
-	const origFetch = globalThis.fetch;
-	globalThis.fetch = async () => new Response('error', { status: 500 }) as never;
-
-	const d = new WebhookDispatcher(store as never, { maxAttempts: 3 }, PASS);
+	const d = new WebhookDispatcher(store as never, { maxAttempts: 3 }, fakeTransport({ ok: false, status: 500 }));
 	const { DeliveryModel } = await import('../models/delivery.model');
 	await d.attemptDelivery(
 		'https://example.com',
@@ -334,8 +332,6 @@ test('attemptDelivery: sets nextAttemptAt to null when max attempts exhausted', 
 		delivery,
 		new DeliveryModel(store as never),
 	);
-
-	globalThis.fetch = origFetch;
 
 	const updated = store.db.fonderie_webhook_deliveries[0]!;
 	assert.equal(updated['status'], 'failed');
@@ -360,15 +356,10 @@ test('bus: dispatcher receives events emitted via MemoryTransport', async () => 
 		createdAt: new Date(),
 	});
 
-	const origFetch = globalThis.fetch;
-	globalThis.fetch = async () => new Response('ok', { status: 200 }) as never;
-
-	const d = new WebhookDispatcher(store as never, {}, PASS);
+	const d = new WebhookDispatcher(store as never, {}, fakeTransport({ ok: true, status: 200 }));
 	bus.on<Record<string, unknown>>('*', (payload, meta) => d.dispatch(payload, meta), 'webhooks');
 
 	await bus.emit('project.created', { workspaceId: 'ws-1', name: 'My Project' });
-
-	globalThis.fetch = origFetch;
 
 	assert.equal(store.db.fonderie_webhook_deliveries.length, 1);
 });
@@ -432,26 +423,17 @@ test('retry: a claimed failed delivery is actually re-attempted and marked deliv
 		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
 	};
 
-	const fetchMock = mock.method(
-		globalThis,
-		'fetch',
-		async () => new Response('ok', { status: 200 }),
-	);
-	try {
-		await new WebhookDispatcher(store as never, {}, PASS).retry();
-	} finally {
-		fetchMock.mock.restore();
-	}
+	const transport = fakeTransport({ ok: true, status: 200 });
+	await new WebhookDispatcher(store as never, {}, transport).retry();
 
-	assert.equal(fetchMock.mock.callCount(), 1, 'the claimed delivery must be re-attempted');
-	const [url, init] = fetchMock.mock.calls[0]!.arguments as [string, RequestInit];
+	assert.equal(transport.calls.length, 1, 'the claimed delivery must be re-attempted');
+	const { url, init } = transport.calls[0]!;
 	assert.equal(url, 'https://hooks.example.com/sink');
-	const sent = JSON.parse(String(init.body));
+	const sent = JSON.parse(init.body);
 	assert.equal(sent.id, 'ev1');
 	assert.equal(sent.type, 'user.created');
-	const headers = init.headers as Record<string, string>;
-	assert.equal(headers['X-Webhook-Signature'], signPayload('whsec_retry', String(init.body)));
-	assert.equal(headers['X-Webhook-ID'], 'd1');
+	assert.equal(init.headers['X-Webhook-Signature'], signPayload('whsec_retry', init.body));
+	assert.equal(init.headers['X-Webhook-ID'], 'd1');
 
 	const update = captured.find((c) => c.sql.includes('UPDATE fonderie_webhook_deliveries'));
 	assert.ok(update, 'markResult must record the outcome');
@@ -510,7 +492,7 @@ test('assertPublicHttpUrl: rejects a malformed URL', async () => {
 	await assert.rejects(assertPublicHttpUrl('not a url'), SsrfError);
 });
 
-test('attemptDelivery: real guard blocks an internal URL and never calls fetch', async () => {
+test('attemptDelivery: default (pinned) transport blocks an internal URL — delivery fails, no connect', async () => {
 	const store = makeStore();
 	store.db.fonderie_webhook_deliveries.push({
 		id: 'del-1',
@@ -528,34 +510,77 @@ test('attemptDelivery: real guard blocks an internal URL and never calls fetch',
 	});
 	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
 
-	// No PASS here — exercise the DEFAULT (real) guard. fetch must never run.
-	const fetchMock = mock.method(globalThis, 'fetch', async () => {
-		throw new Error('fetch should not be called for a blocked URL');
-	});
-	try {
-		const d = new WebhookDispatcher(store as never, { maxAttempts: 3, retryDelays: [60_000] });
-		const { DeliveryModel } = await import('../models/delivery.model');
-		await d.attemptDelivery(
-			'http://169.254.169.254/latest/meta-data',
-			'secret',
-			delivery,
-			new DeliveryModel(store as never),
-		);
-	} finally {
-		fetchMock.mock.restore();
-	}
+	// No injected transport — exercise the DEFAULT pinnedTransport. An internal
+	// IP literal is rejected by resolvePinnedTarget BEFORE any socket connect,
+	// so the delivery is marked failed with no response status.
+	const d = new WebhookDispatcher(store as never, { maxAttempts: 3, retryDelays: [60_000] });
+	const { DeliveryModel } = await import('../models/delivery.model');
+	await d.attemptDelivery(
+		'http://169.254.169.254/latest/meta-data',
+		'secret',
+		delivery,
+		new DeliveryModel(store as never),
+	);
 
-	assert.equal(fetchMock.mock.callCount(), 0, 'fetch must not run for a blocked URL');
 	const updated = store.db.fonderie_webhook_deliveries[0]!;
 	assert.equal(updated['status'], 'failed');
 	assert.equal(updated['responseStatus'], null);
 });
 
-// ── Security: delivery response bodies are capped at storage (audit №2 M3) ──
-// The receiving endpoint is caller-controlled — an unbounded res.text() let it
-// bloat memory and the deliveries table on every attempt.
+// ── DNS-rebind pin: resolvePinnedTarget validates AND returns the IP to
+// bind the socket to (so a name that rebinds to an internal address after
+// the check can never be connected to). No network — literals + validation.
 
-test('attemptDelivery: oversized endpoint response is truncated before storage', async () => {
+test('resolvePinnedTarget: rejects internal/bad targets, pins a public IP literal', async () => {
+	for (const bad of [
+		'http://127.0.0.1/x',
+		'http://169.254.169.254/latest/meta-data',
+		'http://10.0.0.5/',
+		'https://[::1]/',
+		'ftp://example.com',
+		'not a url',
+	]) {
+		await assert.rejects(resolvePinnedTarget(bad), SsrfError, bad);
+	}
+	const v4 = await resolvePinnedTarget('https://8.8.8.8/hook');
+	assert.equal(v4.ip, '8.8.8.8');
+	assert.equal(v4.family, 4);
+	const v6 = await resolvePinnedTarget('http://[2606:4700:4700::1111]/');
+	assert.equal(v6.family, 6);
+});
+
+// ── Security: delivery response bodies are capped (audit №2 M3) ──────
+// The receiving endpoint is caller-controlled — its body must never be
+// buffered unbounded. The cap lives in the transport (readCappedText); test
+// it directly against a synthetic 1 MiB stream (loopback is blocked, so the
+// transport can't be exercised against a local server).
+
+test('readCappedText: truncates an oversized stream to the cap', async () => {
+	const { readCappedText } = await import('../ssrf');
+	const oneMiB = new TextEncoder().encode('x'.repeat(1024 * 1024));
+	const stream = new ReadableStream<Uint8Array>({
+		start(controller) {
+			// Emit in chunks to exercise the running-total cap.
+			for (let i = 0; i < oneMiB.byteLength; i += 64 * 1024) {
+				controller.enqueue(oneMiB.subarray(i, i + 64 * 1024));
+			}
+			controller.close();
+		},
+	});
+	const out = await readCappedText(stream, 4 * 1024);
+	assert.equal(out.length, 4 * 1024, 'read is capped at 4 KiB');
+});
+
+test('readCappedText: returns the full body when under the cap, and empty for no stream', async () => {
+	const { readCappedText } = await import('../ssrf');
+	const small = new ReadableStream<Uint8Array>({
+		start(c) { c.enqueue(new TextEncoder().encode('ok')); c.close(); },
+	});
+	assert.equal(await readCappedText(small, 4 * 1024), 'ok');
+	assert.equal(await readCappedText(null, 4 * 1024), '');
+});
+
+test('attemptDelivery: stores exactly the body the transport returns', async () => {
 	const store = makeStore();
 	store.db.fonderie_webhook_deliveries.push({
 		id: 'del-1', endpointId: 'ep-1', eventId: 'evt-1', eventType: 'project.created',
@@ -564,17 +589,9 @@ test('attemptDelivery: oversized endpoint response is truncated before storage',
 		createdAt: new Date(),
 	});
 	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
-
-	const huge = 'x'.repeat(1024 * 1024); // 1 MiB response
-	const fetchMock = mock.method(globalThis, 'fetch', async () => new Response(huge, { status: 200 }));
-	try {
-		const d = new WebhookDispatcher(store as never, {}, PASS);
-		const { DeliveryModel } = await import('../models/delivery.model');
-		await d.attemptDelivery('https://example.com', 'secret', delivery, new DeliveryModel(store as never));
-	} finally {
-		fetchMock.mock.restore();
-	}
-	const stored = store.db.fonderie_webhook_deliveries[0]!['responseBody'] as string;
-	assert.ok(stored.length <= 4 * 1024, `stored ${stored.length} bytes — must be ≤ 4 KiB`);
+	const d = new WebhookDispatcher(store as never, {}, fakeTransport({ ok: true, status: 200, body: 'stored-body' }));
+	const { DeliveryModel } = await import('../models/delivery.model');
+	await d.attemptDelivery('https://example.com', 'secret', delivery, new DeliveryModel(store as never));
+	assert.equal(store.db.fonderie_webhook_deliveries[0]!['responseBody'], 'stored-body');
 	assert.equal(store.db.fonderie_webhook_deliveries[0]!['status'], 'delivered');
 });

@@ -6,7 +6,7 @@ import type { IWebhookEndpoint, IWebhookDelivery } from './types';
 import { EndpointModel } from './models/endpoint.model';
 import { DeliveryModel } from './models/delivery.model';
 import { signPayload } from './signing';
-import { assertPublicHttpUrl } from './ssrf';
+import { pinnedTransport, type WebhookTransport } from './ssrf';
 
 // Cap on the delivery response body we buffer AND store per attempt. The
 // receiving endpoint is caller-controlled: without a cap it can return
@@ -15,33 +15,6 @@ import { assertPublicHttpUrl } from './ssrf';
 // growth). 4 KiB is plenty for the diagnostic purpose the field serves.
 const MAX_RESPONSE_BODY_BYTES = 4 * 1024;
 
-async function readBodyCapped(res: Response): Promise<string> {
-	if (!res.body) return '';
-	const reader = res.body.getReader();
-	const chunks: Uint8Array[] = [];
-	let total = 0;
-	for (;;) {
-		const { done, value } = await reader.read();
-		if (done) break;
-		const room = MAX_RESPONSE_BODY_BYTES - total;
-		if (value.byteLength >= room) {
-			chunks.push(value.slice(0, room));
-			total += room;
-			await reader.cancel().catch(() => undefined);
-			break;
-		}
-		chunks.push(value);
-		total += value.byteLength;
-	}
-	const merged = new Uint8Array(total);
-	let offset = 0;
-	for (const c of chunks) {
-		merged.set(c, offset);
-		offset += c.byteLength;
-	}
-	return new TextDecoder().decode(merged);
-}
-
 export class WebhookDispatcher {
 	private readonly maxAttempts: number;
 	private readonly retryDelays: number[];
@@ -49,9 +22,9 @@ export class WebhookDispatcher {
 	constructor(
 		private readonly store: IStoreAdapter,
 		private readonly config: IWebhooksConfig = {},
-		// Injectable SSRF guard — defaults to the real DNS-resolving check.
-		// Overridable so unit tests stay hermetic (no live DNS lookups).
-		private readonly assertUrlSafe: (url: string) => Promise<void> = assertPublicHttpUrl,
+		// Injectable delivery transport — defaults to the SSRF-safe, DNS-pinned
+		// sender. Overridable so unit tests stay hermetic (no live DNS/sockets).
+		private readonly transport: WebhookTransport = pinnedTransport,
 	) {
 		this.maxAttempts = config.maxAttempts ?? 3;
 		this.retryDelays = config.retryDelays ?? [60_000, 300_000, 1_800_000];
@@ -111,30 +84,29 @@ export class WebhookDispatcher {
 		const signature = signPayload(secret, body);
 
 		try {
-			// SSRF guard at DELIVERY time — the URL was validated at registration,
-			// but DNS can change, so re-check the resolved address on every send.
-			await this.assertUrlSafe(url);
-			const res = await fetch(url, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Webhook-Signature': signature,
-					'X-Webhook-Event': delivery.eventType,
-					'X-Webhook-ID': delivery.id,
+			// The transport re-validates + DNS-PINS at DELIVERY time (the URL was
+			// validated at registration, but DNS can change), never follows
+			// redirects, and returns a capped response body.
+			const res = await this.transport(
+				url,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-Webhook-Signature': signature,
+						'X-Webhook-Event': delivery.eventType,
+						'X-Webhook-ID': delivery.id,
+					},
+					body,
+					timeoutMs: 10_000,
 				},
-				body,
-				// Never follow redirects: a public host must not be able to 302 the
-				// request into an internal address after the guard above passed.
-				redirect: 'manual',
-				signal: AbortSignal.timeout(10_000),
-			});
-
-			const responseBody = await readBodyCapped(res).catch(() => '');
+				MAX_RESPONSE_BODY_BYTES,
+			);
 
 			await deliveries.markResult(delivery.id, {
 				ok: res.ok,
 				responseStatus: res.status,
-				responseBody,
+				responseBody: res.body,
 				nextAttemptAt: res.ok ? null : this.nextRetryAt(delivery.attempts),
 			});
 		} catch (err) {

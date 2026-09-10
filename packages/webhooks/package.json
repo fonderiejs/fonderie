@@ -75,6 +75,7 @@
 		"url": "https://github.com/fonderiejs/fonderie/issues"
 	},
 	"dependencies": {
-		"zod": "^4.5.4"
+		"zod": "^4.5.4",
+		"undici": "^6.21.0"
 	}
 }
