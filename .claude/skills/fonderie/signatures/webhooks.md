@@ -77,6 +77,10 @@ function assertPublicHttpUrl(raw: string): Promise<void>
 
 function isBlockedAddress(ip: string): boolean
 
+function resolvePinnedTarget(raw: string): Promise<IPinnedTarget>
+
+function pinnedTransport(url: string, init: { method: string; headers: Record<string, string>; body: string; timeoutMs?: number; }, maxResponseBytes?: number | undefined): Promise<IWebhookResponse>
+
 new SsrfError(message?: string | undefined): SsrfError
 new SsrfError(message?: string | undefined, options?: ErrorOptions | undefined): SsrfError
   .fonderieSsrf: true
@@ -84,4 +88,23 @@ new SsrfError(message?: string | undefined, options?: ErrorOptions | undefined):
   .message: string
   .stack: string
   .cause: unknown
+
+interface IPinnedTarget {
+    url: URL;
+    ip: string;
+    family: 4 | 6;
+}
+
+interface IWebhookResponse {
+    ok: boolean;
+    status: number;
+    body: string;
+}
+
+type WebhookTransport = (url: string, init: {
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+    timeoutMs?: number;
+}, maxResponseBytes?: number) => Promise<IWebhookResponse>;
 ```

@@ -12,7 +12,7 @@ import { WebhookDispatcher } from './dispatcher';
 import { generateSecret, signPayload } from './signing';
 import { toEndpointDTO, toEndpointCreatedDTO, toDeliveryDTO } from './dtos/webhook';
 import type { IWebhooksConfig } from './config';
-import { assertPublicHttpUrl, SsrfError } from './ssrf';
+import { assertPublicHttpUrl, pinnedTransport, SsrfError } from './ssrf';
 
 type Route = [string, string, ...Middleware[]];
 
@@ -222,10 +222,10 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 				});
 
 				try {
-					// SSRF guard — a stored endpoint may now resolve to an internal
-					// address, so re-check before the test send and don't follow redirects.
-					await assertPublicHttpUrl(endpoint.url);
-					const res = await fetch(endpoint.url, {
+					// SSRF-safe, DNS-pinned transport: re-validates the stored URL,
+					// pins the socket to the validated IP (a rebind can't reach an
+					// internal address), and never follows redirects.
+					const res = await pinnedTransport(endpoint.url, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
@@ -233,8 +233,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 							'X-Webhook-Event': 'webhook.test',
 						},
 						body,
-						redirect: 'manual',
-						signal: AbortSignal.timeout(10_000),
+						timeoutMs: 10_000,
 					});
 
 					return setApiResponse(HTTP.OK, 'TEST_SENT', 'Test delivery attempted.', {
