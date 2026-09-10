@@ -136,6 +136,8 @@ new FonderieApp(config: FonderieConfig): FonderieApp
   .addRoute(method: string, path: string, ...handlers: Middleware[]): void
   .handle(request: Request): Promise<Response>
 
+const DEFAULT_MAX_BODY_BYTES: number
+
 function defineConfig(config: FonderieConfig): FonderieConfig
 
 function compose(middlewares: Middleware[]): (ctx: IFonderieContext, fallback: () => Promise<Response>) => Promise<Response>
@@ -160,6 +162,7 @@ interface FonderieConfig {
     healthChecks?: boolean;
     readyProbe?: () => boolean | Promise<boolean>;
     metrics?: boolean;
+    maxBodyBytes?: number;
     onError?: (err: unknown) => Response;
     onResponse?: (body: unknown, info: {
         status: number;

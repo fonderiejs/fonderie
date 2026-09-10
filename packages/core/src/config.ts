@@ -59,6 +59,14 @@ export interface FonderieConfig {
 	// /metrics should be restricted at your ingress/scraper.
 	metrics?: boolean;
 
+	// Cap on the request body the built-in `listen()` server will buffer, in
+	// bytes. Defaults to 5 MiB (matching the adapters). Without a cap, an
+	// unauthenticated request could stream an arbitrarily large body fully into
+	// memory before any handler runs — a memory-exhaustion DoS. Oversize
+	// requests get 413. Raise for large uploads (e.g. @fonderie/media images);
+	// adapter deployments configure this on the adapter instead.
+	maxBodyBytes?: number;
+
 	onError?: (err: unknown) => Response;
 
 	// Transform every JSON response body just before it is sent. Return the new

@@ -20,7 +20,7 @@ export type {
 
 export { OPERATIONS } from './constants';
 
-export { FonderieApp } from './app';
+export { FonderieApp, DEFAULT_MAX_BODY_BYTES } from './app';
 export { defineConfig } from './config';
 export { compose } from './compose';
 export type { FonderieConfig } from './config';

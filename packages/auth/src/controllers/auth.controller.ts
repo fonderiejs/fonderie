@@ -207,24 +207,24 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					)
 					.catch(() => {});
 
-				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
-					loginMethod: 'phone',
-				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, requestMeta(ctx));
+				// No session and no full tokens before the OTP round-trip: possession
+				// of the phone is the ONLY credential in this flow, so issuing real
+				// tokens here would authenticate anyone who typed the number. Mirror
+				// the MFA flow instead — a short-lived pending token that only
+				// /auth/verify and /auth/send-verification accept; the real token
+				// pair is issued by verify() once the OTP matches.
+				const otpToken = issueMfaPendingToken(user.id, config, 'phone');
 
 				return Response.json(
 					{
 						reason: 'USER_PHONE_REGISTERED',
 						explanation: 'Account created. A verification code has been sent to your phone.',
 						result: {
-							tokens: { access: accessToken, refresh: refreshToken },
+							otpToken,
 							user: toUserDTO(user),
 						},
 					},
-					{
-						status: 202,
-						headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
-					},
+					{ status: 202 },
 				);
 			}
 
@@ -361,24 +361,20 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					} satisfies ICourierMessage)
 					.catch(() => {});
 
-				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
-					loginMethod: 'phone',
-				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
+				// Same rule as phone registration: the OTP IS the credential, so no
+				// session/full tokens until verify() confirms it. Also no user DTO —
+				// before proof of possession, the caller has only typed a phone
+				// number, and returning profile data would leak PII to anyone who
+				// knows (or guesses) a registered number.
+				const otpToken = issueMfaPendingToken(user.id, config, 'phone');
 
 				return Response.json(
 					{
 						reason: 'USER_PHONE_OTP_SENT',
 						explanation: 'A verification code has been sent to your phone.',
-						result: {
-							tokens: { access: accessToken, refresh: refreshToken },
-							user: toUserDTO(user, false),
-						},
+						result: { otpToken },
 					},
-					{
-						status: 202,
-						headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)),
-					},
+					{ status: 202 },
 				);
 			}
 
@@ -566,6 +562,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 		},
 
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
+			// requireAnyAuth admits pending tokens so the phone-OTP flow can reach
+			// this route pre-authentication — but a pending token is ONLY valid for
+			// that flow. An email mfaPending token (password verified, MFA not) must
+			// finish MFA at /auth/mfa/verify, not side-step into email verification.
+			if (ctx.user!.mfaPending && ctx.user!.loginMethod !== 'phone') {
+				return setApiResponse(HTTP.FORBIDDEN, 'MFA_REQUIRED', 'Complete MFA verification to continue');
+			}
+
 			// ── Email early-exit: no pin needed if already verified ──
 			if (ctx.user!.loginMethod !== 'phone' && ctx.user!.emailVerifiedAt) {
 				return setApiResponse(HTTP.OK, 'VERIFIED', 'Email verified successfully.', {
@@ -666,6 +670,12 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 		},
 
 		sendVerification: async (ctx: IFonderieContext): Promise<Response> => {
+			// Same pending-token rule as verify(): admitted only for the phone-OTP
+			// flow (resending the code), never for an email MFA-pending login.
+			if (ctx.user!.mfaPending && ctx.user!.loginMethod !== 'phone') {
+				return setApiResponse(HTTP.FORBIDDEN, 'MFA_REQUIRED', 'Complete MFA verification to continue');
+			}
+
 			const resolved = { ...config, ...config.resolve?.(ctx) };
 			const cooldown = resolved.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
 

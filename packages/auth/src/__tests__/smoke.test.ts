@@ -606,7 +606,11 @@ test('register: 409 when phone already registered', async () => {
 	assert.equal(response.status, 409);
 });
 
-test('register: 202 with tokens and isPhoneVerified: false on phone registration', async () => {
+// Security (H1): possession of the phone is the ONLY credential in this flow,
+// so registration/login must NOT issue real tokens or a session before the OTP
+// round-trip — only a short-lived pending token that /auth/verify accepts.
+
+test('register: 202 with a pending otpToken (no real tokens, no session cookie) on phone registration', async () => {
 	const ctrl = makeAuth({ insertedId: 'user-2', userById: PHONE_USER });
 	const response = await ctrl.register(
 		makeCtx({
@@ -616,10 +620,15 @@ test('register: 202 with tokens and isPhoneVerified: false on phone registration
 	assert.equal(response.status, 202);
 	const body = (await response.json()) as any;
 	assert.equal(body.reason, 'USER_PHONE_REGISTERED');
-	assert.ok(typeof body.result.tokens.access === 'string');
-	assert.ok(typeof body.result.tokens.refresh === 'string');
+	assert.equal(body.result.tokens, undefined, 'no token pair before OTP verification');
+	assert.ok(typeof body.result.otpToken === 'string');
+	const claims = JSON.parse(
+		Buffer.from(body.result.otpToken.split('.')[1]!, 'base64url').toString(),
+	);
+	assert.equal(claims.mfaPending, true, 'pending token is rejected by requireAuth');
+	assert.equal(claims.sid, undefined, 'no session bound to a pending token');
 	assert.equal(body.result.user.isPhoneVerified, false);
-	assert.ok(response.headers.get('set-cookie')?.includes('access_token='));
+	assert.equal(response.headers.get('set-cookie'), null, 'no auth cookies before OTP');
 });
 
 // ── AuthController.login ──────────────────────────────────────────
@@ -718,15 +727,21 @@ test('login: 403 when phone account is suspended', async () => {
 	assert.equal(response.status, 403);
 });
 
-test('login: 202 with tokens and isPhoneVerified: false on phone login', async () => {
+test('login: 202 with a pending otpToken only — no tokens, no user PII, no cookie (H1)', async () => {
 	const ctrl = makeAuth({ userByPhone: PHONE_USER });
 	const response = await ctrl.login(makeCtx({ body: { phone: '+15141234567' } }));
 	assert.equal(response.status, 202);
 	const body = (await response.json()) as any;
 	assert.equal(body.reason, 'USER_PHONE_OTP_SENT');
-	assert.ok(typeof body.result.tokens.access === 'string');
-	assert.ok(typeof body.result.tokens.refresh === 'string');
-	assert.equal(body.result.user.isPhoneVerified, false);
+	assert.equal(body.result.tokens, undefined, 'no token pair before OTP verification');
+	assert.equal(body.result.user, undefined, 'no profile data for an unproven caller');
+	assert.ok(typeof body.result.otpToken === 'string');
+	const claims = JSON.parse(
+		Buffer.from(body.result.otpToken.split('.')[1]!, 'base64url').toString(),
+	);
+	assert.equal(claims.mfaPending, true);
+	assert.equal(claims.loginMethod, 'phone');
+	assert.equal(response.headers.get('set-cookie'), null, 'no auth cookies before OTP');
 });
 
 test('login: 202 with tokens even when phone account has MFA enabled (OTP is sufficient factor)', async () => {
@@ -975,6 +990,59 @@ test('verify: 200 VERIFIED with new tokens and isPhoneVerified: true on valid ph
 	assert.equal(body.result.user.isPhoneVerified, true);
 	assert.ok(typeof body.result.tokens.access === 'string');
 	assert.ok(typeof body.result.tokens.refresh === 'string');
+});
+
+test('verify: phone-OTP pending token is admitted (completes the H1 login flow)', async () => {
+	// A pending token resolves to ctx.user with mfaPending: true + loginMethod
+	// 'phone' — verify must accept it and, on a valid OTP, issue the real pair.
+	const ctrl = makeAuth({
+		phoneVerifRow: { phone: '+15141234567', expires_at: new Date(Date.now() + 60_000) },
+		userById: PHONE_USER,
+	});
+	const response = await ctrl.verify(
+		makeCtx({
+			user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false, mfaPending: true },
+			body: { token: '123456' },
+		}),
+	);
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as any;
+	assert.ok(typeof body.result.tokens.access === 'string');
+});
+
+test('verify: 403 MFA_REQUIRED for an email mfaPending token (no MFA side-step)', async () => {
+	// Password-verified-but-MFA-pending must finish at /auth/mfa/verify; the
+	// pending token cannot be spent on email verification instead.
+	const ctrl = makeAuth({ verifyRow: { expires_at: new Date(Date.now() + 60_000) } });
+	const response = await ctrl.verify(
+		makeCtx({
+			user: { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email', mfaPending: true },
+			body: { token: '123456' },
+		}),
+	);
+	assert.equal(response.status, 403);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'MFA_REQUIRED');
+});
+
+test('sendVerification: 403 MFA_REQUIRED for an email mfaPending token', async () => {
+	const ctrl = makeAuth();
+	const response = await ctrl.sendVerification(
+		makeCtx({
+			user: { ...BASE_USER, emailVerifiedAt: null, loginMethod: 'email', mfaPending: true },
+		}),
+	);
+	assert.equal(response.status, 403);
+});
+
+test('sendVerification: phone-OTP pending token may resend the code', async () => {
+	const ctrl = makeAuth({ userById: PHONE_USER });
+	const response = await ctrl.sendVerification(
+		makeCtx({
+			user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false, mfaPending: true },
+		}),
+	);
+	assert.notEqual(response.status, 403, 'pending phone token must reach the resend path');
 });
 
 // ── AuthController.sendVerification (unified) ────────────────────
@@ -1982,6 +2050,38 @@ test('rate-limit: reset has a default IP limiter and honors disable overrides', 
 	assert.equal(typeof buildAuthIpLimiter('reset', stub, undefined), 'function');
 	assert.equal(buildAuthIpLimiter('reset', stub, false), null);
 	assert.equal(buildAuthIpLimiter('reset', stub, { rules: { reset: false } }), null);
+});
+
+// ── Security: OTP brute-force guard on /auth/verify (H2) ────────────
+// /auth/verify checks a 6-digit code, and in the phone flow that code IS the
+// login credential — so the route carries an IP limiter like login/mfaVerify.
+
+test('buildAuthRoutes: /auth/verify carries ipLimit and admits pending tokens', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const routes = buildAuthRoutes(stub, config);
+	const verify = routes.find(([m, p]) => m === 'POST' && p === '/auth/verify');
+	assert.ok(verify, 'verify route present');
+	// Shape: [method, path, ipLimit, requireAnyAuth, validate, controller]
+	assert.equal(verify!.slice(2).length, 4, 'ipLimit + requireAnyAuth + validate + controller');
+	// requireAnyAuth (not requireAuth): a pending phone-OTP user must pass.
+	const gate = verify![3] as any;
+	let nextCalled = false;
+	const pendingCtx = makeCtx({
+		user: { ...PHONE_USER, loginMethod: 'phone', mfaPending: true },
+	});
+	await gate(pendingCtx, async () => { nextCalled = true; return new Response(); });
+	assert.ok(nextCalled, 'pending token must pass the route auth gate');
+	// …but anonymous requests are still rejected.
+	const anonRes = await gate(makeCtx({ user: null }), async () => new Response());
+	assert.equal(anonRes.status, 401);
+});
+
+test('rate-limit: verify has a default IP limiter and honors disable overrides', async () => {
+	const { buildAuthIpLimiter } = await import('../services/rate-limit');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	assert.equal(typeof buildAuthIpLimiter('verify', stub, undefined), 'function');
+	assert.equal(buildAuthIpLimiter('verify', stub, { rules: { verify: false } }), null);
 });
 
 test('buildAuthRoutes: verifyGate blocks unverified users when requireVerification is true', async () => {

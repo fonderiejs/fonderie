@@ -77,9 +77,13 @@ export function buildAuthRoutes(
 		R('forgotPassword', 'POST', '/auth/email/forgot', ipLimit('forgot'), validate(forgotPasswordSchema), acctLimit('forgot'), auth.forgotPassword),
 		R('resetPassword', 'POST', '/auth/email/reset', ipLimit('reset'), validate(resetPasswordSchema), auth.resetPassword),
 
-		// Verification (Protected — email or phone, determined by loginMethod)
-		R('verifyEmail', 'POST', '/auth/verify', requireAuth, validate(verifySchema), auth.verify),
-		R('sendVerification', 'GET', '/auth/send-verification', requireAuth, auth.sendVerification),
+		// Verification (email or phone, determined by loginMethod). requireAnyAuth,
+		// not requireAuth: the phone-OTP flow reaches these with a short-lived
+		// pending token (login/register no longer issue real tokens before the OTP
+		// round-trip); the controllers reject pending tokens for any other flow.
+		// ipLimit guards the 6-digit OTP against brute force (like mfaVerify).
+		R('verifyEmail', 'POST', '/auth/verify', ipLimit('verify'), requireAnyAuth, validate(verifySchema), auth.verify),
+		R('sendVerification', 'GET', '/auth/send-verification', requireAnyAuth, auth.sendVerification),
 
 		// Account Management (Protected)
 		R('logout', 'POST', '/auth/logout', requireAuth, validate(refreshSchema), auth.logout),

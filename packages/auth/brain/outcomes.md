@@ -141,11 +141,11 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | POST | `/auth/mfa/verify` | `ipLimit('mfaVerify') → requireAnyAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.verify` |
 | POST | `/auth/refresh` | `validate(refreshSchema) → auth.refresh` |
 | POST | `/auth/register` | `ipLimit('register') → validate(registerSchema) → auth.register` |
-| GET | `/auth/send-verification` | `requireAuth → auth.sendVerification` |
+| GET | `/auth/send-verification` | `requireAnyAuth → auth.sendVerification` |
 | GET | `/auth/sessions` | `requireAuth → user.listSessions` |
 | DELETE | `/auth/sessions/:id` | `requireAuth → user.terminateSession` |
 | DELETE | `/auth/sessions/others` | `requireAuth → user.terminateOtherSessions` |
-| POST | `/auth/verify` | `requireAuth → validate(verifySchema) → auth.verify` |
+| POST | `/auth/verify` | `ipLimit('verify') → requireAnyAuth → validate(verifySchema) → auth.verify` |
 | DELETE | `/users` | `requireAuth → verifyGate → user.deleteMe` |
 | GET | `/users` | `requireAuth → user.me` |
 | PUT | `/users/email` | `requireAuth → verifyGate → validate(updateEmailSchema) → user.updateEmail` |
