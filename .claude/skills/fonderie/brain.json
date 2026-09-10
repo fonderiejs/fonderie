@@ -1,22 +1,22 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.1.2",
-    "adapter-hono": "5.0.8",
-    "adapter-koa": "5.0.8",
-    "audit": "5.1.3",
-    "auth": "7.0.0",
-    "billing": "9.0.1",
-    "client": "0.17.0",
-    "config": "5.1.5",
-    "core": "0.9.0",
-    "courier": "6.0.0",
-    "customers": "6.1.5",
-    "events": "5.0.5",
+    "adapter-express": "5.1.3",
+    "adapter-hono": "6.0.0",
+    "adapter-koa": "5.0.9",
+    "audit": "5.1.4",
+    "auth": "7.0.1",
+    "billing": "9.0.2",
+    "client": "0.17.1",
+    "config": "5.1.6",
+    "core": "0.10.0",
+    "courier": "7.0.0",
+    "customers": "6.1.6",
+    "events": "5.0.6",
     "logger": "0.1.2",
-    "media": "0.2.3",
-    "permissions": "5.0.6",
-    "rate-limit": "4.0.6",
+    "media": "0.2.4",
+    "permissions": "5.0.7",
+    "rate-limit": "4.0.7",
     "react": "0.2.0",
     "react-audit": "0.3.0",
     "react-audit-screens": "0.2.0",
@@ -46,7 +46,7 @@
     "react-webhooks-screens": "0.3.0",
     "react-workspaces": "0.6.0",
     "react-workspaces-screens": "0.4.0",
-    "storage": "0.1.3",
+    "storage": "0.1.4",
     "store": "0.3.0",
     "vue": "0.2.0",
     "vue-audit": "0.4.0",
@@ -65,12 +65,12 @@
     "vue-webhooks-screens": "0.3.0",
     "vue-workspaces": "0.7.0",
     "vue-workspaces-screens": "0.4.0",
-    "webhooks": "5.2.2",
-    "workspaces": "6.0.1"
+    "webhooks": "5.2.3",
+    "workspaces": "6.0.2"
   },
   "packages": {
     "adapter-express": {
-      "version": "5.1.2",
+      "version": "5.1.3",
       "requires": [
         "core",
         "workspaces",
@@ -89,7 +89,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "5.0.8",
+      "version": "6.0.0",
       "requires": [
         "core",
         "workspaces",
@@ -108,7 +108,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.0.8",
+      "version": "5.0.9",
       "requires": [
         "core",
         "workspaces",
@@ -127,7 +127,7 @@
       "hasOutcomes": false
     },
     "audit": {
-      "version": "5.1.3",
+      "version": "5.1.4",
       "requires": [
         "core",
         "store"
@@ -152,7 +152,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.0.0",
+      "version": "7.0.1",
       "requires": [
         "core",
         "events",
@@ -322,7 +322,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "9.0.1",
+      "version": "9.0.2",
       "requires": [
         "core",
         "events",
@@ -496,7 +496,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.17.0",
+      "version": "0.17.1",
       "requires": [],
       "exports": [
         "FonderieClient",
@@ -519,7 +519,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "5.1.5",
+      "version": "5.1.6",
       "requires": [
         "core",
         "store"
@@ -604,7 +604,7 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.9.0",
+      "version": "0.10.0",
       "requires": [],
       "exports": [
         "OPERATIONS",
@@ -630,7 +630,7 @@
       "hasOutcomes": false
     },
     "courier": {
-      "version": "6.0.0",
+      "version": "7.0.0",
       "requires": [
         "core",
         "events",
@@ -689,7 +689,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.1.5",
+      "version": "6.1.6",
       "requires": [
         "core",
         "events",
@@ -908,7 +908,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.0.5",
+      "version": "5.0.6",
       "requires": [
         "core",
         "store"
@@ -950,7 +950,7 @@
       "hasOutcomes": false
     },
     "media": {
-      "version": "0.2.3",
+      "version": "0.2.4",
       "requires": [
         "core",
         "store",
@@ -985,7 +985,7 @@
       "hasOutcomes": true
     },
     "permissions": {
-      "version": "5.0.6",
+      "version": "5.0.7",
       "requires": [
         "core",
         "store"
@@ -1013,7 +1013,7 @@
       "hasOutcomes": true
     },
     "rate-limit": {
-      "version": "4.0.6",
+      "version": "4.0.7",
       "requires": [
         "core",
         "store"
@@ -1539,7 +1539,7 @@
       "hasOutcomes": false
     },
     "storage": {
-      "version": "0.1.3",
+      "version": "0.1.4",
       "requires": [
         "core",
         "store"
@@ -1903,7 +1903,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "5.2.2",
+      "version": "5.2.3",
       "requires": [
         "core",
         "events",
@@ -1961,7 +1961,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "6.0.1",
+      "version": "6.0.2",
       "requires": [
         "core",
         "events",

@@ -1,5 +1,13 @@
 # @fonderie/webhooks
 
+## 5.2.3
+
+### Patch Changes
+
+- be7a6e7: Cap stored delivery response bodies at 4 KiB. The receiving endpoint is caller-controlled and its response was buffered (`res.text()`) and persisted in full on every delivery and retry — unbounded memory use and `fonderie_webhook_deliveries` growth. The body is now read via a capped stream and truncated before storage; the field is diagnostic, so 4 KiB is ample.
+- Updated dependencies [be7a6e7]
+  - @fonderie/core@0.10.0
+
 ## 5.2.2
 
 ### Patch Changes
