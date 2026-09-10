@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "express": "^4.21.2",
-    "@fonderie/adapter-express": "^5.1.2",
-    "@fonderie/auth": "^7.0.0",
-    "@fonderie/core": ">=0.9.0",
-    "@fonderie/events": "^5.0.5",
+    "@fonderie/adapter-express": "^5.1.3",
+    "@fonderie/auth": "^7.0.1",
+    "@fonderie/core": ">=0.10.0",
+    "@fonderie/events": "^5.0.6",
     "@fonderie/store": "^0.3.0"
   },
   "devDependencies": {
