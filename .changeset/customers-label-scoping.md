@@ -1,5 +1,0 @@
----
-"@fonderie/customers": minor
----
-
-Workspace-scope customer labels (closes the audit's cross-tenant label enumeration + completes the delete fix). The labels table was a shared vocabulary with a global `UNIQUE(type,value)`, so listing exposed every tenant's custom label values and delete could only be harm-reduced to unreferenced-only. Labels now carry an optional `workspace_id` (migration `013_label_workspace_scope`: NULL = shared/system default — the seeded rows stay shared; the global unique is replaced by partial unique indexes for shared vs per-workspace). `GET /customers/labels` returns the shared defaults plus the caller's OWN labels only — never another workspace's; `findOrCreate` reuses a shared default when one exists, else mints a label private to the workspace (so two workspaces can hold the same custom value independently); `DELETE /customers/labels/:id` only removes a label owned by the caller's workspace and still unreferenced (shared defaults and other workspaces' labels are untouchable → `409`). Verified end-to-end against a live Postgres.
