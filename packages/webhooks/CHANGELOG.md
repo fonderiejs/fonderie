@@ -1,5 +1,12 @@
 # @fonderie/webhooks
 
+## 5.2.2
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+  - @fonderie/store@0.3.0
+
 ## 5.2.1
 
 ### Patch Changes

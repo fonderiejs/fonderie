@@ -1,5 +1,15 @@
 # @fonderie/adapter-express
 
+## 5.1.2
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+- Updated dependencies [cd2706a]
+- Updated dependencies [cd2706a]
+  - @fonderie/billing@9.0.0
+  - @fonderie/workspaces@6.0.0
+
 ## 5.1.1
 
 ### Patch Changes

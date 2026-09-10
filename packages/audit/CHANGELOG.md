@@ -1,5 +1,12 @@
 # @fonderie/audit
 
+## 5.1.3
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+  - @fonderie/store@0.3.0
+
 ## 5.1.2
 
 ### Patch Changes

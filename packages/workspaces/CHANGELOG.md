@@ -1,5 +1,18 @@
 # @fonderie/workspaces
 
+## 6.0.0
+
+### Major Changes
+
+- cd2706a: Invitation hardening + last-owner guard (BREAKING for the PIN flow). (1) H4: the 6-digit invitation PIN was minted with `Math.random()` and looked up **globally** with no throttle — any authenticated user could brute-force any pending invitation and join arbitrary workspaces. The PIN now comes from a CSPRNG, only redeems an invitation addressed to the **accepting user's email**, and `POST /workspaces/invitations/accept` is IP rate-limited (10/15 min; backed by `@fonderie/rate-limit`, new dependency). The accept body now also takes `{ token }` (the 32-byte secret from the email link) as an alternative to `{ pin }` — the path for accounts without an email address. (2) H5: `DELETE /workspaces/members/:userId` refused to let you remove yourself but happily removed the workspace **owner**, orphaning the tenant — now `400 INVALID_OPERATION`. (3) The invitation list/DTO leaked the accept `token` — a bearer credential meant only for the invitee's inbox — letting any member hijack a pending invite; the DTO field remains for shape compatibility but is now always empty.
+- cd2706a: Privileged workspace routes now require a manager (BREAKING). Every mutating route — role create/update/delete/set-permissions, member remove and role assign/unassign, invitation create/cancel, settings update, archive/restore, workspace update — previously only verified *membership*; any member could manage roles, evict members, or archive the tenant. These routes now additionally require the caller to be the workspace **owner** or hold an **active system role** (the seeded ADMIN), via the new exported `requireManager` middleware. Reads, invitation acceptance, and workspace creation/listing are unchanged, and personal workspaces pass via ownership. Apps that deliberately run flat teams can restore the old behaviour with `management: 'any-member'` in the module config.
+
+### Patch Changes
+
+- Updated dependencies [cd2706a]
+  - @fonderie/store@0.3.0
+  - @fonderie/rate-limit@4.0.6
+
 ## 5.3.2
 
 ### Patch Changes
