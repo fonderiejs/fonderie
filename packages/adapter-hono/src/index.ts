@@ -79,6 +79,16 @@ export function bridge(fonderie: FonderieApp, options: IBridgeOptions = {}): Mid
 		// swallowed by context-building.
 		const early = ctx.meta['pipelineResponse'];
 		if (early instanceof Response) return early;
+		// buildContext CONSUMED c.req.raw's body (no clone — a tee stalls on
+		// large bodies). Core's parser re-materialized ctx.request from the
+		// buffered bytes; point Hono's request at it so the app's OWN native
+		// handlers (c.req.json()/text()/parseBody()) still read the body —
+		// otherwise they'd hit a drained stream. For content-types the parser
+		// leaves untouched (multipart), ctx.request === the original, so this
+		// is a no-op. bodyCache is empty here (nothing read yet).
+		if (ctx.request !== c.req.raw) {
+			(c.req as { raw: Request }).raw = ctx.request;
+		}
 		// Client IP, spoof-safe by default (mirrors core's trustProxy model):
 		//   1. The real socket address when the runtime exposes one
 		//      (@hono/node-server puts the node request on c.env.incoming).

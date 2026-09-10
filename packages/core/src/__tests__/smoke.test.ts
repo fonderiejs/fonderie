@@ -817,3 +817,24 @@ test('router param matching: malformed %-encoding and NUL → no match', async (
 	const m = r.match('GET', '/u/abc');
 	assert.ok(m);
 });
+
+// ── Audit-3 H1: multipart declared-oversize is capped by the parser ──
+// The parser only READS json/form, but a declared-oversize body of any type
+// (multipart) must 413 — else an adapter without a transport cap (hono) is
+// exposed to a route buffering a huge upload.
+test('bodyParser: 413 for a declared-oversize multipart body it does not parse', async () => {
+	const app = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 1024 }),
+	);
+	app.addRoute('POST', '/upload', async () => Response.json({ ok: true }));
+	await app.boot();
+	const res = await app.handle(
+		new Request('http://localhost/upload', {
+			method: 'POST',
+			headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': String(1024 * 1024) },
+			body: 'x'.repeat(2048),
+		}),
+	);
+	assert.equal(res.status, 413);
+	assert.equal(((await res.json()) as any).reason, 'PAYLOAD_TOO_LARGE');
+});

@@ -461,8 +461,32 @@ test('isBlockedAddress: public IPs pass, private/loopback/link-local/mapped are 
 	assert.equal(isBlockedAddress('::1'), true); // IPv6 loopback
 	assert.equal(isBlockedAddress('fe80::1'), true); // IPv6 link-local
 	assert.equal(isBlockedAddress('fd00::1'), true); // IPv6 ULA
-	assert.equal(isBlockedAddress('::ffff:127.0.0.1'), true); // IPv4-mapped loopback
+	assert.equal(isBlockedAddress('::ffff:127.0.0.1'), true); // IPv4-mapped loopback (dotted)
 	assert.equal(isBlockedAddress('not-an-ip'), true); // fail closed
+});
+
+// ── Audit-3 W1/W2/W3: internal IPv4 embedded in IPv6 must NOT bypass ──
+// The previous check only matched the DOTTED mapped form; the hex-colon,
+// NAT64 and 6to4 embeddings sailed through and the OS routed them to the
+// internal IPv4 (e.g. 169.254.169.254 cloud metadata).
+test('isBlockedAddress: blocks internal IPv4 embedded in EVERY IPv6 notation', () => {
+	// hex-colon IPv4-mapped
+	assert.equal(isBlockedAddress('::ffff:a9fe:a9fe'), true); // 169.254.169.254 metadata
+	assert.equal(isBlockedAddress('::ffff:7f00:0001'), true); // 127.0.0.1
+	assert.equal(isBlockedAddress('::ffff:0a00:0001'), true); // 10.0.0.1
+	assert.equal(isBlockedAddress('0:0:0:0:0:ffff:a9fe:a9fe'), true); // fully expanded
+	// NAT64 well-known prefix 64:ff9b::/96
+	assert.equal(isBlockedAddress('64:ff9b::a9fe:a9fe'), true);
+	assert.equal(isBlockedAddress('64:ff9b::7f00:1'), true);
+	// 6to4 2002::/16
+	assert.equal(isBlockedAddress('2002:7f00:1::'), true); // 127.0.0.1
+	assert.equal(isBlockedAddress('2002:a9fe:a9fe::'), true); // metadata
+	// deprecated IPv4-compatible ::/96
+	assert.equal(isBlockedAddress('::7f00:1'), true); // 127.0.0.1
+	// public IPv4 embedded stays ALLOWED (no false-positive)
+	assert.equal(isBlockedAddress('::ffff:8.8.8.8'), false);
+	assert.equal(isBlockedAddress('::ffff:5050:5050'), false); // 80.80.80.80
+	assert.equal(isBlockedAddress('2606:4700:4700::1111'), false); // real public IPv6
 });
 
 test('assertPublicHttpUrl: rejects non-http(s) schemes', async () => {

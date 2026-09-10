@@ -32,13 +32,59 @@ const isPrivateIPv4 = (ip: string): boolean => {
 	return BLOCKED_V4.some(([base, bits]) => inCidr(n, base, bits));
 };
 
+// Expand an IPv6 string to its 8 16-bit groups, or null if unparseable.
+// Handles `::` compression, a zone id, and a trailing dotted-IPv4 tail
+// (::ffff:1.2.3.4). Needed because attackers can embed an internal IPv4 in
+// MANY notations — the previous check only matched the dotted mapped form and
+// missed the hex-colon (::ffff:a9fe:a9fe), NAT64 and 6to4 embeddings, which
+// the OS routes to the embedded IPv4 (e.g. 169.254.169.254 cloud metadata).
+function expandV6(ip: string): number[] | null {
+	let s = ip.toLowerCase().split('%')[0]!; // strip zone id
+	// Convert a trailing dotted-quad to two hextets.
+	const dot = /^(.*:)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(s);
+	if (dot) {
+		const q = dot[2]!.split('.').map(Number);
+		if (q.some((n) => !Number.isInteger(n) || n > 255)) return null;
+		s = `${dot[1]}${((q[0]! << 8) | q[1]!).toString(16)}:${((q[2]! << 8) | q[3]!).toString(16)}`;
+	}
+	const halves = s.split('::');
+	if (halves.length > 2) return null;
+	const head = halves[0] ? halves[0].split(':') : [];
+	let groups: string[];
+	if (halves.length === 1) {
+		groups = head;
+	} else {
+		const tail = halves[1] ? halves[1].split(':') : [];
+		const missing = 8 - head.length - tail.length;
+		if (missing < 0) return null;
+		groups = [...head, ...Array(missing).fill('0'), ...tail];
+	}
+	if (groups.length !== 8) return null;
+	const nums = groups.map((g) => (g === '' ? 0 : parseInt(g, 16)));
+	if (nums.some((n) => Number.isNaN(n) || n < 0 || n > 0xffff)) return null;
+	return nums;
+}
+
 const isPrivateIPv6 = (ip: string): boolean => {
-	const a = ip.toLowerCase();
-	if (a === '::1' || a === '::') return true; // loopback / unspecified
-	if (a.startsWith('fe8') || a.startsWith('fe9') || a.startsWith('fea') || a.startsWith('feb')) return true; // fe80::/10 link-local
-	if (a.startsWith('fc') || a.startsWith('fd')) return true; // fc00::/7 unique-local
-	const mapped = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(a); // IPv4-mapped
-	if (mapped) return isPrivateIPv4(mapped[1]!);
+	const h = expandV6(ip);
+	if (!h) return true; // unparseable → fail closed
+	const [h0, h1, h2, h3, h4, h5, h6, h7] = h as [number, number, number, number, number, number, number, number];
+	// Native IPv6 non-public ranges.
+	if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0 && h6 === 0 && (h7 === 0 || h7 === 1))
+		return true; // :: (unspecified) / ::1 (loopback)
+	if ((h0 & 0xffc0) === 0xfe80) return true; // fe80::/10 link-local
+	if ((h0 & 0xfe00) === 0xfc00) return true; // fc00::/7 unique-local
+	// Embedded-IPv4 forms — extract the 32-bit IPv4 and apply the v4 blocklist,
+	// so an internal target is caught regardless of the wrapping notation.
+	const asV4 = (hi: number, lo: number) => `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
+	// ::ffff:0:0/96 (IPv4-mapped) and ::/96 (deprecated IPv4-compatible).
+	if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && (h5 === 0xffff || h5 === 0))
+		return isPrivateIPv4(asV4(h6, h7));
+	// 64:ff9b::/96 (NAT64 well-known prefix).
+	if (h0 === 0x0064 && h1 === 0xff9b && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0)
+		return isPrivateIPv4(asV4(h6, h7));
+	// 2002::/16 (6to4) — embedded IPv4 is in groups 1-2.
+	if (h0 === 0x2002) return isPrivateIPv4(asV4(h1, h2));
 	return false;
 };
 
