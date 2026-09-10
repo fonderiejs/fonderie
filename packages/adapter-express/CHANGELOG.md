@@ -1,5 +1,13 @@
 # @fonderie/adapter-express
 
+## 5.1.3
+
+### Patch Changes
+
+- be7a6e7: Route middleware errors to `next(err)` instead of rejecting. `adapt()` and the lazy guard wrappers (`withWorkspace`, `requirePermission`, `requireFeature`) had no error handling, so a throw inside a guard (e.g. a store outage) became an unhandled rejection under Express 4 — a possible process crash instead of a 500.
+- Updated dependencies [be7a6e7]
+  - @fonderie/core@0.10.0
+
 ## 5.1.2
 
 ### Patch Changes
