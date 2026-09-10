@@ -99,19 +99,37 @@ export async function getUserRoles(
 	);
 }
 
+/**
+ * Assign an existing role to a member via the HTTP surface. Returns false when
+ * the role is not assignable — the insert only proceeds for a role that belongs
+ * to THIS workspace and is NOT a system role. This is the privilege-escalation
+ * guard: system roles carry the super-role bypass (@fonderie/permissions), so a
+ * member must never be able to self-grant one (e.g. the seeded ADMIN role) to
+ * gain full access; cross-workspace role ids must not be assignable either.
+ * Seeding of system/owner roles at workspace-creation / invitation time goes
+ * through addMember(), not this path, so that flow is unaffected.
+ */
 export async function addRoleToMember(
 	userId: string,
 	workspaceId: string,
 	roleId: string,
 	store: IStoreAdapter,
-): Promise<void> {
-	await store.query(
+): Promise<boolean> {
+	const rows = await store.query<{ user_id: string }>(
 		`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
-		 VALUES ($1, $2, $3, true)
+		 SELECT $1, $2, $3, true
+		 WHERE EXISTS (
+		   SELECT 1 FROM fonderie_roles r
+		   WHERE r.id = $3
+		     AND r.workspace_id = $2
+		     AND r.is_system = false
+		 )
 		 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
-		 SET confirmed = true, removed = false, suspended = false`,
+		 SET confirmed = true, removed = false, suspended = false
+		 RETURNING user_id`,
 		[userId, workspaceId, roleId],
 	);
+	return rows.length > 0;
 }
 
 export async function removeRoleFromMember(

@@ -5,7 +5,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import { PermissionsEngine } from '../engine';
 import { PERMISSIONS_ENGINE_KEY } from '../module';
-import { getMembership } from '../services/membership';
+import { hasAnyRole } from '../services/membership';
 
 function makeHandler(roleName: string | string[], store: IStoreAdapter): Middleware {
 	const allowed = Array.isArray(roleName) ? roleName : [roleName];
@@ -28,8 +28,9 @@ function makeHandler(roleName: string | string[], store: IStoreAdapter): Middlew
 			return setApiResponse(HTTP.BAD_REQUEST, 'WORKSPACE_REQUIRED', 'Workspace context required');
 		}
 
-		const membership = await getMembership(ctx.user.id, workspaceId, store);
-		if (!membership || !allowed.includes(membership.roleName)) {
+		// EXISTS across ALL of the user's roles — a member holding several roles
+		// must not be denied because a single arbitrary row was the wrong one.
+		if (!(await hasAnyRole(ctx.user.id, workspaceId, allowed, store))) {
 			return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Insufficient role');
 		}
 

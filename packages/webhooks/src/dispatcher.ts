@@ -6,6 +6,7 @@ import type { IWebhookEndpoint, IWebhookDelivery } from './types';
 import { EndpointModel } from './models/endpoint.model';
 import { DeliveryModel } from './models/delivery.model';
 import { signPayload } from './signing';
+import { assertPublicHttpUrl } from './ssrf';
 
 export class WebhookDispatcher {
 	private readonly maxAttempts: number;
@@ -14,6 +15,9 @@ export class WebhookDispatcher {
 	constructor(
 		private readonly store: IStoreAdapter,
 		private readonly config: IWebhooksConfig = {},
+		// Injectable SSRF guard — defaults to the real DNS-resolving check.
+		// Overridable so unit tests stay hermetic (no live DNS lookups).
+		private readonly assertUrlSafe: (url: string) => Promise<void> = assertPublicHttpUrl,
 	) {
 		this.maxAttempts = config.maxAttempts ?? 3;
 		this.retryDelays = config.retryDelays ?? [60_000, 300_000, 1_800_000];
@@ -73,6 +77,9 @@ export class WebhookDispatcher {
 		const signature = signPayload(secret, body);
 
 		try {
+			// SSRF guard at DELIVERY time — the URL was validated at registration,
+			// but DNS can change, so re-check the resolved address on every send.
+			await this.assertUrlSafe(url);
 			const res = await fetch(url, {
 				method: 'POST',
 				headers: {
@@ -82,6 +89,9 @@ export class WebhookDispatcher {
 					'X-Webhook-ID': delivery.id,
 				},
 				body,
+				// Never follow redirects: a public host must not be able to 302 the
+				// request into an internal address after the guard above passed.
+				redirect: 'manual',
 				signal: AbortSignal.timeout(10_000),
 			});
 

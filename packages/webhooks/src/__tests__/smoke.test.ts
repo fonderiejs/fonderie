@@ -7,6 +7,11 @@ import type { IEventMeta } from '@fonderie/events';
 
 import { WebhookDispatcher } from '../dispatcher';
 import { signPayload } from '../signing';
+import { assertPublicHttpUrl, isBlockedAddress, SsrfError } from '../ssrf';
+
+// Pass-through SSRF guard for tests that mock fetch — keeps them hermetic by
+// skipping the real DNS lookup. The real guard is exercised separately below.
+const PASS = async (): Promise<void> => {};
 
 // ── stub store ────────────────────────────────────────────────────
 
@@ -163,7 +168,7 @@ test('dispatch: creates delivery and marks it delivered on 2xx', async () => {
 	const origFetch = globalThis.fetch;
 	globalThis.fetch = async () => new Response('ok', { status: 200 }) as never;
 
-	const d = new WebhookDispatcher(store as never);
+	const d = new WebhookDispatcher(store as never, {}, PASS);
 	await d.dispatch({ workspaceId: 'ws-1' }, makeMeta('project.created'));
 
 	globalThis.fetch = origFetch;
@@ -205,8 +210,13 @@ test('dispatch: filters endpoints by event type', async () => {
 		},
 	);
 
-	const d = new WebhookDispatcher(store as never);
+	const origFetch = globalThis.fetch;
+	globalThis.fetch = async () => new Response('ok', { status: 200 }) as never;
+
+	const d = new WebhookDispatcher(store as never, {}, PASS);
 	await d.dispatch({ workspaceId: 'ws-1' }, makeMeta('project.created'));
+
+	globalThis.fetch = origFetch;
 
 	// ep-1 (matches) + ep-3 (all events) should receive delivery — ep-2 should not
 	const delivered = store.db.fonderie_webhook_deliveries.map((r) => r['endpointId']);
@@ -238,7 +248,7 @@ test('attemptDelivery: marks delivery as delivered on 2xx response', async () =>
 	const origFetch = globalThis.fetch;
 	globalThis.fetch = async () => new Response('ok', { status: 200 }) as never;
 
-	const d = new WebhookDispatcher(store as never, {});
+	const d = new WebhookDispatcher(store as never, {}, PASS);
 	const { DeliveryModel } = await import('../models/delivery.model');
 	await d.attemptDelivery(
 		'https://example.com',
@@ -277,7 +287,7 @@ test('attemptDelivery: marks delivery as failed with next retry on non-2xx', asy
 	const origFetch = globalThis.fetch;
 	globalThis.fetch = async () => new Response('error', { status: 500 }) as never;
 
-	const d = new WebhookDispatcher(store as never, { maxAttempts: 3, retryDelays: [60_000] });
+	const d = new WebhookDispatcher(store as never, { maxAttempts: 3, retryDelays: [60_000] }, PASS);
 	const { DeliveryModel } = await import('../models/delivery.model');
 	await d.attemptDelivery(
 		'https://example.com',
@@ -316,7 +326,7 @@ test('attemptDelivery: sets nextAttemptAt to null when max attempts exhausted', 
 	const origFetch = globalThis.fetch;
 	globalThis.fetch = async () => new Response('error', { status: 500 }) as never;
 
-	const d = new WebhookDispatcher(store as never, { maxAttempts: 3 });
+	const d = new WebhookDispatcher(store as never, { maxAttempts: 3 }, PASS);
 	const { DeliveryModel } = await import('../models/delivery.model');
 	await d.attemptDelivery(
 		'https://example.com',
@@ -353,7 +363,7 @@ test('bus: dispatcher receives events emitted via MemoryTransport', async () => 
 	const origFetch = globalThis.fetch;
 	globalThis.fetch = async () => new Response('ok', { status: 200 }) as never;
 
-	const d = new WebhookDispatcher(store as never);
+	const d = new WebhookDispatcher(store as never, {}, PASS);
 	bus.on<Record<string, unknown>>('*', (payload, meta) => d.dispatch(payload, meta), 'webhooks');
 
 	await bus.emit('project.created', { workspaceId: 'ws-1', name: 'My Project' });
@@ -428,7 +438,7 @@ test('retry: a claimed failed delivery is actually re-attempted and marked deliv
 		async () => new Response('ok', { status: 200 }),
 	);
 	try {
-		await new WebhookDispatcher(store as never).retry();
+		await new WebhookDispatcher(store as never, {}, PASS).retry();
 	} finally {
 		fetchMock.mock.restore();
 	}
@@ -447,4 +457,96 @@ test('retry: a claimed failed delivery is actually re-attempted and marked deliv
 	assert.ok(update, 'markResult must record the outcome');
 	assert.equal(update!.params[0], 'd1');
 	assert.equal(update!.params[1], 'delivered');
+});
+
+// ── SSRF guard ────────────────────────────────────────────────────
+// A webhook URL is attacker-controlled: without a guard, a member could point
+// an endpoint at 169.254.169.254 (cloud metadata), 127.0.0.1, or an RFC1918
+// host and use the server as a proxy into the internal network — then read the
+// response back from the delivery log. These pin the guard. IP-literal cases
+// need no DNS, so they're deterministic offline.
+
+test('isBlockedAddress: public IPs pass, private/loopback/link-local/mapped are blocked', () => {
+	assert.equal(isBlockedAddress('8.8.8.8'), false);
+	assert.equal(isBlockedAddress('93.184.216.34'), false);
+	assert.equal(isBlockedAddress('10.1.2.3'), true); // RFC1918
+	assert.equal(isBlockedAddress('172.16.5.5'), true); // RFC1918
+	assert.equal(isBlockedAddress('192.168.0.1'), true); // RFC1918
+	assert.equal(isBlockedAddress('127.0.0.1'), true); // loopback
+	assert.equal(isBlockedAddress('169.254.169.254'), true); // cloud metadata
+	assert.equal(isBlockedAddress('100.64.1.1'), true); // CGNAT
+	assert.equal(isBlockedAddress('0.0.0.0'), true); // this-host
+	assert.equal(isBlockedAddress('::1'), true); // IPv6 loopback
+	assert.equal(isBlockedAddress('fe80::1'), true); // IPv6 link-local
+	assert.equal(isBlockedAddress('fd00::1'), true); // IPv6 ULA
+	assert.equal(isBlockedAddress('::ffff:127.0.0.1'), true); // IPv4-mapped loopback
+	assert.equal(isBlockedAddress('not-an-ip'), true); // fail closed
+});
+
+test('assertPublicHttpUrl: rejects non-http(s) schemes', async () => {
+	for (const url of ['ftp://example.com', 'file:///etc/passwd', 'gopher://x', 'data:text/plain,x']) {
+		await assert.rejects(assertPublicHttpUrl(url), SsrfError, url);
+	}
+});
+
+test('assertPublicHttpUrl: rejects internal IP-literal hosts (no DNS)', async () => {
+	for (const url of [
+		'http://127.0.0.1/x',
+		'http://169.254.169.254/latest/meta-data',
+		'http://10.0.0.5:8080/',
+		'http://192.168.1.1/',
+		'https://[::1]/',
+		'http://[fd00::1]/',
+	]) {
+		await assert.rejects(assertPublicHttpUrl(url), SsrfError, url);
+	}
+});
+
+test('assertPublicHttpUrl: allows a public IP literal (no DNS)', async () => {
+	await assert.doesNotReject(assertPublicHttpUrl('https://8.8.8.8/hook'));
+});
+
+test('assertPublicHttpUrl: rejects a malformed URL', async () => {
+	await assert.rejects(assertPublicHttpUrl('not a url'), SsrfError);
+});
+
+test('attemptDelivery: real guard blocks an internal URL and never calls fetch', async () => {
+	const store = makeStore();
+	store.db.fonderie_webhook_deliveries.push({
+		id: 'del-1',
+		endpointId: 'ep-1',
+		eventId: 'evt-1',
+		eventType: 'project.created',
+		payload: { workspaceId: 'ws-1' },
+		status: 'pending',
+		attempts: 0,
+		responseStatus: null,
+		responseBody: null,
+		nextAttemptAt: null,
+		deliveredAt: null,
+		createdAt: new Date(),
+	});
+	const delivery = store.db.fonderie_webhook_deliveries[0]! as never;
+
+	// No PASS here — exercise the DEFAULT (real) guard. fetch must never run.
+	const fetchMock = mock.method(globalThis, 'fetch', async () => {
+		throw new Error('fetch should not be called for a blocked URL');
+	});
+	try {
+		const d = new WebhookDispatcher(store as never, { maxAttempts: 3, retryDelays: [60_000] });
+		const { DeliveryModel } = await import('../models/delivery.model');
+		await d.attemptDelivery(
+			'http://169.254.169.254/latest/meta-data',
+			'secret',
+			delivery,
+			new DeliveryModel(store as never),
+		);
+	} finally {
+		fetchMock.mock.restore();
+	}
+
+	assert.equal(fetchMock.mock.callCount(), 0, 'fetch must not run for a blocked URL');
+	const updated = store.db.fonderie_webhook_deliveries[0]!;
+	assert.equal(updated['status'], 'failed');
+	assert.equal(updated['responseStatus'], null);
 });

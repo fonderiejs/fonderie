@@ -12,6 +12,7 @@ import { WebhookDispatcher } from './dispatcher';
 import { generateSecret, signPayload } from './signing';
 import { toEndpointDTO, toEndpointCreatedDTO, toDeliveryDTO } from './dtos/webhook';
 import type { IWebhooksConfig } from './config';
+import { assertPublicHttpUrl, SsrfError } from './ssrf';
 
 type Route = [string, string, ...Middleware[]];
 
@@ -34,6 +35,16 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 				const body = ctx.meta['body'] as { url?: string; events?: string[] } | undefined;
 				if (!body?.url)
 					return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_FIELD', 'url is required');
+
+				// Reject internal / non-public targets at registration (fail fast).
+				// Delivery re-validates too, since DNS can change afterward.
+				try {
+					await assertPublicHttpUrl(body.url);
+				} catch (err) {
+					if (err instanceof SsrfError)
+						return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_URL', err.message);
+					throw err;
+				}
 
 				const endpoint = await new EndpointModel(store).create({
 					workspaceId: ctx.workspace.id,
@@ -116,7 +127,16 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 					| undefined;
 
 				const patch: { url?: string; events?: string[]; enabled?: boolean } = {};
-				if (body?.url !== undefined) patch.url = body.url;
+				if (body?.url !== undefined) {
+					try {
+						await assertPublicHttpUrl(body.url);
+					} catch (err) {
+						if (err instanceof SsrfError)
+							return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_URL', err.message);
+						throw err;
+					}
+					patch.url = body.url;
+				}
 				if (body?.events !== undefined) patch.events = body.events;
 				if (body?.enabled !== undefined) patch.enabled = body.enabled;
 
@@ -202,6 +222,9 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 				});
 
 				try {
+					// SSRF guard — a stored endpoint may now resolve to an internal
+					// address, so re-check before the test send and don't follow redirects.
+					await assertPublicHttpUrl(endpoint.url);
 					const res = await fetch(endpoint.url, {
 						method: 'POST',
 						headers: {
@@ -210,6 +233,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 							'X-Webhook-Event': 'webhook.test',
 						},
 						body,
+						redirect: 'manual',
 						signal: AbortSignal.timeout(10_000),
 					});
 

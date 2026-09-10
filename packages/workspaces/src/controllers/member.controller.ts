@@ -68,7 +68,16 @@ export function memberController(store: IStoreAdapter) {
 			if (!roleId)
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
 
-			await members.addRole(userId, ctx.workspace.id, roleId);
+			const assigned = await members.addRole(userId, ctx.workspace.id, roleId);
+			if (!assigned) {
+				// Role doesn't belong to this workspace, is a system role, or doesn't
+				// exist — none are assignable through this route (see addRoleToMember).
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_ROLE',
+					'Role is not assignable in this workspace.',
+				);
+			}
 			return setApiResponse(HTTP.OK, 'ROLE_ASSIGNED', 'Role assigned successfully.');
 		},
 

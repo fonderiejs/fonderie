@@ -203,5 +203,5 @@ interface IAuthRateLimitConfig {
     rules?: Partial<Record<AuthLimitedRoute, IRateLimitRule | false>>;
 }
 
-type AuthLimitedRoute = 'login' | 'register' | 'forgot' | 'mfaVerify';
+type AuthLimitedRoute = 'login' | 'register' | 'forgot' | 'reset' | 'mfaVerify';
 ```

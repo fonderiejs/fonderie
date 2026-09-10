@@ -1959,6 +1959,31 @@ test('buildAuthRoutes: config.routes overrides path and method (contract-fit wit
 	assert.ok(!has('PUT', '/users/profile'), 'old updateProfile route replaced');
 });
 
+// ── Security: reset-password brute-force guard (C3) ──────────────────
+// The reset PIN is a 6-digit code looked up GLOBALLY (PasswordResetModel.findByPin),
+// so an unthrottled POST /auth/email/reset is brute-forceable into account
+// takeover. The route must carry an IP limiter, on by default like login/forgot.
+
+test('buildAuthRoutes: resetPassword is guarded by an IP limiter before validate', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const routes = buildAuthRoutes(stub, config);
+	const reset = routes.find(([m, p]) => m === 'POST' && p === '/auth/email/reset');
+	assert.ok(reset, 'reset route present');
+	// Public route shape: [method, path, ipLimit, validate, controller]
+	const handlers = reset!.slice(2);
+	assert.equal(handlers.length, 3, 'ipLimit + validate + controller');
+	assert.equal(typeof handlers[0], 'function', 'first middleware is the IP limiter');
+});
+
+test('rate-limit: reset has a default IP limiter and honors disable overrides', async () => {
+	const { buildAuthIpLimiter } = await import('../services/rate-limit');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	assert.equal(typeof buildAuthIpLimiter('reset', stub, undefined), 'function');
+	assert.equal(buildAuthIpLimiter('reset', stub, false), null);
+	assert.equal(buildAuthIpLimiter('reset', stub, { rules: { reset: false } }), null);
+});
+
 test('buildAuthRoutes: verifyGate blocks unverified users when requireVerification is true', async () => {
 	const { buildAuthRoutes } = await import('../routes');
 	const stub: any = {

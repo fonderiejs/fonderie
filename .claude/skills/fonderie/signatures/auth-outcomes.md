@@ -129,7 +129,7 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | Method | Path | Middleware chain (auth / validation / handler) |
 |---|---|---|
 | POST | `/auth/email/forgot` | `ipLimit('forgot') → validate(forgotPasswordSchema) → acctLimit('forgot') → auth.forgotPassword` |
-| POST | `/auth/email/reset` | `validate(resetPasswordSchema) → auth.resetPassword` |
+| POST | `/auth/email/reset` | `ipLimit('reset') → validate(resetPasswordSchema) → auth.resetPassword` |
 | GET | `/auth/google` | `oauth.googleInit` |
 | GET | `/auth/google/callback` | `oauth.googleCallback` |
 | POST | `/auth/login` | `ipLimit('login') → validate(loginSchema) → acctLimit('login') → auth.login` |
