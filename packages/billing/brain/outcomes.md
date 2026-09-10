@@ -174,23 +174,23 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 
 | Method | Path | Middleware chain (auth / validation / handler) |
 |---|---|---|
-| POST | `/billing/checkout` | `requireAuth → validate(checkoutSchema) → checkout.createSession` |
+| POST | `/billing/checkout` | `requireAuth → manager → validate(checkoutSchema) → checkout.createSession` |
 | GET | `/billing/invoices` | `requireAuth → account.listInvoices` |
-| DELETE | `/billing/payment-method` | `requireAuth → account.removePaymentMethod` |
+| DELETE | `/billing/payment-method` | `requireAuth → manager → account.removePaymentMethod` |
 | GET | `/billing/payment-method` | `requireAuth → account.getPaymentMethod` |
-| PUT | `/billing/payment-method` | `requireAuth → validate(savePaymentMethodSchema) → account.savePaymentMethod` |
-| POST | `/billing/payment-method/setup` | `requireAuth → account.setupPaymentMethod` |
-| POST | `/billing/portal` | `requireAuth → checkout.createPortal` |
+| PUT | `/billing/payment-method` | `requireAuth → manager → validate(savePaymentMethodSchema) → account.savePaymentMethod` |
+| POST | `/billing/payment-method/setup` | `requireAuth → manager → account.setupPaymentMethod` |
+| POST | `/billing/portal` | `requireAuth → manager → checkout.createPortal` |
 | GET | `/billing/subscription` | `requireAuth → subscription.get` |
-| POST | `/billing/subscription/cancel` | `requireAuth → validate(cancelSubscriptionSchema) → subscription.cancel` |
-| POST | `/billing/subscription/reactivate` | `requireAuth → subscription.reactivate` |
+| POST | `/billing/subscription/cancel` | `requireAuth → manager → validate(cancelSubscriptionSchema) → subscription.cancel` |
+| POST | `/billing/subscription/reactivate` | `requireAuth → manager → subscription.reactivate` |
 | POST | `/billing/usage` | `requireAuth → validate(recordUsageSchema) → usage.record` |
 | GET | `/billing/usage/:metric` | `requireAuth → usage.get` |
 | GET | `/billing/wallet` | `requireAuth → wallet.get` |
-| POST | `/billing/wallet/checkout` | `requireAuth → validate(walletCheckoutSchema) → wallet.checkout` |
+| POST | `/billing/wallet/checkout` | `requireAuth → manager → validate(walletCheckoutSchema) → wallet.checkout` |
 | POST | `/billing/wallet/grant` | `requireAdminToken(walletAdminToken) → validate(grantWalletSchema) → wallet.grant` |
-| POST | `/billing/wallet/preferences` | `requireAuth → validate(walletPreferencesSchema) → wallet.setPreferences` |
-| POST | `/billing/wallet/purchase` | `requireAuth → validate(walletPurchaseSchema) → wallet.purchase` |
+| POST | `/billing/wallet/preferences` | `requireAuth → manager → validate(walletPreferencesSchema) → wallet.setPreferences` |
+| POST | `/billing/wallet/purchase` | `requireAuth → manager → validate(walletPurchaseSchema) → wallet.purchase` |
 | GET | `/billing/wallet/transactions` | `requireAuth → wallet.transactions` |
 | POST | `/billing/webhook` | `webhook.handle` |
 | POST | `/billing/webhook/payment` | `paymentWebhook.handle` |

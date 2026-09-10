@@ -1077,3 +1077,79 @@ test('toInvitationDTO: never exposes the accept token', async () => {
 	assert.equal(dto.token, '', 'the accept token is a bearer credential for the invitee only');
 	assert.ok(!('pin' in dto), 'the pin never appears in the DTO');
 });
+
+// ── Security: manager gate on privileged workspace routes ────────────
+// withWorkspace verifies MEMBERSHIP; privileged mutations additionally verify
+// MANAGEMENT — the owner or a holder of an active system role. Plain members
+// can no longer manage roles/members/invitations/settings.
+
+function managerStore(hasSystemRole: boolean): IStoreAdapter {
+	const stub = {
+		query: async (sql: string) => {
+			if (sql.includes('is_system') && sql.includes('fonderie_role_user_workspaces')) {
+				return hasSystemRole ? [{ ok: 1 }] : [];
+			}
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(stub),
+	};
+	return stub as unknown as IStoreAdapter;
+}
+
+test('requireManager: owner passes without a role lookup', async () => {
+	const { requireManager } = await import('../middlewares/require-manager');
+	const mw = requireManager(managerStore(false), {});
+	let called = false;
+	const res = await mw(
+		makeCtx({ workspace: WS, user: { id: 'user-1', email: 'a@b.com' } }), // WS.ownerId === 'user-1'
+		async () => { called = true; return new Response(); },
+	);
+	assert.ok(called, 'owner is a manager');
+	assert.notEqual(res.status, 403);
+});
+
+test('requireManager: active system-role holder passes', async () => {
+	const { requireManager } = await import('../middlewares/require-manager');
+	const mw = requireManager(managerStore(true), {});
+	let called = false;
+	await mw(
+		makeCtx({ workspace: WS, user: { id: 'user-9', email: 'x@y.com' } }),
+		async () => { called = true; return new Response(); },
+	);
+	assert.ok(called, 'system-role holder is a manager');
+});
+
+test('requireManager: plain member gets 403 MANAGER_REQUIRED', async () => {
+	const { requireManager } = await import('../middlewares/require-manager');
+	const mw = requireManager(managerStore(false), {});
+	const res = await mw(
+		makeCtx({ workspace: WS, user: { id: 'user-9', email: 'x@y.com' } }),
+		async () => new Response(),
+	);
+	assert.equal(res.status, 403);
+	const body = (await res.json()) as any;
+	assert.equal(body.reason, 'MANAGER_REQUIRED');
+});
+
+test('requireManager: management "any-member" opts out of the gate', async () => {
+	const { requireManager } = await import('../middlewares/require-manager');
+	const mw = requireManager(managerStore(false), { management: 'any-member' });
+	let called = false;
+	await mw(
+		makeCtx({ workspace: WS, user: { id: 'user-9', email: 'x@y.com' } }),
+		async () => { called = true; return new Response(); },
+	);
+	assert.ok(called);
+});
+
+test('buildWorkspaceRoutes: privileged mutations carry the manager gate, reads do not', async () => {
+	const { buildWorkspaceRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const routes = buildWorkspaceRoutes(stub, {});
+	const chainLen = (method: string, path: string) =>
+		routes.find(([m, p]) => m === method && p === path)!.length;
+	// manager-gated mutations carry manager (+ validate) beyond their read siblings
+	assert.equal(chainLen('POST', '/workspaces/roles'), chainLen('GET', '/workspaces/roles') + 2, 'createRole = listRoles + manager + validate');
+	assert.ok(chainLen('DELETE', '/workspaces/members/:userId') > chainLen('GET', '/workspaces/members'), 'removeMember gated beyond list');
+	assert.ok(chainLen('PUT', '/workspaces/settings') > chainLen('GET', '/workspaces/settings'), 'updateSettings gated beyond read');
+});

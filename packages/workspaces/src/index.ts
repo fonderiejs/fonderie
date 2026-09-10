@@ -29,6 +29,7 @@ export {
 } from './dtos/workspace';
 export { withWorkspace } from './middlewares/workspace-context';
 export { requireWorkspace } from './middlewares/require-workspace';
+export { requireManager } from './middlewares/require-manager';
 
 // Request validation — enforced contract for body-taking routes; exported
 // for docs generation and typed clients.
