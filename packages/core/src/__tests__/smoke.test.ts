@@ -786,3 +786,34 @@ test('/readyz: problems list omitted in production unless opted in', async () =>
 		else process.env['NODE_ENV'] = prev;
 	}
 });
+
+// ── Residual: error messages don't leak outside dev/test ─────────────
+test('defaultErrorHandler: leaks message in development, not in staging/prod', async () => {
+	const { defaultErrorHandler } = await import('../middlewares/error-handler');
+	const prev = process.env['NODE_ENV'];
+	try {
+		process.env['NODE_ENV'] = 'development';
+		let res = defaultErrorHandler(new Error('secret conn string'));
+		assert.match((await res.json() as any).explanation, /secret conn string/);
+		for (const env of ['staging', 'production', 'anything']) {
+			process.env['NODE_ENV'] = env;
+			res = defaultErrorHandler(new Error('secret conn string'));
+			assert.equal((await res.json() as any).explanation, 'Internal server error', `env=${env}`);
+		}
+	} finally {
+		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+	}
+});
+
+// ── Residual: router rejects malformed/NUL params as 404, not 500 ────
+test('router param matching: malformed %-encoding and NUL → no match', async () => {
+	const { Router } = await import('../router');
+	const r = new Router();
+	r.add('GET', '/u/:id', async () => Response.json({ ok: true }));
+	// A lone '%' is invalid percent-encoding; decodeURIComponent throws.
+	assert.equal(r.match('GET', '/u/%zz'), null);
+	assert.equal(r.match('GET', '/u/%00'), null); // decoded NUL
+	// A well-formed param still matches.
+	const m = r.match('GET', '/u/abc');
+	assert.ok(m);
+});
