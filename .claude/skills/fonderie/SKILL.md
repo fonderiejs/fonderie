@@ -234,3 +234,13 @@ Write it — that's the actual product. Fonderie's job stops at the
 boilerplate every SaaS needs on day one; it was never meant to cover what
 makes this particular product different.
 
+## The map — when you're unsure which brick, or what Fonderie even is
+
+For the portfolio map — what Fonderie is (and is not), the five tiers, the
+dependency direction, the frontend-mirror pattern, the **party model**
+(user vs member vs customer), the **observability trio** (events vs audit vs
+logger), stability tiers, and the full confusable-set reference — read
+[`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md). Reach for it when a
+task is ambiguous about *which* brick owns a concept, not just how to wire a
+known one.
+
