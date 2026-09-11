@@ -17,6 +17,7 @@ const calls: Array<{
 	auth?: string | undefined;
 	workspace?: string | undefined;
 	requestId?: string | undefined;
+	traceparent?: string | undefined;
 	body?: unknown;
 }> = [];
 
@@ -28,6 +29,7 @@ globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
 		auth: headers['Authorization'],
 		workspace: headers['X-Workspace-ID'],
 		requestId: headers['X-Request-ID'],
+		traceparent: headers['traceparent'],
 		body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
 	});
 	const { status, body, headers: resHeaders } = handler(url, init);
@@ -268,11 +270,16 @@ test('media: upload POSTs base64 to /media, delete DELETEs /media/:id, assetUrl 
 test('sends X-Request-ID on every call and surfaces it on FonderieApiError', async () => {
 	const c = new FonderieClient({ baseUrl: 'http://x' });
 
-	// Success: a non-empty id is sent.
+	// Success: a 32-hex trace id is sent as X-Request-ID, and traceparent carries
+	// the same trace id (W3C: 00-<trace>-<span>-01).
 	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
 	await c.get('/jobs');
-	const sent = calls.at(-1)?.requestId;
-	assert.ok(sent && sent.length > 0, 'X-Request-ID sent');
+	const call = calls.at(-1);
+	const sent = call?.requestId;
+	assert.match(sent ?? '', /^[0-9a-f]{32}$/, 'X-Request-ID is a 32-hex trace id');
+	assert.equal(call?.traceparent, `00-${sent}-${call?.traceparent?.split('-')[2]}-01`, 'traceparent well-formed');
+	assert.match(call?.traceparent ?? '', /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/, 'traceparent shape');
+	assert.equal(call?.traceparent?.split('-')[1], sent, 'traceparent trace id == X-Request-ID');
 
 	// Error: the server-echoed id is preferred on the thrown error.
 	handler = () => ({

@@ -943,7 +943,9 @@
         "Logger",
         "LoggerModule",
         "FileTransport",
-        "ConsoleTransport"
+        "ConsoleTransport",
+        "ConsoleTraceExporter",
+        "OtlpHttpTraceExporter"
       ],
       "subpaths": [],
       "tables": [],
@@ -3934,6 +3936,12 @@
       "logger"
     ],
     "consoletransport": [
+      "logger"
+    ],
+    "consoletraceexporter": [
+      "logger"
+    ],
+    "otlphttptraceexporter": [
       "logger"
     ],
     "mediamodule": [

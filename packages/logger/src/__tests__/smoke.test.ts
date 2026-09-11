@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { Logger } from '../logger';
 import { requestLogger } from '../middlewares';
+import { formatTraceparent, newTraceContext, parseTraceparent } from '../trace';
+import type { ISpan, ITraceExporter } from '../trace';
 import { ConsoleTransport } from '../transports/console';
 import { FileTransport } from '../transports/file';
 import type { ILogEntry, ILogTransport } from '../types';
@@ -232,4 +234,58 @@ test('requestLogger honours a safe inbound X-Request-ID and echoes it; mints one
 	const c = await run({});
 	assert.match(c.requestId, /^[0-9a-f-]{36}$/);
 	assert.equal(c.echoed, c.requestId);
+});
+
+// ── W3C trace context ────────────────────────────────────────────────────────
+test('trace: parseTraceparent validates + parses; formatTraceparent round-trips', () => {
+	const p = parseTraceparent('00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01');
+	assert.equal(p?.traceId, '0af7651916cd43dd8448eb211c80319c');
+	assert.equal(p?.spanId, 'b7ad6b7169203331');
+	assert.equal(p?.sampled, true);
+	assert.equal(parseTraceparent('00-nothex-b7ad6b7169203331-01'), null);
+	assert.equal(parseTraceparent(`00-${'0'.repeat(32)}-b7ad6b7169203331-01`), null); // all-zero trace
+	assert.equal(parseTraceparent('99-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01'), null); // bad version
+	assert.equal(parseTraceparent(null), null);
+	assert.match(formatTraceparent(newTraceContext()), /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+});
+
+test('requestLogger: continues an inbound trace, echoes traceparent, emits a span', async () => {
+	const spans: ISpan[] = [];
+	const exporter: ITraceExporter = { export: (s) => { spans.push(s); } };
+	const logger = new Logger({ transports: [{ write: () => {} }] });
+	const mw = requestLogger(logger, exporter);
+
+	const inboundTrace = '11111111111111111111111111111111';
+	const inboundSpan = '2222222222222222';
+	const ctx = {
+		request: new Request('http://x/jobs', {
+			headers: { traceparent: `00-${inboundTrace}-${inboundSpan}-01` },
+		}),
+		meta: {} as Record<string, unknown>,
+		user: { id: 'u1' },
+	} as any;
+	const res = await mw(ctx, async () => new Response(null, { status: 200 }));
+
+	// Same trace, fresh server span, inbound span as parent.
+	assert.equal(ctx.meta['traceId'], inboundTrace);
+	assert.match(ctx.meta['spanId'] as string, /^[0-9a-f]{16}$/);
+	assert.notEqual(ctx.meta['spanId'], inboundSpan);
+	assert.equal(res.headers.get('traceparent'), `00-${inboundTrace}-${ctx.meta['spanId']}-01`);
+
+	// One span exported with the right ids + attributes.
+	assert.equal(spans.length, 1);
+	assert.equal(spans[0]!.traceId, inboundTrace);
+	assert.equal(spans[0]!.parentSpanId, inboundSpan);
+	assert.equal(spans[0]!.status, 200);
+	assert.equal(spans[0]!.attributes['enduser.id'], 'u1');
+	assert.match(spans[0]!.startUnixNano, /^\d+$/);
+});
+
+test('requestLogger: starts a fresh trace when none is inbound', async () => {
+	const logger = new Logger({ transports: [{ write: () => {} }] });
+	const mw = requestLogger(logger);
+	const ctx = { request: new Request('http://x/jobs'), meta: {} as Record<string, unknown> } as any;
+	const res = await mw(ctx, async () => new Response(null, { status: 204 }));
+	assert.match(ctx.meta['traceId'] as string, /^[0-9a-f]{32}$/);
+	assert.equal(res.headers.get('traceparent'), `00-${ctx.meta['traceId']}-${ctx.meta['spanId']}-01`);
 });

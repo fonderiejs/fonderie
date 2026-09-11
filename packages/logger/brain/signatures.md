@@ -31,6 +31,7 @@ interface ILoggerConfig {
     level?: LogLevel;
     transports?: ILogTransport[];
     pretty?: boolean;
+    traceExporter?: ITraceExporter;
 }
 
 new Logger(config: ILoggerConfig, context?: Record<string, unknown>): Logger
@@ -65,4 +66,44 @@ interface ISecurityEvent {
 }
 
 type SecurityAction = 'auth.login' | 'auth.logout' | 'auth.register' | 'auth.password_change' | 'auth.mfa_verify' | 'auth.token_refresh' | 'authz.permission_denied' | 'admin.action' | 'account.deleted' | 'account.suspended';
+
+new ConsoleTraceExporter(): ConsoleTraceExporter
+  .export(span: ISpan): void
+
+new OtlpHttpTraceExporter(opts: IOtlpExporterOptions): OtlpHttpTraceExporter
+  .export(span: ISpan): Promise<void>
+
+function formatTraceparent(ctx: ITraceContext): string
+
+function newTraceContext(): ITraceContext
+
+function parseTraceparent(header: string | null): ITraceContext | null
+
+interface ITraceContext {
+    traceId: string;
+    spanId: string;
+    parentSpanId?: string;
+    sampled: boolean;
+}
+
+interface ITraceExporter {
+    export(span: ISpan): void | Promise<void>;
+}
+
+interface ISpan {
+    name: string;
+    traceId: string;
+    spanId: string;
+    parentSpanId?: string;
+    startUnixNano: string;
+    endUnixNano: string;
+    status: number;
+    attributes: Record<string, string | number | boolean>;
+}
+
+interface IOtlpExporterOptions {
+    endpoint: string;
+    headers?: Record<string, string>;
+    serviceName?: string;
+}
 ```
