@@ -3,10 +3,16 @@ import assert from 'node:assert/strict';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { generateKeyPairSync, type KeyObject } from 'node:crypto';
 
+import type { IStoreAdapter } from '@fonderie/store';
 import type { IAuthConfig } from '../config';
 import { collectAuthConfigProblems } from '../services/config-guard';
 import { appleNativeSchema } from '../schemas';
-import { mintAppleClientSecret, verifyAppleIdToken } from '../controllers/oauth.controller';
+import {
+	mintAppleClientSecret,
+	verifyAppleIdToken,
+	__resetAppleKeysForTests,
+} from '../controllers/oauth.controller';
+import { ConsumedTokenModel } from '../models/consumed-token.model';
 
 const APPLE_ISSUER = 'https://appleid.apple.com';
 
@@ -140,6 +146,9 @@ function makeSignedIdToken(
 
 async function withStubbedJwks(jwk: Record<string, unknown>, fn: () => Promise<void>) {
 	const orig = globalThis.fetch;
+	// Reset the module JWKS cache/rate-limit so this test's fresh kid is fetched
+	// (the min-refetch guard would otherwise skip a refetch for a new kid).
+	__resetAppleKeysForTests();
 	globalThis.fetch = (async () => ({ json: async () => ({ keys: [jwk] }) })) as unknown as typeof fetch;
 	try {
 		await fn();
@@ -220,4 +229,81 @@ test('verifyAppleIdToken: enforces nonce round-trip when one is expected', async
 			'nonce mismatch rejected',
 		);
 	});
+});
+
+// ── Single-use replay guard (native path) ────────────────────────────────────
+
+// Fake store implementing the consumed-tokens INSERT ... ON CONFLICT DO NOTHING
+// semantics: the first insert of a hash returns a row, a repeat returns none.
+function fakeConsumeStore(): IStoreAdapter {
+	const seen = new Set<string>();
+	return {
+		query: async (sql: string, params?: unknown[]) => {
+			if (/INSERT INTO fonderie_consumed_tokens/.test(sql)) {
+				const hash = String(params?.[0]);
+				if (seen.has(hash)) return [];
+				seen.add(hash);
+				return [{ token_hash: hash }];
+			}
+			return [];
+		},
+	} as unknown as IStoreAdapter;
+}
+
+test('ConsumedTokenModel: first use succeeds, verbatim replay is rejected', async () => {
+	const m = new ConsumedTokenModel(fakeConsumeStore());
+	const exp = new Date(Date.now() + 60_000);
+	assert.equal(await m.consumeOnce('hash-A', exp), true, 'first use consumes');
+	assert.equal(await m.consumeOnce('hash-A', exp), false, 'replay rejected');
+	assert.equal(await m.consumeOnce('hash-B', exp), true, 'a different token is independent');
+});
+
+// ── Config guard: nativeClientIds audience allow-list ────────────────────────
+
+test('collectAuthConfigProblems: empty/wildcard nativeClientIds is an error', () => {
+	for (const bad of [['*'], ['com.example.app', ''], ['com.example.*']]) {
+		const problems = collectAuthConfigProblems({
+			...baseConfig,
+			apple: appleConfig({ nativeClientIds: bad }),
+		});
+		assert.ok(
+			problems.some((p) => p.message.includes('nativeClientIds')),
+			`flagged: ${JSON.stringify(bad)}`,
+		);
+	}
+	const ok = collectAuthConfigProblems({
+		...baseConfig,
+		apple: appleConfig({ nativeClientIds: ['com.example.app', 'com.example.app.ipad'] }),
+	});
+	assert.ok(!ok.some((p) => p.message.includes('nativeClientIds')), 'exact ids raise no problem');
+});
+
+// ── JWKS unknown-kid flood guard ─────────────────────────────────────────────
+
+test('verifyAppleIdToken: a flood of unknown kids does not refetch per request', async () => {
+	__resetAppleKeysForTests();
+	let fetches = 0;
+	const orig = globalThis.fetch;
+	globalThis.fetch = (async () => {
+		fetches++;
+		return { json: async () => ({ keys: [] }) };
+	}) as unknown as typeof fetch;
+	try {
+		// One keypair, ten distinct unknown kids: verification bails at "kid not
+		// found" before any signature check, so the same key is fine.
+		const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+		for (let i = 0; i < 10; i++) {
+			const token = jwt.sign({ email: 'x@example.com' }, privateKey, {
+				algorithm: 'RS256',
+				keyid: `unknown-${i}`,
+				issuer: APPLE_ISSUER,
+				audience: 'com.example.app',
+				expiresIn: '5m',
+			});
+			assert.equal(await verifyAppleIdToken(token, { audiences: ['com.example.app'] }), null);
+		}
+		assert.ok(fetches <= 1, `min-refetch bounds outbound fetches (was ${fetches})`);
+	} finally {
+		globalThis.fetch = orig;
+	}
 });

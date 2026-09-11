@@ -173,6 +173,7 @@
         "@fonderie/auth/migrations"
       ],
       "tables": [
+        "fonderie_consumed_tokens",
         "fonderie_email_verifications",
         "fonderie_login_events",
         "fonderie_mfa_backup_codes",
@@ -192,7 +193,7 @@
         {
           "method": "POST",
           "path": "/auth/apple/callback",
-          "mw": "oauth.appleCallback"
+          "mw": "ipLimit('login') → oauth.appleCallback"
         },
         {
           "method": "POST",
@@ -217,7 +218,7 @@
         {
           "method": "GET",
           "path": "/auth/google/callback",
-          "mw": "oauth.googleCallback"
+          "mw": "ipLimit('login') → oauth.googleCallback"
         },
         {
           "method": "POST",
