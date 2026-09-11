@@ -129,6 +129,24 @@ test('auth.mfa.verifyLogin sends the mfaToken as bearer', async () => {
 	assert.equal(call?.auth, 'Bearer mfa-temp');
 });
 
+test('auth.appleNative posts the identityToken to /auth/apple/native and returns the session', async () => {
+	handler = () => ({
+		status: 200,
+		body: {
+			reason: 'APPLE_AUTH_SUCCESS',
+			explanation: '',
+			result: { tokens: { access: 'a', refresh: 'r' }, user: { id: 'u1' } },
+		},
+	});
+	const c = new FonderieClient({ baseUrl: 'http://x' });
+	const { result } = await c.auth.appleNative({ identityToken: 'id.tok.en', nonce: 'n1' });
+	const call = calls.find((x) => x.path.endsWith('/auth/apple/native'));
+	assert.equal(call?.method, 'POST');
+	assert.deepEqual(call?.body, { identityToken: 'id.tok.en', nonce: 'n1' });
+	assert.equal(result.tokens.access, 'a');
+	assert.equal(result.user.id, 'u1');
+});
+
 
 // ── workspace scoping ────────────────────────────────────────────────────────
 test('setWorkspaceId propagates to every workspace-scoped module, audit and webhooks included', async () => {

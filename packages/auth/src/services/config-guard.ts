@@ -57,6 +57,27 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 		}
 	}
 
+	// Sign in with Apple: the .p8 private key is a bearer credential to Apple. If
+	// the provider is wired, its required fields must be present and the key must
+	// look like a real PEM — a missing field or placeholder is a boot-blocking
+	// error in production, same posture as google.clientSecret.
+	if (config.apple) {
+		const a = config.apple;
+		if (!a.clientId || !a.teamId || !a.keyId || !a.privateKey || !a.redirectUri) {
+			problems.push({
+				module: MODULE,
+				severity: 'error',
+				message: 'apple OAuth is configured but clientId, teamId, keyId, privateKey, or redirectUri is missing',
+			});
+		} else if (!/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(a.privateKey)) {
+			problems.push({
+				module: MODULE,
+				severity: 'error',
+				message: 'apple.privateKey does not look like a PEM .p8 key (expected `-----BEGIN PRIVATE KEY-----`)',
+			});
+		}
+	}
+
 	// MFA is on but TOTP secrets have no at-rest encryption key — they'd be
 	// stored plaintext. An error in production (fails the boot gate); a warning
 	// elsewhere so dev/test with backward-compatible defaults still run.
