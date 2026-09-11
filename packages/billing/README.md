@@ -87,7 +87,15 @@ The flow is three steps and stays on-page:
 `createSetupIntent` / `setDefaultPaymentMethod` / `detachPaymentMethod`; a
 provider that omits them answers `501` and the UI reads that as "in-app entry
 unavailable" (fall back to the hosted portal). Every write is ownership-checked
-— the payment method must belong to the caller's customer.
+— the payment method must belong to the caller's customer — and the read's
+consented-card branch falls through to the default/newest card when the stored
+id no longer belongs to the customer.
+
+Server-side, the provider-normalized card (`INormalizedCard`) additionally
+carries the Stripe card `fingerprint` for app-level fraud/trial-abuse
+composition. It is deliberately excluded from `IPaymentMethodDTO`, so **no
+payment-method route ever returns it** (`GET` and `PUT` share that DTO). See
+the `INormalizedCard` doc comment for its stability and fail-open caveats.
 
 The SetupIntent offers the payment method types you configure on the provider,
 defaulting to card only:
