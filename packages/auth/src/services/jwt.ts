@@ -15,7 +15,7 @@ export interface TokenPair {
 export interface IAccessPayload {
 	sub: string; // userId
 	type: 'access';
-	loginMethod: 'email' | 'phone' | 'google';
+	loginMethod: 'email' | 'phone' | 'google' | 'apple';
 	phoneVerified: boolean;
 	mfaPending?: boolean;
 	// Absent only on legacy tokens issued before session binding and on
@@ -26,13 +26,13 @@ export interface IAccessPayload {
 export interface IRefreshPayload {
 	sub: string;
 	type: 'refresh';
-	loginMethod: 'email' | 'phone' | 'google';
+	loginMethod: 'email' | 'phone' | 'google' | 'apple';
 	phoneVerified: boolean;
 	sid?: string;
 }
 
 export interface ITokenOptions {
-	loginMethod: 'email' | 'phone' | 'google';
+	loginMethod: 'email' | 'phone' | 'google' | 'apple';
 	phoneVerified?: boolean;
 }
 

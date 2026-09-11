@@ -6,6 +6,7 @@ export { FonderieApiError } from './http';
 export type { IListAuditEventsInput } from './modules/audit';
 export { AuditClient } from './modules/audit';
 export type {
+	IAppleNativeInput,
 	IChangePasswordInput,
 	IGetLoginHistoryInput,
 	ILoginInput,

@@ -10,6 +10,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .setAccessToken(token: string | undefined): void
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
   .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
+  .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult>>
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>
@@ -28,6 +29,11 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .listSessions(opts?: IReadOptions | undefined): Promise<IApiResponse<ISessionsResult>>
   .terminateSession(id: string): Promise<IApiResponse<{ id: string; }>>
   .terminateOtherSessions(): Promise<IApiResponse<{ count: number; }>>
+
+interface IAppleNativeInput {
+    identityToken: string;
+    nonce?: string;
+}
 
 interface ILoginInput {
     email: string;
@@ -181,6 +187,13 @@ interface IUseLoginReturn {
     mfaPending: IMfaRequiredResult | null;
 }
 
+interface IUseAppleSignInReturn {
+    signIn: (input: IAppleNativeInput) => Promise<ILoginResult>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    data: ILoginResult | null;
+}
+
 interface IUseLogoutReturn {
     logout: (refreshToken?: string) => Promise<void>;
     isLoading: boolean;
@@ -286,6 +299,8 @@ interface IUseSessionsReturn {
 function useForgotPassword(client?: AuthClient | undefined): IUseForgotPasswordReturn
 
 function useLogin(client?: AuthClient | undefined): IUseLoginReturn
+
+function useAppleSignIn(client?: AuthClient | undefined): IUseAppleSignInReturn
 
 function useLogout(client?: AuthClient | undefined): IUseLogoutReturn
 

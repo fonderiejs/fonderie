@@ -1,5 +1,7 @@
 export type { IUseAccountDataReturn } from './useAccountData';
 export { useAccountData } from './useAccountData';
+export type { IUseAppleSignInReturn } from './useAppleSignIn';
+export { useAppleSignIn } from './useAppleSignIn';
 export type { IUseChangePasswordReturn } from './useChangePassword';
 export { useChangePassword } from './useChangePassword';
 export type { IUseForgotPasswordReturn } from './useForgotPassword';

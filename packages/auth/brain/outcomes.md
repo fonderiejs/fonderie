@@ -129,6 +129,9 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 
 | Method | Path | Middleware chain (auth / validation / handler) |
 |---|---|---|
+| GET | `/auth/apple` | `oauth.appleInit` |
+| POST | `/auth/apple/callback` | `oauth.appleCallback` |
+| POST | `/auth/apple/native` | `ipLimit('login') → validate(appleNativeSchema) → oauth.appleNative` |
 | POST | `/auth/email/forgot` | `ipLimit('forgot') → validate(forgotPasswordSchema) → acctLimit('forgot') → auth.forgotPassword` |
 | POST | `/auth/email/reset` | `ipLimit('reset') → validate(resetPasswordSchema) → auth.resetPassword` |
 | GET | `/auth/google` | `oauth.googleInit` |

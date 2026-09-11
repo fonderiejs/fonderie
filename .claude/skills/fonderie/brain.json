@@ -182,8 +182,23 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 26,
+      "routeCount": 29,
       "routes": [
+        {
+          "method": "GET",
+          "path": "/auth/apple",
+          "mw": "oauth.appleInit"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/apple/callback",
+          "mw": "oauth.appleCallback"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/apple/native",
+          "mw": "ipLimit('login') → validate(appleNativeSchema) → oauth.appleNative"
+        },
         {
           "method": "POST",
           "path": "/auth/email/forgot",
@@ -1339,6 +1354,7 @@
         "FonderieApiError",
         "useForgotPassword",
         "useLogin",
+        "useAppleSignIn",
         "useLogout",
         "useAccountData",
         "useChangePassword",
@@ -4263,6 +4279,9 @@
     "useuploadmedia": [
       "react-media",
       "vue-media"
+    ],
+    "useapplesignin": [
+      "react-native-auth"
     ],
     "webhookdetailscreen": [
       "react-native-webhooks-screens",

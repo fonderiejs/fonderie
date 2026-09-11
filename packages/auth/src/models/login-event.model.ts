@@ -4,7 +4,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 // Append-only: rows survive logout/expiry (unlike fonderie_sessions, which is
 // the live-session list and the single source of truth for Active Sessions).
 // user_id is nullable so unknown-email attempts still record.
-export type LoginMethod = 'password' | 'phone' | 'mfa' | 'oauth-google';
+export type LoginMethod = 'password' | 'phone' | 'mfa' | 'oauth-google' | 'oauth-apple';
 export type LoginOutcome = 'success' | 'failed';
 
 export interface ILoginEventInput {

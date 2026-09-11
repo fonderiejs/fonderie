@@ -15,6 +15,26 @@ export interface IAuthSecrets {
 		clientSecret: string;
 		redirectUri: string;
 	};
+	// Sign in with Apple. Unlike Google, Apple's client secret is not a static
+	// string — it's a short-lived ES256 JWT minted from a .p8 key at token
+	// exchange, so the config carries the signing material, not a secret.
+	apple?: {
+		// Services ID (Sign in with Apple identifier) — the `aud` for the WEB
+		// redirect flow and the `sub` of the client-secret JWT.
+		clientId: string;
+		// Apple Developer Team ID — the `iss` of the client-secret JWT.
+		teamId: string;
+		// Key ID of the .p8 signing key — the `kid` header of the client secret.
+		keyId: string;
+		// Contents of the .p8 private key (PEM, `-----BEGIN PRIVATE KEY----- …`).
+		privateKey: string;
+		// Web form_post callback URL registered with Apple.
+		redirectUri: string;
+		// iOS bundle identifiers whose NATIVE identityToken we accept. Native Sign
+		// in with Apple mints id_tokens with `aud` = the app's bundle id (NOT the
+		// Services ID), so each must be allow-listed for POST /auth/apple/native.
+		nativeClientIds?: string[];
+	};
 }
 
 // Behavioral — safe to expose to admin dashboard
@@ -70,7 +90,7 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	// password change regardless of this value; shorten it to bound the
 	// window of a stolen token whose session is still alive.
 	accessTokenDuration?: string;
-	providers: ('email' | 'phone' | 'google' | 'github')[];
+	providers: ('email' | 'phone' | 'google' | 'github' | 'apple')[];
 	appName?: string;
 	// Base URL for the password-reset LINK. When set, forgot-password emits a
 	// ready-built `resetUrl` (base + `token=<high-entropy token>`) in the

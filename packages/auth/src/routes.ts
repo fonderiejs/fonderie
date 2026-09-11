@@ -20,6 +20,7 @@ import {
 	changePasswordSchema,
 	forgotPasswordSchema,
 	updatePreferencesSchema,
+	appleNativeSchema,
 } from './schemas';
 
 import { mfaController } from './controllers/mfa.controller';
@@ -120,6 +121,18 @@ export function buildAuthRoutes(
 		routes.push(
 			['GET', '/auth/google', oauth.googleInit],
 			['GET', '/auth/google/callback', oauth.googleCallback],
+		);
+	}
+
+	if (config.providers.includes('apple')) {
+		routes.push(
+			// Web redirect flow. The callback is a POST (response_mode=form_post);
+			// its urlencoded body is parsed inside the controller.
+			['GET', '/auth/apple', oauth.appleInit],
+			['POST', '/auth/apple/callback', oauth.appleCallback],
+			// Native (iOS) flow: the app posts the identityToken from the Apple
+			// sheet. ipLimit guards token brute-forcing; validate bounds the body.
+			['POST', '/auth/apple/native', ipLimit('login'), validate(appleNativeSchema), oauth.appleNative],
 		);
 	}
 

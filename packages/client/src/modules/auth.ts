@@ -43,6 +43,15 @@ export interface ILoginInput {
 	password: string;
 }
 
+// Native Sign in with Apple: the app obtains an `identityToken` from the native
+// Apple sheet (e.g. expo-apple-authentication) and hands it here — the client
+// only relays it to POST /auth/apple/native. `nonce` is the raw nonce the app
+// passed to the native request, checked server-side against the token claim.
+export interface IAppleNativeInput {
+	identityToken: string;
+	nonce?: string;
+}
+
 export interface IResetPasswordInput {
 	// The 6-digit code emailed by forgotPassword. Matches @fonderie/auth's
 	// resetPasswordSchema ({ pin, password }); the route is POST /auth/email/reset.
@@ -166,6 +175,17 @@ export class AuthClient {
 		return this.http.request<IApiResponse<ILoginResult | IMfaRequiredResult>>({
 			method: 'POST',
 			path: '/auth/login',
+			body: input,
+		});
+	}
+
+	// Complete a native Sign in with Apple. Returns the same token/user envelope
+	// as login (no MFA branch — OAuth completions don't gate on MFA). Requires
+	// the API to enable the provider (`providers: ['apple']` + apple config).
+	appleNative(input: IAppleNativeInput) {
+		return this.http.request<IApiResponse<ILoginResult>>({
+			method: 'POST',
+			path: '/auth/apple/native',
 			body: input,
 		});
 	}

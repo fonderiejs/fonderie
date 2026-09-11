@@ -1,5 +1,6 @@
 export type {
 	AuthClient,
+	IAppleNativeInput,
 	ILoginInput,
 	ILoginResult,
 	IMfaRequiredResult,
@@ -25,6 +26,7 @@ export { FonderieApiError, isMfaRequired } from '@fonderie/client';
 export type {
 	IUseForgotPasswordReturn,
 	IUseLoginReturn,
+	IUseAppleSignInReturn,
 	IUseLogoutReturn,
 	IUseAccountDataReturn,
 	IUseChangePasswordReturn,
@@ -41,6 +43,7 @@ export type {
 export {
 	useForgotPassword,
 	useLogin,
+	useAppleSignIn,
 	useLogout,
 	useAccountData,
 	useChangePassword,

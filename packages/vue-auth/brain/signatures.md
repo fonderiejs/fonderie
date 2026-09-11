@@ -10,6 +10,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .setAccessToken(token: string | undefined): void
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
   .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
+  .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult>>
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>

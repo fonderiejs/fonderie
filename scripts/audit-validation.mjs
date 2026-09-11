@@ -24,6 +24,7 @@ const EXEMPT = new Map([
 	['POST /billing/payment-method/setup', 'no body read — subscriber + SetupIntent customer resolved from ctx'],
 	['POST /webhooks/:endpointId/test', 'no body read — builds outgoing payload'],
 	['POST /auth/mfa/setup', 'no body read — generates TOTP secret'],
+	['POST /auth/apple/callback', 'Apple form_post (urlencoded, not JSON); CSRF state verified + code/id_token validated in handler'],
 	['POST /workspaces/archive', 'no body read — workspace from ctx'],
 	['POST /workspaces/restore', 'no body read'],
 	['POST /customers/:customerId/unblacklist', 'no body read'],
