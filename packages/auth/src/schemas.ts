@@ -33,6 +33,15 @@ export const loginSchema = z.union([
 	z.object({ phone }),
 ]);
 
+// Native Sign in with Apple: the iOS app posts the identityToken it got from
+// the native Apple sheet. Bounded length — it's a JWT, never megabytes.
+export const appleNativeSchema = z.object({
+	identityToken: z.string().min(1).max(8192),
+	// Optional nonce the app bound to the native request; when present we check
+	// it against the token's `nonce` claim to defend against replay.
+	nonce: z.string().max(256).optional(),
+});
+
 // refreshToken may come from the body or the refresh_token cookie.
 export const refreshSchema = z.object({ refreshToken: z.string().min(1).optional() });
 
