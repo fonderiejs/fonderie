@@ -28,11 +28,12 @@ interface IListAuditEventsInput {
     cursor?: string;
 }
 
-new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
+new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown, requestId?: string | undefined): FonderieApiError
   .reason: string
   .explanation: string
   .status: number
   .details: unknown
+  .requestId: string | undefined
   .name: string
   .message: string
   .stack: string

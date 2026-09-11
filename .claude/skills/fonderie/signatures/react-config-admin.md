@@ -82,11 +82,12 @@ new ConfigAdminClient(opts: IConfigAdminClientOptions): ConfigAdminClient
   .rollbackSecret(key: string, input: IRollbackInput, environment?: string | undefined): Promise<IApiResponse<ISecretEntry>>
   .revealSecret(key: string, environment?: string | undefined): Promise<IApiResponse<IRevealSecretResult>>
 
-new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
+new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown, requestId?: string | undefined): FonderieApiError
   .reason: string
   .explanation: string
   .status: number
   .details: unknown
+  .requestId: string | undefined
   .name: string
   .message: string
   .stack: string
