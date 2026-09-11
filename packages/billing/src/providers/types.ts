@@ -141,6 +141,13 @@ export interface INormalizedCard {
 	last4: string;
 	expMonth: number;
 	expYear: number;
+	// Provider-stable identifier of the PHYSICAL card (Stripe: the same card
+	// yields the same fingerprint across customers and PaymentMethods). A
+	// server-side signal for app-level fraud/trial-abuse composition — it
+	// correlates identity across accounts, so it stays server-side:
+	// toPaymentMethodDTO deliberately omits it from the wire DTO. Optional so
+	// custom providers without an equivalent stay conformant.
+	fingerprint?: string | null;
 }
 
 // One invoice as a list summary, for an in-app billing history that links out

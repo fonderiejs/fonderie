@@ -104,12 +104,13 @@ interface IStripeInvoiceRaw {
 	metadata?: Record<string, string> | null;
 }
 
-// A PaymentMethod's card block (display fields only).
+// A PaymentMethod's card block (display fields + the stable card fingerprint).
 interface IStripeCardRaw {
 	brand: string;
 	last4: string;
 	exp_month: number;
 	exp_year: number;
+	fingerprint?: string | null;
 }
 
 // payment_intent.payment_failed delivers the PaymentIntent.
@@ -779,6 +780,7 @@ export class StripeProvider implements IBillingProvider {
 						last4: pm.card.last4,
 						expMonth: pm.card.exp_month,
 						expYear: pm.card.exp_year,
+						fingerprint: pm.card.fingerprint ?? null,
 					}
 				: null;
 		try {

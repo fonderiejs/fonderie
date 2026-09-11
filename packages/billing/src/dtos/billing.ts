@@ -149,7 +149,10 @@ export function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransa
 	};
 }
 
-// The customer's card on file, for display. Never carries the full number.
+// The customer's card on file, for display. Never carries the full number —
+// and never the card `fingerprint`: that field correlates the physical card
+// across accounts, so it is a server-side-only signal (INormalizedCard) that
+// must not reach clients.
 export interface IPaymentMethodDTO {
 	brand: string;
 	last4: string;

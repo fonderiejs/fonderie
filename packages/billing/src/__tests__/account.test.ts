@@ -58,15 +58,20 @@ test('accountController.getPaymentMethod: returns the card DTO, resolving the wa
 		baseConfig({
 			getPaymentMethod: async (opts: { customerId: string; paymentMethodId?: string | null }) => {
 				seen = opts;
-				return { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030 };
+				return { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030, fingerprint: 'fp_abc' };
 			},
 		}),
 	);
 	const res = await ctrl.getPaymentMethod(makeCtx());
-	const body = (await res.json()) as { result: { paymentMethod: { brand: string; last4: string } } };
+	const body = (await res.json()) as {
+		result: { paymentMethod: { brand: string; last4: string; fingerprint?: unknown } };
+	};
 	assert.equal(res.status, 200);
 	assert.equal(body.result.paymentMethod.brand, 'visa');
 	assert.equal(body.result.paymentMethod.last4, '4242');
+	// The card fingerprint is a server-side-only signal (it correlates the
+	// physical card across accounts) — the wire DTO must never carry it.
+	assert.equal('fingerprint' in body.result.paymentMethod, false);
 	// The consented card id from the wallet customer is passed through.
 	assert.deepEqual(seen, { customerId: 'cus_1', paymentMethodId: 'pm_1' });
 });
