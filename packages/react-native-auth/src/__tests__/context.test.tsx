@@ -6,7 +6,7 @@ import { FonderieProvider } from '@fonderie/react';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 
-import { useLogin, useLogout, useSession } from '../hooks';
+import { useAppleSignIn, useLogin, useLogout, useSession } from '../hooks';
 
 const fakeAuth = { marker: 'context-auth' } as unknown as AuthClient;
 const fakeClient = { auth: fakeAuth } as unknown as FonderieClient;
@@ -31,6 +31,18 @@ test('hooks resolve the auth client from context', () => {
 	assert.equal(typeof shape.login, 'function');
 	assert.equal(shape.isLoading, false);
 	assert.equal(shape.error, null);
+});
+
+test('useAppleSignIn resolves from context and returns the expected shape', () => {
+	let returned: unknown;
+	renderWithProvider(() => {
+		returned = useAppleSignIn();
+	});
+	const shape = returned as { signIn: unknown; isLoading: boolean; error: unknown; data: unknown };
+	assert.equal(typeof shape.signIn, 'function');
+	assert.equal(shape.isLoading, false);
+	assert.equal(shape.error, null);
+	assert.equal(shape.data, null);
 });
 
 test('an explicit client still works and bypasses context', () => {
