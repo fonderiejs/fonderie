@@ -6,6 +6,7 @@ import type { IFonderieContext } from '@fonderie/core';
 
 import type { IBillingConfig } from '../config';
 import { accountController } from '../controllers/account.controller';
+import { toPaymentMethodDTO } from '../dtos/billing';
 
 function makeCtx(): IFonderieContext {
 	return {
@@ -74,6 +75,20 @@ test('accountController.getPaymentMethod: returns the card DTO, resolving the wa
 	assert.equal('fingerprint' in body.result.paymentMethod, false);
 	// The consented card id from the wallet customer is passed through.
 	assert.deepEqual(seen, { customerId: 'cus_1', paymentMethodId: 'pm_1' });
+});
+
+// The mapper-level guard: EXACTLY the four display keys, whatever the
+// normalized card carries. Route-level absence checks cover single routes;
+// this one covers every present and future caller of the DTO.
+test('toPaymentMethodDTO: exactly the display fields — never the fingerprint', () => {
+	const dto = toPaymentMethodDTO({
+		brand: 'visa',
+		last4: '4242',
+		expMonth: 12,
+		expYear: 2030,
+		fingerprint: 'fp_abc',
+	});
+	assert.deepEqual(dto, { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030 });
 });
 
 test('accountController.getPaymentMethod: null when no customer is on file', async () => {

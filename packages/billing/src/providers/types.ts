@@ -135,18 +135,24 @@ export interface IResolvedPrice {
 }
 
 // The one interface every handler calls
-// The customer's card on file, for display only — never the full number.
+// The customer's card on file. Display fields (never the full number) plus
+// one non-display field: `fingerprint`, a server-side abuse signal.
 export interface INormalizedCard {
 	brand: string; // 'visa' | 'mastercard' | 'amex' | …
 	last4: string;
 	expMonth: number;
 	expYear: number;
-	// Provider-stable identifier of the PHYSICAL card (Stripe: the same card
-	// yields the same fingerprint across customers and PaymentMethods). A
-	// server-side signal for app-level fraud/trial-abuse composition — it
-	// correlates identity across accounts, so it stays server-side:
-	// toPaymentMethodDTO deliberately omits it from the wire DTO. Optional so
-	// custom providers without an equivalent stay conformant.
+	// Provider identifier of the card number (Stripe: card.fingerprint), for
+	// app-level fraud/trial-abuse composition — it correlates identity across
+	// accounts, so it stays server-side: toPaymentMethodDTO deliberately omits
+	// it from the wire DTO. Stability caveats: wallet-tokenized cards (Apple
+	// Pay / Google Pay) may fingerprint the tokenized number (DPAN), so one
+	// physical card can yield different fingerprints across entry methods, and
+	// shared test PANs collide in test mode. Two no-value states: the key
+	// ABSENT means the provider has no fingerprint concept (custom providers
+	// may omit it); NULL means no usable fingerprint for this lookup — which
+	// is also the fail-open result of the tolerant getPaymentMethod. Either
+	// way, treat a missing fingerprint as a missing signal, never a clean one.
 	fingerprint?: string | null;
 }
 
@@ -298,11 +304,13 @@ export interface IBillingProvider {
 	// reactivate route answers 501 when absent.
 	reactivateSubscription?(opts: { subscriptionId: string }): Promise<ISubscriptionChange>;
 
-	// Retrieve the customer's card on file (the "last added" payment method) for
-	// display — brand/last4/expiry only, never the full number. When a specific
-	// consented card id is known (from the wallet customer) it is retrieved
-	// directly; otherwise the provider resolves the customer's default/newest
-	// card. Optional; when absent, the payment-method route answers 501.
+	// Retrieve the customer's card on file — display fields (never the full
+	// number) plus the server-side `fingerprint` (see INormalizedCard). When a
+	// specific consented card id is known (from the wallet customer) it is
+	// retrieved directly, ownership-checked; otherwise the provider resolves
+	// the customer's default/newest card. Tolerant/fail-open: null means the
+	// lookup found nothing OR failed. Optional; when absent, the
+	// payment-method route answers 501.
 	getPaymentMethod?(opts: {
 		customerId: string;
 		paymentMethodId?: string | null;

@@ -74,7 +74,7 @@ caller's own provider customer (created lazily on first use):
 |---|---|
 | `POST /billing/payment-method/setup` | Starts card entry — returns a provider **SetupIntent** `{ clientSecret }` for an embedded card element (Stripe Payment Element) to confirm. |
 | `PUT /billing/payment-method` | After the element confirms, records `{ paymentMethodId }` as the default and returns the saved card `{ paymentMethod }`. |
-| `GET /billing/payment-method` | The card on file (`brand` / `last4` / `expMonth` / `expYear`), or `null`. Server-side, the provider-normalized card (`INormalizedCard`) additionally carries the stable Stripe card `fingerprint` for app-level fraud/trial-abuse composition — it is deliberately never exposed on this route. |
+| `GET /billing/payment-method` | The card on file (`brand` / `last4` / `expMonth` / `expYear`), or `null`. |
 | `DELETE /billing/payment-method` | Detaches the card at the provider and clears the record. |
 
 The flow is three steps and stays on-page:
@@ -87,7 +87,15 @@ The flow is three steps and stays on-page:
 `createSetupIntent` / `setDefaultPaymentMethod` / `detachPaymentMethod`; a
 provider that omits them answers `501` and the UI reads that as "in-app entry
 unavailable" (fall back to the hosted portal). Every write is ownership-checked
-— the payment method must belong to the caller's customer.
+— the payment method must belong to the caller's customer — and the read's
+consented-card branch falls through to the default/newest card when the stored
+id no longer belongs to the customer.
+
+Server-side, the provider-normalized card (`INormalizedCard`) additionally
+carries the Stripe card `fingerprint` for app-level fraud/trial-abuse
+composition. It is deliberately excluded from `IPaymentMethodDTO`, so **no
+payment-method route ever returns it** (`GET` and `PUT` share that DTO). See
+the `INormalizedCard` doc comment for its stability and fail-open caveats.
 
 The SetupIntent offers the payment method types you configure on the provider,
 defaulting to card only:

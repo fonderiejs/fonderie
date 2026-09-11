@@ -268,7 +268,9 @@ export interface ISubscriptionChangeResult {
 	currentPeriodEnd: string | null;
 }
 
-// The customer's card on file, for display. Never carries the full number.
+// The customer's card on file, for display. Never carries the full number —
+// nor the server-side card `fingerprint`, which billing deliberately keeps
+// off the wire (it correlates identity across accounts).
 export interface IPaymentMethodDTO {
 	brand: string;
 	last4: string;
