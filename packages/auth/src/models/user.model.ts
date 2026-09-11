@@ -255,7 +255,8 @@ export class UserModel {
 			`INSERT INTO fonderie_users (email, email_verified_at, provider, provider_id)
 			VALUES ($1, now(), $2, $3)
 			ON CONFLICT (email) DO UPDATE
-			SET provider = $2, provider_id = $3
+			SET provider = $2, provider_id = $3,
+			    email_verified_at = COALESCE(fonderie_users.email_verified_at, now())
 			RETURNING id`,
 			[email, provider, providerId],
 		);

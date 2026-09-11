@@ -9,6 +9,13 @@ downloading tarballs.
 
 ## Database tables (after all migrations)
 
+### `fonderie_consumed_tokens`
+
+```sql
+token_hash               TEXT PRIMARY KEY
+expires_at               TIMESTAMPTZ NOT NULL
+```
+
 ### `fonderie_email_verifications`
 
 ```sql
@@ -130,12 +137,12 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | Method | Path | Middleware chain (auth / validation / handler) |
 |---|---|---|
 | GET | `/auth/apple` | `oauth.appleInit` |
-| POST | `/auth/apple/callback` | `oauth.appleCallback` |
+| POST | `/auth/apple/callback` | `ipLimit('login') → oauth.appleCallback` |
 | POST | `/auth/apple/native` | `ipLimit('login') → validate(appleNativeSchema) → oauth.appleNative` |
 | POST | `/auth/email/forgot` | `ipLimit('forgot') → validate(forgotPasswordSchema) → acctLimit('forgot') → auth.forgotPassword` |
 | POST | `/auth/email/reset` | `ipLimit('reset') → validate(resetPasswordSchema) → auth.resetPassword` |
 | GET | `/auth/google` | `oauth.googleInit` |
-| GET | `/auth/google/callback` | `oauth.googleCallback` |
+| GET | `/auth/google/callback` | `ipLimit('login') → oauth.googleCallback` |
 | POST | `/auth/login` | `ipLimit('login') → validate(loginSchema) → acctLimit('login') → auth.login` |
 | GET | `/auth/login-history` | `requireAuth → user.loginHistory` |
 | POST | `/auth/logout` | `requireAuth → validate(refreshSchema) → auth.logout` |

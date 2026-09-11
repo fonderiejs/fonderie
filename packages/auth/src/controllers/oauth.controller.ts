@@ -1,4 +1,4 @@
-import { randomBytes, createPublicKey, type KeyObject } from 'node:crypto';
+import { randomBytes, createPublicKey, createHash, type KeyObject } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 
 import { tokenPairCookies, cookieHeaders } from '../services/cookies';
@@ -12,6 +12,7 @@ import { toUserDTO } from '../dtos/user';
 import { UserModel } from '../models/user.model';
 import { SessionModel } from '../models/session.model';
 import { LoginEventModel } from '../models/login-event.model';
+import { ConsumedTokenModel } from '../models/consumed-token.model';
 import { requestMeta } from '../services/request-meta';
 import { normalizeEmailSafe } from '../services/email';
 
@@ -36,6 +37,9 @@ interface AppleClaims {
 	// Apple sends email_verified as a boolean OR the string "true".
 	email_verified?: boolean | string;
 	nonce?: string;
+	// Seconds since epoch — the token's own expiry, used as the TTL of the
+	// single-use replay record.
+	exp?: number;
 }
 
 // Mint the client_secret: a ≤5-min ES256 JWT signed with the .p8 key. Minted
@@ -49,24 +53,51 @@ export function mintAppleClientSecret(apple: AppleConfig): string {
 	);
 }
 
-// Apple's signing keys, cached for an hour and refetched on an unknown kid
-// (Apple rotates them). Module-level cache is safe: the keys are public.
+// Apple's signing keys, cached for an hour. Module-level cache is safe: the keys
+// are public. Hardened against unknown-kid abuse: an attacker fully controls the
+// (unverified) kid on POST /auth/apple/native, and a naive "refetch on unknown
+// kid" turns every forged token into an outbound call to Apple. So refetches are
+// (a) single-flighted — concurrent callers share one fetch, (b) rate-limited to
+// at most one attempt per minute regardless of how many unknown kids arrive, and
+// (c) bounded by a request timeout so a slow/hung Apple never ties up handlers.
 interface AppleJwk { kid: string; kty: string; n: string; e: string; alg: string; use?: string }
 let appleKeyCache: { keys: AppleJwk[]; fetchedAt: number } | null = null;
+let appleKeyInflight: Promise<void> | null = null;
+let appleKeyLastAttempt = 0;
 const APPLE_KEYS_TTL_MS = 60 * 60 * 1000;
+const APPLE_KEYS_MIN_REFETCH_MS = 60 * 1000;
+const APPLE_KEYS_FETCH_TIMEOUT_MS = 5000;
 
-async function getApplePublicKey(kid: string): Promise<KeyObject | null> {
-	const fresh = appleKeyCache && Date.now() - appleKeyCache.fetchedAt < APPLE_KEYS_TTL_MS;
-	if (!fresh || !appleKeyCache!.keys.some((k) => k.kid === kid)) {
+function refreshAppleKeys(): Promise<void> {
+	// Single-flight: one in-flight fetch is shared by all concurrent callers.
+	if (appleKeyInflight) return appleKeyInflight;
+	appleKeyLastAttempt = Date.now();
+	appleKeyInflight = (async () => {
 		try {
-			const res = await fetch(APPLE_KEYS_URL);
+			const res = await fetch(APPLE_KEYS_URL, { signal: AbortSignal.timeout(APPLE_KEYS_FETCH_TIMEOUT_MS) });
 			const data = (await res.json()) as { keys?: AppleJwk[] };
 			if (Array.isArray(data.keys)) appleKeyCache = { keys: data.keys, fetchedAt: Date.now() };
 		} catch {
-			// Keep any stale cache we have rather than failing outright.
+			// Keep any stale cache rather than failing outright.
+		} finally {
+			appleKeyInflight = null;
 		}
+	})();
+	return appleKeyInflight;
+}
+
+async function getApplePublicKey(kid: string): Promise<KeyObject | null> {
+	const find = () => appleKeyCache?.keys.find((k) => k.kid === kid) ?? null;
+	const cacheFresh = () => !!appleKeyCache && Date.now() - appleKeyCache.fetchedAt < APPLE_KEYS_TTL_MS;
+
+	let jwk = find();
+	// Refetch only when the kid is missing or the cache is stale — AND not more
+	// than once per minute, so a flood of attacker-chosen kids can trigger at
+	// most one outbound fetch per minute, never one per request.
+	if ((!jwk || !cacheFresh()) && Date.now() - appleKeyLastAttempt >= APPLE_KEYS_MIN_REFETCH_MS) {
+		await refreshAppleKeys();
+		jwk = find();
 	}
-	const jwk = appleKeyCache?.keys.find((k) => k.kid === kid);
 	if (!jwk) return null;
 	try {
 		return createPublicKey({ key: jwk as unknown as JsonWebKey, format: 'jwk' });
@@ -98,7 +129,10 @@ export async function verifyAppleIdToken(
 			// above).
 			audience: opts.audiences as [string, ...string[]],
 		}) as AppleClaims;
-		// If the app bound a nonce to the native request, it must round-trip.
+		// Optional session-binding: if the app bound a nonce to the native
+		// request, the token's nonce claim must match it (defends against a token
+		// substituted from a different session). This is NOT replay protection —
+		// verbatim replay is stopped by the single-use guard in appleNative.
 		if (opts.nonce !== undefined && payload.nonce !== opts.nonce) return null;
 		return payload;
 	} catch {
@@ -109,10 +143,19 @@ export async function verifyAppleIdToken(
 const appleEmailVerified = (c: AppleClaims): boolean =>
 	c.email_verified === true || c.email_verified === 'true';
 
+// Test-only: reset the module-level JWKS cache/rate-limit state so each test can
+// exercise a fresh fetch. Never called in production code paths.
+export function __resetAppleKeysForTests(): void {
+	appleKeyCache = null;
+	appleKeyInflight = null;
+	appleKeyLastAttempt = 0;
+}
+
 export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store);
 	const loginEvents = new LoginEventModel(store);
+	const consumedTokens = new ConsumedTokenModel(store);
 
 	// Shared tail for both Apple flows (web callback + native token): given
 	// verified claims, upsert the account by email, open a session, record the
@@ -510,6 +553,33 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				});
 				return setApiResponse(HTTP.UNAUTHORIZED, 'APPLE_AUTH_FAILED', 'Invalid Apple identity token');
 			}
+
+			// Single-use guard: a verified native identityToken may be redeemed
+			// exactly once. Apple does not one-time it for us (unlike the web `code`
+			// exchange), so without this a captured token could be replayed until
+			// its exp. Consume by hash with TTL = the token's exp; a replay is a
+			// recorded security event, never a login.
+			const tokenHash = createHash('sha256').update(identityToken).digest('hex');
+			const expMs = typeof claims.exp === 'number' ? claims.exp * 1000 : Date.now() + 5 * 60 * 1000;
+			const firstUse = await consumedTokens.consumeOnce(tokenHash, new Date(expMs));
+			if (!firstUse) {
+				const meta = requestMeta(ctx);
+				loginEvents.recordSafe({
+					userId: null,
+					emailAttempted: claims.email ?? null,
+					method: 'oauth-apple',
+					outcome: 'failed',
+					failureReason: 'token_replayed',
+					...meta,
+				});
+				return setApiResponse(
+					HTTP.UNAUTHORIZED,
+					'APPLE_AUTH_FAILED',
+					'This Apple identity token has already been used',
+				);
+			}
+			consumedTokens.sweepExpiredSafe();
+
 			return completeAppleLogin(ctx, {
 				email: claims.email,
 				sub: claims.sub,
