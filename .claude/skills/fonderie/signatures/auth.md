@@ -56,7 +56,7 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     secureCookies?: boolean;
     rateLimit?: IAuthRateLimitConfig | false;
     accessTokenDuration?: string;
-    providers: ('email' | 'phone' | 'google' | 'github')[];
+    providers: ('email' | 'phone' | 'google' | 'github' | 'apple')[];
     appName?: string;
     passwordResetUrl?: string;
     resolve?: (ctx: {
@@ -74,6 +74,14 @@ interface IAuthSecrets {
         clientId: string;
         clientSecret: string;
         redirectUri: string;
+    };
+    apple?: {
+        clientId: string;
+        teamId: string;
+        keyId: string;
+        privateKey: string;
+        redirectUri: string;
+        nativeClientIds?: string[];
     };
 }
 
@@ -145,7 +153,7 @@ interface ISessionDTO {
 
 function validate(schema: IRequestSchema): Middleware
 
-namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, changePasswordSchema, forgotPasswordSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, resetPasswordSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
+namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, forgotPasswordSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, resetPasswordSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
 
 type RegisterInput = z.infer<typeof registerSchema>;
 
