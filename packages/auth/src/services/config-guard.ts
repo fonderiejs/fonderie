@@ -76,6 +76,17 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 				message: 'apple.privateKey does not look like a PEM .p8 key (expected `-----BEGIN PRIVATE KEY-----`)',
 			});
 		}
+		// nativeClientIds is the audience allow-list for POST /auth/apple/native —
+		// a native identityToken is accepted iff its aud is one of these. An empty
+		// or wildcard entry would accept tokens minted for OTHER Apple apps, so
+		// it's a boot-blocking error (only exact bundle ids belong here).
+		if (a.nativeClientIds?.some((id) => !id || id.trim() === '' || id.includes('*'))) {
+			problems.push({
+				module: MODULE,
+				severity: 'error',
+				message: 'apple.nativeClientIds must be exact bundle ids — empty or wildcard entries would accept identity tokens minted for other apps',
+			});
+		}
 	}
 
 	// MFA is on but TOTP secrets have no at-rest encryption key — they'd be

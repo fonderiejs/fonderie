@@ -120,16 +120,19 @@ export function buildAuthRoutes(
 	if (config.providers.includes('google')) {
 		routes.push(
 			['GET', '/auth/google', oauth.googleInit],
-			['GET', '/auth/google/callback', oauth.googleCallback],
+			// ipLimit: an unauthenticated caller can otherwise force one outbound
+			// token-exchange to Google per request (the state check doesn't gate it).
+			['GET', '/auth/google/callback', ipLimit('login'), oauth.googleCallback],
 		);
 	}
 
 	if (config.providers.includes('apple')) {
 		routes.push(
 			// Web redirect flow. The callback is a POST (response_mode=form_post);
-			// its urlencoded body is parsed inside the controller.
+			// its urlencoded body is parsed inside the controller. ipLimit for the
+			// same reason as Google's callback (bounds outbound token exchanges).
 			['GET', '/auth/apple', oauth.appleInit],
-			['POST', '/auth/apple/callback', oauth.appleCallback],
+			['POST', '/auth/apple/callback', ipLimit('login'), oauth.appleCallback],
 			// Native (iOS) flow: the app posts the identityToken from the Apple
 			// sheet. ipLimit guards token brute-forcing; validate bounds the body.
 			['POST', '/auth/apple/native', ipLimit('login'), validate(appleNativeSchema), oauth.appleNative],
