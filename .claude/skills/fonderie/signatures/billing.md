@@ -397,6 +397,7 @@ interface INormalizedCard {
     last4: string;
     expMonth: number;
     expYear: number;
+    fingerprint?: string | null;
 }
 
 interface INormalizedPaymentFailure {

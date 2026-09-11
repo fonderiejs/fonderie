@@ -2204,7 +2204,7 @@ test('account.savePaymentMethod: sets default, records the card, returns it', as
 			calls.def = o
 		},
 		async getPaymentMethod() {
-			return { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030 }
+			return { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030, fingerprint: 'fp_1' }
 		},
 	})
 	const { store, state } = pmStore({ customerId: 'cus_1' })
@@ -2216,6 +2216,7 @@ test('account.savePaymentMethod: sets default, records the card, returns it', as
 	assert.equal(calls.def.customerId, 'cus_1')
 	assert.equal(calls.def.paymentMethodId, 'pm_1')
 	assert.equal(body.result.paymentMethod.last4, '4242')
+	assert.equal('fingerprint' in body.result.paymentMethod, false, 'server-side signal never on the wire')
 	assert.equal(state.card, 'pm_1', 'consented card recorded')
 })
 

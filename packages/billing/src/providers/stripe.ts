@@ -104,12 +104,13 @@ interface IStripeInvoiceRaw {
 	metadata?: Record<string, string> | null;
 }
 
-// A PaymentMethod's card block (display fields only).
+// A PaymentMethod's card block (display fields + the stable card fingerprint).
 interface IStripeCardRaw {
 	brand: string;
 	last4: string;
 	exp_month: number;
 	exp_year: number;
+	fingerprint?: string | null;
 }
 
 // payment_intent.payment_failed delivers the PaymentIntent.
@@ -767,6 +768,11 @@ export class StripeProvider implements IBillingProvider {
 	// given (the one saved at pack checkout); else the customer's default
 	// invoice payment method; else the newest attached card. Tolerant — any
 	// lookup failure degrades to null (the UI shows "no card on file").
+	// Fraud composers note: null therefore means "unknown", not "no card" — a
+	// transient provider error is indistinguishable from a cardless customer
+	// here, and without a consented id the card resolved is the default/newest,
+	// which the customer controls. Treat a missing fingerprint as a missing
+	// signal, never as a clean one.
 	async getPaymentMethod(opts: {
 		customerId: string;
 		paymentMethodId?: string | null;
@@ -779,6 +785,7 @@ export class StripeProvider implements IBillingProvider {
 						last4: pm.card.last4,
 						expMonth: pm.card.exp_month,
 						expYear: pm.card.exp_year,
+						fingerprint: pm.card.fingerprint ?? null,
 					}
 				: null;
 		try {
@@ -786,8 +793,14 @@ export class StripeProvider implements IBillingProvider {
 				const pm = await stripe.paymentMethods
 					.retrieve(opts.paymentMethodId)
 					.catch(() => null);
-				const card = toCard(pm);
-				if (card) return card;
+				// Same ownership rule as setDefaultPaymentMethod/detachPaymentMethod,
+				// but read-tolerant: a stale stored id (card detached out-of-band —
+				// its customer becomes null) falls through to the default/newest
+				// branches instead of reporting a card no longer on file.
+				if (pm?.customer === opts.customerId) {
+					const card = toCard(pm);
+					if (card) return card;
+				}
 			}
 			const customer = await stripe.customers.retrieve(opts.customerId).catch(() => null);
 			const defaultPm =
