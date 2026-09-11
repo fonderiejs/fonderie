@@ -7,13 +7,13 @@
     "audit": "5.1.4",
     "auth": "7.1.1",
     "billing": "9.0.2",
-    "client": "0.19.0",
+    "client": "0.20.0",
     "config": "5.1.6",
     "core": "0.10.4",
     "courier": "7.0.1",
     "customers": "6.2.0",
     "events": "5.0.6",
-    "logger": "0.2.0",
+    "logger": "0.3.0",
     "media": "0.2.4",
     "permissions": "5.0.7",
     "rate-limit": "4.0.7",
@@ -499,7 +499,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.19.0",
+      "version": "0.20.0",
       "requires": [],
       "exports": [
         "FonderieClient",
@@ -937,7 +937,7 @@
       "hasOutcomes": true
     },
     "logger": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "requires": [],
       "exports": [
         "Logger",
