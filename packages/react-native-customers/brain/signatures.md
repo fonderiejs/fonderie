@@ -50,11 +50,12 @@ new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .listLabels(type: CustomerLabelType, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerLabelListResult>>
   .removeLabel(labelId: string): Promise<IApiResponse<undefined>>
 
-new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown): FonderieApiError
+new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown, requestId?: string | undefined): FonderieApiError
   .reason: string
   .explanation: string
   .status: number
   .details: unknown
+  .requestId: string | undefined
   .name: string
   .message: string
   .stack: string

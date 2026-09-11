@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 
-import { FonderieClient, createMemoryCache } from '../index';
+import { FonderieApiError, FonderieClient, createMemoryCache } from '../index';
 
 // ── fetch stub ───────────────────────────────────────────────────────────────
-type Handler = (url: string, init: RequestInit) => { status: number; body: unknown };
+type Handler = (
+	url: string,
+	init: RequestInit,
+) => { status: number; body: unknown; headers?: Record<string, string> };
 
 const realFetch = globalThis.fetch;
 let handler: Handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
@@ -13,6 +16,7 @@ const calls: Array<{
 	path: string;
 	auth?: string | undefined;
 	workspace?: string | undefined;
+	requestId?: string | undefined;
 	body?: unknown;
 }> = [];
 
@@ -23,13 +27,15 @@ globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
 		path: url,
 		auth: headers['Authorization'],
 		workspace: headers['X-Workspace-ID'],
+		requestId: headers['X-Request-ID'],
 		body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
 	});
-	const { status, body } = handler(url, init);
+	const { status, body, headers: resHeaders } = handler(url, init);
 	return {
 		status,
 		ok: status >= 200 && status < 300,
 		statusText: '',
+		headers: new Headers(resHeaders ?? {}),
 		json: async () => body,
 	} as Response;
 }) as typeof fetch;
@@ -256,6 +262,43 @@ test('media: upload POSTs base64 to /media, delete DELETEs /media/:id, assetUrl 
 	assert.equal(c.media.assetIdFromUrl('/media/' + uuid), uuid);
 	assert.equal(c.media.assetIdFromUrl('https://cdn.example.com/pic.png'), null);
 	assert.equal(c.media.assetIdFromUrl(''), null);
+});
+
+// ── request correlation ──────────────────────────────────────────────────────
+test('sends X-Request-ID on every call and surfaces it on FonderieApiError', async () => {
+	const c = new FonderieClient({ baseUrl: 'http://x' });
+
+	// Success: a non-empty id is sent.
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	await c.get('/jobs');
+	const sent = calls.at(-1)?.requestId;
+	assert.ok(sent && sent.length > 0, 'X-Request-ID sent');
+
+	// Error: the server-echoed id is preferred on the thrown error.
+	handler = () => ({
+		status: 422,
+		body: { reason: 'INVALID', explanation: 'nope' },
+		headers: { 'X-Request-Id': 'srv-echo-123' },
+	});
+	await assert.rejects(
+		() => c.get('/jobs'),
+		(err: unknown) => {
+			assert.ok(err instanceof FonderieApiError);
+			assert.equal(err.requestId, 'srv-echo-123', 'prefers server echo');
+			return true;
+		},
+	);
+
+	// No echo → falls back to the id we generated and sent.
+	handler = () => ({ status: 500, body: { reason: 'ERR', explanation: 'boom' } });
+	await assert.rejects(
+		() => c.get('/jobs'),
+		(err: unknown) => {
+			assert.ok(err instanceof FonderieApiError);
+			assert.equal(err.requestId, calls.at(-1)?.requestId, 'falls back to the sent id');
+			return true;
+		},
+	);
 });
 
 test('restore real fetch', () => {

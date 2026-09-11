@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { Logger } from '../logger';
+import { requestLogger } from '../middlewares';
 import { ConsoleTransport } from '../transports/console';
 import { FileTransport } from '../transports/file';
 import type { ILogEntry, ILogTransport } from '../types';
@@ -203,4 +204,32 @@ test('logSecurityEvent: failure/denied → warn', () => {
 	const fake = { info: () => { level = 'info'; }, warn: () => { level = 'warn'; } } as any;
 	logSecurityEvent(fake, { action: 'authz.permission_denied', outcome: 'denied' });
 	assert.equal(level, 'warn');
+});
+
+// ── requestLogger: correlation id accept + echo ──────────────────────────────
+test('requestLogger honours a safe inbound X-Request-ID and echoes it; mints one otherwise', async () => {
+	const logger = new Logger({ transports: [{ write: () => {} }] });
+	const mw = requestLogger(logger);
+
+	const run = async (headers: Record<string, string>) => {
+		const ctx = { request: new Request('http://x/jobs', { headers }), meta: {} } as any;
+		const res = await mw(ctx, async () => new Response(null, { status: 200 }));
+		return { requestId: ctx.meta['requestId'] as string, echoed: res.headers.get('X-Request-Id') };
+	};
+
+	// A safe inbound id is honoured on ctx.meta and echoed in the response.
+	const a = await run({ 'X-Request-ID': 'abc-123' });
+	assert.equal(a.requestId, 'abc-123');
+	assert.equal(a.echoed, 'abc-123');
+
+	// An unsafe id (chars outside the bounded token set) is rejected → fresh uuid.
+	const b = await run({ 'X-Request-ID': 'a/b c' });
+	assert.notEqual(b.requestId, 'a/b c');
+	assert.match(b.requestId, /^[0-9a-f-]{36}$/);
+	assert.equal(b.echoed, b.requestId);
+
+	// No inbound id → one is minted and echoed.
+	const c = await run({});
+	assert.match(c.requestId, /^[0-9a-f-]{36}$/);
+	assert.equal(c.echoed, c.requestId);
 });

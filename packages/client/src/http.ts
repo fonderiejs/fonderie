@@ -7,10 +7,22 @@ export class FonderieApiError extends Error {
 		public readonly explanation: string,
 		public readonly status: number,
 		public readonly details?: unknown,
+		// The X-Request-ID for the failed call — quote it in a bug report; it
+		// correlates to the server's logs and audit trail for the same request.
+		public readonly requestId?: string,
 	) {
 		super(explanation);
 		this.name = 'FonderieApiError';
 	}
+}
+
+// A correlation id sent as X-Request-ID so one id threads the client call and
+// the server's logs/audit. Not security-sensitive — a uuid where available, a
+// portable fallback otherwise (Hermes / older React Native lack randomUUID).
+function newRequestId(): string {
+	const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+	if (c?.randomUUID) return c.randomUUID();
+	return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export interface IRequestOptions {
@@ -103,7 +115,11 @@ export class HttpClient {
 	}
 
 	private async exec<T>(opts: IRequestOptions, retried = false): Promise<T> {
-		const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+		const requestId = newRequestId();
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+			'X-Request-ID': requestId,
+		};
 		if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
 		if (opts.cookie) headers['Cookie'] = opts.cookie;
 		if (opts.workspaceId) headers['X-Workspace-ID'] = opts.workspaceId;
@@ -113,6 +129,9 @@ export class HttpClient {
 		if (opts.body !== undefined) fetchInit.body = JSON.stringify(opts.body);
 
 		const res = await fetch(`${this.baseUrl}${opts.path}`, fetchInit);
+		// The server echoes the id back; prefer it (an intermediary could rewrite
+		// the one we sent), else fall back to what we generated.
+		const rid = res.headers.get('x-request-id') ?? requestId;
 
 		// Reactive renew: on a 401, refresh once and retry (never for /auth/* to
 		// avoid recursing through the refresh/login endpoints themselves).
@@ -123,7 +142,7 @@ export class HttpClient {
 
 		// 204 No Content (e.g. some DELETE routes) has no body to parse.
 		if (res.status === 204) {
-			if (!res.ok) throw new FonderieApiError('unknown', res.statusText, res.status);
+			if (!res.ok) throw new FonderieApiError('unknown', res.statusText, res.status, undefined, rid);
 			return undefined as T;
 		}
 
@@ -131,7 +150,7 @@ export class HttpClient {
 
 		if (!res.ok || res.status === 202) {
 			const err = data as IApiError;
-			throw new FonderieApiError(err.reason, err.explanation, res.status, err.details);
+			throw new FonderieApiError(err.reason, err.explanation, res.status, err.details, rid);
 		}
 
 		return data as T;
