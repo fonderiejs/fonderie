@@ -93,6 +93,11 @@ const ROUTE_ALLOW = new Map([
 	['POST /billing/wallet/checkout', 'wallet client/hooks ship next cycle — server-first by scoped decision'],
 	['GET /auth/google', 'browser-redirect OAuth leg — navigated to, never fetched'],
 	['GET /auth/google/callback', 'browser-redirect OAuth leg — navigated to, never fetched'],
+	// Apple web flow mirrors Google's: the app navigates the browser to these,
+	// never fetches them. The native leg (POST /auth/apple/native) IS client-
+	// reachable via client.auth.appleNative + useAppleSignIn.
+	['GET /auth/apple', 'browser-redirect OAuth leg — navigated to, never fetched'],
+	['POST /auth/apple/callback', 'browser-redirect OAuth leg — Apple form_post callback, never fetched'],
 	// First-party subscription lifecycle (audit Phase 4); client methods + hooks
 	// ship in the billing frontend cycle — server surface landed first by scoped
 	// decision (same as the wallet routes above).
