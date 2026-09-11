@@ -16,13 +16,17 @@ export class FonderieApiError extends Error {
 	}
 }
 
-// A correlation id sent as X-Request-ID so one id threads the client call and
-// the server's logs/audit. Not security-sensitive — a uuid where available, a
-// portable fallback otherwise (Hermes / older React Native lack randomUUID).
-function newRequestId(): string {
-	const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
-	if (c?.randomUUID) return c.randomUUID();
-	return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+// Portable random hex for W3C trace ids — crypto.getRandomValues where available
+// (browser / Node), Math.random fallback for Hermes / older React Native. Not
+// security-sensitive: these are correlation/trace ids, not secrets.
+function randHex(bytes: number): string {
+	const c = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto;
+	const arr = new Uint8Array(bytes);
+	if (c?.getRandomValues) c.getRandomValues(arr);
+	else for (let i = 0; i < bytes; i++) arr[i] = Math.floor(Math.random() * 256);
+	let out = '';
+	for (const b of arr) out += b.toString(16).padStart(2, '0');
+	return out;
 }
 
 export interface IRequestOptions {
@@ -115,9 +119,13 @@ export class HttpClient {
 	}
 
 	private async exec<T>(opts: IRequestOptions, retried = false): Promise<T> {
-		const requestId = newRequestId();
+		// Start a W3C trace: the trace id doubles as the quotable correlation id
+		// (sent as X-Request-ID and surfaced on FonderieApiError.requestId).
+		const traceId = randHex(16);
+		const requestId = traceId;
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
+			traceparent: `00-${traceId}-${randHex(8)}-01`,
 			'X-Request-ID': requestId,
 		};
 		if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
