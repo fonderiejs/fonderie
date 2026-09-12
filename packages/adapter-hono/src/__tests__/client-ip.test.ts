@@ -16,7 +16,7 @@ import { bridge, mount } from '../index';
 // forwarding header; what matters is that it SURVIVES into the routed handler.
 
 test('hono: the client IP reaches a fonderie-routed handler', async () => {
-	const fonderie = new FonderieApp(defineConfig({ basePath: '' }));
+	const fonderie = new FonderieApp(defineConfig({ basePath: '', db: { url: 'postgres://unused/test' } }));
 	fonderie.addRoute('GET', '/whoami', async (ctx) =>
 		Response.json({ ip: ctx.meta.clientIp ?? null }),
 	);

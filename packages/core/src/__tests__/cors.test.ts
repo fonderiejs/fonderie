@@ -83,7 +83,7 @@ import { FonderieApp } from '../app';
 import { defineConfig } from '../config';
 
 function appWithEcho() {
-	const f = new FonderieApp(defineConfig({ basePath: '' }));
+	const f = new FonderieApp(defineConfig({ basePath: '', db: { url: 'postgres://unused/test' } }));
 	f.addRoute('GET', '/whoami', async (c) => Response.json({ ip: c.meta.clientIp ?? null }));
 	return f;
 }
@@ -101,7 +101,7 @@ test('handle(): without a seed the handler sees no IP — the regression this gu
 });
 
 test('handle(): the seed is copied, so a request cannot mutate the adapter context', async () => {
-	const f = new FonderieApp(defineConfig({ basePath: '' }));
+	const f = new FonderieApp(defineConfig({ basePath: '', db: { url: 'postgres://unused/test' } }));
 	f.addRoute('GET', '/mutate', async (c) => {
 		c.meta.clientIp = 'changed-by-handler';
 		return new Response('ok');

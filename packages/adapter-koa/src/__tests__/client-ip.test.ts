@@ -11,7 +11,7 @@ import { mount } from '../index';
 // route saw `undefined`. Drives a real socket end to end.
 
 test('koa: the client IP reaches a fonderie-routed handler', async () => {
-	const fonderie = new FonderieApp(defineConfig({ basePath: '' }));
+	const fonderie = new FonderieApp(defineConfig({ basePath: '', db: { url: 'postgres://unused/test' } }));
 	fonderie.addRoute('GET', '/whoami', async (ctx) =>
 		Response.json({ ip: ctx.meta.clientIp ?? null }),
 	);
