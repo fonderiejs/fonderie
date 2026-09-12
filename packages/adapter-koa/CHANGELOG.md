@@ -1,5 +1,16 @@
 # @fonderie/adapter-koa
 
+## 5.2.0
+
+### Minor Changes
+
+- 7a76978: Each adapter now exports a native `cors(options?)` middleware speaking core's CORS contract — same options and defaults as `withCors`, resolved through the same core primitives (`resolveCorsOptions`/`corsHeadersFor`), so the header contract cannot fork per framework. Register it on the framework app itself to cover every route, including ones outside the fonderie pipeline (custom routes, health checks, webhooks) — `fonderie.use(withCors())` only guards the mounted basePath.
+
+### Patch Changes
+
+- Updated dependencies [7a76978]
+  - @fonderie/core@0.11.0
+
 ## 5.1.1
 
 ### Patch Changes
