@@ -11,6 +11,7 @@ new EventBus(transport: IEventTransport): EventBus
   .emit<T = unknown>(type: string, payload: T, opts?: { requestId?: string; } | undefined): Promise<void>
   .on<T = unknown>(type: string, handler: IEventHandler<T>, consumer?: string): void
   .start(): Promise<void>
+  .drain(options?: { maxMs?: number; } | undefined): Promise<void>
   .stop(): Promise<void>
 
 new EventsModule(config: IEventsConfig): EventsModule
@@ -43,11 +44,15 @@ new PGTransport(config: IPGTransportConfig): PGTransport
   .publish(type: string, payload: unknown, meta: IEventMeta): Promise<void>
   .start(): Promise<void>
   .stop(): Promise<void>
+  .drain(options?: { maxMs?: number; }): Promise<void>
 
 interface IEventTransport {
     publish(type: string, payload: unknown, meta: IEventMeta): Promise<void>;
     subscribe(type: string, handler: IEventHandler, consumer: string): void;
     start(): Promise<void>;
+    drain?(options?: {
+        maxMs?: number;
+    }): Promise<void>;
     stop(): Promise<void>;
 }
 

@@ -279,3 +279,34 @@ describe('startEventRetention (C1)', () => {
 		assert.equal(await purged, 2);
 	});
 });
+
+// ── drain(): the consumer for a process that must return ────────────────────
+// An outbox is the one design that does not branch on deployment topology —
+// producers always write a durable row. What varies is WHO consumes it:
+// start() on a host that outlives the request, drain() from a scheduled ping
+// where nothing long-running exists. Neither side's code changes.
+
+test('EventBus.drain(): a transport with nothing durable is a harmless no-op', async () => {
+	const bus = new EventBus(new MemoryTransport());
+	let delivered = 0;
+	bus.on('x.y', async () => { delivered += 1; });
+	await bus.emit('x.y', {});
+	// MemoryTransport delivers inline and implements no drain — calling it must
+	// neither throw nor double-deliver.
+	await bus.drain();
+	assert.equal(delivered, 1);
+});
+
+test('EventBus.drain(): forwards the bound to the transport', async () => {
+	const calls: Array<{ maxMs?: number } | undefined> = [];
+	const transport = {
+		publish: async () => {},
+		subscribe: () => {},
+		start: async () => {},
+		stop: async () => {},
+		drain: async (o?: { maxMs?: number }) => { calls.push(o); },
+	};
+	const bus = new EventBus(transport as never);
+	await bus.drain({ maxMs: 1234 });
+	assert.deepEqual(calls, [{ maxMs: 1234 }]);
+});
