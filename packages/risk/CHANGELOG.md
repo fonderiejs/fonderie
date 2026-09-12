@@ -1,5 +1,12 @@
 # @fonderie/risk
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [3e18d73]
+  - @fonderie/core@0.13.0
+
 ## 0.2.2
 
 ### Patch Changes
