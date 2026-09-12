@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.2.1",
+    "adapter-express": "5.2.2",
     "adapter-hono": "6.1.1",
     "adapter-koa": "5.2.1",
     "audit": "5.1.6",
@@ -75,7 +75,7 @@
   },
   "packages": {
     "adapter-express": {
-      "version": "5.2.1",
+      "version": "5.2.2",
       "stability": "stable",
       "requires": [
         "core",
