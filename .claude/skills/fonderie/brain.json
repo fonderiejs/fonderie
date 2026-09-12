@@ -48,6 +48,7 @@
     "react-webhooks-screens": "0.3.0",
     "react-workspaces": "0.6.0",
     "react-workspaces-screens": "0.4.0",
+    "risk": "0.1.0",
     "storage": "0.1.4",
     "store": "0.3.0",
     "vue": "0.2.0",
@@ -1637,6 +1638,30 @@
       "hasSignature": true,
       "hasOutcomes": false
     },
+    "risk": {
+      "version": "0.1.0",
+      "stability": "experimental",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "RiskEngine",
+        "DEFAULT_RULESETS",
+        "TRIAL_START_RULESET"
+      ],
+      "subpaths": [
+        "@fonderie/risk/migrations"
+      ],
+      "tables": [
+        "risk_events"
+      ],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
     "storage": {
       "version": "0.1.4",
       "stability": "experimental",
@@ -2475,6 +2500,16 @@
       "type": "requires"
     },
     {
+      "from": "risk",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "risk",
+      "to": "store",
+      "type": "requires"
+    },
+    {
       "from": "storage",
       "to": "core",
       "type": "requires"
@@ -2666,6 +2701,9 @@
     ],
     "react-workspaces-screens": [
       "react-workspaces-screens"
+    ],
+    "risk": [
+      "risk"
     ],
     "storage": [
       "storage"
@@ -4405,6 +4443,15 @@
     "useworkspace": [
       "react-workspaces",
       "vue-workspaces"
+    ],
+    "riskengine": [
+      "risk"
+    ],
+    "default_rulesets": [
+      "risk"
+    ],
+    "trial_start_ruleset": [
+      "risk"
     ],
     "migrationrunner": [
       "store"
