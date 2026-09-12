@@ -264,8 +264,12 @@ import { withCors, DEFAULT_CORS_HEADERS } from '@fonderie/core/middlewares';
 fonderie.use(withCors({ credentials: true, origin: FRONTEND_URL }));
 ```
 
-Options: `origin` (string, or a predicate to reflect — `() => true` allows
-any), `credentials`, `headers` (extend, don't replace:
+Options: `origin` — a string, a **list** (apex and `www` are two different
+origins), or a predicate for patterns like preview deploys (`() => true`
+reflects any). String forms are normalized: a trailing slash, stray whitespace
+or odd casing can't silently break every request, since an `Origin` header
+never carries a path or trailing slash to begin with. Also `credentials`,
+`headers` (extend, don't replace:
 `[...DEFAULT_CORS_HEADERS, 'X-My-Header']`), `exposeHeaders` (defaults to
 `X-Request-ID` so the client can read the echoed id on
 `FonderieApiError.requestId`), `methods`. `credentials: true` with the
