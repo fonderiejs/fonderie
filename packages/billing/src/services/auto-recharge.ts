@@ -16,6 +16,7 @@ import {
 } from './wallet-customers';
 import { notifyBilling } from './notify';
 import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
+import { background } from '@fonderie/core';
 
 const DEFAULT_COOLDOWN_SECONDS = 3600;
 const DEFAULT_MAX_FAILURES = 3;
@@ -77,15 +78,14 @@ export async function maybeAutoRecharge(args: {
 	if (claim.pendingKeyStale) {
 		await clearPendingRechargeKey(key, store);
 		const { disabled } = await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
-		bus
+		await background(bus
 			?.emit(EVENT_KEYS.autoRechargeFailed, {
 				...subscriberEventFields(subscriberType, subscriberId),
 				currency: planWallet.currency,
 				packId: pack.id,
 				status: 'indeterminate_expired',
 				disabled,
-			})
-			.catch(() => {});
+			}));
 		void notifyBilling(bus, config, {
 			subscriberType,
 			subscriberId,
@@ -134,15 +134,14 @@ export async function maybeAutoRecharge(args: {
 			{ ...key, maxConsecutiveFailures: auto.maxConsecutiveFailures ?? DEFAULT_MAX_FAILURES },
 			store,
 		);
-		bus
+		await background(bus
 			?.emit(EVENT_KEYS.autoRechargeFailed, {
 				...subscriberEventFields(subscriberType, subscriberId),
 				currency: creditCurrency,
 				packId: pack.id,
 				status: charge.status,
 				disabled,
-			})
-			.catch(() => {});
+			}));
 		void notifyBilling(bus, config, {
 			subscriberType,
 			subscriberId,
@@ -193,8 +192,8 @@ export async function maybeAutoRecharge(args: {
 			packId: pack.id,
 			providerTxId: charge.providerTxId,
 		};
-		bus?.emit(EVENT_KEYS.creditPackPurchased, fields).catch(() => {});
-		bus?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'auto-recharge' }).catch(() => {});
+		await background(bus?.emit(EVENT_KEYS.creditPackPurchased, fields));
+		await background(bus?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'auto-recharge' }));
 		void notifyBilling(bus, config, {
 			subscriberType,
 			subscriberId,

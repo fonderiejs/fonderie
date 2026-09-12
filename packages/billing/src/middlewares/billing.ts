@@ -1,5 +1,5 @@
 import type { Middleware, ICourierMessage } from '@fonderie/core';
-import { setApiResponse, HTTP } from '@fonderie/core';
+import { setApiResponse, HTTP, background } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
@@ -121,10 +121,9 @@ export function withBilling(
 							balanceAfter: grant.balance?.toString() ?? null,
 							period,
 						};
-						bus?.emit(EVENT_KEYS.grantApplied, fields).catch(() => {});
-						bus
-							?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'periodic-grant' })
-							.catch(() => {});
+						await background(bus?.emit(EVENT_KEYS.grantApplied, fields));
+						await background(bus
+							?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'periodic-grant' }));
 					}
 				}
 				const { balance } = await getWalletBalance(sub, store);
@@ -158,7 +157,7 @@ export function withBilling(
 						};
 						// The durable domain event always fires; the customer EMAIL is
 						// opt-out via config.notifications.creditsLow (default on).
-						bus?.emit(EVENT_KEYS.walletLowBalance, fields).catch(() => {});
+						await background(bus?.emit(EVENT_KEYS.walletLowBalance, fields));
 						if (config.notifications?.creditsLow !== false) {
 							void notifyBilling(bus, config, {
 								subscriberType: subscriber.type,

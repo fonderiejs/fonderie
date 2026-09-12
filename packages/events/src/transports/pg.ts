@@ -101,6 +101,34 @@ export class PGTransport implements IEventTransport {
 		this.listenClient = null;
 	}
 
+	/**
+	 * Process everything currently pending, then return.
+	 *
+	 * `start()` is the right consumer on a host that outlives the request — it
+	 * LISTENs and delivers immediately. It cannot be used where the process is
+	 * expected to return (serverless), because it never does. `drain()` is the
+	 * same work in a bounded form, so a scheduled ping can consume the outbox
+	 * without any long-running process.
+	 *
+	 * That is what makes the outbox topology-independent: producers always
+	 * write a durable row, and the deployment picks a consumer — `start()` or
+	 * `drain()` — without either side changing.
+	 *
+	 * Bounded by `maxMs` so an invocation cannot outlive its own timeout; work
+	 * left over stays pending and is picked up by the next call.
+	 */
+	async drain(options: { maxMs?: number } = {}): Promise<void> {
+		const deadline = Date.now() + (options.maxMs ?? 25_000);
+		// Reclaim rows a crashed instance left mid-flight, exactly as start() does.
+		await this.store.query(
+			`UPDATE fonderie_event_consumers SET status = 'failed' WHERE status = 'processing'`,
+		);
+		while (Date.now() < deadline) {
+			const hadWork = await this.pollAllConsumers();
+			if (!hadWork) break;
+		}
+	}
+
 	// ── Poll loop ───────────────────────────────────────────────────
 
 	private async runPollLoop(): Promise<void> {

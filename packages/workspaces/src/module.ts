@@ -8,6 +8,7 @@ import { buildWorkspaceRoutes } from './routes';
 import { WorkspaceModel } from './models/workspace.model';
 import { RoleModel } from './models/role.model';
 import { MemberModel } from './models/member.model';
+import { background } from '@fonderie/core';
 
 // Mirror of @fonderie/auth EVENT_KEYS.userRegistered — avoids a runtime
 // dependency on the auth package while remaining explicit about the contract.
@@ -72,12 +73,11 @@ export class WorkspacesModule implements IFonderieModule {
 		});
 
 		if (workspaceId) {
-			this.bus
+			await background(this.bus
 				?.emit(EVENT_KEYS.personalWorkspaceCreated, {
 					workspaceId,
 					userId: payload.userId,
-				})
-				.catch(() => {});
+				}));
 		}
 	}
 }

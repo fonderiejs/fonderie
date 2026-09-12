@@ -27,6 +27,15 @@ export class EventBus {
 		await this.transport.start();
 	}
 
+	/**
+	 * Consume everything pending, then return — the counterpart to `start()`
+	 * for a process that must not block forever (a serverless cron ping).
+	 * A transport with nothing durable to drain is a no-op.
+	 */
+	async drain(options?: { maxMs?: number }): Promise<void> {
+		await this.transport.drain?.(options);
+	}
+
 	async stop(): Promise<void> {
 		await this.transport.stop();
 	}

@@ -1,4 +1,4 @@
-import { setApiResponse, HTTP } from '@fonderie/core';
+import { setApiResponse, HTTP, background } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
@@ -75,15 +75,14 @@ export function webhookController(
 				// using it raw would email "your unknown plan trial is ending".
 				const plan = resolvePlanNameByPrice(s, config.plans) ?? s.plan;
 				const trialEndsAt = s.trialEndsAt ? s.trialEndsAt.toISOString() : null;
-				bus
+				await background(bus
 					?.emit(EVENT_KEYS.subscriptionTrialWillEnd, {
 						...subscriberEventFields(s.subscriberType, s.subscriberId),
 						plan,
 						interval: s.interval,
 						trialEndsAt,
 						providerSubscriptionId: s.providerSubscriptionId,
-					})
-					.catch(() => {});
+					}));
 				// The durable domain event always fires; the reminder EMAIL is
 				// opt-out via config.notifications.trialEnding (default on).
 				if (config.notifications?.trialEnding !== false) {
@@ -159,7 +158,7 @@ export function webhookController(
 					providerSubscriptionId: inv.providerSubscriptionId,
 				};
 				if (inv.status === 'paid') {
-					bus?.emit(EVENT_KEYS.invoicePaid, fields).catch(() => {});
+					await background(bus?.emit(EVENT_KEYS.invoicePaid, fields));
 					void notifyBilling(bus, config, {
 						subscriberType: subscriber.subscriberType,
 						subscriberId: subscriber.subscriberId,
@@ -167,7 +166,7 @@ export function webhookController(
 						data: { invoiceId: inv.id, amount: inv.amount?.toString() ?? null, currency: inv.currency },
 					});
 				} else {
-					bus?.emit(EVENT_KEYS.invoicePaymentFailed, fields).catch(() => {});
+					await background(bus?.emit(EVENT_KEYS.invoicePaymentFailed, fields));
 				}
 				return Response.json({ received: true });
 			}
@@ -233,7 +232,7 @@ export function webhookController(
 				// hiccup must never fail the webhook (the provider would retry
 				// and double-apply).
 				const key = lifecycleEventKey(event.type, event.subscription.status);
-				bus
+				await background(bus
 					?.emit(key, {
 						...subscriberEventFields(
 							event.subscription.subscriberType,
@@ -243,8 +242,7 @@ export function webhookController(
 						status: event.subscription.status,
 						interval: event.subscription.interval,
 						providerSubscriptionId: event.subscription.providerSubscriptionId,
-					})
-					.catch(() => {});
+					}));
 
 				// Customer-facing notice (§ Communication & Record Integrity).
 				// Fire-and-forget inside notifyBilling.
