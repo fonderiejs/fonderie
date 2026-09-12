@@ -13,6 +13,7 @@
     "courier": "7.0.1",
     "customers": "6.2.0",
     "events": "5.0.6",
+    "geo": "0.1.0",
     "logger": "0.3.0",
     "media": "0.2.4",
     "permissions": "5.0.7",
@@ -958,6 +959,29 @@
       "tables": [
         "fonderie_event_consumers",
         "fonderie_events"
+      ],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": true
+    },
+    "geo": {
+      "version": "0.1.0",
+      "stability": "experimental",
+      "requires": [
+        "core",
+        "store"
+      ],
+      "exports": [
+        "PostgresGeoProvider"
+      ],
+      "subpaths": [
+        "@fonderie/geo/migrations"
+      ],
+      "tables": [
+        "geo_blocks",
+        "geo_names"
       ],
       "routeCount": 0,
       "routes": [],
@@ -2460,6 +2484,16 @@
       "type": "requires"
     },
     {
+      "from": "geo",
+      "to": "core",
+      "type": "requires"
+    },
+    {
+      "from": "geo",
+      "to": "store",
+      "type": "requires"
+    },
+    {
       "from": "media",
       "to": "core",
       "type": "requires"
@@ -2596,6 +2630,9 @@
     ],
     "events": [
       "events"
+    ],
+    "geo": [
+      "geo"
     ],
     "logger": [
       "logger"
@@ -4052,6 +4089,9 @@
     ],
     "pgtransport": [
       "events"
+    ],
+    "postgresgeoprovider": [
+      "geo"
     ],
     "loggermodule": [
       "logger"

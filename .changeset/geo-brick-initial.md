@@ -1,0 +1,11 @@
+---
+'@fonderie/geo': minor
+---
+
+New brick: `@fonderie/geo` — self-hosted IP → location. Provider-abstracted
+(`IGeoProvider`); the default `PostgresGeoProvider` resolves against a Postgres
+table of MaxMind/Hurricane-Electric CIDR blocks using native `cidr`/`inet` + a
+GiST `inet_ops` index — IPv4 and IPv6, most-specific block wins, no external API
+or key. Ships the MaxMind GeoLite2 City CSV ingest (`loadMaxMindCity` + parsers)
+and the `geo_blocks`/`geo_names` migration. A signal source for `@fonderie/risk`
+and day-one request geo for any Fonderie app. Experimental (0.x).
