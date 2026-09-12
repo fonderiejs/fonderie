@@ -1,4 +1,5 @@
 import { FonderieApp, defineConfig } from '@fonderie/core';
+import { withCors } from '@fonderie/core/middlewares';
 import { PGAdapter } from '@fonderie/store';
 import { AuthModule } from '@fonderie/auth';
 import { WorkspacesModule } from '@fonderie/workspaces';
@@ -23,6 +24,14 @@ async function main() {
 				db: { url: databaseUrl },
 			}),
 		);
+
+		// CORS for a browser frontend on another origin. @fonderie/client always
+		// sends credentialed requests, so the origin must be explicit; the
+		// middleware's defaults already allow every header the client sends.
+		const frontendUrl = process.env.FRONTEND_URL;
+		if (frontendUrl) {
+			fonderie.use(withCors({ credentials: true, origin: frontendUrl }));
+		}
 
 		fonderie.register(
 			new AuthModule(store, {
