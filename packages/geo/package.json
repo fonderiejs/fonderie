@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/geo",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"fonderie": { "stability": "experimental" },
 	"description": "Self-hosted IP → location. Provider-abstracted (IGeoProvider); the default resolves against a Postgres table of MaxMind/Hurricane-Electric CIDR blocks using native inet/GiST — IPv4 and IPv6, no external API, no key shipped. A signal source for @fonderie/risk and a day-one 'where did this request come from' for any Fonderie app.",
 	"keywords": [
@@ -42,7 +42,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.11.0",
+		"@fonderie/core": "^0.12.0",
 		"@fonderie/store": "^0.3.0"
 	},
 	"devDependencies": {
