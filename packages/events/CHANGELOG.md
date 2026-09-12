@@ -1,5 +1,12 @@
 # @fonderie/events
 
+## 5.0.8
+
+### Patch Changes
+
+- Updated dependencies [0f11dc8]
+  - @fonderie/core@0.12.0
+
 ## 5.0.7
 
 ### Patch Changes
