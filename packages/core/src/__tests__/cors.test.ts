@@ -74,3 +74,39 @@ test('withCors: exposeHeaders can be emptied and headers overridden', async () =
 	assert.equal(res.headers.get('Access-Control-Expose-Headers'), null);
 	assert.equal(res.headers.get('Access-Control-Allow-Headers'), 'Content-Type');
 });
+
+// ── handle() seeding ────────────────────────────────────────────────
+// A Web Standard Request has no socket address, so whatever the adapter
+// resolved must be seeded into handle() or it is lost — these lock that in.
+
+import { FonderieApp } from '../app';
+import { defineConfig } from '../config';
+
+function appWithEcho() {
+	const f = new FonderieApp(defineConfig({ basePath: '', db: { url: 'postgres://unused/test' } }));
+	f.addRoute('GET', '/whoami', async (c) => Response.json({ ip: c.meta.clientIp ?? null }));
+	return f;
+}
+
+test('handle(): seeded meta reaches a routed handler (the client IP survives)', async () => {
+	const res = await appWithEcho().handle(new Request('http://x/whoami'), {
+		meta: { clientIp: '203.0.113.7' },
+	});
+	assert.deepEqual(await res.json(), { ip: '203.0.113.7' });
+});
+
+test('handle(): without a seed the handler sees no IP — the regression this guards', async () => {
+	const res = await appWithEcho().handle(new Request('http://x/whoami'));
+	assert.deepEqual(await res.json(), { ip: null });
+});
+
+test('handle(): the seed is copied, so a request cannot mutate the adapter context', async () => {
+	const f = new FonderieApp(defineConfig({ basePath: '', db: { url: 'postgres://unused/test' } }));
+	f.addRoute('GET', '/mutate', async (c) => {
+		c.meta.clientIp = 'changed-by-handler';
+		return new Response('ok');
+	});
+	const seed = { clientIp: '198.51.100.9' };
+	await f.handle(new Request('http://x/mutate'), { meta: seed });
+	assert.equal(seed.clientIp, '198.51.100.9', 'adapter-owned meta must be untouched');
+});

@@ -223,7 +223,11 @@ export function mount(hono: Hono, fonderie: FonderieApp): Hono {
 		// fonderie's handling through THAT. Without bridge (no ctx), the raw
 		// request is untouched and safe to hand over directly.
 		const ctx = c.get('_fonderie') as IFonderieContext | undefined;
-		return fonderie.handle(ctx?.request ?? c.req.raw);
+		// Hand over what only the adapter can observe — the socket-derived
+		// client IP. handle() builds a fresh context, so without this seed every
+		// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).
+		const clientIp = ctx?.meta.clientIp;
+		return fonderie.handle(ctx?.request ?? c.req.raw, clientIp ? { meta: { clientIp } } : undefined);
 	});
 	return hono;
 }

@@ -104,6 +104,10 @@ interface IFonderieContextMeta {
     [key: string]: unknown;
 }
 
+interface IHandleInit {
+    meta?: IFonderieContextMeta;
+}
+
 interface IReadinessProblem {
     module: string;
     severity: 'error' | 'warning';
@@ -134,7 +138,7 @@ new FonderieApp(config: FonderieConfig): FonderieApp
   .buildContext(request: Request): Promise<IFonderieContext>
   .use(middleware: Middleware): FonderieApp
   .addRoute(method: string, path: string, ...handlers: Middleware[]): void
-  .handle(request: Request): Promise<Response>
+  .handle(request: Request, init?: IHandleInit | undefined): Promise<Response>
 
 const DEFAULT_MAX_BODY_BYTES: number
 

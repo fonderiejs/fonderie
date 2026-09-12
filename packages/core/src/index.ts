@@ -13,6 +13,7 @@ export type {
 	ICourierMessage,
 	IDefaultTemplate,
 	IFonderieContextMeta,
+	IHandleInit,
 	IReadinessProblem,
 	IReadinessReport,
 	ISecurityReport,

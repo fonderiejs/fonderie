@@ -5,6 +5,7 @@ import type {
 	Middleware,
 	IFonderieApp,
 	IFonderieContext,
+	IHandleInit,
 	IFonderieModule,
 	IReadinessProblem,
 	IReadinessReport,
@@ -334,22 +335,30 @@ export class FonderieApp implements IFonderieApp {
 	// This is the ONE thing every adapter calls.
 	// Takes a Web Standard Request, returns a Web Standard Response.
 	//
+	// `init.meta` is how an adapter hands over what only IT can observe (the
+	// socket's client IP). Without it those facts die with the adapter's own
+	// context, because handle() builds a fresh one.
+	//
 	// NOTE (known limitation): adapters call buildContext() to populate their
 	// native context (running the global middleware stack) AND then call
 	// handle() for requests that fall through to fonderie's own routes — so for
 	// those fonderie-routed requests the global stack runs TWICE. bodyParser /
 	// security-headers are idempotent, but `withMetrics` double-counts and a
 	// user-added `.use()` rate-limiter consumes two tokens per request (stricter,
-	// never a bypass). Deduplicating this without changing the handle(Request)
-	// contract is a deliberate follow-up.
+	// never a bypass). Deduplicating this is a deliberate follow-up.
 
-	async handle(request: Request): Promise<Response> {
+	async handle(request: Request, init?: IHandleInit): Promise<Response> {
 		const ctx: IFonderieContext = {
 			request,
 			tenant: null,
 			user: null,
 			workspace: null,
-			meta: {},
+			// Facts the ADAPTER knows and the pipeline cannot rediscover — the
+			// client IP above all: a Web Standard Request carries no socket
+			// address, so if the adapter's value is not seeded here it is simply
+			// lost, and every fonderie-owned route sees `undefined`. Copied, not
+			// aliased, so a request never mutates the adapter's own context.
+			meta: { ...init?.meta },
 		};
 
 		// Build the pipeline: global middleware → router → 404

@@ -87,6 +87,16 @@ export interface IFonderieContext {
 	readonly workspace: IWorkspace | null;
 }
 
+/**
+ * What an adapter hands to `handle()` alongside the request. A Web Standard
+ * Request carries no socket address (and no framework state), so anything the
+ * adapter resolved from its native request — the client IP above all — must be
+ * seeded here or it is lost: `handle()` builds a fresh context.
+ */
+export interface IHandleInit {
+	meta?: IFonderieContextMeta;
+}
+
 export type Middleware = (
 	ctx: IFonderieContext,
 	next: () => Promise<Response>,

@@ -316,7 +316,11 @@ export function mount<T extends ExpressApp>(
 		// bridge() (below) already read + capped the body and cached the request;
 		// the fallback only runs if it somehow didn't, so apply the same cap.
 		const webReq = (req as any)._fonterieReq as Request ?? await expressRequestToWeb(req, maxBytes);
-		const webRes = await fonderie.handle(webReq);
+		// Hand over what only the adapter can observe — the socket-derived
+		// client IP. handle() builds a fresh context, so without this seed every
+		// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).
+		const clientIp = req._fonderie?.meta.clientIp;
+		const webRes = await fonderie.handle(webReq, clientIp ? { meta: { clientIp } } : undefined);
 		await webResponseToExpress(webRes, res);
 	};
 
