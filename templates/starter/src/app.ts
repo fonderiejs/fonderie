@@ -1,7 +1,7 @@
 import { cors, mount } from '@fonderie/adapter-express';
 import express from 'express';
 
-import { fonderie, modules } from './fonderie.js';
+import { fonderie } from './fonderie.js';
 
 /**
  * The deployment entrypoint. Vercel's Node web-server builder searches
@@ -23,20 +23,37 @@ if (frontendUrl) {
 	app.use(cors({ credentials: true, origin: frontendUrl }));
 }
 
-// mount() wires body parsing, context, and the /v1 routes onto Express.
-if (fonderie) mount(app, fonderie);
-
+// Liveness probe. Minimal ON PURPOSE: core also serves /healthz and /readyz
+// once fonderie is mounted, but this one exists even before a database is
+// configured, and neither names the stack. Reporting `fonderie: true` plus the
+// module list here would hand a scanner the whole inventory — which modules are
+// installed is exactly what it wants to know.
 app.get('/health', (_req, res) => {
-	res.json({ status: 'ok', fonderie: true, modules });
+	res.json({ status: 'ok' });
 });
 
-app.get('/', (_req, res) => {
-	res.json({
-		message: 'Fonderie backend is running',
-		version: '0.1.0',
-		try: ['GET /health', 'GET /v1/auth/me'],
-		next: 'Open Claude Code and say: "Add billing to this app."',
+// mount() wires body parsing, context, and the /v1 routes onto Express. It
+// appends fonderie's catch-all after the routes registered above, so nothing
+// may be registered as a terminal handler after this point — it would shadow
+// every fonderie route.
+if (fonderie) {
+	mount(app, fonderie);
+} else {
+	// No database, so no fonderie catch-all: answer unknown paths ourselves
+	// rather than let Express reply with its default "Cannot GET /x" HTML,
+	// which both leaks the framework and looks like a crash.
+	app.use((_req, res) => {
+		res.status(404).json({ reason: 'NOT_FOUND', explanation: 'Not found' });
 	});
+}
+
+// The API host is not a page. A browser that lands here goes to the app; with
+// no frontend configured it behaves like any unknown path — a 404 discloses
+// nothing and is indistinguishable from "nothing here". Deliberately uniform
+// for every caller: branching on Accept would itself be a fingerprint.
+app.get('/', (_req, res) => {
+	if (frontendUrl) return res.redirect(302, frontendUrl);
+	return res.status(404).json({ reason: 'NOT_FOUND', explanation: 'Not found' });
 });
 
 export default app;

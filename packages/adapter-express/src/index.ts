@@ -324,19 +324,46 @@ export function mount<T extends ExpressApp>(
 		await webResponseToExpress(webRes, res);
 	};
 
+	// Don't advertise the stack. Express sends `X-Powered-By: Express` on every
+	// response by default, which is exactly what mass scanners (Shodan, Censys)
+	// index to build target lists for the next framework CVE. Removing it does
+	// NOT make the app less vulnerable — an attacker who fires the exploit
+	// anyway still lands — but it keeps the app out of "all Express hosts"
+	// dragnets, and no app author should have to remember this.
+	// Koa and Hono add no such header, so this is Express-only.
+	(app as { disable?: (setting: string) => void }).disable?.('x-powered-by');
+
 	app.use(bridge(fonderie, options));
 
 	if (register) {
 		register(app);
 		app.use(infraHandler);
 	} else {
+		// The catch-all must go on LAST, after any route the app adds post-mount,
+		// so it can't be registered here. It is sealed at the latest safe moment:
+		// whichever of listen() or the first request happens first.
+		//
+		// Sealing on listen() alone was wrong on serverless, where the entry
+		// default-exports the app and NOTHING calls listen() — every fonderie
+		// route (auth, billing, …) 404'd in production while the app's own
+		// routes worked, which makes it look like a routing config problem.
+		// The sentinel below is registered now, so it sits BEFORE those
+		// post-mount routes and appends the catch-all after them; Express walks
+		// its stack by index, so a handler appended mid-traversal is still
+		// reached on that same request.
 		let sealed = false;
+		const seal = () => {
+			if (sealed) return;
+			sealed = true;
+			app.use(infraHandler);
+		};
+		app.use((_req: ExpressRequest, _res: ExpressResponse, next: ExpressNext) => {
+			seal();
+			next();
+		});
 		const origListen = app.listen.bind(app);
 		(app as ExpressApp).listen = (...args: any[]) => {
-			if (!sealed) {
-				sealed = true;
-				app.use(infraHandler);
-			}
+			seal();
 			(app as ExpressApp).listen = origListen;
 			return origListen(...args);
 		};
