@@ -30,6 +30,23 @@ function extractPackages() {
     // (e.g. @fonderie/cli) — a bin package is a command, not a brick to import.
     if (!j.name.startsWith(SCOPE_PREFIX) || j.bin) continue;
     const name = j.name.replace(SCOPE_PREFIX, '');
+
+    // Stability tier (roadmap P4): backend bricks must declare `fonderie.stability`
+    // so the brain can tell load-bearing from experimental. Frontend mirrors
+    // (react*/vue*) are uniformly early and default to 'beta'. Enforced here so a
+    // new backend brick can't ship untiered.
+    const isFrontend = /^(react|vue)/.test(name);
+    const stability = j.fonderie?.stability ?? (isFrontend ? 'beta' : null);
+    const STABILITY_TIERS = ['experimental', 'maturing', 'beta', 'stable'];
+    if (!isFrontend && !stability) {
+      throw new Error(
+        `package ${name}: missing "fonderie.stability" in package.json — every backend brick must declare a tier (one of ${STABILITY_TIERS.join(', ')}). See docs/PORTFOLIO-ROADMAP.md P4.`,
+      );
+    }
+    if (stability && !STABILITY_TIERS.includes(stability)) {
+      throw new Error(`package ${name}: invalid fonderie.stability "${stability}" (expected one of ${STABILITY_TIERS.join(', ')}).`);
+    }
+
     const requires = Object.keys(j.peerDependencies || {})
       .filter((k) => k.startsWith(SCOPE_PREFIX))
       .map((k) => k.replace(SCOPE_PREFIX, ''));
@@ -70,6 +87,7 @@ function extractPackages() {
 
     out[name] = {
       version: j.version,
+      stability,
       requires,
       exports,
       subpaths: [...new Set(subpaths)],

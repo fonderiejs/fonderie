@@ -1,6 +1,7 @@
 {
 	"name": "@fonderie/client",
 	"version": "0.21.0",
+	"fonderie": { "stability": "maturing" },
 	"description": "Isomorphic TypeScript client for Fonderie-powered APIs \u2014 fully typed request and response shapes, zero runtime dependencies.",
 	"keywords": [
 		"fonderiejs",

@@ -1,6 +1,7 @@
 {
 	"name": "@fonderie/media",
 	"version": "0.2.4",
+	"fonderie": { "stability": "experimental" },
 	"description": "Provider-abstracted asset storage — upload, store, and serve user-owned images (avatars, logos) with a DB-blob backend by default and object storage as a one-line swap.",
 	"keywords": [
 		"fonderiejs",

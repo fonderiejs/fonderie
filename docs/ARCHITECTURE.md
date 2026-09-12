@@ -151,10 +151,12 @@ And the egress cousin: **`webhooks`** fans out events to *external* endpoints
 
 ## Stability tiers
 
-The version spread is real maturity signal; made explicit here. (The durable
-source of truth is a `fonderie.stability` field per `package.json`, read by the
-brain build — see `docs/PORTFOLIO-ROADMAP.md` P4; this table is the interim
-statement.)
+The version spread is real maturity signal; made explicit here. The durable
+source of truth is a `fonderie.stability` field on each backend brick's
+`package.json`, read into the brain by the generator (which **enforces** its
+presence — a new backend brick can't ship untiered) and exposed per package in
+`brain.json`. Frontend mirrors default to `beta`. This table mirrors that
+field.
 
 | Stability | Bricks |
 | --- | --- |
