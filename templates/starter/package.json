@@ -5,9 +5,10 @@
 	"description": "A Fonderie-powered SaaS backend starter.",
 	"type": "module",
 	"scripts": {
-		"dev": "tsx watch src/index.ts",
+		"dev": "npm run migrate && tsx watch src/index.ts",
 		"build": "tsup src/index.ts --format esm --dts",
-		"start": "node dist/index.js"
+		"start": "node dist/index.js",
+		"migrate": "tsx src/migrate.ts"
 	},
 	"dependencies": {
 		"@fonderie/adapter-express": "*",
