@@ -18,6 +18,7 @@ latitude                 DOUBLE PRECISION
 longitude                DOUBLE PRECISION
 accuracy_radius          INTEGER
 -- INDEX idx_geo_blocks_geoname (geoname_id)
+-- UNIQUE INDEX uq_geo_blocks_network (network)
 ```
 
 ### `geo_names`

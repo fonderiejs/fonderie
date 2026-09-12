@@ -38,3 +38,6 @@ CREATE TABLE IF NOT EXISTS geo_blocks (
 -- supports the >>= operator; masklen() then picks the most specific.
 CREATE INDEX IF NOT EXISTS idx_geo_blocks_network ON geo_blocks USING gist (network inet_ops);
 CREATE INDEX IF NOT EXISTS idx_geo_blocks_geoname ON geo_blocks (geoname_id);
+-- `network` is unique per snapshot — this both dedups on reload and is the
+-- ON CONFLICT target the idempotent upsert ingest relies on.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_geo_blocks_network ON geo_blocks (network);

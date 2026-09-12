@@ -11,7 +11,7 @@ new PostgresGeoProvider(store: Queryable): PostgresGeoProvider
   .name: "postgres"
   .lookup(ip: string): Promise<GeoLocation | null>
 
-function loadMaxMindCity(store: Queryable, files: { locationsPath: string; blocksV4Path?: string; blocksV6Path?: string; }): Promise<{ names: number; blocks: number; }>
+function loadMaxMindCity(store: TxStore, files: { locationsPath: string; blocksV4Path?: string; blocksV6Path?: string; }): Promise<{ names: number; blocks: number; }>
 
 function ingestNames(store: Queryable, rows: NameRow[]): Promise<number>
 
@@ -22,6 +22,10 @@ function parseBlocksCsv(text: string): BlockRow[]
 function parseLocationsCsv(text: string): NameRow[]
 
 function parseCsvLine(line: string): string[]
+
+function blockRowFromLine(line: string): BlockRow | null
+
+function nameRowFromLine(line: string): NameRow | null
 
 interface BlockRow {
     network: string;
@@ -40,6 +44,10 @@ interface NameRow {
     subdivisionName: string | null;
     cityName: string | null;
     timeZone: string | null;
+}
+
+interface TxStore extends Queryable {
+    transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T>;
 }
 
 interface GeoLocation {

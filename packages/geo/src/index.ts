@@ -15,6 +15,8 @@ export {
 	parseBlocksCsv,
 	parseLocationsCsv,
 	parseCsvLine,
+	blockRowFromLine,
+	nameRowFromLine,
 } from './ingest.js';
-export type { BlockRow, NameRow } from './ingest.js';
+export type { BlockRow, NameRow, TxStore } from './ingest.js';
 export type { GeoLocation, IGeoProvider, Queryable } from './types.js';
