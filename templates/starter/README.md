@@ -2,6 +2,12 @@
 
 A Fonderie-powered SaaS backend starter.
 
+## Deploying
+
+The layout is deploy-ready as scaffolded — `app.ts` default-exports the app for
+the platform, `index.ts` runs the local server, `migrate.ts` owns the schema.
+See [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## 60-Second Quickstart
 
 ```bash
