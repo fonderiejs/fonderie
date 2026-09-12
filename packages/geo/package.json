@@ -1,16 +1,15 @@
 {
-	"name": "@fonderie/risk",
-	"version": "0.2.0",
+	"name": "@fonderie/geo",
+	"version": "0.1.0",
 	"fonderie": { "stability": "experimental" },
-	"description": "Generic signal → meaning → decision engine — assess an action (trial start, login, registration, promo) against weak signals and a tunable ruleset, and return a graded verdict with reasons. Decides, never enforces: the app owns every side effect.",
+	"description": "Self-hosted IP → location. Provider-abstracted (IGeoProvider); the default resolves against a Postgres table of MaxMind/Hurricane-Electric CIDR blocks using native inet/GiST — IPv4 and IPv6, no external API, no key shipped. A signal source for @fonderie/risk and a day-one 'where did this request come from' for any Fonderie app.",
 	"keywords": [
 		"fonderiejs",
+		"geoip",
+		"geolocation",
+		"ip",
+		"maxmind",
 		"risk",
-		"fraud",
-		"abuse",
-		"trial-abuse",
-		"signals",
-		"scoring",
 		"saas",
 		"typescript"
 	],
@@ -66,9 +65,9 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/fonderiejs/fonderie.git",
-		"directory": "packages/risk"
+		"directory": "packages/geo"
 	},
-	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/risk#readme",
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/geo#readme",
 	"bugs": {
 		"url": "https://github.com/fonderiejs/fonderie/issues"
 	}
