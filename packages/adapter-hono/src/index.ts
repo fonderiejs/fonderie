@@ -2,7 +2,13 @@ import type { Context, MiddlewareHandler } from 'hono';
 import type { Hono } from 'hono';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { requireAuth as _requireAuth, resolveClientIp } from '@fonderie/core/middlewares';
+import {
+	requireAuth as _requireAuth,
+	resolveClientIp,
+	resolveCorsOptions,
+	corsHeadersFor,
+	type CorsOptions,
+} from '@fonderie/core/middlewares';
 // Optional peers: type-only imports (erased at runtime). The guard factories
 // below load them lazily so installing this adapter never requires
 // @fonderie/workspaces, @fonderie/permissions, or @fonderie/billing unless
@@ -220,4 +226,30 @@ export function mount(hono: Hono, fonderie: FonderieApp): Hono {
 		return fonderie.handle(ctx?.request ?? c.req.raw);
 	});
 	return hono;
+}
+
+// ── App-level CORS ────────────────────────────────────────────────
+//
+// Native Hono middleware speaking core's CORS contract — same options and
+// defaults as withCors, so the headers @fonderie/client sends are allowed out
+// of the box (unlike hono/cors, whose defaults know nothing about them).
+// Register it on the Hono app itself so it covers EVERY route, including
+// ones outside the fonderie pipeline: fonderie.use(withCors()) only guards
+// the mounted basePath.
+//
+//   app.use('*', cors({ credentials: true, origin: process.env.FRONTEND_URL! }))
+
+export function cors(options?: CorsOptions): MiddlewareHandler {
+	const resolved = resolveCorsOptions(options);
+	return async (c, next) => {
+		const corsHeaders = corsHeadersFor(resolved, c.req.header('origin') ?? '');
+		// Preflight — respond immediately, skip the pipeline
+		if (c.req.method === 'OPTIONS') {
+			return c.body(null, 204, corsHeaders);
+		}
+		await next();
+		for (const [k, v] of Object.entries(corsHeaders)) {
+			c.res.headers.set(k, v);
+		}
+	};
 }

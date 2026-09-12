@@ -1,6 +1,8 @@
-export type { CorsOptions } from './cors';
+export type { CorsOptions, ResolvedCorsOptions } from './cors';
 export {
 	withCors,
+	resolveCorsOptions,
+	corsHeadersFor,
 	FONDERIE_CLIENT_HEADERS,
 	DEFAULT_CORS_HEADERS,
 	DEFAULT_CORS_EXPOSE_HEADERS,

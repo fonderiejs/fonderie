@@ -30,46 +30,67 @@ export interface CorsOptions {
 	credentials?: boolean;
 }
 
-export function withCors(options: CorsOptions = {}): Middleware {
-	const {
-		origin = '*',
-		headers = DEFAULT_CORS_HEADERS,
-		exposeHeaders = DEFAULT_CORS_EXPOSE_HEADERS,
-		methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-		credentials = false,
-	} = options;
+export type ResolvedCorsOptions = Required<CorsOptions>;
 
+// Applies the defaults and rejects impossible combinations at boot. The
+// framework adapters' native cors() middlewares resolve through here too, so
+// every mounting style shares one contract and one failure mode.
+export function resolveCorsOptions(options: CorsOptions = {}): ResolvedCorsOptions {
+	const resolved: ResolvedCorsOptions = {
+		origin: options.origin ?? '*',
+		headers: options.headers ?? DEFAULT_CORS_HEADERS,
+		exposeHeaders: options.exposeHeaders ?? DEFAULT_CORS_EXPOSE_HEADERS,
+		methods: options.methods ?? ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+		credentials: options.credentials ?? false,
+	};
 	// Browsers reject `Access-Control-Allow-Origin: *` on credentialed
 	// requests — cookies demand a deliberate origin choice. Fail at boot with
 	// a clear message, not per-request as an opaque browser error. Reflecting
 	// every origin stays possible, but only as an explicit opt-in.
-	if (credentials && origin === '*') {
+	if (resolved.credentials && resolved.origin === '*') {
 		throw new Error(
 			"withCors: credentials:true cannot be combined with origin:'*' (browsers reject it). " +
 				'Pass the frontend origin, or a predicate — `origin: () => true` deliberately reflects any origin.',
 		);
 	}
+	return resolved;
+}
+
+// The response headers for one request. Pure — withCors and the adapters'
+// native middlewares all emit exactly this, so the header contract cannot
+// fork per framework.
+export function corsHeadersFor(
+	resolved: ResolvedCorsOptions,
+	requestOrigin: string,
+): Record<string, string> {
+	const { origin, headers, exposeHeaders, methods, credentials } = resolved;
+
+	const allowOrigin =
+		typeof origin === 'function' ? (origin(requestOrigin) ? requestOrigin : '') : origin;
+
+	const corsHeaders: Record<string, string> = {
+		'Access-Control-Max-Age': '86400',
+		'Access-Control-Allow-Methods': methods.join(', '),
+		'Access-Control-Allow-Headers': headers.join(', '),
+	};
+	if (exposeHeaders.length > 0) {
+		corsHeaders['Access-Control-Expose-Headers'] = exposeHeaders.join(', ');
+	}
+	if (credentials) corsHeaders['Access-Control-Allow-Credentials'] = 'true';
+	// Omit the header entirely for a denied origin (an empty ACAO value is
+	// invalid); when the value varies by request origin, say so — otherwise a
+	// shared cache can serve one origin's ACAO to another.
+	if (allowOrigin) corsHeaders['Access-Control-Allow-Origin'] = allowOrigin;
+	if (typeof origin === 'function') corsHeaders['Vary'] = 'Origin';
+
+	return corsHeaders;
+}
+
+export function withCors(options: CorsOptions = {}): Middleware {
+	const resolved = resolveCorsOptions(options);
 
 	return async (ctx, next) => {
-		const requestOrigin = ctx.request.headers.get('origin') ?? '';
-
-		const allowOrigin =
-			typeof origin === 'function' ? (origin(requestOrigin) ? requestOrigin : '') : origin;
-
-		const corsHeaders: Record<string, string> = {
-			'Access-Control-Max-Age': '86400',
-			'Access-Control-Allow-Methods': methods.join(', '),
-			'Access-Control-Allow-Headers': headers.join(', '),
-		};
-		if (exposeHeaders.length > 0) {
-			corsHeaders['Access-Control-Expose-Headers'] = exposeHeaders.join(', ');
-		}
-		if (credentials) corsHeaders['Access-Control-Allow-Credentials'] = 'true';
-		// Omit the header entirely for a denied origin (an empty ACAO value is
-		// invalid); when the value varies by request origin, say so — otherwise a
-		// shared cache can serve one origin's ACAO to another.
-		if (allowOrigin) corsHeaders['Access-Control-Allow-Origin'] = allowOrigin;
-		if (typeof origin === 'function') corsHeaders['Vary'] = 'Origin';
+		const corsHeaders = corsHeadersFor(resolved, ctx.request.headers.get('origin') ?? '');
 
 		// Preflight — respond immediately, skip the pipeline
 		if (ctx.request.method === 'OPTIONS') {

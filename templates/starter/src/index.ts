@@ -1,13 +1,21 @@
 import { FonderieApp, defineConfig } from '@fonderie/core';
-import { withCors } from '@fonderie/core/middlewares';
 import { PGAdapter } from '@fonderie/store';
 import { AuthModule } from '@fonderie/auth';
 import { WorkspacesModule } from '@fonderie/workspaces';
-import { mount } from '@fonderie/adapter-express';
+import { cors, mount } from '@fonderie/adapter-express';
 import express from 'express';
 
 async function main() {
 	const app = express();
+
+	// CORS for a browser frontend on another origin — app-level so it covers
+	// every route (/health included), with defaults that already allow every
+	// header @fonderie/client sends. The client always sends credentialed
+	// requests, so the origin must be explicit.
+	const frontendUrl = process.env.FRONTEND_URL;
+	if (frontendUrl) {
+		app.use(cors({ credentials: true, origin: frontendUrl }));
+	}
 
 	// Fonderie is mounted only when a database is configured. Without
 	// DATABASE_URL we degrade gracefully: the server still boots and serves
@@ -24,14 +32,6 @@ async function main() {
 				db: { url: databaseUrl },
 			}),
 		);
-
-		// CORS for a browser frontend on another origin. @fonderie/client always
-		// sends credentialed requests, so the origin must be explicit; the
-		// middleware's defaults already allow every header the client sends.
-		const frontendUrl = process.env.FRONTEND_URL;
-		if (frontendUrl) {
-			fonderie.use(withCors({ credentials: true, origin: frontendUrl }));
-		}
 
 		fonderie.register(
 			new AuthModule(store, {

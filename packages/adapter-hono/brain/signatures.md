@@ -17,6 +17,8 @@ function requireFeature(key: string): MiddlewareHandler
 
 function mount(hono: Hono<BlankEnv, BlankSchema, "/">, fonderie: FonderieApp): Hono<BlankEnv, BlankSchema, "/">
 
+function cors(options?: CorsOptions | undefined): MiddlewareHandler
+
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
 type FonderieVariables = {

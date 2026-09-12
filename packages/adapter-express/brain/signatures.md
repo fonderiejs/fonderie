@@ -21,6 +21,8 @@ function requireFeature(key: string): (req: ExpressRequest, res: ExpressResponse
 
 function mount<T extends ExpressApp>(app: T, fonderie: FonderieApp, register?: ((app: T) => void) | undefined, options?: { maxBodyBytes?: number; } | undefined): T
 
+function cors(options?: CorsOptions | undefined): (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => void
+
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
 type ExpressRequest = IncomingMessage & {
