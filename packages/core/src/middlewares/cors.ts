@@ -20,7 +20,15 @@ export interface CorsOptions {
 	headers?: string[];
 	/** Response headers exposed to browser JS (Access-Control-Expose-Headers). */
 	exposeHeaders?: string[];
-	origin?: string | ((requestOrigin: string) => boolean);
+	/**
+	 * Who may call this API from a browser. A single origin, a list (apex and
+	 * www are two different origins), or a predicate for patterns such as
+	 * preview deployments.
+	 *
+	 * String forms are NORMALIZED — see normalizeOrigin. A predicate receives
+	 * the raw `Origin` header and owns its own matching.
+	 */
+	origin?: string | string[] | ((requestOrigin: string) => boolean);
 	/**
 	 * Allow credentialed requests. @fonderie/client always fetches with
 	 * credentials:'include', so a browser frontend on another origin needs
@@ -32,12 +40,54 @@ export interface CorsOptions {
 
 export type ResolvedCorsOptions = Required<CorsOptions>;
 
+/**
+ * An `Origin` header is `scheme://host[:port]` and, per RFC 6454, never carries
+ * a path or a trailing slash — so a configured origin with one can never match
+ * anything. That makes it unambiguously a typo rather than intent, and the
+ * usual one: every address bar and dashboard "copy URL" hands you the slash.
+ *
+ * The failure it caused was a total outage with a misleading message — the
+ * browser blocks every request and the app reports "can't reach the server" —
+ * so normalizing beats honouring a value that cannot work. Scheme and host are
+ * case-insensitive and browsers send them lowercased, so casing is folded too.
+ *
+ * A path (`https://x.com/app`) is a DIFFERENT mistake that normalizing cannot
+ * silently repair, so it warns instead.
+ */
+export function normalizeOrigin(origin: string): string {
+	const trimmed = origin.trim();
+	if (trimmed === '*') return trimmed;
+
+	const withoutTrailingSlashes = trimmed.replace(/\/+$/, '');
+
+	// Lowercase only scheme://host[:port]; anything after would be a path,
+	// which is reported below rather than quietly reshaped.
+	const match = /^([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^/]+)(\/.*)?$/.exec(withoutTrailingSlashes);
+	if (!match) return withoutTrailingSlashes;
+
+	const [, schemeAndHost, path] = match;
+	if (path) {
+		console.warn(
+			`[fonderie] CORS origin "${origin}" contains a path. An Origin header is ` +
+				'scheme://host[:port] only, so this can never match a real request — ' +
+				`use "${schemeAndHost!.toLowerCase()}".`,
+		);
+	}
+	return schemeAndHost!.toLowerCase();
+}
+
 // Applies the defaults and rejects impossible combinations at boot. The
 // framework adapters' native cors() middlewares resolve through here too, so
 // every mounting style shares one contract and one failure mode.
 export function resolveCorsOptions(options: CorsOptions = {}): ResolvedCorsOptions {
+	const rawOrigin = options.origin ?? '*';
 	const resolved: ResolvedCorsOptions = {
-		origin: options.origin ?? '*',
+		origin:
+			typeof rawOrigin === 'string'
+				? normalizeOrigin(rawOrigin)
+				: Array.isArray(rawOrigin)
+					? rawOrigin.map(normalizeOrigin)
+					: rawOrigin,
 		headers: options.headers ?? DEFAULT_CORS_HEADERS,
 		exposeHeaders: options.exposeHeaders ?? DEFAULT_CORS_EXPOSE_HEADERS,
 		methods: options.methods ?? ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -47,7 +97,10 @@ export function resolveCorsOptions(options: CorsOptions = {}): ResolvedCorsOptio
 	// requests — cookies demand a deliberate origin choice. Fail at boot with
 	// a clear message, not per-request as an opaque browser error. Reflecting
 	// every origin stays possible, but only as an explicit opt-in.
-	if (resolved.credentials && resolved.origin === '*') {
+	const allowsWildcard =
+		resolved.origin === '*' ||
+		(Array.isArray(resolved.origin) && resolved.origin.includes('*'));
+	if (resolved.credentials && allowsWildcard) {
 		throw new Error(
 			"withCors: credentials:true cannot be combined with origin:'*' (browsers reject it). " +
 				'Pass the frontend origin, or a predicate — `origin: () => true` deliberately reflects any origin.',
@@ -65,8 +118,20 @@ export function corsHeadersFor(
 ): Record<string, string> {
 	const { origin, headers, exposeHeaders, methods, credentials } = resolved;
 
-	const allowOrigin =
-		typeof origin === 'function' ? (origin(requestOrigin) ? requestOrigin : '') : origin;
+	// Echo the REQUEST's origin on a match, never the configured spelling: the
+	// browser compares byte-for-byte against what it sent, so reflecting a
+	// normalized-but-different string would fail the very check normalizing is
+	// meant to survive.
+	let allowOrigin: string;
+	if (typeof origin === 'function') {
+		allowOrigin = origin(requestOrigin) ? requestOrigin : '';
+	} else if (Array.isArray(origin)) {
+		allowOrigin = origin.includes(normalizeOrigin(requestOrigin)) ? requestOrigin : '';
+	} else if (origin === '*') {
+		allowOrigin = '*';
+	} else {
+		allowOrigin = normalizeOrigin(requestOrigin) === origin ? requestOrigin : '';
+	}
 
 	const corsHeaders: Record<string, string> = {
 		'Access-Control-Max-Age': '86400',
@@ -81,7 +146,10 @@ export function corsHeadersFor(
 	// invalid); when the value varies by request origin, say so — otherwise a
 	// shared cache can serve one origin's ACAO to another.
 	if (allowOrigin) corsHeaders['Access-Control-Allow-Origin'] = allowOrigin;
-	if (typeof origin === 'function') corsHeaders['Vary'] = 'Origin';
+	// Vary whenever the emitted value depends on the request — a shared cache
+	// must not serve one origin's ACAO to another. Only the literal '*' is
+	// request-independent.
+	if (origin !== '*') corsHeaders['Vary'] = 'Origin';
 
 	return corsHeaders;
 }
