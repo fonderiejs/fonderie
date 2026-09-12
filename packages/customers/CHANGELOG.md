@@ -1,5 +1,12 @@
 # @fonderie/customers
 
+## 6.2.1
+
+### Patch Changes
+
+- Updated dependencies [7a76978]
+  - @fonderie/core@0.11.0
+
 ## 6.2.0
 
 ### Minor Changes

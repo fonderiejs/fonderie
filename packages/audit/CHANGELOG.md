@@ -1,5 +1,12 @@
 # @fonderie/audit
 
+## 5.1.5
+
+### Patch Changes
+
+- Updated dependencies [7a76978]
+  - @fonderie/core@0.11.0
+
 ## 5.1.4
 
 ### Patch Changes

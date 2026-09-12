@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/events",
-	"version": "5.0.6",
+	"version": "5.0.7",
 	"fonderie": { "stability": "maturing" },
 	"description": "Event bus for @fonderiejs — memory and PostgreSQL transports built-in, adapter interface for Redis/Kafka/RabbitMQ.",
 	"keywords": [
@@ -40,7 +40,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.10.0",
+		"@fonderie/core": "^0.11.0",
 		"@fonderie/store": "^0.3.0",
 		"pg": "^8.0.0"
 	},
