@@ -270,3 +270,54 @@ any), `credentials`, `headers` (extend, don't replace:
 `X-Request-ID` so the client can read the echoed id on
 `FonderieApiError.requestId`), `methods`. `credentials: true` with the
 default `origin: '*'` throws at boot — browsers reject that pair.
+
+## Shipping it — the file layout deployment depends on
+
+Structure the app this way from the start. It costs nothing locally and is the
+difference between deploying and debugging a crash loop. The three example apps
+and `templates/starter` all ship it; the full guide is
+[`examples/DEPLOYMENT.md`](../../../examples/DEPLOYMENT.md).
+
+| File | Role | Serverless |
+|---|---|---|
+| `fonderie.ts` | store + modules + `await fonderie.boot()` | imported |
+| `app.ts` | builds the framework app, **`export default`**s it, **no `listen`** | ✅ entrypoint |
+| `index.ts` | the long-running server (`listen`) + anything needing process lifetime | ❌ never runs |
+| `migrate.ts` | standalone migration runner | ❌ out of band |
+
+Vercel's Node web-server builder searches `app.*` → `index.*` → `server.*` and
+serves the **default export**, so `app.ts` wins and just works — no functions
+directory, no `vercel.json`, no wrapper. Two ways to break it: put a `listen`
+in `app.ts`, or leave the default export off (→ *"The default export must be a
+function or server"*). The entrypoint must import the framework directly
+(`import express from 'express'`) — that's the detection signal. Koa exports
+`app.callback()`, since a Koa app isn't a request listener by itself.
+
+**Never run migrations at boot.** Every cold start would re-run them on the
+request path and concurrent instances would race. That is what `migrate.ts` is
+for: `DATABASE_URL='<direct-connection>' npm run migrate`, once per deploy.
+
+**Serverless can't do three things** — design around them rather than
+discovering them in production:
+
+- *Background timers* — an instance is frozen between requests, so
+  `setInterval` never reliably fires. Keep timers in `index.ts` and drive the
+  same work with a scheduled ping to a secret-guarded route.
+- *In-memory state* — rate-limit buckets, caches and sessions reset per
+  instance. Use the store-backed equivalents (e.g. `StoreAdapterStore` for
+  `@fonderie/rate-limit`), or the limit silently stops limiting.
+- *Long-running or heavyweight work* — queue consumers, browser automation,
+  anything past the function timeout. Run those as separate processes against
+  the same database.
+
+**Connections:** point `DATABASE_URL` at a hosted Postgres (a localhost or
+SSH-tunnelled one is unreachable). Behind a transaction-mode pooler, cap the
+pool at 1 per instance — pg defaults to 10 and every warm instance holds its
+own. Use the direct connection for migrations, and for anything that needs
+`LISTEN` (the `@fonderie/events` PG transport), which transaction pooling does
+not support.
+
+**Production guards fail the boot, deliberately and one at a time** — set these
+before the first deploy: a real `JWT_SECRET` (auth rejects placeholder/dev
+values), a unique 32+ char `RISK_PEPPER` if `@fonderie/risk` is registered, and
+`SMTP_HOST` if any module sends mail.
