@@ -353,7 +353,11 @@ export function mount(app: Koa, fonderie: FonderieApp, options: { maxBodyBytes?:
 		ctx.state['_fonderie'] = fCtx;
 		await next();
 		if (ctx.body === undefined) {
-			const webRes = await fonderie.handle(fCtx.request);
+			// Hand over what only the adapter can observe — the socket-derived
+			// client IP. handle() builds a fresh context, so without this seed every
+			// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).
+			const seedIp = fCtx.meta.clientIp;
+			const webRes = await fonderie.handle(fCtx.request, seedIp ? { meta: { clientIp: seedIp } } : undefined);
 			await webResponseToKoa(webRes, ctx as unknown as KoaContext);
 		}
 	});
