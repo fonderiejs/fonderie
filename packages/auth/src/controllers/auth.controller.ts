@@ -4,7 +4,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
-import { setApiResponse, HTTP } from '@fonderie/core';
+import { setApiResponse, HTTP, background } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
 
 import { EVENT_KEYS } from '../config';
@@ -106,7 +106,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 				const reqId = ctx.meta['requestId'] as string | undefined;
 				const reqOpts = reqId !== undefined ? { requestId: reqId } : undefined;
-				bus
+				await background(bus
 					?.emit(
 						NOTIFICATION_EVENT,
 						{
@@ -116,9 +116,8 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 							recipient: { email: normalizedEmail, phone: null, deviceToken: null },
 						} satisfies ICourierMessage,
 						reqOpts,
-					)
-					.catch(() => {});
-				bus
+					));
+				await background(bus
 					?.emit(
 						EVENT_KEYS.userRegistered,
 						{
@@ -129,8 +128,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 							loginMethod: 'email' as const,
 						},
 						reqOpts,
-					)
-					.catch(() => {});
+					));
 
 				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'email',
@@ -181,7 +179,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 				const reqId2 = ctx.meta['requestId'] as string | undefined;
 				const reqOpts2 = reqId2 !== undefined ? { requestId: reqId2 } : undefined;
-				bus
+				await background(bus
 					?.emit(
 						NOTIFICATION_EVENT,
 						{
@@ -191,9 +189,8 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 							recipient: { email: null, phone: normalizePhone(phone), deviceToken: null },
 						} satisfies ICourierMessage,
 						reqOpts2,
-					)
-					.catch(() => {});
-				bus
+					));
+				await background(bus
 					?.emit(
 						EVENT_KEYS.userRegistered,
 						{
@@ -204,8 +201,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 							loginMethod: 'phone' as const,
 						},
 						reqOpts2,
-					)
-					.catch(() => {});
+					));
 
 				// No session and no full tokens before the OTP round-trip: possession
 				// of the phone is the ONLY credential in this flow, so issuing real
@@ -352,14 +348,13 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(user.id, normalizePhone(phone), otp, expiresAt);
 
-				bus
+				await background(bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.phoneOtp,
 						locale: user.locale,
 						data: { otp },
 						recipient: { email: null, phone: normalizePhone(phone), deviceToken: null },
-					} satisfies ICourierMessage)
-					.catch(() => {});
+					} satisfies ICourierMessage));
 
 				// Same rule as phone registration: the OTP IS the credential, so no
 				// session/full tokens until verify() confirms it. Also no user DTO —
@@ -504,14 +499,13 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			const base = resolved.passwordResetUrl;
 			const resetUrl = base ? `${base}${base.includes('?') ? '&' : '?'}token=${token}` : '';
 
-			bus
+			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.passwordReset,
 					locale: user.locale,
 					recipient: { email, phone: null, deviceToken: null },
 					data: { pin, token, resetUrl },
-				} satisfies ICourierMessage)
-				.catch(() => {});
+				} satisfies ICourierMessage));
 
 			return setApiResponse(
 				HTTP.OK,
@@ -724,14 +718,13 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 				await phoneVerif.upsert(ctx.user!.id, phone, otp, expiresAt);
 
-				bus
+				await background(bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.phoneOtp,
 						locale: ctx.user!.locale,
 						data: { otp },
 						recipient: { email: null, phone, deviceToken: null },
-					} satisfies ICourierMessage)
-					.catch(() => {});
+					} satisfies ICourierMessage));
 
 				return setApiResponse(
 					HTTP.OK,
@@ -771,14 +764,13 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
 			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
 
-			bus
+			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.emailVerification,
 					locale: ctx.user!.locale,
 					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
 					data: { pin },
-				} satisfies ICourierMessage)
-				.catch(() => {});
+				} satisfies ICourierMessage));
 
 			return setApiResponse(HTTP.OK, 'VERIFICATION_SENT', 'Verification email sent.', {
 				email: ctx.user!.email,

@@ -1,4 +1,4 @@
-import { setApiResponse, HTTP } from '@fonderie/core';
+import { setApiResponse, HTTP, background } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
@@ -369,15 +369,14 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 				// Publish only on a real credit — a replayed idempotency key
 				// returns duplicate:true and must not re-emit.
 				if (!result.duplicate) {
-					bus
+					await background(bus
 						?.emit(EVENT_KEYS.walletCredited, {
 							...subscriberEventFields(body.subscriberType, body.subscriberId),
 							currency,
 							credits: body.amount.toString(),
 							balanceAfter: result.balance.toString(),
 							source: 'manual-grant',
-						})
-						.catch(() => {});
+						}));
 				}
 
 				return setApiResponse(HTTP.OK, 'WALLET_GRANTED', 'Credits granted.', {

@@ -307,6 +307,16 @@ discovering them in production:
 - *Background timers* — an instance is frozen between requests, so
   `setInterval` never reliably fires. Keep timers in `index.ts` and drive the
   same work with a scheduled ping to a secret-guarded route.
+- *Detached promises* — the SAME freeze abandons any work left running after
+  the response. The robust answer is the durable outbox: give `EventsModule`
+  the Postgres transport so a producer writes a row inside the request, and
+  consume it either with `bus.start()` on a long-running host or `bus.drain()`
+  from a scheduled ping where nothing long-running exists. That path survives a
+  crash and retries; awaiting does neither. Fonderie routes its own dispatch (emails, webhooks, events)
+  through `background()`, which waits on serverless and detaches elsewhere;
+  override with `FONDERIE_BACKGROUND_TASKS=auto|await|detach`. If YOUR code
+  detaches work, wrap it the same way or it will be dropped in production
+  with no error anywhere.
 - *In-memory state* — rate-limit buckets, caches and sessions reset per
   instance. Use the store-backed equivalents (e.g. `StoreAdapterStore` for
   `@fonderie/rate-limit`), or the limit silently stops limiting.

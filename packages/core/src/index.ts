@@ -20,6 +20,13 @@ export type {
 } from './types';
 
 export { OPERATIONS } from './constants';
+export {
+	background,
+	setBackgroundRunner,
+	isServerlessRuntime,
+	resolveBackgroundMode,
+	type BackgroundMode,
+} from './background';
 
 export { FonderieApp, DEFAULT_MAX_BODY_BYTES } from './app';
 export { defineConfig } from './config';

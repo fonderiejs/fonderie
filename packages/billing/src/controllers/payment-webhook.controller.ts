@@ -1,4 +1,4 @@
-import { setApiResponse, HTTP } from '@fonderie/core';
+import { setApiResponse, HTTP, background } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
@@ -82,7 +82,7 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 				metadata: { disputeId: reversal.id, providerTxId: pi, ...(packId ? { packId } : {}) },
 			});
 			if (!result.duplicate) {
-				bus
+				await background(bus
 					?.emit(EVENT_KEYS.walletCredited, {
 						...subscriberEventFields(sub.subscriberType, sub.subscriberId),
 						currency: sub.currency,
@@ -90,8 +90,7 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 						balanceAfter: result.balance.toString(),
 						...(packId ? { packId } : {}),
 						source: 'dispute-won',
-					})
-					.catch(() => {});
+					}));
 			}
 			return Response.json({ received: true, duplicate: result.duplicate });
 		}
@@ -151,8 +150,8 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 				...(packId ? { packId } : {}),
 				providerTxId: pi,
 			};
-			bus?.emit(EVENT_KEYS.paymentRefunded, fields).catch(() => {});
-			bus?.emit(EVENT_KEYS.walletDebited, { ...fields, source: 'refund' }).catch(() => {});
+			await background(bus?.emit(EVENT_KEYS.paymentRefunded, fields));
+			await background(bus?.emit(EVENT_KEYS.walletDebited, { ...fields, source: 'refund' }));
 			void notifyBilling(bus, config, {
 				subscriberType: sub.subscriberType,
 				subscriberId: sub.subscriberId,
@@ -207,7 +206,7 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 			reason: failure.reason,
 			...(failure.providerTxId ? { providerTxId: failure.providerTxId } : {}),
 		};
-		bus?.emit(EVENT_KEYS.paymentFailed, fields).catch(() => {});
+		await background(bus?.emit(EVENT_KEYS.paymentFailed, fields));
 		void notifyBilling(bus, config, {
 			subscriberType: subscriberType as SubscriberType,
 			subscriberId,
@@ -318,10 +317,9 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 						packId,
 						...(payment.providerTxId ? { providerTxId: payment.providerTxId } : {}),
 					};
-					bus?.emit(EVENT_KEYS.creditPackPurchased, fields).catch(() => {});
-					bus
-						?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' })
-						.catch(() => {});
+					await background(bus?.emit(EVENT_KEYS.creditPackPurchased, fields));
+					await background(bus
+						?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' }));
 
 					// Customer-facing receipt (§ Communication & Record Integrity).
 					// Same guard as the domain events — only on a real credit, so

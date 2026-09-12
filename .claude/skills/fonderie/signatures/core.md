@@ -128,6 +128,16 @@ interface ISecurityReport {
 
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
+function background(work: Promise<unknown> | undefined): Promise<void>
+
+function setBackgroundRunner(fn: ((work: Promise<unknown>) => void) | null): void
+
+function isServerlessRuntime(env?: ProcessEnv): boolean
+
+function resolveBackgroundMode(env?: ProcessEnv): "await" | "detach"
+
+type BackgroundMode = 'auto' | 'await' | 'detach';
+
 new FonderieApp(config: FonderieConfig): FonderieApp
   .metrics: MetricsRegistry
   .listen(port: number, options?: { name?: string; version?: string; env?: string; quiet?: boolean; }): Server<typeof IncomingMessage, typeof ServerResponse>

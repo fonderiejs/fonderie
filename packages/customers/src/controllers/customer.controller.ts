@@ -1,5 +1,5 @@
 import type { IFonderieContext } from '@fonderie/core';
-import { HTTP, setApiResponse } from '@fonderie/core';
+import { HTTP, setApiResponse, background } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -155,12 +155,11 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				throw err;
 			}
 
-			bus
+			await background(bus
 				?.emit(EVENT_KEYS.customerCreated, {
 					customerId: customer.id,
 					workspaceId: customer.workspaceId,
-				})
-				.catch(() => {});
+				}));
 
 			return setApiResponse(HTTP.CREATED, 'CUSTOMER_CREATED', 'Customer created successfully.', {
 				customer: toCustomerDTO(customer),
@@ -239,12 +238,11 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
 			}
 
-			bus
+			await background(bus
 				?.emit(EVENT_KEYS.customerUpdated, {
 					customerId: customer.id,
 					workspaceId: customer.workspaceId,
-				})
-				.catch(() => {});
+				}));
 
 			return setApiResponse(HTTP.OK, 'CUSTOMER_UPDATED', 'Customer updated successfully.', {
 				customer: toCustomerDTO(customer),
@@ -274,12 +272,11 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			await customers.delete(id, workspaceId);
 
-			bus
+			await background(bus
 				?.emit(EVENT_KEYS.customerDeleted, {
 					customerId: id,
 					workspaceId,
-				})
-				.catch(() => {});
+				}));
 
 			return setApiResponse(HTTP.OK, 'CUSTOMER_DELETED', 'Customer deleted successfully.');
 		},
@@ -310,12 +307,11 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			await customers.blacklist(id, workspaceId, reason);
 
-			bus
+			await background(bus
 				?.emit(EVENT_KEYS.customerBlacklisted, {
 					customerId: id,
 					workspaceId,
-				})
-				.catch(() => {});
+				}));
 
 			return setApiResponse(HTTP.OK, 'CUSTOMER_BLACKLISTED', 'Customer blacklisted successfully.');
 		},
@@ -343,12 +339,11 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			await customers.unblacklist(id, workspaceId);
 
-			bus
+			await background(bus
 				?.emit(EVENT_KEYS.customerUnblacklisted, {
 					customerId: id,
 					workspaceId,
-				})
-				.catch(() => {});
+				}));
 
 			return setApiResponse(HTTP.OK, 'CUSTOMER_UNBLACKLISTED', 'Customer removed from blacklist successfully.');
 		},
