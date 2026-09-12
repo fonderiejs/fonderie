@@ -48,7 +48,7 @@
     "react-webhooks-screens": "0.3.0",
     "react-workspaces": "0.6.0",
     "react-workspaces-screens": "0.4.0",
-    "risk": "0.1.0",
+    "risk": "0.2.0",
     "storage": "0.1.4",
     "store": "0.3.0",
     "vue": "0.2.0",
@@ -1639,7 +1639,7 @@
       "hasOutcomes": false
     },
     "risk": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "stability": "experimental",
       "requires": [
         "core",
