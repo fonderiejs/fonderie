@@ -1,0 +1,75 @@
+{
+	"name": "@fonderie/risk",
+	"version": "0.1.0",
+	"fonderie": { "stability": "experimental" },
+	"description": "Generic signal → meaning → decision engine — assess an action (trial start, login, registration, promo) against weak signals and a tunable ruleset, and return a graded verdict with reasons. Decides, never enforces: the app owns every side effect.",
+	"keywords": [
+		"fonderiejs",
+		"risk",
+		"fraud",
+		"abuse",
+		"trial-abuse",
+		"signals",
+		"scoring",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./migrations": {
+			"types": "./dist/migrations/index.d.ts",
+			"import": "./dist/migrations/index.js"
+		}
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup && tsup --config tsup.migrations.ts",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "tsx --test src/__tests__/*.test.ts",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
+	},
+	"peerDependencies": {
+		"@fonderie/core": "^0.10.0",
+		"@fonderie/store": "^0.3.0"
+	},
+	"devDependencies": {
+		"@fonderie/core": "../core",
+		"@fonderie/store": "../store",
+		"@types/node": "^26.4.1",
+		"tsup": "^8.5.1",
+		"tsx": "^4.23.13",
+		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"brain",
+		"LICENSE",
+		"README.md"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
+		"directory": "packages/risk"
+	},
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/risk#readme",
+	"bugs": {
+		"url": "https://github.com/fonderiejs/fonderie/issues"
+	}
+}

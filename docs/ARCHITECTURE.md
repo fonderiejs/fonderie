@@ -66,7 +66,7 @@ frameworks.
 | --- | --- | --- |
 | **Foundation** | `core` · `store` · `events` · `logger` | Router + module system, DB abstraction, the event bus, structured logs. Everything sits on these. |
 | **Adapters** | `adapter-express` · `adapter-hono` · `adapter-koa` | `bridge()` / `adapt()` / `mount()` — run bricks in the framework the app already chose. |
-| **Capability bricks** | `auth` · `permissions` · `workspaces` · `billing` · `courier` · `config` · `audit` · `webhooks` · `customers` · `rate-limit` · `media` · `storage` | The vendor-replacements. The product. |
+| **Capability bricks** | `auth` · `permissions` · `workspaces` · `billing` · `courier` · `config` · `audit` · `webhooks` · `customers` · `rate-limit` · `risk` · `media` · `storage` | The vendor-replacements. The product. |
 | **Client & tooling** | `client` · `cli` · `create-fonderie-app` | Typed isomorphic SDK, the agent-teaching CLI, the zero-prompt scaffold. |
 | **Frontend mirrors (~45)** | `{react,vue,react-native}-{brick}` (+ `-screens`) | One pattern (see below), not 45 decisions. |
 
@@ -162,7 +162,7 @@ field.
 | --- | --- |
 | **Stable** (5.x–9.x) | `auth` · `billing` · `workspaces` · `courier` · `config` · `permissions` · `webhooks` · `customers` · `audit` · `rate-limit` · adapters |
 | **Maturing** (0.x, in use) | `core` · `store` · `events` · `logger` · `client` — foundational and battle-tested, pre-1.0 by version only |
-| **Experimental** (early 0.x) | `media` · `storage` — newest bricks; API may move |
+| **Experimental** (early 0.x) | `media` · `storage` · `risk` — newest bricks; API may move |
 
 Frontend mirrors track their backend brick's maturity but are uniformly early
 (0.x) as a family.
@@ -178,7 +178,7 @@ Frontend mirrors track their backend brick's maturity but are uniformly early
 | `events` / `webhooks` | internal bus / signed external fan-out |
 | `storage` / `media` | content-agnostic bytes / image-domain policy on top (clean layering) |
 | `config` secrets | **operator**-level (one app key). Do **not** overload with **tenant**-level secrets (per-user third-party keys) — that is a separate, future concern. |
-| `rate-limit` / (future) `risk` | mechanical token bucket / probabilistic signal scoring. `risk` *consumes* `rate-limit`; it must not reinvent it. |
+| `rate-limit` / `risk` | mechanical token bucket / probabilistic signal scoring (`risk` *decides*, never enforces; it may treat a `rate-limit` bucket's state as one signal but must not reinvent limiting). |
 
 ---
 
