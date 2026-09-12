@@ -9,6 +9,7 @@ import { findCreditPack } from './credit-packs';
 import { getWalletCustomer, upsertWalletCustomer } from './wallet-customers';
 import { notifyBilling } from './notify';
 import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
+import { background } from '@fonderie/core';
 
 // The resolved outcome of an in-app purchase attempt. Every branch is a status
 // (not a throw) so the caller can decide UI vs. hosted-checkout fallback.
@@ -89,8 +90,8 @@ export async function applyPackCredit(args: {
 			packId,
 			providerTxId,
 		};
-		bus?.emit(EVENT_KEYS.creditPackPurchased, fields).catch(() => {});
-		bus?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' }).catch(() => {});
+		await background(bus?.emit(EVENT_KEYS.creditPackPurchased, fields));
+		await background(bus?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' }));
 		void notifyBilling(bus, config, {
 			subscriberType,
 			subscriberId,

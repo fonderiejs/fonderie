@@ -1,4 +1,4 @@
-import { setApiResponse, HTTP } from '@fonderie/core';
+import { setApiResponse, HTTP, background } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
@@ -141,13 +141,12 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 					// language is unknown at invite time — fall to the neutral default
 					// template rather than guess (e.g. the inviter's locale), which
 					// keeps legal/jurisdictional copy from bleeding across regions.
-					bus
+					await background(bus
 						?.emit(NOTIFICATION_EVENT, {
 							type: MESSAGE_KEYS.workspaceInvitation,
 							recipient: { email, phone: null, deviceToken: null },
 							data: { token: invitation.token, pin: invitation.pin },
-						} satisfies ICourierMessage)
-						.catch(() => {});
+						} satisfies ICourierMessage));
 
 					return { invitationId: invitation.id, email };
 				}),

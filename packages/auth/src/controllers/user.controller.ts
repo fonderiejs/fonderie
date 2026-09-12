@@ -1,7 +1,7 @@
 import { clearedTokenCookies, cookieHeaders } from '../services/cookies';
 import { randomInt } from 'node:crypto';
 
-import { setApiResponse, HTTP, dateOrEmpty } from '@fonderie/core';
+import { setApiResponse, HTTP, dateOrEmpty, background } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { IAuthConfig } from '../config';
@@ -215,23 +215,21 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
 			await users.updateEmail(ctx.user!.id, normalised);
 
-			bus
+			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.emailVerification,
 					locale: ctx.user!.locale,
 					data: { pin },
 					recipient: { email: normalised, phone: null, deviceToken: null },
-				} satisfies ICourierMessage)
-				.catch(() => {});
+				} satisfies ICourierMessage));
 			if (oldEmail) {
-				bus
+				await background(bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.emailChanged,
 						locale: ctx.user!.locale,
 						data: { newEmail: normalised },
 						recipient: { email: oldEmail, phone: null, deviceToken: null },
-					} satisfies ICourierMessage)
-					.catch(() => {});
+					} satisfies ICourierMessage));
 			}
 
 			return setApiResponse(
@@ -268,23 +266,21 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			await phoneVerif.upsert(ctx.user!.id, normalised, otp, expiresAt);
 			await users.updatePhone(ctx.user!.id, normalised);
 
-			bus
+			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.phoneOtp,
 					locale: ctx.user!.locale,
 					data: { otp },
 					recipient: { email: null, phone: normalised, deviceToken: null },
-				} satisfies ICourierMessage)
-				.catch(() => {});
+				} satisfies ICourierMessage));
 			if (ctx.user!.email) {
-				bus
+				await background(bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.phoneChanged,
 						locale: ctx.user!.locale,
 						data: {},
 						recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-					} satisfies ICourierMessage)
-					.catch(() => {});
+					} satisfies ICourierMessage));
 			}
 
 			return setApiResponse(
@@ -334,13 +330,12 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			await users.softDelete(userId);
 
 			const reqId = ctx.meta['requestId'] as string | undefined;
-			bus
+			await background(bus
 				?.emit(
 					EVENT_KEYS.userDeleted,
 					{ userId },
 					reqId !== undefined ? { requestId: reqId } : undefined,
-				)
-				.catch(() => {});
+				));
 
 			return Response.json(
 				{ reason: 'ACCOUNT_DELETED', explanation: 'Account successfully deleted.' },

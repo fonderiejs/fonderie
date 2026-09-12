@@ -1,7 +1,7 @@
 import { tokenPairCookies, cookieHeaders } from '../services/cookies';
 import QRCode from 'qrcode';
 
-import { setApiResponse, HTTP } from '@fonderie/core';
+import { setApiResponse, HTTP, background } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
@@ -98,14 +98,13 @@ export function mfaController(
 				}
 				await users.confirmMfaSecret(ctx.user!.id);
 
-				bus
+				await background(bus
 					?.emit(NOTIFICATION_EVENT, {
 						type: MESSAGE_KEYS.mfaEnabled,
 						locale: ctx.user!.locale,
 						data: {},
 						recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-					} satisfies ICourierMessage)
-					.catch(() => {});
+					} satisfies ICourierMessage));
 
 				return setApiResponse(HTTP.OK, 'MFA_VERIFIED', 'MFA verified successfully.', {
 					mfaEnabled: true,
@@ -220,14 +219,13 @@ export function mfaController(
 			const codeHashes = await Promise.all(plainCodes.map((c) => hashPassword(c)));
 			await backupCodes.replace(ctx.user!.id, codeHashes);
 
-			bus
+			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.mfaBackupCodesRegenerated,
 					locale: ctx.user!.locale,
 					data: {},
 					recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
-				} satisfies ICourierMessage)
-				.catch(() => {});
+				} satisfies ICourierMessage));
 
 			return setApiResponse(HTTP.OK, 'BACKUP_CODES_REGENERATED', 'Backup codes regenerated.', {
 				backupCodes: plainCodes,
@@ -258,14 +256,13 @@ export function mfaController(
 
 			await Promise.all([users.disableMfa(ctx.user!.id), backupCodes.deleteByUser(ctx.user!.id)]);
 
-			bus
+			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
 					type: MESSAGE_KEYS.mfaDisabled,
 					locale: user.locale,
 					data: {},
 					recipient: { email: user.email, phone: null, deviceToken: null },
-				} satisfies ICourierMessage)
-				.catch(() => {});
+				} satisfies ICourierMessage));
 
 			return setApiResponse(HTTP.OK, 'MFA_DISABLED', 'MFA disabled successfully.');
 		},
