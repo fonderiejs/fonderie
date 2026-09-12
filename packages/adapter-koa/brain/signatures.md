@@ -21,6 +21,8 @@ function requireFeature(key: string): KoaMiddleware<any, any>
 
 function mount(app: Application<DefaultState, DefaultContext>, fonderie: FonderieApp, options?: { maxBodyBytes?: number; }): Application<DefaultState, DefaultContext>
 
+function cors(options?: CorsOptions | undefined): KoaMiddleware<any, any>
+
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
 interface KoaContext {

@@ -5,7 +5,13 @@ import type Koa                from 'koa';
 type KoaMiddleware<S = any, C = any> = Koa.Middleware<S, C>;
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { requireAuth as _requireAuth, resolveClientIp } from '@fonderie/core/middlewares';
+import {
+	requireAuth as _requireAuth,
+	resolveClientIp,
+	resolveCorsOptions,
+	corsHeadersFor,
+	type CorsOptions,
+} from '@fonderie/core/middlewares';
 // Optional peers: type-only imports (erased at runtime). The guard factories
 // below load them lazily so installing this adapter never requires
 // @fonderie/workspaces, @fonderie/permissions, or @fonderie/billing unless
@@ -352,4 +358,31 @@ export function mount(app: Koa, fonderie: FonderieApp, options: { maxBodyBytes?:
 		}
 	});
 	return app;
+}
+
+// ── App-level CORS ────────────────────────────────────────────────
+//
+// Native Koa middleware speaking core's CORS contract — same options and
+// defaults as withCors, so the headers @fonderie/client sends are allowed out
+// of the box. Register it on the Koa app itself so it covers EVERY route,
+// including ones outside the fonderie pipeline: fonderie.use(withCors()) only
+// guards the mounted basePath, and a bare router 404s a preflight for routes
+// that define no OPTIONS handler.
+//
+//   app.use(cors({ credentials: true, origin: process.env.FRONTEND_URL! }))
+
+export function cors(options?: CorsOptions): KoaMiddleware {
+	const resolved = resolveCorsOptions(options);
+	return async (ctx, next) => {
+		const rawOrigin = ctx.request.headers['origin'];
+		const requestOrigin = Array.isArray(rawOrigin) ? (rawOrigin[0] ?? '') : (rawOrigin ?? '');
+		for (const [k, v] of Object.entries(corsHeadersFor(resolved, requestOrigin))) {
+			ctx.set(k, v);
+		}
+		if (ctx.method === 'OPTIONS') {
+			ctx.status = 204;
+			return;
+		}
+		await next();
+	};
 }
