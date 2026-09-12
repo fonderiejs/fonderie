@@ -78,7 +78,7 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
   `.buildContext(req: Request)`, `.listen(port, { name?, version?, env? })`
 - `defineConfig({ basePath?, db: { url } })` — `basePath` prefixes all routes
 - `OPERATIONS` (`CREATE/READ/UPDATE/DELETE`), `Operation` type
-- Middlewares from `@fonderie/core/middlewares`: `cors`, `requireAuth`, request logging, body parsing
+- Middlewares from `@fonderie/core/middlewares`: `withCors`, `requireAuth`, request logging, body parsing
 - Helpers: `HTTP`, `setApiResponse`, `compose`, defensive parsers
   (`stringOrEmpty`, `numberOrZero`, `booleanOrFalse`, `arrayOrEmpty`, `dateOrEmpty`)
 - `ctx.meta` well-known keys: `params`, `body`, `query`, `workspaceId`, `userId`, `message`
@@ -219,9 +219,9 @@ provider-shaped payloads and are gated by signature verification instead.
 
 ## Mounting inside an existing framework
 
-Each adapter exports the same surface: `mount`, `bridge`, `adapt`,
+Each adapter exports the same surface: `mount`, `bridge`, `adapt`, `cors`,
 `requireAuth`, `withWorkspace(store)`, `requirePermission(op, key)`,
-`requireFeature(key)`, `OPERATIONS`. The last three lazy-load their optional
+`requireFeature(key)`, `OPERATIONS`. The three guards lazy-load their optional
 peer — install `@fonderie/workspaces` / `permissions` / `billing` only if you
 use the matching guard.
 
@@ -244,3 +244,29 @@ app.use(bodyParser());
 mount(app, fonderie);
 app.listen(3000);
 ```
+
+### CORS — required for any browser frontend on another origin
+
+`@fonderie/client` sends `X-Request-ID`, `traceparent` and `X-Workspace-ID`,
+and always fetches with `credentials: 'include'`. A preflight rejects the
+**whole** request when one of those headers is missing from the allow-list —
+every call fails with "Failed to fetch" while curl keeps working (CORS is
+browser-only). So never hand-roll the header list: both entry points below
+ship it and stay in lockstep with the client.
+
+```ts
+// App level (covers EVERY route — custom routes, /health, webhooks)
+import { cors } from '@fonderie/adapter-express'; // or -hono / -koa
+app.use(cors({ credentials: true, origin: process.env.FRONTEND_URL! }));
+
+// Pipeline level (fonderie routes only)
+import { withCors, DEFAULT_CORS_HEADERS } from '@fonderie/core/middlewares';
+fonderie.use(withCors({ credentials: true, origin: FRONTEND_URL }));
+```
+
+Options: `origin` (string, or a predicate to reflect — `() => true` allows
+any), `credentials`, `headers` (extend, don't replace:
+`[...DEFAULT_CORS_HEADERS, 'X-My-Header']`), `exposeHeaders` (defaults to
+`X-Request-ID` so the client can read the echoed id on
+`FonderieApiError.requestId`), `methods`. `credentials: true` with the
+default `origin: '*'` throws at boot — browsers reject that pair.
