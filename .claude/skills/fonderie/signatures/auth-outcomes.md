@@ -150,6 +150,7 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | POST | `/auth/mfa/disable` | `requireAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.disable` |
 | POST | `/auth/mfa/setup` | `requireAuth → requireEmailLogin → requireVerified → mfa.setup` |
 | POST | `/auth/mfa/verify` | `ipLimit('mfaVerify') → requireAnyAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.verify` |
+| GET | `/auth/providers` | `async () => setApiResponse(HTTP.OK, 'AUTH_PROVIDERS', 'Sign-in methods available here', { providers: [...config.providers], })` |
 | POST | `/auth/refresh` | `validate(refreshSchema) → auth.refresh` |
 | POST | `/auth/register` | `ipLimit('register') → validate(registerSchema) → auth.register` |
 | GET | `/auth/send-verification` | `requireAnyAuth → auth.sendVerification` |

@@ -2824,3 +2824,54 @@ test('resetPassword: revokes all of the user\'s sessions', async () => {
 	assert.ok(sessionDelete, 'all sessions must be revoked on reset');
 	assert.deepEqual(sessionDelete!.params, ['user-1']);
 });
+
+// ── GET /auth/providers ───────────────────────────────────────────
+// The login screen has to decide which buttons to draw, and the only honest
+// source is the side holding the credentials. A build-time flag in the app
+// stores the same fact twice and lets the two disagree.
+
+test('/auth/providers: reports what THIS deployment is configured for', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+
+	const emailOnly = buildAuthRoutes(stub, { ...config, providers: ['email'] });
+	const withGoogle = buildAuthRoutes(stub, { ...config, providers: ['email', 'google'] });
+
+	const call = async (routes: any[]) => {
+		const route = routes.find(([m, p]) => m === 'GET' && p === '/auth/providers');
+		assert.ok(route, 'GET /auth/providers must be registered');
+		const res = await route[route.length - 1](makeCtx({}));
+		return (await res.json()).result.providers;
+	};
+
+	// Same code, different config — the answer must follow the config, not a
+	// hardcoded list, or it is worse than useless.
+	assert.deepEqual(await call(emailOnly), ['email']);
+	assert.deepEqual(await call(withGoogle), ['email', 'google']);
+});
+
+test('/auth/providers: is public — the login screen needs it before anyone signs in', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const route = buildAuthRoutes(stub, config).find(
+		([m, p]) => m === 'GET' && p === '/auth/providers',
+	) as any[];
+	// [method, path, handler] — no guard middleware between path and handler.
+	assert.equal(route.length, 3, 'no auth guard should sit in front of this route');
+});
+
+test('/auth/providers: discloses nothing beyond the provider names', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const route = buildAuthRoutes(stub, {
+		...config,
+		providers: ['email', 'google'],
+		google: { clientId: 'secret-id', clientSecret: 'secret-value', redirectUri: 'https://x/cb' },
+	}) .find(([m, p]) => m === 'GET' && p === '/auth/providers') as any[];
+
+	const body = JSON.stringify(await (await route[2](makeCtx({}))).json());
+	assert.deepEqual(JSON.parse(body).result, { providers: ['email', 'google'] });
+	for (const leak of ['secret-id', 'secret-value', 'https://x/cb']) {
+		assert.ok(!body.includes(leak), `must not disclose ${leak}`);
+	}
+});
