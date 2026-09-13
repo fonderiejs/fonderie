@@ -338,6 +338,17 @@ discovering them in production:
   *nobody* draining, not two. Watch `deadLetters()`/`pendingCount()` from a
   health or cron route: a queue that has silently stopped delivering looks
   exactly like one with nothing to do.
+
+  **The queue does not tell you whether email was sent.** Courier catches a
+  send failure, records it, and deliberately does not rethrow — a bad address
+  must not poison the event — so the handler resolves and the consumer row is
+  marked `processed` whether the message went out or not. An SMTP rejection is
+  therefore indistinguishable from a clean send in `fonderie_event_consumers`,
+  and `deadLetters()` stays empty no matter how badly email is failing. Read
+  `fonderie_message_log` (`status` sent/failed/pending, plus the provider
+  error) for that question; the queue only answers whether the event was
+  dispatched. And `sent` still means the provider ACCEPTED it — an async bounce
+  looks like success from here.
 - *In-memory state* — rate-limit buckets, caches and sessions reset per
   instance. Use the store-backed equivalents (e.g. `StoreAdapterStore` for
   `@fonderie/rate-limit`), or the limit silently stops limiting.

@@ -91,9 +91,21 @@ ping that drains as a backstop, and surface `deadLetters()`/`pendingCount()`
 somewhere, since a queue that has stopped delivering looks exactly like an
 empty one.
 
-One footgun: consumer rows are written by the **publisher**, from its own
-subscriptions. Register courier (and anything else consuming) on the producing
-process too, or its events are owed to nobody and can never be delivered.
+Two footguns worth knowing before you trust any of this.
+
+**Consumer rows are written by the publisher**, from its own subscriptions.
+Register courier (and anything else consuming) on the producing process too, or
+its events are owed to nobody and can never be delivered.
+
+**The queue does not tell you whether email was sent.** Courier catches a send
+failure, records it, and deliberately does not rethrow — a bad address must not
+poison the event — so the handler resolves and the consumer row is marked
+`processed` either way. An SMTP rejection is indistinguishable from a clean
+send in `fonderie_event_consumers`, and `deadLetters()` stays empty no matter
+how badly email is failing. Read `fonderie_message_log` for that — `status` of
+sent/failed/pending, with the provider's error — and treat the queue as
+answering only "was the event dispatched". Even then, `sent` means the provider
+**accepted** it; an async bounce still looks like success.
 
 ## Docker / any Node host
 
