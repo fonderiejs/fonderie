@@ -190,7 +190,7 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 30,
+      "routeCount": 31,
       "routes": [
         {
           "method": "GET",
@@ -261,6 +261,11 @@
           "method": "POST",
           "path": "/auth/mfa/verify",
           "mw": "ipLimit('mfaVerify') → requireAnyAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.verify"
+        },
+        {
+          "method": "DELETE",
+          "path": "/auth/oauth/:provider",
+          "mw": "requireAuth → user.unlinkOauth"
         },
         {
           "method": "GET",
@@ -1158,6 +1163,7 @@
       "exports": [
         "FonderieApiError",
         "useAuthProviders",
+        "useUnlinkOauth",
         "useForgotPassword",
         "useLogin",
         "useLogout",
@@ -1429,6 +1435,7 @@
         "useRegister",
         "useResetPassword",
         "useAuthProviders",
+        "useUnlinkOauth",
         "useSession",
         "useVerifyEmail",
         "useLoginHistory",
@@ -1794,6 +1801,7 @@
       "exports": [
         "FonderieApiError",
         "useAuthProviders",
+        "useUnlinkOauth",
         "useAccountData",
         "useChangePassword",
         "useForgotPassword",
@@ -4174,6 +4182,11 @@
       "vue-audit-screens"
     ],
     "useauthproviders": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
+    "useunlinkoauth": [
       "react-auth",
       "react-native-auth",
       "vue-auth"

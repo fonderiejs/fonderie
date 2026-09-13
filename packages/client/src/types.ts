@@ -42,6 +42,13 @@ export interface IUserDTO {
 	isEmailVerified: boolean;
 	isPhoneVerified: boolean;
 	mfaEnabled: boolean;
+	// OAuth provider linked to this account ('google', 'apple'), or '' if none.
+	provider: string;
+	// Whether a password is set. With `provider`, this is what a settings screen
+	// needs to render sign-in methods and to know whether unlinkOauth() can
+	// succeed — an account with no password has no other credential, so the
+	// server refuses (409 PASSWORD_REQUIRED) rather than locking the user out.
+	hasPassword: boolean;
 	suspended: boolean;
 	whitelist: boolean;
 	ipWhitelist: string[];

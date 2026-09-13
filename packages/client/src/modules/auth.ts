@@ -180,6 +180,21 @@ export class AuthClient {
 		});
 	}
 
+	/**
+	 * Disconnect the OAuth provider linked to the signed-in account.
+	 *
+	 * Refused with 409 PASSWORD_REQUIRED when the account has no password:
+	 * removing the only credential is account deletion, not a settings toggle.
+	 * Check `user.hasPassword` before offering the control so the user is asked
+	 * to set a password first rather than shown an error they can't act on.
+	 */
+	unlinkOauth(provider: string) {
+		return this.http.request<IApiResponse<null>>({
+			method: 'DELETE',
+			path: `/auth/oauth/${encodeURIComponent(provider)}`,
+		});
+	}
+
 	register(input: IRegisterInput) {
 		return this.http.request<IApiResponse<IRegisterResult>>({
 			method: 'POST',

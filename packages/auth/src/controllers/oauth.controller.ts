@@ -2,11 +2,14 @@ import { randomBytes, createPublicKey, createHash, type KeyObject } from 'node:c
 import jwt from 'jsonwebtoken';
 
 import { tokenPairCookies, cookieHeaders } from '../services/cookies';
-import { setApiResponse, HTTP, constantTimeEqual } from '@fonderie/core';
-import type { IFonderieContext } from '@fonderie/core';
+import { setApiResponse, HTTP, constantTimeEqual, background } from '@fonderie/core';
+import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
+import type { EventBus } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IAuthConfig } from '../config';
+import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { issueTokenPair, refreshTokenExpiry } from '../services/jwt';
 import { toUserDTO } from '../dtos/user';
 import { UserModel } from '../models/user.model';
@@ -151,11 +154,81 @@ export function __resetAppleKeysForTests(): void {
 	appleKeyLastAttempt = 0;
 }
 
-export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
+export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store);
 	const loginEvents = new LoginEventModel(store);
 	const consumedTokens = new ConsumedTokenModel(store);
+
+	/**
+	 * Announce what an OAuth upsert actually did.
+	 *
+	 * A signing-in user hits this code path on EVERY login, so the default is
+	 * silence; only a change in what the account is gets announced.
+	 *
+	 *   • new account  → `userRegistered`, the same domain event a password
+	 *     registration emits. This is the one that was missing: subscribers
+	 *     provision on it (workspaces creates the personal workspace), so an
+	 *     OAuth signup previously produced a user with none — invisible until
+	 *     something later asked for a workspace that was never created.
+	 *   • provider added or changed → a security notice to the address on file,
+	 *     because the account gained a new way to be signed into and the owner
+	 *     is not necessarily the person who did it.
+	 *   • same provider as before → nothing. Emailing here would notify the
+	 *     user on every sign-in.
+	 */
+	const announceOAuthUpsert = async (
+		ctx: IFonderieContext,
+		upserted: { id: string; inserted: boolean; previousProvider: string | null },
+		provider: string,
+		user: { email: string | null; firstName: string | null; lastName: string | null; locale: string },
+	): Promise<void> => {
+		if (!bus) return;
+		const reqId = ctx.meta['requestId'] as string | undefined;
+		const reqOpts = reqId !== undefined ? { requestId: reqId } : undefined;
+		const label = provider.charAt(0).toUpperCase() + provider.slice(1);
+		const recipient = { email: user.email, phone: null, deviceToken: null };
+
+		if (upserted.inserted) {
+			await background(bus.emit(
+				EVENT_KEYS.userRegistered,
+				{
+					userId: upserted.id,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					loginMethod: provider,
+				},
+				reqOpts,
+			));
+			if (user.email) {
+				await background(bus.emit(
+					NOTIFICATION_EVENT,
+					{
+						type: MESSAGE_KEYS.oauthRegistration,
+						locale: user.locale,
+						data: { provider: label, appName: config.appName ?? 'Fonderie' },
+						recipient,
+					} satisfies ICourierMessage,
+					reqOpts,
+				));
+			}
+			return;
+		}
+
+		if (upserted.previousProvider !== provider && user.email) {
+			await background(bus.emit(
+				NOTIFICATION_EVENT,
+				{
+					type: MESSAGE_KEYS.oauthLinked,
+					locale: user.locale,
+					data: { provider: label },
+					recipient,
+				} satisfies ICourierMessage,
+				reqOpts,
+			));
+		}
+	};
 
 	// Shared tail for both Apple flows (web callback + native token): given
 	// verified claims, upsert the account by email, open a session, record the
@@ -196,6 +269,8 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 		if (!fullUser) {
 			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Apple login failed');
 		}
+
+		await announceOAuthUpsert(ctx, upserted, 'apple', fullUser);
 
 		const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, config, { loginMethod: 'apple' });
 		await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
@@ -386,6 +461,8 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 			if (!fullUser) {
 				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
 			}
+
+			await announceOAuthUpsert(ctx, upserted, 'google', fullUser);
 
 			const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, config, {
 				loginMethod: 'google',
