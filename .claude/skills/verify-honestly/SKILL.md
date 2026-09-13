@@ -108,6 +108,26 @@ A masked length, a truncated hash, a matching shape — none of these identify a
 value. Two different 35-character strings are both 35 characters. Say what you
 observed ("the length matches"), never what you concluded from it.
 
+### 8. Presence is not availability
+
+Finding a symbol in a build output proves it was compiled, not that anyone can
+use it. A package can export from an explicit list, so the code lands in
+`dist/index.js` while the runtime export and the `.d.ts` have no mention of it:
+
+```bash
+grep -rl useAuthProviders dist        # ✗ matches index.js — proves nothing
+node -e "console.log(typeof require('pkg').useAuthProviders)"   # ✓ 'undefined'
+grep -c useAuthProviders dist/index.d.ts                        # ✓ 0
+```
+
+`useAuthProviders` shipped this way in two packages at once: version bumped,
+file present, symbol in the bundle, parity gate green — and `require()`
+returned `undefined`.
+
+The general form: **verify the way a consumer consumes.** Import the module,
+call the endpoint, read the type, run the binary. Any check that inspects the
+artifact from the side can be satisfied by something that does not work.
+
 ## Before saying "verified"
 
 - [ ] I have seen this check fail, or I can state exactly what failure looks like
@@ -117,6 +137,7 @@ observed ("the length matches"), never what you concluded from it.
 - [ ] The metric is written by the step that can fail
 - [ ] Every absence I am reporting is disambiguated by a second number
 - [ ] I am reporting observations, not inferences — and labelling which is which
+- [ ] I checked it the way a CONSUMER would, not by inspecting the artifact
 
 ## Say what you actually know
 
