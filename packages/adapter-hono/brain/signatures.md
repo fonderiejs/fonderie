@@ -19,6 +19,8 @@ function mount(hono: Hono<BlankEnv, BlankSchema, "/">, fonderie: FonderieApp): H
 
 function cors(options?: CorsOptions | undefined): MiddlewareHandler
 
+function drainQueue(bus: IDrainable, options?: IDrainQueueOptions): MiddlewareHandler
+
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
 type FonderieVariables = {
@@ -30,4 +32,15 @@ interface IBridgeOptions {
 }
 
 function requireAuth(c: Context<any, string, {}>, next: Next): Promise<void | Response>
+
+interface IDrainable {
+    drain(options?: {
+        maxMs?: number;
+    }): Promise<void>;
+}
+
+interface IDrainQueueOptions {
+    maxMs?: number;
+    onError?: (error: unknown) => void;
+}
 ```

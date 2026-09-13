@@ -23,6 +23,8 @@ function mount(app: Application<DefaultState, DefaultContext>, fonderie: Fonderi
 
 function cors(options?: CorsOptions | undefined): KoaMiddleware<any, any>
 
+function drainQueue(bus: IDrainable, options?: IDrainQueueOptions): Middleware<DefaultState, DefaultContext, any>
+
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
 interface KoaContext {
@@ -46,4 +48,15 @@ type KoaNext = () => Promise<void>;
 const DEFAULT_MAX_BODY_BYTES: number
 
 function requireAuth(context: any, next: Next): any
+
+interface IDrainable {
+    drain(options?: {
+        maxMs?: number;
+    }): Promise<void>;
+}
+
+interface IDrainQueueOptions {
+    maxMs?: number;
+    onError?: (error: unknown) => void;
+}
 ```
