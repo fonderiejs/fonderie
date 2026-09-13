@@ -27,6 +27,17 @@ new Dispatcher(config: ICourierConfig, resolver: ITemplateResolver, store?: ISto
   .channelNames(): string[]
   .dispatch(message: ICourierMessage): Promise<void>
 
+function messageStats(store: IStoreAdapter, options?: { hours?: number; }): Promise<IMessageStats>
+
+interface IMessageStats {
+    sent: number;
+    failed: number;
+    pending: number;
+    sentAt: Date | null;
+    failedAt: Date | null;
+    lastError: string | null;
+}
+
 new SmsChannel(config: ISmsChannelConfig): SmsChannel
   .name: "sms"
   .send(message: ICourierMessage, template: IRenderedTemplate): Promise<void>

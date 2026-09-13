@@ -5,6 +5,8 @@ export { CourierModule } from './module';
 export { validateCourierConfig } from './config-guard';
 export { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 export { Dispatcher } from './dispatcher';
+export { messageStats } from './log';
+export type { IMessageStats } from './log';
 export { SmsChannel } from './channels/sms';
 export { PushChannel } from './channels/push';
 export { EmailChannel } from './channels/email';

@@ -48,7 +48,10 @@ new PGTransport(config: IPGTransportConfig): PGTransport
   .stop(): Promise<void>
   .drain(options?: { maxMs?: number; }): Promise<void>
   .deadLetters(limit?: number): Promise<IDeadLetter[]>
+  .pendingByConsumer(): Promise<IConsumerBacklog[]>
   .pendingCount(): Promise<number>
+
+function explainDrainFailure(err: unknown): string
 
 interface IEventTransport {
     publish(type: string, payload: unknown, meta: IEventMeta): Promise<void>;
@@ -77,6 +80,12 @@ interface IDeadLetter {
     attempts: number;
     lastError: string | null;
     createdAt: Date;
+}
+
+interface IConsumerBacklog {
+    consumer: string;
+    waiting: number;
+    oldestMinutes: number;
 }
 
 function matchesPattern(pattern: string, eventType: string): boolean
