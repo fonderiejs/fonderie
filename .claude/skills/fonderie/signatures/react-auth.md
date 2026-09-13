@@ -168,6 +168,14 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
 
 function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult
 
+interface IUseAuthProvidersReturn {
+    providers: string[];
+    has: (provider: string) => boolean;
+    isLoading: boolean;
+    error: Error | null;
+    refresh: () => Promise<void>;
+}
+
 interface IUseForgotPasswordReturn {
     forgotPassword: (email: string) => Promise<void>;
     isLoading: boolean;
@@ -288,6 +296,8 @@ interface IUseSessionsReturn {
     terminate: (id: string) => Promise<void>;
     terminateOthers: () => Promise<void>;
 }
+
+function useAuthProviders(client?: AuthClient | undefined): IUseAuthProvidersReturn
 
 function useForgotPassword(client?: AuthClient | undefined): IUseForgotPasswordReturn
 
