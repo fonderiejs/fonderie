@@ -130,6 +130,7 @@ export interface IDataExportContributor {
 
 // Stable ids for every auth route, for the `routes` path/method override map.
 export type AuthRouteId =
+	| 'providers'
 	| 'register' | 'login' | 'refresh'
 	| 'forgotPassword' | 'resetPassword'
 	| 'verifyEmail' | 'sendVerification'
