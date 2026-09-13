@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/media",
-	"version": "0.2.9",
+	"version": "0.2.10",
 	"fonderie": { "stability": "experimental" },
 	"description": "Provider-abstracted asset storage — upload, store, and serve user-owned images (avatars, logos) with a DB-blob backend by default and object storage as a one-line swap.",
 	"keywords": [
@@ -42,7 +42,7 @@
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.15.0",
-		"@fonderie/store": "^0.3.0",
+		"@fonderie/store": "^0.4.0",
 		"@fonderie/storage": "^0.1.0"
 	},
 	"devDependencies": {

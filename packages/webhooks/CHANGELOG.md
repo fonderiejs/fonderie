@@ -1,5 +1,12 @@
 # @fonderie/webhooks
 
+## 5.4.2
+
+### Patch Changes
+
+- Updated dependencies [b932c3c]
+  - @fonderie/store@0.4.0
+
 ## 5.4.1
 
 ### Patch Changes
