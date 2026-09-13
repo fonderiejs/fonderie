@@ -72,14 +72,22 @@ export class Dispatcher {
 								() => undefined,
 							);
 						}
-						markMessageSent(logId, this.store).catch(() => undefined);
+						// AWAITED, like the failure write below. Detaching these left
+						// the row at 'pending' forever whenever the process stopped
+						// before the write landed — which on serverless is routine,
+						// since the instance is frozen the moment the handler returns.
+						// The send had happened; only the record of it was lost, so
+						// the log under-reported successes exactly where it is the
+						// only evidence a send occurred. Awaiting costs nothing that
+						// matters: this runs in the consumer, not the request path.
+						await markMessageSent(logId, this.store).catch(() => undefined);
 					}
 				} catch (err) {
 					const errMsg = err instanceof Error ? err.message : String(err);
 					console.error(`[courier:${name}] failed to send ${message.type}:`, err);
 
 					if (this.store && logId) {
-						markMessageFailed(logId, errMsg, this.store).catch(() => undefined);
+						await markMessageFailed(logId, errMsg, this.store).catch(() => undefined);
 					}
 				}
 			}),
