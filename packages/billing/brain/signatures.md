@@ -745,6 +745,15 @@ function isWithinDunningGrace(sub: { status: string; currentPeriodEnd: string | 
 
 function maybeAutoRecharge(args: { store: IStoreAdapter; config: IBillingConfig; bus: EventBus | undefined; subscriberType: SubscriberType; subscriberId: string; balance: bigint; planWallet: IResolvedPlanWallet; }): Promise<...>
 
+function webhookStats(store: IStoreAdapter, options?: { hours?: number; }): Promise<IProviderWebhookStats>
+
+interface IProviderWebhookStats {
+    subscriptions: number;
+    lastEventAt: Date | null;
+    purchases: number;
+    lastPurchaseAt: Date | null;
+}
+
 function upsertWalletCustomer(key: IWalletCustomerKey & { providerCustomerId: string; rearm: boolean; paymentMethodId?: string | null; }, store: IStoreAdapter): Promise<void>
 
 function claimAutoRecharge(key: IWalletCustomerKey & { cooldownSeconds: number; idempotencyKeyTtlSeconds?: number; }, store: IStoreAdapter): Promise<IAutoRechargeClaim | null>
