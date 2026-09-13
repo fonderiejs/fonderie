@@ -11,6 +11,15 @@ export type EventTransportConfig =
 			maxRetries?: number;
 			batchSize?: number;
 			pollInterval?: number;
+			/**
+			 * Whether this instance consumes. Default true. `false` connects for
+			 * PUBLISHING only — the mode a serverless producer needs, since it
+			 * cannot host a poll loop that never returns and LISTEN is rejected
+			 * by a transaction-mode pooler outright.
+			 */
+			consume?: boolean;
+			/** How long a claimed row may stay `processing` before reclaim. */
+			claimTimeoutMs?: number;
 			// Enables tamper-evident audit logging (keyed HMAC per event).
 			integrityKey?: string;
 	  }
@@ -27,6 +36,8 @@ function resolveTransport(config: EventTransportConfig): IEventTransport {
 			...(config.maxRetries !== undefined ? { maxRetries: config.maxRetries } : {}),
 			...(config.batchSize !== undefined ? { batchSize: config.batchSize } : {}),
 			...(config.pollInterval !== undefined ? { pollInterval: config.pollInterval } : {}),
+			...(config.consume !== undefined ? { consume: config.consume } : {}),
+			...(config.claimTimeoutMs !== undefined ? { claimTimeoutMs: config.claimTimeoutMs } : {}),
 			...(config.integrityKey !== undefined ? { integrityKey: config.integrityKey } : {}),
 		});
 	}

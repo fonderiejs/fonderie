@@ -442,3 +442,56 @@ test('PGTransport: every column the transport reads is one the migrations create
 		);
 	}
 });
+
+// ── Declarative transport config ───────────────────────────────────────
+
+test('EventsModule: the { type: "pg" } form honours consume:false', async () => {
+	// The class form (new PGTransport({ consume: false })) always worked. This
+	// is the form the examples, the templates and the docs use — and producer
+	// only mode was unreachable from it, which made the option effectively
+	// missing for most apps.
+	const mod = new EventsModule({
+		transport: { type: 'pg', connectionUrl: 'postgres://unused/test', consume: false },
+	});
+	const transport = (mod as unknown as { bus: { transport: PGTransport } }).bus.transport;
+
+	let looped = false;
+	(transport as unknown as { runPollLoop: () => Promise<void> }).runPollLoop = async () => {
+		looped = true;
+	};
+	try {
+		await transport.start();
+		assert.equal(looped, false, 'consume:false must not start a consumer');
+	} finally {
+		await transport.stop().catch(() => undefined);
+	}
+});
+
+test('EventsModule: every declarative pg option is forwarded to the transport', async () => {
+	// The bug this exists for: `consume` was added to IPGTransportConfig and to
+	// the declarative union, but resolveTransport never forwarded it — so the
+	// option type-checked at the call site and silently did nothing. Options
+	// declared in one place and forwarded in another drift apart by default.
+	const fs = await import('node:fs');
+	const path = await import('node:path');
+	const url = await import('node:url');
+
+	const source = fs.readFileSync(
+		path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', 'module.ts'),
+		'utf8',
+	);
+
+	const union = /type: 'pg';([\s\S]*?)\n\t  \}/.exec(source);
+	assert.ok(union, "expected the { type: 'pg' } union member");
+	const declared = [...(union[1] ?? '').matchAll(/^\t\t\t(\w+)\?:/gm)].map((m) => m[1]);
+	assert.ok(declared.length > 0, 'expected optional keys on the declarative form');
+
+	const resolver = /function resolveTransport\(([\s\S]*?)\n\}/.exec(source);
+	assert.ok(resolver, 'expected resolveTransport');
+	for (const key of declared) {
+		assert.ok(
+			(resolver[1] ?? '').includes(`config.${key}`),
+			`{ type: 'pg' } accepts "${key}" but resolveTransport never forwards it — it would be silently ignored`,
+		);
+	}
+});

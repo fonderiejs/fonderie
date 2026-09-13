@@ -30,6 +30,8 @@ type EventTransportConfig = {
     maxRetries?: number;
     batchSize?: number;
     pollInterval?: number;
+    consume?: boolean;
+    claimTimeoutMs?: number;
     integrityKey?: string;
 } | IEventTransport;
 
