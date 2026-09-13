@@ -319,6 +319,8 @@ function useRegister(client?: AuthClient | undefined): IUseRegisterReturn
 
 function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordReturn
 
+function useAuthProviders(client?: AuthClient | undefined): IUseAuthProvidersReturn
+
 function useSession(client?: AuthClient | undefined): IUseSessionReturn
 
 function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn

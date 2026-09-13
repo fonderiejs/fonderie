@@ -52,6 +52,7 @@ export {
 	useProfile,
 	useRegister,
 	useResetPassword,
+	useAuthProviders,
 	useSession,
 	useVerifyEmail,
 	useLoginHistory,

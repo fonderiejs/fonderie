@@ -28,3 +28,5 @@ export type { IUseSessionsReturn } from './useSessions';
 export { useSessions } from './useSessions';
 export type { IUseVerifyEmailReturn } from './useVerifyEmail';
 export { useVerifyEmail } from './useVerifyEmail';
+export { useAuthProviders } from './useAuthProviders';
+export type { IUseAuthProvidersReturn } from './useAuthProviders';
