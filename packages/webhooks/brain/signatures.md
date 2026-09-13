@@ -11,6 +11,8 @@ new WebhooksModule(store: IStoreAdapter, config?: IWebhooksConfig, bus?: EventBu
   .name: "@fonderie/webhooks"
   .deps: string[]
   .install(app: IFonderieApp): void
+  .retry(): Promise<void>
+  .stop(): void
 
 interface IWebhooksConfig {
     maxAttempts?: number;
