@@ -59,11 +59,20 @@ test('await mode actually waits for the work to finish', async () => {
 test('a hung provider degrades to lost work, never a hung request', async () => {
 	process.env['FONDERIE_BACKGROUND_TASKS'] = 'await';
 	process.env['FONDERIE_BACKGROUND_TIMEOUT_MS'] = '40';
+	// Settled by hand at the end rather than `new Promise(() => {})`: production
+	// genuinely abandons the hung work, but a promise left pending forever
+	// outlives the test, and the runner reports that as a failure once the loop
+	// drains. Releasing it keeps the assertion honest without the litter.
+	let release!: () => void;
+	const hung = new Promise<void>((r) => { release = r; });
 	try {
 		const started = Date.now();
-		await background(new Promise(() => {})); // never settles
+		await background(hung);
 		assert.ok(Date.now() - started < 1000, 'must give up rather than hang the request');
+		assert.ok(Date.now() - started >= 35, 'and must actually have waited for the bound');
 	} finally {
+		release();
+		await hung;
 		delete process.env['FONDERIE_BACKGROUND_TASKS'];
 		delete process.env['FONDERIE_BACKGROUND_TIMEOUT_MS'];
 	}
@@ -84,9 +93,13 @@ test('a platform runner (waitUntil) takes over and does not delay the response',
 	try {
 		process.env['FONDERIE_BACKGROUND_TASKS'] = 'await';
 		const started = Date.now();
-		await background(new Promise((r) => setTimeout(r, 200)));
-		assert.ok(Date.now() - started < 100, 'handed off, not awaited');
+		await background(new Promise<void>((r) => setTimeout(r, 50)));
+		assert.ok(Date.now() - started < 40, 'handed off, not awaited');
 		assert.equal(handed.length, 1);
+		// The point of a runner is that the work outlives the response — so it is
+		// still in flight here. Settle it before the test ends, or the runner
+		// reports the leftover as a failure once the loop drains.
+		await Promise.all(handed);
 	} finally {
 		setBackgroundRunner(null);
 		delete process.env['FONDERIE_BACKGROUND_TASKS'];
