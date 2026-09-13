@@ -7,6 +7,13 @@ import type { IEventMeta, IEventHandler, IEventRecord } from '../types';
 import { matchesPattern } from './pattern';
 import { computeEventHmac } from '../integrity';
 
+export interface IConsumerBacklog {
+	consumer: string;
+	waiting: number;
+	/** Age of the oldest waiting row, in minutes. */
+	oldestMinutes: number;
+}
+
 export interface IDeadLetter {
 	eventId: string;
 	consumer: string;
@@ -199,6 +206,34 @@ export class PGTransport implements IEventTransport {
 			  ORDER BY e.created_at DESC
 			  LIMIT $1`,
 			[limit],
+		);
+	}
+
+	/**
+	 * Waiting work, broken down BY CONSUMER — and the age of the oldest.
+	 *
+	 * A single total conflates queues that have nothing to do with each other:
+	 * every consumer subscribed to this bus shares one table, so a job parked
+	 * for a worker you deliberately do not deploy is indistinguishable from a
+	 * notification nobody delivered. Same number, opposite meanings.
+	 *
+	 * The age matters as much as the count. "1 waiting" is a consumer that is
+	 * briefly behind; "1 waiting, 200 minutes old" is a customer who is never
+	 * getting their result.
+	 */
+	async pendingByConsumer(): Promise<IConsumerBacklog[]> {
+		if (!this.store) return [];
+		return this.store.query<IConsumerBacklog>(
+			`SELECT c.consumer, count(*)::int AS waiting,
+			        coalesce(
+			          round(extract(epoch FROM now() - min(e.created_at)) / 60)::int,
+			          0
+			        ) AS "oldestMinutes"
+			   FROM fonderie_event_consumers c
+			   JOIN fonderie_events e ON e.id = c.event_id
+			  WHERE c.status IN ('pending', 'failed')
+			  GROUP BY c.consumer
+			  ORDER BY c.consumer`,
 		);
 	}
 

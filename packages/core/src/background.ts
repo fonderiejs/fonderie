@@ -83,3 +83,38 @@ export async function background(work: Promise<unknown> | undefined): Promise<vo
 	]);
 	if (timer) clearTimeout(timer);
 }
+
+/**
+ * Wire the platform's "keep this instance alive until the work settles"
+ * primitive, when the platform has one.
+ *
+ * Every serverless deployment needs this and none of it is app-specific, so
+ * apps should not be discovering it. Without it `background()` falls back to
+ * awaiting inside the request, which is correct but charges the user's signup
+ * for someone else's email; with it the response returns immediately and the
+ * work still finishes.
+ *
+ * Returns whether a runner was installed, so a caller can log which mode it is
+ * in. Safe to call unconditionally and more than once: it is a no-op off a
+ * serverless platform, and a failed import simply leaves the default
+ * behaviour in place — not being on Vercel is not an error.
+ */
+export async function installPlatformBackgroundRunner(): Promise<boolean> {
+	if (!isServerlessRuntime()) return false;
+	try {
+		// The specifier is built at runtime ON PURPOSE. core must not take a
+		// vendor dependency, and a literal here would make TypeScript resolve
+		// "@vercel/functions" at build time and fail in every project that does
+		// not install it — which is most of them.
+		const specifier = ['@vercel', 'functions'].join('/');
+		const mod = (await import(specifier)) as {
+			waitUntil?: (work: Promise<unknown>) => void;
+		};
+		if (typeof mod.waitUntil !== 'function') return false;
+		const waitUntil = mod.waitUntil;
+		setBackgroundRunner((work) => waitUntil(work));
+		return true;
+	} catch {
+		return false;
+	}
+}

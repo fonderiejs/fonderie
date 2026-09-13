@@ -23,6 +23,8 @@ function mount<T extends ExpressApp>(app: T, fonderie: FonderieApp, register?: (
 
 function cors(options?: CorsOptions | undefined): (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => void
 
+function drainQueue(bus: IDrainable, options?: IDrainQueueOptions): RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>
+
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
 type ExpressRequest = IncomingMessage & {
@@ -37,4 +39,15 @@ type ExpressNext = (err?: unknown) => void;
 const DEFAULT_MAX_BODY_BYTES: number
 
 function requireAuth(req: ExpressRequest, res: ExpressResponse, next: ExpressNext): Promise<void>
+
+interface IDrainable {
+    drain(options?: {
+        maxMs?: number;
+    }): Promise<void>;
+}
+
+interface IDrainQueueOptions {
+    maxMs?: number;
+    onError?: (error: unknown) => void;
+}
 ```

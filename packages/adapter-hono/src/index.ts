@@ -2,6 +2,7 @@ import type { Context, MiddlewareHandler } from 'hono';
 import type { Hono } from 'hono';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
+import { background } from '@fonderie/core';
 import {
 	requireAuth as _requireAuth,
 	resolveClientIp,
@@ -255,5 +256,78 @@ export function cors(options?: CorsOptions): MiddlewareHandler {
 		for (const [k, v] of Object.entries(corsHeaders)) {
 			c.res.headers.set(k, v);
 		}
+	};
+}
+
+// ── Draining the outbox where nothing else can ─────────────────────
+//
+// On a long-running host the events transport LISTENs and delivers in
+// milliseconds, and this is unnecessary. On serverless there is no such
+// process: a poll loop never returns, and LISTEN is rejected outright by a
+// transaction-mode pooler — so work is published durably and then nobody
+// consumes it. Nothing looks broken; the mail simply never arrives.
+//
+// So the API consumes what it produced, after its own response. Never before:
+// draining first would make every caller wait on somebody else's work.
+//
+// Safe by construction. The row is already durable, so a drain that is
+// skipped, cut short, or loses its instance costs latency and nothing else —
+// the next one resumes where it stopped, and concurrent drains claim
+// exclusively. One drain is in flight per instance; the rest join it.
+//
+//   app.use(drainQueue(events.bus))
+
+/** Structural — the adapter takes no dependency on @fonderie/events. */
+export interface IDrainable {
+	drain(options?: { maxMs?: number }): Promise<void>;
+}
+
+export interface IDrainQueueOptions {
+	/**
+	 * Bound on one drain pass. Keep it comfortably under the platform's
+	 * function timeout: this runs inside the same invocation as the response,
+	 * so it spends the same budget.
+	 */
+	maxMs?: number;
+	/** Defaults to console.error with the diagnosis the drain returned. */
+	onError?: (error: unknown) => void;
+}
+
+function createDrainRunner(bus: IDrainable, options: IDrainQueueOptions = {}) {
+	const maxMs = options.maxMs ?? 10_000;
+	// Coalesce: several concurrent responses should join ONE drain, not start
+	// one each. Cross-instance concurrency is safe regardless — claims are
+	// exclusive — this just avoids pointless work inside a single instance.
+	let inFlight: Promise<void> | null = null;
+	return () => {
+		if (!inFlight) {
+			inFlight = bus
+				.drain({ maxMs })
+				.catch((err) => {
+					if (options.onError) options.onError(err);
+					else console.error('[fonderie] queue drain failed:', describeDrainError(err));
+				})
+				.finally(() => {
+					inFlight = null;
+				});
+		}
+		return inFlight;
+	};
+}
+
+// Kept local so the adapter does not depend on @fonderie/events just to
+// phrase an error. Mirrors explainDrainFailure() there.
+function describeDrainError(err: unknown): string {
+	const message = err instanceof Error ? err.message : String(err);
+	return /(column|relation) .* does not exist/i.test(message)
+		? `${message} — this deployment is ahead of its migrations. Run them against this database; queued work is durable and delivers once they land.`
+		: message;
+}
+
+export function drainQueue(bus: IDrainable, options: IDrainQueueOptions = {}): MiddlewareHandler {
+	const run = createDrainRunner(bus, options);
+	return async (_c, next) => {
+		await next();
+		void background(run());
 	};
 }

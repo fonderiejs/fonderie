@@ -3,7 +3,8 @@ export { EventsModule } from './module';
 export type { IEventsConfig, EventTransportConfig } from './module';
 
 export { MemoryTransport, PGTransport } from './transports';
-export type { IEventTransport, IPGTransportConfig, IDeadLetter } from './transports';
+export { explainDrainFailure } from './diagnose';
+export type { IEventTransport, IPGTransportConfig, IDeadLetter, IConsumerBacklog } from './transports';
 
 export { matchesPattern } from './transports/pattern';
 

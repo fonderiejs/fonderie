@@ -137,3 +137,64 @@ export async function markMessageBounced(
 		[providerMessageId, reason],
 	);
 }
+
+export interface IMessageStats {
+	/** Successfully handed to the provider in the window. */
+	sent: number;
+	/** Rejected by the provider in the window. */
+	failed: number;
+	/**
+	 * Logged but never resolved either way. Should be ~0; a growing number
+	 * means sends are being started and abandoned.
+	 */
+	pending: number;
+	sentAt: Date | null;
+	failedAt: Date | null;
+	/** The most recent provider error, which is usually the whole diagnosis. */
+	lastError: string | null;
+}
+
+/**
+ * What actually happened to outbound messages, over the last `hours`.
+ *
+ * This is the ONLY record of whether a message was sent, and reading it is not
+ * optional for anyone who wants to know. A send failure is caught by the
+ * dispatcher and deliberately not rethrown — a bad address must not poison the
+ * event — so the event bus marks its row `processed` whether the message left
+ * or not. An SMTP rejection and a clean send are indistinguishable in the
+ * queue, and `deadLetters()` stays empty no matter how badly email is failing.
+ *
+ * Note `sent` means the provider ACCEPTED it. A provider that accepts and then
+ * bounces asynchronously (an unverified sending domain, typically) looks like
+ * success here; its dashboard is the source of truth for that.
+ */
+export async function messageStats(
+	store: IStoreAdapter,
+	options: { hours?: number } = {},
+): Promise<IMessageStats> {
+	const rows = await store.query<{
+		status: string;
+		count: string;
+		last: Date | null;
+		err: string | null;
+	}>(
+		`SELECT status, count(*)::text AS count, max(created_at) AS last,
+		        (array_agg(error ORDER BY created_at DESC)
+		           FILTER (WHERE error IS NOT NULL))[1] AS err
+		   FROM fonderie_message_log
+		  WHERE created_at > now() - make_interval(hours => $1)
+		  GROUP BY status`,
+		[options.hours ?? 24],
+	);
+	const of = (s: string) => rows.find((r) => r.status === s);
+	const sent = of('sent');
+	const failed = of('failed');
+	return {
+		sent: Number(sent?.count ?? 0),
+		failed: Number(failed?.count ?? 0),
+		pending: Number(of('pending')?.count ?? 0),
+		sentAt: sent?.last ? new Date(sent.last) : null,
+		failedAt: failed?.last ? new Date(failed.last) : null,
+		lastError: failed?.err ?? null,
+	};
+}
