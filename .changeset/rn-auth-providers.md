@@ -14,4 +14,8 @@ Also adds `resolveSocialButtons(providers, { isIOS })`, which encodes the rule o
 
 "Always show Apple on iOS" is the tempting shortcut and it is wrong — `POST /auth/apple/native` answers 501 when the API has no apple config, so the user opens the Apple sheet, authenticates with Face ID, and only then fails. A button that fails after the user commits is worse than one that never appeared, and the always-on version also hides the 4.8 misconfiguration until App Review finds it.
 
+On iOS the guideline is **enforced**, not merely reported: when Apple is unavailable, Google is suppressed too. "If we offer Google we must offer Apple" has a contrapositive — offering neither is compliant, offering Google alone is not — so the shipped binary is correct by construction rather than correct-if-someone-reads-a-warning. `appleGuidelineRisk` still reports the cause, because suppressing a button fixes the build and not the configuration. `enforceAppleGuideline: false` opts out for internal builds.
+
+Android is unaffected: the guideline is Apple's, so there the server decides alone.
+
 Pure and platform-argument-based, so the package still needs no `react-native` dependency.

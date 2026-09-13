@@ -20,7 +20,14 @@
 export interface ISocialButtons {
 	/** Render Sign in with Apple. */
 	apple: boolean;
-	/** Render Sign in with Google. */
+	/**
+	 * Render Sign in with Google.
+	 *
+	 * On iOS this is suppressed when Apple is unavailable — see
+	 * `enforceAppleGuideline`. Offering a third-party login without Apple is
+	 * what Guideline 4.8 forbids, so the compliant build is the one that offers
+	 * neither, not the one that offers Google and hopes.
+	 */
 	google: boolean;
 	/**
 	 * True when this iOS build would offer a third-party login with NO Apple
@@ -34,13 +41,33 @@ export interface ISocialButtons {
 
 export function resolveSocialButtons(
 	providers: readonly string[],
-	options: { isIOS: boolean },
+	options: {
+		isIOS: boolean;
+		/**
+		 * On iOS, suppress OTHER social logins when Apple is unavailable.
+		 * Default true, because it makes the shipped build compliant by
+		 * construction: Guideline 4.8 requires Sign in with Apple alongside
+		 * third-party logins, so offering neither is allowed and offering
+		 * Google alone is not.
+		 *
+		 * Set false only if you have a reason to ship the rejectable shape —
+		 * an internal build, or a review exemption. `appleGuidelineRisk` still
+		 * reports the situation either way.
+		 */
+		enforceAppleGuideline?: boolean;
+	},
 ): ISocialButtons {
 	const serverHasApple = providers.includes('apple');
 	const serverHasGoogle = providers.includes('google');
+	const enforce = options.enforceAppleGuideline ?? true;
+
+	// The risk is a property of the CONFIGURATION, so it is reported whether or
+	// not we act on it — suppressing the button fixes the build, not the cause.
+	const appleGuidelineRisk = options.isIOS && serverHasGoogle && !serverHasApple;
+
 	return {
 		apple: options.isIOS && serverHasApple,
-		google: serverHasGoogle,
-		appleGuidelineRisk: options.isIOS && serverHasGoogle && !serverHasApple,
+		google: serverHasGoogle && !(enforce && appleGuidelineRisk),
+		appleGuidelineRisk,
 	};
 }

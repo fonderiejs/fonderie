@@ -19,10 +19,34 @@ test('apple needs BOTH the platform and the server — never one alone', () => {
 	assert.equal(resolveSocialButtons(['email', 'apple'], ios).apple, true);
 });
 
-test('google follows the server alone — it runs on either platform', () => {
-	assert.equal(resolveSocialButtons(['email', 'google'], ios).google, true);
+test('google follows the server on Android, and the guideline on iOS', () => {
+	// Android: the guideline does not apply, so the server decides alone.
 	assert.equal(resolveSocialButtons(['email', 'google'], android).google, true);
 	assert.equal(resolveSocialButtons(['email'], ios).google, false);
+
+	// iOS with apple configured: both offered, which is the compliant shape.
+	assert.equal(resolveSocialButtons(['email', 'google', 'apple'], ios).google, true);
+});
+
+test('iOS: offering google without apple is SUPPRESSED, not merely warned about', () => {
+	// "if we offer google we must offer apple" — so when apple is unavailable
+	// the compliant build offers neither. Shipping google alone with a console
+	// warning is shipping a rejectable binary.
+	const r = resolveSocialButtons(['email', 'google'], ios);
+	assert.equal(r.google, false, 'google must not render on iOS without apple');
+	assert.equal(r.apple, false);
+	assert.equal(r.appleGuidelineRisk, true, 'the cause must still be reported');
+
+	// Android is unaffected — same server config, google still renders.
+	assert.equal(resolveSocialButtons(['email', 'google'], android).google, true);
+});
+
+test('the enforcement is escapable, deliberately', () => {
+	// An internal build or a review exemption may want the raw shape. The risk
+	// flag is unchanged: suppressing a button fixes the binary, not the config.
+	const r = resolveSocialButtons(['email', 'google'], { isIOS: true, enforceAppleGuideline: false });
+	assert.equal(r.google, true);
+	assert.equal(r.appleGuidelineRisk, true);
 });
 
 test('flags the Guideline 4.8 risk: iOS offering google with no apple', () => {
