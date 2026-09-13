@@ -36,9 +36,11 @@ interface IPoolConfig {
 
 new MigrationRunner(store: IStoreAdapter, migrationsDir: string): MigrationRunner
   .run(): Promise<void>
+  .pending(): Promise<string[]>
 
 new InternalMigrationRunner(store: IStoreAdapter, migrationsDir: string): InternalMigrationRunner
   .run(): Promise<void>
+  .pending(): Promise<string[]>
 
 function createMigrationsPath(importMetaUrl: string): string
 

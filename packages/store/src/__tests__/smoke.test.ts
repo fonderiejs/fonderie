@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import { sql } from '../sql';
 
@@ -255,4 +257,72 @@ test('assertProductionDbConfig: throws on ssl:false object config in production'
 		if (prev === undefined) delete process.env['NODE_ENV'];
 		else process.env['NODE_ENV'] = prev;
 	}
+});
+
+// ── pending migrations ────────────────────────────────────────────
+// The gap between "deployed" and "migrated" is invisible until some request
+// touches the new column. These make it a number instead.
+
+test('pending(): reports files the database has not applied', async () => {
+	const { MigrationRunner } = await import('../migrations/runner');
+	const dir = await import('node:fs/promises').then((fs) =>
+		fs.mkdtemp(join(tmpdir(), 'fonderie-mig-')),
+	);
+	const fs = await import('node:fs/promises');
+	for (const f of ['001_a.sql', '002_b.sql', '003_c.sql']) {
+		await fs.writeFile(join(dir, f), 'SELECT 1;');
+	}
+
+	const store = {
+		query: async <T>(sql: string): Promise<T[]> => {
+			if (sql.includes('SELECT name FROM fonderie_migrations')) {
+				return [{ name: '001_a.sql' }] as T[]; // only the first was applied
+			}
+			return [] as T[];
+		},
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
+	};
+
+	const pending = await new MigrationRunner(store as never, dir).pending();
+	assert.deepEqual(pending, ['002_b.sql', '003_c.sql']);
+	await fs.rm(dir, { recursive: true, force: true });
+});
+
+test('pending(): a database with NO migrations table has everything pending', async () => {
+	// This is the state a brand-new deployment is in, and the one where the
+	// answer matters most — it must not throw, because a health route calls it.
+	const { MigrationRunner } = await import('../migrations/runner');
+	const fs = await import('node:fs/promises');
+	const dir = await fs.mkdtemp(join(tmpdir(), 'fonderie-mig-'));
+	await fs.writeFile(join(dir, '001_a.sql'), 'SELECT 1;');
+
+	const store = {
+		query: async () => {
+			throw new Error('relation "fonderie_migrations" does not exist');
+		},
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
+	};
+
+	assert.deepEqual(await new MigrationRunner(store as never, dir).pending(), ['001_a.sql']);
+	await fs.rm(dir, { recursive: true, force: true });
+});
+
+test('pending(): applies nothing — it is safe on the request path', async () => {
+	const { MigrationRunner } = await import('../migrations/runner');
+	const fs = await import('node:fs/promises');
+	const dir = await fs.mkdtemp(join(tmpdir(), 'fonderie-mig-'));
+	await fs.writeFile(join(dir, '001_a.sql'), 'SELECT 1;');
+
+	const seen: string[] = [];
+	const store = {
+		query: async <T>(sql: string): Promise<T[]> => {
+			seen.push(sql);
+			return [] as T[];
+		},
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
+	};
+	await new MigrationRunner(store as never, dir).pending();
+
+	const wrote = seen.some((q) => /CREATE TABLE|INSERT INTO|ALTER TABLE/i.test(q));
+	assert.equal(wrote, false, 'pending() must not create or modify anything');
 });
