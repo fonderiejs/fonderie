@@ -61,6 +61,34 @@ export class MigrationRunner {
 		}
 	}
 
+	/**
+	 * Which migrations this database has NOT applied yet — without applying
+	 * anything.
+	 *
+	 * A deployment routinely goes live ahead of its migrations, because they
+	 * run out of band: publishing keeps working, and the gap only surfaces when
+	 * some request happens to touch the new column or table. The symptom then
+	 * looks nothing like the cause — a queue that will not drain, an OAuth
+	 * callback that hangs, a health route that 500s — and each one gets
+	 * diagnosed separately.
+	 *
+	 * Exposing the gap turns that into a number a health route can report
+	 * BEFORE anything fails. Read-only and safe to call on the request path.
+	 *
+	 * A missing migrations table means nothing has ever been applied here, so
+	 * every file is pending — that is the answer, not an error.
+	 */
+	async pending(): Promise<string[]> {
+		const files = await this.getFiles();
+		let applied: Set<string>;
+		try {
+			applied = await this.getApplied();
+		} catch {
+			return files;
+		}
+		return files.filter((f) => !applied.has(f));
+	}
+
 	private async ensureTable(): Promise<void> {
 		await this.store.query(`
 			CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
