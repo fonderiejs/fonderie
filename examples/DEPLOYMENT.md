@@ -54,6 +54,47 @@ The default export per framework:
 > Expect a slow first request after idle. For sustained traffic prefer a
 > long-running host (see Docker below).
 
+### If the app sends email (or anything else off the request path)
+
+An instance is frozen the moment it responds, so work left running after the
+response is abandoned — the user is told to check their email and nothing was
+ever sent. Register `EventsModule` with the **Postgres** transport, in
+producer-only mode, so the send is a durable row written inside the request:
+
+```ts
+new PGTransport({ connectionUrl, consume: false })
+```
+
+`consume: false` matters: a consumer would open a `LISTEN` connection, which a
+transaction-mode pooler rejects, plus a poll loop the invocation cannot host.
+
+Something must then deliver it. With no long-running process anywhere, the app
+consumes its own queue after each response:
+
+```ts
+// once at boot — Vercel keeps the instance alive until the work settles,
+// so the drain costs the caller nothing
+const { waitUntil } = await import('@vercel/functions');
+setBackgroundRunner((work) => waitUntil(work));
+
+app.use((_req, res, next) => {
+  res.on('finish', () => void background(bus.drain({ maxMs: 10_000 })));
+  next();
+});
+```
+
+Safe by construction: the row is already durable, so a drain that is skipped or
+cut short costs latency only — the next one resumes where it stopped, and
+concurrent drains claim exclusively. Run `bus.start()` instead wherever a
+worker or container is available; it delivers in milliseconds. Add a scheduled
+ping that drains as a backstop, and surface `deadLetters()`/`pendingCount()`
+somewhere, since a queue that has stopped delivering looks exactly like an
+empty one.
+
+One footgun: consumer rows are written by the **publisher**, from its own
+subscriptions. Register courier (and anything else consuming) on the producing
+process too, or its events are owed to nobody and can never be delivered.
+
 ## Docker / any Node host
 
 `index.ts` is a normal long-running server, so any container or VM works:

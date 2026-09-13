@@ -18,6 +18,7 @@ status                   TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pend
 attempts                 INT NOT NULL DEFAULT 0
 error                    TEXT
 processed_at             TIMESTAMPTZ
+claimed_at               TIMESTAMPTZ
 -- PRIMARY KEY (event_id, consumer)
 ```
 
