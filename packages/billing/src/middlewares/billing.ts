@@ -159,7 +159,7 @@ export function withBilling(
 						// opt-out via config.notifications.creditsLow (default on).
 						await background(bus?.emit(EVENT_KEYS.walletLowBalance, fields));
 						if (config.notifications?.creditsLow !== false) {
-							void notifyBilling(bus, config, {
+							await background(notifyBilling(bus, config, {
 								subscriberType: subscriber.type,
 								subscriberId: subscriber.id,
 								type: MESSAGE_KEYS.creditsLow,
@@ -175,7 +175,7 @@ export function withBilling(
 										planWallet.precision ?? 2,
 									),
 								},
-							});
+							}));
 						}
 					}
 				}

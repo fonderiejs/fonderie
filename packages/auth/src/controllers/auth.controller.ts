@@ -245,7 +245,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 				const user = await users.findByEmail(email);
 				if (!user || !user.passwordHash) {
-					loginEvents.recordSafe({
+					await loginEvents.recordSafe({
 						userId: null,
 						emailAttempted: email,
 						method: 'password',
@@ -262,7 +262,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					config.legacyVerify,
 				);
 				if (!valid) {
-					loginEvents.recordSafe({
+					await loginEvents.recordSafe({
 						userId: user.id,
 						emailAttempted: email,
 						method: 'password',
@@ -301,7 +301,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					loginMethod: 'email',
 				});
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
-				loginEvents.recordSafe({
+				await loginEvents.recordSafe({
 					userId: user.id,
 					emailAttempted: email,
 					method: 'password',

@@ -74,8 +74,8 @@ export function mfaController(
 			// login history; enrollment confirmation is not a login attempt.
 			const isLoginCompletion = ctx.user!.mfaPending === true;
 			const meta = requestMeta(ctx);
-			const failedMfa = () =>
-				loginEvents.recordSafe({
+			const failedMfa = async () =>
+				await loginEvents.recordSafe({
 					userId: ctx.user!.id,
 					emailAttempted: ctx.user!.email,
 					method: 'mfa',
@@ -132,7 +132,7 @@ export function mfaController(
 				const matched = checks.find((r) => r.match);
 
 				if (!matched) {
-					if (isLoginCompletion) failedMfa();
+					if (isLoginCompletion) await failedMfa();
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid backup code');
 				}
 
@@ -152,7 +152,7 @@ export function mfaController(
 				}
 				const secret = mfaCipher.decrypt(storedSecret);
 				if (!verifyTotpToken(token, secret)) {
-					if (isLoginCompletion) failedMfa();
+					if (isLoginCompletion) await failedMfa();
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
 				}
 				if (!ctx.user!.mfaEnabled) {
@@ -166,7 +166,7 @@ export function mfaController(
 			});
 			await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
 			if (isLoginCompletion) {
-				loginEvents.recordSafe({
+				await loginEvents.recordSafe({
 					userId: ctx.user!.id,
 					emailAttempted: ctx.user!.email,
 					method: 'mfa',
