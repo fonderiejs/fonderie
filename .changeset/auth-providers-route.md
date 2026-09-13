@@ -1,5 +1,8 @@
 ---
 '@fonderie/auth': minor
+'@fonderie/client': minor
+'@fonderie/react-auth': minor
+'@fonderie/vue-auth': minor
 ---
 
 Add `GET /auth/providers` — which sign-in methods this deployment can actually honour.
@@ -11,3 +14,7 @@ Returns exactly `{ providers: [...] }` from the module's own config — nothing 
 Apps were hand-writing this. Doing so means re-reading the same environment variables auth already reads, in a second place, with a second chance to disagree — and naming it `/config`, which collides conceptually with `@fonderie/config` (operator-set feature flags and secrets, a different thing entirely).
 
 Overridable through `config.routes.providers` like every other auth route.
+
+Ships with the whole path, because a route a frontend cannot reach is not a feature: `client.auth.providers()` on the typed client, `useAuthProviders()` in react-auth, and the matching composable in vue-auth (react-native-auth re-exports react-auth's).
+
+Both hooks start EMPTY rather than optimistic, and fall back to empty on error. A brief moment with no social buttons is invisible; a button that appears and then fails is not — and an unreachable API is not evidence that Google works.
