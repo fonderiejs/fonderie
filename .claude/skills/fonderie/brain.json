@@ -70,7 +70,7 @@
     "vue-webhooks-screens": "0.3.0",
     "vue-workspaces": "0.7.0",
     "vue-workspaces-screens": "0.4.0",
-    "webhooks": "5.3.5",
+    "webhooks": "5.4.0",
     "workspaces": "6.0.7"
   },
   "packages": {
@@ -2088,7 +2088,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "5.3.5",
+      "version": "5.4.0",
       "stability": "stable",
       "requires": [
         "core",
