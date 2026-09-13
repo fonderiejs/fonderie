@@ -67,6 +67,19 @@ unmatchable by the probe itself.
 Polling for a deploy, a published version, a migration, or a status field:
 name the value you expect. A leftover from an earlier run satisfies "changed".
 
+**And the expected value must come from a source that has already advanced.**
+Reading it from a file the pending change has not yet touched compares the
+value against itself, which passes instantly and proves nothing:
+
+```
+WANT=$(cat version)     # still the OLD version — the release has not run
+poll_until "$WANT"      # matches immediately, reports success, nothing shipped
+```
+
+Pull, merge, or otherwise land the change first, *then* read the target. If the
+check can pass before the work happens, it is not a check. I hit this variant
+immediately after fixing the one above it — the shape survives the fix.
+
 ### 5. The metric that measures the wrong thing
 
 Before trusting a number, ask which table or source it actually comes from and
