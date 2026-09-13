@@ -145,6 +145,8 @@ export {
 	isWithinDunningGrace,
 } from './services/subscriptions';
 export { maybeAutoRecharge } from './services/auto-recharge';
+export { webhookStats } from './services/provider-health';
+export type { IProviderWebhookStats } from './services/provider-health';
 export {
 	upsertWalletCustomer,
 	claimAutoRecharge,
