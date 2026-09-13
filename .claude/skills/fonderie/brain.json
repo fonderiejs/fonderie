@@ -12,7 +12,7 @@
     "core": "0.14.1",
     "courier": "7.0.5",
     "customers": "6.2.4",
-    "events": "5.2.0",
+    "events": "5.2.1",
     "geo": "0.2.3",
     "logger": "0.3.0",
     "media": "0.2.8",
@@ -941,7 +941,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.2.0",
+      "version": "5.2.1",
       "stability": "maturing",
       "requires": [
         "core",
