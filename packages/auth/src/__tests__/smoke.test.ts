@@ -252,6 +252,7 @@ const BASE_USER: IUser = {
 	mfaEnabled: false,
 	passwordHash: null,
 	emailVerifiedAt: new Date('2024-01-02T00:00:00Z'),
+	provider: null,
 };
 
 const { refreshToken: VALID_RT } = issueTokenPair('user-1', config, { loginMethod: 'email' });
@@ -270,6 +271,8 @@ type AuthStoreOpts = {
 	userByPhone?: IUser | null;
 	userById?: IUser | null;
 	insertedId?: string;
+	// upsertByProvider's richer row: which of new-signup / link / plain login.
+	upsertResult?: { id: string; inserted: boolean; previousProvider: string | null };
 	sessionExists?: boolean;
 	resetRow?: { user_id: string; expires_at: Date } | null;
 	resetTokenRow?: { user_id: string; expires_at: Date } | null;
@@ -287,6 +290,17 @@ type AuthStoreOpts = {
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// INSERT is matched FIRST and deliberately: upsertByProvider reads the
+			// pre-insert row in a CTE, so its SQL also contains 'WHERE email = $1'
+			// and a lookup branch above would swallow it — returning no row and
+			// turning every OAuth login into a 500.
+			if (sql.includes('INSERT INTO fonderie_users'))
+				return (opts.upsertResult
+					? [opts.upsertResult]
+					: opts.insertedId
+						? [{ id: opts.insertedId }]
+						: []) as unknown as T[];
+
 			if (sql.includes('fonderie_users') && sql.includes('WHERE email = $1'))
 				return (opts.userByEmail != null ? [opts.userByEmail] : []) as unknown as T[];
 
@@ -299,9 +313,6 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 				sql.includes('deleted_at IS NULL')
 			)
 				return (opts.userById != null ? [opts.userById] : []) as unknown as T[];
-
-			if (sql.includes('INSERT INTO fonderie_users'))
-				return (opts.insertedId ? [{ id: opts.insertedId }] : []) as unknown as T[];
 
 			if (sql.includes('fonderie_sessions') && sql.includes('SELECT id'))
 				return (opts.sessionExists ? [{ id: 'sess-1' }] : []) as unknown as T[];
@@ -366,13 +377,18 @@ function makeCtx(
 		workspace?: { id: string } | null;
 		cookie?: string;
 		ip?: string;
+		params?: Record<string, string>;
 	} = {},
 ): any {
 	return {
 		user: 'user' in opts ? opts.user : null,
 		workspace: 'workspace' in opts ? opts.workspace : null,
 		tenant: null,
-		meta: { body: opts.body ?? {}, ...(opts.ip ? { clientIp: opts.ip } : {}) },
+		meta: {
+			body: opts.body ?? {},
+			params: opts.params ?? {},
+			...(opts.ip ? { clientIp: opts.ip } : {}),
+		},
 		request: new Request('http://localhost/', {
 			headers: opts.cookie ? { cookie: opts.cookie } : {},
 		}),
@@ -413,6 +429,23 @@ test('toUserDTO: maps all fields correctly', async () => {
 	assert.equal(dto.preferences.emailDigest, 'immediate');
 	assert.equal(dto.preferences.notifications.email, true);
 	assert.equal(dto.preferences.notifications.sms, false);
+});
+
+test('toUserDTO: surfaces provider and hasPassword, never the hash', async () => {
+	const { toUserDTO } = await import('../dtos/user');
+	// A settings screen needs both to render sign-in methods: `provider` to show
+	// the connection, `hasPassword` to know whether removing it is allowed.
+	const linked = toUserDTO({ ...BASE_USER, provider: 'google', passwordHash: HASHED_PW });
+	assert.equal(linked.provider, 'google');
+	assert.equal(linked.hasPassword, true);
+	assert.ok(!('passwordHash' in linked), 'the hash must never reach a DTO');
+	assert.ok(!JSON.stringify(linked).includes(HASHED_PW));
+
+	const oauthOnly = toUserDTO({ ...BASE_USER, provider: 'google', passwordHash: null });
+	assert.equal(oauthOnly.hasPassword, false, 'unlinking would lock this account out');
+
+	const plain = toUserDTO({ ...BASE_USER, provider: null, passwordHash: HASHED_PW });
+	assert.equal(plain.provider, '', 'no provider reads as empty, not the string "null"');
 });
 
 test('toUserDTO: ipWhitelist and lastLogin are passed through', async () => {
@@ -1874,6 +1907,99 @@ function makeBus() {
 	};
 }
 
+// ── OAuth signup side effects ─────────────────────────────────────
+//
+// An OAuth upsert looks identical for a first-time signup and a returning
+// login — both just return a user id. These pin down that the controller tells
+// them apart, because getting it wrong is silent in both directions: miss the
+// signup case and subscribers never provision (workspaces creates the personal
+// workspace off user.registered, so OAuth users got none); miss the
+// returning-login case and every single sign-in emails the user.
+
+test('googleCallback (new account): emits user.registered so subscribers provision', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const bus = makeBus();
+	const ctrl = oauthController(
+		makeStore({
+			upsertResult: { id: 'user-1', inserted: true, previousProvider: null },
+			userById: BASE_USER,
+		}),
+		GOOGLE_CONFIG,
+		bus as any,
+	);
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+
+	const reg = bus.emitted.find((e) => e.type === EVENT_KEYS.userRegistered);
+	assert.ok(reg, 'a first OAuth sign-in IS a registration — user.registered must fire');
+	const p = reg!.payload as any;
+	assert.equal(p.userId, 'user-1');
+	assert.equal(p.loginMethod, 'google');
+
+	const notice = bus.emitted.find(
+		(e) => (e.payload as any)?.type === MESSAGE_KEYS.oauthRegistration,
+	);
+	assert.ok(notice, 'a new OAuth account gets a welcome');
+	assert.equal((notice!.payload as any).data.provider, 'Google');
+});
+
+test('googleCallback (returning user, same provider): emits nothing', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const bus = makeBus();
+	const ctrl = oauthController(
+		makeStore({
+			upsertResult: { id: 'user-1', inserted: false, previousProvider: 'google' },
+			userById: BASE_USER,
+		}),
+		GOOGLE_CONFIG,
+		bus as any,
+	);
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+	assert.equal(bus.emitted.length, 0, 'an ordinary sign-in must not notify or re-register');
+});
+
+test('googleCallback (existing password account): emits the link notice, not a registration', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const bus = makeBus();
+	const ctrl = oauthController(
+		makeStore({
+			upsertResult: { id: 'user-1', inserted: false, previousProvider: null },
+			userById: BASE_USER,
+		}),
+		GOOGLE_CONFIG,
+		bus as any,
+	);
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+
+	assert.ok(
+		!bus.emitted.some((e) => e.type === EVENT_KEYS.userRegistered),
+		'linking a provider to an existing account is not a new registration',
+	);
+	const notice = bus.emitted.find((e) => (e.payload as any)?.type === MESSAGE_KEYS.oauthLinked);
+	assert.ok(notice, 'gaining a new way to sign in is a security event for the owner');
+	assert.equal((notice!.payload as any).data.provider, 'Google');
+	assert.equal((notice!.payload as any).recipient.email, 'jane@example.com');
+});
+
+test('googleCallback: no bus — no error thrown', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const ctrl = oauthController(
+		makeStore({
+			upsertResult: { id: 'user-1', inserted: true, previousProvider: null },
+			userById: BASE_USER,
+		}),
+		GOOGLE_CONFIG,
+	);
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+});
+
 test('register (email): emits user.registered with correct payload', async () => {
 	const bus = makeBus();
 	const ctrl = makeAuth({ insertedId: 'user-1', userById: BASE_USER }, bus);
@@ -1907,6 +2033,75 @@ test('register (phone): emits user.registered with loginMethod: phone', async ()
 	assert.ok(reg, 'user.registered must be emitted');
 	const p = reg!.payload as any;
 	assert.equal(p.loginMethod, 'phone');
+});
+
+// ── unlinkOauth ───────────────────────────────────────────────────
+//
+// Disconnecting a provider is the one settings toggle that can lock a user out
+// of their own account: an account created BY Google has no password, so
+// removing Google removes the only credential. The guard lives in the UPDATE's
+// WHERE clause, not in a prior read, so a password cannot vanish in between.
+
+// A store whose clearProvider UPDATE reports whether a row changed, and whose
+// findById returns an account linked to `provider`.
+function makeUnlinkStore(opts: { provider: string | null; cleared: boolean }): IStoreAdapter {
+	return {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('UPDATE fonderie_users') && sql.includes('provider = NULL'))
+				return (opts.cleared ? [{ id: 'user-1' }] : []) as unknown as T[];
+			if (sql.includes('fonderie_users') && sql.includes('WHERE id = $1'))
+				return [{ ...BASE_USER, provider: opts.provider }] as unknown as T[];
+			return [] as T[];
+		},
+	} as unknown as IStoreAdapter;
+}
+
+test('unlinkOauth: 409 when the provider is the only way in (no password)', async () => {
+	const bus = makeBus();
+	// cleared: false — the UPDATE matched nothing because password_hash IS NULL.
+	const ctrl = userController(makeUnlinkStore({ provider: 'google', cleared: false }), config, bus as any);
+	const response = await ctrl.unlinkOauth(
+		makeCtx({ user: { id: 'user-1', email: 'jane@example.com' }, params: { provider: 'google' } }),
+	);
+	assert.equal(response.status, 409);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'PASSWORD_REQUIRED');
+	assert.equal(bus.emitted.length, 0, 'nothing changed, so nothing is announced');
+});
+
+test('unlinkOauth: 200 and notifies the account owner when it succeeds', async () => {
+	const bus = makeBus();
+	const ctrl = userController(makeUnlinkStore({ provider: 'google', cleared: true }), config, bus as any);
+	const response = await ctrl.unlinkOauth(
+		makeCtx({ user: { id: 'user-1', email: 'jane@example.com' }, params: { provider: 'google' } }),
+	);
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'OAUTH_UNLINKED');
+
+	const notice = bus.emitted.find((e) => (e.payload as any)?.type === MESSAGE_KEYS.oauthUnlinked);
+	assert.ok(notice, 'removing a sign-in method is a security event for the owner');
+	assert.equal((notice!.payload as any).data.provider, 'google');
+	assert.equal((notice!.payload as any).recipient.email, 'jane@example.com');
+});
+
+test('unlinkOauth: 404 when the account has no provider linked', async () => {
+	const ctrl = userController(makeUnlinkStore({ provider: null, cleared: false }), config);
+	const response = await ctrl.unlinkOauth(
+		makeCtx({ user: { id: 'user-1', email: 'jane@example.com' }, params: { provider: 'google' } }),
+	);
+	assert.equal(response.status, 404);
+	assert.equal(((await response.json()) as any).reason, 'NOT_LINKED');
+});
+
+test('unlinkOauth: 404 when asked to remove a provider this account is not on', async () => {
+	// Prevents a stale settings screen from unlinking Google by clicking "remove Apple".
+	const ctrl = userController(makeUnlinkStore({ provider: 'google', cleared: true }), config);
+	const response = await ctrl.unlinkOauth(
+		makeCtx({ user: { id: 'user-1', email: 'jane@example.com' }, params: { provider: 'apple' } }),
+	);
+	assert.equal(response.status, 404);
+	assert.equal(((await response.json()) as any).reason, 'NOT_LINKED');
 });
 
 test('deleteMe: emits user.deleted with correct userId', async () => {
