@@ -73,9 +73,12 @@ export async function background(work: Promise<unknown> | undefined): Promise<vo
 	await Promise.race([
 		settled,
 		new Promise<void>((resolve) => {
+			// NOT unref'd: when the work never settles, this timer is the only
+			// thing keeping the loop alive, and an unref'd one lets the process
+			// drain before it fires — so the bound silently would not exist.
+			// The clearTimeout below is what keeps it from holding a
+			// long-running host open once the work wins the race.
 			timer = setTimeout(resolve, resolveTimeoutMs());
-			// Don't hold the event loop open on a long-running host.
-			timer.unref?.();
 		}),
 	]);
 	if (timer) clearTimeout(timer);
