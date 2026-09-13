@@ -1,7 +1,7 @@
 {
 	"name": "example-mobile-api",
 	"version": "1.0.0",
-	"description": "Fonderie backend that speaks the SaaS Starter's REST contract \u2014 auth, teams, billing, projects",
+	"description": "Fonderie backend that speaks the SaaS Starter's REST contract — auth, teams, billing, projects",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -12,17 +12,17 @@
 		"migrate": "tsx --env-file=.env migrate.ts"
 	},
 	"dependencies": {
-		"hono": "^4.7.11",
+		"@fonderie/adapter-hono": "^6.1.3",
+		"@fonderie/audit": "^5.1.8",
+		"@fonderie/auth": "^7.3.5",
+		"@fonderie/billing": "^9.1.5",
+		"@fonderie/core": ">=0.14.0",
+		"@fonderie/courier": "^7.0.5",
+		"@fonderie/events": "^5.2.0",
+		"@fonderie/store": "^0.3.0",
+		"@fonderie/workspaces": "^6.0.7",
 		"@hono/node-server": "^1.13.7",
-		"@fonderie/adapter-hono": "^5.0.0",
-		"@fonderie/audit": "^5.0.0",
-		"@fonderie/auth": "^5.0.0",
-		"@fonderie/billing": "^7.2.1",
-		"@fonderie/core": "^0.7.0",
-		"@fonderie/courier": "^5.0.0",
-		"@fonderie/events": "^5.0.0",
-		"@fonderie/store": "^0.2.2",
-		"@fonderie/workspaces": "^5.1.0",
+		"hono": "^4.7.11",
 		"stripe": "^22.6.0"
 	},
 	"devDependencies": {
