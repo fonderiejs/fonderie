@@ -329,6 +329,14 @@ function useLoginHistory(rawFilters?: IGetLoginHistoryInput | undefined): IUseLo
 
 function useSessions(client?: AuthClient | undefined): IUseSessionsReturn
 
+function resolveSocialButtons(providers: readonly string[], options: { isIOS: boolean; }): ISocialButtons
+
+interface ISocialButtons {
+    apple: boolean;
+    google: boolean;
+    appleGuidelineRisk: boolean;
+}
+
 function clearToken(): Promise<void>
 
 function persistToken(token: string): Promise<void>

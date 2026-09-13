@@ -9,3 +9,9 @@ Add `useAuthProviders()` — react-auth shipped it, this package did not.
 On native this is the hook that decides whether to render Sign in with Apple at all. Apple's Guideline 4.8 makes that button's presence conditional on the other social options being offered, so guessing is an App Review risk as well as a broken button — and the server is the only side that knows which providers actually have credentials.
 
 Identical to the react-auth hook, since it carries no token storage.
+
+Also adds `resolveSocialButtons(providers, { isIOS })`, which encodes the rule once instead of in every app: Apple needs the platform AND the server, Google needs only the server, and an iOS build offering Google with no Apple is flagged as an App Store Guideline 4.8 risk.
+
+"Always show Apple on iOS" is the tempting shortcut and it is wrong — `POST /auth/apple/native` answers 501 when the API has no apple config, so the user opens the Apple sheet, authenticates with Face ID, and only then fails. A button that fails after the user commits is worse than one that never appeared, and the always-on version also hides the 4.8 misconfiguration until App Review finds it.
+
+Pure and platform-argument-based, so the package still needs no `react-native` dependency.

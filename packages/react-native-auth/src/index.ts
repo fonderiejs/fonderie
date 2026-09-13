@@ -61,4 +61,6 @@ export {
 
 // Token persistence primitives — for wiring app-level flows (e.g. the
 // client's auth.onTokensChanged) to the same storage the hooks use.
+export { resolveSocialButtons } from './social-buttons';
+export type { ISocialButtons } from './social-buttons';
 export { clearToken, persistToken, readToken, TOKEN_KEY } from './storage';
