@@ -16,7 +16,7 @@
 		"@fonderie/auth": "^7.0.1",
 		"@fonderie/core": ">=0.10.0",
 		"@fonderie/events": "^5.2.1",
-		"@fonderie/store": "^0.3.0"
+		"@fonderie/store": "^0.4.0"
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.2",
