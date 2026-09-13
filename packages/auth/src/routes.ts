@@ -38,7 +38,7 @@ export function buildAuthRoutes(
 ): RouteDefinition[] {
 	const user = userController(store, config, bus);
 	const auth = authController(store, config, bus);
-	const oauth = oauthController(store, config);
+	const oauth = oauthController(store, config, bus);
 	const mfa = mfaController(store, config, config.appName ?? 'Fonderie', bus);
 
 	// Opt-in verification gate: only enforces email/phone verification when
@@ -116,6 +116,10 @@ export function buildAuthRoutes(
 		R('updateEmail', 'PUT', '/users/email', requireAuth, verifyGate, validate(updateEmailSchema), user.updateEmail),
 		R('updatePhone', 'PUT', '/users/phone', requireAuth, verifyGate, validate(updatePhoneSchema), user.updatePhone),
 		R('changePassword', 'PUT', '/users/password', requireAuth, validate(changePasswordSchema), user.changePassword),
+		// Disconnect an OAuth provider. requireAuth only — the controller
+		// refuses when it would leave the account with no way to sign in.
+		R('unlinkOauth', 'DELETE', '/auth/oauth/:provider', requireAuth, user.unlinkOauth),
+
 		R('deleteMe', 'DELETE', '/users', requireAuth, verifyGate, user.deleteMe),
 		R('exportMe', 'GET', '/users/export', requireAuth, user.exportMe),
 

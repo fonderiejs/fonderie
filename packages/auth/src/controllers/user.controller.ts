@@ -325,6 +325,54 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			return setApiResponse(HTTP.OK, 'PASSWORD_CHANGED', 'Password updated successfully.');
 		},
 
+		/**
+		 * Remove an OAuth provider from the account.
+		 *
+		 * Refuses when the account has no password, because unlinking would
+		 * then leave NO way to sign in — that is account deletion, not a
+		 * settings toggle, and a user clicking "disconnect Google" is not
+		 * asking for it. The check is inside the UPDATE's WHERE clause, so a
+		 * password cannot disappear between the check and the write.
+		 *
+		 * Notifies the account's email either way: changing how an account can
+		 * be signed into is a security event for its owner, who is not
+		 * necessarily the person doing it.
+		 */
+		unlinkOauth: async (ctx: IFonderieContext): Promise<Response> => {
+			const provider = String((ctx.meta['params'] as Record<string, string>)?.['provider'] ?? '');
+			const current = await users.findById(ctx.user!.id);
+			if (!current?.provider) {
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_LINKED', 'No sign-in provider is linked.');
+			}
+			if (provider && provider.toLowerCase() !== current.provider.toLowerCase()) {
+				return setApiResponse(
+					HTTP.NOT_FOUND,
+					'NOT_LINKED',
+					`This account is not linked to ${provider}.`,
+				);
+			}
+
+			const removed = await users.clearProvider(ctx.user!.id);
+			if (!removed) {
+				return setApiResponse(
+					HTTP.CONFLICT,
+					'PASSWORD_REQUIRED',
+					'Set a password before disconnecting this provider — it is currently the only way to sign in.',
+				);
+			}
+
+			if (ctx.user!.email) {
+				await background(bus
+					?.emit(NOTIFICATION_EVENT, {
+						type: MESSAGE_KEYS.oauthUnlinked,
+						locale: ctx.user!.locale,
+						data: { provider: current.provider },
+						recipient: { email: ctx.user!.email, phone: null, deviceToken: null },
+					} satisfies ICourierMessage));
+			}
+			return setApiResponse(HTTP.OK, 'OAUTH_UNLINKED', 'Sign-in provider removed.');
+		},
+
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
 			const userId = ctx.user!.id;
 			await users.softDelete(userId);

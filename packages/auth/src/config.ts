@@ -63,6 +63,15 @@ export const MESSAGE_KEYS = {
 	mfaBackupCodesRegenerated: 'mfa-backup-codes-regenerated',
 	emailChanged: 'email-changed',
 	phoneChanged: 'phone-changed',
+	// Changing HOW an account can be signed into is a security event for the
+	// account's owner, who may not be the person doing it. Both directions are
+	// notified for the same reason password changes are.
+	// Welcome for an account CREATED by an OAuth sign-in. Distinct from
+	// emailRegistration, which carries a verification PIN — an OAuth signup
+	// arrives already verified by the provider and has nothing to confirm.
+	oauthRegistration: 'oauth-registration',
+	oauthLinked: 'oauth-linked',
+	oauthUnlinked: 'oauth-unlinked',
 } as const;
 
 export type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -130,7 +139,7 @@ export interface IDataExportContributor {
 
 // Stable ids for every auth route, for the `routes` path/method override map.
 export type AuthRouteId =
-	| 'providers'
+	| 'providers' | 'unlinkOauth'
 	| 'register' | 'login' | 'refresh'
 	| 'forgotPassword' | 'resetPassword'
 	| 'verifyEmail' | 'sendVerification'

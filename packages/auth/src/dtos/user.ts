@@ -15,6 +15,14 @@ export interface IUserDTO {
 	isEmailVerified: boolean;
 	isPhoneVerified: boolean;
 	mfaEnabled: boolean;
+	// OAuth provider linked to this account ('google', 'apple'), or '' if none.
+	provider: string;
+	// Whether a password is set. Together with `provider` this is everything a
+	// settings screen needs to render sign-in methods AND to know that
+	// disconnecting the provider is possible — an account with no password has
+	// no other credential, so unlinking is refused (409 PASSWORD_REQUIRED).
+	// Exposed as a boolean precisely so the hash never can be.
+	hasPassword: boolean;
 	suspended: boolean;
 	whitelist: boolean;
 	ipWhitelist: string[];
@@ -80,6 +88,8 @@ export function toUserDTO(user: IUser, phoneVerified = false): IUserDTO {
 		isEmailVerified: user.emailVerifiedAt !== null,
 		isPhoneVerified: phoneVerified,
 		mfaEnabled: booleanOrFalse(user.mfaEnabled),
+		provider: stringOrEmpty(user.provider),
+		hasPassword: user.passwordHash !== null && user.passwordHash !== undefined,
 		suspended: booleanOrFalse(user.suspended),
 		whitelist: booleanOrFalse(user.whitelist),
 		ipWhitelist: Array.isArray(user.ipWhitelist) ? user.ipWhitelist : [],

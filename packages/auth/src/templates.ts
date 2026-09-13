@@ -122,6 +122,44 @@ The phone number on your account was just updated.
 
 If you made this change, you're all set. If not, contact support right away — someone may have access to your account.`,
 	},
+
+	[MESSAGE_KEYS.oauthRegistration]: {
+		subject: 'Welcome to {{appName}}',
+		html: `<h1>Welcome to {{appName}}</h1>
+<p>Your account was created using <strong>{{provider}}</strong>. Sign in any time with the same {{provider}} account &mdash; there is no password to remember.</p>
+<p class="muted">If you did not create this account, contact support.</p>`,
+		text: `Welcome
+
+Your account was created using {{provider}}. Sign in any time with the same
+{{provider}} account — there is no password to remember.
+
+If you did not create this account, contact support.`,
+	},
+
+	[MESSAGE_KEYS.oauthLinked]: {
+		subject: 'A new sign-in method was added to your account',
+		html: `<h1>{{provider}} sign-in was added</h1>
+<p>Your account can now also be signed into with <strong>{{provider}}</strong>.</p>
+<p class="muted">If you did this, nothing more is needed. If not, contact support right away and change your password &mdash; someone else may be able to sign in as you.</p>`,
+		text: `{{provider}} sign-in was added
+
+Your account can now also be signed into with {{provider}}.
+
+If you did this, nothing more is needed. If not, contact support right away and
+change your password — someone else may be able to sign in as you.`,
+	},
+
+	[MESSAGE_KEYS.oauthUnlinked]: {
+		subject: 'A sign-in method was removed from your account',
+		html: `<h1>{{provider}} sign-in was removed</h1>
+<p><strong>{{provider}}</strong> can no longer be used to sign in. Your email and password still work.</p>
+<p class="muted">If you did this, you&rsquo;re all set. If not, contact support right away.</p>`,
+		text: `{{provider}} sign-in was removed
+
+{{provider}} can no longer be used to sign in. Your email and password still work.
+
+If you did this, you're all set. If not, contact support right away.`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplate>;
 
 // Representative payloads for the coverage test: every {{var}} a default uses
@@ -129,6 +167,9 @@ If you made this change, you're all set. If not, contact support right away — 
 // registration sample uses an empty firstName to prove the blank-name path
 // renders cleanly (the emitter may pass firstName: '').
 export const SAMPLE_PAYLOADS: Record<AuthMessageKey, Record<string, unknown>> = {
+	[MESSAGE_KEYS.oauthRegistration]: { provider: 'Google', appName: 'Fonderie' },
+	[MESSAGE_KEYS.oauthLinked]: { provider: 'Google' },
+	[MESSAGE_KEYS.oauthUnlinked]: { provider: 'Google' },
 	[MESSAGE_KEYS.emailRegistration]: { firstName: '', pin: '123456' },
 	[MESSAGE_KEYS.emailVerification]: { firstName: 'Ada', pin: '123456' },
 	[MESSAGE_KEYS.passwordReset]: {

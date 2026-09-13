@@ -29,6 +29,7 @@ const USER_COLUMNS = `
 	ip_whitelist       AS "ipWhitelist",
 	mfa_enabled        AS "mfaEnabled",
 	email_verified_at  AS "emailVerifiedAt",
+	provider,
 	deleted_at         AS "deletedAt",
 	created_at         AS "createdAt",
 	updated_at         AS "updatedAt"
@@ -121,6 +122,32 @@ export class UserModel {
 			values,
 		);
 		return row ?? null;
+	}
+
+	/**
+	 * Clear the OAuth provider, but ONLY when the account can still be signed
+	 * into afterwards.
+	 *
+	 * An account created through Google has no password. Unlinking it without
+	 * checking would not be "removing a sign-in method" — it would be locking
+	 * the owner out permanently, which is account deletion wearing a friendlier
+	 * label. The guard lives in the WHERE clause so the check and the write are
+	 * one atomic statement: a password cannot be removed between them.
+	 *
+	 * Returns false when the account has no password (nothing was changed) so
+	 * the caller can say why rather than reporting a silent success.
+	 */
+	async clearProvider(id: string): Promise<boolean> {
+		const rows = await this.store.query<{ id: string }>(
+			`UPDATE fonderie_users
+			    SET provider = NULL, provider_id = NULL
+			  WHERE id = $1
+			    AND password_hash IS NOT NULL
+			    AND provider IS NOT NULL
+			 RETURNING id`,
+			[id],
+		);
+		return rows.length > 0;
 	}
 
 	async updatePassword(id: string, passwordHash: string): Promise<void> {
@@ -246,18 +273,52 @@ export class UserModel {
 		return row?.mfa_secret ?? null;
 	}
 
+	/**
+	 * Link an OAuth identity to the account owning `email`, creating it if there
+	 * is none.
+	 *
+	 * Returns what HAPPENED, not just who it happened to. Three outcomes hide
+	 * behind one upsert, and callers must tell them apart:
+	 *
+	 *   • `inserted` — a brand-new account. Whoever provisions on signup (the
+	 *     personal workspace, a wallet, a welcome email) must run, exactly as
+	 *     it does for a password registration. This is the case that was
+	 *     previously invisible: the upsert returned an id and looked identical
+	 *     to a returning user signing in, so OAuth signups silently skipped
+	 *     every signup side effect.
+	 *   • `previousProvider` differs — an existing account gained, or switched,
+	 *     a way to sign in. A security event for the owner.
+	 *   • `previousProvider` is the same — an ordinary login. Nothing to do, and
+	 *     notifying here would email the user on every single sign-in.
+	 *
+	 * The prior state is read in a CTE of the SAME statement, so it sees the
+	 * snapshot from before the insert. Reading it in a separate query would
+	 * race two concurrent logins into both seeing "new".
+	 */
 	async upsertByProvider(
 		email: string,
 		provider: string,
 		providerId: string,
-	): Promise<{ id: string } | null> {
-		const [row] = await this.store.query<{ id: string }>(
-			`INSERT INTO fonderie_users (email, email_verified_at, provider, provider_id)
-			VALUES ($1, now(), $2, $3)
-			ON CONFLICT (email) DO UPDATE
-			SET provider = $2, provider_id = $3,
-			    email_verified_at = COALESCE(fonderie_users.email_verified_at, now())
-			RETURNING id`,
+	): Promise<{ id: string; inserted: boolean; previousProvider: string | null } | null> {
+		const [row] = await this.store.query<{
+			id: string;
+			inserted: boolean;
+			previousProvider: string | null;
+		}>(
+			`WITH prior AS (
+				SELECT provider FROM fonderie_users WHERE email = $1
+			), upserted AS (
+				INSERT INTO fonderie_users (email, email_verified_at, provider, provider_id)
+				VALUES ($1, now(), $2, $3)
+				ON CONFLICT (email) DO UPDATE
+				SET provider = $2, provider_id = $3,
+				    email_verified_at = COALESCE(fonderie_users.email_verified_at, now())
+				RETURNING id
+			)
+			SELECT upserted.id,
+			       NOT EXISTS (SELECT 1 FROM prior)   AS inserted,
+			       (SELECT provider FROM prior)       AS "previousProvider"
+			FROM upserted`,
 			[email, provider, providerId],
 		);
 		return row ?? null;

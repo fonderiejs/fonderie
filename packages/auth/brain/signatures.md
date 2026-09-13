@@ -28,6 +28,7 @@ interface IUser {
     mfaEnabled: boolean;
     passwordHash: string | null;
     emailVerifiedAt: Date | null;
+    provider: string | null;
 }
 
 interface ISession {
@@ -99,11 +100,11 @@ interface IDataExportContributor {
 
 const AUTH_CONFIG_KEYS: { sessionDuration: string; verificationCooldown: string; mfa: string; requireVerification: string; }
 
-const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; }
+const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; }
 
 type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
 
-const DEFAULT_TEMPLATES: { "email-registration": { subject: string; html: string; text: string; }; "email-verification": { subject: string; html: string; text: string; }; "password-reset": { subject: string; html: string; text: string; }; "phone-otp": { text: string; }; "mfa-enabled": { subject: string; html: string; text: string; }; "mfa-disabled": { subject: string; html: string; text: string; }; "mfa-backup-codes-regenerated": { subject: string; html: string; text: string; }; "email-changed": { subject: string; html: string; text: string; }; "phone-changed": { subject: string; html: string; text: string; }; }
+const DEFAULT_TEMPLATES: { "email-registration": { subject: string; html: string; text: string; }; "email-verification": { subject: string; html: string; text: string; }; "password-reset": { subject: string; html: string; text: string; }; "phone-otp": { text: string; }; "mfa-enabled": { subject: string; html: string; text: string; }; "mfa-disabled": { subject: string; html: string; text: string; }; "mfa-backup-codes-regenerated": { subject: string; html: string; text: string; }; "email-changed": { subject: string; html: string; text: string; }; "phone-changed": { subject: string; html: string; text: string; }; "oauth-registration": { subject: string; html: string; text: string; }; "oauth-linked": { subject: string; html: string; text: string; }; "oauth-unlinked": { subject: string; html: string; text: string; }; }
 
 interface IUserDTO {
     id: string;
@@ -118,6 +119,8 @@ interface IUserDTO {
     isEmailVerified: boolean;
     isPhoneVerified: boolean;
     mfaEnabled: boolean;
+    provider: string;
+    hasPassword: boolean;
     suspended: boolean;
     whitelist: boolean;
     ipWhitelist: string[];

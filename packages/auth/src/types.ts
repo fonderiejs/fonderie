@@ -34,6 +34,13 @@ export interface IUser {
 	mfaEnabled: boolean;
 	passwordHash: string | null;
 	emailVerifiedAt: Date | null;
+	/**
+	 * OAuth provider this account is linked to, or null. Exposed so a settings
+	 * screen can show — and offer to remove — the connection. Deliberately NOT
+	 * accompanied by provider_id: that is an identifier at the provider, and
+	 * the client has no use for it.
+	 */
+	provider: string | null;
 }
 
 export interface ISession {

@@ -9,6 +9,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void
   .providers(): Promise<IApiResponse<IAuthProvidersResult>>
+  .unlinkOauth(provider: string): Promise<IApiResponse<null>>
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
   .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult>>
@@ -143,6 +144,8 @@ interface IUserDTO {
     isEmailVerified: boolean;
     isPhoneVerified: boolean;
     mfaEnabled: boolean;
+    provider: string;
+    hasPassword: boolean;
     suspended: boolean;
     whitelist: boolean;
     ipWhitelist: string[];
@@ -174,6 +177,14 @@ interface IUseAuthProvidersReturn {
     isLoading: Ref<boolean>;
     error: Ref<FonderieApiError | Error | null>;
     refresh: () => Promise<void>;
+}
+
+interface IUseUnlinkOauthReturn {
+    unlinkOauth: (provider: string) => Promise<void>;
+    unlinked: Ref<boolean>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    requiresPassword: Ref<boolean>;
 }
 
 interface IUseAccountDataReturn {
@@ -298,6 +309,8 @@ interface IUseVerifyEmailReturn {
 }
 
 function useAuthProviders(client?: AuthClient | undefined): IUseAuthProvidersReturn
+
+function useUnlinkOauth(client?: AuthClient | undefined): IUseUnlinkOauthReturn
 
 function useAccountData(client?: AuthClient | undefined): IUseAccountDataReturn
 

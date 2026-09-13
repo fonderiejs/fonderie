@@ -23,6 +23,7 @@ export { FonderieApiError, isMfaRequired } from '@fonderie/client';
 
 export type {
 	IUseAuthProvidersReturn,
+	IUseUnlinkOauthReturn,
 	IUseAccountDataReturn,
 	IUseChangePasswordReturn,
 	IUseForgotPasswordReturn,
@@ -40,6 +41,7 @@ export type {
 } from './composables';
 export {
 	useAuthProviders,
+	useUnlinkOauth,
 	useAccountData,
 	useChangePassword,
 	useForgotPassword,

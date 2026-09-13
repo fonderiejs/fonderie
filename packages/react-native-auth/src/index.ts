@@ -39,6 +39,8 @@ export type {
 	IUseVerifyEmailReturn,
 	IUseLoginHistoryReturn,
 	IUseSessionsReturn,
+	IUseAuthProvidersReturn,
+	IUseUnlinkOauthReturn,
 } from './hooks';
 export {
 	useForgotPassword,
@@ -53,6 +55,7 @@ export {
 	useRegister,
 	useResetPassword,
 	useAuthProviders,
+	useUnlinkOauth,
 	useSession,
 	useVerifyEmail,
 	useLoginHistory,
