@@ -10,7 +10,7 @@
     "client": "0.21.0",
     "config": "5.1.10",
     "core": "0.14.1",
-    "courier": "7.0.5",
+    "courier": "7.0.6",
     "customers": "6.2.4",
     "events": "5.2.1",
     "geo": "0.2.3",
@@ -661,7 +661,7 @@
       "hasOutcomes": false
     },
     "courier": {
-      "version": "7.0.5",
+      "version": "7.0.6",
       "stability": "stable",
       "requires": [
         "core",
