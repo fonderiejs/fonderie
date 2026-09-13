@@ -342,3 +342,103 @@ test('PGTransport: dead-letter and backlog reads are safe before connecting', as
 	assert.deepEqual(await transport.deadLetters(), []);
 	assert.equal(await transport.pendingCount(), 0);
 });
+
+// ── Outbox delivery safety ─────────────────────────────────────────────
+
+/** Captures the SQL a transport issues, so we can assert on it without a DB. */
+class RecordingStore {
+	readonly queries: string[] = [];
+	async query<T>(sql: string, _params?: unknown[]): Promise<T[]> {
+		this.queries.push(sql);
+		return [];
+	}
+}
+
+function withStore(transport: PGTransport, store: RecordingStore): void {
+	(transport as unknown as { store: RecordingStore }).store = store;
+}
+
+test('PGTransport: drain() before connecting is a no-op, not a crash', async () => {
+	// Same contract as deadLetters()/pendingCount(): a caller should not have to
+	// know whether boot got far enough before asking for a drain.
+	const transport = new PGTransport({ connectionUrl: 'postgres://unused/test' });
+	await transport.drain({ maxMs: 5 });
+});
+
+test('PGTransport: drain() never blanket-resets in-flight rows', async () => {
+	// drain() is the serverless consumer, so several instances run it at once.
+	// A reset of every 'processing' row would take rows the other instances are
+	// mid-send on and hand them to this one — the same email, sent twice.
+	const transport = new PGTransport({ connectionUrl: 'postgres://unused/test' });
+	const store = new RecordingStore();
+	withStore(transport, store);
+	transport.subscribe('*', async () => undefined, 'courier');
+
+	await transport.drain({ maxMs: 50 });
+
+	const blanketReset = store.queries.find(
+		(q) => /SET\s+status\s*=\s*'failed'/i.test(q) && /WHERE\s+status\s*=\s*'processing'/i.test(q),
+	);
+	assert.equal(blanketReset, undefined, 'drain() must not reclaim by resetting every processing row');
+
+	// It must still reclaim abandoned work — by age, under the row lock.
+	const claim = store.queries.find((q) => /SET status = 'processing'/.test(q));
+	assert.ok(claim, 'drain() should claim rows');
+	assert.match(claim, /claimed_at\s*<\s*now\(\)/, 'reclaim must be bounded by a visibility timeout');
+	assert.match(claim, /FOR UPDATE SKIP LOCKED/, 'the reclaim must be exclusive');
+});
+
+test('PGTransport: every column the transport reads is one the migrations create', async () => {
+	// The bug this exists for: deadLetters() selected `c.last_error` while the
+	// table defines `error`. Nothing caught it, because the only thing that
+	// would is a live database — the query parses fine and the types line up.
+	const fs = await import('node:fs');
+	const path = await import('node:path');
+	const url = await import('node:url');
+
+	const sqlDir = path.join(
+		path.dirname(url.fileURLToPath(import.meta.url)),
+		'..',
+		'migrations',
+		'sql',
+	);
+	const sql = fs
+		.readdirSync(sqlDir)
+		.filter((f) => f.endsWith('.sql'))
+		.map((f) => fs.readFileSync(path.join(sqlDir, f), 'utf8'))
+		.join('\n');
+
+	const declared = new Set<string>();
+	const createBlock = /CREATE TABLE IF NOT EXISTS fonderie_event_consumers \(([\s\S]*?)\n\);/.exec(sql);
+	assert.ok(createBlock, 'expected a fonderie_event_consumers table definition');
+	for (const line of (createBlock[1] ?? '').split('\n')) {
+		const col = /^\s+(\w+)\s+(UUID|TEXT|INT|TIMESTAMPTZ|BOOLEAN|JSONB)/.exec(line);
+		if (col?.[1]) declared.add(col[1]);
+	}
+	for (const added of sql.matchAll(/ADD COLUMN IF NOT EXISTS (\w+)/g)) {
+		if (added[1]) declared.add(added[1]);
+	}
+
+	const transport = new PGTransport({ connectionUrl: 'postgres://unused/test' });
+	const store = new RecordingStore();
+	withStore(transport, store);
+	transport.subscribe('*', async () => undefined, 'courier');
+	await transport.deadLetters();
+	await transport.pendingCount();
+	await transport.drain({ maxMs: 50 });
+
+	// Only `c.`-qualified references — `e.` ones belong to fonderie_events.
+	const referenced = new Set<string>();
+	for (const q of store.queries) {
+		for (const m of q.matchAll(/\bc\.(\w+)\b/g)) {
+			if (m[1]) referenced.add(m[1]);
+		}
+	}
+	assert.ok(referenced.size > 0, 'expected the transport to reference consumer columns');
+	for (const col of referenced) {
+		assert.ok(
+			declared.has(col),
+			`fonderie_event_consumers.${col} is read by the transport but no migration creates it`,
+		);
+	}
+});

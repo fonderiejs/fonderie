@@ -33,6 +33,22 @@ export interface IPGTransportConfig {
 	 * is connected either way.
 	 */
 	consume?: boolean;
+	/**
+	 * How long a claimed row may stay `processing` before another consumer may
+	 * reclaim it. Default 5 minutes.
+	 *
+	 * This is a visibility timeout, and it is the only safe way to recover rows
+	 * abandoned by a crashed instance once more than one consumer exists. The
+	 * obvious alternative — resetting every `processing` row on startup — cannot
+	 * tell "abandoned by a process that died" from "in flight in a process still
+	 * working on it", so it hands a live consumer's row to a second one and the
+	 * side effect happens twice. For an outbox that sends email, that is a
+	 * duplicate in someone's inbox.
+	 *
+	 * Set it above the slowest handler, comfortably: too low resurrects live
+	 * work, too high only delays recovery from a genuine crash.
+	 */
+	claimTimeoutMs?: number;
 	// When set, every event is stored with a keyed HMAC over its immutable
 	// content, making the audit log tamper-evident. Unset → no HMAC (unchanged
 	// behaviour). Verify later with `verifyEventChain(store, integrityKey)`.
@@ -55,12 +71,14 @@ export class PGTransport implements IEventTransport {
 	private readonly maxRetries: number;
 	private readonly batchSize: number;
 	private readonly pollInterval: number;
+	private readonly claimTimeoutMs: number;
 	private readonly integrityKey: string | undefined;
 
 	constructor(private config: IPGTransportConfig) {
 		this.maxRetries = config.maxRetries ?? 3;
 		this.batchSize = config.batchSize ?? 10;
 		this.pollInterval = config.pollInterval ?? 1_000;
+		this.claimTimeoutMs = config.claimTimeoutMs ?? 300_000;
 		this.integrityKey = config.integrityKey;
 	}
 
@@ -104,10 +122,10 @@ export class PGTransport implements IEventTransport {
 		// returns, which a serverless invocation cannot host.
 		if (this.config.consume === false) return;
 
-		// Reset any rows left in 'processing' by a crashed instance
-		await this.store.query(
-			`UPDATE fonderie_event_consumers SET status = 'failed' WHERE status = 'processing'`,
-		);
+		// Rows abandoned by a crashed instance are NOT reset here. Claiming is
+		// what reclaims them, once they have been stale longer than
+		// claimTimeoutMs — see pollConsumer. Resetting them on boot would also
+		// reset the rows another consumer is working on right now.
 
 		this.listenClient = new pg.Client(this.config.connectionUrl);
 		await this.listenClient.connect();
@@ -145,11 +163,16 @@ export class PGTransport implements IEventTransport {
 	 * left over stays pending and is picked up by the next call.
 	 */
 	async drain(options: { maxMs?: number } = {}): Promise<void> {
+		// Answer emptily before the transport is connected, as deadLetters() and
+		// pendingCount() do — a health route or a shutdown path should not have to
+		// know whether boot got far enough.
+		if (!this.store) return;
 		const deadline = Date.now() + (options.maxMs ?? 25_000);
-		// Reclaim rows a crashed instance left mid-flight, exactly as start() does.
-		await this.store.query(
-			`UPDATE fonderie_event_consumers SET status = 'failed' WHERE status = 'processing'`,
-		);
+		// No blanket reclaim here. drain() is the serverless consumer, so several
+		// instances run it CONCURRENTLY; resetting every 'processing' row would
+		// mean each new invocation stealing the rows the others are mid-send on,
+		// and the same email going out repeatedly. Stale rows are reclaimed by
+		// the claim query itself, under a row lock.
 		while (Date.now() < deadline) {
 			const hadWork = await this.pollAllConsumers();
 			if (!hadWork) break;
@@ -168,7 +191,7 @@ export class PGTransport implements IEventTransport {
 	async deadLetters(limit = 50): Promise<IDeadLetter[]> {
 		if (!this.store) return [];
 		return this.store.query<IDeadLetter>(
-			`SELECT c.event_id AS "eventId", c.consumer, c.attempts, c.last_error AS "lastError",
+			`SELECT c.event_id AS "eventId", c.consumer, c.attempts, c.error AS "lastError",
 			        e.type, e.created_at AS "createdAt"
 			   FROM fonderie_event_consumers c
 			   JOIN fonderie_events e ON e.id = c.event_id
@@ -211,14 +234,23 @@ export class PGTransport implements IEventTransport {
 
 	private async pollConsumer(consumer: string): Promise<number> {
 		const claimed = await this.store.query<{ event_id: string }>(
+			// 'processing' rows older than the visibility timeout are claimable
+			// too: that is how work abandoned by a crashed instance comes back,
+			// without a blanket reset that cannot see who is still alive. The row
+			// lock makes the reclaim exclusive, so two consumers racing for the
+			// same stale row produce one winner, not two sends.
 			`UPDATE fonderie_event_consumers c
-			 SET status = 'processing', attempts = c.attempts + 1
+			 SET status = 'processing', attempts = c.attempts + 1, claimed_at = now()
 			 FROM (
 			   SELECT event_id
 			   FROM   fonderie_event_consumers
 			   WHERE  consumer = $1
-			     AND  status IN ('pending', 'failed')
 			     AND  attempts < $2
+			     AND  (
+			            status IN ('pending', 'failed')
+			            OR (status = 'processing'
+			                AND claimed_at < now() - make_interval(secs => $4))
+			          )
 			   ORDER BY event_id
 			   LIMIT $3
 			   FOR UPDATE SKIP LOCKED
@@ -226,7 +258,7 @@ export class PGTransport implements IEventTransport {
 			 WHERE c.event_id = locked.event_id
 			   AND c.consumer = $1
 			 RETURNING c.event_id`,
-			[consumer, this.maxRetries, this.batchSize],
+			[consumer, this.maxRetries, this.batchSize, this.claimTimeoutMs / 1000],
 		);
 
 		await Promise.all(claimed.map((row) => this.processConsumerEvent(consumer, row.event_id)));

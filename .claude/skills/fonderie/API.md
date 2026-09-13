@@ -316,7 +316,28 @@ discovering them in production:
   through `background()`, which waits on serverless and detaches elsewhere;
   override with `FONDERIE_BACKGROUND_TASKS=auto|await|detach`. If YOUR code
   detaches work, wrap it the same way or it will be dropped in production
-  with no error anywhere.
+  with no error anywhere. Better than either mode where the platform offers
+  it: `setBackgroundRunner((w) => waitUntil(w))` keeps the instance alive
+  *after* the response, so the work finishes without costing the caller
+  latency.
+
+  Two things about the outbox that are not obvious until they bite:
+
+  **Register the consuming modules on the PRODUCER too.** `publish()` writes
+  one event row plus one row per consumer *that the publishing process has
+  subscribed*. An API that publishes without registering courier writes events
+  owed to nobody — the worker polls, finds no rows, and the mail is
+  undeliverable forever, not queued. Build the module list in one shared
+  function both processes call, so they cannot drift.
+
+  **Pick the consumer explicitly per deployment.** `bus.start()` where a
+  process outlives the request; `bus.drain()` where none does — from a
+  scheduled ping, or after each response via `background()` when the app is its
+  own consumer. Draining concurrently is safe (claims are exclusive and stale
+  ones are reclaimed on a timeout), so the failure mode to design against is
+  *nobody* draining, not two. Watch `deadLetters()`/`pendingCount()` from a
+  health or cron route: a queue that has silently stopped delivering looks
+  exactly like one with nothing to do.
 - *In-memory state* — rate-limit buckets, caches and sessions reset per
   instance. Use the store-backed equivalents (e.g. `StoreAdapterStore` for
   `@fonderie/rate-limit`), or the limit silently stops limiting.
