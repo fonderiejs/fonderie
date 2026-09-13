@@ -1157,6 +1157,7 @@
       "requires": [],
       "exports": [
         "FonderieApiError",
+        "useAuthProviders",
         "useForgotPassword",
         "useLogin",
         "useLogout",
@@ -1792,6 +1793,7 @@
       "requires": [],
       "exports": [
         "FonderieApiError",
+        "useAuthProviders",
         "useAccountData",
         "useChangePassword",
         "useForgotPassword",
@@ -4171,6 +4173,11 @@
       "react-native-audit-screens",
       "vue-audit-screens"
     ],
+    "useauthproviders": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
     "useforgotpassword": [
       "react-auth",
       "react-native-auth",
@@ -4435,9 +4442,6 @@
       "vue-media"
     ],
     "useapplesignin": [
-      "react-native-auth"
-    ],
-    "useauthproviders": [
       "react-native-auth"
     ],
     "webhookdetailscreen": [

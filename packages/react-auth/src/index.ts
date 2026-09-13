@@ -23,6 +23,7 @@ export type {
 } from '@fonderie/client';
 export { FonderieApiError, isMfaRequired } from '@fonderie/client';
 export type {
+	IUseAuthProvidersReturn,
 	IUseForgotPasswordReturn,
 	IUseLoginReturn,
 	IUseLogoutReturn,
@@ -39,6 +40,7 @@ export type {
 	IUseSessionsReturn,
 } from './hooks';
 export {
+	useAuthProviders,
 	useForgotPassword,
 	useLogin,
 	useLogout,

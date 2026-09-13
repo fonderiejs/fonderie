@@ -168,6 +168,14 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
 
 function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult
 
+interface IUseAuthProvidersReturn {
+    providers: Ref<string[]>;
+    has: (provider: string) => boolean;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | Error | null>;
+    refresh: () => Promise<void>;
+}
+
 interface IUseAccountDataReturn {
     exportData: () => Promise<unknown>;
     deleteUser: () => Promise<void>;
@@ -288,6 +296,8 @@ interface IUseVerifyEmailReturn {
     error: Ref<FonderieApiError | null>;
     data: Ref<IVerifyEmailResult | null>;
 }
+
+function useAuthProviders(client?: AuthClient | undefined): IUseAuthProvidersReturn
 
 function useAccountData(client?: AuthClient | undefined): IUseAccountDataReturn
 
