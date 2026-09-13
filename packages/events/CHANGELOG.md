@@ -1,5 +1,27 @@
 # @fonderie/events
 
+## 5.2.0
+
+### Minor Changes
+
+- 3f02a51: The durable outbox is now usable from a serverless producer, and a failing queue is no longer invisible.
+  
+  `PGTransport.start()` bundled four things: connecting the store (needed to publish), resetting orphaned rows, opening a `LISTEN` client, and starting a poll loop that never returns. A serverless API needs only the first — but taking all four means every instance opens a `LISTEN` connection, which a transaction-mode pooler (Supabase's 6543) rejects outright, plus a loop the invocation cannot host. There was no way to say "connect me as a producer", so publishing durably from serverless was impossible. `consume: false` now stops after the store is connected. `drain()` still works in that mode, so a scheduled ping can consume without anything long-running.
+  
+  `deadLetters()` and `pendingCount()` expose what the outbox knows but nothing surfaced. A dead row is the end of the line — durable, retried, and never to be delivered — yet a queue that has silently stopped delivering looked exactly like one with nothing to do, which is the failure mode an outbox exists to eliminate. Both answer emptily before the transport connects, so a health route can call them unconditionally.
+  
+  Two remaining detached dispatches are fixed. `LoginEventModel.recordSafe` is now awaitable: it still never throws, but it is a security audit trail (who signed in, from where, from which IP), and a detached write is abandoned when a serverless instance freezes after the response — losing the row entirely rather than merely its IP. Billing's low-balance customer email went through `notifyBilling` rather than the bus, so the earlier sweep did not match it; it has the same exposure and now routes through `background()` too.
+
+### Patch Changes
+
+- f542cfa: Fix two defects in the durable outbox that only appear once something actually consumes it.
+  
+  `deadLetters()` selected `c.last_error`, but the column the transport writes is `error` — the query throws `column c.last_error does not exist` on any real database. It shipped green because the only thing that catches a wrong column name is a live Postgres: the SQL parses, the types line up, and the unit tests never connect. There is now a test that reads the migration files, collects the columns they create, and asserts every column the transport reads is one of them.
+  
+  `drain()` reclaimed abandoned work by resetting every row in `processing` to `failed`, copying what `start()` does at boot. That is safe for a single worker starting up and wrong for `drain()`, whose entire purpose is serverless — where instances run it concurrently. Each invocation would take the rows the others were mid-send on and process them again, which for an outbox that sends email means the same message arriving twice. The reset is gone from both paths. Claiming now also picks up `processing` rows older than `claimTimeoutMs` (new, default 5 minutes), inside the existing `FOR UPDATE SKIP LOCKED` claim — so abandoned work still comes back, two consumers racing for the same stale row produce one winner, and recovery no longer requires a restart. Migration `004` adds the `claimed_at` column this needs, backdating any row already stuck in `processing` so the first poll picks it up.
+  
+  `drain()` also answers emptily before the transport is connected, matching `deadLetters()` and `pendingCount()` — previously it dereferenced an unset store.
+
 ## 5.1.0
 
 ### Minor Changes
