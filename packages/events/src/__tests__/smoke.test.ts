@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { EventBus } from '../bus';
 import { EventsModule } from '../module';
 import { MemoryTransport } from '../transports/memory';
+import { PGTransport } from '../transports/pg';
 import { matchesPattern } from '../transports/pattern';
 
 // ── Pattern matching unit tests ────────────────────────────────────────
@@ -309,4 +310,35 @@ test('EventBus.drain(): forwards the bound to the transport', async () => {
 	const bus = new EventBus(transport as never);
 	await bus.drain({ maxMs: 1234 });
 	assert.deepEqual(calls, [{ maxMs: 1234 }]);
+});
+
+// ── Producer-only mode ──────────────────────────────────────────────────────
+// A serverless API must write durable rows but cannot host a consumer: a poll
+// loop never returns, and LISTEN is rejected outright by a transaction-mode
+// pooler. consume:false connects far enough to publish and stops there.
+
+test('PGTransport: consume:false connects to publish without starting a consumer', async () => {
+	const transport = new PGTransport({ connectionUrl: 'postgres://unused/test', consume: false });
+	let listened = false;
+	// start() must not reach the LISTEN client or the poll loop. If it did,
+	// this would attempt a real connection and throw.
+	const original = (transport as unknown as { runPollLoop?: unknown }).runPollLoop;
+	(transport as unknown as { runPollLoop: () => Promise<void> }).runPollLoop = async () => {
+		listened = true;
+	};
+	try {
+		await transport.start();
+		assert.equal(listened, false, 'a producer must not start the poll loop');
+	} finally {
+		(transport as unknown as { runPollLoop?: unknown }).runPollLoop = original;
+		await transport.stop().catch(() => undefined);
+	}
+});
+
+test('PGTransport: dead-letter and backlog reads are safe before connecting', async () => {
+	// Before start() there is no store — these must answer emptily rather than
+	// throw, so a health route can call them unconditionally.
+	const transport = new PGTransport({ connectionUrl: 'postgres://unused/test' });
+	assert.deepEqual(await transport.deadLetters(), []);
+	assert.equal(await transport.pendingCount(), 0);
 });

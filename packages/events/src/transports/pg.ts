@@ -7,11 +7,32 @@ import type { IEventMeta, IEventHandler, IEventRecord } from '../types';
 import { matchesPattern } from './pattern';
 import { computeEventHmac } from '../integrity';
 
+export interface IDeadLetter {
+	eventId: string;
+	consumer: string;
+	type: string;
+	attempts: number;
+	lastError: string | null;
+	createdAt: Date;
+}
+
 export interface IPGTransportConfig {
 	connectionUrl: string;
 	maxRetries?: number; // default 3
 	batchSize?: number; // default 10 rows claimed per consumer per poll cycle
 	pollInterval?: number; // default 1000ms fallback poll when no NOTIFY arrives
+	/**
+	 * Whether this instance consumes. Default true.
+	 *
+	 * `false` connects for PUBLISHING only — no LISTEN client, no poll loop.
+	 * That is what a serverless producer needs: it must write durable rows, but
+	 * it cannot host a loop that never returns, and LISTEN is not supported
+	 * through a transaction-mode pooler (Supabase's 6543) at all. Delivery then
+	 * belongs to whatever does consume — a worker running start(), or a
+	 * scheduled ping calling drain(), which still works here because the store
+	 * is connected either way.
+	 */
+	consume?: boolean;
 	// When set, every event is stored with a keyed HMAC over its immutable
 	// content, making the audit log tamper-evident. Unset → no HMAC (unchanged
 	// behaviour). Verify later with `verifyEventChain(store, integrityKey)`.
@@ -77,6 +98,12 @@ export class PGTransport implements IEventTransport {
 		this.running = true;
 		this.store = new PGAdapter(this.config.connectionUrl);
 
+		// Producer-only: connected enough to publish, and nothing else. Starting
+		// the consumer here would open a LISTEN connection per instance — which a
+		// transaction-mode pooler rejects outright — and a loop that never
+		// returns, which a serverless invocation cannot host.
+		if (this.config.consume === false) return;
+
 		// Reset any rows left in 'processing' by a crashed instance
 		await this.store.query(
 			`UPDATE fonderie_event_consumers SET status = 'failed' WHERE status = 'processing'`,
@@ -127,6 +154,39 @@ export class PGTransport implements IEventTransport {
 			const hadWork = await this.pollAllConsumers();
 			if (!hadWork) break;
 		}
+	}
+
+	/**
+	 * Events that exhausted their retries, newest first.
+	 *
+	 * A dead row is the end of the line: the work is durable and was retried,
+	 * but it will never be delivered. Until something surfaces these, a queue
+	 * that has silently stopped delivering looks exactly like one with nothing
+	 * to do — which is the failure mode an outbox is supposed to eliminate.
+	 * Expose it from a health route or check it on a schedule.
+	 */
+	async deadLetters(limit = 50): Promise<IDeadLetter[]> {
+		if (!this.store) return [];
+		return this.store.query<IDeadLetter>(
+			`SELECT c.event_id AS "eventId", c.consumer, c.attempts, c.last_error AS "lastError",
+			        e.type, e.created_at AS "createdAt"
+			   FROM fonderie_event_consumers c
+			   JOIN fonderie_events e ON e.id = c.event_id
+			  WHERE c.status = 'dead'
+			  ORDER BY e.created_at DESC
+			  LIMIT $1`,
+			[limit],
+		);
+	}
+
+	/** How many events are waiting — a backlog that only grows means nobody is consuming. */
+	async pendingCount(): Promise<number> {
+		if (!this.store) return 0;
+		const [row] = await this.store.query<{ count: string }>(
+			`SELECT count(*)::text AS count FROM fonderie_event_consumers
+			  WHERE status IN ('pending', 'failed')`,
+		);
+		return Number(row?.count ?? 0);
 	}
 
 	// ── Poll loop ───────────────────────────────────────────────────
