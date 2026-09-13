@@ -1,4 +1,5 @@
 import type { IStoreAdapter } from '@fonderie/store';
+import { background } from '@fonderie/core';
 
 // One row per login ATTEMPT — success or failure — across every method.
 // Append-only: rows survive logout/expiry (unlike fonderie_sessions, which is
@@ -37,11 +38,13 @@ export class LoginEventModel {
 		);
 	}
 
-	// Fire-and-forget variant for the login paths: recording history must never
-	// block or fail a login (same posture as the bus.emit(...).catch(() => {})
-	// notification sends).
-	recordSafe(e: ILoginEventInput): void {
-		void this.record(e).catch(() => {});
+	// Never throws — recording history must not fail a login. It IS awaited,
+	// though: this is a security audit trail (who signed in, from where), and a
+	// detached write is abandoned when a serverless instance freezes after the
+	// response, losing the row entirely. background() decides whether waiting is
+	// actually necessary for the current runtime.
+	async recordSafe(e: ILoginEventInput): Promise<void> {
+		await background(this.record(e));
 	}
 
 	// One page of a user's own login history, newest first. Keyset-paginated on

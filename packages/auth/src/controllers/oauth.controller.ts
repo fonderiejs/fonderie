@@ -181,7 +181,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 
 		const upserted = await users.upsertByProvider(normalizedEmail, 'apple', claims.sub ?? '');
 		if (!upserted) {
-			loginEvents.recordSafe({
+			await loginEvents.recordSafe({
 				userId: null,
 				emailAttempted: normalizedEmail,
 				method: 'oauth-apple',
@@ -199,7 +199,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 
 		const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, config, { loginMethod: 'apple' });
 		await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
-		loginEvents.recordSafe({
+		await loginEvents.recordSafe({
 			userId: upserted.id,
 			emailAttempted: normalizedEmail,
 			method: 'oauth-apple',
@@ -371,7 +371,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 
 			const upserted = await users.upsertByProvider(normalizedEmail, 'google', payload.sub ?? '');
 			if (!upserted) {
-				loginEvents.recordSafe({
+				await loginEvents.recordSafe({
 					userId: null,
 					emailAttempted: normalizedEmail,
 					method: 'oauth-google',
@@ -391,7 +391,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 				loginMethod: 'google',
 			});
 			await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
-			loginEvents.recordSafe({
+			await loginEvents.recordSafe({
 				userId: upserted.id,
 				emailAttempted: normalizedEmail,
 				method: 'oauth-google',
@@ -543,7 +543,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 			const claims = await verifyAppleIdToken(identityToken, { audiences, nonce: body?.nonce });
 			if (!claims) {
 				const meta = requestMeta(ctx);
-				loginEvents.recordSafe({
+				await loginEvents.recordSafe({
 					userId: null,
 					emailAttempted: null,
 					method: 'oauth-apple',
@@ -564,7 +564,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig) {
 			const firstUse = await consumedTokens.consumeOnce(tokenHash, new Date(expMs));
 			if (!firstUse) {
 				const meta = requestMeta(ctx);
-				loginEvents.recordSafe({
+				await loginEvents.recordSafe({
 					userId: null,
 					emailAttempted: claims.email ?? null,
 					method: 'oauth-apple',

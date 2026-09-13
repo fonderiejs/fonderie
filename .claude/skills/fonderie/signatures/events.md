@@ -45,6 +45,8 @@ new PGTransport(config: IPGTransportConfig): PGTransport
   .start(): Promise<void>
   .stop(): Promise<void>
   .drain(options?: { maxMs?: number; }): Promise<void>
+  .deadLetters(limit?: number): Promise<IDeadLetter[]>
+  .pendingCount(): Promise<number>
 
 interface IEventTransport {
     publish(type: string, payload: unknown, meta: IEventMeta): Promise<void>;
@@ -61,7 +63,17 @@ interface IPGTransportConfig {
     maxRetries?: number;
     batchSize?: number;
     pollInterval?: number;
+    consume?: boolean;
     integrityKey?: string;
+}
+
+interface IDeadLetter {
+    eventId: string;
+    consumer: string;
+    type: string;
+    attempts: number;
+    lastError: string | null;
+    createdAt: Date;
 }
 
 function matchesPattern(pattern: string, eventType: string): boolean
