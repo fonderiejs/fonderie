@@ -916,3 +916,106 @@ test('handleMailgunDelivery: a replayed (timestamp,token,signature) is rejected'
 	const replay = await handleMailgunDelivery(mk(), stub, signingKey);
 	assert.equal(replay.status, 401, 'same token replayed → rejected');
 });
+
+// ── Message-log durability ────────────────────────────────────────
+//
+// The log is the ONLY record of whether a send happened — the event bus marks
+// its row processed either way, because a send failure is caught here and not
+// rethrown. So a lost log write is a lost outcome.
+
+test('dispatcher: the sent-status write completes before dispatch resolves', async () => {
+	// It used to be detached. On serverless the instance is frozen the moment
+	// the handler returns, so the write was routinely abandoned and the row sat
+	// at 'pending' forever — the send HAD happened and only the record of it
+	// was lost, which is the worst direction for the one source of truth.
+	let resolveWrite!: () => void;
+	const writeLanded = new Promise<void>((r) => { resolveWrite = r; });
+	let finished = false;
+
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('INSERT INTO fonderie_message_log')) return [{ id: 'log-1' }] as T[];
+			if (sql.includes("status = 'sent'")) {
+				await writeLanded;
+				finished = true;
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+
+	const config: ICourierConfig = { channels: { 'password-reset': [Channel.EMAIL] } };
+	const dispatcher = new Dispatcher(config, makeResolver(), store);
+	dispatcher.registerChannel(makeChannel('email'));
+
+	// The discriminator is whether DISPATCH is still pending while the write is
+	// — not whether the write eventually lands. A detached write lands too, just
+	// after dispatch has already returned, which on serverless means never.
+	let dispatchSettled = false;
+	const dispatched = dispatcher
+		.dispatch({
+			type: 'password-reset',
+			recipient: { email: 'a@b.com', phone: null, deviceToken: null },
+			data: { token: 'abc123' },
+		})
+		.then(() => { dispatchSettled = true; });
+
+	await new Promise((r) => setTimeout(r, 20));
+	assert.equal(
+		dispatchSettled,
+		false,
+		'dispatch resolved while the sent-status write was still in flight — it is detached',
+	);
+
+	resolveWrite();
+	await dispatched;
+	assert.equal(finished, true, 'the sent-status write never landed');
+});
+
+test('dispatcher: the failed-status write completes before dispatch resolves', async () => {
+	let resolveWrite!: () => void;
+	const writeLanded = new Promise<void>((r) => { resolveWrite = r; });
+	let finished = false;
+
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('INSERT INTO fonderie_message_log')) return [{ id: 'log-1' }] as T[];
+			if (sql.includes("status = 'failed'")) {
+				await writeLanded;
+				finished = true;
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+
+	const config: ICourierConfig = { channels: { 'password-reset': [Channel.EMAIL] } };
+	const dispatcher = new Dispatcher(config, makeResolver(), store);
+	dispatcher.registerChannel({
+		name: 'email',
+		send: async () => { throw new Error('smtp exploded'); },
+	});
+
+	// The discriminator is whether DISPATCH is still pending while the write is
+	// — not whether the write eventually lands. A detached write lands too, just
+	// after dispatch has already returned, which on serverless means never.
+	let dispatchSettled = false;
+	const dispatched = dispatcher
+		.dispatch({
+			type: 'password-reset',
+			recipient: { email: 'a@b.com', phone: null, deviceToken: null },
+			data: { token: 'abc123' },
+		})
+		.then(() => { dispatchSettled = true; });
+
+	await new Promise((r) => setTimeout(r, 20));
+	assert.equal(
+		dispatchSettled,
+		false,
+		'dispatch resolved while the failed-status write was still in flight — it is detached',
+	);
+
+	resolveWrite();
+	await dispatched;
+	assert.equal(finished, true, 'the failed-status write never landed');
+});
