@@ -19,7 +19,7 @@
 		"@fonderie/core": ">=0.14.0",
 		"@fonderie/courier": "^7.0.5",
 		"@fonderie/events": "^5.2.0",
-		"@fonderie/store": "^0.4.0",
+		"@fonderie/store": ">=0.4.0",
 		"@fonderie/workspaces": "^6.0.7",
 		"@hono/node-server": "^1.13.7",
 		"hono": "^4.7.11",
