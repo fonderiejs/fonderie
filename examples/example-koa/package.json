@@ -1,7 +1,7 @@
 {
 	"name": "example-koa",
 	"version": "1.0.0",
-	"description": "Minimal Fonderie todo app using Koa \u2014 deployable to Vercel or any Node host",
+	"description": "Minimal Fonderie todo app using Koa — deployable to Vercel or any Node host",
 	"type": "module",
 	"scripts": {
 		"dev": "tsx --env-file=.env index.ts",
@@ -17,7 +17,7 @@
 		"@fonderie/adapter-koa": "^5.2.0",
 		"@fonderie/auth": "^7.0.1",
 		"@fonderie/core": ">=0.10.0",
-		"@fonderie/events": "^5.0.6",
+		"@fonderie/events": "^5.2.1",
 		"@fonderie/store": "^0.3.0",
 		"@fonderie/courier": "^7.0.0"
 	},
