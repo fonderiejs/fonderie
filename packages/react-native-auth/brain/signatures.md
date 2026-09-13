@@ -9,6 +9,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void
   .providers(): Promise<IApiResponse<IAuthProvidersResult>>
+  .unlinkOauth(provider: string): Promise<IApiResponse<null>>
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
   .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult>>
@@ -87,6 +88,8 @@ interface IUserDTO {
     isEmailVerified: boolean;
     isPhoneVerified: boolean;
     mfaEnabled: boolean;
+    provider: string;
+    hasPassword: boolean;
     suspended: boolean;
     whitelist: boolean;
     ipWhitelist: string[];
@@ -297,6 +300,22 @@ interface IUseSessionsReturn {
     terminateOthers: () => Promise<void>;
 }
 
+interface IUseAuthProvidersReturn {
+    providers: string[];
+    has: (provider: string) => boolean;
+    isLoading: boolean;
+    error: Error | null;
+    refresh: () => Promise<void>;
+}
+
+interface IUseUnlinkOauthReturn {
+    unlinkOauth: (provider: string) => Promise<void>;
+    unlinked: boolean;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    requiresPassword: boolean;
+}
+
 function useForgotPassword(client?: AuthClient | undefined): IUseForgotPasswordReturn
 
 function useLogin(client?: AuthClient | undefined): IUseLoginReturn
@@ -320,6 +339,8 @@ function useRegister(client?: AuthClient | undefined): IUseRegisterReturn
 function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordReturn
 
 function useAuthProviders(client?: AuthClient | undefined): IUseAuthProvidersReturn
+
+function useUnlinkOauth(client?: AuthClient | undefined): IUseUnlinkOauthReturn
 
 function useSession(client?: AuthClient | undefined): IUseSessionReturn
 

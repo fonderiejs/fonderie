@@ -27,4 +27,6 @@ export { useSessions } from './useSessions';
 export type { IUseVerifyEmailReturn } from './useVerifyEmail';
 export { useVerifyEmail } from './useVerifyEmail';
 export { useAuthProviders } from './useAuthProviders';
+export { useUnlinkOauth } from './useUnlinkOauth';
+export type { IUseUnlinkOauthReturn } from './useUnlinkOauth';
 export type { IUseAuthProvidersReturn } from './useAuthProviders';
