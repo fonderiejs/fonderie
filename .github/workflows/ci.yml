@@ -35,6 +35,11 @@ jobs:
       RATE_LIMIT_REDIS_URL: redis://localhost:6379
       # Enables the gated wallet atomicity tests in @fonderie/billing.
       BILLING_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
+      # Enables the gated claiming/lease tests in @fonderie/events. These need a
+      # real Postgres: SKIP LOCKED and the visibility lease are behaviours of the
+      # database, and a mocked store will happily "prove" an invariant it does
+      # not actually provide.
+      EVENTS_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
