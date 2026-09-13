@@ -56,6 +56,11 @@ export interface ITokens {
 
 // ── Auth endpoint results ─────────────────────────────────────────────────────
 
+/** What GET /auth/providers answers: the sign-in methods this API can honour. */
+export interface IAuthProvidersResult {
+	providers: string[];
+}
+
 export interface IRegisterResult {
 	tokens: ITokens;
 	user: IUserDTO;

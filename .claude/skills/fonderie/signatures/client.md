@@ -142,6 +142,7 @@ interface IUpdateProfileInput {
 new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .mfa: MfaClient
   .setAccessToken(token: string | undefined): void
+  .providers(): Promise<IApiResponse<IAuthProvidersResult>>
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
   .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult>>

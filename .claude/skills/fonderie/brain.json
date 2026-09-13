@@ -190,7 +190,7 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 29,
+      "routeCount": 30,
       "routes": [
         {
           "method": "GET",
@@ -261,6 +261,11 @@
           "method": "POST",
           "path": "/auth/mfa/verify",
           "mw": "ipLimit('mfaVerify') → requireAnyAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.verify"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/providers",
+          "mw": "async () => setApiResponse(HTTP.OK, 'AUTH_PROVIDERS', 'Sign-in methods available here', { providers: [...config.providers], })"
         },
         {
           "method": "POST",

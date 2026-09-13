@@ -1,5 +1,6 @@
 import type { IStoreAdapter } from '@fonderie/store';
 import type { Middleware } from '@fonderie/core';
+import { setApiResponse, HTTP } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
 import type { IAuthConfig, AuthRouteId } from './config';
 
@@ -67,6 +68,25 @@ export function buildAuthRoutes(
 	};
 
 	const routes: RouteDefinition[] = [
+		// Which sign-in methods this deployment can actually honour (Public).
+		//
+		// A frontend has to decide which buttons to draw, and the only honest
+		// source is the side holding the credentials. The alternative — a
+		// build-time flag in the app — stores the same fact twice and lets the
+		// two disagree; the symptom is a user clicking a provider the server
+		// cannot complete and landing on the provider's error page, which the
+		// app cannot explain.
+		//
+		// Public and unauthenticated on purpose: the login screen needs it
+		// before anyone has signed in. It discloses nothing a visitor could not
+		// learn by looking at the buttons, and deliberately nothing else — no
+		// client ids, no redirect URIs, no module inventory.
+		R('providers', 'GET', '/auth/providers', async () =>
+			setApiResponse(HTTP.OK, 'AUTH_PROVIDERS', 'Sign-in methods available here', {
+				providers: [...config.providers],
+			}),
+		),
+
 		// Registration & Login (Public)
 		R('register', 'POST', '/auth/register', ipLimit('register'), validate(registerSchema), auth.register),
 		R('login', 'POST', '/auth/login', ipLimit('login'), validate(loginSchema), acctLimit('login'), auth.login),

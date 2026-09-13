@@ -14,6 +14,7 @@ import type {
 	IVerifyEmailResult,
 	ILoginHistoryPageResult,
 	ISessionsResult,
+	IAuthProvidersResult,
 } from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
@@ -162,6 +163,22 @@ export class AuthClient {
 	}
 
 	// ── Public ─────────────────────────────────────────────────────────────────
+
+	/**
+	 * Which sign-in methods this deployment can actually honour.
+	 *
+	 * Public — the login screen needs it before anyone has signed in. Ask the
+	 * server rather than shipping a build-time flag: the flag stores the same
+	 * fact twice and lets the two disagree, and the symptom is a user clicking
+	 * a provider the server cannot complete and landing on the provider's own
+	 * error page, which the app cannot explain.
+	 */
+	providers() {
+		return this.http.request<IApiResponse<IAuthProvidersResult>>({
+			method: 'GET',
+			path: '/auth/providers',
+		});
+	}
 
 	register(input: IRegisterInput) {
 		return this.http.request<IApiResponse<IRegisterResult>>({
