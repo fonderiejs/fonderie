@@ -30,14 +30,15 @@
     "check:hook-coverage": "node scripts/check-hook-coverage.mjs",
     "check:routes": "node scripts/check-client-routes.mjs",
     "check:template-coverage": "node scripts/check-template-coverage.mjs",
-    "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer"
+    "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer",
+    "check:hook-parity": "node scripts/check-hook-parity.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
     "@changesets/cli": "^3.0.2",
-    "turbo": "^2.10.12",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "turbo": "^2.10.12"
   },
   "license": "MIT",
   "packageManager": "npm@11.16.0"

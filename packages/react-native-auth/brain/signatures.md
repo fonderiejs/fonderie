@@ -319,6 +319,8 @@ function useRegister(client?: AuthClient | undefined): IUseRegisterReturn
 
 function useResetPassword(client?: AuthClient | undefined): IUseResetPasswordReturn
 
+function useAuthProviders(client?: AuthClient | undefined): IUseAuthProvidersReturn
+
 function useSession(client?: AuthClient | undefined): IUseSessionReturn
 
 function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn
@@ -326,6 +328,14 @@ function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn
 function useLoginHistory(rawFilters?: IGetLoginHistoryInput | undefined): IUseLoginHistoryReturn
 
 function useSessions(client?: AuthClient | undefined): IUseSessionsReturn
+
+function resolveSocialButtons(providers: readonly string[], options: { isIOS: boolean; enforceAppleGuideline?: boolean; }): ISocialButtons
+
+interface ISocialButtons {
+    apple: boolean;
+    google: boolean;
+    appleGuidelineRisk: boolean;
+}
 
 function clearToken(): Promise<void>
 

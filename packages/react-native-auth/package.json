@@ -28,7 +28,7 @@
 		"build": "tsup",
 		"dev": "tsup --watch",
 		"typecheck": "tsc --noEmit",
-		"test": "tsx --tsconfig tsconfig.test.json --test src/__tests__/*.test.tsx",
+		"test": "tsx --tsconfig tsconfig.test.json --test 'src/__tests__/*.test.ts?(x)'",
 		"lint": "biome lint src",
 		"format": "biome format --write src",
 		"check": "biome check --write src"
@@ -38,8 +38,8 @@
 		"@fonderie/react": "*"
 	},
 	"peerDependencies": {
-		"react": ">=18.0.0",
-		"@react-native-async-storage/async-storage": ">=1.18.0"
+		"@react-native-async-storage/async-storage": ">=1.18.0",
+		"react": ">=18.0.0"
 	},
 	"devDependencies": {
 		"@react-native-async-storage/async-storage": "3.1.1",

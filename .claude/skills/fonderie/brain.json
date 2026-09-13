@@ -1427,6 +1427,7 @@
         "useProfile",
         "useRegister",
         "useResetPassword",
+        "useAuthProviders",
         "useSession",
         "useVerifyEmail",
         "useLoginHistory",
@@ -4434,6 +4435,9 @@
       "vue-media"
     ],
     "useapplesignin": [
+      "react-native-auth"
+    ],
+    "useauthproviders": [
       "react-native-auth"
     ],
     "webhookdetailscreen": [
