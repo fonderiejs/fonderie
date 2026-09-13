@@ -6,6 +6,8 @@ import { EventBus } from '@fonderie/events';
 import type { IEventMeta } from '@fonderie/events';
 
 import { WebhookDispatcher } from '../dispatcher';
+import { DeliveryModel } from '../models/delivery.model';
+import { WebhooksModule } from '../module';
 import { signPayload } from '../signing';
 import {
 	assertPublicHttpUrl,
@@ -435,7 +437,9 @@ test('retry: a claimed failed delivery is actually re-attempted and marked deliv
 	assert.equal(init.headers['X-Webhook-Signature'], signPayload('whsec_retry', init.body));
 	assert.equal(init.headers['X-Webhook-ID'], 'd1');
 
-	const update = captured.find((c) => c.sql.includes('UPDATE fonderie_webhook_deliveries'));
+	// Match markResult specifically: the claim is ALSO an UPDATE of this table
+	// now (it leases the row), so the table name alone no longer identifies one.
+	const update = captured.find((c) => c.sql.includes('delivered_at    = $6'));
 	assert.ok(update, 'markResult must record the outcome');
 	assert.equal(update!.params[0], 'd1');
 	assert.equal(update!.params[1], 'delivered');
@@ -618,4 +622,45 @@ test('attemptDelivery: stores exactly the body the transport returns', async () 
 	await d.attemptDelivery('https://example.com', 'secret', delivery, new DeliveryModel(store as never));
 	assert.equal(store.db.fonderie_webhook_deliveries[0]!['responseBody'], 'stored-body');
 	assert.equal(store.db.fonderie_webhook_deliveries[0]!['status'], 'delivered');
+});
+
+// ── Retry claiming ────────────────────────────────────────────────
+
+test('claimForRetry: the claim is exclusive, not a plain read', async () => {
+	// It used to be a bare SELECT, so every concurrent caller read the SAME
+	// rows and delivered them all. One server with one timer never noticed;
+	// several warm serverless instances, or a container plus a scheduled ping,
+	// sent the customer's endpoint the same webhook repeatedly.
+	const captured: string[] = [];
+	const store = {
+		query: async <T>(sql: string): Promise<T[]> => {
+			captured.push(sql);
+			return [] as T[];
+		},
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
+	};
+
+	await new DeliveryModel(store as never).claimForRetry();
+
+	const sql = captured[0] ?? '';
+	assert.match(sql, /FOR UPDATE OF \w+ SKIP LOCKED/, 'the claim must lock the rows it takes');
+	assert.match(sql, /UPDATE fonderie_webhook_deliveries/, 'claiming must WRITE, not just read');
+	assert.match(sql, /next_attempt_at = now\(\)/, 'the claim must lease the row forward');
+});
+
+test('WebhooksModule: retry() is reachable, so a scheduled ping can drive it', async () => {
+	// setInterval never reliably fires on serverless, and there was previously
+	// no way to run a retry by hand — a failed delivery was simply never
+	// retried there, with no recourse at all.
+	const store = {
+		query: async <T>(): Promise<T[]> => [] as T[],
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
+	};
+	const mod = new WebhooksModule(store as never, {});
+	const routes: unknown[] = [];
+	mod.install({ addRoute: (...args: unknown[]) => { routes.push(args); } } as never);
+
+	assert.equal(typeof mod.retry, 'function');
+	await mod.retry(); // must not throw
+	mod.stop();        // must clear the interval, which was never cleared before
 });

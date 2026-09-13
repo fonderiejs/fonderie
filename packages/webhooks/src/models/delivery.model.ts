@@ -78,19 +78,46 @@ export class DeliveryModel {
 		);
 	}
 
-	claimForRetry(limit = 10): Promise<IPendingRetry[]> {
+	/**
+	 * Take ownership of up to `limit` deliveries that are due for another
+	 * attempt. Claiming is EXCLUSIVE: two callers get disjoint sets.
+	 *
+	 * It used to be a plain SELECT, which claimed nothing — so every concurrent
+	 * caller read the same rows and delivered them all. One long-running server
+	 * with one timer never noticed; more than one of anything (several warm
+	 * serverless instances, a container plus a scheduled ping) sent the same
+	 * webhook to the customer's endpoint repeatedly. Webhooks are outward-facing,
+	 * so that duplicate is someone else's system acting on the same event twice.
+	 *
+	 * The claim pushes `next_attempt_at` out by `leaseSeconds`, which doubles as
+	 * crash recovery: `markResult` overwrites it with the real backoff (or null
+	 * on success), and a process that dies mid-attempt simply leaves the row to
+	 * become due again once the lease expires.
+	 */
+	claimForRetry(limit = 10, leaseSeconds = 300): Promise<IPendingRetry[]> {
 		return this.store.query<IPendingRetry>(
-			`SELECT ${D_COLS},
-			        e.url, e.secret
-			 FROM   fonderie_webhook_deliveries d
-			 JOIN   fonderie_webhook_endpoints  e ON e.id = d.endpoint_id
-			 WHERE  d.status = 'failed'
-			   AND  d.next_attempt_at IS NOT NULL
-			   AND  d.next_attempt_at <= now()
-			   AND  e.enabled = true
-			 ORDER  BY d.next_attempt_at
-			 LIMIT  $1`,
-			[limit],
+			`WITH locked AS (
+			   SELECT d2.id
+			   FROM   fonderie_webhook_deliveries d2
+			   JOIN   fonderie_webhook_endpoints  e2 ON e2.id = d2.endpoint_id
+			   WHERE  d2.status = 'failed'
+			     AND  d2.next_attempt_at IS NOT NULL
+			     AND  d2.next_attempt_at <= now()
+			     AND  e2.enabled = true
+			   ORDER  BY d2.next_attempt_at
+			   LIMIT  $1
+			   FOR UPDATE OF d2 SKIP LOCKED
+			 ), claimed AS (
+			   UPDATE fonderie_webhook_deliveries d
+			      SET next_attempt_at = now() + make_interval(secs => $2)
+			     FROM locked
+			    WHERE d.id = locked.id
+			   RETURNING ${D_COLS}
+			 )
+			 SELECT c.*, e.url, e.secret
+			 FROM   claimed c
+			 JOIN   fonderie_webhook_endpoints e ON e.id = c."endpointId"`,
+			[limit, leaseSeconds],
 		);
 	}
 }
