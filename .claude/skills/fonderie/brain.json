@@ -5,7 +5,7 @@
     "adapter-hono": "6.2.0",
     "adapter-koa": "5.3.0",
     "audit": "5.1.11",
-    "auth": "7.6.1",
+    "auth": "7.7.0",
     "billing": "9.2.2",
     "client": "0.23.0",
     "config": "5.1.13",
@@ -161,7 +161,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.6.1",
+      "version": "7.7.0",
       "stability": "stable",
       "requires": [
         "core",

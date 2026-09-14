@@ -1,5 +1,52 @@
 # @fonderie/auth
 
+## 7.7.0
+
+### Minor Changes
+
+- 8ab15a4: Phone sign-ins now appear in login history.
+  
+  A phone sign-in COMPLETES in `verify()`, not `login()`: `/auth/login` only sends
+  the code and issues a short-lived pending token, because possession of the phone
+  is the sole credential and issuing real tokens earlier would authenticate anyone
+  who typed a number.
+  
+  Login history enumerated the login routes — `login()` and the OAuth callbacks —
+  and never looked in a route named `verify`. The phone flow predates that feature
+  by four months, so it was simply never covered. The security screen showed every
+  other method and silently omitted this one, which is worse than showing nothing:
+  an owner reading it concludes there were no phone sign-ins.
+  
+  Success and both failure paths are recorded (`invalid_pin`, `expired_pin`) with
+  the caller's IP and user-agent. The failures matter most — a run of them is what
+  tells an owner someone is guessing at their phone login.
+  
+  No migration: `fonderie_login_events.method` is an unconstrained TEXT column.
+- 4d0441b: Warn when a security event is recorded with no caller identity at all.
+  
+  A real HTTP request arriving through an adapter carries a user-agent and a
+  resolved client IP. BOTH being absent means the context was built by hand —
+  almost always `fonderie.handle(new Request(...))` called directly, with the
+  caller's headers dropped and no `{ meta: { clientIp } }` seed.
+  
+  Nothing fails. The sign-in works, the session opens, and the damage only
+  appears later in login history: "Unknown device" with no IP, and only for the
+  affected method — which reads as a display bug rather than missing security
+  data. It happened on an OAuth callback, so the blank rows were exactly the
+  sign-ins whose history matters most.
+  
+  Reported once per process, because the condition is a property of how the app
+  is wired rather than of any one request, and repeating it per login would bury
+  it. The message names both halves of the fix: forward the user-agent header,
+  and pass the resolved IP as `handle(req, { meta: { clientIp } })` — resolved
+  with `resolveClientIp` from `@fonderie/core/middlewares` rather than read off
+  the socket, or a proxied deployment records the proxy.
+  
+  Only one of the two missing is deliberately NOT reported: a request can lack a
+  user-agent, and an IP can be unresolvable on some transports. Both missing
+  together is the signature worth flagging, and keeping it that narrow is what
+  stops the warning becoming noise people mute.
+
 ## 7.6.1
 
 ### Patch Changes
