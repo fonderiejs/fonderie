@@ -4,6 +4,11 @@ export type { IEventsConfig, EventTransportConfig } from './module';
 
 export { MemoryTransport, PGTransport } from './transports';
 export { explainDrainFailure } from './diagnose';
+
+// Deployable queue consumer — one entrypoint for always-on, scale-to-zero and
+// run-once hosts, so the hosting choice is not a code change.
+export { runWorker } from './worker';
+export type { IRunWorkerOptions, IWorkerHandle } from './worker';
 export type { IEventTransport, IPGTransportConfig, IDeadLetter, IConsumerBacklog } from './transports';
 
 export { matchesPattern } from './transports/pattern';

@@ -53,6 +53,23 @@ new PGTransport(config: IPGTransportConfig): PGTransport
 
 function explainDrainFailure(err: unknown): string
 
+function runWorker(buses: EventBus | EventBus[], options?: IRunWorkerOptions): Promise<IWorkerHandle>
+
+interface IRunWorkerOptions {
+    maxMs?: number;
+    intervalMs?: number;
+    port?: number;
+    secret?: string;
+    once?: boolean;
+    onError?: (err: unknown) => void;
+}
+
+interface IWorkerHandle {
+    readonly done: Promise<void>;
+    stop(): Promise<void>;
+    readonly port?: number;
+}
+
 interface IEventTransport {
     publish(type: string, payload: unknown, meta: IEventMeta): Promise<void>;
     subscribe(type: string, handler: IEventHandler, consumer: string): void;
