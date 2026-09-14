@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/courier",
-	"version": "7.2.0",
+	"version": "7.2.1",
 	"fonderie": { "stability": "stable" },
 	"description": "Transactional messaging for SaaS — multi-channel delivery (email, SMS, push) with FS or DB templates, per-message-type channel routing, and a persistent message log.",
 	"keywords": [
@@ -54,7 +54,7 @@
 	"peerDependencies": {
 		"@fonderie/core": "^0.15.0",
 		"@fonderie/events": "^5.0.0",
-		"@fonderie/store": "^0.4.0"
+		"@fonderie/store": "^0.5.0"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/store": {

@@ -1,5 +1,12 @@
 # @fonderie/customers
 
+## 6.2.7
+
+### Patch Changes
+
+- Updated dependencies [ff1120b]
+  - @fonderie/store@0.5.0
+
 ## 6.2.6
 
 ### Patch Changes

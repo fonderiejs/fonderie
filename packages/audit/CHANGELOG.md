@@ -1,5 +1,12 @@
 # @fonderie/audit
 
+## 5.1.11
+
+### Patch Changes
+
+- Updated dependencies [ff1120b]
+  - @fonderie/store@0.5.0
+
 ## 5.1.10
 
 ### Patch Changes
