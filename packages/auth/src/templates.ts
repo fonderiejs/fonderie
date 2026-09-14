@@ -123,6 +123,25 @@ The phone number on your account was just updated.
 If you made this change, you're all set. If not, contact support right away — someone may have access to your account.`,
 	},
 
+	[MESSAGE_KEYS.passwordRevoked]: {
+		subject: 'The password on your account was removed',
+		html: `<h1>Your password was removed</h1>
+<p>You just signed in with <strong>{{provider}}</strong>. A password had been set on this account, but this email address had never been confirmed &mdash; so we could not tell who set it, and it has been removed.</p>
+<p>Signing in with {{provider}} works as before. If you want a password as well, set one from your account settings.</p>
+<p class="muted">If you never set a password here, someone else may have tried to register with your address. Nothing further is needed &mdash; the account is yours.</p>`,
+		text: `Your password was removed
+
+You just signed in with {{provider}}. A password had been set on this account,
+but this email address had never been confirmed — so we could not tell who set
+it, and it has been removed.
+
+Signing in with {{provider}} works as before. If you want a password as well,
+set one from your account settings.
+
+If you never set a password here, someone else may have tried to register with
+your address. Nothing further is needed — the account is yours.`,
+	},
+
 	[MESSAGE_KEYS.oauthRegistration]: {
 		subject: 'Welcome to {{appName}}',
 		html: `<h1>Welcome to {{appName}}</h1>
@@ -167,6 +186,7 @@ If you did this, you're all set. If not, contact support right away.`,
 // registration sample uses an empty firstName to prove the blank-name path
 // renders cleanly (the emitter may pass firstName: '').
 export const SAMPLE_PAYLOADS: Record<AuthMessageKey, Record<string, unknown>> = {
+	[MESSAGE_KEYS.passwordRevoked]: { provider: 'Google' },
 	[MESSAGE_KEYS.oauthRegistration]: { provider: 'Google', appName: 'Fonderie' },
 	[MESSAGE_KEYS.oauthLinked]: { provider: 'Google' },
 	[MESSAGE_KEYS.oauthUnlinked]: { provider: 'Google' },

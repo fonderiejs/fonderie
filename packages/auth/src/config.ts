@@ -66,6 +66,11 @@ export const MESSAGE_KEYS = {
 	// Changing HOW an account can be signed into is a security event for the
 	// account's owner, who may not be the person doing it. Both directions are
 	// notified for the same reason password changes are.
+	// A password was REVOKED because the account it sat on had never been
+	// verified and an OAuth identity proved ownership of the mailbox. The
+	// recipient is now known to own that address, so this reaches the right
+	// person — and it is the only way they learn a password stopped working.
+	passwordRevoked: 'password-revoked',
 	// Welcome for an account CREATED by an OAuth sign-in. Distinct from
 	// emailRegistration, which carries a verification PIN — an OAuth signup
 	// arrives already verified by the provider and has nothing to confirm.
