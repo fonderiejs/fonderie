@@ -326,3 +326,55 @@ test('pending(): applies nothing — it is safe on the request path', async () =
 	const wrote = seen.some((q) => /CREATE TABLE|INSERT INTO|ALTER TABLE/i.test(q));
 	assert.equal(wrote, false, 'pending() must not create or modify anything');
 });
+
+// ── migration ordering ────────────────────────────────────────────
+//
+// Files are applied in LEXICOGRAPHIC order, so "1100_" sorts before "200_".
+// A migration numbered past the widest existing prefix therefore runs FIRST,
+// before the tables it alters exist — and it is invisible on any database that
+// already has the earlier ones applied. It breaks on a FRESH database: CI, a
+// new contributor, a restore from backup.
+//
+// That is not hypothetical. It turned an app's CI red while production stayed
+// green for hours, because production had applied 200_ long before 1100_ was
+// written.
+
+test('refuses migrations whose name order contradicts their number', async () => {
+	const { assertOrderIsUnambiguous } = await import('../migrations/runner');
+	// The real case: 1000_ and 1100_ added after 900_, widening the prefix.
+	const files = ['100_a.sql', '200_create_tasks.sql', '900_c.sql', '1000_d.sql', '1100_alter_tasks.sql'].sort();
+	assert.throws(
+		() => assertOrderIsUnambiguous(files, '/migrations'),
+		/out of order/,
+		'a fresh database would apply 1100_ before 200_ created the table it alters',
+	);
+});
+
+test('names the file that actually moved, and how to renumber it', async () => {
+	const { assertOrderIsUnambiguous } = await import('../migrations/runner');
+	try {
+		assertOrderIsUnambiguous(['200_a.sql', '1000_b.sql'].sort(), '/migrations');
+		assert.fail('should have thrown');
+	} catch (err) {
+		const message = (err as Error).message;
+		assert.match(message, /1000_b\.sql/, 'the offending file must be named — a guard you cannot act on is noise');
+		assert.match(message, /pad every prefix|without widening/, 'and it must say how to fix it');
+	}
+});
+
+test('a consistent scheme is never flagged, however it is padded', async () => {
+	const { assertOrderIsUnambiguous } = await import('../migrations/runner');
+	// Equal lexicographic and numeric order is the only thing that matters, so
+	// none of these are anyone's problem.
+	for (const files of [
+		['100_a.sql', '200_b.sql', '900_c.sql', '910_d.sql', '920_e.sql'],
+		['0100_a.sql', '0200_b.sql', '1000_c.sql', '1100_d.sql'],
+		['20250101120000_a.sql', '20250601090000_b.sql'],
+		['init.sql', 'schema.sql'],
+		['200_only.sql'],
+		[],
+	]) {
+		assert.doesNotThrow(() => assertOrderIsUnambiguous([...files].sort(), '/migrations'), files.join(','));
+	}
+});
+
