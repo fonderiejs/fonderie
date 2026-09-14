@@ -1,5 +1,12 @@
 # @fonderie/config
 
+## 5.1.13
+
+### Patch Changes
+
+- Updated dependencies [ff1120b]
+  - @fonderie/store@0.5.0
+
 ## 5.1.12
 
 ### Patch Changes

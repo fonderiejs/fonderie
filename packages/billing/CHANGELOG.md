@@ -1,5 +1,12 @@
 # @fonderie/billing
 
+## 9.2.2
+
+### Patch Changes
+
+- Updated dependencies [ff1120b]
+  - @fonderie/store@0.5.0
+
 ## 9.2.1
 
 ### Patch Changes
