@@ -58,7 +58,7 @@
 		"@fonderie/workspaces": "../workspaces",
 		"@fonderie/permissions": "../permissions",
 		"@fonderie/billing": "../billing",
-		"@types/node": "^26.4.1",
+		"@types/node": "^26.5.1",
 		"tsx": "^4.23.13",
 		"tsup": "^8.5.1",
 		"typescript": "^6.0.3"
