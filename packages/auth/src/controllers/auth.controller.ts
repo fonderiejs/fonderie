@@ -606,12 +606,34 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 
 			// ── Phone branch ─────────────────────────────────────────
 			if (ctx.user!.loginMethod === 'phone') {
+				// A phone sign-in COMPLETES here, not in login(): /auth/login only
+				// sends the code and issues a pending token, because possession of
+				// the phone is the sole credential. That is why login history missed
+				// this path for months — an audit of "where do logins happen" reads
+				// login() and the OAuth callbacks, and never a route named verify.
+				const phoneMeta = requestMeta(ctx);
 				const record = await phoneVerif.findByUser(ctx.user!.id, pin);
 				if (!record) {
+					await loginEvents.recordSafe({
+						userId: ctx.user!.id,
+						emailAttempted: null,
+						method: 'phone',
+						outcome: 'failed',
+						failureReason: 'invalid_pin',
+						...phoneMeta,
+					});
 					return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Invalid or expired pin');
 				}
 				if (new Date() > record.expiresAt) {
 					await phoneVerif.deleteByUser(ctx.user!.id);
+					await loginEvents.recordSafe({
+						userId: ctx.user!.id,
+						emailAttempted: null,
+						method: 'phone',
+						outcome: 'failed',
+						failureReason: 'expired_pin',
+						...phoneMeta,
+					});
 					return setApiResponse(
 						HTTP.BAD_REQUEST,
 						'VERIFICATION_FAILED',
@@ -624,7 +646,14 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					loginMethod: 'phone',
 					phoneVerified: true,
 				});
-				await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid, requestMeta(ctx));
+				await sessions.create(ctx.user!.id, refreshToken, refreshTokenExpiry(refreshToken), sid, phoneMeta);
+				await loginEvents.recordSafe({
+					userId: ctx.user!.id,
+					emailAttempted: null,
+					method: 'phone',
+					outcome: 'success',
+					...phoneMeta,
+				});
 
 				const verifiedUser = await users.findById(ctx.user!.id);
 				if (!verifiedUser) {
