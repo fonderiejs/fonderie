@@ -37,6 +37,11 @@ Legitimate users lose one password reset and nothing else; they own the
 mailbox, so the reset reaches them. Someone who does not own it cannot receive
 that mail, which is the point.
 
-`upsertByProvider` now also returns `clearedUnverifiedPassword`, so callers can
-tell the owner their sign-in method changed rather than leaving them to
-discover a password that stopped working.
+The owner is told. A `password-revoked` notice ships with a default template
+and is sent to the address the provider just proved ownership of — so it
+reaches the right person, and a password that silently stops working is no
+longer something the user has to diagnose. It fires ONLY on an actual
+revocation; claiming one that did not happen would be worse than silence.
+
+`upsertByProvider` also returns `clearedUnverifiedPassword` for callers that
+want to react themselves.

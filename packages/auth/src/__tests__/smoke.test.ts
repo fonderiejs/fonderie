@@ -1941,6 +1941,62 @@ test('upsertByProvider: SQL revokes a password only when the account was unverif
 	assert.equal(result?.clearedUnverifiedPassword, true, 'the caller must be able to tell a credential was revoked');
 });
 
+test('googleCallback: a revoked password is announced to the mailbox owner', async () => {
+	// Without this the user simply finds their password stopped working, with
+	// nothing to connect it to. The recipient is now proven to own the address —
+	// that is exactly what the provider established — so the notice reaches the
+	// right person rather than whoever set the password.
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const bus = makeBus();
+	const ctrl = oauthController(
+		makeStore({
+			upsertResult: {
+				id: 'user-1',
+				inserted: false,
+				previousProvider: null,
+				clearedUnverifiedPassword: true,
+			},
+			userById: BASE_USER,
+		}),
+		GOOGLE_CONFIG,
+		bus as any,
+	);
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+
+	const notice = bus.emitted.find((e) => (e.payload as any)?.type === MESSAGE_KEYS.passwordRevoked);
+	assert.ok(notice, 'a revoked credential must be announced');
+	assert.equal((notice!.payload as any).recipient.email, 'jane@example.com');
+	assert.equal((notice!.payload as any).data.provider, 'Google');
+});
+
+test('googleCallback: an ordinary link announces no revocation', async () => {
+	// The notice must fire ONLY on an actual revocation — telling a user their
+	// password was removed when it was not is worse than saying nothing.
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const bus = makeBus();
+	const ctrl = oauthController(
+		makeStore({
+			upsertResult: {
+				id: 'user-1',
+				inserted: false,
+				previousProvider: null,
+				clearedUnverifiedPassword: false,
+			},
+			userById: BASE_USER,
+		}),
+		GOOGLE_CONFIG,
+		bus as any,
+	);
+	await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.ok(
+		!bus.emitted.some((e) => (e.payload as any)?.type === MESSAGE_KEYS.passwordRevoked),
+		'no revocation happened, so nothing may claim one did',
+	);
+});
+
 test('googleCallback: linking into an UNVERIFIED account still signs the user in', async () => {
 	// The revocation must not break the sign-in that triggered it: the person
 	// signing in owns the mailbox and should land in their account.
