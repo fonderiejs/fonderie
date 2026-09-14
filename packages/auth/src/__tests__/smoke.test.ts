@@ -1071,6 +1071,69 @@ test('verify: 200 VERIFIED with new tokens and isPhoneVerified: true on valid ph
 	assert.ok(typeof body.result.tokens.refresh === 'string');
 });
 
+// A phone sign-in COMPLETES here, not in login(): /auth/login only sends the
+// code and issues a pending token, because possession of the phone is the sole
+// credential. Login history (#229, four months after the phone flow shipped)
+// enumerated the login routes and never looked in a route named verify — so
+// phone sign-ins were absent from the security screen while every other method
+// appeared on it.
+
+test('verify (phone): a successful sign-in reaches login history, with its identity', async () => {
+	const seen: { sql: string; params: unknown[] }[] = [];
+	const inner = makeStore({
+		phoneVerifRow: { phone: '+15141234567', expires_at: new Date(Date.now() + 60_000) },
+		userById: PHONE_USER,
+	});
+	const recording = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			seen.push({ sql, params: params ?? [] });
+			return inner.query<T>(sql, params);
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(recording),
+	} as unknown as IStoreAdapter;
+
+	const response = await authController(recording, config).verify(
+		makeCtx({
+			user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
+			body: { token: '123456' },
+			ip: '203.0.113.9',
+		}),
+	);
+	assert.equal(response.status, 200);
+
+	const event = seen.find((q) => q.sql.includes('fonderie_login_events') && /INSERT/i.test(q.sql));
+	assert.ok(event, 'a phone sign-in must be recorded like every other method');
+	assert.ok(event!.params.includes('phone'), "recorded as method 'phone', not lumped in with password");
+	assert.ok(event!.params.includes('203.0.113.9'), 'and carries the caller IP, not a null row');
+});
+
+test('verify (phone): a wrong code is recorded as a FAILED attempt', async () => {
+	// The failures are the half that matters on a security screen: a run of them
+	// is what tells the owner someone is guessing at their phone login.
+	const seen: string[] = [];
+	const inner = makeStore({ userById: PHONE_USER }); // no phoneVerifRow → pin not found
+	const recording = {
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			seen.push(sql);
+			return inner.query<T>(sql, params);
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(recording),
+	} as unknown as IStoreAdapter;
+
+	const response = await authController(recording, config).verify(
+		makeCtx({
+			user: { ...PHONE_USER, loginMethod: 'phone', phoneVerified: false },
+			body: { token: '999999' },
+			ip: '203.0.113.9',
+		}),
+	);
+	assert.equal(response.status, 400);
+	assert.ok(
+		seen.some((sql) => sql.includes('fonderie_login_events') && /INSERT/i.test(sql)),
+		'a failed phone attempt must be recorded too',
+	);
+});
+
 test('verify: phone-OTP pending token is admitted (completes the H1 login flow)', async () => {
 	// A pending token resolves to ctx.user with mfaPending: true + loginMethod
 	// 'phone' — verify must accept it and, on a valid OTP, issue the real pair.
