@@ -179,7 +179,12 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 	 */
 	const announceOAuthUpsert = async (
 		ctx: IFonderieContext,
-		upserted: { id: string; inserted: boolean; previousProvider: string | null },
+		upserted: {
+			id: string;
+			inserted: boolean;
+			previousProvider: string | null;
+			clearedUnverifiedPassword?: boolean;
+		},
 		provider: string,
 		user: { email: string | null; firstName: string | null; lastName: string | null; locale: string },
 	): Promise<void> => {
@@ -188,6 +193,23 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 		const reqOpts = reqId !== undefined ? { requestId: reqId } : undefined;
 		const label = provider.charAt(0).toUpperCase() + provider.slice(1);
 		const recipient = { email: user.email, phone: null, deviceToken: null };
+
+		// Announced regardless of which branch follows, and first: a password
+		// that silently stops working is the one change a user cannot diagnose.
+		// The recipient is now PROVEN to own this mailbox — that is what the
+		// provider just established — so this reaches the right person.
+		if (upserted.clearedUnverifiedPassword && user.email) {
+			await background(bus.emit(
+				NOTIFICATION_EVENT,
+				{
+					type: MESSAGE_KEYS.passwordRevoked,
+					locale: user.locale,
+					data: { provider: label },
+					recipient,
+				} satisfies ICourierMessage,
+				reqOpts,
+			));
+		}
 
 		if (upserted.inserted) {
 			await background(bus.emit(
