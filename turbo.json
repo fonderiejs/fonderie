@@ -6,7 +6,16 @@
       "outputs": ["dist/**"]
     },
     "test": {
-      "dependsOn": ["build"]
+      "dependsOn": ["build"],
+      // These gate the DB/Redis-backed tests (@fonderie/rate-limit, billing,
+      // events). Declaring them here does two jobs: it passes them through to
+      // the task, and — the reason this exists — it puts them in the CACHE KEY.
+      // Without that, turbo replays logs from a run where the variable was
+      // unset, so a gated test reports SKIP and keeps reporting it no matter
+      // what CI sets. Every one of these was silently skipping in CI, billing's
+      // money-path atomicity checks included. Add a variable here whenever a
+      // test is gated on one.
+      "env": ["RATE_LIMIT_PG_URL", "RATE_LIMIT_REDIS_URL", "BILLING_PG_URL", "EVENTS_PG_URL"]
     },
     "typecheck": {
       "dependsOn": ["^build"]
