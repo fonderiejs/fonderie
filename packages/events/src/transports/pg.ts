@@ -6,6 +6,7 @@ import type { IEventTransport } from './types';
 import type { IEventMeta, IEventHandler, IEventRecord } from '../types';
 import { matchesPattern } from './pattern';
 import { computeEventHmac } from '../integrity';
+import { explainListenFailure } from '../diagnose';
 
 export interface IConsumerBacklog {
 	consumer: string;
@@ -136,7 +137,16 @@ export class PGTransport implements IEventTransport {
 
 		this.listenClient = new pg.Client(this.config.connectionUrl);
 		await this.listenClient.connect();
-		await this.listenClient.query('LISTEN fonderie_events');
+		try {
+			await this.listenClient.query('LISTEN fonderie_events');
+		} catch (err) {
+			// Fail with the cause and both fixes rather than a raw "unsupported
+			// statement" on a connection string that works everywhere else in the
+			// app — see explainListenFailure.
+			await this.listenClient.end().catch(() => {});
+			this.listenClient = null;
+			throw new Error(`[events:pg] ${explainListenFailure(err)}`);
+		}
 
 		this.listenClient.on('notification', () => this.wake());
 		this.listenClient.on('error', (err) =>
