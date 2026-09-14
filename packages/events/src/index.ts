@@ -3,7 +3,7 @@ export { EventsModule } from './module';
 export type { IEventsConfig, EventTransportConfig } from './module';
 
 export { MemoryTransport, PGTransport } from './transports';
-export { explainDrainFailure } from './diagnose';
+export { explainDrainFailure, explainListenFailure } from './diagnose';
 
 // Deployable queue consumer — one entrypoint for always-on, scale-to-zero and
 // run-once hosts, so the hosting choice is not a code change.

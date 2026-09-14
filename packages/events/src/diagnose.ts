@@ -26,3 +26,30 @@ export function explainDrainFailure(err: unknown): string {
 	}
 	return message;
 }
+
+/**
+ * Turn a LISTEN failure into something that names its own cause and both fixes.
+ *
+ * A transaction-mode pooler lends a backend per transaction and takes it back,
+ * so a LISTEN registered on one is gone by the next statement. Poolers reject
+ * it outright rather than pretend — but the raw error only says the statement
+ * is unsupported, on a connection string that works everywhere else in the app.
+ * The obvious reading is "the database is broken", which is the wrong place to
+ * look.
+ *
+ * Both fixes are real and the choice matters, so both are named: point the
+ * consumer at the session-mode endpoint (same database, same credentials), or
+ * stop needing LISTEN at all by draining on a schedule — which is also what
+ * lets the consumer run anywhere.
+ */
+export function explainListenFailure(err: unknown): string {
+	const message = err instanceof Error ? err.message : String(err);
+	return (
+		`this transport is configured to CONSUME, which needs LISTEN — and LISTEN is not ` +
+		`supported on this connection. That is the signature of a transaction-mode pooler ` +
+		`(Supabase: port 6543). Either point this process at the session-mode connection ` +
+		`instead (Supabase: port 5432, same database and credentials, different endpoint), ` +
+		`or set \`consume: false\` and drain on a schedule — that issues no LISTEN and runs ` +
+		`anywhere. Underlying error: ${message}`
+	);
+}

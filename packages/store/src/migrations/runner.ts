@@ -107,8 +107,51 @@ export class MigrationRunner {
 
 	private async getFiles(): Promise<string[]> {
 		const all = await readdir(this.migrationsDir);
-		return all.filter((f) => f.endsWith('.sql')).sort(); // lexicographic — timestamp prefix keeps order correct
+		const files = all.filter((f) => f.endsWith('.sql')).sort(); // lexicographic
+		assertOrderIsUnambiguous(files, this.migrationsDir);
+		return files;
 	}
+}
+
+/**
+ * Refuse to run migrations whose filename order does not match their number.
+ *
+ * Files are applied in LEXICOGRAPHIC order, so `"1100_..." < "200_..."` — "1"
+ * sorts before "2". A migration numbered past the widest existing prefix
+ * therefore runs FIRST, before the tables it alters exist.
+ *
+ * This is invisible on a database that already has the earlier migrations: they
+ * are recorded as applied, so only the new one runs and it works. It breaks on
+ * a FRESH database, which means CI, a new contributor's first setup, and a
+ * restore from backup — the three moments you least want a surprise. That is
+ * exactly how it happened: production was fine for hours while CI could not
+ * start the API at all.
+ *
+ * Detection is exact rather than heuristic: compare the lexicographic order
+ * against the numeric one. Equal orders are fine no matter how the prefixes are
+ * padded, so a consistent scheme is never flagged.
+ */
+export function assertOrderIsUnambiguous(files: string[], dir: string): void {
+	const numbered = files
+		.map((file) => ({ file, n: Number(/^(\d+)/.exec(file)?.[1] ?? Number.NaN) }))
+		.filter((x) => Number.isFinite(x.n));
+	if (numbered.length < 2) return;
+
+	const byNumber = [...numbered].sort((a, b) => a.n - b.n).map((x) => x.file);
+	const byName = numbered.map((x) => x.file);
+	if (byNumber.every((f, i) => f === byName[i])) return;
+
+	// Name the first file that actually moves — that is the one to rename.
+	const culprit = byName.find((f, i) => f !== byNumber[i]) ?? byName[0];
+	const width = Math.max(...numbered.map((x) => String(x.n).length));
+	throw new Error(
+		`[store] migrations in ${dir} would run out of order: "${culprit}" sorts by NAME ` +
+			`before files with a smaller number, because they are applied lexicographically ` +
+			`("1100_" < "200_"). A fresh database would apply it before the migration that ` +
+			`creates what it depends on. Renumber it to keep name order and number order the ` +
+			`same — pad every prefix to ${width} digits, or number new files above the ` +
+			`existing ones without widening (900 -> 910, not 1000). Refusing to run.`,
+	);
 }
 
 // For fonderie-internal use only. Skips the reserved-prefix guard.

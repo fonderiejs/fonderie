@@ -190,3 +190,30 @@ test('stop() waits for the pass in flight before releasing the transport', async
 	await stopping;
 	assert.deepEqual(order, ['drain-done', 'transport-stopped']);
 });
+
+// ── LISTEN on the wrong endpoint ──────────────────────────────────
+//
+// A transaction-mode pooler lends a backend per transaction, so a LISTEN
+// registered on one is gone by the next statement — poolers reject it outright.
+// The raw error only says the statement is unsupported, on a connection string
+// that works everywhere else in the app, so the obvious reading is "the
+// database is broken". That is the wrong place to look, and it cost real time.
+
+test('explainListenFailure names the cause and BOTH fixes', async () => {
+	const { explainListenFailure } = await import('../diagnose');
+	const out = explainListenFailure(new Error('unsupported statement: LISTEN'));
+
+	assert.match(out, /transaction-mode pooler/, 'must name the actual cause');
+	assert.match(out, /6543/, 'and the port that gives it away');
+	assert.match(out, /session-mode|5432/, 'fix 1: point the consumer at a session endpoint');
+	assert.match(out, /consume: false|drain/, 'fix 2: stop needing LISTEN at all');
+	assert.match(out, /unsupported statement: LISTEN/, 'and must keep the original error, not swallow it');
+});
+
+test('explainListenFailure survives a non-Error', async () => {
+	// Drivers throw strings and objects too; a diagnostic that itself throws
+	// replaces a confusing error with a useless one.
+	const { explainListenFailure } = await import('../diagnose');
+	assert.match(explainListenFailure('plain string'), /plain string/);
+	assert.match(explainListenFailure(undefined), /transaction-mode pooler/);
+});

@@ -53,6 +53,8 @@ new PGTransport(config: IPGTransportConfig): PGTransport
 
 function explainDrainFailure(err: unknown): string
 
+function explainListenFailure(err: unknown): string
+
 function runWorker(buses: EventBus | EventBus[], options?: IRunWorkerOptions): Promise<IWorkerHandle>
 
 interface IRunWorkerOptions {
