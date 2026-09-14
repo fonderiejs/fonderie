@@ -2081,6 +2081,74 @@ test('googleCallback: linking into an UNVERIFIED account still signs the user in
 	assert.equal(response.status, 200);
 });
 
+
+// ── identityless context warning ──────────────────────────────────
+//
+// A context with neither a client IP nor a user-agent is the signature of a
+// hand-built request — fonderie.handle(new Request(...)) with the caller's
+// headers dropped and no meta seed. The symptom shows up much later and reads
+// as a display bug: login history says "Unknown device" with no IP, but only
+// for the affected sign-in method. It happened on an OAuth callback, which is
+// the history that matters most.
+
+test('requestMeta warns once when a context carries no caller identity', async () => {
+	const { requestMeta, __resetIdentityWarningForTests } = await import('../services/request-meta');
+	__resetIdentityWarningForTests();
+	const warnings: string[] = [];
+	const original = console.warn;
+	console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+	try {
+		const bare = {
+			meta: {},
+			request: new Request('http://internal/auth/google/callback', { method: 'GET' }),
+		} as never;
+		const meta = requestMeta(bare);
+		assert.equal(meta.ipAddress, null);
+		assert.equal(meta.userAgent, null);
+		assert.equal(warnings.length, 1, 'the wiring mistake must be reported');
+		assert.match(warnings[0]!, /clientIp/, 'and must name the seed that fixes it');
+		assert.match(warnings[0]!, /user-agent/, 'and the header to forward');
+
+		// Once per process: the condition is a property of the wiring, not of a
+		// request, so repeating it per login would bury it.
+		requestMeta(bare);
+		requestMeta(bare);
+		assert.equal(warnings.length, 1, 'must not repeat per request');
+	} finally {
+		console.warn = original;
+	}
+});
+
+test('requestMeta stays silent when either identity is present', async () => {
+	// Only ONE missing is not a wiring mistake: a request can lack a user-agent,
+	// and an IP can be unresolvable on some transports. Warning on those would
+	// make the real signal ignorable.
+	const { requestMeta, __resetIdentityWarningForTests } = await import('../services/request-meta');
+	const warnings: string[] = [];
+	const original = console.warn;
+	console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+	try {
+		__resetIdentityWarningForTests();
+		requestMeta({
+			meta: { clientIp: '203.0.113.5' },
+			request: new Request('http://internal/auth/login', { method: 'POST' }),
+		} as never);
+		assert.equal(warnings.length, 0, 'IP present — nothing to report');
+
+		__resetIdentityWarningForTests();
+		requestMeta({
+			meta: {},
+			request: new Request('http://internal/auth/login', {
+				method: 'POST',
+				headers: { 'user-agent': 'Mozilla/5.0' },
+			}),
+		} as never);
+		assert.equal(warnings.length, 0, 'user-agent present — nothing to report');
+	} finally {
+		console.warn = original;
+	}
+});
+
 // ── OAuth signup side effects ─────────────────────────────────────
 //
 // An OAuth upsert looks identical for a first-time signup and a returning
