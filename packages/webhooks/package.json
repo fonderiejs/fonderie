@@ -77,6 +77,6 @@
 	},
 	"dependencies": {
 		"zod": "^4.5.4",
-		"undici": "^6.21.0"
+		"undici": "^8.10.2"
 	}
 }
