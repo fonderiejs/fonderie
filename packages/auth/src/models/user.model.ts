@@ -294,30 +294,63 @@ export class UserModel {
 	 * The prior state is read in a CTE of the SAME statement, so it sees the
 	 * snapshot from before the insert. Reading it in a separate query would
 	 * race two concurrent logins into both seeing "new".
+	 *
+	 * SECURITY — linking is BY EMAIL, so this merges into whatever row already
+	 * holds the address. If that row was never verified, its password was never
+	 * proven to belong to the mailbox; anyone can register an address they do
+	 * not own. The provider HAS proven ownership. So an unverified password is
+	 * revoked at the moment of linking: without that, linking sets
+	 * email_verified_at and the earlier registrant is left holding a working
+	 * password on an account now treated as verified.
+	 *
+	 * The legitimate user loses nothing but a password reset — they own the
+	 * mailbox. Someone who does not own it cannot receive that mail.
 	 */
 	async upsertByProvider(
 		email: string,
 		provider: string,
 		providerId: string,
-	): Promise<{ id: string; inserted: boolean; previousProvider: string | null } | null> {
+	): Promise<{
+		id: string;
+		inserted: boolean;
+		previousProvider: string | null;
+		clearedUnverifiedPassword: boolean;
+	} | null> {
 		const [row] = await this.store.query<{
 			id: string;
 			inserted: boolean;
 			previousProvider: string | null;
+			clearedUnverifiedPassword: boolean;
 		}>(
 			`WITH prior AS (
-				SELECT provider FROM fonderie_users WHERE email = $1
+				SELECT provider, email_verified_at, password_hash IS NOT NULL AS had_password
+				  FROM fonderie_users WHERE email = $1
 			), upserted AS (
 				INSERT INTO fonderie_users (email, email_verified_at, provider, provider_id)
 				VALUES ($1, now(), $2, $3)
 				ON CONFLICT (email) DO UPDATE
 				SET provider = $2, provider_id = $3,
-				    email_verified_at = COALESCE(fonderie_users.email_verified_at, now())
+				    email_verified_at = COALESCE(fonderie_users.email_verified_at, now()),
+				    -- A password on an UNVERIFIED account is a claim, not a
+				    -- credential: nobody ever proved that mailbox belongs to
+				    -- whoever set it. The provider has now proven it belongs to
+				    -- the person signing in. Drop the unproven claim rather than
+				    -- promote it — otherwise linking marks the account verified
+				    -- and silently hands the earlier registrant a working
+				    -- password on a now-trusted account.
+				    password_hash = CASE
+				      WHEN fonderie_users.email_verified_at IS NULL THEN NULL
+				      ELSE fonderie_users.password_hash
+				    END
 				RETURNING id
 			)
 			SELECT upserted.id,
 			       NOT EXISTS (SELECT 1 FROM prior)   AS inserted,
-			       (SELECT provider FROM prior)       AS "previousProvider"
+			       (SELECT provider FROM prior)       AS "previousProvider",
+			       -- True only when a password was actually revoked, so the
+			       -- caller can tell the owner their sign-in method changed.
+			       COALESCE((SELECT had_password AND email_verified_at IS NULL FROM prior), false)
+			         AS "clearedUnverifiedPassword"
 			FROM upserted`,
 			[email, provider, providerId],
 		);

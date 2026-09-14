@@ -272,7 +272,7 @@ type AuthStoreOpts = {
 	userById?: IUser | null;
 	insertedId?: string;
 	// upsertByProvider's richer row: which of new-signup / link / plain login.
-	upsertResult?: { id: string; inserted: boolean; previousProvider: string | null };
+	upsertResult?: { id: string; inserted: boolean; previousProvider: string | null; clearedUnverifiedPassword?: boolean };
 	sessionExists?: boolean;
 	resetRow?: { user_id: string; expires_at: Date } | null;
 	resetTokenRow?: { user_id: string; expires_at: Date } | null;
@@ -1906,6 +1906,61 @@ function makeBus() {
 		emit: (type: string, payload: unknown) => Promise<void>;
 	};
 }
+
+// ── Linking an OAuth identity to an existing account ──────────────
+//
+// Linking is BY EMAIL, so it merges into whatever row already holds the
+// address. That is the intended behaviour — one person, one account — but it
+// means an account nobody ever verified can be merged into. Anyone can register
+// an address they do not own; only verification proves otherwise.
+//
+// The exact SQL is exercised against real Postgres too (see the upsert probe in
+// the model); these pin the CONTRACT the controller depends on, so a rewrite of
+// that statement cannot quietly drop the revocation.
+
+test('upsertByProvider: SQL revokes a password only when the account was unverified', async () => {
+	const { UserModel } = await import('../models/user.model');
+	let sql = '';
+	const store = {
+		query: async <T = unknown>(text: string): Promise<T[]> => {
+			sql = text;
+			return [{ id: 'u1', inserted: false, previousProvider: null, clearedUnverifiedPassword: true }] as unknown as T[];
+		},
+	} as unknown as IStoreAdapter;
+
+	const result = await new UserModel(store).upsertByProvider('jane@example.com', 'google', 'g-1');
+
+	// The guard must be on the PRIOR row's verification state, not the new one —
+	// the same statement sets email_verified_at, so testing the new value would
+	// never revoke anything.
+	assert.match(
+		sql.replace(/\s+/g, ' '),
+		/password_hash = CASE WHEN fonderie_users\.email_verified_at IS NULL THEN NULL ELSE fonderie_users\.password_hash END/,
+		'the revocation must be conditional on the pre-existing verification state',
+	);
+	assert.equal(result?.clearedUnverifiedPassword, true, 'the caller must be able to tell a credential was revoked');
+});
+
+test('googleCallback: linking into an UNVERIFIED account still signs the user in', async () => {
+	// The revocation must not break the sign-in that triggered it: the person
+	// signing in owns the mailbox and should land in their account.
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const ctrl = oauthController(
+		makeStore({
+			upsertResult: {
+				id: 'user-1',
+				inserted: false,
+				previousProvider: null,
+				clearedUnverifiedPassword: true,
+			} as never,
+			userById: BASE_USER,
+		}),
+		GOOGLE_CONFIG,
+	);
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+});
 
 // ── OAuth signup side effects ─────────────────────────────────────
 //
