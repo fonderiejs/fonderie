@@ -1,5 +1,5 @@
 import type { IStoreAdapter } from '@fonderie/store';
-import type { IBillingProvider } from '../providers/types';
+import type { IBillingProvider, IWebhookRegistration } from '../providers/types';
 import { PAYMENT_WEBHOOK_EVENTS, SUBSCRIPTION_WEBHOOK_EVENTS } from '../webhook-events';
 
 /** One endpoint's verdict: what it should send vs what it is configured to send. */
@@ -56,7 +56,7 @@ export async function checkWebhookRegistration(
 		return { unsupported: true, endpoints: [], ok: true };
 	}
 
-	let registrations;
+	let registrations: IWebhookRegistration[];
 	try {
 		registrations = await provider.listWebhookRegistrations();
 	} catch (err) {
