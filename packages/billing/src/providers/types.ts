@@ -350,4 +350,26 @@ export interface IBillingProvider {
 		signature: string;
 		secret: string;
 	}): Promise<IBillingEvent>;
+
+	/**
+	 * What the provider is CONFIGURED to send, per endpoint.
+	 *
+	 * The one webhook failure that cannot be observed from the request path: an
+	 * event this package handles but was never registered for simply never
+	 * arrives, and an absent event is indistinguishable from one that has not
+	 * happened yet. Detecting it means asking the provider what it was told to
+	 * send and diffing against what we consume — see `checkWebhookRegistration`.
+	 *
+	 * Optional: a provider that exposes no such API (or a test double) omits it,
+	 * and the check reports "unsupported" rather than failing.
+	 */
+	listWebhookRegistrations?(): Promise<IWebhookRegistration[]>;
+}
+
+/** One configured endpoint at the provider. */
+export interface IWebhookRegistration {
+	url: string;
+	enabledEvents: string[];
+	/** Provider-side status, when exposed — e.g. Stripe's 'enabled' | 'disabled'. */
+	status?: string;
 }

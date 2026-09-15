@@ -12,7 +12,7 @@ import { resolvePlanNameByPrice } from '../services/plans';
 import { applyPackCredit } from '../services/purchase';
 import { normalizeCurrency, subscriberEventFields } from '../utils';
 import { notifyBilling } from '../services/notify';
-import { readWebhookEvent } from './webhook-shared';
+import { readWebhookEvent, warnOnUnconsumedEvent } from './webhook-shared';
 
 // The lifecycle domain-event key for a subscription webhook. The verb reflects
 // the resulting state: a deletion is a cancellation, an unpaid subscription is
@@ -57,6 +57,7 @@ export function webhookController(
 				'Webhook secret not configured',
 			);
 			if (event instanceof Response) return event;
+			warnOnUnconsumedEvent(event.type, 'POST /billing/webhook');
 
 			// §8: keep the price cache honest. Invalidate on any price/product change
 			// regardless of arrival order (invalidate-and-refetch is order-safe).

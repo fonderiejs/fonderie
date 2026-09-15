@@ -12,7 +12,7 @@ import { DuplicateTransactionError } from '../errors';
 import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { upsertWalletCustomer } from '../services/wallet-customers';
-import { readWebhookEvent } from './webhook-shared';
+import { readWebhookEvent, warnOnUnconsumedEvent } from './webhook-shared';
 
 // A ledger-stored money amount (JSON metadata) parsed back to bigint, or null
 // when absent/malformed — so a missing amountPaid degrades to "no proration".
@@ -233,6 +233,7 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 				'Payment webhook secret not configured — set wallet.webhookSecret',
 			);
 			if (event instanceof Response) return event;
+			warnOnUnconsumedEvent(event.type, 'POST /billing/webhook/payment');
 
 			// Refund/chargeback events carry no event.payment and would otherwise
 			// die at the `if (!payment)` guard below — dispatch them first.
