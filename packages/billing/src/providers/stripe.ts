@@ -10,10 +10,12 @@ import type {
 	INormalizedSubscription,
 	IResolvedPrice,
 	ISubscriptionChange,
+	IWebhookRegistration,
 } from './types';
 import { BILLING_INTERVAL, isBillingInterval } from '../types';
 import type { BillingInterval, SubscriberType } from '../types';
 import { toSafeNumber } from '../utils';
+import { SUBSCRIPTION_LIFECYCLE_EVENTS } from '../webhook-events';
 
 interface IStripeSubscriptionRaw {
 	id: string;
@@ -533,6 +535,31 @@ export class StripeProvider implements IBillingProvider {
 		}
 	}
 
+	/**
+	 * The endpoints configured on this Stripe account, with the events each was
+	 * told to send. Read-only; used by `checkWebhookRegistration` to detect a
+	 * handler that will never fire because nobody ticked its event.
+	 *
+	 * `enabled_events` may be the single wildcard '*', which Stripe uses for
+	 * "every event type" — passed through as-is so the comparison can treat it
+	 * as covering everything rather than as a literal event name.
+	 */
+	async listWebhookRegistrations(): Promise<IWebhookRegistration[]> {
+		const stripe = await this.client();
+		const out: IWebhookRegistration[] = [];
+		// Paginate: an account with many endpoints would otherwise silently
+		// report only the first page, which is the same silent-gap failure this
+		// check exists to remove.
+		for await (const e of stripe.webhookEndpoints.list({ limit: 100 })) {
+			out.push({
+				url: e.url,
+				enabledEvents: [...(e.enabled_events ?? [])],
+				...(e.status ? { status: e.status } : {}),
+			});
+		}
+		return out;
+	}
+
 	async resolvePriceById(priceId: string): Promise<IResolvedPrice | null> {
 		const stripe = await this.client();
 		try {
@@ -1016,14 +1043,13 @@ export class StripeProvider implements IBillingProvider {
 			};
 		}
 
-		const isSubscriptionEvent = [
-			'customer.subscription.created',
-			'customer.subscription.updated',
-			'customer.subscription.deleted',
-			// A trial about to end — carries the subscription; the webhook emits a
-			// heads-up notice without mutating state (handled before the upsert).
-			'customer.subscription.trial_will_end',
-		].includes(raw.type);
+		// Read from the declared list rather than an inline copy, so the branch
+		// and the set callers are told to register cannot drift apart.
+		// (trial_will_end is in there: it carries the subscription, and the webhook
+		// emits a heads-up notice without mutating state.)
+		const isSubscriptionEvent = (SUBSCRIPTION_LIFECYCLE_EVENTS as readonly string[]).includes(
+			raw.type,
+		);
 
 		if (!isSubscriptionEvent) {
 			return { type: raw.type, subscription: null };

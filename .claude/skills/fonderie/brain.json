@@ -378,7 +378,12 @@
         "BILLING_INTERVALS",
         "WALLET_LEDGER_TYPES",
         "InsufficientFundsError",
-        "DuplicateTransactionError"
+        "DuplicateTransactionError",
+        "SUBSCRIPTION_WEBHOOK_EVENTS",
+        "SUBSCRIPTION_LIFECYCLE_EVENTS",
+        "SUBSCRIPTION_INVOICE_EVENTS",
+        "PAYMENT_WEBHOOK_EVENTS",
+        "ALL_WEBHOOK_EVENTS"
       ],
       "subpaths": [
         "@fonderie/billing/types",
@@ -3958,6 +3963,21 @@
       "billing"
     ],
     "duplicatetransactionerror": [
+      "billing"
+    ],
+    "subscription_webhook_events": [
+      "billing"
+    ],
+    "subscription_lifecycle_events": [
+      "billing"
+    ],
+    "subscription_invoice_events": [
+      "billing"
+    ],
+    "payment_webhook_events": [
+      "billing"
+    ],
+    "all_webhook_events": [
       "billing"
     ],
     "fonderieclient": [

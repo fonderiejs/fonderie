@@ -145,8 +145,28 @@ export {
 	isWithinDunningGrace,
 } from './services/subscriptions';
 export { maybeAutoRecharge } from './services/auto-recharge';
-export { webhookStats } from './services/provider-health';
-export type { IProviderWebhookStats } from './services/provider-health';
+export { webhookStats, checkWebhookRegistration } from './services/provider-health';
+export type {
+	IProviderWebhookStats,
+	IWebhookRegistrationCheck,
+	IWebhookRegistrationReport,
+} from './services/provider-health';
+
+// The events each endpoint must be registered for — declared once here so a
+// runbook, a setup script and this package cannot disagree about the list.
+export {
+	SUBSCRIPTION_WEBHOOK_EVENTS,
+	SUBSCRIPTION_LIFECYCLE_EVENTS,
+	SUBSCRIPTION_INVOICE_EVENTS,
+	PAYMENT_WEBHOOK_EVENTS,
+	ALL_WEBHOOK_EVENTS,
+	isConsumedWebhookEvent,
+} from './webhook-events';
+export type {
+	SubscriptionWebhookEvent,
+	PaymentWebhookEvent,
+	ConsumedWebhookEvent,
+} from './webhook-events';
 export {
 	upsertWalletCustomer,
 	claimAutoRecharge,
