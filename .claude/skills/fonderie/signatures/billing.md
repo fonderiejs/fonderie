@@ -19,6 +19,7 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined, option
   .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; idempotencyKey?: string; }): Promise<...>
   .createPaymentCheckoutSession(opts: { customerId: string; amount: bigint; currency: string; name: string; quantity?: number; priceId?: string; savePaymentMethod?: boolean; metadata: Record<string, string>; successUrl: string; cancelUrl: string; }): Promise<...>
   .chargeOffSession(opts: { customerId: string; paymentMethodId?: string | null; amount: bigint; currency: string; idempotencyKey: string; metadata: Record<string, string>; }): Promise<{ providerTxId: string | null; status: "succeeded" | ... 2 more ... | "unknown"; }>
+  .listWebhookRegistrations(): Promise<IWebhookRegistration[]>
   .resolvePriceById(priceId: string): Promise<IResolvedPrice | null>
   .resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>
   .updateSubscription(opts: { subscriptionId: string; priceId: string; prorationBehavior?: "always_invoice" | "create_prorations"; }): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null; }>
@@ -334,6 +335,7 @@ interface IBillingProvider {
         signature: string;
         secret: string;
     }): Promise<IBillingEvent>;
+    listWebhookRegistrations?(): Promise<IWebhookRegistration[]>;
 }
 
 interface IBillingEvent {
@@ -747,12 +749,47 @@ function maybeAutoRecharge(args: { store: IStoreAdapter; config: IBillingConfig;
 
 function webhookStats(store: IStoreAdapter, options?: { hours?: number; }): Promise<IProviderWebhookStats>
 
+function checkWebhookRegistration(provider: Pick<IBillingProvider, "listWebhookRegistrations">, urls: { subscriptionUrl?: string; paymentUrl?: string; }): Promise<IWebhookRegistrationReport>
+
 interface IProviderWebhookStats {
     subscriptions: number;
     lastEventAt: Date | null;
     purchases: number;
     lastPurchaseAt: Date | null;
 }
+
+interface IWebhookRegistrationCheck {
+    url: string;
+    registered: boolean;
+    status?: string;
+    missing: string[];
+    unexpected: string[];
+}
+
+interface IWebhookRegistrationReport {
+    unsupported?: boolean;
+    error?: string;
+    endpoints: IWebhookRegistrationCheck[];
+    ok: boolean;
+}
+
+const SUBSCRIPTION_WEBHOOK_EVENTS: readonly ["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "customer.subscription.trial_will_end", "invoice.paid", "invoice.payment_failed"]
+
+const SUBSCRIPTION_LIFECYCLE_EVENTS: readonly ["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "customer.subscription.trial_will_end"]
+
+const SUBSCRIPTION_INVOICE_EVENTS: readonly ["invoice.paid", "invoice.payment_failed"]
+
+const PAYMENT_WEBHOOK_EVENTS: readonly ["checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "payment_intent.succeeded", "payment_intent.payment_failed", "charge.refunded", "charge.dispute.created", "charge.dispute.closed"]
+
+const ALL_WEBHOOK_EVENTS: readonly ConsumedWebhookEvent[]
+
+function isConsumedWebhookEvent(type: string): type is ConsumedWebhookEvent
+
+type SubscriptionWebhookEvent = (typeof SUBSCRIPTION_WEBHOOK_EVENTS)[number];
+
+type PaymentWebhookEvent = (typeof PAYMENT_WEBHOOK_EVENTS)[number];
+
+type ConsumedWebhookEvent = SubscriptionWebhookEvent | PaymentWebhookEvent;
 
 function upsertWalletCustomer(key: IWalletCustomerKey & { providerCustomerId: string; rearm: boolean; paymentMethodId?: string | null; }, store: IStoreAdapter): Promise<void>
 
