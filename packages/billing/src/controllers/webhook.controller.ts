@@ -64,6 +64,38 @@ export function webhookController(
 				priceCache.invalidate();
 			}
 
+			// Resolve WHOSE subscription this is, before any branch below uses the
+			// identity. A provider subscription carries our subscriber in metadata,
+			// but plenty of real subscriptions do not have it: created in the
+			// provider's dashboard, imported from another system, restored from a
+			// backup, or a synthetic test event. The normalizer represents that
+			// absence as subscriberId '' (providers/stripe.ts), and '' is not a
+			// uuid — handing it to the store raises `invalid input syntax for type
+			// uuid: ""` and the webhook 500s.
+			//
+			// A 500 is the worst available answer here: the provider treats it as a
+			// transient fault and redelivers the same un-actionable event on a
+			// backoff schedule, so ONE unowned subscription becomes a permanent
+			// stream of failing deliveries that buries real ones in the log.
+			//
+			// So recover the identity from our own table first — the subscription
+			// may be genuinely ours with its metadata stripped, and
+			// provider_subscription_id is the same join the invoice branch already
+			// trusts. Only when that finds nothing do we decline, and declining is a
+			// 200: the event is validly signed and simply not ours to act on, so the
+			// provider must not retry it.
+			if (event.subscription && !event.subscription.subscriberId) {
+				const owner = await getSubscriberByProviderSubscriptionId(
+					event.subscription.providerSubscriptionId,
+					store,
+				);
+				if (!owner) {
+					return Response.json({ received: true, ignored: 'no-subscriber-metadata' });
+				}
+				event.subscription.subscriberType = owner.subscriberType;
+				event.subscription.subscriberId = owner.subscriberId;
+			}
+
 			// A trial about to end — a heads-up notice + domain event WITHOUT
 			// mutating subscription state (nothing has changed yet). Checked before
 			// the generic subscription-upsert path, which this event also feeds.
