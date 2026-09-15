@@ -44,7 +44,7 @@ jobs:
       # NODE_AUTH_TOKEN / NPM_TOKEN — npm authenticates via the job's id-token,
       # and provenance is emitted automatically (no NPM_CONFIG_PROVENANCE needed).
       - id: changesets
-        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           # `version-script` regenerates brain.json after the bumps so its
           # sdkVersions match the new package versions — otherwise the
