@@ -34,10 +34,10 @@
     "check:hook-parity": "node scripts/check-hook-parity.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.12",
+    "@biomejs/biome": "^2.5.13",
     "@changesets/cli": "^3.0.2",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "turbo": "^2.10.12"
   },
   "license": "MIT",

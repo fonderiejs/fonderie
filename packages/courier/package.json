@@ -49,7 +49,7 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"nodemailer": "^10.0.1"
+		"nodemailer": "^10.0.8"
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.15.0",
@@ -68,7 +68,7 @@
 		"@fonderie/core": "../core",
 		"@fonderie/events": "../events",
 		"@fonderie/store": "../store",
-		"@types/node": "^26.4.1",
+		"@types/node": "^26.5.1",
 		"@types/nodemailer": "^8.0.1",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.13",
