@@ -161,6 +161,7 @@ interface ICourierConfig {
     sms?: ISmsChannelConfig;
     push?: IPushChannelConfig;
     email?: IEmailChannelConfig;
+    brandName?: string;
     adminToken?: string;
     templates?: {
         source: 'db' | 'fs';
