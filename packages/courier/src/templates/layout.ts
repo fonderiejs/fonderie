@@ -15,6 +15,21 @@
 // near-black primary, a mint brand accent, Inter, and the `#fafafa` canvas —
 // retune `EMAIL_THEME` to rebrand every email at once.
 
+// WHY THE ATTRIBUTION ROW IS PLAIN TEXT, NOT A LINK
+//
+// The shell renders "Powered by Fonderie" below the card. It is deliberately not
+// a hyperlink: a link would put one domain into every message sent by every app
+// built on Fonderie, coupling their sender reputations — one app's mail being
+// marked as spam becomes a shared negative signal for all of them. The recipient
+// of a receipt gains nothing from clicking through, so the cost is real and the
+// benefit is not.
+//
+// (Mail clients never FETCH links — only images trigger remote-content blocking
+// — so this is about spam scoring and reputation, not asset loading.)
+//
+// Keep explanations like this OUT of the template literal below: anything inside
+// it is HTML that ships to recipients.
+
 // A single small token set — retune these to match your brand.
 export const EMAIL_THEME = {
 	brand: 'Fonderie',
@@ -97,6 +112,7 @@ export const DEFAULT_EMAIL_LAYOUT = `<!DOCTYPE html>
 			border-radius: 6px;
 			padding: 14px 22px 14px 30px;
 		}
+		.email-powered { padding: 18px 8px 0 8px; text-align: center; }
 		.muted { color: ${EMAIL_THEME.muted}; }
 		@media only screen and (max-width: 599px) {
 			.email-header, .email-content, .email-footer { padding-left: 22px !important; padding-right: 22px !important; }
@@ -115,17 +131,20 @@ export const DEFAULT_EMAIL_LAYOUT = `<!DOCTYPE html>
 							<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 								<tr><td class="email-accent" style="height:3px;background:${EMAIL_THEME.brandAccent};font-size:0;line-height:0;">&nbsp;</td></tr>
 								<tr><td class="email-header" style="padding:28px 32px 0 32px;">
-									<span class="email-brand" style="font-weight:800;font-size:19px;color:${EMAIL_THEME.ink};letter-spacing:-0.03em;">${EMAIL_THEME.brand}</span>
+									<span class="email-brand" style="font-weight:800;font-size:19px;color:${EMAIL_THEME.ink};letter-spacing:-0.03em;">{{brandName}}</span>
 								</td></tr>
 								<tr><td class="email-content" style="padding:20px 32px 8px 32px;color:${EMAIL_THEME.ink};">
 ${LAYOUT_CONTENT_SLOT}
 								</td></tr>
 								<tr><td class="email-footer" style="padding:16px 32px 28px 32px;color:${EMAIL_THEME.muted};font-size:13px;">
-									You're receiving this because someone used this address at ${EMAIL_THEME.brand}. If that wasn't you, you can ignore it.
+									You're receiving this because someone used this address at {{brandName}}. If that wasn't you, you can ignore it.
 								</td></tr>
 							</table>
 						</td>
 					</tr>
+					<tr><td class="email-powered" style="padding:18px 8px 0 8px;text-align:center;">
+						<span style="font:400 12px/1.5 ${FONT_SANS};color:${EMAIL_THEME.muted};letter-spacing:-0.01em;">Powered by Fonderie</span>
+					</td></tr>
 				</table>
 			</td>
 		</tr>

@@ -39,7 +39,13 @@ export class Dispatcher {
 			return;
 		}
 
-		const template = await this.resolver.resolve(message.type, message.data, message.locale);
+		// The configured product name is available to EVERY template without each
+		// call site remembering to pass it. Spread first so a message that supplies
+		// its own brandName still wins (a multi-tenant app may brand per workspace).
+		const data = this.config.brandName
+			? { brandName: this.config.brandName, ...message.data }
+			: message.data;
+		const template = await this.resolver.resolve(message.type, data, message.locale);
 
 		await Promise.allSettled(
 			channelNames.map(async (name) => {
