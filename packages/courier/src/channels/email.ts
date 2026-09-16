@@ -47,6 +47,7 @@ export class EmailChannel implements ICourierChannel {
 			},
 			body: JSON.stringify({
 				from: this.config.from,
+				...(this.config.replyTo ? { reply_to: this.config.replyTo } : {}),
 				to,
 				subject: template.subject ?? '(no subject)',
 				html: template.html,
@@ -74,6 +75,7 @@ export class EmailChannel implements ICourierChannel {
 		// `html: undefined` is a type error (and was never meaningful at runtime).
 		const info = await this.transport.sendMail({
 			from: this.config.from,
+			...(this.config.replyTo ? { replyTo: this.config.replyTo } : {}),
 			to,
 			subject: template.subject ?? '(no subject)',
 			text: template.text,
