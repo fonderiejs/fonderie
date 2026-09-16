@@ -114,16 +114,42 @@ Your balance is {{balanceDisplay}}, at or below your {{thresholdDisplay}} thresh
 Top up in your billing settings to avoid any interruption.`,
 	},
 
+	// A receipt, not a balance notification. The distinction matters: a buyer
+	// needs the amount PAID, something to cite, and somewhere to get the
+	// document. "Credits were added" answers none of those, and is what an
+	// accountant will bounce back.
+	//
+	// `invoiceNumber` / `invoicePdf` are empty strings when the charge produced no
+	// invoice (a direct card charge rather than an invoiced one), so the reference
+	// lines simply do not render rather than showing blanks.
 	[MESSAGE_KEYS.paymentReceipt]: {
-		subject: 'Your purchase receipt',
-		html: `<h1>Thanks for your purchase</h1>
-<p><strong>{{creditsDisplay}}</strong> was added to your balance &mdash; your balance is now <strong>{{balanceAfterDisplay}}</strong>.</p>
-<p class="muted">Your full receipt is available any time in your billing settings.</p>`,
-		text: `Thanks for your purchase
+		// NB: subject and text are rendered with the message data only — the shell
+		// supplies {{brandName}} to the HTML alone, so it must not appear here.
+		subject: 'Your receipt',
+		html: `<h1>Receipt</h1>
+<p style="font-size:28px;font-weight:700;margin:0 0 4px 0;">{{amountPaidDisplay}}</p>
+<p class="muted" style="margin:0 0 20px 0;">Paid with card</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;font-size:15px;">
+	<tr><td style="padding:6px 0;">{{packName}}</td><td align="right" style="padding:6px 0;">{{amountPaidDisplay}}</td></tr>
+	<tr><td style="padding:10px 0 6px 0;border-top:1px solid #e0e0e0;font-weight:600;">Total paid</td><td align="right" style="padding:10px 0 6px 0;border-top:1px solid #e0e0e0;font-weight:600;">{{amountPaidDisplay}}</td></tr>
+</table>
+<p>Your balance is now <strong>{{balanceAfterDisplay}}</strong>.</p>
+<p class="muted">Invoice {{invoiceNumber}}</p>
+<p><a href="{{invoicePdf}}">Download invoice (PDF)</a></p>
+<p class="muted">Your full billing history is available any time in your billing settings.</p>`,
+		text: `Receipt
 
-{{creditsDisplay}} was added to your balance — your balance is now {{balanceAfterDisplay}}.
+{{amountPaidDisplay}} paid
 
-Your full receipt is available any time in your billing settings.`,
+{{packName}} ....... {{amountPaidDisplay}}
+Total paid ....... {{amountPaidDisplay}}
+
+Your balance is now {{balanceAfterDisplay}}.
+
+Invoice {{invoiceNumber}}
+Download invoice (PDF): {{invoicePdf}}
+
+Your full billing history is available any time in your billing settings.`,
 	},
 
 	[MESSAGE_KEYS.refundProcessed]: {
@@ -190,6 +216,11 @@ export const SAMPLE_PAYLOADS: Record<BillingMessageKey, Record<string, unknown>>
 		balanceAfterDisplay: '750',
 		amountPaid: '900',
 		paymentCurrency: 'usd',
+		packName: '500 credits',
+		amountPaidDisplay: '$9.00',
+		invoiceNumber: 'ABCD1234-0001',
+		invoiceUrl: 'https://invoice.example.com/i/abc',
+		invoicePdf: 'https://invoice.example.com/i/abc.pdf',
 		providerTxId: 'pi_1QexampleX',
 	},
 	[MESSAGE_KEYS.refundProcessed]: {
