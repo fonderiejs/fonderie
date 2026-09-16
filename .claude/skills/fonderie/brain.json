@@ -379,6 +379,7 @@
         "WALLET_LEDGER_TYPES",
         "InsufficientFundsError",
         "DuplicateTransactionError",
+        "STRIPE_API_VERSION",
         "SUBSCRIPTION_WEBHOOK_EVENTS",
         "SUBSCRIPTION_LIFECYCLE_EVENTS",
         "SUBSCRIPTION_INVOICE_EVENTS",
@@ -3963,6 +3964,9 @@
       "billing"
     ],
     "duplicatetransactionerror": [
+      "billing"
+    ],
+    "stripe_api_version": [
       "billing"
     ],
     "subscription_webhook_events": [

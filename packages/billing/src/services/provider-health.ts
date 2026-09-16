@@ -20,6 +20,14 @@ export interface IWebhookRegistrationCheck {
 	 * return 200 and do nothing — but it means the config and the code disagree.
 	 */
 	unexpected: string[];
+	/** The API version this endpoint renders payloads in, when the provider says. */
+	apiVersion?: string;
+	/**
+	 * True when the endpoint renders payloads in a DIFFERENT version than this
+	 * client is pinned to. Deliberately separate from `missing`: the events do
+	 * arrive, they are just shaped differently than the code was written against.
+	 */
+	apiVersionMismatch?: boolean;
 }
 
 export interface IWebhookRegistrationReport {
@@ -28,6 +36,8 @@ export interface IWebhookRegistrationReport {
 	/** Set when the provider was asked and refused/failed. */
 	error?: string;
 	endpoints: IWebhookRegistrationCheck[];
+	/** The version this client is pinned to, when it pins one — the comparison basis. */
+	expectedApiVersion?: string;
 	/** True when every expected endpoint is registered, enabled, and complete. */
 	ok: boolean;
 }
@@ -49,7 +59,7 @@ export interface IWebhookRegistrationReport {
  * rather than failing — absence of the capability is not evidence of a problem.
  */
 export async function checkWebhookRegistration(
-	provider: Pick<IBillingProvider, 'listWebhookRegistrations'>,
+	provider: Pick<IBillingProvider, 'listWebhookRegistrations' | 'apiVersion'>,
 	urls: { subscriptionUrl?: string; paymentUrl?: string },
 ): Promise<IWebhookRegistrationReport> {
 	if (typeof provider.listWebhookRegistrations !== 'function') {
@@ -84,10 +94,15 @@ export async function checkWebhookRegistration(
 		}
 		// Stripe's '*' means every event type, so nothing can be missing.
 		const wildcard = found.enabledEvents.includes('*');
+		// Compared only when BOTH sides state a version — an unknown on either side
+		// is not evidence of a difference.
+		const versionKnown = Boolean(provider.apiVersion && found.apiVersion);
 		endpoints.push({
 			url,
 			registered: true,
 			...(found.status ? { status: found.status } : {}),
+			...(found.apiVersion ? { apiVersion: found.apiVersion } : {}),
+			...(versionKnown ? { apiVersionMismatch: found.apiVersion !== provider.apiVersion } : {}),
 			missing: wildcard ? [] : events.filter((e) => !found.enabledEvents.includes(e)),
 			unexpected: wildcard
 				? []
@@ -97,10 +112,55 @@ export async function checkWebhookRegistration(
 
 	// `unexpected` deliberately does NOT affect ok: an extra event is noise, not
 	// breakage. A disabled endpoint does, because it sends nothing at all.
+	//
+	// Neither does `apiVersionMismatch`, and that is a judgement call worth
+	// stating: `ok` answers "will the events arrive", and under a version
+	// difference they do. A difference is legitimate and can be long-lived — the
+	// normalizers read old and new field locations both — so folding it into `ok`
+	// would leave a deployment permanently red, which is how an alarm gets muted.
+	// It is reported instead through `describeWebhookProblems`, loudly and
+	// separately.
 	const ok = endpoints.every(
 		(e) => e.registered && e.missing.length === 0 && e.status !== 'disabled',
 	);
-	return { endpoints, ok };
+	return {
+		endpoints,
+		...(provider.apiVersion ? { expectedApiVersion: provider.apiVersion } : {}),
+		ok,
+	};
+}
+
+/**
+ * One line per problem, for a log. Empty when nothing is wrong.
+ *
+ * Mirrors `describePriceProblems` so an app logs both the same way, and covers
+ * the version difference that `ok` deliberately leaves alone.
+ */
+export function describeWebhookProblems(report: IWebhookRegistrationReport): string[] {
+	if (report.unsupported) return [];
+	if (report.error) return [`webhook check failed: ${report.error}`];
+
+	const lines: string[] = [];
+	for (const e of report.endpoints) {
+		if (!e.registered) {
+			lines.push(`${e.url}: NOT REGISTERED — every event we handle here will never arrive`);
+			continue;
+		}
+		if (e.status === 'disabled') {
+			lines.push(`${e.url}: endpoint is DISABLED at the provider — it sends nothing`);
+		}
+		if (e.missing.length > 0) {
+			lines.push(`${e.url}: not registered for ${e.missing.join(', ')} — those handlers can never run`);
+		}
+		if (e.apiVersionMismatch) {
+			lines.push(
+				`${e.url}: renders payloads as ${e.apiVersion} but this client is pinned to ` +
+					`${report.expectedApiVersion} — fields move between versions, so a payload can parse ` +
+					'to null and be silently ignored',
+			);
+		}
+	}
+	return lines;
 }
 
 /** Compare ignoring a trailing slash, which providers and configs disagree on. */

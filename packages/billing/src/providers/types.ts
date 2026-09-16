@@ -174,6 +174,16 @@ export interface INormalizedInvoiceSummary {
 export interface IBillingProvider {
 	name: string;
 
+	/**
+	 * The API version this provider's client is pinned to, when it pins one.
+	 *
+	 * Exposed so a diagnostic can compare it against the version a webhook
+	 * endpoint is registered at. Those are configured in two different places —
+	 * code here, dashboard there — and a provider renders webhook payloads in the
+	 * ENDPOINT's version, so they can drift apart without anything failing.
+	 */
+	readonly apiVersion?: string;
+
 	// Create or retrieve a customer record with the provider
 	createCustomer(opts: {
 		email: string;
@@ -372,4 +382,12 @@ export interface IWebhookRegistration {
 	enabledEvents: string[];
 	/** Provider-side status, when exposed — e.g. Stripe's 'enabled' | 'disabled'. */
 	status?: string;
+	/**
+	 * The API version this endpoint's payloads are rendered in, when exposed.
+	 *
+	 * Set on the endpoint, NOT on the API key — so it is independent of whatever
+	 * version this process pins, and a difference changes the shape of every
+	 * payload received.
+	 */
+	apiVersion?: string;
 }

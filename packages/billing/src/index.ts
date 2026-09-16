@@ -145,7 +145,11 @@ export {
 	isWithinDunningGrace,
 } from './services/subscriptions';
 export { maybeAutoRecharge } from './services/auto-recharge';
-export { webhookStats, checkWebhookRegistration } from './services/provider-health';
+export {
+	webhookStats,
+	checkWebhookRegistration,
+	describeWebhookProblems,
+} from './services/provider-health';
 export type {
 	IProviderWebhookStats,
 	IWebhookRegistrationCheck,
@@ -155,6 +159,7 @@ export type {
 // The catalog's prices and the provider's prices are two sources of truth for
 // the same number. Same reason this is async and not a checkReadiness() hook:
 // reading a price is a network call.
+export { STRIPE_API_VERSION } from './providers/stripe';
 export { checkPriceConsistency, describePriceProblems } from './services/price-consistency';
 export type {
 	IPriceConsistencyEntry,

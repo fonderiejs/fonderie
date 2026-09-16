@@ -3199,6 +3199,170 @@ test('normalizeInvoice: paid uses amount_paid, failed uses amount_due, refs coll
 	assert.equal(failed.providerTxId, null);
 });
 
+// A webhook payload is rendered in the ENDPOINT's API version — set in the
+// provider's dashboard — not the version this client pins. Stripe moved the
+// subscription under `parent` and the PaymentIntent under `payments` in 2025+,
+// so an endpoint registered at a newer version delivered invoices whose ids
+// both normalized to null. The controller answered
+// 200 `ignored: 'no-matching-subscription'`, which the provider records as a
+// SUCCESSFUL delivery — no retry, no error, nothing logged anywhere. Renewal
+// receipts and the invoicePaid / invoicePaymentFailed events simply stopped.
+//
+// The test above pins the pre-2025 shape and passes either way. That is exactly
+// why the suite stayed green while production went quiet, so the fixture below
+// is the one that actually holds the contract.
+test('normalizeInvoice: 2025+ shape — subscription and PaymentIntent moved off the invoice', async () => {
+	const { normalizeInvoice } = await import('../providers/stripe');
+	const n = normalizeInvoice(
+		{
+			id: 'in_3',
+			currency: 'cad',
+			amount_paid: 500,
+			// Deliberately NO top-level `subscription` / `payment_intent`: a newer
+			// API version does not send them at all.
+			parent: { subscription_details: { subscription: 'sub_3' } },
+			payments: { data: [{ payment: { payment_intent: 'pi_3' } }] },
+			customer: 'cus_3',
+		} as any,
+		'paid',
+	);
+	assert.equal(n.providerSubscriptionId, 'sub_3', 'null here makes the controller ignore the event');
+	assert.equal(n.providerTxId, 'pi_3', 'null here makes a pack purchase unmatchable');
+	assert.equal(n.amount, 500n);
+});
+
+test('normalizeInvoice: expanded objects in the 2025+ locations collapse to ids', async () => {
+	const { normalizeInvoice } = await import('../providers/stripe');
+	const n = normalizeInvoice(
+		{
+			id: 'in_4',
+			currency: 'usd',
+			amount_paid: 100,
+			parent: { subscription_details: { subscription: { id: 'sub_4' } } },
+			payments: { data: [{ payment: { payment_intent: { id: 'pi_4' } } }] },
+		} as any,
+		'paid',
+	);
+	assert.equal(n.providerSubscriptionId, 'sub_4');
+	assert.equal(n.providerTxId, 'pi_4');
+});
+
+test('normalizeInvoice: the current location wins when a payload carries both', async () => {
+	const { normalizeInvoice } = await import('../providers/stripe');
+	const n = normalizeInvoice(
+		{
+			id: 'in_5',
+			currency: 'usd',
+			amount_paid: 100,
+			subscription: 'sub_legacy',
+			payment_intent: 'pi_legacy',
+			parent: { subscription_details: { subscription: 'sub_current' } },
+			payments: { data: [{ payment: { payment_intent: 'pi_current' } }] },
+		} as any,
+		'paid',
+	);
+	assert.equal(n.providerSubscriptionId, 'sub_current');
+	assert.equal(n.providerTxId, 'pi_current');
+});
+
+test('normalizeInvoice: an invoice with neither location yields nulls, not a throw', async () => {
+	// A one-off invoice genuinely has no subscription, and an unpaid one has no
+	// PaymentIntent — absence is normal and must stay a null, not an exception.
+	const { normalizeInvoice } = await import('../providers/stripe');
+	const n = normalizeInvoice(
+		{ id: 'in_6', currency: 'usd', amount_due: 700, parent: null, payments: { data: [] } } as any,
+		'payment_failed',
+	);
+	assert.equal(n.providerSubscriptionId, null);
+	assert.equal(n.providerTxId, null);
+	assert.equal(n.amount, 700n);
+});
+
+// A 2025+ webhook payload carries NO PaymentIntent reference at all: the field
+// moved under `payments`, which a provider omits unless expanded — and a webhook
+// cannot expand. So unlike the subscription id, it cannot be recovered from the
+// delivery; it has to be re-read. Re-reading works because an API RESPONSE comes
+// back in the version this client pins, not the endpoint's.
+//
+// Without it, a pack-purchase invoice fails the controller's `inv.providerTxId`
+// guard and answers 422, so the provider retries and eventually gives up — the
+// orphan-heal backstop for a credit purchase silently stops backstopping.
+test('enrichInvoiceRefs: re-reads the PaymentIntent a 2025+ payload cannot carry', async () => {
+	const { enrichInvoiceRefs } = await import('../providers/stripe');
+	let asked = 0;
+	const out = await enrichInvoiceRefs(
+		{ id: 'in_7', status: 'paid', amount: 500n, currency: 'cad', providerTxId: null, providerSubscriptionId: 'sub_7', providerCustomerId: 'cus_7', metadata: {} } as any,
+		'paid',
+		async (id) => { asked++; assert.equal(id, 'in_7'); return { id, payment_intent: 'pi_7' }; },
+	);
+	assert.equal(out.providerTxId, 'pi_7');
+	assert.equal(out.providerSubscriptionId, 'sub_7', 'what the payload had is kept');
+	assert.equal(asked, 1);
+});
+
+test('enrichInvoiceRefs: backfills the subscription from the same read, not a second call', async () => {
+	const { enrichInvoiceRefs } = await import('../providers/stripe');
+	let asked = 0;
+	const out = await enrichInvoiceRefs(
+		{ id: 'in_8', status: 'paid', amount: 1n, currency: 'usd', providerTxId: null, providerSubscriptionId: null, providerCustomerId: null, metadata: {} } as any,
+		'paid',
+		async (id) => { asked++; return { id, payment_intent: 'pi_8', subscription: 'sub_8' }; },
+	);
+	assert.equal(out.providerTxId, 'pi_8');
+	assert.equal(out.providerSubscriptionId, 'sub_8');
+	assert.equal(asked, 1, 'one retrieve fills both');
+});
+
+test('enrichInvoiceRefs: costs nothing when the payload already carried the id', async () => {
+	// The pre-2025 case, and the one that must stay free — this runs on every
+	// invoice webhook.
+	const { enrichInvoiceRefs } = await import('../providers/stripe');
+	let asked = 0;
+	const inv = { id: 'in_9', status: 'paid', amount: 1n, currency: 'usd', providerTxId: 'pi_9', providerSubscriptionId: 'sub_9', providerCustomerId: null, metadata: {} } as any;
+	const out = await enrichInvoiceRefs(inv, 'paid', async () => { asked++; return {}; });
+	assert.equal(asked, 0, 'no provider call when there is nothing to fill');
+	assert.equal(out, inv, 'and the object is returned untouched');
+});
+
+test('enrichInvoiceRefs: a FAILED invoice is never re-read — there is no payment to find', async () => {
+	const { enrichInvoiceRefs } = await import('../providers/stripe');
+	let asked = 0;
+	const out = await enrichInvoiceRefs(
+		{ id: 'in_10', status: 'payment_failed', amount: 2500n, currency: 'usd', providerTxId: null, providerSubscriptionId: 'sub_10', providerCustomerId: null, metadata: {} } as any,
+		'payment_failed',
+		async () => { asked++; return { id: 'in_10', payment_intent: 'pi_x' }; },
+	);
+	assert.equal(asked, 0);
+	assert.equal(out.providerTxId, null);
+});
+
+test('enrichInvoiceRefs: a failing re-read degrades to the original, never throws', async () => {
+	// The event is already valid and signature-verified. Throwing here would
+	// surface as a 500, and a 500 makes the provider redeliver forever.
+	const { enrichInvoiceRefs } = await import('../providers/stripe');
+	const inv = { id: 'in_11', status: 'paid', amount: 1n, currency: 'usd', providerTxId: null, providerSubscriptionId: 'sub_11', providerCustomerId: null, metadata: {} } as any;
+	const out = await enrichInvoiceRefs(inv, 'paid', async () => { throw new Error('stripe down'); });
+	assert.equal(out.providerTxId, null);
+	assert.equal(out.providerSubscriptionId, 'sub_11');
+});
+
+test('enrichInvoiceRefs: reads the 2025+ locations on the re-read too', async () => {
+	// The retrieve comes back in whatever version the CLIENT pins — which may
+	// itself be a 2025+ one, so the re-read cannot assume the legacy shape.
+	const { enrichInvoiceRefs } = await import('../providers/stripe');
+	const out = await enrichInvoiceRefs(
+		{ id: 'in_12', status: 'paid', amount: 1n, currency: 'usd', providerTxId: null, providerSubscriptionId: null, providerCustomerId: null, metadata: {} } as any,
+		'paid',
+		async (id) => ({
+			id,
+			parent: { subscription_details: { subscription: 'sub_12' } },
+			payments: { data: [{ payment: { payment_intent: 'pi_12' } }] },
+		}),
+	);
+	assert.equal(out.providerTxId, 'pi_12');
+	assert.equal(out.providerSubscriptionId, 'sub_12');
+});
+
 test('normalizePaymentFailure: session keeps sessionId; intent is null with a reason', async () => {
 	const { normalizePaymentFailureFromSession, normalizePaymentFailureFromIntent } = await import('../providers/stripe');
 	const s = normalizePaymentFailureFromSession({ id: 'cs_1', payment_intent: 'pi_1', amount_total: 499, currency: 'usd', metadata: { subscriberType: 'user' } } as any);
