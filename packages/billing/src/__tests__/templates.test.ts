@@ -102,3 +102,17 @@ test('billing: DEFAULT_TEMPLATES and SAMPLE_PAYLOADS cover exactly the live mess
 	assert.deepEqual(new Set(Object.keys(DEFAULT_TEMPLATES)), keys, 'DEFAULT_TEMPLATES key set drift');
 	assert.deepEqual(new Set(Object.keys(SAMPLE_PAYLOADS)), keys, 'SAMPLE_PAYLOADS key set drift');
 });
+
+test('every anchor in a default template opens in a new tab, safely', () => {
+	// Same reasoning as courier's shell test, applied to the message bodies.
+	// Written as a sweep so a link added to any future template is covered
+	// without anyone remembering to extend this.
+	for (const [key, tmpl] of Object.entries(
+		DEFAULT_TEMPLATES as Record<string, { html?: string }>,
+	)) {
+		for (const a of tmpl.html?.match(/<a\s[^>]*>/g) ?? []) {
+			assert.match(a, /target="_blank"/, `'${key}': anchor missing target="_blank": ${a}`);
+			assert.match(a, /rel="[^"]*noopener/, `'${key}': anchor missing rel=noopener: ${a}`);
+		}
+	}
+});

@@ -55,3 +55,21 @@ test('templates with no sections are unaffected', () => {
 	const html = out('<p>Hello {{name}}</p>', { name: 'Ada' });
 	assert.match(html, /Hello Ada/);
 });
+
+// ── links open away from the message ──────────────────────────────
+
+test('every anchor in the shared shell opens in a new tab, safely', async () => {
+	// A client that navigates in place takes the reader AWAY from the email, and
+	// an email is not a page you can press Back to. Most webmail opens a new tab
+	// regardless — this is the belt-and-braces half, and it costs nothing.
+	//
+	// Asserted over the SHELL rather than one link, so an anchor added later
+	// cannot quietly omit it.
+	const { DEFAULT_EMAIL_LAYOUT } = await import('../templates/layout');
+	const anchors = DEFAULT_EMAIL_LAYOUT.match(/<a\s[^>]*>/g) ?? [];
+	assert.ok(anchors.length > 0, 'expected at least one anchor in the shell');
+	for (const a of anchors) {
+		assert.match(a, /target="_blank"/, `anchor missing target="_blank": ${a}`);
+		assert.match(a, /rel="[^"]*noopener/, `anchor missing rel=noopener: ${a}`);
+	}
+});

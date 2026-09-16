@@ -137,7 +137,7 @@ Top up in your billing settings to avoid any interruption.`,
 </table>
 <p>Your balance is now <strong>{{balanceAfterDisplay}}</strong>.</p>
 {{#invoiceNumber}}<p class="muted">Invoice {{invoiceNumber}}</p>{{/invoiceNumber}}
-{{#invoicePdf}}<p><a href="{{invoicePdf}}">Download invoice (PDF)</a></p>{{/invoicePdf}}
+{{#invoicePdf}}<p><a href="{{invoicePdf}}" target="_blank" rel="noopener noreferrer">Download invoice (PDF)</a></p>{{/invoicePdf}}
 <p class="muted">Your full billing history is available any time in your billing settings.</p>`,
 		text: `Receipt
 
