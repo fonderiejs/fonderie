@@ -45,6 +45,27 @@ export async function applyPackCredit(args: {
 	providerTxId: string;
 	amountPaid: bigint;
 	paymentCurrency: string;
+	/**
+	 * The provider's invoice reference, when the purchase produced one.
+	 *
+	 * A receipt that says only "credits were added" is a balance notification,
+	 * not a receipt: it states no amount paid and cites nothing the buyer can
+	 * take to an accountant. These fields are what make it one — and they are
+	 * already returned by the charge, so not forwarding them was the only thing
+	 * standing between the two.
+	 *
+	 * All optional: a provider or path that produces no invoice still sends a
+	 * receipt, just without the reference lines.
+	 */
+	/**
+	 * The pack's display name ("100 credits"), for the receipt's line item. The
+	 * packId is an internal identifier — showing `pack_500` to a buyer is the
+	 * developer's name for the thing, not the product's.
+	 */
+	packName?: string | null;
+	invoiceNumber?: string | null;
+	invoiceUrl?: string | null;
+	invoicePdf?: string | null;
 }): Promise<{ balance: bigint; duplicate: boolean }> {
 	const {
 		store,
@@ -103,6 +124,19 @@ export async function applyPackCredit(args: {
 				balanceAfter: result.balance.toString(),
 				creditsDisplay: formatWalletAmount(credits, creditCurrency, precision),
 				balanceAfterDisplay: formatWalletAmount(result.balance, creditCurrency, precision),
+				// What was actually PAID, in real money — formatted at 2dp because
+				// this is currency, not the wallet's own unit (which may be whole
+				// counts at precision 0). A receipt with no amount is not a receipt.
+				packName: args.packName ?? packId,
+				amountPaid: args.amountPaid.toString(),
+				paymentCurrency: args.paymentCurrency,
+				amountPaidDisplay: formatWalletAmount(args.amountPaid, args.paymentCurrency, 2),
+				// Empty string rather than undefined: templates interpolate missing
+				// keys to '', so a conditional block can test for emptiness the same
+				// way whether the key is absent or explicitly blank.
+				invoiceNumber: args.invoiceNumber ?? '',
+				invoiceUrl: args.invoiceUrl ?? '',
+				invoicePdf: args.invoicePdf ?? '',
 				source: 'in-app-purchase',
 			},
 		});
@@ -168,6 +202,11 @@ export async function purchasePackWithSavedCard(args: {
 		currency: creditCurrency,
 		reason: 'purchase',
 	};
+	// Captured inside the branch, where the return type is known. Narrowing the
+	// union afterwards with `in` does not work: the two charge methods are not
+	// discriminated, so TypeScript widens the property to unknown.
+	let invoiceRef: { invoiceNumber: string | null; invoiceUrl: string | null; invoicePdf: string | null } | null =
+		null;
 	const charge = canInvoice
 		? await config.provider.chargeViaInvoice!({
 				customerId: customer.providerCustomerId,
@@ -177,6 +216,13 @@ export async function purchasePackWithSavedCard(args: {
 				description: pack.name,
 				idempotencyKey: chargeKey,
 				metadata: chargeMetadata,
+			}).then((r) => {
+				invoiceRef = {
+					invoiceNumber: r.invoiceNumber,
+					invoiceUrl: r.hostedInvoiceUrl,
+					invoicePdf: r.invoicePdf,
+				};
+				return r;
 			})
 		: await config.provider.chargeOffSession!({
 				customerId: customer.providerCustomerId,
@@ -218,6 +264,11 @@ export async function purchasePackWithSavedCard(args: {
 		providerTxId: charge.providerTxId,
 		amountPaid: pack.priceAmount,
 		paymentCurrency: chargeCurrency,
+		packName: pack.name,
+		// Only the INVOICE path produces a reference. chargeOffSession bills the
+		// card directly and returns none, so a receipt from that path simply has
+		// no reference lines rather than empty ones.
+		...(invoiceRef ?? {}),
 	});
 
 	// Persist the customer + card and re-arm auto-recharge on a genuine purchase —
