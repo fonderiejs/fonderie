@@ -39,3 +39,11 @@ export type {
 	ISmsChannelConfig,
 	IPushChannelConfig,
 } from './config';
+
+// The sending domain's SPF/DKIM/DMARC live in public DNS, owned by whoever runs
+// the domain — courier only declares a `from`. Nothing connects the two, and a
+// mismatch is not a send failure: the RECEIVER drops or spam-files the message,
+// so there is no bounce and no log. DNS-only by design, so it needs no provider
+// API and no credentials and works for any SMTP backend.
+export { checkSenderDns, describeSenderDnsProblems, senderDomain } from './sender-dns';
+export type { ISenderDnsRecord, ISenderDnsReport, ResolveTxt } from './sender-dns';

@@ -204,4 +204,29 @@ interface IPushChannelConfig {
     provider: 'fcm';
     serviceAccount: Record<string, unknown>;
 }
+
+function checkSenderDns(from: string, opts?: { dkimSelectors?: string[]; returnPathDomain?: string; resolveTxt?: ResolveTxt; }): Promise<ISenderDnsReport>
+
+function describeSenderDnsProblems(report: ISenderDnsReport): string[]
+
+function senderDomain(from: string): string | null
+
+interface ISenderDnsRecord {
+    kind: 'spf' | 'dmarc' | 'dkim';
+    present: boolean;
+    foundAt?: string;
+    value?: string;
+    problem?: string;
+    advice?: string;
+    skipped?: boolean;
+}
+
+interface ISenderDnsReport {
+    domain?: string;
+    error?: string;
+    records: ISenderDnsRecord[];
+    ok: boolean;
+}
+
+type ResolveTxt = (hostname: string) => Promise<string[][]>;
 ```
