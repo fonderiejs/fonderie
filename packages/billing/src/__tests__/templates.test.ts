@@ -43,13 +43,30 @@ test('formatWalletAmount: unbounded balance past 2^53 degrades to the raw intege
 
 // ── default template coverage ─────────────────────────────────────
 
+// Mirrors @fonderie/courier's resolver: {{var}} substitution plus {{#var}}…
+// {{/var}} optional blocks.
+//
+// Duplicated rather than imported because billing does NOT depend on courier —
+// the app wires them together, and inverting that for a test would put a
+// sibling dependency into the package graph. The cost is that this must be kept
+// in step with the resolver; the test below is what notices when it is not.
 const VAR_RE = /\{\{(\w+)\}\}/g;
-const varsIn = (s: string): string[] => [...s.matchAll(VAR_RE)].map((m) => m[1]!);
+const SECTION_RE = /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g;
+
+// A section key IS a used variable — it must appear in the payload like any
+// other, so the coverage assertion still applies to it.
+const varsIn = (s: string): string[] => [...s.matchAll(/\{\{[#/]?(\w+)\}\}/g)].map((m) => m[1]!);
+
 const render = (s: string, data: Record<string, unknown>): string =>
-	s.replace(VAR_RE, (_, k: string) => {
-		const v = data[k];
-		return v !== undefined && v !== null ? String(v) : '';
-	});
+	s
+		.replace(SECTION_RE, (_, k: string, body: string) => {
+			const v = data[k];
+			return v !== undefined && v !== null && String(v).trim() !== '' ? body : '';
+		})
+		.replace(VAR_RE, (_, k: string) => {
+			const v = data[k];
+			return v !== undefined && v !== null ? String(v) : '';
+		});
 
 for (const key of Object.values(MESSAGE_KEYS)) {
 	test(`billing default template: ${key} — exists, vars ⊆ payload, renders clean`, () => {
@@ -84,4 +101,18 @@ test('billing: DEFAULT_TEMPLATES and SAMPLE_PAYLOADS cover exactly the live mess
 	const keys = new Set<string>(Object.values(MESSAGE_KEYS));
 	assert.deepEqual(new Set(Object.keys(DEFAULT_TEMPLATES)), keys, 'DEFAULT_TEMPLATES key set drift');
 	assert.deepEqual(new Set(Object.keys(SAMPLE_PAYLOADS)), keys, 'SAMPLE_PAYLOADS key set drift');
+});
+
+test('every anchor in a default template opens in a new tab, safely', () => {
+	// Same reasoning as courier's shell test, applied to the message bodies.
+	// Written as a sweep so a link added to any future template is covered
+	// without anyone remembering to extend this.
+	for (const [key, tmpl] of Object.entries(
+		DEFAULT_TEMPLATES as Record<string, { html?: string }>,
+	)) {
+		for (const a of tmpl.html?.match(/<a\s[^>]*>/g) ?? []) {
+			assert.match(a, /target="_blank"/, `'${key}': anchor missing target="_blank": ${a}`);
+			assert.match(a, /rel="[^"]*noopener/, `'${key}': anchor missing rel=noopener: ${a}`);
+		}
+	}
 });
