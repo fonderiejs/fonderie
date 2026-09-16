@@ -152,6 +152,15 @@ export type {
 	IWebhookRegistrationReport,
 } from './services/provider-health';
 
+// The catalog's prices and the provider's prices are two sources of truth for
+// the same number. Same reason this is async and not a checkReadiness() hook:
+// reading a price is a network call.
+export { checkPriceConsistency, describePriceProblems } from './services/price-consistency';
+export type {
+	IPriceConsistencyEntry,
+	IPriceConsistencyReport,
+} from './services/price-consistency';
+
 // The events each endpoint must be registered for — declared once here so a
 // runbook, a setup script and this package cannot disagree about the list.
 export {
