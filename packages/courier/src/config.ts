@@ -42,6 +42,17 @@ export interface ICourierConfig {
 	push?: IPushChannelConfig;
 	email?: IEmailChannelConfig;
 
+	/**
+	 * The product name shown in email — the app the RECIPIENT signed up for, not
+	 * the framework underneath it. A user of LeadEasyGen has never heard of
+	 * Fonderie, so an email headed "Fonderie" reads as a different company at
+	 * best and as phishing at worst.
+	 *
+	 * Set once here rather than per message; a message may still override it by
+	 * passing `brandName` in its own data. Unset falls back to EMAIL_THEME.brand.
+	 */
+	brandName?: string;
+
 	// When set, exposes Bearer-guarded template admin routes (/admin/templates/*)
 	// for versioned edit/history/rollback. Requires @fonderie/store (db templates).
 	adminToken?: string;

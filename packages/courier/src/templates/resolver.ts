@@ -1,7 +1,7 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { ITemplateResolver, IRenderedTemplate, IDefaultTemplate, DefaultTemplateMap } from '../types';
-import { wrapLayout } from './layout';
+import { EMAIL_THEME, wrapLayout } from './layout';
 
 // The stored template id for a founder-supplied layout shell (DB row `type` or
 // FS file `_layout.html`). Absent → the built-in DEFAULT_EMAIL_LAYOUT is used.
@@ -46,6 +46,16 @@ function render(
 // Compose a body fragment into its layout shell, then interpolate variables
 // over the whole. `subject`/`preheader` become available to the shell's title
 // and inbox preview text.
+//
+// `brandName` is the product the RECIPIENT believes they are hearing from — the
+// app built on Fonderie, not Fonderie itself. A user who signed up for
+// LeadEasyGen has never heard of Fonderie, so an email headed "Fonderie" reads
+// as a different company at best and a phishing attempt at worst. Apps pass
+// their own name; anything that does not falls back to EMAIL_THEME.brand, so
+// the shell is never left with an empty heading.
+//
+// It interpolates like any other variable, which means it is HTML-escaped along
+// with the rest — an app name containing & or < cannot break the shell.
 function composeHtml(
 	bodyHtml: string,
 	layoutHtml: string | undefined,
@@ -53,7 +63,11 @@ function composeHtml(
 	data: Record<string, unknown>,
 ): string {
 	const wrapped = wrapLayout(bodyHtml, layoutHtml);
-	return render(wrapped, { subject: subject ?? '', preheader: '', ...data }, { escapeHtml: true });
+	return render(
+		wrapped,
+		{ subject: subject ?? '', preheader: '', brandName: EMAIL_THEME.brand, ...data },
+		{ escapeHtml: true },
+	);
 }
 
 // Render a resolved fragment — a DB row, an FS file set, or a MODULE DEFAULT —
