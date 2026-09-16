@@ -180,6 +180,7 @@ interface ICourierConfig {
 interface IEmailChannelConfig {
     provider: 'resend' | 'ses' | 'smtp';
     from: string;
+    replyTo?: string;
     apiKey?: string;
     smtp?: {
         host: string;
