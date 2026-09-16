@@ -8,6 +8,7 @@ import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { PriceCache } from '../services/price-cache';
 import { SubscriptionModel } from '../models/subscription.model';
 import { getSubscriberByProviderSubscriptionId } from '../services/subscriptions';
+import { SUBSCRIPTION_WEBHOOK_EVENTS } from '../webhook-events';
 import { resolvePlanNameByPrice } from '../services/plans';
 import { applyPackCredit } from '../services/purchase';
 import { normalizeCurrency, subscriberEventFields } from '../utils';
@@ -57,7 +58,7 @@ export function webhookController(
 				'Webhook secret not configured',
 			);
 			if (event instanceof Response) return event;
-			warnOnUnconsumedEvent(event.type, 'POST /billing/webhook');
+			warnOnUnconsumedEvent(event.type, 'POST /billing/webhook', SUBSCRIPTION_WEBHOOK_EVENTS);
 
 			// §8: keep the price cache honest. Invalidate on any price/product change
 			// regardless of arrival order (invalidate-and-refetch is order-safe).

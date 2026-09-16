@@ -5,38 +5,65 @@ import type { IBillingEvent, IBillingProvider } from '../providers/types';
 import { isConsumedWebhookEvent } from '../webhook-events';
 
 /**
- * Event types already warned about, so a provider retrying the same unknown
- * event every few minutes cannot flood the log. Per process, which is the right
- * granularity: a fresh deploy should say it again.
+ * Route+type pairs already warned about, so a provider retrying the same event
+ * every few minutes cannot flood the log. Per process, which is the right
+ * granularity: a fresh deploy should say it again. Keyed by route as well as
+ * type, because the same type arriving at the WRONG endpoint is a different
+ * fact from it arriving at no endpoint.
  */
-const warnedUnknownTypes = new Set<string>();
+const warned = new Set<string>();
 
 /**
- * Say something, ONCE, when a provider sends an event nothing here consumes.
+ * Say something, ONCE, when an endpoint receives an event it does not consume.
  *
- * Harmless on its own — no branch matches, the webhook returns 200 and nothing
- * happens. But it means the endpoint's configuration and this package disagree,
- * usually because an event was ticked that no handler wants, or because the
- * provider introduced a new type. Silence there turns a config mistake into
- * something you find out about much later.
+ * The question is deliberately per-ENDPOINT, not global. Asking only "does this
+ * package consume this type anywhere?" misses the more common misconfiguration
+ * by construction: an event ticked on BOTH endpoints when only one handles it.
+ * That type is consumed — just not here — so a global check stays silent while
+ * every such event is delivered twice, processed once, and ignored once.
  *
- * Note this catches only the harmless direction. The expensive one — an event
- * we DO handle that was never registered — produces no delivery at all, so
- * there is nothing here to notice; `checkWebhookRegistration()` is what finds it.
+ * (Observed in production: a payment endpoint registered for all fourteen event
+ * types instead of its eight, so every subscription event was delivered to both
+ * endpoints. Nothing broke, and nothing said so.)
+ *
+ * Harmless on its own — no branch matches, the webhook returns 200. But it means
+ * the endpoint's configuration and this package disagree, and silence there
+ * turns a config mistake into something discovered much later.
+ *
+ * This still only catches the harmless direction. The expensive one — an event
+ * we DO handle that was never registered — produces no delivery at all, so there
+ * is nothing here to notice; `checkWebhookRegistration()` is what finds it.
+ *
+ * @param expected the event set THIS route owns. Omit to fall back to the
+ *   package-wide check, which cannot see wrong-endpoint delivery.
  */
-export function warnOnUnconsumedEvent(type: string, route: string): void {
-	if (isConsumedWebhookEvent(type) || warnedUnknownTypes.has(type)) return;
-	warnedUnknownTypes.add(type);
+export function warnOnUnconsumedEvent(
+	type: string,
+	route: string,
+	expected?: readonly string[],
+): void {
+	const handledHere = expected ? expected.includes(type) : isConsumedWebhookEvent(type);
+	const key = `${route}:${type}`;
+	if (handledHere || warned.has(key)) return;
+	warned.add(key);
+
+	// Distinguish the two causes, because the fixes differ: remove it from this
+	// endpoint, versus remove it from the account or add a handler.
+	const elsewhere = expected ? isConsumedWebhookEvent(type) : false;
 	console.warn(
-		`[billing] ${route} received '${type}', which no handler consumes. ` +
-			`It was accepted and ignored. Either remove it from the endpoint's event ` +
-			`selection, or this package needs a handler for it.`,
+		elsewhere
+			? `[billing] ${route} received '${type}', which is handled by a DIFFERENT ` +
+					`endpoint. It was accepted and ignored here, so the event is being ` +
+					`delivered twice. Remove it from this endpoint's event selection.`
+			: `[billing] ${route} received '${type}', which no handler consumes. ` +
+					`It was accepted and ignored. Either remove it from the endpoint's event ` +
+					`selection, or this package needs a handler for it.`,
 	);
 }
 
 /** Test seam: the warn-once set is process-global by design. */
 export function __resetUnconsumedWarningsForTests(): void {
-	warnedUnknownTypes.clear();
+	warned.clear();
 }
 
 // Shared verification front half of both webhook endpoints: secret presence,
