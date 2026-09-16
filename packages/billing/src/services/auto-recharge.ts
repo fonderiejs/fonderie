@@ -6,6 +6,7 @@ import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { SubscriberType } from '../types';
 import type { IResolvedPlanWallet } from './wallet';
 import { creditWallet } from './wallet';
+import { buildReceiptData } from './receipt';
 import { findCreditPack } from './credit-packs';
 import {
 	claimAutoRecharge,
@@ -198,15 +199,18 @@ export async function maybeAutoRecharge(args: {
 			subscriberType,
 			subscriberId,
 			type: MESSAGE_KEYS.paymentReceipt,
-			data: {
+			data: buildReceiptData({
 				packId: pack.id,
-				credits: pack.credits.toString(),
-				currency: creditCurrency,
-				balanceAfter: result.balance.toString(),
-				creditsDisplay: formatWalletAmount(pack.credits, creditCurrency, planWallet.precision),
-				balanceAfterDisplay: formatWalletAmount(result.balance, creditCurrency, planWallet.precision),
+				packName: pack.name,
+				credits: pack.credits,
+				creditCurrency,
+				precision: planWallet.precision,
+				balanceAfter: result.balance,
+				// Auto-recharge bills the saved card for the pack's list price.
+				amountPaid: pack.priceAmount,
+				paymentCurrency: pack.currency,
 				source: 'auto-recharge',
-			},
+			}),
 		});
 	}
 }

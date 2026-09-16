@@ -5,6 +5,7 @@ import type { IBillingConfig } from '../config';
 import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
 import type { SubscriberType } from '../types';
 import { creditWallet } from './wallet';
+import { buildReceiptData } from './receipt';
 import { findCreditPack } from './credit-packs';
 import { getWalletCustomer, upsertWalletCustomer } from './wallet-customers';
 import { notifyBilling } from './notify';
@@ -117,28 +118,21 @@ export async function applyPackCredit(args: {
 			subscriberType,
 			subscriberId,
 			type: MESSAGE_KEYS.paymentReceipt,
-			data: {
+			data: buildReceiptData({
 				packId,
-				credits: credits.toString(),
-				currency: creditCurrency,
-				balanceAfter: result.balance.toString(),
-				creditsDisplay: formatWalletAmount(credits, creditCurrency, precision),
-				balanceAfterDisplay: formatWalletAmount(result.balance, creditCurrency, precision),
-				// What was actually PAID, in real money — formatted at 2dp because
-				// this is currency, not the wallet's own unit (which may be whole
-				// counts at precision 0). A receipt with no amount is not a receipt.
-				packName: args.packName ?? packId,
-				amountPaid: args.amountPaid.toString(),
+				packName: args.packName,
+				credits,
+				creditCurrency,
+				precision,
+				balanceAfter: result.balance,
+				amountPaid: args.amountPaid,
 				paymentCurrency: args.paymentCurrency,
-				amountPaidDisplay: formatWalletAmount(args.amountPaid, args.paymentCurrency, 2),
-				// Empty string rather than undefined: templates interpolate missing
-				// keys to '', so a conditional block can test for emptiness the same
-				// way whether the key is absent or explicitly blank.
-				invoiceNumber: args.invoiceNumber ?? '',
-				invoiceUrl: args.invoiceUrl ?? '',
-				invoicePdf: args.invoicePdf ?? '',
+				invoiceNumber: args.invoiceNumber,
+				invoiceUrl: args.invoiceUrl,
+				invoicePdf: args.invoicePdf,
+				providerTxId,
 				source: 'in-app-purchase',
-			},
+			}),
 		});
 	}
 	return { balance: result.balance, duplicate: result.duplicate };

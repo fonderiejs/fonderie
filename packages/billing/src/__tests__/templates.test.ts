@@ -6,6 +6,7 @@ import type { IDefaultTemplate } from '@fonderie/core';
 import { MESSAGE_KEYS } from '../config';
 import { DEFAULT_TEMPLATES, SAMPLE_PAYLOADS } from '../templates';
 import { formatWalletAmount } from '../utils';
+import { buildReceiptData } from '../services/receipt';
 
 // ── formatWalletAmount ────────────────────────────────────────────
 
@@ -115,4 +116,41 @@ test('every anchor in a default template opens in a new tab, safely', () => {
 			assert.match(a, /rel="[^"]*noopener/, `'${key}': anchor missing rel=noopener: ${a}`);
 		}
 	}
+});
+
+test('buildReceiptData supplies every variable the receipt template uses', () => {
+	// The gap that shipped a blank receipt: the coverage test above validates the
+	// template against SAMPLE_PAYLOADS — one idealised payload — not against what
+	// the emitters actually send. Three call sites emit this message and only one
+	// had been updated, so two of them rendered blank amounts. Missing variables
+	// interpolate to empty, so nothing failed; the email just arrived with the
+	// numbers rubbed out.
+	//
+	// Asserting against the SHARED builder closes it: every emitter now goes
+	// through here, so if the template gains a field this fails until the builder
+	// supplies it.
+	const tmpl = (DEFAULT_TEMPLATES as Record<string, { subject?: string; text: string; html?: string }>)[
+		MESSAGE_KEYS.paymentReceipt
+	]!;
+	// Minimum a caller can supply — auto-recharge knows no invoice at all.
+	const minimal = buildReceiptData({
+		packId: 'pack_500',
+		credits: 500n,
+		creditCurrency: 'USD',
+		precision: 2,
+		balanceAfter: 750n,
+		source: 'test',
+	});
+	for (const field of [tmpl.subject ?? '', tmpl.text, tmpl.html ?? '']) {
+		for (const v of varsIn(field)) {
+			if (v === 'subject' || v === 'preheader' || v === 'brandName') continue;
+			assert.ok(v in minimal, `template uses {{${v}}} but buildReceiptData never supplies it`);
+		}
+	}
+	// And the money must be formatted, not raw minor units.
+	const paid = buildReceiptData({
+		packId: 'p', credits: 1n, creditCurrency: 'USD', precision: 0,
+		balanceAfter: 1n, amountPaid: 3800n, paymentCurrency: 'usd', source: 'test',
+	});
+	assert.equal(paid['amountPaidDisplay'], '$38.00', 'money is 2dp regardless of wallet precision');
 });

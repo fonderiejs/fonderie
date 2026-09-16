@@ -11,6 +11,7 @@ import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
 import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
 import { notifyBilling } from '../services/notify';
+import { buildReceiptData } from '../services/receipt';
 import { upsertWalletCustomer } from '../services/wallet-customers';
 import { readWebhookEvent, warnOnUnconsumedEvent } from './webhook-shared';
 import { PAYMENT_WEBHOOK_EVENTS } from '../webhook-events';
@@ -331,17 +332,22 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 						subscriberType: subscriberType as SubscriberType,
 						subscriberId,
 						type: MESSAGE_KEYS.paymentReceipt,
-						data: {
+						// Hosted checkout carries no invoice, so the reference lines are
+						// absent rather than empty — the template's {{#key}} blocks drop
+						// them. The pack NAME is resolved from config so the receipt
+						// itemises "100 credits" rather than the internal `pack_500`.
+						data: buildReceiptData({
 							packId,
-							credits,
-							currency,
-							balanceAfter: result.balance.toString(),
-							creditsDisplay: formatWalletAmount(BigInt(credits), currency, config.wallet?.precision ?? 2),
-							balanceAfterDisplay: formatWalletAmount(result.balance, currency, config.wallet?.precision ?? 2),
-							amountPaid: payment.amountTotal?.toString() ?? null,
+							packName: config.wallet?.creditPacks?.find((cp) => cp.id === packId)?.name,
+							credits: BigInt(credits),
+							creditCurrency: currency,
+							precision: config.wallet?.precision ?? 2,
+							balanceAfter: result.balance,
+							amountPaid: payment.amountTotal,
 							paymentCurrency: payment.currency,
-							...(payment.providerTxId ? { providerTxId: payment.providerTxId } : {}),
-						},
+							providerTxId: payment.providerTxId,
+							source: 'hosted-checkout',
+						}),
 					});
 				}
 
