@@ -35,6 +35,18 @@
 // (Mail clients never FETCH links — only images trigger remote-content blocking
 // — so this is about spam scoring, not asset loading. The shell has no images.)
 //
+// Every anchor carries target="_blank" rel="noopener noreferrer".
+//
+// Webmail (Gmail, Outlook web) usually opens links in a new tab regardless, and
+// a desktop client hands off to the system browser — so this is belt and braces
+// rather than the only thing keeping the reader in their inbox. It costs
+// nothing, and the case it covers is real: a client that navigates in place
+// takes the reader AWAY from the message, and an email is not a page you can
+// press Back to.
+//
+// rel is set for the same reason it is on the web: never hand a target window a
+// live `opener` reference.
+
 // Keep explanations like this OUT of the template literal below: anything inside
 // it is HTML that ships to recipients.
 
@@ -151,7 +163,7 @@ ${LAYOUT_CONTENT_SLOT}
 						</td>
 					</tr>
 					<tr><td class="email-powered" style="padding:18px 8px 0 8px;text-align:center;">
-						<span style="font:400 12px/1.5 ${FONT_SANS};color:${EMAIL_THEME.muted};letter-spacing:-0.01em;">Powered by <a href="https://fonderiejs.com" style="color:${EMAIL_THEME.muted};text-decoration:underline;">Fonderie</a></span>
+						<span style="font:400 12px/1.5 ${FONT_SANS};color:${EMAIL_THEME.muted};letter-spacing:-0.01em;">Powered by <a href="https://fonderiejs.com" target="_blank" rel="noopener noreferrer" style="color:${EMAIL_THEME.muted};text-decoration:underline;">Fonderie</a></span>
 					</td></tr>
 				</table>
 			</td>
