@@ -6,11 +6,11 @@
     "adapter-koa": "5.3.0",
     "audit": "5.1.11",
     "auth": "7.7.0",
-    "billing": "9.3.1",
+    "billing": "9.4.0",
     "client": "0.23.0",
     "config": "5.1.13",
     "core": "0.15.0",
-    "courier": "7.4.0",
+    "courier": "7.5.0",
     "customers": "6.2.7",
     "events": "5.5.0",
     "geo": "0.2.6",
@@ -358,7 +358,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "9.3.1",
+      "version": "9.4.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -676,7 +676,7 @@
       "hasOutcomes": false
     },
     "courier": {
-      "version": "7.4.0",
+      "version": "7.5.0",
       "stability": "stable",
       "requires": [
         "core",

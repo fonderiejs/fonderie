@@ -1,5 +1,51 @@
 # @fonderie/billing
 
+## 9.4.0
+
+### Minor Changes
+
+- 4963e28: Make the purchase receipt an actual receipt
+  
+  It said "credits were added to your balance" and nothing else — a balance
+  notification, not a receipt. It stated **no amount paid**, cited nothing the buyer
+  could reference, and pointed at no document. That is what an accountant bounces
+  back.
+  
+  The data was already there. `applyPackCredit` receives `amountPaid` and
+  `paymentCurrency`, and `chargeViaInvoice` returns `invoiceNumber`,
+  `hostedInvoiceUrl` and `invoicePdf`. None of it reached the template.
+  
+  The receipt now leads with the amount paid in real currency, itemises what was
+  bought by its display name, states the invoice number, and links the invoice PDF.
+  Balance-after stays, as the thing the buyer actually wanted.
+  
+  The invoice reference is captured inside the charge branch where the return type
+  is known — the two charge methods are not discriminated, so narrowing the union
+  afterwards widens the property to `unknown`. A direct card charge produces no
+  invoice, so those lines simply do not render rather than showing blanks.
+
+### Patch Changes
+
+- 0cb607a: Optional template blocks, so absent fields render nothing
+  
+  The renderer only did `{{var}}` substitution, so a template could not omit
+  anything. A receipt whose charge produced no invoice therefore rendered a
+  dangling "Invoice " with nothing after it, and
+  `<a href="">Download invoice (PDF)</a>` — a link that looks clickable and does
+  nothing. Both are worse than saying less.
+  
+  `{{#key}}…{{/key}}` now renders its body only when `key` has a non-empty value.
+  Whitespace-only counts as absent, so a provider returning `""` and one returning
+  `"  "` behave the same. It runs before variable substitution, so values inside a
+  block still interpolate, and they are still HTML-escaped — a section is not an
+  escaping bypass.
+  
+  Deliberately not a template language: one construct, no expressions. Anything
+  more and app authors start putting logic in templates.
+  
+  Billing's receipt uses it for the invoice reference lines, which only exist when
+  the charge went through an invoice rather than direct to the card.
+
 ## 9.3.1
 
 ### Patch Changes
