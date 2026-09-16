@@ -30,12 +30,41 @@ function escapeHtml(value: string): string {
 		.replace(/'/g, '&#39;');
 }
 
+/**
+ * Optional blocks: `{{#key}}…{{/key}}` renders its body only when `key` has a
+ * non-empty value.
+ *
+ * Needed because a template with no conditionals cannot omit anything, and some
+ * fields are genuinely absent rather than empty — an invoice number exists only
+ * when the charge went through an invoice. Without this, the choices are a
+ * dangling "Invoice " with nothing after it, or an anchor with an empty href
+ * that looks like a link and does nothing. Both are worse than saying less.
+ *
+ * Deliberately NOT a general template language: one construct, no nesting of the
+ * same key, no expressions. Anything more and app authors start putting logic in
+ * templates, which is how email rendering becomes unreviewable.
+ *
+ * Runs BEFORE variable substitution, so a value inside a section still
+ * interpolates normally. Whitespace-only counts as absent — a provider returning
+ * "" and one returning "  " should not render differently.
+ */
+function renderSections(template: string, data: Record<string, unknown>): string {
+	return template.replace(
+		/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g,
+		(_, key: string, body: string) => {
+			const value = data[key];
+			const present = value !== undefined && value !== null && String(value).trim() !== '';
+			return present ? body : '';
+		},
+	);
+}
+
 function render(
 	template: string,
 	data: Record<string, unknown>,
 	opts: { escapeHtml?: boolean } = {},
 ): string {
-	return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
+	return renderSections(template, data).replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
 		const value = data[key];
 		if (value === undefined || value === null) return '';
 		const s = String(value);

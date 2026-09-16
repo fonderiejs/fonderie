@@ -43,13 +43,30 @@ test('formatWalletAmount: unbounded balance past 2^53 degrades to the raw intege
 
 // ── default template coverage ─────────────────────────────────────
 
+// Mirrors @fonderie/courier's resolver: {{var}} substitution plus {{#var}}…
+// {{/var}} optional blocks.
+//
+// Duplicated rather than imported because billing does NOT depend on courier —
+// the app wires them together, and inverting that for a test would put a
+// sibling dependency into the package graph. The cost is that this must be kept
+// in step with the resolver; the test below is what notices when it is not.
 const VAR_RE = /\{\{(\w+)\}\}/g;
-const varsIn = (s: string): string[] => [...s.matchAll(VAR_RE)].map((m) => m[1]!);
+const SECTION_RE = /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g;
+
+// A section key IS a used variable — it must appear in the payload like any
+// other, so the coverage assertion still applies to it.
+const varsIn = (s: string): string[] => [...s.matchAll(/\{\{[#/]?(\w+)\}\}/g)].map((m) => m[1]!);
+
 const render = (s: string, data: Record<string, unknown>): string =>
-	s.replace(VAR_RE, (_, k: string) => {
-		const v = data[k];
-		return v !== undefined && v !== null ? String(v) : '';
-	});
+	s
+		.replace(SECTION_RE, (_, k: string, body: string) => {
+			const v = data[k];
+			return v !== undefined && v !== null && String(v).trim() !== '' ? body : '';
+		})
+		.replace(VAR_RE, (_, k: string) => {
+			const v = data[k];
+			return v !== undefined && v !== null ? String(v) : '';
+		});
 
 for (const key of Object.values(MESSAGE_KEYS)) {
 	test(`billing default template: ${key} — exists, vars ⊆ payload, renders clean`, () => {

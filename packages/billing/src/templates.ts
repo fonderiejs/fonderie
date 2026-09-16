@@ -119,9 +119,11 @@ Top up in your billing settings to avoid any interruption.`,
 	// document. "Credits were added" answers none of those, and is what an
 	// accountant will bounce back.
 	//
-	// `invoiceNumber` / `invoicePdf` are empty strings when the charge produced no
-	// invoice (a direct card charge rather than an invoiced one), so the reference
-	// lines simply do not render rather than showing blanks.
+	// `invoiceNumber` / `invoicePdf` are empty when the charge produced no invoice
+	// (a direct card charge rather than an invoiced one). The {{#key}} sections are
+	// what make those lines disappear — plain interpolation would leave a dangling
+	// "Invoice " and an anchor with an empty href, which looks clickable and does
+	// nothing.
 	[MESSAGE_KEYS.paymentReceipt]: {
 		// NB: subject and text are rendered with the message data only — the shell
 		// supplies {{brandName}} to the HTML alone, so it must not appear here.
@@ -134,8 +136,8 @@ Top up in your billing settings to avoid any interruption.`,
 	<tr><td style="padding:10px 0 6px 0;border-top:1px solid #e0e0e0;font-weight:600;">Total paid</td><td align="right" style="padding:10px 0 6px 0;border-top:1px solid #e0e0e0;font-weight:600;">{{amountPaidDisplay}}</td></tr>
 </table>
 <p>Your balance is now <strong>{{balanceAfterDisplay}}</strong>.</p>
-<p class="muted">Invoice {{invoiceNumber}}</p>
-<p><a href="{{invoicePdf}}">Download invoice (PDF)</a></p>
+{{#invoiceNumber}}<p class="muted">Invoice {{invoiceNumber}}</p>{{/invoiceNumber}}
+{{#invoicePdf}}<p><a href="{{invoicePdf}}">Download invoice (PDF)</a></p>{{/invoicePdf}}
 <p class="muted">Your full billing history is available any time in your billing settings.</p>`,
 		text: `Receipt
 
@@ -146,8 +148,8 @@ Total paid ....... {{amountPaidDisplay}}
 
 Your balance is now {{balanceAfterDisplay}}.
 
-Invoice {{invoiceNumber}}
-Download invoice (PDF): {{invoicePdf}}
+{{#invoiceNumber}}Invoice {{invoiceNumber}}{{/invoiceNumber}}
+{{#invoicePdf}}Download invoice (PDF): {{invoicePdf}}{{/invoicePdf}}
 
 Your full billing history is available any time in your billing settings.`,
 	},
