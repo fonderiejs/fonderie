@@ -15,17 +15,25 @@
 // near-black primary, a mint brand accent, Inter, and the `#fafafa` canvas —
 // retune `EMAIL_THEME` to rebrand every email at once.
 
-// WHY THE ATTRIBUTION ROW IS PLAIN TEXT, NOT A LINK
+// THE ATTRIBUTION ROW
 //
-// The shell renders "Powered by Fonderie" below the card. It is deliberately not
-// a hyperlink: a link would put one domain into every message sent by every app
-// built on Fonderie, coupling their sender reputations — one app's mail being
-// marked as spam becomes a shared negative signal for all of them. The recipient
-// of a receipt gains nothing from clicking through, so the cost is real and the
-// benefit is not.
+// "Powered by Fonderie" renders below the card, on the canvas rather than inside
+// the frame, and links to the project site.
+//
+// The link is what makes the attribution work at all. "Fonderie" is a common
+// French noun, so a reader who is curious and searches it finds metal foundries;
+// without somewhere to click, the line is decoration. Linking the brand word to
+// its own domain is also the shape filters expect — the deceptive-mismatch
+// signal is about text that IMPERSONATES a different destination, not a name
+// pointing at its own site.
+//
+// The cost to weigh: link-domain reputation is a spam signal, so one domain in
+// every message from every app built on Fonderie couples their sender
+// reputations. That matters at fleet scale; revisit this if third parties ship
+// on Fonderie in volume.
 //
 // (Mail clients never FETCH links — only images trigger remote-content blocking
-// — so this is about spam scoring and reputation, not asset loading.)
+// — so this is about spam scoring, not asset loading. The shell has no images.)
 //
 // Keep explanations like this OUT of the template literal below: anything inside
 // it is HTML that ships to recipients.
@@ -143,7 +151,7 @@ ${LAYOUT_CONTENT_SLOT}
 						</td>
 					</tr>
 					<tr><td class="email-powered" style="padding:18px 8px 0 8px;text-align:center;">
-						<span style="font:400 12px/1.5 ${FONT_SANS};color:${EMAIL_THEME.muted};letter-spacing:-0.01em;">Powered by Fonderie</span>
+						<span style="font:400 12px/1.5 ${FONT_SANS};color:${EMAIL_THEME.muted};letter-spacing:-0.01em;">Powered by <a href="https://fonderiejs.com" style="color:${EMAIL_THEME.muted};text-decoration:underline;">Fonderie</a></span>
 					</td></tr>
 				</table>
 			</td>

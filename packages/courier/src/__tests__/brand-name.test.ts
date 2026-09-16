@@ -28,7 +28,7 @@ test('the app name replaces the framework name everywhere it appeared', () => {
 	// The ONLY surviving mention of the framework is the attribution.
 	const mentions = html.match(/Fonderie/g) ?? [];
 	assert.equal(mentions.length, 1, `expected exactly one Fonderie mention, got ${mentions.length}`);
-	assert.match(html, /Powered by Fonderie/);
+	assert.match(html, /Powered by <a /, 'the attribution must survive as a link');
 });
 
 test('an app that sets nothing still gets a branded shell, never an empty one', () => {
@@ -42,18 +42,21 @@ test('an app that sets nothing still gets a branded shell, never an empty one', 
 test('the attribution sits OUTSIDE the card, not inside it', () => {
 	const html = compose({ brandName: 'LeadEasyGen' });
 	const cardEnd = html.indexOf('</td>', html.indexOf('class="email-card"'));
-	const powered = html.indexOf('Powered by Fonderie');
+	const powered = html.indexOf('Powered by');
 	assert.ok(powered > cardEnd, 'attribution must render after the card closes');
 });
 
-test('the attribution is not a link', () => {
-	// Deliberate: one domain in every message from every app built on Fonderie
-	// couples their sender reputations, and a receipt's reader gains nothing
-	// from clicking through.
+test('the attribution links to the project site, and says Fonderie', () => {
+	// The link is what makes the attribution work: "Fonderie" is a common French
+	// noun, so a curious reader who searches it finds metal foundries. Without
+	// somewhere to click, the line is decoration.
+	//
+	// The visible text stays "Fonderie" — NOT "FonderieJS". The -js suffix reads
+	// as "JavaScript library", which is the wrong shape for a self-hosted backend.
+	// The domain carries the js so the brand does not have to.
 	const html = compose({ brandName: 'LeadEasyGen' });
-	const idx = html.indexOf('Powered by Fonderie');
-	const around = html.slice(idx - 400, idx + 120);
-	assert.doesNotMatch(around, /<a\s/i, 'the attribution must be plain text');
+	assert.match(html, /Powered by <a href="https:\/\/fonderiejs\.com"[^>]*>Fonderie<\/a>/);
+	assert.doesNotMatch(html, /FonderieJS/, 'the brand is Fonderie, not a library name');
 });
 
 test('a brand name with markup cannot break the shell', () => {
