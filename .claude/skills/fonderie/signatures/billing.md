@@ -15,6 +15,7 @@ new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus |
 
 new StripeProvider(secretKey: string, webhookSecret?: string | undefined, options?: IStripeProviderOptions): StripeProvider
   .name: "stripe"
+  .apiVersion: "2024-11-20.acacia"
   .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>
   .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; idempotencyKey?: string; }): Promise<...>
   .createPaymentCheckoutSession(opts: { customerId: string; amount: bigint; currency: string; name: string; quantity?: number; priceId?: string; savePaymentMethod?: boolean; metadata: Record<string, string>; successUrl: string; cancelUrl: string; }): Promise<...>
@@ -221,6 +222,7 @@ type WalletLedgerType = (typeof WALLET_LEDGER_TYPES)[number];
 
 interface IBillingProvider {
     name: string;
+    readonly apiVersion?: string;
     createCustomer(opts: {
         email: string;
         subscriberType: SubscriberType;
@@ -749,7 +751,9 @@ function maybeAutoRecharge(args: { store: IStoreAdapter; config: IBillingConfig;
 
 function webhookStats(store: IStoreAdapter, options?: { hours?: number; }): Promise<IProviderWebhookStats>
 
-function checkWebhookRegistration(provider: Pick<IBillingProvider, "listWebhookRegistrations">, urls: { subscriptionUrl?: string; paymentUrl?: string; }): Promise<IWebhookRegistrationReport>
+function checkWebhookRegistration(provider: Pick<IBillingProvider, "listWebhookRegistrations" | "apiVersion">, urls: { subscriptionUrl?: string; paymentUrl?: string; }): Promise<IWebhookRegistrationReport>
+
+function describeWebhookProblems(report: IWebhookRegistrationReport): string[]
 
 interface IProviderWebhookStats {
     subscriptions: number;
@@ -764,14 +768,19 @@ interface IWebhookRegistrationCheck {
     status?: string;
     missing: string[];
     unexpected: string[];
+    apiVersion?: string;
+    apiVersionMismatch?: boolean;
 }
 
 interface IWebhookRegistrationReport {
     unsupported?: boolean;
     error?: string;
     endpoints: IWebhookRegistrationCheck[];
+    expectedApiVersion?: string;
     ok: boolean;
 }
+
+const STRIPE_API_VERSION: "2024-11-20.acacia"
 
 function checkPriceConsistency(provider: Pick<IBillingProvider, "resolvePriceById">, config: Pick<IBillingConfig, "plans" | "wallet">): Promise<IPriceConsistencyReport>
 

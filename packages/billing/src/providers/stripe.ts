@@ -100,6 +100,15 @@ interface IStripeInvoiceRaw {
 	amount_paid?: number | null;
 	amount_due?: number | null;
 	due_date?: number | null;
+	// Since Stripe API 2025+, the subscription moved under `parent` and the
+	// PaymentIntent under `payments` — neither is on the Invoice any more.
+	parent?: {
+		subscription_details?: { subscription?: string | { id: string } | null } | null;
+	} | null;
+	payments?: {
+		data?: Array<{ payment?: { payment_intent?: string | { id: string } | null } | null }>;
+	} | null;
+	// Older API versions (pre-2025) expose both on the invoice itself.
 	payment_intent?: string | { id: string } | null;
 	subscription?: string | { id: string } | null;
 	customer?: string | { id: string } | null;
@@ -197,16 +206,71 @@ export function normalizeInvoice(
 	status: 'paid' | 'payment_failed',
 ): INormalizedInvoice {
 	const raw = status === 'paid' ? inv.amount_paid : inv.amount_due;
+	// Read the CURRENT location first, fall back to the legacy field — the same
+	// treatment normalizeSubscription already gives the billing period, and
+	// chargeViaInvoice already gives the PaymentIntent.
+	//
+	// This matters more here than anywhere else, because a webhook payload is
+	// rendered in the ENDPOINT's API version (set in the provider's dashboard),
+	// not the one this SDK client is pinned to. Reading only the legacy fields
+	// yielded null for both on any endpoint registered at a 2025+ version, and
+	// the controller then answers 200 `ignored: no-matching-subscription` — a
+	// success as far as the provider is concerned, so no retry, no error, no log.
+	const subscription = inv.parent?.subscription_details?.subscription ?? inv.subscription;
+	const paymentIntent = inv.payments?.data?.[0]?.payment?.payment_intent ?? inv.payment_intent;
 	return {
 		id: inv.id,
 		status,
 		amount: raw != null ? BigInt(raw) : null,
 		currency: inv.currency ?? null,
-		providerTxId: refId(inv.payment_intent),
-		providerSubscriptionId: refId(inv.subscription),
+		providerTxId: refId(paymentIntent),
+		providerSubscriptionId: refId(subscription),
 		providerCustomerId: refId(inv.customer),
 		metadata: inv.metadata ?? {},
 	};
+}
+
+/**
+ * Fill in ids a webhook payload could not carry, by re-reading the invoice.
+ *
+ * An endpoint registered at a 2025+ API version delivers an invoice with NO
+ * PaymentIntent reference at all: the field moved under `payments`, which is
+ * omitted unless expanded, and a webhook payload cannot be expanded. It is not
+ * in the delivery at any price.
+ *
+ * Re-reading through the client resolves it, because a provider renders an API
+ * RESPONSE in the version the client pins rather than the endpoint's — the same
+ * asymmetry that caused the problem, used in our favour for once.
+ *
+ * Separated from `constructEvent` so it can be tested without the SDK: pass any
+ * `retrieve`. Never throws — this is best-effort enrichment of an event that is
+ * already valid and signature-verified, and a throw here would become a 500,
+ * which makes the provider redeliver the same event forever.
+ */
+export async function enrichInvoiceRefs(
+	invoice: INormalizedInvoice,
+	status: 'paid' | 'payment_failed',
+	retrieve: (id: string) => Promise<unknown>,
+): Promise<INormalizedInvoice> {
+	// Only a paid invoice has a payment to find, and only a missing id is worth a
+	// call — so a version that already carries the field costs nothing.
+	if (invoice.providerTxId || status !== 'paid' || !invoice.id) return invoice;
+
+	try {
+		const full = (await retrieve(invoice.id)) as IStripeInvoiceRaw;
+		if (!full) return invoice;
+		const reread = normalizeInvoice(full, status);
+		return {
+			...invoice,
+			...(reread.providerTxId ? { providerTxId: reread.providerTxId } : {}),
+			// Backfill the subscription from the same read rather than a second call.
+			...(!invoice.providerSubscriptionId && reread.providerSubscriptionId
+				? { providerSubscriptionId: reread.providerSubscriptionId }
+				: {}),
+		};
+	} catch {
+		return invoice;
+	}
 }
 
 // Pure normalization of a failed one-time payment ATTEMPT — the checkout-session
@@ -253,6 +317,15 @@ export function normalizePaymentIntentSucceeded(pi: IStripePaymentIntentRaw): IN
 }
 
 // Lazy singleton — Stripe SDK is optional
+/**
+ * The API version this client is pinned to.
+ *
+ * Named rather than inlined so a webhook endpoint's version can be compared
+ * against it — the two are set in different places (this file vs. the provider
+ * dashboard) and drift apart silently.
+ */
+export const STRIPE_API_VERSION = '2024-11-20.acacia';
+
 let _client: unknown = null;
 
 async function getClient(secretKey: string): Promise<unknown> {
@@ -266,7 +339,7 @@ async function getClient(secretKey: string): Promise<unknown> {
 	});
 
 	const Stripe = mod.default ?? mod;
-	_client = new Stripe(secretKey, { apiVersion: '2024-11-20.acacia' });
+	_client = new Stripe(secretKey, { apiVersion: STRIPE_API_VERSION });
 	return _client;
 }
 
@@ -358,6 +431,7 @@ export interface IStripeProviderOptions {
 
 export class StripeProvider implements IBillingProvider {
 	readonly name = 'stripe';
+	readonly apiVersion = STRIPE_API_VERSION;
 
 	constructor(
 		private secretKey: string,
@@ -555,6 +629,7 @@ export class StripeProvider implements IBillingProvider {
 				url: e.url,
 				enabledEvents: [...(e.enabled_events ?? [])],
 				...(e.status ? { status: e.status } : {}),
+				...(e.api_version ? { apiVersion: e.api_version } : {}),
 			});
 		}
 		return out;
@@ -1003,11 +1078,13 @@ export class StripeProvider implements IBillingProvider {
 		// Subscription invoice events (renewal receipt / dunning) — Phase 3b.
 		if (raw.type === 'invoice.paid' || raw.type === 'invoice.payment_failed') {
 			const status = raw.type === 'invoice.paid' ? 'paid' : 'payment_failed';
-			return {
-				type: raw.type,
-				subscription: null,
-				invoice: normalizeInvoice(raw.data.object as IStripeInvoiceRaw, status),
-			};
+			const invoice = await enrichInvoiceRefs(
+				normalizeInvoice(raw.data.object as IStripeInvoiceRaw, status),
+				status,
+				(id) => stripe.invoices.retrieve(id),
+			);
+
+			return { type: raw.type, subscription: null, invoice };
 		}
 
 		// Failed one-time payment ATTEMPTS (delayed-method pack payment, or a
