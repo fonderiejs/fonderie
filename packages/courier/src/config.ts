@@ -3,6 +3,19 @@ import type { DefaultTemplateMap } from './types';
 export interface IEmailChannelConfig {
 	provider: 'resend' | 'ses' | 'smtp';
 	from: string;
+	/**
+	 * Where replies should go, when that is not the From address.
+	 *
+	 * Needed as soon as you send from a dedicated sending subdomain — the shape
+	 * that isolates sending reputation from the apex. Such a subdomain usually
+	 * has no MX at all, so a reply to the From address bounces. Recipients DO
+	 * reply to transactional mail (a question about a receipt, a "this wasn't
+	 * me" about a password reset), and a bounced reply is worse than no reply:
+	 * the sender believes they reached you.
+	 *
+	 * Set it to an address that actually receives — typically on the apex.
+	 */
+	replyTo?: string;
 	apiKey?: string;
 	smtp?: {
 		host: string;
