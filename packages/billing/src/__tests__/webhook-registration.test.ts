@@ -12,7 +12,7 @@
 //   configured to send can find this, which is what checkWebhookRegistration does.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkWebhookRegistration } from '../services/provider-health';
+import { checkWebhookRegistration, describeWebhookProblems } from '../services/provider-health';
 import {
 	ALL_WEBHOOK_EVENTS,
 	PAYMENT_WEBHOOK_EVENTS,
@@ -196,4 +196,127 @@ test('the two endpoints do not claim the same event', async () => {
 		(PAYMENT_WEBHOOK_EVENTS as readonly string[]).includes(e),
 	);
 	assert.deepEqual(overlap, [], 'an event owned by both endpoints would be processed twice');
+});
+
+
+// ---------------------------------------------------------------------------
+// A THIRD failure, distinct from both at the top of this file: the events are
+// registered AND they arrive — shaped differently than the code expects.
+//
+// A provider renders webhook payloads in the version set on the ENDPOINT, in
+// its dashboard, not the version this client pins in code. Those are two
+// different places and nothing holds them together. Stripe moved the
+// subscription and the PaymentIntent off the Invoice object between them, so
+// the ids parsed to null, the controller answered 200 `ignored`, and the
+// provider recorded a successful delivery. Nothing retried and nothing logged.
+//
+// The normalizers now read old and new locations both, so a difference is
+// survivable — but the NEXT field to move is invisible again unless the two
+// versions are compared out loud.
+// ---------------------------------------------------------------------------
+
+const PINNED = '2024-11-20.acacia';
+const providerPinned = (regs: unknown, apiVersion: string = PINNED) => ({
+	apiVersion,
+	listWebhookRegistrations: async () => regs as never,
+});
+// A provider that pins no version has no such key at all — not a key set to
+// undefined, which a defaulted parameter would quietly turn back into the pin.
+const providerNoPin = (regs: unknown) => ({
+	listWebhookRegistrations: async () => regs as never,
+});
+const enabled = (url: string, events: readonly string[], apiVersion?: string) => ({
+	url,
+	enabledEvents: [...events],
+	status: 'enabled',
+	...(apiVersion ? { apiVersion } : {}),
+});
+
+test('an endpoint on the pinned version reports no mismatch', async () => {
+	const r = await checkWebhookRegistration(
+		providerPinned([
+			enabled(SUB_URL, SUBSCRIPTION_WEBHOOK_EVENTS, PINNED),
+			enabled(PAY_URL, PAYMENT_WEBHOOK_EVENTS, PINNED),
+		]),
+		URLS,
+	);
+	assert.equal(r.expectedApiVersion, PINNED);
+	assert.deepEqual(r.endpoints.map((e) => e.apiVersionMismatch), [false, false]);
+	assert.deepEqual(describeWebhookProblems(r), []);
+});
+
+test('an endpoint on a DIFFERENT version is flagged — the real-world case', async () => {
+	const r = await checkWebhookRegistration(
+		providerPinned([
+			enabled(SUB_URL, SUBSCRIPTION_WEBHOOK_EVENTS, '2026-04-22.dahlia'),
+			enabled(PAY_URL, PAYMENT_WEBHOOK_EVENTS, PINNED),
+		]),
+		URLS,
+	);
+	assert.equal(r.endpoints[0]!.apiVersionMismatch, true);
+	assert.equal(r.endpoints[0]!.apiVersion, '2026-04-22.dahlia');
+	assert.equal(r.endpoints[1]!.apiVersionMismatch, false);
+
+	const lines = describeWebhookProblems(r);
+	assert.equal(lines.length, 1);
+	assert.match(lines[0]!, /2026-04-22\.dahlia/);
+	assert.match(lines[0]!, /2024-11-20\.acacia/);
+});
+
+test('a version difference does NOT flip ok — that is reserved for "will it arrive"', async () => {
+	// Deliberate: a difference is legitimate and can be long-lived, and a report
+	// that is permanently not-ok is one people stop reading. It surfaces through
+	// describeWebhookProblems instead.
+	const r = await checkWebhookRegistration(
+		providerPinned([
+			enabled(SUB_URL, SUBSCRIPTION_WEBHOOK_EVENTS, '2026-04-22.dahlia'),
+			enabled(PAY_URL, PAYMENT_WEBHOOK_EVENTS, '2026-04-22.dahlia'),
+		]),
+		URLS,
+	);
+	assert.equal(r.ok, true);
+	assert.equal(describeWebhookProblems(r).length, 2, 'still reported, just not via ok');
+});
+
+test('no comparison is made when either side does not state a version', async () => {
+	// Silence beats a guess: an unknown on either side is not evidence of a
+	// difference, and a check that invents findings gets muted.
+	const noPin = await checkWebhookRegistration(
+		providerNoPin([enabled(SUB_URL, SUBSCRIPTION_WEBHOOK_EVENTS, '2026-04-22.dahlia')]),
+		{ subscriptionUrl: SUB_URL },
+	);
+	assert.equal(noPin.endpoints[0]!.apiVersionMismatch, undefined);
+	assert.equal(noPin.expectedApiVersion, undefined);
+	assert.deepEqual(describeWebhookProblems(noPin), []);
+
+	const noEndpointVersion = await checkWebhookRegistration(
+		providerPinned([enabled(SUB_URL, SUBSCRIPTION_WEBHOOK_EVENTS)]),
+		{ subscriptionUrl: SUB_URL },
+	);
+	assert.equal(noEndpointVersion.endpoints[0]!.apiVersionMismatch, undefined);
+	assert.deepEqual(describeWebhookProblems(noEndpointVersion), []);
+});
+
+test('describeWebhookProblems reports the delivery failures too, one line each', async () => {
+	const r = await checkWebhookRegistration(
+		providerPinned([
+			{ url: SUB_URL, enabledEvents: ['customer.subscription.created'], status: 'disabled' },
+			// PAY_URL absent entirely.
+		]),
+		URLS,
+	);
+	const lines = describeWebhookProblems(r);
+	assert.ok(lines.some((l) => /DISABLED/.test(l)));
+	assert.ok(lines.some((l) => /not registered for/.test(l)));
+	assert.ok(lines.some((l) => l.includes(PAY_URL) && /NOT REGISTERED/.test(l)));
+	assert.equal(r.ok, false);
+});
+
+test('an unreachable provider is described, never rethrown', async () => {
+	const r = await checkWebhookRegistration(
+		{ apiVersion: PINNED, listWebhookRegistrations: async () => { throw new Error('stripe down'); } },
+		URLS,
+	);
+	assert.equal(r.ok, false);
+	assert.deepEqual(describeWebhookProblems(r), ['webhook check failed: stripe down']);
 });
