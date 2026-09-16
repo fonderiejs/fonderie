@@ -773,6 +773,31 @@ interface IWebhookRegistrationReport {
     ok: boolean;
 }
 
+function checkPriceConsistency(provider: Pick<IBillingProvider, "resolvePriceById">, config: Pick<IBillingConfig, "plans" | "wallet">): Promise<IPriceConsistencyReport>
+
+function describePriceProblems(report: IPriceConsistencyReport): string[]
+
+interface IPriceConsistencyEntry {
+    ref: string;
+    priceId: string;
+    declared: {
+        amount: string;
+        currency: string;
+    };
+    actual: {
+        amount: string;
+        currency: string;
+    } | null;
+    problem: 'amount' | 'currency' | 'both' | 'missing' | 'inactive' | null;
+}
+
+interface IPriceConsistencyReport {
+    unsupported?: boolean;
+    error?: string;
+    entries: IPriceConsistencyEntry[];
+    ok: boolean;
+}
+
 const SUBSCRIPTION_WEBHOOK_EVENTS: readonly ["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "customer.subscription.trial_will_end", "invoice.paid", "invoice.payment_failed"]
 
 const SUBSCRIPTION_LIFECYCLE_EVENTS: readonly ["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "customer.subscription.trial_will_end"]
