@@ -148,3 +148,46 @@ Default local ports: **Hono 4003 · Express 4001 · Koa 4002** (override with `P
 Migrations never run at app boot — on any target. Run `npm run migrate` yourself
 (CI step, release step, or manually) against whatever database you deploy to. This
 keeps cold starts fast and avoids concurrent migration races across instances.
+
+### The consequence: code goes live ahead of the schema
+
+Because migrations are external, a deploy routinely succeeds against a database
+that has not run them yet. Nothing fails at deploy time; the gap surfaces later,
+when a request happens to touch the new column — and the symptom looks nothing
+like the cause. A queue that will not drain, an OAuth callback that hangs, a
+health route that 500s. Each gets diagnosed on its own and none of them mentions
+migrations.
+
+`MigrationRunner.pending()` turns that into a number. It is read-only and safe
+on the request path, so report it from whatever health or cron route you already
+have:
+
+```ts
+const pending = await new InternalMigrationRunner(store, path).pending();
+// [] on a current database; ['920_add_task_cancelled_status.sql'] when behind
+```
+
+### Serverless: the .sql files must be told to come along
+
+**This bites on Vercel and any other bundler that traces imports.** Migration
+`.sql` files are read with `readdir()` at runtime, so the tracer never sees a
+reference to them and prunes them from the function bundle. The migration check
+then fails with `ENOENT … scandir '/var/task/node_modules/@fonderie/<pkg>/dist/migrations/sql'`
+— it worked locally and could not work deployed, which is the one environment it
+exists for.
+
+The files *do* ship inside each package; they just need a tracing hint:
+
+```json
+{
+  "functions": {
+    "src/app.ts": {
+      "includeFiles": "{src/db/migrations/sql/**,node_modules/@fonderie/*/dist/migrations/sql/**}"
+    }
+  }
+}
+```
+
+The same applies to `npm run migrate` if you run it *from* a bundled artifact
+rather than from source — which is why running it against source, out of band, is
+the recommendation above.

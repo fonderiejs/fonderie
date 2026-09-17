@@ -15,8 +15,11 @@ separate Fonderie state.
   self-hosting. Target: daily base backup + continuous WAL, ≥ 7-day retention.
 - **Encryption.** Backups encrypted at rest (KMS-managed key) and in transit.
 - **Tested restore.** Restore to a scratch instance on a schedule (at least
-  quarterly) and confirm the app boots against it — migrations run automatically
-  on boot (`MigrationRunner`), so a restore + boot is a full smoke test.
+  quarterly) and confirm the app boots against it. **Migrations do not run at
+  boot** on any target (see [DEPLOYMENT.md](../examples/DEPLOYMENT.md)) — run
+  `npm run migrate` against the restored database as part of the drill, or the
+  boot succeeds against a schema that is behind the code and the drill proves
+  less than it appears to.
 - **RPO/RTO.** Write them down. PITR + WAL gives an RPO of minutes; RTO depends
   on instance size and is what the restore drill measures.
 - **Retention & disposal.** Old audit/event rows and soft-deleted users are
@@ -43,6 +46,46 @@ turning them into monitoring is an operator step.
   and alert if it reports `ok: false` — that means the audit log was tampered.
 - **Metrics.** The SDK does not export Prometheus metrics yet; derive request
   rate/latency from the request logs or your platform's ingress metrics.
+
+## Reconciling what you declare against what actually holds it
+
+An app configured against an external service holds a *copy* of something that
+service owns — a price, a webhook registration, a subscription's status, a
+schema version, a DNS record. Copies drift, and this class of drift is unusually
+hard to see: both sides stay internally consistent, so nothing errors and nothing
+logs. The only symptom is behaviour quietly going missing.
+
+None of these can live in a module's `checkReadiness()`, which is **synchronous**
+— reading the other side is a network or I/O call. They are plain async functions
+you call at boot or from a scheduled ops route, and every one of them is
+non-throwing: a diagnostic must not take down the thing it diagnoses.
+
+| Check | Ours | Theirs | What silence looks like otherwise |
+|---|---|---|---|
+| `checkWebhookRegistration` (`@fonderie/billing`) | the events we handle | what the provider was told to send, **and the API version the endpoint renders them in** | a handler that can never run; or payloads shaped for a different version parsing to `null` |
+| `checkPriceConsistency` (`@fonderie/billing`) | the catalog's amounts | the provider's prices | the same item costing different amounts depending on the purchase path |
+| `checkSubscriptionDrift` (`@fonderie/billing`) | `fonderie_subscriptions` | the provider's subscriptions | a cancelled subscriber still served, or a paying one locked out |
+| `MigrationRunner.pending()` (`@fonderie/store`) | the schema the code expects | what the database applied | a queue that will not drain, a callback that hangs — never mentioning migrations |
+| `checkSenderDns` (`@fonderie/courier`) | the `from` address | the domain's SPF/DKIM/DMARC | mail accepted by the provider and dropped by the receiver |
+
+Each has a `describe…Problems(report)` companion that renders one log line per
+finding, so an app can log them uniformly.
+
+**Two rules that decide whether these get read or muted.**
+
+*Report, do not repair.* Every one of these is read-only. Correcting the drift
+changes who is billed or who is served, and that belongs to the app as a
+deliberate act — not to a cron as a side effect.
+
+*Keep `ok` for hard failures.* Findings that are legitimate-but-notable are
+reported without flipping `ok`: a webhook endpoint on a different API version
+still delivers, a `p=none` DMARC policy is a real monitoring stage, a renewal
+date that moved by seconds is a provider nudging its own clock. Folding those
+into `ok` leaves a healthy deployment permanently red, which is precisely how an
+alarm stops being read.
+
+A worked example wiring all five onto one route is in
+[`examples/leadeasygen`](../examples/leadeasygen/microservices/api/src/fonderie.ts).
 
 ## Change management — branch protection (SOC 2 CC8.1)
 
