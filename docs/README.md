@@ -18,6 +18,9 @@ promises the project makes.
 | Publish to npm and handle cross-package versions | [RELEASING.md](RELEASING.md) |
 | Adopt the billing wallet from a legacy balance system | [WALLET-ADOPTION.md](WALLET-ADOPTION.md) |
 | Send email that authenticates and looks like your product | [EMAIL-SETUP.md](EMAIL-SETUP.md) |
+| Run it in production — backups, monitoring, change control | [OPERATIONS.md](OPERATIONS.md) |
+| Catch config that silently disagrees with Stripe, DNS or the database | [OPERATIONS.md](OPERATIONS.md#reconciling-what-you-declare-against-what-actually-holds-it) |
+| Deploy to Vercel, Docker or any Node host | [../examples/DEPLOYMENT.md](../examples/DEPLOYMENT.md) |
 | Keep the LLM's knowledge of the SDK correct | [BRAIN.md](BRAIN.md) |
 
 ## Architecture in one picture

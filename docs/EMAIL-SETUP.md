@@ -243,6 +243,42 @@ curl -s -X POST https://api.example.com/internal/cron/purge \
 `failed: 0` means the provider accepted them. Only headers say they
 authenticated.
 
+### And keep checking, after the day you set it up
+
+Headers prove one message, once. The records can be edited, a registrar can
+rewrite them, a provider can rotate a key — and none of that produces an error,
+because the failure happens at the *receiver*. `checkSenderDns` from
+`@fonderie/courier` asks DNS the same questions on a schedule:
+
+```ts
+const report = await checkSenderDns(config.email.from, {
+  dkimSelectors: ['resend'],                       // see below
+  returnPathDomain: 'send.email.example.com',      // see below
+});
+for (const line of describeSenderDnsProblems(report)) console.error('[courier]', line);
+```
+
+Public TXT lookups only — no provider API, no credentials, works with any SMTP
+backend.
+
+**Both options matter, and both encode a trap this document already warns about.**
+
+`returnPathDomain` exists because **SPF is checked against the envelope, not the
+From** (§ The shape). Without it the check looks for SPF on the From domain,
+which on a correctly-configured provider-owned return-path has none — and would
+report a textbook-correct setup as broken.
+
+`dkimSelectors` exists because **a selector cannot be discovered from DNS**. It
+is chosen by whoever signs and appears only in a sent message's header
+(`s=resend`); DNS has no way to list what sits under `_domainkey`. Without it the
+check cannot tell "no SPF because the provider owns the return-path, and DKIM
+carries alignment" (correct) from "no SPF and no DKIM" (broken) — so it reports
+the ambiguity rather than guessing. Supply the selector and it gives a verdict.
+
+Findings that are real but not failures — a `p=none` policy, an absent SPF
+covered by DKIM — are reported as advice and deliberately do **not** fail the
+check. See [OPERATIONS.md](OPERATIONS.md#reconciling-what-you-declare-against-what-actually-holds-it).
+
 ---
 
 ## Order of operations
