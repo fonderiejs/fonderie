@@ -192,3 +192,18 @@ export type { IWalletCustomerKey, IAutoRechargeClaim } from './services/wallet-c
 // Request validation — enforced contract for body-taking routes (webhook
 // excluded: provider-shaped, signature-verified). Exported for docs/clients.
 export * as schemas from './schemas';
+
+// fonderie_subscriptions is a MIRROR fed entirely by webhooks: fine while every
+// delivery lands, silently wrong the moment one does not — and nothing inside
+// the app can tell a correct mirror from one that stopped being updated. This
+// asks the provider. It needed a new seam method (getSubscription) to exist at
+// all: the interface could update, cancel and reactivate, but never read back.
+export {
+	checkSubscriptionDrift,
+	describeSubscriptionDrift,
+} from './services/subscription-drift';
+export type {
+	DriftField,
+	ISubscriptionDrift,
+	ISubscriptionDriftReport,
+} from './services/subscription-drift';

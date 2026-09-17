@@ -308,6 +308,19 @@ export interface IBillingProvider {
 	// Cancel a subscription — at period end (keep access until paid-through) or
 	// immediately. Optional: when absent, the first-party cancel route answers
 	// 501 (the hosted billing portal remains a self-serve fallback).
+	/**
+	 * Read a subscription's CURRENT state from the provider, or null if it does
+	 * not exist there.
+	 *
+	 * The seam had update, cancel and reactivate but no way to read one back, so
+	 * the local mirror — fed entirely by webhooks — could never be checked
+	 * against the thing it mirrors. A missed delivery window left it permanently
+	 * wrong with no mechanism that could notice.
+	 *
+	 * Optional: a provider without it reports `unsupported` rather than failing.
+	 */
+	getSubscription?(subscriptionId: string): Promise<INormalizedSubscription | null>;
+
 	cancelSubscription?(opts: { subscriptionId: string; atPeriodEnd: boolean }): Promise<ISubscriptionChange>;
 
 	// Un-cancel a subscription scheduled to cancel at period end. Optional; the

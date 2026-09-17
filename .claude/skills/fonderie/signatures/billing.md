@@ -24,6 +24,7 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined, option
   .resolvePriceById(priceId: string): Promise<IResolvedPrice | null>
   .resolvePricesByLookupKey(lookupKeys: string[]): Promise<Map<string, IResolvedPrice>>
   .updateSubscription(opts: { subscriptionId: string; priceId: string; prorationBehavior?: "always_invoice" | "create_prorations"; }): Promise<{ status: string; currentPeriodStart: Date | null; currentPeriodEnd: Date | null; }>
+  .getSubscription(subscriptionId: string): Promise<INormalizedSubscription | null>
   .cancelSubscription(opts: { subscriptionId: string; atPeriodEnd: boolean; }): Promise<ISubscriptionChange>
   .reactivateSubscription(opts: { subscriptionId: string; }): Promise<ISubscriptionChange>
   .getPaymentMethodForIntent(providerTxId: string): Promise<string | null>
@@ -297,6 +298,7 @@ interface IBillingProvider {
         currentPeriodStart: Date | null;
         currentPeriodEnd: Date | null;
     }>;
+    getSubscription?(subscriptionId: string): Promise<INormalizedSubscription | null>;
     cancelSubscription?(opts: {
         subscriptionId: string;
         atPeriodEnd: boolean;
@@ -848,4 +850,40 @@ interface IAutoRechargeClaim {
 }
 
 namespace schemas — exports: cancelSubscriptionSchema, checkoutSchema, createPlanSchema, grantWalletSchema, recordUsageSchema, savePaymentMethodSchema, updatePlanSchema, walletCheckoutSchema, walletPreferencesSchema, walletPurchaseSchema
+
+function checkSubscriptionDrift(provider: Pick<IBillingProvider, "getSubscription">, store: IStoreAdapter, opts?: { limit?: number; }): Promise<ISubscriptionDriftReport>
+
+function describeSubscriptionDrift(report: ISubscriptionDriftReport): string[]
+
+type DriftField = 'status' | 'currentPeriodEnd' | 'cancelAtPeriodEnd';
+
+interface ISubscriptionDrift {
+    providerSubscriptionId: string;
+    subscriberType: string;
+    subscriberId: string;
+    fields: DriftField[];
+    ours: {
+        status: string;
+        currentPeriodEnd: string | null;
+        cancelAtPeriodEnd: boolean;
+    };
+    theirs: {
+        status: string;
+        currentPeriodEnd: string | null;
+        cancelAtPeriodEnd: boolean;
+    } | null;
+    impact: 'over-granting' | 'under-granting' | 'metadata';
+}
+
+interface ISubscriptionDriftReport {
+    unsupported?: boolean;
+    error?: string;
+    checked: number;
+    truncated?: {
+        limit: number;
+        note: string;
+    };
+    drifted: ISubscriptionDrift[];
+    ok: boolean;
+}
 ```

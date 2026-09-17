@@ -687,6 +687,21 @@ export class StripeProvider implements IBillingProvider {
 		};
 	}
 
+	async getSubscription(subscriptionId: string): Promise<INormalizedSubscription | null> {
+		const stripe = await this.client();
+		try {
+			const sub = await stripe.subscriptions.retrieve(subscriptionId);
+			return normalizeSubscription(sub as IStripeSubscriptionRaw);
+		} catch (err) {
+			// A deleted or unknown subscription is an ANSWER — "the provider does
+			// not have this" — not a failure. Anything else is a real fault and
+			// must propagate, or a reconciliation would read an outage as "every
+			// subscription is gone" and act on it.
+			if ((err as { statusCode?: number })?.statusCode === 404) return null;
+			throw err;
+		}
+	}
+
 	async cancelSubscription(opts: {
 		subscriptionId: string;
 		atPeriodEnd: boolean;
