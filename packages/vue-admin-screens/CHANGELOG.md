@@ -1,5 +1,25 @@
 # @fonderie/vue-admin-screens
 
+## 0.3.0
+
+### Minor Changes
+
+- 3e069c9: Money: hooks and the Catalog and Subscriber pages
+  
+  `useAdminCatalog` (configured vs stored; `createPlan`, `updatePlan`,
+  `deletePlan`) and `useAdminSubscriber` (subscription, wallet, paged ledger,
+  `grant`) over `BillingAdminClient`. `CatalogScreen` and `SubscriberScreen`
+  under a Money group in the shell, shown when `billingClient` is given. The
+  one write on the subscriber page is a manual grant, idempotency-keyed per
+  click. Phase 8c-ui of `docs/ADMIN-BRICK-DESIGN.md`.
+
+### Patch Changes
+
+- Updated dependencies [3e069c9]
+- Updated dependencies [3e069c9]
+  - @fonderie/client@0.27.0
+  - @fonderie/vue-admin@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes
