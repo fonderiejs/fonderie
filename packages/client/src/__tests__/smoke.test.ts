@@ -326,6 +326,40 @@ test('sends X-Request-ID on every call and surfaces it on FonderieApiError', asy
 	);
 });
 
+// ── AdminClient: the operator's surface, one token, prefix-aware ────────────
+test('AdminClient: every page under the prefix with the admin token; log query forwarded; prefix movable', async () => {
+	const { AdminClient } = await import('../index');
+	calls.length = 0;
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: { ok: true } } });
+
+	const admin = new AdminClient({ baseUrl: 'http://x', adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb' });
+	await admin.attention();
+	await admin.manifest();
+	await admin.doctor();
+	await admin.config();
+	await admin.routes();
+	await admin.tokens();
+	await admin.adminLog({ limit: 5, before: 'c1' });
+	assert.deepEqual(
+		calls.map((c) => c.path.replace('http://x', '')),
+		[
+			'/_admin',
+			'/_admin/manifest',
+			'/_admin/doctor',
+			'/_admin/config',
+			'/_admin/routes',
+			'/_admin/access/tokens',
+			'/_admin/activity/admin-log?limit=5&before=c1',
+		],
+	);
+	assert.ok(calls.every((c) => c.method === 'GET' && c.auth === 'Bearer aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb'));
+
+	calls.length = 0;
+	const moved = new AdminClient({ baseUrl: 'http://x', adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb', prefix: '/ops/' });
+	await moved.doctor();
+	assert.equal(calls[0]?.path, 'http://x/ops/doctor');
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });

@@ -463,6 +463,109 @@ export interface ITemplateRevision {
 	createdAt: string;
 }
 
+// ── Admin (the operator's surface) ───────────────────────────────────────────
+// Admin-token authenticated — see AdminClient. Shapes mirror @fonderie/admin's
+// pages; the client owns its copies, like every other section here.
+
+export interface IAdminReadinessProblem {
+	module: string;
+	severity: 'error' | 'warning';
+	message: string;
+}
+
+export interface IAdminReadiness {
+	ok: boolean;
+	problems: IAdminReadinessProblem[];
+}
+
+export interface IAdminModuleEntry {
+	name: string;
+	version: string | null;
+	readiness: IAdminReadiness;
+	describesAdmin: boolean;
+}
+
+export interface IAdminRouteEntry {
+	method: string;
+	path: string;
+	module?: string;
+}
+
+export interface IAdminManifest {
+	generatedAt: string;
+	env: string;
+	admin: { version: string; log: boolean };
+	modules: IAdminModuleEntry[];
+	readiness: IAdminReadiness;
+	routes: IAdminRouteEntry[];
+}
+
+export interface IAdminCheckResult {
+	name: string;
+	module: string;
+	ok: boolean;
+	findings: string[];
+	skipped?: string;
+	durationMs: number;
+}
+
+export interface IAdminDoctorReport {
+	generatedAt: string;
+	ok: boolean;
+	checks: IAdminCheckResult[];
+}
+
+export interface IAdminAttentionItem {
+	source: string;
+	severity: 'error' | 'advice';
+	message: string;
+}
+
+export interface IAdminAttention {
+	generatedAt: string;
+	ok: boolean;
+	items: IAdminAttentionItem[];
+}
+
+export interface IAdminConfigReport {
+	generatedAt: string;
+	readiness: IAdminReadiness;
+	modules: Array<{ name: string; problems: IAdminReadinessProblem[] }>;
+	env: Array<{ name: string; set: boolean }>;
+}
+
+export type AdminRouteGuard = 'admin' | 'probe' | 'app';
+
+export interface IAdminRoutesReport {
+	generatedAt: string;
+	routes: Array<IAdminRouteEntry & { guard: AdminRouteGuard }>;
+}
+
+export interface IAdminTokensReport {
+	generatedAt: string;
+	admin: { ok: boolean; problems: IAdminReadinessProblem[] };
+	legacy: Array<{ module: string; set: boolean }>;
+}
+
+export interface IAdminLogEntry {
+	id: string;
+	at: string;
+	actor: string;
+	method: string;
+	path: string;
+	route: string;
+	module: string;
+	status: number;
+	durationMs: number;
+	requestId: string | null;
+	clientIp: string | null;
+}
+
+export interface IAdminLogPage {
+	entries: IAdminLogEntry[];
+	next: string | null;
+}
+
 // ── Config admin (feature flags / remote config + secrets) ──────────────────
 // Admin-token authenticated, not user-session authenticated — see
 // ConfigAdminClient. Result shapes here are the raw resource, matching
