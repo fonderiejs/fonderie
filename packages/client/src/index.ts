@@ -31,6 +31,8 @@ export type {
 	ISetSecretInput,
 } from './modules/config-admin';
 export { ConfigAdminClient } from './modules/config-admin';
+export type { IAdminClientOptions, IAdminLogQuery } from './modules/admin';
+export { AdminClient } from './modules/admin';
 export type {
 	ICourierAdminClientOptions,
 	IRollbackTemplateInput,
@@ -84,6 +86,21 @@ export type {
 	ISessionsResult,
 	ICancelSubscriptionInput,
 	ICheckoutUrlResult,
+	AdminRouteGuard,
+	IAdminAttention,
+	IAdminAttentionItem,
+	IAdminCheckResult,
+	IAdminConfigReport,
+	IAdminDoctorReport,
+	IAdminLogEntry,
+	IAdminLogPage,
+	IAdminManifest,
+	IAdminModuleEntry,
+	IAdminReadiness,
+	IAdminReadinessProblem,
+	IAdminRouteEntry,
+	IAdminRoutesReport,
+	IAdminTokensReport,
 	IConfigEntry,
 	IConfigRevision,
 	ICustomerAddressDTO,

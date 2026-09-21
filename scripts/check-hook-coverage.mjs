@@ -108,15 +108,16 @@ const ROUTE_ALLOW = new Map([
 	// useUploadMedia, useDeleteMedia). Only the public GET remains allow-listed:
 	// it's an <img src> target — navigated to, never a typed client call.
 	['GET /media/:id', 'public image-serve endpoint — an <img src> target, navigated to, never fetched via the typed client'],
-	// @fonderie/admin: the operator's surface, read with curl / the CLI. A typed
-	// client ships with the shell phase (docs/ADMIN-BRICK-DESIGN.md §9).
-	['GET /_admin/manifest', 'admin-token-guarded operator surface — server-first by scoped decision'],
-	['GET /_admin', 'admin-token-guarded operator surface — server-first by scoped decision'],
-	['GET /_admin/doctor', 'admin-token-guarded operator surface — server-first by scoped decision'],
-	['GET /_admin/activity/admin-log', 'admin-token-guarded operator surface — server-first by scoped decision'],
-	['GET /_admin/config', 'admin-token-guarded operator surface — server-first by scoped decision'],
-	['GET /_admin/routes', 'admin-token-guarded operator surface — server-first by scoped decision'],
-	['GET /_admin/access/tokens', 'admin-token-guarded operator surface — server-first by scoped decision'],
+	// @fonderie/admin: reached through AdminClient (+ react-admin / vue-admin
+	// hooks, which leg 1 verifies). The client builds paths from a configurable
+	// prefix, so this static match cannot see them.
+	['GET /_admin', 'AdminClient.attention() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/manifest', 'AdminClient.manifest() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/doctor', 'AdminClient.doctor() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/config', 'AdminClient.config() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/routes', 'AdminClient.routes() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/access/tokens', 'AdminClient.tokens() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/activity/admin-log', 'AdminClient.adminLog() — prefix is configurable, invisible to the static match'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');
