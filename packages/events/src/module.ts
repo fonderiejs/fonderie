@@ -1,4 +1,4 @@
-import type { IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
+import type { IAdminDescription, IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
 
 import { EventBus } from './bus';
 import { PGTransport } from './transports/pg';
@@ -45,14 +45,44 @@ function resolveTransport(config: EventTransportConfig): IEventTransport {
 	return config as IEventTransport;
 }
 
+const STALE_BACKLOG_MINUTES = 15;
+
 export class EventsModule implements IFonderieModule {
 	readonly name = '@fonderie/events';
 	readonly bus: EventBus;
 	private readonly config: IEventsConfig;
+	private readonly transport: IEventTransport;
 
 	constructor(config: IEventsConfig) {
 		this.config = config;
-		this.bus = new EventBus(resolveTransport(config.transport));
+		this.transport = resolveTransport(config.transport);
+		this.bus = new EventBus(this.transport);
+	}
+
+	// A dead row will never deliver; a row waiting this long was not picked up
+	// by the per-request drain and nothing else is looking.
+	describeAdmin(): IAdminDescription {
+		const t = this.transport;
+		if (!(t instanceof PGTransport)) return {};
+		return {
+			checks: [
+				{
+					name: 'events.outbox',
+					run: async () => {
+						const [dead, pending] = await Promise.all([t.deadLetters(10), t.pendingByConsumer()]);
+						const findings = dead.map(
+							(d) => `${d.type} (${d.consumer}): ${d.lastError ?? 'no error recorded'} — dead, will never be delivered`,
+						);
+						for (const p of pending) {
+							if (p.oldestMinutes >= STALE_BACKLOG_MINUTES) {
+								findings.push(`${p.consumer}: ${p.waiting} waiting, oldest ${p.oldestMinutes} min`);
+							}
+						}
+						return { ok: dead.length === 0, findings };
+					},
+				},
+			],
+		};
 	}
 
 	install(_app: IFonderieApp): void {

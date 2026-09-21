@@ -46,6 +46,48 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" https://api.example.com/_admin/mani
 problems are shown here in production — unlike `/readyz`, which is public —
 because the operator is the audience.
 
+## `GET /_admin/doctor` and `GET /_admin`
+
+The five reconciliation checks from `docs/OPERATIONS.md` — and any the app
+adds — with a permanent address. Each check reads the other side of a copy
+(the provider, DNS, the database), so `/doctor` is on demand, not cached.
+
+```json
+{ "generatedAt": "…", "ok": false, "checks": [
+  { "name": "billing.subscription-drift", "module": "@fonderie/billing", "ok": false,
+    "findings": ["workspace:ws_1 (sub_x): status ours=active theirs=canceled [over-granting]"], "durationMs": 412 },
+  { "name": "billing.webhook-registration", "module": "@fonderie/billing", "ok": true,
+    "findings": [], "skipped": "config.publicUrl is not set", "durationMs": 0 },
+  { "name": "courier.sender-dns", "module": "@fonderie/courier", "ok": true,
+    "findings": ["DMARC p=none — monitoring only"], "durationMs": 88 }
+] }
+```
+
+- `ok` is false only for a hard failure. Findings on a passing check are
+  advice and never turn a healthy deployment red.
+- A check that throws becomes a finding; one that exceeds `checkTimeoutMs`
+  (default 10 s) is reported as timed out. The doctor itself never throws.
+- `skipped` says why a check could not run — a provider that cannot be asked,
+  a `publicUrl` that is not set — instead of guessing.
+
+`GET /_admin` is the attention page: readiness problems as reported, failed
+checks as errors, advice as advice. `ok: true, items: []` is green.
+
+Checks a module cannot own belong to the app:
+
+```ts
+new AdminModule({
+  adminToken,
+  checks: [{
+    name: 'app.migrations',
+    run: async () => {
+      const pending = await runner.pending();
+      return { ok: pending.length === 0, findings: pending.map((f) => `pending: ${f}`) };
+    },
+  }],
+});
+```
+
 ## Composed routes
 
 Bricks that implement `describeAdmin()` have their admin routes mounted here,
