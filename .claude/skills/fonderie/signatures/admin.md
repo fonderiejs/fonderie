@@ -36,12 +36,19 @@ const DEFAULT_ACTOR: "admin-token"
 
 const MAX_PAGE: 200
 
+function configReport(app: IFonderieApp, env: string[]): IAdminConfigReport
+
+function routesReport(app: IFonderieApp, adminModule: string): IAdminRoutesReport
+
+function tokensReport(app: IFonderieApp, adminModule: string): IAdminTokensReport
+
 interface IAdminOptions {
     adminToken?: string;
     path?: string;
     checks?: IAdminCheck[];
     checkTimeoutMs?: number;
     store?: IStoreAdapter;
+    env?: string[];
 }
 
 interface IAdminManifest {
@@ -104,5 +111,45 @@ interface IAdminLogEntry {
 interface IAdminLogPage {
     entries: IAdminLogEntry[];
     next: string | null;
+}
+
+interface IAdminEnvEntry {
+    name: string;
+    set: boolean;
+}
+
+interface IAdminConfigReport {
+    generatedAt: string;
+    readiness: IReadinessReport;
+    modules: Array<{
+        name: string;
+        problems: IReadinessReport['problems'];
+    }>;
+    env: IAdminEnvEntry[];
+}
+
+type AdminRouteGuard = 'admin' | 'probe' | 'app';
+
+interface IAdminRouteEntry extends IRouteEntry {
+    guard: AdminRouteGuard;
+}
+
+interface IAdminRoutesReport {
+    generatedAt: string;
+    routes: IAdminRouteEntry[];
+}
+
+interface IAdminTokenEntry {
+    module: string;
+    set: boolean;
+}
+
+interface IAdminTokensReport {
+    generatedAt: string;
+    admin: {
+        ok: boolean;
+        problems: IReadinessReport['problems'];
+    };
+    legacy: IAdminTokenEntry[];
 }
 ```

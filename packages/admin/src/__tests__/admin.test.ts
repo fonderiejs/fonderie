@@ -99,6 +99,9 @@ test('manifest: modules with versions and readiness, aggregate readiness, the ro
 			['GET', '/v1/_admin', '@fonderie/admin'],
 			['GET', '/v1/_admin/manifest', '@fonderie/admin'],
 			['GET', '/v1/_admin/doctor', '@fonderie/admin'],
+			['GET', '/v1/_admin/config', '@fonderie/admin'],
+			['GET', '/v1/_admin/routes', '@fonderie/admin'],
+			['GET', '/v1/_admin/access/tokens', '@fonderie/admin'],
 			['GET', '/healthz', '@fonderie/core'],
 			['GET', '/readyz', '@fonderie/core'],
 		],
@@ -464,4 +467,89 @@ test('admin log: readable at /_admin/activity/admin-log, paged newest first; abs
 	await bare.boot();
 	assert.equal((await get(bare, '/_admin/activity/admin-log', TOKEN)).status, 404);
 	assert.equal((await manifest(bare)).admin.log, false);
+});
+
+// ── config · routes · tokens ────────────────────────────────────────
+
+import type { IAdminConfigReport, IAdminRoutesReport, IAdminTokensReport } from '../types';
+
+async function page<T>(app: FonderieApp, path: string): Promise<T> {
+	const res = await get(app, path, TOKEN);
+	assert.equal(res.status, 200);
+	return ((await res.json()) as { result: T }).result;
+}
+
+test('config: readiness per module and env presence — names only, never values', async () => {
+	process.env['ADMIN_TEST_SET'] = 'a-value';
+	process.env['ADMIN_TEST_EMPTY'] = '';
+	delete process.env['ADMIN_TEST_MISSING'];
+	try {
+		const app = new FonderieApp(config);
+		app.register(
+			brick('@acme/unwell', () => {}, {
+				checkReadiness: () => [
+					{ module: '@acme/unwell', severity: 'warning', message: 'no encryptor' },
+				],
+			}),
+		);
+		app.register(brick('@acme/fine', () => {}));
+		app.register(
+			new AdminModule({
+				adminToken: TOKEN,
+				env: ['ADMIN_TEST_SET', 'ADMIN_TEST_EMPTY', 'ADMIN_TEST_MISSING'],
+			}),
+		);
+		await app.boot();
+		const c = await page<IAdminConfigReport>(app, '/_admin/config');
+		assert.deepEqual(
+			c.modules.map((m) => [m.name, m.problems.length]),
+			[
+				['@acme/fine', 0],
+				['@acme/unwell', 1],
+				['@fonderie/admin', 0],
+			],
+		);
+		assert.deepEqual(c.env, [
+			{ name: 'ADMIN_TEST_SET', set: true },
+			{ name: 'ADMIN_TEST_EMPTY', set: false },
+			{ name: 'ADMIN_TEST_MISSING', set: false },
+		]);
+		assert.equal(JSON.stringify(c).includes('a-value'), false);
+	} finally {
+		delete process.env['ADMIN_TEST_SET'];
+		delete process.env['ADMIN_TEST_EMPTY'];
+	}
+});
+
+test('routes: every route with a guard class — admin, probe, or app', async () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://x' }, metrics: true }));
+	app.register(brick('@acme/things', (a) => a.addRoute('GET', '/things', ok)));
+	app.register(describing('@acme/desc', [{ method: 'POST', path: '/desc', handlers: [ok] }]));
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	await app.boot();
+	const r = await page<IAdminRoutesReport>(app, '/_admin/routes');
+	const guard = (path: string) => r.routes.find((x) => x.path === path)?.guard;
+	assert.equal(guard('/things'), 'app');
+	assert.equal(guard('/_admin/desc'), 'admin');
+	assert.equal(guard('/_admin/routes'), 'admin');
+	assert.equal(guard('/healthz'), 'probe');
+	assert.equal(guard('/metrics'), 'probe');
+	assert.equal(r.routes.length, app.routes().length);
+});
+
+test('tokens: the admin token verdict, and which bricks still carry a legacy token', async () => {
+	const app = new FonderieApp(config);
+	// A brick with a legacy standalone admin surface registered (token set).
+	app.register(brick('@acme/config-like', (a) => a.addRoute('GET', '/admin/config', ok)));
+	app.register(brick('@acme/billing-like', (a) => a.addRoute('POST', '/plans', ok)));
+	// GET /plans is public; a brick with only that has no legacy token.
+	app.register(brick('@acme/reader', (a) => a.addRoute('GET', '/plans', ok)));
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	await app.boot();
+	const t = await page<IAdminTokensReport>(app, '/_admin/access/tokens');
+	assert.deepEqual(t.admin, { ok: true, problems: [] });
+	assert.deepEqual(t.legacy, [
+		{ module: '@acme/billing-like', set: true },
+		{ module: '@acme/config-like', set: true },
+	]);
 });

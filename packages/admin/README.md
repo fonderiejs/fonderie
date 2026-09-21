@@ -88,6 +88,29 @@ new AdminModule({
 });
 ```
 
+## `GET /_admin/config`, `/_admin/routes`, `/_admin/access/tokens`
+
+- **config** — readiness problems per module, and the presence (never the
+  value) of each environment variable the deployment reads. Bricks never
+  read `process.env` — config is injected — so the app names them:
+  `new AdminModule({ adminToken, env: ['DATABASE_URL', 'STRIPE_SECRET_KEY'] })`.
+- **routes** — every route in the table with a guard class: `admin` (behind
+  this token), `probe` (core's `/healthz` `/readyz` `/metrics`), `app`
+  (everything else — whether it needs a session is not claimed here).
+- **access/tokens** — the admin token's readiness verdict, and which bricks
+  still register a legacy standalone surface with their own token.
+
+## From the terminal
+
+```sh
+export FONDERIE_ADMIN_URL=https://api.example.com FONDERIE_ADMIN_TOKEN=…
+fonderie admin attention      # what needs you today
+fonderie admin doctor         # every reconciliation check
+fonderie admin log --limit 20 # who did what
+```
+
+`FONDERIE_ADMIN_PREFIX` when the surface was moved off `/_admin`.
+
 ## The admin log
 
 ```ts

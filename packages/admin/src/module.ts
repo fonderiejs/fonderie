@@ -5,6 +5,7 @@ import { requireAdminToken, validateAdminToken } from '@fonderie/core/middleware
 import { attention, collectChecks, runDoctor } from './doctor';
 import { adminLog, readAdminLog } from './log';
 import { buildManifest } from './manifest';
+import { configReport, routesReport, tokensReport } from './pages';
 import type { IAdminOptions } from './types';
 
 export const DEFAULT_ADMIN_PATH = '/_admin';
@@ -65,6 +66,29 @@ export class AdminModule implements IFonderieModule {
 				'/_admin/doctor',
 				async () =>
 					setApiResponse(HTTP.OK, 'ADMIN_DOCTOR', 'Reconciliation checks', await doctor()),
+			],
+			[
+				'GET',
+				'/_admin/config',
+				async () =>
+					setApiResponse(
+						HTTP.OK,
+						'ADMIN_CONFIG',
+						'Declared vs held',
+						configReport(app, this.options.env ?? []),
+					),
+			],
+			[
+				'GET',
+				'/_admin/routes',
+				async () =>
+					setApiResponse(HTTP.OK, 'ADMIN_ROUTES', 'Exposed routes', routesReport(app, this.name)),
+			],
+			[
+				'GET',
+				'/_admin/access/tokens',
+				async () =>
+					setApiResponse(HTTP.OK, 'ADMIN_TOKENS', 'Admin tokens', tokensReport(app, this.name)),
 			],
 		];
 		if (store) {

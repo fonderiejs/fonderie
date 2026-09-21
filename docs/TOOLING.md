@@ -32,6 +32,7 @@ improvise it. Determinism here is both correctness and token savings.
 fonderie config   <get|set|delete|history|rollback> [key] [value]  [--env <e>] [--if-version <n>] [--to-version <n>]
 fonderie secret   <get|set|delete|history|rollback|reveal> [key] [value] [--env <e>] ...
 fonderie template <get|set|delete|history|rollback> [type] [text]  [--locale <l>] [--subject <s>] [--html <h>] ...
+fonderie admin    <attention|manifest|doctor|config|routes|tokens|log> [--limit <n>] [--before <cursor>]
 ```
 
 These hit the admin API of a running app. Set `FONDERIE_ADMIN_URL` and

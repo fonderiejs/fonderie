@@ -5,8 +5,8 @@ deployment, where the founder answers four questions without reading code or
 prompting a model — **what did I deploy, how is it configured, what is
 happening, what needs me.** The `/wp-admin` of a Fonderie app.
 
-> **Status: in build — phase 5 of 8 (§9).** Phases 1–4 shipped (`@fonderie/core`
-> 0.19.0, `@fonderie/admin` 0.3.0). The census in §12 is what existed on
+> **Status: in build — phase 6 of 8 (§9).** Phases 1–5 shipped (`@fonderie/core`
+> 0.19.0, `@fonderie/admin` 0.4.0). The census in §12 is what existed on
 > 2026-09-21, before phase 1.
 
 Companion: `docs/ADMIN-AUTH-SPEC.md` (the token convention this brick
@@ -104,6 +104,20 @@ Rejected:
 | `studio` (Supabase, Prisma, Sanity) | Connotes authoring; names the UI. |
 | `manifest`, `doctor` | Each names one endpoint, not the system. |
 | `cockpit`, `tower`, `bridge` | `courier` earned a metaphor because "notifications" was ambiguous; "admin" is not. Cockpit is also an existing Linux admin project. |
+
+**The precise category, for the next person who asks (settled 2026-09-21,
+after phase 5).** In the networking taxonomy this brick is the app's
+**management plane** — configuration, monitoring and administration by
+operators — as opposed to the data plane (users' requests) and the control
+plane (decisions and reconciliation). It is deliberately *not* a control
+plane: it reports, it does not repair (§4). `control` was rejected for
+claiming exactly that, and because "control plane" already names config's
+versioned write surface in this repo. Kubernetes has no word for a management
+slice because its API *is* the whole system; among systems that do have one
+— Envoy, Prometheus, Grafana, Kafka, Django, WordPress — the name is `admin`.
+`backoffice` was the strongest alternative (covers Tier 1 without stretching)
+and was declined to keep the vocabulary the brain already has. Decision:
+**keep `admin`**; the description stays "the operator's surface".
 
 Two caveats to state once and move on:
 
@@ -306,8 +320,8 @@ before the next starts.
 | 2 | **The place exists** | `@fonderie/admin`: reserves the prefix, one token (fail-closed by absence, strength-validated), `GET /_admin/manifest` — modules, versions, readiness *with* problems, the route table. `version?` on `IFonderieModule`. | **shipped** — admin 0.1.0, core 0.17.0 (#373) |
 | 3 | **Composition** | `describeAdmin?()` on `IFonderieModule` → `{ routes }` and `app.adminDescriptions()`; config, courier, billing implement it with *unguarded* handlers from the same table as their legacy routes; admin mounts them under `/_admin/{config,secrets,templates,plans,wallet/grant}` behind its token, and refuses two modules describing one path. Manifest reports `describesAdmin` per module. Legacy paths deprecated in docs and changelog, not removed. | **shipped** — admin 0.2.0, core 0.18.0, config 5.2.0, courier 7.7.0, billing 9.8.0 (#375) |
 | 4 | **Doctor** | `describeAdmin().checks` → `IAdminCheck { name, run() → { ok, findings, skipped? } }`. billing (price consistency, subscription drift, webhook registration — the last only with the new `config.publicUrl`), courier (sender DNS, with optional `email.senderDns` for DKIM selectors / return-path), events (outbox: dead letters fail, stale backlog advises). `AdminModule({ checks })` for what no module owns (pending migrations). `GET /_admin/doctor`: every check, per-check timeout, a throw becomes a finding, `ok` only for hard failures. `GET /_admin`: attention = readiness problems + failed checks as errors + findings on passing checks as advice; empty is green. Stats (`webhookStats`, `messageStats`) are instruments, not checks — they belong to pages (phase 6/8). | **shipped** — admin 0.3.0, core 0.19.0, billing 9.9.0, courier 7.8.0, events 5.6.0 (#377) |
-| 5 | **Admin-log** | `AdminModule({ store })` + one migration: `fonderie_admin_log` — actor (`X-Actor`), method, path, route, module, status, duration, request id, client IP — written by a middleware that sits *before* the guard, so a refused request is a row too; a failed write never fails the request. `GET /_admin/activity/admin-log`, newest first, keyset-paged. Manifest reports `admin.log: false` when no store is given. Unlocks secret reveal and, later, impersonation. | in progress |
-| 6 | **Rest of T0** | `/_admin/config` (readiness + env presence), `/_admin/routes` with guard class (`admin` / `probe` / `app`), `/_admin/access/tokens` (which bricks have a token, strength). CLI `fonderie admin …`. | |
+| 5 | **Admin-log** | `AdminModule({ store })` + one migration: `fonderie_admin_log` — actor (`X-Actor`), method, path, route, module, status, duration, request id, client IP — written by a middleware that sits *before* the guard, so a refused request is a row too; a failed write never fails the request. `GET /_admin/activity/admin-log`, newest first, keyset-paged. Manifest reports `admin.log: false` when no store is given. Unlocks secret reveal and, later, impersonation. | **shipped** — admin 0.4.0 (#379) |
+| 6 | **Rest of T0 + CLI** | `/_admin/config`: readiness per module + env *presence* from `AdminModule({ env })` — bricks never read `process.env` (config is injected), so only the app can name what matters; values are never shown. `/_admin/routes`: every route with a guard class — `admin` (behind this token), `probe` (core's health routes), `app` (everything else; session-vs-public is not derivable without tagging `requireAuth`, so it is not claimed). `/_admin/access/tokens`: the admin token's readiness verdict + which bricks still register a legacy standalone surface (inferred from the route table). CLI: `fonderie admin <attention\|manifest\|doctor\|config\|routes\|tokens\|log>`, `FONDERIE_ADMIN_PREFIX` when moved. | in progress |
 | 7 | **Shell** | §10 — decided then, not now. | |
 | 8 | **T1** | people / money catalog + ledger / audit / tokens with scopes and rotation. Legacy standalone admin routes removed (major on each brick). | |
 
