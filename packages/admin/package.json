@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/admin",
-	"version": "0.4.0",
+	"version": "0.5.0",
 	"fonderie": { "stability": "experimental" },
 	"description": "The operator's surface for a Fonderie deployment. Owns one reserved path (default /_admin) behind one admin token, and answers what the founder cannot see after deploy: which bricks are installed, at what version, whether they are ready, and every route that is exposed. The run-time counterpart to the SDK's brain — read by the human through a panel and by a model through curl.",
 	"keywords": [
