@@ -27,11 +27,7 @@ export class Router implements IRouter {
 		this.routes.push({ method: method.toUpperCase(), path, handler, module });
 	}
 
-	// Claim a path prefix. Nothing but the reserving module may mount under it,
-	// before or after the claim — a route already sitting there fails the
-	// reservation, a route added later fails at add(). Both surface at boot,
-	// so a namespace collision is a startup error, never a silently shadowed
-	// route (the router is first-match-wins and would say nothing).
+	// A collision in either order throws; first-match-wins would otherwise shadow silently.
 	reserve(prefix: string, module?: string): void {
 		const clean = normalizePrefix(prefix);
 		const existing = this.reservations.find((r) => r.prefix === clean);
@@ -51,9 +47,7 @@ export class Router implements IRouter {
 		this.reservations.push({ prefix: clean, module });
 	}
 
-	// The route table as registered — method, full path (basePath included),
-	// and the module that mounted it (absent for app-level routes). Feeds
-	// operator introspection; handlers are deliberately not exposed.
+	// Handlers stay private.
 	list(): IRouteEntry[] {
 		return this.routes.map(({ method, path, module }) =>
 			module ? { method, path, module } : { method, path },
@@ -78,8 +72,6 @@ export class Router implements IRouter {
 	}
 }
 
-// A prefix owns itself and everything below it: `/_admin` covers `/_admin`
-// and `/_admin/x`, not `/_adminx`.
 function isUnder(path: string, prefix: string): boolean {
 	return path === prefix || path.startsWith(`${prefix}/`);
 }

@@ -43,8 +43,7 @@ export class FonderieApp implements IFonderieApp {
 	private router: Router = new Router();
 	private middlewares: Middleware[] = [];
 	private modules: Map<string, IFonderieModule> = new Map();
-	// The module whose install() is running, so routes and reservations it
-	// makes are attributed to it. Undefined outside boot — app-level routes.
+	// Set while a module's install() runs; attributes its routes and reservations.
 	private installing: string | undefined;
 	readonly metrics = new MetricsRegistry();
 
@@ -56,11 +55,7 @@ export class FonderieApp implements IFonderieApp {
 		// headers (nosniff always; HSTS over HTTPS). Apps can layer more via `.use()`.
 		this.middlewares = [bodyParser(config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES), withSecurityHeaders()];
 		if (config.metrics) this.middlewares.push(withMetrics(this.metrics));
-		// The built-in probes are registered last (after every install), so a
-		// module mounting the same path would win first-match and shadow them
-		// silently. Reserving them up front turns that into a boot error at the
-		// module's addRoute, naming both sides. Only what will actually be
-		// registered is reserved: with healthChecks off, /healthz is the app's.
+		// Probes register after every install(); reserved up front so a module cannot shadow them.
 		if (config.healthChecks !== false) {
 			this.router.reserve('/healthz', CORE);
 			this.router.reserve('/readyz', CORE);
@@ -354,9 +349,7 @@ export class FonderieApp implements IFonderieApp {
 		this.router.add(method, this.prefix + path, compose(handlers), this.installing);
 	}
 
-	// Claim a prefix for the calling module. Same coordinate system as
-	// addRoute — basePath is applied — so a module reserving '/_admin' and
-	// mounting '/_admin/manifest' agree with each other under any basePath.
+	// basePath applies, as in addRoute.
 	reserve(prefix: string): void {
 		if (!prefix.startsWith('/')) {
 			throw new Error(`[fonderie] reserve() takes an absolute path like '/_admin', got "${prefix}"`);

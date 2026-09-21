@@ -5,11 +5,6 @@ import { FonderieApp } from '../app';
 import { defineConfig } from '../config';
 import type { IFonderieApp, IFonderieModule, IRouteEntry } from '../types';
 
-// Route reservation: a module claims a prefix, and any other module mounting
-// under it fails AT BOOT with a message naming both sides — in either order.
-// The router is first-match-wins, so without this a collision is a silently
-// shadowed route. The same mechanism protects core's own probes.
-
 const config = defineConfig({ db: { url: 'postgres://localhost/test' } });
 const ok = async () => Response.json({ ok: true });
 
@@ -42,7 +37,6 @@ test('routes(): lists app and module routes with attribution, basePath applied, 
 		['GET', '/metrics', '@fonderie/core'],
 		['GET', '/readyz', '@fonderie/core'],
 	]);
-	// Introspection, not a way in: handlers never leave the router.
 	for (const entry of app.routes()) assert.equal('handler' in entry, false);
 });
 
@@ -59,13 +53,11 @@ test('a module mounting /healthz fails at boot, naming the module and core', asy
 });
 
 test('/metrics is reserved only when metrics are on; /healthz only when health checks are on', async () => {
-	// metrics off → a module may own /metrics
 	const a = new FonderieApp(config);
 	a.register(module('@acme/own-metrics', (x) => x.addRoute('GET', '/metrics', ok)));
 	await a.boot();
 	assert.equal((await a.handle(new Request('http://localhost/metrics'))).status, 200);
 
-	// healthChecks off → the app's /healthz is the app's
 	const b = new FonderieApp(defineConfig({ db: { url: 'postgres://x' }, healthChecks: false }));
 	b.register(
 		module('@acme/own-health', (x) =>
@@ -197,6 +189,6 @@ test('reserve() rejects a relative or empty prefix', () => {
 	assert.throws(() => app.reserve('admin'), /absolute path/);
 	assert.throws(() => app.reserve(''), /absolute path/);
 	const withBase = new FonderieApp(defineConfig({ db: { url: 'postgres://x' }, basePath: '/v1' }));
-	// '' would otherwise resolve to the whole basePath
+	// '' would resolve to basePath itself
 	assert.throws(() => withBase.reserve(''), /absolute path/);
 });
