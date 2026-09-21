@@ -11,9 +11,10 @@ new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule
   .name: "@fonderie/config"
   .manager: RemoteConfigManager
   .install(app: IFonderieApp): Promise<void>
+  .describeAdmin(): IAdminDescription
   .checkReadiness(): IReadinessProblem[]
 
-function buildAdminRoutes(store: IStoreAdapter, adminToken: string, encryptor?: ISecretEncryptor): [string, string, Middleware][]
+function buildAdminRoutes(store: IStoreAdapter, adminToken: string, encryptor?: ISecretEncryptor): RouteRow[]
 
 new RemoteConfigManager(store: IStoreAdapter, options?: IConfigOptions): RemoteConfigManager
   .boot(): Promise<void>

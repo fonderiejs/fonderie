@@ -10,12 +10,14 @@ export function buildManifest(app: IFonderieApp, admin: { version: string }): IA
 		list.push(p);
 		byModule.set(p.module, list);
 	}
+	const describing = new Set(app.adminDescriptions().map((d) => d.module));
 	const modules: IAdminModuleEntry[] = report.modules.map(({ name, version }) => {
 		const problems = byModule.get(name) ?? [];
 		return {
 			name,
 			version: version ?? null,
 			readiness: { ok: !problems.some((p) => p.severity === 'error'), problems },
+			describesAdmin: describing.has(name),
 		};
 	});
 	return {

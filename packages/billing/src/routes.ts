@@ -1,5 +1,5 @@
 import type { IStoreAdapter } from '@fonderie/store';
-import type { Middleware } from '@fonderie/core';
+import type { IAdminRoute, Middleware } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
 import { requireAdminToken, requireAuth, validate } from '@fonderie/core/middlewares';
 
@@ -136,5 +136,26 @@ export function buildBillingRoutes(
 		}
 	}
 
+	return routes;
+}
+
+// The same admin handlers, unguarded and prefix-relative, for @fonderie/admin to
+// mount under its own prefix behind its own token. Own controllers: the plan
+// writes never touch the price cache, and the wallet controller holds no state.
+export function describeBillingAdminRoutes(
+	store: IStoreAdapter,
+	config: IBillingConfig,
+	bus?: EventBus,
+): IAdminRoute[] {
+	const plan = planController(store, config, new PriceCache());
+	const routes: IAdminRoute[] = [
+		{ method: 'POST', path: '/plans', handlers: [validate(createPlanSchema), plan.create] },
+		{ method: 'PUT', path: '/plans/:planId', handlers: [validate(updatePlanSchema), plan.update] },
+		{ method: 'DELETE', path: '/plans/:planId', handlers: [plan.delete] },
+	];
+	if (config.wallet) {
+		const wallet = walletController(store, config, bus);
+		routes.push({ method: 'POST', path: '/wallet/grant', handlers: [validate(grantWalletSchema), wallet.grant] });
+	}
 	return routes;
 }

@@ -3,6 +3,7 @@ import { createServer, type Server } from 'node:http';
 
 import type {
 	Middleware,
+	IAdminDescriptionEntry,
 	IFonderieApp,
 	IFonderieContext,
 	IHandleInit,
@@ -227,6 +228,15 @@ export class FonderieApp implements IFonderieApp {
 			modules,
 			readiness: this.checkProductionReadiness(),
 		};
+	}
+
+	adminDescriptions(): IAdminDescriptionEntry[] {
+		const out: IAdminDescriptionEntry[] = [];
+		for (const name of [...this.modules.keys()].sort()) {
+			const module = this.modules.get(name);
+			if (module?.describeAdmin) out.push({ module: name, description: module.describeAdmin() });
+		}
+		return out;
 	}
 
 	async boot(): Promise<this> {

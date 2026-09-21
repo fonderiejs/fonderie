@@ -2528,3 +2528,28 @@ test('isWorkspaceManager: matches system-role NAMES (GUEST must not manage money
 	assert.equal(ok, false);
 	assert.deepEqual(captured[2], ['ADMIN'], 'default manager list is ADMIN only');
 });
+
+// ── describeAdmin: the same admin handlers, prefix-relative and unguarded ──
+
+test('describeBillingAdminRoutes: plan writes always, wallet grant only with config.wallet, no guard', async () => {
+	const { describeBillingAdminRoutes } = await import('../routes');
+	const store = subCtrlStore(null).store;
+	const plain = describeBillingAdminRoutes(store, config);
+	assert.deepEqual(
+		plain.map((r) => `${r.method} ${r.path}`),
+		['POST /plans', 'PUT /plans/:planId', 'DELETE /plans/:planId'],
+	);
+	// validate + handler; the admin brick prepends its own guard.
+	assert.equal(plain[0]?.handlers.length, 2);
+	assert.equal(plain[2]?.handlers.length, 1);
+
+	const withWallet = { ...config, wallet: { currency: 'USD' } } as unknown as IBillingConfig;
+	const walletPaths = describeBillingAdminRoutes(store, withWallet).map((r) => `${r.method} ${r.path}`);
+	assert.ok(walletPaths.includes('POST /wallet/grant'));
+});
+
+test('describeAdmin: BillingModule exposes it from constructor state', async () => {
+	const { BillingModule } = await import('../module');
+	const routes = new BillingModule(subCtrlStore(null).store, config).describeAdmin().routes ?? [];
+	assert.equal(routes.length, 3);
+});

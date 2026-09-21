@@ -11,6 +11,7 @@ new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus |
   .name: "@fonderie/billing"
   .deps: string[]
   .install(app: IFonderieApp): Promise<void>
+  .describeAdmin(): IAdminDescription
   .checkReadiness(): IReadinessProblem[]
 
 new StripeProvider(secretKey: string, webhookSecret?: string | undefined, options?: IStripeProviderOptions): StripeProvider

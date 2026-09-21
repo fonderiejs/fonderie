@@ -11,6 +11,7 @@ new CourierModule(config: ICourierConfig, store?: IStoreAdapter | undefined, bus
   .name: "@fonderie/courier"
   .deps: string[]
   .dispatcher: Dispatcher
+  .describeAdmin(): IAdminDescription
   .checkReadiness(): IReadinessProblem[]
   .install(app: IFonderieApp): void
 
@@ -74,7 +75,7 @@ function listTemplateEntries(store: IStoreAdapter): Promise<ITemplateEntry[]>
 
 function deleteTemplate(type: string, locale: string | null, store: IStoreAdapter): Promise<boolean>
 
-function buildTemplateAdminRoutes(store: IStoreAdapter, adminToken: string): [string, string, Middleware][]
+function buildTemplateAdminRoutes(store: IStoreAdapter, adminToken: string): RouteRow[]
 
 interface ITemplateEntry {
     type: string;

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { FonderieApp, defineConfig } from '@fonderie/core';
-import type { IFonderieApp, IFonderieModule } from '@fonderie/core';
+import type { IAdminRoute, IFonderieApp, IFonderieModule } from '@fonderie/core';
 
 import { AdminModule } from '../module';
 import type { IAdminManifest } from '../types';
@@ -159,4 +159,81 @@ test('a configured path moves the whole surface and is reserved instead', async 
 	await manifest(app, '/ops');
 	assert.equal((await get(app, '/_admin/manifest', TOKEN)).status, 404);
 	assert.equal((await get(app, '/_admin/free')).status, 200);
+});
+
+// ── composition ─────────────────────────────────────────────────────
+
+const describing = (name: string, routes: IAdminRoute[]): IFonderieModule => ({
+	name,
+	install: () => {},
+	describeAdmin: () => ({ routes }),
+});
+
+test('described routes are mounted under the prefix, behind the admin guard, with params and chains intact', async () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://x' }, basePath: '/v1' }));
+	const seen: string[] = [];
+	app.register(
+		describing('@acme/things', [
+			{
+				method: 'GET',
+				path: '/things/:id',
+				handlers: [
+					async (ctx, next) => {
+						seen.push('first');
+						return next();
+					},
+					async (ctx) => Response.json({ id: ctx.meta.params?.['id'] }),
+				],
+			},
+		]),
+	);
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	await app.boot();
+
+	assert.equal((await get(app, '/v1/_admin/things/42')).status, 401);
+	const res = await get(app, '/v1/_admin/things/42', TOKEN);
+	assert.equal(res.status, 200);
+	assert.deepEqual(await res.json(), { id: '42' });
+	assert.deepEqual(seen, ['first']);
+	assert.deepEqual(
+		app.routes().find((r) => r.path === '/v1/_admin/things/:id'),
+		{ method: 'GET', path: '/v1/_admin/things/:id', module: '@fonderie/admin' },
+	);
+});
+
+test('two modules describing the same route fail boot, naming both', async () => {
+	const app = new FonderieApp(config);
+	app.register(describing('@acme/a', [{ method: 'get', path: '/dup', handlers: [ok] }]));
+	app.register(describing('@acme/b', [{ method: 'GET', path: '/dup', handlers: [ok] }]));
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	await assert.rejects(
+		() => app.boot(),
+		(err: Error) =>
+			/@acme\/b cannot describe GET \/_admin\/dup: @acme\/a already describes it/.test(err.message),
+	);
+});
+
+test('a description is read even from a module that installs after admin', async () => {
+	const app = new FonderieApp(config);
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	app.register(describing('@acme/late', [{ method: 'GET', path: '/late', handlers: [ok] }]));
+	await app.boot();
+	assert.equal((await get(app, '/_admin/late', TOKEN)).status, 200);
+});
+
+test('manifest: describesAdmin says which modules offer routes', async () => {
+	const app = new FonderieApp(config);
+	app.register(describing('@acme/yes', []));
+	app.register(brick('@acme/no', () => {}));
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	await app.boot();
+	const m = await manifest(app);
+	assert.deepEqual(
+		m.modules.map((x) => [x.name, x.describesAdmin]),
+		[
+			['@acme/no', false],
+			['@acme/yes', true],
+			['@fonderie/admin', false],
+		],
+	);
 });

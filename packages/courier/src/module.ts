@@ -1,4 +1,4 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IAdminDescription, IFonderieModule, IFonderieApp } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
@@ -15,7 +15,7 @@ import { validateAdminToken } from '@fonderie/core/middlewares';
 import { DBTemplateResolver, FSTemplateResolver, DefaultTemplates } from './templates/resolver';
 import { validateCourierConfig, collectCourierConfigProblems } from './config-guard';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
-import { buildTemplateAdminRoutes } from './templates/admin-routes';
+import { buildTemplateAdminRoutes, describeTemplateAdminRoutes } from './templates/admin-routes';
 
 export class CourierModule implements IFonderieModule {
 	readonly name = '@fonderie/courier';
@@ -43,6 +43,11 @@ export class CourierModule implements IFonderieModule {
 			},
 			'courier',
 		);
+	}
+
+	// Template admin needs db templates; without a store there is nothing to offer.
+	describeAdmin(): IAdminDescription {
+		return this.store ? { routes: describeTemplateAdminRoutes(this.store) } : {};
 	}
 
 	// Report config problems for app.checkProductionReadiness() (data, not warn).
