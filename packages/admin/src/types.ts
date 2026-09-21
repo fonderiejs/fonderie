@@ -1,4 +1,5 @@
 import type { IAdminCheck, IAdminCheckReport, IReadinessReport, IRouteEntry } from '@fonderie/core';
+import type { IStoreAdapter } from '@fonderie/store';
 
 export interface IAdminOptions {
 	// Guards every route. Unset ⇒ the surface is not registered (404), never open.
@@ -9,6 +10,9 @@ export interface IAdminOptions {
 	checks?: IAdminCheck[];
 	// Per check. Default 10 000.
 	checkTimeoutMs?: number;
+	// Enables the admin log (every request served here, refused ones included)
+	// and GET /_admin/activity/admin-log. Run the package's migrations.
+	store?: IStoreAdapter;
 }
 
 export interface IAdminModuleEntry {
@@ -23,7 +27,8 @@ export interface IAdminModuleEntry {
 export interface IAdminManifest {
 	generatedAt: string;
 	env: string;
-	admin: { version: string };
+	// `log` is false when no store was given: admin actions are not being recorded.
+	admin: { version: string; log: boolean };
 	modules: IAdminModuleEntry[];
 	readiness: IReadinessReport;
 	routes: IRouteEntry[];
@@ -51,4 +56,24 @@ export interface IAdminAttention {
 	generatedAt: string;
 	ok: boolean;
 	items: IAdminAttentionItem[];
+}
+
+export interface IAdminLogEntry {
+	id: string;
+	at: string;
+	actor: string;
+	method: string;
+	path: string;
+	route: string;
+	module: string;
+	status: number;
+	durationMs: number;
+	requestId: string | null;
+	clientIp: string | null;
+}
+
+export interface IAdminLogPage {
+	entries: IAdminLogEntry[];
+	// Pass as `before` for the next page; null at the end.
+	next: string | null;
 }

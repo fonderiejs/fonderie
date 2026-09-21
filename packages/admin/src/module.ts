@@ -3,6 +3,7 @@ import { HTTP, setApiResponse } from '@fonderie/core';
 import { requireAdminToken, validateAdminToken } from '@fonderie/core/middlewares';
 
 import { attention, collectChecks, runDoctor } from './doctor';
+import { adminLog, readAdminLog } from './log';
 import { buildManifest } from './manifest';
 import type { IAdminOptions } from './types';
 
@@ -30,6 +31,7 @@ export class AdminModule implements IFonderieModule {
 		// Declared at the default path so the route table reads literally; re-based when configured.
 		const at = (p: string): string => this.path + p.slice(DEFAULT_ADMIN_PATH.length);
 
+		const store = this.options.store;
 		// Collected once at boot: a duplicate name is refused here, not at request time.
 		const checks = collectChecks(app, this.options.checks ?? []);
 		const timeoutMs = this.options.checkTimeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
@@ -55,7 +57,7 @@ export class AdminModule implements IFonderieModule {
 						HTTP.OK,
 						'ADMIN_MANIFEST',
 						'Deployment manifest',
-						buildManifest(app, { version: this.version }),
+						buildManifest(app, { version: this.version, log: Boolean(store) }),
 					),
 			],
 			[
@@ -65,6 +67,22 @@ export class AdminModule implements IFonderieModule {
 					setApiResponse(HTTP.OK, 'ADMIN_DOCTOR', 'Reconciliation checks', await doctor()),
 			],
 		];
+		if (store) {
+			own.push([
+				'GET',
+				'/_admin/activity/admin-log',
+				async (ctx) => {
+					const q = new URL(ctx.request.url).searchParams;
+					const limit = Number(q.get('limit')) || undefined;
+					const before = q.get('before') ?? undefined;
+					const page = await readAdminLog(store, {
+						...(limit ? { limit } : {}),
+						...(before ? { before } : {}),
+					});
+					return setApiResponse(HTTP.OK, 'ADMIN_LOG', 'Admin activity', page);
+				},
+			]);
+		}
 		const mounted = new Map<string, string>();
 		const mount = (module: string, method: string, path: string, handlers: Middleware[]): void => {
 			const key = `${method.toUpperCase()} ${path}`;
@@ -75,7 +93,11 @@ export class AdminModule implements IFonderieModule {
 				);
 			}
 			mounted.set(key, module);
-			app.addRoute(method, path, guard, ...handlers);
+			// The log sits before the guard: a refused request is a row too.
+			const chain = store
+				? [adminLog(store, path, module), guard, ...handlers]
+				: [guard, ...handlers];
+			app.addRoute(method, path, ...chain);
 		};
 
 		for (const [method, path, handler] of own) mount(this.name, method, at(path), [handler]);

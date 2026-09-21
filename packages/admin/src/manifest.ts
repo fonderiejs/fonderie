@@ -2,7 +2,10 @@ import type { IFonderieApp, IReadinessProblem } from '@fonderie/core';
 
 import type { IAdminManifest, IAdminModuleEntry } from './types';
 
-export function buildManifest(app: IFonderieApp, admin: { version: string }): IAdminManifest {
+export function buildManifest(
+	app: IFonderieApp,
+	admin: { version: string; log: boolean },
+): IAdminManifest {
 	const report = app.securityReport();
 	const byModule = new Map<string, IReadinessProblem[]>();
 	for (const p of report.readiness.problems) {
