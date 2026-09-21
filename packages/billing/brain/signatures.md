@@ -888,4 +888,6 @@ interface ISubscriptionDriftReport {
     drifted: ISubscriptionDrift[];
     ok: boolean;
 }
+
+function describeBillingAdminReads(store: IStoreAdapter, config: IBillingConfig): IAdminRoute[]
 ```

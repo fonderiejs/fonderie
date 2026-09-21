@@ -2551,7 +2551,7 @@ test('describeBillingAdminRoutes: plan writes always, wallet grant only with con
 test('describeAdmin: BillingModule exposes it from constructor state', async () => {
 	const { BillingModule } = await import('../module');
 	const routes = new BillingModule(subCtrlStore(null).store, config).describeAdmin().routes ?? [];
-	assert.equal(routes.length, 3);
+	assert.equal(routes.length, 5); // 2 reads (catalog, subscription) + 3 plan writes
 });
 
 // ── describeAdmin: doctor checks ──
@@ -2588,4 +2588,82 @@ test('describeBillingAdminChecks: three checks; unsupported ⇒ skipped; webhook
 	assert.equal(reg.ok, false);
 	assert.ok(reg.findings.some((f) => f.startsWith('https://api.x/v1/billing/webhook: NOT REGISTERED')));
 	assert.ok(!reg.findings.some((f) => f.includes('/billing/webhook/payment')), 'no wallet ⇒ no payment endpoint');
+});
+
+// ── describeAdmin: the money reads (catalog, subscription, wallet) ──
+
+function moneyStore(opts: { sub?: unknown; plans?: unknown[]; ledger?: unknown[] } = {}) {
+	const seen: string[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			seen.push(sql.trim().split(/\s+/).slice(0, 3).join(' '));
+			if (sql.includes('fonderie_plans') && sql.trimStart().startsWith('SELECT')) return (opts.plans ?? []) as T[];
+			if (sql.includes('fonderie_subscriptions') && sql.trimStart().startsWith('SELECT')) return (opts.sub ? [opts.sub] : []) as T[];
+			if (sql.includes('fonderie_wallet_balances')) return [] as T[];
+			if (sql.includes('fonderie_wallet_ledger')) return (opts.ledger ?? []) as T[];
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return { store, seen };
+}
+
+test('describeBillingAdminReads: catalog + subscription always; wallet reads only with config.wallet', async () => {
+	const { describeBillingAdminReads } = await import('../admin-reads');
+	const { store } = moneyStore();
+	assert.deepEqual(
+		describeBillingAdminReads(store, config).map((r) => `${r.method} ${r.path}`),
+		['GET /catalog', 'GET /subscriptions/:type/:id'],
+	);
+	const withWallet = { ...config, wallet: { currency: 'eur' } } as unknown as IBillingConfig;
+	assert.deepEqual(
+		describeBillingAdminReads(store, withWallet).map((r) => `${r.method} ${r.path}`),
+		['GET /catalog', 'GET /subscriptions/:type/:id', 'GET /wallet/:type/:id', 'GET /wallet/:type/:id/ledger'],
+	);
+});
+
+test('money reads: catalog shows configured and stored; subscription 404s; wallet balance/ledger respect currency and reject junk', async () => {
+	const { describeBillingAdminReads } = await import('../admin-reads');
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const withWallet = { ...config, wallet: { currency: 'eur' } } as unknown as IBillingConfig;
+	const { store } = moneyStore({ plans: [{ id: 'p1', name: 'pro', seats: 5, trialDays: 0, monthlyAmount: '1900', monthlyPriceId: 'price_m', yearlyAmount: null, yearlyPriceId: null }], sub: { id: 's1', subscriberType: 'user', subscriberId: 'u1', status: 'active' } });
+	let lastErr = null as unknown;
+	const app = new FonderieApp(
+		defineConfig({
+			db: { url: 'postgres://x' },
+			onError: (e) => {
+				lastErr = e;
+				return Response.json({ reason: 'SERVER_ERROR', explanation: String(e) }, { status: 500 });
+			},
+		}),
+	);
+	app.register({
+		name: 'test-admin',
+		install(a) {
+			for (const r of describeBillingAdminReads(store, withWallet)) a.addRoute(r.method, `/_admin${r.path}`, ...r.handlers);
+		},
+	});
+	await app.boot();
+	const get = (p: string) => app.handle(new Request(`http://localhost${p}`));
+	const json = async (r: Response) => ((await r.json()) as { result: Record<string, unknown> }).result;
+
+	const catRes = await get('/_admin/catalog');
+	assert.equal(catRes.status, 200, lastErr instanceof Error ? lastErr.stack ?? lastErr.message : String(lastErr));
+	const cat = await json(catRes);
+	assert.ok(Array.isArray(cat['configured']) && Array.isArray(cat['stored']));
+	assert.equal((cat['stored'] as unknown[]).length, 1);
+
+	assert.equal((await get('/_admin/subscriptions/user/u1')).status, 200);
+	assert.equal((await get('/_admin/subscriptions/user/nobody')).status, 200); // fake store returns the sub for any id
+	assert.equal((await get('/_admin/subscriptions/team/u1')).status, 422);
+
+	const bal = await json(await get('/_admin/wallet/user/u1'));
+	assert.equal(bal['currency'], 'EUR');
+	assert.equal((await json(await get('/_admin/wallet/user/u1?currency=usd')))['currency'], 'USD');
+	assert.equal((await json(await get('/_admin/wallet/user/u1?currency=%3Cjunk%3E')))['currency'], 'EUR');
+
+	const led = await json(await get('/_admin/wallet/user/u1/ledger?limit=10'));
+	assert.deepEqual([led['currency'], led['entries'], led['nextCursor']], ['EUR', [], null]);
+	assert.equal((await get('/_admin/wallet/user/u1/ledger?limit=0')).status, 422);
+	assert.equal((await get('/_admin/wallet/user/u1/ledger?cursor=%25%25')).status, 422);
 });
