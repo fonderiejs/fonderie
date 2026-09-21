@@ -16,6 +16,13 @@ export interface IEmailChannelConfig {
 	 * Set it to an address that actually receives — typically on the apex.
 	 */
 	replyTo?: string;
+	/**
+	 * What the doctor's sender-DNS check cannot discover on its own: DKIM
+	 * selectors (a selector is not readable from DNS) and the envelope domain
+	 * when it differs from the From domain (SPF checks the envelope). See
+	 * docs/EMAIL-SETUP.md §7.
+	 */
+	senderDns?: { dkimSelectors?: string[]; returnPathDomain?: string };
 	apiKey?: string;
 	smtp?: {
 		host: string;
