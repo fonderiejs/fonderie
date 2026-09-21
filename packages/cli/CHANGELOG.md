@@ -1,5 +1,14 @@
 # @fonderie/cli
 
+## 0.5.0
+
+### Minor Changes
+
+- 223a934: `fonderie admin user <email|id> [sessions|history|revoke-sessions|suspend|unsuspend]`
+  
+  The first support question — why can't this person log in — from the
+  terminal, over `@fonderie/auth`'s described admin routes.
+
 ## 0.4.0
 
 ### Minor Changes

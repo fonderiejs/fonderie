@@ -6,7 +6,7 @@
     "adapter-koa": "5.3.4",
     "admin": "0.5.0",
     "audit": "5.1.15",
-    "auth": "7.7.4",
+    "auth": "7.8.0",
     "billing": "9.9.0",
     "client": "0.25.0",
     "config": "5.2.1",
@@ -229,7 +229,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.7.4",
+      "version": "7.8.0",
       "stability": "stable",
       "requires": [
         "core",
