@@ -214,8 +214,13 @@
       ],
       "subpaths": [],
       "tables": [],
-      "routeCount": 1,
+      "routeCount": 2,
       "routes": [
+        {
+          "method": "GET",
+          "path": "/_admin/audit",
+          "mw": "async (ctx) => { const params = new URL(ctx.request.url).searchParams; const rawLimit = Number(params.get('limit') ?? 50); const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 200) : 50; const from = params.get('from') ? new Date(params.get('from') as string) : undefined; const to = params.get('to') ? new Date(params.get('to') as string) : undefined; if ((from && Number.isNaN(from.getTime())) || (to && Number.isNaN(to.getTime()))) return setApiResponse( HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'from/to must be ISO dates', ); const query: Parameters<AuditEventModel['listAcross']>[0] = { limit }; const workspaceId = params.get('workspaceId'); const type = params.get('type'); const actorId = params.get('actorId'); const cursor = params.get('cursor'); if (workspaceId) query.workspaceId = workspaceId; if (type) query.type = type; if (actorId) query.actorId = actorId; if (from) query.from = from; if (to) query.to = to; if (cursor) query.cursor = cursor; const { events, hasMore } = await new AuditEventModel(store).listAcross(query); const last = events[events.length - 1]; const nextCursor = hasMore && last ? encodeCursor(last.createdAtRaw ?? last.createdAt, last.id) : null; return setApiResponse(HTTP.OK, 'AUDIT', 'Audit events', { events: events.map(toAuditEventDTO), nextCursor, }); }"
+        },
         {
           "method": "GET",
           "path": "/audit",

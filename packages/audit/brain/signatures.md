@@ -8,6 +8,7 @@
 new AuditModule(store: IStoreAdapter): AuditModule
   .name: "@fonderie/audit"
   .deps: string[]
+  .describeAdmin(): IAdminDescription
   .install(app: IFonderieApp): void
 
 interface IAuditEvent {
@@ -41,4 +42,6 @@ interface IAuditPageDTO {
     events: IAuditEventDTO[];
     nextCursor: string | null;
 }
+
+function describeAuditAdminRoutes(store: IStoreAdapter): IAdminRoute[]
 ```

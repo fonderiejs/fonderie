@@ -153,6 +153,8 @@ await (async () => {
   if (!find('GET', '/_admin/catalog')) fail('admin catalog: wrong path');
   if (!find('GET', '/_admin/subscriptions/workspace/w1')) fail('admin subscriber: wrong path');
   if (!find('GET', '/_admin/wallet/user/u1/ledger?currency=eur&limit=7')) fail('admin subscriber ledger: flags not forwarded');
+  await cli(['admin', 'audit', '--workspace', 'w1', '--type', 'user.login', '--limit', '9']);
+  if (!find('GET', '/_admin/audit?workspaceId=w1&type=user.login&limit=9')) fail('admin audit: flags not forwarded');
   let badType = 0;
   try { await cli(['admin', 'subscriber', 'team', 'x']); } catch (e) { badType = e.code; }
   if (badType !== 2) fail(`admin subscriber <bad type> should exit 2, got ${badType}`);
