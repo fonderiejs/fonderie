@@ -88,6 +88,26 @@ new AdminModule({
 });
 ```
 
+## The admin log
+
+```ts
+import { AdminModule } from '@fonderie/admin';
+import { getMigrationsPath } from '@fonderie/admin/migrations';
+
+app.register(new AdminModule({ adminToken, store }));   // run the migrations first
+```
+
+With a store, every request served by this surface is a row in
+`fonderie_admin_log` — actor (the `X-Actor` header, else `admin-token`),
+method, path, route, module, status, duration, request id, client IP —
+**including the ones the token guard refused.** The log middleware runs
+before the guard, and a failed write never fails the request it describes.
+Without a store nothing is recorded and the manifest says so
+(`admin.log: false`).
+
+`GET /_admin/activity/admin-log?limit=50&before=<cursor>` reads it, newest
+first; `next` is the cursor for the following page.
+
 ## Composed routes
 
 Bricks that implement `describeAdmin()` have their admin routes mounted here,

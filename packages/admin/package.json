@@ -22,13 +22,17 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
+		},
+		"./migrations": {
+			"types": "./dist/migrations/index.d.ts",
+			"import": "./dist/migrations/index.js"
 		}
 	},
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build": "tsup",
+		"build": "tsup && tsup --config tsup.migrations.ts",
 		"dev": "tsup --watch",
 		"typecheck": "tsc --noEmit",
 		"test": "tsx --test src/__tests__/*.test.ts",
@@ -37,10 +41,17 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.19.0"
+		"@fonderie/core": "^0.19.0",
+		"@fonderie/store": "^0.5.0"
+	},
+	"peerDependenciesMeta": {
+		"@fonderie/store": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
+		"@fonderie/store": "../store",
 		"@types/node": "^26.5.1",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.13",
