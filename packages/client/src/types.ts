@@ -566,6 +566,12 @@ export interface IAdminLogPage {
 	next: string | null;
 }
 
+// The operator's view of a user (@fonderie/auth's described admin routes):
+// the app's own DTO plus what support asks about. Never a hash or MFA secret.
+export interface IAdminUserDTO extends IUserDTO {
+	deletedAt: string | null;
+}
+
 // ── Config admin (feature flags / remote config + secrets) ──────────────────
 // Admin-token authenticated, not user-session authenticated — see
 // ConfigAdminClient. Result shapes here are the raw resource, matching

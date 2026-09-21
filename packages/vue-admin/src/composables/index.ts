@@ -5,3 +5,6 @@ export { useAdminConfig } from './useAdminConfig';
 export { useAdminRoutes } from './useAdminRoutes';
 export { useAdminTokens } from './useAdminTokens';
 export { useAdminLog } from './useAdminLog';
+export { useAdminUser } from './useAdminUser';
+export { useAdminUserSessions } from './useAdminUserSessions';
+export { useAdminLoginHistory } from './useAdminLoginHistory';

@@ -2,7 +2,10 @@
 
 Vue composables over [`@fonderie/admin`](../admin) — the operator's surface. One per
 page: `useAttention`, `useManifest`, `useDoctor`, `useAdminConfig`,
-`useAdminRoutes`, `useAdminTokens`, `useAdminLog` (paged, `loadMore`).
+`useAdminRoutes`, `useAdminTokens`, `useAdminLog` (paged, `loadMore`) — and over
+`AuthAdminClient` (`@fonderie/auth`'s described user routes): `useAdminUser`
+(lookup by email or id; `suspend`, `unsuspend`, `revokeSessions`),
+`useAdminUserSessions`, `useAdminLoginHistory` (paged).
 
 Status: **experimental** (0.x).
 

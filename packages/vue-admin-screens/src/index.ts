@@ -8,4 +8,5 @@ export {
 	ModulesScreen,
 	RoutesScreen,
 	TokensScreen,
+	UsersScreen,
 } from './screens';

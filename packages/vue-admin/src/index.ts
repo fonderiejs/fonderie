@@ -16,8 +16,14 @@ export type {
 	IAdminRouteEntry,
 	IAdminRoutesReport,
 	IAdminTokensReport,
+	IAdminUserDTO,
+	IAuthAdminClientOptions,
+	IAdminLoginHistoryQuery,
+	ILoginEventDTO,
+	ILoginHistoryPageResult,
+	ISessionDTO,
 } from '@fonderie/client';
-export { AdminClient, FonderieApiError } from '@fonderie/client';
+export { AdminClient, AuthAdminClient, FonderieApiError } from '@fonderie/client';
 export {
 	useAttention,
 	useManifest,
@@ -26,4 +32,7 @@ export {
 	useAdminRoutes,
 	useAdminTokens,
 	useAdminLog,
+	useAdminUser,
+	useAdminUserSessions,
+	useAdminLoginHistory,
 } from './composables';

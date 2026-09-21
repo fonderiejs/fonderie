@@ -376,6 +376,37 @@ test('ConfigAdminClient / CourierAdminClient: prefix rebases the legacy /admin s
 	);
 });
 
+test('AuthAdminClient: user routes under the prefix; history query forwarded; ids encoded', async () => {
+	const { AuthAdminClient } = await import('../index');
+	calls.length = 0;
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	const tok = 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb';
+	const a = new AuthAdminClient({ baseUrl: 'http://x', adminToken: tok, actor: 'ada' });
+	await a.findUser('Ada@Example.com');
+	await a.getUser('u/1');
+	await a.listUserSessions('u1');
+	await a.revokeUserSessions('u1');
+	await a.userLoginHistory('u1', { limit: 3, cursor: 'c' });
+	await a.suspendUser('u1');
+	await a.unsuspendUser('u1');
+	assert.deepEqual(
+		calls.map((c) => `${c.method} ${c.path.replace('http://x', '')}`),
+		[
+			'GET /_admin/users?email=Ada%40Example.com',
+			'GET /_admin/users/u%2F1',
+			'GET /_admin/users/u1/sessions',
+			'DELETE /_admin/users/u1/sessions',
+			'GET /_admin/users/u1/login-history?limit=3&cursor=c',
+			'POST /_admin/users/u1/suspend',
+			'POST /_admin/users/u1/unsuspend',
+		],
+	);
+	assert.ok(calls.every((c) => c.auth === `Bearer ${tok}`));
+	calls.length = 0;
+	await new AuthAdminClient({ baseUrl: 'http://x', adminToken: tok, prefix: '/ops' }).getUser('u1');
+	assert.equal(calls[0]?.path, 'http://x/ops/users/u1');
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });
