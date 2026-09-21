@@ -151,11 +151,15 @@ export interface ISecurityReport {
 	generatedAt: string; // ISO timestamp
 	env: string; // NODE_ENV
 	registeredModules: string[];
+	// Same modules, with the version each reports (absent when it does not).
+	modules: Array<{ name: string; version?: string }>;
 	readiness: IReadinessReport;
 }
 
 export interface IFonderieModule {
 	name: string;
+	// The package version, for the deployment manifest. Inject at build time.
+	version?: string;
 	deps?: string[];
 	install(app: IFonderieApp): void | Promise<void>;
 	// Optional: report production-readiness problems with this module's config.

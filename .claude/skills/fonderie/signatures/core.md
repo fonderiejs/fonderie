@@ -73,6 +73,7 @@ interface IFonderieApp {
 
 interface IFonderieModule {
     name: string;
+    version?: string;
     deps?: string[];
     install(app: IFonderieApp): void | Promise<void>;
     checkReadiness?(): IReadinessProblem[];
@@ -133,6 +134,10 @@ interface ISecurityReport {
     generatedAt: string;
     env: string;
     registeredModules: string[];
+    modules: Array<{
+        name: string;
+        version?: string;
+    }>;
     readiness: IReadinessReport;
 }
 

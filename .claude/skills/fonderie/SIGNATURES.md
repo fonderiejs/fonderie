@@ -10,6 +10,7 @@ composition guide (rules, golden `buildFonderie()` example, routes), see
 - `@fonderie/adapter-express` → [signatures/adapter-express.md](signatures/adapter-express.md)
 - `@fonderie/adapter-hono` → [signatures/adapter-hono.md](signatures/adapter-hono.md)
 - `@fonderie/adapter-koa` → [signatures/adapter-koa.md](signatures/adapter-koa.md)
+- `@fonderie/admin` → [signatures/admin.md](signatures/admin.md)
 - `@fonderie/audit` → [signatures/audit.md](signatures/audit.md)
 - `@fonderie/auth` → [signatures/auth.md](signatures/auth.md)
 - `@fonderie/billing` → [signatures/billing.md](signatures/billing.md)
@@ -85,6 +86,7 @@ What each package does to your app once wired: DB tables created, rows
 seeded, HTTP routes registered (with middleware). **Read the outcomes file
 instead of excavating `dist/` or tarballs.**
 
+- `@fonderie/admin` (0 tables, 1 routes) → [signatures/admin-outcomes.md](signatures/admin-outcomes.md)
 - `@fonderie/audit` (0 tables, 1 routes) → [signatures/audit-outcomes.md](signatures/audit-outcomes.md)
 - `@fonderie/auth` (9 tables, 31 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
 - `@fonderie/billing` (10 tables, 25 routes) → [signatures/billing-outcomes.md](signatures/billing-outcomes.md)
