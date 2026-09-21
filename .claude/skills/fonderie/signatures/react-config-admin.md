@@ -8,6 +8,7 @@
 interface IConfigAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    prefix?: string;
     actor?: string;
 }
 

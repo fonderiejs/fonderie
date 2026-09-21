@@ -360,6 +360,22 @@ test('AdminClient: every page under the prefix with the admin token; log query f
 	assert.equal(calls[0]?.path, 'http://x/ops/doctor');
 });
 
+test('ConfigAdminClient / CourierAdminClient: prefix rebases the legacy /admin segment for the composed surface', async () => {
+	const { ConfigAdminClient, CourierAdminClient } = await import('../index');
+	calls.length = 0;
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: [] } });
+	const tok = 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb';
+
+	await new ConfigAdminClient({ baseUrl: 'http://x', adminToken: tok }).listConfig('prod');
+	await new ConfigAdminClient({ baseUrl: 'http://x', adminToken: tok, prefix: '/_admin/' }).listConfig('prod');
+	await new ConfigAdminClient({ baseUrl: 'http://x', adminToken: tok, prefix: '/_admin' }).revealSecret('k');
+	await new CourierAdminClient({ baseUrl: 'http://x', adminToken: tok, prefix: '/_admin' }).listTemplates();
+	assert.deepEqual(
+		calls.map((c) => c.path.replace('http://x', '')),
+		['/admin/config?environment=prod', '/_admin/config?environment=prod', '/_admin/secrets/k/reveal', '/_admin/templates'],
+	);
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });

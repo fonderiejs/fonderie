@@ -226,6 +226,7 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
 interface IConfigAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    prefix?: string;
     actor?: string;
 }
 
@@ -286,6 +287,7 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    prefix?: string;
     actor?: string;
 }
 
