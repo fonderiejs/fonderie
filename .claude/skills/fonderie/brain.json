@@ -4,6 +4,7 @@
     "adapter-express": "5.3.1",
     "adapter-hono": "6.2.1",
     "adapter-koa": "5.3.1",
+    "admin": "0.0.0",
     "audit": "5.1.12",
     "auth": "7.7.1",
     "billing": "9.7.1",
@@ -133,6 +134,31 @@
       "secures": [],
       "hasSignature": true,
       "hasOutcomes": false
+    },
+    "admin": {
+      "version": "0.0.0",
+      "stability": "experimental",
+      "requires": [
+        "core"
+      ],
+      "exports": [
+        "AdminModule",
+        "ADMIN_VERSION",
+        "DEFAULT_ADMIN_PATH"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 1,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/_admin/manifest",
+          "mw": "g(async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version }), ), )"
+        }
+      ],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": true
     },
     "audit": {
       "version": "5.1.12",
@@ -2386,6 +2412,11 @@
       "type": "requires"
     },
     {
+      "from": "admin",
+      "to": "core",
+      "type": "requires"
+    },
+    {
       "from": "audit",
       "to": "core",
       "type": "requires"
@@ -2625,6 +2656,10 @@
     ],
     "adapter-koa": [
       "adapter-koa"
+    ],
+    "admin": [
+      "admin",
+      "permissions"
     ],
     "audit": [
       "audit"
@@ -3071,9 +3106,6 @@
       "permissions"
     ],
     "roles": [
-      "permissions"
-    ],
-    "admin": [
       "permissions"
     ],
     "owner": [
@@ -3911,6 +3943,15 @@
       "adapter-koa",
       "core",
       "permissions"
+    ],
+    "adminmodule": [
+      "admin"
+    ],
+    "admin_version": [
+      "admin"
+    ],
+    "default_admin_path": [
+      "admin"
     ],
     "auditmodule": [
       "audit"

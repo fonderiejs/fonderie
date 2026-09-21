@@ -216,10 +216,15 @@ export class FonderieApp implements IFonderieApp {
 	// are registered and the current readiness report. Serialise to a file/log
 	// (e.g. on a schedule) as an audit artifact.
 	securityReport(): ISecurityReport {
+		const modules = [...this.modules.keys()].sort().map((name) => {
+			const version = this.modules.get(name)?.version;
+			return version ? { name, version } : { name };
+		});
 		return {
 			generatedAt: new Date().toISOString(),
 			env: process.env['NODE_ENV'] ?? 'development',
-			registeredModules: [...this.modules.keys()].sort(),
+			registeredModules: modules.map((m) => m.name),
+			modules,
 			readiness: this.checkProductionReadiness(),
 		};
 	}
