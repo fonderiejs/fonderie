@@ -139,22 +139,34 @@
       "version": "0.3.0",
       "stability": "experimental",
       "requires": [
-        "core"
+        "core",
+        "store"
       ],
       "exports": [
         "AdminModule",
         "ADMIN_VERSION",
         "DEFAULT_ADMIN_PATH",
-        "DEFAULT_CHECK_TIMEOUT_MS"
+        "DEFAULT_CHECK_TIMEOUT_MS",
+        "DEFAULT_ACTOR",
+        "MAX_PAGE"
       ],
-      "subpaths": [],
-      "tables": [],
-      "routeCount": 3,
+      "subpaths": [
+        "@fonderie/admin/migrations"
+      ],
+      "tables": [
+        "fonderie_admin_log"
+      ],
+      "routeCount": 4,
       "routes": [
         {
           "method": "GET",
           "path": "/_admin",
           "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_ATTENTION', 'What needs attention', attention(app, await doctor()), )"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/activity/admin-log",
+          "mw": "async (ctx) => { const q = new URL(ctx.request.url).searchParams; const limit = Number(q.get('limit')) || undefined; const before = q.get('before') ?? undefined; const page = await readAdminLog(store, { ...(limit ? { limit } : {}), ...(before ? { before } : {}), }); return setApiResponse(HTTP.OK, 'ADMIN_LOG', 'Admin activity', page); }"
         },
         {
           "method": "GET",
@@ -164,7 +176,7 @@
         {
           "method": "GET",
           "path": "/_admin/manifest",
-          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version }), )"
+          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version, log: Boolean(store) }), )"
         }
       ],
       "secures": [],
@@ -2428,6 +2440,11 @@
       "type": "requires"
     },
     {
+      "from": "admin",
+      "to": "store",
+      "type": "requires"
+    },
+    {
       "from": "audit",
       "to": "core",
       "type": "requires"
@@ -3965,6 +3982,12 @@
       "admin"
     ],
     "default_check_timeout_ms": [
+      "admin"
+    ],
+    "default_actor": [
+      "admin"
+    ],
+    "max_page": [
       "admin"
     ],
     "auditmodule": [

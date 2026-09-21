@@ -356,3 +356,112 @@ test('attention: readiness + doctor, errors vs advice, skipped is silent, empty 
 		.result;
 	assert.deepEqual([g.ok, g.items], [true, []]);
 });
+
+// ── admin log ───────────────────────────────────────────────────────
+
+import type { IStoreAdapter } from '@fonderie/store';
+import type { IAdminLogEntry, IAdminLogPage } from '../types';
+
+function captureStore(opts: { failWrites?: boolean; rows?: IAdminLogEntry[] } = {}) {
+	const inserts: unknown[][] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			if (sql.includes('INSERT INTO fonderie_admin_log')) {
+				if (opts.failWrites) throw new Error('disk full');
+				inserts.push(params);
+				return [];
+			}
+			if (sql.includes('FROM fonderie_admin_log')) return (opts.rows ?? []) as unknown as T[];
+			return [];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return { store, inserts };
+}
+
+test('admin log: every request through the surface is a row — served and refused alike', async () => {
+	const { store, inserts } = captureStore();
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://x' }, basePath: '/v1' }));
+	app.register(
+		describing('@acme/things', [{ method: 'GET', path: '/things/:id', handlers: [ok] }]),
+	);
+	app.register(new AdminModule({ adminToken: TOKEN, store }));
+	await app.boot();
+
+	await app.handle(
+		new Request('http://localhost/v1/_admin/things/42?x=1', {
+			headers: { authorization: `Bearer ${TOKEN}`, 'x-actor': 'louis' },
+		}),
+	);
+	await get(app, '/v1/_admin/manifest', 'wrong-token');
+
+	assert.equal(inserts.length, 2);
+	const [served, refused] = inserts as [unknown[], unknown[]];
+	// actor, method, path, route, module, status
+	assert.deepEqual(served.slice(0, 6), [
+		'louis',
+		'GET',
+		'/v1/_admin/things/42',
+		'/_admin/things/:id',
+		'@acme/things',
+		200,
+	]);
+	assert.deepEqual(refused.slice(0, 6), [
+		'admin-token',
+		'GET',
+		'/v1/_admin/manifest',
+		'/_admin/manifest',
+		'@fonderie/admin',
+		401,
+	]);
+	assert.equal(typeof served[6], 'number'); // durationMs
+});
+
+test('admin log: a failed write never fails the request it describes', async () => {
+	const { store } = captureStore({ failWrites: true });
+	const app = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN, store }));
+	await app.boot();
+	const errors: unknown[] = [];
+	const orig = console.error;
+	console.error = (...a: unknown[]) => {
+		errors.push(a);
+	};
+	try {
+		assert.equal((await get(app, '/_admin/manifest', TOKEN)).status, 200);
+	} finally {
+		console.error = orig;
+	}
+	assert.equal(errors.length, 1);
+});
+
+test('admin log: readable at /_admin/activity/admin-log, paged newest first; absent without a store', async () => {
+	const rows: IAdminLogEntry[] = Array.from({ length: 3 }, (_, i) => ({
+		id: `00000000-0000-0000-0000-00000000000${i}`,
+		at: new Date(Date.UTC(2026, 8, 21, 12, 0, i)).toISOString(),
+		actor: 'admin-token',
+		method: 'GET',
+		path: '/_admin/manifest',
+		route: '/_admin/manifest',
+		module: '@fonderie/admin',
+		status: 200,
+		durationMs: 1,
+		requestId: null,
+		clientIp: null,
+	}));
+	const { store } = captureStore({ rows });
+	const app = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN, store }));
+	await app.boot();
+
+	const res = await get(app, '/_admin/activity/admin-log?limit=2', TOKEN);
+	assert.equal(res.status, 200);
+	const page = ((await res.json()) as { result: IAdminLogPage }).result;
+	assert.equal(page.entries.length, 2);
+	assert.ok(page.next, 'a third row means there is a next page');
+	const m = await manifest(app);
+	assert.equal(m.admin.log, true);
+
+	const bare = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN }));
+	await bare.boot();
+	assert.equal((await get(bare, '/_admin/activity/admin-log', TOKEN)).status, 404);
+	assert.equal((await manifest(bare)).admin.log, false);
+});
