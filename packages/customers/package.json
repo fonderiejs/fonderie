@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/customers",
-	"version": "6.2.7",
+	"version": "6.2.8",
 	"fonderie": { "stability": "stable" },
 	"description": "Workspace-scoped customer records — individuals and businesses with multiple emails, phones, addresses, notes, and tags.",
 	"keywords": [
@@ -43,7 +43,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.15.0",
+		"@fonderie/core": "^0.16.0",
 		"@fonderie/events": "^5.0.0",
 		"@fonderie/store": "^0.5.0",
 		"@fonderie/workspaces": "^6.0.0"
