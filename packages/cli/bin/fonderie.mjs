@@ -317,6 +317,36 @@ async function adminFetch(method, path, body) {
   console.log(typeof result === 'string' ? result : JSON.stringify(result, null, 2));
 }
 
+// ── fonderie admin <page> — read a deployment's operator surface (@fonderie/admin) ─
+// One page per operator question. Read-only; the prefix defaults to /_admin
+// and follows FONDERIE_ADMIN_PREFIX when the app moved it.
+const ADMIN_PAGES = {
+  attention: { path: '',                     about: 'what needs the operator today' },
+  manifest:  { path: '/manifest',            about: 'modules, versions, readiness, the route table' },
+  doctor:    { path: '/doctor',              about: 'every reconciliation check, on demand' },
+  config:    { path: '/config',              about: 'readiness per module + env presence' },
+  routes:    { path: '/routes',              about: 'every exposed route with its guard' },
+  tokens:    { path: '/access/tokens',       about: 'the admin token verdict + legacy per-brick tokens' },
+  log:       { path: '/activity/admin-log',  about: 'who did what through the surface (--limit, --before)' },
+};
+async function adminCmd() {
+  const pageName = argv[1];
+  const page = ADMIN_PAGES[pageName];
+  if (!page) {
+    console.error(`fonderie admin <${Object.keys(ADMIN_PAGES).join('|')}>`);
+    for (const [k, v] of Object.entries(ADMIN_PAGES)) console.error(`  ${k.padEnd(10)} ${v.about}`);
+    process.exit(2);
+  }
+  const prefix = (process.env.FONDERIE_ADMIN_PREFIX || '/_admin').replace(/\/$/, '');
+  const q = new URLSearchParams();
+  const limit = arg('--limit', undefined);
+  const before = arg('--before', undefined);
+  if (pageName === 'log' && limit) q.set('limit', limit);
+  if (pageName === 'log' && before) q.set('before', before);
+  const qs = q.toString();
+  return adminFetch('GET', prefix + page.path + (qs ? `?${qs}` : ''));
+}
+
 // The supported management verbs (kubectl-inspired) — the single source of truth
 // for the CLI's config/secret surface. Each maps to a method + optional path
 // suffix + what it requires (a key, a body value, a --to-version).
@@ -398,6 +428,7 @@ else if (cmd === 'init') doInit();
 else if (cmd === 'config') resourceCmd('config', '/admin/config').catch((e) => { console.error(e.message); process.exit(1); });
 else if (cmd === 'secret') resourceCmd('secret', '/admin/secrets').catch((e) => { console.error(e.message); process.exit(1); });
 else if (cmd === 'template') resourceCmd('template', '/admin/templates').catch((e) => { console.error(e.message); process.exit(1); });
+else if (cmd === 'admin') adminCmd().catch((e) => { console.error(e.message); process.exit(1); });
 else {
   console.log(`fonderie — the Fonderie CLI (lazy skills for coding agents)
 
@@ -411,6 +442,8 @@ else {
   fonderie secret <get|set|delete|history|rollback|reveal> [key] [value] [--env <e>] ...
   fonderie template <get|set|delete|history|rollback> [type] [text] [--locale <l>] [--subject <s>] [--html <h>] ...
       manage a live deployment over its admin API — set FONDERIE_ADMIN_URL + FONDERIE_ADMIN_TOKEN
+  fonderie admin <attention|manifest|doctor|config|routes|tokens|log> [--limit <n>] [--before <cursor>]
+      read a deployment's operator surface (@fonderie/admin) — same env; FONDERIE_ADMIN_PREFIX if moved
 
 Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);
   if (cmd && cmd !== 'help' && cmd !== '--help') process.exit(2);

@@ -132,6 +132,19 @@ await (async () => {
   if (find('POST', '/admin/config/feature.x/rollback')?.body?.toVersion !== 2) fail('rollback: toVersion body wrong');
   if (!find('POST', '/admin/secrets/stripe.key/reveal?environment=prod')) fail('secret reveal: wrong path');
 
+  // fonderie admin <page> — the operator surface, read-only, prefix-aware
+  await cli(['admin', 'manifest']);
+  await cli(['admin', 'attention']);
+  await cli(['admin', 'log', '--limit', '5', '--before', 'abc']);
+  await execFileP('node', [bin, 'admin', 'doctor'], { env: { ...env, FONDERIE_ADMIN_PREFIX: '/ops/' } });
+  if (!find('GET', '/_admin/manifest')?.auth?.includes('sekret')) fail('admin manifest: wrong request/auth');
+  if (!find('GET', '/_admin')) fail('admin attention: should hit the prefix root');
+  if (!find('GET', '/_admin/activity/admin-log?limit=5&before=abc')) fail('admin log: flags not forwarded');
+  if (!find('GET', '/ops/doctor')) fail('admin doctor: FONDERIE_ADMIN_PREFIX not honoured');
+  let unknown = 0;
+  try { await cli(['admin', 'nope']); } catch (e) { unknown = e.code; }
+  if (unknown !== 2) fail(`admin <unknown page> should exit 2, got ${unknown}`);
+
   // 409 conflict → exit 2 (reload + retry)
   let code = 0;
   try { await cli(['config', 'set', 'conflict', 'x']); } catch (e) { code = e.code; }

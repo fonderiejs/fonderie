@@ -114,6 +114,9 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin', 'admin-token-guarded operator surface — server-first by scoped decision'],
 	['GET /_admin/doctor', 'admin-token-guarded operator surface — server-first by scoped decision'],
 	['GET /_admin/activity/admin-log', 'admin-token-guarded operator surface — server-first by scoped decision'],
+	['GET /_admin/config', 'admin-token-guarded operator surface — server-first by scoped decision'],
+	['GET /_admin/routes', 'admin-token-guarded operator surface — server-first by scoped decision'],
+	['GET /_admin/access/tokens', 'admin-token-guarded operator surface — server-first by scoped decision'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');

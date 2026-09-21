@@ -156,7 +156,7 @@
       "tables": [
         "fonderie_admin_log"
       ],
-      "routeCount": 4,
+      "routeCount": 7,
       "routes": [
         {
           "method": "GET",
@@ -165,8 +165,18 @@
         },
         {
           "method": "GET",
+          "path": "/_admin/access/tokens",
+          "mw": "async () => setApiResponse(HTTP.OK, 'ADMIN_TOKENS', 'Admin tokens', tokensReport(app, this.name))"
+        },
+        {
+          "method": "GET",
           "path": "/_admin/activity/admin-log",
           "mw": "async (ctx) => { const q = new URL(ctx.request.url).searchParams; const limit = Number(q.get('limit')) || undefined; const before = q.get('before') ?? undefined; const page = await readAdminLog(store, { ...(limit ? { limit } : {}), ...(before ? { before } : {}), }); return setApiResponse(HTTP.OK, 'ADMIN_LOG', 'Admin activity', page); }"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/config",
+          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_CONFIG', 'Declared vs held', configReport(app, this.options.env ?? []), )"
         },
         {
           "method": "GET",
@@ -177,6 +187,11 @@
           "method": "GET",
           "path": "/_admin/manifest",
           "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version, log: Boolean(store) }), )"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/routes",
+          "mw": "async () => setApiResponse(HTTP.OK, 'ADMIN_ROUTES', 'Exposed routes', routesReport(app, this.name))"
         }
       ],
       "secures": [],
