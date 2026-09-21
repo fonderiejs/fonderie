@@ -1,5 +1,26 @@
 # @fonderie/billing
 
+## 9.9.0
+
+### Minor Changes
+
+- 2363ea6: Offer price consistency, subscription drift and webhook registration to the doctor
+  
+  `describeAdmin().checks` wraps `checkPriceConsistency`,
+  `checkSubscriptionDrift` and `checkWebhookRegistration` for `@fonderie/admin`.
+  A provider without the read-back seam reports the check as skipped, not
+  failed.
+  
+  New optional `config.publicUrl` — where this API is reachable from the
+  internet, basePath included — because the registration check compares by
+  exact URL and must never guess from a per-deployment hostname. Unset ⇒ that
+  check is skipped and says so.
+
+### Patch Changes
+
+- Updated dependencies [2363ea6]
+  - @fonderie/core@0.19.0
+
 ## 9.8.0
 
 ### Minor Changes

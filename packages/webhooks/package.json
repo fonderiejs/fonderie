@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/webhooks",
-	"version": "5.4.7",
+	"version": "5.4.8",
 	"fonderie": { "stability": "stable" },
 	"description": "Outgoing webhook engine — register endpoints, fan out workspace-scoped events, track delivery, and retry on failure.",
 	"keywords": [
@@ -39,7 +39,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.18.0",
+		"@fonderie/core": "^0.19.0",
 		"@fonderie/events": "^5.0.0",
 		"@fonderie/store": "^0.5.0"
 	},
