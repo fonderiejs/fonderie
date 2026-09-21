@@ -4,7 +4,7 @@
     "adapter-express": "5.3.4",
     "adapter-hono": "6.2.4",
     "adapter-koa": "5.3.4",
-    "admin": "0.3.0",
+    "admin": "0.4.0",
     "audit": "5.1.15",
     "auth": "7.7.4",
     "billing": "9.9.0",
@@ -136,7 +136,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "stability": "experimental",
       "requires": [
         "core",
