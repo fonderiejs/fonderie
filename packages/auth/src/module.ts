@@ -1,4 +1,4 @@
-import type { IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IAdminDescription, IFonderieModule, IFonderieApp } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
@@ -7,6 +7,7 @@ import { buildAuthRoutes } from './routes';
 import type { IAuthConfig } from './config';
 import { validateAuthConfig, collectAuthConfigProblems } from './services/config-guard';
 import { withSession } from './middlewares/session';
+import { describeAuthAdminRoutes } from './admin';
 
 export class AuthModule implements IFonderieModule {
 	readonly name = '@fonderie/auth';
@@ -18,6 +19,11 @@ export class AuthModule implements IFonderieModule {
 	) {
 		// Fail fast on an insecure jwtSecret (fatal in production) before boot.
 		validateAuthConfig(config);
+	}
+
+	// Users, sessions, login history, suspend — only through @fonderie/admin.
+	describeAdmin(): IAdminDescription {
+		return { routes: describeAuthAdminRoutes(this.store) };
 	}
 
 	// Report config problems for app.checkProductionReadiness() (data, not throw).

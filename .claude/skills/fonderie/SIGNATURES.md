@@ -92,7 +92,7 @@ instead of excavating `dist/` or tarballs.**
 
 - `@fonderie/admin` (1 tables, 7 routes) → [signatures/admin-outcomes.md](signatures/admin-outcomes.md)
 - `@fonderie/audit` (0 tables, 1 routes) → [signatures/audit-outcomes.md](signatures/audit-outcomes.md)
-- `@fonderie/auth` (9 tables, 31 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
+- `@fonderie/auth` (9 tables, 38 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
 - `@fonderie/billing` (10 tables, 25 routes) → [signatures/billing-outcomes.md](signatures/billing-outcomes.md)
 - `@fonderie/config` (4 tables, 13 routes) → [signatures/config-outcomes.md](signatures/config-outcomes.md)
 - `@fonderie/courier` (3 tables, 6 routes) → [signatures/courier-outcomes.md](signatures/courier-outcomes.md)

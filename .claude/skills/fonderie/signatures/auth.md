@@ -50,6 +50,7 @@ interface IMfaChallenge {
 
 new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus | undefined): AuthModule
   .name: "@fonderie/auth"
+  .describeAdmin(): IAdminDescription
   .checkReadiness(): IReadinessProblem[]
   .install(app: IFonderieApp): void
 
@@ -216,4 +217,14 @@ interface IAuthRateLimitConfig {
 }
 
 type AuthLimitedRoute = 'login' | 'register' | 'forgot' | 'reset' | 'verify' | 'mfaVerify';
+
+interface IAdminUserDTO extends IUserDTO {
+    suspended: boolean;
+    deletedAt: string | null;
+    createdAt: string;
+}
+
+function describeAuthAdminRoutes(store: IStoreAdapter): IAdminRoute[]
+
+function toAdminUserDTO(user: IUser): IAdminUserDTO
 ```

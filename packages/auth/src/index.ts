@@ -47,3 +47,5 @@ export { validateAuthConfig } from './services/config-guard';
 // Brute-force protection — on by default; see services/rate-limit.ts
 export { buildAuthIpLimiter, buildAuthAccountLimiter } from './services/rate-limit';
 export type { IAuthRateLimitConfig, AuthLimitedRoute } from './services/rate-limit';
+export type { IAdminUserDTO } from './admin';
+export { describeAuthAdminRoutes, toAdminUserDTO } from './admin';

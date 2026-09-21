@@ -164,6 +164,16 @@ export class UserModel {
 		);
 	}
 
+	// The operator's lock: login, refresh and the session middleware all refuse a
+	// suspended user. Returns false when there is no such user.
+	async setSuspended(id: string, suspended: boolean): Promise<boolean> {
+		const rows = await this.store.query<{ id: string }>(
+			`UPDATE fonderie_users SET suspended = $2, updated_at = now() WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+			[id, suspended],
+		);
+		return rows.length > 0;
+	}
+
 	async softDelete(id: string): Promise<void> {
 		await this.store.query(
 			`UPDATE fonderie_users SET deleted_at = now(), updated_at = now() WHERE id = $1`,
