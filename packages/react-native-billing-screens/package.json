@@ -43,7 +43,7 @@
 		"react-native": ">=0.70.0"
 	},
 	"devDependencies": {
-		"@types/node": "^26.5.1",
+		"@types/node": "^26.6.1",
 		"@types/react": "^19.3.0",
 		"react": "^19.3.0",
 		"react-native": "0.87.0",
