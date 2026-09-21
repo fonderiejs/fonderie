@@ -58,9 +58,19 @@ export interface IRouteMatch {
 	params: Record<string, string>;
 }
 
+// One row of the route table: method, full path (basePath included), and the
+// module that mounted it — absent for routes the application added itself.
+export interface IRouteEntry {
+	method: string;
+	path: string;
+	module?: string;
+}
+
 export interface IRouter {
 	match(method: string, path: string): IRouteMatch | null;
-	add(method: string, path: string, handler: Middleware): void;
+	add(method: string, path: string, handler: Middleware, module?: string): void;
+	reserve(prefix: string, module?: string): void;
+	list(): IRouteEntry[];
 }
 
 // ── Typed well-known ctx.meta keys ───────────────────────────────
@@ -107,6 +117,12 @@ export interface IFonderieApp {
 	use(middleware: Middleware): IFonderieApp;
 	register(module: IFonderieModule): IFonderieApp;
 	addRoute(method: string, path: string, ...handlers: Middleware[]): void;
+	// Claim a path prefix (relative to basePath, like addRoute) so no other
+	// module can mount under it. Called from install(), the claim belongs to
+	// the installing module; a collision — in either order — throws at boot.
+	reserve(prefix: string): void;
+	// The route table as registered so far (full paths, basePath included).
+	routes(): IRouteEntry[];
 	listen(port: number, options?: { name?: string; version?: string; env?: string }): void;
 	// Install every registered module (dependency-ordered). Returns the app.
 	boot(): Promise<IFonderieApp>;

@@ -21,6 +21,7 @@ promises the project makes.
 | Run it in production — backups, monitoring, change control | [OPERATIONS.md](OPERATIONS.md) |
 | Catch config that silently disagrees with Stripe, DNS or the database | [OPERATIONS.md](OPERATIONS.md#reconciling-what-you-declare-against-what-actually-holds-it) |
 | Deploy to Vercel, Docker or any Node host | [../examples/DEPLOYMENT.md](../examples/DEPLOYMENT.md) |
+| Give the founder one place to see what is deployed, configured and failing (`@fonderie/admin`, design) | [ADMIN-BRICK-DESIGN.md](ADMIN-BRICK-DESIGN.md) |
 | Keep the LLM's knowledge of the SDK correct | [BRAIN.md](BRAIN.md) |
 
 ## Architecture in one picture

@@ -9,6 +9,7 @@ import type {
 	IFonderieModule,
 	IReadinessProblem,
 	IReadinessReport,
+	IRouteEntry,
 	ISecurityReport,
 } from './types';
 import type { FonderieConfig } from './config';
@@ -34,12 +35,17 @@ function payloadTooLarge(res: { statusCode: number; setHeader(k: string, v: stri
 	res.end(JSON.stringify({ reason: 'PAYLOAD_TOO_LARGE', explanation: 'Request body too large' }));
 }
 
+const CORE = '@fonderie/core';
+
 export class FonderieApp implements IFonderieApp {
 	private config: FonderieConfig;
 	private prefix: string;
 	private router: Router = new Router();
 	private middlewares: Middleware[] = [];
 	private modules: Map<string, IFonderieModule> = new Map();
+	// The module whose install() is running, so routes and reservations it
+	// makes are attributed to it. Undefined outside boot — app-level routes.
+	private installing: string | undefined;
 	readonly metrics = new MetricsRegistry();
 
 	constructor(config: FonderieConfig) {
@@ -50,6 +56,16 @@ export class FonderieApp implements IFonderieApp {
 		// headers (nosniff always; HSTS over HTTPS). Apps can layer more via `.use()`.
 		this.middlewares = [bodyParser(config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES), withSecurityHeaders()];
 		if (config.metrics) this.middlewares.push(withMetrics(this.metrics));
+		// The built-in probes are registered last (after every install), so a
+		// module mounting the same path would win first-match and shadow them
+		// silently. Reserving them up front turns that into a boot error at the
+		// module's addRoute, naming both sides. Only what will actually be
+		// registered is reserved: with healthChecks off, /healthz is the app's.
+		if (config.healthChecks !== false) {
+			this.router.reserve('/healthz', CORE);
+			this.router.reserve('/readyz', CORE);
+			if (config.metrics) this.router.reserve('/metrics', CORE);
+		}
 	}
 
 	listen(
@@ -218,7 +234,12 @@ export class FonderieApp implements IFonderieApp {
 		// production deploy with an error-severity readiness problem must not boot.
 		this.enforceProductionReadiness();
 		for (const module of topoSort([...this.modules.values()])) {
-			await module.install(this);
+			this.installing = module.name;
+			try {
+				await module.install(this);
+			} finally {
+				this.installing = undefined;
+			}
 		}
 		this.registerHealthRoutes();
 		return this;
@@ -229,7 +250,7 @@ export class FonderieApp implements IFonderieApp {
 	private registerHealthRoutes(): void {
 		if (this.config.healthChecks === false) return;
 
-		this.router.add('GET', '/healthz', compose([async () => Response.json({ status: 'ok' })]));
+		this.router.add('GET', '/healthz', compose([async () => Response.json({ status: 'ok' })]), CORE);
 
 		if (this.config.metrics) {
 			this.router.add(
@@ -242,6 +263,7 @@ export class FonderieApp implements IFonderieApp {
 							headers: { 'content-type': 'text/plain; version=0.0.4' },
 						}),
 				]),
+				CORE,
 			);
 		}
 
@@ -276,6 +298,7 @@ export class FonderieApp implements IFonderieApp {
 					);
 				},
 			]),
+			CORE,
 		);
 	}
 
@@ -328,7 +351,21 @@ export class FonderieApp implements IFonderieApp {
 
 	// Modules call this to register their routes
 	addRoute(method: string, path: string, ...handlers: Middleware[]): void {
-		this.router.add(method, this.prefix + path, compose(handlers));
+		this.router.add(method, this.prefix + path, compose(handlers), this.installing);
+	}
+
+	// Claim a prefix for the calling module. Same coordinate system as
+	// addRoute — basePath is applied — so a module reserving '/_admin' and
+	// mounting '/_admin/manifest' agree with each other under any basePath.
+	reserve(prefix: string): void {
+		if (!prefix.startsWith('/')) {
+			throw new Error(`[fonderie] reserve() takes an absolute path like '/_admin', got "${prefix}"`);
+		}
+		this.router.reserve(this.prefix + prefix, this.installing);
+	}
+
+	routes(): IRouteEntry[] {
+		return this.router.list();
 	}
 
 	// ─── The core handler ──────────────────────────────────
