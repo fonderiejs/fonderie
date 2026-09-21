@@ -16,6 +16,7 @@ import { DBTemplateResolver, FSTemplateResolver, DefaultTemplates } from './temp
 import { validateCourierConfig, collectCourierConfigProblems } from './config-guard';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 import { buildTemplateAdminRoutes, describeTemplateAdminRoutes } from './templates/admin-routes';
+import { senderDnsCheck } from './sender-dns';
 
 export class CourierModule implements IFonderieModule {
 	readonly name = '@fonderie/courier';
@@ -45,9 +46,12 @@ export class CourierModule implements IFonderieModule {
 		);
 	}
 
-	// Template admin needs db templates; without a store there is nothing to offer.
+	// Template admin needs db templates; the DNS check needs an email channel.
 	describeAdmin(): IAdminDescription {
-		return this.store ? { routes: describeTemplateAdminRoutes(this.store) } : {};
+		const out: IAdminDescription = {};
+		if (this.store) out.routes = describeTemplateAdminRoutes(this.store);
+		if (this.config.email) out.checks = [senderDnsCheck(this.config.email)];
+		return out;
 	}
 
 	// Report config problems for app.checkProductionReadiness() (data, not warn).

@@ -495,3 +495,12 @@ test('EventsModule: every declarative pg option is forwarded to the transport', 
 		);
 	}
 });
+
+test('describeAdmin: the outbox check exists only for the pg transport, and is quiet before start', async () => {
+	const { EventsModule } = await import('../module');
+	assert.deepEqual(new EventsModule({ transport: new MemoryTransport() }).describeAdmin(), {});
+	const pg = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x' } }).describeAdmin();
+	assert.deepEqual(pg.checks?.map((c) => c.name), ['events.outbox']);
+	// No store until start(): nothing dead, nothing pending.
+	assert.deepEqual(await pg.checks![0]!.run(), { ok: true, findings: [] });
+});

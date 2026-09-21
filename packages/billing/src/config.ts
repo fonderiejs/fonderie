@@ -220,6 +220,13 @@ export interface IBillingConfig {
 	successUrl: string;
 	cancelUrl: string;
 	/**
+	 * Where this API is reachable from the internet, basePath included and no
+	 * trailing slash (`https://api.example.com/v1`). Lets the doctor ask the
+	 * provider whether its webhooks point here. Unset ⇒ that check is skipped,
+	 * never guessed from a per-deployment hostname.
+	 */
+	publicUrl?: string;
+	/**
 	 * Who may hit MONEY-MUTATING routes (checkout, cancel/reactivate, payment
 	 * methods, wallet purchases) for a WORKSPACE subscriber. Default
 	 * 'owner-or-admin': the workspace owner or a holder of an active system

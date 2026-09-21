@@ -2553,3 +2553,39 @@ test('describeAdmin: BillingModule exposes it from constructor state', async () 
 	const routes = new BillingModule(subCtrlStore(null).store, config).describeAdmin().routes ?? [];
 	assert.equal(routes.length, 3);
 });
+
+// ── describeAdmin: doctor checks ──
+
+test('describeBillingAdminChecks: three checks; unsupported ⇒ skipped; webhook registration needs publicUrl', async () => {
+	const { describeBillingAdminChecks } = await import('../admin-checks');
+	const store = subCtrlStore(null).store;
+	// A provider with none of the read-back seams ⇒ every check is skipped, never red.
+	const mute = {
+		...config.provider,
+		resolvePriceById: undefined,
+		getSubscription: undefined,
+		listWebhookRegistrations: undefined,
+	} as unknown as IBillingConfig['provider'];
+	const bare = describeBillingAdminChecks(store, { ...config, provider: mute });
+	assert.deepEqual(
+		bare.map((c) => c.name),
+		['billing.price-consistency', 'billing.subscription-drift', 'billing.webhook-registration'],
+	);
+	const [prices, drift, hooks] = await Promise.all(bare.map((c) => c.run()));
+	assert.equal(prices?.skipped, 'the provider cannot be asked');
+	assert.equal(drift?.skipped, 'the provider cannot be asked');
+	assert.equal(hooks?.skipped, 'config.publicUrl is not set');
+	assert.ok([prices, drift, hooks].every((r) => r?.ok));
+
+	// With publicUrl and a provider that answers, the registration check reports.
+	const provider = {
+		...config.provider,
+		apiVersion: '2025-01-01',
+		listWebhookRegistrations: async () => [],
+	} as unknown as IBillingConfig['provider'];
+	const wired = describeBillingAdminChecks(store, { ...config, provider, publicUrl: 'https://api.x/v1/' });
+	const reg = await wired.find((c) => c.name === 'billing.webhook-registration')!.run();
+	assert.equal(reg.ok, false);
+	assert.ok(reg.findings.some((f) => f.startsWith('https://api.x/v1/billing/webhook: NOT REGISTERED')));
+	assert.ok(!reg.findings.some((f) => f.includes('/billing/webhook/payment')), 'no wallet ⇒ no payment endpoint');
+});

@@ -45,5 +45,5 @@ export type {
 // mismatch is not a send failure: the RECEIVER drops or spam-files the message,
 // so there is no bounce and no log. DNS-only by design, so it needs no provider
 // API and no credentials and works for any SMTP backend.
-export { checkSenderDns, describeSenderDnsProblems, senderDomain } from './sender-dns';
+export { checkSenderDns, describeSenderDnsProblems, senderDnsCheck, senderDomain } from './sender-dns';
 export type { ISenderDnsRecord, ISenderDnsReport, ResolveTxt } from './sender-dns';

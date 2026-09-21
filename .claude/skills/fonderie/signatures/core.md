@@ -7,8 +7,20 @@
 Subpath exports: `@fonderie/core/config`, `@fonderie/core/types`, `@fonderie/core/middlewares`, `@fonderie/core/parser`, `@fonderie/core/response`
 
 ```ts
+interface IAdminCheck {
+    name: string;
+    run(): Promise<IAdminCheckReport>;
+}
+
+interface IAdminCheckReport {
+    ok: boolean;
+    findings: string[];
+    skipped?: string;
+}
+
 interface IAdminDescription {
     routes?: IAdminRoute[];
+    checks?: IAdminCheck[];
 }
 
 interface IAdminDescriptionEntry {

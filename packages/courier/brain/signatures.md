@@ -182,6 +182,10 @@ interface IEmailChannelConfig {
     provider: 'resend' | 'ses' | 'smtp';
     from: string;
     replyTo?: string;
+    senderDns?: {
+        dkimSelectors?: string[];
+        returnPathDomain?: string;
+    };
     apiKey?: string;
     smtp?: {
         host: string;
@@ -209,6 +213,8 @@ interface IPushChannelConfig {
 function checkSenderDns(from: string, opts?: { dkimSelectors?: string[]; returnPathDomain?: string; resolveTxt?: ResolveTxt; }): Promise<ISenderDnsReport>
 
 function describeSenderDnsProblems(report: ISenderDnsReport): string[]
+
+function senderDnsCheck(email: { from: string; senderDns?: { dkimSelectors?: string[]; returnPathDomain?: string; }; }, resolveTxt?: ResolveTxt | undefined): IAdminCheck
 
 function senderDomain(from: string): string | null
 

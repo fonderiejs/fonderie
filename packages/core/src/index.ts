@@ -1,5 +1,7 @@
 // ── Public API ───────────────────────────────────────────────────
 export type {
+	IAdminCheck,
+	IAdminCheckReport,
 	IAdminDescription,
 	IAdminDescriptionEntry,
 	IAdminRoute,

@@ -2,10 +2,12 @@ import type { IFonderieApp, IFonderieModule, IReadinessProblem, Middleware } fro
 import { HTTP, setApiResponse } from '@fonderie/core';
 import { requireAdminToken, validateAdminToken } from '@fonderie/core/middlewares';
 
+import { attention, collectChecks, runDoctor } from './doctor';
 import { buildManifest } from './manifest';
 import type { IAdminOptions } from './types';
 
 export const DEFAULT_ADMIN_PATH = '/_admin';
+export const DEFAULT_CHECK_TIMEOUT_MS = 10_000;
 
 // Replaced at build time (tsup env); the fallback is what tests see.
 export const ADMIN_VERSION: string = process.env['FONDERIE_ADMIN_VERSION'] ?? '0.0.0-dev';
@@ -28,7 +30,23 @@ export class AdminModule implements IFonderieModule {
 		// Declared at the default path so the route table reads literally; re-based when configured.
 		const at = (p: string): string => this.path + p.slice(DEFAULT_ADMIN_PATH.length);
 
+		// Collected once at boot: a duplicate name is refused here, not at request time.
+		const checks = collectChecks(app, this.options.checks ?? []);
+		const timeoutMs = this.options.checkTimeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
+		const doctor = () => runDoctor(checks, timeoutMs);
+
 		const own: Array<[string, string, Middleware]> = [
+			[
+				'GET',
+				'/_admin',
+				async () =>
+					setApiResponse(
+						HTTP.OK,
+						'ADMIN_ATTENTION',
+						'What needs attention',
+						attention(app, await doctor()),
+					),
+			],
 			[
 				'GET',
 				'/_admin/manifest',
@@ -39,6 +57,12 @@ export class AdminModule implements IFonderieModule {
 						'Deployment manifest',
 						buildManifest(app, { version: this.version }),
 					),
+			],
+			[
+				'GET',
+				'/_admin/doctor',
+				async () =>
+					setApiResponse(HTTP.OK, 'ADMIN_DOCTOR', 'Reconciliation checks', await doctor()),
 			],
 		];
 		const mounted = new Map<string, string>();

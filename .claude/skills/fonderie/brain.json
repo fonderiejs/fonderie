@@ -144,12 +144,23 @@
       "exports": [
         "AdminModule",
         "ADMIN_VERSION",
-        "DEFAULT_ADMIN_PATH"
+        "DEFAULT_ADMIN_PATH",
+        "DEFAULT_CHECK_TIMEOUT_MS"
       ],
       "subpaths": [],
       "tables": [],
-      "routeCount": 1,
+      "routeCount": 3,
       "routes": [
+        {
+          "method": "GET",
+          "path": "/_admin",
+          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_ATTENTION', 'What needs attention', attention(app, await doctor()), )"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/doctor",
+          "mw": "async () => setApiResponse(HTTP.OK, 'ADMIN_DOCTOR', 'Reconciliation checks', await doctor())"
+        },
         {
           "method": "GET",
           "path": "/_admin/manifest",
@@ -3951,6 +3962,9 @@
       "admin"
     ],
     "default_admin_path": [
+      "admin"
+    ],
+    "default_check_timeout_ms": [
       "admin"
     ],
     "auditmodule": [

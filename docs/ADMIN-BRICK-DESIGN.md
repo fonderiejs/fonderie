@@ -5,8 +5,8 @@ deployment, where the founder answers four questions without reading code or
 prompting a model — **what did I deploy, how is it configured, what is
 happening, what needs me.** The `/wp-admin` of a Fonderie app.
 
-> **Status: in build — phase 3 of 8 (§9).** Phases 1–2 shipped (`@fonderie/core`
-> 0.17.0, `@fonderie/admin` 0.1.0). The census in §12 is what existed on
+> **Status: in build — phase 4 of 8 (§9).** Phases 1–3 shipped (`@fonderie/core`
+> 0.18.0, `@fonderie/admin` 0.2.0). The census in §12 is what existed on
 > 2026-09-21, before phase 1.
 
 Companion: `docs/ADMIN-AUTH-SPEC.md` (the token convention this brick
@@ -304,8 +304,8 @@ before the next starts.
 |---|---|---|---|
 | 1 | **Namespace** | `app.reserve()`, `app.routes()`, `Router.reserve/list`; probe paths reserved at construction | **shipped** — core 0.16.0 (#371) |
 | 2 | **The place exists** | `@fonderie/admin`: reserves the prefix, one token (fail-closed by absence, strength-validated), `GET /_admin/manifest` — modules, versions, readiness *with* problems, the route table. `version?` on `IFonderieModule`. | **shipped** — admin 0.1.0, core 0.17.0 (#373) |
-| 3 | **Composition** | `describeAdmin?()` on `IFonderieModule` → `{ routes }` and `app.adminDescriptions()`; config, courier, billing implement it with *unguarded* handlers from the same table as their legacy routes; admin mounts them under `/_admin/{config,secrets,templates,plans,wallet/grant}` behind its token, and refuses two modules describing one path. Manifest reports `describesAdmin` per module. Legacy paths deprecated in docs and changelog, not removed. | in progress |
-| 4 | **Doctor** | `describeAdmin().checks` — billing (webhook registration, price consistency, subscription drift, webhook stats), courier (sender DNS, message stats), events (outbox pending/dead); app-supplied checks for what has no module (migrations). `GET /_admin/doctor`, non-throwing, `ok` separate from advice. `GET /_admin` attention derived from it. | |
+| 3 | **Composition** | `describeAdmin?()` on `IFonderieModule` → `{ routes }` and `app.adminDescriptions()`; config, courier, billing implement it with *unguarded* handlers from the same table as their legacy routes; admin mounts them under `/_admin/{config,secrets,templates,plans,wallet/grant}` behind its token, and refuses two modules describing one path. Manifest reports `describesAdmin` per module. Legacy paths deprecated in docs and changelog, not removed. | **shipped** — admin 0.2.0, core 0.18.0, config 5.2.0, courier 7.7.0, billing 9.8.0 (#375) |
+| 4 | **Doctor** | `describeAdmin().checks` → `IAdminCheck { name, run() → { ok, findings, skipped? } }`. billing (price consistency, subscription drift, webhook registration — the last only with the new `config.publicUrl`), courier (sender DNS, with optional `email.senderDns` for DKIM selectors / return-path), events (outbox: dead letters fail, stale backlog advises). `AdminModule({ checks })` for what no module owns (pending migrations). `GET /_admin/doctor`: every check, per-check timeout, a throw becomes a finding, `ok` only for hard failures. `GET /_admin`: attention = readiness problems + failed checks as errors + findings on passing checks as advice; empty is green. Stats (`webhookStats`, `messageStats`) are instruments, not checks — they belong to pages (phase 6/8). | in progress |
 | 5 | **Admin-log** | Every request the admin brick serves — actor, route, outcome, failed auth — to `fonderie_admin_log`. `GET /_admin/activity/admin-log`. Unlocks secret reveal and, later, impersonation. | |
 | 6 | **Rest of T0** | `/_admin/config` (readiness + env presence), `/_admin/routes` with guard class (`admin` / `probe` / `app`), `/_admin/access/tokens` (which bricks have a token, strength). CLI `fonderie admin …`. | |
 | 7 | **Shell** | §10 — decided then, not now. | |

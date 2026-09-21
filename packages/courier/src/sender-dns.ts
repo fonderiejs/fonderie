@@ -1,3 +1,4 @@
+import type { IAdminCheck } from '@fonderie/core';
 import { resolveTxt as nodeResolveTxt } from 'node:dns/promises';
 
 /** A TXT lookup, injectable so the check can be tested without a network. */
@@ -223,4 +224,18 @@ export function describeSenderDnsProblems(report: ISenderDnsReport): string[] {
 		...report.records.filter((r) => r.problem).map((r) => `${r.kind.toUpperCase()}: ${r.problem}`),
 		...report.records.filter((r) => r.advice).map((r) => `${r.kind.toUpperCase()} (advice): ${r.advice}`),
 	];
+}
+
+// The doctor check over a configured email channel. `resolveTxt` is for tests.
+export function senderDnsCheck(
+	email: { from: string; senderDns?: { dkimSelectors?: string[]; returnPathDomain?: string } },
+	resolveTxt?: ResolveTxt,
+): IAdminCheck {
+	return {
+		name: 'courier.sender-dns',
+		run: async () => {
+			const report = await checkSenderDns(email.from, { ...(email.senderDns ?? {}), ...(resolveTxt ? { resolveTxt } : {}) });
+			return { ok: report.ok, findings: describeSenderDnsProblems(report) };
+		},
+	};
 }

@@ -215,3 +215,14 @@ test('an unparseable from address is an error, not a crash', async () => {
 	assert.equal(r.ok, false);
 	assert.match(describeSenderDnsProblems(r)[0]!, /cannot read a domain/);
 });
+
+test('senderDnsCheck: the doctor check over an email channel, resolver injected', async () => {
+	const { senderDnsCheck } = await import('../sender-dns');
+	const check = senderDnsCheck({ from: 'Hi <hello@email.leadeasygen.com>' }, zone(GOOD));
+	assert.equal(check.name, 'courier.sender-dns');
+	const good = await check.run();
+	assert.equal(good.ok, true);
+	const bad = await senderDnsCheck({ from: 'hello@email.leadeasygen.com' }, zone({})).run();
+	assert.equal(bad.ok, false);
+	assert.ok(bad.findings.length > 0);
+});

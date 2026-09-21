@@ -111,6 +111,8 @@ const ROUTE_ALLOW = new Map([
 	// @fonderie/admin: the operator's surface, read with curl / the CLI. A typed
 	// client ships with the shell phase (docs/ADMIN-BRICK-DESIGN.md §9).
 	['GET /_admin/manifest', 'admin-token-guarded operator surface — server-first by scoped decision'],
+	['GET /_admin', 'admin-token-guarded operator surface — server-first by scoped decision'],
+	['GET /_admin/doctor', 'admin-token-guarded operator surface — server-first by scoped decision'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');

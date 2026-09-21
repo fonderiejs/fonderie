@@ -167,8 +167,24 @@ export interface IAdminRoute {
 	handlers: Middleware[];
 }
 
+// One reconciliation check's answer. `ok` is false only for a hard failure;
+// findings that leave `ok` true are advice. `skipped` says why it could not run.
+export interface IAdminCheckReport {
+	ok: boolean;
+	findings: string[];
+	skipped?: string;
+}
+
+// A check the module offers the doctor. `run` reads the other side of a copy
+// (a provider, DNS, the database) — it may be slow, it must not throw.
+export interface IAdminCheck {
+	name: string;
+	run(): Promise<IAdminCheckReport>;
+}
+
 export interface IAdminDescription {
 	routes?: IAdminRoute[];
+	checks?: IAdminCheck[];
 }
 
 export interface IAdminDescriptionEntry {

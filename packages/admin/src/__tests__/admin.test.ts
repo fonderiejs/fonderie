@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { FonderieApp, defineConfig } from '@fonderie/core';
-import type { IAdminRoute, IFonderieApp, IFonderieModule } from '@fonderie/core';
+import type { IAdminCheck, IAdminRoute, IFonderieApp, IFonderieModule } from '@fonderie/core';
 
 import { AdminModule } from '../module';
-import type { IAdminManifest } from '../types';
+import type { IAdminAttention, IAdminDoctorReport, IAdminManifest } from '../types';
 
 // ≥32 chars, no placeholder words, low entropy so the secret scanner ignores it.
 const TOKEN = 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb';
@@ -96,7 +96,9 @@ test('manifest: modules with versions and readiness, aggregate readiness, the ro
 		m.routes.map((r) => [r.method, r.path, r.module]),
 		[
 			['GET', '/v1/things', '@acme/versioned'],
+			['GET', '/v1/_admin', '@fonderie/admin'],
 			['GET', '/v1/_admin/manifest', '@fonderie/admin'],
+			['GET', '/v1/_admin/doctor', '@fonderie/admin'],
 			['GET', '/healthz', '@fonderie/core'],
 			['GET', '/readyz', '@fonderie/core'],
 		],
@@ -236,4 +238,121 @@ test('manifest: describesAdmin says which modules offer routes', async () => {
 			['@fonderie/admin', false],
 		],
 	);
+});
+
+// ── doctor ──────────────────────────────────────────────────────────
+
+const checking = (name: string, checks: IAdminCheck[]): IFonderieModule => ({
+	name,
+	install: () => {},
+	describeAdmin: () => ({ checks }),
+});
+const report =
+	(ok: boolean, findings: string[] = [], skipped?: string): IAdminCheck['run'] =>
+	async () =>
+		skipped ? { ok, findings, skipped } : { ok, findings };
+
+async function doctor(app: FonderieApp): Promise<IAdminDoctorReport> {
+	const res = await get(app, '/_admin/doctor', TOKEN);
+	assert.equal(res.status, 200);
+	return ((await res.json()) as { result: IAdminDoctorReport }).result;
+}
+
+test('doctor: runs module and app checks, keeps skipped, never throws, times out', async () => {
+	const app = new FonderieApp(config);
+	app.register(
+		checking('@acme/money', [
+			{ name: 'money.drift', run: report(false, ['a: ours=active theirs=canceled']) },
+			{ name: 'money.prices', run: report(true, [], 'the provider cannot be asked') },
+		]),
+	);
+	app.register(checking('@acme/mail', [{ name: 'mail.dns', run: report(true, ['DMARC p=none']) }]));
+	app.register(
+		new AdminModule({
+			adminToken: TOKEN,
+			checkTimeoutMs: 30,
+			checks: [
+				{ name: 'app.migrations', run: report(true) },
+				{
+					name: 'app.throws',
+					run: async () => {
+						throw new Error('boom');
+					},
+				},
+				{
+					name: 'app.slow',
+					run: () => new Promise((r) => setTimeout(() => r({ ok: true, findings: [] }), 200)),
+				},
+			],
+		}),
+	);
+	await app.boot();
+
+	assert.equal((await get(app, '/_admin/doctor')).status, 401);
+	const d = await doctor(app);
+	assert.equal(d.ok, false);
+	assert.deepEqual(
+		d.checks.map((c) => [c.name, c.module, c.ok, c.findings, c.skipped ?? null]),
+		[
+			['mail.dns', '@acme/mail', true, ['DMARC p=none'], null],
+			['money.drift', '@acme/money', false, ['a: ours=active theirs=canceled'], null],
+			['money.prices', '@acme/money', true, [], 'the provider cannot be asked'],
+			['app.migrations', 'application', true, [], null],
+			['app.throws', 'application', false, ['check threw: boom'], null],
+			['app.slow', 'application', false, ['timed out after 30 ms'], null],
+		],
+	);
+	assert.ok(d.checks.every((c) => typeof c.durationMs === 'number'));
+});
+
+test('doctor: two modules offering one check name fail boot, naming both', async () => {
+	const app = new FonderieApp(config);
+	app.register(checking('@acme/a', [{ name: 'same', run: report(true) }]));
+	app.register(checking('@acme/b', [{ name: 'same', run: report(true) }]));
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	await assert.rejects(
+		() => app.boot(),
+		(err: Error) => /@acme\/b cannot offer check "same": @acme\/a already does/.test(err.message),
+	);
+});
+
+test('attention: readiness + doctor, errors vs advice, skipped is silent, empty is green', async () => {
+	const app = new FonderieApp(config);
+	app.register(
+		brick('@acme/unwell', () => {}, {
+			checkReadiness: () => [
+				{ module: '@acme/unwell', severity: 'warning', message: 'no encryptor' },
+			],
+		}),
+	);
+	app.register(
+		checking('@acme/money', [
+			{ name: 'money.drift', run: report(false, ['x drifted']) },
+			{ name: 'money.prices', run: report(true, [], 'skipped') },
+			{ name: 'money.hooks', run: report(true, ['api version differs']) },
+			{ name: 'money.silent-fail', run: report(false) },
+		]),
+	);
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	await app.boot();
+
+	const res = await get(app, '/_admin', TOKEN);
+	assert.equal(res.status, 200);
+	const a = ((await res.json()) as { result: IAdminAttention }).result;
+	assert.equal(a.ok, false);
+	assert.deepEqual(
+		a.items.map((i) => [i.source, i.severity, i.message]),
+		[
+			['@acme/unwell', 'advice', 'no encryptor'],
+			['money.drift', 'error', 'x drifted'],
+			['money.hooks', 'advice', 'api version differs'],
+			['money.silent-fail', 'error', 'failed'],
+		],
+	);
+
+	const green = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN }));
+	await green.boot();
+	const g = ((await (await get(green, '/_admin', TOKEN)).json()) as { result: IAdminAttention })
+		.result;
+	assert.deepEqual([g.ok, g.items], [true, []]);
 });

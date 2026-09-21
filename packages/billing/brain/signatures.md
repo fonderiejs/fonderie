@@ -85,6 +85,7 @@ interface IBillingConfig {
     plans: IBillingPlan[];
     successUrl: string;
     cancelUrl: string;
+    publicUrl?: string;
     management?: 'owner-or-admin' | 'any-member';
     managerRoles?: string[];
     adminToken?: string;
