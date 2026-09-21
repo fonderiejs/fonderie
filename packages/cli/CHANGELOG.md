@@ -1,5 +1,17 @@
 # @fonderie/cli
 
+## 0.4.0
+
+### Minor Changes
+
+- 782cac2: `fonderie admin <page>` — read a deployment's operator surface
+  
+  `attention`, `manifest`, `doctor`, `config`, `routes`, `tokens`, `log`
+  (`--limit`, `--before`) over `@fonderie/admin`, with the same
+  `FONDERIE_ADMIN_URL` / `FONDERIE_ADMIN_TOKEN` the config, secret and
+  template verbs use, and `FONDERIE_ADMIN_PREFIX` when the surface was moved.
+  Read-only.
+
 ## 0.3.0
 
 ### Minor Changes
