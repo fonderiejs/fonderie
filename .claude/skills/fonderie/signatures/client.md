@@ -262,6 +262,27 @@ new ConfigAdminClient(opts: IConfigAdminClientOptions): ConfigAdminClient
   .rollbackSecret(key: string, input: IRollbackInput, environment?: string | undefined): Promise<IApiResponse<ISecretEntry>>
   .revealSecret(key: string, environment?: string | undefined): Promise<IApiResponse<IRevealSecretResult>>
 
+interface IAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminLogQuery {
+    limit?: number;
+    before?: string;
+}
+
+new AdminClient(opts: IAdminClientOptions): AdminClient
+  .attention(): Promise<IApiResponse<IAdminAttention>>
+  .manifest(): Promise<IApiResponse<IAdminManifest>>
+  .doctor(): Promise<IApiResponse<IAdminDoctorReport>>
+  .config(): Promise<IApiResponse<IAdminConfigReport>>
+  .routes(): Promise<IApiResponse<IAdminRoutesReport>>
+  .tokens(): Promise<IApiResponse<IAdminTokensReport>>
+  .adminLog(query?: IAdminLogQuery): Promise<IApiResponse<IAdminLogPage>>
+
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
@@ -597,6 +618,122 @@ interface ICancelSubscriptionInput {
 
 interface ICheckoutUrlResult {
     url: string;
+}
+
+type AdminRouteGuard = 'admin' | 'probe' | 'app';
+
+interface IAdminAttention {
+    generatedAt: string;
+    ok: boolean;
+    items: IAdminAttentionItem[];
+}
+
+interface IAdminAttentionItem {
+    source: string;
+    severity: 'error' | 'advice';
+    message: string;
+}
+
+interface IAdminCheckResult {
+    name: string;
+    module: string;
+    ok: boolean;
+    findings: string[];
+    skipped?: string;
+    durationMs: number;
+}
+
+interface IAdminConfigReport {
+    generatedAt: string;
+    readiness: IAdminReadiness;
+    modules: Array<{
+        name: string;
+        problems: IAdminReadinessProblem[];
+    }>;
+    env: Array<{
+        name: string;
+        set: boolean;
+    }>;
+}
+
+interface IAdminDoctorReport {
+    generatedAt: string;
+    ok: boolean;
+    checks: IAdminCheckResult[];
+}
+
+interface IAdminLogEntry {
+    id: string;
+    at: string;
+    actor: string;
+    method: string;
+    path: string;
+    route: string;
+    module: string;
+    status: number;
+    durationMs: number;
+    requestId: string | null;
+    clientIp: string | null;
+}
+
+interface IAdminLogPage {
+    entries: IAdminLogEntry[];
+    next: string | null;
+}
+
+interface IAdminManifest {
+    generatedAt: string;
+    env: string;
+    admin: {
+        version: string;
+        log: boolean;
+    };
+    modules: IAdminModuleEntry[];
+    readiness: IAdminReadiness;
+    routes: IAdminRouteEntry[];
+}
+
+interface IAdminModuleEntry {
+    name: string;
+    version: string | null;
+    readiness: IAdminReadiness;
+    describesAdmin: boolean;
+}
+
+interface IAdminReadiness {
+    ok: boolean;
+    problems: IAdminReadinessProblem[];
+}
+
+interface IAdminReadinessProblem {
+    module: string;
+    severity: 'error' | 'warning';
+    message: string;
+}
+
+interface IAdminRouteEntry {
+    method: string;
+    path: string;
+    module?: string;
+}
+
+interface IAdminRoutesReport {
+    generatedAt: string;
+    routes: Array<IAdminRouteEntry & {
+        guard: AdminRouteGuard;
+    }>;
+}
+
+interface IAdminTokensReport {
+    generatedAt: string;
+    admin: {
+        ok: boolean;
+        problems: IAdminReadinessProblem[];
+    };
+    legacy: Array<{
+        module: string;
+        set: boolean;
+    }>;
 }
 
 interface IConfigEntry {

@@ -20,6 +20,7 @@
     "permissions": "5.0.18",
     "rate-limit": "4.0.18",
     "react": "0.2.0",
+    "react-admin": "0.0.0",
     "react-audit": "0.3.0",
     "react-audit-screens": "0.2.0",
     "react-auth": "0.10.0",
@@ -54,6 +55,7 @@
     "storage": "0.1.15",
     "store": "0.5.0",
     "vue": "0.2.0",
+    "vue-admin": "0.0.0",
     "vue-audit": "0.4.0",
     "vue-audit-screens": "0.2.0",
     "vue-auth": "0.11.0",
@@ -613,6 +615,7 @@
         "AuthClient",
         "BillingClient",
         "ConfigAdminClient",
+        "AdminClient",
         "CourierAdminClient",
         "CustomersClient",
         "MediaClient",
@@ -1186,6 +1189,29 @@
         "FonderieProvider",
         "useFonderieClient",
         "useFonderieSubClient"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "react-admin": {
+      "version": "0.0.0",
+      "stability": "experimental",
+      "requires": [],
+      "exports": [
+        "AdminClient",
+        "FonderieApiError",
+        "useAttention",
+        "useManifest",
+        "useDoctor",
+        "useAdminConfig",
+        "useAdminRoutes",
+        "useAdminTokens",
+        "useAdminLog"
       ],
       "subpaths": [],
       "tables": [],
@@ -1824,6 +1850,29 @@
         "FonderiePlugin",
         "useFonderieClient",
         "useFonderieSubClient"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-admin": {
+      "version": "0.0.0",
+      "stability": "experimental",
+      "requires": [],
+      "exports": [
+        "AdminClient",
+        "FonderieApiError",
+        "useAttention",
+        "useManifest",
+        "useDoctor",
+        "useAdminConfig",
+        "useAdminRoutes",
+        "useAdminTokens",
+        "useAdminLog"
       ],
       "subpaths": [],
       "tables": [],
@@ -2749,6 +2798,9 @@
     "react": [
       "react"
     ],
+    "react-admin": [
+      "react-admin"
+    ],
     "react-audit": [
       "react-audit"
     ],
@@ -2850,6 +2902,9 @@
     ],
     "vue": [
       "vue"
+    ],
+    "vue-admin": [
+      "vue-admin"
     ],
     "vue-audit": [
       "vue-audit"
@@ -4082,6 +4137,7 @@
     ],
     "fonderieapierror": [
       "client",
+      "react-admin",
       "react-audit",
       "react-auth",
       "react-billing",
@@ -4092,6 +4148,7 @@
       "react-native-auth",
       "react-webhooks",
       "react-workspaces",
+      "vue-admin",
       "vue-audit",
       "vue-auth",
       "vue-billing",
@@ -4115,6 +4172,11 @@
       "client",
       "react-config-admin",
       "vue-config-admin"
+    ],
+    "adminclient": [
+      "client",
+      "react-admin",
+      "vue-admin"
     ],
     "courieradminclient": [
       "client",
@@ -4292,6 +4354,34 @@
     "usefonderiesubclient": [
       "react",
       "vue"
+    ],
+    "useattention": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "usemanifest": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "usedoctor": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "useadminconfig": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "useadminroutes": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "useadmintokens": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "useadminlog": [
+      "react-admin",
+      "vue-admin"
     ],
     "auditlogscreen": [
       "react-audit-screens",
