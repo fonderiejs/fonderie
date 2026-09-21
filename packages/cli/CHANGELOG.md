@@ -1,5 +1,14 @@
 # @fonderie/cli
 
+## 0.6.0
+
+### Minor Changes
+
+- 9bd6566: `fonderie admin catalog` and `admin subscriber <user|workspace> <id> [subscription|wallet|ledger]`
+  
+  What am I selling, what is this subscriber on, what does their wallet hold
+  — from the terminal, over `@fonderie/billing`'s described admin reads.
+
 ## 0.5.0
 
 ### Minor Changes
