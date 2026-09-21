@@ -572,6 +572,64 @@ export interface IAdminUserDTO extends IUserDTO {
 	deletedAt: string | null;
 }
 
+// The operator's money reads (@fonderie/billing's described admin routes).
+export interface IAdminCatalog {
+	// config.plans as declared; bigint wallet amounts arrive as strings.
+	configured: unknown[];
+	stored: IPlanDTO[];
+}
+
+export interface IAdminSubscriptionDTO {
+	id: string;
+	subscriberType: SubscriberType;
+	subscriberId: string;
+	plan: string;
+	interval: string;
+	status: string;
+	providerCustomerId: string | null;
+	providerSubscriptionId: string | null;
+	currentPeriodStart: string | null;
+	currentPeriodEnd: string | null;
+	cancelAtPeriodEnd: boolean;
+	trialEndsAt: string | null;
+	createdAt: string;
+}
+
+export interface IAdminWalletDTO extends IWalletDTO {
+	version: number;
+	updatedAt: string | null;
+}
+
+export interface IAdminWalletLedgerPage {
+	currency: string;
+	entries: IWalletTransactionDTO[];
+	nextCursor: string | null;
+}
+
+export interface IAdminPlanInput {
+	name?: string;
+	description?: string | null;
+	tier?: number;
+	seats?: number | null;
+	trialDays?: number;
+	monthlyAmount?: number | null;
+	monthlyPriceId?: string | null;
+	yearlyAmount?: number | null;
+	yearlyPriceId?: string | null;
+	features?: unknown;
+	metadata?: unknown;
+}
+
+export interface IAdminGrantInput {
+	subscriberType: SubscriberType;
+	subscriberId: string;
+	// Minor units as a digit string (or a number below 2^53).
+	amount: string | number;
+	currency?: string;
+	description?: string;
+	idempotencyKey: string;
+}
+
 // ── Config admin (feature flags / remote config + secrets) ──────────────────
 // Admin-token authenticated, not user-session authenticated — see
 // ConfigAdminClient. Result shapes here are the raw resource, matching

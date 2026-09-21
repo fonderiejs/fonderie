@@ -9,4 +9,6 @@ export {
 	RoutesScreen,
 	TokensScreen,
 	UsersScreen,
+	CatalogScreen,
+	SubscriberScreen,
 } from './screens';

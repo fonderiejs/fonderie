@@ -22,8 +22,24 @@ export type {
 	ILoginEventDTO,
 	ILoginHistoryPageResult,
 	ISessionDTO,
+	IAdminCatalog,
+	IAdminSubscriptionDTO,
+	IAdminWalletDTO,
+	IAdminWalletLedgerPage,
+	IAdminPlanInput,
+	IAdminGrantInput,
+	IBillingAdminClientOptions,
+	IAdminLedgerQuery,
+	IPlanDTO,
+	IWalletTransactionDTO,
+	SubscriberType,
 } from '@fonderie/client';
-export { AdminClient, AuthAdminClient, FonderieApiError } from '@fonderie/client';
+export {
+	AdminClient,
+	AuthAdminClient,
+	BillingAdminClient,
+	FonderieApiError,
+} from '@fonderie/client';
 export {
 	useAttention,
 	useManifest,
@@ -35,4 +51,6 @@ export {
 	useAdminUser,
 	useAdminUserSessions,
 	useAdminLoginHistory,
+	useAdminCatalog,
+	useAdminSubscriber,
 } from './composables';

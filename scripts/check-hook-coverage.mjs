@@ -127,12 +127,12 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin/users/:id/login-history', 'AuthAdminClient.userLoginHistory() — prefix is configurable, invisible to the static match'],
 	['POST /_admin/users/:id/suspend', 'AuthAdminClient.suspendUser() — prefix is configurable, invisible to the static match'],
 	['POST /_admin/users/:id/unsuspend', 'AuthAdminClient.unsuspendUser() — prefix is configurable, invisible to the static match'],
-	// @fonderie/billing's described money reads (phase 8c). The client + hooks +
-	// Money pages ship in 8c-ui (docs/ADMIN-BRICK-DESIGN.md §9).
-	['GET /_admin/catalog', 'admin-token-guarded operator surface — client ships in 8c-ui, server-first by scoped decision'],
-	['GET /_admin/subscriptions/:type/:id', 'admin-token-guarded operator surface — client ships in 8c-ui, server-first by scoped decision'],
-	['GET /_admin/wallet/:type/:id', 'admin-token-guarded operator surface — client ships in 8c-ui, server-first by scoped decision'],
-	['GET /_admin/wallet/:type/:id/ledger', 'admin-token-guarded operator surface — client ships in 8c-ui, server-first by scoped decision'],
+	// @fonderie/billing's described money reads, reached through BillingAdminClient
+	// (+ react-admin / vue-admin hooks, which leg 1 verifies). Same prefix caveat.
+	['GET /_admin/catalog', 'BillingAdminClient.catalog() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/subscriptions/:type/:id', 'BillingAdminClient.subscription() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/wallet/:type/:id', 'BillingAdminClient.wallet() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/wallet/:type/:id/ledger', 'BillingAdminClient.walletLedger() — prefix is configurable, invisible to the static match'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');

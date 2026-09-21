@@ -674,6 +674,7 @@
         "ConfigAdminClient",
         "AdminClient",
         "AuthAdminClient",
+        "BillingAdminClient",
         "CourierAdminClient",
         "CustomersClient",
         "MediaClient",
@@ -1263,6 +1264,7 @@
       "exports": [
         "AdminClient",
         "AuthAdminClient",
+        "BillingAdminClient",
         "FonderieApiError",
         "useAttention",
         "useManifest",
@@ -1273,7 +1275,9 @@
         "useAdminLog",
         "useAdminUser",
         "useAdminUserSessions",
-        "useAdminLoginHistory"
+        "useAdminLoginHistory",
+        "useAdminCatalog",
+        "useAdminSubscriber"
       ],
       "subpaths": [],
       "tables": [],
@@ -1296,7 +1300,9 @@
         "ModulesScreen",
         "RoutesScreen",
         "TokensScreen",
-        "UsersScreen"
+        "UsersScreen",
+        "CatalogScreen",
+        "SubscriberScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1951,6 +1957,7 @@
       "exports": [
         "AdminClient",
         "AuthAdminClient",
+        "BillingAdminClient",
         "FonderieApiError",
         "useAttention",
         "useManifest",
@@ -1961,7 +1968,9 @@
         "useAdminLog",
         "useAdminUser",
         "useAdminUserSessions",
-        "useAdminLoginHistory"
+        "useAdminLoginHistory",
+        "useAdminCatalog",
+        "useAdminSubscriber"
       ],
       "subpaths": [],
       "tables": [],
@@ -1984,7 +1993,9 @@
         "ModulesScreen",
         "RoutesScreen",
         "TokensScreen",
-        "UsersScreen"
+        "UsersScreen",
+        "CatalogScreen",
+        "SubscriberScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -4301,6 +4312,11 @@
       "react-admin",
       "vue-admin"
     ],
+    "billingadminclient": [
+      "client",
+      "react-admin",
+      "vue-admin"
+    ],
     "courieradminclient": [
       "client",
       "react-courier-admin",
@@ -4518,6 +4534,14 @@
       "react-admin",
       "vue-admin"
     ],
+    "useadmincatalog": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "useadminsubscriber": [
+      "react-admin",
+      "vue-admin"
+    ],
     "adminlogscreen": [
       "react-admin-screens",
       "vue-admin-screens"
@@ -4551,6 +4575,14 @@
       "vue-admin-screens"
     ],
     "usersscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "catalogscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "subscriberscreen": [
       "react-admin-screens",
       "vue-admin-screens"
     ],
