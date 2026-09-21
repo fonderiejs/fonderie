@@ -141,6 +141,15 @@ await (async () => {
   if (!find('GET', '/_admin')) fail('admin attention: should hit the prefix root');
   if (!find('GET', '/_admin/activity/admin-log?limit=5&before=abc')) fail('admin log: flags not forwarded');
   if (!find('GET', '/ops/doctor')) fail('admin doctor: FONDERIE_ADMIN_PREFIX not honoured');
+  await cli(['admin', 'user', 'ada@example.com']);
+  await cli(['admin', 'user', 'u1', 'history', '--limit', '3']);
+  await cli(['admin', 'user', 'u1', 'suspend']);
+  if (!find('GET', '/_admin/users?email=ada%40example.com')) fail('admin user <email>: wrong lookup path');
+  if (!find('GET', '/_admin/users/u1/login-history?limit=3')) fail('admin user history: flags not forwarded');
+  if (!find('POST', '/_admin/users/u1/suspend')) fail('admin user suspend: wrong request');
+  let needsId = 0;
+  try { await cli(['admin', 'user', 'ada@example.com', 'suspend']); } catch (e) { needsId = e.code; }
+  if (needsId !== 2) fail(`admin user <email> suspend should exit 2, got ${needsId}`);
   let unknown = 0;
   try { await cli(['admin', 'nope']); } catch (e) { unknown = e.code; }
   if (unknown !== 2) fail(`admin <unknown page> should exit 2, got ${unknown}`);

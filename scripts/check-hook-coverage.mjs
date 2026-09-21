@@ -118,6 +118,15 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin/routes', 'AdminClient.routes() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/access/tokens', 'AdminClient.tokens() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/activity/admin-log', 'AdminClient.adminLog() — prefix is configurable, invisible to the static match'],
+	// @fonderie/auth's described user routes (phase 8a). The AuthAdminClient +
+	// hooks + UsersScreen ship in 8b (docs/ADMIN-BRICK-DESIGN.md §9).
+	['GET /_admin/users', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
+	['GET /_admin/users/:id', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
+	['GET /_admin/users/:id/sessions', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
+	['DELETE /_admin/users/:id/sessions', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
+	['GET /_admin/users/:id/login-history', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
+	['POST /_admin/users/:id/suspend', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
+	['POST /_admin/users/:id/unsuspend', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');

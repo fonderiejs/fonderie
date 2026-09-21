@@ -14,6 +14,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // body, or the payload is provider-shaped and gated by signature
 // verification instead. Adding a route here requires the same verification.
 const EXEMPT = new Map([
+	// @fonderie/auth admin (described, mounted by @fonderie/admin): the user id
+	// is the path param; the handlers read no body at all.
+	['POST /_admin/users/:id/suspend', 'no body — the id is the path param; flips users.suspended'],
+	['POST /_admin/users/:id/unsuspend', 'no body — the id is the path param; flips users.suspended'],
 	['POST /billing/webhook', 'Stripe-shaped payload; signature-verified in handler'],
 	['POST /billing/webhook/payment', 'provider-shaped payload; signature-verified in handler'],
 	['POST /courier/delivery/sendgrid', 'provider webhook; signature-verified'],
