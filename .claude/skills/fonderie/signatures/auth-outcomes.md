@@ -136,6 +136,13 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 
 | Method | Path | Middleware chain (auth / validation / handler) |
 |---|---|---|
+| GET | `/_admin/users` | `async (ctx) => { const email = new URL(ctx.request.url).searchParams.get('email')?.trim().toLowerCase(); if (!email) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required'); const user = await users.findByEmail(email); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); }` |
+| GET | `/_admin/users/:id` | `async (ctx) => { const user = await users.findById(idOf(ctx)); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); }` |
+| GET | `/_admin/users/:id/login-history` | `async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); const params = new URL(ctx.request.url).searchParams; const rawLimit = Number(params.get('limit') ?? 50); const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 200) : 50; const cursorParam = params.get('cursor'); const cursor = cursorParam ? decodeLoginCursor(cursorParam) : null; if (cursorParam && !cursor) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor'); const page = await events.listByUser({ userId: idOf(ctx), limit, ...(cursor ? { cursor } : {}), }); return setApiResponse( HTTP.OK, 'LOGIN_HISTORY', 'Login history', toLoginHistoryPageDTO(page), ); }` |
+| DELETE | `/_admin/users/:id/sessions` | `async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); await sessions.deleteByUser(idOf(ctx)); return setApiResponse(HTTP.OK, 'SESSIONS_REVOKED', 'All sessions revoked'); }` |
+| GET | `/_admin/users/:id/sessions` | `async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); const rows = await sessions.listLiveByUser(idOf(ctx)); return setApiResponse( HTTP.OK, 'SESSIONS', 'Live sessions', rows.map((r) => toSessionDTO(r, null)), ); }` |
+| POST | `/_admin/users/:id/suspend` | `setSuspended(true)` |
+| POST | `/_admin/users/:id/unsuspend` | `setSuspended(false)` |
 | GET | `/auth/apple` | `oauth.appleInit` |
 | POST | `/auth/apple/callback` | `ipLimit('login') → oauth.appleCallback` |
 | POST | `/auth/apple/native` | `ipLimit('login') → validate(appleNativeSchema) → oauth.appleNative` |

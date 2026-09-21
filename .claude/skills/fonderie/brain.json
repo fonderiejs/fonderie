@@ -258,8 +258,43 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 31,
+      "routeCount": 38,
       "routes": [
+        {
+          "method": "GET",
+          "path": "/_admin/users",
+          "mw": "async (ctx) => { const email = new URL(ctx.request.url).searchParams.get('email')?.trim().toLowerCase(); if (!email) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required'); const user = await users.findByEmail(email); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); }"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/users/:id",
+          "mw": "async (ctx) => { const user = await users.findById(idOf(ctx)); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); }"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/users/:id/login-history",
+          "mw": "async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); const params = new URL(ctx.request.url).searchParams; const rawLimit = Number(params.get('limit') ?? 50); const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 200) : 50; const cursorParam = params.get('cursor'); const cursor = cursorParam ? decodeLoginCursor(cursorParam) : null; if (cursorParam && !cursor) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor'); const page = await events.listByUser({ userId: idOf(ctx), limit, ...(cursor ? { cursor } : {}), }); return setApiResponse( HTTP.OK, 'LOGIN_HISTORY', 'Login history', toLoginHistoryPageDTO(page), ); }"
+        },
+        {
+          "method": "DELETE",
+          "path": "/_admin/users/:id/sessions",
+          "mw": "async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); await sessions.deleteByUser(idOf(ctx)); return setApiResponse(HTTP.OK, 'SESSIONS_REVOKED', 'All sessions revoked'); }"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/users/:id/sessions",
+          "mw": "async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); const rows = await sessions.listLiveByUser(idOf(ctx)); return setApiResponse( HTTP.OK, 'SESSIONS', 'Live sessions', rows.map((r) => toSessionDTO(r, null)), ); }"
+        },
+        {
+          "method": "POST",
+          "path": "/_admin/users/:id/suspend",
+          "mw": "setSuspended(true)"
+        },
+        {
+          "method": "POST",
+          "path": "/_admin/users/:id/unsuspend",
+          "mw": "setSuspended(false)"
+        },
         {
           "method": "GET",
           "path": "/auth/apple",
