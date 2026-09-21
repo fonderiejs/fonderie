@@ -1,0 +1,67 @@
+{
+	"name": "@fonderie/admin",
+	"version": "0.0.0",
+	"fonderie": { "stability": "experimental" },
+	"description": "The operator's surface for a Fonderie deployment. Owns one reserved path (default /_admin) behind one admin token, and answers what the founder cannot see after deploy: which bricks are installed, at what version, whether they are ready, and every route that is exposed. The run-time counterpart to the SDK's brain — read by the human through a panel and by a model through curl.",
+	"keywords": [
+		"fonderiejs",
+		"admin",
+		"manifest",
+		"operations",
+		"observability",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "tsx --test src/__tests__/*.test.ts",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
+	},
+	"peerDependencies": {
+		"@fonderie/core": "^0.16.0"
+	},
+	"devDependencies": {
+		"@fonderie/core": "../core",
+		"@types/node": "^26.5.1",
+		"tsup": "^8.5.1",
+		"tsx": "^4.23.13",
+		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"brain",
+		"LICENSE",
+		"README.md"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
+		"directory": "packages/admin"
+	},
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/admin#readme",
+	"bugs": {
+		"url": "https://github.com/fonderiejs/fonderie/issues"
+	}
+}

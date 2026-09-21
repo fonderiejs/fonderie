@@ -5,9 +5,8 @@ deployment, where the founder answers four questions without reading code or
 prompting a model — **what did I deploy, how is it configured, what is
 happening, what needs me.** The `/wp-admin` of a Fonderie app.
 
-> **Status: design, 2026-09-21. No package code written.** The census in §12 is
-> what exists today; everything else is proposal. The two open questions in §11
-> gate implementation.
+> **Status: in build — phase 2 of 8 (§9).** Phase 1 shipped in `@fonderie/core`
+> 0.16.0. The census in §12 is what existed on 2026-09-21, before phase 1.
 
 Companion: `docs/ADMIN-AUTH-SPEC.md` (the token convention this brick
 inherits), `docs/OPERATIONS.md` §"Reconciling…" (the five checks this brick
@@ -271,31 +270,59 @@ doctor results. Before any UI.
    not calendars, but the human/model split in §1: the model's implicit
    picture of the deployment becomes an explicit artifact both can read.
 
-Then, in order:
+### One owner, one mounter (amendment, 2026-09-21)
 
-1. Core primitives: `Router.reserve()` / `list()`; `describeAdmin?()` on
-   `IFonderieModule`; admin-action event emission inside `requireAdminToken`.
-2. Move config and courier off bare `/admin/*` and billing's `/plans` +
-   `/billing/wallet/grant` under the reserved prefix. Mount the *same*
-   handlers at the new paths and deprecate the old ones — avoids a major on
-   each brick.
-3. `/activity/admin-log` (store + page).
-4. T0 pages as JSON endpoints; then the shell.
-5. T1.
+The first draft of this order had config, courier and billing each move their
+own admin routes under `/_admin`. That cannot work with `reserve()` as built:
+a prefix has **one** owner, and if three bricks mount under `/_admin` nobody
+owns it — a stranger can still mount `/_admin/anything`, which is the exact
+hole the namespace exists to close.
+
+So: **`@fonderie/admin` is the sole owner and sole mounter of `/_admin`.**
+Bricks never `addRoute` under it. They *describe* their admin routes
+(principle 4) and the admin brick mounts them under its prefix, behind its
+one guard. Consequences:
+
+- **Q1 is settled by structure, not by spec amendment.** The admin module's
+  `adminToken` is *the* admin token — the panel needs one, and one module owns
+  all the routes it guards. ADMIN-AUTH-SPEC rule 1 (one token per module) is
+  untouched: the admin module is a module. The per-brick tokens keep guarding
+  the legacy standalone routes (`/admin/config`, `/plans`, …) until those are
+  removed in a later major; then the per-brick options go with them.
+- Admin-log (phase 5) needs **no core change**: the admin brick logs every
+  request it serves. The legacy standalone routes stay unlogged until removed.
+- A brick works standalone without the admin brick exactly as today. Install
+  the admin brick and the same handlers also appear under `/_admin`.
+
+### Phases
+
+Each phase is one PR through the release train, shipped and npm-verified
+before the next starts.
+
+| # | Phase | Delivers | Status |
+|---|---|---|---|
+| 1 | **Namespace** | `app.reserve()`, `app.routes()`, `Router.reserve/list`; probe paths reserved at construction | **shipped** — core 0.16.0 (#371) |
+| 2 | **The place exists** | `@fonderie/admin`: reserves the prefix, one token (fail-closed by absence, strength-validated), `GET /_admin/manifest` — modules, versions, readiness *with* problems, the route table. `version?` on `IFonderieModule`. | in progress |
+| 3 | **Composition** | `describeAdmin?()` on `IFonderieModule` → `{ routes }`; config, courier, billing implement it with *unguarded* handlers; admin mounts them under `/_admin/{config,secrets,templates,plans,wallet}` behind its token. Legacy paths deprecated in docs and changelog, not removed. | |
+| 4 | **Doctor** | `describeAdmin().checks` — billing (webhook registration, price consistency, subscription drift, webhook stats), courier (sender DNS, message stats), events (outbox pending/dead); app-supplied checks for what has no module (migrations). `GET /_admin/doctor`, non-throwing, `ok` separate from advice. `GET /_admin` attention derived from it. | |
+| 5 | **Admin-log** | Every request the admin brick serves — actor, route, outcome, failed auth — to `fonderie_admin_log`. `GET /_admin/activity/admin-log`. Unlocks secret reveal and, later, impersonation. | |
+| 6 | **Rest of T0** | `/_admin/config` (readiness + env presence), `/_admin/routes` with guard class (`admin` / `probe` / `app`), `/_admin/access/tokens` (which bricks have a token, strength). CLI `fonderie admin …`. | |
+| 7 | **Shell** | §10 — decided then, not now. | |
+| 8 | **T1** | people / money catalog + ledger / audit / tokens with scopes and rotation. Legacy standalone admin routes removed (major on each brick). | |
 
 ### Core vs brick
 
 | Lives in `@fonderie/core` | Lives in `@fonderie/admin` |
 |---|---|
-| `Router.reserve()` / `list()` | Mounting the reserved prefix (+ optional host binding) |
-| `describeAdmin?()` on `IFonderieModule` | `/manifest`, `/doctor`, `/routes` aggregation |
-| `securityReport()` (exists) | Admin-log store and page |
-| Event emission in `requireAdminToken` | Token model (app-level token, scopes, rotation) |
+| `Router.reserve()` / `list()` (shipped) | Owning and mounting the reserved prefix (+ optional host binding) |
+| `version?` and `describeAdmin?()` on `IFonderieModule` | The one guard; `/manifest`, `/doctor`, `/routes` |
+| `securityReport()` (exists) | Mounting described routes and checks from every brick |
+| | Admin-log store and page |
+| | Token model (scopes, rotation) |
 | | Optional static UI serving |
 
 Same split as `requireAuth` in core vs the routes in `auth`. Core stays
-dependency-free: it calls `module.describeAdmin().checks[]` without knowing
-what they are.
+dependency-free: it defines the description contract and never reads it.
 
 ## 10. The UI: two consumers of one API
 
@@ -315,18 +342,17 @@ Do not decide (a) vs (b) now. Decide the API.
 
 ## 11. Open questions (gate implementation)
 
-**Q1 — One token or per-module tokens?** The panel needs one token that spans
-bricks. ADMIN-AUTH-SPEC rule 1 gives each brick its own. *Recommendation:* an
-app-level `admin.token` that every brick's `requireAdminToken` accepts;
-per-module tokens become optional overrides. This is the precondition for
-scopes and rotation in `/access/tokens`, and it brings the events worker's
-out-of-spec bearer (`events/src/worker.ts`) under one model. Spec amendment
-required.
+**Q1 — One token or per-module tokens?** *Resolved* by the one-owner
+amendment in §9: the admin module's token is the admin token, because the
+admin module mounts every route it guards. No spec amendment. The events
+worker's out-of-spec bearer (`events/src/worker.ts`) is folded in when its
+`/health` and `/drain` become described routes (phase 4).
 
 **Q2 — Is `describeAdmin()` required or optional on `IFonderieModule`?**
-*Recommendation:* required. A brick with no admin surface returns an empty
-description, which is still information ("installed, nothing to administer").
-Optional means the manifest lies by omission.
+Optional in phase 3 (additive, no major on fifteen bricks), and the manifest
+reports per module whether it describes anything — so silence is visible, not
+mistaken for "nothing to administer". Revisit making it required when the
+last brick implements it.
 
 ## 12. Census — what exists today (2026-09-21)
 

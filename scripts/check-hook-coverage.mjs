@@ -108,6 +108,9 @@ const ROUTE_ALLOW = new Map([
 	// useUploadMedia, useDeleteMedia). Only the public GET remains allow-listed:
 	// it's an <img src> target — navigated to, never a typed client call.
 	['GET /media/:id', 'public image-serve endpoint — an <img src> target, navigated to, never fetched via the typed client'],
+	// @fonderie/admin: the operator's surface, read with curl / the CLI. A typed
+	// client ships with the shell phase (docs/ADMIN-BRICK-DESIGN.md §9).
+	['GET /_admin/manifest', 'admin-token-guarded operator surface — server-first by scoped decision'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');
