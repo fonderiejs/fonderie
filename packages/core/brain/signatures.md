@@ -15,7 +15,9 @@ interface ITenant {
 
 interface IRouter {
     match(method: string, path: string): IRouteMatch | null;
-    add(method: string, path: string, handler: Middleware): void;
+    add(method: string, path: string, handler: Middleware, module?: string): void;
+    reserve(prefix: string, module?: string): void;
+    list(): IRouteEntry[];
 }
 
 type Operation = 'create' | 'read' | 'update' | 'delete';
@@ -47,10 +49,18 @@ interface IRouteMatch {
     params: Record<string, string>;
 }
 
+interface IRouteEntry {
+    method: string;
+    path: string;
+    module?: string;
+}
+
 interface IFonderieApp {
     use(middleware: Middleware): IFonderieApp;
     register(module: IFonderieModule): IFonderieApp;
     addRoute(method: string, path: string, ...handlers: Middleware[]): void;
+    reserve(prefix: string): void;
+    routes(): IRouteEntry[];
     listen(port: number, options?: {
         name?: string;
         version?: string;
@@ -150,6 +160,8 @@ new FonderieApp(config: FonderieConfig): FonderieApp
   .buildContext(request: Request): Promise<IFonderieContext>
   .use(middleware: Middleware): FonderieApp
   .addRoute(method: string, path: string, ...handlers: Middleware[]): void
+  .reserve(prefix: string): void
+  .routes(): IRouteEntry[]
   .handle(request: Request, init?: IHandleInit | undefined): Promise<Response>
 
 const DEFAULT_MAX_BODY_BYTES: number
