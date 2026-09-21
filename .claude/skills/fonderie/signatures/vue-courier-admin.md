@@ -8,6 +8,7 @@
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
+    prefix?: string;
     actor?: string;
 }
 

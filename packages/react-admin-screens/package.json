@@ -1,0 +1,73 @@
+{
+	"name": "@fonderie/react-admin-screens",
+	"version": "0.0.0",
+	"fonderie": {
+		"stability": "experimental"
+	},
+	"description": "The admin shell for React: navigation by the operator's questions, seven pages over @fonderie/admin (attention, modules, doctor, configuration, routes, access, admin log), and the config/secrets and template screens composed as sub-pages under the one admin token. Mount it on one route; it owns nothing else.",
+	"keywords": [
+		"fonderiejs",
+		"admin",
+		"dashboard",
+		"shell",
+		"react",
+		"screens",
+		"typescript"
+	],
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
+	},
+	"dependencies": {
+		"@fonderie/client": "*",
+		"@fonderie/react-admin": "*",
+		"@fonderie/react-config-admin-screens": "*",
+		"@fonderie/react-courier-admin-screens": "*"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^26.5.1",
+		"@types/react": "^19.3.0",
+		"react": "^19.3.0",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"LICENSE",
+		"README.md"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
+		"directory": "packages/react-admin-screens"
+	},
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/react-admin-screens#readme",
+	"bugs": {
+		"url": "https://github.com/fonderiejs/fonderie/issues"
+	}
+}

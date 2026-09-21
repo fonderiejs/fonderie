@@ -21,6 +21,7 @@
     "rate-limit": "4.0.18",
     "react": "0.2.0",
     "react-admin": "0.1.0",
+    "react-admin-screens": "0.0.0",
     "react-audit": "0.3.0",
     "react-audit-screens": "0.2.0",
     "react-auth": "0.10.0",
@@ -56,6 +57,7 @@
     "store": "0.5.0",
     "vue": "0.2.0",
     "vue-admin": "0.1.0",
+    "vue-admin-screens": "0.0.0",
     "vue-audit": "0.4.0",
     "vue-audit-screens": "0.2.0",
     "vue-auth": "0.11.0",
@@ -1221,6 +1223,28 @@
       "hasSignature": true,
       "hasOutcomes": false
     },
+    "react-admin-screens": {
+      "version": "0.0.0",
+      "stability": "experimental",
+      "requires": [],
+      "exports": [
+        "AdminLogScreen",
+        "AdminShell",
+        "AttentionScreen",
+        "ConfigScreen",
+        "DoctorScreen",
+        "ModulesScreen",
+        "RoutesScreen",
+        "TokensScreen"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
     "react-audit": {
       "version": "0.3.0",
       "stability": "beta",
@@ -1873,6 +1897,28 @@
         "useAdminRoutes",
         "useAdminTokens",
         "useAdminLog"
+      ],
+      "subpaths": [],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
+    "vue-admin-screens": {
+      "version": "0.0.0",
+      "stability": "experimental",
+      "requires": [],
+      "exports": [
+        "AdminLogScreen",
+        "AdminShell",
+        "AttentionScreen",
+        "ConfigScreen",
+        "DoctorScreen",
+        "ModulesScreen",
+        "RoutesScreen",
+        "TokensScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -2801,6 +2847,9 @@
     "react-admin": [
       "react-admin"
     ],
+    "react-admin-screens": [
+      "react-admin-screens"
+    ],
     "react-audit": [
       "react-audit"
     ],
@@ -2905,6 +2954,9 @@
     ],
     "vue-admin": [
       "vue-admin"
+    ],
+    "vue-admin-screens": [
+      "vue-admin-screens"
     ],
     "vue-audit": [
       "vue-audit"
@@ -4382,6 +4434,38 @@
     "useadminlog": [
       "react-admin",
       "vue-admin"
+    ],
+    "adminlogscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "adminshell": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "attentionscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "configscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "doctorscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "modulesscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "routesscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "tokensscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
     ],
     "auditlogscreen": [
       "react-audit-screens",
