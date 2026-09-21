@@ -1,24 +1,24 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.3.1",
-    "adapter-hono": "6.2.1",
-    "adapter-koa": "5.3.1",
-    "admin": "0.0.0",
-    "audit": "5.1.12",
-    "auth": "7.7.1",
-    "billing": "9.7.1",
+    "adapter-express": "5.3.2",
+    "adapter-hono": "6.2.2",
+    "adapter-koa": "5.3.2",
+    "admin": "0.1.0",
+    "audit": "5.1.13",
+    "auth": "7.7.2",
+    "billing": "9.7.2",
     "client": "0.23.0",
-    "config": "5.1.14",
-    "core": "0.16.0",
-    "courier": "7.6.1",
-    "customers": "6.2.8",
-    "events": "5.5.1",
-    "geo": "0.2.7",
+    "config": "5.1.15",
+    "core": "0.17.0",
+    "courier": "7.6.2",
+    "customers": "6.2.9",
+    "events": "5.5.2",
+    "geo": "0.2.8",
     "logger": "0.3.0",
-    "media": "0.2.12",
-    "permissions": "5.0.15",
-    "rate-limit": "4.0.15",
+    "media": "0.2.13",
+    "permissions": "5.0.16",
+    "rate-limit": "4.0.16",
     "react": "0.2.0",
     "react-audit": "0.3.0",
     "react-audit-screens": "0.2.0",
@@ -50,8 +50,8 @@
     "react-webhooks-screens": "0.3.0",
     "react-workspaces": "0.6.0",
     "react-workspaces-screens": "0.4.0",
-    "risk": "0.2.8",
-    "storage": "0.1.12",
+    "risk": "0.2.9",
+    "storage": "0.1.13",
     "store": "0.5.0",
     "vue": "0.2.0",
     "vue-audit": "0.4.0",
@@ -71,12 +71,12 @@
     "vue-webhooks-screens": "0.3.0",
     "vue-workspaces": "0.7.0",
     "vue-workspaces-screens": "0.4.0",
-    "webhooks": "5.4.5",
-    "workspaces": "6.0.11"
+    "webhooks": "5.4.6",
+    "workspaces": "6.0.12"
   },
   "packages": {
     "adapter-express": {
-      "version": "5.3.1",
+      "version": "5.3.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -96,7 +96,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "6.2.1",
+      "version": "6.2.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -116,7 +116,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.3.1",
+      "version": "5.3.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -136,7 +136,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "0.0.0",
+      "version": "0.1.0",
       "stability": "experimental",
       "requires": [
         "core"
@@ -161,7 +161,7 @@
       "hasOutcomes": true
     },
     "audit": {
-      "version": "5.1.12",
+      "version": "5.1.13",
       "stability": "stable",
       "requires": [
         "core",
@@ -187,7 +187,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.7.1",
+      "version": "7.7.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -384,7 +384,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "9.7.1",
+      "version": "9.7.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -590,7 +590,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "5.1.14",
+      "version": "5.1.15",
       "stability": "stable",
       "requires": [
         "core",
@@ -676,7 +676,7 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.16.0",
+      "version": "0.17.0",
       "stability": "maturing",
       "requires": [],
       "exports": [
@@ -703,7 +703,7 @@
       "hasOutcomes": false
     },
     "courier": {
-      "version": "7.6.1",
+      "version": "7.6.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -763,7 +763,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.2.8",
+      "version": "6.2.9",
       "stability": "stable",
       "requires": [
         "core",
@@ -983,7 +983,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.5.1",
+      "version": "5.5.2",
       "stability": "maturing",
       "requires": [
         "core",
@@ -1009,7 +1009,7 @@
       "hasOutcomes": true
     },
     "geo": {
-      "version": "0.2.7",
+      "version": "0.2.8",
       "stability": "experimental",
       "requires": [
         "core",
@@ -1052,7 +1052,7 @@
       "hasOutcomes": false
     },
     "media": {
-      "version": "0.2.12",
+      "version": "0.2.13",
       "stability": "experimental",
       "requires": [
         "core",
@@ -1088,7 +1088,7 @@
       "hasOutcomes": true
     },
     "permissions": {
-      "version": "5.0.15",
+      "version": "5.0.16",
       "stability": "stable",
       "requires": [
         "core",
@@ -1117,7 +1117,7 @@
       "hasOutcomes": true
     },
     "rate-limit": {
-      "version": "4.0.15",
+      "version": "4.0.16",
       "stability": "stable",
       "requires": [
         "core",
@@ -1709,7 +1709,7 @@
       "hasOutcomes": false
     },
     "risk": {
-      "version": "0.2.8",
+      "version": "0.2.9",
       "stability": "experimental",
       "requires": [
         "core",
@@ -1733,7 +1733,7 @@
       "hasOutcomes": true
     },
     "storage": {
-      "version": "0.1.12",
+      "version": "0.1.13",
       "stability": "experimental",
       "requires": [
         "core",
@@ -2136,7 +2136,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "5.4.5",
+      "version": "5.4.6",
       "stability": "stable",
       "requires": [
         "core",
@@ -2195,7 +2195,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "6.0.11",
+      "version": "6.0.12",
       "stability": "stable",
       "requires": [
         "core",
