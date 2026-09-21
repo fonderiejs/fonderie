@@ -7,6 +7,7 @@ export type {
 	Middleware,
 	IWorkspace,
 	IRouteMatch,
+	IRouteEntry,
 	IFonderieApp,
 	IFonderieModule,
 	IFonderieContext,
