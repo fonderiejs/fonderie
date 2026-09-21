@@ -1,4 +1,9 @@
-import type { AdminClient, ConfigAdminClient, CourierAdminClient } from '@fonderie/client';
+import type {
+	AdminClient,
+	AuthAdminClient,
+	ConfigAdminClient,
+	CourierAdminClient,
+} from '@fonderie/client';
 import { ConfigEditorScreen, ConfigListScreen } from '@fonderie/react-config-admin-screens';
 import { TemplateEditorScreen, TemplateListScreen } from '@fonderie/react-courier-admin-screens';
 import { useState } from 'react';
@@ -10,6 +15,7 @@ import { DoctorScreen } from './DoctorScreen';
 import { ModulesScreen } from './ModulesScreen';
 import { RoutesScreen } from './RoutesScreen';
 import { TokensScreen } from './TokensScreen';
+import { UsersScreen } from './UsersScreen';
 
 export type AdminPage =
 	| 'attention'
@@ -20,7 +26,8 @@ export type AdminPage =
 	| 'tokens'
 	| 'log'
 	| 'settings'
-	| 'templates';
+	| 'templates'
+	| 'users';
 
 export interface IAdminShellProps {
 	client: AdminClient;
@@ -28,6 +35,8 @@ export interface IAdminShellProps {
 	// appear. Construct them with `prefix: '/_admin'` to go through the one token.
 	configClient?: ConfigAdminClient;
 	courierClient?: CourierAdminClient;
+	// Given ⇒ the People page (users) appears; needs @fonderie/auth ≥ 7.8.
+	authClient?: AuthAdminClient;
 	environment?: string;
 	// Controlled navigation: pass both to own the URL. Omit both and the shell
 	// keeps the page itself.
@@ -37,7 +46,7 @@ export interface IAdminShellProps {
 
 const NAV: Array<{
 	group: string;
-	items: Array<{ page: AdminPage; label: string; needs?: 'config' | 'courier' }>;
+	items: Array<{ page: AdminPage; label: string; needs?: 'config' | 'courier' | 'auth' }>;
 }> = [
 	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
 	{
@@ -49,6 +58,7 @@ const NAV: Array<{
 			{ page: 'routes', label: 'Routes' },
 		],
 	},
+	{ group: 'People', items: [{ page: 'users', label: 'Users', needs: 'auth' }] },
 	{ group: 'Settings', items: [{ page: 'settings', label: 'Config & secrets', needs: 'config' }] },
 	{ group: 'Messaging', items: [{ page: 'templates', label: 'Templates', needs: 'courier' }] },
 	{
@@ -64,6 +74,7 @@ export function AdminShell({
 	client,
 	configClient,
 	courierClient,
+	authClient,
 	environment,
 	page,
 	onNavigate,
@@ -78,7 +89,11 @@ export function AdminShell({
 		{ kind: 'config' | 'secret'; key: string } | { kind: 'template'; type: string } | null
 	>(null);
 
-	const has = { config: Boolean(configClient), courier: Boolean(courierClient) };
+	const has = {
+		config: Boolean(configClient),
+		courier: Boolean(courierClient),
+		auth: Boolean(authClient),
+	};
 
 	let body: React.ReactNode;
 	switch (current) {
@@ -102,6 +117,13 @@ export function AdminShell({
 			break;
 		case 'log':
 			body = <AdminLogScreen client={client} />;
+			break;
+		case 'users':
+			body = authClient ? (
+				<UsersScreen client={authClient} />
+			) : (
+				<p style={styles.status}>Pass an AuthAdminClient to look up users here.</p>
+			);
 			break;
 		case 'settings':
 			body = !configClient ? (

@@ -14,3 +14,5 @@ export type { ITokensScreenProps } from './TokensScreen';
 export { TokensScreen } from './TokensScreen';
 export type { IAdminLogScreenProps } from './AdminLogScreen';
 export { AdminLogScreen } from './AdminLogScreen';
+export type { IUsersScreenProps } from './UsersScreen';
+export { UsersScreen } from './UsersScreen';

@@ -133,6 +133,46 @@ interface IAdminTokensReport {
     }>;
 }
 
+interface IAdminUserDTO extends IUserDTO {
+    deletedAt: string | null;
+}
+
+interface IAuthAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminLoginHistoryQuery {
+    limit?: number;
+    cursor?: string;
+}
+
+interface ILoginEventDTO {
+    id: string;
+    method: string;
+    outcome: string;
+    failureReason: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+}
+
+interface ILoginHistoryPageResult {
+    events: ILoginEventDTO[];
+    nextCursor: string | null;
+}
+
+interface ISessionDTO {
+    id: string;
+    current: boolean;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+    expiresAt: string;
+}
+
 new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
@@ -141,6 +181,15 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .routes(): Promise<IApiResponse<IAdminRoutesReport>>
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery | undefined): Promise<IApiResponse<IAdminLogPage>>
+
+new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
+  .findUser(email: string): Promise<IApiResponse<IAdminUserDTO>>
+  .getUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .listUserSessions(id: string): Promise<IApiResponse<ISessionDTO[]>>
+  .revokeUserSessions(id: string): Promise<IApiResponse<undefined>>
+  .userLoginHistory(id: string, query?: IAdminLoginHistoryQuery | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
+  .suspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .unsuspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown, requestId?: string | undefined): FonderieApiError
   .reason: string
@@ -204,6 +253,32 @@ interface IUseAdminLogReturn {
     loadMore: () => Promise<void>;
 }
 
+interface IUseAdminUserReturn {
+    user: IAdminUserDTO | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    suspend: () => Promise<void>;
+    unsuspend: () => Promise<void>;
+    revokeSessions: () => Promise<void>;
+}
+
+interface IUseAdminUserSessionsReturn {
+    sessions: ISessionDTO[];
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+}
+
+interface IUseAdminLoginHistoryReturn {
+    events: ILoginEventDTO[];
+    hasMore: boolean;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    loadMore: () => Promise<void>;
+}
+
 function useAttention(client: AdminClient): IUseAttentionReturn
 
 function useManifest(client: AdminClient): IUseManifestReturn
@@ -217,4 +292,10 @@ function useAdminRoutes(client: AdminClient): IUseAdminRoutesReturn
 function useAdminTokens(client: AdminClient): IUseAdminTokensReturn
 
 function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">): IUseAdminLogReturn
+
+function useAdminUser(client: AuthAdminClient, by: { email?: string; id?: string; }): IUseAdminUserReturn
+
+function useAdminUserSessions(client: AuthAdminClient, userId: string | null): IUseAdminUserSessionsReturn
+
+function useAdminLoginHistory(client: AuthAdminClient, userId: string | null, query?: { limit?: number; }): IUseAdminLoginHistoryReturn
 ```

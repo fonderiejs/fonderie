@@ -16,8 +16,14 @@ export type {
 	IAdminRouteEntry,
 	IAdminRoutesReport,
 	IAdminTokensReport,
+	IAdminUserDTO,
+	IAuthAdminClientOptions,
+	IAdminLoginHistoryQuery,
+	ILoginEventDTO,
+	ILoginHistoryPageResult,
+	ISessionDTO,
 } from '@fonderie/client';
-export { AdminClient, FonderieApiError } from '@fonderie/client';
+export { AdminClient, AuthAdminClient, FonderieApiError } from '@fonderie/client';
 export type {
 	IUseAttentionReturn,
 	IUseManifestReturn,
@@ -26,6 +32,9 @@ export type {
 	IUseAdminRoutesReturn,
 	IUseAdminTokensReturn,
 	IUseAdminLogReturn,
+	IUseAdminUserReturn,
+	IUseAdminUserSessionsReturn,
+	IUseAdminLoginHistoryReturn,
 } from './hooks';
 export {
 	useAttention,
@@ -35,4 +44,7 @@ export {
 	useAdminRoutes,
 	useAdminTokens,
 	useAdminLog,
+	useAdminUser,
+	useAdminUserSessions,
+	useAdminLoginHistory,
 } from './hooks';

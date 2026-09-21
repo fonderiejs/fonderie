@@ -1,4 +1,9 @@
-import type { AdminClient, ConfigAdminClient, CourierAdminClient } from '@fonderie/client';
+import type {
+	AdminClient,
+	AuthAdminClient,
+	ConfigAdminClient,
+	CourierAdminClient,
+} from '@fonderie/client';
 import { ConfigEditorScreen, ConfigListScreen } from '@fonderie/vue-config-admin-screens';
 import { TemplateEditorScreen, TemplateListScreen } from '@fonderie/vue-courier-admin-screens';
 import type { PropType, VNode } from 'vue';
@@ -11,6 +16,7 @@ import { DoctorScreen } from './DoctorScreen';
 import { ModulesScreen } from './ModulesScreen';
 import { RoutesScreen } from './RoutesScreen';
 import { TokensScreen } from './TokensScreen';
+import { UsersScreen } from './UsersScreen';
 
 export type AdminPage =
 	| 'attention'
@@ -21,11 +27,12 @@ export type AdminPage =
 	| 'tokens'
 	| 'log'
 	| 'settings'
-	| 'templates';
+	| 'templates'
+	| 'users';
 
 const NAV: Array<{
 	group: string;
-	items: Array<{ page: AdminPage; label: string; needs?: 'config' | 'courier' }>;
+	items: Array<{ page: AdminPage; label: string; needs?: 'config' | 'courier' | 'auth' }>;
 }> = [
 	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
 	{
@@ -37,6 +44,7 @@ const NAV: Array<{
 			{ page: 'routes', label: 'Routes' },
 		],
 	},
+	{ group: 'People', items: [{ page: 'users', label: 'Users', needs: 'auth' }] },
 	{ group: 'Settings', items: [{ page: 'settings', label: 'Config & secrets', needs: 'config' }] },
 	{ group: 'Messaging', items: [{ page: 'templates', label: 'Templates', needs: 'courier' }] },
 	{
@@ -61,6 +69,8 @@ export const AdminShell = defineComponent({
 		// `prefix: '/_admin'` to go through the one token.
 		configClient: { type: Object as PropType<ConfigAdminClient>, default: undefined },
 		courierClient: { type: Object as PropType<CourierAdminClient>, default: undefined },
+		// Given ⇒ the People page (users) appears; needs @fonderie/auth ≥ 7.8.
+		authClient: { type: Object as PropType<AuthAdminClient>, default: undefined },
 		environment: { type: String, default: undefined },
 		// Controlled navigation: pass `page` and listen to `navigate` to own the
 		// URL. Omit `page` and the shell keeps it itself.
@@ -100,6 +110,10 @@ export const AdminShell = defineComponent({
 					return h(TokensScreen, { client: c });
 				case 'log':
 					return h(AdminLogScreen, { client: c });
+				case 'users':
+					return props.authClient
+						? h(UsersScreen, { client: props.authClient })
+						: h('p', { style: styles.status }, 'Pass an AuthAdminClient to look up users here.');
 				case 'settings': {
 					const cc = props.configClient;
 					if (!cc)
@@ -161,7 +175,13 @@ export const AdminShell = defineComponent({
 					{ style: styles.nav, 'aria-label': 'Admin' },
 					NAV.map((g) => {
 						const items = g.items.filter(
-							(i) => !i.needs || (i.needs === 'config' ? props.configClient : props.courierClient),
+							(i) =>
+								!i.needs ||
+								(i.needs === 'config'
+									? props.configClient
+									: i.needs === 'courier'
+										? props.courierClient
+										: props.authClient),
 						);
 						if (items.length === 0) return null;
 						return h('div', { key: g.group }, [
