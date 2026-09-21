@@ -305,6 +305,29 @@ new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .suspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
   .unsuspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
 
+interface IBillingAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminLedgerQuery {
+    currency?: string;
+    limit?: number;
+    cursor?: string;
+}
+
+new BillingAdminClient(opts: IBillingAdminClientOptions): BillingAdminClient
+  .catalog(): Promise<IApiResponse<IAdminCatalog>>
+  .createPlan(input: IAdminPlanInput & { name: string; }): Promise<IApiResponse<IPlanDTO>>
+  .updatePlan(planId: string, input: IAdminPlanInput): Promise<IApiResponse<IPlanDTO>>
+  .deletePlan(planId: string): Promise<IApiResponse<undefined>>
+  .subscription(type: SubscriberType, id: string): Promise<IApiResponse<IAdminSubscriptionDTO>>
+  .wallet(type: SubscriberType, id: string, currency?: string | undefined): Promise<IApiResponse<IAdminWalletDTO>>
+  .walletLedger(type: SubscriberType, id: string, query?: IAdminLedgerQuery): Promise<IApiResponse<IAdminWalletLedgerPage>>
+  .grant(input: IAdminGrantInput): Promise<IApiResponse<unknown>>
+
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
@@ -761,6 +784,61 @@ interface IAdminTokensReport {
 
 interface IAdminUserDTO extends IUserDTO {
     deletedAt: string | null;
+}
+
+interface IAdminCatalog {
+    configured: unknown[];
+    stored: IPlanDTO[];
+}
+
+interface IAdminSubscriptionDTO {
+    id: string;
+    subscriberType: SubscriberType;
+    subscriberId: string;
+    plan: string;
+    interval: string;
+    status: string;
+    providerCustomerId: string | null;
+    providerSubscriptionId: string | null;
+    currentPeriodStart: string | null;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+    trialEndsAt: string | null;
+    createdAt: string;
+}
+
+interface IAdminWalletDTO extends IWalletDTO {
+    version: number;
+    updatedAt: string | null;
+}
+
+interface IAdminWalletLedgerPage {
+    currency: string;
+    entries: IWalletTransactionDTO[];
+    nextCursor: string | null;
+}
+
+interface IAdminPlanInput {
+    name?: string;
+    description?: string | null;
+    tier?: number;
+    seats?: number | null;
+    trialDays?: number;
+    monthlyAmount?: number | null;
+    monthlyPriceId?: string | null;
+    yearlyAmount?: number | null;
+    yearlyPriceId?: string | null;
+    features?: unknown;
+    metadata?: unknown;
+}
+
+interface IAdminGrantInput {
+    subscriberType: SubscriberType;
+    subscriberId: string;
+    amount: string | number;
+    currency?: string;
+    description?: string;
+    idempotencyKey: string;
 }
 
 interface IConfigEntry {

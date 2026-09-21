@@ -9,6 +9,8 @@ export type {
 	IRoutesScreenProps,
 	ITokensScreenProps,
 	IUsersScreenProps,
+	ICatalogScreenProps,
+	ISubscriberScreenProps,
 } from './screens';
 export {
 	AdminLogScreen,
@@ -20,4 +22,6 @@ export {
 	RoutesScreen,
 	TokensScreen,
 	UsersScreen,
+	CatalogScreen,
+	SubscriberScreen,
 } from './screens';

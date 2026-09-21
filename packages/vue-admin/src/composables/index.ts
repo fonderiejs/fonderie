@@ -8,3 +8,5 @@ export { useAdminLog } from './useAdminLog';
 export { useAdminUser } from './useAdminUser';
 export { useAdminUserSessions } from './useAdminUserSessions';
 export { useAdminLoginHistory } from './useAdminLoginHistory';
+export { useAdminCatalog } from './useAdminCatalog';
+export { useAdminSubscriber } from './useAdminSubscriber';

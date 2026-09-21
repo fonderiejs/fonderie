@@ -18,3 +18,7 @@ export type { IUseAdminUserSessionsReturn } from './useAdminUserSessions';
 export { useAdminUserSessions } from './useAdminUserSessions';
 export type { IUseAdminLoginHistoryReturn } from './useAdminLoginHistory';
 export { useAdminLoginHistory } from './useAdminLoginHistory';
+export type { IUseAdminCatalogReturn } from './useAdminCatalog';
+export { useAdminCatalog } from './useAdminCatalog';
+export type { IUseAdminSubscriberReturn } from './useAdminSubscriber';
+export { useAdminSubscriber } from './useAdminSubscriber';
