@@ -1,5 +1,25 @@
 # @fonderie/config
 
+## 5.2.0
+
+### Minor Changes
+
+- e687c4e: Describe the admin routes for `@fonderie/admin`; legacy `/admin/*` paths deprecated
+  
+  `describeAdmin()` offers the same handlers as the standalone `/admin/*`
+  surface — unguarded and prefix-relative — for `@fonderie/admin` to mount
+  under its prefix behind its own token. One route table backs both, so they
+  cannot drift.
+  
+  The standalone `/admin/*` routes, guarded by this module's `adminToken`,
+  keep working unchanged and are **deprecated**: they go in a later major, once
+  the composed surface is the norm. `docs/ADMIN-BRICK-DESIGN.md` phase 3.
+
+### Patch Changes
+
+- Updated dependencies [e687c4e]
+  - @fonderie/core@0.18.0
+
 ## 5.1.15
 
 ### Patch Changes
