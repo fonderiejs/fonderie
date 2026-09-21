@@ -7,6 +7,21 @@
 Subpath exports: `@fonderie/core/config`, `@fonderie/core/types`, `@fonderie/core/middlewares`, `@fonderie/core/parser`, `@fonderie/core/response`
 
 ```ts
+interface IAdminDescription {
+    routes?: IAdminRoute[];
+}
+
+interface IAdminDescriptionEntry {
+    module: string;
+    description: IAdminDescription;
+}
+
+interface IAdminRoute {
+    method: string;
+    path: string;
+    handlers: Middleware[];
+}
+
 interface ITenant {
     id: string;
     slug: string;
@@ -69,6 +84,7 @@ interface IFonderieApp {
     boot(): Promise<IFonderieApp>;
     checkProductionReadiness(): IReadinessReport;
     securityReport(): ISecurityReport;
+    adminDescriptions(): IAdminDescriptionEntry[];
 }
 
 interface IFonderieModule {
@@ -77,6 +93,7 @@ interface IFonderieModule {
     deps?: string[];
     install(app: IFonderieApp): void | Promise<void>;
     checkReadiness?(): IReadinessProblem[];
+    describeAdmin?(): IAdminDescription;
 }
 
 interface IFonderieContext {
@@ -161,6 +178,7 @@ new FonderieApp(config: FonderieConfig): FonderieApp
   .register(module: IFonderieModule): FonderieApp
   .checkProductionReadiness(): IReadinessReport
   .securityReport(): ISecurityReport
+  .adminDescriptions(): IAdminDescriptionEntry[]
   .boot(): Promise<FonderieApp>
   .buildContext(request: Request): Promise<IFonderieContext>
   .use(middleware: Middleware): FonderieApp

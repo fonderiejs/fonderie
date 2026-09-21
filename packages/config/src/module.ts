@@ -1,4 +1,4 @@
-import type { IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
+import type { IAdminDescription, IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
 import { validateAdminToken } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -6,7 +6,7 @@ import type { IConfigOptions } from './config';
 
 import { RemoteConfigManager } from './manager';
 import { configContextMiddleware } from './middlewares/config-context';
-import { buildAdminRoutes } from './admin';
+import { buildAdminRoutes, describeAdminRoutes } from './admin';
 import { noopEncryptor } from './crypto';
 
 export class ConfigModule implements IFonderieModule {
@@ -36,6 +36,10 @@ export class ConfigModule implements IFonderieModule {
 				app.addRoute(method, path, handler);
 			}
 		}
+	}
+
+	describeAdmin(): IAdminDescription {
+		return { routes: describeAdminRoutes(this.store, this.options.secretEncryptor ?? noopEncryptor) };
 	}
 
 	// Reported by FonderieApp.checkProductionReadiness. Only the admin surface

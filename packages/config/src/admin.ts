@@ -1,4 +1,4 @@
-import type { IFonderieContext, Middleware } from '@fonderie/core';
+import type { IAdminRoute, IFonderieContext, Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import { requireAdminToken } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
@@ -93,28 +93,45 @@ function guarded(adminToken: string, handler: Middleware): Middleware {
 	return (ctx, next) => guard(ctx, () => handler(ctx, next));
 }
 
-// Build the admin route table. Registered by ConfigModule.install only when an
-// adminToken is configured.
+type RouteRow = [string, string, Middleware];
+
+// The legacy standalone surface (bare /admin/*, guarded by this module's own
+// token). Registered by ConfigModule.install only when an adminToken is configured.
 export function buildAdminRoutes(
 	store: IStoreAdapter,
 	adminToken: string,
 	encryptor: ISecretEncryptor = noopEncryptor,
-): Array<[string, string, Middleware]> {
-	const g = (h: Middleware): Middleware => guarded(adminToken, h);
+): RouteRow[] {
+	return adminRouteTable(store, encryptor).map(([m, p, h]) => [m, p, guarded(adminToken, h)]);
+}
 
+// The same handlers, unguarded and prefix-relative, for @fonderie/admin to mount
+// under its own prefix behind its own token.
+export function describeAdminRoutes(
+	store: IStoreAdapter,
+	encryptor: ISecretEncryptor = noopEncryptor,
+): IAdminRoute[] {
+	return adminRouteTable(store, encryptor).map(([method, path, h]) => ({
+		method,
+		path: path.replace(/^\/admin/, ''),
+		handlers: [h],
+	}));
+}
+
+function adminRouteTable(store: IStoreAdapter, encryptor: ISecretEncryptor): RouteRow[] {
 	return [
 		// ── config ──────────────────────────────────────────────────
-		['GET', '/admin/config', g(async (ctx) => {
+		['GET', '/admin/config', async (ctx) => {
 			const rows = await listConfigEntries(envOf(ctx) ?? null, store);
 			return setApiResponse(HTTP.OK, 'CONFIG_LISTED', 'Config entries', rows.map(withParsedValue));
-		})],
-		['GET', '/admin/config/:key', g(async (ctx) => {
+		}],
+		['GET', '/admin/config/:key', async (ctx) => {
 			const row = await getConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store);
 			return row
 				? setApiResponse(HTTP.OK, 'CONFIG_ENTRY', 'Config entry', withParsedValue(row))
 				: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such config entry');
-		})],
-		['PUT', '/admin/config/:key', g(async (ctx) => {
+		}],
+		['PUT', '/admin/config/:key', async (ctx) => {
 			const b = body(ctx);
 			if (!('value' in b)) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value is required');
@@ -128,16 +145,16 @@ export function buildAdminRoutes(
 			} catch (err) {
 				return conflictOr(err);
 			}
-		})],
-		['DELETE', '/admin/config/:key', g(async (ctx) => {
+		}],
+		['DELETE', '/admin/config/:key', async (ctx) => {
 			const ok = await deleteConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store);
 			return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such config entry');
-		})],
-		['GET', '/admin/config/:key/revisions', g(async (ctx) => {
+		}],
+		['GET', '/admin/config/:key/revisions', async (ctx) => {
 			const revs = await listConfigRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store);
 			return setApiResponse(HTTP.OK, 'REVISIONS', 'Config revisions', revs.map(withParsedValue));
-		})],
-		['POST', '/admin/config/:key/rollback', g(async (ctx) => {
+		}],
+		['POST', '/admin/config/:key/rollback', async (ctx) => {
 			const b = body(ctx);
 			const toVersion = Number(b['toVersion']);
 			if (!Number.isInteger(toVersion)) {
@@ -148,20 +165,20 @@ export function buildAdminRoutes(
 				store,
 			);
 			return setApiResponse(HTTP.OK, 'ROLLED_BACK', `Rolled back to v${toVersion}`, withParsedValue(row));
-		})],
+		}],
 
 		// ── secrets (masked) ────────────────────────────────────────
-		['GET', '/admin/secrets', g(async (ctx) => {
+		['GET', '/admin/secrets', async (ctx) => {
 			const rows = await listSecrets(envOf(ctx) ?? null, store);
 			return setApiResponse(HTTP.OK, 'SECRETS_LISTED', 'Secrets (masked)', rows);
-		})],
-		['GET', '/admin/secrets/:key', g(async (ctx) => {
+		}],
+		['GET', '/admin/secrets/:key', async (ctx) => {
 			const row = await getSecret(keyOf(ctx), envOf(ctx) ?? 'all', store);
 			return row
 				? setApiResponse(HTTP.OK, 'SECRET', 'Secret (masked)', row)
 				: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such secret');
-		})],
-		['PUT', '/admin/secrets/:key', g(async (ctx) => {
+		}],
+		['PUT', '/admin/secrets/:key', async (ctx) => {
 			const b = body(ctx);
 			if (typeof b['value'] !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value (string) is required');
@@ -176,16 +193,16 @@ export function buildAdminRoutes(
 			} catch (err) {
 				return conflictOr(err);
 			}
-		})],
-		['DELETE', '/admin/secrets/:key', g(async (ctx) => {
+		}],
+		['DELETE', '/admin/secrets/:key', async (ctx) => {
 			const ok = await deleteSecret(keyOf(ctx), envOf(ctx) ?? 'all', store);
 			return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such secret');
-		})],
-		['GET', '/admin/secrets/:key/revisions', g(async (ctx) => {
+		}],
+		['GET', '/admin/secrets/:key/revisions', async (ctx) => {
 			const revs = await listSecretRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store);
 			return setApiResponse(HTTP.OK, 'REVISIONS', 'Secret revisions', revs);
-		})],
-		['POST', '/admin/secrets/:key/rollback', g(async (ctx) => {
+		}],
+		['POST', '/admin/secrets/:key/rollback', async (ctx) => {
 			const b = body(ctx);
 			const toVersion = Number(b['toVersion']);
 			if (!Number.isInteger(toVersion)) {
@@ -196,15 +213,15 @@ export function buildAdminRoutes(
 				store,
 			);
 			return setApiResponse(HTTP.OK, 'ROLLED_BACK', `Rolled back to v${toVersion}`, row);
-		})],
+		}],
 		// The one plaintext path — behind the same token; POST so the value never
 		// lands in a URL/log. Returns the decrypted value.
-		['POST', '/admin/secrets/:key/reveal', g(async (ctx) => {
+		['POST', '/admin/secrets/:key/reveal', async (ctx) => {
 			const value = await revealSecret(keyOf(ctx), envOf(ctx) ?? 'all', store, encryptor);
 			return value === null
 				? setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such secret')
 				: setApiResponse(HTTP.OK, 'SECRET_REVEALED', 'Decrypted secret value', { value });
-		})],
+		}],
 	];
 }
 

@@ -127,6 +127,8 @@ export interface IFonderieApp {
 	checkProductionReadiness(): IReadinessReport;
 	// Point-in-time control-posture snapshot for SOC 2 evidence.
 	securityReport(): ISecurityReport;
+	// Every registered module's admin description, for modules that give one.
+	adminDescriptions(): IAdminDescriptionEntry[];
 }
 
 // A production-readiness finding a module reports about its own config.
@@ -156,6 +158,24 @@ export interface ISecurityReport {
 	readiness: IReadinessReport;
 }
 
+// An operator route a module offers to the admin surface. `path` is relative to
+// the admin prefix; `handlers` are unguarded — the admin brick applies its own
+// token guard when it mounts them.
+export interface IAdminRoute {
+	method: string;
+	path: string;
+	handlers: Middleware[];
+}
+
+export interface IAdminDescription {
+	routes?: IAdminRoute[];
+}
+
+export interface IAdminDescriptionEntry {
+	module: string;
+	description: IAdminDescription;
+}
+
 export interface IFonderieModule {
 	name: string;
 	// The package version, for the deployment manifest. Inject at build time.
@@ -165,6 +185,9 @@ export interface IFonderieModule {
 	// Optional: report production-readiness problems with this module's config.
 	// Modules opt in; `FonderieApp.checkProductionReadiness` aggregates them.
 	checkReadiness?(): IReadinessProblem[];
+	// Optional: what this module offers the admin surface. Read before any
+	// install() runs, so derive it from constructor state only.
+	describeAdmin?(): IAdminDescription;
 }
 
 // ── Cross-module vocabulary ───────────────────────────────────────

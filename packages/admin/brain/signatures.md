@@ -38,5 +38,6 @@ interface IAdminModuleEntry {
     name: string;
     version: string | null;
     readiness: IReadinessReport;
+    describesAdmin: boolean;
 }
 ```

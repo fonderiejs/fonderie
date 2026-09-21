@@ -153,7 +153,7 @@
         {
           "method": "GET",
           "path": "/_admin/manifest",
-          "mw": "g(async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version }), ), )"
+          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version }), )"
         }
       ],
       "secures": [],
@@ -618,57 +618,57 @@
         {
           "method": "GET",
           "path": "/admin/config",
-          "mw": "g(async (ctx) => { const rows = await listConfigEntries(envOf(ctx) ?? null, store); return setApiResponse(HTTP.OK, 'CONFIG_LISTED', 'Config entries', rows.map(withParsedValue)); })"
+          "mw": "async (ctx) => { const rows = await listConfigEntries(envOf(ctx) ?? null, store); return setApiResponse(HTTP.OK, 'CONFIG_LISTED', 'Config entries', rows.map(withParsedValue)); }"
         },
         {
           "method": "DELETE",
           "path": "/admin/config/:key",
-          "mw": "g(async (ctx) => { const ok = await deleteConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such config entry'); })"
+          "mw": "async (ctx) => { const ok = await deleteConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such config entry'); }"
         },
         {
           "method": "GET",
           "path": "/admin/config/:key",
-          "mw": "g(async (ctx) => { const row = await getConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store); return row ? setApiResponse(HTTP.OK, 'CONFIG_ENTRY', 'Config entry', withParsedValue(row)) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such config entry'); })"
+          "mw": "async (ctx) => { const row = await getConfigEntry(keyOf(ctx), envOf(ctx) ?? 'all', store); return row ? setApiResponse(HTTP.OK, 'CONFIG_ENTRY', 'Config entry', withParsedValue(row)) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such config entry'); }"
         },
         {
           "method": "PUT",
           "path": "/admin/config/:key",
-          "mw": "g(async (ctx) => { const b = body(ctx); if (!('value' in b)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value is required'); } try { const row = await setConfigEntry( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, ); return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', withParsedValue(row)); } catch (err) { return conflictOr(err); } })"
+          "mw": "async (ctx) => { const b = body(ctx); if (!('value' in b)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value is required'); } try { const row = await setConfigEntry( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, ); return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', withParsedValue(row)); } catch (err) { return conflictOr(err); } }"
         },
         {
           "method": "GET",
           "path": "/admin/config/:key/revisions",
-          "mw": "g(async (ctx) => { const revs = await listConfigRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(HTTP.OK, 'REVISIONS', 'Config revisions', revs.map(withParsedValue)); })"
+          "mw": "async (ctx) => { const revs = await listConfigRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(HTTP.OK, 'REVISIONS', 'Config revisions', revs.map(withParsedValue)); }"
         },
         {
           "method": "GET",
           "path": "/admin/secrets",
-          "mw": "g(async (ctx) => { const rows = await listSecrets(envOf(ctx) ?? null, store); return setApiResponse(HTTP.OK, 'SECRETS_LISTED', 'Secrets (masked)', rows); })"
+          "mw": "async (ctx) => { const rows = await listSecrets(envOf(ctx) ?? null, store); return setApiResponse(HTTP.OK, 'SECRETS_LISTED', 'Secrets (masked)', rows); }"
         },
         {
           "method": "DELETE",
           "path": "/admin/secrets/:key",
-          "mw": "g(async (ctx) => { const ok = await deleteSecret(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such secret'); })"
+          "mw": "async (ctx) => { const ok = await deleteSecret(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such secret'); }"
         },
         {
           "method": "GET",
           "path": "/admin/secrets/:key",
-          "mw": "g(async (ctx) => { const row = await getSecret(keyOf(ctx), envOf(ctx) ?? 'all', store); return row ? setApiResponse(HTTP.OK, 'SECRET', 'Secret (masked)', row) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such secret'); })"
+          "mw": "async (ctx) => { const row = await getSecret(keyOf(ctx), envOf(ctx) ?? 'all', store); return row ? setApiResponse(HTTP.OK, 'SECRET', 'Secret (masked)', row) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such secret'); }"
         },
         {
           "method": "PUT",
           "path": "/admin/secrets/:key",
-          "mw": "g(async (ctx) => { const b = body(ctx); if (typeof b['value'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value (string) is required'); } try { const row = await setSecret( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, encryptor, ); return setApiResponse(HTTP.OK, 'SECRET_SET', 'Secret saved (masked)', row); } catch (err) { return conflictOr(err); } })"
+          "mw": "async (ctx) => { const b = body(ctx); if (typeof b['value'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value (string) is required'); } try { const row = await setSecret( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, encryptor, ); return setApiResponse(HTTP.OK, 'SECRET_SET', 'Secret saved (masked)', row); } catch (err) { return conflictOr(err); } }"
         },
         {
           "method": "POST",
           "path": "/admin/secrets/:key/reveal",
-          "mw": "g(async (ctx) => { const value = await revealSecret(keyOf(ctx), envOf(ctx) ?? 'all', store, encryptor); return value === null ? setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such secret') : setApiResponse(HTTP.OK, 'SECRET_REVEALED', 'Decrypted secret value', { value }); })"
+          "mw": "async (ctx) => { const value = await revealSecret(keyOf(ctx), envOf(ctx) ?? 'all', store, encryptor); return value === null ? setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such secret') : setApiResponse(HTTP.OK, 'SECRET_REVEALED', 'Decrypted secret value', { value }); }"
         },
         {
           "method": "GET",
           "path": "/admin/secrets/:key/revisions",
-          "mw": "g(async (ctx) => { const revs = await listSecretRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(HTTP.OK, 'REVISIONS', 'Secret revisions', revs); })"
+          "mw": "async (ctx) => { const revs = await listSecretRevisions(keyOf(ctx), envOf(ctx) ?? 'all', store); return setApiResponse(HTTP.OK, 'REVISIONS', 'Secret revisions', revs); }"
         }
       ],
       "secures": [],
@@ -735,27 +735,27 @@
         {
           "method": "GET",
           "path": "/admin/templates",
-          "mw": "g(async () => { return setApiResponse(HTTP.OK, 'TEMPLATES_LISTED', 'Templates', await listTemplateEntries(store)); })"
+          "mw": "async () => { return setApiResponse(HTTP.OK, 'TEMPLATES_LISTED', 'Templates', await listTemplateEntries(store)); }"
         },
         {
           "method": "DELETE",
           "path": "/admin/templates/:type",
-          "mw": "g(async (ctx) => { const ok = await deleteTemplate(typeOf(ctx), localeOf(ctx), store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such template'); })"
+          "mw": "async (ctx) => { const ok = await deleteTemplate(typeOf(ctx), localeOf(ctx), store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such template'); }"
         },
         {
           "method": "GET",
           "path": "/admin/templates/:type",
-          "mw": "g(async (ctx) => { const row = await getTemplateEntry(typeOf(ctx), localeOf(ctx), store); return row ? setApiResponse(HTTP.OK, 'TEMPLATE', 'Template', row) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such template'); })"
+          "mw": "async (ctx) => { const row = await getTemplateEntry(typeOf(ctx), localeOf(ctx), store); return row ? setApiResponse(HTTP.OK, 'TEMPLATE', 'Template', row) : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such template'); }"
         },
         {
           "method": "PUT",
           "path": "/admin/templates/:type",
-          "mw": "g(async (ctx) => { const b = body(ctx); if (typeof b['text'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required'); } try { const opts: Parameters<typeof setTemplate>[0] = { type: typeOf(ctx), text: b['text'], locale: localeOf(ctx), actor: actorOf(ctx), }; if (typeof b['subject'] === 'string') opts.subject = b['subject']; if (typeof b['html'] === 'string') opts.html = b['html']; if (typeof b['active'] === 'boolean') opts.active = b['active']; if (typeof b['ifVersion'] === 'number') opts.ifVersion = b['ifVersion']; return setApiResponse(HTTP.OK, 'TEMPLATE_SET', 'Template saved', await setTemplate(opts, store)); } catch (err) { return conflictOr(err); } })"
+          "mw": "async (ctx) => { const b = body(ctx); if (typeof b['text'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required'); } try { const opts: Parameters<typeof setTemplate>[0] = { type: typeOf(ctx), text: b['text'], locale: localeOf(ctx), actor: actorOf(ctx), }; if (typeof b['subject'] === 'string') opts.subject = b['subject']; if (typeof b['html'] === 'string') opts.html = b['html']; if (typeof b['active'] === 'boolean') opts.active = b['active']; if (typeof b['ifVersion'] === 'number') opts.ifVersion = b['ifVersion']; return setApiResponse(HTTP.OK, 'TEMPLATE_SET', 'Template saved', await setTemplate(opts, store)); } catch (err) { return conflictOr(err); } }"
         },
         {
           "method": "GET",
           "path": "/admin/templates/:type/revisions",
-          "mw": "g(async (ctx) => { return setApiResponse(HTTP.OK, 'REVISIONS', 'Template revisions', await listTemplateRevisions(typeOf(ctx), localeOf(ctx), store)); })"
+          "mw": "async (ctx) => { return setApiResponse(HTTP.OK, 'REVISIONS', 'Template revisions', await listTemplateRevisions(typeOf(ctx), localeOf(ctx), store)); }"
         }
       ],
       "secures": [],

@@ -1019,3 +1019,26 @@ test('dispatcher: the failed-status write completes before dispatch resolves', a
 	await dispatched;
 	assert.equal(finished, true, 'the failed-status write never landed');
 });
+
+// ── describeAdmin: the same handlers, prefix-relative and unguarded ──
+
+test('describeAdmin: mirrors the legacy table without /admin and without the guard', async () => {
+	const { buildTemplateAdminRoutes, describeTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store } = captureStore(() => []);
+	const legacy = buildTemplateAdminRoutes(store, 'tok').map(([m, p]) => `${m} ${p.replace(/^\/admin/, '')}`);
+	const described = describeTemplateAdminRoutes(store);
+	assert.deepEqual(described.map((r) => `${r.method} ${r.path}`), legacy);
+	const list = described.find((r) => r.method === 'GET' && r.path === '/templates');
+	assert.ok(list);
+	const res = await (list.handlers[0] as (ctx: unknown) => Promise<Response>)(adminCtx('http://localhost/x'));
+	assert.equal(res.status, 200);
+});
+
+test('describeAdmin: CourierModule offers routes only with a store', async () => {
+	const { CourierModule } = await import('../module');
+	const { store } = captureStore(() => []);
+	const withStore = new CourierModule({} as never, store).describeAdmin();
+	assert.equal(withStore.routes?.length, 6);
+	const fsOnly = new CourierModule({ templates: { source: 'fs' } } as never).describeAdmin();
+	assert.deepEqual(fsOnly, {});
+});

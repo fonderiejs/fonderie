@@ -11,4 +11,4 @@ downloading tarballs.
 
 | Method | Path | Middleware chain (auth / validation / handler) |
 |---|---|---|
-| GET | `/_admin/manifest` | `g(async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version }), ), )` |
+| GET | `/_admin/manifest` | `async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version }), )` |

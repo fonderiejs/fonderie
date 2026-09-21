@@ -598,3 +598,25 @@ test('refresh: a "__proto__" row cannot pollute the entries object', async () =>
 	assert.equal(({} as Record<string, unknown>)['polluted'], undefined, 'global prototype untouched');
 	assert.equal(manager.get('safe.key', 0), 1);
 });
+
+// ── describeAdmin: the same handlers, prefix-relative and unguarded ──
+
+test('describeAdmin: mirrors the legacy table without /admin and without the guard', async () => {
+	const { buildAdminRoutes, describeAdminRoutes } = await import('../admin');
+	const store = makeWriteStore(baseEntry);
+	const legacy = buildAdminRoutes(store, 'sekret').map(([m, p]) => `${m} ${p.replace(/^\/admin/, '')}`);
+	const described = describeAdminRoutes(store);
+	assert.deepEqual(described.map((r) => `${r.method} ${r.path}`), legacy);
+	assert.ok(described.every((r) => r.handlers.length === 1));
+	const list = described.find((r) => r.method === 'GET' && r.path === '/config');
+	assert.ok(list);
+	// No token, still 200: the admin brick supplies the guard.
+	assert.equal((await list.handlers[0]!(adminCtx({}), noNext)).status, 200);
+});
+
+test('describeAdmin: ConfigModule exposes it from constructor state', async () => {
+	const { ConfigModule } = await import('../module');
+	const routes = new ConfigModule(makeWriteStore(baseEntry)).describeAdmin().routes ?? [];
+	assert.equal(routes.length, 13);
+	assert.ok(routes.some((r) => r.method === 'POST' && r.path === '/secrets/:key/reveal'));
+});
