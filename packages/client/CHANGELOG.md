@@ -1,5 +1,18 @@
 # @fonderie/client
 
+## 0.27.0
+
+### Minor Changes
+
+- 3e069c9: `BillingAdminClient` — `@fonderie/billing`'s operator routes, typed
+  
+  `catalog()`, `createPlan()`, `updatePlan()`, `deletePlan()`,
+  `subscription(type, id)`, `wallet(type, id, currency?)`,
+  `walletLedger(type, id, { currency, limit, cursor })`, `grant(input)` —
+  with `IAdminCatalog`, `IAdminSubscriptionDTO`, `IAdminWalletDTO`,
+  `IAdminWalletLedgerPage`, `IAdminPlanInput`, `IAdminGrantInput`. Same
+  constructor as the other admin clients, `prefix` included.
+
 ## 0.26.0
 
 ### Minor Changes
