@@ -329,6 +329,8 @@ const ADMIN_PAGES = {
   tokens:    { path: '/access/tokens',       about: 'the admin token verdict + legacy per-brick tokens' },
   log:       { path: '/activity/admin-log',  about: 'who did what through the surface (--limit, --before)' },
   user:      { path: '/users',               about: 'look up a user: admin user <email|id> [sessions|history|revoke-sessions|suspend|unsuspend]' },
+  catalog:   { path: '/catalog',             about: 'plans as configured and as stored' },
+  subscriber:{ path: '/subscriptions',       about: 'admin subscriber <user|workspace> <id> [subscription|wallet|ledger]' },
 };
 async function adminCmd() {
   const pageName = argv[1];
@@ -352,6 +354,18 @@ async function adminCmd() {
     const q = new URLSearchParams(); const limit = arg('--limit', undefined); if (limit && verb === 'history') q.set('limit', limit);
     const qs = q.toString();
     return adminFetch(sub[0], base + sub[1] + (qs ? `?${qs}` : ''));
+  }
+  if (pageName === 'subscriber') {
+    const type = argv[2]; const id = argv[3]; const verb = argv[4] ?? 'subscription';
+    if ((type !== 'user' && type !== 'workspace') || !id) { console.error('fonderie admin subscriber <user|workspace> <id> [subscription|wallet|ledger] [--currency <c>] [--limit <n>]'); process.exit(2); }
+    const sub = `/${type}/${encodeURIComponent(id)}`;
+    const q = new URLSearchParams(); const cur = arg('--currency', undefined); const lim = arg('--limit', undefined);
+    if (cur) q.set('currency', cur); if (lim && verb === 'ledger') q.set('limit', lim);
+    const qs = q.toString(); const tail = qs ? `?${qs}` : '';
+    if (verb === 'subscription') return adminFetch('GET', `${prefix}/subscriptions${sub}`);
+    if (verb === 'wallet') return adminFetch('GET', `${prefix}/wallet${sub}${tail}`);
+    if (verb === 'ledger') return adminFetch('GET', `${prefix}/wallet${sub}/ledger${tail}`);
+    console.error(`unknown verb "${verb}"`); process.exit(2);
   }
   const q = new URLSearchParams();
   const limit = arg('--limit', undefined);
@@ -459,6 +473,7 @@ else {
       manage a live deployment over its admin API — set FONDERIE_ADMIN_URL + FONDERIE_ADMIN_TOKEN
   fonderie admin <attention|manifest|doctor|config|routes|tokens|log> [--limit <n>] [--before <cursor>]
   fonderie admin user <email|id> [sessions|history|revoke-sessions|suspend|unsuspend]
+  fonderie admin catalog · admin subscriber <user|workspace> <id> [subscription|wallet|ledger] [--currency <c>]
       read a deployment's operator surface (@fonderie/admin) — same env; FONDERIE_ADMIN_PREFIX if moved
 
 Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);

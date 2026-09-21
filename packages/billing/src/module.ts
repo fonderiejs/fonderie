@@ -5,6 +5,7 @@ import type { EventBus } from '@fonderie/events';
 import type { IBillingConfig } from './config';
 import { buildBillingRoutes, describeBillingAdminRoutes } from './routes';
 import { describeBillingAdminChecks } from './admin-checks';
+import { describeBillingAdminReads } from './admin-reads';
 import { syncPlansToDB } from './services/plans';
 import { syncCreditPacksToDB } from './services/credit-packs';
 import { collectBillingReadinessProblems } from './services/notify';
@@ -50,7 +51,10 @@ export class BillingModule implements IFonderieModule {
 
 	describeAdmin(): IAdminDescription {
 		return {
-			routes: describeBillingAdminRoutes(this.store, this.config, this.bus),
+			routes: [
+				...describeBillingAdminReads(this.store, this.config),
+				...describeBillingAdminRoutes(this.store, this.config, this.bus),
+			],
 			checks: describeBillingAdminChecks(this.store, this.config),
 		};
 	}

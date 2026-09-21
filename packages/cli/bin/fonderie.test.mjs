@@ -147,6 +147,15 @@ await (async () => {
   if (!find('GET', '/_admin/users?email=ada%40example.com')) fail('admin user <email>: wrong lookup path');
   if (!find('GET', '/_admin/users/u1/login-history?limit=3')) fail('admin user history: flags not forwarded');
   if (!find('POST', '/_admin/users/u1/suspend')) fail('admin user suspend: wrong request');
+  await cli(['admin', 'catalog']);
+  await cli(['admin', 'subscriber', 'workspace', 'w1']);
+  await cli(['admin', 'subscriber', 'user', 'u1', 'ledger', '--currency', 'eur', '--limit', '7']);
+  if (!find('GET', '/_admin/catalog')) fail('admin catalog: wrong path');
+  if (!find('GET', '/_admin/subscriptions/workspace/w1')) fail('admin subscriber: wrong path');
+  if (!find('GET', '/_admin/wallet/user/u1/ledger?currency=eur&limit=7')) fail('admin subscriber ledger: flags not forwarded');
+  let badType = 0;
+  try { await cli(['admin', 'subscriber', 'team', 'x']); } catch (e) { badType = e.code; }
+  if (badType !== 2) fail(`admin subscriber <bad type> should exit 2, got ${badType}`);
   let needsId = 0;
   try { await cli(['admin', 'user', 'ada@example.com', 'suspend']); } catch (e) { needsId = e.code; }
   if (needsId !== 2) fail(`admin user <email> suspend should exit 2, got ${needsId}`);

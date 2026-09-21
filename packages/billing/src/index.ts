@@ -207,3 +207,4 @@ export type {
 	ISubscriptionDrift,
 	ISubscriptionDriftReport,
 } from './services/subscription-drift';
+export { describeBillingAdminReads } from './admin-reads';
