@@ -1,6 +1,7 @@
 import type {
 	AdminClient,
 	AuthAdminClient,
+	BillingAdminClient,
 	ConfigAdminClient,
 	CourierAdminClient,
 } from '@fonderie/client';
@@ -17,6 +18,8 @@ import { ModulesScreen } from './ModulesScreen';
 import { RoutesScreen } from './RoutesScreen';
 import { TokensScreen } from './TokensScreen';
 import { UsersScreen } from './UsersScreen';
+import { CatalogScreen } from './CatalogScreen';
+import { SubscriberScreen } from './SubscriberScreen';
 
 export type AdminPage =
 	| 'attention'
@@ -28,11 +31,17 @@ export type AdminPage =
 	| 'log'
 	| 'settings'
 	| 'templates'
-	| 'users';
+	| 'users'
+	| 'catalog'
+	| 'subscriber';
 
 const NAV: Array<{
 	group: string;
-	items: Array<{ page: AdminPage; label: string; needs?: 'config' | 'courier' | 'auth' }>;
+	items: Array<{
+		page: AdminPage;
+		label: string;
+		needs?: 'config' | 'courier' | 'auth' | 'billing';
+	}>;
 }> = [
 	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
 	{
@@ -45,6 +54,13 @@ const NAV: Array<{
 		],
 	},
 	{ group: 'People', items: [{ page: 'users', label: 'Users', needs: 'auth' }] },
+	{
+		group: 'Money',
+		items: [
+			{ page: 'catalog', label: 'Catalog', needs: 'billing' },
+			{ page: 'subscriber', label: 'Subscriber', needs: 'billing' },
+		],
+	},
 	{ group: 'Settings', items: [{ page: 'settings', label: 'Config & secrets', needs: 'config' }] },
 	{ group: 'Messaging', items: [{ page: 'templates', label: 'Templates', needs: 'courier' }] },
 	{
@@ -71,6 +87,8 @@ export const AdminShell = defineComponent({
 		courierClient: { type: Object as PropType<CourierAdminClient>, default: undefined },
 		// Given ⇒ the People page (users) appears; needs @fonderie/auth ≥ 7.8.
 		authClient: { type: Object as PropType<AuthAdminClient>, default: undefined },
+		// Given ⇒ the Money pages (catalog, subscriber) appear; needs @fonderie/billing ≥ 9.10.
+		billingClient: { type: Object as PropType<BillingAdminClient>, default: undefined },
 		environment: { type: String, default: undefined },
 		// Controlled navigation: pass `page` and listen to `navigate` to own the
 		// URL. Omit `page` and the shell keeps it itself.
@@ -110,6 +128,22 @@ export const AdminShell = defineComponent({
 					return h(TokensScreen, { client: c });
 				case 'log':
 					return h(AdminLogScreen, { client: c });
+				case 'catalog':
+					return props.billingClient
+						? h(CatalogScreen, { client: props.billingClient })
+						: h(
+								'p',
+								{ style: styles.status },
+								'Pass a BillingAdminClient to see the catalog here.',
+							);
+				case 'subscriber':
+					return props.billingClient
+						? h(SubscriberScreen, { client: props.billingClient })
+						: h(
+								'p',
+								{ style: styles.status },
+								'Pass a BillingAdminClient to look up subscribers here.',
+							);
 				case 'users':
 					return props.authClient
 						? h(UsersScreen, { client: props.authClient })
@@ -181,7 +215,9 @@ export const AdminShell = defineComponent({
 									? props.configClient
 									: i.needs === 'courier'
 										? props.courierClient
-										: props.authClient),
+										: i.needs === 'auth'
+											? props.authClient
+											: props.billingClient),
 						);
 						if (items.length === 0) return null;
 						return h('div', { key: g.group }, [

@@ -173,6 +173,106 @@ interface ISessionDTO {
     expiresAt: string;
 }
 
+interface IAdminCatalog {
+    configured: unknown[];
+    stored: IPlanDTO[];
+}
+
+interface IAdminSubscriptionDTO {
+    id: string;
+    subscriberType: SubscriberType;
+    subscriberId: string;
+    plan: string;
+    interval: string;
+    status: string;
+    providerCustomerId: string | null;
+    providerSubscriptionId: string | null;
+    currentPeriodStart: string | null;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+    trialEndsAt: string | null;
+    createdAt: string;
+}
+
+interface IAdminWalletDTO extends IWalletDTO {
+    version: number;
+    updatedAt: string | null;
+}
+
+interface IAdminWalletLedgerPage {
+    currency: string;
+    entries: IWalletTransactionDTO[];
+    nextCursor: string | null;
+}
+
+interface IAdminPlanInput {
+    name?: string;
+    description?: string | null;
+    tier?: number;
+    seats?: number | null;
+    trialDays?: number;
+    monthlyAmount?: number | null;
+    monthlyPriceId?: string | null;
+    yearlyAmount?: number | null;
+    yearlyPriceId?: string | null;
+    features?: unknown;
+    metadata?: unknown;
+}
+
+interface IAdminGrantInput {
+    subscriberType: SubscriberType;
+    subscriberId: string;
+    amount: string | number;
+    currency?: string;
+    description?: string;
+    idempotencyKey: string;
+}
+
+interface IBillingAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminLedgerQuery {
+    currency?: string;
+    limit?: number;
+    cursor?: string;
+}
+
+interface IPlanDTO {
+    id: string;
+    planId: string;
+    name: string;
+    description: string;
+    tier: number;
+    seats: number | null;
+    trialDays: number;
+    pricing: {
+        monthly: number;
+        yearly: number;
+        currency: string;
+    };
+    pricingStale?: boolean;
+    features: IPlanFeature[];
+    metadata: Record<string, unknown>;
+}
+
+interface IWalletTransactionDTO {
+    id: string;
+    type: string;
+    amount: string;
+    balanceAfter: string;
+    currency: string;
+    description: string | null;
+    providerTxId: string | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+}
+
+type SubscriberType = 'user' | 'workspace';
+
 new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
@@ -190,6 +290,16 @@ new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .userLoginHistory(id: string, query?: IAdminLoginHistoryQuery | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
   .suspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
   .unsuspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+
+new BillingAdminClient(opts: IBillingAdminClientOptions): BillingAdminClient
+  .catalog(): Promise<IApiResponse<IAdminCatalog>>
+  .createPlan(input: IAdminPlanInput & { name: string; }): Promise<IApiResponse<IPlanDTO>>
+  .updatePlan(planId: string, input: IAdminPlanInput): Promise<IApiResponse<IPlanDTO>>
+  .deletePlan(planId: string): Promise<IApiResponse<undefined>>
+  .subscription(type: SubscriberType, id: string): Promise<IApiResponse<IAdminSubscriptionDTO>>
+  .wallet(type: SubscriberType, id: string, currency?: string | undefined): Promise<IApiResponse<IAdminWalletDTO>>
+  .walletLedger(type: SubscriberType, id: string, query?: IAdminLedgerQuery | undefined): Promise<IApiResponse<IAdminWalletLedgerPage>>
+  .grant(input: IAdminGrantInput): Promise<IApiResponse<unknown>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown, requestId?: string | undefined): FonderieApiError
   .reason: string
@@ -279,6 +389,30 @@ interface IUseAdminLoginHistoryReturn {
     loadMore: () => Promise<void>;
 }
 
+interface IUseAdminCatalogReturn {
+    catalog: IAdminCatalog | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    createPlan: (input: IAdminPlanInput & {
+        name: string;
+    }) => Promise<IPlanDTO>;
+    updatePlan: (planId: string, input: IAdminPlanInput) => Promise<IPlanDTO>;
+    deletePlan: (planId: string) => Promise<void>;
+}
+
+interface IUseAdminSubscriberReturn {
+    subscription: IAdminSubscriptionDTO | null;
+    wallet: IAdminWalletDTO | null;
+    ledger: IWalletTransactionDTO[];
+    hasMoreLedger: boolean;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    loadMoreLedger: () => Promise<void>;
+    grant: (input: Omit<IAdminGrantInput, 'subscriberType' | 'subscriberId'>) => Promise<void>;
+}
+
 function useAttention(client: AdminClient): IUseAttentionReturn
 
 function useManifest(client: AdminClient): IUseManifestReturn
@@ -298,4 +432,8 @@ function useAdminUser(client: AuthAdminClient, by: { email?: string; id?: string
 function useAdminUserSessions(client: AuthAdminClient, userId: string | null): IUseAdminUserSessionsReturn
 
 function useAdminLoginHistory(client: AuthAdminClient, userId: string | null, query?: { limit?: number; }): IUseAdminLoginHistoryReturn
+
+function useAdminCatalog(client: BillingAdminClient): IUseAdminCatalogReturn
+
+function useAdminSubscriber(client: BillingAdminClient, subscriber: { type: SubscriberType; id: string; } | null, options?: { currency?: string; limit?: number; }): IUseAdminSubscriberReturn
 ```

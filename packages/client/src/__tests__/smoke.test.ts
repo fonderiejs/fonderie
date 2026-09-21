@@ -407,6 +407,38 @@ test('AuthAdminClient: user routes under the prefix; history query forwarded; id
 	assert.equal(calls[0]?.path, 'http://x/ops/users/u1');
 });
 
+test('BillingAdminClient: catalog, plan writes, subscription, wallet, ledger, grant — under the prefix', async () => {
+	const { BillingAdminClient } = await import('../index');
+	calls.length = 0;
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
+	const tok = 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb';
+	const b = new BillingAdminClient({ baseUrl: 'http://x', adminToken: tok });
+	await b.catalog();
+	await b.createPlan({ name: 'pro', monthlyAmount: 1900 });
+	await b.updatePlan('p/1', { seats: 5 });
+	await b.deletePlan('p1');
+	await b.subscription('workspace', 'w1');
+	await b.wallet('user', 'u1', 'eur');
+	await b.walletLedger('user', 'u1', { currency: 'EUR', limit: 5, cursor: 'c' });
+	await b.grant({ subscriberType: 'user', subscriberId: 'u1', amount: '500', idempotencyKey: 'k1' });
+	assert.deepEqual(
+		calls.map((c) => `${c.method} ${c.path.replace('http://x', '')}`),
+		[
+			'GET /_admin/catalog',
+			'POST /_admin/plans',
+			'PUT /_admin/plans/p%2F1',
+			'DELETE /_admin/plans/p1',
+			'GET /_admin/subscriptions/workspace/w1',
+			'GET /_admin/wallet/user/u1?currency=eur',
+			'GET /_admin/wallet/user/u1/ledger?currency=EUR&limit=5&cursor=c',
+			'POST /_admin/wallet/grant',
+		],
+	);
+	assert.deepEqual(calls[1]?.body, { name: 'pro', monthlyAmount: 1900 });
+	assert.deepEqual(calls[7]?.body, { subscriberType: 'user', subscriberId: 'u1', amount: '500', idempotencyKey: 'k1' });
+	assert.ok(calls.every((c) => c.auth === `Bearer ${tok}`));
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });

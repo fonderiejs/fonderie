@@ -35,6 +35,8 @@ export type { IAdminClientOptions, IAdminLogQuery } from './modules/admin';
 export { AdminClient } from './modules/admin';
 export type { IAuthAdminClientOptions, IAdminLoginHistoryQuery } from './modules/auth-admin';
 export { AuthAdminClient } from './modules/auth-admin';
+export type { IBillingAdminClientOptions, IAdminLedgerQuery } from './modules/billing-admin';
+export { BillingAdminClient } from './modules/billing-admin';
 export type {
 	ICourierAdminClientOptions,
 	IRollbackTemplateInput,
@@ -104,6 +106,12 @@ export type {
 	IAdminRoutesReport,
 	IAdminTokensReport,
 	IAdminUserDTO,
+	IAdminCatalog,
+	IAdminSubscriptionDTO,
+	IAdminWalletDTO,
+	IAdminWalletLedgerPage,
+	IAdminPlanInput,
+	IAdminGrantInput,
 	IConfigEntry,
 	IConfigRevision,
 	ICustomerAddressDTO,

@@ -5,7 +5,7 @@
 ## @fonderie/react-admin-screens
 
 ```ts
-type AdminPage = 'attention' | 'modules' | 'doctor' | 'config' | 'routes' | 'tokens' | 'log' | 'settings' | 'templates' | 'users';
+type AdminPage = 'attention' | 'modules' | 'doctor' | 'config' | 'routes' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber';
 
 interface IAdminLogScreenProps {
     client: AdminClient;
@@ -17,6 +17,7 @@ interface IAdminShellProps {
     configClient?: ConfigAdminClient;
     courierClient?: CourierAdminClient;
     authClient?: AuthAdminClient;
+    billingClient?: BillingAdminClient;
     environment?: string;
     page?: AdminPage;
     onNavigate?: (page: AdminPage) => void;
@@ -50,9 +51,17 @@ interface IUsersScreenProps {
     client: AuthAdminClient;
 }
 
+interface ICatalogScreenProps {
+    client: BillingAdminClient;
+}
+
+interface ISubscriberScreenProps {
+    client: BillingAdminClient;
+}
+
 function AdminLogScreen({ client, pageSize }: IAdminLogScreenProps): Element
 
-function AdminShell({ client, configClient, courierClient, authClient, environment, page, onNavigate, }: IAdminShellProps): Element
+function AdminShell({ client, configClient, courierClient, authClient, billingClient, environment, page, onNavigate, }: IAdminShellProps): Element
 
 function AttentionScreen({ client }: IAttentionScreenProps): Element
 
@@ -67,4 +76,8 @@ function RoutesScreen({ client }: IRoutesScreenProps): Element
 function TokensScreen({ client }: ITokensScreenProps): Element
 
 function UsersScreen({ client }: IUsersScreenProps): Element
+
+function CatalogScreen({ client }: ICatalogScreenProps): Element
+
+function SubscriberScreen({ client }: ISubscriberScreenProps): Element
 ```

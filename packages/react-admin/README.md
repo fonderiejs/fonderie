@@ -5,7 +5,10 @@ page: `useAttention`, `useManifest`, `useDoctor`, `useAdminConfig`,
 `useAdminRoutes`, `useAdminTokens`, `useAdminLog` (paged, `loadMore`) — and over
 `AuthAdminClient` (`@fonderie/auth`'s described user routes): `useAdminUser`
 (lookup by email or id; `suspend`, `unsuspend`, `revokeSessions`),
-`useAdminUserSessions`, `useAdminLoginHistory` (paged).
+`useAdminUserSessions`, `useAdminLoginHistory` (paged) — and over `BillingAdminClient`
+(`@fonderie/billing`'s): `useAdminCatalog` (configured vs stored; `createPlan`,
+`updatePlan`, `deletePlan`), `useAdminSubscriber` (subscription, wallet, paged
+ledger, `grant`).
 
 Status: **experimental** (0.x).
 

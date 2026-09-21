@@ -1,6 +1,7 @@
 import type {
 	AdminClient,
 	AuthAdminClient,
+	BillingAdminClient,
 	ConfigAdminClient,
 	CourierAdminClient,
 } from '@fonderie/client';
@@ -16,6 +17,8 @@ import { ModulesScreen } from './ModulesScreen';
 import { RoutesScreen } from './RoutesScreen';
 import { TokensScreen } from './TokensScreen';
 import { UsersScreen } from './UsersScreen';
+import { CatalogScreen } from './CatalogScreen';
+import { SubscriberScreen } from './SubscriberScreen';
 
 export type AdminPage =
 	| 'attention'
@@ -27,7 +30,9 @@ export type AdminPage =
 	| 'log'
 	| 'settings'
 	| 'templates'
-	| 'users';
+	| 'users'
+	| 'catalog'
+	| 'subscriber';
 
 export interface IAdminShellProps {
 	client: AdminClient;
@@ -37,6 +42,8 @@ export interface IAdminShellProps {
 	courierClient?: CourierAdminClient;
 	// Given ⇒ the People page (users) appears; needs @fonderie/auth ≥ 7.8.
 	authClient?: AuthAdminClient;
+	// Given ⇒ the Money pages (catalog, subscriber) appear; needs @fonderie/billing ≥ 9.10.
+	billingClient?: BillingAdminClient;
 	environment?: string;
 	// Controlled navigation: pass both to own the URL. Omit both and the shell
 	// keeps the page itself.
@@ -46,7 +53,11 @@ export interface IAdminShellProps {
 
 const NAV: Array<{
 	group: string;
-	items: Array<{ page: AdminPage; label: string; needs?: 'config' | 'courier' | 'auth' }>;
+	items: Array<{
+		page: AdminPage;
+		label: string;
+		needs?: 'config' | 'courier' | 'auth' | 'billing';
+	}>;
 }> = [
 	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
 	{
@@ -59,6 +70,13 @@ const NAV: Array<{
 		],
 	},
 	{ group: 'People', items: [{ page: 'users', label: 'Users', needs: 'auth' }] },
+	{
+		group: 'Money',
+		items: [
+			{ page: 'catalog', label: 'Catalog', needs: 'billing' },
+			{ page: 'subscriber', label: 'Subscriber', needs: 'billing' },
+		],
+	},
 	{ group: 'Settings', items: [{ page: 'settings', label: 'Config & secrets', needs: 'config' }] },
 	{ group: 'Messaging', items: [{ page: 'templates', label: 'Templates', needs: 'courier' }] },
 	{
@@ -75,6 +93,7 @@ export function AdminShell({
 	configClient,
 	courierClient,
 	authClient,
+	billingClient,
 	environment,
 	page,
 	onNavigate,
@@ -93,6 +112,7 @@ export function AdminShell({
 		config: Boolean(configClient),
 		courier: Boolean(courierClient),
 		auth: Boolean(authClient),
+		billing: Boolean(billingClient),
 	};
 
 	let body: React.ReactNode;
@@ -117,6 +137,20 @@ export function AdminShell({
 			break;
 		case 'log':
 			body = <AdminLogScreen client={client} />;
+			break;
+		case 'catalog':
+			body = billingClient ? (
+				<CatalogScreen client={billingClient} />
+			) : (
+				<p style={styles.status}>Pass a BillingAdminClient to see the catalog here.</p>
+			);
+			break;
+		case 'subscriber':
+			body = billingClient ? (
+				<SubscriberScreen client={billingClient} />
+			) : (
+				<p style={styles.status}>Pass a BillingAdminClient to look up subscribers here.</p>
+			);
 			break;
 		case 'users':
 			body = authClient ? (
