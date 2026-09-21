@@ -118,15 +118,15 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin/routes', 'AdminClient.routes() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/access/tokens', 'AdminClient.tokens() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/activity/admin-log', 'AdminClient.adminLog() — prefix is configurable, invisible to the static match'],
-	// @fonderie/auth's described user routes (phase 8a). The AuthAdminClient +
-	// hooks + UsersScreen ship in 8b (docs/ADMIN-BRICK-DESIGN.md §9).
-	['GET /_admin/users', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
-	['GET /_admin/users/:id', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
-	['GET /_admin/users/:id/sessions', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
-	['DELETE /_admin/users/:id/sessions', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
-	['GET /_admin/users/:id/login-history', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
-	['POST /_admin/users/:id/suspend', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
-	['POST /_admin/users/:id/unsuspend', 'admin-token-guarded operator surface — client ships in 8b, server-first by scoped decision'],
+	// @fonderie/auth's described user routes, reached through AuthAdminClient
+	// (+ react-admin / vue-admin hooks, which leg 1 verifies). Same prefix caveat.
+	['GET /_admin/users', 'AuthAdminClient.findUser() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/users/:id', 'AuthAdminClient.getUser() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/users/:id/sessions', 'AuthAdminClient.listUserSessions() — prefix is configurable, invisible to the static match'],
+	['DELETE /_admin/users/:id/sessions', 'AuthAdminClient.revokeUserSessions() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/users/:id/login-history', 'AuthAdminClient.userLoginHistory() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/users/:id/suspend', 'AuthAdminClient.suspendUser() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/users/:id/unsuspend', 'AuthAdminClient.unsuspendUser() — prefix is configurable, invisible to the static match'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');

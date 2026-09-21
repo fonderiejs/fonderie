@@ -133,6 +133,46 @@ interface IAdminTokensReport {
     }>;
 }
 
+interface IAdminUserDTO extends IUserDTO {
+    deletedAt: string | null;
+}
+
+interface IAuthAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminLoginHistoryQuery {
+    limit?: number;
+    cursor?: string;
+}
+
+interface ILoginEventDTO {
+    id: string;
+    method: string;
+    outcome: string;
+    failureReason: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+}
+
+interface ILoginHistoryPageResult {
+    events: ILoginEventDTO[];
+    nextCursor: string | null;
+}
+
+interface ISessionDTO {
+    id: string;
+    current: boolean;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+    expiresAt: string;
+}
+
 new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
@@ -141,6 +181,15 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .routes(): Promise<IApiResponse<IAdminRoutesReport>>
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery | undefined): Promise<IApiResponse<IAdminLogPage>>
+
+new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
+  .findUser(email: string): Promise<IApiResponse<IAdminUserDTO>>
+  .getUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .listUserSessions(id: string): Promise<IApiResponse<ISessionDTO[]>>
+  .revokeUserSessions(id: string): Promise<IApiResponse<undefined>>
+  .userLoginHistory(id: string, query?: IAdminLoginHistoryQuery | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
+  .suspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .unsuspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown, requestId?: string | undefined): FonderieApiError
   .reason: string
@@ -166,4 +215,10 @@ function useAdminRoutes(client: AdminClient): { report: Ref<{ generatedAt: strin
 function useAdminTokens(client: AdminClient): { report: Ref<{ generatedAt: string; admin: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; legacy: { module: string; set: boolean; }[]; } | null, IAdminTokensReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">): { entries: Ref<{ id: string; at: string; actor: string; method: string; path: string; route: string; ... 4 more ...; clientIp: string | null; }[], IAdminLogEntry[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
+
+function useAdminUser(client: AuthAdminClient, by: { email?: Ref<string, string>; id?: Ref<string, string>; }): { user: Ref<{ deletedAt: string | null; id: string; email: string; ... 16 more ...; updatedAt: string; } | null, IAdminUserDTO | ... 1 more ... | null>; ... 5 more ...; revokeSessions: () => Promise<...>; }
+
+function useAdminUserSessions(client: AuthAdminClient, userId: Ref<string | null, string | null>): { sessions: Ref<{ id: string; current: boolean; ipAddress: string | null; userAgent: string | null; createdAt: string; expiresAt: string; }[], ISessionDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+
+function useAdminLoginHistory(client: AuthAdminClient, userId: Ref<string | null, string | null>, query?: { limit?: number; }): { events: Ref<{ id: string; method: string; outcome: string; failureReason: string | null; ipAddress: string | null; userAgent: string | null; createdAt: string; }[], ILoginEventDTO[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 ```

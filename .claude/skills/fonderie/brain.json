@@ -653,6 +653,7 @@
         "BillingClient",
         "ConfigAdminClient",
         "AdminClient",
+        "AuthAdminClient",
         "CourierAdminClient",
         "CustomersClient",
         "MediaClient",
@@ -1241,6 +1242,7 @@
       "requires": [],
       "exports": [
         "AdminClient",
+        "AuthAdminClient",
         "FonderieApiError",
         "useAttention",
         "useManifest",
@@ -1248,7 +1250,10 @@
         "useAdminConfig",
         "useAdminRoutes",
         "useAdminTokens",
-        "useAdminLog"
+        "useAdminLog",
+        "useAdminUser",
+        "useAdminUserSessions",
+        "useAdminLoginHistory"
       ],
       "subpaths": [],
       "tables": [],
@@ -1270,7 +1275,8 @@
         "DoctorScreen",
         "ModulesScreen",
         "RoutesScreen",
-        "TokensScreen"
+        "TokensScreen",
+        "UsersScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -1924,6 +1930,7 @@
       "requires": [],
       "exports": [
         "AdminClient",
+        "AuthAdminClient",
         "FonderieApiError",
         "useAttention",
         "useManifest",
@@ -1931,7 +1938,10 @@
         "useAdminConfig",
         "useAdminRoutes",
         "useAdminTokens",
-        "useAdminLog"
+        "useAdminLog",
+        "useAdminUser",
+        "useAdminUserSessions",
+        "useAdminLoginHistory"
       ],
       "subpaths": [],
       "tables": [],
@@ -1953,7 +1963,8 @@
         "DoctorScreen",
         "ModulesScreen",
         "RoutesScreen",
-        "TokensScreen"
+        "TokensScreen",
+        "UsersScreen"
       ],
       "subpaths": [],
       "tables": [],
@@ -4265,6 +4276,11 @@
       "react-admin",
       "vue-admin"
     ],
+    "authadminclient": [
+      "client",
+      "react-admin",
+      "vue-admin"
+    ],
     "courieradminclient": [
       "client",
       "react-courier-admin",
@@ -4470,6 +4486,18 @@
       "react-admin",
       "vue-admin"
     ],
+    "useadminuser": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "useadminusersessions": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "useadminloginhistory": [
+      "react-admin",
+      "vue-admin"
+    ],
     "adminlogscreen": [
       "react-admin-screens",
       "vue-admin-screens"
@@ -4499,6 +4527,10 @@
       "vue-admin-screens"
     ],
     "tokensscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "usersscreen": [
       "react-admin-screens",
       "vue-admin-screens"
     ],

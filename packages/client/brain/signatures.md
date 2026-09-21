@@ -284,6 +284,27 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery): Promise<IApiResponse<IAdminLogPage>>
 
+interface IAuthAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminLoginHistoryQuery {
+    limit?: number;
+    cursor?: string;
+}
+
+new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
+  .findUser(email: string): Promise<IApiResponse<IAdminUserDTO>>
+  .getUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .listUserSessions(id: string): Promise<IApiResponse<ISessionDTO[]>>
+  .revokeUserSessions(id: string): Promise<IApiResponse<undefined>>
+  .userLoginHistory(id: string, query?: IAdminLoginHistoryQuery): Promise<IApiResponse<ILoginHistoryPageResult>>
+  .suspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .unsuspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
@@ -736,6 +757,10 @@ interface IAdminTokensReport {
         module: string;
         set: boolean;
     }>;
+}
+
+interface IAdminUserDTO extends IUserDTO {
+    deletedAt: string | null;
 }
 
 interface IConfigEntry {

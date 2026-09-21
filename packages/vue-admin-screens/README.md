@@ -10,12 +10,13 @@ Status: **experimental** (0.x).
 |---|---|---|
 | Today | Attention | what needs me today — empty is green |
 | System | Modules · Configuration · Doctor · Routes | what did I deploy · is it configured · is it working · what is exposed |
+| People | Users | why can't this person log in — lookup, sessions, sign-ins, suspend, sign out everywhere (`authClient`) |
 | Settings | Config & secrets | the `@fonderie/config` admin screens, as a sub-page |
 | Messaging | Templates | the `@fonderie/courier` admin screens, as a sub-page |
 | Activity | Admin log · Access | who did what · who can be here |
 
 ```ts
-import { AdminClient, ConfigAdminClient, CourierAdminClient } from '@fonderie/client';
+import { AdminClient, AuthAdminClient, ConfigAdminClient, CourierAdminClient } from '@fonderie/client';
 import { AdminShell } from '@fonderie/vue-admin-screens';
 
 const base = { baseUrl: 'https://api.example.com', adminToken, actor: 'louis' };
@@ -23,10 +24,11 @@ const client = new AdminClient(base);
 // prefix: the composed surface under /_admin — one token for everything.
 const configClient = new ConfigAdminClient({ ...base, prefix: '/_admin' });
 const courierClient = new CourierAdminClient({ ...base, prefix: '/_admin' });
+const authClient = new AuthAdminClient(base); // @fonderie/auth ≥ 7.8
 ```
 
 ```ts
-h(AdminShell, { client, configClient, courierClient })
+h(AdminShell, { client, configClient, courierClient, authClient })
 ```
 
 Pass `page` and listen to `navigate` to own the URL (one route per page);
