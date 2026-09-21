@@ -25,28 +25,40 @@ export class AdminModule implements IFonderieModule {
 
 		app.reserve(this.path);
 		const guard = requireAdminToken(token);
-		const g =
-			(h: Middleware): Middleware =>
-			(ctx, next) =>
-				guard(ctx, () => h(ctx, next));
 		// Declared at the default path so the route table reads literally; re-based when configured.
 		const at = (p: string): string => this.path + p.slice(DEFAULT_ADMIN_PATH.length);
 
-		const routes: Array<[string, string, Middleware]> = [
+		const own: Array<[string, string, Middleware]> = [
 			[
 				'GET',
 				'/_admin/manifest',
-				g(async () =>
+				async () =>
 					setApiResponse(
 						HTTP.OK,
 						'ADMIN_MANIFEST',
 						'Deployment manifest',
 						buildManifest(app, { version: this.version }),
 					),
-				),
 			],
 		];
-		for (const [method, path, handler] of routes) app.addRoute(method, at(path), handler);
+		const mounted = new Map<string, string>();
+		const mount = (module: string, method: string, path: string, handlers: Middleware[]): void => {
+			const key = `${method.toUpperCase()} ${path}`;
+			const prior = mounted.get(key);
+			if (prior) {
+				throw new Error(
+					`[fonderie] ${module} cannot describe ${key}: ${prior} already describes it`,
+				);
+			}
+			mounted.set(key, module);
+			app.addRoute(method, path, guard, ...handlers);
+		};
+
+		for (const [method, path, handler] of own) mount(this.name, method, at(path), [handler]);
+		for (const { module, description } of app.adminDescriptions()) {
+			for (const r of description.routes ?? [])
+				mount(module, r.method, this.path + r.path, r.handlers);
+		}
 	}
 
 	checkReadiness(): IReadinessProblem[] {

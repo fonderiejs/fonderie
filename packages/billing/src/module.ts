@@ -1,9 +1,9 @@
-import type { IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
+import type { IAdminDescription, IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from './config';
-import { buildBillingRoutes } from './routes';
+import { buildBillingRoutes, describeBillingAdminRoutes } from './routes';
 import { syncPlansToDB } from './services/plans';
 import { syncCreditPacksToDB } from './services/credit-packs';
 import { collectBillingReadinessProblems } from './services/notify';
@@ -45,6 +45,10 @@ export class BillingModule implements IFonderieModule {
 		for (const [method, path, ...handlers] of routes) {
 			app.addRoute(method, path, ...handlers);
 		}
+	}
+
+	describeAdmin(): IAdminDescription {
+		return { routes: describeBillingAdminRoutes(this.store, this.config, this.bus) };
 	}
 
 	// Fail-closed at boot in production: taking money without a path to inform

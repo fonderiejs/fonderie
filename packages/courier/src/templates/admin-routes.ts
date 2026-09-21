@@ -1,4 +1,4 @@
-import type { IFonderieContext, Middleware } from '@fonderie/core';
+import type { IAdminRoute, IFonderieContext, Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import { requireAdminToken } from '@fonderie/core/middlewares';
 import { VersionConflictError } from '@fonderie/store';
@@ -38,25 +38,36 @@ function conflictOr(err: unknown): Response {
 	throw err;
 }
 
-// Build the template admin route table (registered by CourierModule.install when
-// an adminToken is configured).
-export function buildTemplateAdminRoutes(
-	store: IStoreAdapter,
-	adminToken: string,
-): Array<[string, string, Middleware]> {
-	const g = (h: Middleware): Middleware => guarded(adminToken, h);
+type RouteRow = [string, string, Middleware];
 
+// The legacy standalone surface (bare /admin/*, guarded by this module's own
+// token). Registered by CourierModule.install when an adminToken is configured.
+export function buildTemplateAdminRoutes(store: IStoreAdapter, adminToken: string): RouteRow[] {
+	return templateAdminRouteTable(store).map(([m, p, h]) => [m, p, guarded(adminToken, h)]);
+}
+
+// The same handlers, unguarded and prefix-relative, for @fonderie/admin to mount
+// under its own prefix behind its own token.
+export function describeTemplateAdminRoutes(store: IStoreAdapter): IAdminRoute[] {
+	return templateAdminRouteTable(store).map(([method, path, h]) => ({
+		method,
+		path: path.replace(/^\/admin/, ''),
+		handlers: [h],
+	}));
+}
+
+function templateAdminRouteTable(store: IStoreAdapter): RouteRow[] {
 	return [
-		['GET', '/admin/templates', g(async () => {
+		['GET', '/admin/templates', async () => {
 			return setApiResponse(HTTP.OK, 'TEMPLATES_LISTED', 'Templates', await listTemplateEntries(store));
-		})],
-		['GET', '/admin/templates/:type', g(async (ctx) => {
+		}],
+		['GET', '/admin/templates/:type', async (ctx) => {
 			const row = await getTemplateEntry(typeOf(ctx), localeOf(ctx), store);
 			return row
 				? setApiResponse(HTTP.OK, 'TEMPLATE', 'Template', row)
 				: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such template');
-		})],
-		['PUT', '/admin/templates/:type', g(async (ctx) => {
+		}],
+		['PUT', '/admin/templates/:type', async (ctx) => {
 			const b = body(ctx);
 			if (typeof b['text'] !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required');
@@ -76,15 +87,15 @@ export function buildTemplateAdminRoutes(
 			} catch (err) {
 				return conflictOr(err);
 			}
-		})],
-		['DELETE', '/admin/templates/:type', g(async (ctx) => {
+		}],
+		['DELETE', '/admin/templates/:type', async (ctx) => {
 			const ok = await deleteTemplate(typeOf(ctx), localeOf(ctx), store);
 			return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such template');
-		})],
-		['GET', '/admin/templates/:type/revisions', g(async (ctx) => {
+		}],
+		['GET', '/admin/templates/:type/revisions', async (ctx) => {
 			return setApiResponse(HTTP.OK, 'REVISIONS', 'Template revisions', await listTemplateRevisions(typeOf(ctx), localeOf(ctx), store));
-		})],
-		['POST', '/admin/templates/:type/rollback', g(async (ctx) => {
+		}],
+		['POST', '/admin/templates/:type/rollback', async (ctx) => {
 			const b = body(ctx);
 			const toVersion = Number(b['toVersion']);
 			if (!Number.isInteger(toVersion)) {
@@ -95,6 +106,6 @@ export function buildTemplateAdminRoutes(
 				store,
 			);
 			return setApiResponse(HTTP.OK, 'ROLLED_BACK', `Rolled back to v${toVersion}`, row);
-		})],
+		}],
 	];
 }

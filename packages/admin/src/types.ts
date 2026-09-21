@@ -12,6 +12,8 @@ export interface IAdminModuleEntry {
 	// null when the module does not report one.
 	version: string | null;
 	readiness: IReadinessReport;
+	// Whether the module implements describeAdmin() — silence is visible, not "nothing".
+	describesAdmin: boolean;
 }
 
 export interface IAdminManifest {

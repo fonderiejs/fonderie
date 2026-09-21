@@ -1,5 +1,8 @@
 // ── Public API ───────────────────────────────────────────────────
 export type {
+	IAdminDescription,
+	IAdminDescriptionEntry,
+	IAdminRoute,
 	ITenant,
 	IRouter,
 	Operation,

@@ -838,3 +838,17 @@ test('bodyParser: 413 for a declared-oversize multipart body it does not parse',
 	assert.equal(res.status, 413);
 	assert.equal(((await res.json()) as any).reason, 'PAYLOAD_TOO_LARGE');
 });
+
+// ── adminDescriptions: only modules that describe, sorted by name ────────
+test('adminDescriptions: collects describeAdmin() from describing modules, sorted, before boot', () => {
+	const app = new FonderieApp(config);
+	const route = { method: 'GET', path: '/x', handlers: [] };
+	app.register({ name: 'z-describes', install() {}, describeAdmin: () => ({ routes: [route] }) });
+	app.register({ name: 'a-silent', install() {} });
+	app.register({ name: 'm-describes', install() {}, describeAdmin: () => ({}) });
+	assert.deepEqual(app.adminDescriptions(), [
+		{ module: 'm-describes', description: {} },
+		{ module: 'z-describes', description: { routes: [route] } },
+	]);
+	assert.deepEqual(app.securityReport().modules.map((m) => m.name), ['a-silent', 'm-describes', 'z-describes']);
+});

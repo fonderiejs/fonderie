@@ -41,9 +41,27 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" https://api.example.com/_admin/mani
 }
 ```
 
-`version` is `null` until a brick reports one (`IFonderieModule.version`).
-Readiness problems are shown here in production — unlike `/readyz`, which is
-public — because the operator is the audience.
+`version` is `null` until a brick reports one (`IFonderieModule.version`);
+`describesAdmin` says whether the brick offers routes below. Readiness
+problems are shown here in production — unlike `/readyz`, which is public —
+because the operator is the audience.
+
+## Composed routes
+
+Bricks that implement `describeAdmin()` have their admin routes mounted here,
+behind this module's token, whatever their own `adminToken` is set to. Two
+bricks describing the same route fail boot, naming both.
+
+| Under `/_admin` | From | Legacy standalone path (deprecated) |
+|---|---|---|
+| `GET\|PUT\|DELETE /config[/:key]`, `…/revisions`, `…/rollback` | `@fonderie/config` | `/admin/config…` |
+| `GET\|PUT\|DELETE /secrets[/:key]`, `…/revisions`, `…/rollback`, `POST …/reveal` | `@fonderie/config` | `/admin/secrets…` |
+| `GET\|PUT\|DELETE /templates[/:type]`, `…/revisions`, `…/rollback` | `@fonderie/courier` | `/admin/templates…` |
+| `POST /plans`, `PUT\|DELETE /plans/:planId` | `@fonderie/billing` | `/plans…` |
+| `POST /wallet/grant` (with `config.wallet`) | `@fonderie/billing` | `/billing/wallet/grant` |
+
+The legacy paths keep working with each brick's own token and are removed in
+a later major; `docs/ADMIN-BRICK-DESIGN.md` §9.
 
 ## Why it's a brick
 
