@@ -141,6 +141,38 @@ frontend and would rather not serve the bundle.
 - The script path is derived from the request, so the page works under a
   `basePath`, under a moved `path`, and with or without a trailing slash.
 
+## Binding the surface to a hostname
+
+```ts
+new AdminModule({ adminToken, ui: true, host: 'admin.example.com' })
+```
+
+The surface then answers only for requests addressed to that hostname; every
+other host gets the same `404` an unmounted surface gives — not a `403`,
+which would confirm both that it exists and that you found the wrong door.
+Takes a list (`['admin.example.com', 'localhost:3000']`), matches
+case-insensitively, and ignores the port unless you configured one.
+
+**What this is for.** A platform that gives every deployment a permanent URL
+of its own — `project-abc123.vercel.app` — serves your admin surface there
+too, walking straight around anything you put in front of your custom
+domain. Binding closes that, while the rest of the app keeps answering on
+both. Point a second domain at the same deployment and you can put SSO, a
+VPN or an IP allowlist in front of *that hostname only*, without running a
+second service.
+
+**⚠️ What this is not.** `Host` is set by the client, so binding is a hook
+for a boundary, not a boundary. Someone who can reach your origin directly
+can send the right `Host` and pass the check — only the edge can stop that
+(a WAF rule on the admin path, or an origin locked to the proxy). Treat it
+the way `@fonderie/core` treats `trustProxy`: useful, and dangerous to
+mistake for authentication. The controls that actually hold are the token,
+its scopes, and the log.
+
+A refused request is still logged — the caller learns nothing from a 404,
+and you learn that someone went looking. `GET /_admin/manifest` reports the
+binding as `admin.host`, so the Configuration page can show it.
+
 ## Scoped tokens
 
 The `adminToken` you configure is the **root**: every scope, and the only

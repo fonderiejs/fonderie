@@ -84,6 +84,7 @@ interface IAdminManifest {
     admin: {
         version: string;
         log: boolean;
+        host: string[] | null;
     };
     modules: IAdminModuleEntry[];
     readiness: IAdminReadiness;
@@ -371,7 +372,7 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
 
 function useAttention(client: AdminClient): { attention: Ref<{ generatedAt: string; ok: boolean; items: { source: string; severity: "error" | "advice"; message: string; }[]; } | null, IAdminAttention | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useManifest(client: AdminClient): { manifest: Ref<{ generatedAt: string; env: string; admin: { version: string; log: boolean; }; modules: { name: string; version: string | null; readiness: { ...; }; describesAdmin: boolean; }[]; readiness: { ...; }; routes: { ...; }[]; } | null, IAdminManifest | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useManifest(client: AdminClient): { manifest: Ref<{ generatedAt: string; env: string; admin: { version: string; log: boolean; host: string[] | null; }; modules: { name: string; version: string | null; readiness: { ...; }; describesAdmin: boolean; }[]; readiness: { ...; }; routes: { ...; }[]; } | null, IAdminManifest | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useDoctor(client: AdminClient): { report: Ref<{ generatedAt: string; ok: boolean; checks: { name: string; module: string; ok: boolean; findings: string[]; skipped?: string; durationMs: number; }[]; } | null, IAdminDoctorReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
