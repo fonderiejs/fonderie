@@ -86,9 +86,7 @@ export function checkProxyConfig(
 ): void {
 	if (warned || trustProxy > 0) return;
 	const forwarded =
-		headers.get('x-forwarded-for') ??
-		headers.get('cf-connecting-ip') ??
-		headers.get('x-real-ip');
+		headers.get('x-forwarded-for') ?? headers.get('cf-connecting-ip') ?? headers.get('x-real-ip');
 	if (forwarded && socketAddress && isPrivateOrLoopback(socketAddress)) {
 		warned = true;
 		console.warn(

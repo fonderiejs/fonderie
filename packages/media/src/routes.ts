@@ -1,5 +1,5 @@
 import type { Middleware } from '@fonderie/core';
-import { HTTP, setApiResponse } from '@fonderie/core';
+import { HTTP, setApiResponse, normalizeRequestPath } from '@fonderie/core';
 import { requireAuth } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -36,27 +36,43 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 				};
 
 				if (typeof body.dataBase64 !== 'string' || body.dataBase64.length === 0) {
-					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'dataBase64 (a base64 string) is required.');
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_PARAMETER',
+						'dataBase64 (a base64 string) is required.',
+					);
 				}
 				// Reject oversized uploads BEFORE decoding — base64 inflates ~4/3, so a
 				// string longer than maxBytes*1.4 cannot fit the cap. Bounds the decode
 				// allocation instead of materializing a huge buffer only to reject it.
 				// (A request-body-size limit at the adapter is the complementary guard.)
 				if (body.dataBase64.length > Math.ceil(maxBytes * 1.4)) {
-					return setApiResponse(HTTP.UNPROCESSABLE, 'ASSET_TOO_LARGE', `Image exceeds the ${maxBytes}-byte limit.`);
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'ASSET_TOO_LARGE',
+						`Image exceeds the ${maxBytes}-byte limit.`,
+					);
 				}
 
 				let bytes: Uint8Array;
 				try {
 					bytes = decodeBase64(body.dataBase64);
 				} catch {
-					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'dataBase64 is not valid base64.');
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_PARAMETER',
+						'dataBase64 is not valid base64.',
+					);
 				}
 				if (bytes.byteLength === 0) {
 					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'The image is empty.');
 				}
 				if (bytes.byteLength > maxBytes) {
-					return setApiResponse(HTTP.UNPROCESSABLE, 'ASSET_TOO_LARGE', `Image exceeds the ${maxBytes}-byte limit.`);
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'ASSET_TOO_LARGE',
+						`Image exceeds the ${maxBytes}-byte limit.`,
+					);
 				}
 
 				const contentType = sniffImageType(bytes);
@@ -79,7 +95,11 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 					? await config.authorizeOwner(ctx, { ownerType, ownerId })
 					: ownerType === 'user' && ownerId === userId;
 				if (!authorized) {
-					return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Not allowed to upload for that owner.');
+					return setApiResponse(
+						HTTP.FORBIDDEN,
+						'FORBIDDEN',
+						'Not allowed to upload for that owner.',
+					);
 				}
 
 				const { ref } = await config.provider.put({ bytes, contentType });
@@ -102,7 +122,11 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 
 				// Build the URL at whatever prefix this route is mounted under
 				// (e.g. '/v1/media/:id'), derived from the request path.
-				const basePath = new URL(ctx.request.url).pathname.replace(/\/media$/, '');
+				// Normalize first: '/v1/media/' must still yield the '/v1' basePath.
+				const basePath = normalizeRequestPath(new URL(ctx.request.url).pathname).replace(
+					/\/media$/,
+					'',
+				);
 				return setApiResponse(HTTP.OK, 'ASSET_CREATED', 'Asset uploaded.', {
 					asset: toMediaAssetDTO(asset, basePath),
 				});
@@ -159,7 +183,11 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 				const asset = await assets.get(id);
 				if (!asset) return setApiResponse(HTTP.NOT_FOUND, 'ASSET_NOT_FOUND', 'No such asset.');
 				if (asset.createdBy !== ctx.user!.id) {
-					return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'You can only delete assets you uploaded.');
+					return setApiResponse(
+						HTTP.FORBIDDEN,
+						'FORBIDDEN',
+						'You can only delete assets you uploaded.',
+					);
 				}
 				await config.provider.delete(asset.storageRef);
 				await assets.delete(id);

@@ -14,7 +14,7 @@ import type {
 	ISecurityReport,
 } from './types';
 import type { FonderieConfig } from './config';
-import { Router, routerMiddleware } from './router';
+import { Router, normalizeMountPath, routerMiddleware } from './router';
 import { compose } from './compose';
 import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
 import { bodyParser, DEFAULT_MAX_BODY_BYTES } from './middlewares/body-parser';
@@ -30,7 +30,11 @@ class PayloadTooLargeError extends Error {
 	readonly fonderiePayloadTooLarge = true as const;
 }
 
-function payloadTooLarge(res: { statusCode: number; setHeader(k: string, v: string): void; end(body?: string): void }): void {
+function payloadTooLarge(res: {
+	statusCode: number;
+	setHeader(k: string, v: string): void;
+	end(body?: string): void;
+}): void {
 	res.statusCode = 413;
 	res.setHeader('content-type', 'application/json');
 	res.end(JSON.stringify({ reason: 'PAYLOAD_TOO_LARGE', explanation: 'Request body too large' }));
@@ -50,11 +54,16 @@ export class FonderieApp implements IFonderieApp {
 
 	constructor(config: FonderieConfig) {
 		this.config = config;
-		this.prefix = (config.basePath ?? '').replace(/\/$/, '');
+		// Was a single-slash strip, so a basePath typed '/v1//' left every route
+		// with a double slash. One definition now, shared with reserve().
+		this.prefix = normalizeMountPath(config.basePath ?? '');
 		// Body parsing first (capped at config.maxBodyBytes — the cap lives in
 		// the parser so every adapter inherits it), then baseline security
 		// headers (nosniff always; HSTS over HTTPS). Apps can layer more via `.use()`.
-		this.middlewares = [bodyParser(config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES), withSecurityHeaders()];
+		this.middlewares = [
+			bodyParser(config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES),
+			withSecurityHeaders(),
+		];
 		if (config.metrics) this.middlewares.push(withMetrics(this.metrics));
 		// Probes register after every install(); reserved up front so a module cannot shadow them.
 		if (config.healthChecks !== false) {
@@ -89,83 +98,83 @@ export class FonderieApp implements IFonderieApp {
 			// request-target producing an invalid URL — would otherwise be an
 			// unhandled rejection and crash the PROCESS on a single request.
 			try {
-			const host = req.headers.host ?? 'localhost';
-			const url = `http://${host}${req.url ?? '/'}`;
-			const headers = new Headers();
+				const host = req.headers.host ?? 'localhost';
+				const url = `http://${host}${req.url ?? '/'}`;
+				const headers = new Headers();
 
-			for (const [key, value] of Object.entries(req.headers)) {
-				if (!value) {
-					continue;
+				for (const [key, value] of Object.entries(req.headers)) {
+					if (!value) {
+						continue;
+					}
+
+					if (Array.isArray(value)) {
+						for (const v of value) headers.append(key, v);
+					} else {
+						headers.set(key, value);
+					}
 				}
 
-				if (Array.isArray(value)) {
-					for (const v of value) headers.append(key, v);
-				} else {
-					headers.set(key, value);
-				}
-			}
+				const method = req.method ?? 'GET';
+				const hasBody = !['GET', 'HEAD'].includes(method.toUpperCase());
 
-			const method = req.method ?? 'GET';
-			const hasBody = !['GET', 'HEAD'].includes(method.toUpperCase());
-
-			// Body cap — without it a single unauthenticated request could stream
-			// an arbitrarily large body fully into memory before any handler runs.
-			// Fast path: reject a declared-oversize body before reading a byte.
-			const declared = Number(req.headers['content-length']);
-			if (hasBody && Number.isFinite(declared) && declared > maxBodyBytes) {
-				// Answer FIRST, then drop the connection — destroying before the
-				// write means the client sees a reset instead of the 413.
-				payloadTooLarge(res);
-				res.once('close', () => req.destroy());
-				return;
-			}
-
-			// Read the body stream, capped as a backstop for chunked / missing /
-			// lying Content-Length: stop buffering the moment the cap is crossed.
-			let body: Buffer;
-			try {
-				body = await new Promise<Buffer>((resolve, reject) => {
-					const chunks: Buffer[] = [];
-					let total = 0;
-					req.on('data', (chunk: Buffer) => {
-						total += chunk.length;
-						if (total > maxBodyBytes) {
-							reject(new PayloadTooLargeError());
-							req.destroy();
-							return;
-						}
-						chunks.push(chunk);
-					});
-					req.on('end', () => resolve(Buffer.concat(chunks)));
-					req.on('error', reject);
-				});
-			} catch (err) {
-				if (err instanceof PayloadTooLargeError) {
+				// Body cap — without it a single unauthenticated request could stream
+				// an arbitrarily large body fully into memory before any handler runs.
+				// Fast path: reject a declared-oversize body before reading a byte.
+				const declared = Number(req.headers['content-length']);
+				if (hasBody && Number.isFinite(declared) && declared > maxBodyBytes) {
+					// Answer FIRST, then drop the connection — destroying before the
+					// write means the client sees a reset instead of the 413.
 					payloadTooLarge(res);
+					res.once('close', () => req.destroy());
 					return;
 				}
-				res.statusCode = 400;
-				res.end();
-				return;
-			}
 
-			const request = new Request(url, {
-				method,
-				headers,
-				body: hasBody && body.length > 0 ? new Uint8Array(body) : null,
-			});
+				// Read the body stream, capped as a backstop for chunked / missing /
+				// lying Content-Length: stop buffering the moment the cap is crossed.
+				let body: Buffer;
+				try {
+					body = await new Promise<Buffer>((resolve, reject) => {
+						const chunks: Buffer[] = [];
+						let total = 0;
+						req.on('data', (chunk: Buffer) => {
+							total += chunk.length;
+							if (total > maxBodyBytes) {
+								reject(new PayloadTooLargeError());
+								req.destroy();
+								return;
+							}
+							chunks.push(chunk);
+						});
+						req.on('end', () => resolve(Buffer.concat(chunks)));
+						req.on('error', reject);
+					});
+				} catch (err) {
+					if (err instanceof PayloadTooLargeError) {
+						payloadTooLarge(res);
+						return;
+					}
+					res.statusCode = 400;
+					res.end();
+					return;
+				}
 
-			const response = await this.handle(request);
+				const request = new Request(url, {
+					method,
+					headers,
+					body: hasBody && body.length > 0 ? new Uint8Array(body) : null,
+				});
 
-			res.statusCode = response.status;
-			// Set-Cookie must be forwarded as a LIST — forEach + setHeader would
-			// overwrite all but the last cookie. getSetCookie() returns each intact.
-			const setCookies = response.headers.getSetCookie?.() ?? [];
-			if (setCookies.length) res.setHeader('Set-Cookie', setCookies);
-			response.headers.forEach((v, k) => {
-				if (k.toLowerCase() !== 'set-cookie') res.setHeader(k, v);
-			});
-			res.end(Buffer.from(await response.arrayBuffer()));
+				const response = await this.handle(request);
+
+				res.statusCode = response.status;
+				// Set-Cookie must be forwarded as a LIST — forEach + setHeader would
+				// overwrite all but the last cookie. getSetCookie() returns each intact.
+				const setCookies = response.headers.getSetCookie?.() ?? [];
+				if (setCookies.length) res.setHeader('Set-Cookie', setCookies);
+				response.headers.forEach((v, k) => {
+					if (k.toLowerCase() !== 'set-cookie') res.setHeader(k, v);
+				});
+				res.end(Buffer.from(await response.arrayBuffer()));
 			} catch (err) {
 				// Malformed/hostile request (TRACE, absolute-form target, bad
 				// headers): answer 400 and keep the process alive.
@@ -260,7 +269,12 @@ export class FonderieApp implements IFonderieApp {
 	private registerHealthRoutes(): void {
 		if (this.config.healthChecks === false) return;
 
-		this.router.add('GET', '/healthz', compose([async () => Response.json({ status: 'ok' })]), CORE);
+		this.router.add(
+			'GET',
+			'/healthz',
+			compose([async () => Response.json({ status: 'ok' })]),
+			CORE,
+		);
 
 		if (this.config.metrics) {
 			this.router.add(
@@ -367,7 +381,9 @@ export class FonderieApp implements IFonderieApp {
 	// basePath applies, as in addRoute.
 	reserve(prefix: string): void {
 		if (!prefix.startsWith('/')) {
-			throw new Error(`[fonderie] reserve() takes an absolute path like '/_admin', got "${prefix}"`);
+			throw new Error(
+				`[fonderie] reserve() takes an absolute path like '/_admin', got "${prefix}"`,
+			);
 		}
 		this.router.reserve(this.prefix + prefix, this.installing);
 	}

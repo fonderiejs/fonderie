@@ -79,14 +79,15 @@ export async function maybeAutoRecharge(args: {
 	if (claim.pendingKeyStale) {
 		await clearPendingRechargeKey(key, store);
 		const { disabled } = await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
-		await background(bus
-			?.emit(EVENT_KEYS.autoRechargeFailed, {
+		await background(
+			bus?.emit(EVENT_KEYS.autoRechargeFailed, {
 				...subscriberEventFields(subscriberType, subscriberId),
 				currency: planWallet.currency,
 				packId: pack.id,
 				status: 'indeterminate_expired',
 				disabled,
-			}));
+			}),
+		);
 		void notifyBilling(bus, config, {
 			subscriberType,
 			subscriberId,
@@ -100,7 +101,8 @@ export async function maybeAutoRecharge(args: {
 	// the same PaymentIntent — no double charge); otherwise mint a fresh one and
 	// persist it BEFORE charging, so an indeterminate outcome is recoverable.
 	const idempotencyKey =
-		claim.pendingKey ?? `${provider}:autorecharge:${subscriberType}:${subscriberId}:${claim.claimedAt}`;
+		claim.pendingKey ??
+		`${provider}:autorecharge:${subscriberType}:${subscriberId}:${claim.claimedAt}`;
 	if (!claim.pendingKey) await setPendingRechargeKey(key, idempotencyKey, store);
 
 	const creditCurrency = planWallet.currency;
@@ -135,14 +137,15 @@ export async function maybeAutoRecharge(args: {
 			{ ...key, maxConsecutiveFailures: auto.maxConsecutiveFailures ?? DEFAULT_MAX_FAILURES },
 			store,
 		);
-		await background(bus
-			?.emit(EVENT_KEYS.autoRechargeFailed, {
+		await background(
+			bus?.emit(EVENT_KEYS.autoRechargeFailed, {
 				...subscriberEventFields(subscriberType, subscriberId),
 				currency: creditCurrency,
 				packId: pack.id,
 				status: charge.status,
 				disabled,
-			}));
+			}),
+		);
 		void notifyBilling(bus, config, {
 			subscriberType,
 			subscriberId,

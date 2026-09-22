@@ -63,6 +63,7 @@ interface IAdminOptions {
     path?: string;
     checks?: IAdminCheck[];
     checkTimeoutMs?: number;
+    ui?: boolean;
     store?: IStoreAdapter;
     env?: string[];
 }

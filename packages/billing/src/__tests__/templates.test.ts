@@ -25,9 +25,15 @@ test('formatWalletAmount: code-symbol currencies keep their label (regression: n
 	// heuristic wrongly stripped it, dropping the currency entirely. (Intl uses a
 	// non-breaking space between code and amount, so match on substrings.)
 	const chf = formatWalletAmount(500n, 'CHF', 2);
-	assert.ok(chf.includes('CHF') && chf.includes('5.00'), `CHF label kept, got ${JSON.stringify(chf)}`);
+	assert.ok(
+		chf.includes('CHF') && chf.includes('5.00'),
+		`CHF label kept, got ${JSON.stringify(chf)}`,
+	);
 	const sek = formatWalletAmount(500n, 'SEK', 2);
-	assert.ok(sek.includes('SEK') && sek.includes('5.00'), `SEK label kept, got ${JSON.stringify(sek)}`);
+	assert.ok(
+		sek.includes('SEK') && sek.includes('5.00'),
+		`SEK label kept, got ${JSON.stringify(sek)}`,
+	);
 });
 
 test('formatWalletAmount: malformed (non-ISO) code → bare number, never throws', () => {
@@ -71,7 +77,9 @@ const render = (s: string, data: Record<string, unknown>): string =>
 
 for (const key of Object.values(MESSAGE_KEYS)) {
 	test(`billing default template: ${key} — exists, vars ⊆ payload, renders clean`, () => {
-		const tmpl = (DEFAULT_TEMPLATES as Record<string, { subject?: string; text: string; html?: string }>)[key];
+		const tmpl = (
+			DEFAULT_TEMPLATES as Record<string, { subject?: string; text: string; html?: string }>
+		)[key];
 		assert.ok(tmpl, `no default template shipped for '${key}'`);
 		assert.ok(tmpl.text && tmpl.text.length > 0, `default '${key}' has empty text`);
 
@@ -100,7 +108,11 @@ test('billing: DEFAULT_TEMPLATES is assignable to courier DefaultTemplateMap (ap
 
 test('billing: DEFAULT_TEMPLATES and SAMPLE_PAYLOADS cover exactly the live message keys', () => {
 	const keys = new Set<string>(Object.values(MESSAGE_KEYS));
-	assert.deepEqual(new Set(Object.keys(DEFAULT_TEMPLATES)), keys, 'DEFAULT_TEMPLATES key set drift');
+	assert.deepEqual(
+		new Set(Object.keys(DEFAULT_TEMPLATES)),
+		keys,
+		'DEFAULT_TEMPLATES key set drift',
+	);
 	assert.deepEqual(new Set(Object.keys(SAMPLE_PAYLOADS)), keys, 'SAMPLE_PAYLOADS key set drift');
 });
 
@@ -129,9 +141,9 @@ test('buildReceiptData supplies every variable the receipt template uses', () =>
 	// Asserting against the SHARED builder closes it: every emitter now goes
 	// through here, so if the template gains a field this fails until the builder
 	// supplies it.
-	const tmpl = (DEFAULT_TEMPLATES as Record<string, { subject?: string; text: string; html?: string }>)[
-		MESSAGE_KEYS.paymentReceipt
-	]!;
+	const tmpl = (
+		DEFAULT_TEMPLATES as Record<string, { subject?: string; text: string; html?: string }>
+	)[MESSAGE_KEYS.paymentReceipt]!;
 	// Minimum a caller can supply — auto-recharge knows no invoice at all.
 	const minimal = buildReceiptData({
 		packId: 'pack_500',
@@ -149,8 +161,14 @@ test('buildReceiptData supplies every variable the receipt template uses', () =>
 	}
 	// And the money must be formatted, not raw minor units.
 	const paid = buildReceiptData({
-		packId: 'p', credits: 1n, creditCurrency: 'USD', precision: 0,
-		balanceAfter: 1n, amountPaid: 3800n, paymentCurrency: 'usd', source: 'test',
+		packId: 'p',
+		credits: 1n,
+		creditCurrency: 'USD',
+		precision: 0,
+		balanceAfter: 1n,
+		amountPaid: 3800n,
+		paymentCurrency: 'usd',
+		source: 'test',
 	});
 	assert.equal(paid['amountPaidDisplay'], '$38.00', 'money is 2dp regardless of wallet precision');
 });

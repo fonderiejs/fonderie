@@ -299,7 +299,13 @@ export async function debitWallet(
 						WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3
 							AND amount - $4::bigint >= $5::bigint
 						RETURNING amount, granted_amount AS "grantedAmount"`,
-						[opts.subscriberType, opts.subscriberId, opts.currency, opts.amount.toString(), floor.toString()],
+						[
+							opts.subscriberType,
+							opts.subscriberId,
+							opts.currency,
+							opts.amount.toString(),
+							floor.toString(),
+						],
 					)
 				: await tx.query<{ amount: string; grantedAmount: string }>(
 						`UPDATE fonderie_wallet_balances
@@ -392,7 +398,8 @@ export async function reverseWallet(
 					[opts.providerTxId],
 				);
 				const remaining = opts.capToProviderTxId + BigInt(row?.total ?? '0'); // total is <= 0
-				if (remaining <= 0n) return { balance: await readBalance(opts, tx), duplicate: false, reversed: 0n };
+				if (remaining <= 0n)
+					return { balance: await readBalance(opts, tx), duplicate: false, reversed: 0n };
 				if (applied > remaining) applied = remaining;
 			}
 
@@ -514,7 +521,16 @@ export async function getWalletBalance(
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
 		[sub.subscriberType, sub.subscriberId, sub.currency],
 	);
-	if (!row) return { balance: 0n, version: 0, updatedAt: null, granted: 0n, purchased: 0n, spendPurchased: true, grantedExpiresAt: null };
+	if (!row)
+		return {
+			balance: 0n,
+			version: 0,
+			updatedAt: null,
+			granted: 0n,
+			purchased: 0n,
+			spendPurchased: true,
+			grantedExpiresAt: null,
+		};
 	const balance = BigInt(row.amount);
 	const storedGranted = BigInt(row.grantedAmount ?? '0');
 	const expiresAt = row.grantedExpiresAt ? new Date(row.grantedExpiresAt) : null;
@@ -532,7 +548,7 @@ export async function getWalletBalance(
 		granted,
 		purchased: balance - granted,
 		spendPurchased: row.spendPurchased ?? true,
-		grantedExpiresAt: expired ? null : (expiresAt ? expiresAt.toISOString() : null),
+		grantedExpiresAt: expired ? null : expiresAt ? expiresAt.toISOString() : null,
 	};
 }
 
@@ -812,7 +828,15 @@ async function applySettleInTx(
 		SET amount = $4, granted_amount = $5, granted_period = $6, granted_expires_at = $7,
 			version = version + 1, updated_at = now()
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
-		[sub.subscriberType, sub.subscriberId, sub.currency, amount.toString(), kept.toString(), period, expiresAt.toISOString()],
+		[
+			sub.subscriberType,
+			sub.subscriberId,
+			sub.currency,
+			amount.toString(),
+			kept.toString(),
+			period,
+			expiresAt.toISOString(),
+		],
 	);
 	return { amount, granted: kept, settled: expired > 0n };
 }

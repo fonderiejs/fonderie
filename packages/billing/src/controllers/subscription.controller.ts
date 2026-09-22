@@ -16,7 +16,11 @@ export function subscriptionController(store: IStoreAdapter, config: IBillingCon
 		const subscriber = resolveSubscriber(ctx);
 		if (!subscriber) {
 			return {
-				error: setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required'),
+				error: setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				),
 			};
 		}
 		const current = await subscriptions.get(subscriber.type, subscriber.id);
@@ -71,13 +75,18 @@ export function subscriptionController(store: IStoreAdapter, config: IBillingCon
 			// Already terminal — no-op, don't re-hit the provider (which would
 			// reject updating a canceled subscription) or re-announce.
 			if (current.status === 'canceled') {
-				return setApiResponse(HTTP.OK, 'SUBSCRIPTION_CANCELED', 'Subscription is already canceled.', {
-					atPeriodEnd: current.cancelAtPeriodEnd ?? false,
-					status: current.status,
-					currentPeriodEnd: current.currentPeriodEnd
-						? new Date(current.currentPeriodEnd).toISOString()
-						: null,
-				});
+				return setApiResponse(
+					HTTP.OK,
+					'SUBSCRIPTION_CANCELED',
+					'Subscription is already canceled.',
+					{
+						atPeriodEnd: current.cancelAtPeriodEnd ?? false,
+						status: current.status,
+						currentPeriodEnd: current.currentPeriodEnd
+							? new Date(current.currentPeriodEnd).toISOString()
+							: null,
+					},
+				);
 			}
 
 			const body = ctx.meta['body'] as { atPeriodEnd?: boolean } | undefined;
@@ -120,13 +129,18 @@ export function subscriptionController(store: IStoreAdapter, config: IBillingCon
 				// A webhook terminated the subscription mid-request — report the
 				// truthful terminal state rather than a phantom scheduled-cancel.
 				if (!applied) {
-					return setApiResponse(HTTP.OK, 'SUBSCRIPTION_CANCELED', 'Subscription is already canceled.', {
-						atPeriodEnd: false,
-						status: 'canceled',
-						currentPeriodEnd: current.currentPeriodEnd
-							? new Date(current.currentPeriodEnd).toISOString()
-							: null,
-					});
+					return setApiResponse(
+						HTTP.OK,
+						'SUBSCRIPTION_CANCELED',
+						'Subscription is already canceled.',
+						{
+							atPeriodEnd: false,
+							status: 'canceled',
+							currentPeriodEnd: current.currentPeriodEnd
+								? new Date(current.currentPeriodEnd).toISOString()
+								: null,
+						},
+					);
 				}
 			}
 

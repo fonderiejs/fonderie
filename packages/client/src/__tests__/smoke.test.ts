@@ -84,11 +84,19 @@ test('refreshes once on 401 and retries with the new token', async () => {
 
 	handler = (url) => {
 		if (url.endsWith('/auth/refresh')) {
-			return { status: 200, body: { reason: 'OK', explanation: '', result: { tokens: { access: 'new', refresh: 'r2' } } } };
+			return {
+				status: 200,
+				body: {
+					reason: 'OK',
+					explanation: '',
+					result: { tokens: { access: 'new', refresh: 'r2' } },
+				},
+			};
 		}
 		// first /jobs call (token=old) → 401; retry (token=new) → 200
 		const jobCall = calls.filter((x) => x.path.endsWith('/jobs')).length;
-		if (jobCall === 1) return { status: 401, body: { reason: 'UNAUTHENTICATED', explanation: 'expired' } };
+		if (jobCall === 1)
+			return { status: 401, body: { reason: 'UNAUTHENTICATED', explanation: 'expired' } };
 		return { status: 200, body: { reason: 'OK', explanation: '', result: { jobs: [] } } };
 	};
 
@@ -147,7 +155,6 @@ test('auth.appleNative posts the identityToken to /auth/apple/native and returns
 	assert.equal(result.user.id, 'u1');
 });
 
-
 // ── workspace scoping ────────────────────────────────────────────────────────
 test('setWorkspaceId propagates to every workspace-scoped module, audit and webhooks included', async () => {
 	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
@@ -180,7 +187,11 @@ test('constructor workspaceId scopes the modules without an explicit setWorkspac
 test('billing.getWallet + setWalletPreferences hit the wallet routes with workspace scope', async () => {
 	handler = () => ({
 		status: 200,
-		body: { reason: 'OK', explanation: '', result: { wallet: { balance: '0', currency: 'USD', precision: 2, spendPurchased: false } } },
+		body: {
+			reason: 'OK',
+			explanation: '',
+			result: { wallet: { balance: '0', currency: 'USD', precision: 2, spendPurchased: false } },
+		},
 	});
 	const c = new FonderieClient({ baseUrl: 'http://x', workspaceId: 'ws-1' });
 	c.setAccessToken('t');
@@ -190,7 +201,9 @@ test('billing.getWallet + setWalletPreferences hit the wallet routes with worksp
 	await c.billing.setWalletPreferences({ spendPurchased: false });
 
 	const get = calls.find((x) => x.path.endsWith('/billing/wallet') && x.method === 'GET');
-	const set = calls.find((x) => x.path.endsWith('/billing/wallet/preferences') && x.method === 'POST');
+	const set = calls.find(
+		(x) => x.path.endsWith('/billing/wallet/preferences') && x.method === 'POST',
+	);
 	assert.ok(get, 'GET /billing/wallet was called');
 	assert.ok(set, 'POST /billing/wallet/preferences was called');
 	assert.equal(set!.workspace, 'ws-1');
@@ -221,13 +234,20 @@ test('billing: cancel/reactivate, wallet checkout/transactions, payment-method, 
 	assert.ok(hit('POST', '/billing/wallet/purchase'), 'wallet in-app purchase');
 	const tx = hit('GET', '/billing/wallet/transactions');
 	assert.ok(tx, 'wallet transactions');
-	assert.ok(tx!.path.includes('cursor=abc') && tx!.path.includes('limit=25'), 'transactions carry cursor + limit');
+	assert.ok(
+		tx!.path.includes('cursor=abc') && tx!.path.includes('limit=25'),
+		'transactions carry cursor + limit',
+	);
 	assert.ok(hit('GET', '/billing/payment-method'), 'payment method');
 	assert.ok(hit('GET', '/billing/invoices'), 'invoices');
 	assert.ok(hit('POST', '/billing/payment-method/setup'), 'setup payment method');
 	const saved = hit('PUT', '/billing/payment-method');
 	assert.ok(saved, 'save payment method (PUT)');
-	assert.equal((saved!.body as { paymentMethodId?: string })?.paymentMethodId, 'pm_1', 'save carries the pm id');
+	assert.equal(
+		(saved!.body as { paymentMethodId?: string })?.paymentMethodId,
+		'pm_1',
+		'save carries the pm id',
+	);
 	assert.ok(hit('DELETE', '/billing/payment-method'), 'remove payment method (DELETE)');
 	// All authed + workspace-scoped like the rest of the billing surface.
 	for (const call of calls) {
@@ -295,7 +315,11 @@ test('sends X-Request-ID on every call and surfaces it on FonderieApiError', asy
 	const call = calls.at(-1);
 	const sent = call?.requestId;
 	assert.match(sent ?? '', /^[0-9a-f]{32}$/, 'X-Request-ID is a 32-hex trace id');
-	assert.equal(call?.traceparent, `00-${sent}-${call?.traceparent?.split('-')[2]}-01`, 'traceparent well-formed');
+	assert.equal(
+		call?.traceparent,
+		`00-${sent}-${call?.traceparent?.split('-')[2]}-01`,
+		'traceparent well-formed',
+	);
 	assert.match(call?.traceparent ?? '', /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/, 'traceparent shape');
 	assert.equal(call?.traceparent?.split('-')[1], sent, 'traceparent trace id == X-Request-ID');
 
@@ -332,7 +356,10 @@ test('AdminClient: every page under the prefix with the admin token; log query f
 	calls.length = 0;
 	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: { ok: true } } });
 
-	const admin = new AdminClient({ baseUrl: 'http://x', adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb' });
+	const admin = new AdminClient({
+		baseUrl: 'http://x',
+		adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb',
+	});
 	await admin.attention();
 	await admin.manifest();
 	await admin.doctor();
@@ -352,10 +379,18 @@ test('AdminClient: every page under the prefix with the admin token; log query f
 			'/_admin/activity/admin-log?limit=5&before=c1',
 		],
 	);
-	assert.ok(calls.every((c) => c.method === 'GET' && c.auth === 'Bearer aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb'));
+	assert.ok(
+		calls.every(
+			(c) => c.method === 'GET' && c.auth === 'Bearer aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb',
+		),
+	);
 
 	calls.length = 0;
-	const moved = new AdminClient({ baseUrl: 'http://x', adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb', prefix: '/ops/' });
+	const moved = new AdminClient({
+		baseUrl: 'http://x',
+		adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb',
+		prefix: '/ops/',
+	});
 	await moved.doctor();
 	assert.equal(calls[0]?.path, 'http://x/ops/doctor');
 });
@@ -367,12 +402,29 @@ test('ConfigAdminClient / CourierAdminClient: prefix rebases the legacy /admin s
 	const tok = 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb';
 
 	await new ConfigAdminClient({ baseUrl: 'http://x', adminToken: tok }).listConfig('prod');
-	await new ConfigAdminClient({ baseUrl: 'http://x', adminToken: tok, prefix: '/_admin/' }).listConfig('prod');
-	await new ConfigAdminClient({ baseUrl: 'http://x', adminToken: tok, prefix: '/_admin' }).revealSecret('k');
-	await new CourierAdminClient({ baseUrl: 'http://x', adminToken: tok, prefix: '/_admin' }).listTemplates();
+	await new ConfigAdminClient({
+		baseUrl: 'http://x',
+		adminToken: tok,
+		prefix: '/_admin/',
+	}).listConfig('prod');
+	await new ConfigAdminClient({
+		baseUrl: 'http://x',
+		adminToken: tok,
+		prefix: '/_admin',
+	}).revealSecret('k');
+	await new CourierAdminClient({
+		baseUrl: 'http://x',
+		adminToken: tok,
+		prefix: '/_admin',
+	}).listTemplates();
 	assert.deepEqual(
 		calls.map((c) => c.path.replace('http://x', '')),
-		['/admin/config?environment=prod', '/_admin/config?environment=prod', '/_admin/secrets/k/reveal', '/_admin/templates'],
+		[
+			'/admin/config?environment=prod',
+			'/_admin/config?environment=prod',
+			'/_admin/secrets/k/reveal',
+			'/_admin/templates',
+		],
 	);
 });
 
@@ -420,7 +472,12 @@ test('BillingAdminClient: catalog, plan writes, subscription, wallet, ledger, gr
 	await b.subscription('workspace', 'w1');
 	await b.wallet('user', 'u1', 'eur');
 	await b.walletLedger('user', 'u1', { currency: 'EUR', limit: 5, cursor: 'c' });
-	await b.grant({ subscriberType: 'user', subscriberId: 'u1', amount: '500', idempotencyKey: 'k1' });
+	await b.grant({
+		subscriberType: 'user',
+		subscriberId: 'u1',
+		amount: '500',
+		idempotencyKey: 'k1',
+	});
 	assert.deepEqual(
 		calls.map((c) => `${c.method} ${c.path.replace('http://x', '')}`),
 		[
@@ -435,28 +492,55 @@ test('BillingAdminClient: catalog, plan writes, subscription, wallet, ledger, gr
 		],
 	);
 	assert.deepEqual(calls[1]?.body, { name: 'pro', monthlyAmount: 1900 });
-	assert.deepEqual(calls[7]?.body, { subscriberType: 'user', subscriberId: 'u1', amount: '500', idempotencyKey: 'k1' });
+	assert.deepEqual(calls[7]?.body, {
+		subscriberType: 'user',
+		subscriberId: 'u1',
+		amount: '500',
+		idempotencyKey: 'k1',
+	});
 	assert.ok(calls.every((c) => c.auth === `Bearer ${tok}`));
 });
 
 test('AuditAdminClient: filters and dates forwarded under the prefix', async () => {
 	const { AuditAdminClient } = await import('../index');
 	calls.length = 0;
-	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: { events: [], nextCursor: null } } });
-	const a = new AuditAdminClient({ baseUrl: 'http://x', adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb' });
+	handler = () => ({
+		status: 200,
+		body: { reason: 'OK', explanation: '', result: { events: [], nextCursor: null } },
+	});
+	const a = new AuditAdminClient({
+		baseUrl: 'http://x',
+		adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb',
+	});
 	await a.listAudit();
-	await a.listAudit({ workspaceId: 'w1', type: 'user.login', actorId: 'u1', from: new Date('2026-01-01T00:00:00Z'), limit: 5, cursor: 'c' });
+	await a.listAudit({
+		workspaceId: 'w1',
+		type: 'user.login',
+		actorId: 'u1',
+		from: new Date('2026-01-01T00:00:00Z'),
+		limit: 5,
+		cursor: 'c',
+	});
 	assert.deepEqual(
 		calls.map((c) => c.path.replace('http://x', '')),
-		['/_admin/audit', '/_admin/audit?workspaceId=w1&type=user.login&actorId=u1&from=2026-01-01T00%3A00%3A00.000Z&limit=5&cursor=c'],
+		[
+			'/_admin/audit',
+			'/_admin/audit?workspaceId=w1&type=user.login&actorId=u1&from=2026-01-01T00%3A00%3A00.000Z&limit=5&cursor=c',
+		],
 	);
 });
 
 test('AdminClient: issueToken / revokeToken under the prefix', async () => {
 	const { AdminClient } = await import('../index');
 	calls.length = 0;
-	handler = () => ({ status: 201, body: { reason: 'OK', explanation: '', result: { token: 'fad_x' } } });
-	const a = new AdminClient({ baseUrl: 'http://x', adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb' });
+	handler = () => ({
+		status: 201,
+		body: { reason: 'OK', explanation: '', result: { token: 'fad_x' } },
+	});
+	const a = new AdminClient({
+		baseUrl: 'http://x',
+		adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb',
+	});
 	await a.issueToken({ name: 'dashboard', scopes: ['read'], expiresInDays: 30 });
 	await a.revokeToken('t/1');
 	assert.deepEqual(

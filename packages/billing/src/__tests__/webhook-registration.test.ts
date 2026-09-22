@@ -37,7 +37,10 @@ test('a fully-configured account reports ok', async () => {
 		URLS,
 	);
 	assert.equal(r.ok, true);
-	assert.deepEqual(r.endpoints.flatMap((e) => e.missing), []);
+	assert.deepEqual(
+		r.endpoints.flatMap((e) => e.missing),
+		[],
+	);
 });
 
 test('an event we handle but nobody registered is reported as missing', async () => {
@@ -128,7 +131,11 @@ test('a provider that cannot be asked reports unsupported, not failure', async (
 test('a provider that throws is reported, never rethrown', async () => {
 	// A health check must not take down the route that reports on it.
 	const r = await checkWebhookRegistration(
-		{ listWebhookRegistrations: async () => { throw new Error('stripe unreachable'); } },
+		{
+			listWebhookRegistrations: async () => {
+				throw new Error('stripe unreachable');
+			},
+		},
 		URLS,
 	);
 	assert.equal(r.ok, false);
@@ -198,7 +205,6 @@ test('the two endpoints do not claim the same event', async () => {
 	assert.deepEqual(overlap, [], 'an event owned by both endpoints would be processed twice');
 });
 
-
 // ---------------------------------------------------------------------------
 // A THIRD failure, distinct from both at the top of this file: the events are
 // registered AND they arrive — shaped differently than the code expects.
@@ -241,7 +247,10 @@ test('an endpoint on the pinned version reports no mismatch', async () => {
 		URLS,
 	);
 	assert.equal(r.expectedApiVersion, PINNED);
-	assert.deepEqual(r.endpoints.map((e) => e.apiVersionMismatch), [false, false]);
+	assert.deepEqual(
+		r.endpoints.map((e) => e.apiVersionMismatch),
+		[false, false],
+	);
 	assert.deepEqual(describeWebhookProblems(r), []);
 });
 
@@ -314,7 +323,12 @@ test('describeWebhookProblems reports the delivery failures too, one line each',
 
 test('an unreachable provider is described, never rethrown', async () => {
 	const r = await checkWebhookRegistration(
-		{ apiVersion: PINNED, listWebhookRegistrations: async () => { throw new Error('stripe down'); } },
+		{
+			apiVersion: PINNED,
+			listWebhookRegistrations: async () => {
+				throw new Error('stripe down');
+			},
+		},
 		URLS,
 	);
 	assert.equal(r.ok, false);

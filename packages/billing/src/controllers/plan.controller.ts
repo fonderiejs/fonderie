@@ -86,16 +86,16 @@ export function planController(store: IStoreAdapter, config: IBillingConfig, cac
 
 			const plan = await plans.create({
 				name,
-				description:      body?.['description']      != null ? String(body['description'])      : null,
-				tier:             body?.['tier']              != null ? numberOrZero(body['tier'])        : 0,
-				seats:            body?.['seats']             != null ? numberOrZero(body['seats'])       : null,
-				trialDays:        body?.['trialDays']         != null ? numberOrZero(body['trialDays'])   : 0,
-				monthlyAmount:    body?.['monthlyAmount']     != null ? numberOrZero(body['monthlyAmount']) : null,
-				monthlyPriceId:   body?.['monthlyPriceId']   != null ? String(body['monthlyPriceId'])   : null,
-				yearlyAmount:     body?.['yearlyAmount']      != null ? numberOrZero(body['yearlyAmount'])  : null,
-				yearlyPriceId:    body?.['yearlyPriceId']    != null ? String(body['yearlyPriceId'])    : null,
-				features:         body?.['features'],
-				metadata:         body?.['metadata'],
+				description: body?.['description'] != null ? String(body['description']) : null,
+				tier: body?.['tier'] != null ? numberOrZero(body['tier']) : 0,
+				seats: body?.['seats'] != null ? numberOrZero(body['seats']) : null,
+				trialDays: body?.['trialDays'] != null ? numberOrZero(body['trialDays']) : 0,
+				monthlyAmount: body?.['monthlyAmount'] != null ? numberOrZero(body['monthlyAmount']) : null,
+				monthlyPriceId: body?.['monthlyPriceId'] != null ? String(body['monthlyPriceId']) : null,
+				yearlyAmount: body?.['yearlyAmount'] != null ? numberOrZero(body['yearlyAmount']) : null,
+				yearlyPriceId: body?.['yearlyPriceId'] != null ? String(body['yearlyPriceId']) : null,
+				features: body?.['features'],
+				metadata: body?.['metadata'],
 			});
 
 			return setApiResponse(HTTP.CREATED, 'PLAN_CREATED', 'Plan created successfully.', {
@@ -116,9 +116,19 @@ export function planController(store: IStoreAdapter, config: IBillingConfig, cac
 			}
 
 			const patch: Record<string, unknown> = {};
-			const allowed = ['name', 'description', 'tier', 'seats', 'trialDays',
-				'monthlyAmount', 'monthlyPriceId', 'yearlyAmount', 'yearlyPriceId',
-				'features', 'metadata'];
+			const allowed = [
+				'name',
+				'description',
+				'tier',
+				'seats',
+				'trialDays',
+				'monthlyAmount',
+				'monthlyPriceId',
+				'yearlyAmount',
+				'yearlyPriceId',
+				'features',
+				'metadata',
+			];
 
 			for (const key of allowed) {
 				if (key in body) patch[key] = body[key];

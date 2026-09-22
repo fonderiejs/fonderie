@@ -4,7 +4,11 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IBillingConfig } from '../config';
 import { SubscriptionModel } from '../models/subscription.model';
-import { getWalletCustomer, setWalletCustomerCard, upsertWalletCustomer } from '../services/wallet-customers';
+import {
+	getWalletCustomer,
+	setWalletCustomerCard,
+	upsertWalletCustomer,
+} from '../services/wallet-customers';
 import { toPaymentMethodDTO, toInvoiceDTO } from '../dtos/billing';
 import { resolveSubscriber } from '../utils';
 import type { SubscriberType } from '../types';
@@ -27,7 +31,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		// users have one without ever subscribing.
 		if (config.wallet) {
 			const wc = await getWalletCustomer(
-				{ subscriberType: subscriber.type, subscriberId: subscriber.id, provider: config.provider.name },
+				{
+					subscriberType: subscriber.type,
+					subscriberId: subscriber.id,
+					provider: config.provider.name,
+				},
 				store,
 			);
 			if (wc?.providerCustomerId) {
@@ -53,7 +61,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		const ids = new Set<string>();
 		if (config.wallet) {
 			const wc = await getWalletCustomer(
-				{ subscriberType: subscriber.type, subscriberId: subscriber.id, provider: config.provider.name },
+				{
+					subscriberType: subscriber.type,
+					subscriberId: subscriber.id,
+					provider: config.provider.name,
+				},
 				store,
 			);
 			if (wc?.providerCustomerId) ids.add(wc.providerCustomerId);
@@ -73,7 +85,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		if (!subscriber) return null;
 		const existing = await resolveCustomer(ctx);
 		if (existing) {
-			return { subscriberType: subscriber.type, subscriberId: subscriber.id, customerId: existing.customerId };
+			return {
+				subscriberType: subscriber.type,
+				subscriberId: subscriber.id,
+				customerId: existing.customerId,
+			};
 		}
 		const { customerId } = await config.provider.createCustomer({
 			email: ctx.user?.email ?? '',
@@ -100,7 +116,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		// GET /billing/payment-method → { paymentMethod: IPaymentMethodDTO | null }
 		async getPaymentMethod(ctx: IFonderieContext): Promise<Response> {
 			if (!resolveSubscriber(ctx)) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
 			}
 			if (!config.provider.getPaymentMethod) {
 				return setApiResponse(
@@ -130,7 +150,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		// GET /billing/invoices → { invoices: IInvoiceDTO[] }
 		async listInvoices(ctx: IFonderieContext): Promise<Response> {
 			if (!resolveSubscriber(ctx)) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
 			}
 			if (!config.provider.listInvoices) {
 				return setApiResponse(
@@ -160,7 +184,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		// SetupIntent client secret for the embedded card element (no redirect).
 		async setupPaymentMethod(ctx: IFonderieContext): Promise<Response> {
 			if (!resolveSubscriber(ctx)) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
 			}
 			if (!config.provider.createSetupIntent) {
 				return setApiResponse(
@@ -171,9 +199,15 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 			}
 			const ensured = await ensureCustomer(ctx);
 			if (!ensured) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
 			}
-			const { clientSecret } = await config.provider.createSetupIntent({ customerId: ensured.customerId });
+			const { clientSecret } = await config.provider.createSetupIntent({
+				customerId: ensured.customerId,
+			});
 			return setApiResponse(HTTP.OK, 'PAYMENT_METHOD_SETUP', 'Card setup ready.', { clientSecret });
 		},
 
@@ -183,7 +217,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		async savePaymentMethod(ctx: IFonderieContext): Promise<Response> {
 			const subscriber = resolveSubscriber(ctx);
 			if (!subscriber) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
 			}
 			if (!config.provider.setDefaultPaymentMethod) {
 				return setApiResponse(
@@ -195,7 +233,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 			const { paymentMethodId } = ctx.meta['body'] as { paymentMethodId: string };
 			const customer = await resolveCustomer(ctx);
 			if (!customer) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'NO_CUSTOMER', 'Start card setup before saving a card.');
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'NO_CUSTOMER',
+					'Start card setup before saving a card.',
+				);
 			}
 			try {
 				// Verifies the card is attached to THIS customer (rejects otherwise).
@@ -204,7 +246,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 					paymentMethodId,
 				});
 			} catch {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PAYMENT_METHOD', 'That card could not be saved.');
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PAYMENT_METHOD',
+					'That card could not be saved.',
+				);
 			}
 			if (config.wallet) {
 				const key = {
@@ -214,11 +260,17 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 				};
 				// Ensure the row exists (customer may have resolved via a subscription),
 				// then record the consented card without touching auto-recharge flags.
-				await upsertWalletCustomer({ ...key, providerCustomerId: customer.customerId, rearm: false }, store);
+				await upsertWalletCustomer(
+					{ ...key, providerCustomerId: customer.customerId, rearm: false },
+					store,
+				);
 				await setWalletCustomerCard(key, paymentMethodId, store);
 			}
 			const card = config.provider.getPaymentMethod
-				? await config.provider.getPaymentMethod({ customerId: customer.customerId, paymentMethodId })
+				? await config.provider.getPaymentMethod({
+						customerId: customer.customerId,
+						paymentMethodId,
+					})
 				: null;
 			return setApiResponse(HTTP.OK, 'PAYMENT_METHOD_SAVED', 'Payment method saved.', {
 				paymentMethod: card ? toPaymentMethodDTO(card) : null,
@@ -229,7 +281,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		async removePaymentMethod(ctx: IFonderieContext): Promise<Response> {
 			const subscriber = resolveSubscriber(ctx);
 			if (!subscriber) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
 			}
 			if (!config.provider.detachPaymentMethod) {
 				return setApiResponse(
@@ -251,7 +307,11 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 			}
 			if (config.wallet) {
 				await setWalletCustomerCard(
-					{ subscriberType: subscriber.type, subscriberId: subscriber.id, provider: config.provider.name },
+					{
+						subscriberType: subscriber.type,
+						subscriberId: subscriber.id,
+						provider: config.provider.name,
+					},
 					null,
 					store,
 				);

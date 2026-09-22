@@ -125,7 +125,10 @@ export async function debitWalletForMetric(
 // requireWalletBalance's snapshot and the actual deduction — catch
 // InsufficientFundsError around debitWallet/debitWalletForMetric and reply
 // with this (same shape as requireWalletBalance's own rejection).
-export function insufficientCreditsResponse(err: InsufficientFundsError, metric?: string): Response {
+export function insufficientCreditsResponse(
+	err: InsufficientFundsError,
+	metric?: string,
+): Response {
 	return setApiResponse(HTTP.PAYMENT_REQUIRED, 'INSUFFICIENT_CREDITS', 'Insufficient credits', {
 		...(metric ? { metric } : {}),
 		cost: err.required.toString(),

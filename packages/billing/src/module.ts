@@ -1,4 +1,9 @@
-import type { IAdminDescription, IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
+import type {
+	IAdminDescription,
+	IFonderieModule,
+	IFonderieApp,
+	IReadinessProblem,
+} from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
