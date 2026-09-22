@@ -135,9 +135,9 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin/wallet/:type/:id/ledger', 'BillingAdminClient.walletLedger() — prefix is configurable, invisible to the static match'],
 	// @fonderie/audit's cross-workspace read, reached through AuditAdminClient (+ hooks). Same prefix caveat.
 	['GET /_admin/audit', 'AuditAdminClient.listAudit() — prefix is configurable, invisible to the static match'],
-	// @fonderie/admin's root-only token routes (phase 8e). Client + Access page UI ship in 8e-ui.
-	['POST /_admin/access/tokens', 'admin-token-guarded operator surface — client ships in 8e-ui, server-first by scoped decision'],
-	['DELETE /_admin/access/tokens/:id', 'admin-token-guarded operator surface — client ships in 8e-ui, server-first by scoped decision'],
+	// Root-only token writes, reached through AdminClient (+ hooks). Same prefix caveat.
+	['POST /_admin/access/tokens', 'AdminClient.issueToken() — prefix is configurable, invisible to the static match'],
+	['DELETE /_admin/access/tokens/:id', 'AdminClient.revokeToken() — prefix is configurable, invisible to the static match'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');

@@ -37,6 +37,10 @@ export type {
 	IAdminAuditQuery,
 	IAuditEventDTO,
 	IAuditPageResult,
+	AdminScope,
+	IAdminTokenRecord,
+	IAdminIssueTokenInput,
+	IAdminIssuedToken,
 } from '@fonderie/client';
 export {
 	AdminClient,

@@ -14,7 +14,7 @@ Status: **experimental** (0.x).
 | Money | Catalog · Subscriber | what am I selling (configured vs stored) · what is this subscriber on, their wallet, ledger, a manual grant (`billingClient`) |
 | Settings | Config & secrets | the `@fonderie/config` admin screens, as a sub-page |
 | Messaging | Templates | the `@fonderie/courier` admin screens, as a sub-page |
-| Activity | Audit · Admin log · Access | what happened, every workspace (`auditClient`) · who did what through here · who can be here |
+| Activity | Audit · Admin log · Access | what happened, every workspace (`auditClient`) · who did what through here · who can be here, and issue or revoke scoped tokens |
 
 ```ts
 import { AdminClient, AuditAdminClient, AuthAdminClient, BillingAdminClient, ConfigAdminClient, CourierAdminClient } from '@fonderie/client';
@@ -37,6 +37,13 @@ h(AdminShell, { client, configClient, courierClient, authClient, billingClient, 
 Pass `page` and listen to `navigate` to own the URL (one route per page);
 omit `page` and the shell keeps it itself. Settings and Messaging appear only
 when their client is given.
+
+**Give the shell a `read` token, not the root one.** With `@fonderie/admin`
+≥ 0.6 the configured `adminToken` is the root — every scope, including the
+plaintext secret reveal, and the only credential that can mint or revoke.
+Issue a scoped one for the dashboard (`fonderie admin token issue dashboard
+--scopes read`, or the Access page itself) and hand the shell that. The
+Access page then shows issuing as unavailable, which is the point.
 
 Nothing here stores the token: the app constructs the clients and decides
 where the token lives. Every request through the shell lands in the admin

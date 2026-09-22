@@ -3,6 +3,8 @@ import type {
 	IAdminAttention,
 	IAdminConfigReport,
 	IAdminDoctorReport,
+	IAdminIssuedToken,
+	IAdminIssueTokenInput,
 	IAdminLogPage,
 	IAdminManifest,
 	IAdminRoutesReport,
@@ -39,11 +41,16 @@ export class AdminClient {
 	}
 
 	private get<T>(suffix: string) {
+		return this.call<T>('GET', suffix);
+	}
+
+	private call<T>(method: string, suffix: string, body?: unknown) {
 		return this.http.request<IApiResponse<T>>({
-			method: 'GET',
+			method,
 			path: `${this.prefix}${suffix}`,
 			token: this.adminToken,
 			headers: this.actorHeaders,
+			...(body !== undefined ? { body } : {}),
 		});
 	}
 
@@ -77,5 +84,15 @@ export class AdminClient {
 		if (query.before) q.set('before', query.before);
 		const qs = q.toString();
 		return this.get<IAdminLogPage>(`/activity/admin-log${qs ? `?${qs}` : ''}`);
+	}
+
+	// Root token only. The plaintext comes back once.
+	issueToken(input: IAdminIssueTokenInput) {
+		return this.call<IAdminIssuedToken>('POST', '/access/tokens', input);
+	}
+
+	// Root token only.
+	revokeToken(id: string) {
+		return this.call<undefined>('DELETE', `/access/tokens/${encodeURIComponent(id)}`);
 	}
 }

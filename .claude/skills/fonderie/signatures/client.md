@@ -283,6 +283,8 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .routes(): Promise<IApiResponse<IAdminRoutesReport>>
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery): Promise<IApiResponse<IAdminLogPage>>
+  .issueToken(input: IAdminIssueTokenInput): Promise<IApiResponse<IAdminIssuedToken>>
+  .revokeToken(id: string): Promise<IApiResponse<undefined>>
 
 interface IAuthAdminClientOptions {
     baseUrl: string;
@@ -800,6 +802,30 @@ interface IAdminTokensReport {
         module: string;
         set: boolean;
     }>;
+    issued: IAdminTokenRecord[] | null;
+}
+
+type AdminScope = 'read' | 'write' | 'secrets';
+
+interface IAdminTokenRecord {
+    id: string;
+    name: string;
+    scopes: AdminScope[];
+    createdBy: string;
+    createdAt: string;
+    expiresAt: string | null;
+    revokedAt: string | null;
+    lastUsedAt: string | null;
+}
+
+interface IAdminIssueTokenInput {
+    name: string;
+    scopes: AdminScope[];
+    expiresInDays?: number;
+}
+
+interface IAdminIssuedToken extends IAdminTokenRecord {
+    token: string;
 }
 
 interface IAdminUserDTO extends IUserDTO {

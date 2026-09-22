@@ -452,6 +452,20 @@ test('AuditAdminClient: filters and dates forwarded under the prefix', async () 
 	);
 });
 
+test('AdminClient: issueToken / revokeToken under the prefix', async () => {
+	const { AdminClient } = await import('../index');
+	calls.length = 0;
+	handler = () => ({ status: 201, body: { reason: 'OK', explanation: '', result: { token: 'fad_x' } } });
+	const a = new AdminClient({ baseUrl: 'http://x', adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb' });
+	await a.issueToken({ name: 'dashboard', scopes: ['read'], expiresInDays: 30 });
+	await a.revokeToken('t/1');
+	assert.deepEqual(
+		calls.map((c) => `${c.method} ${c.path.replace('http://x', '')}`),
+		['POST /_admin/access/tokens', 'DELETE /_admin/access/tokens/t%2F1'],
+	);
+	assert.deepEqual(calls[0]?.body, { name: 'dashboard', scopes: ['read'], expiresInDays: 30 });
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });

@@ -131,6 +131,7 @@ interface IAdminTokensReport {
         module: string;
         set: boolean;
     }>;
+    issued: IAdminTokenRecord[] | null;
 }
 
 interface IAdminUserDTO extends IUserDTO {
@@ -304,6 +305,29 @@ interface IAuditPageResult {
     nextCursor: string | null;
 }
 
+type AdminScope = 'read' | 'write' | 'secrets';
+
+interface IAdminTokenRecord {
+    id: string;
+    name: string;
+    scopes: AdminScope[];
+    createdBy: string;
+    createdAt: string;
+    expiresAt: string | null;
+    revokedAt: string | null;
+    lastUsedAt: string | null;
+}
+
+interface IAdminIssueTokenInput {
+    name: string;
+    scopes: AdminScope[];
+    expiresInDays?: number;
+}
+
+interface IAdminIssuedToken extends IAdminTokenRecord {
+    token: string;
+}
+
 new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
@@ -312,6 +336,8 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .routes(): Promise<IApiResponse<IAdminRoutesReport>>
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery | undefined): Promise<IApiResponse<IAdminLogPage>>
+  .issueToken(input: IAdminIssueTokenInput): Promise<IApiResponse<IAdminIssuedToken>>
+  .revokeToken(id: string): Promise<IApiResponse<undefined>>
 
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .findUser(email: string): Promise<IApiResponse<IAdminUserDTO>>
@@ -353,7 +379,7 @@ function useAdminConfig(client: AdminClient): { report: Ref<{ generatedAt: strin
 
 function useAdminRoutes(client: AdminClient): { report: Ref<{ generatedAt: string; routes: { method: string; path: string; module?: string; guard: AdminRouteGuard; }[]; } | null, IAdminRoutesReport | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useAdminTokens(client: AdminClient): { report: Ref<{ generatedAt: string; admin: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; legacy: { module: string; set: boolean; }[]; } | null, IAdminTokensReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useAdminTokens(client: AdminClient): { report: Ref<{ generatedAt: string; admin: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; legacy: { module: string; set: boolean; }[]; issued: { ...; }[] | null; } | null, IAdminTokensReport | ... 1 more ... | null>; ... 4 more ...; revoke: (id: string) => Promise<...>; }
 
 function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">): { entries: Ref<{ id: string; at: string; actor: string; method: string; path: string; route: string; ... 4 more ...; clientIp: string | null; }[], IAdminLogEntry[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 

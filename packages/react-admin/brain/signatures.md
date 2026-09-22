@@ -131,6 +131,7 @@ interface IAdminTokensReport {
         module: string;
         set: boolean;
     }>;
+    issued: IAdminTokenRecord[] | null;
 }
 
 interface IAdminUserDTO extends IUserDTO {
@@ -304,6 +305,29 @@ interface IAuditPageResult {
     nextCursor: string | null;
 }
 
+type AdminScope = 'read' | 'write' | 'secrets';
+
+interface IAdminTokenRecord {
+    id: string;
+    name: string;
+    scopes: AdminScope[];
+    createdBy: string;
+    createdAt: string;
+    expiresAt: string | null;
+    revokedAt: string | null;
+    lastUsedAt: string | null;
+}
+
+interface IAdminIssueTokenInput {
+    name: string;
+    scopes: AdminScope[];
+    expiresInDays?: number;
+}
+
+interface IAdminIssuedToken extends IAdminTokenRecord {
+    token: string;
+}
+
 new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
@@ -312,6 +336,8 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .routes(): Promise<IApiResponse<IAdminRoutesReport>>
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery | undefined): Promise<IApiResponse<IAdminLogPage>>
+  .issueToken(input: IAdminIssueTokenInput): Promise<IApiResponse<IAdminIssuedToken>>
+  .revokeToken(id: string): Promise<IApiResponse<undefined>>
 
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .findUser(email: string): Promise<IApiResponse<IAdminUserDTO>>
@@ -383,6 +409,8 @@ interface IUseAdminTokensReturn {
     isLoading: boolean;
     error: FonderieApiError | null;
     refresh: () => Promise<void>;
+    issue: (input: IAdminIssueTokenInput) => Promise<IAdminIssuedToken>;
+    revoke: (id: string) => Promise<void>;
 }
 
 interface IUseAdminLogReturn {
