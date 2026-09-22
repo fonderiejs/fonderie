@@ -1,5 +1,24 @@
 # @fonderie/react-admin-screens
 
+## 0.4.0
+
+### Minor Changes
+
+- 0ea4938: Audit: the hook and the page
+  
+  `useAdminAudit` over `AuditAdminClient` (paged, `loadMore`), and
+  `AuditScreen` under Activity in the shell, shown when `auditClient` is
+  given: every workspace unless one is named, filterable by type and actor.
+  The chain's integrity verdict lives on the Doctor page (`events.integrity`).
+  Phase 8d-ui of `docs/ADMIN-BRICK-DESIGN.md`.
+
+### Patch Changes
+
+- Updated dependencies [0ea4938]
+- Updated dependencies [0ea4938]
+  - @fonderie/client@0.28.0
+  - @fonderie/react-admin@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
