@@ -134,6 +134,7 @@ interface IBillingPlanPrice {
     lookupKey?: string;
     priceId?: string;
     amount?: bigint;
+    currency?: string;
 }
 
 interface IBillingPlanWallet {

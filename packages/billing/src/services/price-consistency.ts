@@ -83,9 +83,11 @@ export async function checkPriceConsistency(
 					ref: `plan:${plan.name}:${interval}`,
 					priceId: price.priceId,
 					amount: price.amount,
-					// Plan prices carry no currency of their own; the provider's is
-					// authoritative, so only the amount is compared.
-					currency: '',
+					// Declared only when the plan states one. Unset ⇒ the provider's
+					// currency stands unchallenged and only the amount is compared,
+					// which is why a USD catalog against CAD provider prices reads as
+					// a pass on plans while the same mistake is caught on packs.
+					currency: price.currency ?? '',
 				});
 			}
 		}

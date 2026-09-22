@@ -103,8 +103,10 @@ test('entries WITHOUT a priceId are skipped — the catalog is then the only sou
 	assert.equal(r.ok, true);
 });
 
-test("a plan's display amount is compared, but its currency is not", async () => {
-	// Plan prices carry no currency of their own, so only the amount can disagree.
+test("a plan that declares NO currency has only its amount compared", async () => {
+	// Nothing declared ⇒ nothing to disagree with. Deliberate, but it is also
+	// the blind spot: the pricing page can quote a currency nobody is charged
+	// in and this still passes. The test below is the way out.
 	const cfg = {
 		plans: [{ name: 'pro', monthly: { priceId: 'price_x', amount: 4900n } }],
 		wallet: {},
@@ -113,8 +115,33 @@ test("a plan's display amount is compared, but its currency is not", async () =>
 		providerWith(price({ unitAmount: 4900n, currency: 'cad' })),
 		cfg as never,
 	);
-	assert.equal(r.ok, true, 'currency alone must not flag a plan');
+	assert.equal(r.ok, true, 'an undeclared currency must not flag a plan');
 	assert.equal(r.entries[0]!.ref, 'plan:pro:monthly');
+});
+
+test('a plan that DECLARES a currency has it compared, like a pack', async () => {
+	// Same figures, different currency — on a pack this is caught and on a plan
+	// it was not, so the identical mistake was visible on one and silent on the
+	// other. Declaring the currency buys a plan the same guarantee.
+	const cfg = {
+		plans: [{ name: 'pro', monthly: { priceId: 'price_x', amount: 4900n, currency: 'usd' } }],
+		wallet: {},
+	};
+	const r = await checkPriceConsistency(
+		providerWith(price({ unitAmount: 4900n, currency: 'cad' })),
+		cfg as never,
+	);
+	assert.equal(r.ok, false, 'a declared currency that disagrees is a problem');
+	assert.equal(r.entries[0]!.problem, 'currency');
+	assert.equal(r.entries[0]!.declared.currency, 'usd');
+	assert.equal(r.entries[0]!.actual?.currency, 'cad');
+
+	// Agreement still passes — the new comparison must not flag a correct catalog.
+	const same = await checkPriceConsistency(
+		providerWith(price({ unitAmount: 4900n, currency: 'usd' })),
+		cfg as never,
+	);
+	assert.equal(same.ok, true);
 });
 
 test('a provider without price lookup reports unsupported, not failure', async () => {
