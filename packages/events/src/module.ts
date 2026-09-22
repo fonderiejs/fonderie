@@ -1,7 +1,13 @@
-import type { IAdminDescription, IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
+import type {
+	IAdminDescription,
+	IFonderieModule,
+	IFonderieApp,
+	IReadinessProblem,
+} from '@fonderie/core';
 
 import { EventBus } from './bus';
 import { PGTransport } from './transports/pg';
+import { verifyEventChain } from './integrity';
 import type { IEventTransport } from './transports/types';
 
 export type EventTransportConfig =
@@ -64,14 +70,41 @@ export class EventsModule implements IFonderieModule {
 	describeAdmin(): IAdminDescription {
 		const t = this.transport;
 		if (!(t instanceof PGTransport)) return {};
+		const cfg = this.config.transport;
+		const key = 'type' in cfg && cfg.type === 'pg' ? cfg.integrityKey : undefined;
 		return {
 			checks: [
+				// The audit trail is tamper-evident only with a key; a tampered row
+				// is a hard failure, rows published before the key are advice.
+				{
+					name: 'events.integrity',
+					run: async () => {
+						if (!key)
+							return {
+								ok: true,
+								findings: [],
+								skipped: 'no integrityKey — the event log is not tamper-evident',
+							};
+						const store = t.storeForIntegrity();
+						if (!store) return { ok: true, findings: [], skipped: 'transport not started' };
+						const r = await verifyEventChain(store, key);
+						const findings = r.tampered.map(
+							(id) => `event ${id}: stored HMAC does not match — tampered`,
+						);
+						if (r.unprotected > 0)
+							findings.push(
+								`${r.unprotected} row(s) carry no HMAC (published before integrity was enabled)`,
+							);
+						return { ok: r.ok, findings };
+					},
+				},
 				{
 					name: 'events.outbox',
 					run: async () => {
 						const [dead, pending] = await Promise.all([t.deadLetters(10), t.pendingByConsumer()]);
 						const findings = dead.map(
-							(d) => `${d.type} (${d.consumer}): ${d.lastError ?? 'no error recorded'} — dead, will never be delivered`,
+							(d) =>
+								`${d.type} (${d.consumer}): ${d.lastError ?? 'no error recorded'} — dead, will never be delivered`,
 						);
 						for (const p of pending) {
 							if (p.oldestMinutes >= STALE_BACKLOG_MINUTES) {
@@ -95,11 +128,14 @@ export class EventsModule implements IFonderieModule {
 	checkReadiness(): IReadinessProblem[] {
 		const t = this.config.transport;
 		if ('type' in t && t.type === 'pg' && !t.integrityKey) {
-			return [{
-				module: this.name,
-				severity: 'warning',
-				message: 'no integrityKey — the event/audit log is not tamper-evident; set one to enable per-event HMACs',
-			}];
+			return [
+				{
+					module: this.name,
+					severity: 'warning',
+					message:
+						'no integrityKey — the event/audit log is not tamper-evident; set one to enable per-event HMACs',
+				},
+			];
 		}
 		return [];
 	}

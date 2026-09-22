@@ -331,6 +331,7 @@ const ADMIN_PAGES = {
   user:      { path: '/users',               about: 'look up a user: admin user <email|id> [sessions|history|revoke-sessions|suspend|unsuspend]' },
   catalog:   { path: '/catalog',             about: 'plans as configured and as stored' },
   subscriber:{ path: '/subscriptions',       about: 'admin subscriber <user|workspace> <id> [subscription|wallet|ledger]' },
+  audit:     { path: '/audit',               about: 'events across every workspace (--workspace, --type, --actor, --from, --to, --limit, --cursor)' },
 };
 async function adminCmd() {
   const pageName = argv[1];
@@ -372,6 +373,11 @@ async function adminCmd() {
   const before = arg('--before', undefined);
   if (pageName === 'log' && limit) q.set('limit', limit);
   if (pageName === 'log' && before) q.set('before', before);
+  if (pageName === 'audit') {
+    for (const [flag, param] of [['--workspace', 'workspaceId'], ['--type', 'type'], ['--actor', 'actorId'], ['--from', 'from'], ['--to', 'to'], ['--limit', 'limit'], ['--cursor', 'cursor']]) {
+      const v = arg(flag, undefined); if (v) q.set(param, v);
+    }
+  }
   const qs = q.toString();
   return adminFetch('GET', prefix + page.path + (qs ? `?${qs}` : ''));
 }
@@ -474,6 +480,7 @@ else {
   fonderie admin <attention|manifest|doctor|config|routes|tokens|log> [--limit <n>] [--before <cursor>]
   fonderie admin user <email|id> [sessions|history|revoke-sessions|suspend|unsuspend]
   fonderie admin catalog · admin subscriber <user|workspace> <id> [subscription|wallet|ledger] [--currency <c>]
+  fonderie admin audit [--workspace <id>] [--type <t>] [--actor <id>] [--from <iso>] [--to <iso>] [--limit <n>]
       read a deployment's operator surface (@fonderie/admin) — same env; FONDERIE_ADMIN_PREFIX if moved
 
 Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);

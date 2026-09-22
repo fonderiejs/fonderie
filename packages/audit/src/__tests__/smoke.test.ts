@@ -169,7 +169,10 @@ test('AuditEventModel.list: appends cursor filter when valid cursor provided', a
 		},
 	};
 
-	const cursor = encodeCursor(new Date('2026-01-01T00:00:00Z'), 'aaaaaaaa-bbbb-4ccc-8ddd-000000000001');
+	const cursor = encodeCursor(
+		new Date('2026-01-01T00:00:00Z'),
+		'aaaaaaaa-bbbb-4ccc-8ddd-000000000001',
+	);
 	await new AuditEventModel(store as never).list({ workspaceId: 'ws-1', cursor });
 
 	assert.ok(sqls[0]?.includes('(created_at, id) <'));
@@ -325,4 +328,58 @@ test('GET /audit: nextCursor is null when results fit in page', async () => {
 	const body = (await res.json()) as { result: { nextCursor: string | null } };
 
 	assert.equal(body.result.nextCursor, null);
+});
+
+// ── describeAdmin: the cross-workspace read ──
+
+test('describeAuditAdminRoutes: one route; workspace optional; filters and cursor forwarded; bad dates 422', async () => {
+	const { describeAuditAdminRoutes } = await import('../admin');
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const seen: Array<{ sql: string; params: unknown[] }> = [];
+	const row = {
+		id: '00000000-0000-0000-0000-000000000001',
+		type: 'user.login',
+		payload: { workspaceId: 'w1', userId: 'u1' },
+		meta: {},
+		createdAt: new Date('2026-01-01T00:00:00Z'),
+		createdAtRaw: '2026-01-01 00:00:00+00',
+	};
+	const store = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			seen.push({ sql, params });
+			return [row, row] as unknown as T[];
+		},
+		transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(null),
+	} as never;
+	const routes = describeAuditAdminRoutes(store);
+	assert.deepEqual(
+		routes.map((r) => `${r.method} ${r.path}`),
+		['GET /audit'],
+	);
+
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://x' } }));
+	app.register({
+		name: 't',
+		install(a) {
+			for (const r of routes) a.addRoute(r.method, `/_admin${r.path}`, ...r.handlers);
+		},
+	});
+	await app.boot();
+	const get = (p: string) => app.handle(new Request(`http://localhost${p}`));
+
+	// no workspace: WHERE TRUE, limit+1 as the only param
+	const all = await get('/_admin/audit?limit=1');
+	assert.equal(all.status, 200);
+	const body = (await all.json()) as { result: { events: unknown[]; nextCursor: string | null } };
+	assert.equal(body.result.events.length, 1);
+	assert.ok(body.result.nextCursor, 'two rows for limit 1 ⇒ a next cursor');
+	assert.ok(seen[0]?.sql.includes('WHERE  TRUE'));
+	assert.deepEqual(seen[0]?.params, [2]);
+
+	// with filters: workspace, type, actor
+	await get('/_admin/audit?workspaceId=w1&type=user.login&actorId=u1');
+	assert.deepEqual(seen[1]?.params.slice(0, 3), ['w1', 'user.login', 'u1']);
+	assert.ok(seen[1]?.sql.includes("payload->>'workspaceId' = $1"));
+
+	assert.equal((await get('/_admin/audit?from=not-a-date')).status, 422);
 });
