@@ -68,18 +68,26 @@ jobs:
       # changesets marks the last-created per-package release as Latest —
       # arbitrary in a multi-package batch. Re-point it at the flagship.
       # Best-effort: a presentation tweak must never fail the publish.
+      #
+      # The flagship's tag comes from its package.json, NOT from the action's
+      # `publishedPackages`. That output is always empty here: changesets 3.0.3
+      # prints `◇ Successfully published:` where changesets/action v2.1.2 still
+      # greps for `🦋 New tag:`, so the action reports `published: true` with an
+      # empty package list and this step printed "not published in this batch"
+      # after every release since the upgrade — it had never once run.
+      # Asking the registry keeps it honest without relying on that parse.
       - name: Surface the flagship release as Latest
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FLAGSHIP: '@fonderie/billing'
-          PUBLISHED: ${{ steps.changesets.outputs.publishedPackages }}
         run: |
-          tag=$(node -e "const p=JSON.parse(process.env.PUBLISHED||'[]');const f=p.find(x=>x.name===process.env.FLAGSHIP);if(f)process.stdout.write(f.name+'@'+f.version)")
-          if [ -n "$tag" ]; then
+          v=$(node -p "require('./packages/billing/package.json').version")
+          tag="$FLAGSHIP@$v"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Marking $tag as the Latest release"
             gh release edit "$tag" --latest --repo "$GITHUB_REPOSITORY"
           else
-            echo "Flagship $FLAGSHIP not published in this batch — leaving GitHub's default Latest."
+            echo "No release $tag — flagship unchanged in this batch, leaving Latest alone."
           fi
