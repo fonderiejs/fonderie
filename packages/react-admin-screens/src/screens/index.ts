@@ -20,3 +20,5 @@ export type { ICatalogScreenProps } from './CatalogScreen';
 export { CatalogScreen } from './CatalogScreen';
 export type { ISubscriberScreenProps } from './SubscriberScreen';
 export { SubscriberScreen } from './SubscriberScreen';
+export type { IAuditScreenProps } from './AuditScreen';
+export { AuditScreen } from './AuditScreen';

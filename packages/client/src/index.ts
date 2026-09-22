@@ -37,6 +37,8 @@ export type { IAuthAdminClientOptions, IAdminLoginHistoryQuery } from './modules
 export { AuthAdminClient } from './modules/auth-admin';
 export type { IBillingAdminClientOptions, IAdminLedgerQuery } from './modules/billing-admin';
 export { BillingAdminClient } from './modules/billing-admin';
+export type { IAuditAdminClientOptions, IAdminAuditQuery } from './modules/audit-admin';
+export { AuditAdminClient } from './modules/audit-admin';
 export type {
 	ICourierAdminClientOptions,
 	IRollbackTemplateInput,
