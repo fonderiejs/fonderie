@@ -14,6 +14,17 @@ export interface IBillingPlanPrice {
 	 * hydration resolves a live price, the live amount wins.
 	 */
 	amount?: bigint;
+	/**
+	 * ISO 4217 currency this price is expected to be in. Display-only, like
+	 * `amount` — the provider remains the authority for the actual charge.
+	 *
+	 * Declaring it is what lets the price-consistency check compare currencies
+	 * at all. Left unset, only the amount is compared, so a catalog quoting USD
+	 * against a provider price in CAD reads as a clean pass: the figures match,
+	 * and nothing says the pricing page is quoting a currency nobody is charged
+	 * in. Set it and that becomes a reported problem.
+	 */
+	currency?: string;
 }
 
 /**
