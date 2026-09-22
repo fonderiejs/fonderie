@@ -8,7 +8,8 @@ page: `useAttention`, `useManifest`, `useDoctor`, `useAdminConfig`,
 `useAdminUserSessions`, `useAdminLoginHistory` (paged) — and over `BillingAdminClient`
 (`@fonderie/billing`'s): `useAdminCatalog` (configured vs stored; `createPlan`,
 `updatePlan`, `deletePlan`), `useAdminSubscriber` (subscription, wallet, paged
-ledger, `grant`).
+ledger, `grant`) — and over `AuditAdminClient` (`@fonderie/audit`'s):
+`useAdminAudit` (every workspace unless one is named; paged).
 
 Status: **experimental** (0.x).
 

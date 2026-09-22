@@ -42,7 +42,6 @@ export function useAdminSubscriber(
 	const id = subscriber?.id;
 	const { currency, limit } = options;
 
-
 	const refresh = useCallback(async () => {
 		if (!type || !id) {
 			setSubscription(null);

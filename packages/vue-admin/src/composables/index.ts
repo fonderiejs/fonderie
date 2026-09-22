@@ -10,3 +10,4 @@ export { useAdminUserSessions } from './useAdminUserSessions';
 export { useAdminLoginHistory } from './useAdminLoginHistory';
 export { useAdminCatalog } from './useAdminCatalog';
 export { useAdminSubscriber } from './useAdminSubscriber';
+export { useAdminAudit } from './useAdminAudit';

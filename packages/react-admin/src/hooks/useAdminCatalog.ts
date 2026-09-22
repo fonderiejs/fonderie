@@ -26,7 +26,6 @@ export function useAdminCatalog(client: BillingAdminClient): IUseAdminCatalogRet
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
-
 	const refresh = useCallback(async () => {
 		setIsLoading(true);
 		setError(null);

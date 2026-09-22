@@ -14,10 +14,10 @@ Status: **experimental** (0.x).
 | Money | Catalog · Subscriber | what am I selling (configured vs stored) · what is this subscriber on, their wallet, ledger, a manual grant (`billingClient`) |
 | Settings | Config & secrets | the `@fonderie/config` admin screens, as a sub-page |
 | Messaging | Templates | the `@fonderie/courier` admin screens, as a sub-page |
-| Activity | Admin log · Access | who did what · who can be here |
+| Activity | Audit · Admin log · Access | what happened, every workspace (`auditClient`) · who did what through here · who can be here |
 
 ```ts
-import { AdminClient, AuthAdminClient, BillingAdminClient, ConfigAdminClient, CourierAdminClient } from '@fonderie/client';
+import { AdminClient, AuditAdminClient, AuthAdminClient, BillingAdminClient, ConfigAdminClient, CourierAdminClient } from '@fonderie/client';
 import { AdminShell } from '@fonderie/react-admin-screens';
 
 const base = { baseUrl: 'https://api.example.com', adminToken, actor: 'louis' };
@@ -27,10 +27,11 @@ const configClient = new ConfigAdminClient({ ...base, prefix: '/_admin' });
 const courierClient = new CourierAdminClient({ ...base, prefix: '/_admin' });
 const authClient = new AuthAdminClient(base); // @fonderie/auth ≥ 7.8
 const billingClient = new BillingAdminClient(base); // @fonderie/billing ≥ 9.10
+const auditClient = new AuditAdminClient(base); // @fonderie/audit ≥ 5.2
 ```
 
 ```tsx
-<AdminShell client={client} configClient={configClient} courierClient={courierClient} authClient={authClient} billingClient={billingClient} />
+<AdminShell client={client} configClient={configClient} courierClient={courierClient} authClient={authClient} billingClient={billingClient} auditClient={auditClient} />
 ```
 
 Pass `page` and `onNavigate` to own the URL (one route per page); omit both
