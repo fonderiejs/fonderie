@@ -1,5 +1,12 @@
 # @fonderie/config
 
+## 5.2.2
+
+### Patch Changes
+
+- Updated dependencies [38f2410]
+  - @fonderie/core@0.20.0
+
 ## 5.2.1
 
 ### Patch Changes
