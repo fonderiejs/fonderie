@@ -541,10 +541,37 @@ export interface IAdminRoutesReport {
 	routes: Array<IAdminRouteEntry & { guard: AdminRouteGuard }>;
 }
 
+export type AdminScope = 'read' | 'write' | 'secrets';
+
+// An issued scoped token — never its hash or plaintext.
+export interface IAdminTokenRecord {
+	id: string;
+	name: string;
+	scopes: AdminScope[];
+	createdBy: string;
+	createdAt: string;
+	expiresAt: string | null;
+	revokedAt: string | null;
+	lastUsedAt: string | null;
+}
+
 export interface IAdminTokensReport {
 	generatedAt: string;
 	admin: { ok: boolean; problems: IAdminReadinessProblem[] };
 	legacy: Array<{ module: string; set: boolean }>;
+	// null when the deployment gave AdminModule no store (issuing is off).
+	issued: IAdminTokenRecord[] | null;
+}
+
+export interface IAdminIssueTokenInput {
+	name: string;
+	scopes: AdminScope[];
+	expiresInDays?: number;
+}
+
+// The plaintext is returned once, at issue, and never again.
+export interface IAdminIssuedToken extends IAdminTokenRecord {
+	token: string;
 }
 
 export interface IAdminLogEntry {
