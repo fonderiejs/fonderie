@@ -1,6 +1,11 @@
 import type { IFonderieApp, IReadinessProblem } from '@fonderie/core';
 
-import type { IAdminConfigReport, IAdminRoutesReport, IAdminTokensReport } from './types';
+import type {
+	IAdminConfigReport,
+	IAdminRoutesReport,
+	IAdminTokenRecord,
+	IAdminTokensReport,
+} from './types';
 
 export function configReport(app: IFonderieApp, env: string[]): IAdminConfigReport {
 	const report = app.securityReport();
@@ -38,7 +43,11 @@ export function routesReport(app: IFonderieApp, adminModule: string): IAdminRout
 // A brick's own adminToken shows as a readiness problem only when weak, so
 // "set at all" has to be asked; a described module that also registers a
 // legacy route under /admin, /plans or /billing/wallet/grant has one.
-export function tokensReport(app: IFonderieApp, adminModule: string): IAdminTokensReport {
+export function tokensReport(
+	app: IFonderieApp,
+	adminModule: string,
+	issued: IAdminTokenRecord[] | null,
+): IAdminTokensReport {
 	const report = app.securityReport();
 	const adminProblems = report.readiness.problems.filter((p) => p.module === adminModule);
 	const legacyOwners = new Set(
@@ -53,6 +62,7 @@ export function tokensReport(app: IFonderieApp, adminModule: string): IAdminToke
 		legacy: report.modules
 			.map(({ name }) => ({ module: name, set: legacyOwners.has(name) }))
 			.filter((e) => e.set),
+		issued,
 	};
 }
 

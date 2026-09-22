@@ -152,15 +152,17 @@
         "DEFAULT_ADMIN_PATH",
         "DEFAULT_CHECK_TIMEOUT_MS",
         "DEFAULT_ACTOR",
-        "MAX_PAGE"
+        "MAX_PAGE",
+        "SCOPES"
       ],
       "subpaths": [
         "@fonderie/admin/migrations"
       ],
       "tables": [
-        "fonderie_admin_log"
+        "fonderie_admin_log",
+        "fonderie_admin_tokens"
       ],
-      "routeCount": 7,
+      "routeCount": 9,
       "routes": [
         {
           "method": "GET",
@@ -170,7 +172,17 @@
         {
           "method": "GET",
           "path": "/_admin/access/tokens",
-          "mw": "async () => setApiResponse(HTTP.OK, 'ADMIN_TOKENS', 'Admin tokens', tokensReport(app, this.name))"
+          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_TOKENS', 'Admin tokens', tokensReport(app, this.name, store ? await listTokens(store) : null), )"
+        },
+        {
+          "method": "POST",
+          "path": "/_admin/access/tokens",
+          "mw": "[ validate(issueTokenSchema), async (ctx) => { const body = ctx.meta['body'] as { name: string; scopes: AdminScope[]; expiresInDays?: number; }; const createdBy = ctx.request.headers.get('x-actor') || 'admin-token'; const { token: plaintext, record } = await issueToken(store, { ...body, createdBy, }); // The plaintext is returned once and never stored. return setApiResponse(HTTP.CREATED, 'TOKEN_ISSUED', 'Token issued — shown once', { token: plaintext, ...record, }); }, ]"
+        },
+        {
+          "method": "DELETE",
+          "path": "/_admin/access/tokens/:id",
+          "mw": "[ async (ctx) => { const ok = await revokeToken(store, ctx.meta.params?.['id'] ?? ''); return ok ? setApiResponse(HTTP.OK, 'TOKEN_REVOKED', 'Token revoked') : setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such live token'); }, ]"
         },
         {
           "method": "GET",
@@ -198,7 +210,9 @@
           "mw": "async () => setApiResponse(HTTP.OK, 'ADMIN_ROUTES', 'Exposed routes', routesReport(app, this.name))"
         }
       ],
-      "secures": [],
+      "secures": [
+        "validation"
+      ],
       "hasSignature": true,
       "hasOutcomes": true
     },
@@ -4197,6 +4211,9 @@
       "admin"
     ],
     "max_page": [
+      "admin"
+    ],
+    "scopes": [
       "admin"
     ],
     "auditmodule": [

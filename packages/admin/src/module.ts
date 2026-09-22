@@ -1,11 +1,20 @@
 import type { IFonderieApp, IFonderieModule, IReadinessProblem, Middleware } from '@fonderie/core';
 import { HTTP, setApiResponse } from '@fonderie/core';
-import { requireAdminToken, validateAdminToken } from '@fonderie/core/middlewares';
+import { validate, validateAdminToken } from '@fonderie/core/middlewares';
 
 import { attention, collectChecks, runDoctor } from './doctor';
 import { adminLog, readAdminLog } from './log';
 import { buildManifest } from './manifest';
 import { configReport, routesReport, tokensReport } from './pages';
+import {
+	issueToken,
+	issueTokenSchema,
+	listTokens,
+	requireAdminScope,
+	revokeToken,
+	scopeFor,
+} from './tokens';
+import type { AdminScope } from './types';
 import type { IAdminOptions } from './types';
 
 export const DEFAULT_ADMIN_PATH = '/_admin';
@@ -28,7 +37,6 @@ export class AdminModule implements IFonderieModule {
 		if (!token) return;
 
 		app.reserve(this.path);
-		const guard = requireAdminToken(token);
 		// Declared at the default path so the route table reads literally; re-based when configured.
 		const at = (p: string): string => this.path + p.slice(DEFAULT_ADMIN_PATH.length);
 
@@ -88,7 +96,12 @@ export class AdminModule implements IFonderieModule {
 				'GET',
 				'/_admin/access/tokens',
 				async () =>
-					setApiResponse(HTTP.OK, 'ADMIN_TOKENS', 'Admin tokens', tokensReport(app, this.name)),
+					setApiResponse(
+						HTTP.OK,
+						'ADMIN_TOKENS',
+						'Admin tokens',
+						tokensReport(app, this.name, store ? await listTokens(store) : null),
+					),
 			],
 		];
 		if (store) {
@@ -107,8 +120,55 @@ export class AdminModule implements IFonderieModule {
 				},
 			]);
 		}
+		// Issuing and revoking are root-only: a scoped token can never mint one.
+		const rootOnly: Array<[string, string, Middleware[]]> = store
+			? [
+					[
+						'POST',
+						'/_admin/access/tokens',
+						[
+							validate(issueTokenSchema),
+							async (ctx) => {
+								const body = ctx.meta['body'] as {
+									name: string;
+									scopes: AdminScope[];
+									expiresInDays?: number;
+								};
+								const createdBy = ctx.request.headers.get('x-actor') || 'admin-token';
+								const { token: plaintext, record } = await issueToken(store, {
+									...body,
+									createdBy,
+								});
+								// The plaintext is returned once and never stored.
+								return setApiResponse(HTTP.CREATED, 'TOKEN_ISSUED', 'Token issued — shown once', {
+									token: plaintext,
+									...record,
+								});
+							},
+						],
+					],
+					[
+						'DELETE',
+						'/_admin/access/tokens/:id',
+						[
+							async (ctx) => {
+								const ok = await revokeToken(store, ctx.meta.params?.['id'] ?? '');
+								return ok
+									? setApiResponse(HTTP.OK, 'TOKEN_REVOKED', 'Token revoked')
+									: setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such live token');
+							},
+						],
+					],
+				]
+			: [];
 		const mounted = new Map<string, string>();
-		const mount = (module: string, method: string, path: string, handlers: Middleware[]): void => {
+		const mount = (
+			module: string,
+			method: string,
+			path: string,
+			handlers: Middleware[],
+			needed?: AdminScope | 'root',
+		): void => {
 			const key = `${method.toUpperCase()} ${path}`;
 			const prior = mounted.get(key);
 			if (prior) {
@@ -117,7 +177,9 @@ export class AdminModule implements IFonderieModule {
 				);
 			}
 			mounted.set(key, module);
-			// The log sits before the guard: a refused request is a row too.
+			// The scope comes from the route itself. The log sits before the guard:
+			// a refused request is a row too.
+			const guard = requireAdminScope(token, store, needed ?? scopeFor(method, path));
 			const chain = store
 				? [adminLog(store, path, module), guard, ...handlers]
 				: [guard, ...handlers];
@@ -125,6 +187,8 @@ export class AdminModule implements IFonderieModule {
 		};
 
 		for (const [method, path, handler] of own) mount(this.name, method, at(path), [handler]);
+		for (const [method, path, handlers] of rootOnly)
+			mount(this.name, method, at(path), handlers, 'root');
 		for (const { module, description } of app.adminDescriptions()) {
 			for (const r of description.routes ?? [])
 				mount(module, r.method, this.path + r.path, r.handlers);

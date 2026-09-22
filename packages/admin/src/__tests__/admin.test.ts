@@ -553,3 +553,188 @@ test('tokens: the admin token verdict, and which bricks still carry a legacy tok
 		{ module: '@acme/config-like', set: true },
 	]);
 });
+
+// ── scoped tokens ───────────────────────────────────────────────────
+
+import { hashToken, grants, scopeFor } from '../tokens';
+import type { IAdminTokenRecord } from '../types';
+
+test('scopeFor / grants: derived from the route; write implies read; secrets implies all', () => {
+	assert.equal(scopeFor('GET', '/_admin/config'), 'read');
+	assert.equal(scopeFor('put', '/_admin/config/k'), 'write');
+	assert.equal(scopeFor('GET', '/_admin/secrets'), 'secrets');
+	assert.equal(scopeFor('POST', '/_admin/secrets/k/reveal'), 'secrets');
+	assert.equal(grants(['read'], 'read'), true);
+	assert.equal(grants(['read'], 'write'), false);
+	assert.equal(grants(['write'], 'read'), true);
+	assert.equal(grants(['write'], 'secrets'), false);
+	assert.equal(grants(['secrets'], 'write'), true);
+});
+
+function tokenStore() {
+	const rows: Array<IAdminTokenRecord & { tokenHash: string }> = [];
+	const inserts: unknown[][] = [];
+	let n = 0;
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			if (sql.includes('INSERT INTO fonderie_admin_log')) {
+				inserts.push(params);
+				return [];
+			}
+			if (sql.includes('INSERT INTO fonderie_admin_tokens')) {
+				const rec = {
+					id: `t${++n}`,
+					name: params[0] as string,
+					tokenHash: params[1] as string,
+					scopes: params[2] as IAdminTokenRecord['scopes'],
+					createdBy: params[3] as string,
+					createdAt: new Date().toISOString(),
+					expiresAt: params[4] ? new Date(params[4] as Date).toISOString() : null,
+					revokedAt: null,
+					lastUsedAt: null,
+				};
+				rows.push(rec);
+				return [rec] as unknown as T[];
+			}
+			if (sql.includes('FROM fonderie_admin_tokens') && sql.includes('token_hash = $1')) {
+				const r = rows.find(
+					(x) =>
+						x.tokenHash === params[0] &&
+						!x.revokedAt &&
+						(!x.expiresAt || new Date(x.expiresAt) > new Date()),
+				);
+				return (r ? [r] : []) as unknown as T[];
+			}
+			// The real SELECT projects explicit columns; the hash never leaves the table.
+			if (sql.includes('FROM fonderie_admin_tokens'))
+				return rows.map(({ tokenHash: _h, ...r }) => r) as unknown as T[];
+			if (sql.includes('SET revoked_at')) {
+				const r = rows.find((x) => x.id === params[0] && !x.revokedAt);
+				if (r) r.revokedAt = new Date().toISOString();
+				return (r ? [{ id: r.id }] : []) as unknown as T[];
+			}
+			if (sql.includes('SET last_used_at')) return [];
+			if (sql.includes('FROM fonderie_admin_log')) return [];
+			return [];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return { store, rows, inserts };
+}
+
+test('scoped tokens: root issues; read is 403 on writes and secrets; revoke ⇒ 401; expired ⇒ 401; name is the log actor', async () => {
+	const { store, rows, inserts } = tokenStore();
+	const app = new FonderieApp(config);
+	app.register(
+		describing('@acme/x', [
+			{ method: 'GET', path: '/things', handlers: [ok] },
+			{ method: 'POST', path: '/things', handlers: [ok] },
+			{ method: 'POST', path: '/secrets/k/reveal', handlers: [ok] },
+		]),
+	);
+	app.register(new AdminModule({ adminToken: TOKEN, store }));
+	await app.boot();
+	const call = (method: string, path: string, token?: string, body?: unknown) =>
+		app.handle(
+			new Request(`http://localhost${path}`, {
+				method,
+				headers: {
+					...(token ? { authorization: `Bearer ${token}` } : {}),
+					'content-type': 'application/json',
+				},
+				...(body ? { body: JSON.stringify(body) } : {}),
+			}),
+		);
+
+	// Root issues a read token (and a bad body is 422).
+	assert.equal(
+		(await call('POST', '/_admin/access/tokens', TOKEN, { name: 'x', scopes: ['nope'] })).status,
+		422,
+	);
+	const issued = await call('POST', '/_admin/access/tokens', TOKEN, {
+		name: 'dashboard',
+		scopes: ['read'],
+	});
+	assert.equal(issued.status, 201);
+	const {
+		token: readToken,
+		id,
+		scopes,
+	} = ((await issued.json()) as { result: { token: string; id: string; scopes: string[] } }).result;
+	assert.match(readToken, /^fad_/);
+	assert.deepEqual(scopes, ['read']);
+	assert.equal(rows[0]?.tokenHash, hashToken(readToken), 'only the hash is stored');
+
+	// The read token reads, cannot write, cannot reveal, cannot mint.
+	assert.equal((await call('GET', '/_admin/things', readToken)).status, 200);
+	assert.equal((await call('GET', '/_admin/manifest', readToken)).status, 200);
+	assert.equal((await call('POST', '/_admin/things', readToken)).status, 403);
+	assert.equal((await call('POST', '/_admin/secrets/k/reveal', readToken)).status, 403);
+	assert.equal(
+		(await call('POST', '/_admin/access/tokens', readToken, { name: 'y', scopes: ['read'] }))
+			.status,
+		401,
+	);
+	assert.equal((await call('DELETE', `/_admin/access/tokens/${id}`, readToken)).status, 401);
+	// The token names itself in the log on the requests it was allowed through;
+	// a refused root-only request never learns the name and stays 'admin-token'.
+	const served = inserts.find((r) => r[3] === '/_admin/things' && r[5] === 200);
+	assert.equal(served?.[0], 'token:dashboard');
+	assert.equal(inserts.at(-1)?.[0], 'admin-token');
+
+	// Listed without secrets; revoked by root; then 401.
+	const list = (
+		(await (await call('GET', '/_admin/access/tokens', TOKEN)).json()) as {
+			result: { issued: Array<Record<string, unknown>> };
+		}
+	).result.issued;
+	assert.equal(list.length, 1);
+	assert.equal('tokenHash' in (list[0] ?? {}) || 'token' in (list[0] ?? {}), false);
+	assert.equal((await call('DELETE', `/_admin/access/tokens/${id}`, TOKEN)).status, 200);
+	assert.equal((await call('GET', '/_admin/things', readToken)).status, 401);
+	assert.equal((await call('DELETE', `/_admin/access/tokens/${id}`, TOKEN)).status, 404);
+
+	// A write token writes but does not reveal; an expired token is 401.
+	const w = (
+		(await (
+			await call('POST', '/_admin/access/tokens', TOKEN, {
+				name: 'ops',
+				scopes: ['write'],
+				expiresInDays: 1,
+			})
+		).json()) as { result: { token: string } }
+	).result.token;
+	assert.equal((await call('POST', '/_admin/things', w)).status, 200);
+	assert.equal((await call('POST', '/_admin/secrets/k/reveal', w)).status, 403);
+	rows[1]!.expiresAt = new Date(Date.now() - 1000).toISOString();
+	assert.equal((await call('GET', '/_admin/things', w)).status, 401);
+	// Unknown tokens are the same 401 as missing ones.
+	assert.equal((await call('GET', '/_admin/things', 'fad_nope')).status, 401);
+	assert.equal((await call('GET', '/_admin/things')).status, 401);
+});
+
+test('scoped tokens: without a store, only the root token works and the routes do not exist', async () => {
+	const app = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN }));
+	await app.boot();
+	assert.equal((await get(app, '/_admin/access/tokens', TOKEN)).status, 200);
+	assert.equal(
+		(
+			(await (await get(app, '/_admin/access/tokens', TOKEN)).json()) as {
+				result: { issued: unknown };
+			}
+		).result.issued,
+		null,
+	);
+	assert.equal(
+		(
+			await app.handle(
+				new Request('http://localhost/_admin/access/tokens', {
+					method: 'POST',
+					headers: { authorization: `Bearer ${TOKEN}` },
+				}),
+			)
+		).status,
+		404,
+	);
+	assert.equal((await get(app, '/_admin/manifest', 'fad_whatever')).status, 401);
+});

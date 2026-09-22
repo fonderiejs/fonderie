@@ -114,10 +114,27 @@ export interface IAdminTokenEntry {
 	set: boolean;
 }
 
+// read: every GET except secret reveal · write: every mutation · secrets: anything under /secrets.
+export type AdminScope = 'read' | 'write' | 'secrets';
+
+// An issued token, never its hash or plaintext.
+export interface IAdminTokenRecord {
+	id: string;
+	name: string;
+	scopes: AdminScope[];
+	createdBy: string;
+	createdAt: string;
+	expiresAt: string | null;
+	revokedAt: string | null;
+	lastUsedAt: string | null;
+}
+
 export interface IAdminTokensReport {
 	generatedAt: string;
-	// The one token guarding /_admin: its readiness verdict.
+	// The bootstrap token guarding /_admin (the root): its readiness verdict.
 	admin: { ok: boolean; problems: IReadinessReport['problems'] };
 	// Bricks still carrying their own token for the deprecated standalone routes.
 	legacy: IAdminTokenEntry[];
+	// Issued scoped tokens; null when no store was given (issuing is off).
+	issued: IAdminTokenRecord[] | null;
 }
