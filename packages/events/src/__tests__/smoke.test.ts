@@ -500,7 +500,14 @@ test('describeAdmin: the outbox check exists only for the pg transport, and is q
 	const { EventsModule } = await import('../module');
 	assert.deepEqual(new EventsModule({ transport: new MemoryTransport() }).describeAdmin(), {});
 	const pg = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x' } }).describeAdmin();
-	assert.deepEqual(pg.checks?.map((c) => c.name), ['events.outbox']);
+	assert.deepEqual(pg.checks?.map((c) => c.name), ['events.integrity', 'events.outbox']);
+	// integrity without a key is skipped, and says why
+	const integ = await pg.checks![0]!.run();
+	assert.equal(integ.ok, true);
+	assert.match(integ.skipped ?? '', /no integrityKey/);
+	// with a key but before start(): skipped as "transport not started", never a throw
+	const keyed = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x', integrityKey: 'k'.repeat(48) } }).describeAdmin();
+	assert.match((await keyed.checks![0]!.run()).skipped ?? '', /not started/);
 	// No store until start(): nothing dead, nothing pending.
-	assert.deepEqual(await pg.checks![0]!.run(), { ok: true, findings: [] });
+	assert.deepEqual(await pg.checks![1]!.run(), { ok: true, findings: [] });
 });

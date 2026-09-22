@@ -205,6 +205,11 @@ export class PGTransport implements IEventTransport {
 	 * to do — which is the failure mode an outbox is supposed to eliminate.
 	 * Expose it from a health route or check it on a schedule.
 	 */
+	// For the doctor's integrity check; null before start().
+	storeForIntegrity(): IStoreAdapter | null {
+		return this.store ?? null;
+	}
+
 	async deadLetters(limit = 50): Promise<IDeadLetter[]> {
 		if (!this.store) return [];
 		return this.store.query<IDeadLetter>(

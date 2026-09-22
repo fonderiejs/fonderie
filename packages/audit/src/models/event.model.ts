@@ -25,9 +25,26 @@ export class AuditEventModel {
 	// no outer clamp can shave it off (which previously made nextCursor
 	// unreachable at the max page size).
 	async list(query: IAuditQuery): Promise<IAuditEventPage> {
+		return this.query(query);
+	}
+
+	// The operator's read: every workspace unless one is named.
+	async listAcross(
+		query: Omit<IAuditQuery, 'workspaceId'> & { workspaceId?: string },
+	): Promise<IAuditEventPage> {
+		return this.query(query);
+	}
+
+	private async query(
+		query: Omit<IAuditQuery, 'workspaceId'> & { workspaceId?: string },
+	): Promise<IAuditEventPage> {
 		const limit = Math.min(query.limit ?? 50, MAX_LIMIT);
-		const params: unknown[] = [query.workspaceId];
-		const where: string[] = [`payload->>'workspaceId' = $1`];
+		const params: unknown[] = [];
+		const where: string[] = [];
+		if (query.workspaceId) {
+			params.push(query.workspaceId);
+			where.push(`payload->>'workspaceId' = $${params.length}`);
+		}
 
 		if (query.type) {
 			params.push(query.type);
@@ -65,7 +82,7 @@ export class AuditEventModel {
 			`SELECT id, type, payload, meta, created_at as "createdAt",
 			        created_at::text as "createdAtRaw"
 			 FROM   fonderie_events
-			 WHERE  ${where.join(' AND ')}
+			 WHERE  ${where.length ? where.join(' AND ') : 'TRUE'}
 			 ORDER  BY created_at DESC, id DESC
 			 LIMIT  $${params.length}`,
 			params,
