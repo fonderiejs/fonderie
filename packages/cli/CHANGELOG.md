@@ -1,5 +1,13 @@
 # @fonderie/cli
 
+## 0.7.0
+
+### Minor Changes
+
+- 83fdb67: `fonderie admin audit [--workspace] [--type] [--actor] [--from] [--to] [--limit] [--cursor]`
+  
+  What happened, across every workspace, from the terminal.
+
 ## 0.6.0
 
 ### Minor Changes
