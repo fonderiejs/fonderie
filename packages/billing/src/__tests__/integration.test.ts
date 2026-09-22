@@ -44,892 +44,1003 @@ async function connect() {
 	const { PGAdapter, InternalMigrationRunner } = await import('@fonderie/store');
 	const store = new PGAdapter(PG_URL!);
 	await new InternalMigrationRunner(store, getMigrationsPath()).run();
-	await store.query(`DELETE FROM fonderie_wallet_ledger WHERE subscriber_id = $1`, [SUB.subscriberId]);
-	await store.query(`DELETE FROM fonderie_wallet_balances WHERE subscriber_id = $1`, [SUB.subscriberId]);
-	await store.query(`DELETE FROM fonderie_wallet_grants WHERE subscriber_id = $1`, [SUB.subscriberId]);
-	await store.query(`DELETE FROM fonderie_wallet_customers WHERE subscriber_id = $1`, [SUB.subscriberId]);
+	await store.query(`DELETE FROM fonderie_wallet_ledger WHERE subscriber_id = $1`, [
+		SUB.subscriberId,
+	]);
+	await store.query(`DELETE FROM fonderie_wallet_balances WHERE subscriber_id = $1`, [
+		SUB.subscriberId,
+	]);
+	await store.query(`DELETE FROM fonderie_wallet_grants WHERE subscriber_id = $1`, [
+		SUB.subscriberId,
+	]);
+	await store.query(`DELETE FROM fonderie_wallet_customers WHERE subscriber_id = $1`, [
+		SUB.subscriberId,
+	]);
 	return store;
 }
 
-test(
-	'PostgreSQL: concurrent debits grant exactly the balance, never more',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			await creditWallet({ ...SUB, amount: 1000n, type: 'grant', idempotencyKey: 'itest-fund' }, store);
+test('PostgreSQL: concurrent debits grant exactly the balance, never more', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		await creditWallet(
+			{ ...SUB, amount: 1000n, type: 'grant', idempotencyKey: 'itest-fund' },
+			store,
+		);
 
-			const attempts = 20;
-			const results = await Promise.allSettled(
-				Array.from({ length: attempts }, (_, i) =>
-					debitWallet({ ...SUB, amount: 100n, idempotencyKey: `itest-debit-${i}` }, store),
-				),
+		const attempts = 20;
+		const results = await Promise.allSettled(
+			Array.from({ length: attempts }, (_, i) =>
+				debitWallet({ ...SUB, amount: 100n, idempotencyKey: `itest-debit-${i}` }, store),
+			),
+		);
+		const ok = results.filter((r) => r.status === 'fulfilled').length;
+		const rejected = results.filter((r) => r.status === 'rejected');
+		assert.equal(ok, 10, `exactly 10 of ${attempts} debits must fit in the balance; got ${ok}`);
+		for (const r of rejected) {
+			assert.ok(
+				(r as PromiseRejectedResult).reason instanceof InsufficientFundsError,
+				'losers must fail with InsufficientFundsError',
 			);
-			const ok = results.filter((r) => r.status === 'fulfilled').length;
-			const rejected = results.filter((r) => r.status === 'rejected');
-			assert.equal(ok, 10, `exactly 10 of ${attempts} debits must fit in the balance; got ${ok}`);
-			for (const r of rejected) {
-				assert.ok(
-					(r as PromiseRejectedResult).reason instanceof InsufficientFundsError,
-					'losers must fail with InsufficientFundsError',
-				);
-			}
+		}
 
-			const { balance } = await getWalletBalance(SUB, store);
-			assert.equal(balance, 0n);
+		const { balance } = await getWalletBalance(SUB, store);
+		assert.equal(balance, 0n);
 
-			// Ledger consistency: the signed amounts must sum to the balance.
-			const [sum] = await store.query<{ total: string }>(
-				`SELECT COALESCE(SUM(amount), 0) AS total FROM fonderie_wallet_ledger
+		// Ledger consistency: the signed amounts must sum to the balance.
+		const [sum] = await store.query<{ total: string }>(
+			`SELECT COALESCE(SUM(amount), 0) AS total FROM fonderie_wallet_ledger
 				WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
-				[SUB.subscriberType, SUB.subscriberId, SUB.currency],
-			);
-			assert.equal(BigInt(sum?.total ?? '-1'), 0n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
+			[SUB.subscriberType, SUB.subscriberId, SUB.currency],
+		);
+		assert.equal(BigInt(sum?.total ?? '-1'), 0n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
+test('PostgreSQL: concurrent SAME-KEY debits deduct exactly once (conflict rollback)', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	// The one case where idempotency depends on ROLLING BACK an applied
+	// deduction: concurrent same-key debits can all miss the pre-check
+	// under READ COMMITTED, apply the balance UPDATE serially, and only
+	// the UNIQUE-violation rollback undoes the extra deductions.
+	const store = await connect();
+	try {
+		await creditWallet(
+			{ ...SUB, amount: 1000n, type: 'grant', idempotencyKey: 'itest-fund-samekey' },
+			store,
+		);
+		const results = await Promise.allSettled(
+			Array.from({ length: 10 }, () =>
+				debitWallet({ ...SUB, amount: 300n, idempotencyKey: 'itest-debit-same' }, store),
+			),
+		);
+		for (const r of results) {
+			assert.equal(r.status, 'fulfilled', 'same-key replays must all resolve');
+			assert.equal((r as PromiseFulfilledResult<{ balance: bigint }>).value.balance, 700n);
 		}
-	},
-);
+		const { balance } = await getWalletBalance(SUB, store);
+		assert.equal(balance, 700n, 'the wallet must be debited exactly once');
+		const rows = await store.query<{ id: string }>(
+			`SELECT id FROM fonderie_wallet_ledger WHERE idempotency_key = $1`,
+			['itest-debit-same'],
+		);
+		assert.equal(rows.length, 1);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: concurrent SAME-KEY debits deduct exactly once (conflict rollback)',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		// The one case where idempotency depends on ROLLING BACK an applied
-		// deduction: concurrent same-key debits can all miss the pre-check
-		// under READ COMMITTED, apply the balance UPDATE serially, and only
-		// the UNIQUE-violation rollback undoes the extra deductions.
-		const store = await connect();
-		try {
-			await creditWallet({ ...SUB, amount: 1000n, type: 'grant', idempotencyKey: 'itest-fund-samekey' }, store);
-			const results = await Promise.allSettled(
-				Array.from({ length: 10 }, () =>
-					debitWallet({ ...SUB, amount: 300n, idempotencyKey: 'itest-debit-same' }, store),
-				),
-			);
-			for (const r of results) {
-				assert.equal(r.status, 'fulfilled', 'same-key replays must all resolve');
-				assert.equal((r as PromiseFulfilledResult<{ balance: bigint }>).value.balance, 700n);
-			}
-			const { balance } = await getWalletBalance(SUB, store);
-			assert.equal(balance, 700n, 'the wallet must be debited exactly once');
-			const rows = await store.query<{ id: string }>(
-				`SELECT id FROM fonderie_wallet_ledger WHERE idempotency_key = $1`,
-				['itest-debit-same'],
-			);
-			assert.equal(rows.length, 1);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
-
-test(
-	'PostgreSQL: concurrent identical credits apply exactly once (UNIQUE idempotency key)',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			const results = await Promise.all(
-				Array.from({ length: 10 }, () =>
-					creditWallet({ ...SUB, amount: 250n, type: 'purchase', idempotencyKey: 'itest-same-key' }, store),
-				),
-			);
-			for (const r of results) assert.equal(r.balance, 250n);
-			assert.equal(results.filter((r) => !r.duplicate).length, 1);
-
-			const rows = await store.query<{ id: string }>(
-				`SELECT id FROM fonderie_wallet_ledger WHERE idempotency_key = $1`,
-				['itest-same-key'],
-			);
-			assert.equal(rows.length, 1);
-			const { balance } = await getWalletBalance(SUB, store);
-			assert.equal(balance, 250n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
-
-test(
-	'PostgreSQL: buy → spend → refund claws back credits into a NEGATIVE balance, idempotently',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		// The §C value-leak fix on the real engine: proves reverseWallet drives
-		// the balance below zero (bypassing the debit floor), that the refund→
-		// purchase join by provider_tx_id resolves, that the cumulative-reversal
-		// sum is honest, and that the ledger's CHECK constraints (amount<>0, type
-		// IN(...)) accept a negative 'refund' row — none of which the emulator proves.
-		const store = await connect();
-		try {
-			const pi = 'pi_itest_refund';
-			await creditWallet(
-				{ ...SUB, amount: 5000n, type: 'purchase', idempotencyKey: 'itest-buy', providerTxId: pi },
-				store,
-			);
-			await debitWallet({ ...SUB, amount: 3000n, type: 'usage', idempotencyKey: 'itest-spend' }, store);
-			assert.equal((await getWalletBalance(SUB, store)).balance, 2000n);
-
-			const purchase = await findPurchaseByProviderTxId(pi, store);
-			assert.equal(purchase?.credits, 5000n);
-			assert.equal(purchase?.subscriberId, SUB.subscriberId);
-
-			const r1 = await reverseWallet(
-				{ ...SUB, amount: 5000n, idempotencyKey: 'itest-refund-1', providerTxId: pi, description: 'refund' },
-				store,
-			);
-			assert.equal(r1.duplicate, false);
-			assert.equal(r1.balance, -3000n, 'a refunded buyer who spent credits ends up owing them');
-			assert.equal(await sumReversedCreditsByProviderTxId(pi, store), 5000n);
-
-			// Replay the same refund → idempotent no-op, balance unchanged.
-			const r2 = await reverseWallet(
-				{ ...SUB, amount: 5000n, idempotencyKey: 'itest-refund-1', providerTxId: pi },
-				store,
-			);
-			assert.equal(r2.duplicate, true);
-			assert.equal((await getWalletBalance(SUB, store)).balance, -3000n);
-
-			// Ledger consistency: signed amounts (purchase +5000, usage -3000,
-			// refund -5000) sum to the balance.
-			const [sum] = await store.query<{ total: string }>(
-				`SELECT COALESCE(SUM(amount), 0) AS total FROM fonderie_wallet_ledger
-				WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
-				[SUB.subscriberType, SUB.subscriberId, SUB.currency],
-			);
-			assert.equal(BigInt(sum?.total ?? '0'), -3000n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
-
-test(
-	'PostgreSQL: concurrent reversals for one charge never over-reverse past the granted credits',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		// The per-charge cap must hold even when a chargeback (full amount) and a
-		// partial refund for the SAME PaymentIntent are processed concurrently.
-		// Without the in-transaction advisory lock + re-summed cap, both read a
-		// stale "nothing reversed yet" and together reverse 5000 + 2000 = 7000
-		// for a 5000-credit purchase.
-		const store = await connect();
-		try {
-			const pi = 'pi_itest_concurrent';
-			await creditWallet(
-				{ ...SUB, amount: 5000n, type: 'purchase', idempotencyKey: 'itest-cc-buy', providerTxId: pi },
-				store,
-			);
-			const [dispute, refund] = await Promise.all([
-				reverseWallet(
-					{ ...SUB, amount: 5000n, capToProviderTxId: 5000n, idempotencyKey: 'itest-cc-dispute', providerTxId: pi },
+test('PostgreSQL: concurrent identical credits apply exactly once (UNIQUE idempotency key)', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		const results = await Promise.all(
+			Array.from({ length: 10 }, () =>
+				creditWallet(
+					{ ...SUB, amount: 250n, type: 'purchase', idempotencyKey: 'itest-same-key' },
 					store,
 				),
-				reverseWallet(
-					{ ...SUB, amount: 2000n, capToProviderTxId: 5000n, idempotencyKey: 'itest-cc-refund', providerTxId: pi },
-					store,
-				),
-			]);
-			const totalReversed = dispute.reversed + refund.reversed;
-			assert.equal(totalReversed, 5000n, `cumulative reversed must be capped at 5000; got ${totalReversed}`);
-			assert.equal((await getWalletBalance(SUB, store)).balance, 0n, 'never below what was granted');
-			assert.equal(await sumReversedCreditsByProviderTxId(pi, store), 5000n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+			),
+		);
+		for (const r of results) assert.equal(r.balance, 250n);
+		assert.equal(results.filter((r) => !r.duplicate).length, 1);
 
-test(
-	'PostgreSQL: concurrent auto-recharge claims yield exactly one (per-charge dedup)',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		// The claim is what guarantees a burst of low-balance requests fires ONE
-		// charge, not N. On real Postgres the single conditional UPDATE row-locks:
-		// the winner sets last_recharge_at, and every loser re-evaluates the
-		// cooldown predicate against the new row and matches nothing.
-		const store = await connect();
-		try {
-			const key = { subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId, provider: 'stripe' };
-			await upsertWalletCustomer(
-				{ ...key, providerCustomerId: 'cus_itest', rearm: true, paymentMethodId: 'pm_itest' },
+		const rows = await store.query<{ id: string }>(
+			`SELECT id FROM fonderie_wallet_ledger WHERE idempotency_key = $1`,
+			['itest-same-key'],
+		);
+		assert.equal(rows.length, 1);
+		const { balance } = await getWalletBalance(SUB, store);
+		assert.equal(balance, 250n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
+test('PostgreSQL: buy → spend → refund claws back credits into a NEGATIVE balance, idempotently', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	// The §C value-leak fix on the real engine: proves reverseWallet drives
+	// the balance below zero (bypassing the debit floor), that the refund→
+	// purchase join by provider_tx_id resolves, that the cumulative-reversal
+	// sum is honest, and that the ledger's CHECK constraints (amount<>0, type
+	// IN(...)) accept a negative 'refund' row — none of which the emulator proves.
+	const store = await connect();
+	try {
+		const pi = 'pi_itest_refund';
+		await creditWallet(
+			{ ...SUB, amount: 5000n, type: 'purchase', idempotencyKey: 'itest-buy', providerTxId: pi },
+			store,
+		);
+		await debitWallet(
+			{ ...SUB, amount: 3000n, type: 'usage', idempotencyKey: 'itest-spend' },
+			store,
+		);
+		assert.equal((await getWalletBalance(SUB, store)).balance, 2000n);
+
+		const purchase = await findPurchaseByProviderTxId(pi, store);
+		assert.equal(purchase?.credits, 5000n);
+		assert.equal(purchase?.subscriberId, SUB.subscriberId);
+
+		const r1 = await reverseWallet(
+			{
+				...SUB,
+				amount: 5000n,
+				idempotencyKey: 'itest-refund-1',
+				providerTxId: pi,
+				description: 'refund',
+			},
+			store,
+		);
+		assert.equal(r1.duplicate, false);
+		assert.equal(r1.balance, -3000n, 'a refunded buyer who spent credits ends up owing them');
+		assert.equal(await sumReversedCreditsByProviderTxId(pi, store), 5000n);
+
+		// Replay the same refund → idempotent no-op, balance unchanged.
+		const r2 = await reverseWallet(
+			{ ...SUB, amount: 5000n, idempotencyKey: 'itest-refund-1', providerTxId: pi },
+			store,
+		);
+		assert.equal(r2.duplicate, true);
+		assert.equal((await getWalletBalance(SUB, store)).balance, -3000n);
+
+		// Ledger consistency: signed amounts (purchase +5000, usage -3000,
+		// refund -5000) sum to the balance.
+		const [sum] = await store.query<{ total: string }>(
+			`SELECT COALESCE(SUM(amount), 0) AS total FROM fonderie_wallet_ledger
+				WHERE subscriber_type = $1 AND subscriber_id = $2 AND currency = $3`,
+			[SUB.subscriberType, SUB.subscriberId, SUB.currency],
+		);
+		assert.equal(BigInt(sum?.total ?? '0'), -3000n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
+test('PostgreSQL: concurrent reversals for one charge never over-reverse past the granted credits', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	// The per-charge cap must hold even when a chargeback (full amount) and a
+	// partial refund for the SAME PaymentIntent are processed concurrently.
+	// Without the in-transaction advisory lock + re-summed cap, both read a
+	// stale "nothing reversed yet" and together reverse 5000 + 2000 = 7000
+	// for a 5000-credit purchase.
+	const store = await connect();
+	try {
+		const pi = 'pi_itest_concurrent';
+		await creditWallet(
+			{ ...SUB, amount: 5000n, type: 'purchase', idempotencyKey: 'itest-cc-buy', providerTxId: pi },
+			store,
+		);
+		const [dispute, refund] = await Promise.all([
+			reverseWallet(
+				{
+					...SUB,
+					amount: 5000n,
+					capToProviderTxId: 5000n,
+					idempotencyKey: 'itest-cc-dispute',
+					providerTxId: pi,
+				},
 				store,
-			);
+			),
+			reverseWallet(
+				{
+					...SUB,
+					amount: 2000n,
+					capToProviderTxId: 5000n,
+					idempotencyKey: 'itest-cc-refund',
+					providerTxId: pi,
+				},
+				store,
+			),
+		]);
+		const totalReversed = dispute.reversed + refund.reversed;
+		assert.equal(
+			totalReversed,
+			5000n,
+			`cumulative reversed must be capped at 5000; got ${totalReversed}`,
+		);
+		assert.equal((await getWalletBalance(SUB, store)).balance, 0n, 'never below what was granted');
+		assert.equal(await sumReversedCreditsByProviderTxId(pi, store), 5000n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-			const claims = await Promise.all(
-				Array.from({ length: 12 }, () => claimAutoRecharge({ ...key, cooldownSeconds: 3600 }, store)),
-			);
-			const won = claims.filter((c) => c !== null);
-			assert.equal(won.length, 1, `exactly one claim must win; got ${won.length}`);
-			assert.equal(won[0]!.providerCustomerId, 'cus_itest');
-			assert.equal(won[0]!.paymentMethodId, 'pm_itest', 'consented card round-trips (migration 009 column)');
+test('PostgreSQL: concurrent auto-recharge claims yield exactly one (per-charge dedup)', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	// The claim is what guarantees a burst of low-balance requests fires ONE
+	// charge, not N. On real Postgres the single conditional UPDATE row-locks:
+	// the winner sets last_recharge_at, and every loser re-evaluates the
+	// cooldown predicate against the new row and matches nothing.
+	const store = await connect();
+	try {
+		const key = {
+			subscriberType: SUB.subscriberType,
+			subscriberId: SUB.subscriberId,
+			provider: 'stripe',
+		};
+		await upsertWalletCustomer(
+			{ ...key, providerCustomerId: 'cus_itest', rearm: true, paymentMethodId: 'pm_itest' },
+			store,
+		);
 
-			// A later claim within the cooldown is still blocked.
-			assert.equal(await claimAutoRecharge({ ...key, cooldownSeconds: 3600 }, store), null);
+		const claims = await Promise.all(
+			Array.from({ length: 12 }, () => claimAutoRecharge({ ...key, cooldownSeconds: 3600 }, store)),
+		);
+		const won = claims.filter((c) => c !== null);
+		assert.equal(won.length, 1, `exactly one claim must win; got ${won.length}`);
+		assert.equal(won[0]!.providerCustomerId, 'cus_itest');
+		assert.equal(
+			won[0]!.paymentMethodId,
+			'pm_itest',
+			'consented card round-trips (migration 009 column)',
+		);
 
-			// Failures disable after the limit, and a disabled row never claims.
-			await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
-			assert.equal(await claimAutoRecharge({ ...key, cooldownSeconds: 0 }, store), null);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+		// A later claim within the cooldown is still blocked.
+		assert.equal(await claimAutoRecharge({ ...key, cooldownSeconds: 3600 }, store), null);
 
-test(
-	'PostgreSQL: concurrent periodic grants for one period apply exactly once',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			const results = await Promise.all(
-				Array.from({ length: 10 }, () =>
-					ensurePeriodicGrant({ ...SUB, amount: 500n, period: '2026-09' }, store),
-				),
-			);
-			assert.equal(results.filter((r) => r.granted).length, 1);
-			const { balance } = await getWalletBalance(SUB, store);
-			assert.equal(balance, 500n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+		// Failures disable after the limit, and a disabled row never claims.
+		await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
+		assert.equal(await claimAutoRecharge({ ...key, cooldownSeconds: 0 }, store), null);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
+test('PostgreSQL: concurrent periodic grants for one period apply exactly once', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		const results = await Promise.all(
+			Array.from({ length: 10 }, () =>
+				ensurePeriodicGrant({ ...SUB, amount: 500n, period: '2026-09' }, store),
+			),
+		);
+		assert.equal(results.filter((r) => r.granted).length, 1);
+		const { balance } = await getWalletBalance(SUB, store);
+		assert.equal(balance, 500n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
 // ── Phase 5a: allowance (granted) vs purchased buckets ────────────────────────
 
 const OCT = startOfNextPeriod('month', new Date(Date.UTC(2026, 8, 15))); // 2026-10-01
 const NOV = startOfNextPeriod('month', new Date(Date.UTC(2026, 9, 15))); // 2026-11-01
 
-test(
-	'PostgreSQL: allowance-first debit — free credits spend before purchased',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
-			await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
-			let bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.balance, 150n);
-			assert.equal(bal.granted, 50n);
-			assert.equal(bal.purchased, 100n);
+test('PostgreSQL: allowance-first debit — free credits spend before purchased', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
+		let bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.balance, 150n);
+		assert.equal(bal.granted, 50n);
+		assert.equal(bal.purchased, 100n);
 
-			await debitWallet({ ...SUB, amount: 30n, idempotencyKey: 'p5-d1' }, store);
-			bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 20n, 'debit drew from the allowance first');
-			assert.equal(bal.purchased, 100n, 'purchased untouched while allowance remains');
+		await debitWallet({ ...SUB, amount: 30n, idempotencyKey: 'p5-d1' }, store);
+		bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 20n, 'debit drew from the allowance first');
+		assert.equal(bal.purchased, 100n, 'purchased untouched while allowance remains');
 
-			await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-d2' }, store);
-			bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 0n, 'allowance exhausted');
-			assert.equal(bal.purchased, 80n, 'the overflow spilled onto purchased');
+		await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-d2' }, store);
+		bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 0n, 'allowance exhausted');
+		assert.equal(bal.purchased, 80n, 'the overflow spilled onto purchased');
 
-			const [row] = await store.query<{ metadata: Record<string, string> }>(
-				`SELECT metadata FROM fonderie_wallet_ledger WHERE idempotency_key = 'p5-d2'`,
-			);
-			assert.equal(row?.metadata?.['fromGranted'], '20');
-			assert.equal(row?.metadata?.['fromPurchased'], '20');
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+		const [row] = await store.query<{ metadata: Record<string, string> }>(
+			`SELECT metadata FROM fonderie_wallet_ledger WHERE idempotency_key = 'p5-d2'`,
+		);
+		assert.equal(row?.metadata?.['fromGranted'], '20');
+		assert.equal(row?.metadata?.['fromPurchased'], '20');
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: expiry (none) burns the unspent allowance and leaves purchased intact',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
-			await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
-			await debitWallet({ ...SUB, amount: 12n, idempotencyKey: 'p5-d1' }, store); // granted 38
+test('PostgreSQL: expiry (none) burns the unspent allowance and leaves purchased intact', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
+		await debitWallet({ ...SUB, amount: 12n, idempotencyKey: 'p5-d1' }, store); // granted 38
 
-			const res = await settleAllowance({ ...SUB, period: '2026-10', rollover: 'none', expiresAt: NOV }, store);
-			assert.equal(res.settled, true);
-			const bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 0n, 'use-it-or-lose-it: allowance expired');
-			assert.equal(bal.purchased, 100n, 'purchased survives the period boundary');
-			assert.equal(bal.balance, 100n);
+		const res = await settleAllowance(
+			{ ...SUB, period: '2026-10', rollover: 'none', expiresAt: NOV },
+			store,
+		);
+		assert.equal(res.settled, true);
+		const bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 0n, 'use-it-or-lose-it: allowance expired');
+		assert.equal(bal.purchased, 100n, 'purchased survives the period boundary');
+		assert.equal(bal.balance, 100n);
 
-			const [exp] = await store.query<{ amount: string }>(
-				`SELECT amount FROM fonderie_wallet_ledger WHERE subscriber_id = $1 AND type = 'expiry'`,
-				[SUB.subscriberId],
-			);
-			assert.equal(exp?.amount, '-38');
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+		const [exp] = await store.query<{ amount: string }>(
+			`SELECT amount FROM fonderie_wallet_ledger WHERE subscriber_id = $1 AND type = 'expiry'`,
+			[SUB.subscriberId],
+		);
+		assert.equal(exp?.amount, '-38');
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: expiry (full and cap) rollover policies',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			// full: entire remainder carries forward, no expiry row.
-			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
-			await debitWallet({ ...SUB, amount: 12n, idempotencyKey: 'p5-d1' }, store); // granted 38
-			await settleAllowance({ ...SUB, period: '2026-10', rollover: 'full', expiresAt: NOV }, store);
-			let bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 38n, 'full rollover keeps the whole remainder');
-			assert.equal(bal.balance, 38n);
+test('PostgreSQL: expiry (full and cap) rollover policies', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		// full: entire remainder carries forward, no expiry row.
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await debitWallet({ ...SUB, amount: 12n, idempotencyKey: 'p5-d1' }, store); // granted 38
+		await settleAllowance({ ...SUB, period: '2026-10', rollover: 'full', expiresAt: NOV }, store);
+		let bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 38n, 'full rollover keeps the whole remainder');
+		assert.equal(bal.balance, 38n);
 
-			// cap: carry up to the cap, expire the rest.
-			await settleAllowance({ ...SUB, period: '2026-11', rollover: { cap: 20n }, expiresAt: NOV }, store);
-			bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 20n, 'cap rollover keeps min(remainder, cap)');
-			assert.equal(bal.balance, 20n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+		// cap: carry up to the cap, expire the rest.
+		await settleAllowance(
+			{ ...SUB, period: '2026-11', rollover: { cap: 20n }, expiresAt: NOV },
+			store,
+		);
+		bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 20n, 'cap rollover keeps min(remainder, cap)');
+		assert.equal(bal.balance, 20n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: spend_purchased=false hard-stops at the allowance even with purchased credits',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
-			await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
-			await store.query(
-				`UPDATE fonderie_wallet_balances SET spend_purchased = false WHERE subscriber_id = $1`,
-				[SUB.subscriberId],
-			);
+test('PostgreSQL: spend_purchased=false hard-stops at the allowance even with purchased credits', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
+		await store.query(
+			`UPDATE fonderie_wallet_balances SET spend_purchased = false WHERE subscriber_id = $1`,
+			[SUB.subscriberId],
+		);
 
-			await assert.rejects(
-				() => debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5-blocked' }, store),
-				InsufficientFundsError,
-				'a 60 debit is refused: only the 50 allowance is spendable, not the 100 purchased',
-			);
+		await assert.rejects(
+			() => debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5-blocked' }, store),
+			InsufficientFundsError,
+			'a 60 debit is refused: only the 50 allowance is spendable, not the 100 purchased',
+		);
 
-			await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-ok' }, store);
-			let bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 10n);
-			assert.equal(bal.purchased, 100n, 'purchased never touched while the toggle is off');
+		await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-ok' }, store);
+		let bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 10n);
+		assert.equal(bal.purchased, 100n, 'purchased never touched while the toggle is off');
 
-			// Re-enable and the overflow reaches purchased.
-			await store.query(
-				`UPDATE fonderie_wallet_balances SET spend_purchased = true WHERE subscriber_id = $1`,
-				[SUB.subscriberId],
-			);
-			await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-on' }, store);
-			bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 0n);
-			assert.equal(bal.purchased, 70n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+		// Re-enable and the overflow reaches purchased.
+		await store.query(
+			`UPDATE fonderie_wallet_balances SET spend_purchased = true WHERE subscriber_id = $1`,
+			[SUB.subscriberId],
+		);
+		await debitWallet({ ...SUB, amount: 40n, idempotencyKey: 'p5-on' }, store);
+		bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 0n);
+		assert.equal(bal.purchased, 70n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: a refund claws back purchased ONLY — the allowance is untouched',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
-			await creditWallet(
-				{ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy', providerTxId: 'pi_x' },
-				store,
-			);
-			await reverseWallet(
-				{ ...SUB, amount: 100n, capToProviderTxId: 100n, providerTxId: 'pi_x', idempotencyKey: 'p5-refund' },
-				store,
-			);
-			const bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 50n, 'the granted allowance is structurally untouched by a refund');
-			assert.equal(bal.purchased, 0n, 'the refund consumed only the purchased credits');
-			assert.equal(bal.balance, 50n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+test('PostgreSQL: a refund claws back purchased ONLY — the allowance is untouched', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await creditWallet(
+			{ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy', providerTxId: 'pi_x' },
+			store,
+		);
+		await reverseWallet(
+			{
+				...SUB,
+				amount: 100n,
+				capToProviderTxId: 100n,
+				providerTxId: 'pi_x',
+				idempotencyKey: 'p5-refund',
+			},
+			store,
+		);
+		const bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 50n, 'the granted allowance is structurally untouched by a refund');
+		assert.equal(bal.purchased, 0n, 'the refund consumed only the purchased credits');
+		assert.equal(bal.balance, 50n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: overdraft eats purchased, never drives the allowance negative',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			await ensurePeriodicGrant({ ...SUB, amount: 30n, period: '2026-09', expiresAt: OCT }, store);
-			await debitWallet({ ...SUB, amount: 60n, overdraftLimit: 50n, idempotencyKey: 'p5-od' }, store);
-			const bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 0n, 'granted floored at 0, never negative');
-			assert.equal(bal.balance, -30n, 'overdraft drove the total (purchased) negative');
-			assert.equal(bal.purchased, -30n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+test('PostgreSQL: overdraft eats purchased, never drives the allowance negative', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		await ensurePeriodicGrant({ ...SUB, amount: 30n, period: '2026-09', expiresAt: OCT }, store);
+		await debitWallet({ ...SUB, amount: 60n, overdraftLimit: 50n, idempotencyKey: 'p5-od' }, store);
+		const bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 0n, 'granted floored at 0, never negative');
+		assert.equal(bal.balance, -30n, 'overdraft drove the total (purchased) negative');
+		assert.equal(bal.purchased, -30n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: a legacy single-balance row is all purchased and never expires',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			// Simulate a pre-Phase-5 balance: amount only, granted columns at defaults.
-			await store.query(
-				`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount)
+test('PostgreSQL: a legacy single-balance row is all purchased and never expires', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		// Simulate a pre-Phase-5 balance: amount only, granted columns at defaults.
+		await store.query(
+			`INSERT INTO fonderie_wallet_balances (subscriber_type, subscriber_id, currency, amount)
 				VALUES ($1, $2, $3, 500)`,
-				[SUB.subscriberType, SUB.subscriberId, SUB.currency],
-			);
-			const res = await settleAllowance({ ...SUB, period: '2026-10', rollover: 'none', expiresAt: NOV }, store);
-			assert.equal(res.settled, false, 'never-granted balance has nothing to expire');
-			const bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 0n);
-			assert.equal(bal.purchased, 500n, 'legacy balance classifies wholly as purchased');
-			assert.equal(bal.balance, 500n);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+			[SUB.subscriberType, SUB.subscriberId, SUB.currency],
+		);
+		const res = await settleAllowance(
+			{ ...SUB, period: '2026-10', rollover: 'none', expiresAt: NOV },
+			store,
+		);
+		assert.equal(res.settled, false, 'never-granted balance has nothing to expire');
+		const bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 0n);
+		assert.equal(bal.purchased, 500n, 'legacy balance classifies wholly as purchased');
+		assert.equal(bal.balance, 500n);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: setSpendPurchased upserts a preference for a subscriber with no balance row',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			// No credit ever → no balance row. The setter must UPSERT, not no-op.
-			await setSpendPurchased({ ...SUB, spendPurchased: false }, store);
-			const bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.spendPurchased, false, 'preference persisted on a freshly-created row');
-			assert.equal(bal.balance, 0n, 'the created row starts at zero');
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+test('PostgreSQL: setSpendPurchased upserts a preference for a subscriber with no balance row', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		// No credit ever → no balance row. The setter must UPSERT, not no-op.
+		await setSpendPurchased({ ...SUB, spendPurchased: false }, store);
+		const bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.spendPurchased, false, 'preference persisted on a freshly-created row');
+		assert.equal(bal.balance, 0n, 'the created row starts at zero');
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
-test(
-	'PostgreSQL: setSpendPurchased toggles the debit hard-stop end to end',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
-			await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5b-buy' }, store);
+test('PostgreSQL: setSpendPurchased toggles the debit hard-stop end to end', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await creditWallet(
+			{ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5b-buy' },
+			store,
+		);
 
-			// OFF via the service → a debit past the allowance is refused.
-			await setSpendPurchased({ ...SUB, spendPurchased: false }, store);
-			await assert.rejects(
-				() => debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5b-blocked' }, store),
-				InsufficientFundsError,
-			);
+		// OFF via the service → a debit past the allowance is refused.
+		await setSpendPurchased({ ...SUB, spendPurchased: false }, store);
+		await assert.rejects(
+			() => debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5b-blocked' }, store),
+			InsufficientFundsError,
+		);
 
-			// ON via the service → the overflow reaches purchased.
-			await setSpendPurchased({ ...SUB, spendPurchased: true }, store);
-			await debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5b-ok' }, store);
-			const bal = await getWalletBalance(SUB, store);
-			assert.equal(bal.granted, 0n);
-			assert.equal(bal.purchased, 90n, '10 of the 60 came from purchased after the allowance');
-			assert.equal(bal.spendPurchased, true);
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+		// ON via the service → the overflow reaches purchased.
+		await setSpendPurchased({ ...SUB, spendPurchased: true }, store);
+		await debitWallet({ ...SUB, amount: 60n, idempotencyKey: 'p5b-ok' }, store);
+		const bal = await getWalletBalance(SUB, store);
+		assert.equal(bal.granted, 0n);
+		assert.equal(bal.purchased, 90n, '10 of the 60 came from purchased after the allowance');
+		assert.equal(bal.spendPurchased, true);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
 
 // ── subscription webhook ordering guard (provider_event_at) ───────────────────
 
-test(
-	'PostgreSQL: a stale/out-of-order subscription event never resurrects a canceled row',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		// Providers deliver customer.subscription.* at-least-once with NO ordering
-		// guarantee, so a retried "updated" arriving after "deleted" would overwrite
-		// the canceled row back to active/paid — a customer keeps paid access after
-		// cancelling. The provider_event_at guard makes the stale upsert a no-op and
-		// reports not-applied. This is an ENGINE claim (the WHERE lives in SQL).
-		const { upsertSubscription, getSubscription } = await import('../services/subscriptions');
-		const store = await connect();
-		const clear = () =>
-			store.query(`DELETE FROM fonderie_subscriptions WHERE subscriber_id = $1`, [SUB.subscriberId]);
-		try {
-			await clear();
-			const base = {
-				subscriberType: SUB.subscriberType,
-				subscriberId: SUB.subscriberId,
-				providerCustomerId: 'cus_sub_order',
-				providerSubscriptionId: 'sub_order',
-			};
-			const t1 = new Date('2026-09-01T00:00:00Z');
-			const t2 = new Date('2026-09-01T00:05:00Z');
-			const t3 = new Date('2026-09-01T00:10:00Z');
-			const get = () => getSubscription(SUB.subscriberType, SUB.subscriberId, store);
+test('PostgreSQL: a stale/out-of-order subscription event never resurrects a canceled row', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	// Providers deliver customer.subscription.* at-least-once with NO ordering
+	// guarantee, so a retried "updated" arriving after "deleted" would overwrite
+	// the canceled row back to active/paid — a customer keeps paid access after
+	// cancelling. The provider_event_at guard makes the stale upsert a no-op and
+	// reports not-applied. This is an ENGINE claim (the WHERE lives in SQL).
+	const { upsertSubscription, getSubscription } = await import('../services/subscriptions');
+	const store = await connect();
+	const clear = () =>
+		store.query(`DELETE FROM fonderie_subscriptions WHERE subscriber_id = $1`, [SUB.subscriberId]);
+	try {
+		await clear();
+		const base = {
+			subscriberType: SUB.subscriberType,
+			subscriberId: SUB.subscriberId,
+			providerCustomerId: 'cus_sub_order',
+			providerSubscriptionId: 'sub_order',
+		};
+		const t1 = new Date('2026-09-01T00:00:00Z');
+		const t2 = new Date('2026-09-01T00:05:00Z');
+		const t3 = new Date('2026-09-01T00:10:00Z');
+		const get = () => getSubscription(SUB.subscriberType, SUB.subscriberId, store);
 
-			// T1: active on pro. The write applies (fresh row).
-			assert.equal(
-				await upsertSubscription({ ...base, plan: 'pro', status: 'active', providerEventAt: t1 }, store),
-				true,
-			);
-			assert.equal((await get())?.status, 'active');
+		// T1: active on pro. The write applies (fresh row).
+		assert.equal(
+			await upsertSubscription(
+				{ ...base, plan: 'pro', status: 'active', providerEventAt: t1 },
+				store,
+			),
+			true,
+		);
+		assert.equal((await get())?.status, 'active');
 
-			// T2 (> T1): the cancellation lands (deleted → free/canceled).
-			assert.equal(
-				await upsertSubscription({ ...base, plan: 'free', status: 'canceled', providerEventAt: t2 }, store),
-				true,
-			);
-			let row = await get();
-			assert.equal(row?.status, 'canceled');
-			assert.equal(row?.plan, 'free');
+		// T2 (> T1): the cancellation lands (deleted → free/canceled).
+		assert.equal(
+			await upsertSubscription(
+				{ ...base, plan: 'free', status: 'canceled', providerEventAt: t2 },
+				store,
+			),
+			true,
+		);
+		let row = await get();
+		assert.equal(row?.status, 'canceled');
+		assert.equal(row?.plan, 'free');
 
-			// STALE retry of the T1 "updated" arriving late — MUST be a no-op, and the
-			// upsert must REPORT not-applied so the controller skips its side effects.
-			assert.equal(
-				await upsertSubscription({ ...base, plan: 'pro', status: 'active', providerEventAt: t1 }, store),
-				false,
-				'a stale event reports not-applied',
-			);
-			row = await get();
-			assert.equal(row?.status, 'canceled', 'a stale event must NOT resurrect the subscription');
-			assert.equal(row?.plan, 'free');
+		// STALE retry of the T1 "updated" arriving late — MUST be a no-op, and the
+		// upsert must REPORT not-applied so the controller skips its side effects.
+		assert.equal(
+			await upsertSubscription(
+				{ ...base, plan: 'pro', status: 'active', providerEventAt: t1 },
+				store,
+			),
+			false,
+			'a stale event reports not-applied',
+		);
+		row = await get();
+		assert.equal(row?.status, 'canceled', 'a stale event must NOT resurrect the subscription');
+		assert.equal(row?.plan, 'free');
 
-			// A genuinely newer event (re-subscribe at T3) still applies.
-			assert.equal(
-				await upsertSubscription(
-					{ ...base, plan: 'pro', status: 'active', providerSubscriptionId: 'sub_order_2', providerEventAt: t3 },
-					store,
-				),
-				true,
-			);
-			row = await get();
-			assert.equal(row?.status, 'active', 'a newer event still applies');
-			assert.equal(row?.plan, 'pro');
-
-			// A non-webhook write (no providerEventAt) applies unconditionally and
-			// PRESERVES the stored ordering token (COALESCE, not assign).
-			assert.equal(
-				await upsertSubscription(
-					{ ...base, plan: 'pro', status: 'active', cancelAtPeriodEnd: true, providerSubscriptionId: 'sub_order_2' },
-					store,
-				),
-				true,
-			);
-			row = await get();
-			assert.equal(row?.cancelAtPeriodEnd, true, 'an app-initiated write always applies');
-
-			// Because the T3 token survived that null write, a T1 stale retry is still rejected.
-			assert.equal(
-				await upsertSubscription({ ...base, plan: 'starter', status: 'active', providerEventAt: t1 }, store),
-				false,
-				'ordering token preserved across the non-webhook write',
-			);
-			row = await get();
-			assert.equal(row?.plan, 'pro', 'ordering token preserved across the non-webhook write');
-		} finally {
-			await clear();
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
-
-test(
-	'PostgreSQL: a guarded optimistic write cannot resurrect a webhook-canceled subscription',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		// The reactivate/cancel optimistic writes carry no providerEventAt, so the
-		// ordering guard's null-token clause always applies — which would let a write
-		// still in flight resurrect a row a TERMINAL customer.subscription.deleted
-		// webhook already canceled (no later webhook ever corrects it). guardNotWebhookCanceled
-		// makes such a write no-op. Proven on the real engine (the WHERE lives in SQL).
-		const { upsertSubscription, getSubscription } = await import('../services/subscriptions');
-		const store = await connect();
-		const clear = () =>
-			store.query(`DELETE FROM fonderie_subscriptions WHERE subscriber_id = $1`, [SUB.subscriberId]);
-		try {
-			await clear();
-			const base = {
-				subscriberType: SUB.subscriberType,
-				subscriberId: SUB.subscriberId,
-				providerCustomerId: 'cus_guard',
-				providerSubscriptionId: 'sub_guard',
-			};
-			// Terminal deleted webhook: canceled/free with a provider_event_at token.
-			assert.equal(
-				await upsertSubscription(
-					{ ...base, plan: 'free', status: 'canceled', providerEventAt: new Date('2026-09-01T00:05:00Z') },
-					store,
-				),
-				true,
-			);
-
-			// A guarded optimistic reactivate (no providerEventAt) must NOT resurrect it.
-			assert.equal(
-				await upsertSubscription(
-					{ ...base, plan: 'pro', status: 'active', cancelAtPeriodEnd: false, guardNotWebhookCanceled: true },
-					store,
-				),
-				false,
-				'guarded optimistic write no-ops over a webhook-canceled row',
-			);
-			let row = await getSubscription(SUB.subscriberType, SUB.subscriberId, store);
-			assert.equal(row?.status, 'canceled', 'the terminal cancellation stands');
-			assert.equal(row?.plan, 'free');
-
-			// Contrast: the SAME write WITHOUT the guard would apply — proving the guard
-			// is exactly what closes the resurrection, not some other condition.
-			assert.equal(
-				await upsertSubscription({ ...base, plan: 'pro', status: 'active', cancelAtPeriodEnd: false }, store),
-				true,
-			);
-			row = await getSubscription(SUB.subscriberType, SUB.subscriberId, store);
-			assert.equal(row?.status, 'active', 'unguarded optimistic write does resurrect (the original bug)');
-		} finally {
-			await clear();
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
-
-test(
-	'PostgreSQL: in-app purchase credits once and is idempotent on a double-submit',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			const { purchasePackWithSavedCard } = await import('../services/purchase');
-			// Seed the saved card the charge will use.
-			await upsertWalletCustomer(
+		// A genuinely newer event (re-subscribe at T3) still applies.
+		assert.equal(
+			await upsertSubscription(
 				{
-					subscriberType: SUB.subscriberType,
-					subscriberId: SUB.subscriberId,
-					provider: 'stub',
-					providerCustomerId: 'cus_itest',
-					rearm: false,
-					paymentMethodId: 'pm_itest',
+					...base,
+					plan: 'pro',
+					status: 'active',
+					providerSubscriptionId: 'sub_order_2',
+					providerEventAt: t3,
 				},
 				store,
-			);
-			// A provider that returns ONE fixed PaymentIntent id — so the second call
-			// (same client idempotencyKey) credits with the SAME provider-tx key and
-			// must dedupe to a single credit.
-			let charges = 0;
-			const config = {
-				provider: {
-					name: 'stub',
-					async chargeOffSession() {
-						charges++;
-						return { providerTxId: 'pi_itest_fixed', status: 'succeeded' as const };
-					},
-				},
-				wallet: {
-					currency: 'USD',
-					precision: 2,
-					creditPacks: [{ id: 'small', name: 'Small', credits: 500n, priceAmount: 499n }],
-				},
-				plans: [],
-			} as unknown as Parameters<typeof purchasePackWithSavedCard>[0]['config'];
+			),
+			true,
+		);
+		row = await get();
+		assert.equal(row?.status, 'active', 'a newer event still applies');
+		assert.equal(row?.plan, 'pro');
 
-			const args = {
+		// A non-webhook write (no providerEventAt) applies unconditionally and
+		// PRESERVES the stored ordering token (COALESCE, not assign).
+		assert.equal(
+			await upsertSubscription(
+				{
+					...base,
+					plan: 'pro',
+					status: 'active',
+					cancelAtPeriodEnd: true,
+					providerSubscriptionId: 'sub_order_2',
+				},
 				store,
-				config,
-				bus: undefined,
+			),
+			true,
+		);
+		row = await get();
+		assert.equal(row?.cancelAtPeriodEnd, true, 'an app-initiated write always applies');
+
+		// Because the T3 token survived that null write, a T1 stale retry is still rejected.
+		assert.equal(
+			await upsertSubscription(
+				{ ...base, plan: 'starter', status: 'active', providerEventAt: t1 },
+				store,
+			),
+			false,
+			'ordering token preserved across the non-webhook write',
+		);
+		row = await get();
+		assert.equal(row?.plan, 'pro', 'ordering token preserved across the non-webhook write');
+	} finally {
+		await clear();
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
+test('PostgreSQL: a guarded optimistic write cannot resurrect a webhook-canceled subscription', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	// The reactivate/cancel optimistic writes carry no providerEventAt, so the
+	// ordering guard's null-token clause always applies — which would let a write
+	// still in flight resurrect a row a TERMINAL customer.subscription.deleted
+	// webhook already canceled (no later webhook ever corrects it). guardNotWebhookCanceled
+	// makes such a write no-op. Proven on the real engine (the WHERE lives in SQL).
+	const { upsertSubscription, getSubscription } = await import('../services/subscriptions');
+	const store = await connect();
+	const clear = () =>
+		store.query(`DELETE FROM fonderie_subscriptions WHERE subscriber_id = $1`, [SUB.subscriberId]);
+	try {
+		await clear();
+		const base = {
+			subscriberType: SUB.subscriberType,
+			subscriberId: SUB.subscriberId,
+			providerCustomerId: 'cus_guard',
+			providerSubscriptionId: 'sub_guard',
+		};
+		// Terminal deleted webhook: canceled/free with a provider_event_at token.
+		assert.equal(
+			await upsertSubscription(
+				{
+					...base,
+					plan: 'free',
+					status: 'canceled',
+					providerEventAt: new Date('2026-09-01T00:05:00Z'),
+				},
+				store,
+			),
+			true,
+		);
+
+		// A guarded optimistic reactivate (no providerEventAt) must NOT resurrect it.
+		assert.equal(
+			await upsertSubscription(
+				{
+					...base,
+					plan: 'pro',
+					status: 'active',
+					cancelAtPeriodEnd: false,
+					guardNotWebhookCanceled: true,
+				},
+				store,
+			),
+			false,
+			'guarded optimistic write no-ops over a webhook-canceled row',
+		);
+		let row = await getSubscription(SUB.subscriberType, SUB.subscriberId, store);
+		assert.equal(row?.status, 'canceled', 'the terminal cancellation stands');
+		assert.equal(row?.plan, 'free');
+
+		// Contrast: the SAME write WITHOUT the guard would apply — proving the guard
+		// is exactly what closes the resurrection, not some other condition.
+		assert.equal(
+			await upsertSubscription(
+				{ ...base, plan: 'pro', status: 'active', cancelAtPeriodEnd: false },
+				store,
+			),
+			true,
+		);
+		row = await getSubscription(SUB.subscriberType, SUB.subscriberId, store);
+		assert.equal(
+			row?.status,
+			'active',
+			'unguarded optimistic write does resurrect (the original bug)',
+		);
+	} finally {
+		await clear();
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
+test('PostgreSQL: in-app purchase credits once and is idempotent on a double-submit', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		const { purchasePackWithSavedCard } = await import('../services/purchase');
+		// Seed the saved card the charge will use.
+		await upsertWalletCustomer(
+			{
 				subscriberType: SUB.subscriberType,
 				subscriberId: SUB.subscriberId,
-				packId: 'small',
-				creditCurrency: 'USD',
-				precision: 2,
-				idempotencyKey: 'buy-once',
-			};
-
-			const first = await purchasePackWithSavedCard(args);
-			assert.equal(first.status, 'credited');
-			if (first.status === 'credited') {
-				assert.equal(first.duplicate, false);
-				assert.equal(first.balance, 500n);
-			}
-
-			// Double-submit with the SAME client key → same PI → single credit.
-			const second = await purchasePackWithSavedCard(args);
-			assert.equal(second.status, 'credited');
-			if (second.status === 'credited') {
-				assert.equal(second.duplicate, true, 'the resubmit must not create a second credit');
-				assert.equal(second.balance, 500n, 'balance unchanged on the duplicate');
-			}
-
-			const { balance } = await getWalletBalance(SUB, store);
-			assert.equal(balance, 500n, 'exactly one pack credited');
-
-			// The credit is joinable back to the charge for refund clawback.
-			const purchase = await findPurchaseByProviderTxId('pi_itest_fixed', store);
-			assert.ok(purchase, 'purchase is findable by provider tx id');
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
-
-test(
-	'PostgreSQL: webhook safety-net credits an orphaned in-app purchase exactly once (dedupes with the sync credit)',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
-			const { purchasePackWithSavedCard } = await import('../services/purchase');
-
-			// A payment webhook that constructs a succeeded in-app-purchase PI event
-			// (reason:'purchase') for a fixed PaymentIntent id.
-			const PI = 'pi_orphan_fixed';
-			const meta = {
-				reason: 'purchase',
-				subscriberType: SUB.subscriberType,
-				subscriberId: SUB.subscriberId,
-				packId: 'small',
-				credits: '500',
-				currency: 'USD',
-			};
-			const webhookProvider = {
-				name: 'stub',
-				async constructEvent() {
-					return {
-						type: 'payment_intent.succeeded',
-						subscription: null,
-						payment: {
-							sessionId: PI,
-							providerTxId: PI,
-							customerId: 'cus_itest',
-							amountTotal: 499n,
-							currency: 'usd',
-							paymentStatus: 'paid',
-							metadata: meta,
-						},
-					};
-				},
-			};
-			const cfg = {
-				provider: webhookProvider,
-				wallet: { currency: 'USD', precision: 2, webhookSecret: 'whsec_x', creditPacks: [] },
-				plans: [],
-			} as any;
-			// A fresh context per delivery — a Request body is a one-shot stream, so
-			// each webhook handle() needs its own (mirrors the provider redelivering).
-			const mkCtx = () =>
-				({
-					request: new Request('http://localhost/webhook', {
-						method: 'POST',
-						headers: { 'stripe-signature': 't=1,v1=stub' },
-						body: '{}',
-					}),
-					meta: {},
-				}) as any;
-
-			// The card was saved during setup, before any purchase (production order).
-			await upsertWalletCustomer(
-				{ subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId, provider: 'stub', providerCustomerId: 'cus_itest', rearm: false, paymentMethodId: 'pm_itest' },
-				store,
-			);
-
-			// Orphan case: the client dropped after an indeterminate charge, so the
-			// SYNC credit never ran — the webhook delivery credits it.
-			const first = await paymentWebhookController(store, cfg, undefined).handle(mkCtx());
-			assert.equal((await first.json()).duplicate, false, 'safety-net credits the orphaned capture');
-			assert.equal((await getWalletBalance(SUB, store)).balance, 500n);
-
-			// Now the synchronous purchase path runs for the SAME PaymentIntent id
-			// (e.g. a late client retry). It must dedupe — no second credit.
-			const syncProvider = {
+				provider: 'stub',
+				providerCustomerId: 'cus_itest',
+				rearm: false,
+				paymentMethodId: 'pm_itest',
+			},
+			store,
+		);
+		// A provider that returns ONE fixed PaymentIntent id — so the second call
+		// (same client idempotencyKey) credits with the SAME provider-tx key and
+		// must dedupe to a single credit.
+		let charges = 0;
+		const config = {
+			provider: {
 				name: 'stub',
 				async chargeOffSession() {
-					return { providerTxId: PI, status: 'succeeded' as const };
+					charges++;
+					return { providerTxId: 'pi_itest_fixed', status: 'succeeded' as const };
 				},
-			};
-			const syncCfg = {
-				provider: syncProvider,
-				wallet: { currency: 'USD', precision: 2, creditPacks: [{ id: 'small', name: 'S', credits: 500n, priceAmount: 499n }] },
-				plans: [],
-			} as unknown as Parameters<typeof purchasePackWithSavedCard>[0]['config'];
-			const sync = await purchasePackWithSavedCard({
-				store, config: syncCfg, bus: undefined,
-				subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId,
-				packId: 'small', creditCurrency: 'USD', precision: 2, idempotencyKey: 'late-retry',
-			});
-			assert.equal(sync.status, 'credited');
-			if (sync.status === 'credited') assert.equal(sync.duplicate, true, 'sync retry dedupes on the PI-id credit key');
+			},
+			wallet: {
+				currency: 'USD',
+				precision: 2,
+				creditPacks: [{ id: 'small', name: 'Small', credits: 500n, priceAmount: 499n }],
+			},
+			plans: [],
+		} as unknown as Parameters<typeof purchasePackWithSavedCard>[0]['config'];
 
-			// Redeliver the webhook too — still one credit.
-			await paymentWebhookController(store, cfg, undefined).handle(mkCtx());
-			assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'exactly one credit across sync + webhook + redelivery');
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
+		const args = {
+			store,
+			config,
+			bus: undefined,
+			subscriberType: SUB.subscriberType,
+			subscriberId: SUB.subscriberId,
+			packId: 'small',
+			creditCurrency: 'USD',
+			precision: 2,
+			idempotencyKey: 'buy-once',
+		};
+
+		const first = await purchasePackWithSavedCard(args);
+		assert.equal(first.status, 'credited');
+		if (first.status === 'credited') {
+			assert.equal(first.duplicate, false);
+			assert.equal(first.balance, 500n);
 		}
-	},
-);
 
-test(
-	'PostgreSQL: invoice.paid heals an orphaned pack purchase exactly once (dedupes with the sync credit)',
-	{ skip: PG_URL ? false : 'set BILLING_PG_URL to run' },
-	async () => {
-		const store = await connect();
-		try {
-			const { webhookController } = await import('../controllers/webhook.controller');
-			const { applyPackCredit } = await import('../services/purchase');
-			const PI = 'pi_invpaid_fixed';
-			const invoiceEvent = {
-				type: 'invoice.paid',
-				subscription: null,
-				invoice: {
-					id: 'in_itest',
-					status: 'paid',
-					amount: 499n,
-					currency: 'usd',
-					providerTxId: PI,
-					providerSubscriptionId: null,
-					metadata: {
-						reason: 'purchase',
-						subscriberType: SUB.subscriberType,
-						subscriberId: SUB.subscriberId,
-						packId: 'small',
-						credits: '500',
-						currency: 'USD',
+		// Double-submit with the SAME client key → same PI → single credit.
+		const second = await purchasePackWithSavedCard(args);
+		assert.equal(second.status, 'credited');
+		if (second.status === 'credited') {
+			assert.equal(second.duplicate, true, 'the resubmit must not create a second credit');
+			assert.equal(second.balance, 500n, 'balance unchanged on the duplicate');
+		}
+
+		const { balance } = await getWalletBalance(SUB, store);
+		assert.equal(balance, 500n, 'exactly one pack credited');
+
+		// The credit is joinable back to the charge for refund clawback.
+		const purchase = await findPurchaseByProviderTxId('pi_itest_fixed', store);
+		assert.ok(purchase, 'purchase is findable by provider tx id');
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
+test('PostgreSQL: webhook safety-net credits an orphaned in-app purchase exactly once (dedupes with the sync credit)', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+		const { purchasePackWithSavedCard } = await import('../services/purchase');
+
+		// A payment webhook that constructs a succeeded in-app-purchase PI event
+		// (reason:'purchase') for a fixed PaymentIntent id.
+		const PI = 'pi_orphan_fixed';
+		const meta = {
+			reason: 'purchase',
+			subscriberType: SUB.subscriberType,
+			subscriberId: SUB.subscriberId,
+			packId: 'small',
+			credits: '500',
+			currency: 'USD',
+		};
+		const webhookProvider = {
+			name: 'stub',
+			async constructEvent() {
+				return {
+					type: 'payment_intent.succeeded',
+					subscription: null,
+					payment: {
+						sessionId: PI,
+						providerTxId: PI,
+						customerId: 'cus_itest',
+						amountTotal: 499n,
+						currency: 'usd',
+						paymentStatus: 'paid',
+						metadata: meta,
 					},
-				},
-			};
-			const cfg = {
-				provider: { name: 'stub', async constructEvent() { return invoiceEvent; } },
-				webhookSecret: 'whsec_x',
-				wallet: { currency: 'USD', precision: 2, creditPacks: [] },
-				plans: [],
-			} as any;
-			const ctx = () =>
-				({
-					request: new Request('http://localhost/webhook', {
-						method: 'POST',
-						headers: { 'stripe-signature': 't=1,v1=stub' },
-						body: '{}',
-					}),
-					meta: {},
-				}) as any;
-			const ctrl = webhookController(store, cfg, undefined, undefined);
+				};
+			},
+		};
+		const cfg = {
+			provider: webhookProvider,
+			wallet: { currency: 'USD', precision: 2, webhookSecret: 'whsec_x', creditPacks: [] },
+			plans: [],
+		} as any;
+		// A fresh context per delivery — a Request body is a one-shot stream, so
+		// each webhook handle() needs its own (mirrors the provider redelivering).
+		const mkCtx = () =>
+			({
+				request: new Request('http://localhost/webhook', {
+					method: 'POST',
+					headers: { 'stripe-signature': 't=1,v1=stub' },
+					body: '{}',
+				}),
+				meta: {},
+			}) as any;
 
-			// Orphan: the synchronous credit never ran — invoice.paid heals it.
-			await ctrl.handle(ctx());
-			assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'heal credits the orphan');
-			// Redelivery of the same invoice.paid → dedupe (keyed on the PI).
-			await ctrl.handle(ctx());
-			assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'redelivery does not double-credit');
-			// A late synchronous credit for the SAME PaymentIntent → duplicate, no third credit.
-			const r = await applyPackCredit({
-				store, config: cfg, bus: undefined,
-				subscriberType: SUB.subscriberType, subscriberId: SUB.subscriberId,
-				creditCurrency: 'USD', precision: 2, credits: 500n, packId: 'small',
-				providerTxId: PI, amountPaid: 499n, paymentCurrency: 'usd',
-			});
-			assert.equal(r.duplicate, true, 'sync credit dedupes against the webhook heal');
-			assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'exactly one credit across webhook + sync');
-		} finally {
-			await (store as unknown as { end(): Promise<void> }).end();
-		}
-	},
-);
+		// The card was saved during setup, before any purchase (production order).
+		await upsertWalletCustomer(
+			{
+				subscriberType: SUB.subscriberType,
+				subscriberId: SUB.subscriberId,
+				provider: 'stub',
+				providerCustomerId: 'cus_itest',
+				rearm: false,
+				paymentMethodId: 'pm_itest',
+			},
+			store,
+		);
+
+		// Orphan case: the client dropped after an indeterminate charge, so the
+		// SYNC credit never ran — the webhook delivery credits it.
+		const first = await paymentWebhookController(store, cfg, undefined).handle(mkCtx());
+		assert.equal((await first.json()).duplicate, false, 'safety-net credits the orphaned capture');
+		assert.equal((await getWalletBalance(SUB, store)).balance, 500n);
+
+		// Now the synchronous purchase path runs for the SAME PaymentIntent id
+		// (e.g. a late client retry). It must dedupe — no second credit.
+		const syncProvider = {
+			name: 'stub',
+			async chargeOffSession() {
+				return { providerTxId: PI, status: 'succeeded' as const };
+			},
+		};
+		const syncCfg = {
+			provider: syncProvider,
+			wallet: {
+				currency: 'USD',
+				precision: 2,
+				creditPacks: [{ id: 'small', name: 'S', credits: 500n, priceAmount: 499n }],
+			},
+			plans: [],
+		} as unknown as Parameters<typeof purchasePackWithSavedCard>[0]['config'];
+		const sync = await purchasePackWithSavedCard({
+			store,
+			config: syncCfg,
+			bus: undefined,
+			subscriberType: SUB.subscriberType,
+			subscriberId: SUB.subscriberId,
+			packId: 'small',
+			creditCurrency: 'USD',
+			precision: 2,
+			idempotencyKey: 'late-retry',
+		});
+		assert.equal(sync.status, 'credited');
+		if (sync.status === 'credited')
+			assert.equal(sync.duplicate, true, 'sync retry dedupes on the PI-id credit key');
+
+		// Redeliver the webhook too — still one credit.
+		await paymentWebhookController(store, cfg, undefined).handle(mkCtx());
+		assert.equal(
+			(await getWalletBalance(SUB, store)).balance,
+			500n,
+			'exactly one credit across sync + webhook + redelivery',
+		);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
+test('PostgreSQL: invoice.paid heals an orphaned pack purchase exactly once (dedupes with the sync credit)', {
+	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
+}, async () => {
+	const store = await connect();
+	try {
+		const { webhookController } = await import('../controllers/webhook.controller');
+		const { applyPackCredit } = await import('../services/purchase');
+		const PI = 'pi_invpaid_fixed';
+		const invoiceEvent = {
+			type: 'invoice.paid',
+			subscription: null,
+			invoice: {
+				id: 'in_itest',
+				status: 'paid',
+				amount: 499n,
+				currency: 'usd',
+				providerTxId: PI,
+				providerSubscriptionId: null,
+				metadata: {
+					reason: 'purchase',
+					subscriberType: SUB.subscriberType,
+					subscriberId: SUB.subscriberId,
+					packId: 'small',
+					credits: '500',
+					currency: 'USD',
+				},
+			},
+		};
+		const cfg = {
+			provider: {
+				name: 'stub',
+				async constructEvent() {
+					return invoiceEvent;
+				},
+			},
+			webhookSecret: 'whsec_x',
+			wallet: { currency: 'USD', precision: 2, creditPacks: [] },
+			plans: [],
+		} as any;
+		const ctx = () =>
+			({
+				request: new Request('http://localhost/webhook', {
+					method: 'POST',
+					headers: { 'stripe-signature': 't=1,v1=stub' },
+					body: '{}',
+				}),
+				meta: {},
+			}) as any;
+		const ctrl = webhookController(store, cfg, undefined, undefined);
+
+		// Orphan: the synchronous credit never ran — invoice.paid heals it.
+		await ctrl.handle(ctx());
+		assert.equal((await getWalletBalance(SUB, store)).balance, 500n, 'heal credits the orphan');
+		// Redelivery of the same invoice.paid → dedupe (keyed on the PI).
+		await ctrl.handle(ctx());
+		assert.equal(
+			(await getWalletBalance(SUB, store)).balance,
+			500n,
+			'redelivery does not double-credit',
+		);
+		// A late synchronous credit for the SAME PaymentIntent → duplicate, no third credit.
+		const r = await applyPackCredit({
+			store,
+			config: cfg,
+			bus: undefined,
+			subscriberType: SUB.subscriberType,
+			subscriberId: SUB.subscriberId,
+			creditCurrency: 'USD',
+			precision: 2,
+			credits: 500n,
+			packId: 'small',
+			providerTxId: PI,
+			amountPaid: 499n,
+			paymentCurrency: 'usd',
+		});
+		assert.equal(r.duplicate, true, 'sync credit dedupes against the webhook heal');
+		assert.equal(
+			(await getWalletBalance(SUB, store)).balance,
+			500n,
+			'exactly one credit across webhook + sync',
+		);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});

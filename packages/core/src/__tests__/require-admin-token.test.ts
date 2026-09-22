@@ -5,7 +5,12 @@ import { requireAdminToken, validateAdminToken } from '../middlewares/require-ad
 import type { IFonderieContext } from '../types';
 
 function ctx(auth?: string): IFonderieContext {
-	return { request: new Request('http://localhost/admin', auth ? { headers: { authorization: auth } } : {}) } as IFonderieContext;
+	return {
+		request: new Request(
+			'http://localhost/admin',
+			auth ? { headers: { authorization: auth } } : {},
+		),
+	} as IFonderieContext;
 }
 const next = async () => new Response('ok');
 
@@ -18,7 +23,11 @@ test('requireAdminToken: 401 for missing / malformed / wrong (handler never runs
 	};
 
 	assert.equal((await mw(ctx(), trackedNext)).status, 401, 'no header');
-	assert.equal((await mw(ctx('the-real-admin-token-value'), trackedNext)).status, 401, 'no Bearer prefix');
+	assert.equal(
+		(await mw(ctx('the-real-admin-token-value'), trackedNext)).status,
+		401,
+		'no Bearer prefix',
+	);
 	assert.equal((await mw(ctx('Bearer '), trackedNext)).status, 401, 'empty token');
 	assert.equal((await mw(ctx('Bearer wrong'), trackedNext)).status, 401, 'wrong token');
 	assert.equal(called, false, 'the guarded handler never runs on a failed check');
@@ -45,7 +54,9 @@ test('validateAdminToken: unset → no problem; short + placeholder → error; s
 	assert.match(short[0]!.message, /at least 32 characters/);
 
 	// 32+ chars but a placeholder value.
-	const placeholder = validateAdminToken('changeme-changeme-changeme-changeme', { module: '@fonderie/x' });
+	const placeholder = validateAdminToken('changeme-changeme-changeme-changeme', {
+		module: '@fonderie/x',
+	});
 	assert.equal(placeholder.length, 1);
 	assert.equal(placeholder[0]!.severity, 'error');
 	assert.match(placeholder[0]!.message, /placeholder/);

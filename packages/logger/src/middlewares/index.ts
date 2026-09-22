@@ -1,3 +1,4 @@
+import { normalizeRequestPath } from '@fonderie/core';
 import { randomUUID } from 'node:crypto';
 import type { Middleware } from '@fonderie/core';
 import type { Logger } from '../logger';
@@ -34,12 +35,19 @@ export function requestLogger(logger: Logger, exporter?: ITraceExporter): Middle
 		// so its X-Request-ID equals this trace id.
 		const inbound = parseTraceparent(ctx.request.headers.get('traceparent'));
 		const trace: ITraceContext = inbound
-			? { traceId: inbound.traceId, spanId: newSpanId(), parentSpanId: inbound.spanId, sampled: inbound.sampled }
+			? {
+					traceId: inbound.traceId,
+					spanId: newSpanId(),
+					parentSpanId: inbound.spanId,
+					sampled: inbound.sampled,
+				}
 			: newTraceContext();
 
 		const startMs = Date.now();
 		const method = ctx.request.method;
-		const pathname = new URL(ctx.request.url).pathname;
+		// The path the router matched, so log lines group by route rather than
+		// splitting on a trailing slash.
+		const pathname = normalizeRequestPath(new URL(ctx.request.url).pathname);
 
 		ctx.meta['requestId'] = requestId;
 		ctx.meta['traceId'] = trace.traceId;

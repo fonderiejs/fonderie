@@ -26,6 +26,7 @@ export function toMediaAssetDTO(asset: IMediaAsset, basePath = ''): IMediaAssetD
 		ownerType: asset.ownerType,
 		ownerId: asset.ownerId,
 		purpose: asset.purpose,
-		createdAt: asset.createdAt instanceof Date ? asset.createdAt.toISOString() : String(asset.createdAt),
+		createdAt:
+			asset.createdAt instanceof Date ? asset.createdAt.toISOString() : String(asset.createdAt),
 	};
 }

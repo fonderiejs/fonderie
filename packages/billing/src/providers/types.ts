@@ -321,7 +321,10 @@ export interface IBillingProvider {
 	 */
 	getSubscription?(subscriptionId: string): Promise<INormalizedSubscription | null>;
 
-	cancelSubscription?(opts: { subscriptionId: string; atPeriodEnd: boolean }): Promise<ISubscriptionChange>;
+	cancelSubscription?(opts: {
+		subscriptionId: string;
+		atPeriodEnd: boolean;
+	}): Promise<ISubscriptionChange>;
 
 	// Un-cancel a subscription scheduled to cancel at period end. Optional; the
 	// reactivate route answers 501 when absent.

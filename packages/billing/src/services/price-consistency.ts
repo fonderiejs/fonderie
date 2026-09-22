@@ -152,7 +152,8 @@ export function describePriceProblems(report: IPriceConsistencyReport): string[]
 		.filter((e) => e.problem !== null)
 		.map((e) => {
 			if (e.problem === 'missing') return `${e.ref}: price ${e.priceId} not found at the provider`;
-			if (e.problem === 'inactive') return `${e.ref}: price ${e.priceId} is INACTIVE at the provider`;
+			if (e.problem === 'inactive')
+				return `${e.ref}: price ${e.priceId} is INACTIVE at the provider`;
 			const d = `${e.declared.amount} ${e.declared.currency || '(no currency)'}`;
 			const a = `${e.actual?.amount} ${e.actual?.currency}`;
 			return `${e.ref}: catalog says ${d}, provider charges ${a} — the saved-card and auto-recharge paths use the catalog, hosted checkout uses the provider`;

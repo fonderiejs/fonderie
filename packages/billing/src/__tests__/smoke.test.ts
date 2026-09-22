@@ -27,8 +27,14 @@ function makeProvider(overrides: Partial<IBillingProvider> = {}): IBillingProvid
 
 		async resolvePriceById(priceId) {
 			return {
-				priceId, lookupKey: null, unitAmount: 1500n, currency: 'usd',
-				interval: 'month' as const, nickname: null, productId: 'prod_stub', active: true,
+				priceId,
+				lookupKey: null,
+				unitAmount: 1500n,
+				currency: 'usd',
+				interval: 'month' as const,
+				nickname: null,
+				productId: 'prod_stub',
+				active: true,
 			};
 		},
 
@@ -266,7 +272,11 @@ test('updatePlan: returns updated plan', async () => {
 	const { updatePlan } = await import('../services/plans');
 	const updated = { ...basePlan, monthlyAmount: 9900 };
 	const store = makeStore({ plan: updated });
-	const plan = await updatePlan('11111111-1111-4111-8111-111111111111', { monthlyAmount: 9900 }, store);
+	const plan = await updatePlan(
+		'11111111-1111-4111-8111-111111111111',
+		{ monthlyAmount: 9900 },
+		store,
+	);
 	assert.equal(plan?.monthlyAmount, 9900);
 });
 
@@ -355,7 +365,9 @@ test('planController.update: 200 with updated plan', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: { ...basePlan, monthlyAmount: 9900 } });
 	const ctrl = planController(store, config, priceCache);
-	const res = await ctrl.update(makeCtx({ planId: '11111111-1111-4111-8111-111111111111' }, { monthlyAmount: 9900 }));
+	const res = await ctrl.update(
+		makeCtx({ planId: '11111111-1111-4111-8111-111111111111' }, { monthlyAmount: 9900 }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
 	assert.ok(body.result?.plan);
@@ -365,7 +377,9 @@ test('planController.update: 404 when plan not found', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const store = makeStore({ plan: null });
 	const ctrl = planController(store, config, priceCache);
-	const res = await ctrl.update(makeCtx({ planId: '22222222-2222-4222-8222-222222222222' }, { name: 'x' }));
+	const res = await ctrl.update(
+		makeCtx({ planId: '22222222-2222-4222-8222-222222222222' }, { name: 'x' }),
+	);
 	assert.equal(res.status, 404);
 });
 
@@ -944,8 +958,14 @@ test('parseWindowMs: parses hour window', async () => {
 // ── pricing hydration (kill-switch + cache) ───────────────────────
 
 const priced = (id: string) => ({
-	priceId: id, lookupKey: null, unitAmount: 1500n, currency: 'usd',
-	interval: 'month' as const, nickname: null, productId: 'p', active: true,
+	priceId: id,
+	lookupKey: null,
+	unitAmount: 1500n,
+	currency: 'usd',
+	interval: 'month' as const,
+	nickname: null,
+	productId: 'p',
+	active: true,
 });
 
 test('planController.list: hydrates amount/currency from provider when enabled', async () => {
@@ -967,7 +987,12 @@ test('planController.list: uses hardcoded amount/currency when hydration off', a
 
 test('PriceCache: single-flight dedupes concurrent misses', async () => {
 	let calls = 0;
-	const provider = makeProvider({ resolvePriceById: async (id) => { calls++; return priced(id); } });
+	const provider = makeProvider({
+		resolvePriceById: async (id) => {
+			calls++;
+			return priced(id);
+		},
+	});
 	const cache = new PriceCache();
 	await Promise.all([
 		cache.byPriceId('price_x', provider),
@@ -979,7 +1004,9 @@ test('PriceCache: single-flight dedupes concurrent misses', async () => {
 
 test('PriceCache: serves last-cached on transient miss within grace', async () => {
 	let n = 0;
-	const provider = makeProvider({ resolvePriceById: async (id) => (++n === 1 ? priced(id) : null) });
+	const provider = makeProvider({
+		resolvePriceById: async (id) => (++n === 1 ? priced(id) : null),
+	});
 	const cache = new PriceCache({ ttlMs: 0 }); // force re-resolve each call
 	const first = await cache.byPriceId('price_y', provider);
 	assert.equal(first.price?.unitAmount, 1500n);
@@ -1000,12 +1027,19 @@ const webhookCtx = (body: string): any => ({
 });
 
 const normalizedSub = (over: Record<string, unknown> = {}) => ({
-	subscriberType: 'workspace' as const, subscriberId: 'ws-1',
-	plan: 'wrong-nickname', priceLookupKey: null, priceId: null,
-	status: 'active', interval: 'month' as const,
-	providerCustomerId: 'cus', providerSubscriptionId: 'sub',
-	currentPeriodStart: new Date(), currentPeriodEnd: new Date(),
-	cancelAtPeriodEnd: false, trialEndsAt: null,
+	subscriberType: 'workspace' as const,
+	subscriberId: 'ws-1',
+	plan: 'wrong-nickname',
+	priceLookupKey: null,
+	priceId: null,
+	status: 'active',
+	interval: 'month' as const,
+	providerCustomerId: 'cus',
+	providerSubscriptionId: 'sub',
+	currentPeriodStart: new Date(),
+	currentPeriodEnd: new Date(),
+	cancelAtPeriodEnd: false,
+	trialEndsAt: null,
 	...over,
 });
 
@@ -1045,7 +1079,11 @@ test('webhook: deletion stays free/canceled (dual-mapping not applied)', async (
 	const provider = makeProvider({
 		constructEvent: async () => ({
 			type: 'customer.subscription.deleted',
-			subscription: normalizedSub({ priceId: 'price_pro_monthly', plan: 'free', status: 'canceled' }) as any,
+			subscription: normalizedSub({
+				priceId: 'price_pro_monthly',
+				plan: 'free',
+				status: 'canceled',
+			}) as any,
 		}),
 	});
 	const ctrl = webhookController(cap.store, { ...config, provider, webhookSecret: 'whsec_x' });
@@ -1058,11 +1096,18 @@ test('webhook: price.updated invalidates the price cache (§8)', async () => {
 	const cache = new PriceCache();
 	let invalidated = false;
 	const orig = cache.invalidate.bind(cache);
-	cache.invalidate = (k?: string) => { invalidated = true; orig(k); };
+	cache.invalidate = (k?: string) => {
+		invalidated = true;
+		orig(k);
+	};
 	const provider = makeProvider({
 		constructEvent: async () => ({ type: 'price.updated', subscription: null }),
 	});
-	const ctrl = webhookController(captureStore().store, { ...config, provider, webhookSecret: 'whsec_x' }, cache);
+	const ctrl = webhookController(
+		captureStore().store,
+		{ ...config, provider, webhookSecret: 'whsec_x' },
+		cache,
+	);
 	await ctrl.handle(webhookCtx('{}'));
 	assert.equal(invalidated, true);
 });
@@ -1070,8 +1115,14 @@ test('webhook: price.updated invalidates the price cache (§8)', async () => {
 test('resolvePlanNameByPrice: lookup_key wins, then priceId, else null', async () => {
 	const { resolvePlanNameByPrice } = await import('../services/plans');
 	const plans = config.plans;
-	assert.equal(resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_pro_monthly' }, plans), 'pro');
-	assert.equal(resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_starter_yearly' }, plans), 'starter');
+	assert.equal(
+		resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_pro_monthly' }, plans),
+		'pro',
+	);
+	assert.equal(
+		resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_starter_yearly' }, plans),
+		'starter',
+	);
 	assert.equal(resolvePlanNameByPrice({ lookupKey: null, priceId: 'price_unknown' }, plans), null);
 });
 
@@ -1079,7 +1130,12 @@ test('resolvePlanNameByPrice: lookup_key wins, then priceId, else null', async (
 
 test('PriceCache: fresh hit does not re-call provider within TTL', async () => {
 	let calls = 0;
-	const provider = makeProvider({ resolvePriceById: async (id) => { calls++; return priced(id); } });
+	const provider = makeProvider({
+		resolvePriceById: async (id) => {
+			calls++;
+			return priced(id);
+		},
+	});
 	const cache = new PriceCache({ ttlMs: 60_000 });
 	await cache.byPriceId('p', provider);
 	const second = await cache.byPriceId('p', provider);
@@ -1089,7 +1145,9 @@ test('PriceCache: fresh hit does not re-call provider within TTL', async () => {
 
 test('PriceCache: transient miss beyond grace returns null', async () => {
 	let n = 0;
-	const provider = makeProvider({ resolvePriceById: async (id) => (++n === 1 ? priced(id) : null) });
+	const provider = makeProvider({
+		resolvePriceById: async (id) => (++n === 1 ? priced(id) : null),
+	});
 	const cache = new PriceCache({ ttlMs: 0, graceMs: 0 });
 	await cache.byPriceId('p', provider);
 	const r = await cache.byPriceId('p', provider);
@@ -1100,7 +1158,10 @@ test('PriceCache: transient miss beyond grace returns null', async () => {
 test('PriceCache: provider outage serves last-cached within maxStale', async () => {
 	let n = 0;
 	const provider = makeProvider({
-		resolvePriceById: async (id) => { if (++n > 1) throw new Error('stripe down'); return priced(id); },
+		resolvePriceById: async (id) => {
+			if (++n > 1) throw new Error('stripe down');
+			return priced(id);
+		},
 	});
 	const cache = new PriceCache({ ttlMs: 0, maxStaleMs: 60_000 });
 	await cache.byPriceId('p', provider);
@@ -1112,7 +1173,10 @@ test('PriceCache: provider outage serves last-cached within maxStale', async () 
 test('PriceCache: provider outage beyond maxStale returns null', async () => {
 	let n = 0;
 	const provider = makeProvider({
-		resolvePriceById: async (id) => { if (++n > 1) throw new Error('down'); return priced(id); },
+		resolvePriceById: async (id) => {
+			if (++n > 1) throw new Error('down');
+			return priced(id);
+		},
 	});
 	const cache = new PriceCache({ ttlMs: 0, maxStaleMs: 0 });
 	await cache.byPriceId('p', provider);
@@ -1122,7 +1186,12 @@ test('PriceCache: provider outage beyond maxStale returns null', async () => {
 
 test('PriceCache: invalidate forces re-resolution', async () => {
 	let calls = 0;
-	const provider = makeProvider({ resolvePriceById: async (id) => { calls++; return priced(id); } });
+	const provider = makeProvider({
+		resolvePriceById: async (id) => {
+			calls++;
+			return priced(id);
+		},
+	});
 	const cache = new PriceCache({ ttlMs: 60_000 });
 	await cache.byPriceId('p', provider);
 	cache.invalidate('p');
@@ -1132,7 +1201,12 @@ test('PriceCache: invalidate forces re-resolution', async () => {
 
 test('PriceCache: prime warms the cache without a provider call', async () => {
 	let calls = 0;
-	const provider = makeProvider({ resolvePriceById: async (id) => { calls++; return priced(id); } });
+	const provider = makeProvider({
+		resolvePriceById: async (id) => {
+			calls++;
+			return priced(id);
+		},
+	});
 	const cache = new PriceCache({ ttlMs: 60_000 });
 	cache.prime([priced('p')]);
 	const r = await cache.byPriceId('p', provider);
@@ -1145,10 +1219,17 @@ test('PriceCache: prime warms the cache without a provider call', async () => {
 test('hydration: currency mismatch flags pricingStale and keeps fallback (no throw)', async () => {
 	const { planController } = await import('../controllers/plan.controller');
 	const provider = makeProvider({
-		resolvePriceById: async (id) => ({ ...priced(id), currency: id.includes('yearly') ? 'eur' : 'usd' }),
+		resolvePriceById: async (id) => ({
+			...priced(id),
+			currency: id.includes('yearly') ? 'eur' : 'usd',
+		}),
 	});
 	const store = makeStore({ plan: basePlan });
-	const ctrl = planController(store, { ...config, provider, pricing: { hydration: true } }, new PriceCache());
+	const ctrl = planController(
+		store,
+		{ ...config, provider, pricing: { hydration: true } },
+		new PriceCache(),
+	);
 	const body = (await (await ctrl.list(makeCtx())).json()) as any;
 	const pro = body.result.plans[0];
 	assert.equal(pro.pricingStale, true);
@@ -1157,7 +1238,14 @@ test('hydration: currency mismatch flags pricingStale and keeps fallback (no thr
 
 test('hydration: plan without priceIds is left untouched', async () => {
 	const { planController } = await import('../controllers/plan.controller');
-	const freePlan = { ...basePlan, name: 'free', monthlyPriceId: null, yearlyPriceId: null, monthlyAmount: 0, yearlyAmount: 0 };
+	const freePlan = {
+		...basePlan,
+		name: 'free',
+		monthlyPriceId: null,
+		yearlyPriceId: null,
+		monthlyAmount: 0,
+		yearlyAmount: 0,
+	};
 	const store = makeStore({ plan: freePlan });
 	const ctrl = planController(store, { ...config, pricing: { hydration: true } }, new PriceCache());
 	const body = (await (await ctrl.list(makeCtx())).json()) as any;
@@ -1233,7 +1321,11 @@ test('usageController.get: since is an explicit ISO string on the wire', async (
 function recordingBus() {
 	const calls: { type: string; payload: any }[] = [];
 	return {
-		bus: { emit: async (type: string, payload: unknown) => { calls.push({ type, payload }); } } as any,
+		bus: {
+			emit: async (type: string, payload: unknown) => {
+				calls.push({ type, payload });
+			},
+		} as any,
 		calls,
 	};
 }
@@ -1256,12 +1348,21 @@ test('webhook: emits the subscription lifecycle domain event with workspaceId', 
 				subscription: normalizedSub({ priceId: 'price_pro_monthly', status }) as any,
 			}),
 		});
-		const ctrl = webhookController(captureStore().store, { ...config, provider, webhookSecret: 'whsec_x' }, undefined, bus);
+		const ctrl = webhookController(
+			captureStore().store,
+			{ ...config, provider, webhookSecret: 'whsec_x' },
+			undefined,
+			bus,
+		);
 		await ctrl.handle(webhookCtx('{}'));
 		assert.equal(calls.length, 1, `${type}/${status} should emit once`);
 		assert.equal(calls[0]!.type, expected);
 		assert.equal(calls[0]!.payload.subscriberType, 'workspace');
-		assert.equal(calls[0]!.payload.workspaceId, 'ws-1', 'workspace subscriber carries top-level workspaceId (webhooks fan-out contract)');
+		assert.equal(
+			calls[0]!.payload.workspaceId,
+			'ws-1',
+			'workspace subscriber carries top-level workspaceId (webhooks fan-out contract)',
+		);
 		assert.equal(calls[0]!.payload.status, status);
 	}
 });
@@ -1285,11 +1386,20 @@ test('webhook: a stale/out-of-order subscription event fires NO lifecycle event 
 			eventAt: new Date('2020-01-01T00:00:00Z'), // ancient → the guard rejects it
 		}),
 	});
-	const ctrl = webhookController(staleStore, { ...config, provider, webhookSecret: 'whsec_x' }, undefined, bus);
+	const ctrl = webhookController(
+		staleStore,
+		{ ...config, provider, webhookSecret: 'whsec_x' },
+		undefined,
+		bus,
+	);
 	const res = await ctrl.handle(webhookCtx('{}'));
 	const body = (await res.json()) as any;
 	assert.equal(body.ignored, 'stale-subscription-event');
-	assert.equal(calls.length, 0, 'a stale retry emits neither a lifecycle event nor a customer notice');
+	assert.equal(
+		calls.length,
+		0,
+		'a stale retry emits neither a lifecycle event nor a customer notice',
+	);
 });
 
 test('webhook: a user subscriber emits no top-level workspaceId', async () => {
@@ -1298,10 +1408,19 @@ test('webhook: a user subscriber emits no top-level workspaceId', async () => {
 	const provider = makeProvider({
 		constructEvent: async () => ({
 			type: 'customer.subscription.updated',
-			subscription: normalizedSub({ subscriberType: 'user', subscriberId: 'user-1', priceId: 'price_pro_monthly' }) as any,
+			subscription: normalizedSub({
+				subscriberType: 'user',
+				subscriberId: 'user-1',
+				priceId: 'price_pro_monthly',
+			}) as any,
 		}),
 	});
-	const ctrl = webhookController(captureStore().store, { ...config, provider, webhookSecret: 'whsec_x' }, undefined, bus);
+	const ctrl = webhookController(
+		captureStore().store,
+		{ ...config, provider, webhookSecret: 'whsec_x' },
+		undefined,
+		bus,
+	);
 	await ctrl.handle(webhookCtx('{}'));
 	assert.equal(calls[0]!.payload.subscriberType, 'user');
 	assert.equal('workspaceId' in calls[0]!.payload, false);
@@ -1315,7 +1434,11 @@ test('webhook: no bus configured → no throw, still 200', async () => {
 			subscription: normalizedSub({ priceId: 'price_pro_monthly' }) as any,
 		}),
 	});
-	const ctrl = webhookController(captureStore().store, { ...config, provider, webhookSecret: 'whsec_x' });
+	const ctrl = webhookController(captureStore().store, {
+		...config,
+		provider,
+		webhookSecret: 'whsec_x',
+	});
 	const res = await ctrl.handle(webhookCtx('{}'));
 	assert.equal(res.status, 200);
 });
@@ -1347,7 +1470,11 @@ function priorSubStore(status: string | null): IStoreAdapter {
 }
 
 const withRecipient = (over: Partial<IBillingConfig> = {}): IBillingConfig =>
-	({ ...config, resolveRecipient: () => ({ email: 'buyer@example.com' }), ...over }) as IBillingConfig;
+	({
+		...config,
+		resolveRecipient: () => ({ email: 'buyer@example.com' }),
+		...over,
+	}) as IBillingConfig;
 
 test('webhook: a fresh past_due transition sends a payment-failed notice once', async () => {
 	const { webhookController } = await import('../controllers/webhook.controller');
@@ -1403,7 +1530,11 @@ test('webhook: a cancellation sends a subscription-canceled notice', async () =>
 	const provider = makeProvider({
 		constructEvent: async () => ({
 			type: 'customer.subscription.deleted',
-			subscription: normalizedSub({ priceId: 'price_pro_monthly', plan: 'free', status: 'canceled' }) as any,
+			subscription: normalizedSub({
+				priceId: 'price_pro_monthly',
+				plan: 'free',
+				status: 'canceled',
+			}) as any,
 		}),
 	});
 	const ctrl = webhookController(
@@ -1425,11 +1556,20 @@ test('webhook: without resolveRecipient, no notice is sent (only the domain even
 	const provider = makeProvider({
 		constructEvent: async () => ({
 			type: 'customer.subscription.deleted',
-			subscription: normalizedSub({ priceId: 'price_pro_monthly', plan: 'free', status: 'canceled' }) as any,
+			subscription: normalizedSub({
+				priceId: 'price_pro_monthly',
+				plan: 'free',
+				status: 'canceled',
+			}) as any,
 		}),
 	});
 	// Base config has no resolveRecipient.
-	const ctrl = webhookController(priorSubStore('active'), { ...config, provider, webhookSecret: 'whsec_x' }, undefined, bus);
+	const ctrl = webhookController(
+		priorSubStore('active'),
+		{ ...config, provider, webhookSecret: 'whsec_x' },
+		undefined,
+		bus,
+	);
 	await ctrl.handle(webhookCtx('{}'));
 	assert.equal(calls.filter((c) => c.type === NOTIFICATION_EVENT).length, 0);
 });
@@ -1437,7 +1577,9 @@ test('webhook: without resolveRecipient, no notice is sent (only the domain even
 // ── Phase 3b: invoice (renewal receipt / dunning) + trial-ending ──
 
 // A store that resolves a subscriber for the invoice→subscription lookup.
-function subByProviderStore(sub: { subscriberType: string; subscriberId: string } | null): IStoreAdapter {
+function subByProviderStore(
+	sub: { subscriberType: string; subscriberId: string } | null,
+): IStoreAdapter {
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
 			if (sql.includes('provider_subscription_id = $1')) return (sub ? [sub] : []) as T[];
@@ -1457,7 +1599,16 @@ test('webhook: invoice.paid sends a renewal receipt', async () => {
 		constructEvent: async () => ({
 			type: 'invoice.paid',
 			subscription: null,
-			invoice: { id: 'in_1', status: 'paid', amount: 1999n, currency: 'usd', providerTxId: 'pi_1', providerSubscriptionId: 'sub_1', providerCustomerId: 'cus_1', metadata: {} },
+			invoice: {
+				id: 'in_1',
+				status: 'paid',
+				amount: 1999n,
+				currency: 'usd',
+				providerTxId: 'pi_1',
+				providerSubscriptionId: 'sub_1',
+				providerCustomerId: 'cus_1',
+				metadata: {},
+			},
 		}),
 	});
 	const ctrl = webhookController(
@@ -1468,7 +1619,9 @@ test('webhook: invoice.paid sends a renewal receipt', async () => {
 	);
 	await ctrl.handle(webhookCtx('{}'));
 	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.invoicePaid).length, 1);
-	const notices = calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.renewalReceipt);
+	const notices = calls.filter(
+		(c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.renewalReceipt,
+	);
 	assert.equal(notices.length, 1);
 	assert.equal(notices[0]!.payload.data.amount, '1999');
 });
@@ -1482,7 +1635,16 @@ test('webhook: invoice.payment_failed emits an event but NO notice (past_due own
 		constructEvent: async () => ({
 			type: 'invoice.payment_failed',
 			subscription: null,
-			invoice: { id: 'in_2', status: 'payment_failed', amount: 2500n, currency: 'usd', providerTxId: 'pi_2', providerSubscriptionId: 'sub_1', providerCustomerId: null, metadata: {} },
+			invoice: {
+				id: 'in_2',
+				status: 'payment_failed',
+				amount: 2500n,
+				currency: 'usd',
+				providerTxId: 'pi_2',
+				providerSubscriptionId: 'sub_1',
+				providerCustomerId: null,
+				metadata: {},
+			},
 		}),
 	});
 	const ctrl = webhookController(
@@ -1502,10 +1664,22 @@ test('webhook: invoice for an unknown subscription is acknowledged and ignored',
 		constructEvent: async () => ({
 			type: 'invoice.paid',
 			subscription: null,
-			invoice: { id: 'in_3', status: 'paid', amount: 100n, currency: 'usd', providerTxId: null, providerSubscriptionId: 'sub_unknown', providerCustomerId: null, metadata: {} },
+			invoice: {
+				id: 'in_3',
+				status: 'paid',
+				amount: 100n,
+				currency: 'usd',
+				providerTxId: null,
+				providerSubscriptionId: 'sub_unknown',
+				providerCustomerId: null,
+				metadata: {},
+			},
 		}),
 	});
-	const ctrl = webhookController(subByProviderStore(null), withRecipient({ provider, webhookSecret: 'whsec_x' }));
+	const ctrl = webhookController(
+		subByProviderStore(null),
+		withRecipient({ provider, webhookSecret: 'whsec_x' }),
+	);
 	const res = await ctrl.handle(webhookCtx('{}'));
 	assert.equal(((await res.json()) as any).ignored, 'no-matching-subscription');
 });
@@ -1523,12 +1697,19 @@ test('webhook: trial_will_end sends a trial-ending notice without upserting the 
 			subscription: normalizedSub({ priceId: 'price_pro_monthly', status: 'trialing' }),
 		}),
 	});
-	const ctrl = webhookController(cap.store, withRecipient({ provider, webhookSecret: 'whsec_x' }), undefined, bus);
+	const ctrl = webhookController(
+		cap.store,
+		withRecipient({ provider, webhookSecret: 'whsec_x' }),
+		undefined,
+		bus,
+	);
 	await ctrl.handle(webhookCtx('{}'));
 	const events = calls.filter((c) => c.type === EVENT_KEYS.subscriptionTrialWillEnd);
 	assert.equal(events.length, 1);
 	assert.equal(events[0]!.payload.plan, 'pro', 'plan resolved from priceId, not the nickname');
-	const notices = calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.trialEnding);
+	const notices = calls.filter(
+		(c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.trialEnding,
+	);
 	assert.equal(notices.length, 1);
 	assert.equal(notices[0]!.payload.data.plan, 'pro');
 	assert.equal(cap.plan(), undefined, 'a trial-ending heads-up must not upsert subscription state');
@@ -1558,7 +1739,9 @@ test('webhook: notifications.trialEnding=false suppresses the EMAIL but keeps th
 		'the durable domain event still fires',
 	);
 	assert.equal(
-		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.trialEnding).length,
+		calls.filter(
+			(c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.trialEnding,
+		).length,
 		0,
 		'the reminder email is suppressed by the toggle',
 	);
@@ -1566,7 +1749,10 @@ test('webhook: notifications.trialEnding=false suppresses the EMAIL but keeps th
 
 // ── Phase 4: first-party cancel / reactivate ──────────────────────
 
-function lifecycleProvider(): { provider: IBillingProvider; calls: { cancel?: any; reactivate?: any } } {
+function lifecycleProvider(): {
+	provider: IBillingProvider;
+	calls: { cancel?: any; reactivate?: any };
+} {
 	const calls: { cancel?: any; reactivate?: any } = {};
 	const provider = makeProvider({
 		async cancelSubscription(opts: any) {
@@ -1579,13 +1765,20 @@ function lifecycleProvider(): { provider: IBillingProvider; calls: { cancel?: an
 		},
 		async reactivateSubscription(opts: any) {
 			calls.reactivate = opts;
-			return { status: 'active', cancelAtPeriodEnd: false, currentPeriodEnd: new Date(1_700_000_000_000) };
+			return {
+				status: 'active',
+				cancelAtPeriodEnd: false,
+				currentPeriodEnd: new Date(1_700_000_000_000),
+			};
 		},
 	});
 	return { provider, calls };
 }
 
-function subCtrlStore(sub: unknown, applied = true): { store: IStoreAdapter; upserts: unknown[][] } {
+function subCtrlStore(
+	sub: unknown,
+	applied = true,
+): { store: IStoreAdapter; upserts: unknown[][] } {
 	const upserts: unknown[][] = [];
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
@@ -1615,8 +1808,14 @@ function subCtx(body: Record<string, unknown> = {}): import('@fonderie/core').IF
 }
 
 const activeSub = {
-	subscriberType: 'user', subscriberId: 'u1', plan: 'starter', interval: 'month',
-	status: 'active', providerCustomerId: 'cus_1', providerSubscriptionId: 'sub_1', cancelAtPeriodEnd: false,
+	subscriberType: 'user',
+	subscriberId: 'u1',
+	plan: 'starter',
+	interval: 'month',
+	status: 'active',
+	providerCustomerId: 'cus_1',
+	providerSubscriptionId: 'sub_1',
+	cancelAtPeriodEnd: false,
 	currentPeriodStart: new Date('2026-09-01T00:00:00Z'),
 	currentPeriodEnd: new Date('2026-10-01T00:00:00Z'),
 	trialEndsAt: new Date('2026-09-08T00:00:00Z'),
@@ -1642,17 +1841,27 @@ test('subscription.cancel: immediate (atPeriodEnd:false) does NOT optimistically
 	const { subscriptionController } = await import('../controllers/subscription.controller');
 	const { provider, calls } = lifecycleProvider();
 	const { store, upserts } = subCtrlStore(activeSub);
-	const res = await subscriptionController(store, { ...config, provider }).cancel(subCtx({ atPeriodEnd: false }));
+	const res = await subscriptionController(store, { ...config, provider }).cancel(
+		subCtx({ atPeriodEnd: false }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(calls.cancel.atPeriodEnd, false);
 	assert.equal(body.result.status, 'canceled');
-	assert.equal(upserts.length, 0, 'no optimistic canceled-status write — the deleted webhook owns the transition + notice');
+	assert.equal(
+		upserts.length,
+		0,
+		'no optimistic canceled-status write — the deleted webhook owns the transition + notice',
+	);
 });
 
 test('subscription.cancel: an already-canceled subscription is a no-op (no provider call)', async () => {
 	const { subscriptionController } = await import('../controllers/subscription.controller');
 	const { provider, calls } = lifecycleProvider();
-	const { store, upserts } = subCtrlStore({ ...activeSub, status: 'canceled', cancelAtPeriodEnd: false });
+	const { store, upserts } = subCtrlStore({
+		...activeSub,
+		status: 'canceled',
+		cancelAtPeriodEnd: false,
+	});
 	const res = await subscriptionController(store, { ...config, provider }).cancel(subCtx());
 	assert.equal(res.status, 200);
 	assert.equal(calls.cancel, undefined, 'provider not re-hit on an already-canceled subscription');
@@ -1662,7 +1871,9 @@ test('subscription.cancel: an already-canceled subscription is a no-op (no provi
 test('subscription.cancel: 501 when the provider has no cancelSubscription', async () => {
 	const { subscriptionController } = await import('../controllers/subscription.controller');
 	const { store } = subCtrlStore(activeSub);
-	const res = await subscriptionController(store, { ...config, provider: makeProvider() }).cancel(subCtx());
+	const res = await subscriptionController(store, { ...config, provider: makeProvider() }).cancel(
+		subCtx(),
+	);
 	assert.equal(res.status, 501);
 });
 
@@ -1689,7 +1900,10 @@ test('subscription.reactivate: un-cancels and clears cancelAtPeriodEnd', async (
 test('subscription.reactivate: 501 when the provider has no reactivateSubscription', async () => {
 	const { subscriptionController } = await import('../controllers/subscription.controller');
 	const { store } = subCtrlStore({ ...activeSub, cancelAtPeriodEnd: true });
-	const res = await subscriptionController(store, { ...config, provider: makeProvider() }).reactivate(subCtx());
+	const res = await subscriptionController(store, {
+		...config,
+		provider: makeProvider(),
+	}).reactivate(subCtx());
 	assert.equal(res.status, 501);
 });
 
@@ -1750,7 +1964,10 @@ test('buildBillingRoutes: plan-write routes are gated on config.planAdminToken',
 	assert.ok(!open.includes('DELETE /plans/:planId'));
 
 	// With a token → the write routes register (guarded by requireAdminToken).
-	const guarded = buildBillingRoutes(store, { ...config, planAdminToken: 'ops-secret' } as typeof config);
+	const guarded = buildBillingRoutes(store, {
+		...config,
+		planAdminToken: 'ops-secret',
+	} as typeof config);
 	const guardedPaths = guarded.map(([m, p]) => `${m} ${p}`);
 	assert.ok(guardedPaths.includes('POST /plans'));
 	assert.ok(guardedPaths.includes('PUT /plans/:planId'));
@@ -1767,10 +1984,15 @@ test('buildBillingRoutes: unified config.adminToken guards BOTH plan writes and 
 	const withWallet = { ...config, wallet: { currency: 'USD' } } as unknown as IBillingConfig;
 
 	// One unified token enables both ops surfaces.
-	const unified = buildBillingRoutes(store, { ...withWallet, adminToken: 'one-token' } as IBillingConfig)
-		.map(([m, p]) => `${m} ${p}`);
+	const unified = buildBillingRoutes(store, {
+		...withWallet,
+		adminToken: 'one-token',
+	} as IBillingConfig).map(([m, p]) => `${m} ${p}`);
 	assert.ok(unified.includes('POST /plans'), 'plan writes enabled by config.adminToken');
-	assert.ok(unified.includes('POST /billing/wallet/grant'), 'wallet grant enabled by config.adminToken');
+	assert.ok(
+		unified.includes('POST /billing/wallet/grant'),
+		'wallet grant enabled by config.adminToken',
+	);
 
 	// Neither token → neither ops route exists.
 	const none = buildBillingRoutes(store, withWallet).map(([m, p]) => `${m} ${p}`);
@@ -1778,16 +2000,27 @@ test('buildBillingRoutes: unified config.adminToken guards BOTH plan writes and 
 	assert.ok(!none.includes('POST /billing/wallet/grant'));
 
 	// Legacy fields still work as fallbacks (deprecated, non-breaking).
-	const legacyPlan = buildBillingRoutes(store, { ...withWallet, planAdminToken: 'legacy' } as IBillingConfig)
-		.map(([m, p]) => `${m} ${p}`);
-	assert.ok(legacyPlan.includes('POST /plans'), 'deprecated planAdminToken still enables plan writes');
-	assert.ok(!legacyPlan.includes('POST /billing/wallet/grant'), 'plan token does not enable wallet grant');
+	const legacyPlan = buildBillingRoutes(store, {
+		...withWallet,
+		planAdminToken: 'legacy',
+	} as IBillingConfig).map(([m, p]) => `${m} ${p}`);
+	assert.ok(
+		legacyPlan.includes('POST /plans'),
+		'deprecated planAdminToken still enables plan writes',
+	);
+	assert.ok(
+		!legacyPlan.includes('POST /billing/wallet/grant'),
+		'plan token does not enable wallet grant',
+	);
 
 	const legacyWallet = buildBillingRoutes(store, {
 		...config,
 		wallet: { currency: 'USD', adminToken: 'legacy-wallet' },
 	} as unknown as IBillingConfig).map(([m, p]) => `${m} ${p}`);
-	assert.ok(legacyWallet.includes('POST /billing/wallet/grant'), 'deprecated wallet.adminToken still enables grant');
+	assert.ok(
+		legacyWallet.includes('POST /billing/wallet/grant'),
+		'deprecated wallet.adminToken still enables grant',
+	);
 	assert.ok(!legacyWallet.includes('POST /plans'), 'wallet token does not enable plan writes');
 });
 
@@ -1806,8 +2039,18 @@ function tieredCheckout(): { config: IBillingConfig; calls: { update?: any } } {
 		successUrl: 'https://app.example.com/s',
 		cancelUrl: 'https://app.example.com/c',
 		plans: [
-			{ name: 'starter', tier: 1, monthly: { priceId: 'price_starter_monthly' }, yearly: { priceId: 'price_starter_yearly' } },
-			{ name: 'pro', tier: 2, monthly: { priceId: 'price_pro_monthly' }, yearly: { priceId: 'price_pro_yearly' } },
+			{
+				name: 'starter',
+				tier: 1,
+				monthly: { priceId: 'price_starter_monthly' },
+				yearly: { priceId: 'price_starter_yearly' },
+			},
+			{
+				name: 'pro',
+				tier: 2,
+				monthly: { priceId: 'price_pro_monthly' },
+				yearly: { priceId: 'price_pro_yearly' },
+			},
 		],
 	} as IBillingConfig;
 	return { config: cfg, calls };
@@ -1823,14 +2066,25 @@ function checkoutCtx(body: Record<string, unknown>): import('@fonderie/core').IF
 	} as any;
 }
 
-const proSub = { ...baseSubscription, plan: 'pro', subscriberType: 'user', subscriberId: 'u1', providerSubscriptionId: 'sub_1', providerCustomerId: 'cus_1' };
+const proSub = {
+	...baseSubscription,
+	plan: 'pro',
+	subscriberType: 'user',
+	subscriberId: 'u1',
+	providerSubscriptionId: 'sub_1',
+	providerCustomerId: 'cus_1',
+};
 const starterSub = { ...proSub, plan: 'starter' };
 
 const proYearSub = { ...proSub, interval: 'year' };
 const starterYearSub = { ...proSub, plan: 'starter', interval: 'year' };
 const canceledPro = { ...proSub, status: 'canceled' };
 const pastDueStarter = { ...starterSub, status: 'past_due' };
-const scheduledStarter = { ...starterSub, cancelAtPeriodEnd: true, trialEndsAt: '2026-09-08T00:00:00.000Z' };
+const scheduledStarter = {
+	...starterSub,
+	cancelAtPeriodEnd: true,
+	trialEndsAt: '2026-09-08T00:00:00.000Z',
+};
 
 test('checkout: a downgrade is NOT done in place — it requires cancel + resubscribe (PLAN_CHANGE_REQUIRES_CANCEL)', async () => {
 	const { checkoutController } = await import('../controllers/checkout.controller');
@@ -1871,7 +2125,9 @@ test('checkout: a same-plan month→year switch is treated as an upgrade (immedi
 	const { checkoutController } = await import('../controllers/checkout.controller');
 	const { config: cfg, calls } = tieredCheckout();
 	const { store } = subCtrlStore(proSub); // pro / month
-	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'year' }));
+	const res = await checkoutController(store, cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'year' }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
 	assert.equal(body.result.upgraded, true, 'month→year is an upgrade, charged immediately');
@@ -1883,11 +2139,17 @@ test('checkout: a year→month switch on the same plan requires cancel + resubsc
 	const { checkoutController } = await import('../controllers/checkout.controller');
 	const { config: cfg, calls } = tieredCheckout();
 	const { store } = subCtrlStore(proYearSub); // pro / year
-	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const res = await checkoutController(store, cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 422);
 	assert.equal(body.reason, 'PLAN_CHANGE_REQUIRES_CANCEL');
-	assert.equal(calls.update, undefined, 'year→month is a downgrade in commitment — not done in place');
+	assert.equal(
+		calls.update,
+		undefined,
+		'year→month is a downgrade in commitment — not done in place',
+	);
 });
 
 test('checkout: a year→month switch to a HIGHER tier is still blocked (no prepaid-annual-to-credit leak)', async () => {
@@ -1896,11 +2158,17 @@ test('checkout: a year→month switch to a HIGHER tier is still blocked (no prep
 	const { store } = subCtrlStore(starterYearSub); // starter / year (tier 1)
 	// Tier rises (pro=2) but the interval drops year→month: must NOT be an in-place
 	// upgrade, or Stripe would credit the unused prepaid annual value.
-	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const res = await checkoutController(store, cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 422);
 	assert.equal(body.reason, 'PLAN_CHANGE_REQUIRES_CANCEL');
-	assert.equal(calls.update, undefined, 'interval guard runs before tier — year→month never upgrades in place');
+	assert.equal(
+		calls.update,
+		undefined,
+		'interval guard runs before tier — year→month never upgrades in place',
+	);
 });
 
 test('checkout: a higher-tier but CHEAPER plan (same interval) is not an in-place upgrade (price backstop)', async () => {
@@ -1930,7 +2198,11 @@ test('checkout: a higher-tier but CHEAPER plan (same interval) is not an in-plac
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 422);
 	assert.equal(body.reason, 'PLAN_CHANGE_REQUIRES_CANCEL');
-	assert.equal(calls.update, undefined, 'cheaper target at the same interval is never an in-place upgrade');
+	assert.equal(
+		calls.update,
+		undefined,
+		'cheaper target at the same interval is never an in-place upgrade',
+	);
 });
 
 test('checkout: a past_due subscriber cannot change plans in place (SUBSCRIPTION_PAST_DUE)', async () => {
@@ -1951,24 +2223,36 @@ test('checkout: an UNPAID subscriber cannot change plans in place, and is NOT or
 	const { checkoutController } = await import('../controllers/checkout.controller');
 	const { config: cfg, calls } = tieredCheckout();
 	const { store, upserts } = subCtrlStore({ ...starterSub, status: 'unpaid' });
-	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const res = await checkoutController(store, cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 422);
 	assert.equal(body.reason, 'SUBSCRIPTION_PAST_DUE');
 	assert.equal(calls.update, undefined, 'no plan change while a balance is unpaid');
-	assert.equal(upserts.length, 0, 'the live provider subscription is NOT orphaned by a fresh checkout');
+	assert.equal(
+		upserts.length,
+		0,
+		'the live provider subscription is NOT orphaned by a fresh checkout',
+	);
 });
 
 test('checkout: a PAUSED subscriber must resume before changing plans, and is NOT orphaned (SUBSCRIPTION_PAUSED)', async () => {
 	const { checkoutController } = await import('../controllers/checkout.controller');
 	const { config: cfg, calls } = tieredCheckout();
 	const { store, upserts } = subCtrlStore({ ...starterSub, status: 'paused' });
-	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	const res = await checkoutController(store, cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 422);
 	assert.equal(body.reason, 'SUBSCRIPTION_PAUSED');
 	assert.equal(calls.update, undefined, 'no in-place change onto a paused subscription');
-	assert.equal(upserts.length, 0, 'the paused provider subscription is NOT orphaned by a fresh checkout');
+	assert.equal(
+		upserts.length,
+		0,
+		'the paused provider subscription is NOT orphaned by a fresh checkout',
+	);
 });
 
 test('checkout: a scheduled-to-cancel subscriber must reactivate before upgrading (SUBSCRIPTION_SCHEDULED_TO_CANCEL)', async () => {
@@ -1981,7 +2265,11 @@ test('checkout: a scheduled-to-cancel subscriber must reactivate before upgradin
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 422);
 	assert.equal(body.reason, 'SUBSCRIPTION_SCHEDULED_TO_CANCEL');
-	assert.equal(calls.update, undefined, 'reactivate first — do not charge an upgrade onto a canceling sub');
+	assert.equal(
+		calls.update,
+		undefined,
+		'reactivate first — do not charge an upgrade onto a canceling sub',
+	);
 });
 
 test('checkout: an untiered plan change is NOT done in place (requires cancel + resubscribe)', async () => {
@@ -2019,7 +2307,9 @@ test('checkout: a CANCELED subscriber can subscribe to a lower-tier plan (fresh 
 	// opens a brand-new checkout, NOT an in-place change: the existing customer is
 	// reused (saved card survives) and the dead subscription id is cleared.
 	const { store, upserts } = subCtrlStore(canceledPro);
-	const res = await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'starter', interval: 'month' }));
+	const res = await checkoutController(store, cfg).createSession(
+		checkoutCtx({ plan: 'starter', interval: 'month' }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
 	assert.equal(body.reason, 'CHECKOUT_URL');
@@ -2027,8 +2317,16 @@ test('checkout: a CANCELED subscriber can subscribe to a lower-tier plan (fresh 
 	assert.equal(calls.update, undefined, 'no in-place mutation — a canceled sub resubscribes fresh');
 	// upsert params: [4]=status [5]=providerCustomerId [6]=providerSubscriptionId
 	assert.equal(upserts[0]![4], 'incomplete');
-	assert.equal(upserts[0]![5], 'cus_1', 'existing provider customer reused (card/auto-recharge preserved)');
-	assert.equal(upserts[0]![6], null, 'dead provider subscription id cleared (not retained via COALESCE)');
+	assert.equal(
+		upserts[0]![5],
+		'cus_1',
+		'existing provider customer reused (card/auto-recharge preserved)',
+	);
+	assert.equal(
+		upserts[0]![6],
+		null,
+		'dead provider subscription id cleared (not retained via COALESCE)',
+	);
 });
 
 // A store for the trial-eligibility tests: no current subscription (so checkout
@@ -2086,7 +2384,11 @@ test('checkout: a subscriber who already consumed a trial gets NO new trial (far
 		checkoutCtx({ plan: 'pro', interval: 'month' }),
 	);
 	assert.equal(res.status, 200);
-	assert.equal(calls.session.trialDays, undefined, 'a returning trialer is not granted another trial');
+	assert.equal(
+		calls.session.trialDays,
+		undefined,
+		'a returning trialer is not granted another trial',
+	);
 });
 
 test('webhook: a subscription carrying a trial records it as consumed (farming guard); no trial → no record', async () => {
@@ -2109,15 +2411,26 @@ test('webhook: a subscription carrying a trial records it as consumed (farming g
 		const provider = makeProvider({
 			constructEvent: async () => ({
 				type: 'customer.subscription.created',
-				subscription: normalizedSub({ priceId: 'price_pro_monthly', status: 'trialing', trialEndsAt }) as any,
+				subscription: normalizedSub({
+					priceId: 'price_pro_monthly',
+					status: 'trialing',
+					trialEndsAt,
+				}) as any,
 			}),
 		});
-		await webhookController(store, { ...config, provider, webhookSecret: 'whsec_x' }, undefined, recordingBus().bus).handle(
-			webhookCtx('{}'),
-		);
+		await webhookController(
+			store,
+			{ ...config, provider, webhookSecret: 'whsec_x' },
+			undefined,
+			recordingBus().bus,
+		).handle(webhookCtx('{}'));
 		return inserts.length;
 	};
-	assert.equal(await drive(new Date('2026-10-01T00:00:00Z')), 1, 'a trialing subscription is recorded as consumed');
+	assert.equal(
+		await drive(new Date('2026-10-01T00:00:00Z')),
+		1,
+		'a trialing subscription is recorded as consumed',
+	);
 	assert.equal(await drive(null), 0, 'a non-trial subscription records nothing');
 });
 
@@ -2126,9 +2439,15 @@ test('checkout: an in-place UPGRADE clears any pending cancellation and carries 
 	const { config: cfg } = tieredCheckout();
 	// Active, NOT scheduled to cancel, mid-trial. Upgrading keeps the trial and
 	// writes cancelAtPeriodEnd=false (a re-commitment, never a lingering cancel).
-	const trialing = { ...starterSub, cancelAtPeriodEnd: false, trialEndsAt: '2026-09-08T00:00:00.000Z' };
+	const trialing = {
+		...starterSub,
+		cancelAtPeriodEnd: false,
+		trialEndsAt: '2026-09-08T00:00:00.000Z',
+	};
 	const { store, upserts } = subCtrlStore(trialing);
-	await checkoutController(store, cfg).createSession(checkoutCtx({ plan: 'pro', interval: 'month' }));
+	await checkoutController(store, cfg).createSession(
+		checkoutCtx({ plan: 'pro', interval: 'month' }),
+	);
 	// upsert params: [9]=cancelAtPeriodEnd [10]=trialEndsAt
 	assert.equal(upserts[0]![9], false, 'cancelAtPeriodEnd written false on upgrade');
 	assert.ok(upserts[0]![10], 'trialEndsAt carried forward (not nulled)');
@@ -2140,132 +2459,150 @@ test('checkout: an in-place UPGRADE clears any pending cancellation and carries 
 // SELECT (getWalletCustomer), INSERT (upsertWalletCustomer), and the
 // payment_method_id UPDATE (setWalletCustomerCard). No subscription rows.
 function pmStore(seed: { customerId?: string; card?: string | null } = {}): {
-	store: IStoreAdapter
-	state: { customerId: string | null; card: string | null }
+	store: IStoreAdapter;
+	state: { customerId: string | null; card: string | null };
 } {
-	const state = { customerId: seed.customerId ?? null, card: seed.card ?? null }
+	const state = { customerId: seed.customerId ?? null, card: seed.card ?? null };
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
 			if (sql.includes('fonderie_wallet_customers')) {
-				const t = sql.trimStart()
+				const t = sql.trimStart();
 				if (t.startsWith('SELECT')) {
-					return (state.customerId
-						? [{ providerCustomerId: state.customerId, paymentMethodId: state.card }]
-						: []) as T[]
+					return (
+						state.customerId
+							? [{ providerCustomerId: state.customerId, paymentMethodId: state.card }]
+							: []
+					) as T[];
 				}
 				if (t.startsWith('INSERT')) {
 					// upsertWalletCustomer: [st, sid, provider, providerCustomerId, rearm, pm]
-					state.customerId = (params?.[3] as string) ?? state.customerId
-					return [] as T[]
+					state.customerId = (params?.[3] as string) ?? state.customerId;
+					return [] as T[];
 				}
 				if (sql.includes('payment_method_id = $4')) {
 					// setWalletCustomerCard: [st, sid, provider, pm|null]
-					state.card = (params?.[3] as string | null) ?? null
-					return [] as T[]
+					state.card = (params?.[3] as string | null) ?? null;
+					return [] as T[];
 				}
-				return [] as T[]
+				return [] as T[];
 			}
-			if (sql.includes('fonderie_subscriptions')) return [] as T[]
-			return [] as T[]
+			if (sql.includes('fonderie_subscriptions')) return [] as T[];
+			return [] as T[];
 		},
 		transaction: async (fn) => fn(store),
-	}
-	return { store, state }
+	};
+	return { store, state };
 }
 
 test('account.setupPaymentMethod: creates a customer and returns a SetupIntent client secret', async () => {
-	const { accountController } = await import('../controllers/account.controller')
-	const calls: any = {}
+	const { accountController } = await import('../controllers/account.controller');
+	const calls: any = {};
 	const provider = makeProvider({
 		async createCustomer() {
-			calls.created = true
-			return { customerId: 'cus_new' }
+			calls.created = true;
+			return { customerId: 'cus_new' };
 		},
 		async createSetupIntent(o: any) {
-			calls.setup = o
-			return { clientSecret: 'seti_secret_123', setupIntentId: 'seti_1' }
+			calls.setup = o;
+			return { clientSecret: 'seti_secret_123', setupIntentId: 'seti_1' };
 		},
-	})
-	const { store, state } = pmStore()
-	const res = await accountController(store, ({ ...config, wallet: { currency: 'USD', precision: 2 }, provider }) as IBillingConfig).setupPaymentMethod(subCtx())
-	const body = (await res.json()) as any
-	assert.equal(res.status, 200)
-	assert.equal(body.result.clientSecret, 'seti_secret_123')
-	assert.equal(calls.created, true, 'a customer was created for the pay-as-you-go user')
-	assert.equal(calls.setup.customerId, 'cus_new')
-	assert.equal(state.customerId, 'cus_new', 'customer recorded so later reads resolve it')
-})
+	});
+	const { store, state } = pmStore();
+	const res = await accountController(store, {
+		...config,
+		wallet: { currency: 'USD', precision: 2 },
+		provider,
+	} as IBillingConfig).setupPaymentMethod(subCtx());
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(body.result.clientSecret, 'seti_secret_123');
+	assert.equal(calls.created, true, 'a customer was created for the pay-as-you-go user');
+	assert.equal(calls.setup.customerId, 'cus_new');
+	assert.equal(state.customerId, 'cus_new', 'customer recorded so later reads resolve it');
+});
 
 test('account.savePaymentMethod: sets default, records the card, returns it', async () => {
-	const { accountController } = await import('../controllers/account.controller')
-	const calls: any = {}
+	const { accountController } = await import('../controllers/account.controller');
+	const calls: any = {};
 	const provider = makeProvider({
 		async setDefaultPaymentMethod(o: any) {
-			calls.def = o
+			calls.def = o;
 		},
 		async getPaymentMethod() {
-			return { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030, fingerprint: 'fp_1' }
+			return { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030, fingerprint: 'fp_1' };
 		},
-	})
-	const { store, state } = pmStore({ customerId: 'cus_1' })
-	const res = await accountController(store, ({ ...config, wallet: { currency: 'USD', precision: 2 }, provider }) as IBillingConfig).savePaymentMethod(
-		subCtx({ paymentMethodId: 'pm_1' }),
-	)
-	const body = (await res.json()) as any
-	assert.equal(res.status, 200)
-	assert.equal(calls.def.customerId, 'cus_1')
-	assert.equal(calls.def.paymentMethodId, 'pm_1')
-	assert.equal(body.result.paymentMethod.last4, '4242')
-	assert.equal('fingerprint' in body.result.paymentMethod, false, 'server-side signal never on the wire')
-	assert.equal(state.card, 'pm_1', 'consented card recorded')
-})
+	});
+	const { store, state } = pmStore({ customerId: 'cus_1' });
+	const res = await accountController(store, {
+		...config,
+		wallet: { currency: 'USD', precision: 2 },
+		provider,
+	} as IBillingConfig).savePaymentMethod(subCtx({ paymentMethodId: 'pm_1' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(calls.def.customerId, 'cus_1');
+	assert.equal(calls.def.paymentMethodId, 'pm_1');
+	assert.equal(body.result.paymentMethod.last4, '4242');
+	assert.equal(
+		'fingerprint' in body.result.paymentMethod,
+		false,
+		'server-side signal never on the wire',
+	);
+	assert.equal(state.card, 'pm_1', 'consented card recorded');
+});
 
 test('account.savePaymentMethod: a card not attached to the customer is rejected (422)', async () => {
-	const { accountController } = await import('../controllers/account.controller')
+	const { accountController } = await import('../controllers/account.controller');
 	const provider = makeProvider({
 		async setDefaultPaymentMethod() {
-			throw new Error('not attached to this customer')
+			throw new Error('not attached to this customer');
 		},
-	})
-	const { store, state } = pmStore({ customerId: 'cus_1' })
-	const res = await accountController(store, ({ ...config, wallet: { currency: 'USD', precision: 2 }, provider }) as IBillingConfig).savePaymentMethod(
-		subCtx({ paymentMethodId: 'pm_someone_else' }),
-	)
-	const body = (await res.json()) as any
-	assert.equal(res.status, 422)
-	assert.equal(body.reason, 'INVALID_PAYMENT_METHOD')
-	assert.equal(state.card, null, 'nothing recorded on rejection')
-})
+	});
+	const { store, state } = pmStore({ customerId: 'cus_1' });
+	const res = await accountController(store, {
+		...config,
+		wallet: { currency: 'USD', precision: 2 },
+		provider,
+	} as IBillingConfig).savePaymentMethod(subCtx({ paymentMethodId: 'pm_someone_else' }));
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 422);
+	assert.equal(body.reason, 'INVALID_PAYMENT_METHOD');
+	assert.equal(state.card, null, 'nothing recorded on rejection');
+});
 
 test('account.removePaymentMethod: detaches and clears the recorded card', async () => {
-	const { accountController } = await import('../controllers/account.controller')
-	const calls: any = {}
+	const { accountController } = await import('../controllers/account.controller');
+	const calls: any = {};
 	const provider = makeProvider({
 		async detachPaymentMethod(o: any) {
-			calls.detach = o
+			calls.detach = o;
 		},
-	})
-	const { store, state } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
-	const res = await accountController(store, ({ ...config, wallet: { currency: 'USD', precision: 2 }, provider }) as IBillingConfig).removePaymentMethod(subCtx())
-	const body = (await res.json()) as any
-	assert.equal(res.status, 200)
-	assert.equal(calls.detach.paymentMethodId, 'pm_1')
-	assert.equal(body.result.paymentMethod, null)
-	assert.equal(state.card, null, 'record cleared')
-})
+	});
+	const { store, state } = pmStore({ customerId: 'cus_1', card: 'pm_1' });
+	const res = await accountController(store, {
+		...config,
+		wallet: { currency: 'USD', precision: 2 },
+		provider,
+	} as IBillingConfig).removePaymentMethod(subCtx());
+	const body = (await res.json()) as any;
+	assert.equal(res.status, 200);
+	assert.equal(calls.detach.paymentMethodId, 'pm_1');
+	assert.equal(body.result.paymentMethod, null);
+	assert.equal(state.card, null, 'record cleared');
+});
 
 test('account payment-method mutations: 501 when the provider lacks support', async () => {
-	const { accountController } = await import('../controllers/account.controller')
-	const { store } = pmStore({ customerId: 'cus_1' })
-	const ctrl = accountController(store, ({
+	const { accountController } = await import('../controllers/account.controller');
+	const { store } = pmStore({ customerId: 'cus_1' });
+	const ctrl = accountController(store, {
 		...config,
 		wallet: { currency: 'USD', precision: 2 },
 		provider: makeProvider(),
-	}) as IBillingConfig)
-	assert.equal((await ctrl.setupPaymentMethod(subCtx())).status, 501)
-	assert.equal((await ctrl.savePaymentMethod(subCtx({ paymentMethodId: 'pm_1' }))).status, 501)
-	assert.equal((await ctrl.removePaymentMethod(subCtx())).status, 501)
-})
+	} as IBillingConfig);
+	assert.equal((await ctrl.setupPaymentMethod(subCtx())).status, 501);
+	assert.equal((await ctrl.savePaymentMethod(subCtx({ paymentMethodId: 'pm_1' }))).status, 501);
+	assert.equal((await ctrl.removePaymentMethod(subCtx())).status, 501);
+});
 
 // ── In-app purchase (charge saved card) ───────────────────────────
 // Branch logic only — the outcomes that DON'T credit (so no ledger SQL). The
@@ -2280,10 +2617,14 @@ function purchaseConfig(provider: IBillingProvider): IBillingConfig {
 			precision: 2,
 			creditPacks: [{ id: 'small', name: 'Small pack', credits: 5000n, priceAmount: 499n }],
 		},
-	} as IBillingConfig
+	} as IBillingConfig;
 }
 
-const purchaseArgs = (store: IStoreAdapter, config: IBillingConfig, extra: Record<string, unknown> = {}) => ({
+const purchaseArgs = (
+	store: IStoreAdapter,
+	config: IBillingConfig,
+	extra: Record<string, unknown> = {},
+) => ({
 	store,
 	config,
 	bus: undefined,
@@ -2294,94 +2635,127 @@ const purchaseArgs = (store: IStoreAdapter, config: IBillingConfig, extra: Recor
 	precision: 2,
 	idempotencyKey: 'attempt-1',
 	...extra,
-})
+});
 
 test('purchase: unknown packId resolves to invalid_pack (no charge)', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	let charged = false
-	const provider = makeProvider({ chargeOffSession: async () => { charged = true; return { providerTxId: 'pi', status: 'succeeded' } } })
-	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
-	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider), { packId: 'nope' }))
-	assert.equal(out.status, 'invalid_pack')
-	assert.equal(charged, false, 'never charge for an unknown pack')
-})
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	let charged = false;
+	const provider = makeProvider({
+		chargeOffSession: async () => {
+			charged = true;
+			return { providerTxId: 'pi', status: 'succeeded' };
+		},
+	});
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' });
+	const out = await purchasePackWithSavedCard(
+		purchaseArgs(store, purchaseConfig(provider), { packId: 'nope' }),
+	);
+	assert.equal(out.status, 'invalid_pack');
+	assert.equal(charged, false, 'never charge for an unknown pack');
+});
 
 test('purchase: no saved card → checkout_required (fall back to hosted checkout)', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	const provider = makeProvider({ chargeOffSession: async () => ({ providerTxId: 'pi', status: 'succeeded' }) })
-	const { store } = pmStore() // no customer / no card
-	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
-	assert.deepEqual(out, { status: 'checkout_required', reason: 'no_saved_card' })
-})
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	const provider = makeProvider({
+		chargeOffSession: async () => ({ providerTxId: 'pi', status: 'succeeded' }),
+	});
+	const { store } = pmStore(); // no customer / no card
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)));
+	assert.deepEqual(out, { status: 'checkout_required', reason: 'no_saved_card' });
+});
 
 test('purchase: provider without chargeOffSession → checkout_required', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	const provider = makeProvider() // no chargeOffSession
-	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
-	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
-	assert.deepEqual(out, { status: 'checkout_required', reason: 'no_saved_card' })
-})
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	const provider = makeProvider(); // no chargeOffSession
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' });
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)));
+	assert.deepEqual(out, { status: 'checkout_required', reason: 'no_saved_card' });
+});
 
 test('purchase: SCA required → checkout_required(authentication_required), never credits', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	const provider = makeProvider({ chargeOffSession: async () => ({ providerTxId: 'pi_ra', status: 'requires_action' }) })
-	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
-	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
-	assert.deepEqual(out, { status: 'checkout_required', reason: 'authentication_required' })
-})
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	const provider = makeProvider({
+		chargeOffSession: async () => ({ providerTxId: 'pi_ra', status: 'requires_action' }),
+	});
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' });
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)));
+	assert.deepEqual(out, { status: 'checkout_required', reason: 'authentication_required' });
+});
 
 test('purchase: indeterminate charge → processing (retry same key, NOT a checkout fallback)', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	const provider = makeProvider({ chargeOffSession: async () => ({ providerTxId: null, status: 'unknown' }) })
-	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
-	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	const provider = makeProvider({
+		chargeOffSession: async () => ({ providerTxId: null, status: 'unknown' }),
+	});
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' });
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)));
 	// MUST NOT be checkout_required — falling back to a new hosted payment could double-charge.
-	assert.equal(out.status, 'processing')
-})
+	assert.equal(out.status, 'processing');
+});
 
 test('purchase: definitive decline → declined', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	const provider = makeProvider({ chargeOffSession: async () => ({ providerTxId: null, status: 'failed' }) })
-	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
-	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
-	assert.equal(out.status, 'declined')
-})
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	const provider = makeProvider({
+		chargeOffSession: async () => ({ providerTxId: null, status: 'failed' }),
+	});
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' });
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)));
+	assert.equal(out.status, 'declined');
+});
 
 test('purchase: passes the consented card + a purchase-scoped idempotency key to the charge', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	let seen: any = null
-	const provider = makeProvider({ chargeOffSession: async (o: any) => { seen = o; return { providerTxId: null, status: 'failed' } } })
-	const { store } = pmStore({ customerId: 'cus_9', card: 'pm_9' })
-	await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider), { idempotencyKey: 'k-42' }))
-	assert.equal(seen.customerId, 'cus_9')
-	assert.equal(seen.paymentMethodId, 'pm_9')
-	assert.equal(seen.idempotencyKey, 'stub:purchase:user:user-1:k-42', 'charge key is purchase-scoped + subscriber-namespaced + client key (double-submit safe, no cross-subscriber collision)')
-	assert.equal(seen.metadata.reason, 'purchase')
-	assert.equal(seen.amount, 499n)
-})
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	let seen: any = null;
+	const provider = makeProvider({
+		chargeOffSession: async (o: any) => {
+			seen = o;
+			return { providerTxId: null, status: 'failed' };
+		},
+	});
+	const { store } = pmStore({ customerId: 'cus_9', card: 'pm_9' });
+	await purchasePackWithSavedCard(
+		purchaseArgs(store, purchaseConfig(provider), { idempotencyKey: 'k-42' }),
+	);
+	assert.equal(seen.customerId, 'cus_9');
+	assert.equal(seen.paymentMethodId, 'pm_9');
+	assert.equal(
+		seen.idempotencyKey,
+		'stub:purchase:user:user-1:k-42',
+		'charge key is purchase-scoped + subscriber-namespaced + client key (double-submit safe, no cross-subscriber collision)',
+	);
+	assert.equal(seen.metadata.reason, 'purchase');
+	assert.equal(seen.amount, 499n);
+});
 
 // ── In-app purchase: webhook safety-net + failure suppression ─────
 
 test('normalizePaymentIntentSucceeded: bare PI maps to a paid payment keyed by PI id', async () => {
-	const { normalizePaymentIntentSucceeded } = await import('../providers/stripe')
+	const { normalizePaymentIntentSucceeded } = await import('../providers/stripe');
 	const p = normalizePaymentIntentSucceeded({
 		id: 'pi_abc',
 		amount: 499,
 		currency: 'usd',
 		customer: 'cus_1',
-		metadata: { reason: 'purchase', packId: 'small', credits: '5000', subscriberType: 'user', subscriberId: 'u1', currency: 'USD' },
-	} as any)
-	assert.equal(p.providerTxId, 'pi_abc')
-	assert.equal(p.sessionId, 'pi_abc', 'no session — PI id stands in')
-	assert.equal(p.paymentStatus, 'paid')
-	assert.equal(p.customerId, 'cus_1')
-	assert.equal(p.amountTotal, 499n)
-	assert.equal(p.metadata.reason, 'purchase')
-})
+		metadata: {
+			reason: 'purchase',
+			packId: 'small',
+			credits: '5000',
+			subscriberType: 'user',
+			subscriberId: 'u1',
+			currency: 'USD',
+		},
+	} as any);
+	assert.equal(p.providerTxId, 'pi_abc');
+	assert.equal(p.sessionId, 'pi_abc', 'no session — PI id stands in');
+	assert.equal(p.paymentStatus, 'paid');
+	assert.equal(p.customerId, 'cus_1');
+	assert.equal(p.amountTotal, 499n);
+	assert.equal(p.metadata.reason, 'purchase');
+});
 
 test('payment webhook: a declined in-app purchase (reason:purchase) sends NO payment-failed notice', async () => {
-	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller')
-	const { bus, calls } = recordingBus()
+	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
+	const { bus, calls } = recordingBus();
 	const provider = makeProvider({
 		constructEvent: async () => ({
 			type: 'payment_intent.payment_failed',
@@ -2392,42 +2766,71 @@ test('payment webhook: a declined in-app purchase (reason:purchase) sends NO pay
 				amount: 499n,
 				currency: 'usd',
 				reason: 'card_declined',
-				metadata: { reason: 'purchase', subscriberType: 'user', subscriberId: 'u1', packId: 'small' },
+				metadata: {
+					reason: 'purchase',
+					subscriberType: 'user',
+					subscriberId: 'u1',
+					packId: 'small',
+				},
 			},
 		}),
-	})
-	const cfg = { ...config, provider, wallet: { currency: 'USD', precision: 2, webhookSecret: 'whsec_x', creditPacks: [] } } as IBillingConfig
-	const ctrl = paymentWebhookController(makeStore(), cfg, bus)
-	const res = await ctrl.handle(webhookCtx('{}'))
-	const body = (await res.json()) as any
-	assert.equal(body.ignored, 'purchase-handled-elsewhere', 'the interactive caller owns the decline UX')
-	assert.equal(calls.length, 0, 'no payment.failed event → no duplicate customer email')
-})
+	});
+	const cfg = {
+		...config,
+		provider,
+		wallet: { currency: 'USD', precision: 2, webhookSecret: 'whsec_x', creditPacks: [] },
+	} as IBillingConfig;
+	const ctrl = paymentWebhookController(makeStore(), cfg, bus);
+	const res = await ctrl.handle(webhookCtx('{}'));
+	const body = (await res.json()) as any;
+	assert.equal(
+		body.ignored,
+		'purchase-handled-elsewhere',
+		'the interactive caller owns the decline UX',
+	);
+	assert.equal(calls.length, 0, 'no payment.failed event → no duplicate customer email');
+});
 
 test('purchase: prefers chargeViaInvoice over chargeOffSession, maps requires_action → checkout', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	const calls: string[] = []
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	const calls: string[] = [];
 	const provider = makeProvider({
-		chargeViaInvoice: async () => { calls.push('invoice'); return { status: 'requires_action', providerTxId: null, invoiceId: null, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null } },
-		chargeOffSession: async () => { calls.push('charge'); return { providerTxId: 'pi', status: 'succeeded' } },
-	})
-	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
-	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
-	assert.deepEqual(calls, ['invoice'], 'invoice path preferred; off-session not called')
-	assert.deepEqual(out, { status: 'checkout_required', reason: 'authentication_required' })
-})
+		chargeViaInvoice: async () => {
+			calls.push('invoice');
+			return {
+				status: 'requires_action',
+				providerTxId: null,
+				invoiceId: null,
+				invoiceNumber: null,
+				hostedInvoiceUrl: null,
+				invoicePdf: null,
+			};
+		},
+		chargeOffSession: async () => {
+			calls.push('charge');
+			return { providerTxId: 'pi', status: 'succeeded' };
+		},
+	});
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' });
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)));
+	assert.deepEqual(calls, ['invoice'], 'invoice path preferred; off-session not called');
+	assert.deepEqual(out, { status: 'checkout_required', reason: 'authentication_required' });
+});
 
 test('purchase: falls back to chargeOffSession when the provider has no chargeViaInvoice', async () => {
-	const { purchasePackWithSavedCard } = await import('../services/purchase')
-	const calls: string[] = []
+	const { purchasePackWithSavedCard } = await import('../services/purchase');
+	const calls: string[] = [];
 	const provider = makeProvider({
-		chargeOffSession: async () => { calls.push('charge'); return { providerTxId: null, status: 'failed' } },
-	})
-	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' })
-	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)))
-	assert.deepEqual(calls, ['charge'])
-	assert.equal(out.status, 'declined')
-})
+		chargeOffSession: async () => {
+			calls.push('charge');
+			return { providerTxId: null, status: 'failed' };
+		},
+	});
+	const { store } = pmStore({ customerId: 'cus_1', card: 'pm_1' });
+	const out = await purchasePackWithSavedCard(purchaseArgs(store, purchaseConfig(provider)));
+	assert.deepEqual(calls, ['charge']);
+	assert.equal(out.status, 'declined');
+});
 
 // ── Security: manager gate on money-mutating routes (M1) ─────────────
 // withBilling verifies MEMBERSHIP; spending the workspace's card, cancelling
@@ -2466,7 +2869,10 @@ test('requireBillingManager: user-scoped billing passes (own money)', async () =
 	const { requireBillingManager } = await import('../middlewares/require-manager');
 	const mw = requireBillingManager(managerGateStore(false), config);
 	let called = false;
-	await mw(billingCtx({ userId: 'u-1' }), async () => { called = true; return new Response(); });
+	await mw(billingCtx({ userId: 'u-1' }), async () => {
+		called = true;
+		return new Response();
+	});
 	assert.ok(called);
 });
 
@@ -2486,21 +2892,24 @@ test('requireBillingManager: owner/admin of the workspace passes', async () => {
 	const { requireBillingManager } = await import('../middlewares/require-manager');
 	const mw = requireBillingManager(managerGateStore(true), config);
 	let called = false;
-	await mw(
-		billingCtx({ userId: 'u-1', workspaceHeader: 'ws-1' }),
-		async () => { called = true; return new Response(); },
-	);
+	await mw(billingCtx({ userId: 'u-1', workspaceHeader: 'ws-1' }), async () => {
+		called = true;
+		return new Response();
+	});
 	assert.ok(called);
 });
 
 test('requireBillingManager: management "any-member" opts out', async () => {
 	const { requireBillingManager } = await import('../middlewares/require-manager');
-	const mw = requireBillingManager(managerGateStore(false), { ...config, management: 'any-member' });
+	const mw = requireBillingManager(managerGateStore(false), {
+		...config,
+		management: 'any-member',
+	});
 	let called = false;
-	await mw(
-		billingCtx({ userId: 'u-1', workspaceHeader: 'ws-1' }),
-		async () => { called = true; return new Response(); },
-	);
+	await mw(billingCtx({ userId: 'u-1', workspaceHeader: 'ws-1' }), async () => {
+		called = true;
+		return new Response();
+	});
 	assert.ok(called);
 });
 
@@ -2508,12 +2917,17 @@ test('buildBillingRoutes: money mutations carry the manager gate, reads do not',
 	const { buildBillingRoutes } = await import('../routes');
 	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
 	const routes = buildBillingRoutes(stub, config);
-	const chain = (method: string, path: string) => routes.find(([m, p]) => m === method && p === path)!;
+	const chain = (method: string, path: string) =>
+		routes.find(([m, p]) => m === method && p === path)!;
 	// checkout: [m, p, requireAuth, manager, validate, handler] — one more than
 	// the read-only subscription GET's [m, p, requireAuth, handler].
 	assert.equal(chain('POST', '/billing/checkout').length, 6);
 	assert.equal(chain('GET', '/billing/subscription').length, 4);
-	assert.equal(chain('DELETE', '/billing/payment-method').length, 5, 'card removal is manager-gated');
+	assert.equal(
+		chain('DELETE', '/billing/payment-method').length,
+		5,
+		'card removal is manager-gated',
+	);
 	assert.equal(chain('GET', '/billing/invoices').length, 4, 'invoice read is not');
 });
 
@@ -2521,7 +2935,10 @@ test('isWorkspaceManager: matches system-role NAMES (GUEST must not manage money
 	const { isWorkspaceManager } = await import('../services/membership');
 	let captured: unknown[] = [];
 	const store = {
-		query: async (_sql: string, params?: unknown[]) => { captured = params ?? []; return []; },
+		query: async (_sql: string, params?: unknown[]) => {
+			captured = params ?? [];
+			return [];
+		},
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
 	} as unknown as import('@fonderie/store').IStoreAdapter;
 	const ok = await isWorkspaceManager('u-guest', 'ws-1', store);
@@ -2544,7 +2961,9 @@ test('describeBillingAdminRoutes: plan writes always, wallet grant only with con
 	assert.equal(plain[2]?.handlers.length, 1);
 
 	const withWallet = { ...config, wallet: { currency: 'USD' } } as unknown as IBillingConfig;
-	const walletPaths = describeBillingAdminRoutes(store, withWallet).map((r) => `${r.method} ${r.path}`);
+	const walletPaths = describeBillingAdminRoutes(store, withWallet).map(
+		(r) => `${r.method} ${r.path}`,
+	);
 	assert.ok(walletPaths.includes('POST /wallet/grant'));
 });
 
@@ -2583,11 +3002,20 @@ test('describeBillingAdminChecks: three checks; unsupported ⇒ skipped; webhook
 		apiVersion: '2025-01-01',
 		listWebhookRegistrations: async () => [],
 	} as unknown as IBillingConfig['provider'];
-	const wired = describeBillingAdminChecks(store, { ...config, provider, publicUrl: 'https://api.x/v1/' });
+	const wired = describeBillingAdminChecks(store, {
+		...config,
+		provider,
+		publicUrl: 'https://api.x/v1/',
+	});
 	const reg = await wired.find((c) => c.name === 'billing.webhook-registration')!.run();
 	assert.equal(reg.ok, false);
-	assert.ok(reg.findings.some((f) => f.startsWith('https://api.x/v1/billing/webhook: NOT REGISTERED')));
-	assert.ok(!reg.findings.some((f) => f.includes('/billing/webhook/payment')), 'no wallet ⇒ no payment endpoint');
+	assert.ok(
+		reg.findings.some((f) => f.startsWith('https://api.x/v1/billing/webhook: NOT REGISTERED')),
+	);
+	assert.ok(
+		!reg.findings.some((f) => f.includes('/billing/webhook/payment')),
+		'no wallet ⇒ no payment endpoint',
+	);
 });
 
 // ── describeAdmin: the money reads (catalog, subscription, wallet) ──
@@ -2597,8 +3025,10 @@ function moneyStore(opts: { sub?: unknown; plans?: unknown[]; ledger?: unknown[]
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
 			seen.push(sql.trim().split(/\s+/).slice(0, 3).join(' '));
-			if (sql.includes('fonderie_plans') && sql.trimStart().startsWith('SELECT')) return (opts.plans ?? []) as T[];
-			if (sql.includes('fonderie_subscriptions') && sql.trimStart().startsWith('SELECT')) return (opts.sub ? [opts.sub] : []) as T[];
+			if (sql.includes('fonderie_plans') && sql.trimStart().startsWith('SELECT'))
+				return (opts.plans ?? []) as T[];
+			if (sql.includes('fonderie_subscriptions') && sql.trimStart().startsWith('SELECT'))
+				return (opts.sub ? [opts.sub] : []) as T[];
 			if (sql.includes('fonderie_wallet_balances')) return [] as T[];
 			if (sql.includes('fonderie_wallet_ledger')) return (opts.ledger ?? []) as T[];
 			return [] as T[];
@@ -2618,7 +3048,12 @@ test('describeBillingAdminReads: catalog + subscription always; wallet reads onl
 	const withWallet = { ...config, wallet: { currency: 'eur' } } as unknown as IBillingConfig;
 	assert.deepEqual(
 		describeBillingAdminReads(store, withWallet).map((r) => `${r.method} ${r.path}`),
-		['GET /catalog', 'GET /subscriptions/:type/:id', 'GET /wallet/:type/:id', 'GET /wallet/:type/:id/ledger'],
+		[
+			'GET /catalog',
+			'GET /subscriptions/:type/:id',
+			'GET /wallet/:type/:id',
+			'GET /wallet/:type/:id/ledger',
+		],
 	);
 });
 
@@ -2626,7 +3061,21 @@ test('money reads: catalog shows configured and stored; subscription 404s; walle
 	const { describeBillingAdminReads } = await import('../admin-reads');
 	const { FonderieApp, defineConfig } = await import('@fonderie/core');
 	const withWallet = { ...config, wallet: { currency: 'eur' } } as unknown as IBillingConfig;
-	const { store } = moneyStore({ plans: [{ id: 'p1', name: 'pro', seats: 5, trialDays: 0, monthlyAmount: '1900', monthlyPriceId: 'price_m', yearlyAmount: null, yearlyPriceId: null }], sub: { id: 's1', subscriberType: 'user', subscriberId: 'u1', status: 'active' } });
+	const { store } = moneyStore({
+		plans: [
+			{
+				id: 'p1',
+				name: 'pro',
+				seats: 5,
+				trialDays: 0,
+				monthlyAmount: '1900',
+				monthlyPriceId: 'price_m',
+				yearlyAmount: null,
+				yearlyPriceId: null,
+			},
+		],
+		sub: { id: 's1', subscriberType: 'user', subscriberId: 'u1', status: 'active' },
+	});
 	let lastErr = null as unknown;
 	const app = new FonderieApp(
 		defineConfig({
@@ -2640,15 +3089,21 @@ test('money reads: catalog shows configured and stored; subscription 404s; walle
 	app.register({
 		name: 'test-admin',
 		install(a) {
-			for (const r of describeBillingAdminReads(store, withWallet)) a.addRoute(r.method, `/_admin${r.path}`, ...r.handlers);
+			for (const r of describeBillingAdminReads(store, withWallet))
+				a.addRoute(r.method, `/_admin${r.path}`, ...r.handlers);
 		},
 	});
 	await app.boot();
 	const get = (p: string) => app.handle(new Request(`http://localhost${p}`));
-	const json = async (r: Response) => ((await r.json()) as { result: Record<string, unknown> }).result;
+	const json = async (r: Response) =>
+		((await r.json()) as { result: Record<string, unknown> }).result;
 
 	const catRes = await get('/_admin/catalog');
-	assert.equal(catRes.status, 200, lastErr instanceof Error ? lastErr.stack ?? lastErr.message : String(lastErr));
+	assert.equal(
+		catRes.status,
+		200,
+		lastErr instanceof Error ? (lastErr.stack ?? lastErr.message) : String(lastErr),
+	);
 	const cat = await json(catRes);
 	assert.ok(Array.isArray(cat['configured']) && Array.isArray(cat['stored']));
 	assert.equal((cat['stored'] as unknown[]).length, 1);
@@ -2660,7 +3115,10 @@ test('money reads: catalog shows configured and stored; subscription 404s; walle
 	const bal = await json(await get('/_admin/wallet/user/u1'));
 	assert.equal(bal['currency'], 'EUR');
 	assert.equal((await json(await get('/_admin/wallet/user/u1?currency=usd')))['currency'], 'USD');
-	assert.equal((await json(await get('/_admin/wallet/user/u1?currency=%3Cjunk%3E')))['currency'], 'EUR');
+	assert.equal(
+		(await json(await get('/_admin/wallet/user/u1?currency=%3Cjunk%3E')))['currency'],
+		'EUR',
+	);
 
 	const led = await json(await get('/_admin/wallet/user/u1/ledger?limit=10'));
 	assert.deepEqual([led['currency'], led['entries'], led['nextCursor']], ['EUR', [], null]);

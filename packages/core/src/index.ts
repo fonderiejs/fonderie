@@ -38,6 +38,7 @@ export {
 export { FonderieApp, DEFAULT_MAX_BODY_BYTES } from './app';
 export { defineConfig } from './config';
 export { compose } from './compose';
+export { normalizeMountPath, normalizeRequestPath } from './router';
 export type { FonderieConfig } from './config';
 
 // Built-in middleware — import from '@fonderie/core/middlewares', not the root barrel

@@ -150,7 +150,9 @@ export function describeWebhookProblems(report: IWebhookRegistrationReport): str
 			lines.push(`${e.url}: endpoint is DISABLED at the provider — it sends nothing`);
 		}
 		if (e.missing.length > 0) {
-			lines.push(`${e.url}: not registered for ${e.missing.join(', ')} — those handlers can never run`);
+			lines.push(
+				`${e.url}: not registered for ${e.missing.join(', ')} — those handlers can never run`,
+			);
 		}
 		if (e.apiVersionMismatch) {
 			lines.push(
@@ -165,6 +167,8 @@ export function describeWebhookProblems(report: IWebhookRegistrationReport): str
 
 /** Compare ignoring a trailing slash, which providers and configs disagree on. */
 function sameEndpoint(a: string, b: string): boolean {
+	// Full-URL comparison (ours vs the provider's registered endpoint), not a
+	// router path — deliberately local, see admin-checks.ts.
 	const norm = (s: string) => s.replace(/\/+$/, '');
 	return norm(a) === norm(b);
 }

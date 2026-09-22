@@ -29,7 +29,8 @@ export function isWithinDunningGrace(
 ): boolean {
 	if (!graceDays || graceDays <= 0) return false;
 	if (sub.status !== 'past_due' || !sub.currentPeriodEnd) return false;
-	const end = sub.currentPeriodEnd instanceof Date ? sub.currentPeriodEnd : new Date(sub.currentPeriodEnd);
+	const end =
+		sub.currentPeriodEnd instanceof Date ? sub.currentPeriodEnd : new Date(sub.currentPeriodEnd);
 	if (Number.isNaN(end.getTime())) return false;
 	return now.getTime() <= end.getTime() + graceDays * 86_400_000;
 }

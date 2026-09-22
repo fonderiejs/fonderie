@@ -76,8 +76,11 @@ function isUnder(path: string, prefix: string): boolean {
 	return path === prefix || path.startsWith(`${prefix}/`);
 }
 
+// Config, not a request: a reserved prefix may be written with any number of
+// trailing slashes and must be absolute. normalizeMountPath does the stripping;
+// the absolute check is this function's own job.
 function normalizePrefix(prefix: string): string {
-	const clean = prefix.replace(/\/+$/, '');
+	const clean = normalizeMountPath(prefix);
 	if (!clean.startsWith('/') || clean === '') {
 		throw new Error(
 			`[fonderie] a reserved prefix must be an absolute path below the root, got "${prefix}"`,
@@ -90,10 +93,27 @@ function describe(module: string | undefined): string {
 	return module ?? 'the application';
 }
 
+// A request path as the router sees it: no query string, no trailing slash,
+// and '/' stays '/'. Exported because a handler that has to reason about its
+// OWN path — the admin brick serving a page that references a sibling asset —
+// must agree with routing by construction, not by a second copy of this line.
+export function normalizeRequestPath(path: string): string {
+	return (path.split('?')[0] ?? path).replace(/\/$/, '') || '/';
+}
+
+// A mount path from CONFIG — a basePath, a reserved prefix, where a surface is
+// mounted. Trailing slashes there are typing, not meaning: '/v1', '/v1/' and
+// '/v1//' are the same mount. Distinct from normalizeRequestPath on both ends:
+// '' stays '' (no basePath, not "the root"), and every trailing slash goes,
+// not one.
+export function normalizeMountPath(path: string): string {
+	return path.replace(/\/+$/, '');
+}
+
 // Segment-by-segment match with :param extraction
 // /users/:id matches /users/42 → { id: '42' }
 function matchPath(pattern: string, path: string): Record<string, string> | null {
-	const clean = (path.split('?')[0] ?? path).replace(/\/$/, '') || '/'; // strip query string and trailing slash
+	const clean = normalizeRequestPath(path);
 	const pp = pattern.split('/');
 	const vp = clean.split('/');
 

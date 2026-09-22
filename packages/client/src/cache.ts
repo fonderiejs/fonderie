@@ -26,7 +26,9 @@ interface Entry {
 	expiresAt: number;
 }
 
-export function createMemoryCache(opts: IMemoryCacheOptions = {}): ICache & { defaultTtlMs: number } {
+export function createMemoryCache(
+	opts: IMemoryCacheOptions = {},
+): ICache & { defaultTtlMs: number } {
 	const store = new Map<string, Entry>();
 	const inflight = new Map<string, Promise<unknown>>();
 	const defaultTtlMs = opts.defaultTtlMs ?? 60_000;

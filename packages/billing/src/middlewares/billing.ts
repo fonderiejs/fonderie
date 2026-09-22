@@ -17,7 +17,12 @@ import {
 	settleAllowance,
 	startOfNextPeriod,
 } from '../services/wallet';
-import { resolveSubscriber, parseWindowMs, subscriberEventFields, formatWalletAmount } from '../utils';
+import {
+	resolveSubscriber,
+	parseWindowMs,
+	subscriberEventFields,
+	formatWalletAmount,
+} from '../utils';
 import { notifyBilling } from '../services/notify';
 import { maybeAutoRecharge } from '../services/auto-recharge';
 
@@ -56,14 +61,13 @@ export function withBilling(
 		const subscription = await getSubscription(subscriber.type, subscriber.id, store);
 		const planName = subscription?.plan ?? config.plans[0]?.name ?? 'free';
 		// Paying (or free/trialing) — the basis for issuing NEW value (grants).
-			const grantEligible =
-				!subscription || subscription.status === 'active' || subscription.status === 'trialing';
-			// Access — extends `grantEligible` with the dunning grace window, so a
-			// past_due subscriber keeps plan access + can spend during retries. It
-			// must NOT feed the grant gate (grace preserves access, never hands out
-			// new billed credit while payment is failing).
-			const active =
-				grantEligible || isWithinDunningGrace(subscription, config.dunning?.graceDays);
+		const grantEligible =
+			!subscription || subscription.status === 'active' || subscription.status === 'trialing';
+		// Access — extends `grantEligible` with the dunning grace window, so a
+		// past_due subscriber keeps plan access + can spend during retries. It
+		// must NOT feed the grant gate (grace preserves access, never hands out
+		// new billed credit while payment is failing).
+		const active = grantEligible || isWithinDunningGrace(subscription, config.dunning?.graceDays);
 
 		const plan = config.plans.find((p) => p.name === planName) ?? config.plans[0];
 		if (!plan) return next();
@@ -100,7 +104,10 @@ export function withBilling(
 				// spending last period's allowance. Then grant this period.
 				const period = currentGrantPeriod(planWallet.grantPeriod);
 				const expiresAt = startOfNextPeriod(planWallet.grantPeriod);
-				await settleAllowance({ ...sub, period, rollover: planWallet.grantRollover, expiresAt }, store);
+				await settleAllowance(
+					{ ...sub, period, rollover: planWallet.grantRollover, expiresAt },
+					store,
+				);
 				// Grants require an active (or trialing) subscription — a past_due
 				// or paused subscriber keeps spending existing credits but is not
 				// extended new ones while payment is failing (grace preserves
@@ -122,8 +129,9 @@ export function withBilling(
 							period,
 						};
 						await background(bus?.emit(EVENT_KEYS.grantApplied, fields));
-						await background(bus
-							?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'periodic-grant' }));
+						await background(
+							bus?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'periodic-grant' }),
+						);
 					}
 				}
 				const { balance } = await getWalletBalance(sub, store);
@@ -159,23 +167,29 @@ export function withBilling(
 						// opt-out via config.notifications.creditsLow (default on).
 						await background(bus?.emit(EVENT_KEYS.walletLowBalance, fields));
 						if (config.notifications?.creditsLow !== false) {
-							await background(notifyBilling(bus, config, {
-								subscriberType: subscriber.type,
-								subscriberId: subscriber.id,
-								type: MESSAGE_KEYS.creditsLow,
-								data: {
-									plan: plan.name,
-									currency: planWallet.currency,
-									balance: balance.toString(),
-									threshold: planWallet.lowBalanceAt.toString(),
-									balanceDisplay: formatWalletAmount(balance, planWallet.currency, planWallet.precision ?? 2),
-									thresholdDisplay: formatWalletAmount(
-										planWallet.lowBalanceAt,
-										planWallet.currency,
-										planWallet.precision ?? 2,
-									),
-								},
-							}));
+							await background(
+								notifyBilling(bus, config, {
+									subscriberType: subscriber.type,
+									subscriberId: subscriber.id,
+									type: MESSAGE_KEYS.creditsLow,
+									data: {
+										plan: plan.name,
+										currency: planWallet.currency,
+										balance: balance.toString(),
+										threshold: planWallet.lowBalanceAt.toString(),
+										balanceDisplay: formatWalletAmount(
+											balance,
+											planWallet.currency,
+											planWallet.precision ?? 2,
+										),
+										thresholdDisplay: formatWalletAmount(
+											planWallet.lowBalanceAt,
+											planWallet.currency,
+											planWallet.precision ?? 2,
+										),
+									},
+								}),
+							);
 						}
 					}
 				}

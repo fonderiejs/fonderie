@@ -29,7 +29,11 @@ function toBigIntOrNull(v: unknown): bigint | null {
 // Idempotency: the ledger key `<provider>:checkout:<sessionId>` makes event
 // replays no-ops.
 
-export function paymentWebhookController(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus) {
+export function paymentWebhookController(
+	store: IStoreAdapter,
+	config: IBillingConfig,
+	bus?: EventBus,
+) {
 	const wallet = new WalletModel(store);
 
 	// Refund / chargeback → claw back the credits the original purchase granted.
@@ -66,7 +70,8 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 			subscriberId: purchase.subscriberId,
 			currency: purchase.currency,
 		};
-		const packId = typeof purchase.metadata['packId'] === 'string' ? purchase.metadata['packId'] : null;
+		const packId =
+			typeof purchase.metadata['packId'] === 'string' ? purchase.metadata['packId'] : null;
 
 		// Dispute WON: funds were returned, so restore exactly what this
 		// dispute's chargeback clawed (if anything). Distinct idempotency key.
@@ -84,15 +89,16 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 				metadata: { disputeId: reversal.id, providerTxId: pi, ...(packId ? { packId } : {}) },
 			});
 			if (!result.duplicate) {
-				await background(bus
-					?.emit(EVENT_KEYS.walletCredited, {
+				await background(
+					bus?.emit(EVENT_KEYS.walletCredited, {
 						...subscriberEventFields(sub.subscriberType, sub.subscriberId),
 						currency: sub.currency,
 						credits: (-clawed).toString(),
 						balanceAfter: result.balance.toString(),
 						...(packId ? { packId } : {}),
 						source: 'dispute-won',
-					}));
+					}),
+				);
 			}
 			return Response.json({ received: true, duplicate: result.duplicate });
 		}
@@ -163,8 +169,16 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 					credits: result.reversed.toString(),
 					currency: sub.currency,
 					balanceAfter: result.balance.toString(),
-					creditsDisplay: formatWalletAmount(result.reversed, sub.currency, config.wallet?.precision ?? 2),
-					balanceAfterDisplay: formatWalletAmount(result.balance, sub.currency, config.wallet?.precision ?? 2),
+					creditsDisplay: formatWalletAmount(
+						result.reversed,
+						sub.currency,
+						config.wallet?.precision ?? 2,
+					),
+					balanceAfterDisplay: formatWalletAmount(
+						result.balance,
+						sub.currency,
+						config.wallet?.precision ?? 2,
+					),
 					kind: reversal.kind,
 					refundAmount: reversal.amount?.toString() ?? null,
 					refundCurrency: reversal.currency,
@@ -321,8 +335,7 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 						...(payment.providerTxId ? { providerTxId: payment.providerTxId } : {}),
 					};
 					await background(bus?.emit(EVENT_KEYS.creditPackPurchased, fields));
-					await background(bus
-						?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' }));
+					await background(bus?.emit(EVENT_KEYS.walletCredited, { ...fields, source: 'purchase' }));
 
 					// Customer-facing receipt (§ Communication & Record Integrity).
 					// Same guard as the domain events — only on a real credit, so
@@ -360,27 +373,33 @@ export function paymentWebhookController(store: IStoreAdapter, config: IBillingC
 				if (payment.customerId) {
 					try {
 						// Resolve the exact card this purchase used, so a later
-							// off-session auto-recharge charges the consented card (not
-							// merely the newest one). Only on a fresh purchase, and only
-							// when the provider can resolve it.
-							let paymentMethodId: string | null = null;
-							if (!result.duplicate && payment.providerTxId && config.provider.getPaymentMethodForIntent) {
-								paymentMethodId = await config.provider.getPaymentMethodForIntent(payment.providerTxId);
-							}
-							await upsertWalletCustomer(
-								{
-									subscriberType: subscriberType as SubscriberType,
-									subscriberId,
-									provider: config.provider.name,
-									providerCustomerId: payment.customerId,
-									// Re-arm auto-recharge (clear disable + failures) only on a
-									// genuinely NEW purchase — a replayed delivery of an old
-									// purchase must not resurrect a card that failures disabled.
-									rearm: !result.duplicate,
-									...(paymentMethodId ? { paymentMethodId } : {}),
-								},
-								store,
+						// off-session auto-recharge charges the consented card (not
+						// merely the newest one). Only on a fresh purchase, and only
+						// when the provider can resolve it.
+						let paymentMethodId: string | null = null;
+						if (
+							!result.duplicate &&
+							payment.providerTxId &&
+							config.provider.getPaymentMethodForIntent
+						) {
+							paymentMethodId = await config.provider.getPaymentMethodForIntent(
+								payment.providerTxId,
 							);
+						}
+						await upsertWalletCustomer(
+							{
+								subscriberType: subscriberType as SubscriberType,
+								subscriberId,
+								provider: config.provider.name,
+								providerCustomerId: payment.customerId,
+								// Re-arm auto-recharge (clear disable + failures) only on a
+								// genuinely NEW purchase — a replayed delivery of an old
+								// purchase must not resurrect a card that failures disabled.
+								rearm: !result.duplicate,
+								...(paymentMethodId ? { paymentMethodId } : {}),
+							},
+							store,
+						);
 					} catch {
 						// best-effort; auto-recharge stays un-armed until the next
 						// successful purchase persists the customer.
