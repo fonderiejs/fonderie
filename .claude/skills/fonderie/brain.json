@@ -5,7 +5,7 @@
     "adapter-hono": "6.2.4",
     "adapter-koa": "5.3.4",
     "admin": "0.5.0",
-    "audit": "5.1.15",
+    "audit": "5.2.0",
     "auth": "7.8.0",
     "billing": "9.10.0",
     "client": "0.27.0",
@@ -13,7 +13,7 @@
     "core": "0.19.0",
     "courier": "7.8.0",
     "customers": "6.2.11",
-    "events": "5.6.0",
+    "events": "5.7.0",
     "geo": "0.2.10",
     "logger": "0.3.0",
     "media": "0.2.15",
@@ -203,7 +203,7 @@
       "hasOutcomes": true
     },
     "audit": {
-      "version": "5.1.15",
+      "version": "5.2.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -1088,7 +1088,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.6.0",
+      "version": "5.7.0",
       "stability": "maturing",
       "requires": [
         "core",
