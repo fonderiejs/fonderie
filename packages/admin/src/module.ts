@@ -25,11 +25,23 @@ export const DEFAULT_CHECK_TIMEOUT_MS = 10_000;
 // Replaced at build time (tsup env); the fallback is what tests see.
 export const ADMIN_VERSION: string = process.env['FONDERIE_ADMIN_VERSION'] ?? '0.0.0-dev';
 
+// 'https://admin.example.com/' and 'admin.example.com' name the same host, so
+// accept both. A scheme here is the likely mistake — this option sits beside
+// ones that are full URLs — and left unnormalized it matches nothing, so the
+// surface 404s everywhere and looks exactly like it was never mounted.
+function normalizeHostPattern(host: string): string {
+	return host
+		.trim()
+		.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
+		.replace(/\/.*$/, '')
+		.toLowerCase();
+}
+
 // A request addressed to a hostname this surface does not answer for gets the
 // same 404 an unmounted surface gives — indistinguishable on purpose. A 403
 // would confirm both that the surface exists and that you found the wrong door.
 function requireAdminHost(hosts: readonly string[]): Middleware {
-	const allowed = new Set(hosts.map((h) => h.trim().toLowerCase()).filter(Boolean));
+	const allowed = new Set(hosts.map(normalizeHostPattern).filter(Boolean));
 	return (ctx, next) => {
 		const url = new URL(ctx.request.url);
 		// Match with or without the port: a configured 'admin.example.com' should
