@@ -298,7 +298,13 @@ interface IAdminLoginHistoryQuery {
     cursor?: string;
 }
 
+interface IAdminUsersQuery {
+    limit?: number;
+    cursor?: string;
+}
+
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
+  .listUsers(query?: IAdminUsersQuery): Promise<IApiResponse<IAdminUserPageResult>>
   .findUser(email: string): Promise<IApiResponse<IAdminUserDTO>>
   .getUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
   .listUserSessions(id: string): Promise<IApiResponse<ISessionDTO[]>>
@@ -660,6 +666,11 @@ interface ILoginEventDTO {
     ipAddress: string | null;
     userAgent: string | null;
     createdAt: string;
+}
+
+interface IAdminUserPageResult {
+    users: IAdminUserDTO[];
+    nextCursor: string | null;
 }
 
 interface ILoginHistoryPageResult {

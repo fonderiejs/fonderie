@@ -341,6 +341,7 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .revokeToken(id: string): Promise<IApiResponse<undefined>>
 
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
+  .listUsers(query?: IAdminUsersQuery | undefined): Promise<IApiResponse<IAdminUserPageResult>>
   .findUser(email: string): Promise<IApiResponse<IAdminUserDTO>>
   .getUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
   .listUserSessions(id: string): Promise<IApiResponse<ISessionDTO[]>>
@@ -385,6 +386,8 @@ function useAdminTokens(client: AdminClient): { report: Ref<{ generatedAt: strin
 function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">): { entries: Ref<{ id: string; at: string; actor: string; method: string; path: string; route: string; ... 4 more ...; clientIp: string | null; }[], IAdminLogEntry[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 
 function useAdminUser(client: AuthAdminClient, by: { email?: Ref<string, string>; id?: Ref<string, string>; }): { user: Ref<{ deletedAt: string | null; id: string; email: string; ... 16 more ...; updatedAt: string; } | null, IAdminUserDTO | ... 1 more ... | null>; ... 5 more ...; revokeSessions: () => Promise<...>; }
+
+function useAdminUsers(client: AuthAdminClient, query?: Omit<IAdminUsersQuery, "cursor">): { users: Ref<{ deletedAt: string | null; id: string; email: string; ... 16 more ...; updatedAt: string; }[], IAdminUserDTO[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 
 function useAdminUserSessions(client: AuthAdminClient, userId: Ref<string | null, string | null>): { sessions: Ref<{ id: string; current: boolean; ipAddress: string | null; userAgent: string | null; createdAt: string; expiresAt: string; }[], ISessionDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 

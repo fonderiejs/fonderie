@@ -227,4 +227,6 @@ interface IAdminUserDTO extends IUserDTO {
 function describeAuthAdminRoutes(store: IStoreAdapter): IAdminRoute[]
 
 function toAdminUserDTO(user: IUser): IAdminUserDTO
+
+function toAdminUserPageDTO(page: IUserPage): IAdminUserPageDTO
 ```

@@ -48,4 +48,4 @@ export { validateAuthConfig } from './services/config-guard';
 export { buildAuthIpLimiter, buildAuthAccountLimiter } from './services/rate-limit';
 export type { IAuthRateLimitConfig, AuthLimitedRoute } from './services/rate-limit';
 export type { IAdminUserDTO } from './admin';
-export { describeAuthAdminRoutes, toAdminUserDTO } from './admin';
+export { describeAuthAdminRoutes, toAdminUserDTO, toAdminUserPageDTO } from './admin';

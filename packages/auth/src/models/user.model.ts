@@ -38,6 +38,32 @@ const USER_COLUMNS = `
 export class UserModel {
 	constructor(private store: IStoreAdapter) {}
 
+	// One page of users, newest first. Keyset-paginated on (created_at, id) —
+	// the same cursor contract as login history and the audit log. The +1
+	// over-fetch that detects a next page lives here so no outer clamp can
+	// shave it off. Soft-deleted rows are excluded, as in every other finder.
+	async list(query: IUserListQuery = {}): Promise<IUserPage> {
+		const limit = Math.min(query.limit ?? 50, MAX_LIST_LIMIT);
+		const params: unknown[] = [];
+		const where: string[] = ['deleted_at IS NULL'];
+
+		if (query.cursor) {
+			params.push(query.cursor.createdAt, query.cursor.id);
+			where.push(`(created_at, id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
+		}
+
+		params.push(limit + 1);
+		const rows = await this.store.query<IUser & { createdAtRaw?: string }>(
+			`SELECT ${USER_COLUMNS}, created_at::text AS "createdAtRaw"
+			 FROM   fonderie_users
+			 WHERE  ${where.join(' AND ')}
+			 ORDER  BY created_at DESC, id DESC
+			 LIMIT  $${params.length}`,
+			params,
+		);
+		return { users: rows.slice(0, limit), hasMore: rows.length > limit };
+	}
+
 	async findById(id: string): Promise<IUser | null> {
 		const [row] = await this.store.query<IUser>(
 			`SELECT ${USER_COLUMNS} FROM fonderie_users WHERE id = $1 AND deleted_at IS NULL`,
@@ -366,4 +392,18 @@ export class UserModel {
 		);
 		return row ?? null;
 	}
+}
+
+const MAX_LIST_LIMIT = 200;
+
+export interface IUserListQuery {
+	limit?: number;
+	cursor?: { createdAt: string; id: string };
+}
+
+export interface IUserPage {
+	// Carries createdAtRaw (created_at::text) so the cursor keeps the
+	// microsecond precision a Date round-trip would drop.
+	users: Array<IUser & { createdAtRaw?: string }>;
+	hasMore: boolean;
 }
