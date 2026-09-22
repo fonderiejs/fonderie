@@ -23,12 +23,19 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # A hang here holds the whole release train. Fail in 30 minutes so a rerun
+    # is the next move, not a cancel someone has to notice first.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # 22, matching ci.yml. Publishing on a major the suite is never validated
+      # on bought nothing, and `npm test` here hung twice on 24 — all suites
+      # green, turbo never summarised, one tsx child and its esbuild service
+      # left alive until the job was killed. Never once on 22.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version: 22
           registry-url: https://registry.npmjs.org
 
       # Trusted Publishing needs npm ≥ 11.5.1; pin the exact minor so the
