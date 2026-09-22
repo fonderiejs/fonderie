@@ -25,13 +25,31 @@ export const DEFAULT_CHECK_TIMEOUT_MS = 10_000;
 // Replaced at build time (tsup env); the fallback is what tests see.
 export const ADMIN_VERSION: string = process.env['FONDERIE_ADMIN_VERSION'] ?? '0.0.0-dev';
 
+// A request addressed to a hostname this surface does not answer for gets the
+// same 404 an unmounted surface gives — indistinguishable on purpose. A 403
+// would confirm both that the surface exists and that you found the wrong door.
+function requireAdminHost(hosts: readonly string[]): Middleware {
+	const allowed = new Set(hosts.map((h) => h.trim().toLowerCase()).filter(Boolean));
+	return (ctx, next) => {
+		const url = new URL(ctx.request.url);
+		// Match with or without the port: a configured 'admin.example.com' should
+		// not stop working behind a non-default port, and a configured
+		// 'localhost:3000' should still be exact. Ports are not a boundary here.
+		const ok = allowed.has(url.host.toLowerCase()) || allowed.has(url.hostname.toLowerCase());
+		return ok ? next() : Promise.resolve(setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Not found'));
+	};
+}
+
 export class AdminModule implements IFonderieModule {
 	readonly name = '@fonderie/admin';
 	readonly version = ADMIN_VERSION;
 	readonly path: string;
+	// null = answer on any hostname.
+	readonly hosts: string[] | null;
 
 	constructor(private options: IAdminOptions = {}) {
 		this.path = normalizeMountPath(options.path ?? DEFAULT_ADMIN_PATH);
+		this.hosts = options.host === undefined ? null : [options.host].flat();
 	}
 
 	install(app: IFonderieApp): void {
@@ -43,6 +61,9 @@ export class AdminModule implements IFonderieModule {
 		const at = (p: string): string => this.path + p.slice(DEFAULT_ADMIN_PATH.length);
 
 		const store = this.options.store;
+		// First in every chain: a surface bound to another hostname must look
+		// unmounted here, before anything reads a token or a body.
+		const hostGuard = this.hosts ? requireAdminHost(this.hosts) : null;
 		// Collected once at boot: a duplicate name is refused here, not at request time.
 		const checks = collectChecks(app, this.options.checks ?? []);
 		const timeoutMs = this.options.checkTimeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
@@ -68,7 +89,7 @@ export class AdminModule implements IFonderieModule {
 						HTTP.OK,
 						'ADMIN_MANIFEST',
 						'Deployment manifest',
-						buildManifest(app, { version: this.version, log: Boolean(store) }),
+						buildManifest(app, { version: this.version, log: Boolean(store), host: this.hosts }),
 					),
 			],
 			[
@@ -182,9 +203,14 @@ export class AdminModule implements IFonderieModule {
 			// The scope comes from the route itself. The log sits before the guard:
 			// a refused request is a row too.
 			const guard = requireAdminScope(token, store, needed ?? scopeFor(method, path));
-			const chain = store
-				? [adminLog(store, path, module), guard, ...handlers]
-				: [guard, ...handlers];
+			const chain: Middleware[] = [
+				// Logged first so a wrong-host attempt still leaves a row: the
+				// caller learns nothing from a 404, the operator learns something.
+				...(store ? [adminLog(store, path, module)] : []),
+				...(hostGuard ? [hostGuard] : []),
+				guard,
+				...handlers,
+			];
 			app.addRoute(method, path, ...chain);
 		};
 
@@ -211,31 +237,40 @@ export class AdminModule implements IFonderieModule {
 				}
 				return js || null;
 			};
-			app.addRoute('GET', at('/_admin/ui'), async (ctx) => {
-				// From the request, not from config: this is the only place that
-				// knows basePath, a moved path AND a trailing slash at once. The
-				// router's own normalizer, so the href and the routing cannot
-				// disagree about what this path is.
-				const here = normalizeRequestPath(new URL(ctx.request.url).pathname);
-				return new Response(uiHtml(`${here}/app.js`), {
-					headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
-				});
-			});
-			app.addRoute('GET', scriptPath, async () => {
-				const body = loadJs();
-				return body
-					? new Response(body, {
-							headers: {
-								'content-type': 'text/javascript; charset=utf-8',
-								'cache-control': 'public, max-age=300',
-							},
-						})
-					: setApiResponse(
-							HTTP.SERVICE_UNAVAILABLE,
-							'UI_NOT_BUILT',
-							'This copy of @fonderie/admin has no built dashboard (dist/ui). Install the published package, or run its build.',
-						);
-			});
+			const ui = (h: Middleware): Middleware[] => (hostGuard ? [hostGuard, h] : [h]);
+			app.addRoute(
+				'GET',
+				at('/_admin/ui'),
+				...ui(async (ctx) => {
+					// From the request, not from config: this is the only place that
+					// knows basePath, a moved path AND a trailing slash at once. The
+					// router's own normalizer, so the href and the routing cannot
+					// disagree about what this path is.
+					const here = normalizeRequestPath(new URL(ctx.request.url).pathname);
+					return new Response(uiHtml(`${here}/app.js`), {
+						headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+					});
+				}),
+			);
+			app.addRoute(
+				'GET',
+				scriptPath,
+				...ui(async () => {
+					const body = loadJs();
+					return body
+						? new Response(body, {
+								headers: {
+									'content-type': 'text/javascript; charset=utf-8',
+									'cache-control': 'public, max-age=300',
+								},
+							})
+						: setApiResponse(
+								HTTP.SERVICE_UNAVAILABLE,
+								'UI_NOT_BUILT',
+								'This copy of @fonderie/admin has no built dashboard (dist/ui). Install the published package, or run its build.',
+							);
+				}),
+			);
 		}
 
 		for (const [method, path, handler] of own) mount(this.name, method, at(path), [handler]);

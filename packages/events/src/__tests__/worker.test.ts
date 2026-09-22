@@ -53,7 +53,14 @@ test('always-on: drains on boot rather than waiting out the interval', async () 
 test('always-on: the timer keeps draining with no trigger at all', async () => {
 	const { bus, calls } = fakeBus();
 	const handle = await runWorker(bus, { intervalMs: 30 });
-	await new Promise((r) => setTimeout(r, 150));
+	// Poll for the property instead of sleeping a fixed window and counting:
+	// the claim is "the timer keeps firing", not "the scheduler is precise". A
+	// fixed 150ms/30ms window asserts the latter, and starves under the whole
+	// monorepo's suites running in parallel — seen failing at 2 of 3.
+	const deadline = Date.now() + 5_000;
+	while (calls.drain < 3 && Date.now() < deadline) {
+		await new Promise((r) => setTimeout(r, 10));
+	}
 	assert.ok(calls.drain >= 3, `expected repeated passes, saw ${calls.drain}`);
 	await handle.stop();
 });

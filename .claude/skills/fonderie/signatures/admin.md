@@ -11,6 +11,7 @@ new AdminModule(options?: IAdminOptions): AdminModule
   .name: "@fonderie/admin"
   .version: string
   .path: string
+  .hosts: string[] | null
   .install(app: IFonderieApp): void
   .checkReadiness(): IReadinessProblem[]
 
@@ -20,7 +21,7 @@ const DEFAULT_ADMIN_PATH: "/_admin"
 
 const DEFAULT_CHECK_TIMEOUT_MS: 10000
 
-function buildManifest(app: IFonderieApp, admin: { version: string; log: boolean; }): IAdminManifest
+function buildManifest(app: IFonderieApp, admin: { version: string; log: boolean; host: string[] | null; }): IAdminManifest
 
 function runDoctor(checks: INamedCheck[], timeoutMs: number): Promise<IAdminDoctorReport>
 
@@ -64,6 +65,7 @@ interface IAdminOptions {
     checks?: IAdminCheck[];
     checkTimeoutMs?: number;
     ui?: boolean;
+    host?: string | string[];
     store?: IStoreAdapter;
     env?: string[];
 }
@@ -74,6 +76,7 @@ interface IAdminManifest {
     admin: {
         version: string;
         log: boolean;
+        host: string[] | null;
     };
     modules: IAdminModuleEntry[];
     readiness: IReadinessReport;

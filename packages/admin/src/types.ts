@@ -13,6 +13,27 @@ export interface IAdminOptions {
 	// Serve the built dashboard at <path>/ui. Off by default: it is 200 KB of
 	// JavaScript most deployments reach through their own frontend instead.
 	ui?: boolean;
+	/**
+	 * Answer only for requests addressed to this hostname (or one of these);
+	 * anything else gets the same 404 an unmounted surface gives. Port optional:
+	 * 'admin.example.com' also matches 'admin.example.com:8443'.
+	 *
+	 * ⚠️ NOT an access control. The `Host` header is set by the client, so this
+	 * is only worth anything when something upstream decides the hostname and
+	 * your origin is not reachable around it. Same footgun as `trustProxy` in
+	 * @fonderie/core's client-ip middleware.
+	 *
+	 * What it DOES buy, concretely: on a platform that gives every deployment a
+	 * permanent URL of its own (`project-abc.vercel.app`), that URL answers
+	 * whatever your custom domain answers — walking straight around anything you
+	 * put in front of the domain. Binding the surface to the domain closes that
+	 * hole while the rest of the app keeps serving on both.
+	 *
+	 * What it does NOT buy: protection from someone sending the right `Host` to
+	 * your origin directly. Only the edge can stop that — a WAF/firewall rule on
+	 * the admin path, or an origin locked to the proxy.
+	 */
+	host?: string | string[];
 	// Enables the admin log (every request served here, refused ones included)
 	// and GET /_admin/activity/admin-log. Run the package's migrations.
 	store?: IStoreAdapter;
@@ -34,8 +55,9 @@ export interface IAdminModuleEntry {
 export interface IAdminManifest {
 	generatedAt: string;
 	env: string;
-	// `log` is false when no store was given: admin actions are not being recorded.
-	admin: { version: string; log: boolean };
+	// `log` is false when no store was given: admin actions are not being
+	// recorded. `host` is null when the surface answers on any hostname.
+	admin: { version: string; log: boolean; host: string[] | null };
 	modules: IAdminModuleEntry[];
 	readiness: IReadinessReport;
 	routes: IRouteEntry[];

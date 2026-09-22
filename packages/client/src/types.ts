@@ -496,7 +496,8 @@ export interface IAdminRouteEntry {
 export interface IAdminManifest {
 	generatedAt: string;
 	env: string;
-	admin: { version: string; log: boolean };
+	// `host` is null when the surface answers on any hostname.
+	admin: { version: string; log: boolean; host: string[] | null };
 	modules: IAdminModuleEntry[];
 	readiness: IAdminReadiness;
 	routes: IAdminRouteEntry[];

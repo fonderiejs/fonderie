@@ -788,3 +788,101 @@ test('ui: the two static routes are attributed to admin and add nothing to the g
 		],
 	);
 });
+
+// ── host binding ────────────────────────────────────────────────────
+
+const at = (host: string, path: string, token?: string) =>
+	new Request(`https://${host}${path}`, {
+		headers: token ? { authorization: `Bearer ${token}` } : {},
+	});
+
+test('host: bound surface answers on its hostname and looks unmounted elsewhere', async () => {
+	const app = new FonderieApp(config);
+	app.register(new AdminModule({ adminToken: TOKEN, host: 'admin.example.com' }));
+	await app.boot();
+
+	// The right host: exists, and still demands a token.
+	assert.equal((await app.handle(at('admin.example.com', '/_admin/manifest', TOKEN))).status, 200);
+	assert.equal((await app.handle(at('admin.example.com', '/_admin/manifest'))).status, 401);
+
+	// The wrong host — including the platform's own deployment URL, which is the
+	// hole this closes: 404, the same as never mounted. Not 403: that would
+	// confirm both that the surface exists and that you found the wrong door.
+	for (const wrong of ['api.example.com', 'project-a1b2c3.vercel.app']) {
+		const res = await app.handle(at(wrong, '/_admin/manifest', TOKEN));
+		assert.equal(res.status, 404, wrong);
+		const body = (await res.json()) as { reason: string };
+		assert.equal(body.reason, 'NOT_FOUND', wrong);
+	}
+
+	// A non-default port still matches the bare hostname; ports are not a
+	// boundary here. Case is irrelevant, as Host headers are case-insensitive.
+	assert.equal(
+		(await app.handle(at('admin.example.com:8443', '/_admin/manifest', TOKEN))).status,
+		200,
+	);
+	assert.equal((await app.handle(at('ADMIN.example.com', '/_admin/manifest', TOKEN))).status, 200);
+});
+
+test('host: a list is honoured, and an exact host:port entry stays exact', async () => {
+	const app = new FonderieApp(config);
+	app.register(
+		new AdminModule({ adminToken: TOKEN, host: ['admin.example.com', 'localhost:3000'] }),
+	);
+	await app.boot();
+	assert.equal((await app.handle(at('admin.example.com', '/_admin/manifest', TOKEN))).status, 200);
+	assert.equal((await app.handle(at('localhost:3000', '/_admin/manifest', TOKEN))).status, 200);
+	// 'localhost:3000' was configured with a port, so bare localhost is not it.
+	assert.equal((await app.handle(at('localhost', '/_admin/manifest', TOKEN))).status, 404);
+});
+
+test('host: a wrong-host attempt is still logged — the caller learns nothing, the operator does', async () => {
+	const { store, inserts } = tokenStore();
+	const app = new FonderieApp(config);
+	app.register(new AdminModule({ adminToken: TOKEN, store, host: 'admin.example.com' }));
+	await app.boot();
+	await app.handle(at('api.example.com', '/_admin/manifest', TOKEN));
+	const row = inserts.at(-1);
+	assert.equal(row?.[2], '/_admin/manifest', 'the path they tried');
+	assert.equal(row?.[5], 404, 'what they were told');
+
+	// Only routes that EXIST reach the log: a wrong-host request to a path this
+	// deployment never mounted is a plain router miss, with nothing to record.
+	const before = inserts.length;
+	await app.handle(at('api.example.com', '/_admin/not-a-route', TOKEN));
+	assert.equal(inserts.length, before);
+});
+
+test('host: the served UI is bound too, and the manifest reports the binding', async () => {
+	const app = new FonderieApp(config);
+	app.register(new AdminModule({ adminToken: TOKEN, ui: true, host: 'admin.example.com' }));
+	await app.boot();
+	// Serving a page that says "admin" on the public API hostname is exactly
+	// what binding exists to prevent, so the unguarded assets respect it too.
+	assert.equal((await app.handle(at('admin.example.com', '/_admin/ui'))).status, 200);
+	assert.equal((await app.handle(at('api.example.com', '/_admin/ui'))).status, 404);
+	assert.equal((await app.handle(at('api.example.com', '/_admin/ui/app.js'))).status, 404);
+
+	const m = (
+		(await (await app.handle(at('admin.example.com', '/_admin/manifest', TOKEN))).json()) as {
+			result: IAdminManifest;
+		}
+	).result;
+	assert.deepEqual(m.admin.host, ['admin.example.com']);
+
+	// Unbound is the default, and says so.
+	const open = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN }));
+	await open.boot();
+	assert.equal(
+		(await open.handle(at('anything.example.com', '/_admin/manifest', TOKEN))).status,
+		200,
+	);
+	assert.equal(
+		(
+			(await (await open.handle(at('x.example.com', '/_admin/manifest', TOKEN))).json()) as {
+				result: IAdminManifest;
+			}
+		).result.admin.host,
+		null,
+	);
+});

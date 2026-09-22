@@ -84,6 +84,7 @@ interface IAdminManifest {
     admin: {
         version: string;
         log: boolean;
+        host: string[] | null;
     };
     modules: IAdminModuleEntry[];
     readiness: IAdminReadiness;
