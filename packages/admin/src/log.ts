@@ -12,7 +12,12 @@ export function adminLog(store: IStoreAdapter, route: string, module: string): M
 		const started = Date.now();
 		const res = await next();
 		const row = {
-			actor: ctx.request.headers.get('x-actor') || DEFAULT_ACTOR,
+			// A scoped token names itself; X-Actor refines it; the root token is 'admin-token'.
+			actor:
+				ctx.request.headers.get('x-actor') ||
+				(typeof ctx.meta['adminTokenName'] === 'string'
+					? `token:${ctx.meta['adminTokenName']}`
+					: DEFAULT_ACTOR),
 			method: ctx.request.method,
 			path: new URL(ctx.request.url).pathname,
 			route,
