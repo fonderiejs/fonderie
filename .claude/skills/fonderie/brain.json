@@ -8,7 +8,7 @@
     "audit": "5.2.0",
     "auth": "7.8.0",
     "billing": "9.10.0",
-    "client": "0.27.0",
+    "client": "0.28.0",
     "config": "5.2.1",
     "core": "0.19.0",
     "courier": "7.8.0",
@@ -20,8 +20,8 @@
     "permissions": "5.0.18",
     "rate-limit": "4.0.18",
     "react": "0.2.0",
-    "react-admin": "0.3.0",
-    "react-admin-screens": "0.3.0",
+    "react-admin": "0.4.0",
+    "react-admin-screens": "0.4.0",
     "react-audit": "0.3.0",
     "react-audit-screens": "0.2.0",
     "react-auth": "0.10.0",
@@ -56,8 +56,8 @@
     "storage": "0.1.15",
     "store": "0.5.0",
     "vue": "0.2.0",
-    "vue-admin": "0.3.0",
-    "vue-admin-screens": "0.3.0",
+    "vue-admin": "0.4.0",
+    "vue-admin-screens": "0.4.0",
     "vue-audit": "0.4.0",
     "vue-audit-screens": "0.2.0",
     "vue-auth": "0.11.0",
@@ -667,7 +667,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.27.0",
+      "version": "0.28.0",
       "stability": "maturing",
       "requires": [],
       "exports": [
@@ -1264,7 +1264,7 @@
       "hasOutcomes": false
     },
     "react-admin": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "stability": "experimental",
       "requires": [],
       "exports": [
@@ -1295,7 +1295,7 @@
       "hasOutcomes": false
     },
     "react-admin-screens": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "stability": "experimental",
       "requires": [],
       "exports": [
@@ -1959,7 +1959,7 @@
       "hasOutcomes": false
     },
     "vue-admin": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "stability": "experimental",
       "requires": [],
       "exports": [
@@ -1990,7 +1990,7 @@
       "hasOutcomes": false
     },
     "vue-admin-screens": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "stability": "experimental",
       "requires": [],
       "exports": [

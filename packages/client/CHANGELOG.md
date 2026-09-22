@@ -1,5 +1,15 @@
 # @fonderie/client
 
+## 0.28.0
+
+### Minor Changes
+
+- 0ea4938: `AuditAdminClient` — `@fonderie/audit`'s operator read, typed
+  
+  `listAudit({ workspaceId?, type?, actorId?, from?, to?, limit?, cursor? })`
+  — every workspace unless one is named, the workspace-scoped `IAuditPageResult`
+  shape. Same constructor as the other admin clients, `prefix` included.
+
 ## 0.27.0
 
 ### Minor Changes
