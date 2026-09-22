@@ -13,6 +13,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # A hung test process otherwise burns the 6-hour default before anyone
+    # notices. The job's own worst case is ~12 minutes.
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -77,16 +80,26 @@ jobs:
       - run: npm run check:template-coverage
       - run: npm test
       # Reference example apps (examples/*) are standalone — they pin the
-      # published @fonderie/* packages so they stay Vercel-deployable. In CI we
-      # drop the installed copies after install so module resolution falls
-      # through to the in-repo workspace packages (built above), testing THIS
-      # commit's code rather than the last release. Pure unit tests, no DB.
+      # published @fonderie/* packages so they stay Vercel-deployable. Here we
+      # want THIS commit's code, so the pinned deps come out before the install
+      # and resolution falls through to the in-repo workspace packages built
+      # above. Pure unit tests, no DB.
+      #
+      # Removing them before the install rather than after is the point.
+      # Fetching them was never useful — they were deleted a line later — and
+      # it was the only thing in this step that could fail: mid-release the
+      # registry is briefly inconsistent, a dependent published ahead of its
+      # dependency, and the install ERESOLVEd on a peer range between two
+      # published versions, neither of which is the code under test. That
+      # reddened main after a release rather than for a commit.
       - name: Test example apps (against in-repo packages)
         run: |
           for e in examples/example-hono examples/example-express examples/example-koa; do
             echo "== $e =="
             ( cd "$e" \
+              && npm pkg delete $(node -p 'Object.keys(require("./package.json").dependencies).filter(k=>k.startsWith("@fonderie/")).map(k=>"dependencies."+k).join(" ")') \
               && npm install --no-audit --no-fund \
-              && rm -rf node_modules/@fonderie \
               && npm test )
           done
+          # The examples ship without a lockfile; npm writes one. Leave none.
+          git checkout -- examples && git clean -qfd examples
