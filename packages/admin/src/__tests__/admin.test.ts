@@ -836,6 +836,34 @@ test('host: a list is honoured, and an exact host:port entry stays exact', async
 	assert.equal((await app.handle(at('localhost', '/_admin/manifest', TOKEN))).status, 404);
 });
 
+test('host: a scheme or trailing path in the config still names the host', async () => {
+	// This option sits next to ones that ARE full URLs, so a scheme here is the
+	// likely slip. Unnormalized it matches no Host header at all, and the whole
+	// surface 404s exactly as if it had never been mounted — a silent lockout
+	// from a typo. Every spelling below names the same host.
+	for (const spelling of [
+		'https://admin.example.com',
+		'http://admin.example.com/',
+		'admin.example.com/',
+		'  ADMIN.example.com  ',
+	]) {
+		const app = new FonderieApp(config);
+		app.register(new AdminModule({ adminToken: TOKEN, host: spelling }));
+		await app.boot();
+		assert.equal(
+			(await app.handle(at('admin.example.com', '/_admin/manifest', TOKEN))).status,
+			200,
+			spelling,
+		);
+		// Still a real boundary — normalising the spelling must not widen it.
+		assert.equal(
+			(await app.handle(at('api.example.com', '/_admin/manifest', TOKEN))).status,
+			404,
+			spelling,
+		);
+	}
+});
+
 test('host: a wrong-host attempt is still logged — the caller learns nothing, the operator does', async () => {
 	const { store, inserts } = tokenStore();
 	const app = new FonderieApp(config);
