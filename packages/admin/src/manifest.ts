@@ -4,7 +4,7 @@ import type { IAdminManifest, IAdminModuleEntry } from './types';
 
 export function buildManifest(
 	app: IFonderieApp,
-	admin: { version: string; log: boolean },
+	admin: { version: string; log: boolean; host: string[] | null },
 ): IAdminManifest {
 	const report = app.securityReport();
 	const byModule = new Map<string, IReadinessProblem[]>();

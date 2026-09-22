@@ -202,7 +202,7 @@
         {
           "method": "GET",
           "path": "/_admin/manifest",
-          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version, log: Boolean(store) }), )"
+          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version, log: Boolean(store), host: this.hosts }), )"
         },
         {
           "method": "GET",
