@@ -1,5 +1,13 @@
 # @fonderie/cli
 
+## 0.8.0
+
+### Minor Changes
+
+- 0a5c5c7: `fonderie admin token issue <name> --scopes read[,write[,secrets]] [--days <n>]` · `admin token revoke <id>`
+  
+  Root token only, by design.
+
 ## 0.7.0
 
 ### Minor Changes
