@@ -236,7 +236,10 @@ export function describeSubscriptionDrift(report: ISubscriptionDriftReport): str
 				return `${who} (${d.providerSubscriptionId}): we hold status '${d.ours.status}' but the provider has NO such subscription [${d.impact}]`;
 			}
 			const diffs = d.fields
-				.map((f) => `${f} ours=${String(d.ours[f as keyof typeof d.ours])} theirs=${String(d.theirs![f as keyof typeof d.theirs])}`)
+				.map(
+					(f) =>
+						`${f} ours=${String(d.ours[f as keyof typeof d.ours])} theirs=${String(d.theirs![f as keyof typeof d.theirs])}`,
+				)
 				.join(', ');
 			return `${who} (${d.providerSubscriptionId}): ${diffs} [${d.impact}]`;
 		});

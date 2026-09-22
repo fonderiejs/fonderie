@@ -236,5 +236,9 @@ export const SAMPLE_PAYLOADS: Record<BillingMessageKey, Record<string, unknown>>
 		refundAmount: '900',
 		refundCurrency: 'usd',
 	},
-	[MESSAGE_KEYS.autoRechargeFailed]: { packId: 'pack_500', status: 'requires_payment_method', disabled: true },
+	[MESSAGE_KEYS.autoRechargeFailed]: {
+		packId: 'pack_500',
+		status: 'requires_payment_method',
+		disabled: true,
+	},
 };

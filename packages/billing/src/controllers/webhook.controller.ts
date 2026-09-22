@@ -109,14 +109,15 @@ export function webhookController(
 				// using it raw would email "your unknown plan trial is ending".
 				const plan = resolvePlanNameByPrice(s, config.plans) ?? s.plan;
 				const trialEndsAt = s.trialEndsAt ? s.trialEndsAt.toISOString() : null;
-				await background(bus
-					?.emit(EVENT_KEYS.subscriptionTrialWillEnd, {
+				await background(
+					bus?.emit(EVENT_KEYS.subscriptionTrialWillEnd, {
 						...subscriberEventFields(s.subscriberType, s.subscriberId),
 						plan,
 						interval: s.interval,
 						trialEndsAt,
 						providerSubscriptionId: s.providerSubscriptionId,
-					}));
+					}),
+				);
 				// The durable domain event always fires; the reminder EMAIL is
 				// opt-out via config.notifications.trialEnding (default on).
 				if (config.notifications?.trialEnding !== false) {
@@ -177,13 +178,18 @@ export function webhookController(
 						return Response.json({ received: true });
 					}
 					// Ours (reason:purchase) but malformed — surface so the provider flags it.
-					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Malformed pack invoice metadata');
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_PARAMETER',
+						'Malformed pack invoice metadata',
+					);
 				}
 
 				const subscriber = inv.providerSubscriptionId
 					? await getSubscriberByProviderSubscriptionId(inv.providerSubscriptionId, store)
 					: null;
-				if (!subscriber) return Response.json({ received: true, ignored: 'no-matching-subscription' });
+				if (!subscriber)
+					return Response.json({ received: true, ignored: 'no-matching-subscription' });
 				const fields = {
 					...subscriberEventFields(subscriber.subscriberType, subscriber.subscriberId),
 					invoiceId: inv.id,
@@ -197,7 +203,11 @@ export function webhookController(
 						subscriberType: subscriber.subscriberType,
 						subscriberId: subscriber.subscriberId,
 						type: MESSAGE_KEYS.renewalReceipt,
-						data: { invoiceId: inv.id, amount: inv.amount?.toString() ?? null, currency: inv.currency },
+						data: {
+							invoiceId: inv.id,
+							amount: inv.amount?.toString() ?? null,
+							currency: inv.currency,
+						},
 					});
 				} else {
 					await background(bus?.emit(EVENT_KEYS.invoicePaymentFailed, fields));
@@ -212,19 +222,20 @@ export function webhookController(
 				const plan =
 					event.type === 'customer.subscription.deleted'
 						? event.subscription.plan
-						: resolvePlanNameByPrice(event.subscription, config.plans) ?? event.subscription.plan;
+						: (resolvePlanNameByPrice(event.subscription, config.plans) ?? event.subscription.plan);
 
 				// Prior status BEFORE the upsert overwrites it — the customer-facing
 				// notification below fires only on the transition INTO canceled /
 				// past_due. Providers re-deliver the same event (and keep a
 				// subscription past_due across retries); the durable domain event
 				// fires every time, but a human should not be re-emailed each retry.
-				const priorStatus = (
-					await subscriptions.get(
-						event.subscription.subscriberType,
-						event.subscription.subscriberId,
-					)
-				)?.status ?? null;
+				const priorStatus =
+					(
+						await subscriptions.get(
+							event.subscription.subscriberType,
+							event.subscription.subscriberId,
+						)
+					)?.status ?? null;
 
 				const applied = await subscriptions.upsert({
 					subscriberType: event.subscription.subscriberType,
@@ -266,8 +277,8 @@ export function webhookController(
 				// hiccup must never fail the webhook (the provider would retry
 				// and double-apply).
 				const key = lifecycleEventKey(event.type, event.subscription.status);
-				await background(bus
-					?.emit(key, {
+				await background(
+					bus?.emit(key, {
 						...subscriberEventFields(
 							event.subscription.subscriberType,
 							event.subscription.subscriberId,
@@ -276,7 +287,8 @@ export function webhookController(
 						status: event.subscription.status,
 						interval: event.subscription.interval,
 						providerSubscriptionId: event.subscription.providerSubscriptionId,
-					}));
+					}),
+				);
 
 				// Customer-facing notice (§ Communication & Record Integrity).
 				// Fire-and-forget inside notifyBilling.

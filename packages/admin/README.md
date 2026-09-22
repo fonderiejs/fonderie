@@ -111,6 +111,36 @@ fonderie admin log --limit 20 # who did what
 
 `FONDERIE_ADMIN_PREFIX` when the surface was moved off `/_admin`.
 
+## The served dashboard
+
+```ts
+app.register(new AdminModule({ adminToken, store, ui: true }));
+```
+
+`GET /_admin/ui` then serves the React shell — the same
+`@fonderie/react-admin-screens` you would otherwise mount yourself, compiled
+into one file (82 KB gzipped) and shipped in this package. No frontend build,
+no extra dependency: React and the screens are devDependencies here, bundled
+at publish time.
+
+Off by default, because most deployments reach the surface through their own
+frontend and would rather not serve the bundle.
+
+- **The two static routes are unguarded, deliberately.** A browser navigating
+  to a page cannot send an `Authorization` header, and neither file carries
+  data — the HTML is an empty shell and the script is the same code npm
+  serves. The page asks for a token and sends it itself, so every request that
+  *reads* anything is guarded and logged as usual. The two asset fetches are
+  not logged: they carry no token to attribute.
+- **The token lives in `sessionStorage`** — this tab only, never on the
+  server. Give it a `read` token (below) and the dashboard cannot reveal a
+  secret or change anything.
+- **The page shows only what is mounted.** It reads the manifest first and
+  builds a client per brick that actually described routes, so a deployment
+  without billing has no Money pages rather than pages that 404.
+- The script path is derived from the request, so the page works under a
+  `basePath`, under a moved `path`, and with or without a trailing slash.
+
 ## Scoped tokens
 
 The `adminToken` you configure is the **root**: every scope, and the only

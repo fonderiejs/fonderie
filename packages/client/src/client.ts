@@ -173,19 +173,58 @@ export class FonderieClient {
 		});
 	}
 
-	post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig): Promise<IApiResponse<T>> {
-		return this.request<T>({ method: 'POST', path, body, token: config?.token, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
+	post<T = unknown>(
+		path: string,
+		body?: unknown,
+		config?: IRequestConfig,
+	): Promise<IApiResponse<T>> {
+		return this.request<T>({
+			method: 'POST',
+			path,
+			body,
+			token: config?.token,
+			workspaceId: config?.workspaceId,
+			invalidate: config?.invalidate,
+		});
 	}
 
-	put<T = unknown>(path: string, body?: unknown, config?: IRequestConfig): Promise<IApiResponse<T>> {
-		return this.request<T>({ method: 'PUT', path, body, token: config?.token, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
+	put<T = unknown>(
+		path: string,
+		body?: unknown,
+		config?: IRequestConfig,
+	): Promise<IApiResponse<T>> {
+		return this.request<T>({
+			method: 'PUT',
+			path,
+			body,
+			token: config?.token,
+			workspaceId: config?.workspaceId,
+			invalidate: config?.invalidate,
+		});
 	}
 
-	patch<T = unknown>(path: string, body?: unknown, config?: IRequestConfig): Promise<IApiResponse<T>> {
-		return this.request<T>({ method: 'PATCH', path, body, token: config?.token, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
+	patch<T = unknown>(
+		path: string,
+		body?: unknown,
+		config?: IRequestConfig,
+	): Promise<IApiResponse<T>> {
+		return this.request<T>({
+			method: 'PATCH',
+			path,
+			body,
+			token: config?.token,
+			workspaceId: config?.workspaceId,
+			invalidate: config?.invalidate,
+		});
 	}
 
 	delete<T = unknown>(path: string, config?: IRequestConfig): Promise<IApiResponse<T>> {
-		return this.request<T>({ method: 'DELETE', path, token: config?.token, workspaceId: config?.workspaceId, invalidate: config?.invalidate });
+		return this.request<T>({
+			method: 'DELETE',
+			path,
+			token: config?.token,
+			workspaceId: config?.workspaceId,
+			invalidate: config?.invalidate,
+		});
 	}
 }

@@ -138,7 +138,13 @@ export async function claimAutoRecharge(
 				AND pending_recharge_key IS NOT NULL
 				AND pending_recharge_key_at IS NOT NULL
 				AND pending_recharge_key_at < now() - make_interval(secs => $5)) AS "pendingKeyStale"`,
-		[key.subscriberType, key.subscriberId, key.provider, key.cooldownSeconds, key.idempotencyKeyTtlSeconds ?? 0],
+		[
+			key.subscriberType,
+			key.subscriberId,
+			key.provider,
+			key.cooldownSeconds,
+			key.idempotencyKeyTtlSeconds ?? 0,
+		],
 	);
 	return row
 		? {
@@ -167,7 +173,10 @@ export async function setPendingRechargeKey(
 
 // Clear the pending key (and its mint timestamp) once a charge resolves
 // definitively, or once it has aged past the provider's idempotency retention.
-export async function clearPendingRechargeKey(key: IWalletCustomerKey, store: IStoreAdapter): Promise<void> {
+export async function clearPendingRechargeKey(
+	key: IWalletCustomerKey,
+	store: IStoreAdapter,
+): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_wallet_customers SET pending_recharge_key = NULL, pending_recharge_key_at = NULL, updated_at = now()
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3`,
@@ -175,7 +184,10 @@ export async function clearPendingRechargeKey(key: IWalletCustomerKey, store: IS
 	);
 }
 
-export async function recordRechargeSuccess(key: IWalletCustomerKey, store: IStoreAdapter): Promise<void> {
+export async function recordRechargeSuccess(
+	key: IWalletCustomerKey,
+	store: IStoreAdapter,
+): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_wallet_customers
 		SET consecutive_failures = 0, updated_at = now()

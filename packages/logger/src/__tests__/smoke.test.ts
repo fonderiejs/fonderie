@@ -190,10 +190,21 @@ test('logSecurityEvent: success → info with canonical fields', () => {
 	let level = '';
 	let ctx: Record<string, unknown> = {};
 	const fake = {
-		info: (_m: string, c?: Record<string, unknown>) => { level = 'info'; ctx = c ?? {}; },
-		warn: (_m: string, c?: Record<string, unknown>) => { level = 'warn'; ctx = c ?? {}; },
+		info: (_m: string, c?: Record<string, unknown>) => {
+			level = 'info';
+			ctx = c ?? {};
+		},
+		warn: (_m: string, c?: Record<string, unknown>) => {
+			level = 'warn';
+			ctx = c ?? {};
+		},
 	} as any;
-	logSecurityEvent(fake, { action: 'auth.login', outcome: 'success', actorId: 'u1', workspaceId: 'w1' });
+	logSecurityEvent(fake, {
+		action: 'auth.login',
+		outcome: 'success',
+		actorId: 'u1',
+		workspaceId: 'w1',
+	});
 	assert.equal(level, 'info');
 	assert.equal(ctx['event'], 'security');
 	assert.equal(ctx['action'], 'auth.login');
@@ -203,7 +214,14 @@ test('logSecurityEvent: success → info with canonical fields', () => {
 
 test('logSecurityEvent: failure/denied → warn', () => {
 	let level = '';
-	const fake = { info: () => { level = 'info'; }, warn: () => { level = 'warn'; } } as any;
+	const fake = {
+		info: () => {
+			level = 'info';
+		},
+		warn: () => {
+			level = 'warn';
+		},
+	} as any;
 	logSecurityEvent(fake, { action: 'authz.permission_denied', outcome: 'denied' });
 	assert.equal(level, 'warn');
 });
@@ -251,7 +269,11 @@ test('trace: parseTraceparent validates + parses; formatTraceparent round-trips'
 
 test('requestLogger: continues an inbound trace, echoes traceparent, emits a span', async () => {
 	const spans: ISpan[] = [];
-	const exporter: ITraceExporter = { export: (s) => { spans.push(s); } };
+	const exporter: ITraceExporter = {
+		export: (s) => {
+			spans.push(s);
+		},
+	};
 	const logger = new Logger({ transports: [{ write: () => {} }] });
 	const mw = requestLogger(logger, exporter);
 
@@ -287,5 +309,8 @@ test('requestLogger: starts a fresh trace when none is inbound', async () => {
 	const ctx = { request: new Request('http://x/jobs'), meta: {} as Record<string, unknown> } as any;
 	const res = await mw(ctx, async () => new Response(null, { status: 204 }));
 	assert.match(ctx.meta['traceId'] as string, /^[0-9a-f]{32}$/);
-	assert.equal(res.headers.get('traceparent'), `00-${ctx.meta['traceId']}-${ctx.meta['spanId']}-01`);
+	assert.equal(
+		res.headers.get('traceparent'),
+		`00-${ctx.meta['traceId']}-${ctx.meta['spanId']}-01`,
+	);
 });

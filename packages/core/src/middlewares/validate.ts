@@ -11,7 +11,9 @@ import type { Middleware } from '../types';
 // for the reference pattern.
 
 export interface IRequestSchema {
-	safeParse(input: unknown):
+	safeParse(
+		input: unknown,
+	):
 		| { success: true; data: unknown }
 		| { success: false; error: { issues: Array<{ path: PropertyKey[]; message: string }> } };
 }

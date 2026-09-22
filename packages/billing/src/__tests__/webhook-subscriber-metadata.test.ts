@@ -57,7 +57,12 @@ function makeCtx() {
 
 function makeConfig(event: unknown) {
 	return {
-		provider: { name: 'stub', async constructEvent() { return event; } },
+		provider: {
+			name: 'stub',
+			async constructEvent() {
+				return event;
+			},
+		},
 		webhookSecret: 'whsec_x',
 		plans: [],
 	} as never;
@@ -75,11 +80,14 @@ function recordingStore(rowsFor: (sql: string) => unknown[]) {
 	};
 	return {
 		calls,
-		sql: { get length() { return calls.length; } },
+		sql: {
+			get length() {
+				return calls.length;
+			},
+		},
 		store: {
 			query: run,
-			transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> =>
-				fn({ query: run }),
+			transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn({ query: run }),
 		} as never,
 	};
 }
@@ -94,7 +102,11 @@ test('unowned subscription is declined with 200, without touching subscriber sta
 
 	const res = await controller.handle(makeCtx());
 
-	assert.equal(res.status, 200, 'must not 500 — a 5xx makes the provider retry a poison event forever');
+	assert.equal(
+		res.status,
+		200,
+		'must not 500 — a 5xx makes the provider retry a poison event forever',
+	);
 	assert.deepEqual(await res.json(), { received: true, ignored: 'no-subscriber-metadata' });
 
 	// The regression itself: the empty-string id must never be handed to a uuid
@@ -138,10 +150,7 @@ test('a subscription we own but whose metadata was stripped is recovered, not dr
 		calls.some((c) => c.params.includes(OWNER_ID)),
 		'the recovered owner id must be used for the subscription write',
 	);
-	assert.ok(
-		!calls.some((c) => c.params.includes('')),
-		'the empty id must not survive recovery',
-	);
+	assert.ok(!calls.some((c) => c.params.includes('')), 'the empty id must not survive recovery');
 });
 
 test('trial_will_end with no subscriber metadata is declined before it can notify', async () => {

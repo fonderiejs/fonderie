@@ -39,17 +39,35 @@ test('auto resolves to await on serverless, detach elsewhere', () => {
 });
 
 test('an explicit setting always wins over detection', () => {
-	assert.equal(resolveBackgroundMode({ VERCEL: '1', FONDERIE_BACKGROUND_TASKS: 'detach' }), 'detach');
+	assert.equal(
+		resolveBackgroundMode({ VERCEL: '1', FONDERIE_BACKGROUND_TASKS: 'detach' }),
+		'detach',
+	);
 	assert.equal(resolveBackgroundMode({ FONDERIE_BACKGROUND_TASKS: 'await' }), 'await');
-	assert.equal(resolveBackgroundMode({ FONDERIE_BACKGROUND_TASKS: ' AWAIT ' }), 'await', 'tolerant');
-	assert.equal(resolveBackgroundMode({ FONDERIE_BACKGROUND_TASKS: 'nonsense' }), 'detach', 'falls back to detection');
+	assert.equal(
+		resolveBackgroundMode({ FONDERIE_BACKGROUND_TASKS: ' AWAIT ' }),
+		'await',
+		'tolerant',
+	);
+	assert.equal(
+		resolveBackgroundMode({ FONDERIE_BACKGROUND_TASKS: 'nonsense' }),
+		'detach',
+		'falls back to detection',
+	);
 });
 
 test('await mode actually waits for the work to finish', async () => {
 	process.env['FONDERIE_BACKGROUND_TASKS'] = 'await';
 	try {
 		let done = false;
-		await background(new Promise<void>((r) => setTimeout(() => { done = true; r(); }, 30)));
+		await background(
+			new Promise<void>((r) =>
+				setTimeout(() => {
+					done = true;
+					r();
+				}, 30),
+			),
+		);
 		assert.equal(done, true, 'the work must have completed before we returned');
 	} finally {
 		delete process.env['FONDERIE_BACKGROUND_TASKS'];
@@ -64,7 +82,9 @@ test('a hung provider degrades to lost work, never a hung request', async () => 
 	// outlives the test, and the runner reports that as a failure once the loop
 	// drains. Releasing it keeps the assertion honest without the litter.
 	let release!: () => void;
-	const hung = new Promise<void>((r) => { release = r; });
+	const hung = new Promise<void>((r) => {
+		release = r;
+	});
 	try {
 		const started = Date.now();
 		await background(hung);

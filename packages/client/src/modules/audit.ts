@@ -1,7 +1,6 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
-import type {
-	IReadOptions, IApiResponse, IAuditPageResult } from '../types';
+import type { IReadOptions, IApiResponse, IAuditPageResult } from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
 

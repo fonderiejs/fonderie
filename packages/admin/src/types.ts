@@ -10,6 +10,9 @@ export interface IAdminOptions {
 	checks?: IAdminCheck[];
 	// Per check. Default 10 000.
 	checkTimeoutMs?: number;
+	// Serve the built dashboard at <path>/ui. Off by default: it is 200 KB of
+	// JavaScript most deployments reach through their own frontend instead.
+	ui?: boolean;
 	// Enables the admin log (every request served here, refused ones included)
 	// and GET /_admin/activity/admin-log. Run the package's migrations.
 	store?: IStoreAdapter;

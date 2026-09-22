@@ -56,7 +56,9 @@ interface IWalletState {
 
 function uniqueViolation(): Error {
 	return Object.assign(
-		new Error('duplicate key value violates unique constraint "fonderie_wallet_ledger_idempotency_key_key"'),
+		new Error(
+			'duplicate key value violates unique constraint "fonderie_wallet_ledger_idempotency_key_key"',
+		),
 		{ code: '23505', constraint: 'fonderie_wallet_ledger_idempotency_key_key' },
 	);
 }
@@ -106,12 +108,39 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 				return row ? [{ amount: row.amount.toString() }] : [];
 			}
 			return row
-				? [{ subscriberType: row.subscriberType, subscriberId: row.subscriberId, currency: row.currency }]
+				? [
+						{
+							subscriberType: row.subscriberType,
+							subscriberId: row.subscriberId,
+							currency: row.currency,
+						},
+					]
 				: [];
 		}
 		if (sql.trimStart().startsWith('INSERT')) {
-			const [st, sid, cur, type, amount, balanceAfter, description, idempotencyKey, metadata, providerTxId] =
-				params as [string, string, string, WalletLedgerType, string, string, string | null, string, string, string | null];
+			const [
+				st,
+				sid,
+				cur,
+				type,
+				amount,
+				balanceAfter,
+				description,
+				idempotencyKey,
+				metadata,
+				providerTxId,
+			] = params as [
+				string,
+				string,
+				string,
+				WalletLedgerType,
+				string,
+				string,
+				string | null,
+				string,
+				string,
+				string | null,
+			];
 			if (state.ledger.some((l) => l.idempotencyKey === idempotencyKey)) throw uniqueViolation();
 			state.seq++;
 			state.ledger.push({
@@ -174,7 +203,11 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 				row.version += 1;
 				row.updatedAt = new Date().toISOString();
 			} else {
-				state.balances.set(key, { amount: BigInt(amount), version: 1, updatedAt: new Date().toISOString() });
+				state.balances.set(key, {
+					amount: BigInt(amount),
+					version: 1,
+					updatedAt: new Date().toISOString(),
+				});
 			}
 			return [{ amount: state.balances.get(key)!.amount.toString() }];
 		}
@@ -199,7 +232,9 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 		const row = state.balances.get(balKey(st, sid, cur));
 		if (!row) return [];
 		if (sql.includes('version')) {
-			return [{ amount: row.amount.toString(), version: String(row.version), updatedAt: row.updatedAt }];
+			return [
+				{ amount: row.amount.toString(), version: String(row.version), updatedAt: row.updatedAt },
+			];
 		}
 		return [{ amount: row.amount.toString() }];
 	}
@@ -245,7 +280,8 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 			const row = state.customers.get(ckey(st, sid, prov));
 			if (!row || row.disabled) return [];
 			const now = Date.now();
-			if (row.lastRechargeAt !== null && now - row.lastRechargeAt < Number(cooldown) * 1000) return [];
+			if (row.lastRechargeAt !== null && now - row.lastRechargeAt < Number(cooldown) * 1000)
+				return [];
 			row.lastRechargeAt = now;
 			const ttlSecs = Number(ttl ?? 0);
 			const pendingKeyStale =
@@ -308,7 +344,13 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 // Serializing emulator: transactions queue on one chain (the row-lock model)
 // and roll back to a snapshot on throw.
 function walletEmulator(): IStoreAdapter & { state: IWalletState } {
-	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), customers: new Map(), seq: 0 };
+	const state: IWalletState = {
+		balances: new Map(),
+		ledger: [],
+		grants: new Map(),
+		customers: new Map(),
+		seq: 0,
+	};
 	let chain: Promise<unknown> = Promise.resolve();
 
 	const snapshot = (): IWalletState => ({
@@ -352,7 +394,13 @@ function walletEmulator(): IStoreAdapter & { state: IWalletState } {
 // worst-case backend. Only the conditional UPDATE's own atomicity remains,
 // which is exactly the second safety layer under test.
 function interleavedEmulator(): IStoreAdapter & { state: IWalletState } {
-	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), customers: new Map(), seq: 0 };
+	const state: IWalletState = {
+		balances: new Map(),
+		ledger: [],
+		grants: new Map(),
+		customers: new Map(),
+		seq: 0,
+	};
 	const adapter = {
 		state,
 		async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
@@ -367,8 +415,16 @@ function interleavedEmulator(): IStoreAdapter & { state: IWalletState } {
 	return adapter as IStoreAdapter & { state: IWalletState };
 }
 
-const USER = { subscriberType: 'user' as SubscriberType, subscriberId: '3b241101-e2bb-4255-8caf-4136c566a962', currency: 'USD' };
-const OTHER = { subscriberType: 'user' as SubscriberType, subscriberId: '9f8b1c60-0b1e-4d5a-9c3e-2a7b8d1e4f00', currency: 'USD' };
+const USER = {
+	subscriberType: 'user' as SubscriberType,
+	subscriberId: '3b241101-e2bb-4255-8caf-4136c566a962',
+	currency: 'USD',
+};
+const OTHER = {
+	subscriberType: 'user' as SubscriberType,
+	subscriberId: '9f8b1c60-0b1e-4d5a-9c3e-2a7b8d1e4f00',
+	currency: 'USD',
+};
 
 // ── creditWallet ──────────────────────────────────────────────────
 
@@ -420,14 +476,19 @@ test('creditWallet: zero amount is a no-op without a ledger row', async () => {
 test('creditWallet: negative amount is rejected', async () => {
 	const { creditWallet } = await import('../services/wallet');
 	const store = walletEmulator();
-	await assert.rejects(creditWallet({ ...USER, amount: -5n, idempotencyKey: 'kneg' }, store), /positive/);
+	await assert.rejects(
+		creditWallet({ ...USER, amount: -5n, idempotencyKey: 'kneg' }, store),
+		/positive/,
+	);
 });
 
 test('creditWallet RACE: concurrent identical replays apply exactly once', async () => {
 	const { creditWallet } = await import('../services/wallet');
 	const store = walletEmulator();
 	const results = await Promise.all(
-		Array.from({ length: 5 }, () => creditWallet({ ...USER, amount: 250n, idempotencyKey: 'same' }, store)),
+		Array.from({ length: 5 }, () =>
+			creditWallet({ ...USER, amount: 250n, idempotencyKey: 'same' }, store),
+		),
 	);
 	assert.equal(store.state.ledger.length, 1);
 	for (const r of results) assert.equal(r.balance, 250n);
@@ -445,7 +506,10 @@ test('debitWallet: deducts and writes a negative ledger row', async () => {
 	const { debitWallet } = await import('../services/wallet');
 	const store = walletEmulator();
 	await fund(store, 1000n);
-	const res = await debitWallet({ ...USER, amount: 300n, idempotencyKey: 'd1', description: 'sms' }, store);
+	const res = await debitWallet(
+		{ ...USER, amount: 300n, idempotencyKey: 'd1', description: 'sms' },
+		store,
+	);
 	assert.equal(res.balance, 700n);
 	const row = store.state.ledger.at(-1)!;
 	assert.equal(row.amount, -300n);
@@ -458,12 +522,15 @@ test('debitWallet: insufficient funds throws and leaves no trace', async () => {
 	const { InsufficientFundsError } = await import('../errors');
 	const store = walletEmulator();
 	await fund(store, 100n);
-	await assert.rejects(debitWallet({ ...USER, amount: 101n, idempotencyKey: 'd1' }, store), (err: unknown) => {
-		assert.ok(err instanceof InsufficientFundsError);
-		assert.equal(err.available, 100n);
-		assert.equal(err.required, 101n);
-		return true;
-	});
+	await assert.rejects(
+		debitWallet({ ...USER, amount: 101n, idempotencyKey: 'd1' }, store),
+		(err: unknown) => {
+			assert.ok(err instanceof InsufficientFundsError);
+			assert.equal(err.available, 100n);
+			assert.equal(err.required, 101n);
+			return true;
+		},
+	);
 	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`)!.amount, 100n);
 	assert.equal(store.state.ledger.filter((l) => l.type === 'usage').length, 0);
 });
@@ -475,7 +542,10 @@ test('debitWallet: exact-to-zero is allowed, one past zero is not (block at zero
 	await fund(store, 100n);
 	const res = await debitWallet({ ...USER, amount: 100n, idempotencyKey: 'd1' }, store);
 	assert.equal(res.balance, 0n);
-	await assert.rejects(debitWallet({ ...USER, amount: 1n, idempotencyKey: 'd2' }, store), InsufficientFundsError);
+	await assert.rejects(
+		debitWallet({ ...USER, amount: 1n, idempotencyKey: 'd2' }, store),
+		InsufficientFundsError,
+	);
 });
 
 test('debitWallet: overdraftLimit lets the balance go negative to the floor only', async () => {
@@ -483,7 +553,10 @@ test('debitWallet: overdraftLimit lets the balance go negative to the floor only
 	const { InsufficientFundsError } = await import('../errors');
 	const store = walletEmulator();
 	await fund(store, 100n);
-	const res = await debitWallet({ ...USER, amount: 150n, overdraftLimit: 50n, idempotencyKey: 'd1' }, store);
+	const res = await debitWallet(
+		{ ...USER, amount: 150n, overdraftLimit: 50n, idempotencyKey: 'd1' },
+		store,
+	);
 	assert.equal(res.balance, -50n);
 	await assert.rejects(
 		debitWallet({ ...USER, amount: 1n, overdraftLimit: 50n, idempotencyKey: 'd2' }, store),
@@ -515,7 +588,10 @@ test('debitWallet: missing balance row counts as zero', async () => {
 	const { debitWallet } = await import('../services/wallet');
 	const { InsufficientFundsError } = await import('../errors');
 	const store = walletEmulator();
-	await assert.rejects(debitWallet({ ...USER, amount: 1n, idempotencyKey: 'd1' }, store), InsufficientFundsError);
+	await assert.rejects(
+		debitWallet({ ...USER, amount: 1n, idempotencyKey: 'd1' }, store),
+		InsufficientFundsError,
+	);
 });
 
 test('debitWallet RACE: two concurrent 600-debits on a 1000 balance — exactly one wins', async () => {
@@ -541,7 +617,9 @@ test('debitWallet RACE: N concurrent debits never overspend', async () => {
 	const store = walletEmulator();
 	await fund(store, 1000n);
 	const results = await Promise.allSettled(
-		Array.from({ length: 12 }, (_, i) => debitWallet({ ...USER, amount: 100n, idempotencyKey: `n-${i}` }, store)),
+		Array.from({ length: 12 }, (_, i) =>
+			debitWallet({ ...USER, amount: 100n, idempotencyKey: `n-${i}` }, store),
+		),
 	);
 	const ok = results.filter((r) => r.status === 'fulfilled').length;
 	assert.equal(ok, 10, `expected exactly 10 successful debits, got ${ok}`);
@@ -605,7 +683,9 @@ test('ensurePeriodicGrant RACE: concurrent requests grant exactly once', async (
 	const { ensurePeriodicGrant } = await import('../services/wallet');
 	const store = walletEmulator();
 	const results = await Promise.all(
-		Array.from({ length: 10 }, () => ensurePeriodicGrant({ ...USER, amount: 500n, period: '2026-09' }, store)),
+		Array.from({ length: 10 }, () =>
+			ensurePeriodicGrant({ ...USER, amount: 500n, period: '2026-09' }, store),
+		),
 	);
 	assert.equal(results.filter((r) => r.granted).length, 1);
 	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`)!.amount, 500n);
@@ -625,19 +705,40 @@ test('currentGrantPeriod: month, day, and ISO week formats', async () => {
 
 test('startOfNextPeriod: the instant the current period ends (UTC)', async () => {
 	const { startOfNextPeriod } = await import('../services/wallet');
-	assert.equal(startOfNextPeriod('month', new Date('2026-09-15T12:00:00Z')).toISOString(), '2026-10-01T00:00:00.000Z');
-	assert.equal(startOfNextPeriod('month', new Date('2026-12-20T00:00:00Z')).toISOString(), '2027-01-01T00:00:00.000Z');
-	assert.equal(startOfNextPeriod('day', new Date('2026-09-15T23:59:00Z')).toISOString(), '2026-09-16T00:00:00.000Z');
+	assert.equal(
+		startOfNextPeriod('month', new Date('2026-09-15T12:00:00Z')).toISOString(),
+		'2026-10-01T00:00:00.000Z',
+	);
+	assert.equal(
+		startOfNextPeriod('month', new Date('2026-12-20T00:00:00Z')).toISOString(),
+		'2027-01-01T00:00:00.000Z',
+	);
+	assert.equal(
+		startOfNextPeriod('day', new Date('2026-09-15T23:59:00Z')).toISOString(),
+		'2026-09-16T00:00:00.000Z',
+	);
 	// Week rolls to the coming Monday: 2026-09-15 is a Tuesday → next Monday 09-21.
-	assert.equal(startOfNextPeriod('week', new Date('2026-09-15T00:00:00Z')).toISOString(), '2026-09-21T00:00:00.000Z');
+	assert.equal(
+		startOfNextPeriod('week', new Date('2026-09-15T00:00:00Z')).toISOString(),
+		'2026-09-21T00:00:00.000Z',
+	);
 });
 
 test('toWalletDTO: surfaces the bucket split + toggle when supplied', async () => {
 	const { toWalletDTO } = await import('../dtos/billing');
 	// Legacy 3-arg call stays a plain balance DTO (no bucket fields).
-	assert.deepEqual(toWalletDTO(1500n, 'USD', 2), { balance: '1500', currency: 'USD', precision: 2 });
+	assert.deepEqual(toWalletDTO(1500n, 'USD', 2), {
+		balance: '1500',
+		currency: 'USD',
+		precision: 2,
+	});
 	assert.deepEqual(
-		toWalletDTO(138n, 'USD', 2, { granted: 38n, purchased: 100n, spendPurchased: false, grantedExpiresAt: '2026-10-01T00:00:00.000Z' }),
+		toWalletDTO(138n, 'USD', 2, {
+			granted: 38n,
+			purchased: 100n,
+			spendPurchased: false,
+			grantedExpiresAt: '2026-10-01T00:00:00.000Z',
+		}),
 		{
 			balance: '138',
 			currency: 'USD',
@@ -695,7 +796,10 @@ test('decodeLedgerCursor: rejects garbage, non-UUID ids, and oversized cursors',
 	const uuid = '3b241101-e2bb-4255-8caf-4136c566a962';
 	assert.equal(decodeLedgerCursor('not-base64-json'), null);
 	assert.equal(decodeLedgerCursor(Buffer.from('{"a":1}').toString('base64url')), null);
-	assert.equal(decodeLedgerCursor(Buffer.from(`["not-a-date","${uuid}"]`).toString('base64url')), null);
+	assert.equal(
+		decodeLedgerCursor(Buffer.from(`["not-a-date","${uuid}"]`).toString('base64url')),
+		null,
+	);
 	// A crafted non-UUID id would otherwise hit the $5::uuid cast as a 500.
 	assert.equal(
 		decodeLedgerCursor(Buffer.from('["2026-01-01T00:00:00Z","not-a-uuid"]').toString('base64url')),
@@ -772,8 +876,11 @@ test('grantWalletSchema: rejects zero, negatives, floats, bad UUIDs, missing key
 		false,
 	);
 	assert.equal(
-		grantWalletSchema.safeParse({ subscriberType: 'user', subscriberId: USER.subscriberId, amount: '100' })
-			.success,
+		grantWalletSchema.safeParse({
+			subscriberType: 'user',
+			subscriberId: USER.subscriberId,
+			amount: '100',
+		}).success,
 		false,
 	);
 });
@@ -789,13 +896,23 @@ const walletConfig = (overrides: Partial<IBillingConfig['wallet']> = {}): IBilli
 		wallet: { currency: 'USD', precision: 2, ...overrides },
 	}) as IBillingConfig;
 
-function makeCtx(opts: { url?: string; user?: unknown; body?: unknown; headers?: Record<string, string>; workspace?: unknown } = {}): import('@fonderie/core').IFonderieContext {
+function makeCtx(
+	opts: {
+		url?: string;
+		user?: unknown;
+		body?: unknown;
+		headers?: Record<string, string>;
+		workspace?: unknown;
+	} = {},
+): import('@fonderie/core').IFonderieContext {
 	return {
 		meta: { body: opts.body ?? {} },
 		user: 'user' in opts ? opts.user : { id: USER.subscriberId, email: 'a@b.com' },
 		workspace: opts.workspace ?? null,
 		tenant: null,
-		request: new Request(opts.url ?? 'http://localhost/billing/wallet', { headers: opts.headers ?? {} }),
+		request: new Request(opts.url ?? 'http://localhost/billing/wallet', {
+			headers: opts.headers ?? {},
+		}),
 	} as any;
 }
 
@@ -842,9 +959,12 @@ test('walletController.transactions: pages and exposes nextCursor', async () => 
 	const { walletController } = await import('../controllers/wallet.controller');
 	const { creditWallet } = await import('../services/wallet');
 	const store = walletEmulator();
-	for (let i = 0; i < 3; i++) await creditWallet({ ...USER, amount: 10n, idempotencyKey: `t-${i}` }, store);
+	for (let i = 0; i < 3; i++)
+		await creditWallet({ ...USER, amount: 10n, idempotencyKey: `t-${i}` }, store);
 	const ctrl = walletController(store, walletConfig());
-	const res = await ctrl.transactions(makeCtx({ url: 'http://localhost/billing/wallet/transactions?limit=2' }));
+	const res = await ctrl.transactions(
+		makeCtx({ url: 'http://localhost/billing/wallet/transactions?limit=2' }),
+	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
 	assert.equal(body.result.transactions.length, 2);
@@ -919,20 +1039,35 @@ test('walletController.grant: with no currency, targets the subscriber PLAN-WALL
 	const ctrl = walletController(store, config);
 	const res = await ctrl.grant(
 		makeCtx({
-			body: { subscriberType: 'user', subscriberId: USER.subscriberId, amount: 500n, idempotencyKey: 'g-eur' },
+			body: {
+				subscriberType: 'user',
+				subscriberId: USER.subscriberId,
+				amount: 500n,
+				idempotencyKey: 'g-eur',
+			},
 		}),
 	);
 	const body = (await res.json()) as any;
 	assert.equal(res.status, 200);
 	assert.equal(body.result.currency, 'EUR', 'granted into the plan-wallet currency');
-	assert.ok(store.state.balances.get(`user|${USER.subscriberId}|EUR`), 'the EUR bucket was credited');
-	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`), undefined, 'no stranded USD bucket');
+	assert.ok(
+		store.state.balances.get(`user|${USER.subscriberId}|EUR`),
+		'the EUR bucket was credited',
+	);
+	assert.equal(
+		store.state.balances.get(`user|${USER.subscriberId}|USD`),
+		undefined,
+		'no stranded USD bucket',
+	);
 });
 
 test('walletController.grant: an explicit body.currency still overrides the plan-wallet currency', async () => {
 	const { walletController } = await import('../controllers/wallet.controller');
 	const store = walletEmulator();
-	const config = { ...walletConfig(), plans: [{ name: 'euro', wallet: { currency: 'EUR' } }] } as IBillingConfig;
+	const config = {
+		...walletConfig(),
+		plans: [{ name: 'euro', wallet: { currency: 'EUR' } }],
+	} as IBillingConfig;
 	const res = await walletController(store, config).grant(
 		makeCtx({
 			body: {
@@ -954,7 +1089,14 @@ test('walletController.grant: an explicit body.currency still overrides the plan
 const PACKS = [
 	{ id: 'small', name: 'Small pack', credits: 5000n, priceAmount: 499n },
 	{ id: 'retired', name: 'Retired pack', credits: 1n, priceAmount: 1n, active: false },
-	{ id: 'priced', name: 'Priced pack', credits: 20000n, priceAmount: 1999n, priceId: 'price_pack_20k', currency: 'EUR' },
+	{
+		id: 'priced',
+		name: 'Priced pack',
+		credits: 20000n,
+		priceAmount: 1999n,
+		priceId: 'price_pack_20k',
+		currency: 'EUR',
+	},
 ];
 
 test('findCreditPack: resolves active packs only', async () => {
@@ -980,7 +1122,14 @@ test('syncCreditPacksToDB: upserts packs with stringified bigint amounts', async
 	assert.ok(captured!.sql.includes('ON CONFLICT (id) DO UPDATE'));
 	// First pack: default currency, stringified amounts, active default true.
 	assert.deepEqual(captured!.params.slice(0, 8), [
-		'small', 'Small pack', 'USD', '5000', '499', null, true, '{}',
+		'small',
+		'Small pack',
+		'USD',
+		'5000',
+		'499',
+		null,
+		true,
+		'{}',
 	]);
 	// Retired pack keeps active: false; priced pack keeps its own currency/priceId.
 	assert.equal(captured!.params[14], false);
@@ -1238,7 +1387,10 @@ test('payment webhook: 500 without a secret, 400 without a signature or on bad s
 	const ctrl = paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)));
 	const unsigned = {
 		...webhookCtx(),
-		request: new Request('http://localhost/billing/webhook/payment', { method: 'POST', body: '{}' }),
+		request: new Request('http://localhost/billing/webhook/payment', {
+			method: 'POST',
+			body: '{}',
+		}),
 	} as any;
 	assert.equal((await ctrl.handle(unsigned)).status, 400);
 
@@ -1344,7 +1496,11 @@ test('normalizePaymentSession: string and expanded payment_intent, null-safe', a
 	});
 
 	// customer as an expanded object, and absent → null.
-	const expanded = normalizePaymentSession({ id: 'cs_2', payment_intent: { id: 'pi_x' }, customer: { id: 'cus_x' } });
+	const expanded = normalizePaymentSession({
+		id: 'cs_2',
+		payment_intent: { id: 'pi_x' },
+		customer: { id: 'cus_x' },
+	});
 	assert.equal(expanded.providerTxId, 'pi_x');
 	assert.equal(expanded.customerId, 'cus_x');
 
@@ -1382,7 +1538,10 @@ function billingStore(
 
 const FREE_PLAN = {
 	name: 'free',
-	wallet: { grantAmount: 50n, rates: { task: { cost: 5n }, 'sms:send': { cost: 75n, unit: 'msg' } } },
+	wallet: {
+		grantAmount: 50n,
+		rates: { task: { cost: 5n }, 'sms:send': { cost: 75n, unit: 'msg' } },
+	},
 };
 const UNLIMITED_PLAN = { name: 'unlimited', wallet: { rates: { task: { cost: 0n } } } };
 
@@ -1406,7 +1565,10 @@ test('resolvePlanWallet: null without the global opt-in or a plan wallet, defaul
 	assert.equal(resolved.grantPeriod, 'month');
 
 	const custom = resolvePlanWallet(
-		{ name: 'x', wallet: { currency: 'EUR', precision: 0, overdraftLimit: 10n, grantPeriod: 'week' } } as any,
+		{
+			name: 'x',
+			wallet: { currency: 'EUR', precision: 0, overdraftLimit: 10n, grantPeriod: 'week' },
+		} as any,
 		config,
 	)!;
 	assert.equal(custom.currency, 'EUR');
@@ -1454,7 +1616,10 @@ test('withBilling: lazily grants once per period and exposes the wallet context'
 
 test('withBilling: no wallet context without plan wallet or global opt-in', async () => {
 	const emu = walletEmulator();
-	const noPlanWallet = await runWithBilling(planWalletConfig([{ name: 'plain' }]), billingStore(emu));
+	const noPlanWallet = await runWithBilling(
+		planWalletConfig([{ name: 'plain' }]),
+		billingStore(emu),
+	);
 	assert.equal((noPlanWallet.ctx.meta['billing'] as any).wallet, undefined);
 
 	const noOptIn = planWalletConfig([FREE_PLAN]);
@@ -1627,7 +1792,9 @@ test('walletController.checkout: reuses the subscription provider customer', asy
 	const { provider, calls } = paymentProvider();
 	const config = { ...walletConfig({ creditPacks: PACKS }), provider } as IBillingConfig;
 	const store = billingStore(walletEmulator(), proSubscription('active'));
-	const res = await walletController(store, config).checkout(makeCtx({ body: { packId: 'small' } }));
+	const res = await walletController(store, config).checkout(
+		makeCtx({ body: { packId: 'small' } }),
+	);
 	assert.equal(res.status, 200);
 	assert.equal(calls.customer, undefined, 'must not create a second provider customer');
 	assert.equal((calls.payment as any).customerId, 'cus_1');
@@ -1665,7 +1832,9 @@ test('currency codes normalize to one canonical bucket across grant, read, and c
 	assert.equal(emu.state.balances.size, 1);
 
 	// ...and reads reach it whatever the query-param casing or padding.
-	const res = await ctrl.get(makeCtx({ url: 'http://localhost/billing/wallet?currency=%20usd%20' }));
+	const res = await ctrl.get(
+		makeCtx({ url: 'http://localhost/billing/wallet?currency=%20usd%20' }),
+	);
 	assert.equal(((await res.json()) as any).result.wallet.balance, '300');
 });
 
@@ -1677,7 +1846,13 @@ test('currency codes normalize to one canonical bucket across grant, read, and c
 function interceptingEmulator(
 	intercept: (sql: string, params: unknown[], state: IWalletState) => unknown[] | undefined | never,
 ): IStoreAdapter & { state: IWalletState } {
-	const state: IWalletState = { balances: new Map(), ledger: [], grants: new Map(), customers: new Map(), seq: 0 };
+	const state: IWalletState = {
+		balances: new Map(),
+		ledger: [],
+		grants: new Map(),
+		customers: new Map(),
+		seq: 0,
+	};
 	let chain: Promise<unknown> = Promise.resolve();
 	const snapshot = (): IWalletState => ({
 		balances: new Map([...state.balances].map(([k, v]) => [k, { ...v }])),
@@ -1762,14 +1937,21 @@ test('debitWallet: a non-idempotency ledger failure rolls the balance back and r
 	const { creditWallet, debitWallet } = await import('../services/wallet');
 	let failLedger = false;
 	const store = interceptingEmulator((sql) => {
-		if (failLedger && sql.includes('fonderie_wallet_ledger') && sql.trimStart().startsWith('INSERT')) {
+		if (
+			failLedger &&
+			sql.includes('fonderie_wallet_ledger') &&
+			sql.trimStart().startsWith('INSERT')
+		) {
 			throw new Error('disk full');
 		}
 		return undefined;
 	});
 	await creditWallet({ ...USER, amount: 1000n, idempotencyKey: 'fund' }, store);
 	failLedger = true;
-	await assert.rejects(debitWallet({ ...USER, amount: 300n, idempotencyKey: 'd1' }, store), /disk full/);
+	await assert.rejects(
+		debitWallet({ ...USER, amount: 300n, idempotencyKey: 'd1' }, store),
+		/disk full/,
+	);
 	// The balance UPDATE succeeded before the ledger INSERT failed — the
 	// transaction must have restored it: never a balance write without its row.
 	assert.equal(store.state.balances.get(`user|${USER.subscriberId}|USD`)!.amount, 1000n);
@@ -1814,7 +1996,10 @@ test('getWalletLedger: rows sharing a timestamp paginate without loss via the id
 
 // ── composed route chains ─────────────────────────────────────────
 
-function composeChain(handlers: unknown[], ctx: import('@fonderie/core').IFonderieContext): Promise<Response> {
+function composeChain(
+	handlers: unknown[],
+	ctx: import('@fonderie/core').IFonderieContext,
+): Promise<Response> {
 	const run = (i: number): Promise<Response> => {
 		const handler = handlers[i] as (c: unknown, n: () => Promise<Response>) => Promise<Response>;
 		return handler(ctx, () => run(i + 1));
@@ -1830,7 +2015,10 @@ test('POST /billing/wallet/grant: the composed route chain enforces token then v
 	const handlers = grant.slice(2);
 
 	// Wrong bearer token → 401 before validation or the handler run.
-	const denied = await composeChain(handlers, makeCtx({ headers: { authorization: 'Bearer nope' } }));
+	const denied = await composeChain(
+		handlers,
+		makeCtx({ headers: { authorization: 'Bearer nope' } }),
+	);
 	assert.equal(denied.status, 401);
 	assert.equal(emu.state.ledger.length, 0);
 
@@ -1872,7 +2060,13 @@ test('walletController.get: serves a workspace subscriber wallet', async () => {
 	const { creditWallet } = await import('../services/wallet');
 	const emu = walletEmulator();
 	await creditWallet(
-		{ subscriberType: 'workspace', subscriberId: WS_ID, currency: 'USD', amount: 777n, idempotencyKey: 'ws' },
+		{
+			subscriberType: 'workspace',
+			subscriberId: WS_ID,
+			currency: 'USD',
+			amount: 777n,
+			idempotencyKey: 'ws',
+		},
 		emu,
 	);
 	const ctrl = walletController(billingStore(emu), walletConfig());
@@ -1943,7 +2137,13 @@ test('getWalletStatus / getWalletRate: read the cached context', async () => {
 				plan: 'free',
 				active: true,
 				statuses: {},
-				wallet: { balance: 10n, currency: 'USD', precision: 2, overdraftLimit: 0n, rates: { task: { cost: 5n } } },
+				wallet: {
+					balance: 10n,
+					currency: 'USD',
+					precision: 2,
+					overdraftLimit: 0n,
+					rates: { task: { cost: 5n } },
+				},
 			},
 		},
 	};
@@ -1973,7 +2173,12 @@ test('debitWalletForMetric: charges rate x quantity with an idempotency key', as
 	assert.equal(row.metadata['quantity'], 3);
 
 	// Replay is a no-op.
-	const replay = await debitWalletForMetric(ctx, 'task', { idempotencyKey: 'task-42', quantity: 3 }, store);
+	const replay = await debitWalletForMetric(
+		ctx,
+		'task',
+		{ idempotencyKey: 'task-42', quantity: 3 },
+		store,
+	);
 	assert.equal(replay!.balance, 35n);
 	assert.equal(replay!.duplicate, true);
 });
@@ -2045,7 +2250,9 @@ test('buildBillingRoutes: wallet reads register with config.wallet; grant needs 
 	assert.ok(!paths.includes('POST /billing/wallet/grant'));
 
 	const withToken = buildBillingRoutes(walletEmulator(), walletConfig({ adminToken: 'tok' }));
-	const grant = withToken.find(([method, path]) => method === 'POST' && path === '/billing/wallet/grant');
+	const grant = withToken.find(
+		([method, path]) => method === 'POST' && path === '/billing/wallet/grant',
+	);
 	assert.ok(grant);
 	// Guard + validation middleware precede the handler.
 	assert.equal(grant!.length - 2, 3);
@@ -2056,7 +2263,11 @@ test('buildBillingRoutes: wallet reads register with config.wallet; grant needs 
 function recordingBus() {
 	const calls: { type: string; payload: any }[] = [];
 	return {
-		bus: { emit: async (type: string, payload: unknown) => { calls.push({ type, payload }); } } as any,
+		bus: {
+			emit: async (type: string, payload: unknown) => {
+				calls.push({ type, payload });
+			},
+		} as any,
 		calls,
 	};
 }
@@ -2083,9 +2294,13 @@ test('payment webhook: a replayed event emits nothing (no double receipt)', asyn
 	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
 	const store = walletEmulator();
 	const first = recordingBus();
-	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)), first.bus).handle(webhookCtx());
+	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)), first.bus).handle(
+		webhookCtx(),
+	);
 	const replay = recordingBus();
-	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)), replay.bus).handle(webhookCtx());
+	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta)), replay.bus).handle(
+		webhookCtx(),
+	);
 	assert.ok(first.calls.length >= 2);
 	assert.equal(replay.calls.length, 0, 'duplicate credit must not re-emit');
 });
@@ -2096,7 +2311,12 @@ test('wallet grant: emits wallet.credited (source manual-grant) on a real credit
 	const store = walletEmulator();
 	const { bus, calls } = recordingBus();
 	const ctrl = walletController(store, walletConfig(), bus);
-	const body = { subscriberType: 'user', subscriberId: USER.subscriberId, amount: 500n, idempotencyKey: 'g-1' };
+	const body = {
+		subscriberType: 'user',
+		subscriberId: USER.subscriberId,
+		amount: 500n,
+		idempotencyKey: 'g-1',
+	};
 	await ctrl.grant(makeCtx({ body }));
 	assert.equal(calls.length, 1);
 	assert.equal(calls[0]!.type, EVENT_KEYS.walletCredited);
@@ -2142,13 +2362,26 @@ test('billing events round-trip a real EventBus to an in-process subscriber (web
 	const bus = new EventBus(new MemoryTransport());
 	await bus.start();
 	const received: any[] = [];
-	bus.on(EVENT_KEYS.walletCredited, async (payload: any) => { received.push(payload); }, 'test-subscriber');
+	bus.on(
+		EVENT_KEYS.walletCredited,
+		async (payload: any) => {
+			received.push(payload);
+		},
+		'test-subscriber',
+	);
 
 	const store = walletEmulator();
 	const ctrl = walletController(store, walletConfig(), bus);
-	await ctrl.grant(makeCtx({
-		body: { subscriberType: 'workspace', subscriberId: '11111111-2222-4333-8444-555566667777', amount: 500n, idempotencyKey: 'rt-1' },
-	}));
+	await ctrl.grant(
+		makeCtx({
+			body: {
+				subscriberType: 'workspace',
+				subscriberId: '11111111-2222-4333-8444-555566667777',
+				amount: 500n,
+				idempotencyKey: 'rt-1',
+			},
+		}),
+	);
 	await new Promise((r) => setTimeout(r, 10));
 	await bus.stop();
 
@@ -2218,7 +2451,10 @@ test('notifyBilling: emits NOTIFICATION_EVENT with a fully-shaped recipient', as
 	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
 	const { bus, calls } = recordingBus();
 	// Resolver returns only an email; phone/deviceToken must be filled to null.
-	const config = { ...walletConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	const config = {
+		...walletConfig(),
+		resolveRecipient: () => ({ email: 'a@b.com' }),
+	} as IBillingConfig;
 	await notifyBilling(bus, config, {
 		subscriberType: 'workspace',
 		subscriberId: 'ws-1',
@@ -2228,7 +2464,11 @@ test('notifyBilling: emits NOTIFICATION_EVENT with a fully-shaped recipient', as
 	assert.equal(calls.length, 1);
 	assert.equal(calls[0]!.type, NOTIFICATION_EVENT);
 	assert.equal(calls[0]!.payload.type, 'billing.payment-receipt');
-	assert.deepEqual(calls[0]!.payload.recipient, { email: 'a@b.com', phone: null, deviceToken: null });
+	assert.deepEqual(calls[0]!.payload.recipient, {
+		email: 'a@b.com',
+		phone: null,
+		deviceToken: null,
+	});
 	assert.equal(calls[0]!.payload.data.amount, '499');
 });
 
@@ -2346,7 +2586,8 @@ test('withBilling: notifications.creditsLow=false suppresses the EMAIL but keeps
 		'the durable domain event still fires',
 	);
 	assert.equal(
-		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.creditsLow).length,
+		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.creditsLow)
+			.length,
 		0,
 		'the customer email is suppressed by the toggle',
 	);
@@ -2369,7 +2610,13 @@ test('withBilling: no low-balance signal when the plan sets no threshold', async
 	const { bus, calls } = recordingBus();
 	const mw = withBilling(store, config, new MemoryCounterBackend(), bus);
 	await creditWallet(
-		{ subscriberType: 'user', subscriberId: uid, currency: 'USD', amount: 1n, idempotencyKey: 'nl-1' },
+		{
+			subscriberType: 'user',
+			subscriberId: uid,
+			currency: 'USD',
+			amount: 1n,
+			idempotencyKey: 'nl-1',
+		},
 		emu,
 	);
 	await mw(makeCtx({ user: { id: uid, email: 'z@z.com' } }), async () => new Response());
@@ -2381,14 +2628,22 @@ test('withBilling: no low-balance signal when the plan sets no threshold', async
 
 test('collectBillingReadinessProblems: silent when no payments are enabled', async () => {
 	const { collectBillingReadinessProblems } = await import('../services/notify');
-	const noPay = { provider: {}, plans: [{ name: 'free' }], successUrl: 'x', cancelUrl: 'y' } as IBillingConfig;
+	const noPay = {
+		provider: {},
+		plans: [{ name: 'free' }],
+		successUrl: 'x',
+		cancelUrl: 'y',
+	} as IBillingConfig;
 	assert.deepEqual(collectBillingReadinessProblems(noPay, false), []);
 	assert.deepEqual(collectBillingReadinessProblems(noPay, true), []);
 });
 
 test('collectBillingReadinessProblems: clean when payments + bus + resolver are all wired', async () => {
 	const { collectBillingReadinessProblems } = await import('../services/notify');
-	const config = { ...walletConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	const config = {
+		...walletConfig(),
+		resolveRecipient: () => ({ email: 'a@b.com' }),
+	} as IBillingConfig;
 	assert.deepEqual(collectBillingReadinessProblems(config, true), []);
 });
 
@@ -2437,7 +2692,13 @@ test('collectBillingReadinessProblems: a negative rollover cap errors in product
 		cancelUrl: 'y',
 		resolveRecipient: () => ({ email: 'a@b.com' }),
 		wallet: { currency: 'USD' },
-		plans: [{ name: 'pro', monthly: { priceId: 'p' }, wallet: { grantAmount: 50n, grantRollover: { cap: -5n } } }],
+		plans: [
+			{
+				name: 'pro',
+				monthly: { priceId: 'p' },
+				wallet: { grantAmount: 50n, grantRollover: { cap: -5n } },
+			},
+		],
 	} as unknown as IBillingConfig;
 	const prev = process.env['NODE_ENV'];
 	try {
@@ -2480,7 +2741,10 @@ test('BillingModule.checkReadiness: clean with a bus + resolver wired', async ()
 	const { BillingModule } = await import('../module');
 	const { EventBus, MemoryTransport } = await import('@fonderie/events');
 	const store = walletEmulator();
-	const config = { ...walletConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	const config = {
+		...walletConfig(),
+		resolveRecipient: () => ({ email: 'a@b.com' }),
+	} as IBillingConfig;
 	const mod = new BillingModule(store, config, new EventBus(new MemoryTransport()));
 	assert.deepEqual(mod.checkReadiness(), []);
 });
@@ -2497,7 +2761,12 @@ test('normalizeChargeRefund: picks the newest refund (Stripe lists most-recent-f
 		payment_intent: 'pi_1',
 		currency: 'usd',
 		amount_refunded: 499, // cumulative — deliberately NOT what we key on
-		refunds: { data: [{ id: 're_2', amount: 299, reason: null }, { id: 're_1', amount: 200, reason: 'requested_by_customer' }] },
+		refunds: {
+			data: [
+				{ id: 're_2', amount: 299, reason: null },
+				{ id: 're_1', amount: 200, reason: 'requested_by_customer' },
+			],
+		},
 	} as any);
 	assert.equal(r.kind, 'refund');
 	assert.equal(r.id, 're_2'); // newest, not the oldest
@@ -2507,7 +2776,11 @@ test('normalizeChargeRefund: picks the newest refund (Stripe lists most-recent-f
 	assert.equal(r.currency, 'usd');
 	assert.equal(r.status, null);
 	// Expanded payment_intent object and an empty refunds list are both tolerated.
-	const r2 = normalizeChargeRefund({ id: 'ch_2', payment_intent: { id: 'pi_2' }, amount_refunded: 100 } as any);
+	const r2 = normalizeChargeRefund({
+		id: 'ch_2',
+		payment_intent: { id: 'pi_2' },
+		amount_refunded: 100,
+	} as any);
 	assert.equal(r2.providerTxId, 'pi_2');
 	assert.equal(r2.id, 'ch_2'); // falls back to charge id when no refund entries
 	assert.equal(r2.amount, 100n);
@@ -2529,7 +2802,11 @@ test('two sequential charge.refunded payloads (real normalizer) each claw a dist
 		amount_refunded: 200,
 		refunds: { data: [{ id: 're_1', amount: 200, reason: null }] },
 	} as any);
-	await handleReversalEvent(store, { type: 'charge.refunded', subscription: null, reversal: first });
+	await handleReversalEvent(store, {
+		type: 'charge.refunded',
+		subscription: null,
+		reversal: first,
+	});
 
 	// Second $2.99 refund: Stripe re-delivers the cumulative list, newest-first.
 	const second = normalizeChargeRefund({
@@ -2537,9 +2814,18 @@ test('two sequential charge.refunded payloads (real normalizer) each claw a dist
 		payment_intent: 'pi_1',
 		currency: 'usd',
 		amount_refunded: 499,
-		refunds: { data: [{ id: 're_2', amount: 299, reason: null }, { id: 're_1', amount: 200, reason: null }] },
+		refunds: {
+			data: [
+				{ id: 're_2', amount: 299, reason: null },
+				{ id: 're_1', amount: 200, reason: null },
+			],
+		},
 	} as any);
-	await handleReversalEvent(store, { type: 'charge.refunded', subscription: null, reversal: second });
+	await handleReversalEvent(store, {
+		type: 'charge.refunded',
+		subscription: null,
+		reversal: second,
+	});
 
 	// Both partials clawed: 5000*200/499 + 5000*299/499 = 2004 + 2995 = 4999.
 	assert.equal(balOf(store), 5000n - 2004n - 2995n);
@@ -2589,7 +2875,9 @@ function refundEvent(over: Record<string, unknown> = {}, type = 'charge.refunded
 // Run the purchase webhook once → credits 5000 to USER in USD, provider_tx_id pi_1.
 async function buyPack(store: IStoreAdapter): Promise<void> {
 	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
-	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta))).handle(webhookCtx());
+	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta))).handle(
+		webhookCtx(),
+	);
 }
 
 async function handleReversalEvent(
@@ -2675,7 +2963,10 @@ test('chargeback: a dispute claws back the remaining credits', async () => {
 	await buyPack(store);
 	await handleReversalEvent(
 		store,
-		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' }, 'charge.dispute.created'),
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' },
+			'charge.dispute.created',
+		),
 		undefined,
 	);
 	assert.equal(balOf(store), 0n);
@@ -2689,12 +2980,18 @@ test('chargeback: a dispute won restores exactly what the chargeback clawed', as
 	await buyPack(store);
 	await handleReversalEvent(
 		store,
-		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' }, 'charge.dispute.created'),
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' },
+			'charge.dispute.created',
+		),
 	);
 	assert.equal(balOf(store), 0n);
 	await handleReversalEvent(
 		store,
-		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'won' }, 'charge.dispute.closed'),
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'won' },
+			'charge.dispute.closed',
+		),
 	);
 	assert.equal(balOf(store), 5000n, 'won dispute → credits restored');
 });
@@ -2704,11 +3001,17 @@ test('chargeback: a dispute lost after it was opened does not double-claw', asyn
 	await buyPack(store);
 	await handleReversalEvent(
 		store,
-		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' }, 'charge.dispute.created'),
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'needs_response' },
+			'charge.dispute.created',
+		),
 	);
 	await handleReversalEvent(
 		store,
-		refundEvent({ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'lost' }, 'charge.dispute.closed'),
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_1', amount: 499n, status: 'lost' },
+			'charge.dispute.closed',
+		),
 	);
 	assert.equal(balOf(store), 0n);
 	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 1);
@@ -2745,7 +3048,10 @@ test('reversal: a known partial amount with no proration basis refuses to over-c
 	const store = walletEmulator();
 	// Purchase whose amount_total was null → metadata.amountPaid stored null,
 	// so a partial refund has no denominator to prorate against.
-	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta, { amountTotal: null }))).handle(webhookCtx());
+	await paymentWebhookController(
+		store,
+		webhookConfig(paymentEvent(walletMeta, { amountTotal: null })),
+	).handle(webhookCtx());
 	assert.equal(balOf(store), 5000n);
 	const res = await handleReversalEvent(store, refundEvent({ amount: 250n }));
 	assert.equal(((await res.json()) as any).ignored, 'no-proration-basis');
@@ -2759,18 +3065,24 @@ test('reversal: emits payment.refunded + wallet.debited and a refund-processed n
 	const store = walletEmulator();
 	await buyPack(store); // no bus — purchase events irrelevant here
 	const { bus, calls } = recordingBus();
-	await handleReversalEvent(store, refundEvent(), bus, { resolveRecipient: () => ({ email: 'b@x.com' }) });
+	await handleReversalEvent(store, refundEvent(), bus, {
+		resolveRecipient: () => ({ email: 'b@x.com' }),
+	});
 	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.paymentRefunded).length, 1);
 	const debited = calls.filter((c) => c.type === EVENT_KEYS.walletDebited);
 	assert.equal(debited.length, 1);
 	assert.equal(debited[0]!.payload.credits, '5000');
 	assert.equal(debited[0]!.payload.source, 'refund');
-	const notices = calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.refundProcessed);
+	const notices = calls.filter(
+		(c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.refundProcessed,
+	);
 	assert.equal(notices.length, 1);
 	assert.equal(notices[0]!.payload.recipient.email, 'b@x.com');
 	// Replay → duplicate → no re-emit, no re-notify.
 	const replay = recordingBus();
-	await handleReversalEvent(store, refundEvent(), replay.bus, { resolveRecipient: () => ({ email: 'b@x.com' }) });
+	await handleReversalEvent(store, refundEvent(), replay.bus, {
+		resolveRecipient: () => ({ email: 'b@x.com' }),
+	});
 	assert.equal(replay.calls.length, 0);
 });
 
@@ -2787,7 +3099,11 @@ test('subscription status: an unpaid subscription is treated as inactive (no new
 		return new Response();
 	});
 	assert.equal(nextCalled, true);
-	assert.equal(emu.state.ledger.filter((l) => l.type === 'grant').length, 0, 'unpaid → no periodic grant');
+	assert.equal(
+		emu.state.ledger.filter((l) => l.type === 'grant').length,
+		0,
+		'unpaid → no periodic grant',
+	);
 });
 
 // ── auto-recharge: off-session top-up at a threshold ──────────────
@@ -2812,7 +3128,10 @@ function autoRechargeConfig(
 	providerOver: Record<string, unknown> = {},
 ): IBillingConfig {
 	const { provider } = rechargeProvider(providerOver);
-	const plan = { name: 'metered', wallet: { autoRecharge: { threshold: 100n, packId: 'refill', ...autoOver } } };
+	const plan = {
+		name: 'metered',
+		wallet: { autoRecharge: { threshold: 100n, packId: 'refill', ...autoOver } },
+	};
 	return {
 		...walletConfig({ creditPacks: [AR_PACK] }),
 		plans: [plan],
@@ -2846,7 +3165,12 @@ function elapseCooldown(store: ReturnType<typeof walletEmulator>): void {
 	if (row) row.lastRechargeAt = null;
 }
 
-async function runRecharge(store: IStoreAdapter, config: IBillingConfig, balance: bigint, bus?: any): Promise<void> {
+async function runRecharge(
+	store: IStoreAdapter,
+	config: IBillingConfig,
+	balance: bigint,
+	bus?: any,
+): Promise<void> {
 	const { maybeAutoRecharge } = await import('../services/auto-recharge');
 	const { resolvePlanWallet } = await import('../services/wallet');
 	const planWallet = resolvePlanWallet(config.plans[0] as any, config)!;
@@ -2929,14 +3253,19 @@ test('auto-recharge: a declined card records a failure and does not credit', asy
 	const { NOTIFICATION_EVENT } = await import('@fonderie/events');
 	const { bus, calls } = recordingBus();
 	const config = {
-		...autoRechargeConfig({}, { chargeOffSession: async () => ({ providerTxId: null, status: 'failed' as const }) }),
+		...autoRechargeConfig(
+			{},
+			{ chargeOffSession: async () => ({ providerTxId: null, status: 'failed' as const }) },
+		),
 		resolveRecipient: () => ({ email: 'z@z.com' }),
 	} as IBillingConfig;
 	await runRecharge(store, config, 50n, bus);
 	assert.equal(arBal(store), 0n, 'no credit on decline');
 	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.autoRechargeFailed).length, 1);
 	assert.equal(
-		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.autoRechargeFailed).length,
+		calls.filter(
+			(c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.autoRechargeFailed,
+		).length,
 		1,
 	);
 });
@@ -2969,7 +3298,11 @@ test('auto-recharge: a successful charge resets the failure counter', async () =
 	);
 	const store = walletEmulator();
 	await armCustomer(store);
-	const key = { subscriberType: 'user' as SubscriberType, subscriberId: USER.subscriberId, provider: 'stub' };
+	const key = {
+		subscriberType: 'user' as SubscriberType,
+		subscriberId: USER.subscriberId,
+		provider: 'stub',
+	};
 	await recordRechargeFailure({ ...key, maxConsecutiveFailures: 5 }, store);
 	assert.equal(store.state.customers.get(`user|${USER.subscriberId}|stub`)!.failures, 1);
 	await recordRechargeSuccess(key, store);
@@ -2982,7 +3315,10 @@ test('auto-recharge: a successful charge resets the failure counter', async () =
 test('payment webhook: a pack purchase persists the customer (arming auto-recharge)', async () => {
 	const store = walletEmulator();
 	const { paymentWebhookController } = await import('../controllers/payment-webhook.controller');
-	await paymentWebhookController(store, webhookConfig(paymentEvent(walletMeta, { customerId: 'cus_42' }))).handle(webhookCtx());
+	await paymentWebhookController(
+		store,
+		webhookConfig(paymentEvent(walletMeta, { customerId: 'cus_42' })),
+	).handle(webhookCtx());
 	const row = store.state.customers.get(`user|${USER.subscriberId}|stub`);
 	assert.equal(row?.providerCustomerId, 'cus_42');
 	assert.equal(row?.disabled, false);
@@ -3020,7 +3356,10 @@ test('readiness: auto-recharge referencing an unknown pack is flagged', async ()
 
 test('readiness: correctly-wired auto-recharge adds no problems', async () => {
 	const { collectBillingReadinessProblems } = await import('../services/notify');
-	const config = { ...autoRechargeConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	const config = {
+		...autoRechargeConfig(),
+		resolveRecipient: () => ({ email: 'a@b.com' }),
+	} as IBillingConfig;
 	assert.equal(collectBillingReadinessProblems(config, true).length, 0);
 });
 
@@ -3036,9 +3375,15 @@ test('auto-recharge: a refund of an auto-recharge charge claws back the full cre
 });
 
 test('auto-recharge: a rearm=false upsert (duplicate webhook) never resurrects a disabled customer', async () => {
-	const { upsertWalletCustomer, recordRechargeFailure } = await import('../services/wallet-customers');
+	const { upsertWalletCustomer, recordRechargeFailure } = await import(
+		'../services/wallet-customers'
+	);
 	const store = walletEmulator();
-	const key = { subscriberType: 'user' as SubscriberType, subscriberId: USER.subscriberId, provider: 'stub' };
+	const key = {
+		subscriberType: 'user' as SubscriberType,
+		subscriberId: USER.subscriberId,
+		provider: 'stub',
+	};
 	const k = `user|${USER.subscriberId}|stub`;
 	await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_1', rearm: true }, store);
 	await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
@@ -3078,7 +3423,11 @@ test('auto-recharge: an indeterminate charge retries with the SAME key and never
 	await runRecharge(store, config, 50n); // reuses the same key → resolves → credits once
 	assert.equal(keys[0], keys[1], 'the same idempotency key is reused so the provider dedupes');
 	assert.equal(arBal(store), 1000n, 'credited exactly once after reconciliation');
-	assert.equal(store.state.customers.get(k)!.pendingKey, null, 'pending cleared on the definitive outcome');
+	assert.equal(
+		store.state.customers.get(k)!.pendingKey,
+		null,
+		'pending cleared on the definitive outcome',
+	);
 });
 
 test('auto-recharge: a pending key aged past the provider idempotency TTL is NOT reused (no double charge)', async () => {
@@ -3129,7 +3478,9 @@ test('auto-recharge: a pending key aged past the provider idempotency TTL is NOT
 		'a single failed event surfaces the stuck charge',
 	);
 	assert.equal(
-		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.autoRechargeFailed).length,
+		calls.filter(
+			(c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.autoRechargeFailed,
+		).length,
 		1,
 		'the customer/ops is notified',
 	);
@@ -3170,14 +3521,30 @@ test('auto-recharge: a credit failure AFTER capture keeps the pending key so the
 	);
 	const k = `user|${USER.subscriberId}|stub`;
 	await assert.rejects(runRecharge(emu, config, 50n), /transient db error/);
-	assert.equal(emu.state.customers.get(k)!.pendingKey, keys[0], 'pending key retained after credit throw');
-	assert.equal(emu.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n, 0n, 'credit rolled back');
+	assert.equal(
+		emu.state.customers.get(k)!.pendingKey,
+		keys[0],
+		'pending key retained after credit throw',
+	);
+	assert.equal(
+		emu.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n,
+		0n,
+		'credit rolled back',
+	);
 	// Next window: same key reused → same PI → credit finally lands.
 	elapseCooldown(emu);
 	await runRecharge(emu, config, 50n);
 	assert.equal(keys[0], keys[1], 'reused the same idempotency key — no second charge');
-	assert.equal(emu.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n, 1000n, 'credited once');
-	assert.equal(emu.state.customers.get(k)!.pendingKey, null, 'pending cleared only after the credit committed');
+	assert.equal(
+		emu.state.balances.get(`user|${USER.subscriberId}|USD`)?.amount ?? 0n,
+		1000n,
+		'credited once',
+	);
+	assert.equal(
+		emu.state.customers.get(k)!.pendingKey,
+		null,
+		'pending cleared only after the credit committed',
+	);
 });
 
 // ── Phase 3b: invoice + one-time payment-failure normalization ────
@@ -3185,7 +3552,15 @@ test('auto-recharge: a credit failure AFTER capture keeps the pending key so the
 test('normalizeInvoice: paid uses amount_paid, failed uses amount_due, refs collapsed', async () => {
 	const { normalizeInvoice } = await import('../providers/stripe');
 	const paid = normalizeInvoice(
-		{ id: 'in_1', currency: 'usd', amount_paid: 1999, amount_due: 0, payment_intent: 'pi_1', subscription: 'sub_1', customer: { id: 'cus_1' } } as any,
+		{
+			id: 'in_1',
+			currency: 'usd',
+			amount_paid: 1999,
+			amount_due: 0,
+			payment_intent: 'pi_1',
+			subscription: 'sub_1',
+			customer: { id: 'cus_1' },
+		} as any,
 		'paid',
 	);
 	assert.equal(paid.status, 'paid');
@@ -3193,7 +3568,10 @@ test('normalizeInvoice: paid uses amount_paid, failed uses amount_due, refs coll
 	assert.equal(paid.providerTxId, 'pi_1');
 	assert.equal(paid.providerSubscriptionId, 'sub_1');
 	assert.equal(paid.providerCustomerId, 'cus_1');
-	const failed = normalizeInvoice({ id: 'in_2', currency: 'usd', amount_due: 2500, subscription: 'sub_2' } as any, 'payment_failed');
+	const failed = normalizeInvoice(
+		{ id: 'in_2', currency: 'usd', amount_due: 2500, subscription: 'sub_2' } as any,
+		'payment_failed',
+	);
 	assert.equal(failed.status, 'payment_failed');
 	assert.equal(failed.amount, 2500n);
 	assert.equal(failed.providerTxId, null);
@@ -3226,7 +3604,11 @@ test('normalizeInvoice: 2025+ shape — subscription and PaymentIntent moved off
 		} as any,
 		'paid',
 	);
-	assert.equal(n.providerSubscriptionId, 'sub_3', 'null here makes the controller ignore the event');
+	assert.equal(
+		n.providerSubscriptionId,
+		'sub_3',
+		'null here makes the controller ignore the event',
+	);
 	assert.equal(n.providerTxId, 'pi_3', 'null here makes a pack purchase unmatchable');
 	assert.equal(n.amount, 500n);
 });
@@ -3291,9 +3673,22 @@ test('enrichInvoiceRefs: re-reads the PaymentIntent a 2025+ payload cannot carry
 	const { enrichInvoiceRefs } = await import('../providers/stripe');
 	let asked = 0;
 	const out = await enrichInvoiceRefs(
-		{ id: 'in_7', status: 'paid', amount: 500n, currency: 'cad', providerTxId: null, providerSubscriptionId: 'sub_7', providerCustomerId: 'cus_7', metadata: {} } as any,
+		{
+			id: 'in_7',
+			status: 'paid',
+			amount: 500n,
+			currency: 'cad',
+			providerTxId: null,
+			providerSubscriptionId: 'sub_7',
+			providerCustomerId: 'cus_7',
+			metadata: {},
+		} as any,
 		'paid',
-		async (id) => { asked++; assert.equal(id, 'in_7'); return { id, payment_intent: 'pi_7' }; },
+		async (id) => {
+			asked++;
+			assert.equal(id, 'in_7');
+			return { id, payment_intent: 'pi_7' };
+		},
 	);
 	assert.equal(out.providerTxId, 'pi_7');
 	assert.equal(out.providerSubscriptionId, 'sub_7', 'what the payload had is kept');
@@ -3304,9 +3699,21 @@ test('enrichInvoiceRefs: backfills the subscription from the same read, not a se
 	const { enrichInvoiceRefs } = await import('../providers/stripe');
 	let asked = 0;
 	const out = await enrichInvoiceRefs(
-		{ id: 'in_8', status: 'paid', amount: 1n, currency: 'usd', providerTxId: null, providerSubscriptionId: null, providerCustomerId: null, metadata: {} } as any,
+		{
+			id: 'in_8',
+			status: 'paid',
+			amount: 1n,
+			currency: 'usd',
+			providerTxId: null,
+			providerSubscriptionId: null,
+			providerCustomerId: null,
+			metadata: {},
+		} as any,
 		'paid',
-		async (id) => { asked++; return { id, payment_intent: 'pi_8', subscription: 'sub_8' }; },
+		async (id) => {
+			asked++;
+			return { id, payment_intent: 'pi_8', subscription: 'sub_8' };
+		},
 	);
 	assert.equal(out.providerTxId, 'pi_8');
 	assert.equal(out.providerSubscriptionId, 'sub_8');
@@ -3318,8 +3725,20 @@ test('enrichInvoiceRefs: costs nothing when the payload already carried the id',
 	// invoice webhook.
 	const { enrichInvoiceRefs } = await import('../providers/stripe');
 	let asked = 0;
-	const inv = { id: 'in_9', status: 'paid', amount: 1n, currency: 'usd', providerTxId: 'pi_9', providerSubscriptionId: 'sub_9', providerCustomerId: null, metadata: {} } as any;
-	const out = await enrichInvoiceRefs(inv, 'paid', async () => { asked++; return {}; });
+	const inv = {
+		id: 'in_9',
+		status: 'paid',
+		amount: 1n,
+		currency: 'usd',
+		providerTxId: 'pi_9',
+		providerSubscriptionId: 'sub_9',
+		providerCustomerId: null,
+		metadata: {},
+	} as any;
+	const out = await enrichInvoiceRefs(inv, 'paid', async () => {
+		asked++;
+		return {};
+	});
 	assert.equal(asked, 0, 'no provider call when there is nothing to fill');
 	assert.equal(out, inv, 'and the object is returned untouched');
 });
@@ -3328,9 +3747,21 @@ test('enrichInvoiceRefs: a FAILED invoice is never re-read — there is no payme
 	const { enrichInvoiceRefs } = await import('../providers/stripe');
 	let asked = 0;
 	const out = await enrichInvoiceRefs(
-		{ id: 'in_10', status: 'payment_failed', amount: 2500n, currency: 'usd', providerTxId: null, providerSubscriptionId: 'sub_10', providerCustomerId: null, metadata: {} } as any,
+		{
+			id: 'in_10',
+			status: 'payment_failed',
+			amount: 2500n,
+			currency: 'usd',
+			providerTxId: null,
+			providerSubscriptionId: 'sub_10',
+			providerCustomerId: null,
+			metadata: {},
+		} as any,
 		'payment_failed',
-		async () => { asked++; return { id: 'in_10', payment_intent: 'pi_x' }; },
+		async () => {
+			asked++;
+			return { id: 'in_10', payment_intent: 'pi_x' };
+		},
 	);
 	assert.equal(asked, 0);
 	assert.equal(out.providerTxId, null);
@@ -3340,8 +3771,19 @@ test('enrichInvoiceRefs: a failing re-read degrades to the original, never throw
 	// The event is already valid and signature-verified. Throwing here would
 	// surface as a 500, and a 500 makes the provider redeliver forever.
 	const { enrichInvoiceRefs } = await import('../providers/stripe');
-	const inv = { id: 'in_11', status: 'paid', amount: 1n, currency: 'usd', providerTxId: null, providerSubscriptionId: 'sub_11', providerCustomerId: null, metadata: {} } as any;
-	const out = await enrichInvoiceRefs(inv, 'paid', async () => { throw new Error('stripe down'); });
+	const inv = {
+		id: 'in_11',
+		status: 'paid',
+		amount: 1n,
+		currency: 'usd',
+		providerTxId: null,
+		providerSubscriptionId: 'sub_11',
+		providerCustomerId: null,
+		metadata: {},
+	} as any;
+	const out = await enrichInvoiceRefs(inv, 'paid', async () => {
+		throw new Error('stripe down');
+	});
 	assert.equal(out.providerTxId, null);
 	assert.equal(out.providerSubscriptionId, 'sub_11');
 });
@@ -3351,7 +3793,16 @@ test('enrichInvoiceRefs: reads the 2025+ locations on the re-read too', async ()
 	// itself be a 2025+ one, so the re-read cannot assume the legacy shape.
 	const { enrichInvoiceRefs } = await import('../providers/stripe');
 	const out = await enrichInvoiceRefs(
-		{ id: 'in_12', status: 'paid', amount: 1n, currency: 'usd', providerTxId: null, providerSubscriptionId: null, providerCustomerId: null, metadata: {} } as any,
+		{
+			id: 'in_12',
+			status: 'paid',
+			amount: 1n,
+			currency: 'usd',
+			providerTxId: null,
+			providerSubscriptionId: null,
+			providerCustomerId: null,
+			metadata: {},
+		} as any,
 		'paid',
 		async (id) => ({
 			id,
@@ -3364,12 +3815,25 @@ test('enrichInvoiceRefs: reads the 2025+ locations on the re-read too', async ()
 });
 
 test('normalizePaymentFailure: session keeps sessionId; intent is null with a reason', async () => {
-	const { normalizePaymentFailureFromSession, normalizePaymentFailureFromIntent } = await import('../providers/stripe');
-	const s = normalizePaymentFailureFromSession({ id: 'cs_1', payment_intent: 'pi_1', amount_total: 499, currency: 'usd', metadata: { subscriberType: 'user' } } as any);
+	const { normalizePaymentFailureFromSession, normalizePaymentFailureFromIntent } = await import(
+		'../providers/stripe'
+	);
+	const s = normalizePaymentFailureFromSession({
+		id: 'cs_1',
+		payment_intent: 'pi_1',
+		amount_total: 499,
+		currency: 'usd',
+		metadata: { subscriberType: 'user' },
+	} as any);
 	assert.equal(s.sessionId, 'cs_1');
 	assert.equal(s.providerTxId, 'pi_1');
 	assert.equal(s.amount, 499n);
-	const p = normalizePaymentFailureFromIntent({ id: 'pi_9', amount: 500, currency: 'usd', last_payment_error: { message: 'card declined' } } as any);
+	const p = normalizePaymentFailureFromIntent({
+		id: 'pi_9',
+		amount: 500,
+		currency: 'usd',
+		last_payment_error: { message: 'card declined' },
+	} as any);
 	assert.equal(p.sessionId, null);
 	assert.equal(p.providerTxId, 'pi_9');
 	assert.equal(p.reason, 'card declined');
@@ -3383,22 +3847,35 @@ test('payment webhook: a one-time payment failure notifies + emits, or is ignore
 	const failEvent = (meta: Record<string, string>) => ({
 		type: 'checkout.session.async_payment_failed',
 		subscription: null,
-		paymentFailure: { sessionId: 'cs_1', providerTxId: 'pi_1', amount: 499n, currency: 'usd', reason: 'insufficient_funds', metadata: meta },
+		paymentFailure: {
+			sessionId: 'cs_1',
+			providerTxId: 'pi_1',
+			amount: 499n,
+			currency: 'usd',
+			reason: 'insufficient_funds',
+			metadata: meta,
+		},
 	});
 	const { bus, calls } = recordingBus();
 	const cfg = {
-		...webhookConfig(failEvent({ subscriberType: 'user', subscriberId: USER.subscriberId, packId: 'small' })),
+		...webhookConfig(
+			failEvent({ subscriberType: 'user', subscriberId: USER.subscriberId, packId: 'small' }),
+		),
 		resolveRecipient: () => ({ email: 'z@z.com' }),
 	} as IBillingConfig;
 	await paymentWebhookController(store, cfg, bus).handle(webhookCtx());
 	assert.equal(calls.filter((c) => c.type === EVENT_KEYS.paymentFailed).length, 1);
 	assert.equal(
-		calls.filter((c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.paymentFailed).length,
+		calls.filter(
+			(c) => c.type === NOTIFICATION_EVENT && c.payload.type === MESSAGE_KEYS.paymentFailed,
+		).length,
 		1,
 	);
 	// Unattributable (no subscriber metadata) → acked + ignored, nothing emitted.
 	const bare = recordingBus();
-	const res = await paymentWebhookController(store, webhookConfig(failEvent({})), bare.bus).handle(webhookCtx());
+	const res = await paymentWebhookController(store, webhookConfig(failEvent({})), bare.bus).handle(
+		webhookCtx(),
+	);
 	assert.equal(((await res.json()) as any).ignored, 'unattributable-payment-failure');
 	assert.equal(bare.calls.length, 0);
 });
@@ -3417,11 +3894,19 @@ test('payment webhook: an auto-recharge decline (payment_intent.payment_failed) 
 			amount: 500n,
 			currency: 'usd',
 			reason: 'auto-recharge',
-			metadata: { subscriberType: 'workspace', subscriberId: 'ws-1', reason: 'auto-recharge', packId: 'small' },
+			metadata: {
+				subscriberType: 'workspace',
+				subscriberId: 'ws-1',
+				reason: 'auto-recharge',
+				packId: 'small',
+			},
 		},
 	};
 	const { bus, calls } = recordingBus();
-	const cfg = { ...webhookConfig(failEvent), resolveRecipient: () => ({ email: 'z@z.com' }) } as IBillingConfig;
+	const cfg = {
+		...webhookConfig(failEvent),
+		resolveRecipient: () => ({ email: 'z@z.com' }),
+	} as IBillingConfig;
 	const res = await paymentWebhookController(store, cfg, bus).handle(webhookCtx());
 	assert.equal(((await res.json()) as any).ignored, 'auto-recharge-handled-elsewhere');
 	assert.equal(calls.length, 0, 'no second email + no spurious payment.failed event');
@@ -3464,12 +3949,27 @@ test('isWithinDunningGrace: past_due within/without the window, and non-past_due
 	const periodEnd = new Date('2026-09-01T00:00:00Z');
 	const within = new Date('2026-09-03T00:00:00Z'); // +2d, grace 3
 	const after = new Date('2026-09-05T00:00:00Z'); // +4d, grace 3
-	assert.equal(isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 3, within), true);
-	assert.equal(isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 3, after), false);
+	assert.equal(
+		isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 3, within),
+		true,
+	);
+	assert.equal(
+		isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 3, after),
+		false,
+	);
 	// Not past_due, no grace configured, or no period end → never in grace.
-	assert.equal(isWithinDunningGrace({ status: 'active', currentPeriodEnd: periodEnd }, 3, within), false);
-	assert.equal(isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 0, within), false);
-	assert.equal(isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: null }, 3, within), false);
+	assert.equal(
+		isWithinDunningGrace({ status: 'active', currentPeriodEnd: periodEnd }, 3, within),
+		false,
+	);
+	assert.equal(
+		isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: periodEnd }, 0, within),
+		false,
+	);
+	assert.equal(
+		isWithinDunningGrace({ status: 'past_due', currentPeriodEnd: null }, 3, within),
+		false,
+	);
 });
 
 test('requirePlan: dunning grace keeps a past_due subscriber authorized within the window', async () => {
@@ -3513,17 +4013,32 @@ test('dunning grace: a past_due-in-grace subscriber keeps access but gets NO new
 	assert.equal(nextCalled, true);
 	// Access preserved (grace), but NO grant issued while payment is failing.
 	assert.equal((ctx.meta['billing'] as any).active, true, 'grace preserves access');
-	assert.equal(emu.state.ledger.filter((l) => l.type === 'grant').length, 0, 'no new credit during dunning');
+	assert.equal(
+		emu.state.ledger.filter((l) => l.type === 'grant').length,
+		0,
+		'no new credit during dunning',
+	);
 });
 
 test('consented card: a rearm purchase with no resolvable PM does not wipe the stored card', async () => {
 	const { upsertWalletCustomer } = await import('../services/wallet-customers');
 	const store = walletEmulator();
-	const key = { subscriberType: 'user' as SubscriberType, subscriberId: USER.subscriberId, provider: 'stub' };
+	const key = {
+		subscriberType: 'user' as SubscriberType,
+		subscriberId: USER.subscriberId,
+		provider: 'stub',
+	};
 	const k = `user|${USER.subscriberId}|stub`;
-	await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_1', rearm: true, paymentMethodId: 'pm_1' }, store);
+	await upsertWalletCustomer(
+		{ ...key, providerCustomerId: 'cus_1', rearm: true, paymentMethodId: 'pm_1' },
+		store,
+	);
 	assert.equal(store.state.customers.get(k)!.paymentMethodId, 'pm_1');
 	// A later genuine purchase whose PM resolution transiently failed (no pm passed).
 	await upsertWalletCustomer({ ...key, providerCustomerId: 'cus_1', rearm: true }, store);
-	assert.equal(store.state.customers.get(k)!.paymentMethodId, 'pm_1', 'stored card retained, not nulled');
+	assert.equal(
+		store.state.customers.get(k)!.paymentMethodId,
+		'pm_1',
+		'stored card retained, not nulled',
+	);
 });

@@ -1,3 +1,4 @@
+import { normalizeRequestPath } from '@fonderie/core';
 import type { IFonderieContext, Middleware } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -19,7 +20,9 @@ export function adminLog(store: IStoreAdapter, route: string, module: string): M
 					? `token:${ctx.meta['adminTokenName']}`
 					: DEFAULT_ACTOR),
 			method: ctx.request.method,
-			path: new URL(ctx.request.url).pathname,
+			// Normalized, so '/x' and '/x/' are one row for one route — the same
+			// path the router matched and `route` below records the pattern of.
+			path: normalizeRequestPath(new URL(ctx.request.url).pathname),
 			route,
 			module,
 			status: res.status,

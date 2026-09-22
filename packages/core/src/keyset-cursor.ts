@@ -13,7 +13,8 @@ export function encodeKeysetCursor(createdAt: string, id: string): string {
 // millisecond truncation.
 const CURSOR_TS_RE =
 	/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[T ]([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,6})?(Z|[+-]\d{2}(:?\d{2})?)?$/;
-const CURSOR_ID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const CURSOR_ID_RE =
+	/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export function decodeKeysetCursor(cursor: string): { createdAt: string; id: string } | null {
 	if (cursor.length > 256) return null;

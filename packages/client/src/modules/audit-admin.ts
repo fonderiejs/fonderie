@@ -1,4 +1,5 @@
 import { HttpClient } from '../http';
+import { normalizeMountPath } from '../path';
 import type { IApiResponse, IAuditPageResult } from '../types';
 
 export interface IAuditAdminClientOptions {
@@ -31,7 +32,7 @@ export class AuditAdminClient {
 	constructor(opts: IAuditAdminClientOptions) {
 		this.http = new HttpClient(opts.baseUrl);
 		this.adminToken = opts.adminToken;
-		this.prefix = (opts.prefix ?? '/_admin').replace(/\/+$/, '');
+		this.prefix = normalizeMountPath(opts.prefix ?? '/_admin');
 		this.actorHeaders = opts.actor ? { 'X-Actor': opts.actor } : undefined;
 	}
 

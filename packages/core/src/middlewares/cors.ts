@@ -98,8 +98,7 @@ export function resolveCorsOptions(options: CorsOptions = {}): ResolvedCorsOptio
 	// a clear message, not per-request as an opaque browser error. Reflecting
 	// every origin stays possible, but only as an explicit opt-in.
 	const allowsWildcard =
-		resolved.origin === '*' ||
-		(Array.isArray(resolved.origin) && resolved.origin.includes('*'));
+		resolved.origin === '*' || (Array.isArray(resolved.origin) && resolved.origin.includes('*'));
 	if (resolved.credentials && allowsWildcard) {
 		throw new Error(
 			"withCors: credentials:true cannot be combined with origin:'*' (browsers reject it). " +

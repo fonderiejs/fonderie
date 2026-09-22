@@ -11,10 +11,7 @@
 // read one back.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-	checkSubscriptionDrift,
-	describeSubscriptionDrift,
-} from '../services/subscription-drift';
+import { checkSubscriptionDrift, describeSubscriptionDrift } from '../services/subscription-drift';
 
 const END = '2026-10-01T00:00:00.000Z';
 
@@ -103,7 +100,11 @@ test('under-granting is reported BEFORE over-granting', async () => {
 test('a subscription the provider does not have at all is reported', async () => {
 	const r = await checkSubscriptionDrift(providerWith({}), storeWith([ourRow()]));
 	assert.equal(r.drifted[0]!.theirs, null);
-	assert.equal(r.drifted[0]!.impact, 'over-granting', 'we grant access for a subscription that is gone');
+	assert.equal(
+		r.drifted[0]!.impact,
+		'over-granting',
+		'we grant access for a subscription that is gone',
+	);
 	assert.match(describeSubscriptionDrift(r)[0]!, /NO such subscription/);
 });
 

@@ -101,7 +101,11 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 		async setPreferences(ctx: IFonderieContext): Promise<Response> {
 			const subscriber = resolveSubscriber(ctx);
 			if (!subscriber) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
 			}
 			const body = ctx.meta['body'] as { spendPurchased: boolean };
 			const currency = currencyOf(ctx);
@@ -279,12 +283,20 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 			const body = ctx.meta['body'] as { packId: string; idempotencyKey: string };
 			const subscriber = resolveSubscriber(ctx);
 			if (!subscriber) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'SUBSCRIBER_REQUIRED', 'Subscriber context required');
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'SUBSCRIBER_REQUIRED',
+					'Subscriber context required',
+				);
 			}
 
 			const pack = findCreditPack(body.packId, config);
 			if (!pack) {
-				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', `Unknown credit pack: ${body.packId}`);
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PARAMETER',
+					`Unknown credit pack: ${body.packId}`,
+				);
 			}
 
 			const current = await subscriptions.get(subscriber.type, subscriber.id);
@@ -337,7 +349,11 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 						{ status: 'processing' },
 					);
 				default:
-					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', `Unknown credit pack: ${body.packId}`);
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_PARAMETER',
+						`Unknown credit pack: ${body.packId}`,
+					);
 			}
 		},
 
@@ -369,14 +385,15 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 				// Publish only on a real credit — a replayed idempotency key
 				// returns duplicate:true and must not re-emit.
 				if (!result.duplicate) {
-					await background(bus
-						?.emit(EVENT_KEYS.walletCredited, {
+					await background(
+						bus?.emit(EVENT_KEYS.walletCredited, {
 							...subscriberEventFields(body.subscriberType, body.subscriberId),
 							currency,
 							credits: body.amount.toString(),
 							balanceAfter: result.balance.toString(),
 							source: 'manual-grant',
-						}));
+						}),
+					);
 				}
 
 				return setApiResponse(HTTP.OK, 'WALLET_GRANTED', 'Credits granted.', {

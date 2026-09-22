@@ -50,7 +50,10 @@ test('Vary: Origin is set whenever the value depends on the request', () => {
 		corsHeadersFor(resolveCorsOptions({ origin: o as string }), ORIGIN)['Vary'];
 	assert.equal(vary(ORIGIN), 'Origin', 'single origin still varies — it can be omitted');
 	assert.equal(vary([ORIGIN]), 'Origin');
-	assert.equal(vary(() => true), 'Origin');
+	assert.equal(
+		vary(() => true),
+		'Origin',
+	);
 	assert.equal(vary('*'), undefined, "only '*' is request-independent");
 });
 

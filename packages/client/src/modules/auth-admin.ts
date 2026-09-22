@@ -1,4 +1,5 @@
 import { HttpClient } from '../http';
+import { normalizeMountPath } from '../path';
 import type { IAdminUserDTO, IApiResponse, ILoginHistoryPageResult, ISessionDTO } from '../types';
 
 export interface IAuthAdminClientOptions {
@@ -26,7 +27,7 @@ export class AuthAdminClient {
 	constructor(opts: IAuthAdminClientOptions) {
 		this.http = new HttpClient(opts.baseUrl);
 		this.adminToken = opts.adminToken;
-		this.prefix = (opts.prefix ?? '/_admin').replace(/\/+$/, '');
+		this.prefix = normalizeMountPath(opts.prefix ?? '/_admin');
 		this.actorHeaders = opts.actor ? { 'X-Actor': opts.actor } : undefined;
 	}
 

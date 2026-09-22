@@ -44,7 +44,11 @@ export function validateAdminToken(
 	}
 	if (problem === 'placeholder') {
 		return [
-			{ module: opts.module, severity: 'error', message: 'adminToken looks like a placeholder or dev-default value' },
+			{
+				module: opts.module,
+				severity: 'error',
+				message: 'adminToken looks like a placeholder or dev-default value',
+			},
 		];
 	}
 	return [];

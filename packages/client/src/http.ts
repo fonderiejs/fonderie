@@ -150,7 +150,8 @@ export class HttpClient {
 
 		// 204 No Content (e.g. some DELETE routes) has no body to parse.
 		if (res.status === 204) {
-			if (!res.ok) throw new FonderieApiError('unknown', res.statusText, res.status, undefined, rid);
+			if (!res.ok)
+				throw new FonderieApiError('unknown', res.statusText, res.status, undefined, rid);
 			return undefined as T;
 		}
 

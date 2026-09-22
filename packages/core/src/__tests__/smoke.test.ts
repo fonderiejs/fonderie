@@ -71,15 +71,22 @@ test('security headers: HSTS emitted when the proxy reports https', async () => 
 // ── onResponse contract-adapter hook ─────────────────────────────
 
 test('onResponse: transforms the body, preserving status', async () => {
-	const app = new FonderieApp(defineConfig({
-		db: { url: 'postgres://localhost/test' },
-		onResponse: (body, { status }) => ({ wrapped: body, status }),
-	}));
-	app.addRoute('GET', '/x', async () => Response.json({ reason: 'OK', explanation: '', result: { a: 1 } }, { status: 201 }));
+	const app = new FonderieApp(
+		defineConfig({
+			db: { url: 'postgres://localhost/test' },
+			onResponse: (body, { status }) => ({ wrapped: body, status }),
+		}),
+	);
+	app.addRoute('GET', '/x', async () =>
+		Response.json({ reason: 'OK', explanation: '', result: { a: 1 } }, { status: 201 }),
+	);
 	await app.boot();
 	const res = await app.handle(makeRequest('GET', '/x'));
 	assert.equal(res.status, 201);
-	assert.deepEqual(await res.json(), { wrapped: { reason: 'OK', explanation: '', result: { a: 1 } }, status: 201 });
+	assert.deepEqual(await res.json(), {
+		wrapped: { reason: 'OK', explanation: '', result: { a: 1 } },
+		status: 201,
+	});
 });
 
 test('onResponse: flattens the Fonderie envelope to a client-style shape', async () => {
@@ -88,35 +95,69 @@ test('onResponse: flattens the Fonderie envelope to a client-style shape', async
 	const flatten = (body: any, { status }: { status: number }) => {
 		if (status >= 400) return { error: body.explanation };
 		const r = body.result ?? {};
-		if (r.tokens) return { user: r.user, accessToken: r.tokens.access, refreshToken: r.tokens.refresh };
+		if (r.tokens)
+			return { user: r.user, accessToken: r.tokens.access, refreshToken: r.tokens.refresh };
 		return r;
 	};
-	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, onResponse: flatten }));
+	const app = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, onResponse: flatten }),
+	);
 	app.addRoute('POST', '/auth/login', async () =>
-		Response.json({ reason: 'LOGGED_IN', explanation: 'ok', result: { tokens: { access: 'AAA', refresh: 'RRR' }, user: { id: 'u1', email: 'a@b.com' } } }, { status: 200 }),
+		Response.json(
+			{
+				reason: 'LOGGED_IN',
+				explanation: 'ok',
+				result: { tokens: { access: 'AAA', refresh: 'RRR' }, user: { id: 'u1', email: 'a@b.com' } },
+			},
+			{ status: 200 },
+		),
 	);
 	await app.boot();
 	const res = await app.handle(makeRequest('POST', '/auth/login'));
-	assert.deepEqual(await res.json(), { user: { id: 'u1', email: 'a@b.com' }, accessToken: 'AAA', refreshToken: 'RRR' });
+	assert.deepEqual(await res.json(), {
+		user: { id: 'u1', email: 'a@b.com' },
+		accessToken: 'AAA',
+		refreshToken: 'RRR',
+	});
 });
 
 test('onResponse: undefined return leaves the response untouched', async () => {
-	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, onResponse: () => undefined }));
-	app.addRoute('GET', '/y', async () => Response.json({ reason: 'OK', explanation: '' }, { status: 200 }));
+	const app = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, onResponse: () => undefined }),
+	);
+	app.addRoute('GET', '/y', async () =>
+		Response.json({ reason: 'OK', explanation: '' }, { status: 200 }),
+	);
 	await app.boot();
 	const res = await app.handle(makeRequest('GET', '/y'));
 	assert.deepEqual(await res.json(), { reason: 'OK', explanation: '' });
 });
 
 test('onResponse: preserves Set-Cookie and skips non-JSON', async () => {
-	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, onResponse: (b: any) => b.result ?? b }));
-	app.addRoute('GET', '/c', async () =>
-		Response.json({ reason: 'OK', explanation: '', result: { ok: true } }, { status: 200, headers: { 'set-cookie': 'access_token=AAA; HttpOnly' } }),
+	const app = new FonderieApp(
+		defineConfig({
+			db: { url: 'postgres://localhost/test' },
+			onResponse: (b: any) => b.result ?? b,
+		}),
 	);
-	app.addRoute('GET', '/text', async () => new Response('hello', { status: 200, headers: { 'content-type': 'text/plain' } }));
+	app.addRoute('GET', '/c', async () =>
+		Response.json(
+			{ reason: 'OK', explanation: '', result: { ok: true } },
+			{ status: 200, headers: { 'set-cookie': 'access_token=AAA; HttpOnly' } },
+		),
+	);
+	app.addRoute(
+		'GET',
+		'/text',
+		async () => new Response('hello', { status: 200, headers: { 'content-type': 'text/plain' } }),
+	);
 	await app.boot();
 	const jsonRes = await app.handle(makeRequest('GET', '/c'));
-	assert.equal(jsonRes.headers.get('set-cookie'), 'access_token=AAA; HttpOnly', 'cookie preserved through transform');
+	assert.equal(
+		jsonRes.headers.get('set-cookie'),
+		'access_token=AAA; HttpOnly',
+		'cookie preserved through transform',
+	);
 	assert.deepEqual(await jsonRes.json(), { ok: true });
 	const textRes = await app.handle(makeRequest('GET', '/text'));
 	assert.equal(await textRes.text(), 'hello', 'non-JSON passes through untouched');
@@ -309,7 +350,7 @@ test('body parser: active by default — no .use(withBody) required', async () =
 
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('POST', '/ping', { hello: 'world' }));
+	const res = await app.handle(makeRequest('POST', '/ping', { hello: 'world' }));
 	const json = (await res.json()) as { got: { hello: string } };
 
 	assert.equal(json.got.hello, 'world');
@@ -322,7 +363,7 @@ test('body parser: GET requests leave meta.body undefined', async () => {
 
 	await app.boot();
 
-	const res  = await app.handle(makeRequest('GET', '/check'));
+	const res = await app.handle(makeRequest('GET', '/check'));
 	const json = (await res.json()) as { body: null };
 
 	assert.equal(json.body, null);
@@ -511,7 +552,11 @@ test('resolveClientIp: trustProxy=0 uses the socket, ignoring X-Forwarded-For', 
 
 test('resolveClientIp: trustProxy=N takes the Nth-from-right XFF entry', () => {
 	// client, proxy2, proxy1(trusted) → with 1 trusted hop, client is the last entry
-	const ip = resolveClientIp('10.0.0.1', new Headers({ 'x-forwarded-for': 'spoof, 198.51.100.9' }), 1);
+	const ip = resolveClientIp(
+		'10.0.0.1',
+		new Headers({ 'x-forwarded-for': 'spoof, 198.51.100.9' }),
+		1,
+	);
 	assert.equal(ip, '198.51.100.9');
 });
 
@@ -525,7 +570,15 @@ test('checkProxyConfig: warns for private/loopback sockets across all ranges', (
 	const orig = console.warn;
 	console.warn = (m: string) => void warnings.push(m);
 	try {
-		for (const socket of ['127.0.0.1', '::1', '10.1.2.3', '192.168.0.5', '169.254.1.1', '172.16.9.9', 'fd00::1']) {
+		for (const socket of [
+			'127.0.0.1',
+			'::1',
+			'10.1.2.3',
+			'192.168.0.5',
+			'169.254.1.1',
+			'172.16.9.9',
+			'fd00::1',
+		]) {
 			_resetProxyWarning();
 			warnings.length = 0;
 			checkProxyConfig(socket, new Headers({ 'x-forwarded-for': '203.0.113.1' }), 0);
@@ -569,10 +622,7 @@ test('checkProductionReadiness: aggregates module problems; ok=false on any erro
 	const report = app.checkProductionReadiness();
 	assert.equal(report.ok, false); // mod-a error
 	assert.equal(report.problems.length, 2);
-	assert.deepEqual(
-		report.problems.map((p) => p.module).sort(),
-		['mod-a', 'mod-b'],
-	);
+	assert.deepEqual(report.problems.map((p) => p.module).sort(), ['mod-a', 'mod-b']);
 });
 
 test('checkProductionReadiness: ok=true when only warnings (or none)', () => {
@@ -599,23 +649,29 @@ test('healthz: liveness returns 200 ok', async () => {
 });
 
 test('readyz: 200 when readiness ok and probe truthy', async () => {
-	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, readyProbe: () => true })).boot();
+	const app = await new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, readyProbe: () => true }),
+	).boot();
 	const res = await app.handle(makeRequest('GET', '/readyz'));
 	assert.equal(res.status, 200);
-	assert.equal((await res.json() as any).status, 'ready');
+	assert.equal(((await res.json()) as any).status, 'ready');
 });
 
 test('readyz: 503 when the dependency probe fails', async () => {
-	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, readyProbe: () => false })).boot();
+	const app = await new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, readyProbe: () => false }),
+	).boot();
 	const res = await app.handle(makeRequest('GET', '/readyz'));
 	assert.equal(res.status, 503);
-	const body = await res.json() as any;
+	const body = (await res.json()) as any;
 	assert.equal(body.status, 'not_ready');
 	assert.equal(body.dependencies, false);
 });
 
 test('health routes: disabled via healthChecks:false', async () => {
-	const app = await new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, healthChecks: false })).boot();
+	const app = await new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, healthChecks: false }),
+	).boot();
 	const res = await app.handle(makeRequest('GET', '/healthz'));
 	assert.equal(res.status, 404);
 });
@@ -624,7 +680,9 @@ test('health routes: disabled via healthChecks:false', async () => {
 const insecureModule: IFonderieModule = {
 	name: 'test-insecure',
 	install() {},
-	checkReadiness: () => [{ module: 'test-insecure', severity: 'error' as const, message: 'weak secret' }],
+	checkReadiness: () => [
+		{ module: 'test-insecure', severity: 'error' as const, message: 'weak secret' },
+	],
 };
 
 test('boot gate: throws in production on an error-severity readiness problem', async () => {
@@ -634,7 +692,8 @@ test('boot gate: throws in production on an error-severity readiness problem', a
 		const app = new FonderieApp(config).register(insecureModule);
 		await assert.rejects(() => app.boot(), /refusing to boot in production.*weak secret/s);
 	} finally {
-		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
 	}
 });
 
@@ -644,7 +703,8 @@ test('boot gate: no-op outside production', async () => {
 	try {
 		await assert.doesNotReject(() => new FonderieApp(config).register(insecureModule).boot());
 	} finally {
-		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
 	}
 });
 
@@ -652,10 +712,14 @@ test('boot gate: skipProductionReadinessGate overrides in production', async () 
 	const prev = process.env['NODE_ENV'];
 	process.env['NODE_ENV'] = 'production';
 	try {
-		const cfg = defineConfig({ db: { url: 'postgres://localhost/test' }, skipProductionReadinessGate: true });
+		const cfg = defineConfig({
+			db: { url: 'postgres://localhost/test' },
+			skipProductionReadinessGate: true,
+		});
 		await assert.doesNotReject(() => new FonderieApp(cfg).register(insecureModule).boot());
 	} finally {
-		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
 	}
 });
 
@@ -673,7 +737,9 @@ test('securityReport: returns a control-posture snapshot', async () => {
 
 // ── B2: metrics endpoint ────────────────────────────────────────────────
 test('metrics: /metrics counts requests when enabled', async () => {
-	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' }, metrics: true }));
+	const app = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, metrics: true }),
+	);
 	app.addRoute('GET', '/ping', async () => Response.json({ ok: true }));
 	await app.boot();
 	await app.handle(makeRequest('GET', '/ping'));
@@ -744,10 +810,13 @@ test('listen(): TRACE and absolute-form targets get 400, server survives', async
 		assert.equal(traceStatus, 400, 'TRACE answered, not crashed');
 		// Absolute-form request-target: makes the synthesized URL invalid.
 		const absStatus = await new Promise<number>((resolve, reject) => {
-			const r = httpRequest({ host: '127.0.0.1', port, method: 'GET', path: 'http://evil.example/' }, (res) => {
-				res.resume();
-				resolve(res.statusCode ?? 0);
-			});
+			const r = httpRequest(
+				{ host: '127.0.0.1', port, method: 'GET', path: 'http://evil.example/' },
+				(res) => {
+					res.resume();
+					resolve(res.statusCode ?? 0);
+				},
+			);
 			r.on('error', reject);
 			r.end();
 		});
@@ -773,7 +842,11 @@ test('/readyz: problems list omitted in production unless opted in', async () =>
 			name: 'leaky',
 			install() {},
 			checkReadiness: () => [
-				{ module: 'leaky', severity: 'warning' as const, message: 'adminToken looks like a placeholder' },
+				{
+					module: 'leaky',
+					severity: 'warning' as const,
+					message: 'adminToken looks like a placeholder',
+				},
 			],
 		});
 		await app.boot();
@@ -794,14 +867,15 @@ test('defaultErrorHandler: leaks message in development, not in staging/prod', a
 	try {
 		process.env['NODE_ENV'] = 'development';
 		let res = defaultErrorHandler(new Error('secret conn string'));
-		assert.match((await res.json() as any).explanation, /secret conn string/);
+		assert.match(((await res.json()) as any).explanation, /secret conn string/);
 		for (const env of ['staging', 'production', 'anything']) {
 			process.env['NODE_ENV'] = env;
 			res = defaultErrorHandler(new Error('secret conn string'));
-			assert.equal((await res.json() as any).explanation, 'Internal server error', `env=${env}`);
+			assert.equal(((await res.json()) as any).explanation, 'Internal server error', `env=${env}`);
 		}
 	} finally {
-		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+		if (prev === undefined) delete process.env['NODE_ENV'];
+		else process.env['NODE_ENV'] = prev;
 	}
 });
 
@@ -831,7 +905,10 @@ test('bodyParser: 413 for a declared-oversize multipart body it does not parse',
 	const res = await app.handle(
 		new Request('http://localhost/upload', {
 			method: 'POST',
-			headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': String(1024 * 1024) },
+			headers: {
+				'content-type': 'multipart/form-data; boundary=x',
+				'content-length': String(1024 * 1024),
+			},
 			body: 'x'.repeat(2048),
 		}),
 	);
@@ -850,5 +927,41 @@ test('adminDescriptions: collects describeAdmin() from describing modules, sorte
 		{ module: 'm-describes', description: {} },
 		{ module: 'z-describes', description: { routes: [route] } },
 	]);
-	assert.deepEqual(app.securityReport().modules.map((m) => m.name), ['a-silent', 'm-describes', 'z-describes']);
+	assert.deepEqual(
+		app.securityReport().modules.map((m) => m.name),
+		['a-silent', 'm-describes', 'z-describes'],
+	);
+});
+
+// ── normalizeRequestPath: one definition of what a request path is ──────
+test('normalizeRequestPath: strips query and one trailing slash, keeps root, and is NOT a config normalizer', async () => {
+	const { normalizeRequestPath } = await import('../index');
+	assert.equal(normalizeRequestPath('/_admin/ui'), '/_admin/ui');
+	assert.equal(normalizeRequestPath('/_admin/ui/'), '/_admin/ui');
+	assert.equal(normalizeRequestPath('/_admin/ui?x=1'), '/_admin/ui');
+	assert.equal(normalizeRequestPath('/_admin/ui/?x=1'), '/_admin/ui');
+	assert.equal(normalizeRequestPath('/'), '/');
+
+	// The router matches on exactly this, so a handler reasoning about its own
+	// path agrees with routing by construction rather than by a second copy.
+	const app = new FonderieApp(config);
+	app.addRoute('GET', '/thing', async (ctx) =>
+		Response.json({ here: normalizeRequestPath(new URL(ctx.request.url).pathname) }),
+	);
+	await app.boot();
+	for (const url of ['http://x/thing', 'http://x/thing/', 'http://x/thing?a=b']) {
+		const res = await app.handle(new Request(url));
+		assert.equal(res.status, 200, url);
+		assert.deepEqual(await res.json(), { here: '/thing' }, url);
+	}
+
+	// Why basePath does NOT use it: an unset basePath is '', and '' must stay ''.
+	assert.equal(
+		normalizeRequestPath(''),
+		'/',
+		'empty is a request for the root, not an empty prefix',
+	);
+	const noBase = await new FonderieApp(defineConfig({ db: { url: 'postgres://x' } })).boot();
+	noBase.addRoute('GET', '/unprefixed', async () => Response.json({ ok: true }));
+	assert.equal((await noBase.handle(new Request('http://x/unprefixed'))).status, 200);
 });

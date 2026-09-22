@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import type { IFonderieApp, IFonderieModule, IReadinessProblem, Middleware } from '@fonderie/core';
-import { HTTP, setApiResponse } from '@fonderie/core';
+import { HTTP, normalizeMountPath, normalizeRequestPath, setApiResponse } from '@fonderie/core';
 import { validate, validateAdminToken } from '@fonderie/core/middlewares';
 
 import { attention, collectChecks, runDoctor } from './doctor';
@@ -14,6 +15,7 @@ import {
 	revokeToken,
 	scopeFor,
 } from './tokens';
+import { uiHtml } from './ui/html';
 import type { AdminScope } from './types';
 import type { IAdminOptions } from './types';
 
@@ -29,7 +31,7 @@ export class AdminModule implements IFonderieModule {
 	readonly path: string;
 
 	constructor(private options: IAdminOptions = {}) {
-		this.path = (options.path ?? DEFAULT_ADMIN_PATH).replace(/\/+$/, '');
+		this.path = normalizeMountPath(options.path ?? DEFAULT_ADMIN_PATH);
 	}
 
 	install(app: IFonderieApp): void {
@@ -185,6 +187,56 @@ export class AdminModule implements IFonderieModule {
 				: [guard, ...handlers];
 			app.addRoute(method, path, ...chain);
 		};
+
+		// The served dashboard. Deliberately OUTSIDE the guard: a browser
+		// navigating to a page cannot send an Authorization header, and neither
+		// file carries data — the HTML is a shell and the script is the same
+		// bundle npm serves. The page asks for a token and sends it itself, so
+		// every request that reads anything is guarded and logged as usual.
+		// These two are not logged: they carry no token to attribute.
+		if (this.options.ui) {
+			const scriptPath = at('/_admin/ui/app.js');
+			// Read on first request, not at boot: the bundle sits beside the BUILT
+			// module (tsup names its IIFE output <entry>.global.js), so running from
+			// source — tests, a linked checkout — has none, and that must not stop
+			// an app from booting over a dashboard it may never open.
+			let js: string | null = null;
+			const loadJs = (): string | null => {
+				if (js === null) {
+					try {
+						js = readFileSync(new URL('./ui/app.global.js', import.meta.url), 'utf8');
+					} catch {
+						js = '';
+					}
+				}
+				return js || null;
+			};
+			app.addRoute('GET', at('/_admin/ui'), async (ctx) => {
+				// From the request, not from config: this is the only place that
+				// knows basePath, a moved path AND a trailing slash at once. The
+				// router's own normalizer, so the href and the routing cannot
+				// disagree about what this path is.
+				const here = normalizeRequestPath(new URL(ctx.request.url).pathname);
+				return new Response(uiHtml(`${here}/app.js`), {
+					headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+				});
+			});
+			app.addRoute('GET', scriptPath, async () => {
+				const body = loadJs();
+				return body
+					? new Response(body, {
+							headers: {
+								'content-type': 'text/javascript; charset=utf-8',
+								'cache-control': 'public, max-age=300',
+							},
+						})
+					: setApiResponse(
+							HTTP.SERVICE_UNAVAILABLE,
+							'UI_NOT_BUILT',
+							'This copy of @fonderie/admin has no built dashboard (dist/ui). Install the published package, or run its build.',
+						);
+			});
+		}
 
 		for (const [method, path, handler] of own) mount(this.name, method, at(path), [handler]);
 		for (const [method, path, handlers] of rootOnly)

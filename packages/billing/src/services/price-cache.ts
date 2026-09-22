@@ -67,7 +67,10 @@ export class PriceCache {
 		for (const p of prices) this.byId.set(p.priceId, { price: p, at: now });
 	}
 
-	private single(key: string, run: () => Promise<IResolvedPrice | null>): Promise<IResolvedPrice | null> {
+	private single(
+		key: string,
+		run: () => Promise<IResolvedPrice | null>,
+	): Promise<IResolvedPrice | null> {
 		const existing = this.inflight.get(key);
 		if (existing) return existing;
 		const p = run().finally(() => this.inflight.delete(key));

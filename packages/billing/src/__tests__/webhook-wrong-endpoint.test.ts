@@ -18,8 +18,14 @@ import { PAYMENT_WEBHOOK_EVENTS, SUBSCRIPTION_WEBHOOK_EVENTS } from '../webhook-
 function captureWarn(fn: () => void): string[] {
 	const out: string[] = [];
 	const original = console.warn;
-	console.warn = (...args: unknown[]) => { out.push(args.join(' ')); };
-	try { fn(); } finally { console.warn = original; }
+	console.warn = (...args: unknown[]) => {
+		out.push(args.join(' '));
+	};
+	try {
+		fn();
+	} finally {
+		console.warn = original;
+	}
 	return out;
 }
 
@@ -60,7 +66,11 @@ test('warns once per route+type, not once per type', () => {
 	const lines = captureWarn(() => {
 		warnOnUnconsumedEvent('customer.created', 'POST /billing/webhook', SUBSCRIPTION_WEBHOOK_EVENTS);
 		warnOnUnconsumedEvent('customer.created', 'POST /billing/webhook', SUBSCRIPTION_WEBHOOK_EVENTS);
-		warnOnUnconsumedEvent('customer.created', 'POST /billing/webhook/payment', PAYMENT_WEBHOOK_EVENTS);
+		warnOnUnconsumedEvent(
+			'customer.created',
+			'POST /billing/webhook/payment',
+			PAYMENT_WEBHOOK_EVENTS,
+		);
 	});
 	assert.equal(lines.length, 2, 'deduped per route+type, so each endpoint reports once');
 });

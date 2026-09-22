@@ -1198,7 +1198,7 @@
         {
           "method": "DELETE",
           "path": "/media/:id",
-          "mw": "requireAuth → async (ctx) => { const id = ctx.meta.params?.['id']; if (!id || !UUID_RE.test(id)) { return setApiResponse(HTTP.NOT_FOUND, 'ASSET_NOT_FOUND', 'No such asset.'); } const asset = await assets.get(id); if (!asset) return setApiResponse(HTTP.NOT_FOUND, 'ASSET_NOT_FOUND', 'No such asset.'); if (asset.createdBy !== ctx.user!.id) { return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'You can only delete assets you uploaded.'); } await config.provider.delete(asset.storageRef); await assets.delete(id); return setApiResponse(HTTP.OK, 'ASSET_DELETED', 'Asset deleted.', { id }); }"
+          "mw": "requireAuth → async (ctx) => { const id = ctx.meta.params?.['id']; if (!id || !UUID_RE.test(id)) { return setApiResponse(HTTP.NOT_FOUND, 'ASSET_NOT_FOUND', 'No such asset.'); } const asset = await assets.get(id); if (!asset) return setApiResponse(HTTP.NOT_FOUND, 'ASSET_NOT_FOUND', 'No such asset.'); if (asset.createdBy !== ctx.user!.id) { return setApiResponse( HTTP.FORBIDDEN, 'FORBIDDEN', 'You can only delete assets you uploaded.', ); } await config.provider.delete(asset.storageRef); await assets.delete(id); return setApiResponse(HTTP.OK, 'ASSET_DELETED', 'Asset deleted.', { id }); }"
         }
       ],
       "secures": [

@@ -158,8 +158,17 @@ export async function purchasePackWithSavedCard(args: {
 	precision: number;
 	idempotencyKey: string;
 }): Promise<IPurchaseOutcome> {
-	const { store, config, bus, subscriberType, subscriberId, packId, creditCurrency, precision, idempotencyKey } =
-		args;
+	const {
+		store,
+		config,
+		bus,
+		subscriberType,
+		subscriberId,
+		packId,
+		creditCurrency,
+		precision,
+		idempotencyKey,
+	} = args;
 
 	const pack = findCreditPack(packId, config);
 	if (!pack) return { status: 'invalid_pack' };
@@ -199,8 +208,11 @@ export async function purchasePackWithSavedCard(args: {
 	// Captured inside the branch, where the return type is known. Narrowing the
 	// union afterwards with `in` does not work: the two charge methods are not
 	// discriminated, so TypeScript widens the property to unknown.
-	let invoiceRef: { invoiceNumber: string | null; invoiceUrl: string | null; invoicePdf: string | null } | null =
-		null;
+	let invoiceRef: {
+		invoiceNumber: string | null;
+		invoiceUrl: string | null;
+		invoicePdf: string | null;
+	} | null = null;
 	const charge = canInvoice
 		? await config.provider.chargeViaInvoice!({
 				customerId: customer.providerCustomerId,

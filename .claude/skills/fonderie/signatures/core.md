@@ -205,6 +205,10 @@ function defineConfig(config: FonderieConfig): FonderieConfig
 
 function compose(middlewares: Middleware[]): (ctx: IFonderieContext, fallback: () => Promise<Response>) => Promise<Response>
 
+function normalizeMountPath(path: string): string
+
+function normalizeRequestPath(path: string): string
+
 interface FonderieConfig {
     basePath?: string;
     db: {

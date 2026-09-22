@@ -92,7 +92,9 @@ export interface IMfaRequiredResult {
 	mfaToken: string;
 }
 
-export function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult {
+export function isMfaRequired(
+	result: ILoginResult | IMfaRequiredResult,
+): result is IMfaRequiredResult {
 	return !('tokens' in result);
 }
 

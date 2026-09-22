@@ -64,7 +64,14 @@ export function buildBillingRoutes(
 		// fonderie_role_user_workspaces (403 for non-members, fail-closed) before
 		// any billing surface acts on a header-derived workspace id.
 		['GET', '/billing/subscription', requireAuth, subscription.get],
-		['POST', '/billing/checkout', requireAuth, manager, validate(checkoutSchema), checkout.createSession],
+		[
+			'POST',
+			'/billing/checkout',
+			requireAuth,
+			manager,
+			validate(checkoutSchema),
+			checkout.createSession,
+		],
 		['POST', '/billing/portal', requireAuth, manager, checkout.createPortal],
 		// First-party lifecycle controls (cancel at period end / immediately;
 		// un-cancel). 501 when the provider doesn't implement them; the portal
@@ -82,7 +89,14 @@ export function buildBillingRoutes(
 		// file + invoice history. 501 when the provider implements neither.
 		['GET', '/billing/payment-method', requireAuth, account.getPaymentMethod],
 		['POST', '/billing/payment-method/setup', requireAuth, manager, account.setupPaymentMethod],
-		['PUT', '/billing/payment-method', requireAuth, manager, validate(savePaymentMethodSchema), account.savePaymentMethod],
+		[
+			'PUT',
+			'/billing/payment-method',
+			requireAuth,
+			manager,
+			validate(savePaymentMethodSchema),
+			account.savePaymentMethod,
+		],
 		['DELETE', '/billing/payment-method', requireAuth, manager, account.removePaymentMethod],
 		['GET', '/billing/invoices', requireAuth, account.listInvoices],
 		['POST', '/billing/usage', requireAuth, validate(recordUsageSchema), usage.record],
@@ -100,8 +114,20 @@ export function buildBillingRoutes(
 	const planAdminToken = config.adminToken ?? config.planAdminToken;
 	if (planAdminToken) {
 		routes.push(
-			['POST', '/plans', requireAdminToken(planAdminToken), validate(createPlanSchema), plan.create],
-			['PUT', '/plans/:planId', requireAdminToken(planAdminToken), validate(updatePlanSchema), plan.update],
+			[
+				'POST',
+				'/plans',
+				requireAdminToken(planAdminToken),
+				validate(createPlanSchema),
+				plan.create,
+			],
+			[
+				'PUT',
+				'/plans/:planId',
+				requireAdminToken(planAdminToken),
+				validate(updatePlanSchema),
+				plan.update,
+			],
 			['DELETE', '/plans/:planId', requireAdminToken(planAdminToken), plan.delete],
 		);
 	}
@@ -114,9 +140,30 @@ export function buildBillingRoutes(
 		routes.push(
 			['GET', '/billing/wallet', requireAuth, wallet.get],
 			['GET', '/billing/wallet/transactions', requireAuth, wallet.transactions],
-			['POST', '/billing/wallet/checkout', requireAuth, manager, validate(walletCheckoutSchema), wallet.checkout],
-			['POST', '/billing/wallet/purchase', requireAuth, manager, validate(walletPurchaseSchema), wallet.purchase],
-			['POST', '/billing/wallet/preferences', requireAuth, manager, validate(walletPreferencesSchema), wallet.setPreferences],
+			[
+				'POST',
+				'/billing/wallet/checkout',
+				requireAuth,
+				manager,
+				validate(walletCheckoutSchema),
+				wallet.checkout,
+			],
+			[
+				'POST',
+				'/billing/wallet/purchase',
+				requireAuth,
+				manager,
+				validate(walletPurchaseSchema),
+				wallet.purchase,
+			],
+			[
+				'POST',
+				'/billing/wallet/preferences',
+				requireAuth,
+				manager,
+				validate(walletPreferencesSchema),
+				wallet.setPreferences,
+			],
 			// Payment webhook — separate endpoint and secret from the
 			// subscription webhook; signature verified inside the handler.
 			['POST', '/billing/webhook/payment', paymentWebhook.handle],
@@ -155,7 +202,11 @@ export function describeBillingAdminRoutes(
 	];
 	if (config.wallet) {
 		const wallet = walletController(store, config, bus);
-		routes.push({ method: 'POST', path: '/wallet/grant', handlers: [validate(grantWalletSchema), wallet.grant] });
+		routes.push({
+			method: 'POST',
+			path: '/wallet/grant',
+			handlers: [validate(grantWalletSchema), wallet.grant],
+		});
 	}
 	return routes;
 }

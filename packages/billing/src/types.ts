@@ -135,7 +135,14 @@ export interface IPlanFeature {
 
 // ── Wallet ────────────────────────────────────────────────────────
 
-export const WALLET_LEDGER_TYPES = ['purchase', 'grant', 'usage', 'refund', 'adjustment', 'expiry'] as const;
+export const WALLET_LEDGER_TYPES = [
+	'purchase',
+	'grant',
+	'usage',
+	'refund',
+	'adjustment',
+	'expiry',
+] as const;
 export type WalletLedgerType = (typeof WALLET_LEDGER_TYPES)[number];
 
 export interface IWalletBalance {
@@ -167,4 +174,3 @@ export interface IWalletLedgerEntry {
 	providerTxId: string | null;
 	createdAt: string;
 }
-

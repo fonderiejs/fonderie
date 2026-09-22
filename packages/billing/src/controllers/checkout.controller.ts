@@ -28,8 +28,18 @@ import { resolveSubscriber } from '../utils';
 //      costs LESS than the current price is never an upgrade — this backstops a
 //      tier number that isn't monotonic with price.
 function isClearUpgrade(
-	current: { plan: string; interval: string; tier?: number | undefined; amount?: bigint | undefined },
-	target: { plan: string; interval: string; tier?: number | undefined; amount?: bigint | undefined },
+	current: {
+		plan: string;
+		interval: string;
+		tier?: number | undefined;
+		amount?: bigint | undefined;
+	},
+	target: {
+		plan: string;
+		interval: string;
+		tier?: number | undefined;
+		amount?: bigint | undefined;
+	},
 ): boolean {
 	if (current.interval === BILLING_INTERVAL.YEAR && target.interval === BILLING_INTERVAL.MONTH) {
 		return false;
@@ -42,7 +52,11 @@ function isClearUpgrade(
 	) {
 		return false;
 	}
-	if (typeof current.tier === 'number' && typeof target.tier === 'number' && current.tier !== target.tier) {
+	if (
+		typeof current.tier === 'number' &&
+		typeof target.tier === 'number' &&
+		current.tier !== target.tier
+	) {
 		return target.tier > current.tier;
 	}
 	return (
@@ -54,7 +68,10 @@ function isClearUpgrade(
 
 // Exhaustive by construction: a new BillingInterval fails compilation here
 // instead of silently falling through to a default price.
-function planPriceFor(plan: IBillingPlan, interval: BillingInterval): IBillingPlanPrice | undefined {
+function planPriceFor(
+	plan: IBillingPlan,
+	interval: BillingInterval,
+): IBillingPlanPrice | undefined {
 	switch (interval) {
 		case BILLING_INTERVAL.MONTH:
 			return plan.monthly;
@@ -162,9 +179,16 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 				}
 				const currentPlanCfg = plans.findByNameInConfig(current.plan, config);
 				const currentPrice =
-					current.interval === BILLING_INTERVAL.YEAR ? currentPlanCfg?.yearly : currentPlanCfg?.monthly;
+					current.interval === BILLING_INTERVAL.YEAR
+						? currentPlanCfg?.yearly
+						: currentPlanCfg?.monthly;
 				const upgrade = isClearUpgrade(
-					{ plan: current.plan, interval: current.interval, tier: currentPlanCfg?.tier, amount: currentPrice?.amount },
+					{
+						plan: current.plan,
+						interval: current.interval,
+						tier: currentPlanCfg?.tier,
+						amount: currentPrice?.amount,
+					},
 					{ plan: planName, interval, tier: plan.tier, amount: pricing.amount },
 				);
 				if (!upgrade) {
@@ -172,7 +196,11 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 						HTTP.UNPROCESSABLE,
 						'PLAN_CHANGE_REQUIRES_CANCEL',
 						`Moving to ${planName} isn't done in place. Cancel your current plan — you keep access until it ends — then subscribe to ${planName} once your current membership is over.`,
-						{ reason: 'downgrade_requires_cancel', currentPlan: current.plan, targetPlan: planName },
+						{
+							reason: 'downgrade_requires_cancel',
+							currentPlan: current.plan,
+							targetPlan: planName,
+						},
 					);
 				}
 				const res = await config.provider.updateSubscription({

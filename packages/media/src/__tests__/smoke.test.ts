@@ -8,7 +8,9 @@ import { buildMediaRoutes } from '../routes';
 import type { IMediaConfig } from '../config';
 
 // A minimal PNG (magic bytes + padding) that passes the image sniff.
-const PNG_B64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).toString('base64');
+const PNG_B64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).toString(
+	'base64',
+);
 
 function fakeProvider() {
 	const calls = { put: 0, deleted: [] as string[] };
@@ -52,14 +54,20 @@ test('upload rejects an oversized base64 BEFORE decoding (no provider.put)', asy
 test('upload rejects a non-self owner by default (403, no provider.put)', async () => {
 	const { provider, calls } = fakeProvider();
 	const handler = uploadHandler({ provider } as IMediaConfig, {});
-	const res = await handler(ctx({ dataBase64: PNG_B64, ownerType: 'user', ownerId: 'someone-else' }));
+	const res = await handler(
+		ctx({ dataBase64: PNG_B64, ownerType: 'user', ownerId: 'someone-else' }),
+	);
 	assert.equal(res.status, 403);
 	assert.equal(calls.put, 0);
 });
 
 test('upload cleans up the stored blob when the metadata insert fails', async () => {
 	const { provider, calls } = fakeProvider();
-	const store = { query: async () => { throw new Error('db down'); } };
+	const store = {
+		query: async () => {
+			throw new Error('db down');
+		},
+	};
 	const handler = uploadHandler({ provider } as IMediaConfig, store);
 	await assert.rejects(handler(ctx({ dataBase64: PNG_B64 })), /db down/);
 	assert.equal(calls.put, 1); // bytes were stored…
@@ -68,9 +76,25 @@ test('upload cleans up the stored blob when the metadata insert fails', async ()
 
 test('authorizeOwner hook can permit a non-self owner', async () => {
 	const { provider, calls } = fakeProvider();
-	const store = { query: async () => [{ id: 'a1', owner_type: 'workspace', owner_id: 'w1', purpose: 'logo', content_type: 'image/png', byte_size: 12, storage_ref: 'ref-1', created_by: 'u1', created_at: new Date() }] };
+	const store = {
+		query: async () => [
+			{
+				id: 'a1',
+				owner_type: 'workspace',
+				owner_id: 'w1',
+				purpose: 'logo',
+				content_type: 'image/png',
+				byte_size: 12,
+				storage_ref: 'ref-1',
+				created_by: 'u1',
+				created_at: new Date(),
+			},
+		],
+	};
 	const handler = uploadHandler({ provider, authorizeOwner: () => true } as IMediaConfig, store);
-	const res = await handler(ctx({ dataBase64: PNG_B64, ownerType: 'workspace', ownerId: 'w1', purpose: 'logo' }));
+	const res = await handler(
+		ctx({ dataBase64: PNG_B64, ownerType: 'workspace', ownerId: 'w1', purpose: 'logo' }),
+	);
 	assert.equal(res.status, 200);
 	assert.equal(calls.put, 1);
 });

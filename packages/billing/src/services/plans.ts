@@ -58,7 +58,9 @@ export function resolvePlanNameByPrice(
 const walletToJson = (wallet: IBillingPlan['wallet']): string | null =>
 	wallet == null
 		? null
-		: JSON.stringify(wallet, (_key, value) => (typeof value === 'bigint' ? value.toString() : value));
+		: JSON.stringify(wallet, (_key, value) =>
+				typeof value === 'bigint' ? value.toString() : value,
+			);
 
 export async function syncPlansToDB(config: IBillingConfig, store: IStoreAdapter): Promise<void> {
 	const plans = config.plans;

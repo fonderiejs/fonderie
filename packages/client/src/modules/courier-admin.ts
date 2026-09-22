@@ -1,4 +1,5 @@
 import { HttpClient } from '../http';
+import { normalizeMountPath } from '../path';
 import type { IApiResponse, ITemplateEntry, ITemplateRevision } from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ export class CourierAdminClient {
 	constructor(opts: ICourierAdminClientOptions) {
 		this.http = new HttpClient(opts.baseUrl);
 		this.adminToken = opts.adminToken;
-		this.prefix = opts.prefix?.replace(/\/+$/, '');
+		this.prefix = opts.prefix ? normalizeMountPath(opts.prefix) : undefined;
 		this.actorHeaders = opts.actor ? { 'X-Actor': opts.actor } : undefined;
 	}
 

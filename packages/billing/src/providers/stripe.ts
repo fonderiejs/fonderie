@@ -24,7 +24,12 @@ interface IStripeSubscriptionRaw {
 	metadata?: Record<string, string>;
 	items: {
 		data: Array<{
-			price: { id: string; nickname: string | null; lookup_key?: string | null; recurring?: { interval: string } };
+			price: {
+				id: string;
+				nickname: string | null;
+				lookup_key?: string | null;
+				recurring?: { interval: string };
+			};
 			// Since Stripe API 2025+, the period lives on the item, not the subscription.
 			current_period_start?: number;
 			current_period_end?: number;
@@ -289,7 +294,9 @@ export function normalizePaymentFailureFromSession(
 	};
 }
 
-export function normalizePaymentFailureFromIntent(pi: IStripePaymentIntentRaw): INormalizedPaymentFailure {
+export function normalizePaymentFailureFromIntent(
+	pi: IStripePaymentIntentRaw,
+): INormalizedPaymentFailure {
 	return {
 		sessionId: null,
 		providerTxId: pi.id,
@@ -785,7 +792,13 @@ export class StripeProvider implements IBillingProvider {
 			invoicePdf: invoice?.invoice_pdf ?? null,
 		});
 
-		const nulls = { providerTxId: null, invoiceId: null, invoiceNumber: null, hostedInvoiceUrl: null, invoicePdf: null } as const;
+		const nulls = {
+			providerTxId: null,
+			invoiceId: null,
+			invoiceNumber: null,
+			hostedInvoiceUrl: null,
+			invoicePdf: null,
+		} as const;
 		// Best-effort void/delete of a created-but-unpaid invoice so it doesn't
 		// linger as a dangling draft/open invoice. A draft (item/finalize failed)
 		// must be deleted; a finalized one is voided — try both, swallow errors.
@@ -821,7 +834,11 @@ export class StripeProvider implements IBillingProvider {
 				},
 				{ idempotencyKey: `${k}:item` },
 			);
-			await stripe.invoices.finalizeInvoice(invoiceId, { auto_advance: false }, { idempotencyKey: `${k}:finalize` });
+			await stripe.invoices.finalizeInvoice(
+				invoiceId,
+				{ auto_advance: false },
+				{ idempotencyKey: `${k}:finalize` },
+			);
 		} catch {
 			// invoiceId is only set once create succeeded; TS-narrow via a guard.
 			if (typeof invoiceId! === 'string') await discard(invoiceId!);
@@ -859,7 +876,8 @@ export class StripeProvider implements IBillingProvider {
 			// (no capture) so the finalized invoice is voided.
 			if (isCard || isInvalid) {
 				await discard(invoiceId);
-				const status = isCard && e.code === 'authentication_required' ? 'requires_action' : 'failed';
+				const status =
+					isCard && e.code === 'authentication_required' ? 'requires_action' : 'failed';
 				return { status, ...nulls };
 			}
 			// Network/timeout — the pay MAY have captured. Leave the invoice as-is
@@ -907,9 +925,7 @@ export class StripeProvider implements IBillingProvider {
 				: null;
 		try {
 			if (opts.paymentMethodId) {
-				const pm = await stripe.paymentMethods
-					.retrieve(opts.paymentMethodId)
-					.catch(() => null);
+				const pm = await stripe.paymentMethods.retrieve(opts.paymentMethodId).catch(() => null);
 				// Same ownership rule as setDefaultPaymentMethod/detachPaymentMethod,
 				// but read-tolerant: a stale stored id (card detached out-of-band —
 				// its customer becomes null) falls through to the default/newest
@@ -954,7 +970,9 @@ export class StripeProvider implements IBillingProvider {
 		const si = await stripe.setupIntents.create({
 			customer: opts.customerId,
 			usage: 'off_session',
-			payment_method_types: this.options.setupPaymentMethodTypes ?? [SUPPORTED_PAYMENT_OPTIONS.CARD],
+			payment_method_types: this.options.setupPaymentMethodTypes ?? [
+				SUPPORTED_PAYMENT_OPTIONS.CARD,
+			],
 		});
 		return { clientSecret: si.client_secret ?? '', setupIntentId: si.id };
 	}
@@ -962,7 +980,10 @@ export class StripeProvider implements IBillingProvider {
 	// Set an attached card as the customer's default. Verifies ownership first —
 	// the card must already be attached to THIS customer (the SetupIntent confirm
 	// attaches it) — so a caller can't hijack another customer's payment method.
-	async setDefaultPaymentMethod(opts: { customerId: string; paymentMethodId: string }): Promise<void> {
+	async setDefaultPaymentMethod(opts: {
+		customerId: string;
+		paymentMethodId: string;
+	}): Promise<void> {
 		const stripe = await this.client();
 		const pm = await stripe.paymentMethods.retrieve(opts.paymentMethodId).catch(() => null);
 		if (!pm || pm.customer !== opts.customerId) {
@@ -1108,7 +1129,9 @@ export class StripeProvider implements IBillingProvider {
 			return {
 				type: raw.type,
 				subscription: null,
-				paymentFailure: normalizePaymentFailureFromSession(raw.data.object as IStripeCheckoutSessionRaw),
+				paymentFailure: normalizePaymentFailureFromSession(
+					raw.data.object as IStripeCheckoutSessionRaw,
+				),
 			};
 		}
 		// A succeeded bare PaymentIntent — the safety net for an in-app pack purchase
@@ -1131,7 +1154,9 @@ export class StripeProvider implements IBillingProvider {
 			return {
 				type: raw.type,
 				subscription: null,
-				paymentFailure: normalizePaymentFailureFromIntent(raw.data.object as IStripePaymentIntentRaw),
+				paymentFailure: normalizePaymentFailureFromIntent(
+					raw.data.object as IStripePaymentIntentRaw,
+				),
 			};
 		}
 

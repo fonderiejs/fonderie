@@ -738,3 +738,53 @@ test('scoped tokens: without a store, only the root token works and the routes d
 	);
 	assert.equal((await get(app, '/_admin/manifest', 'fad_whatever')).status, 401);
 });
+
+// ── the served dashboard ────────────────────────────────────────────
+
+test('ui: off by default; on serves the page UNGUARDED with an absolute script path', async () => {
+	const off = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN }));
+	await off.boot();
+	assert.equal((await get(off, '/_admin/ui', TOKEN)).status, 404);
+
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://x' }, basePath: '/v1' }));
+	app.register(new AdminModule({ adminToken: TOKEN, ui: true, path: '/ops' }));
+	await app.boot();
+
+	// No token: a browser navigating to a page cannot send an Authorization
+	// header, so the shell itself must be reachable without one.
+	const page = await app.handle(new Request('http://localhost/v1/ops/ui'));
+	assert.equal(page.status, 200);
+	assert.match(page.headers.get('content-type') ?? '', /text\/html/);
+	const html = await page.text();
+	// Absolute, basePath- and path-aware: a relative src breaks on a trailing slash.
+	assert.match(html, /<script src="\/v1\/ops\/ui\/app\.js" defer>/);
+	assert.match(html, /noindex/);
+	assert.equal(html.includes(TOKEN), false, 'the page never carries a token');
+
+	// A trailing slash must not shift the script one segment deeper, which is
+	// exactly what a relative src would do.
+	const slashed = await (await app.handle(new Request('http://localhost/v1/ops/ui/'))).text();
+	assert.match(slashed, /<script src="\/v1\/ops\/ui\/app\.js" defer>/);
+
+	// The script route exists and is unguarded too. Running from source there is
+	// no built bundle, so it says so rather than 404ing or crashing at boot.
+	const js = await app.handle(new Request('http://localhost/v1/ops/ui/app.js'));
+	assert.equal(js.status, 503);
+	assert.match(((await js.json()) as { reason: string }).reason, /UI_NOT_BUILT/);
+
+	// Everything else under the prefix is still guarded.
+	assert.equal((await app.handle(new Request('http://localhost/v1/ops/manifest'))).status, 401);
+});
+
+test('ui: the two static routes are attributed to admin and add nothing to the guarded set', async () => {
+	const app = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN, ui: true }));
+	await app.boot();
+	const ui = app.routes().filter((r) => r.path.startsWith('/_admin/ui'));
+	assert.deepEqual(
+		ui.map((r) => [r.method, r.path, r.module]),
+		[
+			['GET', '/_admin/ui', '@fonderie/admin'],
+			['GET', '/_admin/ui/app.js', '@fonderie/admin'],
+		],
+	);
+});
