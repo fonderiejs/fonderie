@@ -1,5 +1,12 @@
 # @fonderie/storage
 
+## 0.1.16
+
+### Patch Changes
+
+- Updated dependencies [38f2410]
+  - @fonderie/core@0.20.0
+
 ## 0.1.15
 
 ### Patch Changes
