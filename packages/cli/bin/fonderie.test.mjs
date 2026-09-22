@@ -155,6 +155,11 @@ await (async () => {
   if (!find('GET', '/_admin/wallet/user/u1/ledger?currency=eur&limit=7')) fail('admin subscriber ledger: flags not forwarded');
   await cli(['admin', 'audit', '--workspace', 'w1', '--type', 'user.login', '--limit', '9']);
   if (!find('GET', '/_admin/audit?workspaceId=w1&type=user.login&limit=9')) fail('admin audit: flags not forwarded');
+  await cli(['admin', 'token', 'issue', 'dashboard', '--scopes', 'read,write', '--days', '30']);
+  await cli(['admin', 'token', 'revoke', 't1']);
+  const iss = find('POST', '/_admin/access/tokens');
+  if (!iss || iss.body?.name !== 'dashboard' || iss.body?.scopes?.join() !== 'read,write' || iss.body?.expiresInDays !== 30) fail('admin token issue: wrong body');
+  if (!find('DELETE', '/_admin/access/tokens/t1')) fail('admin token revoke: wrong path');
   let badType = 0;
   try { await cli(['admin', 'subscriber', 'team', 'x']); } catch (e) { badType = e.code; }
   if (badType !== 2) fail(`admin subscriber <bad type> should exit 2, got ${badType}`);

@@ -332,6 +332,7 @@ const ADMIN_PAGES = {
   catalog:   { path: '/catalog',             about: 'plans as configured and as stored' },
   subscriber:{ path: '/subscriptions',       about: 'admin subscriber <user|workspace> <id> [subscription|wallet|ledger]' },
   audit:     { path: '/audit',               about: 'events across every workspace (--workspace, --type, --actor, --from, --to, --limit, --cursor)' },
+  token:     { path: '/access/tokens',       about: 'admin token issue <name> --scopes read[,write[,secrets]] [--days <n>] · admin token revoke <id> (root token only)' },
 };
 async function adminCmd() {
   const pageName = argv[1];
@@ -355,6 +356,19 @@ async function adminCmd() {
     const q = new URLSearchParams(); const limit = arg('--limit', undefined); if (limit && verb === 'history') q.set('limit', limit);
     const qs = q.toString();
     return adminFetch(sub[0], base + sub[1] + (qs ? `?${qs}` : ''));
+  }
+  if (pageName === 'token') {
+    const verb = argv[2];
+    if (verb === 'issue') {
+      const name = argv[3]; const scopes = (arg('--scopes', '') || '').split(',').map((x) => x.trim()).filter(Boolean); const days = arg('--days', undefined);
+      if (!name || scopes.length === 0) { console.error('fonderie admin token issue <name> --scopes read[,write[,secrets]] [--days <n>]'); process.exit(2); }
+      return adminFetch('POST', `${prefix}/access/tokens`, { name, scopes, ...(days ? { expiresInDays: Number(days) } : {}) });
+    }
+    if (verb === 'revoke') {
+      const id = argv[3]; if (!id) { console.error('fonderie admin token revoke <id>'); process.exit(2); }
+      return adminFetch('DELETE', `${prefix}/access/tokens/${encodeURIComponent(id)}`);
+    }
+    console.error('fonderie admin token <issue|revoke> …'); process.exit(2);
   }
   if (pageName === 'subscriber') {
     const type = argv[2]; const id = argv[3]; const verb = argv[4] ?? 'subscription';
@@ -481,6 +495,7 @@ else {
   fonderie admin user <email|id> [sessions|history|revoke-sessions|suspend|unsuspend]
   fonderie admin catalog · admin subscriber <user|workspace> <id> [subscription|wallet|ledger] [--currency <c>]
   fonderie admin audit [--workspace <id>] [--type <t>] [--actor <id>] [--from <iso>] [--to <iso>] [--limit <n>]
+  fonderie admin token issue <name> --scopes read[,write[,secrets]] [--days <n>] · admin token revoke <id>   (root token only)
       read a deployment's operator surface (@fonderie/admin) — same env; FONDERIE_ADMIN_PREFIX if moved
 
 Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);

@@ -40,7 +40,23 @@ function configReport(app: IFonderieApp, env: string[]): IAdminConfigReport
 
 function routesReport(app: IFonderieApp, adminModule: string): IAdminRoutesReport
 
-function tokensReport(app: IFonderieApp, adminModule: string): IAdminTokensReport
+function tokensReport(app: IFonderieApp, adminModule: string, issued: IAdminTokenRecord[] | null): IAdminTokensReport
+
+function requireAdminScope(bootstrap: string, store: IStoreAdapter | undefined, needed: AdminScope | "root"): Middleware
+
+function scopeFor(method: string, path: string): AdminScope
+
+function grants(held: readonly AdminScope[], needed: AdminScope): boolean
+
+function issueToken(store: IStoreAdapter, input: { name: string; scopes: AdminScope[]; expiresInDays?: number; createdBy: string; }): Promise<{ token: string; record: IAdminTokenRecord; }>
+
+function revokeToken(store: IStoreAdapter, id: string): Promise<boolean>
+
+function listTokens(store: IStoreAdapter): Promise<IAdminTokenRecord[]>
+
+function hashToken(token: string): string
+
+const SCOPES: readonly AdminScope[]
 
 interface IAdminOptions {
     adminToken?: string;
@@ -151,5 +167,19 @@ interface IAdminTokensReport {
         problems: IReadinessReport['problems'];
     };
     legacy: IAdminTokenEntry[];
+    issued: IAdminTokenRecord[] | null;
+}
+
+type AdminScope = 'read' | 'write' | 'secrets';
+
+interface IAdminTokenRecord {
+    id: string;
+    name: string;
+    scopes: AdminScope[];
+    createdBy: string;
+    createdAt: string;
+    expiresAt: string | null;
+    revokedAt: string | null;
+    lastUsedAt: string | null;
 }
 ```

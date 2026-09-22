@@ -3,6 +3,16 @@ export { buildManifest } from './manifest';
 export { runDoctor, collectChecks, attention } from './doctor';
 export { adminLog, readAdminLog, DEFAULT_ACTOR, MAX_PAGE } from './log';
 export { configReport, routesReport, tokensReport } from './pages';
+export {
+	requireAdminScope,
+	scopeFor,
+	grants,
+	issueToken,
+	revokeToken,
+	listTokens,
+	hashToken,
+	SCOPES,
+} from './tokens';
 export type {
 	IAdminOptions,
 	IAdminManifest,
@@ -20,4 +30,6 @@ export type {
 	IAdminRoutesReport,
 	IAdminTokenEntry,
 	IAdminTokensReport,
+	AdminScope,
+	IAdminTokenRecord,
 } from './types';

@@ -111,6 +111,32 @@ fonderie admin log --limit 20 # who did what
 
 `FONDERIE_ADMIN_PREFIX` when the surface was moved off `/_admin`.
 
+## Scoped tokens
+
+The `adminToken` you configure is the **root**: every scope, and the only
+credential that can issue or revoke tokens — a scoped token can never mint
+one. With a store (and the package's migrations), issue tokens for daily
+use and for the shell:
+
+```sh
+fonderie admin token issue dashboard --scopes read --days 90   # root token in FONDERIE_ADMIN_TOKEN
+fonderie admin token revoke <id>
+```
+
+| Scope | Allows |
+|---|---|
+| `read` | every `GET` — except anything under `/secrets` |
+| `write` | every mutation (plans, grants, templates, config, suspend, sign-out) — implies `read` |
+| `secrets` | anything under `/secrets`, including the plaintext reveal — implies both |
+
+The scope a route needs is derived from the route itself, never annotated.
+Only the token's hash is stored; the plaintext is shown once. A valid token
+short of the scope is `403`; an unknown, revoked or expired one is the same
+`401` as a missing one. In the admin log the actor is `token:<name>` unless
+`X-Actor` says otherwise. `GET /_admin/access/tokens` lists what was issued
+(never a hash). Without a store, only the root token works and issuing is
+off — the tokens page says `issued: null`.
+
 ## The admin log
 
 ```ts
