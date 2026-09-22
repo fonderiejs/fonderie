@@ -1,5 +1,6 @@
 import type {
 	AdminClient,
+	AuditAdminClient,
 	AuthAdminClient,
 	BillingAdminClient,
 	ConfigAdminClient,
@@ -19,6 +20,7 @@ import { TokensScreen } from './TokensScreen';
 import { UsersScreen } from './UsersScreen';
 import { CatalogScreen } from './CatalogScreen';
 import { SubscriberScreen } from './SubscriberScreen';
+import { AuditScreen } from './AuditScreen';
 
 export type AdminPage =
 	| 'attention'
@@ -32,7 +34,8 @@ export type AdminPage =
 	| 'templates'
 	| 'users'
 	| 'catalog'
-	| 'subscriber';
+	| 'subscriber'
+	| 'audit';
 
 export interface IAdminShellProps {
 	client: AdminClient;
@@ -44,6 +47,8 @@ export interface IAdminShellProps {
 	authClient?: AuthAdminClient;
 	// Given ⇒ the Money pages (catalog, subscriber) appear; needs @fonderie/billing ≥ 9.10.
 	billingClient?: BillingAdminClient;
+	// Given ⇒ the Audit page appears; needs @fonderie/audit ≥ 5.2.
+	auditClient?: AuditAdminClient;
 	environment?: string;
 	// Controlled navigation: pass both to own the URL. Omit both and the shell
 	// keeps the page itself.
@@ -56,7 +61,7 @@ const NAV: Array<{
 	items: Array<{
 		page: AdminPage;
 		label: string;
-		needs?: 'config' | 'courier' | 'auth' | 'billing';
+		needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit';
 	}>;
 }> = [
 	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
@@ -82,6 +87,7 @@ const NAV: Array<{
 	{
 		group: 'Activity',
 		items: [
+			{ page: 'audit', label: 'Audit', needs: 'audit' },
 			{ page: 'log', label: 'Admin log' },
 			{ page: 'tokens', label: 'Access' },
 		],
@@ -94,6 +100,7 @@ export function AdminShell({
 	courierClient,
 	authClient,
 	billingClient,
+	auditClient,
 	environment,
 	page,
 	onNavigate,
@@ -113,6 +120,7 @@ export function AdminShell({
 		courier: Boolean(courierClient),
 		auth: Boolean(authClient),
 		billing: Boolean(billingClient),
+		audit: Boolean(auditClient),
 	};
 
 	let body: React.ReactNode;
@@ -150,6 +158,13 @@ export function AdminShell({
 				<SubscriberScreen client={billingClient} />
 			) : (
 				<p style={styles.status}>Pass a BillingAdminClient to look up subscribers here.</p>
+			);
+			break;
+		case 'audit':
+			body = auditClient ? (
+				<AuditScreen client={auditClient} />
+			) : (
+				<p style={styles.status}>Pass an AuditAdminClient to see the audit trail here.</p>
 			);
 			break;
 		case 'users':

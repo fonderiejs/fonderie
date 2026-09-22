@@ -439,6 +439,19 @@ test('BillingAdminClient: catalog, plan writes, subscription, wallet, ledger, gr
 	assert.ok(calls.every((c) => c.auth === `Bearer ${tok}`));
 });
 
+test('AuditAdminClient: filters and dates forwarded under the prefix', async () => {
+	const { AuditAdminClient } = await import('../index');
+	calls.length = 0;
+	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: { events: [], nextCursor: null } } });
+	const a = new AuditAdminClient({ baseUrl: 'http://x', adminToken: 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb' });
+	await a.listAudit();
+	await a.listAudit({ workspaceId: 'w1', type: 'user.login', actorId: 'u1', from: new Date('2026-01-01T00:00:00Z'), limit: 5, cursor: 'c' });
+	assert.deepEqual(
+		calls.map((c) => c.path.replace('http://x', '')),
+		['/_admin/audit', '/_admin/audit?workspaceId=w1&type=user.login&actorId=u1&from=2026-01-01T00%3A00%3A00.000Z&limit=5&cursor=c'],
+	);
+});
+
 test('restore real fetch', () => {
 	globalThis.fetch = realFetch;
 });

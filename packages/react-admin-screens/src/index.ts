@@ -11,6 +11,7 @@ export type {
 	IUsersScreenProps,
 	ICatalogScreenProps,
 	ISubscriberScreenProps,
+	IAuditScreenProps,
 } from './screens';
 export {
 	AdminLogScreen,
@@ -24,4 +25,5 @@ export {
 	UsersScreen,
 	CatalogScreen,
 	SubscriberScreen,
+	AuditScreen,
 } from './screens';

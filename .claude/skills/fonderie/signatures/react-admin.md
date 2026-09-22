@@ -273,6 +273,37 @@ interface IWalletTransactionDTO {
 
 type SubscriberType = 'user' | 'workspace';
 
+interface IAuditAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminAuditQuery {
+    workspaceId?: string;
+    type?: string;
+    actorId?: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    cursor?: string;
+}
+
+interface IAuditEventDTO {
+    id: string;
+    type: string;
+    actorId: string | null;
+    requestId: string | null;
+    payload: Record<string, unknown>;
+    createdAt: string;
+}
+
+interface IAuditPageResult {
+    events: IAuditEventDTO[];
+    nextCursor: string | null;
+}
+
 new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
@@ -413,6 +444,15 @@ interface IUseAdminSubscriberReturn {
     grant: (input: Omit<IAdminGrantInput, 'subscriberType' | 'subscriberId'>) => Promise<void>;
 }
 
+interface IUseAdminAuditReturn {
+    events: IAuditEventDTO[];
+    hasMore: boolean;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    loadMore: () => Promise<void>;
+}
+
 function useAttention(client: AdminClient): IUseAttentionReturn
 
 function useManifest(client: AdminClient): IUseManifestReturn
@@ -436,4 +476,6 @@ function useAdminLoginHistory(client: AuthAdminClient, userId: string | null, qu
 function useAdminCatalog(client: BillingAdminClient): IUseAdminCatalogReturn
 
 function useAdminSubscriber(client: BillingAdminClient, subscriber: { type: SubscriberType; id: string; } | null, options?: { currency?: string; limit?: number; }): IUseAdminSubscriberReturn
+
+function useAdminAudit(client: AuditAdminClient, query?: Omit<IAdminAuditQuery, "cursor">): IUseAdminAuditReturn
 ```

@@ -273,6 +273,37 @@ interface IWalletTransactionDTO {
 
 type SubscriberType = 'user' | 'workspace';
 
+interface IAuditAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminAuditQuery {
+    workspaceId?: string;
+    type?: string;
+    actorId?: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    cursor?: string;
+}
+
+interface IAuditEventDTO {
+    id: string;
+    type: string;
+    actorId: string | null;
+    requestId: string | null;
+    payload: Record<string, unknown>;
+    createdAt: string;
+}
+
+interface IAuditPageResult {
+    events: IAuditEventDTO[];
+    nextCursor: string | null;
+}
+
 new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
@@ -335,4 +366,6 @@ function useAdminLoginHistory(client: AuthAdminClient, userId: Ref<string | null
 function useAdminCatalog(client: BillingAdminClient): { catalog: Ref<{ configured: unknown[]; stored: { id: string; planId: string; name: string; description: string; tier: number; seats: number | null; ... 4 more ...; metadata: Record<...>; }[]; } | null, IAdminCatalog | ... 1 more ... | null>; ... 5 more ...; deletePlan: (planId: string) => Promise<...>; }
 
 function useAdminSubscriber(client: BillingAdminClient, subscriber: Ref<{ type: SubscriberType; id: string; } | null, { type: SubscriberType; id: string; } | null>, options?: { ...; }): { ...; }
+
+function useAdminAudit(client: AuditAdminClient, query: Ref<Omit<IAdminAuditQuery, "cursor">, Omit<IAdminAuditQuery, "cursor">>): { ...; }
 ```

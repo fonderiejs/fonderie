@@ -11,4 +11,5 @@ export {
 	UsersScreen,
 	CatalogScreen,
 	SubscriberScreen,
+	AuditScreen,
 } from './screens';

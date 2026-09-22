@@ -328,6 +328,26 @@ new BillingAdminClient(opts: IBillingAdminClientOptions): BillingAdminClient
   .walletLedger(type: SubscriberType, id: string, query?: IAdminLedgerQuery): Promise<IApiResponse<IAdminWalletLedgerPage>>
   .grant(input: IAdminGrantInput): Promise<IApiResponse<unknown>>
 
+interface IAuditAdminClientOptions {
+    baseUrl: string;
+    adminToken: string;
+    prefix?: string;
+    actor?: string;
+}
+
+interface IAdminAuditQuery {
+    workspaceId?: string;
+    type?: string;
+    actorId?: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    cursor?: string;
+}
+
+new AuditAdminClient(opts: IAuditAdminClientOptions): AuditAdminClient
+  .listAudit(query?: IAdminAuditQuery): Promise<IApiResponse<IAuditPageResult>>
+
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;

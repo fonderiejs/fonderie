@@ -22,3 +22,5 @@ export type { IUseAdminCatalogReturn } from './useAdminCatalog';
 export { useAdminCatalog } from './useAdminCatalog';
 export type { IUseAdminSubscriberReturn } from './useAdminSubscriber';
 export { useAdminSubscriber } from './useAdminSubscriber';
+export type { IUseAdminAuditReturn } from './useAdminAudit';
+export { useAdminAudit } from './useAdminAudit';

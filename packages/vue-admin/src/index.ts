@@ -33,6 +33,10 @@ export type {
 	IPlanDTO,
 	IWalletTransactionDTO,
 	SubscriberType,
+	IAuditAdminClientOptions,
+	IAdminAuditQuery,
+	IAuditEventDTO,
+	IAuditPageResult,
 } from '@fonderie/client';
 export {
 	AdminClient,
@@ -53,4 +57,5 @@ export {
 	useAdminLoginHistory,
 	useAdminCatalog,
 	useAdminSubscriber,
+	useAdminAudit,
 } from './composables';

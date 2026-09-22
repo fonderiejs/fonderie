@@ -133,9 +133,8 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin/subscriptions/:type/:id', 'BillingAdminClient.subscription() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/wallet/:type/:id', 'BillingAdminClient.wallet() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/wallet/:type/:id/ledger', 'BillingAdminClient.walletLedger() — prefix is configurable, invisible to the static match'],
-	// @fonderie/audit's described cross-workspace read (phase 8d). Client + hook +
-	// AuditScreen ship in 8d-ui.
-	['GET /_admin/audit', 'admin-token-guarded operator surface — client ships in 8d-ui, server-first by scoped decision'],
+	// @fonderie/audit's cross-workspace read, reached through AuditAdminClient (+ hooks). Same prefix caveat.
+	['GET /_admin/audit', 'AuditAdminClient.listAudit() — prefix is configurable, invisible to the static match'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');

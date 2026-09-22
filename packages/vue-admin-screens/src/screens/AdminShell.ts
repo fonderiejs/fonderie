@@ -1,5 +1,6 @@
 import type {
 	AdminClient,
+	AuditAdminClient,
 	AuthAdminClient,
 	BillingAdminClient,
 	ConfigAdminClient,
@@ -20,6 +21,7 @@ import { TokensScreen } from './TokensScreen';
 import { UsersScreen } from './UsersScreen';
 import { CatalogScreen } from './CatalogScreen';
 import { SubscriberScreen } from './SubscriberScreen';
+import { AuditScreen } from './AuditScreen';
 
 export type AdminPage =
 	| 'attention'
@@ -33,14 +35,15 @@ export type AdminPage =
 	| 'templates'
 	| 'users'
 	| 'catalog'
-	| 'subscriber';
+	| 'subscriber'
+	| 'audit';
 
 const NAV: Array<{
 	group: string;
 	items: Array<{
 		page: AdminPage;
 		label: string;
-		needs?: 'config' | 'courier' | 'auth' | 'billing';
+		needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit';
 	}>;
 }> = [
 	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
@@ -66,6 +69,7 @@ const NAV: Array<{
 	{
 		group: 'Activity',
 		items: [
+			{ page: 'audit', label: 'Audit', needs: 'audit' },
 			{ page: 'log', label: 'Admin log' },
 			{ page: 'tokens', label: 'Access' },
 		],
@@ -89,6 +93,8 @@ export const AdminShell = defineComponent({
 		authClient: { type: Object as PropType<AuthAdminClient>, default: undefined },
 		// Given ⇒ the Money pages (catalog, subscriber) appear; needs @fonderie/billing ≥ 9.10.
 		billingClient: { type: Object as PropType<BillingAdminClient>, default: undefined },
+		// Given ⇒ the Audit page appears; needs @fonderie/audit ≥ 5.2.
+		auditClient: { type: Object as PropType<AuditAdminClient>, default: undefined },
 		environment: { type: String, default: undefined },
 		// Controlled navigation: pass `page` and listen to `navigate` to own the
 		// URL. Omit `page` and the shell keeps it itself.
@@ -143,6 +149,14 @@ export const AdminShell = defineComponent({
 								'p',
 								{ style: styles.status },
 								'Pass a BillingAdminClient to look up subscribers here.',
+							);
+				case 'audit':
+					return props.auditClient
+						? h(AuditScreen, { client: props.auditClient })
+						: h(
+								'p',
+								{ style: styles.status },
+								'Pass an AuditAdminClient to see the audit trail here.',
 							);
 				case 'users':
 					return props.authClient
@@ -217,7 +231,9 @@ export const AdminShell = defineComponent({
 										? props.courierClient
 										: i.needs === 'auth'
 											? props.authClient
-											: props.billingClient),
+											: i.needs === 'billing'
+												? props.billingClient
+												: props.auditClient),
 						);
 						if (items.length === 0) return null;
 						return h('div', { key: g.group }, [
