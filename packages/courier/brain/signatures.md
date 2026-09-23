@@ -63,6 +63,10 @@ new DefaultTemplates(maps?: DefaultTemplateMap[]): DefaultTemplates
 
 function renderFragment(frag: { subject?: string | null; text: string; html?: string | null; }, layoutHtml: string | undefined, data: Record<string, unknown>): IRenderedTemplate
 
+function getLayoutHtml(store: IStoreAdapter, locale?: string | undefined): Promise<string | undefined>
+
+function templateVariables(...parts: (string | null | undefined)[]): string[]
+
 function setTemplate(opts: { type: string; text: string; locale?: string | null; subject?: string | null; html?: string | null; active?: boolean; ifVersion?: number; actor?: string; }, store: IStoreAdapter): Promise<...>
 
 function rollbackTemplate(opts: { type: string; locale?: string | null; toVersion: number; actor?: string; }, store: IStoreAdapter): Promise<ITemplateEntry>
@@ -75,7 +79,11 @@ function listTemplateEntries(store: IStoreAdapter): Promise<ITemplateEntry[]>
 
 function deleteTemplate(type: string, locale: string | null, store: IStoreAdapter): Promise<boolean>
 
-function buildTemplateAdminRoutes(store: IStoreAdapter, adminToken: string): RouteRow[]
+function buildTemplateAdminRoutes(store: IStoreAdapter, adminToken: string, opts?: ITemplateAdminOptions): RouteRow[]
+
+interface ITemplateAdminOptions {
+    brandName?: string;
+}
 
 interface ITemplateEntry {
     type: string;

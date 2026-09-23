@@ -16,6 +16,26 @@ export interface IRollbackTemplateInput {
 	toVersion: number;
 }
 
+export interface IPreviewTemplateInput {
+	text: string;
+	subject?: string;
+	html?: string;
+	// Values for the template's {{variables}}. Omitted, every variable renders
+	// empty and every {{#section}} collapses — accurate for layout, misleading
+	// about content.
+	data?: Record<string, unknown>;
+}
+
+// What the renderer produced: no `html` key at all for a text-only template.
+export interface IRenderedTemplateResult {
+	subject?: string;
+	html?: string;
+	text: string;
+	// Every {{variable}} this content refers to, reported by the server so the
+	// editor can offer the right fields without re-implementing the contract.
+	variables: string[];
+}
+
 export interface ICourierAdminClientOptions {
 	baseUrl: string;
 	adminToken: string;
@@ -121,6 +141,23 @@ export class CourierAdminClient {
 			this.rebase({
 				method: 'POST',
 				path: `/admin/templates/${encodeURIComponent(type)}/rollback${q}`,
+				body: input,
+				token: this.adminToken,
+				headers: this.actorHeaders,
+			}),
+		);
+	}
+
+	// Renders content you are HOLDING, not what is stored — so an editor can
+	// show the change before it is saved. Server-side on purpose: the shell and
+	// the variable substitution are the resolver's, and a preview rendered any
+	// other way would not be the mail that sends.
+	previewTemplate(type: string, input: IPreviewTemplateInput, locale?: string | null) {
+		const q = locale ? `?locale=${encodeURIComponent(locale)}` : '';
+		return this.http.request<IApiResponse<IRenderedTemplateResult>>(
+			this.rebase({
+				method: 'POST',
+				path: `/admin/templates/${encodeURIComponent(type)}/preview${q}`,
 				body: input,
 				token: this.adminToken,
 				headers: this.actorHeaders,

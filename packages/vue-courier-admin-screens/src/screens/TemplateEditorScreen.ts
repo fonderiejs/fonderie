@@ -4,10 +4,19 @@ import type {
 	ISetTemplateInput,
 	ITemplateRevision,
 } from '@fonderie/client';
-import { useTemplate, useTemplateRevisions, useTemplates } from '@fonderie/vue-courier-admin';
+import {
+	useTemplate,
+	useTemplatePreview,
+	useTemplateRevisions,
+	useTemplates,
+} from '@fonderie/vue-courier-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref, watch } from 'vue';
 import { styles } from '../styles';
+
+// Implicit variables the layout injects — an operator never supplies these, so
+// offering them as fields would just be noise.
+const IMPLICIT = new Set(['subject', 'preheader', 'brandName']);
 
 export const TemplateEditorScreen = defineComponent({
 	name: 'FonderieTemplateEditorScreen',
@@ -45,6 +54,61 @@ export const TemplateEditorScreen = defineComponent({
 			html.value = tpl.html ?? '';
 			text.value = tpl.text;
 			active.value = tpl.active;
+		});
+
+		const {
+			preview,
+			isPreviewing,
+			error: previewError,
+			renderPreview,
+		} = useTemplatePreview(props.client);
+		// Sample values as JSON text rather than an object, so a half-typed value
+		// does not have to parse on every keystroke.
+		const sampleJson = ref('{}');
+		const sampleError = ref<string | null>(null);
+
+		async function run() {
+			let data: Record<string, unknown> = {};
+			try {
+				const parsed: unknown = JSON.parse(sampleJson.value || '{}');
+				if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+					sampleError.value = 'Sample data must be a JSON object.';
+					return;
+				}
+				data = parsed as Record<string, unknown>;
+				sampleError.value = null;
+			} catch {
+				sampleError.value = 'Sample data is not valid JSON.';
+				return;
+			}
+			const result = await renderPreview(
+				props.type,
+				{
+					text: text.value,
+					data,
+					...(subject.value ? { subject: subject.value } : {}),
+					...(html.value ? { html: html.value } : {}),
+				},
+				props.locale,
+			);
+			// The server reports which variables this content uses; seed the ones
+			// with no value yet with their own name so the render shows where each
+			// lands. Never overwrite something already typed.
+			const missing = result.variables.filter((v) => !IMPLICIT.has(v) && !(v in data));
+			if (missing.length > 0) {
+				sampleJson.value = JSON.stringify(
+					{ ...data, ...Object.fromEntries(missing.map((v) => [v, v])) },
+					null,
+					2,
+				);
+			}
+		}
+
+		// One render once the template has loaded, so the pane is never empty on
+		// arrival. After that it is explicit — a request per keystroke is not a
+		// preview, it is a load test.
+		watch(template, (tpl) => {
+			if (tpl) void run();
 		});
 
 		async function handleSubmit(event: Event) {
@@ -95,6 +159,8 @@ export const TemplateEditorScreen = defineComponent({
 					{ style: styles.meta },
 					`${props.locale ?? 'base'} · v${template.value?.version ?? 1}`,
 				),
+				h('div', { style: styles.split }, [
+				h('div', { style: styles.column }, [
 				h('form', { style: styles.form, onSubmit: handleSubmit }, [
 					h('label', { style: styles.label, for: 'template-subject' }, 'Subject'),
 					h('input', {
@@ -144,6 +210,56 @@ export const TemplateEditorScreen = defineComponent({
 						{ type: 'submit', disabled: isSaving.value, style: styles.button },
 						isSaving.value ? 'Saving…' : 'Save',
 					),
+				]),
+				h('label', { style: styles.label, for: 'template-sample' }, 'Sample data'),
+				h('textarea', {
+					id: 'template-sample',
+					style: styles.textarea,
+					rows: 6,
+					spellcheck: false,
+					value: sampleJson.value,
+					onInput: (e: Event) => {
+						sampleJson.value = (e.target as HTMLTextAreaElement).value;
+					},
+				}),
+				sampleError.value
+					? h('p', { style: styles.error, role: 'alert' }, sampleError.value)
+					: null,
+				]),
+				h('div', { style: styles.column }, [
+					h('div', { style: styles.previewHeader }, [
+						h('span', { style: styles.label }, 'Preview'),
+						h(
+							'button',
+							{
+								type: 'button',
+								style: styles.rollbackButton,
+								disabled: isPreviewing.value,
+								onClick: () => void run(),
+							},
+							isPreviewing.value ? 'Rendering…' : 'Render',
+						),
+					]),
+					previewError.value
+						? h('p', { style: styles.error, role: 'alert' }, previewError.value.explanation)
+						: null,
+					preview.value?.subject
+						? h('p', { style: styles.previewSubject }, preview.value.subject)
+						: null,
+					preview.value?.html
+						? // sandbox= — no scripts, no same-origin. Operator-authored HTML
+							// must never execute in the dashboard's origin, where the admin
+							// token lives.
+							h('iframe', {
+								title: 'Template preview',
+								style: styles.previewFrame,
+								sandbox: '',
+								srcdoc: preview.value.html,
+							})
+						: preview.value
+							? h('pre', { style: styles.previewText }, preview.value.text)
+							: h('p', { style: styles.meta }, 'Nothing rendered yet.'),
+				]),
 				]),
 				revisions.value.length > 0
 					? h('div', { style: styles.revisions }, [

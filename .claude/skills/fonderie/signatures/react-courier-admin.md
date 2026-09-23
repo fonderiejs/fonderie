@@ -12,6 +12,20 @@ interface ICourierAdminClientOptions {
     actor?: string;
 }
 
+interface IPreviewTemplateInput {
+    text: string;
+    subject?: string;
+    html?: string;
+    data?: Record<string, unknown>;
+}
+
+interface IRenderedTemplateResult {
+    subject?: string;
+    html?: string;
+    text: string;
+    variables: string[];
+}
+
 interface IRollbackTemplateInput {
     toVersion: number;
 }
@@ -54,6 +68,7 @@ new CourierAdminClient(opts: ICourierAdminClientOptions): CourierAdminClient
   .deleteTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<undefined>>
   .listRevisions(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateRevision[]>>
   .rollback(type: string, input: IRollbackTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
+  .previewTemplate(type: string, input: IPreviewTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<IRenderedTemplateResult>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown, requestId?: string | undefined): FonderieApiError
   .reason: string
@@ -65,6 +80,14 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .message: string
   .stack: string
   .cause: unknown
+
+interface IUseTemplatePreviewReturn {
+    preview: IRenderedTemplateResult | null;
+    isPreviewing: boolean;
+    error: FonderieApiError | null;
+    renderPreview: (type: string, input: IPreviewTemplateInput, locale?: string | null) => Promise<IRenderedTemplateResult>;
+    clearPreview: () => void;
+}
 
 interface IUseTemplateReturn {
     template: ITemplateEntry | null;
@@ -91,6 +114,8 @@ interface IUseTemplatesReturn {
 }
 
 function useTemplate(client: CourierAdminClient, type: string, locale?: string | null | undefined): IUseTemplateReturn
+
+function useTemplatePreview(client: CourierAdminClient): IUseTemplatePreviewReturn
 
 function useTemplateRevisions(client: CourierAdminClient, type: string, locale?: string | null | undefined): IUseTemplateRevisionsReturn
 

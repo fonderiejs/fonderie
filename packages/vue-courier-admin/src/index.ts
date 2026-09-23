@@ -1,5 +1,7 @@
 export type {
 	ICourierAdminClientOptions,
+	IPreviewTemplateInput,
+	IRenderedTemplateResult,
 	IRollbackTemplateInput,
 	ISetTemplateInput,
 	ITemplateEntry,
@@ -9,6 +11,7 @@ export type {
 export { CourierAdminClient, FonderieApiError } from '@fonderie/client';
 export {
 	useTemplate,
+	useTemplatePreview,
 	useTemplateRevisions,
 	useTemplates,
 } from './composables';
