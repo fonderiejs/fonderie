@@ -492,7 +492,8 @@ else {
   fonderie migrate --check  [--app <dir>]          exit 1 if a pending migration deletes data (CI gate)
       reports only — the app's own runner applies, because the ORDER is the app's
       to declare. In CI: fonderie migrate --check && npm run migrate
-      DATABASE_URL must be the SESSION or DIRECT url, never the transaction pooler
+      reads only, so any DATABASE_URL works — pooler included. The session/direct
+      requirement belongs to the applier, not to these two.
 
   fonderie config <get|set|delete|history|rollback> [key] [value] [--env <e>] [--if-version <n>] [--to-version <n>]
   fonderie secret <get|set|delete|history|rollback|reveal> [key] [value] [--env <e>] ...
@@ -547,9 +548,10 @@ async function doMigrate() {
   // it classifies every file rather than only the pending ones. Useful reviewing
   // a PR, and it is how discovery is tested without standing a server up.
   if (!url && !dry) {
-    console.error('migrate: set DATABASE_URL.');
-    console.error('  In CI use the SESSION or DIRECT Postgres URL, not the transaction');
-    console.error('  pooler — a pooler lends a backend per transaction.');
+    console.error('migrate: set DATABASE_URL, or pass --dry-run to skip the database.');
+    console.error('  --status and --check only READ which migrations are applied, so any');
+    console.error('  connection mode works here, transaction pooler included. The');
+    console.error('  session/direct requirement belongs to whatever APPLIES them.');
     process.exit(1);
   }
 

@@ -94,20 +94,22 @@ if (!/basic-auth/.test(addErr)) fail('add unknown-recipe error should list avail
 if (!/fonderie add <capability>/.test(run(['help']))) fail('help missing `fonderie add`');
 
 // --- migrate: the guard that needs no database ---
-// Without DATABASE_URL it must refuse AND say which connection mode to use.
-// The pooler advice is the point: a transaction pooler lends a backend per
-// statement, and pointing a migration at one is the mistake this text exists
-// to prevent. Applying is NOT tested here — it needs a live database, and the
-// ordering it would apply belongs to the app, not this CLI.
+// Without DATABASE_URL it must refuse AND point at --dry-run. It must NOT
+// demand a session/direct url: --status and --check only read which migrations
+// are applied, so a transaction pooler is fine. That guidance was wrong here
+// first time round, and a wrong warning is worse than none — it sends people
+// provisioning a second credential they do not need.
 let migErr = '';
 try {
   run(['migrate', '--status'], { env: { ...process.env, DATABASE_URL: '' } });
   fail('migrate ran without DATABASE_URL');
 } catch (e) { migErr = String(e.stderr || e.stdout || ''); }
 if (!/DATABASE_URL/.test(migErr)) fail('migrate should name DATABASE_URL when it is unset');
-if (!/pooler/i.test(migErr)) fail('migrate should warn against the transaction pooler');
+if (!/dry-run/.test(migErr)) fail('migrate should point at --dry-run when there is no database');
+if (/must be the SESSION|never the transaction pooler/i.test(migErr))
+  fail('migrate must not demand session/direct — --status and --check only read');
 if (!/fonderie migrate/.test(run(['help']))) fail('help missing `fonderie migrate`');
-console.log('  ✓ migrate guards (DATABASE_URL required, pooler warning, help listed)');
+console.log('  ✓ migrate guards (DATABASE_URL required, --dry-run offered, no bogus pooler demand)');
 
 // --- migrate --dry-run: discovery + classification, no database ---
 // This is the path that was broken first time round. These packages are
