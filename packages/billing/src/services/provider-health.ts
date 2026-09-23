@@ -155,10 +155,23 @@ export function describeWebhookProblems(report: IWebhookRegistrationReport): str
 			);
 		}
 		if (e.apiVersionMismatch) {
+			// Deliberately does NOT say data is being lost. Invoice payloads have
+			// been read version-tolerantly since 9.6.0 (normalizeInvoice falls back
+			// to the legacy locations, enrichInvoiceRefs recovers the PaymentIntent
+			// a 2025+ webhook cannot carry), so the drift this reports is a real
+			// condition with a defended consequence. Saying otherwise trains people
+			// to ignore the page, which costs more than the drift does.
+			//
+			// It also names the remedy, because the obvious one does not exist: a
+			// provider fixes an endpoint's version when the endpoint is CREATED and
+			// refuses to change it afterwards.
 			lines.push(
-				`${e.url}: renders payloads as ${e.apiVersion} but this client is pinned to ` +
-					`${report.expectedApiVersion} — fields move between versions, so a payload can parse ` +
-					'to null and be silently ignored',
+				`${e.url}: renders payloads as ${e.apiVersion}, this client reads them as ` +
+					`${report.expectedApiVersion}. Invoice payloads are read version-tolerantly, so ` +
+					'this is drift to close rather than data being lost. An endpoint’s version cannot ' +
+					'be changed after it is created — either recreate it pinned to the client’s ' +
+					'version (new signing secret), or move the client pin forward and re-verify the ' +
+					'payload shapes.',
 			);
 		}
 	}
