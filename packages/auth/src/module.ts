@@ -11,6 +11,9 @@ import { describeAuthAdminRoutes } from './admin';
 
 export class AuthModule implements IFonderieModule {
 	readonly name = '@fonderie/auth';
+	// Baked in at build time by tsup.base, so the operator's Modules page can
+	// say what is actually deployed rather than 'not reported'.
+	readonly version = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';
 
 	constructor(
 		private store: IStoreAdapter,

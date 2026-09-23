@@ -914,3 +914,32 @@ test('host: the served UI is bound too, and the manifest reports the binding', a
 		null,
 	);
 });
+
+// A module that cannot say its version leaves a row reading "not reported" on
+// the operator's Modules page — honest and useless. The page answers "what is
+// actually deployed here", and it answered it for exactly one module out of six
+// until every brick reported. This is a static check because the alternative is
+// constructing eleven modules with their real dependencies to read one field.
+test('every brick module reports its version, so the Modules page can answer', async () => {
+	const { readdirSync, readFileSync, existsSync } = await import('node:fs');
+	const { join } = await import('node:path');
+	const root = join(import.meta.dirname, '..', '..', '..');
+
+	const missing: string[] = [];
+	for (const pkg of readdirSync(root).sort()) {
+		const file = join(root, pkg, 'src', 'module.ts');
+		if (!existsSync(file)) continue;
+		const src = readFileSync(file, 'utf8');
+		// Only classes that actually implement the module contract.
+		if (!/implements\s+IFonderieModule/.test(src)) continue;
+		if (!/readonly version\b/.test(src)) missing.push(pkg);
+	}
+
+	assert.deepEqual(
+		missing,
+		[],
+		`these modules do not report a version — add\n` +
+			`  readonly version = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';\n` +
+			`(tsup.base bakes FONDERIE_PKG_VERSION in at build time)`,
+	);
+});

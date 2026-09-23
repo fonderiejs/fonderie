@@ -9,6 +9,7 @@ Subpath exports: `@fonderie/courier/types`, `@fonderie/courier/migrations`
 ```ts
 new CourierModule(config: ICourierConfig, store?: IStoreAdapter | undefined, bus?: EventBus | undefined): CourierModule
   .name: "@fonderie/courier"
+  .version: string
   .deps: string[]
   .dispatcher: Dispatcher
   .describeAdmin(): IAdminDescription

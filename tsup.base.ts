@@ -1,11 +1,35 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+// The version of the package being built, baked in at build time so a module
+// can report it at runtime. tsup runs with cwd set to the package directory
+// (each build script is a bare `tsup`), so this reads the right package.json
+// without every config having to pass its own.
+//
+// Why a module reports its version at all: the operator's Modules page answers
+// "what is actually deployed here". A module that cannot say leaves a row
+// reading "not reported", which is honest and useless — the page existed for a
+// while answering that question for exactly one module out of six.
+const pkgVersion = (() => {
+	try {
+		return JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')).version ?? '0.0.0-dev'
+	} catch {
+		return '0.0.0-dev'
+	}
+})()
+
 // Shared tsup build options — every package spreads this and adds its own entry points.
 // Change build behaviour once here rather than in 8 places.
+//
+// NOTE: spreading this and then setting your own `env` REPLACES this one. Merge
+// instead: `env: { ...baseConfig.env, MY_VAR: x }`.
 export const baseConfig = {
 	format:    ['esm', 'cjs'] as Array<'esm' | 'cjs'>,
 	dts:       true,
 	clean:     true,
 	sourcemap: true,
 	splitting: false,
+	env:       { FONDERIE_PKG_VERSION: pkgVersion },
 }
 
 // getMigrationsPath() uses import.meta.url which is ESM-only.

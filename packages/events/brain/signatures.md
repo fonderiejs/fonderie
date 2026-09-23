@@ -16,6 +16,7 @@ new EventBus(transport: IEventTransport): EventBus
 
 new EventsModule(config: IEventsConfig): EventsModule
   .name: "@fonderie/events"
+  .version: string
   .bus: EventBus
   .describeAdmin(): IAdminDescription
   .install(_app: IFonderieApp): void

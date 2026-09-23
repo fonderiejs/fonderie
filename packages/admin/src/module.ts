@@ -23,7 +23,9 @@ export const DEFAULT_ADMIN_PATH = '/_admin';
 export const DEFAULT_CHECK_TIMEOUT_MS = 10_000;
 
 // Replaced at build time (tsup env); the fallback is what tests see.
-export const ADMIN_VERSION: string = process.env['FONDERIE_ADMIN_VERSION'] ?? '0.0.0-dev';
+// Baked in at build time by tsup.base — see its note on why a module reports
+// its version at all.
+export const ADMIN_VERSION: string = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';
 
 // 'https://admin.example.com/' and 'admin.example.com' name the same host, so
 // accept both. A scheme here is the likely mistake — this option sits beside

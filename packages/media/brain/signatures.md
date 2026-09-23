@@ -9,6 +9,7 @@ Subpath exports: `@fonderie/media/migrations`
 ```ts
 new MediaModule(store: IStoreAdapter, config: IMediaConfig): MediaModule
   .name: "@fonderie/media"
+  .version: string
   .deps: string[]
   .install(app: IFonderieApp): void
 

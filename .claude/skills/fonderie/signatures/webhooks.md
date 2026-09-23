@@ -9,6 +9,7 @@ Subpath exports: `@fonderie/webhooks/migrations`
 ```ts
 new WebhooksModule(store: IStoreAdapter, config?: IWebhooksConfig, bus?: EventBus | undefined): WebhooksModule
   .name: "@fonderie/webhooks"
+  .version: string
   .deps: string[]
   .install(app: IFonderieApp): void
   .retry(): Promise<void>
