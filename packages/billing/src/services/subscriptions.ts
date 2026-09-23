@@ -1,3 +1,4 @@
+import { encodeKeysetCursor } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { BillingInterval, ISubscription, SubscriberType } from '../types';
@@ -16,8 +17,11 @@ const SELECT_SUBSCRIPTION = `
 		current_period_end       AS "currentPeriodEnd",
 		cancel_at_period_end     AS "cancelAtPeriodEnd",
 		trial_ends_at            AS "trialEndsAt",
-		created_at               AS "createdAt"
-	FROM fonderie_subscriptions`;
+		created_at               AS "createdAt"`;
+
+// The single-row reads below append their own FROM; the list appends an extra
+// column first, so the table name is not baked into the column list.
+const FROM_SUBSCRIPTIONS = ' FROM fonderie_subscriptions';
 
 // Dunning grace: a past_due subscriber still counts as having access for
 // `graceDays` beyond the (failed) renewal date, so a transient card failure
@@ -61,10 +65,54 @@ export async function getSubscription(
 	store: IStoreAdapter,
 ): Promise<ISubscription | null> {
 	const [row] = await store.query<ISubscription>(
-		`${SELECT_SUBSCRIPTION} WHERE subscriber_type = $1 AND subscriber_id = $2`,
+		`${SELECT_SUBSCRIPTION}${FROM_SUBSCRIPTIONS} WHERE subscriber_type = $1 AND subscriber_id = $2`,
 		[subscriberType, subscriberId],
 	);
 	return row ?? null;
+}
+
+export interface ISubscriptionPage {
+	subscriptions: ISubscription[];
+	nextCursor: string | null;
+}
+
+// One page of subscribers, newest first. Keyset-paginated on (created_at, id),
+// the same cursor contract as the wallet ledger. The +1 over-fetch that detects
+// a next page lives here so no outer clamp can shave it off, and nextCursor is
+// built from created_at::text so same-microsecond rows cannot be skipped.
+export async function listSubscriptions(
+	query: { limit?: number; cursor?: { createdAt: string; id: string } | null },
+	store: IStoreAdapter,
+): Promise<ISubscriptionPage> {
+	const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
+	const params: unknown[] = [];
+	const where: string[] = [];
+
+	if (query.cursor) {
+		params.push(query.cursor.createdAt, query.cursor.id);
+		where.push(`(created_at, id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
+	}
+
+	params.push(limit + 1);
+	const rows = await store.query<ISubscription & { createdAtRaw?: string }>(
+		// created_at::text alongside the timestamp: the cursor needs full
+		// microsecond precision, which a Date round-trip drops.
+		`${SELECT_SUBSCRIPTION}, created_at::text AS "createdAtRaw"${FROM_SUBSCRIPTIONS}
+		 ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+		 ORDER BY created_at DESC, id DESC
+		 LIMIT $${params.length}`,
+		params,
+	);
+
+	const page = rows.slice(0, limit);
+	const last = page[page.length - 1];
+	return {
+		subscriptions: page,
+		nextCursor:
+			rows.length > limit && last
+				? encodeKeysetCursor(last.createdAtRaw ?? String(last.createdAt), last.id)
+				: null,
+	};
 }
 
 export async function upsertSubscription(

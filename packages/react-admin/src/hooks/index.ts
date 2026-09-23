@@ -21,6 +21,8 @@ export { useAdminLoginHistory } from './useAdminLoginHistory';
 export type { IUseAdminCatalogReturn } from './useAdminCatalog';
 export { useAdminCatalog } from './useAdminCatalog';
 export type { IUseAdminSubscriberReturn } from './useAdminSubscriber';
+export type { IUseAdminSubscribersReturn } from './useAdminSubscribers';
 export { useAdminSubscriber } from './useAdminSubscriber';
+export { useAdminSubscribers } from './useAdminSubscribers';
 export type { IUseAdminAuditReturn } from './useAdminAudit';
 export { useAdminAudit } from './useAdminAudit';

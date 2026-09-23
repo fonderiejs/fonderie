@@ -61,6 +61,7 @@ export type {
 	IUseAdminLoginHistoryReturn,
 	IUseAdminCatalogReturn,
 	IUseAdminSubscriberReturn,
+	IUseAdminSubscribersReturn,
 	IUseAdminAuditReturn,
 } from './hooks';
 export {
@@ -76,5 +77,6 @@ export {
 	useAdminLoginHistory,
 	useAdminCatalog,
 	useAdminSubscriber,
+	useAdminSubscribers,
 	useAdminAudit,
 } from './hooks';

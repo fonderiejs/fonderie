@@ -2970,7 +2970,18 @@ test('describeBillingAdminRoutes: plan writes always, wallet grant only with con
 test('describeAdmin: BillingModule exposes it from constructor state', async () => {
 	const { BillingModule } = await import('../module');
 	const routes = new BillingModule(subCtrlStore(null).store, config).describeAdmin().routes ?? [];
-	assert.equal(routes.length, 5); // 2 reads (catalog, subscription) + 3 plan writes
+	// The list, not the count: when this changes it should say what moved.
+	assert.deepEqual(
+		routes.map((r) => `${r.method} ${r.path}`),
+		[
+			'GET /catalog',
+			'GET /subscriptions',
+			'GET /subscriptions/:type/:id',
+			'POST /plans',
+			'PUT /plans/:planId',
+			'DELETE /plans/:planId',
+		],
+	);
 });
 
 // ── describeAdmin: doctor checks ──
@@ -3043,17 +3054,104 @@ test('describeBillingAdminReads: catalog + subscription always; wallet reads onl
 	const { store } = moneyStore();
 	assert.deepEqual(
 		describeBillingAdminReads(store, config).map((r) => `${r.method} ${r.path}`),
-		['GET /catalog', 'GET /subscriptions/:type/:id'],
+		['GET /catalog', 'GET /subscriptions', 'GET /subscriptions/:type/:id'],
 	);
 	const withWallet = { ...config, wallet: { currency: 'eur' } } as unknown as IBillingConfig;
 	assert.deepEqual(
 		describeBillingAdminReads(store, withWallet).map((r) => `${r.method} ${r.path}`),
 		[
 			'GET /catalog',
+			'GET /subscriptions',
 			'GET /subscriptions/:type/:id',
 			'GET /wallet/:type/:id',
 			'GET /wallet/:type/:id/ledger',
 		],
+	);
+});
+
+test('subscriber list: a page, a cursor that round-trips, and strict limit/cursor rejection', async () => {
+	const { describeBillingAdminReads } = await import('../admin-reads');
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+
+	// Real UUIDs: the shared cursor codec range-checks the id, so a crafted one
+	// decodes to null and 422s rather than reaching Postgres as a bad ::uuid.
+	const UUID_1 = '11111111-1111-4111-8111-111111111111';
+	const UUID_2 = '22222222-2222-4222-8222-222222222222';
+	const row = (id: string, extra: Record<string, unknown> = {}) => ({
+		id,
+		subscriberType: 'user',
+		subscriberId: 'u-1',
+		plan: 'pro',
+		interval: 'month',
+		status: 'active',
+		cancelAtPeriodEnd: false,
+		currentPeriodEnd: '2026-10-01T00:00:00.000Z',
+		createdAt: '2026-09-01T00:00:00.000Z',
+		...extra,
+	});
+
+	// Two rows at limit 1 — the model over-fetches limit+1, so this is exactly
+	// "there is a next page".
+	let captured: { sql: string; params: unknown[] } | null = null;
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			if (sql.includes('fonderie_subscriptions')) {
+				captured = { sql, params };
+				return [
+					row(UUID_1, { createdAtRaw: '2026-09-01 00:00:00.123456+00' }),
+					row(UUID_2),
+				] as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	app.register({
+		name: 'mount',
+		install(a) {
+			for (const r of describeBillingAdminReads(store, config))
+				a.addRoute(r.method, `/_admin${r.path}`, ...r.handlers);
+		},
+	});
+	await app.boot();
+
+	const res = await app.handle(new Request('http://localhost/_admin/subscriptions?limit=1'));
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as {
+		result: { subscriptions: Array<{ id: string }>; nextCursor: string | null };
+	};
+	assert.deepEqual(
+		body.result.subscriptions.map((s) => s.id),
+		[UUID_1],
+		'trimmed to the limit',
+	);
+	assert.ok(body.result.nextCursor, 'over-fetch ⇒ a cursor');
+
+	// The cursor comes back as a decoded keyset pair, at the microsecond
+	// precision createdAtRaw preserved.
+	await app.handle(
+		new Request(
+			`http://localhost/_admin/subscriptions?limit=1&cursor=${encodeURIComponent(body.result.nextCursor as string)}`,
+		),
+	);
+	assert.ok(captured, 'the list query ran');
+	assert.ok((captured as { sql: string }).sql.includes('(created_at, id) <'), 'keyset predicate');
+	assert.equal((captured as { params: unknown[] }).params[0], '2026-09-01 00:00:00.123456+00');
+	assert.equal((captured as { params: unknown[] }).params[1], UUID_1);
+
+	// Billing clamps strictly where auth and audit clamp silently — keep the
+	// local convention.
+	for (const bad of ['0', '101', 'abc']) {
+		const r = await app.handle(
+			new Request(`http://localhost/_admin/subscriptions?limit=${bad}`),
+		);
+		assert.equal(r.status, 422, `limit=${bad}`);
+	}
+	assert.equal(
+		(await app.handle(new Request('http://localhost/_admin/subscriptions?cursor=%%%'))).status,
+		422,
 	);
 });
 

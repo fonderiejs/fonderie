@@ -61,5 +61,6 @@ export {
 	useAdminLoginHistory,
 	useAdminCatalog,
 	useAdminSubscriber,
+	useAdminSubscribers,
 	useAdminAudit,
 } from './composables';

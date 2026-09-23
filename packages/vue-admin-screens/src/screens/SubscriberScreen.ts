@@ -1,21 +1,33 @@
 import type { BillingAdminClient, SubscriberType } from '@fonderie/client';
-import { useAdminSubscriber } from '@fonderie/vue-admin';
+import { useAdminSubscriber, useAdminSubscribers } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
 import { table, td } from './common';
 
-// What is this subscriber on, what does their wallet hold, what moved — and
-// the one write: a manual grant, idempotency-keyed.
+// Who is subscribed, and then: what is this one on, what does their wallet
+// hold, what moved — and the one write, a manual grant, idempotency-keyed.
+// Lists on arrival; typing a type and an id was only possible if you already
+// knew both, which is not how anyone arrives at this page.
 export const SubscriberScreen = defineComponent({
 	name: 'FonderieSubscriberScreen',
-	props: { client: { type: Object as PropType<BillingAdminClient>, required: true } },
+	props: {
+		client: { type: Object as PropType<BillingAdminClient>, required: true },
+		pageSize: { type: Number, default: 50 },
+	},
 	setup(props) {
 		const type = ref<SubscriberType>('user');
 		const idInput = ref('');
 		const subscriber = ref<{ type: SubscriberType; id: string } | null>(null);
+		const list = useAdminSubscribers(props.client, { limit: props.pageSize });
 		const { subscription, wallet, ledger, hasMoreLedger, isLoading, error, loadMoreLedger, grant } =
 			useAdminSubscriber(props.client, subscriber, { limit: 20 });
+		const open = (t: SubscriberType, id: string) => {
+			granted.value = null;
+			type.value = t;
+			idInput.value = id;
+			subscriber.value = { type: t, id };
+		};
 		const amount = ref('');
 		const note = ref('');
 		const granted = ref<string | null>(null);
@@ -66,8 +78,82 @@ export const SubscriberScreen = defineComponent({
 							{ type: 'submit', style: styles.button, disabled: isLoading.value },
 							'Look up',
 						),
+						subscriber.value
+							? h(
+									'button',
+									{
+										type: 'button',
+										style: styles.button,
+										onClick: () => {
+											subscriber.value = null;
+											idInput.value = '';
+											granted.value = null;
+										},
+									},
+									'← All subscribers',
+								)
+							: h(
+									'button',
+									{
+										type: 'button',
+										style: styles.button,
+										disabled: list.isLoading.value,
+										onClick: () => void list.refresh(),
+									},
+									'Refresh',
+								),
 					],
 				),
+				!subscriber.value
+					? h('div', [
+							list.error.value
+								? h('p', { style: styles.error, role: 'alert' }, list.error.value.explanation)
+								: null,
+							list.subscriptions.value.length === 0 && !list.isLoading.value
+								? h('p', { style: styles.muted }, 'No subscribers yet.')
+								: table(
+										['Subscriber', 'Plan', 'Status', 'Renews'],
+										list.subscriptions.value.map((sub) =>
+											h('tr', { key: sub.id }, [
+												td(
+													h(
+														'button',
+														{
+															type: 'button',
+															style: { ...styles.navItem, padding: 0, ...styles.mono },
+															onClick: () => open(sub.subscriberType, sub.subscriberId),
+														},
+														`${sub.subscriberType}/${sub.subscriberId}`,
+													),
+												),
+												td(`${sub.plan} · ${sub.interval}`),
+												td(
+													sub.cancelAtPeriodEnd
+														? [sub.status, ' ', h('span', { style: styles.badge }, 'cancels')]
+														: sub.status,
+												),
+												td(
+													sub.currentPeriodEnd
+														? new Date(sub.currentPeriodEnd).toLocaleDateString()
+														: h('span', { style: styles.muted }, '—'),
+												),
+											]),
+										),
+									),
+							list.isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
+							list.hasMore.value && !list.isLoading.value
+								? h(
+										'button',
+										{
+											type: 'button',
+											style: { ...styles.button, marginTop: '8px' },
+											onClick: () => void list.loadMore(),
+										},
+										'Load more',
+									)
+								: null,
+						])
+					: null,
 				error.value
 					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
 					: null,

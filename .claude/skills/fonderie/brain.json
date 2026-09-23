@@ -525,12 +525,17 @@
         "fonderie_wallet_grants",
         "fonderie_wallet_ledger"
       ],
-      "routeCount": 29,
+      "routeCount": 30,
       "routes": [
         {
           "method": "GET",
           "path": "/_admin/catalog",
           "mw": "async () => { const stored = (await getDBPlans(store)).map(toPlanDTO); return setApiResponse(HTTP.OK, 'CATALOG', 'Plans', { configured: jsonSafe(getPlans(config)), stored, }); }"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/subscriptions",
+          "mw": "async (ctx) => { const params = new URL(ctx.request.url).searchParams; const rawLimit = params.get('limit'); const limit = rawLimit !== null ? Number.parseInt(rawLimit, 10) : 50; // Billing clamps strictly where auth and audit clamp silently. Keep // the local convention: inside this package a bad limit is a 422. if (Number.isNaN(limit) || limit < 1 || limit > 100) return setApiResponse( HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'limit must be an integer between 1 and 100', ); const rawCursor = params.get('cursor'); const cursor = rawCursor !== null ? decodeLedgerCursor(rawCursor) : null; if (rawCursor !== null && !cursor) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Malformed cursor'); const page = await listSubscriptions({ limit, cursor }, store); return setApiResponse(HTTP.OK, 'SUBSCRIPTIONS', 'Subscribers', page); }"
         },
         {
           "method": "GET",
@@ -1303,6 +1308,7 @@
         "useAdminLoginHistory",
         "useAdminCatalog",
         "useAdminSubscriber",
+        "useAdminSubscribers",
         "useAdminAudit"
       ],
       "subpaths": [],
@@ -1999,6 +2005,7 @@
         "useAdminLoginHistory",
         "useAdminCatalog",
         "useAdminSubscriber",
+        "useAdminSubscribers",
         "useAdminAudit"
       ],
       "subpaths": [],
@@ -4576,6 +4583,10 @@
       "vue-admin"
     ],
     "useadminsubscriber": [
+      "react-admin",
+      "vue-admin"
+    ],
+    "useadminsubscribers": [
       "react-admin",
       "vue-admin"
     ],
