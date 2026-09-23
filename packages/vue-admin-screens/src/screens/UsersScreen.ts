@@ -1,28 +1,46 @@
 import type { AuthAdminClient } from '@fonderie/client';
-import { useAdminLoginHistory, useAdminUser, useAdminUserSessions } from '@fonderie/vue-admin';
+import {
+	useAdminLoginHistory,
+	useAdminUser,
+	useAdminUserSessions,
+	useAdminUsers,
+} from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { computed, defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
-import { refreshButton, td } from './common';
+import { refreshButton, table, td } from './common';
 
-// Why can't this person log in. Look up by email, see the account, its live
-// sessions and recent sign-ins; suspend, unsuspend, or sign them out everywhere.
+// Who is signed up, and why can't this one log in. Lists on arrival — an
+// operator who must know an address before they can see anything cannot find
+// the account they are being asked about. Picking a row, or an exact email,
+// opens the account: live sessions, recent sign-ins, suspend and sign-out.
 export const UsersScreen = defineComponent({
 	name: 'FonderieUsersScreen',
-	props: { client: { type: Object as PropType<AuthAdminClient>, required: true } },
+	props: {
+		client: { type: Object as PropType<AuthAdminClient>, required: true },
+		pageSize: { type: Number, default: 50 },
+	},
 	setup(props) {
 		const input = ref('');
 		const email = ref('');
+		const selectedId = ref('');
+		const list = useAdminUsers(props.client, { limit: props.pageSize });
 		const { user, isLoading, error, suspend, unsuspend, revokeSessions } = useAdminUser(
 			props.client,
-			{ email },
+			{ email, id: selectedId },
 		);
 		const userId = computed(() => user.value?.id ?? null);
 		const sessions = useAdminUserSessions(props.client, userId);
 		const history = useAdminLoginHistory(props.client, userId, { limit: 20 });
+		const showList = computed(() => !email.value && !selectedId.value);
 		const yesNo = (v: boolean) =>
 			h('span', { style: v ? styles.ok : styles.muted }, v ? 'yes' : 'no');
 		const row = (k: string, v: unknown) => h('tr', [td(k), td(v as never)]);
+		const clear = () => {
+			email.value = '';
+			selectedId.value = '';
+			input.value = '';
+		};
 
 		return () => {
 			const u = user.value;
@@ -34,6 +52,7 @@ export const UsersScreen = defineComponent({
 						style: styles.toolbar,
 						onSubmit: (e: Event) => {
 							e.preventDefault();
+							selectedId.value = '';
 							email.value = input.value.trim();
 						},
 					},
@@ -51,8 +70,62 @@ export const UsersScreen = defineComponent({
 							{ type: 'submit', style: styles.button, disabled: isLoading.value },
 							'Look up',
 						),
+						showList.value
+							? refreshButton('Refresh', list.isLoading.value, () => void list.refresh())
+							: refreshButton('← All users', false, clear),
 					],
 				),
+				showList.value
+					? h('div', [
+							list.error.value
+								? h('p', { style: styles.error, role: 'alert' }, list.error.value.explanation)
+								: null,
+							list.users.value.length === 0 && !list.isLoading.value
+								? h('p', { style: styles.muted }, 'No users yet.')
+								: table(
+										['Email', 'Name', 'Created', 'Status'],
+										list.users.value.map((u) =>
+											h('tr', { key: u.id }, [
+												td(
+													h(
+														'button',
+														{
+															type: 'button',
+															style: { ...styles.navItem, padding: 0 },
+															onClick: () => (selectedId.value = u.id),
+														},
+														u.email,
+													),
+												),
+												td(
+													`${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() ||
+														h('span', { style: styles.muted }, '—'),
+												),
+												td(new Date(u.createdAt).toLocaleDateString()),
+												td(
+													u.suspended
+														? h('span', { style: styles.badge }, 'suspended')
+														: u.deletedAt
+															? h('span', { style: styles.badge }, 'deleted')
+															: h('span', { style: styles.muted }, 'active'),
+												),
+											]),
+										),
+									),
+							list.isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
+							list.hasMore.value && !list.isLoading.value
+								? h(
+										'button',
+										{
+											type: 'button',
+											style: { ...styles.button, marginTop: '8px' },
+											onClick: () => void list.loadMore(),
+										},
+										'Load more',
+									)
+								: null,
+						])
+					: null,
 				error.value
 					? h(
 							'p',

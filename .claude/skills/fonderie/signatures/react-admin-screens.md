@@ -50,6 +50,7 @@ interface ITokensScreenProps {
 
 interface IUsersScreenProps {
     client: AuthAdminClient;
+    pageSize?: number;
 }
 
 interface ICatalogScreenProps {
@@ -82,7 +83,7 @@ function RoutesScreen({ client }: IRoutesScreenProps): Element
 
 function TokensScreen({ client }: ITokensScreenProps): Element
 
-function UsersScreen({ client }: IUsersScreenProps): Element
+function UsersScreen({ client, pageSize }: IUsersScreenProps): Element
 
 function CatalogScreen({ client }: ICatalogScreenProps): Element
 

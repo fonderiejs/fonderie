@@ -33,7 +33,11 @@ export type {
 export { ConfigAdminClient } from './modules/config-admin';
 export type { IAdminClientOptions, IAdminLogQuery } from './modules/admin';
 export { AdminClient } from './modules/admin';
-export type { IAuthAdminClientOptions, IAdminLoginHistoryQuery } from './modules/auth-admin';
+export type {
+	IAuthAdminClientOptions,
+	IAdminLoginHistoryQuery,
+	IAdminUsersQuery,
+} from './modules/auth-admin';
 export { AuthAdminClient } from './modules/auth-admin';
 export type {
 	IBillingAdminClientOptions,
@@ -93,6 +97,7 @@ export type {
 	IAuditEventDTO,
 	IAuditPageResult,
 	ILoginEventDTO,
+	IAdminUserPageResult,
 	ILoginHistoryPageResult,
 	ISessionDTO,
 	ISessionsResult,
