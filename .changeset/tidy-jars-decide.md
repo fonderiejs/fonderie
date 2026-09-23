@@ -22,6 +22,7 @@ the data.
 ```bash
 fonderie migrate --status     # what is pending, per package, with impact
 fonderie migrate --check      # exit 1 if a pending migration deletes data
+fonderie migrate --dry-run    # classify every migration found — no database
 ```
 
 The CI shape it exists for — the gate, then the app's own runner:

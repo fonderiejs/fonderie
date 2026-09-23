@@ -5,7 +5,7 @@
 // Zero deps; exits non-zero on failure.
 
 import { execFileSync, execFile } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -108,6 +108,44 @@ if (!/DATABASE_URL/.test(migErr)) fail('migrate should name DATABASE_URL when it
 if (!/pooler/i.test(migErr)) fail('migrate should warn against the transaction pooler');
 if (!/fonderie migrate/.test(run(['help']))) fail('help missing `fonderie migrate`');
 console.log('  ✓ migrate guards (DATABASE_URL required, pooler warning, help listed)');
+
+// --- migrate --dry-run: discovery + classification, no database ---
+// This is the path that was broken first time round. These packages are
+// ESM-ONLY — exports maps carry "import" but no "require" — so
+// createRequire().resolve() answers ERR_PACKAGE_PATH_NOT_EXPORTED for every
+// brick, inside a catch, and the command silently discovered nothing. The fake
+// brick below is deliberately shaped that way so a regression fails here.
+{
+  const mp = mkdtempSync(join(tmpdir(), 'fonderie-migrate-'));
+  const brick = join(mp, 'node_modules', '@fonderie', 'demo');
+  const sqlDir = join(brick, 'dist', 'migrations', 'sql');
+  mkdirSync(sqlDir, { recursive: true });
+  writeFileSync(join(mp, 'package.json'), JSON.stringify({ name: 'app', type: 'module' }));
+  writeFileSync(
+    join(brick, 'package.json'),
+    JSON.stringify({
+      name: '@fonderie/demo',
+      type: 'module',
+      exports: { './migrations': { types: './dist/migrations/index.d.ts', import: './dist/migrations/index.js' } },
+    }),
+  );
+  writeFileSync(
+    join(brick, 'dist', 'migrations', 'index.js'),
+    `import { dirname, join } from 'node:path';\nimport { fileURLToPath } from 'node:url';\nexport const getMigrationsPath = () => join(dirname(fileURLToPath(import.meta.url)), 'sql');\n`,
+  );
+  writeFileSync(join(sqlDir, '001_create.sql'), 'CREATE TABLE demo (id int);');
+  writeFileSync(join(sqlDir, '002_drop.sql'), 'DROP TABLE demo CASCADE;');
+  // The real store, so classification is the shipped one and not a stub.
+  symlinkSync(join(here, '..', '..', 'store'), join(mp, 'node_modules', '@fonderie', 'store'), 'dir');
+
+  const outDry = run(['migrate', '--dry-run', '--project', mp], { env: { ...process.env, DATABASE_URL: '' } });
+  if (!/demo: 2 migration/.test(outDry)) fail('dry-run did not discover the ESM-only brick: ' + outDry);
+  if (!/001_create\.sql/.test(outDry)) fail('dry-run missed the additive migration');
+  if (!/✖ 002_drop\.sql\s+DESTRUCTIVE/.test(outDry)) fail('dry-run did not flag the drop: ' + outDry);
+  if (!/DROP TABLE demo CASCADE/.test(outDry)) fail('dry-run should print the statement that earned the label');
+  if (!/1 of the migrations found delete data/.test(outDry)) fail('dry-run summary wrong: ' + outDry);
+  console.log('  ✓ migrate --dry-run (ESM-only exports discovered, drop flagged with its statement)');
+}
 
 // ── config/secret management commands (thin client over the admin API) ──────
 // Uses async execFile so the in-process http fixture can respond (execFileSync

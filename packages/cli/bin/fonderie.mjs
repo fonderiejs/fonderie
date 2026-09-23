@@ -531,11 +531,22 @@ Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);
 // Zero deps preserved: @fonderie/store is resolved from the APP's node_modules
 // (this runs inside a consuming app, where it is already installed), never
 // added as a dependency of the CLI.
+// classifyMigration landed in a later @fonderie/store; against an older one the
+// command still lists migrations, it just cannot label their impact.
+const classify = (store, sql) =>
+  typeof store.classifyMigration === 'function'
+    ? store.classifyMigration(sql)
+    : { impact: 'unknown', destructive: [] };
+
 async function doMigrate() {
   const cwd = arg('--project', process.cwd());
   const appDir = arg('--app', null);
+  const dry = argv.includes('--dry-run');
   const url = process.env['DATABASE_URL'];
-  if (!url) {
+  // --dry-run answers "what would these migrations do", which needs no database:
+  // it classifies every file rather than only the pending ones. Useful reviewing
+  // a PR, and it is how discovery is tested without standing a server up.
+  if (!url && !dry) {
     console.error('migrate: set DATABASE_URL.');
     console.error('  In CI use the SESSION or DIRECT Postgres URL, not the transaction');
     console.error('  pooler — a pooler lends a backend per transaction.');
@@ -585,6 +596,27 @@ async function doMigrate() {
     process.exit(1);
   }
 
+  if (dry) {
+    let flagged = 0;
+    for (const [name, dir] of dirs) {
+      const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+      if (files.length === 0) continue;
+      console.log(`\n${name}: ${files.length} migration(s)`);
+      for (const file of files) {
+        const { impact, destructive: stmts } = classify(store, readFileSync(join(dir, file), 'utf8'));
+        if (impact === 'destructive') {
+          flagged++;
+          console.log(`  ✖ ${file}  DESTRUCTIVE`);
+          for (const st of stmts) console.log(`      ${st.slice(0, 100)}`);
+        } else {
+          console.log(`  · ${file}`);
+        }
+      }
+    }
+    console.log(`\n${flagged} of the migrations found delete data.`);
+    return;
+  }
+
   const adapter = new store.PGAdapter(url);
   let destructive = 0;
   let pendingTotal = 0;
@@ -607,12 +639,7 @@ async function doMigrate() {
       console.log(`\n${name}: ${pending.length} pending`);
       for (const file of pending) {
         const sql = readFileSync(join(dir, file), 'utf8');
-        // classifyMigration landed in a later @fonderie/store; an older one
-        // still lists what is pending, it just cannot label the impact.
-        const { impact, destructive: stmts } =
-          typeof store.classifyMigration === 'function'
-            ? store.classifyMigration(sql)
-            : { impact: 'unknown', destructive: [] };
+        const { impact, destructive: stmts } = classify(store, sql);
         if (impact === 'destructive' && everApplied) {
           destructive++;
           console.log(`  ✖ ${file}  DESTRUCTIVE`);
