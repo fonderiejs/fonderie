@@ -1,5 +1,12 @@
 # @fonderie/risk
 
+## 0.2.13
+
+### Patch Changes
+
+- Updated dependencies [13b6a15]
+  - @fonderie/store@0.6.0
+
 ## 0.2.12
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/rate-limit",
-	"version": "4.0.19",
+	"version": "4.0.20",
 	"fonderie": { "stability": "stable" },
 	"description": "Distributed rate limiting for @fonderiejs — atomic token bucket over memory, PostgreSQL, or Redis, with standard RateLimit-* headers.",
 	"keywords": [
@@ -41,7 +41,7 @@
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.20.0",
-		"@fonderie/store": "^0.5.0"
+		"@fonderie/store": "^0.6.0"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/store": {

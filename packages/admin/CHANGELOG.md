@@ -1,5 +1,12 @@
 # @fonderie/admin
 
+## 0.8.2
+
+### Patch Changes
+
+- Updated dependencies [13b6a15]
+  - @fonderie/store@0.6.0
+
 ## 0.8.1
 
 ### Patch Changes
