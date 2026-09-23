@@ -44,7 +44,14 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+      # This step is where the hang keeps landing — six release cycles so far,
+      # every suite green and turbo never summarising. NODE_OPTIONS names the
+      # process that will not exit. Absolute path: turbo spawns each package
+      # with its own cwd. Silent unless something is still alive at the
+      # deadline; see scripts/dump-handles.mjs.
       - run: npm test
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dump-handles.mjs
 
       # Opens/updates the "Version Packages" PR when changesets are pending;
       # publishes to npm when that PR is merged. With OIDC there is NO

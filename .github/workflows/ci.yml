@@ -78,7 +78,15 @@ jobs:
       # Notification-template coverage guard — every module that defines
       # customer-notification MESSAGE_KEYS must ship default templates for them.
       - run: npm run check:template-coverage
+      # NODE_OPTIONS names whatever keeps a test process alive after its suite
+      # has finished — the failure where every suite reports green, turbo never
+      # summarises, and the job idles to its timeout. Absolute path because
+      # turbo spawns each package with its own cwd, so a relative --import
+      # resolves to nothing for all but the root. Silent unless something is
+      # still alive at the deadline; see scripts/dump-handles.mjs.
       - run: npm test
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dump-handles.mjs
       # Reference example apps (examples/*) are standalone — they pin the
       # published @fonderie/* packages so they stay Vercel-deployable. Here we
       # want THIS commit's code, so the pinned deps come out before the install

@@ -35,6 +35,7 @@ PLAN-*.md
 !scripts/check-hook-parity.mjs
 !scripts/check-template-coverage.mjs
 !scripts/generate-outcomes.mjs
+!scripts/dump-handles.mjs
 !scripts/generate-brain.mjs
 !scripts/brain-query.mjs
 !scripts/brain-lib.mjs
