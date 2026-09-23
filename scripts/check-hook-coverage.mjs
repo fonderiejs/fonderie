@@ -130,6 +130,7 @@ const ROUTE_ALLOW = new Map([
 	// @fonderie/billing's described money reads, reached through BillingAdminClient
 	// (+ react-admin / vue-admin hooks, which leg 1 verifies). Same prefix caveat.
 	['GET /_admin/catalog', 'BillingAdminClient.catalog() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/subscriptions', 'BillingAdminClient.listSubscriptions() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/subscriptions/:type/:id', 'BillingAdminClient.subscription() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/wallet/:type/:id', 'BillingAdminClient.wallet() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/wallet/:type/:id/ledger', 'BillingAdminClient.walletLedger() — prefix is configurable, invisible to the static match'],

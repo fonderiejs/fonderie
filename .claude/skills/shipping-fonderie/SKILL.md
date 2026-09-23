@@ -14,6 +14,19 @@ has a bot quirk that stalls silently**.
 CI runs **fifteen** gates. Running `typecheck` and `test` locally passes about a
 quarter of them. There is no composite script, so run them in CI's order:
 
+**Never pipe a gate through `head`/`tail` inside an `&&` chain.** A pipeline
+exits with the status of its LAST command, so `tail`'s 0 masks the gate's 1 and
+the chain sails on — you get a "green" report for a gate that failed, and CI
+tells you hours later. Run each one and check `$?`:
+
+```bash
+for g in lint:ci audit:ship typecheck audit:validation check:evidence \
+         check:hook-coverage check:hook-parity check:routes \
+         check:template-coverage brain:test brain:project-test; do
+  npm run "$g" >/dev/null 2>&1 && echo "  PASS $g" || echo "  FAIL $g"
+done
+```
+
 ```bash
 npm run lint:ci
 npm run audit:ship
@@ -31,6 +44,7 @@ npm run brain:project-test
 npm run audit:validation
 npm run check:evidence
 npm run check:hook-coverage
+npm run check:hook-parity
 npm run check:routes
 npm run check:template-coverage
 npm test

@@ -355,6 +355,7 @@ new BillingAdminClient(opts: IBillingAdminClientOptions): BillingAdminClient
   .createPlan(input: IAdminPlanInput & { name: string; }): Promise<IApiResponse<IPlanDTO>>
   .updatePlan(planId: string, input: IAdminPlanInput): Promise<IApiResponse<IPlanDTO>>
   .deletePlan(planId: string): Promise<IApiResponse<undefined>>
+  .listSubscriptions(query?: IAdminSubscriptionsQuery | undefined): Promise<IApiResponse<IAdminSubscriptionPage>>
   .subscription(type: SubscriberType, id: string): Promise<IApiResponse<IAdminSubscriptionDTO>>
   .wallet(type: SubscriberType, id: string, currency?: string | undefined): Promise<IApiResponse<IAdminWalletDTO>>
   .walletLedger(type: SubscriberType, id: string, query?: IAdminLedgerQuery | undefined): Promise<IApiResponse<IAdminWalletLedgerPage>>
@@ -396,6 +397,8 @@ function useAdminLoginHistory(client: AuthAdminClient, userId: Ref<string | null
 function useAdminCatalog(client: BillingAdminClient): { catalog: Ref<{ configured: unknown[]; stored: { id: string; planId: string; name: string; description: string; tier: number; seats: number | null; ... 4 more ...; metadata: Record<...>; }[]; } | null, IAdminCatalog | ... 1 more ... | null>; ... 5 more ...; deletePlan: (planId: string) => Promise<...>; }
 
 function useAdminSubscriber(client: BillingAdminClient, subscriber: Ref<{ type: SubscriberType; id: string; } | null, { type: SubscriberType; id: string; } | null>, options?: { ...; }): { ...; }
+
+function useAdminSubscribers(client: BillingAdminClient, query?: Omit<IAdminSubscriptionsQuery, "cursor">): { subscriptions: Ref<{ id: string; subscriberType: SubscriberType; ... 10 more ...; createdAt: string; }[], IAdminSubscriptionDTO[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 
 function useAdminAudit(client: AuditAdminClient, query: Ref<Omit<IAdminAuditQuery, "cursor">, Omit<IAdminAuditQuery, "cursor">>): { ...; }
 ```

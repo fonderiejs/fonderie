@@ -630,6 +630,11 @@ export interface IAdminWalletDTO extends IWalletDTO {
 	updatedAt: string | null;
 }
 
+export interface IAdminSubscriptionPage {
+	subscriptions: IAdminSubscriptionDTO[];
+	nextCursor: string | null;
+}
+
 export interface IAdminWalletLedgerPage {
 	currency: string;
 	entries: IWalletTransactionDTO[];

@@ -39,7 +39,11 @@ export type {
 	IAdminUsersQuery,
 } from './modules/auth-admin';
 export { AuthAdminClient } from './modules/auth-admin';
-export type { IBillingAdminClientOptions, IAdminLedgerQuery } from './modules/billing-admin';
+export type {
+	IBillingAdminClientOptions,
+	IAdminLedgerQuery,
+	IAdminSubscriptionsQuery,
+} from './modules/billing-admin';
 export { BillingAdminClient } from './modules/billing-admin';
 export type { IAuditAdminClientOptions, IAdminAuditQuery } from './modules/audit-admin';
 export { AuditAdminClient } from './modules/audit-admin';
@@ -122,6 +126,7 @@ export type {
 	IAdminCatalog,
 	IAdminSubscriptionDTO,
 	IAdminWalletDTO,
+	IAdminSubscriptionPage,
 	IAdminWalletLedgerPage,
 	IAdminPlanInput,
 	IAdminGrantInput,
