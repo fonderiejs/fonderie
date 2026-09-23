@@ -2,7 +2,13 @@
 export { sql } from './sql';
 export type { ISqlQuery } from './sql';
 export type { IStoreAdapter, IPoolConfig } from './types';
-export { MigrationRunner, InternalMigrationRunner, createMigrationsPath } from './migrations';
+export {
+	MigrationRunner,
+	InternalMigrationRunner,
+	createMigrationsPath,
+	classifyMigration,
+} from './migrations';
+export type { IMigrationClassification, MigrationImpact } from './migrations';
 export { PGAdapter, assertProductionDbConfig } from './adapters/pg';
 
 // Versioned-resource control-plane primitive — version index + optimistic

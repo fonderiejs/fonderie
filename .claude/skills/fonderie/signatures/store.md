@@ -44,6 +44,15 @@ new InternalMigrationRunner(store: IStoreAdapter, migrationsDir: string): Intern
 
 function createMigrationsPath(importMetaUrl: string): string
 
+function classifyMigration(sql: string): IMigrationClassification
+
+interface IMigrationClassification {
+    impact: MigrationImpact;
+    destructive: string[];
+}
+
+type MigrationImpact = 'additive' | 'destructive';
+
 new PGAdapter(config: string | IPoolConfig): PGAdapter
   .testConnection(): Promise<boolean>
   .query<T = unknown>(sql: string, params?: unknown[] | undefined): Promise<T[]>
