@@ -477,6 +477,7 @@ else if (cmd === 'init') doInit();
 else if (cmd === 'config') resourceCmd('config', '/admin/config').catch((e) => { console.error(e.message); process.exit(1); });
 else if (cmd === 'secret') resourceCmd('secret', '/admin/secrets').catch((e) => { console.error(e.message); process.exit(1); });
 else if (cmd === 'template') resourceCmd('template', '/admin/templates').catch((e) => { console.error(e.message); process.exit(1); });
+else if (cmd === 'migrate') doMigrate().catch((e) => { console.error(e.message); process.exit(1); });
 else if (cmd === 'admin') adminCmd().catch((e) => { console.error(e.message); process.exit(1); });
 else {
   console.log(`fonderie — the Fonderie CLI (lazy skills for coding agents)
@@ -486,6 +487,12 @@ else {
   fonderie skill [--out <dir>] [--project <dir>]   write the lazy skill (router + bodies)
   fonderie query <concept>                         what to install for a capability
   fonderie query --concepts                        list every capability
+
+  fonderie migrate --status [--app <dir>]          what is pending, and what each one will do
+  fonderie migrate --check  [--app <dir>]          exit 1 if a pending migration deletes data (CI gate)
+      reports only — the app's own runner applies, because the ORDER is the app's
+      to declare. In CI: fonderie migrate --check && npm run migrate
+      DATABASE_URL must be the SESSION or DIRECT url, never the transaction pooler
 
   fonderie config <get|set|delete|history|rollback> [key] [value] [--env <e>] [--if-version <n>] [--to-version <n>]
   fonderie secret <get|set|delete|history|rollback|reveal> [key] [value] [--env <e>] ...
@@ -500,4 +507,139 @@ else {
 
 Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);
   if (cmd && cmd !== 'help' && cmd !== '--help') process.exit(2);
+}
+
+// ── migrate ─────────────────────────────────────────────────────────────────
+//
+//   fonderie migrate --status     what is pending, and what each one will do
+//   fonderie migrate --check      exit 1 if any pending migration is destructive
+//
+// APPLYING IS NOT HERE, deliberately. The order migrations run in is the app's
+// to declare — it interleaves brick migrations with its own (LeadEasyGen's app
+// tables reference auth's), and a CLI guessing that order would eventually
+// guess wrong in a way that only shows up on a fresh database. The app already
+// has a runner that knows its order; this reports on it and gates it.
+//
+// The CI shape this is built for:
+//
+//   fonderie migrate --check && npm run migrate
+//
+// --check fails the deploy on a destructive migration until someone approves
+// it, because "the pipeline ran it" is no better than "the boot ran it" — it is
+// further from a human, not closer.
+//
+// Zero deps preserved: @fonderie/store is resolved from the APP's node_modules
+// (this runs inside a consuming app, where it is already installed), never
+// added as a dependency of the CLI.
+async function doMigrate() {
+  const cwd = arg('--project', process.cwd());
+  const appDir = arg('--app', null);
+  const url = process.env['DATABASE_URL'];
+  if (!url) {
+    console.error('migrate: set DATABASE_URL.');
+    console.error('  In CI use the SESSION or DIRECT Postgres URL, not the transaction');
+    console.error('  pooler — a pooler lends a backend per transaction.');
+    process.exit(1);
+  }
+
+  const { pathToFileURL } = await import('node:url');
+  const scope = join(cwd, 'node_modules', '@fonderie');
+
+  // These packages are ESM-only: their exports maps carry "import" but no
+  // "require", so createRequire().resolve() answers ERR_PACKAGE_PATH_NOT_EXPORTED
+  // for every one of them. Read the map and join the path instead.
+  const resolveExport = (pkg, sub) => {
+    try {
+      const pj = JSON.parse(readFileSync(join(scope, pkg, 'package.json'), 'utf8'));
+      const ent = pj.exports?.[sub];
+      const rel = typeof ent === 'string' ? ent : (ent?.import ?? ent?.default);
+      return rel ? join(scope, pkg, rel) : null;
+    } catch { return null; }
+  };
+
+  const storeEntry = resolveExport('store', '.');
+  let store;
+  try {
+    store = await import(pathToFileURL(storeEntry).href);
+  } catch {
+    console.error(`migrate: @fonderie/store is not installed in ${cwd}.`);
+    process.exit(1);
+  }
+
+  // Every installed brick that ships migrations, plus the app's own. Order is
+  // irrelevant here: this reports and classifies, it does not apply.
+  const dirs = [];
+  if (existsSync(scope)) {
+    for (const pkg of readdirSync(scope).sort()) {
+      const entry = resolveExport(pkg, './migrations');
+      if (!entry) continue; // no migrations subpath — most packages
+      try {
+        const mod = await import(pathToFileURL(entry).href);
+        if (typeof mod.getMigrationsPath === 'function') dirs.push([pkg, mod.getMigrationsPath()]);
+      } catch { /* unreadable — skip rather than fail the whole report */ }
+    }
+  }
+  if (appDir) dirs.push(['app', join(cwd, appDir)]);
+  if (dirs.length === 0) {
+    console.error('migrate: found no migrations. Pass --app <dir> for the app’s own.');
+    process.exit(1);
+  }
+
+  const adapter = new store.PGAdapter(url);
+  let destructive = 0;
+  let pendingTotal = 0;
+  // A database with nothing applied yet has no data to lose: brick history
+  // legitimately drops columns earlier migrations in the same set created
+  // (billing's 004 drops the workspace_id its 001 added). Flagging those would
+  // refuse every first-time install, which is the wrong end of the trade.
+  let everApplied = false;
+  try {
+    const scanned = [];
+    for (const [name, dir] of dirs) {
+      const pending = await new store.InternalMigrationRunner(adapter, dir).pending();
+      const total = readdirSync(dir).filter((f) => f.endsWith('.sql')).length;
+      if (pending.length < total) everApplied = true;
+      scanned.push([name, dir, pending]);
+    }
+    for (const [name, dir, pending] of scanned) {
+      if (pending.length === 0) continue;
+      pendingTotal += pending.length;
+      console.log(`\n${name}: ${pending.length} pending`);
+      for (const file of pending) {
+        const sql = readFileSync(join(dir, file), 'utf8');
+        // classifyMigration landed in a later @fonderie/store; an older one
+        // still lists what is pending, it just cannot label the impact.
+        const { impact, destructive: stmts } =
+          typeof store.classifyMigration === 'function'
+            ? store.classifyMigration(sql)
+            : { impact: 'unknown', destructive: [] };
+        if (impact === 'destructive' && everApplied) {
+          destructive++;
+          console.log(`  ✖ ${file}  DESTRUCTIVE`);
+          for (const s of stmts) console.log(`      ${s.slice(0, 100)}`);
+        } else {
+          console.log(`  · ${file}`);
+        }
+      }
+    }
+  } finally {
+    // The pool holds the event loop open; without this the CLI never exits.
+    await adapter.end();
+  }
+
+  if (pendingTotal === 0) {
+    console.log('up to date — nothing pending.');
+    return;
+  }
+  console.log(
+    everApplied
+      ? `\n${pendingTotal} pending, ${destructive} destructive.`
+      : `\n${pendingTotal} pending — first-time setup, nothing to lose.`,
+  );
+  if (destructive > 0 && argv.includes('--check')) {
+    console.error('\nRefusing: a pending migration deletes data. No down-migration');
+    console.error('brings it back — a recreated empty table is not a rollback. Take a');
+    console.error('backup, then approve this deploy explicitly.');
+    process.exit(1);
+  }
 }

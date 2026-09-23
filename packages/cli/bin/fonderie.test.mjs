@@ -93,6 +93,22 @@ if (!/basic-auth/.test(addErr)) fail('add unknown-recipe error should list avail
 // help lists the add command
 if (!/fonderie add <capability>/.test(run(['help']))) fail('help missing `fonderie add`');
 
+// --- migrate: the guard that needs no database ---
+// Without DATABASE_URL it must refuse AND say which connection mode to use.
+// The pooler advice is the point: a transaction pooler lends a backend per
+// statement, and pointing a migration at one is the mistake this text exists
+// to prevent. Applying is NOT tested here — it needs a live database, and the
+// ordering it would apply belongs to the app, not this CLI.
+let migErr = '';
+try {
+  run(['migrate', '--status'], { env: { ...process.env, DATABASE_URL: '' } });
+  fail('migrate ran without DATABASE_URL');
+} catch (e) { migErr = String(e.stderr || e.stdout || ''); }
+if (!/DATABASE_URL/.test(migErr)) fail('migrate should name DATABASE_URL when it is unset');
+if (!/pooler/i.test(migErr)) fail('migrate should warn against the transaction pooler');
+if (!/fonderie migrate/.test(run(['help']))) fail('help missing `fonderie migrate`');
+console.log('  ✓ migrate guards (DATABASE_URL required, pooler warning, help listed)');
+
 // ── config/secret management commands (thin client over the admin API) ──────
 // Uses async execFile so the in-process http fixture can respond (execFileSync
 // would block the event loop and deadlock the server).
