@@ -45,6 +45,8 @@ export type { IAuditAdminClientOptions, IAdminAuditQuery } from './modules/audit
 export { AuditAdminClient } from './modules/audit-admin';
 export type {
 	ICourierAdminClientOptions,
+	IPreviewTemplateInput,
+	IRenderedTemplateResult,
 	IRollbackTemplateInput,
 	ISetTemplateInput,
 } from './modules/courier-admin';

@@ -45,6 +45,10 @@ const EXEMPT = new Map([
 	['POST /admin/secrets/:key/reveal', 'no body read — key from params'],
 	['PUT /admin/templates/:type', 'admin-token-guarded; body.text inline-validated (string)'],
 	['POST /admin/templates/:type/rollback', 'admin-token-guarded; body.toVersion inline-validated (integer)'],
+	[
+		'POST /admin/templates/:type/preview',
+		'admin-token-guarded; body.text inline-validated (string) and body.data inline-validated (plain object); renders only, writes nothing',
+	],
 	// @fonderie/media upload: the meaningful validation (base64 decode, magic-byte
 	// sniff over the DECODED content — not the claimed MIME, size cap on decoded
 	// bytes) is inline and not schema-expressible; the envelope is a single string.

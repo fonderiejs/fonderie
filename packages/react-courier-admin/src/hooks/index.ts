@@ -4,3 +4,5 @@ export type { IUseTemplateRevisionsReturn } from './useTemplateRevisions';
 export { useTemplateRevisions } from './useTemplateRevisions';
 export type { IUseTemplatesReturn } from './useTemplates';
 export { useTemplates } from './useTemplates';
+export type { IUseTemplatePreviewReturn } from './useTemplatePreview';
+export { useTemplatePreview } from './useTemplatePreview';

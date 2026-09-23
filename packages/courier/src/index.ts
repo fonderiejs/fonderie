@@ -10,7 +10,14 @@ export type { IMessageStats } from './log';
 export { SmsChannel } from './channels/sms';
 export { PushChannel } from './channels/push';
 export { EmailChannel } from './channels/email';
-export { DBTemplateResolver, FSTemplateResolver, DefaultTemplates, renderFragment } from './templates/resolver';
+export {
+	DBTemplateResolver,
+	FSTemplateResolver,
+	DefaultTemplates,
+	renderFragment,
+	getLayoutHtml,
+	templateVariables,
+} from './templates/resolver';
 // Versioned template management (on the @fonderie/store primitive): edit with
 // optimistic concurrency, revision history, rollback. The resolver is unchanged.
 export {
@@ -22,6 +29,7 @@ export {
 	deleteTemplate,
 } from './templates/admin';
 export { buildTemplateAdminRoutes } from './templates/admin-routes';
+export type { ITemplateAdminOptions } from './templates/admin-routes';
 export type { ITemplateEntry, ITemplateRevision } from './templates/admin';
 export type { IMessageLog, MessageLogStatus } from './log';
 export type {
