@@ -28,17 +28,28 @@ test(
 		await new InternalMigrationRunner(store, getMigrationsPath()).run();
 		await store.query('DELETE FROM fonderie_rate_limits WHERE key = $1', ['pg-race']);
 
-		const limiter = new StoreAdapterStore(store);
-		const attempts = 200;
-		const results = await Promise.all(
-			Array.from({ length: attempts }, () => limiter.consume('pg-race', RULE)),
-		);
-		const granted = results.filter((r) => r.allowed).length;
-		assert.equal(
-			granted,
-			RULE.capacity,
-			`granted ${granted} of ${attempts}; the upsert must serialize to exactly ${RULE.capacity}`,
-		);
+		// The pool must be closed even when the assertion below fails: pg keeps
+		// the event loop alive while it holds clients, so a leaked pool means
+		// this process never exits. It still prints its summary, so the suite
+		// looks green while turbo waits on a child that will never die — a
+		// whole CI job idles until its timeout. try/finally, not a trailing
+		// call, because a failing assert would skip the cleanup and turn one
+		// red test into a hung job.
+		try {
+			const limiter = new StoreAdapterStore(store);
+			const attempts = 200;
+			const results = await Promise.all(
+				Array.from({ length: attempts }, () => limiter.consume('pg-race', RULE)),
+			);
+			const granted = results.filter((r) => r.allowed).length;
+			assert.equal(
+				granted,
+				RULE.capacity,
+				`granted ${granted} of ${attempts}; the upsert must serialize to exactly ${RULE.capacity}`,
+			);
+		} finally {
+			await store.end();
+		}
 	},
 );
 
@@ -59,13 +70,19 @@ test(
 				}) as Promise<unknown>,
 		};
 
-		const { RedisStore } = await import('../stores/redis');
-		const store = new RedisStore(client, 'itest:');
-		const results = await Promise.all(
-			Array.from({ length: 200 }, () => store.consume('redis-race', RULE)),
-		);
-		const granted = results.filter((r) => r.allowed).length;
-		await c.quit();
-		assert.equal(granted, RULE.capacity, `granted ${granted}; Lua eval must serialize`);
+		// Closed in a finally for the same reason as the pg pool above. This was
+		// already safe, but only because the quit happened to sit above the
+		// assert — one line moved and it would leak.
+		try {
+			const { RedisStore } = await import('../stores/redis');
+			const store = new RedisStore(client, 'itest:');
+			const results = await Promise.all(
+				Array.from({ length: 200 }, () => store.consume('redis-race', RULE)),
+			);
+			const granted = results.filter((r) => r.allowed).length;
+			assert.equal(granted, RULE.capacity, `granted ${granted}; Lua eval must serialize`);
+		} finally {
+			await c.quit();
+		}
 	},
 );
