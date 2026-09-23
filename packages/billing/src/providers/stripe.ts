@@ -331,7 +331,7 @@ export function normalizePaymentIntentSucceeded(pi: IStripePaymentIntentRaw): IN
  * against it — the two are set in different places (this file vs. the provider
  * dashboard) and drift apart silently.
  */
-export const STRIPE_API_VERSION = '2024-11-20.acacia';
+export const STRIPE_API_VERSION = '2026-08-26.dahlia';
 
 let _client: unknown = null;
 
@@ -845,9 +845,11 @@ export class StripeProvider implements IBillingProvider {
 			return { status: 'failed', ...nulls };
 		}
 
-		// Pay off-session. NOTE: no `expand` here — the pinned API returns the PI on
-		// the legacy `invoice.payment_intent`, which piIdOf reads (with a
-		// payments[]-shape fallback for newer API versions).
+		// Pay off-session. NOTE: no `expand` here — piIdOf reads the PI off
+		// `invoice.payments[]`, which is where the pinned API puts it since Basil
+		// split invoices across multiple partial payments. It still falls back to
+		// the legacy top-level `invoice.payment_intent`, so a consumer whose
+		// account or webhook endpoint renders an older version keeps working.
 		try {
 			const paid = await stripe.invoices.pay(
 				invoiceId,
@@ -958,11 +960,19 @@ export class StripeProvider implements IBillingProvider {
 	// In-app card entry: a SetupIntent the client confirms with the Payment
 	// Element. usage:'off_session' so the saved card can back future wallet
 	// auto-recharge / renewals. The offered methods come from
-	// `options.setupPaymentMethodTypes` (default `['card']`): explicit
-	// payment_method_types rather than automatic_payment_methods, because the
-	// default of card keeps entry on-page AND avoids wallet methods like Stripe
-	// Link — whose confirmed PM is type:'link' with no `card` object, so it can't
-	// be shown as a card on file. Consumers who want wallets set the option.
+	// `options.setupPaymentMethodTypes` (default `['card']`): an explicit list
+	// rather than dynamic payment methods, because the default of card keeps
+	// entry on-page AND avoids wallet methods like Stripe Link — whose confirmed
+	// PM is type:'link' with no `card` object, so it can't be shown as a card on
+	// file. Consumers who want wallets set the option.
+	//
+	// The wire parameter is `allowed_payment_method_types`, NOT
+	// `payment_method_types`: Dahlia made the latter read-only and returns 400
+	// `payment_method_types_no_longer_supported` if you send it, which would
+	// break in-app card entry outright. The two are not quite equivalent —
+	// `allowed_*` filters incompatible types out of the dynamic set instead of
+	// erroring on them — but for a card-only list the resulting offer is the
+	// same. The public option name is unchanged, so consumers see no break.
 	async createSetupIntent(opts: {
 		customerId: string;
 	}): Promise<{ clientSecret: string; setupIntentId: string }> {
@@ -970,7 +980,7 @@ export class StripeProvider implements IBillingProvider {
 		const si = await stripe.setupIntents.create({
 			customer: opts.customerId,
 			usage: 'off_session',
-			payment_method_types: this.options.setupPaymentMethodTypes ?? [
+			allowed_payment_method_types: this.options.setupPaymentMethodTypes ?? [
 				SUPPORTED_PAYMENT_OPTIONS.CARD,
 			],
 		});
