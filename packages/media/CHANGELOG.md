@@ -1,5 +1,12 @@
 # @fonderie/media
 
+## 0.2.17
+
+### Patch Changes
+
+- Updated dependencies [13b6a15]
+  - @fonderie/store@0.6.0
+
 ## 0.2.16
 
 ### Patch Changes
