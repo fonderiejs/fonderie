@@ -57,6 +57,7 @@ export {
 	useAdminTokens,
 	useAdminLog,
 	useAdminUser,
+	useAdminUsers,
 	useAdminUserSessions,
 	useAdminLoginHistory,
 	useAdminCatalog,

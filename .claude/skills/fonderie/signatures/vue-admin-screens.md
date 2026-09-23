@@ -23,7 +23,7 @@ component RoutesScreen(props: { client })
 
 component TokensScreen(props: { client })
 
-component UsersScreen(props: { client })
+component UsersScreen(props: { client, pageSize })
 
 component CatalogScreen(props: { client })
 

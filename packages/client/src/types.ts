@@ -742,6 +742,11 @@ export interface ILoginEventDTO {
 	createdAt: string;
 }
 
+export interface IAdminUserPageResult {
+	users: IAdminUserDTO[];
+	nextCursor: string | null;
+}
+
 export interface ILoginHistoryPageResult {
 	events: ILoginEventDTO[];
 	nextCursor: string | null;

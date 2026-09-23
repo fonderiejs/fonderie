@@ -39,9 +39,22 @@ const USER: IUser = {
 } as unknown as IUser;
 
 function makeStore() {
-	const state = { user: { ...USER }, sessionsDeleted: 0 };
+	const state = {
+		user: { ...USER },
+		sessionsDeleted: 0,
+		pageRows: [] as unknown[],
+		listSql: '',
+		listParams: [] as unknown[],
+	};
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			// The list: ordered, no id/email predicate. Returns `pageRows`, which a
+			// test sets to more than the limit to exercise the +1 over-fetch.
+			if (sql.includes('fonderie_users') && sql.includes('ORDER  BY created_at DESC')) {
+				state.listSql = sql;
+				state.listParams = params;
+				return state.pageRows as unknown as T[];
+			}
 			if (sql.includes('fonderie_users') && sql.includes('WHERE email = $1'))
 				return (params[0] === state.user.email ? [state.user] : []) as unknown as T[];
 			if (
@@ -107,7 +120,7 @@ test('describeAuthAdminRoutes: the seven routes, prefix-relative', () => {
 	);
 });
 
-test('lookup by email and by id; secrets never leave; unknown is 404; missing email is 422', async () => {
+test('lookup by email and by id; secrets never leave; unknown is 404; no email lists', async () => {
 	const { store } = makeStore();
 	const app = await new FonderieApp(config).register(mounter(store)).boot();
 
@@ -127,7 +140,68 @@ test('lookup by email and by id; secrets never leave; unknown is 404; missing em
 		(await app.handle(req('GET', '/_admin/users?email=nobody@example.com'))).status,
 		404,
 	);
-	assert.equal((await app.handle(req('GET', '/_admin/users'))).status, 422);
+	// No email is no longer a 422 — it lists. Covered below.
+	assert.equal((await app.handle(req('GET', '/_admin/users'))).status, 200);
+});
+
+test('list: no email lists a page, secrets never leave, and the cursor round-trips', async () => {
+	const { store, state } = makeStore();
+	const app = await new FonderieApp(config).register(mounter(store)).boot();
+
+	// Real UUIDs here: the shared cursor codec range-checks the id, so a
+	// crafted or malformed one decodes to null and 422s rather than reaching
+	// Postgres as a bad ::uuid cast. 'u1' is fine everywhere else in this file
+	// because no other route round-trips an id through a cursor.
+	const UUID_1 = '11111111-1111-4111-8111-111111111111';
+	const UUID_2 = '22222222-2222-4222-8222-222222222222';
+
+	// Two rows at a limit of 1 — the model over-fetches limit+1, so this is
+	// exactly "there is a next page".
+	state.pageRows = [
+		{ ...USER, id: UUID_1, createdAtRaw: '2024-01-01 00:00:00.123456+00' },
+		{ ...USER, id: UUID_2, email: 'bob@example.com' },
+	];
+	const res = await app.handle(req('GET', '/_admin/users?limit=1'));
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as {
+		result: { users: Array<{ id: string }>; nextCursor: string | null };
+	};
+
+	assert.deepEqual(
+		body.result.users.map((u) => u.id),
+		[UUID_1],
+		'trimmed to the limit',
+	);
+	assert.ok(body.result.nextCursor, 'hasMore ⇒ a cursor');
+
+	// The same allowlist that protects the lookup must protect the list.
+	const text = JSON.stringify(body);
+	assert.equal(text.includes('secret-hash'), false);
+	assert.equal(text.includes('TOTP-SECRET'), false);
+
+	// Feeding the cursor back reaches the model as a decoded keyset pair, at
+	// the microsecond precision createdAtRaw preserved.
+	state.pageRows = [];
+	await app.handle(
+		req('GET', `/_admin/users?limit=1&cursor=${encodeURIComponent(body.result.nextCursor as string)}`),
+	);
+	assert.ok(state.listSql.includes('(created_at, id) <'), 'keyset predicate applied');
+	assert.equal(state.listParams[0], '2024-01-01 00:00:00.123456+00');
+	assert.equal(state.listParams[1], UUID_1);
+
+	// Last page: no over-fetch ⇒ no cursor to follow.
+	state.pageRows = [{ ...USER }];
+	const last = (await (await app.handle(req('GET', '/_admin/users?limit=1'))).json()) as {
+		result: { nextCursor: string | null };
+	};
+	assert.equal(last.result.nextCursor, null);
+});
+
+test('list: a malformed cursor is 422, not a database cast error', async () => {
+	const { store } = makeStore();
+	const app = await new FonderieApp(config).register(mounter(store)).boot();
+	assert.equal((await app.handle(req('GET', '/_admin/users?cursor=%%%'))).status, 422);
+	assert.equal((await app.handle(req('GET', '/_admin/users?cursor=not-base64'))).status, 422);
 });
 
 test('sessions: listed, then revoked everywhere', async () => {

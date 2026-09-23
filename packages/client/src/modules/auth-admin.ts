@@ -1,6 +1,12 @@
 import { HttpClient } from '../http';
 import { normalizeMountPath } from '../path';
-import type { IAdminUserDTO, IApiResponse, ILoginHistoryPageResult, ISessionDTO } from '../types';
+import type {
+	IAdminUserDTO,
+	IAdminUserPageResult,
+	IApiResponse,
+	ILoginHistoryPageResult,
+	ISessionDTO,
+} from '../types';
 
 export interface IAuthAdminClientOptions {
 	baseUrl: string;
@@ -12,6 +18,11 @@ export interface IAuthAdminClientOptions {
 }
 
 export interface IAdminLoginHistoryQuery {
+	limit?: number;
+	cursor?: string;
+}
+
+export interface IAdminUsersQuery {
 	limit?: number;
 	cursor?: string;
 }
@@ -38,6 +49,16 @@ export class AuthAdminClient {
 			token: this.adminToken,
 			headers: this.actorHeaders,
 		});
+	}
+
+	// A page of users, newest first. The same route as findUser — with an email
+	// it looks one up, without one it lists.
+	listUsers(query: IAdminUsersQuery = {}) {
+		const q = new URLSearchParams();
+		if (query.limit) q.set('limit', String(query.limit));
+		if (query.cursor) q.set('cursor', query.cursor);
+		const qs = q.toString();
+		return this.call<IAdminUserPageResult>('GET', qs ? `?${qs}` : '');
 	}
 
 	findUser(email: string) {
