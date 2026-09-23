@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/admin",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"fonderie": {
 		"stability": "experimental"
 	},

@@ -1,5 +1,89 @@
 # @fonderie/client
 
+## 0.30.0
+
+### Minor Changes
+
+- 2530bf1: Preview a template beside the editor, rendered the way it will actually send
+  
+  The editor was three textareas. You changed HTML and saved it blind; the first
+  render anyone saw was in a recipient's inbox.
+  
+  `POST /admin/templates/:type/preview` renders what the editor is **holding**,
+  not what is stored, so you see the change before committing it. It goes through
+  `renderFragment` and the operator's own `_layout` row, because a fragment
+  rendered without the shell looks nothing like the mail that sends — and a
+  preview that lies is worse than none.
+  
+  Three things had to become reachable for that to be true:
+  
+  - `getLayoutHtml(store, locale?)` is now exported. The `_layout` lookup was
+    private to `DBTemplateResolver`, so nothing outside could fetch the shell.
+    The resolver now calls the same function — one definition, not a copy.
+  - `describeTemplateAdminRoutes` / `buildTemplateAdminRoutes` take an optional
+    `{ brandName }`. On a real send the **Dispatcher** merges it, never the
+    resolver, so a preview without it silently renders the wrong brand.
+  - `templateVariables()` is exported, and the preview reports the variables the
+    submitted content uses. The editor seeds its sample-data box from that rather
+    than re-implementing the `{{var}}` contract — four copies of that regex
+    already exist in this repo, and a fifth on the client would drift.
+  
+  The `{{var}}` and `{{#section}}` patterns are now named constants shared by the
+  renderer and the new extractor, so substitution and "which variables is this?"
+  cannot disagree.
+  
+  The preview renders into `<iframe sandbox="">` — no scripts, no same-origin.
+  Operator-authored HTML must never execute in the dashboard's origin, which is
+  where the admin token lives.
+  
+  Being a POST, the route requires the `write` scope rather than `read`. That
+  follows the rule that scope comes from the route and is never annotated, and
+  costs nothing in practice: anyone in the editor already needs `write` to save.
+- 3aab737: The Users page lists on arrival instead of demanding an email first
+  
+  `GET /_admin/users` required `?email=` and answered 422 without it, so the
+  operator screen opened as an empty box: you could only see an account you could
+  already name. Nobody can answer "who signed up this morning" that way, and it
+  is the opposite of what an operator surface is for.
+  
+  Without `email` the route now returns a keyset-paginated page, newest first —
+  the same cursor contract as login history and the audit log, `{ users,
+  nextCursor }`. With `email` it is the exact lookup it always was, unchanged.
+  Not a new route, so the token scope stays `read`, derived as before.
+  
+  Ships `AuthAdminClient.listUsers()`, `useAdminUsers` for React and Vue, and the
+  Users screen listing with Load more; clicking a row, or looking up an email,
+  opens the account detail as before.
+  
+  Includes an index on `fonderie_users (created_at DESC, id DESC)` — **run the
+  auth migrations**. Keyset paging orders by that pair and the table had only an
+  email index, so every page would otherwise sort the whole table.
+  
+  The list is the same allowlist DTO as the lookup: `passwordHash` and
+  `mfaSecret` cannot appear, and a test asserts it against the list response too.
+- 3bf1669: The Subscriber page lists on arrival instead of asking for a type and an id
+  
+  `GET /_admin/subscriptions` returns a keyset-paginated page of subscribers,
+  newest first — `{ subscriptions, nextCursor }`, the same cursor contract as the
+  wallet ledger. The existing `/subscriptions/:type/:id` lookup is unchanged.
+  
+  The screen opened as an empty form asking for a subscriber type and id, which
+  is answerable only if you already knew both. Now it lists, and a row opens the
+  detail view — subscription, wallet, ledger and the manual grant — exactly as
+  before.
+  
+  `limit` is clamped strictly (`NaN`, `<1` or `>100` ⇒ 422) and a malformed
+  cursor is 422, matching how the wallet ledger behaves in this package rather
+  than auth's and audit's silent clamp.
+  
+  Includes an index on `fonderie_subscriptions (created_at DESC, id DESC)` —
+  **run the billing migrations**. The table carried no index at all: every read
+  so far was by subscriber, which a small mirror serves from a scan, but a keyset
+  page is a range scan and would otherwise sort the whole table each time.
+  
+  Ships `BillingAdminClient.listSubscriptions()`, `useAdminSubscribers` for React
+  and Vue, and both Subscriber screens listing with Load more.
+
 ## 0.29.2
 
 ### Patch Changes
