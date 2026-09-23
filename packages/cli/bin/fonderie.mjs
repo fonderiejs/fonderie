@@ -645,10 +645,20 @@ async function doMigrate() {
   } catch (err) {
     console.error(`\nmigrate: cannot reach ${where}`);
     console.error(`  ${err?.message ?? err}`);
-    console.error('  DATABASE_URL must be postgresql://user:pass@host:port/database —');
-    console.error('  a keyword string (host=… dbname=…), surrounding quotes or a stray');
-    console.error('  newline all parse elsewhere but not here. Any connection mode is');
-    console.error('  fine: this reads, it does not apply.');
+    // Placeholders are SHOUTED, and that is load-bearing, not styling. CI
+    // masks every occurrence of a secret's value anywhere in a log, including
+    // inside text this tool printed itself. When the lowercase form
+    // `postgresql://user:pass@host:port/database` was used here, an operator
+    // who had pasted that very placeholder into their DATABASE_URL secret saw
+    // `DATABASE_URL must be ***host:port/database` — the guidance censored
+    // itself in the exact case it exists for. Caps are not pasted verbatim, so
+    // they cannot collide. (The redaction did diagnose that incident, but by
+    // accident; do not rely on it.) Keep any literal added here un-pasteable.
+    console.error('  DATABASE_URL must be postgresql://USER:PASSWORD@HOST:5432/DATABASE');
+    console.error('  with real values. The placeholder above pasted as-is, a keyword');
+    console.error('  string (host=… dbname=…), surrounding quotes or a stray newline all');
+    console.error('  parse elsewhere but not here. Any connection mode is fine: this');
+    console.error('  reads, it does not apply.');
     await adapter.end();
     process.exit(1);
   }
