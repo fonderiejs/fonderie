@@ -16,6 +16,7 @@ import { DBTemplateResolver, FSTemplateResolver, DefaultTemplates } from './temp
 import { validateCourierConfig, collectCourierConfigProblems } from './config-guard';
 import { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery } from './delivery';
 import { buildTemplateAdminRoutes, describeTemplateAdminRoutes } from './templates/admin-routes';
+import type { ITemplateAdminOptions } from './templates/admin-routes';
 import { senderDnsCheck } from './sender-dns';
 
 export class CourierModule implements IFonderieModule {
@@ -46,10 +47,19 @@ export class CourierModule implements IFonderieModule {
 		);
 	}
 
+	// Conditional spread rather than `{ brandName: this.config.brandName }` —
+	// exactOptionalPropertyTypes rejects an explicit undefined here.
+	private brandOpts(): ITemplateAdminOptions {
+		return this.config.brandName ? { brandName: this.config.brandName } : {};
+	}
+
 	// Template admin needs db templates; the DNS check needs an email channel.
 	describeAdmin(): IAdminDescription {
 		const out: IAdminDescription = {};
-		if (this.store) out.routes = describeTemplateAdminRoutes(this.store);
+		// brandName travels with the routes: the preview renders the shell, and on a
+		// real send the Dispatcher — not the resolver — is what merges it in.
+		if (this.store)
+			out.routes = describeTemplateAdminRoutes(this.store, this.brandOpts());
 		if (this.config.email) out.checks = [senderDnsCheck(this.config.email)];
 		return out;
 	}
@@ -99,7 +109,11 @@ export class CourierModule implements IFonderieModule {
 			if (!store) {
 				throw new Error('[courier] adminToken requires @fonderie/store (db templates)');
 			}
-			for (const [method, path, handler] of buildTemplateAdminRoutes(store, this.config.adminToken)) {
+			for (const [method, path, handler] of buildTemplateAdminRoutes(
+				store,
+				this.config.adminToken,
+				this.brandOpts(),
+			)) {
 				app.addRoute(method, path, handler);
 			}
 		}

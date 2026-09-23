@@ -1,7 +1,31 @@
 import type { CSSProperties } from 'vue';
 
 export const styles: Record<string, CSSProperties> = {
-	container: { padding: '24px', maxWidth: '640px' },
+	container: { padding: '24px', maxWidth: '1180px' },
+	split: { display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' },
+	column: { flex: '1 1 460px', minWidth: '320px', display: 'flex', flexDirection: 'column' },
+	previewHeader: {
+		display: 'flex',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginTop: '12px',
+	},
+	previewSubject: { fontSize: '14px', fontWeight: '600', margin: '8px 0' },
+	previewFrame: {
+		width: '100%',
+		height: '520px',
+		border: '1px solid #ddd',
+		borderRadius: '8px',
+		background: '#fff',
+	},
+	previewText: {
+		whiteSpace: 'pre-wrap',
+		border: '1px solid #ddd',
+		borderRadius: '8px',
+		padding: '12px',
+		fontSize: '13px',
+		fontFamily: 'monospace',
+	},
 	title: { fontSize: '24px', fontWeight: 700 },
 	subtitle: { fontSize: '16px', fontWeight: 600, marginBottom: '8px' },
 	meta: { fontSize: '13px', color: '#666', marginBottom: '16px' },
