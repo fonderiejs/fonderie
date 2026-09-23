@@ -4,14 +4,14 @@
     "adapter-express": "5.3.5",
     "adapter-hono": "6.2.5",
     "adapter-koa": "5.3.5",
-    "admin": "0.8.0",
+    "admin": "0.8.1",
     "audit": "5.2.1",
-    "auth": "7.8.1",
-    "billing": "9.10.1",
-    "client": "0.29.2",
+    "auth": "7.9.0",
+    "billing": "9.11.0",
+    "client": "0.30.0",
     "config": "5.2.2",
     "core": "0.20.0",
-    "courier": "7.8.1",
+    "courier": "7.9.0",
     "customers": "6.2.12",
     "events": "5.7.1",
     "geo": "0.2.11",
@@ -20,8 +20,8 @@
     "permissions": "5.0.19",
     "rate-limit": "4.0.19",
     "react": "0.2.0",
-    "react-admin": "0.5.0",
-    "react-admin-screens": "0.5.0",
+    "react-admin": "0.6.0",
+    "react-admin-screens": "0.6.0",
     "react-audit": "0.3.0",
     "react-audit-screens": "0.2.0",
     "react-auth": "0.10.0",
@@ -30,8 +30,8 @@
     "react-billing-screens": "0.3.1",
     "react-config-admin": "0.3.0",
     "react-config-admin-screens": "0.2.0",
-    "react-courier-admin": "0.3.0",
-    "react-courier-admin-screens": "0.2.0",
+    "react-courier-admin": "0.4.0",
+    "react-courier-admin-screens": "0.3.0",
     "react-customers": "0.4.0",
     "react-customers-screens": "0.2.0",
     "react-media": "0.1.0",
@@ -56,8 +56,8 @@
     "storage": "0.1.16",
     "store": "0.5.0",
     "vue": "0.2.0",
-    "vue-admin": "0.5.0",
-    "vue-admin-screens": "0.5.0",
+    "vue-admin": "0.6.0",
+    "vue-admin-screens": "0.6.0",
     "vue-audit": "0.4.0",
     "vue-audit-screens": "0.2.0",
     "vue-auth": "0.11.0",
@@ -66,8 +66,8 @@
     "vue-billing-screens": "0.3.1",
     "vue-config-admin": "0.3.0",
     "vue-config-admin-screens": "0.2.0",
-    "vue-courier-admin": "0.3.0",
-    "vue-courier-admin-screens": "0.2.0",
+    "vue-courier-admin": "0.4.0",
+    "vue-courier-admin-screens": "0.3.0",
     "vue-customers": "0.5.0",
     "vue-customers-screens": "0.2.0",
     "vue-media": "0.1.0",
@@ -140,7 +140,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "0.8.0",
+      "version": "0.8.1",
       "stability": "experimental",
       "requires": [
         "core",
@@ -248,7 +248,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.8.1",
+      "version": "7.9.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -480,7 +480,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "9.10.1",
+      "version": "9.11.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -686,7 +686,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.29.2",
+      "version": "0.30.0",
       "stability": "maturing",
       "requires": [],
       "exports": [
@@ -828,7 +828,7 @@
       "hasOutcomes": false
     },
     "courier": {
-      "version": "7.8.1",
+      "version": "7.9.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -1288,7 +1288,7 @@
       "hasOutcomes": false
     },
     "react-admin": {
-      "version": "0.5.0",
+      "version": "0.6.0",
       "stability": "experimental",
       "requires": [],
       "exports": [
@@ -1321,7 +1321,7 @@
       "hasOutcomes": false
     },
     "react-admin-screens": {
-      "version": "0.5.0",
+      "version": "0.6.0",
       "stability": "experimental",
       "requires": [],
       "exports": [
@@ -1518,7 +1518,7 @@
       "hasOutcomes": false
     },
     "react-courier-admin": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "stability": "beta",
       "requires": [],
       "exports": [
@@ -1538,7 +1538,7 @@
       "hasOutcomes": false
     },
     "react-courier-admin-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "stability": "beta",
       "requires": [],
       "exports": [
@@ -1986,7 +1986,7 @@
       "hasOutcomes": false
     },
     "vue-admin": {
-      "version": "0.5.0",
+      "version": "0.6.0",
       "stability": "experimental",
       "requires": [],
       "exports": [
@@ -2019,7 +2019,7 @@
       "hasOutcomes": false
     },
     "vue-admin-screens": {
-      "version": "0.5.0",
+      "version": "0.6.0",
       "stability": "experimental",
       "requires": [],
       "exports": [
@@ -2216,7 +2216,7 @@
       "hasOutcomes": false
     },
     "vue-courier-admin": {
-      "version": "0.3.0",
+      "version": "0.4.0",
       "stability": "beta",
       "requires": [],
       "exports": [
@@ -2236,7 +2236,7 @@
       "hasOutcomes": false
     },
     "vue-courier-admin-screens": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "stability": "beta",
       "requires": [],
       "exports": [

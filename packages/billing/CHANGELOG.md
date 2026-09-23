@@ -1,5 +1,45 @@
 # @fonderie/billing
 
+## 9.11.0
+
+### Minor Changes
+
+- 699021d: A plan price can declare its `currency`, so the consistency check can compare it
+  
+  A credit pack declares a currency, so a catalog quoting USD against a provider
+  price in CAD is reported. A plan had nowhere to say one, so only the amount was
+  compared and the identical mistake passed silently — the figures agree, and
+  nothing points out that the pricing page quotes a currency no one is charged in.
+  
+  `IBillingPlanPrice.currency` is optional and display-only; the provider stays
+  the authority for the actual charge. Unset keeps today's behaviour exactly —
+  amount only — so nothing changes for an existing catalog until it opts in.
+  
+  Found by the price-consistency check flagging exactly this on a real
+  deployment's packs while its subscription, with the same mismatch, passed.
+- 3bf1669: The Subscriber page lists on arrival instead of asking for a type and an id
+  
+  `GET /_admin/subscriptions` returns a keyset-paginated page of subscribers,
+  newest first — `{ subscriptions, nextCursor }`, the same cursor contract as the
+  wallet ledger. The existing `/subscriptions/:type/:id` lookup is unchanged.
+  
+  The screen opened as an empty form asking for a subscriber type and id, which
+  is answerable only if you already knew both. Now it lists, and a row opens the
+  detail view — subscription, wallet, ledger and the manual grant — exactly as
+  before.
+  
+  `limit` is clamped strictly (`NaN`, `<1` or `>100` ⇒ 422) and a malformed
+  cursor is 422, matching how the wallet ledger behaves in this package rather
+  than auth's and audit's silent clamp.
+  
+  Includes an index on `fonderie_subscriptions (created_at DESC, id DESC)` —
+  **run the billing migrations**. The table carried no index at all: every read
+  so far was by subscriber, which a small mirror serves from a scan, but a keyset
+  page is a range scan and would otherwise sort the whole table each time.
+  
+  Ships `BillingAdminClient.listSubscriptions()`, `useAdminSubscribers` for React
+  and Vue, and both Subscriber screens listing with Load more.
+
 ## 9.10.1
 
 ### Patch Changes
