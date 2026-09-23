@@ -685,6 +685,102 @@ test('template admin: PUT writes a versioned template (200)', async () => {
 	assert.ok(seen.some((s) => s.includes('fonderie_courier_templates') && s.includes('subject')));
 });
 
+test('template admin: preview renders the editor content through the real shell', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	// The operator's own _layout row — the preview must reach it, or it shows a
+	// bare fragment and misreports what the mail will look like.
+	const { store, seen } = captureStore((sql) =>
+		sql.includes("type = $1") ? [{ html: '<main data-shell>{{content}}</main>' }] : [],
+	);
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok', { brandName: 'LeadEasyGen' }));
+	const handler = routes.get('POST /admin/templates/:type/preview')!;
+
+	const res = await handler(
+		adminCtx('http://localhost/admin/templates/password-reset/preview', {
+			auth: 'tok',
+			params: { type: 'password-reset' },
+			body: {
+				subject: 'Reset for {{firstName}}',
+				text: 'Your code is {{pin}}',
+				html: '<p>Hi {{firstName}}, your code is {{pin}} — from {{brandName}}</p>',
+				data: { firstName: 'Ada', pin: '123456' },
+			},
+		}),
+	);
+	assert.equal(res.status, 200);
+	const { result } = (await res.json()) as {
+		result: { subject?: string; html?: string; text: string };
+	};
+
+	assert.equal(result.subject, 'Reset for Ada');
+	assert.equal(result.text, 'Your code is 123456');
+	assert.ok(result.html?.includes('data-shell'), 'the stored layout wraps the fragment');
+	assert.ok(result.html?.includes('123456'), 'variables substituted');
+	// brandName is merged by the Dispatcher on a real send, never the resolver;
+	// without the route forwarding it the preview would quietly show the default.
+	assert.ok(result.html?.includes('LeadEasyGen'), 'brandName reaches the render');
+	assert.equal(result.html?.includes('{{'), false, 'nothing left unsubstituted');
+	assert.ok(seen.some((s) => s.includes('fonderie_courier_templates')));
+});
+
+test('template admin: preview reports the variables the content uses', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store } = captureStore(() => []);
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok'));
+	const handler = routes.get('POST /admin/templates/:type/preview')!;
+
+	const res = await handler(
+		adminCtx('http://localhost/admin/templates/receipt/preview', {
+			auth: 'tok',
+			params: { type: 'receipt' },
+			body: {
+				subject: 'Receipt {{invoiceId}}',
+				text: 'Paid {{amount}}',
+				html: '<p>{{amount}}{{#invoiceUrl}} — <a href="{{invoiceUrl}}">view</a>{{/invoiceUrl}}</p>',
+			},
+		}),
+	);
+	const { result } = (await res.json()) as { result: { variables: string[] } };
+
+	// Section names count: {{#invoiceUrl}} is driven by the same data key, so an
+	// editor that omitted it would silently collapse the block.
+	assert.deepEqual(result.variables.sort(), ['amount', 'invoiceId', 'invoiceUrl']);
+});
+
+test('template admin: preview of a text-only template fetches no layout and returns no html', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store, seen } = captureStore(() => []);
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok'));
+	const handler = routes.get('POST /admin/templates/:type/preview')!;
+
+	const res = await handler(
+		adminCtx('http://localhost/admin/templates/phone-otp/preview', {
+			auth: 'tok',
+			params: { type: 'phone-otp' },
+			body: { text: 'Code {{pin}}', data: { pin: '9' } },
+		}),
+	);
+	const { result } = (await res.json()) as { result: { html?: string; text: string } };
+	assert.equal(result.text, 'Code 9');
+	assert.equal('html' in result, false, 'no html key for an SMS-shaped template');
+	assert.equal(seen.length, 0, 'no layout lookup when there is nothing to wrap');
+});
+
+test('template admin: preview without body.text → 422', async () => {
+	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
+	const { store } = captureStore(() => []);
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok'));
+	const handler = routes.get('POST /admin/templates/:type/preview')!;
+	const res = await handler(
+		adminCtx('http://localhost/admin/templates/x/preview', {
+			auth: 'tok',
+			params: { type: 'x' },
+			body: { html: '<p>no text</p>' },
+		}),
+	);
+	assert.equal(res.status, 422);
+});
+
 test('template admin: PUT without body.text → 422', async () => {
 	const { buildTemplateAdminRoutes } = await import('../templates/admin-routes');
 	const { store } = captureStore(() => []);
@@ -1038,7 +1134,18 @@ test('describeAdmin: CourierModule offers routes only with a store', async () =>
 	const { CourierModule } = await import('../module');
 	const { store } = captureStore(() => []);
 	const withStore = new CourierModule({} as never, store).describeAdmin();
-	assert.equal(withStore.routes?.length, 6);
+	assert.deepEqual(
+		withStore.routes?.map((r) => `${r.method} ${r.path}`),
+		[
+			'GET /templates',
+			'GET /templates/:type',
+			'PUT /templates/:type',
+			'DELETE /templates/:type',
+			'GET /templates/:type/revisions',
+			'POST /templates/:type/rollback',
+			'POST /templates/:type/preview',
+		],
+	);
 	const fsOnly = new CourierModule({ templates: { source: 'fs' } } as never).describeAdmin();
 	assert.deepEqual(fsOnly, {});
 });

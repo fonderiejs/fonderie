@@ -30,6 +30,30 @@ function escapeHtml(value: string): string {
 		.replace(/'/g, '&#39;');
 }
 
+// The template contract in one place: a variable is {{word}}, a section is
+// {{#word}}…{{/word}}. \w+ only — {{ spaced }} and {{dotted.path}} are left
+// alone, deliberately. Named because the renderer is no longer the only thing
+// that reads it: an editor asking "which variables does this use?" must agree
+// with what substitution will actually do, or it offers the wrong fields.
+const VAR_RE = /\{\{(\w+)\}\}/g;
+const SECTION_RE = /\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g;
+
+// Every variable a template refers to, in first-seen order — section names
+// included, since a section's presence is driven by the same data key.
+// Implicit ones the layout injects ({{subject}}, {{preheader}}, {{brandName}})
+// are NOT filtered here; the caller knows whether it supplies them.
+export function templateVariables(...parts: Array<string | null | undefined>): string[] {
+	const found = new Set<string>();
+	for (const part of parts) {
+		if (!part) continue;
+		// Fresh regexes: the shared ones carry /g, so lastIndex would leak
+		// between calls.
+		for (const m of part.matchAll(new RegExp(SECTION_RE.source, 'g'))) found.add(m[1] as string);
+		for (const m of part.matchAll(new RegExp(VAR_RE.source, 'g'))) found.add(m[1] as string);
+	}
+	return [...found];
+}
+
 /**
  * Optional blocks: `{{#key}}…{{/key}}` renders its body only when `key` has a
  * non-empty value.
@@ -49,14 +73,11 @@ function escapeHtml(value: string): string {
  * "" and one returning "  " should not render differently.
  */
 function renderSections(template: string, data: Record<string, unknown>): string {
-	return template.replace(
-		/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g,
-		(_, key: string, body: string) => {
-			const value = data[key];
-			const present = value !== undefined && value !== null && String(value).trim() !== '';
-			return present ? body : '';
-		},
-	);
+	return template.replace(SECTION_RE, (_, key: string, body: string) => {
+		const value = data[key];
+		const present = value !== undefined && value !== null && String(value).trim() !== '';
+		return present ? body : '';
+	});
 }
 
 function render(
@@ -64,7 +85,7 @@ function render(
 	data: Record<string, unknown>,
 	opts: { escapeHtml?: boolean } = {},
 ): string {
-	return renderSections(template, data).replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
+	return renderSections(template, data).replace(VAR_RE, (_, key: string) => {
 		const value = data[key];
 		if (value === undefined || value === null) return '';
 		const s = String(value);
@@ -180,16 +201,31 @@ export class DBTemplateResolver implements ITemplateResolver {
 
 	// Optional founder-supplied layout shell; undefined → built-in default.
 	private async layout(locale?: string): Promise<string | undefined> {
-		const [row] = await this.store.query<{ html: string | null }>(
-			`SELECT html
-			 FROM fonderie_courier_templates
-			 WHERE type = $1 AND active = true AND (locale = $2 OR locale IS NULL)
-			 ORDER BY (locale IS NOT DISTINCT FROM $2) DESC
-			 LIMIT 1`,
-			[LAYOUT_TYPE, locale ?? null],
-		);
-		return row?.html ?? undefined;
+		return getLayoutHtml(this.store, locale);
 	}
+}
+
+// The operator's shell for this locale, or undefined to mean "the built-in
+// one" — wrapLayout's default parameter handles that, so callers never pick
+// the fallback themselves.
+//
+// Exported because the admin preview has to reach it: rendering a fragment
+// without the shell produces an email that looks nothing like the one that
+// sends, and a preview that lies is worse than no preview. One definition
+// rather than a second copy of the query living in the route file.
+export async function getLayoutHtml(
+	store: IStoreAdapter,
+	locale?: string,
+): Promise<string | undefined> {
+	const [row] = await store.query<{ html: string | null }>(
+		`SELECT html
+		 FROM fonderie_courier_templates
+		 WHERE type = $1 AND active = true AND (locale = $2 OR locale IS NULL)
+		 ORDER BY (locale IS NOT DISTINCT FROM $2) DESC
+		 LIMIT 1`,
+		[LAYOUT_TYPE, locale ?? null],
+	);
+	return row?.html ?? undefined;
 }
 
 // Filesystem resolver — reads {type}.{locale}.txt → {type}.txt with fallback
