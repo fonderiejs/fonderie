@@ -158,6 +158,7 @@ new CustomerTagModel(store: IStoreAdapter): CustomerTagModel
 
 new CustomersModule(store: IStoreAdapter, config?: ICustomersConfig, bus?: EventBus | undefined): CustomersModule
   .name: "@fonderie/customers"
+  .version: string
   .deps: string[]
   .install(app: IFonderieApp): void
 

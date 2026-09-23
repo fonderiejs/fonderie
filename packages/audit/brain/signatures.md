@@ -7,6 +7,7 @@
 ```ts
 new AuditModule(store: IStoreAdapter): AuditModule
   .name: "@fonderie/audit"
+  .version: string
   .deps: string[]
   .describeAdmin(): IAdminDescription
   .install(app: IFonderieApp): void

@@ -7,6 +7,9 @@ import { buildCustomerRoutes } from './routes';
 
 export class CustomersModule implements IFonderieModule {
 	readonly name = '@fonderie/customers';
+	// Baked in at build time by tsup.base, so the operator's Modules page can
+	// say what is actually deployed rather than 'not reported'.
+	readonly version = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';
 	readonly deps = ['@fonderie/workspaces'];
 
 	constructor(

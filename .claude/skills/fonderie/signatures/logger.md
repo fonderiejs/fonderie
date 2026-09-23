@@ -44,6 +44,7 @@ new Logger(config: ILoggerConfig, context?: Record<string, unknown>): Logger
 
 new LoggerModule(config?: ILoggerConfig): LoggerModule
   .name: "@fonderie/logger"
+  .version: string
   .logger: Logger
   .install(app: IFonderieApp): void
 

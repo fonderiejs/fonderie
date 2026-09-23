@@ -9,6 +9,7 @@ Subpath exports: `@fonderie/workspaces/types`, `@fonderie/workspaces/middleware`
 ```ts
 new WorkspacesModule(store: IStoreAdapter, config?: IWorkspacesConfig, bus?: EventBus | undefined): WorkspacesModule
   .name: "@fonderie/workspaces"
+  .version: string
   .deps: string[]
   .install(app: IFonderieApp): void
 

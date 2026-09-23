@@ -9,6 +9,7 @@ Subpath exports: `@fonderie/billing/types`, `@fonderie/billing/middleware`, `@fo
 ```ts
 new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus | undefined): BillingModule
   .name: "@fonderie/billing"
+  .version: string
   .deps: string[]
   .install(app: IFonderieApp): Promise<void>
   .describeAdmin(): IAdminDescription

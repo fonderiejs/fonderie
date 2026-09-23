@@ -40,6 +40,7 @@ interface IRoleWithPermissions extends IRole {
 new PermissionsModule(store: IStoreAdapter, config?: IPermissionsConfig): PermissionsModule
   .engine: PermissionsEngine
   .name: "@fonderie/permissions"
+  .version: string
   .deps: string[]
   .install(app: IFonderieApp): void
 
