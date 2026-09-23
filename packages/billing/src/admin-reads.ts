@@ -5,7 +5,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { IBillingConfig } from './config';
 import { toPlanDTO, toWalletDTO, toWalletTransactionDTO } from './dtos/billing';
 import { getDBPlans, getPlans } from './services/plans';
-import { getSubscription } from './services/subscriptions';
+import { getSubscription, listSubscriptions } from './services/subscriptions';
 import { decodeLedgerCursor, getWalletBalance, getWalletLedger } from './services/wallet';
 import { normalizeCurrency } from './utils';
 import type { SubscriberType } from './types';
@@ -50,6 +50,32 @@ function readTable(
 					configured: jsonSafe(getPlans(config)),
 					stored,
 				});
+			},
+		],
+		// Newest first. The screen that reads this used to open as an empty box
+		// asking for a subscriber type and id — unanswerable unless you already
+		// knew who you were looking for.
+		[
+			'GET',
+			'/_admin/subscriptions',
+			async (ctx) => {
+				const params = new URL(ctx.request.url).searchParams;
+				const rawLimit = params.get('limit');
+				const limit = rawLimit !== null ? Number.parseInt(rawLimit, 10) : 50;
+				// Billing clamps strictly where auth and audit clamp silently. Keep
+				// the local convention: inside this package a bad limit is a 422.
+				if (Number.isNaN(limit) || limit < 1 || limit > 100)
+					return setApiResponse(
+						HTTP.UNPROCESSABLE,
+						'INVALID_PARAMETER',
+						'limit must be an integer between 1 and 100',
+					);
+				const rawCursor = params.get('cursor');
+				const cursor = rawCursor !== null ? decodeLedgerCursor(rawCursor) : null;
+				if (rawCursor !== null && !cursor)
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Malformed cursor');
+				const page = await listSubscriptions({ limit, cursor }, store);
+				return setApiResponse(HTTP.OK, 'SUBSCRIPTIONS', 'Subscribers', page);
 			},
 		],
 		[

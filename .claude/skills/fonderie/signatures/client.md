@@ -326,11 +326,17 @@ interface IAdminLedgerQuery {
     cursor?: string;
 }
 
+interface IAdminSubscriptionsQuery {
+    limit?: number;
+    cursor?: string;
+}
+
 new BillingAdminClient(opts: IBillingAdminClientOptions): BillingAdminClient
   .catalog(): Promise<IApiResponse<IAdminCatalog>>
   .createPlan(input: IAdminPlanInput & { name: string; }): Promise<IApiResponse<IPlanDTO>>
   .updatePlan(planId: string, input: IAdminPlanInput): Promise<IApiResponse<IPlanDTO>>
   .deletePlan(planId: string): Promise<IApiResponse<undefined>>
+  .listSubscriptions(query?: IAdminSubscriptionsQuery): Promise<IApiResponse<IAdminSubscriptionPage>>
   .subscription(type: SubscriberType, id: string): Promise<IApiResponse<IAdminSubscriptionDTO>>
   .wallet(type: SubscriberType, id: string, currency?: string | undefined): Promise<IApiResponse<IAdminWalletDTO>>
   .walletLedger(type: SubscriberType, id: string, query?: IAdminLedgerQuery): Promise<IApiResponse<IAdminWalletLedgerPage>>
@@ -883,6 +889,11 @@ interface IAdminSubscriptionDTO {
 interface IAdminWalletDTO extends IWalletDTO {
     version: number;
     updatedAt: string | null;
+}
+
+interface IAdminSubscriptionPage {
+    subscriptions: IAdminSubscriptionDTO[];
+    nextCursor: string | null;
 }
 
 interface IAdminWalletLedgerPage {

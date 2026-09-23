@@ -27,7 +27,7 @@ component UsersScreen(props: { client, pageSize })
 
 component CatalogScreen(props: { client })
 
-component SubscriberScreen(props: { client })
+component SubscriberScreen(props: { client, pageSize })
 
 component AuditScreen(props: { client, pageSize })
 ```

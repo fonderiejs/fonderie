@@ -5,6 +5,7 @@ import type {
 	IAdminGrantInput,
 	IAdminPlanInput,
 	IAdminSubscriptionDTO,
+	IAdminSubscriptionPage,
 	IAdminWalletDTO,
 	IAdminWalletLedgerPage,
 	IApiResponse,
@@ -19,6 +20,11 @@ export interface IBillingAdminClientOptions {
 	prefix?: string;
 	// Recorded as X-Actor in the admin log.
 	actor?: string;
+}
+
+export interface IAdminSubscriptionsQuery {
+	limit?: number;
+	cursor?: string;
 }
 
 export interface IAdminLedgerQuery {
@@ -70,6 +76,16 @@ export class BillingAdminClient {
 
 	deletePlan(planId: string) {
 		return this.call<undefined>('DELETE', `/plans/${encodeURIComponent(planId)}`);
+	}
+
+	// A page of subscribers, newest first. The lookup below still answers for a
+	// known subscriber; this is for finding one you cannot name.
+	listSubscriptions(query: IAdminSubscriptionsQuery = {}) {
+		const q = new URLSearchParams();
+		if (query.limit) q.set('limit', String(query.limit));
+		if (query.cursor) q.set('cursor', query.cursor);
+		const qs = q.toString();
+		return this.call<IAdminSubscriptionPage>('GET', `/subscriptions${qs ? `?${qs}` : ''}`);
 	}
 
 	subscription(type: SubscriberType, id: string) {

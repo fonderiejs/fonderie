@@ -59,6 +59,7 @@ interface ICatalogScreenProps {
 
 interface ISubscriberScreenProps {
     client: BillingAdminClient;
+    pageSize?: number;
 }
 
 interface IAuditScreenProps {
@@ -86,7 +87,7 @@ function UsersScreen({ client, pageSize }: IUsersScreenProps): Element
 
 function CatalogScreen({ client }: ICatalogScreenProps): Element
 
-function SubscriberScreen({ client }: ISubscriberScreenProps): Element
+function SubscriberScreen({ client, pageSize }: ISubscriberScreenProps): Element
 
 function AuditScreen({ client, pageSize }: IAuditScreenProps): Element
 ```

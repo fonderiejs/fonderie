@@ -355,6 +355,7 @@ new BillingAdminClient(opts: IBillingAdminClientOptions): BillingAdminClient
   .createPlan(input: IAdminPlanInput & { name: string; }): Promise<IApiResponse<IPlanDTO>>
   .updatePlan(planId: string, input: IAdminPlanInput): Promise<IApiResponse<IPlanDTO>>
   .deletePlan(planId: string): Promise<IApiResponse<undefined>>
+  .listSubscriptions(query?: IAdminSubscriptionsQuery | undefined): Promise<IApiResponse<IAdminSubscriptionPage>>
   .subscription(type: SubscriberType, id: string): Promise<IApiResponse<IAdminSubscriptionDTO>>
   .wallet(type: SubscriberType, id: string, currency?: string | undefined): Promise<IApiResponse<IAdminWalletDTO>>
   .walletLedger(type: SubscriberType, id: string, query?: IAdminLedgerQuery | undefined): Promise<IApiResponse<IAdminWalletLedgerPage>>
@@ -483,6 +484,15 @@ interface IUseAdminSubscriberReturn {
     grant: (input: Omit<IAdminGrantInput, 'subscriberType' | 'subscriberId'>) => Promise<void>;
 }
 
+interface IUseAdminSubscribersReturn {
+    subscriptions: IAdminSubscriptionDTO[];
+    hasMore: boolean;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    loadMore: () => Promise<void>;
+}
+
 interface IUseAdminAuditReturn {
     events: IAuditEventDTO[];
     hasMore: boolean;
@@ -517,6 +527,8 @@ function useAdminLoginHistory(client: AuthAdminClient, userId: string | null, qu
 function useAdminCatalog(client: BillingAdminClient): IUseAdminCatalogReturn
 
 function useAdminSubscriber(client: BillingAdminClient, subscriber: { type: SubscriberType; id: string; } | null, options?: { currency?: string; limit?: number; }): IUseAdminSubscriberReturn
+
+function useAdminSubscribers(client: BillingAdminClient, query?: Omit<IAdminSubscriptionsQuery, "cursor">): IUseAdminSubscribersReturn
 
 function useAdminAudit(client: AuditAdminClient, query?: Omit<IAdminAuditQuery, "cursor">): IUseAdminAuditReturn
 ```
