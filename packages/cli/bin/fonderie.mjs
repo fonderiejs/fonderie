@@ -634,6 +634,25 @@ async function doMigrate() {
   } catch { /* keep the placeholder */ }
   console.log(`checking ${where}`);
 
+  // Reach it FIRST, and fail hard if we cannot. Everything below swallows
+  // errors by design — adapter.query() is caught here, and pending() catches
+  // its own read failure and returns every file as pending — so without this
+  // probe an unreachable database is indistinguishable from a fresh one:
+  // "61 pending, first-time setup, nothing to lose", exit 0. A gate that
+  // cannot reach its target must never pass; that is the whole job.
+  try {
+    await adapter.query('SELECT 1');
+  } catch (err) {
+    console.error(`\nmigrate: cannot reach ${where}`);
+    console.error(`  ${err?.message ?? err}`);
+    console.error('  DATABASE_URL must be postgresql://user:pass@host:port/database —');
+    console.error('  a keyword string (host=… dbname=…), surrounding quotes or a stray');
+    console.error('  newline all parse elsewhere but not here. Any connection mode is');
+    console.error('  fine: this reads, it does not apply.');
+    await adapter.end();
+    process.exit(1);
+  }
+
   // Has this database EVER been migrated? Asked directly, because pending()
   // cannot tell you: it catches the read failure and returns every file, so a
   // missing table and a fresh install are the same answer — and so is a url

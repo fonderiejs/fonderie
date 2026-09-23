@@ -109,7 +109,31 @@ if (!/dry-run/.test(migErr)) fail('migrate should point at --dry-run when there 
 if (/must be the SESSION|never the transaction pooler/i.test(migErr))
   fail('migrate must not demand session/direct — --status and --check only read');
 if (!/fonderie migrate/.test(run(['help']))) fail('help missing `fonderie migrate`');
-console.log('  ✓ migrate guards (DATABASE_URL required, --dry-run offered, no bogus pooler demand)');
+
+// An unreachable database must FAIL, not pass as a fresh install. Everything
+// downstream swallows errors by design — pending() catches its own read failure
+// and returns every file — so without the connectivity probe a refused
+// connection reads as "61 pending, first-time setup, nothing to lose" and exits
+// 0: a gate green precisely because it reached nothing. Port 59999 has nothing
+// listening on it.
+// --project is the repo root explicitly: under turbo this runs with cwd
+// packages/cli, where @fonderie/store is not installed, and the command would
+// exit on resolution before ever reaching the probe. Passing cwd implicitly
+// made this pass standalone and fail in the suite.
+const repoRoot = join(here, '..', '..', '..');
+let unreachable = 0;
+let unreachableErr = '';
+try {
+  run(['migrate', '--check', '--project', repoRoot], {
+    env: { ...process.env, DATABASE_URL: 'postgresql://n:n@127.0.0.1:59999/x' },
+  });
+  fail('migrate --check passed against an unreachable database');
+} catch (e) { unreachable = e.status; unreachableErr = String(e.stderr || e.stdout || ''); }
+if (unreachable !== 1) fail(`unreachable database should exit 1, got ${unreachable}`);
+if (!/cannot reach/.test(unreachableErr)) fail('unreachable should say it cannot reach the database');
+if (!/59999/.test(unreachableErr)) fail('unreachable should name the target it could not reach');
+
+console.log('  ✓ migrate guards (DATABASE_URL required, --dry-run offered, unreachable fails loudly)');
 
 // --- migrate --dry-run: discovery + classification, no database ---
 // This is the path that was broken first time round. These packages are
