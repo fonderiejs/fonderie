@@ -141,6 +141,8 @@ console.log('  ✓ migrate guards (DATABASE_URL required, --dry-run offered, no 
   symlinkSync(join(here, '..', '..', 'store'), join(mp, 'node_modules', '@fonderie', 'store'), 'dir');
 
   const outDry = run(['migrate', '--dry-run', '--project', mp], { env: { ...process.env, DATABASE_URL: '' } });
+  // --dry-run touches no database, so it must not claim to have checked one.
+  if (/^checking /m.test(outDry)) fail('dry-run must not report a database it never opened');
   if (!/demo: 2 migration/.test(outDry)) fail('dry-run did not discover the ESM-only brick: ' + outDry);
   if (!/001_create\.sql/.test(outDry)) fail('dry-run missed the additive migration');
   if (!/✖ 002_drop\.sql\s+DESTRUCTIVE/.test(outDry)) fail('dry-run did not flag the drop: ' + outDry);
