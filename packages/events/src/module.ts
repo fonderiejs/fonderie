@@ -55,6 +55,9 @@ const STALE_BACKLOG_MINUTES = 15;
 
 export class EventsModule implements IFonderieModule {
 	readonly name = '@fonderie/events';
+	// Baked in at build time by tsup.base, so the operator's Modules page can
+	// say what is actually deployed rather than 'not reported'.
+	readonly version = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';
 	readonly bus: EventBus;
 	private readonly config: IEventsConfig;
 	private readonly transport: IEventTransport;

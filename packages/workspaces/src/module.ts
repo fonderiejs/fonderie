@@ -20,6 +20,9 @@ interface UserRegisteredPayload {
 
 export class WorkspacesModule implements IFonderieModule {
 	readonly name = '@fonderie/workspaces';
+	// Baked in at build time by tsup.base, so the operator's Modules page can
+	// say what is actually deployed rather than 'not reported'.
+	readonly version = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';
 	// billing is OPTIONAL — seat limits activate if it's registered (read via
 	// ctx.meta['billing']), otherwise invitations are unlimited. Not a hard dep.
 	readonly deps = ['@fonderie/auth'];

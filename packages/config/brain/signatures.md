@@ -9,6 +9,7 @@ Subpath exports: `@fonderie/config/types`, `@fonderie/config/middleware`, `@fond
 ```ts
 new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule
   .name: "@fonderie/config"
+  .version: string
   .manager: RemoteConfigManager
   .install(app: IFonderieApp): Promise<void>
   .describeAdmin(): IAdminDescription
