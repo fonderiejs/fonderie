@@ -622,17 +622,40 @@ async function doMigrate() {
   const adapter = new store.PGAdapter(url);
   let destructive = 0;
   let pendingTotal = 0;
-  // A database with nothing applied yet has no data to lose: brick history
-  // legitimately drops columns earlier migrations in the same set created
-  // (billing's 004 drops the workspace_id its 001 added). Flagging those would
-  // refuse every first-time install, which is the wrong end of the trade.
-  let everApplied = false;
+
+  // Say WHICH database, never the credentials. Without this, a url pointing at
+  // the wrong place reads exactly like a correct one: the output is plausible
+  // and the conclusion is confident. It cost a green gate against an empty
+  // database that would have waved a DROP through.
+  let where = '(unparseable url)';
+  try {
+    const u = new URL(url);
+    where = `${u.hostname}:${u.port || '5432'}${u.pathname}`;
+  } catch { /* keep the placeholder */ }
+  console.log(`checking ${where}`);
+
+  // Has this database EVER been migrated? Asked directly, because pending()
+  // cannot tell you: it catches the read failure and returns every file, so a
+  // missing table and a fresh install are the same answer — and so is a url
+  // pointing somewhere that has never seen this app.
+  //
+  // It matters because "nothing applied ⇒ nothing to lose" is what lets a
+  // first-time setup through, and that rule must not fire for a wrong url.
+  let appliedCount = null; // null = the table does not exist
+  try {
+    const rows = await adapter.query(
+      `SELECT count(*)::int AS n FROM fonderie_migrations`,
+    );
+    appliedCount = rows[0]?.n ?? 0;
+  } catch {
+    appliedCount = null;
+  }
+  const everApplied = (appliedCount ?? 0) > 0;
+
   try {
     const scanned = [];
     for (const [name, dir] of dirs) {
       const pending = await new store.InternalMigrationRunner(adapter, dir).pending();
-      const total = readdirSync(dir).filter((f) => f.endsWith('.sql')).length;
-      if (pending.length < total) everApplied = true;
       scanned.push([name, dir, pending]);
     }
     for (const [name, dir, pending] of scanned) {
@@ -660,11 +683,21 @@ async function doMigrate() {
     console.log('up to date — nothing pending.');
     return;
   }
-  console.log(
-    everApplied
-      ? `\n${pendingTotal} pending, ${destructive} destructive.`
-      : `\n${pendingTotal} pending — first-time setup, nothing to lose.`,
-  );
+  if (everApplied) {
+    console.log(`\n${pendingTotal} pending, ${destructive} destructive. (${appliedCount} already applied)`);
+  } else if (appliedCount === null) {
+    // The loud case. An existing deployment ALWAYS has this table; not finding
+    // it means this database has never run migrations — which is a legitimate
+    // first install, or the wrong database, and those look identical from here.
+    console.log(
+      `\n${pendingTotal} pending. NO fonderie_migrations table at ${where} —\n` +
+        'this database has never been migrated. Treating it as a first install,\n' +
+        'so nothing is flagged as destructive. If you expected an EXISTING\n' +
+        'deployment, the url is wrong and this check proves nothing.',
+    );
+  } else {
+    console.log(`\n${pendingTotal} pending — first-time setup, nothing applied yet.`);
+  }
   if (destructive > 0 && argv.includes('--check')) {
     console.error('\nRefusing: a pending migration deletes data. No down-migration');
     console.error('brings it back — a recreated empty table is not a rollback. Take a');
