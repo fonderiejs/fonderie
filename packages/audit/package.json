@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/audit",
-	"version": "5.2.1",
+	"version": "5.2.2",
 	"fonderie": { "stability": "stable" },
 	"description": "Workspace-scoped audit log — query fonderie_events for a human-readable activity trail.",
 	"keywords": [
@@ -36,7 +36,7 @@
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.20.0",
-		"@fonderie/store": "^0.5.0"
+		"@fonderie/store": "^0.6.0"
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
