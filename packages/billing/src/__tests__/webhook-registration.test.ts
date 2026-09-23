@@ -270,6 +270,18 @@ test('an endpoint on a DIFFERENT version is flagged — the real-world case', as
 	assert.equal(lines.length, 1);
 	assert.match(lines[0]!, /2026-04-22\.dahlia/);
 	assert.match(lines[0]!, /2024-11-20\.acacia/);
+
+	// It must NOT claim data is being lost. Invoice payloads have been read
+	// version-tolerantly since 9.6.0, so the old wording ("a payload can parse
+	// to null and be silently ignored") described a consequence that no longer
+	// follows — and an attention page that overstates gets ignored wholesale.
+	assert.doesNotMatch(lines[0]!, /parse to null|silently ignored/);
+
+	// And it must name the remedy, because the obvious one does not exist: an
+	// endpoint's version is fixed when the endpoint is created. Someone reading
+	// this went looking for the field and found "This field cannot be changed".
+	assert.match(lines[0]!, /cannot be changed after it is created/);
+	assert.match(lines[0]!, /recreate it|move the client pin/);
 });
 
 test('a version difference does NOT flip ok — that is reserved for "will it arrive"', async () => {
