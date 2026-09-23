@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-admin",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"fonderie": {
 		"stability": "experimental"
 	},

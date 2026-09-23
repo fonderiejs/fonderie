@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/courier",
-	"version": "7.8.1",
+	"version": "7.9.0",
 	"fonderie": { "stability": "stable" },
 	"description": "Transactional messaging for SaaS — multi-channel delivery (email, SMS, push) with FS or DB templates, per-message-type channel routing, and a persistent message log.",
 	"keywords": [
