@@ -132,8 +132,17 @@ try {
 if (unreachable !== 1) fail(`unreachable database should exit 1, got ${unreachable}`);
 if (!/cannot reach/.test(unreachableErr)) fail('unreachable should say it cannot reach the database');
 if (!/59999/.test(unreachableErr)) fail('unreachable should name the target it could not reach');
+// The guidance must stay un-pasteable. CI masks a secret's value everywhere it
+// appears in a log, including in text this tool printed — so a lowercase
+// `user:pass@host:port/database` here is redacted to `***` for exactly the
+// operator who pasted that placeholder into their secret, blanking the advice
+// in the one case it is needed. Caps are never pasted verbatim.
+if (/user:pass/.test(unreachableErr))
+  fail('guidance contains a pasteable lowercase placeholder; CI will redact it for the operator who used it');
+if (!/USER:PASSWORD/.test(unreachableErr))
+  fail('guidance should show the connection-string shape in un-pasteable caps');
 
-console.log('  ✓ migrate guards (DATABASE_URL required, --dry-run offered, unreachable fails loudly)');
+console.log('  ✓ migrate guards (DATABASE_URL required, --dry-run offered, unreachable fails loudly, guidance un-pasteable)');
 
 // --- migrate --dry-run: discovery + classification, no database ---
 // This is the path that was broken first time round. These packages are
