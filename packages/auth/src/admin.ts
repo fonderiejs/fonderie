@@ -1,5 +1,5 @@
 import type { IAdminRoute, IFonderieContext, Middleware } from '@fonderie/core';
-import { HTTP, setApiResponse } from '@fonderie/core';
+import { HTTP, encodeKeysetCursor, setApiResponse } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import { decodeLoginCursor, toLoginHistoryPageDTO, toSessionDTO } from './dtos/login-activity';
@@ -8,6 +8,7 @@ import type { IUserDTO } from './dtos/user';
 import { LoginEventModel } from './models/login-event.model';
 import { SessionModel } from './models/session.model';
 import { UserModel } from './models/user.model';
+import type { IUserPage } from './models/user.model';
 import type { IUser } from './types';
 
 // What the operator sees: the app's own user shape plus the fields support
@@ -25,6 +26,22 @@ export function toAdminUserDTO(user: IUser): IAdminUserDTO {
 		deletedAt: user.deletedAt ? user.deletedAt.toISOString() : null,
 		createdAt: user.createdAt.toISOString(),
 	};
+}
+
+export interface IAdminUserPageDTO {
+	users: IAdminUserDTO[];
+	nextCursor: string | null;
+}
+
+export function toAdminUserPageDTO(page: IUserPage): IAdminUserPageDTO {
+	const last = page.users[page.users.length - 1];
+	// Full microsecond precision (createdAtRaw) so same-microsecond rows are
+	// not skipped between pages.
+	const nextCursor =
+		page.hasMore && last
+			? encodeKeysetCursor(last.createdAtRaw ?? last.createdAt.toISOString(), last.id)
+			: null;
+	return { users: page.users.map(toAdminUserDTO), nextCursor };
 }
 
 const ADMIN_PREFIX = '/_admin';
@@ -59,12 +76,27 @@ function adminRouteTable(store: IStoreAdapter): Array<[string, string, Middlewar
 		[
 			'GET',
 			'/_admin/users',
+			// With an email, the exact lookup support reaches for. Without one, a
+			// page of users — an operator who has to know a name before they can
+			// see anything cannot discover who signed up this morning.
 			async (ctx) => {
-				const email = new URL(ctx.request.url).searchParams.get('email')?.trim().toLowerCase();
-				if (!email)
-					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'email is required');
-				const user = await users.findByEmail(email);
-				return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND();
+				const params = new URL(ctx.request.url).searchParams;
+				const email = params.get('email')?.trim().toLowerCase();
+				if (email) {
+					const user = await users.findByEmail(email);
+					return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND();
+				}
+
+				const rawLimit = Number(params.get('limit') ?? 50);
+				const limit = Number.isFinite(rawLimit)
+					? Math.min(Math.max(Math.trunc(rawLimit), 1), 200)
+					: 50;
+				const cursorParam = params.get('cursor');
+				const cursor = cursorParam ? decodeLoginCursor(cursorParam) : null;
+				if (cursorParam && !cursor)
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor');
+				const page = await users.list({ limit, ...(cursor ? { cursor } : {}) });
+				return setApiResponse(HTTP.OK, 'USERS', 'Users', toAdminUserPageDTO(page));
 			},
 		],
 		[

@@ -341,6 +341,7 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .revokeToken(id: string): Promise<IApiResponse<undefined>>
 
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
+  .listUsers(query?: IAdminUsersQuery | undefined): Promise<IApiResponse<IAdminUserPageResult>>
   .findUser(email: string): Promise<IApiResponse<IAdminUserDTO>>
   .getUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
   .listUserSessions(id: string): Promise<IApiResponse<ISessionDTO[]>>
@@ -433,6 +434,15 @@ interface IUseAdminUserReturn {
     revokeSessions: () => Promise<void>;
 }
 
+interface IUseAdminUsersReturn {
+    users: IAdminUserDTO[];
+    hasMore: boolean;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    loadMore: () => Promise<void>;
+}
+
 interface IUseAdminUserSessionsReturn {
     sessions: ISessionDTO[];
     isLoading: boolean;
@@ -497,6 +507,8 @@ function useAdminTokens(client: AdminClient): IUseAdminTokensReturn
 function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">): IUseAdminLogReturn
 
 function useAdminUser(client: AuthAdminClient, by: { email?: string; id?: string; }): IUseAdminUserReturn
+
+function useAdminUsers(client: AuthAdminClient, query?: Omit<IAdminUsersQuery, "cursor">): IUseAdminUsersReturn
 
 function useAdminUserSessions(client: AuthAdminClient, userId: string | null): IUseAdminUserSessionsReturn
 

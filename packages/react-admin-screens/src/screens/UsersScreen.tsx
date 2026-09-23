@@ -1,20 +1,30 @@
 import type { AuthAdminClient } from '@fonderie/client';
-import { useAdminLoginHistory, useAdminUser, useAdminUserSessions } from '@fonderie/react-admin';
+import {
+	useAdminLoginHistory,
+	useAdminUser,
+	useAdminUserSessions,
+	useAdminUsers,
+} from '@fonderie/react-admin';
 import { useState } from 'react';
 import { styles } from '../styles';
 
 export interface IUsersScreenProps {
 	client: AuthAdminClient;
+	pageSize?: number;
 }
 
-// Why can't this person log in. Look up by email, see the account, its live
-// sessions and recent sign-ins; suspend, unsuspend, or sign them out everywhere.
-export function UsersScreen({ client }: IUsersScreenProps) {
+// Who is signed up, and why can't this one log in. Lists on arrival — an
+// operator who must know an address before they can see anything cannot find
+// the account they are being asked about. Picking a row, or an exact email,
+// opens the account: live sessions, recent sign-ins, suspend and sign-out.
+export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 	const [input, setInput] = useState('');
-	const [email, setEmail] = useState<string | undefined>(undefined);
+	const [selected, setSelected] = useState<{ id?: string; email?: string } | null>(null);
+
+	const list = useAdminUsers(client, { limit: pageSize });
 	const { user, isLoading, error, suspend, unsuspend, revokeSessions } = useAdminUser(
 		client,
-		email ? { email } : {},
+		selected ?? {},
 	);
 	const userId = user?.id ?? null;
 	const sessions = useAdminUserSessions(client, userId);
@@ -23,6 +33,11 @@ export function UsersScreen({ client }: IUsersScreenProps) {
 	const yesNo = (v: boolean) =>
 		v ? <span style={styles.ok}>yes</span> : <span style={styles.muted}>no</span>;
 
+	const clear = () => {
+		setSelected(null);
+		setInput('');
+	};
+
 	return (
 		<div style={styles.container}>
 			<h1 style={styles.title}>Users</h1>
@@ -30,7 +45,8 @@ export function UsersScreen({ client }: IUsersScreenProps) {
 				style={styles.toolbar}
 				onSubmit={(e) => {
 					e.preventDefault();
-					setEmail(input.trim() || undefined);
+					const email = input.trim();
+					setSelected(email ? { email } : null);
 				}}
 			>
 				<input
@@ -44,11 +60,84 @@ export function UsersScreen({ client }: IUsersScreenProps) {
 				<button type="submit" style={styles.button} disabled={isLoading}>
 					Look up
 				</button>
+				{selected ? (
+					<button type="button" style={styles.button} onClick={clear}>
+						← All users
+					</button>
+				) : (
+					<button
+						type="button"
+						style={styles.button}
+						onClick={() => void list.refresh()}
+						disabled={list.isLoading}
+					>
+						Refresh
+					</button>
+				)}
 			</form>
 			{error ? (
 				<p style={styles.error} role="alert">
 					{error.status === 404 ? 'No user with that email.' : error.explanation}
 				</p>
+			) : null}
+			{!selected ? (
+				<>
+					{list.error ? (
+						<p style={styles.error} role="alert">
+							{list.error.explanation}
+						</p>
+					) : null}
+					{list.users.length === 0 && !list.isLoading ? (
+						<p style={styles.muted}>No users yet.</p>
+					) : (
+						<table style={styles.table}>
+							<thead>
+								<tr>
+									<th style={styles.th}>Email</th>
+									<th style={styles.th}>Name</th>
+									<th style={styles.th}>Created</th>
+									<th style={styles.th}>Status</th>
+								</tr>
+							</thead>
+							<tbody>
+								{list.users.map((u) => (
+									<tr key={u.id}>
+										<td style={styles.td}>
+											<button
+												type="button"
+												style={{ ...styles.navItem, padding: 0 }}
+												onClick={() => setSelected({ id: u.id })}
+											>
+												{u.email}
+											</button>
+										</td>
+										<td style={styles.td}>
+											{`${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || (
+												<span style={styles.muted}>—</span>
+											)}
+										</td>
+										<td style={styles.td}>{new Date(u.createdAt).toLocaleDateString()}</td>
+										<td style={styles.td}>
+											{u.suspended ? <span style={styles.badge}>suspended</span> : null}
+											{u.deletedAt ? <span style={styles.badge}>deleted</span> : null}
+											{!u.suspended && !u.deletedAt ? <span style={styles.muted}>active</span> : null}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					)}
+					{list.isLoading ? <p style={styles.status}>Loading…</p> : null}
+					{list.hasMore && !list.isLoading ? (
+						<button
+							type="button"
+							style={{ ...styles.button, marginTop: 8 }}
+							onClick={() => void list.loadMore()}
+						>
+							Load more
+						</button>
+					) : null}
+				</>
 			) : null}
 			{user ? (
 				<>
