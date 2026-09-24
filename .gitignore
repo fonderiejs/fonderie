@@ -41,6 +41,7 @@ PLAN-*.md
 !scripts/brain-lib.mjs
 !scripts/brain-serve.mjs
 !scripts/brain-serve.test.mjs
+!scripts/brain-completeness.test.mjs
 !scripts/brain-hook.mjs
 !scripts/generate-project-brain.mjs
 !scripts/project-brain.test.mjs

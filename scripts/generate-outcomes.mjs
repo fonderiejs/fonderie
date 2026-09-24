@@ -159,6 +159,22 @@ function collectRoutes(pkgDir) {
 					const chain = node.arguments.slice(3).map((el) => el.getText(sf).replace(/\s+/g, ' '));
 					routes.push({ method: node.arguments[1].text, path: node.arguments[2].text, chain });
 				}
+				// x.addRoute('METHOD', '/path', ...) / x.router.add('METHOD', '/path', ...)
+				// — the direct form. core mounts /healthz, /readyz and /metrics this
+				// way rather than through a route table, so the array shape above saw
+				// none of them and brain.json reported core as having ZERO routes,
+				// for probes that every deployment serves.
+				if (
+					ts.isCallExpression(node) &&
+					ts.isPropertyAccessExpression(node.expression) &&
+					(node.expression.name.text === 'addRoute' || node.expression.name.text === 'add') &&
+					node.arguments.length >= 3 &&
+					ts.isStringLiteral(node.arguments[0]) && METHODS.has(node.arguments[0].text) &&
+					ts.isStringLiteral(node.arguments[1]) && node.arguments[1].text.startsWith('/')
+				) {
+					const chain = node.arguments.slice(2).map((el) => el.getText(sf).replace(/\s+/g, ' '));
+					routes.push({ method: node.arguments[0].text, path: node.arguments[1].text, chain });
+				}
 				ts.forEachChild(node, visit);
 		};
 		visit(sf);
