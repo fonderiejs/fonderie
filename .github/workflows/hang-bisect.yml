@@ -21,6 +21,18 @@
 # suite has already printed its summary. So turbo holds a child handle while
 # every node child has exited.
 #
+# ATTEMPT 2 (run 35993042540) was ALSO INCONCLUSIVE, and for a self-inflicted
+# reason: the ×3 shell loop broke the stateful gated tests (see the matrix
+# note). No group hit the cap, so nothing hung — and the npm-wrapper theory
+# attempt 1 suggested is NOT supported: this run used `npm test` exactly as CI
+# does and still did not reproduce.
+#
+# STANDING SCORE: 3 hangs in real main/PR runs the same day, 0 in 10 bisect
+# jobs. It does not reproduce on demand. If this attempt is also quiet, stop
+# trying to reproduce and instrument the runs that actually hang instead — a
+# `ps -ef` tree at the dump point would NAME what turbo holds rather than
+# leaving it to inference.
+#
 # ATTEMPT 1 (2026-09-24, runs 35991212813 / 35991210365) was INCONCLUSIVE and
 # is worth knowing about: it ran `npx turbo test` directly and all ten jobs
 # finished, the `all` control included. A control that will not reproduce makes
@@ -47,12 +59,24 @@ on:
 jobs:
   bisect:
     runs-on: ubuntu-latest
-    # Three repeats of the slowest group (serial, ~8 min each) needs headroom;
-    # a hang still reports well inside it because a hung repeat never ends.
-    timeout-minutes: 35
+    # One pass per job. The slowest group (serial) takes ~8 min, so 12 leaves
+    # headroom while still reporting a hang promptly — the timeout IS the
+    # signal, so it must not be generous.
+    timeout-minutes: 12
     strategy:
       fail-fast: false
       matrix:
+        # REPEATS ARE A MATRIX DIMENSION, NOT A LOOP. The first version ran
+        # `for i in 1 2 3` inside one job and produced three red groups that
+        # meant nothing: the gated suites assert EXACT rate-limit bucket
+        # capacity against a shared Redis, so attempt 2 saw attempt 1's tokens
+        # and failed with `granted 0; Lua eval must serialize`. Repeating a
+        # stateful test in-process tests the leftovers, not the code.
+        #
+        # A separate job per repeat gets its own postgres and redis containers,
+        # so every sample starts clean — which is the only way repeated samples
+        # of an INTERMITTENT bug mean anything.
+        rep: [1, 2, 3]
         include:
           - group: gated
             args: --filter=@fonderie/rate-limit --filter=@fonderie/billing --filter=@fonderie/events
@@ -123,12 +147,8 @@ jobs:
       # of absence, and the previous run's whole failure was reading n=1 as a
       # result. Any repeat hanging kills the job at the timeout, which is the
       # signal.
-      - name: test (${{ matrix.group }}) ×3
-        run: |
-          for i in 1 2 3; do
-            echo "──────── ${{ matrix.group }} attempt $i ────────"
-            npm test -- --force ${{ matrix.args }}
-          done
+      - name: test (${{ matrix.group }}) rep ${{ matrix.rep }}
+        run: npm test -- --force ${{ matrix.args }}
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dump-handles.mjs
           # Sooner than the 90 s default: these groups are small, so anything
