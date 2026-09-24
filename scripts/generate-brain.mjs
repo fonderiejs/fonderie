@@ -47,7 +47,20 @@ function extractPackages() {
       throw new Error(`package ${name}: invalid fonderie.stability "${stability}" (expected one of ${STABILITY_TIERS.join(', ')}).`);
     }
 
+    // `requires` is PEERS only, and stays that way: it answers "what must the
+    // consumer install alongside this?", which is the question a peer range
+    // exists to ask.
     const requires = Object.keys(j.peerDependencies || {})
+      .filter((k) => k.startsWith(SCOPE_PREFIX))
+      .map((k) => k.replace(SCOPE_PREFIX, ''));
+
+    // `dependsOn` is the other question — what this package actually pulls in.
+    // Recorded separately rather than folded into `requires`, because the edge
+    // graph was built from peers alone and therefore showed NOTHING for the ~56
+    // packages whose @fonderie deps are ordinary dependencies:
+    // react-admin-screens really does depend on client, react-admin and two
+    // screens packages, and not one of those four edges existed.
+    const dependsOn = Object.keys(j.dependencies || {})
       .filter((k) => k.startsWith(SCOPE_PREFIX))
       .map((k) => k.replace(SCOPE_PREFIX, ''));
 
@@ -72,7 +85,13 @@ function extractPackages() {
     const tables = [...oc.matchAll(/^### `([a-z0-9_]+)`/gm)].map((m) => m[1]);
     const routes = [];
     const secures = new Set();
-    for (const m of oc.matchAll(/^\| (GET|POST|PUT|DELETE|PATCH) \| `([^`]+)` \| `([^`]+)` \|/gm)) {
+    // The middleware cell is matched GREEDILY, to the last backtick before the
+    // closing pipe. A handler containing a template literal puts backticks
+    // INSIDE that cell; a `[^`]+` cell stops at the first of them, never finds
+    // the trailing '` |', and drops the entire row — silently, because a regex
+    // matching nothing is not an error. That cost 7 routes across 5 packages
+    // before anyone noticed: media advertised 1 route and had 3.
+    for (const m of oc.matchAll(/^\| (GET|POST|PUT|DELETE|PATCH) \| `([^`]+)` \| `(.+)` \|$/gm)) {
       const [, method, path, mw] = m;
       routes.push({ method, path, mw });
       if (/requireAuth|requireAnyAuth|withSession/.test(mw)) secures.add('auth');
@@ -80,15 +99,29 @@ function extractPackages() {
       if (/\bvalidate\(/.test(mw)) secures.add('validation');
       if (/verifyGate|requireVerified/.test(mw)) secures.add('verified-email');
     }
+    // Anything SHAPED like a route row must have parsed. A doc scraper fails by
+    // going quiet, so the only safe posture is to count what was skipped and
+    // refuse to write a brain that is smaller than the truth.
+    const rowsPresent = [...oc.matchAll(/^\| (?:GET|POST|PUT|DELETE|PATCH) \| /gm)].length;
+    if (rowsPresent !== routes.length) {
+      throw new Error(
+        `package ${name}: ${rowsPresent} route rows in ${name}-outcomes.md, but only ` +
+          `${routes.length} parsed. brain.json would under-report this package's routes — ` +
+          `fix the row or the parser, do not ship the smaller number.`,
+      );
+    }
 
     // subpath exports (from the signatures doc header)
+    // [a-z0-9-] on the LAST segment: '@fonderie/storage/s3' has a digit, and an
+    // [a-z-] class dropped it without a word.
     const sig = read(join(sigDir, `${name}.md`));
-    const subpaths = [...sig.matchAll(/`(@fonderie\/[a-z-]+\/[a-z-]+)`/g)].map((m) => m[1]);
+    const subpaths = [...sig.matchAll(/`(@fonderie\/[a-z-]+\/[a-z0-9-]+)`/g)].map((m) => m[1]);
 
     out[name] = {
       version: j.version,
       stability,
       requires,
+      dependsOn,
       exports,
       subpaths: [...new Set(subpaths)],
       tables,
@@ -107,6 +140,9 @@ function buildEdges(pkgs) {
   const edges = [];
   for (const [name, p] of Object.entries(pkgs)) {
     for (const dep of p.requires) edges.push({ from: name, to: dep, type: 'requires' });
+    // Real runtime deps, distinct from peers. Without these the graph claimed
+    // react-admin-screens depended on nothing at all.
+    for (const dep of p.dependsOn ?? []) edges.push({ from: name, to: dep, type: 'depends-on' });
     for (const s of p.secures) if (s !== 'validation' && s !== 'verified-email') edges.push({ from: name, to: s, type: 'secures-with' });
   }
   return edges;

@@ -12,7 +12,7 @@ The rule: **before believing a green result, ask what red would have looked
 like.** If you cannot describe the failing case concretely, you have not
 verified anything yet.
 
-## The seven failure modes
+## The failure modes
 
 Each of these shipped a false "verified" in real work. They recur because each
 one *feels* like evidence.
@@ -127,6 +127,46 @@ returned `undefined`.
 The general form: **verify the way a consumer consumes.** Import the module,
 call the endpoint, read the type, run the binary. Any check that inspects the
 artifact from the side can be satisfied by something that does not work.
+
+### 9. The scraper that skips what it cannot parse
+
+A generator that walks source or docs and extracts matches has a default
+behaviour nobody chooses: **what does not match is dropped, in silence.** A
+regex matching nothing is not an error. The output is smaller, not absent, so
+every downstream reader gets a confident, incomplete answer.
+
+`generate-brain.mjs` matched a route's middleware cell as `` `([^`]+)` ``. Any
+handler containing a template literal put backticks inside that cell, the row
+stopped matching, and it vanished. Seven routes across five packages —
+`media` advertised one route and had three. Nothing failed. Separately, the
+AST walk knew only array-literal route tables, so `core`'s `router.add(...)`
+probes were invisible and `core` reported **zero** routes for `/healthz`,
+`/readyz` and `/metrics`. And `check:hook-coverage` reads that generated file,
+so six routes were exempt from coverage by being unparseable.
+
+**The rule: a scraper must know its denominator.** Count the things that LOOK
+like what you are extracting, count what you actually extracted, and fail when
+they differ.
+
+```js
+const parsed = [...doc.matchAll(STRICT)].length;
+const present = [...doc.matchAll(/^\| (?:GET|POST|PUT|DELETE|PATCH) \| /gm)].length;
+if (present !== parsed) throw new Error(`${present} rows, ${parsed} parsed — do not ship the smaller number`);
+```
+
+Two habits that catch this class:
+
+- **Print the denominator.** `all 115 client routes resolve` can be trusted;
+  a bare `OK` cannot be distinguished from a run that found nothing to do.
+- **Corrupt one input and watch it fail.** Break a row so it still *looks*
+  like a row — keep the prefix, drop the trailing delimiter. If the guard
+  stays green, it is counting skips as successes. The first version of the
+  test for this used a line-anchored grep and so could never match `core`,
+  the one package it was written for; it passed while checking nothing.
+
+Enforced here by `scripts/brain-completeness.test.mjs`, which compares
+`brain.json` against the source on disk — packages, routes, subpaths,
+dependency edges, tables and versions — rather than against itself.
 
 ## Before saying "verified"
 

@@ -84,6 +84,18 @@ console.log(`check:hook-coverage — ${checked} public client methods checked; a
 // method — which leg 1 above then proves has a hook. Routes that are not
 // app-code surfaces are allow-listed with reasons.
 const ROUTE_ALLOW = new Map([
+	// Infrastructure probes: called by load balancers, orchestrators and uptime
+	// checks, never by an application client. Invisible to this gate until the
+	// outcomes generator learned core's direct `router.add` form — they had
+	// always been unreachable, nothing had ever been able to say so.
+	['GET /healthz', 'liveness probe — infrastructure calls it, not a typed client'],
+	['GET /readyz', 'readiness probe — infrastructure calls it, not a typed client'],
+	['GET /metrics', 'Prometheus scrape endpoint — a scraper calls it, not a typed client'],
+	// INBOUND webhooks: the provider calls us. A client method would be a method
+	// for impersonating the provider.
+	['POST /courier/delivery/mailgun', "Mailgun's delivery callback — only Mailgun calls it"],
+	['POST /courier/delivery/mailtrap', "Mailtrap's delivery callback — only Mailtrap calls it"],
+	['POST /courier/delivery/sendgrid', "SendGrid's delivery callback — only SendGrid calls it"],
 	['POST /billing/webhook', "Stripe's server-to-server callback receiver — only Stripe calls it"],
 	['POST /billing/webhook/payment', "the payment provider's server-to-server callback — only the provider calls it"],
 	['POST /billing/wallet/grant', 'admin-token-guarded ops surface (support grants) — not a user-client call'],
