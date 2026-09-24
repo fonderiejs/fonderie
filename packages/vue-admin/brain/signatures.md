@@ -135,6 +135,24 @@ interface IAdminTokensReport {
     issued: IAdminTokenRecord[] | null;
 }
 
+interface IAdminMigrationsReport {
+    everApplied: boolean;
+    modules: IAdminMigrationModule[];
+}
+
+interface IAdminMigrationModule {
+    name: string;
+    pending: IAdminPendingMigration[];
+    blockedBy: string | null;
+    appliable: boolean;
+}
+
+interface IAdminPendingMigration {
+    file: string;
+    impact: MigrationImpact;
+    destructive: string[];
+}
+
 interface IAdminUserDTO extends IUserDTO {
     deletedAt: string | null;
 }
@@ -339,6 +357,8 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .adminLog(query?: IAdminLogQuery | undefined): Promise<IApiResponse<IAdminLogPage>>
   .issueToken(input: IAdminIssueTokenInput): Promise<IApiResponse<IAdminIssuedToken>>
   .revokeToken(id: string): Promise<IApiResponse<undefined>>
+  .migrations(): Promise<IApiResponse<IAdminMigrationsReport>>
+  .applyMigrations(module: string, expect: readonly string[]): Promise<IApiResponse<IAdminMigrationModule>>
 
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .listUsers(query?: IAdminUsersQuery | undefined): Promise<IApiResponse<IAdminUserPageResult>>
@@ -383,6 +403,8 @@ function useAdminConfig(client: AdminClient): { report: Ref<{ generatedAt: strin
 function useAdminRoutes(client: AdminClient): { report: Ref<{ generatedAt: string; routes: { method: string; path: string; module?: string; guard: AdminRouteGuard; }[]; } | null, IAdminRoutesReport | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useAdminTokens(client: AdminClient): { report: Ref<{ generatedAt: string; admin: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; legacy: { module: string; set: boolean; }[]; issued: { ...; }[] | null; } | null, IAdminTokensReport | ... 1 more ... | null>; ... 4 more ...; revoke: (id: string) => Promise<...>; }
+
+function useAdminMigrations(client: AdminClient): { report: Ref<{ everApplied: boolean; modules: { name: string; pending: { file: string; impact: MigrationImpact; destructive: string[]; }[]; blockedBy: string | null; appliable: boolean; }[]; } | null, IAdminMigrationsReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; apply: (module: string, expect: readonly string[]) => Promise<...>; }
 
 function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">): { entries: Ref<{ id: string; at: string; actor: string; method: string; path: string; route: string; ... 4 more ...; clientIp: string | null; }[], IAdminLogEntry[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 

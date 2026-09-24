@@ -5,7 +5,7 @@
 ## @fonderie/react-admin-screens
 
 ```ts
-type AdminPage = 'attention' | 'modules' | 'doctor' | 'config' | 'routes' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
+type AdminPage = 'attention' | 'modules' | 'doctor' | 'config' | 'routes' | 'migrations' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
 
 interface IAdminLogScreenProps {
     client: AdminClient;
@@ -48,6 +48,10 @@ interface ITokensScreenProps {
     client: AdminClient;
 }
 
+interface IMigrationsScreenProps {
+    client: AdminClient;
+}
+
 interface IUsersScreenProps {
     client: AuthAdminClient;
     pageSize?: number;
@@ -82,6 +86,8 @@ function ModulesScreen({ client }: IModulesScreenProps): Element
 function RoutesScreen({ client }: IRoutesScreenProps): Element
 
 function TokensScreen({ client }: ITokensScreenProps): Element
+
+function MigrationsScreen({ client }: IMigrationsScreenProps): Element
 
 function UsersScreen({ client, pageSize }: IUsersScreenProps): Element
 

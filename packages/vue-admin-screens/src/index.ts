@@ -8,6 +8,7 @@ export {
 	ModulesScreen,
 	RoutesScreen,
 	TokensScreen,
+	MigrationsScreen,
 	UsersScreen,
 	CatalogScreen,
 	SubscriberScreen,

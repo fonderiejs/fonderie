@@ -3,6 +3,7 @@ export { buildManifest } from './manifest';
 export { runDoctor, collectChecks, attention } from './doctor';
 export { adminLog, readAdminLog, DEFAULT_ACTOR, MAX_PAGE } from './log';
 export { configReport, routesReport, tokensReport } from './pages';
+export { migrationsReport, applyModuleMigrations, applyMigrationsSchema } from './migrate';
 export {
 	requireAdminScope,
 	scopeFor,
@@ -32,4 +33,8 @@ export type {
 	IAdminTokensReport,
 	AdminScope,
 	IAdminTokenRecord,
+	IMigrationSet,
+	IAdminPendingMigration,
+	IAdminMigrationModule,
+	IAdminMigrationsReport,
 } from './types';

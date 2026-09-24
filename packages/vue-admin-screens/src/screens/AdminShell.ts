@@ -17,6 +17,7 @@ import { ConfigScreen } from './ConfigScreen';
 import { DoctorScreen } from './DoctorScreen';
 import { ModulesScreen } from './ModulesScreen';
 import { RoutesScreen } from './RoutesScreen';
+import { MigrationsScreen } from './MigrationsScreen';
 import { TokensScreen } from './TokensScreen';
 import { UsersScreen } from './UsersScreen';
 import { CatalogScreen } from './CatalogScreen';
@@ -29,6 +30,7 @@ export type AdminPage =
 	| 'doctor'
 	| 'config'
 	| 'routes'
+	| 'migrations'
 	| 'tokens'
 	| 'log'
 	| 'settings'
@@ -72,6 +74,7 @@ const NAV: Array<{
 			{ page: 'audit', label: 'Audit', needs: 'audit' },
 			{ page: 'log', label: 'Admin log' },
 			{ page: 'tokens', label: 'Access' },
+			{ page: 'migrations', label: 'Migrations' },
 		],
 	},
 ];
@@ -132,6 +135,8 @@ export const AdminShell = defineComponent({
 					return h(RoutesScreen, { client: c });
 				case 'tokens':
 					return h(TokensScreen, { client: c });
+				case 'migrations':
+					return h(MigrationsScreen, { client: c });
 				case 'log':
 					return h(AdminLogScreen, { client: c });
 				case 'catalog':

@@ -6,6 +6,7 @@ export { DoctorScreen } from './DoctorScreen';
 export { ConfigScreen } from './ConfigScreen';
 export { RoutesScreen } from './RoutesScreen';
 export { TokensScreen } from './TokensScreen';
+export { MigrationsScreen } from './MigrationsScreen';
 export { AdminLogScreen } from './AdminLogScreen';
 export { UsersScreen } from './UsersScreen';
 export { CatalogScreen } from './CatalogScreen';

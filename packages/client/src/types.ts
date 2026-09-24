@@ -1026,3 +1026,32 @@ export interface ICustomerRelationshipResult {
 export interface ICustomerLabelListResult {
 	labels: ICustomerLabelDTO[];
 }
+
+// ---- admin: migrations ----------------------------------------------------
+
+export type MigrationImpact = 'additive' | 'destructive';
+
+export interface IAdminPendingMigration {
+	file: string;
+	impact: MigrationImpact;
+	// The statements that earned a 'destructive' label, as written.
+	destructive: string[];
+}
+
+export interface IAdminMigrationModule {
+	name: string;
+	pending: IAdminPendingMigration[];
+	// The first EARLIER module that is behind, or null. Migration order is the
+	// app's and sets depend on each other across it.
+	blockedBy: string | null;
+	// Whether the panel will apply this one: something to do, nothing in front
+	// of it, and nothing in it that deletes data.
+	appliable: boolean;
+}
+
+export interface IAdminMigrationsReport {
+	// False when the database has no fonderie_migrations rows — a first
+	// install, where "destructive" has nothing to destroy.
+	everApplied: boolean;
+	modules: IAdminMigrationModule[];
+}

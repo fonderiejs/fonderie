@@ -8,6 +8,8 @@ import type {
 	IAdminIssueTokenInput,
 	IAdminLogPage,
 	IAdminManifest,
+	IAdminMigrationModule,
+	IAdminMigrationsReport,
 	IAdminRoutesReport,
 	IAdminTokensReport,
 	IApiResponse,
@@ -95,5 +97,27 @@ export class AdminClient {
 	// Root token only.
 	revokeToken(id: string) {
 		return this.call<undefined>('DELETE', `/access/tokens/${encodeURIComponent(id)}`);
+	}
+
+	// What each module is waiting on, with every pending file's impact. Empty
+	// when the deployment did not hand its migration sequence to the surface.
+	migrations() {
+		return this.get<IAdminMigrationsReport>('/migrations');
+	}
+
+	/**
+	 * Apply one module's pending migrations — all of them, or none.
+	 *
+	 * `expect` is the pending list you were shown, in order. If it no longer
+	 * matches, the server refuses with 409 MIGRATIONS_CHANGED rather than
+	 * applying something nobody reviewed. Also refuses 409 when an earlier
+	 * module is behind, and 422 when any pending file deletes data.
+	 */
+	applyMigrations(module: string, expect: readonly string[]) {
+		return this.call<IAdminMigrationModule>(
+			'POST',
+			`/migrations/${encodeURIComponent(module)}/apply`,
+			{ expect },
+		);
 	}
 }
