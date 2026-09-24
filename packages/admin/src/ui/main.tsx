@@ -206,54 +206,71 @@ const styles: Record<string, React.CSSProperties> = {
 		boxShadow: T.shadow,
 	},
 	err: { color: T.danger, fontSize: 14, marginTop: 12 },
-	bar: {
-		display: 'flex',
-		justifyContent: 'flex-end',
-		alignItems: 'center',
-		gap: 12,
-		padding: '6px 12px',
-		borderBottom: `1px solid ${T.border}`,
-		background: T.surface,
+	// "Forget token", docked bottom-left, mirroring the theme switcher.
+	//
+	// It used to sit in a full-width strip above everything, which cost a band
+	// of vertical space across the whole console to hold one button and aligned
+	// with nothing — the sidebar started below it, so the app looked pushed
+	// down. Docking it removes the strip: the sidebar now reaches the top edge,
+	// and the two session-level controls balance in the bottom corners instead
+	// of one of them interrupting the reading order.
+	//
+	// Bottom-LEFT puts it over the sidebar column, which is where a sign-out
+	// belongs in a console of this shape, and keeps it far from the switcher so
+	// neither is hit by accident.
+	sessionDock: { position: 'fixed', left: 16, bottom: 16, zIndex: 10 },
+	// Bottom-right, fixed, over everything.
+	//
+	// It started in the top bar next to "Forget token" and that was wrong twice
+	// over: it crowded the one destructive control up there, and it put a
+	// display preference at the top of the reading order, competing with the
+	// nav. The organisation UI keeps this control in the footer meta bar for
+	// the same reason — it is a setting, not navigation. The console has no
+	// footer, so fixed bottom-right is that position here: always reachable,
+	// never in the way, and identical on the gate and the dashboard.
+	// The shadow and the rounding live on the dock, not on `.theme-switch`: that
+	// component is copied from the organisation UI, where it sits inside a
+	// footer and needs neither. Floating over scrolling content it does, and
+	// keeping the change out here means the copy stays a copy.
+	themeDock: {
+		position: 'fixed',
+		right: 16,
+		bottom: 16,
+		zIndex: 10,
+		borderRadius: 9999,
+		boxShadow: T.shadow,
 	},
-	// The switcher sits outside the gate's <form>: its radios share the form's
-	// namespace otherwise, and a theme choice has no business in a submit.
-	gateFoot: { maxWidth: 420, margin: '0 auto', padding: '0 24px', textAlign: 'right' },
 };
 
 function Gate({ onToken, error }: { onToken: (t: string) => void; error: string | null }) {
 	const [value, setValue] = useState('');
 	return (
-		<>
-			<form
-				style={styles.gate}
-				onSubmit={(e) => {
-					e.preventDefault();
-					if (value.trim()) onToken(value.trim());
-				}}
-			>
-				<h1 style={styles.h1}>Admin</h1>
-				<p style={styles.p}>
-					Paste an admin token. It is kept for this tab only and sent as a Bearer header — never
-					stored on the server. A <code>read</code>-scoped token is enough to look around and cannot
-					reveal secrets.
-				</p>
-				<input
-					type="password"
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					placeholder="admin token"
-					style={styles.input}
-					aria-label="Admin token"
-				/>
-				{error ? <p style={styles.err}>{error}</p> : null}
-				<button type="submit" style={styles.button}>
-					Open
-				</button>
-			</form>
-			<div style={styles.gateFoot}>
-				<ThemeSwitch />
-			</div>
-		</>
+		<form
+			style={styles.gate}
+			onSubmit={(e) => {
+				e.preventDefault();
+				if (value.trim()) onToken(value.trim());
+			}}
+		>
+			<h1 style={styles.h1}>Admin</h1>
+			<p style={styles.p}>
+				Paste an admin token. It is kept for this tab only and sent as a Bearer header — never
+				stored on the server. A <code>read</code>-scoped token is enough to look around and cannot
+				reveal secrets.
+			</p>
+			<input
+				type="password"
+				value={value}
+				onChange={(e) => setValue(e.target.value)}
+				placeholder="admin token"
+				style={styles.input}
+				aria-label="Admin token"
+			/>
+			{error ? <p style={styles.err}>{error}</p> : null}
+			<button type="submit" style={styles.button}>
+				Open
+			</button>
+		</form>
 	);
 }
 
@@ -294,8 +311,41 @@ function App() {
 		};
 	}, [token]);
 
-	if (!token || !manifest) return <Gate onToken={setToken} error={error} />;
+	// The dock renders once, OUTSIDE this branch, so the switcher is present on
+	// the gate as well as the dashboard. Returning early for the gate and then
+	// rendering the dock in the authenticated branch only — which is what this
+	// did first — hides the control from the one screen an operator sees before
+	// they can do anything else.
+	return (
+		<>
+			{!token || !manifest ? (
+				<Gate onToken={setToken} error={error} />
+			) : (
+				<Dashboard token={token} manifest={manifest} />
+			)}
+			{token && manifest ? (
+				<div style={styles.sessionDock}>
+					<button
+						type="button"
+						style={{ ...styles.button, marginTop: 0 }}
+						onClick={() => {
+							write('');
+							setToken('');
+							setManifest(null);
+						}}
+					>
+						Forget token
+					</button>
+				</div>
+			) : null}
+			<div style={styles.themeDock}>
+				<ThemeSwitch />
+			</div>
+		</>
+	);
+}
 
+function Dashboard({ token, manifest }: { token: string; manifest: IAdminManifest }) {
 	// Which pages to show is a question the manifest already answers: a brick
 	// that mounted nothing has no route here, so its client is never built and
 	// the shell hides the page.
@@ -318,29 +368,14 @@ function App() {
 	const opts = { baseUrl: window.location.origin, adminToken: token, prefix: PREFIX };
 
 	return (
-		<>
-			<div style={styles.bar}>
-				<button
-					type="button"
-					style={{ ...styles.button, marginTop: 0 }}
-					onClick={() => {
-						write('');
-						setToken('');
-						setManifest(null);
-					}}
-				>
-					Forget token
-				</button>
-			</div>
-			<AdminShell
-				client={new AdminClient(opts)}
-				{...(has('/secrets') ? { configClient: new ConfigAdminClient(opts) } : {})}
-				{...(has('/templates') ? { courierClient: new CourierAdminClient(opts) } : {})}
-				{...(has('/users') ? { authClient: new AuthAdminClient(opts) } : {})}
-				{...(has('/catalog') ? { billingClient: new BillingAdminClient(opts) } : {})}
-				{...(has('/audit') ? { auditClient: new AuditAdminClient(opts) } : {})}
-			/>
-		</>
+		<AdminShell
+			client={new AdminClient(opts)}
+			{...(has('/secrets') ? { configClient: new ConfigAdminClient(opts) } : {})}
+			{...(has('/templates') ? { courierClient: new CourierAdminClient(opts) } : {})}
+			{...(has('/users') ? { authClient: new AuthAdminClient(opts) } : {})}
+			{...(has('/catalog') ? { billingClient: new BillingAdminClient(opts) } : {})}
+			{...(has('/audit') ? { auditClient: new AuditAdminClient(opts) } : {})}
+		/>
 	);
 }
 

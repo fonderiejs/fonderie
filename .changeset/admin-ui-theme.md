@@ -50,3 +50,9 @@ click time, so system mode keeps following the machine when it flips at sunset
 rather than freezing until reload. An inline boot script applies a stored choice
 before first paint; if it is blocked or storage throws, the console falls back to
 system — the default either way.
+
+**Chrome moved to the corners.** "Forget token" used to sit in a full-width
+strip above the whole console, which spent a band of vertical space on one
+button and pushed the sidebar down from the top edge. The strip is gone: the
+session control docks bottom-left, the theme switcher bottom-right, and the nav
+now reaches the top of the page.
