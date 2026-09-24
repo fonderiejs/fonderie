@@ -96,7 +96,23 @@ export function rateLimit(...limits: IRateLimitOptions[]): Middleware {
 			let result: Awaited<ReturnType<IRateLimitStore['consume']>>;
 			try {
 				result = await limit.store.consume(key, limit.rule);
-			} catch {
+			} catch (err) {
+				// SAY SO. Fail-open is a defensible policy; a SILENT fail-open is
+				// how a brake stays off for weeks. This catch used to discard the
+				// error unbound, and a consumer shipped with the store's table
+				// missing entirely: every consume() threw, every request fell
+				// through unthrottled, and nothing — no error, no 500, no log line
+				// — distinguished that from a limiter working perfectly.
+				//
+				// console.error even in the fail-CLOSED branch: returning 429 tells
+				// the caller they were throttled, which is the opposite of what
+				// happened, so the operator still needs the real reason.
+				// eslint-disable-next-line no-console
+				console.error(
+					`[rate-limit] store unavailable for "${key}" — ` +
+						`${limit.failClosed ? 'failing closed (429)' : 'FAILING OPEN, this request was NOT limited'}:`,
+					err,
+				);
 				if (limit.failClosed) {
 					return setApiResponse(
 						HTTP.TOO_MANY_REQUESTS,
