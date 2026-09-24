@@ -166,7 +166,7 @@
         "fonderie_admin_log",
         "fonderie_admin_tokens"
       ],
-      "routeCount": 10,
+      "routeCount": 11,
       "routes": [
         {
           "method": "GET",
@@ -212,6 +212,11 @@
           "method": "GET",
           "path": "/_admin/migrations",
           "mw": "[ async () => setApiResponse( HTTP.OK, 'MIGRATIONS', 'Pending migrations by module', await migrationsReport(store, migrationSets), ), ]"
+        },
+        {
+          "method": "POST",
+          "path": "/_admin/migrations/:module/apply",
+          "mw": "[ validate(applyMigrationsSchema), async (ctx) => { const { expect } = ctx.meta['body'] as { expect: string[] }; const name = ctx.meta.params?.['module'] ?? ''; const out = await applyModuleMigrations(store, migrationSets, name, expect); if (out.ok) { return setApiResponse( HTTP.OK, out.reason, out.reason === 'MIGRATIONS_APPLIED' ? `Applied. ${out.module.pending.length} still pending in ${name}.` : `${name} is already up to date`, out.module, ); } switch (out.reason) { case 'NOT_FOUND': return setApiResponse( HTTP.NOT_FOUND, 'NOT_FOUND', `No migration set named \"${name}\"`, ); case 'MIGRATIONS_OUT_OF_ORDER': return setApiResponse( HTTP.CONFLICT, out.reason, `Apply \"${out.blockedBy}\" first — it runs before \"${name}\" and is behind.`, { blockedBy: out.blockedBy }, ); case 'MIGRATIONS_CHANGED': return setApiResponse( HTTP.CONFLICT, out.reason, 'What is pending changed since you looked. Refresh and read it again.', { expected: out.expected, actual: out.actual }, ); default: return setApiResponse( HTTP.UNPROCESSABLE, out.reason, 'A pending migration deletes data. No down-migration brings it back — ' + 'apply it through CI or `npm run migrate`, not from here.', { files: out.files }, ); } }, ]"
         },
         {
           "method": "GET",
