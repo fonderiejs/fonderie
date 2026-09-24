@@ -4,11 +4,11 @@
     "adapter-express": "5.3.6",
     "adapter-hono": "6.2.6",
     "adapter-koa": "5.3.6",
-    "admin": "0.10.0",
+    "admin": "1.0.0",
     "audit": "5.2.3",
     "auth": "7.9.2",
     "billing": "10.0.0",
-    "client": "0.31.0",
+    "client": "1.0.0",
     "config": "5.2.4",
     "core": "0.20.0",
     "courier": "7.9.2",
@@ -20,8 +20,8 @@
     "permissions": "5.0.21",
     "rate-limit": "4.0.21",
     "react": "0.2.0",
-    "react-admin": "0.7.0",
-    "react-admin-screens": "0.8.0",
+    "react-admin": "1.0.0",
+    "react-admin-screens": "1.0.0",
     "react-audit": "0.3.0",
     "react-audit-screens": "0.2.0",
     "react-auth": "0.10.0",
@@ -56,8 +56,8 @@
     "storage": "0.1.17",
     "store": "0.6.0",
     "vue": "0.2.0",
-    "vue-admin": "0.7.0",
-    "vue-admin-screens": "0.8.0",
+    "vue-admin": "1.0.0",
+    "vue-admin-screens": "1.0.0",
     "vue-audit": "0.4.0",
     "vue-audit-screens": "0.2.0",
     "vue-auth": "0.11.0",
@@ -143,7 +143,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "0.10.0",
+      "version": "1.0.0",
       "stability": "experimental",
       "requires": [
         "core",
@@ -705,7 +705,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "0.31.0",
+      "version": "1.0.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -1379,7 +1379,7 @@
       "hasOutcomes": false
     },
     "react-admin": {
-      "version": "0.7.0",
+      "version": "1.0.0",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -1416,7 +1416,7 @@
       "hasOutcomes": false
     },
     "react-admin-screens": {
-      "version": "0.8.0",
+      "version": "1.0.0",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -2213,7 +2213,7 @@
       "hasOutcomes": false
     },
     "vue-admin": {
-      "version": "0.7.0",
+      "version": "1.0.0",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -2250,7 +2250,7 @@
       "hasOutcomes": false
     },
     "vue-admin-screens": {
-      "version": "0.8.0",
+      "version": "1.0.0",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
