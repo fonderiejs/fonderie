@@ -20,7 +20,7 @@
     "docs:signatures": "node scripts/generate-signatures.mjs && node scripts/generate-outcomes.mjs",
     "docs:brain": "node scripts/generate-brain.mjs && node scripts/generate-cli-data.mjs",
     "brain:serve": "node scripts/brain-serve.mjs",
-    "brain:test": "node scripts/brain-serve.test.mjs && node scripts/brain-completeness.test.mjs",
+    "brain:test": "node scripts/brain-serve.test.mjs && npm run brain:completeness",
     "brain:drift": "node experiments/r1-2026-07/drift.mjs",
     "brain:project": "node scripts/generate-project-brain.mjs",
     "brain:project-test": "node scripts/project-brain.test.mjs",
@@ -31,7 +31,8 @@
     "check:routes": "node scripts/check-client-routes.mjs",
     "check:template-coverage": "node scripts/check-template-coverage.mjs",
     "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer",
-    "check:hook-parity": "node scripts/check-hook-parity.mjs"
+    "check:hook-parity": "node scripts/check-hook-parity.mjs",
+    "brain:completeness": "node scripts/brain-completeness.test.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
