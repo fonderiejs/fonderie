@@ -33,7 +33,7 @@ export function CatalogScreen({ client }: ICatalogScreenProps) {
 			{catalog ? (
 				<>
 					<h2 style={styles.subtitle}>Configured (code)</h2>
-					<pre style={{ ...styles.mono, background: '#f9fafb', padding: 12, overflowX: 'auto' }}>
+					<pre style={{ ...styles.mono, background: 'var(--fonderie-surface-alt,#fafafa)', padding: 12, overflowX: 'auto' }}>
 						{JSON.stringify(catalog.configured, null, 2)}
 					</pre>
 					<h2 style={styles.subtitle}>Stored (database)</h2>

@@ -45,10 +45,10 @@ export function TemplateListScreen({ client, onSelectTemplate }: ITemplateListSc
 const styles: Record<string, CSSProperties> = {
 	container: { padding: 24, maxWidth: 640 },
 	title: { fontSize: 24, fontWeight: 700, marginBottom: 16 },
-	status: { padding: 24, textAlign: 'center', color: '#666' },
-	error: { color: '#e11d48', marginBottom: 12, fontSize: 14 },
+	status: { padding: 24, textAlign: 'center', color: 'var(--fonderie-text-muted,#5c5c5c)' },
+	error: { color: 'var(--fonderie-danger,#e00)', marginBottom: 12, fontSize: 14 },
 	list: { listStyle: 'none', padding: 0, margin: 0 },
-	row: { borderBottom: '1px solid #eee' },
+	row: { borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)' },
 	rowButton: {
 		width: '100%',
 		display: 'flex',
@@ -61,7 +61,7 @@ const styles: Record<string, CSSProperties> = {
 		textAlign: 'left',
 	},
 	type: { fontSize: 14, fontWeight: 600, flex: 1 },
-	locale: { fontSize: 13, color: '#666', marginRight: 16 },
-	active: { fontSize: 12, color: '#16a34a' },
-	inactive: { fontSize: 12, color: '#999' },
+	locale: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginRight: 16 },
+	active: { fontSize: 12, color: 'var(--fonderie-accent-strong,#009767)' },
+	inactive: { fontSize: 12, color: 'var(--fonderie-text-muted,#5c5c5c)' },
 };

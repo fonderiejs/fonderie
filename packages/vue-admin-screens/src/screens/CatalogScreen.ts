@@ -32,7 +32,7 @@ export const CatalogScreen = defineComponent({
 								{
 									style: {
 										...styles.mono,
-										background: '#f9fafb',
+										background: 'var(--fonderie-surface-alt,#fafafa)',
 										padding: '12px',
 										overflowX: 'auto',
 									},
