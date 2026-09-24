@@ -18,7 +18,7 @@
     "logger": "0.3.2",
     "media": "0.2.18",
     "permissions": "5.0.21",
-    "rate-limit": "4.0.20",
+    "rate-limit": "4.0.21",
     "react": "0.2.0",
     "react-admin": "0.7.0",
     "react-admin-screens": "0.7.0",
@@ -1334,7 +1334,7 @@
       "hasOutcomes": true
     },
     "rate-limit": {
-      "version": "4.0.20",
+      "version": "4.0.21",
       "stability": "stable",
       "requires": [
         "core",
