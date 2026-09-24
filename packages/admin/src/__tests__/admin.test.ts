@@ -1,11 +1,21 @@
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { FonderieApp, defineConfig } from '@fonderie/core';
 import type { IAdminCheck, IAdminRoute, IFonderieApp, IFonderieModule } from '@fonderie/core';
 
 import { AdminModule } from '../module';
-import type { IAdminAttention, IAdminDoctorReport, IAdminManifest } from '../types';
+import type {
+	IAdminAttention,
+	IAdminDoctorReport,
+	IAdminManifest,
+	IAdminMigrationModule,
+	IAdminMigrationsReport,
+	IAdminPendingMigration,
+} from '../types';
 
 // ≥32 chars, no placeholder words, low entropy so the secret scanner ignores it.
 const TOKEN = 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb';
@@ -941,5 +951,224 @@ test('every brick module reports its version, so the Modules page can answer', a
 		`these modules do not report a version — add\n` +
 			`  readonly version = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';\n` +
 			`(tsup.base bakes FONDERIE_PKG_VERSION in at build time)`,
+	);
+});
+
+// ---------------------------------------------------------------------------
+// Applying pending migrations from the panel.
+//
+// Real directories on disk: the runner reads the filesystem, and a fake that
+// returned file lists would test the fake rather than the ordering rule that
+// makes this safe.
+// ---------------------------------------------------------------------------
+
+function migrationDirs(spec: Record<string, Record<string, string>>) {
+	const root = mkdtempSync(join(tmpdir(), 'fonderie-mig-'));
+	const sets: Array<readonly [string, string]> = [];
+	for (const [module, files] of Object.entries(spec)) {
+		const dir = join(root, module);
+		mkdirSync(dir, { recursive: true });
+		for (const [name, sql] of Object.entries(files)) writeFileSync(join(dir, name), sql);
+		sets.push([module, dir]);
+	}
+	return { root, sets };
+}
+
+// Tracks fonderie_migrations for real, so pending() and the apply path see the
+// same table the runner writes.
+function migrationStore(applied: string[] = []) {
+	const rows = new Set(applied);
+	const ran: string[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			if (sql.includes('INSERT INTO fonderie_admin_log')) return [];
+			if (sql.includes('count(*)')) return [{ n: rows.size }] as unknown as T[];
+			// Order matters: the in-lock recheck's SQL CONTAINS the list query's,
+			// so matching the broad one first answers the recheck with every
+			// applied row — the runner then treats each file as already done and
+			// silently applies nothing after the first. Specific before general.
+			if (sql.includes('WHERE name = $1'))
+				return (rows.has(params[0] as string) ? [{ name: params[0] }] : []) as unknown as T[];
+			if (sql.includes('SELECT name FROM fonderie_migrations'))
+				return [...rows].sort().map((name) => ({ name })) as unknown as T[];
+			if (sql.includes('INSERT INTO fonderie_migrations')) {
+				rows.add(params[0] as string);
+				return [];
+			}
+			if (sql.includes('pg_advisory_xact_lock')) return [];
+			if (sql.includes('CREATE TABLE IF NOT EXISTS')) return [];
+			// Whatever the migration file itself contained.
+			ran.push(sql.trim());
+			return [];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	return { store, rows, ran };
+}
+
+const migApp = async (sets: ReadonlyArray<readonly [string, string]>, store: IStoreAdapter) => {
+	const app = new FonderieApp(config);
+	app.register(new AdminModule({ adminToken: TOKEN, store, migrations: sets }));
+	await app.boot();
+	return app;
+};
+
+const migCall = (app: FonderieApp, method: string, path: string, token?: string, body?: unknown) =>
+	app.handle(
+		new Request(`http://localhost${path}`, {
+			method,
+			headers: {
+				...(token ? { authorization: `Bearer ${token}` } : {}),
+				'content-type': 'application/json',
+			},
+			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+		}),
+	);
+
+test('migrations: reports pending per module with impact, and the first behind blocks the rest', async () => {
+	const { sets } = migrationDirs({
+		auth: { '001_a.sql': 'CREATE TABLE a();' },
+		app: { '002_b.sql': 'ALTER TABLE a ADD COLUMN x int;' },
+	});
+	const { store } = migrationStore(['001_a.sql']); // auth already applied
+	const app = await migApp(sets, store);
+
+	const res = await migCall(app, 'GET', '/_admin/migrations', TOKEN);
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as { result: IAdminMigrationsReport };
+	assert.equal(body.result.everApplied, true);
+
+	const [auth, appMod] = body.result.modules;
+	assert.deepEqual(auth?.pending, []);
+	assert.equal(auth?.blockedBy, null);
+	assert.equal(appMod?.pending[0]?.file, '002_b.sql');
+	assert.equal(appMod?.pending[0]?.impact, 'additive');
+	// auth is clean, so nothing blocks app.
+	assert.equal(appMod?.blockedBy, null);
+	assert.equal(appMod?.appliable, true);
+});
+
+test('migrations: applies an all-additive module, and reports the re-read state', async () => {
+	const { sets } = migrationDirs({
+		auth: { '001_a.sql': 'CREATE TABLE a();', '002_b.sql': 'CREATE TABLE b();' },
+	});
+	const { store, rows, ran } = migrationStore();
+	const app = await migApp(sets, store);
+
+	const res = await migCall(app, 'POST', '/_admin/migrations/auth/apply', TOKEN, {
+		expect: ['001_a.sql', '002_b.sql'],
+	});
+	assert.equal(res.status, 200);
+	const body = (await res.json()) as { reason: string; result: IAdminMigrationModule };
+	assert.equal(body.reason, 'MIGRATIONS_APPLIED');
+	// The answer comes from reading the table back, not from assuming run() worked.
+	assert.deepEqual(body.result.pending, []);
+	assert.deepEqual([...rows].sort(), ['001_a.sql', '002_b.sql']);
+	assert.ok(ran.some((s) => s.includes('CREATE TABLE a')));
+});
+
+test('migrations: refuses a module containing a destructive file, naming the statement', async () => {
+	const { sets } = migrationDirs({
+		app: { '001_ok.sql': 'CREATE TABLE a();', '002_drop.sql': 'DROP TABLE legacy_credits;' },
+	});
+	// everApplied: something is already in the table, so there IS data to lose.
+	const { store, rows } = migrationStore(['000_seed.sql']);
+	const app = await migApp(sets, store);
+
+	const res = await migCall(app, 'POST', '/_admin/migrations/app/apply', TOKEN, {
+		expect: ['001_ok.sql', '002_drop.sql'],
+	});
+	assert.equal(res.status, 422);
+	const body = (await res.json()) as {
+		reason: string;
+		details: { files: IAdminPendingMigration[] };
+	};
+	assert.equal(body.reason, 'MIGRATION_DESTRUCTIVE');
+	assert.equal(body.details.files[0]?.file, '002_drop.sql');
+	assert.match(body.details.files[0]?.destructive[0] ?? '', /DROP TABLE legacy_credits/);
+	// Nothing was applied — not even the additive file that sorts before it.
+	assert.deepEqual([...rows], ['000_seed.sql']);
+});
+
+test('migrations: a virgin database has nothing to lose, so a DROP does not block it', async () => {
+	const { sets } = migrationDirs({ app: { '001_drop.sql': 'DROP TABLE whatever;' } });
+	const { store } = migrationStore(); // no history at all
+	const app = await migApp(sets, store);
+
+	const res = await migCall(app, 'POST', '/_admin/migrations/app/apply', TOKEN, {
+		expect: ['001_drop.sql'],
+	});
+	assert.equal(res.status, 200);
+	assert.equal(((await res.json()) as { reason: string }).reason, 'MIGRATIONS_APPLIED');
+});
+
+test('migrations: refuses out of order, naming the module to apply first', async () => {
+	const { sets } = migrationDirs({
+		auth: { '001_a.sql': 'CREATE TABLE a();' },
+		app: { '002_b.sql': 'CREATE TABLE b();' },
+	});
+	const { store, rows } = migrationStore();
+	const app = await migApp(sets, store);
+
+	const res = await migCall(app, 'POST', '/_admin/migrations/app/apply', TOKEN, {
+		expect: ['002_b.sql'],
+	});
+	assert.equal(res.status, 409);
+	const body = (await res.json()) as { reason: string; details: { blockedBy: string } };
+	assert.equal(body.reason, 'MIGRATIONS_OUT_OF_ORDER');
+	assert.equal(body.details.blockedBy, 'auth');
+	assert.equal(rows.size, 0);
+});
+
+test('migrations: refuses when the pending set changed since the operator looked', async () => {
+	const { sets } = migrationDirs({
+		app: { '001_a.sql': 'CREATE TABLE a();', '002_new.sql': 'CREATE TABLE b();' },
+	});
+	const { store, rows } = migrationStore(['000_seed.sql']);
+	const app = await migApp(sets, store);
+
+	// The operator was shown only 001 — 002 landed in between.
+	const res = await migCall(app, 'POST', '/_admin/migrations/app/apply', TOKEN, {
+		expect: ['001_a.sql'],
+	});
+	assert.equal(res.status, 409);
+	const body = (await res.json()) as {
+		reason: string;
+		details: { expected: string[]; actual: string[] };
+	};
+	assert.equal(body.reason, 'MIGRATIONS_CHANGED');
+	assert.deepEqual(body.details.actual, ['001_a.sql', '002_new.sql']);
+	assert.deepEqual([...rows], ['000_seed.sql']);
+});
+
+test('migrations: unknown module is 404; no token is 401; a read token cannot apply', async () => {
+	const { sets } = migrationDirs({ auth: { '001_a.sql': 'CREATE TABLE a();' } });
+	const { store } = migrationStore();
+	const app = await migApp(sets, store);
+
+	assert.equal(
+		(await migCall(app, 'POST', '/_admin/migrations/nope/apply', TOKEN, { expect: [] })).status,
+		404,
+	);
+	assert.equal(
+		(await migCall(app, 'POST', '/_admin/migrations/auth/apply', undefined, { expect: [] })).status,
+		401,
+	);
+	// A malformed body never reaches the applier.
+	assert.equal(
+		(await migCall(app, 'POST', '/_admin/migrations/auth/apply', TOKEN, { expect: 'nope' })).status,
+		422,
+	);
+});
+
+test('migrations: routes do not exist when the app hands over no migration sets', async () => {
+	const { store } = migrationStore();
+	const app = new FonderieApp(config);
+	app.register(new AdminModule({ adminToken: TOKEN, store }));
+	await app.boot();
+	assert.equal((await migCall(app, 'GET', '/_admin/migrations', TOKEN)).status, 404);
+	assert.equal(
+		(await migCall(app, 'POST', '/_admin/migrations/auth/apply', TOKEN, { expect: [] })).status,
+		404,
 	);
 });

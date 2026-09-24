@@ -90,7 +90,7 @@ What each package does to your app once wired: DB tables created, rows
 seeded, HTTP routes registered (with middleware). **Read the outcomes file
 instead of excavating `dist/` or tarballs.**
 
-- `@fonderie/admin` (2 tables, 9 routes) → [signatures/admin-outcomes.md](signatures/admin-outcomes.md)
+- `@fonderie/admin` (2 tables, 11 routes) → [signatures/admin-outcomes.md](signatures/admin-outcomes.md)
 - `@fonderie/audit` (0 tables, 2 routes) → [signatures/audit-outcomes.md](signatures/audit-outcomes.md)
 - `@fonderie/auth` (9 tables, 38 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
 - `@fonderie/billing` (10 tables, 30 routes) → [signatures/billing-outcomes.md](signatures/billing-outcomes.md)

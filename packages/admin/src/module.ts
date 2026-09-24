@@ -5,6 +5,7 @@ import { validate, validateAdminToken } from '@fonderie/core/middlewares';
 
 import { attention, collectChecks, runDoctor } from './doctor';
 import { adminLog, readAdminLog } from './log';
+import { applyMigrationsSchema, applyModuleMigrations, migrationsReport } from './migrate';
 import { buildManifest } from './manifest';
 import { configReport, routesReport, tokensReport } from './pages';
 import {
@@ -198,6 +199,87 @@ export class AdminModule implements IFonderieModule {
 					],
 				]
 			: [];
+		// Reporting AND applying pending migrations. Registered only when the app
+		// hands over its migration sequence — this surface must never infer that
+		// order (see IAdminOptions.migrations), so without it there is nothing
+		// honest to say and the routes do not exist.
+		//
+		// Scope is derived, not annotated: scopeFor() gives GET ⇒ read, POST ⇒
+		// write. Deliberately NOT 'root' like the token routes — those are root
+		// because a scoped token minting a token is privilege escalation.
+		// Applying migrations that provably delete nothing is not.
+		const migrationSets = this.options.migrations;
+		const scoped: Array<[string, string, Middleware[]]> =
+			store && migrationSets
+				? [
+						[
+							'GET',
+							'/_admin/migrations',
+							[
+								async () =>
+									setApiResponse(
+										HTTP.OK,
+										'MIGRATIONS',
+										'Pending migrations by module',
+										await migrationsReport(store, migrationSets),
+									),
+							],
+						],
+						[
+							'POST',
+							'/_admin/migrations/:module/apply',
+							[
+								validate(applyMigrationsSchema),
+								async (ctx) => {
+									const { expect } = ctx.meta['body'] as { expect: string[] };
+									const name = ctx.meta.params?.['module'] ?? '';
+									const out = await applyModuleMigrations(store, migrationSets, name, expect);
+
+									if (out.ok) {
+										return setApiResponse(
+											HTTP.OK,
+											out.reason,
+											out.reason === 'MIGRATIONS_APPLIED'
+												? `Applied. ${out.module.pending.length} still pending in ${name}.`
+												: `${name} is already up to date`,
+											out.module,
+										);
+									}
+									switch (out.reason) {
+										case 'NOT_FOUND':
+											return setApiResponse(
+												HTTP.NOT_FOUND,
+												'NOT_FOUND',
+												`No migration set named "${name}"`,
+											);
+										case 'MIGRATIONS_OUT_OF_ORDER':
+											return setApiResponse(
+												HTTP.CONFLICT,
+												out.reason,
+												`Apply "${out.blockedBy}" first — it runs before "${name}" and is behind.`,
+												{ blockedBy: out.blockedBy },
+											);
+										case 'MIGRATIONS_CHANGED':
+											return setApiResponse(
+												HTTP.CONFLICT,
+												out.reason,
+												'What is pending changed since you looked. Refresh and read it again.',
+												{ expected: out.expected, actual: out.actual },
+											);
+										default:
+											return setApiResponse(
+												HTTP.UNPROCESSABLE,
+												out.reason,
+												'A pending migration deletes data. No down-migration brings it back — ' +
+													'apply it through CI or `npm run migrate`, not from here.',
+												{ files: out.files },
+											);
+									}
+								},
+							],
+						],
+					]
+				: [];
 		const mounted = new Map<string, string>();
 		const mount = (
 			module: string,
@@ -290,6 +372,7 @@ export class AdminModule implements IFonderieModule {
 		for (const [method, path, handler] of own) mount(this.name, method, at(path), [handler]);
 		for (const [method, path, handlers] of rootOnly)
 			mount(this.name, method, at(path), handlers, 'root');
+		for (const [method, path, handlers] of scoped) mount(this.name, method, at(path), handlers);
 		for (const { module, description } of app.adminDescriptions()) {
 			for (const r of description.routes ?? [])
 				mount(module, r.method, this.path + r.path, r.handlers);

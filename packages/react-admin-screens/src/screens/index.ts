@@ -12,6 +12,8 @@ export type { IRoutesScreenProps } from './RoutesScreen';
 export { RoutesScreen } from './RoutesScreen';
 export type { ITokensScreenProps } from './TokensScreen';
 export { TokensScreen } from './TokensScreen';
+export type { IMigrationsScreenProps } from './MigrationsScreen';
+export { MigrationsScreen } from './MigrationsScreen';
 export type { IAdminLogScreenProps } from './AdminLogScreen';
 export { AdminLogScreen } from './AdminLogScreen';
 export type { IUsersScreenProps } from './UsersScreen';
