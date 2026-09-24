@@ -28,3 +28,5 @@ export { useAdminSubscriber } from './useAdminSubscriber';
 export { useAdminSubscribers } from './useAdminSubscribers';
 export type { IUseAdminAuditReturn } from './useAdminAudit';
 export { useAdminAudit } from './useAdminAudit';
+export type { IUseAdminMigrationsReturn } from './useAdminMigrations';
+export { useAdminMigrations } from './useAdminMigrations';

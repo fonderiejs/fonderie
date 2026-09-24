@@ -5,7 +5,7 @@
 ## @fonderie/vue-admin-screens
 
 ```ts
-type AdminPage = 'attention' | 'modules' | 'doctor' | 'config' | 'routes' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
+type AdminPage = 'attention' | 'modules' | 'doctor' | 'config' | 'routes' | 'migrations' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
 
 component AdminLogScreen(props: { client, pageSize })
 
@@ -22,6 +22,8 @@ component ModulesScreen(props: { client })
 component RoutesScreen(props: { client })
 
 component TokensScreen(props: { client })
+
+component MigrationsScreen(props: { client })
 
 component UsersScreen(props: { client, pageSize })
 

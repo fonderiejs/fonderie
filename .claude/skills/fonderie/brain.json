@@ -166,7 +166,7 @@
         "fonderie_admin_log",
         "fonderie_admin_tokens"
       ],
-      "routeCount": 9,
+      "routeCount": 10,
       "routes": [
         {
           "method": "GET",
@@ -207,6 +207,11 @@
           "method": "GET",
           "path": "/_admin/manifest",
           "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_MANIFEST', 'Deployment manifest', buildManifest(app, { version: this.version, log: Boolean(store), host: this.hosts }), )"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/migrations",
+          "mw": "[ async () => setApiResponse( HTTP.OK, 'MIGRATIONS', 'Pending migrations by module', await migrationsReport(store, migrationSets), ), ]"
         },
         {
           "method": "GET",
@@ -1386,6 +1391,7 @@
         "useAdminConfig",
         "useAdminRoutes",
         "useAdminTokens",
+        "useAdminMigrations",
         "useAdminLog",
         "useAdminUser",
         "useAdminUsers",
@@ -1423,6 +1429,7 @@
         "ModulesScreen",
         "RoutesScreen",
         "TokensScreen",
+        "MigrationsScreen",
         "UsersScreen",
         "CatalogScreen",
         "SubscriberScreen",
@@ -2218,6 +2225,7 @@
         "useAdminConfig",
         "useAdminRoutes",
         "useAdminTokens",
+        "useAdminMigrations",
         "useAdminLog",
         "useAdminUser",
         "useAdminUsers",
@@ -2255,6 +2263,7 @@
         "ModulesScreen",
         "RoutesScreen",
         "TokensScreen",
+        "MigrationsScreen",
         "UsersScreen",
         "CatalogScreen",
         "SubscriberScreen",
@@ -5388,6 +5397,10 @@
       "react-admin",
       "vue-admin"
     ],
+    "useadminmigrations": [
+      "react-admin",
+      "vue-admin"
+    ],
     "useadminlog": [
       "react-admin",
       "vue-admin"
@@ -5453,6 +5466,10 @@
       "vue-admin-screens"
     ],
     "tokensscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "migrationsscreen": [
       "react-admin-screens",
       "vue-admin-screens"
     ],
