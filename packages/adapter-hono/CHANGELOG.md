@@ -1,5 +1,12 @@
 # @fonderie/adapter-hono
 
+## 6.2.6
+
+### Patch Changes
+
+- Updated dependencies [7bee9c2]
+  - @fonderie/billing@10.0.0
+
 ## 6.2.5
 
 ### Patch Changes
