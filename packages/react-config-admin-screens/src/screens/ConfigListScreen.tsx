@@ -103,14 +103,14 @@ export function ConfigListScreen({
 const styles: Record<string, CSSProperties> = {
 	container: { padding: 24, maxWidth: 640 },
 	title: { fontSize: 20, fontWeight: 700, marginTop: 24, marginBottom: 12 },
-	status: { padding: 12, color: '#666' },
-	error: { color: '#e11d48', marginBottom: 12, fontSize: 14 },
+	status: { padding: 12, color: 'var(--fonderie-text-muted,#5c5c5c)' },
+	error: { color: 'var(--fonderie-danger,#e00)', marginBottom: 12, fontSize: 14 },
 	list: { listStyle: 'none', padding: 0, margin: 0 },
 	row: {
 		display: 'flex',
 		alignItems: 'center',
 		gap: 12,
-		borderBottom: '1px solid #eee',
+		borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)',
 		padding: '10px 0',
 	},
 	rowButton: {
@@ -124,11 +124,11 @@ const styles: Record<string, CSSProperties> = {
 		padding: 0,
 	},
 	key: { fontSize: 14, fontWeight: 600 },
-	env: { fontSize: 13, color: '#666' },
-	revealed: { fontSize: 13, fontFamily: 'monospace', color: '#333', minWidth: 100 },
+	env: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)' },
+	revealed: { fontSize: 13, fontFamily: 'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)', color: 'var(--fonderie-text,#171717)', minWidth: 100 },
 	revealButton: {
 		background: 'none',
-		border: '1px solid #ddd',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
 		borderRadius: 8,
 		padding: '4px 10px',
 		fontSize: 12,

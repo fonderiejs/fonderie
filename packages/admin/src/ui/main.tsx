@@ -34,34 +34,57 @@ const write = (t: string): void => {
 	}
 };
 
+// The gate is the FIRST thing an operator sees, before any screen loads, so it
+// carries the same tokens as everything behind it — a login that looks unlike
+// the product it guards is the one place a console cannot afford to look
+// improvised. Fallbacks included for the same reason as the screens: these
+// values must resolve even if the shell's <style> somehow did not apply.
+const T = {
+	text: 'var(--fonderie-text,#171717)',
+	muted: 'var(--fonderie-text-muted,#5c5c5c)',
+	surface: 'var(--fonderie-surface,#fff)',
+	border: 'var(--fonderie-border,#e0e0e0)',
+	danger: 'var(--fonderie-danger,#e00)',
+	radius: 'var(--fonderie-radius,4px)',
+	tracking: 'var(--fonderie-tracking-display,-0.05em)',
+	shadow: 'var(--fonderie-shadow-card,0 2px 3px 0 rgba(0,0,0,.05))',
+};
+
 const styles: Record<string, React.CSSProperties> = {
-	gate: { fontFamily: 'system-ui, sans-serif', maxWidth: 420, margin: '15vh auto', padding: 24 },
-	h1: { fontSize: 20, fontWeight: 700, marginBottom: 4 },
-	p: { color: '#666', fontSize: 14, marginTop: 0 },
+	gate: { maxWidth: 420, margin: '15vh auto', padding: 24, color: T.text },
+	h1: { fontSize: 20, fontWeight: 600, marginBottom: 4, letterSpacing: T.tracking },
+	p: { color: T.muted, fontSize: 14, marginTop: 0 },
 	input: {
 		width: '100%',
 		padding: '8px 10px',
-		border: '1px solid #ddd',
-		borderRadius: 8,
+		border: `1px solid ${T.border}`,
+		borderRadius: T.radius,
 		fontSize: 14,
 		marginTop: 12,
+		fontFamily: 'inherit',
+		background: T.surface,
+		color: T.text,
+		boxSizing: 'border-box',
 	},
 	button: {
 		marginTop: 12,
 		padding: '8px 14px',
-		border: '1px solid #ddd',
-		borderRadius: 8,
-		background: 'none',
+		border: `1px solid ${T.border}`,
+		borderRadius: T.radius,
+		background: T.surface,
 		cursor: 'pointer',
 		fontSize: 14,
+		fontFamily: 'inherit',
+		color: T.text,
+		boxShadow: T.shadow,
 	},
-	err: { color: '#e11d48', fontSize: 14, marginTop: 12 },
+	err: { color: T.danger, fontSize: 14, marginTop: 12 },
 	bar: {
 		display: 'flex',
 		justifyContent: 'flex-end',
 		padding: '6px 12px',
-		borderBottom: '1px solid #eee',
-		fontFamily: 'system-ui, sans-serif',
+		borderBottom: `1px solid ${T.border}`,
+		background: T.surface,
 	},
 };
 
