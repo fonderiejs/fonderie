@@ -76,6 +76,22 @@ jobs:
         # A separate job per repeat gets its own postgres and redis containers,
         # so every sample starts clean — which is the only way repeated samples
         # of an INTERMITTENT bug mean anything.
+        # BOTH are top-level keys, so the cross product is REAL: 5 × 3 = 15.
+        #
+        # The first version had only `rep` at top level and put `group` in
+        # `include`, which does NOT multiply. An include merges into existing
+        # combinations when it overwrites no ORIGINAL matrix value, so
+        # `group: gated` would attach to all three reps and the remaining four
+        # would conflict on `group` and become standalone jobs with no rep —
+        # about 7 jobs, with four groups sampled ONCE. That silently undoes the
+        # repeat sampling this change exists for.
+        #
+        # I "verified" 15 by multiplying the lists in a script of my own, which
+        # checked my arithmetic rather than the platform's expansion rules.
+        #
+        # `include` below adds `args` to the combinations whose `group` MATCHES
+        # — the documented way to attach per-value extras to a real matrix.
+        group: [gated, rest, all, serial, auth-only]
         rep: [1, 2, 3]
         include:
           - group: gated
