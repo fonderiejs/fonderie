@@ -350,19 +350,21 @@ function Dashboard({ token, manifest }: { token: string; manifest: IAdminManifes
 	// that mounted nothing has no route here, so its client is never built and
 	// the shell hides the page.
 	//
-	// Probe a path the BRICK ALONE owns. `/config` looked like the obvious probe
-	// for @fonderie/config and is exactly wrong: THIS module registers
-	// `/_admin/config` itself (the declared-vs-held report), so the probe was
-	// true on every deployment. The shell then built a ConfigAdminClient, showed
-	// "Config & secrets", and listConfig() fetched /_admin/config successfully —
-	// receiving admin's report OBJECT where it expected an ARRAY of entries.
-	// `entries.map(...)` threw "a.map is not a function" and the page died,
-	// while /_admin/secrets (which only the config brick serves) 404'd beside it.
-	// A 200 with the wrong shape is worse than a 404: nothing reports it.
+	// Probe a path the BRICK ALONE owns.
 	//
-	// So the config probe below is '/secrets', which ONLY @fonderie/config
-	// serves. Any future probe needs the same test: does this module register
-	// the path itself?
+	// `/config` was the obvious probe for @fonderie/config and was exactly wrong:
+	// this module used to register `/_admin/config` itself, as the declared-vs-held
+	// report. The probe was therefore true on EVERY deployment. The shell built a
+	// ConfigAdminClient, showed "Config & secrets", and listConfig() fetched
+	// /_admin/config successfully — receiving admin's report OBJECT where it
+	// expected an ARRAY of entries. `entries.map(...)` threw "a.map is not a
+	// function" and the page died, while /_admin/secrets 404'd beside it. A 200
+	// with the wrong shape is worse than a 404: nothing reports it.
+	//
+	// That report now lives at `/_admin/environment`, which is what it always
+	// was, so `/config` is no longer ambiguous. `/secrets` is kept as the probe
+	// anyway: it is the narrower claim, and a probe should not depend on a route
+	// this module could plausibly want back one day.
 	const mounted = new Set(manifest.routes.map((r) => r.path));
 	const has = (suffix: string) => mounted.has(`${PREFIX}${suffix}`);
 	const opts = { baseUrl: window.location.origin, adminToken: token, prefix: PREFIX };

@@ -107,7 +107,7 @@ export type {
 	IAdminAttention,
 	IAdminAttentionItem,
 	IAdminCheckResult,
-	IAdminConfigReport,
+	IAdminEnvironmentReport,
 	IAdminDoctorReport,
 	IAdminLogEntry,
 	IAdminLogPage,

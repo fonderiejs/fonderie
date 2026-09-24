@@ -1,13 +1,13 @@
 import type { IFonderieApp, IReadinessProblem } from '@fonderie/core';
 
 import type {
-	IAdminConfigReport,
+	IAdminEnvironmentReport,
 	IAdminRoutesReport,
 	IAdminTokenRecord,
 	IAdminTokensReport,
 } from './types';
 
-export function configReport(app: IFonderieApp, env: string[]): IAdminConfigReport {
+export function environmentReport(app: IFonderieApp, env: string[]): IAdminEnvironmentReport {
 	const report = app.securityReport();
 	const byModule = new Map<string, IReadinessProblem[]>();
 	for (const p of report.readiness.problems)

@@ -5,7 +5,7 @@
 ## @fonderie/react-admin-screens
 
 ```ts
-type AdminPage = 'attention' | 'modules' | 'doctor' | 'config' | 'routes' | 'migrations' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
+type AdminPage = 'attention' | 'modules' | 'doctor' | 'environment' | 'routes' | 'migrations' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
 
 interface IAdminLogScreenProps {
     client: AdminClient;
@@ -28,7 +28,7 @@ interface IAttentionScreenProps {
     client: AdminClient;
 }
 
-interface IConfigScreenProps {
+interface IEnvironmentScreenProps {
     client: AdminClient;
 }
 
@@ -77,7 +77,7 @@ function AdminShell({ client, configClient, courierClient, authClient, billingCl
 
 function AttentionScreen({ client }: IAttentionScreenProps): Element
 
-function ConfigScreen({ client }: IConfigScreenProps): Element
+function EnvironmentScreen({ client }: IEnvironmentScreenProps): Element
 
 function DoctorScreen({ client }: IDoctorScreenProps): Element
 

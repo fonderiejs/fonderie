@@ -7,7 +7,7 @@ import { attention, collectChecks, runDoctor } from './doctor';
 import { adminLog, readAdminLog } from './log';
 import { applyMigrationsSchema, applyModuleMigrations, migrationsReport } from './migrate';
 import { buildManifest } from './manifest';
-import { configReport, routesReport, tokensReport } from './pages';
+import { environmentReport, routesReport, tokensReport } from './pages';
 import {
 	issueToken,
 	issueTokenSchema,
@@ -115,13 +115,21 @@ export class AdminModule implements IFonderieModule {
 			],
 			[
 				'GET',
-				'/_admin/config',
+				// NOT '/_admin/config'. This reports readiness problems and which
+				// DECLARED ENV VARS are set — a deployment report, not configuration.
+				// It held the name anyway, which blocked @fonderie/config from ever
+				// mounting beside the console (both described GET /_admin/config and
+				// boot failed), and the misnomer is what made the shell probe
+				// '/config' to detect the config brick — a probe that was true on
+				// every deployment, built a client against admin's own report and
+				// crashed the page with "a.map is not a function".
+				'/_admin/environment',
 				async () =>
 					setApiResponse(
 						HTTP.OK,
-						'ADMIN_CONFIG',
+						'ADMIN_ENVIRONMENT',
 						'Declared vs held',
-						configReport(app, this.options.env ?? []),
+						environmentReport(app, this.options.env ?? []),
 					),
 			],
 			[

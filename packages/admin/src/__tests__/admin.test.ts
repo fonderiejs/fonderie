@@ -109,7 +109,7 @@ test('manifest: modules with versions and readiness, aggregate readiness, the ro
 			['GET', '/v1/_admin', '@fonderie/admin'],
 			['GET', '/v1/_admin/manifest', '@fonderie/admin'],
 			['GET', '/v1/_admin/doctor', '@fonderie/admin'],
-			['GET', '/v1/_admin/config', '@fonderie/admin'],
+			['GET', '/v1/_admin/environment', '@fonderie/admin'],
 			['GET', '/v1/_admin/routes', '@fonderie/admin'],
 			['GET', '/v1/_admin/access/tokens', '@fonderie/admin'],
 			['GET', '/healthz', '@fonderie/core'],
@@ -481,7 +481,7 @@ test('admin log: readable at /_admin/activity/admin-log, paged newest first; abs
 
 // ── config · routes · tokens ────────────────────────────────────────
 
-import type { IAdminConfigReport, IAdminRoutesReport, IAdminTokensReport } from '../types';
+import type { IAdminEnvironmentReport, IAdminRoutesReport, IAdminTokensReport } from '../types';
 
 async function page<T>(app: FonderieApp, path: string): Promise<T> {
 	const res = await get(app, path, TOKEN);
@@ -510,7 +510,7 @@ test('config: readiness per module and env presence — names only, never values
 			}),
 		);
 		await app.boot();
-		const c = await page<IAdminConfigReport>(app, '/_admin/config');
+		const c = await page<IAdminEnvironmentReport>(app, '/_admin/environment');
 		assert.deepEqual(
 			c.modules.map((m) => [m.name, m.problems.length]),
 			[
@@ -1177,7 +1177,7 @@ test('migrations: routes do not exist when the app hands over no migration sets'
 // The served UI decides which pages to offer by probing the manifest for a
 // path. That probe MUST use a path the probed brick uniquely owns.
 //
-// It did not. The config page probed `/config` — which THIS module registers
+// It did not. The config page probed `/config` — which THIS module registered
 // itself, as the declared-vs-held report. So on a deployment WITHOUT
 // @fonderie/config the probe was true, the shell built a ConfigAdminClient,
 // and listConfig() fetched /_admin/config successfully and got admin's report
@@ -1185,33 +1185,87 @@ test('migrations: routes do not exist when the app hands over no migration sets'
 // `entries.map(...)` with "a.map is not a function", while /_admin/secrets
 // 404'd beside it. A 200 carrying the wrong shape is worse than a 404 —
 // nothing reports it.
+//
+// The probe was changed to /secrets, and the NAME has now been fixed at the
+// root: this module's report moved to /_admin/environment, which is what it
+// always was — readiness problems and which declared env vars are set. Holding
+// "config" also made @fonderie/config unmountable beside the console: both
+// described GET /_admin/config and boot failed outright, in either order.
 // ---------------------------------------------------------------------------
 
-test('the UI config probe: /config is OURS, /secrets is the config brick — do not confuse them', async () => {
+// The collision this rename ended, pinned so it cannot come back.
+//
+// @fonderie/config describes GET /_admin/config. While this module registered
+// the same path for its declared-vs-held report, boot FAILED outright in either
+// registration order — so the config brick could never be used alongside the
+// admin console at all, and its "Config & secrets" page was unreachable by
+// construction. The failure was loud but nobody hit it, because nobody could
+// get far enough to try.
+test('@fonderie/config mounts alongside the console, in either order', async () => {
+	const { ConfigModule } = await import('@fonderie/config');
+	const store = {
+		query: async () => [],
+		transaction: async (fn: (tx: unknown) => unknown) => fn({ query: async () => [] }),
+	} as never;
+
+	for (const reversed of [false, true]) {
+		const app = new FonderieApp(config);
+		const cfg = new ConfigModule(store, { adminToken: TOKEN });
+		const mods = [cfg, new AdminModule({ adminToken: TOKEN })];
+		for (const m of reversed ? [...mods].reverse() : mods) app.register(m as never);
+
+		try {
+			// The assertion IS that this does not throw. Before the rename it threw
+			// "[fonderie] @fonderie/config cannot describe GET /_admin/config".
+			await app.boot();
+
+			const seen = app.routes().map((r) => `${r.method} ${r.path}`);
+			assert.equal(
+				seen.length - new Set(seen).size,
+				0,
+				`duplicate routes with order reversed=${reversed}`,
+			);
+			assert.ok(seen.includes('GET /_admin/environment'), 'the report is still served');
+			assert.ok(
+				seen.includes('GET /_admin/config'),
+				'the config brick is mounted under the prefix',
+			);
+		} finally {
+			// boot() starts a TTL refresh interval. Leaving it running keeps the
+			// test process alive forever — which is precisely the failure that hung
+			// CI for six release cycles from @fonderie/events. Stop what you start.
+			cfg.manager.stop();
+		}
+	}
+});
+
+test('the environment report does not squat on any config path', async () => {
 	const app = new FonderieApp(config);
 	app.register(new AdminModule({ adminToken: TOKEN }));
 	await app.boot();
 
 	const paths = new Set(app.routes().map((r) => r.path));
 
-	// We own this. Probing it to detect @fonderie/config is a FALSE POSITIVE on
-	// every deployment, which is exactly the bug.
-	assert.ok(paths.has('/_admin/config'), '@fonderie/admin must still own /_admin/config');
+	assert.ok(paths.has('/_admin/environment'), 'the declared-vs-held report lives here now');
 
-	// We must NOT own this — it is what makes it a sound probe for the config
-	// brick. If a future route here claims it, the served UI starts offering a
-	// page for a brick that is not installed, all over again.
-	assert.equal(
-		paths.has('/_admin/secrets'),
-		false,
+	// Both of these belong to @fonderie/config. Claiming EITHER makes that brick
+	// unmountable beside the console — the failure this rename exists to end —
+	// and turns the served UI's probe into a false positive all over again.
+	//
+	// Written as `assert.ok(!has(...))` rather than `assert.equal(has(...), false)`:
+	// in the latter the path reads as something we expect to find, and the
+	// negation sits on the next line where it is easy to miss.
+	assert.ok(!paths.has('/_admin/config'), '/_admin/config must stay exclusive to @fonderie/config');
+	assert.ok(
+		!paths.has('/_admin/secrets'),
 		'/_admin/secrets must stay exclusive to @fonderie/config — the served UI probes it',
 	);
 
-	// And the shape that made the collision silent: our /_admin/config answers
-	// with an OBJECT, never the array a config-entry list would return.
-	const res = await get(app, '/_admin/config', TOKEN);
+	// And the shape that made the old collision silent: the report answers with
+	// an OBJECT, never the array a config-entry list would return.
+	const res = await get(app, '/_admin/environment', TOKEN);
 	assert.equal(res.status, 200);
 	const { result } = (await res.json()) as { result: unknown };
-	assert.equal(Array.isArray(result), false, 'admin config report is an object, not a list');
+	assert.equal(Array.isArray(result), false, 'the environment report is an object, not a list');
 	assert.ok(result && typeof result === 'object' && 'env' in result);
 });

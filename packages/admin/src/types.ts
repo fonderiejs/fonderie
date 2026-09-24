@@ -50,7 +50,7 @@ export interface IAdminOptions {
 	store?: IStoreAdapter;
 	// The environment variables this deployment reads. Bricks never read
 	// process.env — the app injects config — so only the app can say which
-	// names matter. GET /_admin/config reports presence, never values.
+	// names matter. GET /_admin/environment reports presence, never values.
 	env?: string[];
 }
 
@@ -123,7 +123,7 @@ export interface IAdminEnvEntry {
 	set: boolean;
 }
 
-export interface IAdminConfigReport {
+export interface IAdminEnvironmentReport {
 	generatedAt: string;
 	readiness: IReadinessReport;
 	// Readiness problems grouped by module, modules with none included.
