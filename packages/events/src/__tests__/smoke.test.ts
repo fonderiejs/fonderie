@@ -335,6 +335,52 @@ test('PGTransport: consume:false connects to publish without starting a consumer
 	}
 });
 
+// ── stop() must release the pool ──────────────────────────────────
+//
+// THE BUG THIS PINS: start() creates a connection pool; stop() closed the
+// LISTEN client and returned, leaving the pool open forever. Every process that
+// stopped a bus leaked it, and a test process that did so never exited — which
+// is what hung `npm test` after every suite had printed `fail 0`. turbo waited
+// on an events test whose pools were still open. It cost six release cycles and
+// survived two deliberate bisects, because whether the process eventually exits
+// depends on pg's idle-timeout racing an in-flight poll query: it reproduced
+// about three times a day in CI and never once on demand.
+//
+// Ungated on purpose. `consume:false` reaches `new PGAdapter(url)` and returns
+// before any connection is attempted, and ending a pool with no clients is
+// local too — so the whole lifecycle runs with no database, and this guards the
+// leak on every machine instead of only where EVENTS_PG_URL is set.
+test('PGTransport: stop() ends the connection pool, not just the listen client', async () => {
+	const transport = new PGTransport({ connectionUrl: 'postgres://unused/test', consume: false });
+	await transport.start();
+
+	// Hold the adapter BEFORE stopping, and assert against that reference.
+	// Asserting through the transport would be satisfied by stop() merely
+	// dropping its field — which leaks exactly as badly while looking fixed.
+	// The pool itself has to be closed, so the pool itself is what we ask.
+	const store = transport.storeForIntegrity();
+	assert.ok(store, 'start() must connect a store');
+
+	await transport.stop();
+
+	await assert.rejects(
+		() => store.query('SELECT 1'),
+		/after calling end/i,
+		'stop() must END the pool start() created — a connection error here means it is still open',
+	);
+
+	// And the transport is back to its pre-start state, so the reads a health
+	// route calls unconditionally answer emptily instead of throwing.
+	assert.equal(transport.storeForIntegrity(), null, 'stop() must clear the store');
+	assert.deepEqual(await transport.deadLetters(), []);
+	assert.equal(await transport.pendingCount(), 0);
+	await assert.rejects(
+		() => transport.publish('x.y', {}, { id: 'i', type: 'x.y', emittedAt: '', attempts: 0 }),
+		/not started/i,
+		'publish() after stop() must name the cause, not throw a bare TypeError',
+	);
+});
+
 test('PGTransport: dead-letter and backlog reads are safe before connecting', async () => {
 	// Before start() there is no store — these must answer emptily rather than
 	// throw, so a health route can call them unconditionally.
