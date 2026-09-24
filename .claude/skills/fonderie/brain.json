@@ -4,7 +4,7 @@
     "adapter-express": "5.3.6",
     "adapter-hono": "6.2.6",
     "adapter-koa": "5.3.6",
-    "admin": "0.9.0",
+    "admin": "0.9.1",
     "audit": "5.2.3",
     "auth": "7.9.2",
     "billing": "10.0.0",
@@ -28,7 +28,7 @@
     "react-auth-screens": "0.4.0",
     "react-billing": "0.9.0",
     "react-billing-screens": "0.3.1",
-    "react-config-admin": "0.3.0",
+    "react-config-admin": "0.3.1",
     "react-config-admin-screens": "0.2.0",
     "react-courier-admin": "0.4.0",
     "react-courier-admin-screens": "0.3.0",
@@ -64,7 +64,7 @@
     "vue-auth-screens": "0.4.0",
     "vue-billing": "0.10.0",
     "vue-billing-screens": "0.3.1",
-    "vue-config-admin": "0.3.0",
+    "vue-config-admin": "0.3.1",
     "vue-config-admin-screens": "0.2.0",
     "vue-courier-admin": "0.4.0",
     "vue-courier-admin-screens": "0.3.0",
@@ -143,7 +143,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "0.9.0",
+      "version": "0.9.1",
       "stability": "experimental",
       "requires": [
         "core",
@@ -1605,7 +1605,7 @@
       "hasOutcomes": false
     },
     "react-config-admin": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2439,7 +2439,7 @@
       "hasOutcomes": false
     },
     "vue-config-admin": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
