@@ -21,6 +21,12 @@
 # suite has already printed its summary. So turbo holds a child handle while
 # every node child has exited.
 #
+# ATTEMPT 1 (2026-09-24, runs 35991212813 / 35991210365) was INCONCLUSIVE and
+# is worth knowing about: it ran `npx turbo test` directly and all ten jobs
+# finished, the `all` control included. A control that will not reproduce makes
+# every quiet group meaningless. It did, however, isolate the npm wrapper —
+# see the test step.
+#
 # WHAT THIS ANSWERS: does the hang follow the ENV-GATED packages (the only
 # CI-versus-local difference), the rest of the suite, or neither?
 #
@@ -41,9 +47,9 @@ on:
 jobs:
   bisect:
     runs-on: ubuntu-latest
-    # Well under the 30 used elsewhere: a hung group should report fast, and
-    # the whole point is the timeout, not the tests.
-    timeout-minutes: 12
+    # Three repeats of the slowest group (serial, ~8 min each) needs headroom;
+    # a hang still reports well inside it because a hung repeat never ends.
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -96,14 +102,37 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      # --force so turbo cannot replay a cached log: a cache hit would "pass"
-      # instantly and prove nothing about a hang.
-      - name: test (${{ matrix.group }})
-        run: npx turbo test --force ${{ matrix.args }}
+      # `npm test`, NOT `npx turbo test` — and that distinction is the whole
+      # point of this revision.
+      #
+      # The first version of this workflow invoked turbo directly. All ten jobs
+      # completed, INCLUDING the `all` control, which is the same work as the
+      # failing CI step. A control that refuses to reproduce makes every quiet
+      # group meaningless, so that run proved nothing.
+      #
+      # Except about itself. CI runs `npm test`, which wraps turbo in an npm
+      # process — and the handle dump has implicated that wrapper all along:
+      #
+      #   npm test    active: {"PipeWrap":3,"ProcessWrap":1}   ← only in CI
+      #   turbo test  active: {"ProcessWrap":1}
+      #
+      # Ten runs without the npm layer: no hang. Runs with it: three in one day.
+      # So reproduce CI exactly, wrapper included.
+      #
+      # REPEATS because the bug is intermittent: one clean pass is not evidence
+      # of absence, and the previous run's whole failure was reading n=1 as a
+      # result. Any repeat hanging kills the job at the timeout, which is the
+      # signal.
+      - name: test (${{ matrix.group }}) ×3
+        run: |
+          for i in 1 2 3; do
+            echo "──────── ${{ matrix.group }} attempt $i ────────"
+            npm test -- --force ${{ matrix.args }}
+          done
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dump-handles.mjs
-          # Dump sooner than the 90 s default — these groups are small, so
-          # anything alive at 45 s is already the thing we are hunting.
+          # Sooner than the 90 s default: these groups are small, so anything
+          # alive at 45 s is already what we are hunting.
           FONDERIE_HANDLE_DUMP_MS: '45000'
 
       # Only reached when the group did NOT hang. A group that hangs is killed
