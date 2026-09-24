@@ -3,7 +3,7 @@ export { AdminShell } from './AdminShell';
 export { AttentionScreen } from './AttentionScreen';
 export { ModulesScreen } from './ModulesScreen';
 export { DoctorScreen } from './DoctorScreen';
-export { ConfigScreen } from './ConfigScreen';
+export { EnvironmentScreen } from './EnvironmentScreen';
 export { RoutesScreen } from './RoutesScreen';
 export { TokensScreen } from './TokensScreen';
 export { MigrationsScreen } from './MigrationsScreen';

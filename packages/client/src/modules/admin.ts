@@ -2,7 +2,7 @@ import { HttpClient } from '../http';
 import { normalizeMountPath } from '../path';
 import type {
 	IAdminAttention,
-	IAdminConfigReport,
+	IAdminEnvironmentReport,
 	IAdminDoctorReport,
 	IAdminIssuedToken,
 	IAdminIssueTokenInput,
@@ -69,8 +69,8 @@ export class AdminClient {
 		return this.get<IAdminDoctorReport>('/doctor');
 	}
 
-	config() {
-		return this.get<IAdminConfigReport>('/config');
+	environment() {
+		return this.get<IAdminEnvironmentReport>('/environment');
 	}
 
 	routes() {

@@ -35,7 +35,7 @@ interface IAdminClientOptions {
     actor?: string;
 }
 
-interface IAdminConfigReport {
+interface IAdminEnvironmentReport {
     generatedAt: string;
     readiness: IAdminReadiness;
     modules: Array<{
@@ -351,7 +351,7 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
   .doctor(): Promise<IApiResponse<IAdminDoctorReport>>
-  .config(): Promise<IApiResponse<IAdminConfigReport>>
+  .environment(): Promise<IApiResponse<IAdminEnvironmentReport>>
   .routes(): Promise<IApiResponse<IAdminRoutesReport>>
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery | undefined): Promise<IApiResponse<IAdminLogPage>>
@@ -413,8 +413,8 @@ interface IUseDoctorReturn {
     refresh: () => Promise<void>;
 }
 
-interface IUseAdminConfigReturn {
-    report: IAdminConfigReport | null;
+interface IUseAdminEnvironmentReturn {
+    report: IAdminEnvironmentReport | null;
     isLoading: boolean;
     error: FonderieApiError | null;
     refresh: () => Promise<void>;
@@ -536,7 +536,7 @@ function useManifest(client: AdminClient): IUseManifestReturn
 
 function useDoctor(client: AdminClient): IUseDoctorReturn
 
-function useAdminConfig(client: AdminClient): IUseAdminConfigReturn
+function useAdminEnvironment(client: AdminClient): IUseAdminEnvironmentReturn
 
 function useAdminRoutes(client: AdminClient): IUseAdminRoutesReturn
 

@@ -1,15 +1,15 @@
 import type { AdminClient } from '@fonderie/client';
-import { useAdminConfig } from '@fonderie/react-admin';
+import { useAdminEnvironment } from '@fonderie/react-admin';
 import { styles } from '../styles';
 
-export interface IConfigScreenProps {
+export interface IEnvironmentScreenProps {
 	client: AdminClient;
 }
 
 // Declared vs held: readiness per module, and whether each environment
 // variable the app reads is set. Values are never shown.
-export function ConfigScreen({ client }: IConfigScreenProps) {
-	const { report, isLoading, error } = useAdminConfig(client);
+export function EnvironmentScreen({ client }: IEnvironmentScreenProps) {
+	const { report, isLoading, error } = useAdminEnvironment(client);
 	return (
 		<div style={styles.container}>
 			<h1 style={styles.title}>Configuration</h1>

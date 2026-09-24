@@ -195,13 +195,13 @@
         },
         {
           "method": "GET",
-          "path": "/_admin/config",
-          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_CONFIG', 'Declared vs held', configReport(app, this.options.env ?? []), )"
+          "path": "/_admin/doctor",
+          "mw": "async () => setApiResponse(HTTP.OK, 'ADMIN_DOCTOR', 'Reconciliation checks', await doctor())"
         },
         {
           "method": "GET",
-          "path": "/_admin/doctor",
-          "mw": "async () => setApiResponse(HTTP.OK, 'ADMIN_DOCTOR', 'Reconciliation checks', await doctor())"
+          "path": "/_admin/environment",
+          "mw": "async () => setApiResponse( HTTP.OK, 'ADMIN_ENVIRONMENT', 'Declared vs held', environmentReport(app, this.options.env ?? []), )"
         },
         {
           "method": "GET",
@@ -1393,7 +1393,7 @@
         "useAttention",
         "useManifest",
         "useDoctor",
-        "useAdminConfig",
+        "useAdminEnvironment",
         "useAdminRoutes",
         "useAdminTokens",
         "useAdminMigrations",
@@ -1429,7 +1429,7 @@
         "AdminLogScreen",
         "AdminShell",
         "AttentionScreen",
-        "ConfigScreen",
+        "EnvironmentScreen",
         "DoctorScreen",
         "ModulesScreen",
         "RoutesScreen",
@@ -2227,7 +2227,7 @@
         "useAttention",
         "useManifest",
         "useDoctor",
-        "useAdminConfig",
+        "useAdminEnvironment",
         "useAdminRoutes",
         "useAdminTokens",
         "useAdminMigrations",
@@ -2263,7 +2263,7 @@
         "AdminLogScreen",
         "AdminShell",
         "AttentionScreen",
-        "ConfigScreen",
+        "EnvironmentScreen",
         "DoctorScreen",
         "ModulesScreen",
         "RoutesScreen",
@@ -5390,7 +5390,7 @@
       "react-admin",
       "vue-admin"
     ],
-    "useadminconfig": [
+    "useadminenvironment": [
       "react-admin",
       "vue-admin"
     ],
@@ -5454,7 +5454,7 @@
       "react-admin-screens",
       "vue-admin-screens"
     ],
-    "configscreen": [
+    "environmentscreen": [
       "react-admin-screens",
       "vue-admin-screens"
     ],

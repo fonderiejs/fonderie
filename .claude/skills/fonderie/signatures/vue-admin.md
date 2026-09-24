@@ -35,7 +35,7 @@ interface IAdminClientOptions {
     actor?: string;
 }
 
-interface IAdminConfigReport {
+interface IAdminEnvironmentReport {
     generatedAt: string;
     readiness: IAdminReadiness;
     modules: Array<{
@@ -351,7 +351,7 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
   .doctor(): Promise<IApiResponse<IAdminDoctorReport>>
-  .config(): Promise<IApiResponse<IAdminConfigReport>>
+  .environment(): Promise<IApiResponse<IAdminEnvironmentReport>>
   .routes(): Promise<IApiResponse<IAdminRoutesReport>>
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery | undefined): Promise<IApiResponse<IAdminLogPage>>
@@ -398,7 +398,7 @@ function useManifest(client: AdminClient): { manifest: Ref<{ generatedAt: string
 
 function useDoctor(client: AdminClient): { report: Ref<{ generatedAt: string; ok: boolean; checks: { name: string; module: string; ok: boolean; findings: string[]; skipped?: string; durationMs: number; }[]; } | null, IAdminDoctorReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useAdminConfig(client: AdminClient): { report: Ref<{ generatedAt: string; readiness: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; modules: { ...; }[]; env: { ...; }[]; } | null, IAdminConfigReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useAdminEnvironment(client: AdminClient): { report: Ref<{ generatedAt: string; readiness: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; modules: { ...; }[]; env: { ...; }[]; } | null, IAdminEnvironmentReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useAdminRoutes(client: AdminClient): { report: Ref<{ generatedAt: string; routes: { method: string; path: string; module?: string; guard: AdminRouteGuard; }[]; } | null, IAdminRoutesReport | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 

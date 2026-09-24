@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { styles } from '../styles';
 import { AdminLogScreen } from './AdminLogScreen';
 import { AttentionScreen } from './AttentionScreen';
-import { ConfigScreen } from './ConfigScreen';
+import { EnvironmentScreen } from './EnvironmentScreen';
 import { DoctorScreen } from './DoctorScreen';
 import { ModulesScreen } from './ModulesScreen';
 import { RoutesScreen } from './RoutesScreen';
@@ -27,7 +27,7 @@ export type AdminPage =
 	| 'attention'
 	| 'modules'
 	| 'doctor'
-	| 'config'
+	| 'environment'
 	| 'routes'
 	| 'migrations'
 	| 'tokens'
@@ -71,7 +71,7 @@ const NAV: Array<{
 		group: 'System',
 		items: [
 			{ page: 'modules', label: 'Modules' },
-			{ page: 'config', label: 'Configuration' },
+			{ page: 'environment', label: 'Environment' },
 			{ page: 'doctor', label: 'Doctor' },
 			{ page: 'routes', label: 'Routes' },
 		],
@@ -137,8 +137,8 @@ export function AdminShell({
 		case 'doctor':
 			body = <DoctorScreen client={client} />;
 			break;
-		case 'config':
-			body = <ConfigScreen client={client} />;
+		case 'environment':
+			body = <EnvironmentScreen client={client} />;
 			break;
 		case 'routes':
 			body = <RoutesScreen client={client} />;
