@@ -3,7 +3,7 @@ export {
 	AdminLogScreen,
 	AdminShell,
 	AttentionScreen,
-	ConfigScreen,
+	EnvironmentScreen,
 	DoctorScreen,
 	ModulesScreen,
 	RoutesScreen,

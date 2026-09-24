@@ -53,6 +53,7 @@
 	},
 	"devDependencies": {
 		"@fonderie/client": "*",
+		"@fonderie/config": "../config",
 		"@fonderie/core": "../core",
 		"@fonderie/react-admin-screens": "*",
 		"@fonderie/store": "../store",

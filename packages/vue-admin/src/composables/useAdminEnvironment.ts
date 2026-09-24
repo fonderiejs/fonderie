@@ -1,9 +1,9 @@
-import type { AdminClient, IAdminConfigReport } from '@fonderie/client';
+import type { AdminClient, IAdminEnvironmentReport } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { ref } from 'vue';
 
-export function useAdminConfig(client: AdminClient) {
-	const report = ref<IAdminConfigReport | null>(null);
+export function useAdminEnvironment(client: AdminClient) {
+	const report = ref<IAdminEnvironmentReport | null>(null);
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
@@ -11,7 +11,7 @@ export function useAdminConfig(client: AdminClient) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			const { result } = await client.config();
+			const { result } = await client.environment();
 			report.value = result;
 		} catch (err) {
 			error.value =

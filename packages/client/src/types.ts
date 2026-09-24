@@ -530,7 +530,7 @@ export interface IAdminAttention {
 	items: IAdminAttentionItem[];
 }
 
-export interface IAdminConfigReport {
+export interface IAdminEnvironmentReport {
 	generatedAt: string;
 	readiness: IAdminReadiness;
 	modules: Array<{ name: string; problems: IAdminReadinessProblem[] }>;

@@ -1,15 +1,15 @@
 import type { AdminClient } from '@fonderie/client';
-import { useAdminConfig } from '@fonderie/vue-admin';
+import { useAdminEnvironment } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
 import { styles } from '../styles';
 import { page } from './common';
 
-export const ConfigScreen = defineComponent({
-	name: 'FonderieConfigScreen',
+export const EnvironmentScreen = defineComponent({
+	name: 'FonderieEnvironmentScreen',
 	props: { client: { type: Object as PropType<AdminClient>, required: true } },
 	setup(props) {
-		const { report, isLoading, error } = useAdminConfig(props.client);
+		const { report, isLoading, error } = useAdminEnvironment(props.client);
 		return () =>
 			page('Configuration', { isLoading, error }, () => {
 				const r = report.value;

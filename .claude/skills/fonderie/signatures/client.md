@@ -279,7 +279,7 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .attention(): Promise<IApiResponse<IAdminAttention>>
   .manifest(): Promise<IApiResponse<IAdminManifest>>
   .doctor(): Promise<IApiResponse<IAdminDoctorReport>>
-  .config(): Promise<IApiResponse<IAdminConfigReport>>
+  .environment(): Promise<IApiResponse<IAdminEnvironmentReport>>
   .routes(): Promise<IApiResponse<IAdminRoutesReport>>
   .tokens(): Promise<IApiResponse<IAdminTokensReport>>
   .adminLog(query?: IAdminLogQuery): Promise<IApiResponse<IAdminLogPage>>
@@ -745,7 +745,7 @@ interface IAdminCheckResult {
     durationMs: number;
 }
 
-interface IAdminConfigReport {
+interface IAdminEnvironmentReport {
     generatedAt: string;
     readiness: IAdminReadiness;
     modules: Array<{

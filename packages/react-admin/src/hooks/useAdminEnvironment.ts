@@ -1,16 +1,16 @@
-import type { AdminClient, IAdminConfigReport } from '@fonderie/client';
+import type { AdminClient, IAdminEnvironmentReport } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useCallback, useEffect, useState } from 'react';
 
-export interface IUseAdminConfigReturn {
-	report: IAdminConfigReport | null;
+export interface IUseAdminEnvironmentReturn {
+	report: IAdminEnvironmentReport | null;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 	refresh: () => Promise<void>;
 }
 
-export function useAdminConfig(client: AdminClient): IUseAdminConfigReturn {
-	const [report, set] = useState<IAdminConfigReport | null>(null);
+export function useAdminEnvironment(client: AdminClient): IUseAdminEnvironmentReturn {
+	const [report, set] = useState<IAdminEnvironmentReport | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
@@ -18,7 +18,7 @@ export function useAdminConfig(client: AdminClient): IUseAdminConfigReturn {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const { result } = await client.config();
+			const { result } = await client.environment();
 			set(result);
 		} catch (err) {
 			setError(

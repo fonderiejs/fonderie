@@ -126,7 +126,7 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin', 'AdminClient.attention() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/manifest', 'AdminClient.manifest() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/doctor', 'AdminClient.doctor() — prefix is configurable, invisible to the static match'],
-	['GET /_admin/config', 'AdminClient.config() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/environment', 'AdminClient.environment() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/routes', 'AdminClient.routes() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/access/tokens', 'AdminClient.tokens() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/activity/admin-log', 'AdminClient.adminLog() — prefix is configurable, invisible to the static match'],

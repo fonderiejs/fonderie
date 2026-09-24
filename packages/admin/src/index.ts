@@ -2,7 +2,7 @@ export { AdminModule, ADMIN_VERSION, DEFAULT_ADMIN_PATH, DEFAULT_CHECK_TIMEOUT_M
 export { buildManifest } from './manifest';
 export { runDoctor, collectChecks, attention } from './doctor';
 export { adminLog, readAdminLog, DEFAULT_ACTOR, MAX_PAGE } from './log';
-export { configReport, routesReport, tokensReport } from './pages';
+export { environmentReport, routesReport, tokensReport } from './pages';
 export { migrationsReport, applyModuleMigrations, applyMigrationsSchema } from './migrate';
 export {
 	requireAdminScope,
@@ -25,7 +25,7 @@ export type {
 	IAdminLogEntry,
 	IAdminLogPage,
 	IAdminEnvEntry,
-	IAdminConfigReport,
+	IAdminEnvironmentReport,
 	AdminRouteGuard,
 	IAdminRouteEntry,
 	IAdminRoutesReport,

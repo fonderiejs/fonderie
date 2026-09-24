@@ -37,7 +37,7 @@ const DEFAULT_ACTOR: "admin-token"
 
 const MAX_PAGE: 200
 
-function configReport(app: IFonderieApp, env: string[]): IAdminConfigReport
+function environmentReport(app: IFonderieApp, env: string[]): IAdminEnvironmentReport
 
 function routesReport(app: IFonderieApp, adminModule: string): IAdminRoutesReport
 
@@ -145,7 +145,7 @@ interface IAdminEnvEntry {
     set: boolean;
 }
 
-interface IAdminConfigReport {
+interface IAdminEnvironmentReport {
     generatedAt: string;
     readiness: IReadinessReport;
     modules: Array<{

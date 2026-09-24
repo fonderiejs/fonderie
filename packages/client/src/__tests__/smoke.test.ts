@@ -363,7 +363,7 @@ test('AdminClient: every page under the prefix with the admin token; log query f
 	await admin.attention();
 	await admin.manifest();
 	await admin.doctor();
-	await admin.config();
+	await admin.environment();
 	await admin.routes();
 	await admin.tokens();
 	await admin.adminLog({ limit: 5, before: 'c1' });
@@ -373,7 +373,7 @@ test('AdminClient: every page under the prefix with the admin token; log query f
 			'/_admin',
 			'/_admin/manifest',
 			'/_admin/doctor',
-			'/_admin/config',
+			'/_admin/environment',
 			'/_admin/routes',
 			'/_admin/access/tokens',
 			'/_admin/activity/admin-log?limit=5&before=c1',
