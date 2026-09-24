@@ -56,6 +56,14 @@ jobs:
             args: ''
           - group: serial
             args: --concurrency=1
+          # auth alone. It has been the last suite to print a summary in all
+          # three hangs observed on 2026-09-24. That is CONSISTENT with it
+          # merely being the biggest suite (~3.3k-line smoke test) and so
+          # finishing last every time — but "consistent with" is not "ruled
+          # out", and dismissing it on a story rather than a measurement is
+          # how it stayed unexamined. If auth alone hangs, the story is wrong.
+          - group: auth-only
+            args: --filter=@fonderie/auth
 
     services:
       postgres:
