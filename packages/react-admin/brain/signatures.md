@@ -135,6 +135,24 @@ interface IAdminTokensReport {
     issued: IAdminTokenRecord[] | null;
 }
 
+interface IAdminMigrationsReport {
+    everApplied: boolean;
+    modules: IAdminMigrationModule[];
+}
+
+interface IAdminMigrationModule {
+    name: string;
+    pending: IAdminPendingMigration[];
+    blockedBy: string | null;
+    appliable: boolean;
+}
+
+interface IAdminPendingMigration {
+    file: string;
+    impact: MigrationImpact;
+    destructive: string[];
+}
+
 interface IAdminUserDTO extends IUserDTO {
     deletedAt: string | null;
 }
@@ -339,6 +357,8 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .adminLog(query?: IAdminLogQuery | undefined): Promise<IApiResponse<IAdminLogPage>>
   .issueToken(input: IAdminIssueTokenInput): Promise<IApiResponse<IAdminIssuedToken>>
   .revokeToken(id: string): Promise<IApiResponse<undefined>>
+  .migrations(): Promise<IApiResponse<IAdminMigrationsReport>>
+  .applyMigrations(module: string, expect: readonly string[]): Promise<IApiResponse<IAdminMigrationModule>>
 
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .listUsers(query?: IAdminUsersQuery | undefined): Promise<IApiResponse<IAdminUserPageResult>>
@@ -414,6 +434,14 @@ interface IUseAdminTokensReturn {
     refresh: () => Promise<void>;
     issue: (input: IAdminIssueTokenInput) => Promise<IAdminIssuedToken>;
     revoke: (id: string) => Promise<void>;
+}
+
+interface IUseAdminMigrationsReturn {
+    report: IAdminMigrationsReport | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    apply: (module: string, expect: readonly string[]) => Promise<IAdminMigrationModule>;
 }
 
 interface IUseAdminLogReturn {
@@ -513,6 +541,8 @@ function useAdminConfig(client: AdminClient): IUseAdminConfigReturn
 function useAdminRoutes(client: AdminClient): IUseAdminRoutesReturn
 
 function useAdminTokens(client: AdminClient): IUseAdminTokensReturn
+
+function useAdminMigrations(client: AdminClient): IUseAdminMigrationsReturn
 
 function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">): IUseAdminLogReturn
 

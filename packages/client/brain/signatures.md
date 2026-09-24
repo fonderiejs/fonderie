@@ -285,6 +285,8 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .adminLog(query?: IAdminLogQuery): Promise<IApiResponse<IAdminLogPage>>
   .issueToken(input: IAdminIssueTokenInput): Promise<IApiResponse<IAdminIssuedToken>>
   .revokeToken(id: string): Promise<IApiResponse<undefined>>
+  .migrations(): Promise<IApiResponse<IAdminMigrationsReport>>
+  .applyMigrations(module: string, expect: readonly string[]): Promise<IApiResponse<IAdminMigrationModule>>
 
 interface IAuthAdminClientOptions {
     baseUrl: string;
@@ -859,6 +861,26 @@ interface IAdminIssueTokenInput {
 
 interface IAdminIssuedToken extends IAdminTokenRecord {
     token: string;
+}
+
+type MigrationImpact = 'additive' | 'destructive';
+
+interface IAdminPendingMigration {
+    file: string;
+    impact: MigrationImpact;
+    destructive: string[];
+}
+
+interface IAdminMigrationModule {
+    name: string;
+    pending: IAdminPendingMigration[];
+    blockedBy: string | null;
+    appliable: boolean;
+}
+
+interface IAdminMigrationsReport {
+    everApplied: boolean;
+    modules: IAdminMigrationModule[];
 }
 
 interface IAdminUserDTO extends IUserDTO {

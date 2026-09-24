@@ -1,5 +1,5 @@
 import type { IAdminCheck, IAdminCheckReport, IReadinessReport, IRouteEntry } from '@fonderie/core';
-import type { IStoreAdapter } from '@fonderie/store';
+import type { IStoreAdapter, MigrationImpact } from '@fonderie/store';
 
 export interface IAdminOptions {
 	// Guards every route. Unset ⇒ the surface is not registered (404), never open.
@@ -10,6 +10,17 @@ export interface IAdminOptions {
 	checks?: IAdminCheck[];
 	// Per check. Default 10 000.
 	checkTimeoutMs?: number;
+	/**
+	 * The ordered migration sets this deployment applies, exactly as its own
+	 * applier runs them — brick directories and the app's own, interleaved.
+	 * Unset ⇒ the migrations routes are not registered at all.
+	 *
+	 * Pass the SAME constant the applier reads. The order is the app's to
+	 * declare and this surface must never infer it: bricks and app migrations
+	 * depend on each other across the list, and a panel guessing that order
+	 * would eventually guess wrong in a way that only shows on a fresh database.
+	 */
+	migrations?: ReadonlyArray<IMigrationSet>;
 	// Serve the built dashboard at <path>/ui. Off by default: it is 200 KB of
 	// JavaScript most deployments reach through their own frontend instead.
 	ui?: boolean;
@@ -162,4 +173,36 @@ export interface IAdminTokensReport {
 	legacy: IAdminTokenEntry[];
 	// Issued scoped tokens; null when no store was given (issuing is off).
 	issued: IAdminTokenRecord[] | null;
+}
+
+// One entry of the app's migration sequence: a label and the directory holding
+// that module's .sql files. Structurally identical to the app's own
+// MIGRATION_STEPS so the same constant feeds the applier and this surface.
+export type IMigrationSet = readonly [name: string, dir: string];
+
+export interface IAdminPendingMigration {
+	file: string;
+	impact: MigrationImpact;
+	// The statements that earned a 'destructive' label, as written — so the
+	// operator reads WHAT would be lost rather than a generic warning.
+	destructive: string[];
+}
+
+export interface IAdminMigrationModule {
+	name: string;
+	pending: IAdminPendingMigration[];
+	// The first EARLIER module that is behind, or null. Order is the app's and
+	// migrations depend on each other across it, so a module with something
+	// unapplied in front of it cannot be applied yet.
+	blockedBy: string | null;
+	// Whether the panel will apply this one: something to do, nothing in front
+	// of it, and nothing in it that deletes data.
+	appliable: boolean;
+}
+
+export interface IAdminMigrationsReport {
+	// False when this database has no fonderie_migrations rows — a first
+	// install, where "destructive" has nothing to destroy.
+	everApplied: boolean;
+	modules: IAdminMigrationModule[];
 }

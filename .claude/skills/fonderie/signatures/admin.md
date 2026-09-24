@@ -43,6 +43,12 @@ function routesReport(app: IFonderieApp, adminModule: string): IAdminRoutesRepor
 
 function tokensReport(app: IFonderieApp, adminModule: string, issued: IAdminTokenRecord[] | null): IAdminTokensReport
 
+function migrationsReport(store: IStoreAdapter, sets: readonly IMigrationSet[]): Promise<IAdminMigrationsReport>
+
+function applyModuleMigrations(store: IStoreAdapter, sets: readonly IMigrationSet[], module: string, expect: readonly string[]): Promise<ApplyOutcome>
+
+const applyMigrationsSchema: IRequestSchema
+
 function requireAdminScope(bootstrap: string, store: IStoreAdapter | undefined, needed: AdminScope | "root"): Middleware
 
 function scopeFor(method: string, path: string): AdminScope
@@ -64,6 +70,7 @@ interface IAdminOptions {
     path?: string;
     checks?: IAdminCheck[];
     checkTimeoutMs?: number;
+    migrations?: ReadonlyArray<IMigrationSet>;
     ui?: boolean;
     host?: string | string[];
     store?: IStoreAdapter;
@@ -185,5 +192,28 @@ interface IAdminTokenRecord {
     expiresAt: string | null;
     revokedAt: string | null;
     lastUsedAt: string | null;
+}
+
+type IMigrationSet = readonly [
+    name: string,
+    dir: string
+];
+
+interface IAdminPendingMigration {
+    file: string;
+    impact: MigrationImpact;
+    destructive: string[];
+}
+
+interface IAdminMigrationModule {
+    name: string;
+    pending: IAdminPendingMigration[];
+    blockedBy: string | null;
+    appliable: boolean;
+}
+
+interface IAdminMigrationsReport {
+    everApplied: boolean;
+    modules: IAdminMigrationModule[];
 }
 ```

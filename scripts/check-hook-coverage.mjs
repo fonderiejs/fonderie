@@ -118,6 +118,11 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin/routes', 'AdminClient.routes() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/access/tokens', 'AdminClient.tokens() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/activity/admin-log', 'AdminClient.adminLog() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/migrations', 'AdminClient.migrations() — prefix is configurable, invisible to the static match'],
+	[
+		'POST /_admin/migrations/:module/apply',
+		'AdminClient.applyMigrations() — prefix is configurable, invisible to the static match',
+	],
 	// @fonderie/auth's described user routes, reached through AuthAdminClient
 	// (+ react-admin / vue-admin hooks, which leg 1 verifies). Same prefix caveat.
 	['GET /_admin/users', 'AuthAdminClient.findUser() — prefix is configurable, invisible to the static match'],
