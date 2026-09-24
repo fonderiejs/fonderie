@@ -87,6 +87,19 @@ jobs:
       - run: npm test
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dump-handles.mjs
+          # Without this the handle dump from a HUNG task is never printed.
+          #
+          # turbo's --log-order defaults to `auto`, which is `grouped` in CI:
+          # a task's output is buffered and flushed WHEN THE COMMAND FINISHES.
+          # A task that hangs never finishes, so its buffer is never flushed —
+          # which is why every dump so far showed only `npm test` and `turbo
+          # test` (the two processes whose stderr goes straight to the job log)
+          # and never the package-level process actually holding things open.
+          #
+          # That absence was read for six release cycles as "every child has
+          # exited, so turbo holds a dead handle". The children were alive and
+          # instrumented; their output was simply in a buffer.
+          TURBO_LOG_ORDER: stream
       # Reference example apps (examples/*) are standalone — they pin the
       # published @fonderie/* packages so they stay Vercel-deployable. Here we
       # want THIS commit's code, so the pinned deps come out before the install
