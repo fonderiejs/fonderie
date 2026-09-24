@@ -1226,7 +1226,10 @@ test('@fonderie/config mounts alongside the console, in either order', async () 
 				`duplicate routes with order reversed=${reversed}`,
 			);
 			assert.ok(seen.includes('GET /_admin/environment'), 'the report is still served');
-			assert.ok(seen.includes('GET /_admin/config'), 'the config brick is mounted under the prefix');
+			assert.ok(
+				seen.includes('GET /_admin/config'),
+				'the config brick is mounted under the prefix',
+			);
 		} finally {
 			// boot() starts a TTL refresh interval. Leaving it running keeps the
 			// test process alive forever — which is precisely the failure that hung
@@ -1248,14 +1251,13 @@ test('the environment report does not squat on any config path', async () => {
 	// Both of these belong to @fonderie/config. Claiming EITHER makes that brick
 	// unmountable beside the console — the failure this rename exists to end —
 	// and turns the served UI's probe into a false positive all over again.
-	assert.equal(
-		paths.has('/_admin/config'),
-		false,
-		'/_admin/config must stay exclusive to @fonderie/config',
-	);
-	assert.equal(
-		paths.has('/_admin/secrets'),
-		false,
+	//
+	// Written as `assert.ok(!has(...))` rather than `assert.equal(has(...), false)`:
+	// in the latter the path reads as something we expect to find, and the
+	// negation sits on the next line where it is easy to miss.
+	assert.ok(!paths.has('/_admin/config'), '/_admin/config must stay exclusive to @fonderie/config');
+	assert.ok(
+		!paths.has('/_admin/secrets'),
 		'/_admin/secrets must stay exclusive to @fonderie/config — the served UI probes it',
 	);
 
