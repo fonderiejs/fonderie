@@ -127,7 +127,7 @@ test('concurrent drains never deliver the same event twice', { skip }, async () 
 				'claimed and then dropped, which is worse than a duplicate',
 		);
 	} finally {
-		await Promise.all([...transports, publisher].map((t) => t.stop?.()));
+		await Promise.all([...transports, publisher].map((t) => t.stop()));
 		await cleanup();
 	}
 });
@@ -215,7 +215,7 @@ test('a row abandoned mid-send is reclaimed, but only after its lease expires', 
 		await abandoned.catch(() => {});
 	} finally {
 		release?.();
-		await Promise.all(all.map((t) => t.stop?.()));
+		await Promise.all(all.map((t) => t.stop()));
 		await cleanup();
 	}
 });
@@ -277,7 +277,7 @@ test('an event published with no matching consumer is owed to nobody', { skip },
 			await store.end();
 		}
 	} finally {
-		await Promise.all([publisher, worker].map((t) => t.stop?.()));
+		await Promise.all([publisher, worker].map((t) => t.stop()));
 		await cleanup();
 	}
 });
