@@ -34,6 +34,132 @@ const write = (t: string): void => {
 	}
 };
 
+// ── Theme switcher ────────────────────────────────────────────────────────
+// Copied from the organisation UI's footer control (index.html .theme-switch),
+// markup and icons verbatim; its CSS lives in the served shell because the
+// selected pill is `:has(input:checked)`.
+//
+// Three states, and "System" is the absence of `data-theme` rather than a
+// resolved snapshot of the OS — so system mode keeps following the OS after a
+// sunset switch, and the CSS decides everything. localStorage (not session):
+// unlike the token, a display preference should outlive the tab, and it is not
+// a secret.
+//
+// The key is namespaced. The console can be mounted on the same origin as the
+// consumer's own app, and the bare `theme` key the organisation UI uses would
+// read and write THEIR preference — silently, and only in their app. Same
+// argument as the `--fonderie-*` prefix.
+type ThemeChoice = 'system' | 'light' | 'dark';
+const THEME_KEY = 'fonderie.admin.theme';
+
+const readTheme = (): ThemeChoice => {
+	try {
+		const v = window.localStorage.getItem(THEME_KEY);
+		return v === 'light' || v === 'dark' ? v : 'system';
+	} catch {
+		return 'system';
+	}
+};
+
+const applyTheme = (choice: ThemeChoice): void => {
+	if (choice === 'system') document.documentElement.removeAttribute('data-theme');
+	else document.documentElement.setAttribute('data-theme', choice);
+	try {
+		if (choice === 'system') window.localStorage.removeItem(THEME_KEY);
+		else window.localStorage.setItem(THEME_KEY, choice);
+	} catch {
+		/* private mode — the choice holds for this page */
+	}
+};
+
+const ICONS: Record<ThemeChoice, React.ReactElement> = {
+	system: (
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+		>
+			<rect x="2" y="3" width="20" height="14" rx="2" />
+			<path d="M8 21h8" />
+			<path d="M12 17v4" />
+		</svg>
+	),
+	light: (
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+		>
+			<circle cx="12" cy="12" r="4" />
+			<path d="M12 2v2" />
+			<path d="M12 20v2" />
+			<path d="m4.93 4.93 1.41 1.41" />
+			<path d="m17.66 17.66 1.41 1.41" />
+			<path d="M2 12h2" />
+			<path d="M20 12h2" />
+			<path d="m6.34 17.66-1.41 1.41" />
+			<path d="m19.07 4.93-1.41 1.41" />
+		</svg>
+	),
+	dark: (
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+		>
+			<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+		</svg>
+	),
+};
+
+const CHOICES: ReadonlyArray<readonly [ThemeChoice, string]> = [
+	['system', 'System'],
+	['light', 'Light'],
+	['dark', 'Dark'],
+];
+
+function ThemeSwitch() {
+	const [choice, setChoice] = useState<ThemeChoice>(readTheme);
+	return (
+		<fieldset className="theme-switch" aria-label="Theme switcher">
+			{CHOICES.map(([value, label]) => (
+				<label key={value} className="theme-switch__option" data-theme-value={value}>
+					<input
+						type="radio"
+						name="theme"
+						value={value}
+						checked={choice === value}
+						onChange={() => {
+							applyTheme(value);
+							setChoice(value);
+						}}
+					/>
+					{ICONS[value]}
+					<span>{label}</span>
+				</label>
+			))}
+		</fieldset>
+	);
+}
+
 // The gate is the FIRST thing an operator sees, before any screen loads, so it
 // carries the same tokens as everything behind it — a login that looks unlike
 // the product it guards is the one place a console cannot afford to look
@@ -51,7 +177,8 @@ const T = {
 };
 
 const styles: Record<string, React.CSSProperties> = {
-	gate: { maxWidth: 420, margin: '15vh auto', padding: 24, color: T.text },
+	// No bottom margin: the switcher sits directly under the form, not 15vh below it.
+	gate: { maxWidth: 420, margin: '15vh auto 0', padding: 24, color: T.text },
 	h1: { fontSize: 20, fontWeight: 600, marginBottom: 4, letterSpacing: T.tracking },
 	p: { color: T.muted, fontSize: 14, marginTop: 0 },
 	input: {
@@ -82,41 +209,51 @@ const styles: Record<string, React.CSSProperties> = {
 	bar: {
 		display: 'flex',
 		justifyContent: 'flex-end',
+		alignItems: 'center',
+		gap: 12,
 		padding: '6px 12px',
 		borderBottom: `1px solid ${T.border}`,
 		background: T.surface,
 	},
+	// The switcher sits outside the gate's <form>: its radios share the form's
+	// namespace otherwise, and a theme choice has no business in a submit.
+	gateFoot: { maxWidth: 420, margin: '0 auto', padding: '0 24px', textAlign: 'right' },
 };
 
 function Gate({ onToken, error }: { onToken: (t: string) => void; error: string | null }) {
 	const [value, setValue] = useState('');
 	return (
-		<form
-			style={styles.gate}
-			onSubmit={(e) => {
-				e.preventDefault();
-				if (value.trim()) onToken(value.trim());
-			}}
-		>
-			<h1 style={styles.h1}>Admin</h1>
-			<p style={styles.p}>
-				Paste an admin token. It is kept for this tab only and sent as a Bearer header — never
-				stored on the server. A <code>read</code>-scoped token is enough to look around and cannot
-				reveal secrets.
-			</p>
-			<input
-				type="password"
-				value={value}
-				onChange={(e) => setValue(e.target.value)}
-				placeholder="admin token"
-				style={styles.input}
-				aria-label="Admin token"
-			/>
-			{error ? <p style={styles.err}>{error}</p> : null}
-			<button type="submit" style={styles.button}>
-				Open
-			</button>
-		</form>
+		<>
+			<form
+				style={styles.gate}
+				onSubmit={(e) => {
+					e.preventDefault();
+					if (value.trim()) onToken(value.trim());
+				}}
+			>
+				<h1 style={styles.h1}>Admin</h1>
+				<p style={styles.p}>
+					Paste an admin token. It is kept for this tab only and sent as a Bearer header — never
+					stored on the server. A <code>read</code>-scoped token is enough to look around and cannot
+					reveal secrets.
+				</p>
+				<input
+					type="password"
+					value={value}
+					onChange={(e) => setValue(e.target.value)}
+					placeholder="admin token"
+					style={styles.input}
+					aria-label="Admin token"
+				/>
+				{error ? <p style={styles.err}>{error}</p> : null}
+				<button type="submit" style={styles.button}>
+					Open
+				</button>
+			</form>
+			<div style={styles.gateFoot}>
+				<ThemeSwitch />
+			</div>
+		</>
 	);
 }
 

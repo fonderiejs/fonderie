@@ -16,6 +16,24 @@
 // NO WEBFONT. The tokens name Inter first and fall through to the system stack,
 // but nothing is fetched: an admin console should not announce its existence to
 // a third party, and it has to work on an air-gapped deploy.
+// The dark palette, applied from two places: when the OS asks for it, and when
+// the operator asks for it explicitly. Declared once so the two cannot drift.
+const DARK = `
+--fonderie-accent:#00d294;
+--fonderie-accent-strong:#00e6a2;
+--fonderie-warning:#f5a623;
+--fonderie-danger:#f33;
+--fonderie-bg:#0a0a0a;
+--fonderie-surface:#111;
+--fonderie-surface-alt:#1a1a1a;
+--fonderie-border:#27272a;
+--fonderie-border-light:#1c1c1e;
+--fonderie-text:#ededed;
+--fonderie-text-muted:#a1a1aa;
+--fonderie-topbar:#0a0a0a;
+--fonderie-shadow-card:0 2px 3px 0 rgba(0,0,0,.3);
+`;
+
 const TOKENS = `
 :root{
 --fonderie-accent:#00d294;
@@ -38,21 +56,11 @@ const TOKENS = `
 --fonderie-radius-lg:8px;
 --fonderie-shadow-card:0 2px 3px 0 rgba(0,0,0,.05);
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
---fonderie-accent:#00d294;
---fonderie-accent-strong:#00e6a2;
---fonderie-warning:#f5a623;
---fonderie-danger:#f33;
---fonderie-bg:#0a0a0a;
---fonderie-surface:#111;
---fonderie-surface-alt:#1a1a1a;
---fonderie-border:#27272a;
---fonderie-border-light:#1c1c1e;
---fonderie-text:#ededed;
---fonderie-text-muted:#a1a1aa;
---fonderie-topbar:#0a0a0a;
---fonderie-shadow-card:0 2px 3px 0 rgba(0,0,0,.3);
-}}
+/* OS says dark, and the operator has not overridden it. */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${DARK}}}
+/* The operator chose dark, whatever the OS says. Without this rule "Dark" on a
+   light machine did nothing — the console could only ever follow the system. */
+:root[data-theme="dark"]{${DARK}}
 html,body{margin:0;padding:0}
 body{
 background:var(--fonderie-bg);
@@ -68,7 +76,62 @@ h1,h2,h3{letter-spacing:var(--fonderie-tracking-display);font-weight:600;line-he
 code,pre{font-family:var(--fonderie-mono)}
 /* Focus must stay visible on a console that performs irreversible actions. */
 :focus-visible{outline:2px solid var(--fonderie-accent);outline-offset:2px}
+
+/* Theme switcher — copied from the organisation UI (theme.css .theme-switch),
+   with --color-* mapped to --fonderie-*. It lives here rather than in inline
+   styles because the selected pill is expressed with :has(input:checked): the
+   radio is the state, so nothing in React has to style the label by hand. */
+.theme-switch{
+display:inline-flex;
+align-items:center;
+gap:0;
+border:1px solid var(--fonderie-border);
+border-radius:9999px;
+padding:3px;
+margin:0;
+background:var(--fonderie-bg);
+}
+.theme-switch__option{
+display:inline-flex;
+align-items:center;
+gap:4px;
+padding:4px 10px;
+border-radius:9999px;
+cursor:pointer;
+font-size:12px;
+color:var(--fonderie-text-muted);
+transition:background .15s,color .15s;
+white-space:nowrap;
+}
+.theme-switch__option input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.theme-switch__option:has(input:checked){
+background:var(--fonderie-surface);
+color:var(--fonderie-text);
+box-shadow:0 1px 2px rgba(0,0,0,.06);
+}
+/* :has() is wide but not universal. Without it every option reads as unselected
+   and the control looks broken, so keyboard focus alone must still show where
+   you are — this is the fallback that keeps it usable. */
+.theme-switch__option:focus-within{color:var(--fonderie-text)}
+.theme-switch__option svg{flex-shrink:0}
+.theme-switch__option span{line-height:1}
 `;
+
+// Applies a STORED theme before the first paint. Without it an operator who
+// chose light on a dark machine gets a dark flash on every load, which is the
+// specific thing a console cannot look like.
+//
+// "System" is the ABSENCE of the attribute, so this script does nothing in that
+// case and the media query above handles it — which also means system-mode
+// follows the OS live, with no listener. The organisation's own switcher
+// resolves system eagerly to a concrete value and writes it, so a machine that
+// flips to dark at sunset keeps the old theme until reload; this does not.
+//
+// Degrades correctly: if localStorage throws, or a consumer's CSP blocks the
+// inline script, no attribute is set and the console follows the system — the
+// default either way.
+const BOOT = `(function(){try{var t=localStorage.getItem('fonderie.admin.theme');` +
+	`if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}})()`;
 
 export const uiHtml = (scriptPath: string): string => `<!doctype html>
 <html lang="en">
@@ -79,6 +142,7 @@ export const uiHtml = (scriptPath: string): string => `<!doctype html>
 <meta name="color-scheme" content="light dark">
 <title>Admin</title>
 <style>${TOKENS}</style>
+<script>${BOOT}</script>
 </head>
 <body>
 <div id="root"></div>

@@ -36,3 +36,17 @@ themed.
 No webfont is fetched. The tokens name Inter first and fall through to the
 system stack, so an admin console does not announce its existence to a third
 party and still works on an air-gapped deploy.
+
+**Theme switcher.** The console offers System / Light / Dark, the same control
+as the organisation UI (markup, icons and CSS copied from its `.theme-switch`).
+Until now "dark" was decided entirely by the OS: there was no rule for forcing
+dark on a light machine and no way to opt out of dark on a dark one. The shell
+gains `:root[data-theme="dark"]` alongside the existing media query, and the
+choice is stored under a namespaced `fonderie.admin.theme` key — the bare
+`theme` key would read and write a host app's own preference on a shared origin.
+
+"System" is the *absence* of `data-theme`, not a snapshot of the OS resolved at
+click time, so system mode keeps following the machine when it flips at sunset
+rather than freezing until reload. An inline boot script applies a stored choice
+before first paint; if it is blocked or storage throws, the console falls back to
+system — the default either way.
