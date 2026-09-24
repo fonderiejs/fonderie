@@ -19,7 +19,22 @@
 
 import { execSync } from 'node:child_process';
 
-const DEADLINE_MS = Number(process.env['FONDERIE_HANDLE_DUMP_MS'] ?? 90_000);
+// MUST EXCEED THE LONGEST HONEST RUN, with margin before the job timeout.
+//
+// This was 90 s, chosen when the only observed runs were cache hits that
+// finish in seconds — so it never fired on a healthy run and looked correct.
+// It is not: a COLD suite (`--force`, or any cache miss) legitimately takes
+// 6–8½ minutes, and at 90 s the dumper reports a perfectly well process as
+// "STILL ALIVE … what turbo is waiting on". A bisect run proved it by
+// producing 18 such dumps across 15 jobs that all succeeded — noise that
+// reads exactly like evidence.
+//
+// 10 minutes clears the slowest measured honest run (serial, 8m34s uncached)
+// and still leaves 20 minutes before the 30-minute CI timeout, so a genuine
+// hang always dumps with room to spare. Raise this if the suite gets slower;
+// a dumper that cries wolf is worse than none, because the next real dump
+// gets skimmed past.
+const DEADLINE_MS = Number(process.env['FONDERIE_HANDLE_DUMP_MS'] ?? 600_000);
 
 // GNU procps first (the CI runner), BSD second (a developer's mac), so this can
 // be exercised locally instead of debugged for the first time in the CI run it

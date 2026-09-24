@@ -167,9 +167,11 @@ jobs:
         run: npm test -- --force ${{ matrix.args }}
         env:
           NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dump-handles.mjs
-          # Sooner than the 90 s default: these groups are small, so anything
-          # alive at 45 s is already what we are hunting.
-          FONDERIE_HANDLE_DUMP_MS: '45000'
+          # NO OVERRIDE. This used to force 45 s on the reasoning that "these
+          # groups are small" — but `serial` and `all` run 6–8½ minutes cold,
+          # and every group here runs --force, so the cache never shortens
+          # them. The result was 18 dumps across 15 jobs that all succeeded.
+          # The script's own default already clears the slowest honest run.
 
       # Only reached when the group did NOT hang. A group that hangs is killed
       # at the job timeout and never prints this, which is itself the signal.
