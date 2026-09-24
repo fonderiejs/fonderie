@@ -229,6 +229,39 @@ test('middleware: fail-open on store errors by default, fail-closed opt-in', asy
 	assert.equal((await closed(makeCtx({ ip: '1.2.3.4' }), async () => new Response('ok'))).status, 429);
 });
 
+// A broken limiter must be AUDIBLE. A consumer ran with the store's table
+// missing: every consume() threw, every request passed unthrottled, and
+// nothing distinguished that from a limiter working perfectly — the catch
+// discarded the error unbound. Fail-open is a policy; silent fail-open is a
+// brake that is off with the light out.
+test('middleware: a failing store is logged, loudly, whichever way it fails', async () => {
+	const broken = { consume: async () => { throw new Error('relation "fonderie_rate_limits" does not exist'); } };
+	const seen: string[] = [];
+	const real = console.error;
+	console.error = (...a: unknown[]) => { seen.push(a.map(String).join(' ')); };
+	try {
+		const open = rateLimit({ store: broken, rule: RULE, key: byIp('x') });
+		assert.equal((await open(makeCtx({ ip: '1.2.3.4' }), async () => new Response('ok'))).status, 200);
+		const closed = rateLimit({ store: broken, rule: RULE, key: byIp('x'), failClosed: true });
+		assert.equal((await closed(makeCtx({ ip: '5.6.7.8' }), async () => new Response('ok'))).status, 429);
+	} finally {
+		console.error = real;
+	}
+
+	assert.equal(seen.length, 2, 'both the open and closed paths report');
+	// The fail-OPEN line must say the request went unlimited — that is the fact
+	// an operator needs and the one the old code threw away.
+	assert.match(seen[0] ?? '', /\[rate-limit\]/);
+	assert.match(seen[0] ?? '', /FAILING OPEN/);
+	assert.match(seen[0] ?? '', /NOT limited/);
+	// The underlying cause has to survive, not just "something went wrong".
+	assert.match(seen[0] ?? '', /fonderie_rate_limits/);
+	// Fail-CLOSED still logs: the 429 tells the caller they were throttled,
+	// which is precisely what did not happen.
+	assert.match(seen[1] ?? '', /failing closed/);
+	assert.match(seen[1] ?? '', /fonderie_rate_limits/);
+});
+
 // ── hardening: hashed/bounded keys, IPv6 /64 ─────────────────────
 
 test('byBodyField: normalizes and produces a fixed-width hashed key', async () => {
