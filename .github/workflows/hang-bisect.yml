@@ -1,0 +1,112 @@
+# Bisect the turbo test hang. Run on demand — never on push.
+#
+# THE SYMPTOM: `npm test` finishes — every suite prints `pass N / fail 0` — and
+# then turbo never summarises. The job idles to its timeout and the test output
+# says nothing is wrong. It has cost a day of release cycles and hit twice in
+# two hours on 2026-09-24.
+#
+# WHAT IS ALREADY RULED OUT (do not re-test these):
+#   · tsx leaving an esbuild process behind — ran `tsx --test` locally, zero
+#     esbuild processes before or after
+#   · the turbo daemon — not running
+#   · the gated integration tests leaking a pool — billing, events and
+#     rate-limit all balance `new PGAdapter` against `.end()` in `finally`
+#   · a leaked pg.Pool in rate-limit's integration test — real, fixed in #415,
+#     and the hang RECURRED afterwards
+#
+# WHAT THE INSTRUMENTATION SAYS: at 90 s only two processes are alive —
+#   npm test    active: {"PipeWrap":3,"ProcessWrap":1}
+#   turbo test  active: {"ProcessWrap":1}
+# Both are supervisors. NO package-level test process dumps, and the last
+# suite has already printed its summary. So turbo holds a child handle while
+# every node child has exited.
+#
+# WHAT THIS ANSWERS: does the hang follow the ENV-GATED packages (the only
+# CI-versus-local difference), the rest of the suite, or neither?
+#
+#   gated   — the three packages whose tests only run when *_PG_URL is set
+#   rest    — everything else
+#   all     — control; must reproduce the hang or the split proves nothing
+#   serial  — everything, concurrency 1; if THIS is green the fault is a race
+#             in turbo's task teardown, not in any one package
+#
+# Read it by DURATION, not pass/fail: a green group that took ~12 minutes hung
+# and was killed; a green group that took 2 minutes did not. `fail-fast: false`
+# so one hang does not cancel the others.
+name: hang-bisect
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bisect:
+    runs-on: ubuntu-latest
+    # Well under the 30 used elsewhere: a hung group should report fast, and
+    # the whole point is the timeout, not the tests.
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: gated
+            args: --filter=@fonderie/rate-limit --filter=@fonderie/billing --filter=@fonderie/events
+          - group: rest
+            args: --filter=!@fonderie/rate-limit --filter=!@fonderie/billing --filter=!@fonderie/events
+          - group: all
+            args: ''
+          - group: serial
+            args: --concurrency=1
+          # auth alone. It has been the last suite to print a summary in all
+          # three hangs observed on 2026-09-24. That is CONSISTENT with it
+          # merely being the biggest suite (~3.3k-line smoke test) and so
+          # finishing last every time — but "consistent with" is not "ruled
+          # out", and dismissing it on a story rather than a measurement is
+          # how it stayed unexamined. If auth alone hangs, the story is wrong.
+          - group: auth-only
+            args: --filter=@fonderie/auth
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fonderie_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+
+    env:
+      RATE_LIMIT_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
+      RATE_LIMIT_REDIS_URL: redis://localhost:6379
+      BILLING_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
+      EVENTS_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build
+
+      # --force so turbo cannot replay a cached log: a cache hit would "pass"
+      # instantly and prove nothing about a hang.
+      - name: test (${{ matrix.group }})
+        run: npx turbo test --force ${{ matrix.args }}
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/dump-handles.mjs
+          # Dump sooner than the 90 s default — these groups are small, so
+          # anything alive at 45 s is already the thing we are hunting.
+          FONDERIE_HANDLE_DUMP_MS: '45000'
+
+      # Only reached when the group did NOT hang. A group that hangs is killed
+      # at the job timeout and never prints this, which is itself the signal.
+      - name: completed without hanging
+        run: echo "group '${{ matrix.group }}' finished on its own"
