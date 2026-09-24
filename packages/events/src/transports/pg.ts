@@ -72,9 +72,19 @@ interface Subscription {
 export class PGTransport implements IEventTransport {
 	private subscriptions: Subscription[] = [];
 	private listenClient: pg.Client | null = null;
-	private store!: IStoreAdapter;
+	private store: IStoreAdapter | undefined;
+	// The same object as `store`, held at its concrete type so stop() can close
+	// it. IStoreAdapter is query+transaction only — it has no lifecycle — so a
+	// pool reached through that interface cannot be released, and an optional
+	// `end?.()` would compile to a silent no-op the day it went missing. This
+	// field makes the close a checked call.
+	private ownedStore: PGAdapter | null = null;
 	private running = false;
 	private wakeResolvers: Array<() => void> = [];
+	// Held so stop() can WAIT for the loop instead of merely asking it to finish.
+	// Without this, stop() could return while a poll query was still in flight,
+	// and ending the pool underneath it races an active client.
+	private pollLoop: Promise<void> | null = null;
 
 	private readonly maxRetries: number;
 	private readonly batchSize: number;
@@ -97,6 +107,10 @@ export class PGTransport implements IEventTransport {
 	}
 
 	async publish(type: string, payload: unknown, meta: IEventMeta): Promise<void> {
+		// Unguarded, this was a bare "Cannot read properties of undefined" —
+		// before start(), and now also after stop(). Name the cause instead.
+		if (!this.store)
+			throw new Error('[events:pg] transport is not started — call start() before publish()');
 		const hmac = this.integrityKey
 			? computeEventHmac(this.integrityKey, { id: meta.id, type, payload, meta })
 			: null;
@@ -122,7 +136,8 @@ export class PGTransport implements IEventTransport {
 
 	async start(): Promise<void> {
 		this.running = true;
-		this.store = new PGAdapter(this.config.connectionUrl);
+		this.ownedStore = new PGAdapter(this.config.connectionUrl);
+		this.store = this.ownedStore;
 
 		// Producer-only: connected enough to publish, and nothing else. Starting
 		// the consumer here would open a LISTEN connection per instance — which a
@@ -153,14 +168,52 @@ export class PGTransport implements IEventTransport {
 			console.error('[events:pg] listen client error:', err.message),
 		);
 
-		this.runPollLoop().catch((err) => console.error('[events:pg] poll loop crashed:', err));
+		this.pollLoop = this.runPollLoop().catch((err) =>
+			console.error('[events:pg] poll loop crashed:', err),
+		);
 	}
 
+	/**
+	 * Release everything `start()` acquired. Must leave NOTHING holding the
+	 * event loop open, or a process that stops the bus never exits.
+	 *
+	 * It used to end the LISTEN client and stop there, leaking the connection
+	 * pool `start()` created — in every process, not just tests. That is what
+	 * hung CI: `npm test` finished, every suite printed `fail 0`, and turbo
+	 * waited forever on an events test process whose pools were still open. It
+	 * cost six release cycles and survived two bisects, because whether the
+	 * process eventually exits depends on an idle-timeout racing an in-flight
+	 * poll query — so it reproduced roughly three times a day and never once on
+	 * demand.
+	 *
+	 * Order matters: stop the loop, wait for it to actually finish, and only
+	 * then end the pool it was querying.
+	 */
 	async stop(): Promise<void> {
 		this.running = false;
 		this.wake();
+
+		// Wait for the loop to observe `running === false` and return. It cannot
+		// reject — runPollLoop's caller already caught — but it can still be
+		// mid-query, which is the case this await exists for.
+		await this.pollLoop;
+		this.pollLoop = null;
+
 		await this.listenClient?.end();
 		this.listenClient = null;
+
+		// The pool. `start()` assigns it unconditionally, including for
+		// producer-only transports that return before opening anything else, so
+		// this must run on that path too.
+		await this.ownedStore?.end();
+		this.ownedStore = null;
+
+		// Back to the pre-start state. The reads below guard on `!this.store`
+		// and are documented as safe to call unconditionally from a health
+		// route — leaving the field pointing at an ENDED pool would turn
+		// "return empty" into "throw", which is a worse regression than the
+		// leak for anything that polls health after shutdown.
+		this.store = undefined;
 	}
 
 	/**
@@ -277,13 +330,20 @@ export class PGTransport implements IEventTransport {
 	}
 
 	private async pollAllConsumers(): Promise<boolean> {
+		// Read the store ONCE per cycle and hand it down. stop() clears the
+		// field after awaiting this loop, so it is present here — but a future
+		// edit that reorders stop() would turn every `this.store.query` below
+		// into a crash inside a detached promise. Passing it means the check
+		// happens in one place and the rest cannot get it wrong.
+		const store = this.store;
+		if (!store) return false;
 		const consumers = [...new Set(this.subscriptions.map((s) => s.consumer))];
-		const results = await Promise.all(consumers.map((c) => this.pollConsumer(c)));
+		const results = await Promise.all(consumers.map((c) => this.pollConsumer(store, c)));
 		return results.some((n) => n > 0);
 	}
 
-	private async pollConsumer(consumer: string): Promise<number> {
-		const claimed = await this.store.query<{ event_id: string }>(
+	private async pollConsumer(store: IStoreAdapter, consumer: string): Promise<number> {
+		const claimed = await store.query<{ event_id: string }>(
 			// 'processing' rows older than the visibility timeout are claimable
 			// too: that is how work abandoned by a crashed instance comes back,
 			// without a blanket reset that cannot see who is still alive. The row
@@ -311,14 +371,18 @@ export class PGTransport implements IEventTransport {
 			[consumer, this.maxRetries, this.batchSize, this.claimTimeoutMs / 1000],
 		);
 
-		await Promise.all(claimed.map((row) => this.processConsumerEvent(consumer, row.event_id)));
+		await Promise.all(claimed.map((row) => this.processConsumerEvent(store, consumer, row.event_id)));
 		return claimed.length;
 	}
 
 	// ── Event processing ────────────────────────────────────────────
 
-	private async processConsumerEvent(consumer: string, eventId: string): Promise<void> {
-		const [event] = await this.store.query<IEventRecord>(
+	private async processConsumerEvent(
+		store: IStoreAdapter,
+		consumer: string,
+		eventId: string,
+	): Promise<void> {
+		const [event] = await store.query<IEventRecord>(
 			`SELECT type, payload, meta FROM fonderie_events WHERE id = $1`,
 			[eventId],
 		);
@@ -330,14 +394,14 @@ export class PGTransport implements IEventTransport {
 
 		try {
 			await Promise.all(handlers.map((h) => h(event.payload, event.meta)));
-			await this.store.query(
+			await store.query(
 				`UPDATE fonderie_event_consumers
 				 SET status = 'processed', processed_at = now()
 				 WHERE event_id = $1 AND consumer = $2`,
 				[eventId, consumer],
 			);
 		} catch (err) {
-			await this.store.query(
+			await store.query(
 				`UPDATE fonderie_event_consumers
 				 SET status = CASE WHEN attempts >= $1 THEN 'dead' ELSE 'failed' END,
 				     error  = $2
