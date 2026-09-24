@@ -17,10 +17,10 @@
     "changeset": "changeset",
     "version": "changeset version && npm run docs:brain",
     "release": "npm run build && changeset publish",
-    "docs:signatures": "node scripts/generate-signatures.mjs && node scripts/generate-outcomes.mjs",
-    "docs:brain": "node scripts/generate-brain.mjs && node scripts/generate-cli-data.mjs",
+    "docs:signatures": "npm run docs:signatures:index && npm run docs:signatures:outcomes",
+    "docs:brain": "npm run docs:brain:graph && npm run docs:brain:cli-data",
     "brain:serve": "node scripts/brain-serve.mjs",
-    "brain:test": "node scripts/brain-serve.test.mjs && npm run brain:completeness",
+    "brain:test": "npm run brain:serve:test && npm run brain:completeness",
     "brain:drift": "node experiments/r1-2026-07/drift.mjs",
     "brain:project": "node scripts/generate-project-brain.mjs",
     "brain:project-test": "node scripts/project-brain.test.mjs",
@@ -32,7 +32,12 @@
     "check:template-coverage": "node scripts/check-template-coverage.mjs",
     "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer",
     "check:hook-parity": "node scripts/check-hook-parity.mjs",
-    "brain:completeness": "node scripts/brain-completeness.test.mjs"
+    "brain:completeness": "node scripts/brain-completeness.test.mjs",
+    "docs:signatures:index": "node scripts/generate-signatures.mjs",
+    "docs:signatures:outcomes": "node scripts/generate-outcomes.mjs",
+    "docs:brain:graph": "node scripts/generate-brain.mjs",
+    "docs:brain:cli-data": "node scripts/generate-cli-data.mjs",
+    "brain:serve:test": "node scripts/brain-serve.test.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
