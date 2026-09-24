@@ -1172,3 +1172,46 @@ test('migrations: routes do not exist when the app hands over no migration sets'
 		404,
 	);
 });
+
+// ---------------------------------------------------------------------------
+// The served UI decides which pages to offer by probing the manifest for a
+// path. That probe MUST use a path the probed brick uniquely owns.
+//
+// It did not. The config page probed `/config` — which THIS module registers
+// itself, as the declared-vs-held report. So on a deployment WITHOUT
+// @fonderie/config the probe was true, the shell built a ConfigAdminClient,
+// and listConfig() fetched /_admin/config successfully and got admin's report
+// OBJECT where it expected an ARRAY of config entries. The page died on
+// `entries.map(...)` with "a.map is not a function", while /_admin/secrets
+// 404'd beside it. A 200 carrying the wrong shape is worse than a 404 —
+// nothing reports it.
+// ---------------------------------------------------------------------------
+
+test('the UI config probe: /config is OURS, /secrets is the config brick — do not confuse them', async () => {
+	const app = new FonderieApp(config);
+	app.register(new AdminModule({ adminToken: TOKEN }));
+	await app.boot();
+
+	const paths = new Set(app.routes().map((r) => r.path));
+
+	// We own this. Probing it to detect @fonderie/config is a FALSE POSITIVE on
+	// every deployment, which is exactly the bug.
+	assert.ok(paths.has('/_admin/config'), '@fonderie/admin must still own /_admin/config');
+
+	// We must NOT own this — it is what makes it a sound probe for the config
+	// brick. If a future route here claims it, the served UI starts offering a
+	// page for a brick that is not installed, all over again.
+	assert.equal(
+		paths.has('/_admin/secrets'),
+		false,
+		'/_admin/secrets must stay exclusive to @fonderie/config — the served UI probes it',
+	);
+
+	// And the shape that made the collision silent: our /_admin/config answers
+	// with an OBJECT, never the array a config-entry list would return.
+	const res = await get(app, '/_admin/config', TOKEN);
+	assert.equal(res.status, 200);
+	const { result } = (await res.json()) as { result: unknown };
+	assert.equal(Array.isArray(result), false, 'admin config report is an object, not a list');
+	assert.ok(result && typeof result === 'object' && 'env' in result);
+});

@@ -139,6 +139,20 @@ function App() {
 	// Which pages to show is a question the manifest already answers: a brick
 	// that mounted nothing has no route here, so its client is never built and
 	// the shell hides the page.
+	//
+	// Probe a path the BRICK ALONE owns. `/config` looked like the obvious probe
+	// for @fonderie/config and is exactly wrong: THIS module registers
+	// `/_admin/config` itself (the declared-vs-held report), so the probe was
+	// true on every deployment. The shell then built a ConfigAdminClient, showed
+	// "Config & secrets", and listConfig() fetched /_admin/config successfully —
+	// receiving admin's report OBJECT where it expected an ARRAY of entries.
+	// `entries.map(...)` threw "a.map is not a function" and the page died,
+	// while /_admin/secrets (which only the config brick serves) 404'd beside it.
+	// A 200 with the wrong shape is worse than a 404: nothing reports it.
+	//
+	// So the config probe below is '/secrets', which ONLY @fonderie/config
+	// serves. Any future probe needs the same test: does this module register
+	// the path itself?
 	const mounted = new Set(manifest.routes.map((r) => r.path));
 	const has = (suffix: string) => mounted.has(`${PREFIX}${suffix}`);
 	const opts = { baseUrl: window.location.origin, adminToken: token, prefix: PREFIX };
@@ -160,7 +174,7 @@ function App() {
 			</div>
 			<AdminShell
 				client={new AdminClient(opts)}
-				{...(has('/config') ? { configClient: new ConfigAdminClient(opts) } : {})}
+				{...(has('/secrets') ? { configClient: new ConfigAdminClient(opts) } : {})}
 				{...(has('/templates') ? { courierClient: new CourierAdminClient(opts) } : {})}
 				{...(has('/users') ? { authClient: new AuthAdminClient(opts) } : {})}
 				{...(has('/catalog') ? { billingClient: new BillingAdminClient(opts) } : {})}
