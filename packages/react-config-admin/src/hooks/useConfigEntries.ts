@@ -23,7 +23,19 @@ export function useConfigEntries(
 		setIsLoading(true);
 		setError(null);
 		try {
+			// A 200 does not guarantee the SHAPE. /_admin/config is owned by
+			// @fonderie/admin (its declared-vs-held report, an object) while this
+			// client expects the config brick's array of entries — so a deployment
+			// without @fonderie/config answered 200 with an object and the screen
+			// died on `.map`. Refuse the wrong shape here, where it can be reported,
+			// rather than handing a non-array to a component typed for one.
 			const { result } = await client.listConfig(environment);
+			if (!Array.isArray(result))
+				throw new FonderieApiError(
+					'UNEXPECTED_SHAPE',
+					'Config list returned an unexpected shape — is @fonderie/config mounted at this prefix?',
+					200,
+				);
 			setEntries(result);
 		} catch (err) {
 			const apiError =
