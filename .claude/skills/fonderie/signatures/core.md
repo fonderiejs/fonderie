@@ -105,6 +105,7 @@ interface IFonderieModule {
     deps?: string[];
     install(app: IFonderieApp): void | Promise<void>;
     checkReadiness?(): IReadinessProblem[];
+    stop?(): void | Promise<void>;
     describeAdmin?(): IAdminDescription;
 }
 
@@ -190,6 +191,7 @@ new FonderieApp(config: FonderieConfig): FonderieApp
   .register(module: IFonderieModule): FonderieApp
   .checkProductionReadiness(): IReadinessReport
   .securityReport(): ISecurityReport
+  .shutdown(): Promise<void>
   .adminDescriptions(): IAdminDescriptionEntry[]
   .boot(): Promise<FonderieApp>
   .buildContext(request: Request): Promise<IFonderieContext>

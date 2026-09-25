@@ -201,6 +201,22 @@ export interface IFonderieModule {
 	// Optional: report production-readiness problems with this module's config.
 	// Modules opt in; `FonderieApp.checkProductionReadiness` aggregates them.
 	checkReadiness?(): IReadinessProblem[];
+	/**
+	 * Optional: release everything install() acquired — intervals, pools,
+	 * listening sockets, LISTEN clients. `FonderieApp.shutdown()` calls it.
+	 *
+	 * A module that acquires a resource and offers no way to release it keeps
+	 * the process alive after shutdown, with no error and no output. That is
+	 * not hypothetical: it hung this repo's CI for six release cycles
+	 * (@fonderie/events), and @fonderie/webhooks had already grown a private
+	 * `stop()` for the same reason with nothing to call it. This is that
+	 * convention, made part of the interface so there is one name for it and
+	 * the app does not have to know which bricks invented their own.
+	 *
+	 * Must be idempotent: shutdown() may be called more than once, and a
+	 * SIGTERM handler often races an explicit call.
+	 */
+	stop?(): void | Promise<void>;
 	// Optional: what this module offers the admin surface. Read before any
 	// install() runs, so derive it from constructor state only.
 	describeAdmin?(): IAdminDescription;

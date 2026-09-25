@@ -40,6 +40,18 @@ export class ConfigModule implements IFonderieModule {
 		}
 	}
 
+	/**
+	 * Stop the manager's TTL refresh interval and its LISTEN client.
+	 *
+	 * boot() starts both; without this the interval keeps the process alive
+	 * after shutdown. `.manager.stop()` was always reachable, but an app had to
+	 * know to reach inside a brick to find it — which is exactly how this gets
+	 * missed. Idempotent: RemoteConfigManager.stop() clears only what is set.
+	 */
+	stop(): void {
+		this.manager.stop();
+	}
+
 	describeAdmin(): IAdminDescription {
 		return { routes: describeAdminRoutes(this.store, this.options.secretEncryptor) };
 	}
