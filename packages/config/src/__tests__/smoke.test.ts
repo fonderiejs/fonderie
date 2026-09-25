@@ -659,3 +659,100 @@ test('describeAdmin: ConfigModule exposes it from constructor state', async () =
 	assert.equal(routes.length, 13);
 	assert.ok(routes.some((r) => r.method === 'POST' && r.path === '/secrets/:key/reveal'));
 });
+
+// ── key rotation ────────────────────────────────────────────────────────
+//
+// Without this, CONFIG_SECRET_KEY is permanent: values are AES-GCM ciphertext
+// under it, so changing the key destroys every secret and losing it makes them
+// unrecoverable. A leaked key or a rotation policy should not be a one-way door.
+
+// A store double that behaves like Postgres for the two tables rotation touches.
+function rotationStore(secrets: Array<{ id: string; value: string }>, revisions: Array<{ key: string; environment: string; version: number; value: string }>) {
+	const store = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			if (/SELECT id, value FROM fonderie_secrets/.test(sql)) return secrets as unknown as T[];
+			if (/FROM fonderie_secret_revisions FOR UPDATE/.test(sql)) return revisions as unknown as T[];
+			if (/UPDATE fonderie_secrets SET value/.test(sql)) {
+				const row = secrets.find((r) => r.id === params[1]);
+				if (row) row.value = params[0] as string;
+				return [] as T[];
+			}
+			if (/UPDATE fonderie_secret_revisions SET value/.test(sql)) {
+				const row = revisions.find(
+					(r) => r.key === params[1] && r.environment === params[2] && r.version === params[3],
+				);
+				if (row) row.value = params[0] as string;
+				return [] as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
+	};
+	return store as never;
+}
+
+test('rotateSecretKey: re-encrypts secrets AND revisions, and the new key reads them', async () => {
+	const { rotateSecretKey } = await import('../services/rotate');
+	const { createAesGcmEncryptor } = await import('../crypto');
+	const oldKey = createAesGcmEncryptor('a'.repeat(64));
+	const newKey = createAesGcmEncryptor('b'.repeat(64));
+
+	const secrets = [{ id: 's1', value: oldKey.encrypt('live-value') }];
+	// Revisions hold ciphertext too. A rotation that skipped them would look
+	// like it worked — every reveal would succeed — while silently destroying
+	// every rollback target.
+	const revisions = [
+		{ key: 'k', environment: 'all', version: 1, value: oldKey.encrypt('older-value') },
+		{ key: 'k', environment: 'all', version: 2, value: oldKey.encrypt('newer-value') },
+	];
+
+	const report = await rotateSecretKey(rotationStore(secrets, revisions), oldKey, newKey);
+	assert.deepEqual(report, { secrets: 1, revisions: 2 });
+
+	assert.equal(newKey.decrypt(secrets[0]!.value), 'live-value');
+	assert.equal(newKey.decrypt(revisions[0]!.value), 'older-value', 'rollback targets must survive');
+	assert.equal(newKey.decrypt(revisions[1]!.value), 'newer-value');
+
+	// And the old key no longer opens them — otherwise nothing was rotated.
+	assert.throws(() => oldKey.decrypt(secrets[0]!.value));
+});
+
+test('rotateSecretKey: a wrong old key aborts having written NOTHING', async () => {
+	const { rotateSecretKey } = await import('../services/rotate');
+	const { createAesGcmEncryptor } = await import('../crypto');
+	const realOld = createAesGcmEncryptor('a'.repeat(64));
+	const wrongOld = createAesGcmEncryptor('c'.repeat(64));
+	const newKey = createAesGcmEncryptor('b'.repeat(64));
+
+	const secrets = [{ id: 's1', value: realOld.encrypt('one') }];
+	const revisions = [{ key: 'k', environment: 'all', version: 1, value: realOld.encrypt('two') }];
+	const before = [secrets[0]!.value, revisions[0]!.value];
+
+	await assert.rejects(
+		() => rotateSecretKey(rotationStore(secrets, revisions), wrongOld, newKey),
+		(err: Error) =>
+			/rotation aborted/.test(err.message) &&
+			/OLD key/.test(err.message) &&
+			/fonderie_secrets id=s1/.test(err.message),
+		'the error must name the row and say nothing was written',
+	);
+
+	// The whole point: a half-rotated table is unrecoverable once the old key
+	// is discarded, so failure must leave every value untouched.
+	assert.deepEqual([secrets[0]!.value, revisions[0]!.value], before);
+	assert.equal(realOld.decrypt(secrets[0]!.value), 'one', 'still readable with the real old key');
+});
+
+test('rotateSecretKey: running it twice refuses rather than double-encrypting', async () => {
+	const { rotateSecretKey } = await import('../services/rotate');
+	const { createAesGcmEncryptor } = await import('../crypto');
+	const oldKey = createAesGcmEncryptor('a'.repeat(64));
+	const newKey = createAesGcmEncryptor('b'.repeat(64));
+	const secrets = [{ id: 's1', value: oldKey.encrypt('v') }];
+
+	await rotateSecretKey(rotationStore(secrets, []), oldKey, newKey);
+	// Second run: the values no longer decrypt under `from`. Refusing is the
+	// safe direction — double-encrypting would be silent and unrecoverable.
+	await assert.rejects(() => rotateSecretKey(rotationStore(secrets, []), oldKey, newKey), /rotation aborted/);
+	assert.equal(newKey.decrypt(secrets[0]!.value), 'v', 'the first rotation still stands');
+});

@@ -115,6 +115,13 @@ const noopEncryptor: ISecretEncryptor
 
 function createAesGcmEncryptor(keyHex: string): ISecretEncryptor
 
+function rotateSecretKey(store: IStoreAdapter, from: ISecretEncryptor, to: ISecretEncryptor): Promise<IRotationReport>
+
+interface IRotationReport {
+    secrets: number;
+    revisions: number;
+}
+
 interface ISecretEncryptor {
     encrypt(plain: string): string;
     decrypt(cipher: string): string;
