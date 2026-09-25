@@ -1,5 +1,12 @@
 # @fonderie/admin
 
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies [8e89e7e]
+  - @fonderie/core@0.21.0
+
 ## 1.0.0
 
 ### Major Changes

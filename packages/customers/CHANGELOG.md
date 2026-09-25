@@ -1,5 +1,12 @@
 # @fonderie/customers
 
+## 6.2.15
+
+### Patch Changes
+
+- Updated dependencies [8e89e7e]
+  - @fonderie/core@0.21.0
+
 ## 6.2.14
 
 ### Patch Changes
