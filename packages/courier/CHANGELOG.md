@@ -1,5 +1,12 @@
 # @fonderie/courier
 
+## 7.9.3
+
+### Patch Changes
+
+- Updated dependencies [8e89e7e]
+  - @fonderie/core@0.21.0
+
 ## 7.9.2
 
 ### Patch Changes
