@@ -8,7 +8,27 @@ Ordered by what it costs to leave undone, not by effort.
 
 ---
 
-## 0. UNVERIFIED — confirm LeadEasyGen actually booted
+## 0. ~~UNVERIFIED — confirm LeadEasyGen actually booted~~ ✅ CLOSED 2026-09-25
+
+Verified live against `api.leadeasygen.com`:
+
+```
+/readyz               {"status":"ready","dependencies":true}
+/_admin/ui            200   themed shell, 4294 bytes, 0 external font fetches
+/_admin/ui/app.js     200   65 token refs, switcher present, 0 stray hex
+/_admin/environment   401   EXISTS ⇒ the admin 1.0.0 rename is deployed
+/_admin/secrets       401   EXISTS ⇒ ConfigModule registered and mounted
+```
+
+The two decisive ones are the 401s. `/_admin/environment` answering 401 rather
+than 404 proves the rename shipped; `/_admin/secrets` answering at all proves
+`ConfigModule` registered — which can only happen if `CONFIG_SECRET_KEY` was
+valid *and* the boot-time table read succeeded. That was the risk; it is clear.
+
+The host is not recorded in the repo (only the env var *name*); it was found by
+probing `leadeasygen-api.vercel.app` and `api.leadeasygen.com`.
+
+<details><summary>Original item, kept for the reasoning</summary>
 
 **Do this before anything else.** `543a500` registers `ConfigModule`, and its
 manager reads `fonderie_config` **during boot**, before any route is served. If
@@ -24,9 +44,26 @@ deployed console since the merge.
 - **If it 500s:** revert `543a500` (the wiring). The schema commit beneath it
   (`af420f6`) is inert — it only adds three unused tables.
 
+</details>
+
 ---
 
-## 1. Nothing calls `app.shutdown()`
+## 1. ~~Nothing calls `app.shutdown()`~~ ✅ CLOSED 2026-09-25
+
+The LeadEasyGen worker (`leadeasygen-api@c4e6057`) now holds its `FonderieApp`
+and calls `app.shutdown()` during SIGTERM, ahead of the existing explicit
+teardown. It had been building the app, booting it and discarding the
+reference — correct for what it named, silently wrong for anything it did not.
+
+Order: `shutdown()` first (it takes the notification bus down via
+`EventsModule.stop()`), then the existing loop for the scrape bus, which belongs
+to no app. Both idempotent, which the double-SIGTERM path already relied on.
+
+Still true and worth knowing for the next consumer:
+
+<details><summary>Original item</summary>
+
+## Nothing calls `app.shutdown()`
 
 `@fonderie/core` 0.21.0 shipped `IFonderieModule.stop?()` and
 `FonderieApp.shutdown()`, and **no code anywhere calls it.** A shutdown contract
@@ -45,6 +82,8 @@ not a grep:
 **Where it actually matters:** the LeadEasyGen **scrape worker on Cloud Run**,
 which really does receive SIGTERM. The API on Vercel never shuts down cleanly,
 so it gains nothing.
+
+</details>
 
 `examples/leadeasygen/microservices/api/src/worker.ts:243` already has a
 `shutdown(signal)` handler with a forced-exit timeout, wired to SIGINT/SIGTERM.
