@@ -81,3 +81,10 @@ docs/BENCHMARKING.md
 # public repository of its own. Ignored (not just excluded) so `git add -A`
 # cannot pull it in and `git clean -fd` cannot delete it.
 examples/saas-starter/
+
+# Local agent/tool settings. NOT tracked: these hold provider tokens in
+# plaintext, and this one sits at the repo root where `git add -A` would sweep
+# it into a commit — after which gitleaks scans history forever.
+settings.local.json
+**/settings.local.json
+.claude/settings.local.json
