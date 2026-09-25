@@ -224,3 +224,47 @@ test('explainListenFailure survives a non-Error', async () => {
 	assert.match(explainListenFailure('plain string'), /plain string/);
 	assert.match(explainListenFailure(undefined), /transaction-mode pooler/);
 });
+
+// ── stop() must always complete ────────────────────────────────────
+//
+// THE CI HANG, PINNED. stop() awaited the pass in flight unconditionally, so a
+// drain that never settled froze it there — BEFORE the server was closed. The
+// listening handle then held the process open with no error and no output:
+// every suite printed `fail 0` and the runner never exited.
+//
+// The dump from a hung CI run named this file and this signature:
+//   worker.test.ts  active: {"PipeWrap":2,"TCPServerWrap":1}
+// A stalled drain reproduces it byte for byte — one PipeWrap pair for stdio,
+// one listening server that stop() never reached.
+//
+// A drain CAN stall in production: a query against a pooler that has gone
+// away, a handler awaiting a promise nobody resolves. Waiting for the pass is
+// a courtesy to rows that would otherwise sit in 'processing' until their
+// lease expires; it is not worth never shutting down for.
+test('stop() completes even when a drain never settles, and releases the port', async () => {
+	const bus = {
+		start: async () => {},
+		stop: async () => {},
+		drain: () => new Promise<void>(() => {}), // never settles
+		transport: {},
+	} as unknown as EventBus;
+
+	const handle = await runWorker(bus, { port: 0, secret: 's3cret', intervalMs: 0 });
+	const port = handle.port!;
+
+	const outcome = await Promise.race([
+		handle.stop().then(() => 'stopped' as const),
+		new Promise<'hung'>((r) => setTimeout(() => r('hung'), 20_000)),
+	]);
+	assert.equal(outcome, 'stopped', 'a stalled drain must not freeze shutdown');
+
+	// And the socket is actually released — the listening handle is what kept
+	// the process alive, so "stop() returned" is not on its own enough.
+	const { connect } = await import('node:net');
+	const refused = await new Promise<boolean>((resolve) => {
+		const s = connect(port, '127.0.0.1');
+		s.once('connect', () => { s.destroy(); resolve(false); });
+		s.once('error', () => resolve(true));
+	});
+	assert.equal(refused, true, 'the port must be closed, not merely abandoned');
+});
