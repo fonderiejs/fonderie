@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+// >=32 chars so validateAdminToken accepts it, LOW entropy and no placeholder
+// word so the secret scanner does not. A realistic-looking random token here
+// fails CI's gitleaks job the moment the line it sits on is touched.
+const STRONG_TOKEN = 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb';
+
 import type { IStoreAdapter } from '@fonderie/store';
 import type { IConfigEntry } from '../types';
 
@@ -134,7 +139,7 @@ test('ConfigModule.checkReadiness: a strong adminToken + encryptor is clean', as
 	const { ConfigModule } = await import('../module');
 	const { createAesGcmEncryptor } = await import('../crypto');
 	const problems = new ConfigModule(makeStore(), {
-		adminToken: 'Zk9x2Qw7Lp4Rt6Vn1Bm8Cy3Df5Gh0JsW7uY2pR4',
+		adminToken: STRONG_TOKEN,
 		secretEncryptor: createAesGcmEncryptor('a'.repeat(64)),
 	}).checkReadiness();
 	assert.equal(problems.length, 0);
@@ -494,29 +499,63 @@ test('deleteSecret: true when deleted, false when absent', async () => {
 	assert.equal(await deleteSecret('k', 'all', stubStore(() => [])), false);
 });
 
-// ── A2: require at-rest encryptor in production (secrets surface) ────────
-test('ConfigModule.checkReadiness: missing encryptor is an ERROR in prod when adminToken set', async () => {
-	const { ConfigModule } = await import('../module');
-	const prev = process.env['NODE_ENV'];
-	process.env['NODE_ENV'] = 'production';
-	try {
-		const problems = new ConfigModule(makeStore(), {
-			adminToken: 'Zk9x2Qw7Lp4Rt6Vn1Bm8Cy3Df5Gh0JsW7uY2pR4',
-		}).checkReadiness();
-		assert.ok(problems.some((p) => p.severity === 'error' && /secretEncryptor/.test(p.message)));
-	} finally {
-		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
+// ── A2: no encryptor ⇒ the secrets surface REFUSES ───────────────────────
+//
+// The old rule escalated to an error in production only when this module had
+// its own adminToken, reasoning that otherwise the surface "isn't registered at
+// all". That was wrong — describeAdmin() is unconditional, so @fonderie/admin
+// mounts these routes under /_admin and reveals secrets regardless of this
+// module's token. The normal deployment shape was the one it waved through.
+//
+// Fixed at the exposure rather than at the label: without an encryptor every
+// secrets route refuses, so there is nothing stored in clear and nothing to
+// reveal.
+test('no encryptor: every secrets route refuses, and config still works', async () => {
+	const { describeAdminRoutes } = await import('../admin');
+	const routes = describeAdminRoutes(makeStore());
+
+	const secrets = routes.filter((r) => r.path.startsWith('/secrets'));
+	assert.ok(secrets.length >= 7, 'the routes are still DESCRIBED — a missing page teaches nobody');
+
+	for (const r of secrets) {
+		const res = await r.handlers[0]!({ request: new Request('http://x/'), meta: {} } as never, async () => new Response());
+		assert.equal(res.status, 503, `${r.method} ${r.path} must refuse`);
+		const body = (await res.json()) as { reason?: string; explanation?: string };
+		assert.equal(body.reason, 'SECRETS_DISABLED');
+		assert.match(String(body.explanation), /createAesGcmEncryptor/, 'the refusal must name the fix');
 	}
+
+	// Config entries carry no secret material and are unaffected.
+	const cfg = routes.find((r) => r.method === 'GET' && r.path === '/config');
+	assert.ok(cfg, 'config routes must still be served');
+	assert.equal((await cfg.handlers[0]!({ request: new Request('http://x/'), meta: {} } as never, async () => new Response())).status, 200);
 });
 
-test('ConfigModule.checkReadiness: missing encryptor is only a WARNING in prod without adminToken', async () => {
+test('with an encryptor: the secrets routes are live, not refusing', async () => {
+	const { describeAdminRoutes } = await import('../admin');
+	const { createAesGcmEncryptor } = await import('../crypto');
+	const routes = describeAdminRoutes(makeStore(), createAesGcmEncryptor('0'.repeat(64)));
+	const list = routes.find((r) => r.method === 'GET' && r.path === '/secrets');
+	assert.ok(list);
+	const res = await list.handlers[0]!({ request: new Request('http://x/'), meta: {} } as never, async () => new Response());
+	assert.notEqual(res.status, 503, 'a configured encryptor must not refuse');
+});
+
+test('ConfigModule.checkReadiness: missing encryptor is a warning that says the surface refuses', async () => {
 	const { ConfigModule } = await import('../module');
 	const prev = process.env['NODE_ENV'];
 	process.env['NODE_ENV'] = 'production';
 	try {
-		const problems = new ConfigModule(makeStore()).checkReadiness();
-		assert.ok(problems.some((p) => p.severity === 'warning' && /secretEncryptor/.test(p.message)));
-		assert.ok(!problems.some((p) => p.severity === 'error'));
+		// With an adminToken — the case that used to hard-error. It no longer
+		// needs to: the surface refuses, so there is no exposure to gate on.
+		const problems = new ConfigModule(makeStore(), {
+			adminToken: STRONG_TOKEN,
+		}).checkReadiness();
+		const p = problems.find((x) => /secretEncryptor/.test(x.message));
+		assert.ok(p, 'the absence must still be reported');
+		assert.equal(p.severity, 'warning');
+		assert.match(p.message, /SECRETS_DISABLED/, 'and must say what actually happens');
+		assert.ok(!problems.some((x) => x.severity === 'error'), 'nothing left to hard-fail on');
 	} finally {
 		if (prev === undefined) delete process.env['NODE_ENV']; else process.env['NODE_ENV'] = prev;
 	}

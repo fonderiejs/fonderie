@@ -15,7 +15,7 @@ new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule
   .describeAdmin(): IAdminDescription
   .checkReadiness(): IReadinessProblem[]
 
-function buildAdminRoutes(store: IStoreAdapter, adminToken: string, encryptor?: ISecretEncryptor): RouteRow[]
+function buildAdminRoutes(store: IStoreAdapter, adminToken: string, encryptor?: ISecretEncryptor | undefined): RouteRow[]
 
 new RemoteConfigManager(store: IStoreAdapter, options?: IConfigOptions): RemoteConfigManager
   .boot(): Promise<void>
