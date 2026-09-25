@@ -27,5 +27,10 @@ export {
 } from './services/secrets';
 export type { ISecretEntry, ISecretRevision } from './types';
 export { noopEncryptor, createAesGcmEncryptor } from './crypto';
+// Key rotation. Deliberately a library call and not an admin route: rotating
+// needs the NEW key, and putting a fresh master key in a request body sends it
+// through every log and proxy in front of the surface.
+export { rotateSecretKey } from './services/rotate';
+export type { IRotationReport } from './services/rotate';
 export type { ISecretEncryptor } from './crypto';
 export type { IConfigOptions } from './config';
