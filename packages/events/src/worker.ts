@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 
 import type { EventBus } from './bus';
@@ -104,6 +104,60 @@ export interface IWorkerHandle {
  * done but the process never exits, and a job platform records a timeout for a
  * run that actually succeeded.
  */
+// `server.close()` stops ACCEPTING connections; it does not settle until every
+// existing one has ended. An HTTP/1.1 keep-alive socket is "existing" while it
+// sits idle, so a client that made one request and kept the connection warm
+// holds the callback open indefinitely — and with it the listening handle, the
+// `stop()` promise, and the process.
+//
+// That is a hang with no error and no output: the suite prints `fail 0`, the
+// runner never exits, and whatever supervises it waits forever. In CI the
+// handle dump caught exactly this shape in worker.test.ts —
+// `active: {"PipeWrap":2,"TCPServerWrap":1}` — a listening server outliving a
+// test that does call stop(). It does not reproduce on a developer machine,
+// because whether undici has already dropped the socket is a timing race.
+//
+// closeIdleConnections() releases the keep-alives, which is the common case and
+// costs nothing in flight. The deadline then covers the rest: a graceful close
+// is attempted first, and anything still attached after it is severed rather
+// than allowed to hang shutdown forever. Shutdown that cannot finish is worse
+// than a request that does not.
+// How long stop() waits for a pass in flight before abandoning it. Long enough
+// for a normal drain to finish, short enough that shutdown always completes.
+const STOP_GRACE_MS = 10_000;
+
+// Resolve when `work` does, or when the deadline passes — whichever is first.
+// The timer is unref'd so it can never be the thing keeping a process alive.
+async function withDeadline(work: Promise<unknown> | undefined, ms: number): Promise<void> {
+	if (!work) return;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	await Promise.race([
+		work,
+		new Promise<void>((resolve) => {
+			timer = setTimeout(resolve, ms);
+			timer.unref?.();
+		}),
+	]);
+	if (timer) clearTimeout(timer);
+}
+
+const CLOSE_GRACE_MS = 5_000;
+
+async function closeServer(server: Server): Promise<void> {
+	server.closeIdleConnections();
+	const closed = new Promise<void>((resolve) => server.close(() => resolve()));
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const deadline = new Promise<'timeout'>((resolve) => {
+		timer = setTimeout(() => resolve('timeout'), CLOSE_GRACE_MS);
+		timer.unref?.();
+	});
+	if ((await Promise.race([closed.then(() => 'closed' as const), deadline])) === 'timeout') {
+		server.closeAllConnections();
+		await closed;
+	}
+	if (timer) clearTimeout(timer);
+}
+
 export async function runWorker(
 	buses: EventBus | EventBus[],
 	options: IRunWorkerOptions = {},
@@ -230,8 +284,20 @@ export async function runWorker(
 		// so abandoning mid-drain is the normal case, not an edge one: the rows
 		// would stay 'processing' until their lease expires, delaying delivery
 		// for no reason.
-		await inFlight?.catch(() => {});
-		if (server) await new Promise<void>((r) => server.close(() => r()));
+		//
+		// BOUNDED, because this await used to be unconditional and a drain that
+		// never settles — a query against a pooler that has gone away, a handler
+		// waiting on a promise nobody resolves — froze stop() here, BEFORE the
+		// server was closed. The listening handle then kept the process alive
+		// with no error and no output.
+		//
+		// That is the CI hang. The dump from a hung run showed this exact
+		// signature in worker.test.ts, `{"PipeWrap":2,"TCPServerWrap":1}`, and a
+		// stalled drain reproduces it byte for byte. Waiting for the pass is a
+		// courtesy to rows that would otherwise sit in 'processing'; it is not
+		// worth never shutting down for, and the lease already covers the case.
+		await withDeadline(inFlight?.catch(() => {}), STOP_GRACE_MS);
+		if (server) await closeServer(server);
 		for (const b of all) await b.stop();
 		resolveDone();
 		return done;
