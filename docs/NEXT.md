@@ -143,15 +143,23 @@ prove the signal would have appeared.*
 
 ---
 
-## 3. Config brick: two sharp edges, no owner
+## 3. Config brick: one sharp edge left
 
-Shipped and working, but both of these will bite eventually:
+- ~~**`CONFIG_SECRET_KEY` is effectively non-rotatable.**~~ ✅ **CLOSED
+  2026-09-25** — `@fonderie/config` **6.2.0** ships
+  `rotateSecretKey(store, from, to)`. One transaction, `FOR UPDATE` on both
+  tables, decrypt-and-re-encrypt in memory before any write (so a wrong old key
+  changes nothing), errors naming the offending row, and a deliberate refusal on
+  a second run rather than double-encrypting.
 
-- **`CONFIG_SECRET_KEY` is effectively non-rotatable.** Stored secrets are
-  AES-GCM ciphertext under it and the brick has **no re-encrypt path**. Losing
-  or changing the key makes every stored secret undecryptable. A
-  `rotateSecretKey(old, new)` that re-encrypts in a transaction is the fix;
-  until then, treat the key as permanent.
+  It re-encrypts **`fonderie_secret_revisions` as well**, which is the part that
+  matters: revisions hold ciphertext too, so a rotation touching only
+  `fonderie_secrets` would look correct — every reveal succeeding — while
+  destroying every rollback target. Mutation-verified: deleting the revisions
+  `UPDATE` fails the test.
+
+  A library call, not an admin route: rotating needs the *new* key, which has no
+  business in a request body.
 - **LISTEN invalidation is off on Vercel.** It needs a dedicated connection,
   which a transaction-mode pooler refuses, so the TTL poll is the only refresh
   path. A config change takes up to `ttl` (default 30s) to propagate. Fine
@@ -159,10 +167,16 @@ Shipped and working, but both of these will bite eventually:
 
 ---
 
-## 4. Housekeeping
+## 4. ~~Housekeeping~~ ✅ CLOSED 2026-09-25
 
-- `settings.local.json` — untracked at the fonderie root and not gitignored.
-- Two merged `chore/*` branches still on the `leadeasygen-api` remote.
+- ~~`settings.local.json`~~ — now gitignored at root, any depth, and `.claude/`.
+  **It held a live OpenRouter API key in plaintext.** Never committed (verified
+  across every branch and the last 400 commits), but nothing was stopping
+  `git add -A`. **Rotate that key** — it has been sitting readable in a git
+  working tree.
+- ~~Merged `chore/*` branches~~ — all three deleted. Both repos now carry only
+  `main` (plus the changesets bot's `changeset-release/main`, which persists by
+  design).
 - `gh` here authenticates as **`fonderiejs`**, which is *not* a collaborator on
   `louischoleski/leadeasygen-api`. Branches push over SSH; PRs cannot be opened
   or merged. Either add the collaborator or expect to merge that repo by hand.
