@@ -121,6 +121,17 @@ export class EventsModule implements IFonderieModule {
 		};
 	}
 
+	/**
+	 * Release the transport: its connection pool, LISTEN client and poll loop.
+	 *
+	 * EventBus.stop() delegates to the transport. Skipping it leaks a pg pool per
+	 * process — and a transport whose stop() did not finish the job is what hung
+	 * this repo's CI for six release cycles.
+	 */
+	async stop(): Promise<void> {
+		await this.bus.stop();
+	}
+
 	install(_app: IFonderieApp): void {
 		this.bus.start().catch((err) => console.error('[events] failed to start transport', err));
 	}

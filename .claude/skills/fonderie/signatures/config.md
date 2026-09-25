@@ -12,6 +12,7 @@ new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule
   .version: string
   .manager: RemoteConfigManager
   .install(app: IFonderieApp): Promise<void>
+  .stop(): void
   .describeAdmin(): IAdminDescription
   .checkReadiness(): IReadinessProblem[]
 

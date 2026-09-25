@@ -239,6 +239,38 @@ export class FonderieApp implements IFonderieApp {
 		};
 	}
 
+	/**
+	 * Release every module's resources, in reverse install order.
+	 *
+	 * boot() installs in dependency order, so a module's dependencies are still
+	 * alive while it shuts down — the reverse of that is the only order in which
+	 * that stays true.
+	 *
+	 * Every module is attempted even if one throws: a brick that fails to clean
+	 * up must not strand the ones after it holding a socket. Failures are
+	 * collected and thrown together, so a partial shutdown is still reported
+	 * rather than swallowed.
+	 *
+	 * Idempotent — modules' stop() must be too.
+	 */
+	async shutdown(): Promise<void> {
+		const failures: Array<{ module: string; error: unknown }> = [];
+		for (const module of topoSort([...this.modules.values()]).reverse()) {
+			if (!module.stop) continue;
+			try {
+				await module.stop();
+			} catch (error) {
+				failures.push({ module: module.name, error });
+			}
+		}
+		if (failures.length > 0) {
+			throw new Error(
+				`[fonderie] ${failures.length} module(s) failed to shut down: ` +
+					failures.map((f) => `${f.module}: ${(f.error as Error)?.message ?? f.error}`).join('; '),
+			);
+		}
+	}
+
 	adminDescriptions(): IAdminDescriptionEntry[] {
 		const out: IAdminDescriptionEntry[] = [];
 		for (const name of [...this.modules.keys()].sort()) {

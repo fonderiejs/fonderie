@@ -19,6 +19,7 @@ new EventsModule(config: IEventsConfig): EventsModule
   .version: string
   .bus: EventBus
   .describeAdmin(): IAdminDescription
+  .stop(): Promise<void>
   .install(_app: IFonderieApp): void
   .checkReadiness(): IReadinessProblem[]
 
