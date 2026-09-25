@@ -7,7 +7,6 @@ import type { IConfigOptions } from './config';
 import { RemoteConfigManager } from './manager';
 import { configContextMiddleware } from './middlewares/config-context';
 import { buildAdminRoutes, describeAdminRoutes } from './admin';
-import { noopEncryptor } from './crypto';
 
 export class ConfigModule implements IFonderieModule {
 	readonly name = '@fonderie/config';
@@ -33,7 +32,7 @@ export class ConfigModule implements IFonderieModule {
 			const routes = buildAdminRoutes(
 				this.store,
 				this.options.adminToken,
-				this.options.secretEncryptor ?? noopEncryptor,
+				this.options.secretEncryptor,
 			);
 			for (const [method, path, handler] of routes) {
 				app.addRoute(method, path, handler);
@@ -42,31 +41,36 @@ export class ConfigModule implements IFonderieModule {
 	}
 
 	describeAdmin(): IAdminDescription {
-		return { routes: describeAdminRoutes(this.store, this.options.secretEncryptor ?? noopEncryptor) };
+		return { routes: describeAdminRoutes(this.store, this.options.secretEncryptor) };
 	}
 
-	// Reported by FonderieApp.checkProductionReadiness. Only the admin surface
-	// carries a secret worth guarding; when no adminToken is set the surface
-	// isn't registered at all (fail-closed), so there's nothing to flag.
+	// Reported by FonderieApp.checkProductionReadiness.
 	checkReadiness(): IReadinessProblem[] {
 		const problems: IReadinessProblem[] = [];
-		// Secrets are stored plaintext at rest unless an encryptor is configured.
-		// It's a hard error in production when the admin secrets surface is enabled
-		// (a plaintext secret is revealable over the API) — this fails the boot gate.
-		// Otherwise (dev, or no admin surface) it's a warning so back-compatible
-		// deployments that never expose secrets aren't broken.
+		// This used to escalate to an ERROR in production only when THIS module
+		// had its own adminToken, on the reasoning that otherwise "the surface
+		// isn't registered at all". That reasoning was wrong: describeAdmin() is
+		// unconditional, so @fonderie/admin mounts the secrets routes under
+		// /_admin and reveals them regardless of this module's token — the
+		// normal deployment shape, and precisely the one the check waved through
+		// as a warning.
+		//
+		// It is a warning again now, but for a sound reason rather than a
+		// mistaken one: without an encryptor the secrets routes REFUSE (503
+		// SECRETS_DISABLED), so there is nothing to store in clear and nothing
+		// to reveal. The exposure is gone, so the flag is advice, not an alarm.
+		// checkReadiness cannot see whether an admin host is present — it runs
+		// before any install() — so removing the exposure is the only fix that
+		// does not rely on a guess.
 		if (!this.options.secretEncryptor) {
-			const inProd = process.env['NODE_ENV'] === 'production';
-			const secretsExposed = Boolean(this.options.adminToken);
 			problems.push({
 				module: this.name,
-				severity: inProd && secretsExposed ? 'error' : 'warning',
+				severity: 'warning',
 				message:
-					'no secretEncryptor configured — secrets are stored plaintext at rest; ' +
-					'use createAesGcmEncryptor' +
-					(inProd && secretsExposed
-						? ' (required in production when the secrets admin surface is enabled)'
-						: ' for production'),
+					'no secretEncryptor configured — the secrets admin surface refuses every ' +
+					'request (503 SECRETS_DISABLED) rather than handling plaintext. Pass ' +
+					'secretEncryptor: createAesGcmEncryptor(key) to enable it; config entries ' +
+					'are unaffected.',
 			});
 		}
 

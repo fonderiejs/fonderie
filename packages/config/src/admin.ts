@@ -100,7 +100,7 @@ type RouteRow = [string, string, Middleware];
 export function buildAdminRoutes(
 	store: IStoreAdapter,
 	adminToken: string,
-	encryptor: ISecretEncryptor = noopEncryptor,
+	encryptor?: ISecretEncryptor,
 ): RouteRow[] {
 	return adminRouteTable(store, encryptor).map(([m, p, h]) => [m, p, guarded(adminToken, h)]);
 }
@@ -109,7 +109,7 @@ export function buildAdminRoutes(
 // under its own prefix behind its own token.
 export function describeAdminRoutes(
 	store: IStoreAdapter,
-	encryptor: ISecretEncryptor = noopEncryptor,
+	encryptor?: ISecretEncryptor,
 ): IAdminRoute[] {
 	return adminRouteTable(store, encryptor).map(([method, path, h]) => ({
 		method,
@@ -118,8 +118,30 @@ export function describeAdminRoutes(
 	}));
 }
 
-function adminRouteTable(store: IStoreAdapter, encryptor: ISecretEncryptor): RouteRow[] {
-	return [
+// Without an encryptor, every secrets route REFUSES instead of operating on
+// plaintext.
+//
+// The surface used to be served regardless, with `noopEncryptor` standing in —
+// so a deployment with no key stored secrets in clear and handed them back over
+// `POST /admin/secrets/:key/reveal`. checkReadiness only called that an error
+// when this brick had its OWN adminToken, which missed the normal case
+// entirely: describeAdmin() is unconditional, so @fonderie/admin mounts these
+// under /_admin and reveals them whatever this brick's token says.
+//
+// It refuses rather than omitting the routes. A missing page is a silent
+// signal — the operator sees nothing and learns nothing — whereas a 503 that
+// names the cause and the fix is a signal they can act on, and it keeps the
+// console's page visible to carry the message.
+const SECRETS_DISABLED =
+	'secrets are disabled: no secretEncryptor is configured, and storing or revealing ' +
+	'them in plaintext is refused. Pass secretEncryptor: createAesGcmEncryptor(key) ' +
+	'to ConfigModule (key: `openssl rand -hex 32`).';
+
+const refuseSecrets = async (): Promise<Response> =>
+	setApiResponse(HTTP.SERVICE_UNAVAILABLE, 'SECRETS_DISABLED', SECRETS_DISABLED, null);
+
+function adminRouteTable(store: IStoreAdapter, encryptor?: ISecretEncryptor): RouteRow[] {
+	const rows: RouteRow[] = [
 		// ── config ──────────────────────────────────────────────────
 		['GET', '/admin/config', async (ctx) => {
 			const rows = await listConfigEntries(envOf(ctx) ?? null, store);
@@ -168,6 +190,13 @@ function adminRouteTable(store: IStoreAdapter, encryptor: ISecretEncryptor): Rou
 		}],
 
 		// ── secrets (masked) ────────────────────────────────────────
+	];
+
+	// Config rows always work — they hold no secret material. The secrets
+	// rows are added either way so the route table (and therefore the
+	// console's page) does not change shape based on configuration; only the
+	// handler differs.
+	const secretRows: RouteRow[] = [
 		['GET', '/admin/secrets', async (ctx) => {
 			const rows = await listSecrets(envOf(ctx) ?? null, store);
 			return setApiResponse(HTTP.OK, 'SECRETS_LISTED', 'Secrets (masked)', rows);
@@ -223,6 +252,14 @@ function adminRouteTable(store: IStoreAdapter, encryptor: ISecretEncryptor): Rou
 				: setApiResponse(HTTP.OK, 'SECRET_REVEALED', 'Decrypted secret value', { value });
 		}],
 	];
+
+	rows.push(
+		...(encryptor
+			? secretRows
+			: secretRows.map(([m, path]) => [m, path, refuseSecrets] as RouteRow)),
+	);
+
+	return rows;
 }
 
 // Map a lost optimistic-concurrency write to a 409 (reject-and-retry), else rethrow.
