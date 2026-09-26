@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-config-admin-screens",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "Pre-built React screens for the Fonderie config admin API — config/secret list, config editor with revision history and rollback.",
 	"keywords": [
 		"fonderiejs",

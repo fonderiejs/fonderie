@@ -1,86 +1,86 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.3.7",
-    "adapter-hono": "6.2.7",
-    "adapter-koa": "5.3.7",
+    "adapter-express": "5.3.8",
+    "adapter-hono": "6.2.8",
+    "adapter-koa": "5.3.8",
     "admin": "1.0.1",
-    "audit": "5.2.4",
-    "auth": "7.9.3",
-    "billing": "10.0.1",
-    "client": "1.0.0",
-    "config": "6.2.0",
-    "core": "0.21.0",
-    "courier": "7.9.3",
-    "customers": "6.2.15",
-    "events": "5.9.0",
+    "audit": "5.2.5",
+    "auth": "7.9.4",
+    "billing": "10.0.2",
+    "client": "1.0.1",
+    "config": "6.2.1",
+    "core": "0.21.1",
+    "courier": "7.9.4",
+    "customers": "6.2.16",
+    "events": "5.9.1",
     "geo": "0.2.13",
-    "logger": "0.3.2",
+    "logger": "0.3.3",
     "media": "0.2.19",
-    "permissions": "5.0.22",
+    "permissions": "5.0.23",
     "rate-limit": "4.0.22",
     "react": "0.2.0",
     "react-admin": "1.0.0",
     "react-admin-screens": "1.0.0",
-    "react-audit": "0.3.0",
-    "react-audit-screens": "0.2.0",
-    "react-auth": "0.10.0",
-    "react-auth-screens": "0.4.0",
-    "react-billing": "0.9.0",
-    "react-billing-screens": "0.3.1",
-    "react-config-admin": "0.3.1",
-    "react-config-admin-screens": "0.3.0",
-    "react-courier-admin": "0.4.0",
-    "react-courier-admin-screens": "0.4.0",
-    "react-customers": "0.4.0",
-    "react-customers-screens": "0.2.0",
+    "react-audit": "0.3.1",
+    "react-audit-screens": "0.2.1",
+    "react-auth": "0.10.1",
+    "react-auth-screens": "0.4.1",
+    "react-billing": "0.9.1",
+    "react-billing-screens": "0.3.2",
+    "react-config-admin": "0.3.2",
+    "react-config-admin-screens": "0.3.1",
+    "react-courier-admin": "0.4.1",
+    "react-courier-admin-screens": "0.4.1",
+    "react-customers": "0.4.1",
+    "react-customers-screens": "0.2.1",
     "react-media": "0.1.0",
-    "react-native-audit": "0.1.0",
-    "react-native-audit-screens": "0.2.0",
-    "react-native-auth": "0.11.0",
-    "react-native-auth-screens": "0.4.0",
-    "react-native-billing": "0.2.2",
-    "react-native-billing-screens": "0.3.1",
-    "react-native-customers": "0.1.0",
-    "react-native-customers-screens": "0.2.0",
+    "react-native-audit": "0.1.1",
+    "react-native-audit-screens": "0.2.1",
+    "react-native-auth": "0.11.1",
+    "react-native-auth-screens": "0.4.1",
+    "react-native-billing": "0.2.3",
+    "react-native-billing-screens": "0.3.2",
+    "react-native-customers": "0.1.1",
+    "react-native-customers-screens": "0.2.1",
     "react-native-media": "0.1.0",
-    "react-native-webhooks": "0.1.0",
-    "react-native-webhooks-screens": "0.3.0",
-    "react-native-workspaces": "0.1.0",
-    "react-native-workspaces-screens": "0.4.0",
-    "react-webhooks": "0.4.0",
-    "react-webhooks-screens": "0.3.0",
-    "react-workspaces": "0.6.0",
-    "react-workspaces-screens": "0.4.0",
+    "react-native-webhooks": "0.1.1",
+    "react-native-webhooks-screens": "0.3.1",
+    "react-native-workspaces": "0.1.1",
+    "react-native-workspaces-screens": "0.4.1",
+    "react-webhooks": "0.4.1",
+    "react-webhooks-screens": "0.3.1",
+    "react-workspaces": "0.6.1",
+    "react-workspaces-screens": "0.4.1",
     "risk": "0.2.14",
     "storage": "0.1.18",
-    "store": "0.6.0",
+    "store": "0.6.1",
     "vue": "0.2.0",
     "vue-admin": "1.0.0",
     "vue-admin-screens": "1.0.0",
-    "vue-audit": "0.4.0",
-    "vue-audit-screens": "0.2.0",
-    "vue-auth": "0.11.0",
-    "vue-auth-screens": "0.4.0",
-    "vue-billing": "0.10.0",
-    "vue-billing-screens": "0.3.1",
-    "vue-config-admin": "0.3.1",
-    "vue-config-admin-screens": "0.3.0",
-    "vue-courier-admin": "0.4.0",
-    "vue-courier-admin-screens": "0.4.0",
-    "vue-customers": "0.5.0",
-    "vue-customers-screens": "0.2.0",
+    "vue-audit": "0.4.1",
+    "vue-audit-screens": "0.2.1",
+    "vue-auth": "0.11.1",
+    "vue-auth-screens": "0.4.1",
+    "vue-billing": "0.10.1",
+    "vue-billing-screens": "0.3.2",
+    "vue-config-admin": "0.3.2",
+    "vue-config-admin-screens": "0.3.1",
+    "vue-courier-admin": "0.4.1",
+    "vue-courier-admin-screens": "0.4.1",
+    "vue-customers": "0.5.1",
+    "vue-customers-screens": "0.2.1",
     "vue-media": "0.1.0",
-    "vue-webhooks": "0.5.0",
-    "vue-webhooks-screens": "0.3.0",
-    "vue-workspaces": "0.7.0",
-    "vue-workspaces-screens": "0.4.0",
-    "webhooks": "5.4.12",
-    "workspaces": "6.0.18"
+    "vue-webhooks": "0.5.1",
+    "vue-webhooks-screens": "0.3.1",
+    "vue-workspaces": "0.7.1",
+    "vue-workspaces-screens": "0.4.1",
+    "webhooks": "5.4.13",
+    "workspaces": "6.0.19"
   },
   "packages": {
     "adapter-express": {
-      "version": "5.3.7",
+      "version": "5.3.8",
       "stability": "stable",
       "requires": [
         "core",
@@ -101,7 +101,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "6.2.7",
+      "version": "6.2.8",
       "stability": "stable",
       "requires": [
         "core",
@@ -122,7 +122,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.3.7",
+      "version": "5.3.8",
       "stability": "stable",
       "requires": [
         "core",
@@ -231,7 +231,7 @@
       "hasOutcomes": true
     },
     "audit": {
-      "version": "5.2.4",
+      "version": "5.2.5",
       "stability": "stable",
       "requires": [
         "core",
@@ -263,7 +263,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.9.3",
+      "version": "7.9.4",
       "stability": "stable",
       "requires": [
         "core",
@@ -498,7 +498,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "10.0.1",
+      "version": "10.0.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -705,7 +705,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "1.0.0",
+      "version": "1.0.1",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -735,7 +735,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "6.2.0",
+      "version": "6.2.1",
       "stability": "stable",
       "requires": [
         "core",
@@ -832,7 +832,7 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.21.0",
+      "version": "0.21.1",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -876,7 +876,7 @@
       "hasOutcomes": true
     },
     "courier": {
-      "version": "7.9.3",
+      "version": "7.9.4",
       "stability": "stable",
       "requires": [
         "core",
@@ -962,7 +962,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.2.15",
+      "version": "6.2.16",
       "stability": "stable",
       "requires": [
         "core",
@@ -1183,7 +1183,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.9.0",
+      "version": "5.9.1",
       "stability": "maturing",
       "requires": [
         "core",
@@ -1234,7 +1234,7 @@
       "hasOutcomes": true
     },
     "logger": {
-      "version": "0.3.2",
+      "version": "0.3.3",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [
@@ -1304,7 +1304,7 @@
       "hasOutcomes": true
     },
     "permissions": {
-      "version": "5.0.22",
+      "version": "5.0.23",
       "stability": "stable",
       "requires": [
         "core",
@@ -1449,7 +1449,7 @@
       "hasOutcomes": false
     },
     "react-audit": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1469,7 +1469,7 @@
       "hasOutcomes": false
     },
     "react-audit-screens": {
-      "version": "0.2.0",
+      "version": "0.2.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1488,7 +1488,7 @@
       "hasOutcomes": false
     },
     "react-auth": {
-      "version": "0.10.0",
+      "version": "0.10.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1524,7 +1524,7 @@
       "hasOutcomes": false
     },
     "react-auth-screens": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1548,7 +1548,7 @@
       "hasOutcomes": false
     },
     "react-billing": {
-      "version": "0.9.0",
+      "version": "0.9.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1585,7 +1585,7 @@
       "hasOutcomes": false
     },
     "react-billing-screens": {
-      "version": "0.3.1",
+      "version": "0.3.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1605,7 +1605,7 @@
       "hasOutcomes": false
     },
     "react-config-admin": {
-      "version": "0.3.1",
+      "version": "0.3.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1631,7 +1631,7 @@
       "hasOutcomes": false
     },
     "react-config-admin-screens": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1651,7 +1651,7 @@
       "hasOutcomes": false
     },
     "react-courier-admin": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1674,7 +1674,7 @@
       "hasOutcomes": false
     },
     "react-courier-admin-screens": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1694,7 +1694,7 @@
       "hasOutcomes": false
     },
     "react-customers": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1722,7 +1722,7 @@
       "hasOutcomes": false
     },
     "react-customers-screens": {
-      "version": "0.2.0",
+      "version": "0.2.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1764,7 +1764,7 @@
       "hasOutcomes": false
     },
     "react-native-audit": {
-      "version": "0.1.0",
+      "version": "0.1.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1781,7 +1781,7 @@
       "hasOutcomes": false
     },
     "react-native-audit-screens": {
-      "version": "0.2.0",
+      "version": "0.2.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1800,7 +1800,7 @@
       "hasOutcomes": false
     },
     "react-native-auth": {
-      "version": "0.11.0",
+      "version": "0.11.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1837,7 +1837,7 @@
       "hasOutcomes": false
     },
     "react-native-auth-screens": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1861,7 +1861,7 @@
       "hasOutcomes": false
     },
     "react-native-billing": {
-      "version": "0.2.2",
+      "version": "0.2.3",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1878,7 +1878,7 @@
       "hasOutcomes": false
     },
     "react-native-billing-screens": {
-      "version": "0.3.1",
+      "version": "0.3.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1898,7 +1898,7 @@
       "hasOutcomes": false
     },
     "react-native-customers": {
-      "version": "0.1.0",
+      "version": "0.1.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1915,7 +1915,7 @@
       "hasOutcomes": false
     },
     "react-native-customers-screens": {
-      "version": "0.2.0",
+      "version": "0.2.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1952,7 +1952,7 @@
       "hasOutcomes": false
     },
     "react-native-webhooks": {
-      "version": "0.1.0",
+      "version": "0.1.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1969,7 +1969,7 @@
       "hasOutcomes": false
     },
     "react-native-webhooks-screens": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1989,7 +1989,7 @@
       "hasOutcomes": false
     },
     "react-native-workspaces": {
-      "version": "0.1.0",
+      "version": "0.1.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2006,7 +2006,7 @@
       "hasOutcomes": false
     },
     "react-native-workspaces-screens": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2027,7 +2027,7 @@
       "hasOutcomes": false
     },
     "react-webhooks": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2049,7 +2049,7 @@
       "hasOutcomes": false
     },
     "react-webhooks-screens": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2069,7 +2069,7 @@
       "hasOutcomes": false
     },
     "react-workspaces": {
-      "version": "0.6.0",
+      "version": "0.6.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2098,7 +2098,7 @@
       "hasOutcomes": false
     },
     "react-workspaces-screens": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2169,7 +2169,7 @@
       "hasOutcomes": true
     },
     "store": {
-      "version": "0.6.0",
+      "version": "0.6.1",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -2283,7 +2283,7 @@
       "hasOutcomes": false
     },
     "vue-audit": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2303,7 +2303,7 @@
       "hasOutcomes": false
     },
     "vue-audit-screens": {
-      "version": "0.2.0",
+      "version": "0.2.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2322,7 +2322,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.11.0",
+      "version": "0.11.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2358,7 +2358,7 @@
       "hasOutcomes": false
     },
     "vue-auth-screens": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2382,7 +2382,7 @@
       "hasOutcomes": false
     },
     "vue-billing": {
-      "version": "0.10.0",
+      "version": "0.10.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2419,7 +2419,7 @@
       "hasOutcomes": false
     },
     "vue-billing-screens": {
-      "version": "0.3.1",
+      "version": "0.3.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2439,7 +2439,7 @@
       "hasOutcomes": false
     },
     "vue-config-admin": {
-      "version": "0.3.1",
+      "version": "0.3.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2465,7 +2465,7 @@
       "hasOutcomes": false
     },
     "vue-config-admin-screens": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2485,7 +2485,7 @@
       "hasOutcomes": false
     },
     "vue-courier-admin": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2508,7 +2508,7 @@
       "hasOutcomes": false
     },
     "vue-courier-admin-screens": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2528,7 +2528,7 @@
       "hasOutcomes": false
     },
     "vue-customers": {
-      "version": "0.5.0",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2556,7 +2556,7 @@
       "hasOutcomes": false
     },
     "vue-customers-screens": {
-      "version": "0.2.0",
+      "version": "0.2.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2598,7 +2598,7 @@
       "hasOutcomes": false
     },
     "vue-webhooks": {
-      "version": "0.5.0",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2620,7 +2620,7 @@
       "hasOutcomes": false
     },
     "vue-webhooks-screens": {
-      "version": "0.3.0",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2640,7 +2640,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces": {
-      "version": "0.7.0",
+      "version": "0.7.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2669,7 +2669,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces-screens": {
-      "version": "0.4.0",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2690,7 +2690,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "5.4.12",
+      "version": "5.4.13",
       "stability": "stable",
       "requires": [
         "core",
@@ -2755,7 +2755,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "6.0.18",
+      "version": "6.0.19",
       "stability": "stable",
       "requires": [
         "core",
