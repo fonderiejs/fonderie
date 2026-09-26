@@ -96,7 +96,7 @@ await save(setupIntent.payment_method); // records it as the default
 
 The Payment Element and the publishable key live in your app (a generic
 package can't own them). See the fully-wired reference in
-[`examples/leadeasygen`](https://github.com/fonderiejs/fonderie/tree/main/examples).
+the reference consumer (private).
 
 Want pre-built screens instead of wiring your own pricing table?
 See [`@fonderie/react-billing-screens`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-billing-screens) —

@@ -732,7 +732,7 @@
   
   BREAKING (types only; the removed members targeted routes that returned 404):
   `updateUser`, `IUpdateUserInput`, `client.auth.phone`, and `IPhoneVerifyResult`
-  are removed. Aligns the client with the battle-tested crewfinding backend contract.
+  are removed. Aligns the client with the battle-tested production backend contract.
 - 0cd4bb8: feat(workspaces): add GET /workspaces/roles/:roleId/permissions
   
   Roles could only have permissions *set* (POST) — there was no way to *read* a

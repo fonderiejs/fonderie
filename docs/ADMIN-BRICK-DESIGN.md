@@ -27,7 +27,7 @@ Concretely, today (verified, see §12):
 
 - The best diagnostic in the portfolio — five drift checks + pending
   migrations + outbox health + email and webhook stats — lives inside
-  `POST /internal/cron/purge` in the LeadEasyGen example, gated by
+  `POST /internal/cron/purge` in the reference app, gated by
   `CRON_SECRET`, reporting through `console.error` into Vercel logs. The
   founder learns of it only by knowing to curl a cron route.
 - `securityReport()` — "which modules are registered, and are they ready" — is
@@ -252,7 +252,7 @@ why it lives here rather than in a link-out.
 | `/` Attention | What needs me today? | Every `ok:false` and every advice finding from `/doctor`; dead letters > 0; drift > 0; pending migrations > 0; readiness problems; weak tokens | wp-admin's update nag is its most-used feature. This is the page opened daily. **Computed from the same functions as `/doctor`** so the two can never disagree. Empty = green. |
 | `/system/modules` | What did I deploy? | `securityReport()` promoted to an endpoint + each module's `describeAdmin()`: version, mount prefix, adminToken set?, readiness; running version (`VERCEL_GIT_COMMIT_SHA` when present) | **The manifest.** The smallest thing that closes the blindness gap — curl it and you know what you shipped. Also what a model needs at run time (§9). |
 | `/system/config` | Is it configured? | `checkProductionReadiness()` problems per module; env **presence** — declared-by-module vs set — never values; last reconciliation results | #370 made visible. Presence not values because the process cannot restart itself; editing belongs to the host — link out. |
-| `/system/doctor` | Is it *semantically* working? | On demand: `checkWebhookRegistration`, `checkPriceConsistency`, `checkSubscriptionDrift`, `checkSenderDns`, `MigrationRunner.pending()`, outbox dead/pending, `webhookStats`, `messageStats` — each with its `describe…Problems` lines; `ok` separated from advice | This *is* the LeadEasyGen cron route given a permanent address and the admin token instead of `CRON_SECRET`. Not uptime: an app cannot observe its own downtime; that stays external by definition. |
+| `/system/doctor` | Is it *semantically* working? | On demand: `checkWebhookRegistration`, `checkPriceConsistency`, `checkSubscriptionDrift`, `checkSenderDns`, `MigrationRunner.pending()`, outbox dead/pending, `webhookStats`, `messageStats` — each with its `describe…Problems` lines; `ok` separated from advice | This *is* the reference app's cron route given a permanent address and the admin token instead of `CRON_SECRET`. Not uptime: an app cannot observe its own downtime; that stays external by definition. |
 | `/system/routes` | What is exposed? | `Router.list()` — method, path, guard class (public / session / admin / cron) | Security legibility: see at a glance that `POST /plans` is admin-guarded and `/billing/webhook` is public by design. Runtime counterpart to `check:routes`, which excludes admin routes today. Near-free once `list()` exists for prefix enforcement. |
 | `/money/subscriptions` | Who is paying — and does Stripe agree? | `fonderie_subscriptions` + drift class (over-granting / under-granting / metadata) + link to the Stripe object | The intersection. Stripe shows *its* side; only we can show the disagreement, and "a cancelled subscriber still served" is a money bug Stripe will never flag. |
 | `/money/webhooks` | Is money reaching me? | Registration check (events handled vs registered, API version) + last-accepted-event timestamps | A stale webhook secret is the outage where Stripe reports success and we credit nothing. Stripe's dashboard shows 400s in a log; only our side knows the *consequence*. |
@@ -418,7 +418,7 @@ Fail-closed registration is uniform: routes are pushed only when
   `describeSenderDnsProblems` (`courier/src/sender-dns.ts`), `messageStats`
   (`courier/src/log.ts`), `MigrationRunner.pending()`
   (`store/src/migrations/runner.ts:81`).
-- The only place all of them are wired: `examples/leadeasygen/microservices/api/src/fonderie.ts:447`
+- The only place all of them are wired: the reference app's `api/src/fonderie.ts:447`
   — a `POST /internal/cron/*` route guarded by `CRON_SECRET`, not the admin
   token, reporting via `console.error`.
 - The events worker runs its own HTTP server with `GET /health` and

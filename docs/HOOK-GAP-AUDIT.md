@@ -11,7 +11,7 @@
 > | 1 — Stop the bleed | SDK-001/002/003, B-001, B-003, B-004 | `client@0.8.0`, auth pkgs `0.5.0`; app MfaVerifyScreen → `useMfaLogin`, unified 401 logout, refresh-token persistence | #108/#109 |
 > | 2 — Fill the holes | B-002, A-101, A-102, A-103, A-104, A-201…A-205, E-005 | `client@0.9.0`, auth `0.6.0`, workspaces `0.3.0` (`useMfaSetup`, `useProfile`, `useChangePassword`, `useAccountData`, `resend()`, `useRolePermissions`, customers pagination); 4 new screens ×3 frameworks; 35 app bypass sites migrated | #110–#114 |
 > | 3 — Unify lifecycles | B-005…B-009, C-001…C-005, C-009 | `client@0.10.0` + 17 hook packages: `refresh({force})` everywhere, 10 Group-C hooks folded into self-refreshing list hooks (standalones `@deprecated`); app: MFA token out of Redux (nav param), zero screen-level cache pokes | #115/#116 |
-> | 4 — Extract & reuse | A3, C-006/007/008, D1, D2, D3, E-001…E-004, E-006 | App: domain hooks on `useResource`, 6 shared primitives (−326 LOC), dead wrappers deleted; `crewfinding/api`: `/places/*` proxy (key out of the bundle); vue pkgs `0.4–0.8`: reactive params, `onMounted` fetches, exported return types | #117/#119, api `4bdcd6a` |
+> | 4 — Extract & reuse | A3, C-006/007/008, D1, D2, D3, E-001…E-004, E-006 | App: domain hooks on `useResource`, 6 shared primitives (−326 LOC), dead wrappers deleted; the consumer API: `/places/*` proxy (key out of the bundle); vue pkgs `0.4–0.8`: reactive params, `onMounted` fetches, exported return types | #117/#119, api `4bdcd6a` |
 > | 5 — Prevent regressions | pattern-library enforcement | CI `check:hook-coverage` (128 methods, reasoned allow-list); app ESLint `no-restricted-imports` on `~api` with 10 inline `@skip-hook` exceptions; display helpers → `~utils/customer` | #118, app `fe1368c` |
 >
 > **Verified end state:** SDK repo-wide typecheck/test/lint green at every
@@ -24,18 +24,18 @@
 > **Open follow-ups (tracked, out of the audit's scope):**
 > - ~~The app calls `/directions` + `/directions/matrix`, but no backend
 >   implementation exists anywhere~~ — **resolved 2026-08-22**: proxied behind
->   the API like `/places/*` (crewfinding/api `627f515`).
+>   the API like `/places/*` (consumer API `627f515`).
 > - `WorkspacesClient.getWorkspace` / `getRole` remain read-hook-less
 >   (allow-listed in `check:hook-coverage` with reasons).
 > - ~~`NavigateCard`/`Map` still embed the Google key for map rendering~~ —
 >   **resolved 2026-08-22**: NavigateCard moved to `usePlaceSearch` and Map's
 >   directions render via the `/directions` proxy + decoded polyline
->   (crewfinding/app `d109cb7`, api `6ac25e1`); both map libraries and the
+>   (consumer app `d109cb7`, api `6ac25e1`); both map libraries and the
 >   `GOOGLE_MAPS_APIKEY` config removed — no Google key ships in the app.
 
 Systematic audit of hook ↔ API surface gaps and state-lifecycle inconsistencies
 across the Fonderie SDK (React, React Native, Vue — 45 hooks, 6 typed
-sub-clients, 18 screens packages) and the crewfinding example app (91 raw
+sub-clients, 18 screens packages) and the consumer example app (91 raw
 `api.*` call sites in 22 files). Every count below was verified by grep, not
 estimated.
 
@@ -49,7 +49,7 @@ outright client bugs — **all since resolved; see the ledger above.**
 ## Critical findings — fix before anything else
 
 ### [B-001] CRITICAL — MFA login never persists the session token
-- **Location:** `examples/crewfinding/app/src/app/(public)/MfaVerifyScreen.view.tsx:33`; SDK has no hook for `auth.mfa.verifyLogin`
+- **Location:** the consumer app's `MfaVerifyScreen.view.tsx:33`; SDK has no hook for `auth.mfa.verifyLogin`
 - **Current behavior:** normal login (`useLogin`) writes `setAccessToken` + the AsyncStorage `fonderie_access_token` key. MFA completion calls the raw client: the AsyncStorage token is **never written**, and the client token is only armed one Redux tick later.
 - **Risk:** any `useSession()` consumer sees an MFA user as logged out after cold start; `useLogout` clears a key MFA logins never set; same-tick requests go out unauthenticated.
 - **Fix:** ship `useMfaLogin()` (all 3 frameworks) with the exact `useLogin` persistence block; migrate MfaVerifyScreen. **Effort: S · Shared**
@@ -279,5 +279,5 @@ Vue reactivity model, lint enforcement.
 ---
 
 *Sources: full-depth sweeps of `packages/*` (45 hooks, 6 sub-clients, 18
-screens packages, 2 admin surfaces) and `examples/crewfinding/app` (91 call
+screens packages, 2 admin surfaces) and the consumer app (91 call
 sites, 22 files), 2026-08-22.*

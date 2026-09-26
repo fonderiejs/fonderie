@@ -8,9 +8,9 @@ Ordered by what it costs to leave undone, not by effort.
 
 ---
 
-## 0. ~~UNVERIFIED — confirm LeadEasyGen actually booted~~ ✅ CLOSED 2026-09-25
+## 0. ~~UNVERIFIED — confirm the reference app actually booted~~ ✅ CLOSED 2026-09-25
 
-Verified live against `api.leadeasygen.com`:
+Verified live against the reference app's production API:
 
 ```
 /readyz               {"status":"ready","dependencies":true}
@@ -26,7 +26,7 @@ than 404 proves the rename shipped; `/_admin/secrets` answering at all proves
 valid *and* the boot-time table read succeeded. That was the risk; it is clear.
 
 The host is not recorded in the repo (only the env var *name*); it was found by
-probing `leadeasygen-api.vercel.app` and `api.leadeasygen.com`.
+probing the platform URL and the custom domain.
 
 <details><summary>Original item, kept for the reasoning</summary>
 
@@ -50,7 +50,7 @@ deployed console since the merge.
 
 ## 1. ~~Nothing calls `app.shutdown()`~~ ✅ CLOSED 2026-09-25
 
-The LeadEasyGen worker (`leadeasygen-api@c4e6057`) now holds its `FonderieApp`
+The reference app's worker (`c4e6057`) now holds its `FonderieApp`
 and calls `app.shutdown()` during SIGTERM, ahead of the existing explicit
 teardown. It had been building the app, booting it and discarding the
 reference — correct for what it named, silently wrong for anything it did not.
@@ -79,13 +79,13 @@ not a grep:
 | `EventsModule` | transport's pool, LISTEN client, poll loop |
 | `WebhooksModule` | retry timer (predates the contract; it had grown its own `stop()` with nothing to call it) |
 
-**Where it actually matters:** the LeadEasyGen **scrape worker on Cloud Run**,
+**Where it actually matters:** the reference app's **scrape worker on Cloud Run**,
 which really does receive SIGTERM. The API on Vercel never shuts down cleanly,
 so it gains nothing.
 
 </details>
 
-`examples/leadeasygen/microservices/api/src/worker.ts:243` already has a
+The reference app's `api/src/worker.ts:243` already has a
 `shutdown(signal)` handler with a forced-exit timeout, wired to SIGINT/SIGTERM.
 **Read it before changing it** — the work is likely routing it through
 `app.shutdown()` rather than writing a new path, and it may already be close to
@@ -178,86 +178,8 @@ prove the signal would have appeared.*
   `main` (plus the changesets bot's `changeset-release/main`, which persists by
   design).
 - `gh` here authenticates as **`fonderiejs`**, which is *not* a collaborator on
-  `louischoleski/leadeasygen-api`. Branches push over SSH; PRs cannot be opened
+  the reference app's repository. Branches push over SSH; PRs cannot be opened
   or merged. Either add the collaborator or expect to merge that repo by hand.
-
----
-
-## 5. From the 2026-09-26 build audit
-
-Full report: `organization/AUDIT-2026-09.md` (private). The engineering items,
-condensed, in the order they cost to leave undone. Items marked *branch* are
-built and pushed; nothing was merged on anyone's behalf.
-
-**P0**
-
-- **LeadEasyGen web MFA lockout.** Settings let users enable MFA; Login
-  answered `MFA_REQUIRED` with a toast saying the challenge screen was not
-  wired. Anyone who enabled MFA could not sign in on the web. *branch*
-  `leadeasygen-app` `fix/web-mfa-challenge` (`6c243ac`) — challenge card with
-  the existing `OtpInput` + backup-code field, en/fr/es, typecheck + lint
-  clean. `gh` here cannot open PRs on that repo; open it by hand.
-- **271 dead `fonderiejs/sdk` links** in every published README (the
-  2026-09-03 fix branch was never merged and is gone), a **quickstart that did
-  not compile** in five places (`defineConfig` without `db`, zero-arg module
-  constructors), and a **false brain invariant** (`workspaces-requires-billing`)
-  plus ten removed hook names still taught in SKILL.md. PR **#462**.
-- **fonderiejs.com still sells "$49 · Production license"** and shows the
-  CrewFinding testimonial, 23 days after `landing/honesty-pass` (`041ca2b`)
-  was built. It is 0 commits behind `main`. Merge it.
-- **README "Measured" section links a directory that left the public repo**
-  (`experiments/phase41-2026-07/`, commit `957e3790`). The benchmark the
-  launch post leads with is a 404. Same commit range: the `dev`-branch text
-  and the `brain:drift` script point at things that do not exist.
-- **`/readyz` on LeadEasyGen was a constant `true`** (no `readyProbe`) and
-  `CONFIG_SECRET_KEY` was documented nowhere while silently gating whether
-  `ConfigModule` registered. *branch* `leadeasygen-api`
-  `fix/readyz-and-config-key-docs` (`007ec5c`).
-- **Rotate the OpenRouter key** in `settings.local.json` (item 4 above asked
-  on 09-25; still on disk).
-
-**P1**
-
-- Only **billing, events and rate-limit** run their SQL against Postgres in
-  this repo's CI. The other 14 migration-shipping bricks are integration-tested
-  by LeadEasyGen and CrewFinding — which is how the rate-limit table went
-  missing for weeks under a green build. One job: boot every module against
-  the service Postgres, apply every migration, hit every `-outcomes.md` route.
-- **`create-fonderie-app` ships the July template.** It downloads
-  `github:fonderiejs/template-starter` (one commit, 2026-07-28, `listen()` in
-  `index.ts`, **no migrations**). `templates/starter` was rewritten on
-  09-12 and never pushed there; nothing syncs it. 15 downloads/month meet the
-  framework at its worst.
-- **11 of 17 bricks are demonstrated in no example or template** (courier as
-  a module, webhooks, config, admin, media, storage, geo, risk, rate-limit,
-  permissions, customers, logger); no example imports any frontend package or
-  mounts `/_admin`. Nothing implements the serverless email path
-  `DEPLOYMENT.md` documents — the adapters ship `drainQueue()` and the doc
-  does not mention it.
-- **35 frontend packages have no consumer** (all 20 `vue-*`, 13 `*-screens`,
-  `react-audit`, `react-native-audit`, `react-native-webhooks`); 33 have zero
-  test files; `check-frontend-parity.mjs` is tracked and wired nowhere.
-- **CrewFinding is a full major behind** on billing (9.2.1) and config
-  (5.1.12, no `secretEncryptor` — 6.0.0 will answer `503 SECRETS_DISABLED`);
-  its `npm run migrate` omits storage + media while `MediaModule` is
-  registered; billing rate-limit is `memory` on Vercel.
-- LeadEasyGen: no `LoggerModule` / `X-Request-ID` echo; no post-deploy probe
-  (`/readyz` ready, `/_admin/environment` 401 — ten lines).
-- `check:evidence` is a loud no-op; `brain-knowledge.json` has zero curated
-  knowledge for `admin`, `media`, `storage`, `geo`, `risk`, `logger`.
-- Docs: `auth` README is 51 lines for 5,215 lines of source and omits Apple
-  sign-in; `admin`, `react-admin`, `vue-admin`, `client`, `cli` READMEs teach
-  renamed or removed symbols; `RISK-BRICK-DESIGN`, `ADMIN-BRICK-DESIGN`,
-  `PORTFOLIO-ROADMAP` P1–P6, `AUTH-LOGIN-ACTIVITY-PLAN`,
-  `BILLING-CAPABILITY-AUDIT` never recorded that they shipped; `RELEASING.md`
-  still describes token publishing; `docs/README.md` version table is from
-  July. Both business plans track an `NPM_TOKEN` expiry that stopped existing
-  when Trusted Publishing shipped.
-
-**Never proven in production:** `geo` (no consumer; the `cidr`/GiST query has
-never met Postgres in CI; `risk` has no geo seam), `storage`'s S3/LocalFs
-providers, `logger`'s trace exporters, `customers`' 13 migrations, and the
-frontend list above.
 
 ---
 
@@ -292,7 +214,7 @@ should not be re-raised:
 | `@fonderie/admin` | 1.0.1 | themed console, theme switcher, `/_admin/environment` (**major** in 1.0.0) |
 | `@fonderie/client` + 4 frontend mirrors | 1.0.0 | `environment()`, `useAdminEnvironment`, `EnvironmentScreen` |
 
-**leadeasygen-api** — `94826d4` → `543a500`: billing 10.0.0 (Stripe dahlia),
+**reference app (api)** — `94826d4` → `543a500`: billing 10.0.0 (Stripe dahlia),
 admin 1.0.0, events 5.8.1, then config's schema and its wiring as **two separate
 commits**.
 

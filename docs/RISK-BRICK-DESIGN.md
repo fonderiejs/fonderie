@@ -46,7 +46,7 @@ A **subject** names the action being assessed. The launch subjects:
 
 The engine is subject-agnostic; adding a subject is adding a ruleset (§4), not
 code. `trial.start` is the first consumer (extracted from the proven
-LeadEasyGen code); `auth.login` is the likely second.
+reference-app code); `auth.login` is the likely second.
 
 ---
 
@@ -201,7 +201,7 @@ itself, as an explicit, separately-designed app concern.
    `trial.start` + `auth.login` together (prove genericity immediately)?
    **Recommend: `trial.start` first**, `auth.login` as the very next step.
 4. **Card-reuse enforcement for trials.** The brick only *detects* reuse. Does
-   LeadEasyGen (a) act at the gate synchronously only (sound, but can't catch
+   the reference app (a) act at the gate synchronously only (sound, but can't catch
    the first cross-account reuse — a fresh signup has no card at gate time), or
    (b) own a post-checkout revocation path (the hard part that failed before)?
    **Recommend: (a) at launch; treat (b) as a separate, later app project.**
@@ -214,7 +214,7 @@ itself, as an explicit, separately-designed app concern.
 1. Scaffold `@fonderie/risk` (peers core + store; `experimental`), `RiskEngine`,
    `risk_events` migration, the built-in signal providers, the `trial.start`
    ruleset.
-2. LeadEasyGen consumes it for `trial.start`; delete the app's `trial_signals`
+2. The reference app consumes it for `trial.start`; delete the app's `trial_signals`
    table and the (now-closed) webhook-cancel machinery.
 3. **Live pass** — real Postgres + Stripe test-mode — the validation still
    outstanding from the trial work.

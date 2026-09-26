@@ -1,7 +1,7 @@
 // The product name in email is the app the RECIPIENT signed up for.
 //
 // It used to be EMAIL_THEME.brand — a compile-time constant — so every app built
-// on Fonderie sent mail headed "Fonderie". A user of LeadEasyGen has never heard
+// on Fonderie sent mail headed "Fonderie". A user of the app has never heard
 // of Fonderie, so that reads as a different company at best and as phishing at
 // worst, which is the wrong signal on a receipt.
 import test from 'node:test';
@@ -21,10 +21,10 @@ function compose(data: Record<string, unknown>): string {
 }
 
 test('the app name replaces the framework name everywhere it appeared', () => {
-	const html = compose({ brandName: 'LeadEasyGen' });
+	const html = compose({ brandName: 'Acme' });
 	// Header and the in-card footer line — the two places the constant was used.
-	assert.match(html, /email-brand[^>]*>LeadEasyGen</, 'card header must show the app name');
-	assert.match(html, /used this address at LeadEasyGen\./, 'footer must name the app');
+	assert.match(html, /email-brand[^>]*>Acme</, 'card header must show the app name');
+	assert.match(html, /used this address at Acme\./, 'footer must name the app');
 	// The ONLY surviving mention of the framework is the attribution.
 	const mentions = html.match(/Fonderie/g) ?? [];
 	assert.equal(mentions.length, 1, `expected exactly one Fonderie mention, got ${mentions.length}`);
@@ -40,7 +40,7 @@ test('an app that sets nothing still gets a branded shell, never an empty one', 
 });
 
 test('the attribution sits OUTSIDE the card, not inside it', () => {
-	const html = compose({ brandName: 'LeadEasyGen' });
+	const html = compose({ brandName: 'Acme' });
 	const cardEnd = html.indexOf('</td>', html.indexOf('class="email-card"'));
 	const powered = html.indexOf('Powered by');
 	assert.ok(powered > cardEnd, 'attribution must render after the card closes');
@@ -54,7 +54,7 @@ test('the attribution links to the project site, and says Fonderie', () => {
 	// The visible text stays "Fonderie" — NOT "FonderieJS". The -js suffix reads
 	// as "JavaScript library", which is the wrong shape for a self-hosted backend.
 	// The domain carries the js so the brand does not have to.
-	const html = compose({ brandName: 'LeadEasyGen' });
+	const html = compose({ brandName: 'Acme' });
 	assert.match(html, /Powered by <a href="https:\/\/fonderiejs\.com"[^>]*>Fonderie<\/a>/);
 	assert.doesNotMatch(html, /FonderieJS/, 'the brand is Fonderie, not a library name');
 });

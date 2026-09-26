@@ -14,7 +14,7 @@ test('additive DDL is additive — a pipeline may apply it unattended', () => {
 });
 
 test('the real case: the legacy-credits drop is flagged, with the statements that earned it', () => {
-	// Verbatim from LeadEasyGen's 800_drop_legacy_credits.sql — the migration
+	// Verbatim from a consumer's 800_drop_legacy_credits.sql — the migration
 	// that must never be applied by a deploy without someone deciding to.
 	const r = classifyMigration(`
 		-- Retire the pre-wallet ledger.
