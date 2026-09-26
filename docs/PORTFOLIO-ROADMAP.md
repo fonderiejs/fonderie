@@ -188,7 +188,7 @@ leave post-checkout trial revocation as an explicit, separately-designed app
 concern (the gate signals + detection already stop the high-volume abuse).
 
 **Acceptance.** A `@fonderie/risk` package exists with `assess()`/`record()`
-and no external-effect call anywhere in it; LeadEasyGen consumes it for
+and no external-effect call anywhere in it; the reference app consumes it for
 `trial.start` and its app-owned `trial_signals` + webhook-cancel are removed;
 the live Stripe test-mode pass runs.
 

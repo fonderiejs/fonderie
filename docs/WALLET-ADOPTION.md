@@ -1,7 +1,7 @@
 # Adopting the `@fonderie/billing` wallet from a legacy balance system
 
 > **STATUS: REFERENCE RECIPE (2026-09-06).** Distilled from the first real
-> migration — LeadEasyGen moved a hand-rolled credits system onto the
+> migration — the reference app moved a hand-rolled credits system onto the
 > `@fonderie/billing` stored-value wallet (phases A→F). This generalises the
 > **backfill** step (seeding the wallet from an existing balance) into a
 > reusable pattern, since every legacy schema differs but the invariants don't.
@@ -19,7 +19,7 @@ current balance into the wallet so cutover is invisible to them.
 
 This recipe is only the data-seeding step. The full migration shape (wire
 billing additively → backfill → cut compute over → cut routes over → cut the
-client over → retire the legacy schema) is the LeadEasyGen worked example; see
+client over → retire the legacy schema) is the reference app's worked example; see
 the phase spine at the end.
 
 ## The wallet model you're seeding
@@ -114,7 +114,7 @@ only once the numbers are right.
 
 The wallet is currency-typed at a precision. Two common shapes:
 
-- **Credit counts** (LeadEasyGen): a non-ISO currency (e.g. `'CRD'`) at
+- **Credit counts** (the reference app): a non-ISO currency (e.g. `'CRD'`) at
   `precision: 0`, so balances are whole counts and `formatWalletAmount` renders
   a bare number (`"50"`), not `"$50.00"`. Credit *packs* can still be *charged*
   in real money — billing credits the wallet in wallet units regardless.
@@ -136,9 +136,9 @@ step 1 if they differ).
 - [ ] The script is a one-time tool — retire it once cutover is verified (it
       reads legacy tables that later get dropped).
 
-## Worked example — LeadEasyGen (phases A→F)
+## Worked example — the reference app (phases A→F)
 
-The reference implementation lives in `examples/leadeasygen/microservices/api`
+The reference implementation lives in the reference app's `api` service (private)
 (its own repo). The backfill was `src/billing/backfill.ts` (retired in phase F;
 recoverable from git history). The migration spine, reusable for any adoption:
 

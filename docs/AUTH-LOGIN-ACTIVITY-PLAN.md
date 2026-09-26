@@ -12,7 +12,7 @@ Status (updated 2026-09-08):
   caller-scoped routes + AuthClient methods.
 - Phase 3 — SHIPPED (`@fonderie/react-auth` minor). `useLoginHistory`,
   `useSessions`.
-- Phase 4 — BLOCKED ON RELEASE. The LeadEasyGen app consumes the *published*
+- Phase 4 — BLOCKED ON RELEASE. The reference app consumes the *published*
   `@fonderie/react-auth` (0.7.0), not the workspace source, so the screens
   can't be built until Phases 1–3 are versioned + published to npm and the
   app bumps its dependency. Changesets are staged; publishing is the
@@ -113,7 +113,7 @@ Ships as: auth minor (feature + bugfix), changeset.
   convention. Pre-built screens in `react-auth-screens` are a later nice-
   to-have; consumers can render their own first.
 
-## Phase 4 — LeadEasyGen screens (app code, thin by design)
+## Phase 4 — reference-app screens (app code, thin by design)
 
 - Settings → Security: Login History table (device = UA parsed client-side,
   location "Unknown" for now, CSV export from loaded rows) and Active

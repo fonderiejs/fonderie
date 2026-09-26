@@ -223,7 +223,7 @@
   
   The product name in the email shell was `EMAIL_THEME.brand` — a compile-time
   constant — so every app built on Fonderie sent mail headed "Fonderie". A user who
-  signed up for LeadEasyGen has never heard of Fonderie, so that reads as a
+  signed up for the app has never heard of Fonderie, so that reads as a
   different company at best and as a phishing attempt at worst, which is exactly
   the wrong signal on a receipt.
   

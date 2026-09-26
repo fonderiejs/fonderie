@@ -64,7 +64,7 @@ export interface ICourierConfig {
 
 	/**
 	 * The product name shown in email — the app the RECIPIENT signed up for, not
-	 * the framework underneath it. A user of LeadEasyGen has never heard of
+	 * the framework underneath it. A user of the app has never heard of
 	 * Fonderie, so an email headed "Fonderie" reads as a different company at
 	 * best and as phishing at worst.
 	 *

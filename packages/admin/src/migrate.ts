@@ -34,7 +34,7 @@ export const applyMigrationsSchema: IRequestSchema = {
 
 // Applying is the APP's order, never ours. The sets arrive already interleaved
 // — brick dirs and the app's own, in the sequence its applier runs them — from
-// the one constant both the applier and this reporter read. See LeadEasyGen's
+// the one constant both the applier and this reporter read. See the reference app's
 // db/migrations/steps.ts: "auth owns fonderie_users, which the app migration
 // extends, and media's assets reference storage's blobs."
 

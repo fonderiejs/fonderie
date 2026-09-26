@@ -99,7 +99,7 @@ function render(
 //
 // `brandName` is the product the RECIPIENT believes they are hearing from — the
 // app built on Fonderie, not Fonderie itself. A user who signed up for
-// LeadEasyGen has never heard of Fonderie, so an email headed "Fonderie" reads
+// the app has never heard of Fonderie, so an email headed "Fonderie" reads
 // as a different company at best and a phishing attempt at worst. Apps pass
 // their own name; anything that does not falls back to EMAIL_THEME.brand, so
 // the shell is never left with an empty heading.

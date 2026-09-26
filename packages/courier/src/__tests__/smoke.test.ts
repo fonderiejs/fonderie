@@ -692,7 +692,7 @@ test('template admin: preview renders the editor content through the real shell'
 	const { store, seen } = captureStore((sql) =>
 		sql.includes("type = $1") ? [{ html: '<main data-shell>{{content}}</main>' }] : [],
 	);
-	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok', { brandName: 'LeadEasyGen' }));
+	const routes = routeMap(buildTemplateAdminRoutes(store, 'tok', { brandName: 'Acme' }));
 	const handler = routes.get('POST /admin/templates/:type/preview')!;
 
 	const res = await handler(
@@ -718,7 +718,7 @@ test('template admin: preview renders the editor content through the real shell'
 	assert.ok(result.html?.includes('123456'), 'variables substituted');
 	// brandName is merged by the Dispatcher on a real send, never the resolver;
 	// without the route forwarding it the preview would quietly show the default.
-	assert.ok(result.html?.includes('LeadEasyGen'), 'brandName reaches the render');
+	assert.ok(result.html?.includes('Acme'), 'brandName reaches the render');
 	assert.equal(result.html?.includes('{{'), false, 'nothing left unsubstituted');
 	assert.ok(seen.some((s) => s.includes('fonderie_courier_templates')));
 });

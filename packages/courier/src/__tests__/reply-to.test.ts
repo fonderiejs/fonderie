@@ -31,10 +31,10 @@ test('replyTo is sent to Resend as reply_to when configured', async () => {
 	const body = await captureResendBody({
 		provider: 'resend',
 		apiKey: 'k',
-		from: 'LeadEasyGen <hello@email.example.com>',
+		from: 'Acme <hello@email.example.com>',
 		replyTo: 'hello@example.com',
 	});
-	assert.equal(body['from'], 'LeadEasyGen <hello@email.example.com>');
+	assert.equal(body['from'], 'Acme <hello@email.example.com>');
 	assert.equal(body['reply_to'], 'hello@example.com', 'Resend expects snake_case reply_to');
 });
 
@@ -44,7 +44,7 @@ test('the field is OMITTED entirely when unset, not sent as undefined', async ()
 	const body = await captureResendBody({
 		provider: 'resend',
 		apiKey: 'k',
-		from: 'LeadEasyGen <hello@example.com>',
+		from: 'Acme <hello@example.com>',
 	});
 	assert.ok(!('reply_to' in body), 'absent config must produce no reply_to key at all');
 });
@@ -56,7 +56,7 @@ test('From is never silently replaced by replyTo', async () => {
 	const body = await captureResendBody({
 		provider: 'resend',
 		apiKey: 'k',
-		from: 'LeadEasyGen <hello@email.example.com>',
+		from: 'Acme <hello@email.example.com>',
 		replyTo: 'hello@example.com',
 	});
 	assert.notEqual(body['from'], body['reply_to']);
