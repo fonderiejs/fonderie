@@ -203,11 +203,11 @@ ways, three times each, on `claude-opus-4-8`. 36 sessions.
 - **The SDK earns its context.** The project brain loads only what a task
   touches, so the model spends its budget on your product, not re-reading the
   SDK — a **0.383** context ratio vs. the full skill (fair, resident-after-read
-  accounting). Full derivation:
-  [`BATCH-RESULTS.md`](experiments/phase41-2026-07/BATCH-RESULTS.md).
+  accounting).
 
-Harness and raw runs are all in [`experiments/phase41-2026-07/`](experiments/phase41-2026-07).
-Re-run it and check — that's the point.
+The harness, the raw session logs and the batch derivation live in our private
+research repository, next to the compliance working papers; the numbers above
+are quoted from it. Ask and we will share the run logs.
 
 ## Development
 
@@ -233,26 +233,29 @@ them when a module gains or changes an endpoint.
 
 ## Branching & releases
 
-Work flows through `dev` and is promoted to `main`, which is the only branch
-that publishes:
+Work lands on `main` through pull requests; `main` is the only branch that
+publishes:
 
 ```
-feature/*  ──PR──▶  dev   (CI runs; peer review)
-dev        ──PR──▶  main  (CI runs; final review)
-merge to main  ──▶  automated npm publish
+feature/*  ──PR──▶  main   (CI runs; review)
+merge to main  ──▶  Release opens or updates the "Version Packages" PR
+merge that PR  ──▶  automated npm publish
 ```
 
-- Add a [changeset](https://github.com/changesets/changesets) on your feature
-  branch for any user-facing change: `npx changeset` (pick the packages and
-  bump levels). It rides through `dev` to `main`.
-- **CI** (`.github/workflows/ci.yml`) runs on every PR targeting `main` or
-  `dev`, and on pushes to `main`: build, typecheck, tests (including the
-  real Postgres + Redis concurrency tests for `@fonderie/rate-limit`), the
-  `docs:signatures` freshness gate, and the validation audit.
+- Add a [changeset](https://github.com/changesets/changesets) on your branch
+  for any user-facing change: `npx changeset` (pick the packages and bump
+  levels). A change under `packages/` without a changeset builds, passes and
+  merges — and never ships.
+- **CI** (`.github/workflows/ci.yml`) runs on every PR and on pushes to
+  `main`: lint, audit, typecheck, tests (including the real Postgres + Redis
+  suites for `@fonderie/rate-limit`, `@fonderie/billing` and
+  `@fonderie/events`), the brain and signature freshness gates, and the
+  coverage audits.
 - **Release** (`.github/workflows/release.yml`) runs **only on push to
   `main`**. It opens a "Version Packages" PR consuming pending changesets;
   merging that PR publishes to npm over OIDC Trusted Publishing with signed
-  provenance. Nothing on `dev` (or any other branch) can publish.
+  provenance. Commits pushed by the changesets bot do not trigger CI on that
+  PR — push an empty commit to its branch to run the checks before merging.
 - `main` should be a protected branch (require PRs + a green CI check, no
   direct pushes) so "only `main` publishes" is enforced, not just conventional.
 
