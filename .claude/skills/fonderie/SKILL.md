@@ -81,7 +81,7 @@ app.listen(3000, { name: 'my-api' });
 | Brute-force / abuse brakes on any route | `@fonderie/rate-limit` | Token-bucket limiter with Postgres or Redis store (`StoreAdapterStore`), `rateLimit()` middleware; auth wires it by default — **fails open by default**, set `failClosed` on money paths |
 | Operator console: what is deployed, configured, failing | `@fonderie/admin` | `/_admin` — modules + versions, environment (declared vs held), migrations pending/apply, doctor (Stripe webhooks, prices, DNS, integrity), users/subscribers, admin log; `ui: true` serves the themed console; host-bound, token-authenticated |
 | Signals → decision (trial abuse, login risk, promo abuse) | `@fonderie/risk` | `RiskEngine` with rulesets-as-data, reuse/velocity/attribute signals, hashed identifiers; **decides, never enforces** — the app owns the side effect |
-| IP → country/region/city, self-hosted | `@fonderie/geo` | `PostgresGeoProvider` (cidr/GiST, IPv4+IPv6) + MaxMind GeoLite2 CSV ingest; no consumer yet — read the README before wiring |
+| IP → country/region/city for the current request | `@fonderie/geo` | `geoFromHeaders(req.headers, { trust })` reads the platform's edge geolocation (Vercel, Cloudflare) with zero infrastructure — `trust` comes from the deployment env, never the request; `PostgresGeoProvider` (cidr/GiST, MaxMind GeoLite2 ingest) only for hosts without edge geo. Country is decision-grade; region/city are display-only |
 | Audit trail | `@fonderie/audit` | Workspace-scoped audit log |
 | Outgoing webhooks | `@fonderie/webhooks` | Webhook engine (endpoint CRUD + delivery history + test-send; frontend hooks under `react-webhooks`/`vue-webhooks` below) |
 | Event bus | `@fonderie/events` | Cross-module events |

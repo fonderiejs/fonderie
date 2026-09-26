@@ -106,6 +106,26 @@ If it recurs, `TURBO_LOG_ORDER: stream` (PR #452) means the dump from the
 process actually hanging is now printed and names it. That is the whole reason
 this was findable at all.
 
+**Recurred 2026-09-26** — run `36277083607` (PR #467, no events change), cancelled at
+the 30-minute limit. This time the streamed log names it, so this is evidence,
+not inference:
+
+- `@fonderie/events` `worker.test.ts` test 30, *"overlapping wakes coalesce
+  into one pass, and the later one still runs"*, **failed**: `4 !== 2`
+  (`worker.test.ts:144`). A timing assertion on how many passes the worker ran.
+- The process then stayed alive with `{"PipeWrap":2,"TCPServerWrap":1}` — a
+  worker's health server still listening — and turbo waited on it until the job
+  was killed. The `stop()` regression test (36) passed; the listener that held
+  the process belonged to the test that threw, whose teardown never ran.
+
+So the 5.8.1 fix holds for the path it fixed; the remaining hole is that a
+**failing** worker test skips its `stop()`, and a flaky assertion turns a red
+test into a 30-minute hang instead of a 30-second failure. Two changes close
+it: run every worker test's `stop()` in `t.after`/`finally`, and make test 30
+assert *at most* one follow-up pass rather than exactly one (or drive the wakes
+deterministically). Until then, a rerun is legitimate — the flake is in the
+test, not in the change under test.
+
 ### The postmortem, because the lesson generalises
 
 `runWorker(...).stop()` awaited the in-flight drain unconditionally:
