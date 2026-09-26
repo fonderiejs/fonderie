@@ -183,6 +183,84 @@ prove the signal would have appeared.*
 
 ---
 
+## 5. From the 2026-09-26 build audit
+
+Full report: `organization/AUDIT-2026-09.md` (private). The engineering items,
+condensed, in the order they cost to leave undone. Items marked *branch* are
+built and pushed; nothing was merged on anyone's behalf.
+
+**P0**
+
+- **LeadEasyGen web MFA lockout.** Settings let users enable MFA; Login
+  answered `MFA_REQUIRED` with a toast saying the challenge screen was not
+  wired. Anyone who enabled MFA could not sign in on the web. *branch*
+  `leadeasygen-app` `fix/web-mfa-challenge` (`6c243ac`) — challenge card with
+  the existing `OtpInput` + backup-code field, en/fr/es, typecheck + lint
+  clean. `gh` here cannot open PRs on that repo; open it by hand.
+- **271 dead `fonderiejs/sdk` links** in every published README (the
+  2026-09-03 fix branch was never merged and is gone), a **quickstart that did
+  not compile** in five places (`defineConfig` without `db`, zero-arg module
+  constructors), and a **false brain invariant** (`workspaces-requires-billing`)
+  plus ten removed hook names still taught in SKILL.md. PR **#462**.
+- **fonderiejs.com still sells "$49 · Production license"** and shows the
+  CrewFinding testimonial, 23 days after `landing/honesty-pass` (`041ca2b`)
+  was built. It is 0 commits behind `main`. Merge it.
+- **README "Measured" section links a directory that left the public repo**
+  (`experiments/phase41-2026-07/`, commit `957e3790`). The benchmark the
+  launch post leads with is a 404. Same commit range: the `dev`-branch text
+  and the `brain:drift` script point at things that do not exist.
+- **`/readyz` on LeadEasyGen was a constant `true`** (no `readyProbe`) and
+  `CONFIG_SECRET_KEY` was documented nowhere while silently gating whether
+  `ConfigModule` registered. *branch* `leadeasygen-api`
+  `fix/readyz-and-config-key-docs` (`007ec5c`).
+- **Rotate the OpenRouter key** in `settings.local.json` (item 4 above asked
+  on 09-25; still on disk).
+
+**P1**
+
+- Only **billing, events and rate-limit** run their SQL against Postgres in
+  this repo's CI. The other 14 migration-shipping bricks are integration-tested
+  by LeadEasyGen and CrewFinding — which is how the rate-limit table went
+  missing for weeks under a green build. One job: boot every module against
+  the service Postgres, apply every migration, hit every `-outcomes.md` route.
+- **`create-fonderie-app` ships the July template.** It downloads
+  `github:fonderiejs/template-starter` (one commit, 2026-07-28, `listen()` in
+  `index.ts`, **no migrations**). `templates/starter` was rewritten on
+  09-12 and never pushed there; nothing syncs it. 15 downloads/month meet the
+  framework at its worst.
+- **11 of 17 bricks are demonstrated in no example or template** (courier as
+  a module, webhooks, config, admin, media, storage, geo, risk, rate-limit,
+  permissions, customers, logger); no example imports any frontend package or
+  mounts `/_admin`. Nothing implements the serverless email path
+  `DEPLOYMENT.md` documents — the adapters ship `drainQueue()` and the doc
+  does not mention it.
+- **35 frontend packages have no consumer** (all 20 `vue-*`, 13 `*-screens`,
+  `react-audit`, `react-native-audit`, `react-native-webhooks`); 33 have zero
+  test files; `check-frontend-parity.mjs` is tracked and wired nowhere.
+- **CrewFinding is a full major behind** on billing (9.2.1) and config
+  (5.1.12, no `secretEncryptor` — 6.0.0 will answer `503 SECRETS_DISABLED`);
+  its `npm run migrate` omits storage + media while `MediaModule` is
+  registered; billing rate-limit is `memory` on Vercel.
+- LeadEasyGen: no `LoggerModule` / `X-Request-ID` echo; no post-deploy probe
+  (`/readyz` ready, `/_admin/environment` 401 — ten lines).
+- `check:evidence` is a loud no-op; `brain-knowledge.json` has zero curated
+  knowledge for `admin`, `media`, `storage`, `geo`, `risk`, `logger`.
+- Docs: `auth` README is 51 lines for 5,215 lines of source and omits Apple
+  sign-in; `admin`, `react-admin`, `vue-admin`, `client`, `cli` READMEs teach
+  renamed or removed symbols; `RISK-BRICK-DESIGN`, `ADMIN-BRICK-DESIGN`,
+  `PORTFOLIO-ROADMAP` P1–P6, `AUTH-LOGIN-ACTIVITY-PLAN`,
+  `BILLING-CAPABILITY-AUDIT` never recorded that they shipped; `RELEASING.md`
+  still describes token publishing; `docs/README.md` version table is from
+  July. Both business plans track an `NPM_TOKEN` expiry that stopped existing
+  when Trusted Publishing shipped.
+
+**Never proven in production:** `geo` (no consumer; the `cidr`/GiST query has
+never met Postgres in CI; `risk` has no geo seam), `storage`'s S3/LocalFs
+providers, `logger`'s trace exporters, `customers`' 13 migrations, and the
+frontend list above.
+
+---
+
 ## What is NOT next
 
 Checked this session and found already done — these were stale in my notes and

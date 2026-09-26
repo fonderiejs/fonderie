@@ -13,10 +13,13 @@ npm install @fonderie/workspaces
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';
+import { PGAdapter } from '@fonderie/store';
 import { WorkspacesModule } from '@fonderie/workspaces';
 
-const app = await new FonderieApp(defineConfig({}))
-  .register(new WorkspacesModule())
+const store = new PGAdapter(process.env.DATABASE_URL!);
+
+const app = await new FonderieApp(defineConfig({ db: { url: process.env.DATABASE_URL! } }))
+  .register(new WorkspacesModule(store))
   .boot();
 ```
 
@@ -34,7 +37,7 @@ typed `EVENT_KEYS` are exported for your handlers and event consumers.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -43,7 +46,7 @@ and role containers — the bricks scope their data by the workspace context
 this one provides.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

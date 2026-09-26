@@ -12,7 +12,7 @@ single HTTP handler.
 Start with the core plus whichever bricks you need:
 
 ```bash
-npm install @fonderie/core @fonderie/auth @fonderie/workspaces
+npm install @fonderie/core @fonderie/store @fonderie/auth @fonderie/workspaces
 ```
 
 Every package is published under the `@fonderie` scope and is plain
@@ -22,12 +22,15 @@ TypeScript — take one brick or the whole set.
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';
+import { PGAdapter } from '@fonderie/store';
 import { AuthModule } from '@fonderie/auth';
 import { WorkspacesModule } from '@fonderie/workspaces';
 
-const app = await new FonderieApp(defineConfig({ basePath: '/v1' }))
-  .register(new AuthModule())
-  .register(new WorkspacesModule())
+const store = new PGAdapter(process.env.DATABASE_URL!);
+
+const app = await new FonderieApp(defineConfig({ basePath: '/v1', db: { url: process.env.DATABASE_URL! } }))
+  .register(new AuthModule(store, { providers: ['email'], appName: 'my-api', jwtSecret: process.env.JWT_SECRET! }))
+  .register(new WorkspacesModule(store))
   .boot();
 
 app.listen(3000, { name: 'my-api' });
@@ -47,12 +50,12 @@ npm install @fonderie/billing @fonderie/permissions
 ```
 
 ```ts
-import { BillingModule } from '@fonderie/billing';
+import { BillingModule, StripeProvider } from '@fonderie/billing';
 import { PermissionsModule } from '@fonderie/permissions';
 
 // …
-  .register(new BillingModule())
-  .register(new PermissionsModule())
+  .register(new BillingModule(store, { provider: new StripeProvider(secretKey), plans, successUrl, cancelUrl }))
+  .register(new PermissionsModule(store))
 ```
 
 See [The bricks](../README.md#the-bricks) for the full catalogue. Each

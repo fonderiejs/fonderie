@@ -68,7 +68,7 @@ export async function buildFonderie() {
 Composition rules: register `EventsModule` first so `events.bus` exists for
 the modules that emit; every `@fonderie/*/migrations` subpath exports
 `getMigrationsPath(): string` for `InternalMigrationRunner`; sessions are
-**stateless JWT** (access + refresh), not server-side session rows.
+JWT access + refresh tokens **bound to a server-side session row** (`sid` claim) — logout, rotation and password change revoke them.
 
 ## @fonderie/core
 
@@ -108,12 +108,13 @@ the modules that emit; every `@fonderie/*/migrations` subpath exports
 
 | `IAuthConfig` | Type | Notes |
 |---|---|---|
-| `providers` | `('email'\|'phone'\|'google'\|'github')[]` | required |
+| `providers` | `('email'\|'phone'\|'google'\|'github'\|'apple')[]` | required |
 | `jwtSecret` | `string` | required |
 | `appName?` | `string` | email copy + TOTP issuer |
 | `sessionDuration?` | `string` | default `'7d'` |
 | `mfa?` / `requireVerification?` | `boolean` | TOTP MFA; block unverified logins |
 | `google?` | `{ clientId, clientSecret, redirectUri }` | for the google provider |
+| `apple?` | `{ clientId, teamId, keyId, privateKey, redirectUri, nativeClientIds? }` | for the apple provider (web `form_post` flow + native identityToken); see `signatures/auth.md` |
 
 - Brute-force protection: login, register, forgot-password, and mfa/verify
   are rate-limited by default via @fonderie/rate-limit, backed by the

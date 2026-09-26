@@ -14,10 +14,13 @@ npm install @fonderie/permissions
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';
+import { PGAdapter } from '@fonderie/store';
 import { PermissionsModule } from '@fonderie/permissions';
 
-const app = await new FonderieApp(defineConfig({}))
-  .register(new PermissionsModule())
+const store = new PGAdapter(process.env.DATABASE_URL!);
+
+const app = await new FonderieApp(defineConfig({ db: { url: process.env.DATABASE_URL! } }))
+  .register(new PermissionsModule(store))
   .boot();
 ```
 
@@ -33,7 +36,7 @@ typed `PermissionDeniedError`.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -41,7 +44,7 @@ per-seat anything. Register the modules you need; skip the ones you don't.
 on auth and workspaces, enforced at the route with one middleware.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

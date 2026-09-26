@@ -2,7 +2,7 @@
 
 Pre-built React Native billing screens — `PricingScreen` and
 `SubscriptionScreen` — built on
-[`@fonderie/react-native-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/react-native-billing)
+[`@fonderie/react-native-billing`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-native-billing)
 hooks. Native `View`/`FlatList`/`TouchableOpacity` components, inline styles
 you can override, zero UI library dependency.
 
@@ -51,7 +51,7 @@ just the state management without the markup? Use
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -61,7 +61,7 @@ whenever you outgrow it — `@fonderie/react-native-billing`'s hooks work
 standalone.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

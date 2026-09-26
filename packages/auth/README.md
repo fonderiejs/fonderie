@@ -14,10 +14,17 @@ npm install @fonderie/auth
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';
+import { PGAdapter } from '@fonderie/store';
 import { AuthModule } from '@fonderie/auth';
 
-const app = await new FonderieApp(defineConfig({}))
-  .register(new AuthModule())
+const store = new PGAdapter(process.env.DATABASE_URL!);
+
+const app = await new FonderieApp(defineConfig({ db: { url: process.env.DATABASE_URL! } }))
+  .register(new AuthModule(store, {
+    providers: ['email'],
+    appName: 'my-app',
+    jwtSecret: process.env.JWT_SECRET!,
+  }))
   .boot();
 ```
 
@@ -35,7 +42,7 @@ Also exports `toUserDTO`, `normalizeEmail`, and the full type surface
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -43,7 +50,7 @@ per-seat anything. Register the modules you need; skip the ones you don't.
 other brick trusts the `ctx.user` this one establishes.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

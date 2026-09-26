@@ -5,7 +5,7 @@ React hooks for Fonderie billing — `usePlans`, `usePlan`, `useSubscription`,
 card management (`usePaymentMethod`, `useSetupPaymentMethod`,
 `useSavePaymentMethod`, `useRemovePaymentMethod`), and `usePurchasePack` (buy a
 credit pack by charging the saved card — no redirect). Thin bindings over
-[`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client):
+[`@fonderie/client`](https://github.com/fonderiejs/fonderie/tree/main/packages/client):
 loading/error state and the request itself, nothing else. Bring your own UI.
 
 ## Install
@@ -69,7 +69,7 @@ Each hook takes the same `BillingClient` instance (`client.billing`) —
 construct one `FonderieClient` at the app root and pass it down (React
 context or a prop). The client's access token is shared with `client.auth`
 automatically, so signing in via
-[`@fonderie/react-auth`](https://github.com/fonderiejs/sdk/tree/main/packages/react-auth)
+[`@fonderie/react-auth`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-auth)
 is enough to authenticate billing requests too. Billing by workspace instead
 of by user? Call `client.billing.setWorkspaceId(id)`.
 
@@ -96,10 +96,10 @@ await save(setupIntent.payment_method); // records it as the default
 
 The Payment Element and the publishable key live in your app (a generic
 package can't own them). See the fully-wired reference in
-[`examples/leadeasygen`](https://github.com/fonderiejs/sdk/tree/main/examples).
+[`examples/leadeasygen`](https://github.com/fonderiejs/fonderie/tree/main/examples).
 
 Want pre-built screens instead of wiring your own pricing table?
-See [`@fonderie/react-billing-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/react-billing-screens) —
+See [`@fonderie/react-billing-screens`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-billing-screens) —
 its `SubscriptionScreen` shows and removes the card and delegates add/update
 via an `onAddPaymentMethod` prop.
 
@@ -108,7 +108,7 @@ via an `onAddPaymentMethod` prop.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -117,7 +117,7 @@ around `@fonderie/client`, nothing more. No business logic lives here; it
 lives in `@fonderie/billing` on the server.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License
