@@ -77,7 +77,7 @@ Also present: `generate-project-brain.mjs` (a per-project brain), and
 | --- | --- |
 | `npm run typecheck` | `tsc --noEmit` across all packages (turbo) — the strict type gate; `build` (tsup) is not a substitute |
 | `npm run test` | every package's test suite (turbo) |
-| `npm run lint` | Biome lint over the whole repo (noisy — includes experiments/skeletons) |
+| `npm run lint` | Biome lint over the whole repo |
 | `npm run lint:ci` | Biome lint over `packages/` at **error** severity — the shipped-code gate CI runs |
 | `npm run audit:ship` | `npm audit` at high+ over Fonderie's **shipped** surface (`--omit=dev --omit=peer`) — fails on a real vuln we ship, ignores peer deps the app owns. See [../SECURITY.md](../SECURITY.md) |
 | `npm run audit:validation` | every body-taking route either wires `validate()` or is listed as a reasoned exemption in `scripts/audit-validation.mjs` |
@@ -93,7 +93,6 @@ forget to regenerate, CI fails on the diff. The habit that avoids it is in
 | --- | --- |
 | `npm run brain:serve` | a retrieval server over `brain.json` — how an agent queries the knowledge graph on demand |
 | `npm run brain:test` / `brain:project-test` / `brain:r3-test` | tests for the brain retrieval + project-brain paths |
-| `npm run brain:drift` | drift check from the R1 experiment |
 
 ## House rules baked into tooling
 

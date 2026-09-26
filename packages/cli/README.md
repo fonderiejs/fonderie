@@ -11,7 +11,7 @@ The old way loaded every package's signatures into the agent's context every
 turn (~6–28k tokens). This writes a small **router** that stays resident and
 **per-package bodies the agent reads only when a task touches them.** Measured on
 a 3-condition, N=3 benchmark: **0.14× the knowledge overhead of the eager skill,
-at equal completion and quality** (`experiments/phase41-2026-07/`).
+at equal completion and quality** (harness kept in our private research repository).
 
 ## Commands
 
@@ -34,8 +34,8 @@ at equal completion and quality** (`experiments/phase41-2026-07/`).
   `.env.example`. Prints the one app-specific line (`mount`) it leaves to you.
   A **correctness/DX** convenience — the emitted wiring is verified to typecheck
   against the installed packages; it is *not* a token/turn saving (an
-  auth-session pilot found the wiring isn't the turn bottleneck — see
-  `experiments/phase41-2026-07/DISCOVERY-ADD-WIRING.md`).
+  auth-session pilot found the wiring isn't the turn bottleneck; the notes
+  live in the private research repository).
 
 ## How it stays correct
 

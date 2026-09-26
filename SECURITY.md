@@ -55,7 +55,7 @@ ships.
 **Out of scope** — vulnerabilities in *peer* dependencies the consuming app
 provides and controls (e.g. your chosen version of Express), issues that
 require a misconfiguration the docs warn against, and anything in the
-example/experiment skeletons under `experiments/`.
+example apps under `examples/`, which are reference wiring, not shipped code.
 
 ## How we keep our own house honest
 
