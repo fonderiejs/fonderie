@@ -516,7 +516,7 @@ Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);
 //   fonderie migrate --check      exit 1 if any pending migration is destructive
 //
 // APPLYING IS NOT HERE, deliberately. The order migrations run in is the app's
-// to declare — it interleaves brick migrations with its own (LeadEasyGen's app
+// to declare — it interleaves brick migrations with its own (the reference app
 // tables reference auth's), and a CLI guessing that order would eventually
 // guess wrong in a way that only shows up on a fresh database. The app already
 // has a runner that knows its order; this reports on it and gates it.

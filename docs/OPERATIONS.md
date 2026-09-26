@@ -85,7 +85,7 @@ into `ok` leaves a healthy deployment permanently red, which is precisely how an
 alarm stops being read.
 
 A worked example wiring all five onto one route is in
-[`examples/leadeasygen`](../examples/leadeasygen/microservices/api/src/fonderie.ts).
+the reference app's `fonderie.ts` (private).
 With [`@fonderie/admin`](../packages/admin) installed they need no wiring:
 each brick describes its checks and `GET /_admin/doctor` runs them, with
 `GET /_admin` as the attention page. Pending migrations, which no brick owns,

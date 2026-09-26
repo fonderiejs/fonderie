@@ -10,7 +10,7 @@ import { corsHeadersFor, normalizeOrigin, resolveCorsOptions } from '../middlewa
 // alone it fails as a TOTAL outage with a misleading message: the browser
 // blocks every request and the app reports "can't reach the server".
 
-const ORIGIN = 'https://leadeasygen-app.vercel.app';
+const ORIGIN = 'https://acme-app.vercel.app';
 const allow = (configured: unknown, requestOrigin = ORIGIN) =>
 	corsHeadersFor(
 		resolveCorsOptions({ origin: configured as string, credentials: true }),
@@ -24,7 +24,7 @@ test('a trailing slash in the configured origin no longer breaks every request',
 
 test('surrounding whitespace and casing are tolerated', () => {
 	assert.equal(allow(`  ${ORIGIN}  `), ORIGIN);
-	assert.equal(allow('https://LeadEasyGen-App.Vercel.App'), ORIGIN);
+	assert.equal(allow('https://Acme-App.Vercel.App'), ORIGIN);
 });
 
 test('the echoed value is the REQUEST origin, byte-for-byte', () => {
@@ -35,13 +35,13 @@ test('the echoed value is the REQUEST origin, byte-for-byte', () => {
 
 test('a genuinely different origin is still refused', () => {
 	assert.equal(allow(ORIGIN, 'https://evil.example.com'), undefined);
-	assert.equal(allow(ORIGIN, 'https://leadeasygen-app.vercel.app.evil.com'), undefined);
+	assert.equal(allow(ORIGIN, 'https://acme-app.vercel.app.evil.com'), undefined);
 });
 
 test('a list covers apex + www, which one string cannot express', () => {
-	const both = ['https://leadeasygen.com/', 'https://www.leadeasygen.com'];
-	assert.equal(allow(both, 'https://leadeasygen.com'), 'https://leadeasygen.com');
-	assert.equal(allow(both, 'https://www.leadeasygen.com'), 'https://www.leadeasygen.com');
+	const both = ['https://acme.example/', 'https://www.acme.example'];
+	assert.equal(allow(both, 'https://acme.example'), 'https://acme.example');
+	assert.equal(allow(both, 'https://www.acme.example'), 'https://www.acme.example');
 	assert.equal(allow(both, 'https://other.com'), undefined);
 });
 

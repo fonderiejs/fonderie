@@ -150,7 +150,7 @@ test('once: drains EVERY bus it was given, then exits', async () => {
 	// notification queue. Draining only one leaves the others LISTENing, so the
 	// work finishes but the process never exits and a job platform records a
 	// timeout for a run that actually succeeded. That is exactly how this first
-	// failed in LeadEasyGen.
+	// failed in the reference consumer.
 	const a = fakeBus();
 	const b = fakeBus();
 	await runWorker([a.bus, b.bus], { once: true });

@@ -16,7 +16,7 @@ success, and the message quietly goes to spam or authenticates as nobody.
 ## The shape
 
 ```
-From:      LeadEasyGen <hello@email.example.com>   ← app's brand, sending subdomain
+From:      Acme <hello@email.example.com>   ← app's brand, sending subdomain
 Reply-To:  hello@example.com                       ← an address that RECEIVES
 DKIM d=    email.example.com                       ← aligned with From
 SPF        checked against send.email.example.com  ← the envelope, not the From
@@ -45,7 +45,7 @@ receipt that reads as a different company at best, and as phishing at worst.
 
 ```ts
 new CourierModule({
-  brandName: 'LeadEasyGen',   // ← set once; every template inherits it
+  brandName: 'Acme',   // ← set once; every template inherits it
   channels: { … },
   email: { … },
 })
@@ -186,7 +186,7 @@ because the sender believes they reached you and never follows up.
 ```ts
 email: {
   provider: 'smtp',
-  from: 'LeadEasyGen <hello@email.example.com>',
+  from: 'Acme <hello@email.example.com>',
   replyTo: 'hello@example.com',   // ← an address that actually receives
   smtp: { … },
 }
