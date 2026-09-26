@@ -13,10 +13,13 @@ npm install @fonderie/webhooks
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';
+import { PGAdapter } from '@fonderie/store';
 import { WebhooksModule } from '@fonderie/webhooks';
 
-const app = await new FonderieApp(defineConfig({}))
-  .register(new WebhooksModule())
+const store = new PGAdapter(process.env.DATABASE_URL!);
+
+const app = await new FonderieApp(defineConfig({ db: { url: process.env.DATABASE_URL! } }))
+  .register(new WebhooksModule(store))
   .boot();
 ```
 
@@ -29,7 +32,7 @@ import type { IWebhookEndpoint, IWebhookDelivery, DeliveryStatus } from '@fonder
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -37,7 +40,7 @@ per-seat anything. Register the modules you need; skip the ones you don't.
 this brick fans workspace events out to them and tracks every delivery.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

@@ -2,7 +2,7 @@
 
 Pre-built React screens for Fonderie's customers module —
 `CustomersListScreen` and `CustomerDetailScreen` — built on
-[`@fonderie/react-customers`](https://github.com/fonderiejs/sdk/tree/main/packages/react-customers)'s
+[`@fonderie/react-customers`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-customers)'s
 hooks. Plain HTML elements, inline styles you can override, zero UI
 library dependency.
 
@@ -39,7 +39,7 @@ hooks directly.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -49,7 +49,7 @@ whenever you outgrow it — `@fonderie/react-customers`'s hooks work
 standalone.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

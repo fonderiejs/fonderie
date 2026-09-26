@@ -1,7 +1,7 @@
 # @fonderie/react-native-customers
 
 React Native hooks for Fonderie's customers module — re-exports
-[`@fonderie/react-customers`](https://github.com/fonderiejs/sdk/tree/main/packages/react-customers)
+[`@fonderie/react-customers`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-customers)
 wholesale. Like billing and workspaces, the customers hooks own no storage
 of their own, so there's no platform-specific code to fork — the same
 hooks work in React Native as-is.
@@ -33,14 +33,14 @@ function Customers() {
 ```
 
 Want a pre-built screen instead of wiring your own customer manager? See
-[`@fonderie/react-native-customers-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/react-native-customers-screens).
+[`@fonderie/react-native-customers-screens`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-native-customers-screens).
 
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -51,7 +51,7 @@ without having to know the hooks happen to be framework-agnostic under
 the hood.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

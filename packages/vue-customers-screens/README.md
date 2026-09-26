@@ -2,7 +2,7 @@
 
 Pre-built Vue 3 screens for Fonderie's customers module —
 `CustomersListScreen` and `CustomerDetailScreen` — built on
-[`@fonderie/vue-customers`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-customers)'s
+[`@fonderie/vue-customers`](https://github.com/fonderiejs/fonderie/tree/main/packages/vue-customers)'s
 composables. Plain `h()`-based components with inline styles you can
 override, zero UI library dependency.
 
@@ -40,7 +40,7 @@ vocabulary aren't covered by the pre-built screens — use
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -49,7 +49,7 @@ to build one from scratch. Swap it for your own design system whenever
 you outgrow it — `@fonderie/vue-customers`'s composables work standalone.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License
