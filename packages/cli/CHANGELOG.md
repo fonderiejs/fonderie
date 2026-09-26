@@ -1,5 +1,11 @@
 # @fonderie/cli
 
+## 0.9.7
+
+### Patch Changes
+
+- 0cf2857: README no longer points at a benchmark directory that is not in this repository.
+
 ## 0.9.6
 
 ### Patch Changes
