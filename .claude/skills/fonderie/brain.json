@@ -14,7 +14,7 @@
     "courier": "7.9.4",
     "customers": "6.2.16",
     "events": "5.9.1",
-    "geo": "0.2.13",
+    "geo": "0.3.0",
     "logger": "0.3.3",
     "media": "0.2.19",
     "permissions": "5.0.23",
@@ -1210,7 +1210,7 @@
       "hasOutcomes": true
     },
     "geo": {
-      "version": "0.2.13",
+      "version": "0.3.0",
       "stability": "experimental",
       "requires": [
         "core",
