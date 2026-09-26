@@ -6,7 +6,7 @@
       "recipe": "basic-auth"
     },
     "auth.oauth": {
-      "description": "social login / SSO via OAuth providers (Google, GitHub)",
+      "description": "social login / SSO via OAuth providers (Google, GitHub, Apple — web form_post and native identityToken)",
       "package": "auth",
       "recipe": "oauth"
     },
@@ -344,7 +344,7 @@
         "store"
       ],
       "invariants": [
-        "workspaces-requires-billing",
+        "workspaces-billing-seam",
         "email-provider-default"
       ]
     },
@@ -370,7 +370,7 @@
         "store"
       ],
       "invariants": [
-        "workspaces-requires-billing"
+        "workspaces-billing-seam"
       ]
     },
     "plan-gate": {
@@ -947,7 +947,7 @@
     "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
     "logout-provided": "@fonderie/auth mounts POST /auth/logout with session invalidation — do not hand-roll stateless-JWT logout.",
     "webhook-route-before-auth-mw": "Register the billing/Stripe webhook route before global auth middleware so signature-verified callbacks are not rejected as unauthenticated.",
-    "workspaces-requires-billing": "@fonderie/workspaces peer-depends on @fonderie/billing; register billing before workspaces.",
+    "workspaces-billing-seam": "@fonderie/workspaces does NOT depend on @fonderie/billing (its peers are core, events, store) and there is no registration-order requirement. When both are registered, workspaces reads plan limits at request time from ctx.meta['billing'], which billing's withBilling middleware sets — a contract through core, never a direct import.",
     "email-provider-default": "Do NOT stop to ask which email provider to use. Default to SMTP via CourierModule's SMTP channel, configured from process.env (SMTP_URL or SMTP_HOST/PORT/USER/PASS), fail-fast if missing. Note the choice in a comment; the operator can swap providers later. Picking a sensible default and proceeding is required — a blocked task is a failed task.",
     "frontend-client-injection": "Every @fonderie/*-auth, @fonderie/*-billing, @fonderie/*-workspaces, @fonderie/*-audit, @fonderie/*-webhooks, and @fonderie/*-customers hook/composable takes the matching @fonderie/client sub-client instance (client.auth, client.billing, client.workspaces, client.audit, client.webhooks, or client.customers) as an argument — instantiate one @fonderie/client FonderieClient at the app root and pass the sub-client down (React context, Vue provide/inject, or a prop), do not construct a new client per hook call.",
     "frontend-token-storage": "The access token is persisted client-side by the auth hook/composable itself on login/register and restored on mount (localStorage for react-auth and vue-auth, AsyncStorage for react-native-auth) — do not re-implement token persistence in app code, and do not read/write that storage key directly.",

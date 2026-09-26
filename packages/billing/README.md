@@ -14,10 +14,18 @@ npm install @fonderie/billing
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';
-import { BillingModule } from '@fonderie/billing';
+import { PGAdapter } from '@fonderie/store';
+import { BillingModule, StripeProvider } from '@fonderie/billing';
 
-const app = await new FonderieApp(defineConfig({}))
-  .register(new BillingModule())
+const store = new PGAdapter(process.env.DATABASE_URL!);
+
+const app = await new FonderieApp(defineConfig({ db: { url: process.env.DATABASE_URL! } }))
+  .register(new BillingModule(store, {
+    provider: new StripeProvider(process.env.STRIPE_SECRET_KEY!),
+    plans: [/* IBillingPlan[] — see "Plans" below */],
+    successUrl: 'https://app.example.com/billing/success',
+    cancelUrl: 'https://app.example.com/billing/cancel',
+  }))
   .boot();
 ```
 
@@ -119,8 +127,8 @@ doesn't hard-code this — it's your policy.
 
 Wire the UI with the framework hooks — `usePaymentMethod`,
 `useSetupPaymentMethod`, `useSavePaymentMethod`, `useRemovePaymentMethod` in
-[`@fonderie/react-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/react-billing)
-/ [`@fonderie/vue-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-billing)
+[`@fonderie/react-billing`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-billing)
+/ [`@fonderie/vue-billing`](https://github.com/fonderiejs/fonderie/tree/main/packages/vue-billing)
 / `@fonderie/react-native-billing` — or drop in `SubscriptionScreen` from the
 `*-billing-screens` packages, which shows and removes the card and delegates
 add/update to your own Payment Element.
@@ -152,8 +160,8 @@ active/trialing subscriber on a paid plan (server-enforced on **both** the hoste
 and in-app paths) — their plan already includes its credits.
 
 Wire the UI with `usePurchasePack` in
-[`@fonderie/react-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/react-billing)
-/ [`@fonderie/vue-billing`](https://github.com/fonderiejs/sdk/tree/main/packages/vue-billing)
+[`@fonderie/react-billing`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-billing)
+/ [`@fonderie/vue-billing`](https://github.com/fonderiejs/fonderie/tree/main/packages/vue-billing)
 / `@fonderie/react-native-billing` — it charges the card, retries `processing`
 in place with one key, and resolves to the outcome so you fall back to hosted
 checkout on `checkout_required`.
@@ -163,7 +171,7 @@ checkout on `checkout_required`.
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -171,7 +179,7 @@ per-seat anything. Register the modules you need; skip the ones you don't.
 usage limits — the commercial rules the other bricks consult before acting.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License

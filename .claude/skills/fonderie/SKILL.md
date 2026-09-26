@@ -52,14 +52,17 @@ nobody asked for.
 
 ```ts
 import { FonderieApp, defineConfig } from '@fonderie/core';
+import { PGAdapter } from '@fonderie/store';
 import { AuthModule } from '@fonderie/auth';
 import { WorkspacesModule } from '@fonderie/workspaces';
 import { BillingModule, StripeProvider } from '@fonderie/billing';
 
-const app = await new FonderieApp(defineConfig({ basePath: '/v1' }))
-  .register(new AuthModule())
-  .register(new WorkspacesModule())
-  .register(new BillingModule(store, { provider: new StripeProvider(secretKey), plans: [...] }))
+const store = new PGAdapter(process.env.DATABASE_URL!);
+
+const app = await new FonderieApp(defineConfig({ basePath: '/v1', db: { url: process.env.DATABASE_URL! } }))
+  .register(new AuthModule(store, { providers: ['email'], appName: 'my-api', jwtSecret: process.env.JWT_SECRET! }))
+  .register(new WorkspacesModule(store))
+  .register(new BillingModule(store, { provider: new StripeProvider(secretKey), plans: [...], successUrl, cancelUrl }))
   .boot();
 
 app.listen(3000, { name: 'my-api' });
@@ -69,12 +72,16 @@ app.listen(3000, { name: 'my-api' });
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| Login, sessions, MFA, OAuth, password reset | `@fonderie/auth` | JWT/session auth, `requireAuth`, email verification, Google OAuth |
+| Login, sessions, MFA, OAuth, password reset | `@fonderie/auth` | Session-bound JWT auth, `requireAuth`, email verification, Google + Apple sign-in (web and native), login history, active sessions |
 | Teams, orgs, multi-tenancy | `@fonderie/workspaces` | Full CRUD on workspaces/members/invitations |
 | Subscriptions, checkout, metering | `@fonderie/billing` | Provider-agnostic (`StripeProvider` ships in), `requirePlan` |
 | Roles, RBAC, access checks | `@fonderie/permissions` | Wildcard permissions, super-role bypass, `requirePermission` (server-side only — no HTTP API; role CRUD for a frontend is under `@fonderie/workspaces`, see `react-workspaces`'s `useRoles`/`useMemberRoles` below) |
 | Email, SMS, push | `@fonderie/courier` | Fire-and-forget dispatch, template resolvers |
-| Feature flags, remote config | `@fonderie/config` | DB-backed, per-environment, poll-based refresh |
+| Feature flags, remote config, encrypted secrets | `@fonderie/config` | DB-backed, per-environment; poll + LISTEN/NOTIFY refresh; secrets encrypted at rest (routes answer `503 SECRETS_DISABLED` without an encryptor); managed from `/_admin/config` + `/_admin/secrets` |
+| Brute-force / abuse brakes on any route | `@fonderie/rate-limit` | Token-bucket limiter with Postgres or Redis store (`StoreAdapterStore`), `rateLimit()` middleware; auth wires it by default — **fails open by default**, set `failClosed` on money paths |
+| Operator console: what is deployed, configured, failing | `@fonderie/admin` | `/_admin` — modules + versions, environment (declared vs held), migrations pending/apply, doctor (Stripe webhooks, prices, DNS, integrity), users/subscribers, admin log; `ui: true` serves the themed console; host-bound, token-authenticated |
+| Signals → decision (trial abuse, login risk, promo abuse) | `@fonderie/risk` | `RiskEngine` with rulesets-as-data, reuse/velocity/attribute signals, hashed identifiers; **decides, never enforces** — the app owns the side effect |
+| IP → country/region/city, self-hosted | `@fonderie/geo` | `PostgresGeoProvider` (cidr/GiST, IPv4+IPv6) + MaxMind GeoLite2 CSV ingest; no consumer yet — read the README before wiring |
 | Audit trail | `@fonderie/audit` | Workspace-scoped audit log |
 | Outgoing webhooks | `@fonderie/webhooks` | Webhook engine (endpoint CRUD + delivery history + test-send; frontend hooks under `react-webhooks`/`vue-webhooks` below) |
 | Event bus | `@fonderie/events` | Cross-module events |
@@ -114,7 +121,7 @@ via an auth hook authenticates billing requests too, nothing extra to wire.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| React billing hooks | `@fonderie/react-billing` | `usePlans`, `usePlan`, `useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage`, `useRecordUsage` |
+| React billing hooks | `@fonderie/react-billing` | `usePlans`, `usePlan`, `useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage` (`recordUsage` is a method on it), `useInvoices`, `useCancelSubscription`, `useReactivateSubscription`, wallet (`useWallet`, `useWalletCheckout`, `useWalletTransactions`, `useWalletPreferences`, `usePurchasePack`) and saved cards (`useSetupPaymentMethod`, `useSavePaymentMethod`, `usePaymentMethod`, `useRemovePaymentMethod`) |
 | React pre-built billing screens | `@fonderie/react-billing-screens` | `PricingScreen`, `SubscriptionScreen` built on the hooks above |
 | React Native billing hooks | `@fonderie/react-native-billing` | Re-exports `react-billing` as-is — billing has no platform-specific storage, unlike auth |
 | React Native pre-built billing screens | `@fonderie/react-native-billing-screens` | Same two screens, React Native components |
@@ -128,7 +135,7 @@ header, same fallback behavior billing's `setWorkspaceId` uses.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| React workspaces hooks | `@fonderie/react-workspaces` | `useWorkspaces`, `useCreateWorkspace`, `useMembers`, `useRemoveMember`, `useInvitations`, `useAcceptInvitation`, `useWorkspaceSettings`, plus role management — `useRoles`, `useUpdateRole`, `useSetRolePermissions`, `useMemberRoles` (`@fonderie/permissions` has no HTTP API; role CRUD lives here) |
+| React workspaces hooks | `@fonderie/react-workspaces` | `useWorkspaces` (list + `createWorkspace`/`acceptInvitation` methods), `useWorkspace`, `useWorkspaceProfile`, `useMembers` (`removeMember` method), `useInvitations`, `useWorkspaceSettings`, plus role management — `useRoles` (`updateRole` method), `useRole`, `useRolePermissions(roleId)` (`setRolePermissions` method), `useMemberRoles` (`@fonderie/permissions` has no HTTP API; role CRUD lives here) |
 | React pre-built workspaces screens | `@fonderie/react-workspaces-screens` | `TeamMembersScreen`, `InviteMembersScreen` built on the hooks above |
 | React Native workspaces hooks | `@fonderie/react-native-workspaces` | Re-exports `react-workspaces` as-is — no platform-specific storage, unlike auth |
 | React Native pre-built workspaces screens | `@fonderie/react-native-workspaces-screens` | Same two screens, React Native components |
@@ -155,7 +162,7 @@ returned once, at creation — surface it immediately.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| React webhooks hooks | `@fonderie/react-webhooks` | `useWebhookEndpoints` (list/create/delete), `useWebhookEndpoint` (get/update), `useWebhookDeliveries`, `useTestWebhookEndpoint` |
+| React webhooks hooks | `@fonderie/react-webhooks` | `useWebhookEndpoints` (list/create/delete, `testEndpoint(id)` method), `useWebhookEndpoint` (get/update), `useWebhookDeliveries` |
 | React pre-built webhooks screens | `@fonderie/react-webhooks-screens` | `WebhooksListScreen`, `WebhookDetailScreen` built on the hooks above |
 | React Native webhooks hooks | `@fonderie/react-native-webhooks` | Re-exports `react-webhooks` as-is — no platform-specific storage, unlike auth |
 | React Native pre-built webhooks screens | `@fonderie/react-native-webhooks-screens` | Same two screens, React Native components |
@@ -189,7 +196,7 @@ admin-dashboard surface, not a phone screen.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| React courier template-admin hooks | `@fonderie/react-courier-admin` | `useTemplates`, `useTemplate`, `useSaveTemplate`, `useDeleteTemplate`, `useTemplateRevisions` (list + rollback) |
+| React courier template-admin hooks | `@fonderie/react-courier-admin` | `useTemplates` (list; `setTemplate`/`deleteTemplate` methods), `useTemplate`, `useTemplatePreview`, `useTemplateRevisions` (list + rollback) |
 | React pre-built template-admin screens | `@fonderie/react-courier-admin-screens` | `TemplateListScreen`, `TemplateEditorScreen` (edit form + revision history + rollback) |
 | Vue 3 courier template-admin composables | `@fonderie/vue-courier-admin` | Same shape as the React hooks, as Vue composables |
 | Vue 3 pre-built template-admin screens | `@fonderie/vue-courier-admin-screens` | Same two screens, as Vue components |
@@ -203,7 +210,7 @@ reasoning as courier-admin.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| React config/secrets admin hooks | `@fonderie/react-config-admin` | `useConfigEntries`, `useConfigEntry`, `useSaveConfigEntry`, `useDeleteConfigEntry`, `useConfigRevisions`, plus the secret equivalents and `useRevealSecret` |
+| React config/secrets admin hooks | `@fonderie/react-config-admin` | `useConfigEntries` (list; save/delete methods), `useConfigEntry`, `useConfigRevisions`, plus the secret equivalents (`useSecrets`, `useSecret`, `useSecretRevisions`) and `useRevealSecret` |
 | React pre-built config/secrets admin screens | `@fonderie/react-config-admin-screens` | `ConfigListScreen` (config + masked secrets dashboard), `ConfigEditorScreen` (JSON/secret editor + revision history + rollback) |
 | Vue 3 config/secrets admin composables | `@fonderie/vue-config-admin` | Same shape as the React hooks, as Vue composables |
 | Vue 3 pre-built config/secrets admin screens | `@fonderie/vue-config-admin-screens` | Same two screens, as Vue components |

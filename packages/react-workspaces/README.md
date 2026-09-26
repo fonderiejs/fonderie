@@ -6,7 +6,7 @@ React hooks for Fonderie workspaces — `useWorkspaces`, `useCreateWorkspace`,
 `useSetRolePermissions`, `useMemberRoles` — `@fonderie/permissions` has no
 HTTP API of its own; role CRUD lives under `@fonderie/workspaces`' routes).
 Thin bindings over
-[`@fonderie/client`](https://github.com/fonderiejs/sdk/tree/main/packages/client):
+[`@fonderie/client`](https://github.com/fonderiejs/fonderie/tree/main/packages/client):
 loading/error state and the request itself, nothing else. Bring your own UI.
 
 ## Install
@@ -68,20 +68,20 @@ Each hook takes the same `WorkspacesClient` instance (`client.workspaces`) —
 construct one `FonderieClient` at the app root and pass it down (React
 context or a prop). The client's access token is shared with `client.auth`
 automatically, so signing in via
-[`@fonderie/react-auth`](https://github.com/fonderiejs/sdk/tree/main/packages/react-auth)
+[`@fonderie/react-auth`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-auth)
 is enough to authenticate workspace requests too. Requests default to the
 caller's personal workspace until you call
 `client.workspaces.setWorkspaceId(id)` to scope them to a team.
 
 Want pre-built screens instead of wiring your own team list?
-See [`@fonderie/react-workspaces-screens`](https://github.com/fonderiejs/sdk/tree/main/packages/react-workspaces-screens).
+See [`@fonderie/react-workspaces-screens`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-workspaces-screens).
 
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
 and the next project will ask for it again. Fonderie packages it once:
 plain TypeScript modules for
-[`@fonderie/core`](https://github.com/fonderiejs/sdk/tree/main/packages/core),
+[`@fonderie/core`](https://github.com/fonderiejs/fonderie/tree/main/packages/core),
 PostgreSQL-backed, self-hosted, MIT. No external control plane, no
 per-seat anything. Register the modules you need; skip the ones you don't.
 
@@ -90,7 +90,7 @@ around `@fonderie/client`, nothing more. No business logic lives here; it
 lives in `@fonderie/workspaces` on the server.
 
 Browse the whole set at
-[fonderiejs/sdk](https://github.com/fonderiejs/sdk) · follow
+[fonderiejs/fonderie](https://github.com/fonderiejs/fonderie) · follow
 [@fonderiejs](https://x.com/fonderiejs)
 
 ## License
