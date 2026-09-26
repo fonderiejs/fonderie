@@ -1,5 +1,10 @@
 {
   "concepts": {
+    "geo.headers": {
+      "description": "requester country / region / city / time zone from the platform's edge geolocation headers (Vercel, Cloudflare) via geoFromHeaders — zero infrastructure; trust comes from the deployment environment, never the request",
+      "package": "geo",
+      "recipe": "geo-country-signal"
+    },
     "auth.accounts": {
       "description": "sign up, log in, sessions, passwords, MFA, email verification",
       "package": "auth",
@@ -300,6 +305,18 @@
     }
   },
   "recipes": {
+    "geo-country-signal": {
+      "when": "know the requester's country — gate a trial/promo by market, show a sign-in location",
+      "packages": [
+        "geo",
+        "risk",
+        "core"
+      ],
+      "invariants": [
+        "geo-trust-from-env"
+      ],
+      "note": "on Vercel/Cloudflare use geoFromHeaders(req.headers, { trust }); feed loc.country into a @fonderie/risk attribute (e.g. outsideMarket) rather than deciding in the route; PostgresGeoProvider + MaxMind only for hosts without edge geolocation"
+    },
     "basic-auth": {
       "when": "sign up + log in with email/password",
       "packages": [
@@ -943,6 +960,7 @@
     }
   },
   "invariants": {
+    "geo-trust-from-env": "geoFromHeaders believes a platform's headers only for the source named in `trust`. Derive trust from the deployment environment (process.env.VERCEL ? 'vercel' : undefined), NEVER from the request — a client can send x-vercel-ip-country to a server that is not behind Vercel. Treat a null location as unknown, not suspicious. Gate on country only; region and city are display-grade.",
     "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
     "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
     "logout-provided": "@fonderie/auth mounts POST /auth/logout with session invalidation — do not hand-roll stateless-JWT logout.",

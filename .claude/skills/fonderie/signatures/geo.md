@@ -7,6 +7,18 @@
 Subpath exports: `@fonderie/geo/migrations`
 
 ```ts
+function geoFromHeaders(headers: HeadersLike, opts: GeoFromHeadersOptions): GeoLocation | null
+
+interface GeoFromHeadersOptions {
+    trust: GeoHeaderSource | readonly GeoHeaderSource[] | null | undefined;
+}
+
+type GeoHeaderSource = 'vercel' | 'cloudflare';
+
+type HeadersLike = {
+    get(name: string): string | null | undefined;
+} | Record<string, string | string[] | undefined>;
+
 new PostgresGeoProvider(store: Queryable): PostgresGeoProvider
   .name: "postgres"
   .lookup(ip: string): Promise<GeoLocation | null>
