@@ -373,7 +373,9 @@ export class AdminModule implements IFonderieModule {
 					// router's own normalizer, so the href and the routing cannot
 					// disagree about what this path is.
 					const here = normalizeRequestPath(new URL(ctx.request.url).pathname);
-					return new Response(uiHtml(`${here}/app.js`), {
+					// The version in the URL: the script is cached for minutes, so a
+					// page loaded after a deploy must not reuse the previous bundle.
+					return new Response(uiHtml(`${here}/app.js?v=${encodeURIComponent(this.version)}`), {
 						headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
 					});
 				}),

@@ -58,6 +58,7 @@ const templates: typeof en = {
 		errorText: 'Le corps en texte brut est obligatoire — c’est ce que tout client e-mail peut afficher.',
 		exists: '« {type} » existe déjà — ouvrez-le depuis la liste pour le modifier.',
 		existsLocale: '« {type} » ({locale}) existe déjà — ouvrez-le depuis la liste pour le modifier.',
+		untranslated: 'Encore dans la version par défaut : {fields}. Traduisez-les avant d’ajouter cette langue.',
 	},
 };
 export default templates;

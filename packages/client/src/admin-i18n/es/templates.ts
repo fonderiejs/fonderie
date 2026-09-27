@@ -58,6 +58,7 @@ const templates: typeof en = {
 		errorText: 'El cuerpo en texto plano es obligatorio — es lo que puede mostrar cualquier cliente de correo.',
 		exists: '"{type}" ya existe — ábrela desde la lista para editarla.',
 		existsLocale: '"{type}" ({locale}) ya existe — ábrela desde la lista para editarla.',
+		untranslated: 'Todavía en la versión predeterminada: {fields}. Tradúcelos antes de añadir este idioma.',
 	},
 };
 export default templates;

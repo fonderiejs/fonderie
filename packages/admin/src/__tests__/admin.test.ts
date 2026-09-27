@@ -767,14 +767,17 @@ test('ui: off by default; on serves the page UNGUARDED with an absolute script p
 	assert.match(page.headers.get('content-type') ?? '', /text\/html/);
 	const html = await page.text();
 	// Absolute, basePath- and path-aware: a relative src breaks on a trailing slash.
-	assert.match(html, /<script src="\/v1\/ops\/ui\/app\.js" defer>/);
+	// Versioned: the script is cached, so a new deploy needs a new URL.
+	assert.match(html, /<script src="\/v1\/ops\/ui\/app\.js\?v=[^"]+" defer>/);
 	assert.match(html, /noindex/);
 	assert.equal(html.includes(TOKEN), false, 'the page never carries a token');
 
 	// A trailing slash must not shift the script one segment deeper, which is
 	// exactly what a relative src would do.
 	const slashed = await (await app.handle(new Request('http://localhost/v1/ops/ui/'))).text();
-	assert.match(slashed, /<script src="\/v1\/ops\/ui\/app\.js" defer>/);
+	assert.match(slashed, /<script src="\/v1\/ops\/ui\/app\.js\?v=[^"]+" defer>/);
+	// The versioned URL still reaches the script route.
+	assert.equal((await app.handle(new Request('http://localhost/v1/ops/ui/app.js?v=1.0.0'))).status, 503);
 
 	// The script route exists and is unguarded too. Running from source there is
 	// no built bundle, so it says so rather than 404ing or crashing at boot.
