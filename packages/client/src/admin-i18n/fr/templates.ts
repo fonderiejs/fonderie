@@ -2,6 +2,7 @@ import type en from '../en/templates';
 
 const templates: typeof en = {
 	defaultLocale: 'langue par défaut',
+	defaultChip: 'par défaut',
 	builtInBadge: 'intégré',
 	subject: 'Objet',
 	htmlBody: 'Corps HTML',
@@ -11,9 +12,12 @@ const templates: typeof en = {
 		newTemplate: 'Nouveau modèle',
 		hint: "Chaque e-mail envoyé par l'application. Ouvrez-en un pour modifier son contenu et le prévisualiser en direct.",
 		loading: 'Chargement des modèles…',
+		openLocale: 'Ouvrir la version {locale} de {type}',
 	},
 	editor: {
 		loading: 'Chargement du modèle…',
+		locales: 'Langues',
+		discardChanges: 'Cette langue a des modifications non enregistrées. Les abandonner et changer de langue ?',
 		addLocale: '+ Ajouter une langue',
 		builtInNote: 'e-mail intégré : modifiable ou restaurable, mais pas supprimable',
 		active: 'Actif',

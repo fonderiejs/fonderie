@@ -424,6 +424,17 @@ new CourierAdminClient(opts: ICourierAdminClientOptions): CourierAdminClient
   .rollback(type: string, input: IRollbackTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
   .previewTemplate(type: string, input: IPreviewTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<IRenderedTemplateResult>>
 
+interface ITemplateGroup {
+    type: string;
+    entries: ITemplateEntry[];
+    primary: ITemplateEntry;
+    system: boolean;
+}
+
+function groupTemplatesByType(rows: readonly ITemplateEntry[]): ITemplateGroup[]
+
+function missingTemplateLocales(rows: readonly ITemplateEntry[], type: string): string[]
+
 interface IAddAddressInput {
     countryIso: string;
     zipPostalCode: string;

@@ -1,6 +1,7 @@
 // English — canonical: this shape defines the keys fr and es must match.
 const templates = {
 	defaultLocale: 'default locale',
+	defaultChip: 'default',
 	builtInBadge: 'built-in',
 	subject: 'Subject',
 	htmlBody: 'HTML body',
@@ -10,9 +11,12 @@ const templates = {
 		newTemplate: 'New template',
 		hint: 'Every email the app sends. Open one to edit its copy and preview it live.',
 		loading: 'Loading templates…',
+		openLocale: 'Open the {locale} version of {type}',
 	},
 	editor: {
 		loading: 'Loading template…',
+		locales: 'Locales',
+		discardChanges: 'You have unsaved changes to this locale. Discard them and switch?',
 		addLocale: '+ Add locale',
 		builtInNote: 'built-in email: edit or roll back, it cannot be deleted',
 		active: 'Active',
