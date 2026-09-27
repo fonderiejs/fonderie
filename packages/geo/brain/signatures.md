@@ -25,6 +25,14 @@ new PostgresGeoProvider(store: Queryable): PostgresGeoProvider
 
 function loadMaxMindCity(store: TxStore, files: { locationsPath: string; blocksV4Path?: string; blocksV6Path?: string; }): Promise<{ names: number; blocks: number; }>
 
+function loadMaxMindAsn(store: TxStore, files: { blocksV4Path?: string; blocksV6Path?: string; }): Promise<{ blocks: number; }>
+
+function ingestAsnBlocks(store: Queryable, rows: AsnRow[]): Promise<number>
+
+function parseAsnCsv(text: string): AsnRow[]
+
+function asnRowFromLine(line: string): AsnRow | null
+
 function ingestNames(store: Queryable, rows: NameRow[]): Promise<number>
 
 function ingestBlocks(store: Queryable, rows: BlockRow[]): Promise<number>
@@ -39,9 +47,16 @@ function blockRowFromLine(line: string): BlockRow | null
 
 function nameRowFromLine(line: string): NameRow | null
 
+interface AsnRow {
+    network: string;
+    asn: number;
+    organization: string | null;
+}
+
 interface BlockRow {
     network: string;
     geonameId: number | null;
+    postalCode: string | null;
     latitude: number | null;
     longitude: number | null;
     accuracyRadius: number | null;
@@ -74,6 +89,9 @@ interface GeoLocation {
     latitude: number | null;
     longitude: number | null;
     accuracyRadius: number | null;
+    geonameId: number | null;
+    asn: string | null;
+    org: string | null;
 }
 
 interface IGeoProvider {

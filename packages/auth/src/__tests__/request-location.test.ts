@@ -36,6 +36,7 @@ const GOOGLE_EXAMPLE = {
 	latitude: 37.4225,
 	longitude: -122.085,
 	accuracyRadius: 20.4,
+	geonameId: 5375480,
 	isp: 'Google LLC',
 	org: 'Google LLC',
 	asn: 'as15169',
@@ -59,6 +60,7 @@ test('sanitizeLocation: normalises codes, rounds coordinates to ~1 km, keeps boo
 		latitude: 37.42,
 		longitude: -122.08,
 		accuracyRadius: 20,
+		geonameId: 5375480,
 		isp: 'Google LLC',
 		org: 'Google LLC',
 		asn: 'AS15169',
@@ -66,6 +68,14 @@ test('sanitizeLocation: normalises codes, rounds coordinates to ~1 km, keeps boo
 		proxy: false,
 		hosting: true,
 	});
+});
+
+test('sanitizeLocation: geonameId accepts node-pg BIGINT strings, rejects non-ids', () => {
+	assert.equal(sanitizeLocation({ geonameId: '5375480' })?.geonameId, 5375480);
+	assert.equal(sanitizeLocation({ geonameId: 5375480 })?.geonameId, 5375480);
+	for (const bad of [0, -1, 1.5, '12a', '99999999999', 2 ** 31]) {
+		assert.equal(sanitizeLocation({ geonameId: bad }), null, `rejects ${String(bad)}`);
+	}
 });
 
 test('sanitizeLocation: malformed or oversized fields are dropped, not stored', () => {
@@ -76,6 +86,7 @@ test('sanitizeLocation: malformed or oversized fields are dropped, not stored', 
 			postalCode: '<94043>',
 			latitude: 123, // out of range
 			accuracyRadius: -5,
+			geonameId: 1.5,
 			asn: 'five',
 			proxy: 'no', // not a boolean
 			timeZone: '<script>',

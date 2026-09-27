@@ -14,6 +14,10 @@ export type { GeoFromHeadersOptions, GeoHeaderSource, HeadersLike } from './head
 export { PostgresGeoProvider } from './provider.js';
 export {
 	loadMaxMindCity,
+	loadMaxMindAsn,
+	ingestAsnBlocks,
+	parseAsnCsv,
+	asnRowFromLine,
 	ingestNames,
 	ingestBlocks,
 	parseBlocksCsv,
@@ -22,5 +26,5 @@ export {
 	blockRowFromLine,
 	nameRowFromLine,
 } from './ingest.js';
-export type { BlockRow, NameRow, TxStore } from './ingest.js';
+export type { AsnRow, BlockRow, NameRow, TxStore } from './ingest.js';
 export type { GeoLocation, IGeoProvider, Queryable } from './types.js';

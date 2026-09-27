@@ -753,6 +753,7 @@ export interface IRequestLocationDTO {
 	latitude?: number;
 	longitude?: number;
 	accuracyRadius?: number; // km — how approximate the point is
+	geonameId?: number; // stable, language-neutral place key (GeoNames)
 	isp?: string;
 	org?: string;
 	asn?: string;
