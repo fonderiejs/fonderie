@@ -6,15 +6,15 @@
     "adapter-koa": "5.3.8",
     "admin": "1.0.1",
     "audit": "5.2.5",
-    "auth": "7.10.0",
+    "auth": "7.11.0",
     "billing": "10.0.2",
-    "client": "1.1.0",
+    "client": "1.2.0",
     "config": "6.2.1",
     "core": "0.21.1",
     "courier": "7.9.4",
     "customers": "6.2.16",
     "events": "5.9.1",
-    "geo": "0.4.0",
+    "geo": "0.5.0",
     "logger": "0.3.3",
     "media": "0.2.19",
     "permissions": "5.0.23",
@@ -263,7 +263,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.10.0",
+      "version": "7.11.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -705,7 +705,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "1.1.0",
+      "version": "1.2.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -1210,7 +1210,7 @@
       "hasOutcomes": true
     },
     "geo": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "stability": "experimental",
       "requires": [
         "core",
