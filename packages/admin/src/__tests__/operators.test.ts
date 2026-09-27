@@ -79,15 +79,16 @@ test('step-up: dangerous writes only', () => {
 	assert.equal(needsStepUp('PUT', '/_admin/config/K', 'write'), false, 'an ordinary edit is not');
 });
 
-test('checkReadiness: operators without an operatorKey warn; a malformed key is an error', () => {
+test('checkReadiness: no operatorKey is a supported setup; a malformed key is an error', () => {
 	const store = {
 		query: async () => [],
 		transaction: async () => undefined,
 	} as unknown as IStoreAdapter;
 	const TOKEN = 'aaaa-bbbb-aaaa-bbbb-aaaa-bbbb-aaaa-bbbb';
-	assert.equal(
-		new AdminModule({ adminToken: TOKEN, store }).checkReadiness()[0]?.severity,
-		'warning',
+	assert.deepEqual(
+		new AdminModule({ adminToken: TOKEN, store }).checkReadiness(),
+		[],
+		'zero config: no extra env var to set',
 	);
 	assert.equal(
 		new AdminModule({ adminToken: TOKEN, store, operatorKey: 'nope' }).checkReadiness()[0]
