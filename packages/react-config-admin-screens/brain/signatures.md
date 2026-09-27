@@ -18,9 +18,11 @@ interface IConfigListScreenProps {
     environment?: string;
     onSelectConfig?: (key: string) => void;
     onSelectSecret?: (key: string) => void;
+    onCreateConfig?: () => void;
+    onCreateSecret?: () => void;
 }
 
 function ConfigEditorScreen({ client, kind, configKey, environment, onSaved, }: IConfigEditorScreenProps): Element
 
-function ConfigListScreen({ client, environment, onSelectConfig, onSelectSecret, }: IConfigListScreenProps): Element
+function ConfigListScreen({ client, environment, onSelectConfig, onSelectSecret, onCreateConfig, onCreateSecret, }: IConfigListScreenProps): Element
 ```

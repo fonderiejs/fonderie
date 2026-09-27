@@ -7,5 +7,5 @@
 ```ts
 component ConfigEditorScreen(props: { client, kind, configKey, environment }) — emits: saved
 
-component ConfigListScreen(props: { client, environment }) — emits: select-config, select-secret
+component ConfigListScreen(props: { client, environment, allowCreate }) — emits: select-config, select-secret, create-config, create-secret
 ```

@@ -1,9 +1,14 @@
 import type { CSSProperties } from 'vue';
 
 export const styles: Record<string, CSSProperties> = {
-	container: { padding: '24px', maxWidth: '1180px' },
-	split: { display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' },
-	column: { flex: '1 1 460px', minWidth: '320px', display: 'flex', flexDirection: 'column' },
+	container: { padding: '24px' },
+	// Two columns, always: editor left, rendered result right. Stacking the
+	// preview under a long form hid it below the fold.
+	split: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '24px', alignItems: 'start' },
+	column: { minWidth: '0', display: 'flex', flexDirection: 'column' },
+	// Pinned while the form scrolls, so the preview stays in view as you edit.
+	previewColumn: { minWidth: '0', display: 'flex', flexDirection: 'column', position: 'sticky', top: '16px' },
+	saveRow: { display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' },
 	previewHeader: {
 		display: 'flex',
 		justifyContent: 'space-between',
@@ -66,7 +71,6 @@ export const styles: Record<string, CSSProperties> = {
 		fontSize: '14px',
 	},
 	button: {
-		marginTop: '16px',
 		backgroundColor: 'var(--fonderie-text,#171717)',
 		color: 'var(--fonderie-surface,#fff)',
 		padding: '10px 20px',
@@ -75,6 +79,17 @@ export const styles: Record<string, CSSProperties> = {
 		fontSize: '14px',
 		fontWeight: 600,
 		cursor: 'pointer',
+		alignSelf: 'flex-start',
+	},
+	buttonDisabled: {
+		backgroundColor: 'var(--fonderie-border,#e0e0e0)',
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		padding: '10px 20px',
+		borderRadius: '8px',
+		border: 'none',
+		fontSize: '14px',
+		fontWeight: 600,
+		cursor: 'not-allowed',
 		alignSelf: 'flex-start',
 	},
 	revisions: { marginTop: '32px' },

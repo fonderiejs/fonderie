@@ -202,6 +202,8 @@ export function AdminShell({
 					{...(environment !== undefined ? { environment } : {})}
 					onSelectConfig={(key) => setEditing({ kind: 'config', key })}
 					onSelectSecret={(key) => setEditing({ kind: 'secret', key })}
+					onCreateConfig={() => setEditing({ kind: 'config', key: '' })}
+					onCreateSecret={() => setEditing({ kind: 'secret', key: '' })}
 				/>
 			);
 			break;

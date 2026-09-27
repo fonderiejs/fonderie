@@ -156,7 +156,7 @@ test('versionedWrite: multi-column content + null scope (courier shape)', async 
 test('versionedRollback: writes a past revision content as a new version', async () => {
 	const { store, seen } = captureStore((sql) => {
 		if (sql.includes('FROM tpl_rev')) return [{ subject: 'old', html: 'oldh', text: 'oldt' }];
-		if (sql.includes('SELECT version FROM tpl')) return [{ version: 4 }];
+		if ((sql.includes('SELECT version') && sql.includes('FROM tpl'))) return [{ version: 4 }];
 		if (sql.includes('RETURNING')) return [{ type: 'x', version: 5 }];
 		return [];
 	});
@@ -410,3 +410,33 @@ test('a consistent scheme is never flagged, however it is padded', async () => {
 	}
 });
 
+
+test('versionedWrite: saving identical content is a no-op — no version bump, no revision, no notify', async () => {
+	const { store, seen } = captureStore((sql) => {
+		if (sql.includes('FOR UPDATE')) return [{ version: 3, unchanged: true }];
+		if (sql.startsWith('SELECT type, version FROM tpl')) return [{ type: 'welcome', version: 3 }];
+		return [];
+	});
+	const row = await versionedWrite<{ type: string; version: number }>(TPL, store, {
+		key: 'welcome',
+		scope: null,
+		data: { subject: 'Hi', html: '<p>Hi</p>', text: 'Hi', active: true },
+		ifVersion: 3,
+		actor: 'admin',
+	});
+	assert.equal(row.version, 3, 'the current version is returned, not a new one');
+	assert.ok(!seen.some((s) => s.startsWith('UPDATE tpl')), 'no update');
+	assert.ok(!seen.some((s) => s.includes('INSERT INTO tpl_rev')), 'no revision appended');
+	assert.ok(!seen.some((s) => s.includes('pg_notify')), 'no invalidation broadcast');
+	// the comparison covers content AND the meta columns supplied
+	const check = seen.find((s) => s.includes('FOR UPDATE'))!;
+	for (const c of ['subject', 'html', 'text', 'active']) assert.match(check, new RegExp(`${c} IS NOT DISTINCT FROM`));
+});
+
+test('versionedWrite: a stale ifVersion still conflicts even when the content is identical', async () => {
+	const { store } = captureStore((sql) => (sql.includes('FOR UPDATE') ? [{ version: 4, unchanged: true }] : []));
+	await assert.rejects(
+		() => versionedWrite(TPL, store, { key: 'welcome', scope: null, data: { subject: 'Hi', html: null, text: 'Hi' }, ifVersion: 3, actor: null }),
+		/version 4, not 3/,
+	);
+});

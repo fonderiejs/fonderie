@@ -192,6 +192,9 @@ export const AdminShell = defineComponent({
 						...(props.environment !== undefined ? { environment: props.environment } : {}),
 						'onSelect-config': (key: string) => (editing.value = { kind: 'config', key }),
 						'onSelect-secret': (key: string) => (editing.value = { kind: 'secret', key }),
+						allowCreate: true,
+						'onCreate-config': () => (editing.value = { kind: 'config', key: '' }),
+						'onCreate-secret': () => (editing.value = { kind: 'secret', key: '' }),
 					});
 				}
 				case 'templates': {

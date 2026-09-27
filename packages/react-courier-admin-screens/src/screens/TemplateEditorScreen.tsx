@@ -6,11 +6,13 @@ import {
 	useTemplates,
 } from '@fonderie/react-courier-admin';
 import type { CSSProperties, FormEvent } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Implicit variables the layout injects — an operator never supplies these, so
 // offering them as fields would just be noise.
 const IMPLICIT = new Set(['subject', 'preheader', 'brandName']);
+
+const PREVIEW_DEBOUNCE_MS = 500;
 
 export interface ITemplateEditorScreenProps {
 	client: CourierAdminClient;
@@ -83,18 +85,31 @@ export function TemplateEditorScreen({
 		}
 	}, [renderPreview, type, text, subject, html, locale, sampleJson]);
 
-	// One render once the template has loaded, so the pane is never empty on
-	// arrival. Re-rendering after that is explicit — an edit per keystroke would
-	// be a request per keystroke.
+	// The preview is always live: it renders once the template loads, then again
+	// PREVIEW_DEBOUNCE_MS after the last edit to the content or the sample data.
+	// Debounced, not per keystroke, so typing a paragraph costs one request.
+	// `run` is a new function on every keystroke (it closes over the fields), so
+	// the effect keys on the fields themselves and calls the latest `run`.
+	const runRef = useRef(run);
+	runRef.current = run;
 	const loadedType = template ? `${type}:${locale ?? ''}` : null;
-	// `run` closes over subject/html/text/sampleJson, so it is a new function on
-	// every keystroke; depending on it here would fire a request per character
-	// typed. Firing on the loaded template is the intent — re-rendering after
-	// that is the Render button's job.
+	// The fields ARE the trigger: each edit restarts the debounce. The effect
+	// body reads the latest `run` through the ref, so it does not use them.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
 	useEffect(() => {
-		if (loadedType) void run();
-	}, [loadedType]);
+		if (!loadedType) return;
+		const timer = setTimeout(() => void runRef.current(), PREVIEW_DEBOUNCE_MS);
+		return () => clearTimeout(timer);
+	}, [loadedType, subject, html, text, sampleJson]);
+
+	// Saving what is already stored would only mint an identical version (the
+	// server treats it as a no-op anyway), so Save waits for a real change.
+	const dirty =
+		!!template &&
+		(subject !== (template.subject ?? '') ||
+			html !== (template.html ?? '') ||
+			text !== template.text ||
+			active !== template.active);
 
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
@@ -184,9 +199,12 @@ export function TemplateEditorScreen({
 					</p>
 				)}
 
-				<button type="submit" disabled={isSaving} style={styles.button}>
-					{isSaving ? 'Saving…' : 'Save'}
-				</button>
+				<div style={styles.saveRow}>
+					<button type="submit" disabled={isSaving || !dirty} style={dirty ? styles.button : styles.buttonDisabled}>
+						{isSaving ? 'Saving…' : 'Save'}
+					</button>
+					{!dirty && !isSaving && <span style={styles.meta}>No changes to save</span>}
+				</div>
 			</form>
 
 			<label style={styles.label} htmlFor="template-sample">
@@ -207,12 +225,10 @@ export function TemplateEditorScreen({
 			)}
 			</div>
 
-			<div style={styles.column}>
+			<div style={styles.previewColumn}>
 				<div style={styles.previewHeader}>
 					<span style={styles.label}>Preview</span>
-					<button type="button" onClick={() => void run()} disabled={isPreviewing} style={styles.rollbackButton}>
-						{isPreviewing ? 'Rendering…' : 'Render'}
-					</button>
+					<span style={styles.meta}>{isPreviewing ? 'Rendering…' : 'Live'}</span>
 				</div>
 				{previewError && (
 					<p style={styles.error} role="alert">
@@ -265,9 +281,14 @@ export function TemplateEditorScreen({
 }
 
 const styles: Record<string, CSSProperties> = {
-	container: { padding: 24, maxWidth: 1180 },
-	split: { display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' },
-	column: { flex: '1 1 460px', minWidth: 320, display: 'flex', flexDirection: 'column' },
+	container: { padding: 24 },
+	// Two columns, always: the editor on the left, the rendered result on the
+	// right. Stacking the preview under a long form hid it below the fold.
+	split: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, alignItems: 'start' },
+	column: { minWidth: 0, display: 'flex', flexDirection: 'column' },
+	// Pinned while the form scrolls, so the preview stays in view as you edit.
+	previewColumn: { minWidth: 0, display: 'flex', flexDirection: 'column', position: 'sticky', top: 16 },
+	saveRow: { display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 },
 	previewHeader: {
 		display: 'flex',
 		justifyContent: 'space-between',
@@ -306,7 +327,6 @@ const styles: Record<string, CSSProperties> = {
 	},
 	checkboxLabel: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 14 },
 	button: {
-		marginTop: 16,
 		backgroundColor: 'var(--fonderie-text,#171717)',
 		color: 'var(--fonderie-surface,#fff)',
 		padding: '10px 20px',
@@ -315,6 +335,17 @@ const styles: Record<string, CSSProperties> = {
 		fontSize: 14,
 		fontWeight: 600,
 		cursor: 'pointer',
+		alignSelf: 'flex-start',
+	},
+	buttonDisabled: {
+		backgroundColor: 'var(--fonderie-border,#e0e0e0)',
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		padding: '10px 20px',
+		borderRadius: 8,
+		border: 'none',
+		fontSize: 14,
+		fontWeight: 600,
+		cursor: 'not-allowed',
 		alignSelf: 'flex-start',
 	},
 	revisions: { marginTop: 32 },

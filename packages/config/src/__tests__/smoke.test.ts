@@ -171,7 +171,7 @@ function makeWriteStore(returnEntry?: IConfigEntry): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
 			// version lock read (setConfigEntry / rollback)
-			if (sql.includes('SELECT version FROM fonderie_config')) {
+			if ((sql.includes('SELECT version') && sql.includes('FROM fonderie_config'))) {
 				return (returnEntry ? [{ version: returnEntry.version }] : []) as unknown as T[];
 			}
 			// revision inserts return nothing
@@ -284,7 +284,7 @@ test('setConfigEntry: emits pg_notify on the config-changed channel', async () =
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
 			seen.push(sql);
-			if (sql.includes('SELECT version FROM fonderie_config')) return [{ version: 1 }] as unknown as T[];
+			if ((sql.includes('SELECT version') && sql.includes('FROM fonderie_config'))) return [{ version: 1 }] as unknown as T[];
 			if (sql.includes('RETURNING')) return [baseEntry] as unknown as T[];
 			return [] as T[];
 		},
@@ -346,7 +346,7 @@ test('setSecret: ifVersion mismatch throws ConfigConflictError (OCC)', async () 
 	// store reports current version 5; caller writes against version 1 → conflict
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
-			if (sql.includes('SELECT version FROM fonderie_secrets')) return [{ version: 5 }] as unknown as T[];
+			if ((sql.includes('SELECT version') && sql.includes('FROM fonderie_secrets'))) return [{ version: 5 }] as unknown as T[];
 			return [] as T[];
 		},
 		transaction: async (fn) => fn(store),
@@ -442,7 +442,7 @@ function stubStore(responder: (sql: string) => unknown[]): IStoreAdapter {
 function rollbackStore(targetValue: string, curVersion: number, entry: unknown): IStoreAdapter {
 	return stubStore((sql) => {
 		if (sql.includes('_revisions') && sql.includes('version = $3')) return [{ value: targetValue }];
-		if (sql.includes('SELECT version FROM')) return [{ version: curVersion }];
+		if (sql.includes('SELECT version') && sql.includes('FOR UPDATE')) return [{ version: curVersion }];
 		if (sql.includes('RETURNING')) return [entry];
 		return [];
 	});
@@ -588,7 +588,7 @@ test('admin PUT: body.active reaches the write instead of being forced true', as
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
 			captured.push([sql, params]);
-			if (sql.includes('SELECT version FROM fonderie_config')) return [] as T[];
+			if ((sql.includes('SELECT version') && sql.includes('FROM fonderie_config'))) return [] as T[];
 			if (sql.includes('fonderie_config_revisions')) return [] as T[];
 			if (sql.includes('RETURNING') || sql.includes('SELECT')) {
 				return [{ ...baseEntry, active: false }] as unknown as T[];
