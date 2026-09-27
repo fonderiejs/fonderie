@@ -34,3 +34,5 @@ export { rotateSecretKey } from './services/rotate';
 export type { IRotationReport } from './services/rotate';
 export type { ISecretEncryptor } from './crypto';
 export type { IConfigOptions } from './config';
+export { publicConfigHandler, publicConfigValues } from './public';
+export type { IPublicConfigResult, PublicConfigKeys } from './public';

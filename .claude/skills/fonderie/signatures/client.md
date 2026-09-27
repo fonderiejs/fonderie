@@ -49,6 +49,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .webhooks: WebhooksClient
   .customers: CustomersClient
   .media: MediaClient
+  .config: ConfigClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -1614,4 +1615,17 @@ type CastResult = {
 };
 
 type ConfigValueType = 'string' | 'number' | 'boolean' | 'json';
+
+new ConfigClient(http: HttpClient, tokens: TokenStore): ConfigClient
+  .load(): Promise<IRemoteConfigState>
+  .get<T>(key: string, fallback: T): T
+  .snapshot(): IRemoteConfigState
+  .subscribe(listener: Listener): () => void
+
+interface IRemoteConfigState {
+    values: Readonly<Record<string, unknown>>;
+    loadedAt: Date | null;
+    isLoading: boolean;
+    error: unknown;
+}
 ```

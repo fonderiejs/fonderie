@@ -13,6 +13,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .webhooks: WebhooksClient
   .customers: CustomersClient
   .media: MediaClient
+  .config: ConfigClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -33,4 +34,29 @@ function FonderieProvider({ client, children }: IFonderieProviderProps): Functio
 function useFonderieClient(): FonderieClient
 
 function useFonderieSubClient<T>(explicit: T | undefined, select: (client: FonderieClient) => T, hookName: string): T
+
+new ConfigClient(http: HttpClient, tokens: TokenStore): ConfigClient
+  .load(): Promise<IRemoteConfigState>
+  .get<T>(key: string, fallback: T): T
+  .snapshot(): IRemoteConfigState
+  .subscribe(listener: Listener): () => void
+
+interface IRemoteConfigState {
+    values: Readonly<Record<string, unknown>>;
+    loadedAt: Date | null;
+    isLoading: boolean;
+    error: unknown;
+}
+
+function useFlag<T>(key: string, fallback: T, client?: ConfigClient | undefined): T
+
+function useRemoteConfig(options?: IUseRemoteConfigOptions, client?: ConfigClient | undefined): IUseRemoteConfigReturn
+
+interface IUseRemoteConfigOptions {
+    refreshMs?: number;
+}
+
+interface IUseRemoteConfigReturn extends IRemoteConfigState {
+    refresh: () => Promise<IRemoteConfigState>;
+}
 ```

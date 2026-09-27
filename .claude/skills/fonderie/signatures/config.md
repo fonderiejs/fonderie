@@ -134,5 +134,16 @@ interface IConfigOptions {
     connectionUrl?: string;
     adminToken?: string;
     secretEncryptor?: ISecretEncryptor;
+    publicKeys?: PublicConfigKeys;
 }
+
+function publicConfigHandler(manager: Pick<RemoteConfigManager, "get">, publicKeys: PublicConfigKeys | undefined): Middleware
+
+function publicConfigValues(manager: Pick<RemoteConfigManager, "get">, publicKeys: PublicConfigKeys | undefined): Record<string, unknown>
+
+interface IPublicConfigResult {
+    values: Record<string, unknown>;
+}
+
+type PublicConfigKeys = readonly string[] | Readonly<Record<string, unknown>>;
 ```

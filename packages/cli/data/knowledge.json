@@ -305,6 +305,19 @@
     }
   },
   "recipes": {
+    "frontend-feature-flag": {
+      "when": "show/hide a screen or feature from a flag switched in the admin, without a deploy; remote config read by the frontend",
+      "packages": [
+        "config",
+        "client",
+        "react",
+        "vue"
+      ],
+      "invariants": [
+        "config-public-keys-allowlist"
+      ],
+      "note": "list the key in ConfigModule publicKeys (optionally key → default), create it in /_admin Config & secrets, read it with useFlag(key, SAFE_fallback) from @fonderie/react (also React Native) or @fonderie/vue; backend reads with getConfig(ctx, key, fallback)"
+    },
     "geo-country-signal": {
       "when": "know the requester's country — gate a trial/promo by market, show a sign-in location",
       "packages": [
@@ -960,6 +973,7 @@
     }
   },
   "invariants": {
+    "config-public-keys-allowlist": "Only keys listed in ConfigModule `publicKeys` are readable by frontends (GET /config/public, unauthenticated). Never list anything a stranger should not see; secrets are never readable there. Pass the SAFE fallback to useFlag (feature off) — it renders before the first load and when loading fails.",
     "geo-trust-from-env": "geoFromHeaders believes a platform's headers only for the source named in `trust`. Derive trust from the deployment environment (process.env.VERCEL ? 'vercel' : undefined), NEVER from the request — a client can send x-vercel-ip-country to a server that is not behind Vercel. Treat a null location as unknown, not suspicious. Gate on country only; region and city are display-grade.",
     "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
     "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
