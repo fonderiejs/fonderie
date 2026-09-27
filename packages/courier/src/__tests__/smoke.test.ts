@@ -1239,10 +1239,13 @@ test('describeAdmin: CourierModule offers routes only with a store', async () =>
 	assert.deepEqual(
 		withStore.routes?.map((r) => `${r.method} ${r.path}`),
 		[
+			'GET /template-catalog',
 			'GET /templates',
 			'GET /templates/:type',
 			'PUT /templates/:type',
 			'DELETE /templates/:type',
+			'GET /templates/:type/built-in',
+			'GET /templates/:type/resolve',
 			'GET /templates/:type/revisions',
 			'POST /templates/:type/rollback',
 			'POST /templates/:type/preview',

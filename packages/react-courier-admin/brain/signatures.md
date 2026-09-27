@@ -5,6 +5,14 @@
 ## @fonderie/react-courier-admin
 
 ```ts
+interface IBuiltInTemplate {
+    type: string;
+    locale: string;
+    subject: string | null;
+    html: string | null;
+    text: string;
+}
+
 interface ICourierAdminClientOptions {
     baseUrl: string;
     adminToken: string;
@@ -38,6 +46,27 @@ interface ISetTemplateInput {
     ifVersion?: number;
 }
 
+interface ITemplateCatalog {
+    defaultLocale: string;
+    fallbacks: Record<string, string[]>;
+    emails: ITemplateCatalogEntry[];
+}
+
+interface ITemplateCatalogEntry {
+    type: string;
+    system: boolean;
+    builtIn: {
+        default: boolean;
+        languages: string[];
+    };
+    versions: Array<{
+        locale: string | null;
+        active: boolean;
+        version: number;
+        updatedAt: string;
+    }>;
+}
+
 interface ITemplateEntry {
     system?: boolean;
     type: string;
@@ -49,6 +78,14 @@ interface ITemplateEntry {
     version: number;
     updatedBy: string | null;
     updatedAt: string;
+}
+
+interface ITemplateResolution {
+    requested: string;
+    chain: string[];
+    defaultLocale: string;
+    sent: string;
+    source: 'saved' | 'built-in';
 }
 
 interface ITemplateRevision {
@@ -64,6 +101,9 @@ interface ITemplateRevision {
 
 new CourierAdminClient(opts: ICourierAdminClientOptions): CourierAdminClient
   .listTemplates(): Promise<IApiResponse<ITemplateEntry[]>>
+  .getTemplateCatalog(): Promise<IApiResponse<ITemplateCatalog>>
+  .getBuiltInTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<IBuiltInTemplate>>
+  .resolveTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateResolution>>
   .getTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
   .setTemplate(type: string, input: ISetTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
   .deleteTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<undefined>>
@@ -81,6 +121,27 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .message: string
   .stack: string
   .cause: unknown
+
+interface IUseBuiltInTemplateReturn {
+    builtIn: IBuiltInTemplate | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+}
+
+interface IUseTemplateCatalogReturn {
+    catalog: ITemplateCatalog | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+}
+
+interface IUseTemplateResolutionReturn {
+    resolution: ITemplateResolution | null;
+    isResolving: boolean;
+    error: FonderieApiError | null;
+    resolve: (type: string, locale?: string | null) => Promise<ITemplateResolution | null>;
+}
 
 interface IUseTemplatePreviewReturn {
     preview: IRenderedTemplateResult | null;
@@ -114,7 +175,13 @@ interface IUseTemplatesReturn {
     removeTemplate: (type: string, locale?: string | null) => Promise<void>;
 }
 
+function useBuiltInTemplate(client: CourierAdminClient, type: string, locale?: string | null | undefined): IUseBuiltInTemplateReturn
+
 function useTemplate(client: CourierAdminClient, type: string, locale?: string | null | undefined): IUseTemplateReturn
+
+function useTemplateCatalog(client: CourierAdminClient): IUseTemplateCatalogReturn
+
+function useTemplateResolution(client: CourierAdminClient): IUseTemplateResolutionReturn
 
 function useTemplatePreview(client: CourierAdminClient): IUseTemplatePreviewReturn
 

@@ -27,6 +27,9 @@ export function useTemplate(
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+			// Gone (deleted, or never saved): drop what was shown, or a screen keeps
+			// rendering a version that no longer exists.
+			if (apiError.status === 404) setTemplate(null);
 			setError(apiError);
 		} finally {
 			setIsLoading(false);

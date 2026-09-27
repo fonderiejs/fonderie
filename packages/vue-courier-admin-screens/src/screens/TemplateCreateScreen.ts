@@ -39,6 +39,8 @@ export const TemplateCreateScreen = defineComponent({
 		type: { type: String, default: undefined },
 		/** Locales already in use, offered as suggestions. */
 		locales: { type: Array as PropType<string[]>, default: () => [] },
+		/** The system locale: the default version already is it, so adding it is refused. */
+		defaultLocale: { type: String, default: undefined },
 		/** The console language; defaults to English. */
 		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
@@ -75,6 +77,9 @@ export const TemplateCreateScreen = defineComponent({
 			if (!props.type) return;
 			props.client
 				.getTemplate(props.type, null)
+				// A built-in email nobody saved has no stored default: start from
+				// Fonderie's English instead of an empty form.
+				.catch(() => props.client.getBuiltInTemplate(props.type as string, null))
 				.then(({ result }) => {
 					subject.value = result.subject ?? '';
 					html.value = result.html ?? '';
@@ -147,6 +152,10 @@ export const TemplateCreateScreen = defineComponent({
 			}
 			if (l && !LOCALE_RE.test(l)) {
 				error.value = tr('templates.create.errorLocale');
+				return;
+			}
+			if (l && props.defaultLocale && l.toLowerCase() === props.defaultLocale.toLowerCase()) {
+				error.value = tr('templates.create.errorDefaultLocale', { locale: props.defaultLocale });
 				return;
 			}
 			if (!text.value.trim()) {

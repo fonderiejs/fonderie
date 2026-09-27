@@ -1,21 +1,28 @@
 import {
 	type AdminLocale,
 	type CourierAdminClient,
-	type ITemplateEntry,
+	type ITemplateLanguage,
 	createAdminT,
-	groupTemplatesByType,
+	templateLanguages,
 } from '@fonderie/client';
-import { useTemplates } from '@fonderie/react-courier-admin';
+import { useTemplateCatalog } from '@fonderie/react-courier-admin';
 import type { CSSProperties } from 'react';
+
+/** Which version of which email to open. `locale` null is the default version. */
+export interface ITemplateSelection {
+	type: string;
+	locale: string | null;
+	/** A built-in email: its default version can be edited, never deleted. */
+	system: boolean;
+}
 
 export interface ITemplateListScreenProps {
 	client: CourierAdminClient;
 	/**
-	 * Receives the whole row — type AND locale, and whether it is built-in. The
-	 * list shows one row per email: clicking it opens the default locale, a
-	 * locale chip opens that locale.
+	 * One row per email — built-in ones included, even when nobody saved a copy.
+	 * The row opens the default version; a language chip opens that language.
 	 */
-	onSelectTemplate?: (template: ITemplateEntry) => void;
+	onSelectTemplate?: (template: ITemplateSelection) => void;
 	/** Shows a "New template" button. Receives the locales in use, to suggest. */
 	onCreateTemplate?: (context: { locales: string[] }) => void;
 	/** The console's language. Default English. */
@@ -29,8 +36,15 @@ export function TemplateListScreen({
 	locale,
 }: ITemplateListScreenProps) {
 	const t = createAdminT(locale);
-	const { templates, isLoading, error } = useTemplates(client);
-	const groups = groupTemplatesByType(templates);
+	const { catalog, isLoading, error } = useTemplateCatalog(client);
+	const emails = catalog?.emails ?? [];
+	const defaultLocale = catalog?.defaultLocale ?? 'en-US';
+
+	const chipStyle = (l: ITemplateLanguage): CSSProperties => ({
+		...chip,
+		...(l.saved ? {} : chipBuiltIn),
+		...(l.active ? {} : chipOff),
+	});
 
 	return (
 		<div style={styles.container}>
@@ -44,8 +58,14 @@ export function TemplateListScreen({
 						onClick={() =>
 							onCreateTemplate({
 								locales: [
-									...new Set(templates.map((row) => row.locale).filter((l): l is string => !!l)),
-								],
+									...new Set(
+										emails.flatMap((e) =>
+											templateLanguages(e, defaultLocale)
+												.filter((l) => l.locale !== null)
+												.map((l) => l.label),
+										),
+									),
+								].sort(),
 							})
 						}
 						style={styles.newButton}
@@ -62,44 +82,60 @@ export function TemplateListScreen({
 					{error.explanation}
 				</p>
 			) : (
-				<ul style={styles.list}>
-					{groups.map((group) => (
-						<li key={group.type} style={styles.row}>
-							<button
-								type="button"
-								onClick={() => onSelectTemplate?.(group.primary)}
-								style={styles.rowButton}
-							>
-								<span style={styles.type}>{group.type}</span>
-								{group.system ? (
-									<span style={styles.builtIn}>{t('templates.builtInBadge')}</span>
-								) : null}
-								<span style={group.primary.active ? styles.active : styles.inactive}>
-									<span style={styles.dot} />
-									{group.primary.active ? t('common.status.active') : t('common.status.inactive')}
-								</span>
-							</button>
-							{/* Siblings of the row button, not inside it: a button cannot hold buttons. */}
-							<span style={styles.chips}>
-								{group.entries.map((entry) => {
-									const name = entry.locale ?? t('templates.defaultChip');
-									return (
-										<button
-											key={entry.locale ?? ''}
-											type="button"
-											onClick={() => onSelectTemplate?.(entry)}
-											style={entry.active ? styles.chip : styles.chipInactive}
-											aria-label={t('templates.list.openLocale', { type: group.type, locale: name })}
-											title={entry.active ? undefined : t('common.status.inactive')}
-										>
-											{name}
-										</button>
-									);
-								})}
-							</span>
-						</li>
-					))}
-				</ul>
+				<>
+					<ul style={styles.list}>
+						{emails.map((email) => {
+							const languages = templateLanguages(email, defaultLocale);
+							const primary = languages.find((l) => l.locale === null) ?? languages[0];
+							const open = (l: ITemplateLanguage | undefined) =>
+								onSelectTemplate?.({
+									type: email.type,
+									locale: l?.locale ?? null,
+									system: email.system,
+								});
+							return (
+								// Columns, not a flex row: the language chips line up down the
+								// list whatever the email name or badge.
+								<li key={email.type} style={styles.row}>
+									<button type="button" onClick={() => open(primary)} style={styles.rowButton}>
+										<span style={styles.type}>{email.type}</span>
+										{email.system ? (
+											<span style={styles.builtIn}>{t('templates.builtInBadge')}</span>
+										) : (
+											<span />
+										)}
+									</button>
+									{/* Siblings of the row button: a button cannot hold buttons. */}
+									{/* Each chip names its email and language for screen readers. */}
+									<span style={styles.chips}>
+										{languages.map((l) => (
+											<button
+												key={l.label}
+												type="button"
+												onClick={() => open(l)}
+												style={chipStyle(l)}
+												aria-label={t('templates.list.openLocale', {
+													type: email.type,
+													locale: l.label,
+												})}
+												title={l.active ? undefined : t('common.status.inactive')}
+											>
+												{l.label}
+											</button>
+										))}
+									</span>
+									<span style={primary?.active === false ? styles.inactive : styles.active}>
+										<span style={styles.dot} />
+										{primary?.active === false
+											? t('common.status.inactive')
+											: t('common.status.active')}
+									</span>
+								</li>
+							);
+						})}
+					</ul>
+					<p style={styles.legend}>{t('templates.list.legend')}</p>
+				</>
 			)}
 		</div>
 	);
@@ -119,7 +155,11 @@ const pill: CSSProperties = {
 	minWidth: 64,
 };
 
-// One per locale the email exists in. Monospace: they are language tags.
+const MONO =
+	'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)';
+
+// One per language the email exists in. Monospace: they are language tags.
+// Solid = a version the app saved; dashed = Fonderie's built-in copy, untouched.
 const chip: CSSProperties = {
 	height: 24,
 	boxSizing: 'border-box',
@@ -129,10 +169,15 @@ const chip: CSSProperties = {
 	background: 'var(--fonderie-surface,#fff)',
 	color: 'var(--fonderie-text,#171717)',
 	fontSize: 12,
-	fontFamily:
-		'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+	fontFamily: MONO,
 	cursor: 'pointer',
 };
+const chipBuiltIn: CSSProperties = {
+	borderStyle: 'dashed',
+	background: 'transparent',
+	color: 'var(--fonderie-text-muted,#5c5c5c)',
+};
+const chipOff: CSSProperties = { opacity: 0.5, textDecoration: 'line-through' };
 
 const styles: Record<string, CSSProperties> = {
 	container: { padding: '32px 40px 64px', maxWidth: 1160, boxSizing: 'border-box' },
@@ -144,6 +189,7 @@ const styles: Record<string, CSSProperties> = {
 		lineHeight: 1.25,
 	},
 	hint: { fontSize: 13.5, color: 'var(--fonderie-text-muted,#5c5c5c)', margin: '4px 0 24px' },
+	legend: { fontSize: 12.5, color: 'var(--fonderie-text-muted,#5c5c5c)', margin: '10px 2px 0' },
 	status: { padding: '24px 0', color: 'var(--fonderie-text-muted,#5c5c5c)', fontSize: 13.5 },
 	error: { color: 'var(--fonderie-danger,#e00)', marginBottom: 12, fontSize: 14 },
 	list: {
@@ -156,20 +202,20 @@ const styles: Record<string, CSSProperties> = {
 		overflow: 'hidden',
 		boxShadow: 'var(--fonderie-shadow-card,0 2px 3px 0 rgba(0,0,0,.05))',
 	},
+	// name + badge | languages | status — fixed tracks so every column aligns.
 	row: {
-		display: 'flex',
+		display: 'grid',
+		gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, 280px) 88px',
 		alignItems: 'center',
-		gap: 8,
+		gap: 16,
 		paddingRight: 16,
 		borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)',
 	},
 	rowButton: {
-		flex: 1,
 		minWidth: 0,
 		display: 'flex',
-		justifyContent: 'space-between',
 		alignItems: 'center',
-		gap: 16,
+		gap: 12,
 		padding: '13px 16px',
 		background: 'none',
 		border: 'none',
@@ -181,13 +227,12 @@ const styles: Record<string, CSSProperties> = {
 	type: {
 		fontSize: 13,
 		fontWeight: 600,
-		flex: 1,
-		fontFamily:
-			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+		overflow: 'hidden',
+		textOverflow: 'ellipsis',
+		whiteSpace: 'nowrap',
+		fontFamily: MONO,
 	},
-	chips: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6 },
-	chip,
-	chipInactive: { ...chip, opacity: 0.5, textDecoration: 'line-through' },
+	chips: { display: 'flex', flexWrap: 'wrap', gap: 6 },
 	dot: { width: 6, height: 6, borderRadius: 999, background: 'currentColor' },
 	builtIn: {
 		fontSize: 11,
@@ -196,6 +241,7 @@ const styles: Record<string, CSSProperties> = {
 		borderRadius: 999,
 		border: '1px solid var(--fonderie-border,#e0e0e0)',
 		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		flexShrink: 0,
 	},
 	newButton: {
 		display: 'inline-flex',

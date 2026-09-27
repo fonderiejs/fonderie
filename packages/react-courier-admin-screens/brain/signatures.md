@@ -9,6 +9,7 @@ interface ITemplateCreateScreenProps {
     client: CourierAdminClient;
     type?: string;
     locales?: string[];
+    defaultLocale?: string;
     onCreated?: (created: {
         type: string;
         locale: string | null;
@@ -25,21 +26,28 @@ interface ITemplateEditorScreenProps {
     onDeleted?: () => void;
     onAddLocale?: (type: string, context: {
         locales: string[];
+        defaultLocale?: string;
     }) => void;
-    onSelectLocale?: (template: ITemplateEntry) => void;
+    onSelectLocale?: (template: ITemplateSelection) => void;
     uiLocale?: AdminLocale | undefined;
 }
 
 interface ITemplateListScreenProps {
     client: CourierAdminClient;
-    onSelectTemplate?: (template: ITemplateEntry) => void;
+    onSelectTemplate?: (template: ITemplateSelection) => void;
     onCreateTemplate?: (context: {
         locales: string[];
     }) => void;
     locale?: AdminLocale | undefined;
 }
 
-function TemplateCreateScreen({ client, type, locales, onCreated, locale, }: ITemplateCreateScreenProps): Element
+interface ITemplateSelection {
+    type: string;
+    locale: string | null;
+    system: boolean;
+}
+
+function TemplateCreateScreen({ client, type, locales, defaultLocale, onCreated, locale, }: ITemplateCreateScreenProps): Element
 
 function TemplateEditorScreen({ client, type, locale, onSaved, system, onDeleted, onAddLocale, onSelectLocale, uiLocale, }: ITemplateEditorScreenProps): Element
 

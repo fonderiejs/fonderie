@@ -55,8 +55,13 @@ export type {
 	ISetTemplateInput,
 } from './modules/courier-admin';
 export { CourierAdminClient } from './modules/courier-admin';
-export type { ITemplateGroup } from './template-locales';
-export { groupTemplatesByType, missingTemplateLocales } from './template-locales';
+export type { ITemplateGroup, ITemplateLanguage } from './template-locales';
+export {
+	groupTemplatesByType,
+	missingTemplateLocales,
+	suggestTemplateLocales,
+	templateLanguages,
+} from './template-locales';
 export type {
 	IAddAddressInput,
 	IAddEmailInput,
@@ -207,6 +212,10 @@ export type {
 	ISubscriptionChangeResult,
 	ISubscriptionDTO,
 	ISubscriptionResult,
+	IBuiltInTemplate,
+	ITemplateCatalog,
+	ITemplateCatalogEntry,
+	ITemplateResolution,
 	ITemplateEntry,
 	ITemplateRevision,
 	ITestWebhookResult,

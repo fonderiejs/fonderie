@@ -13,6 +13,8 @@ const templates: typeof en = {
 		hint: "Chaque e-mail envoyé par l'application. Ouvrez-en un pour modifier son contenu et le prévisualiser en direct.",
 		loading: 'Chargement des modèles…',
 		openLocale: 'Ouvrir la version {locale} de {type}',
+		legend: 'Plein : une version que vous avez enregistrée. Pointillés : la version intégrée de Fonderie, non modifiée. Barré : désactivée.',
+		languages: 'Langues',
 	},
 	editor: {
 		loading: 'Chargement du modèle…',
@@ -38,6 +40,16 @@ const templates: typeof en = {
 		confirmDelete: 'Supprimer « {type} » ?',
 		confirmDeleteLocale:
 			'Supprimer la version {locale} de « {type} » ? Les personnes de cette langue recevront la version par défaut.',
+		builtInCopy: 'Version intégrée de Fonderie. L’enregistrer crée votre propre version.',
+		resetToBuiltIn: 'Rétablir la version intégrée',
+		confirmReset: 'Remplacer votre version {locale} par la version intégrée de Fonderie ?',
+		chain: 'Repli : {chain}',
+		whoReceives: 'Qui reçoit quoi',
+		whoPlaceholder: 'Une langue, p. ex. fr-BE',
+		check: 'Vérifier',
+		receives: 'Un utilisateur {requested} reçoit la version {sent}.',
+		sourceSaved: 'C’est votre version enregistrée.',
+		sourceBuiltIn: 'C’est la version intégrée de Fonderie.',
 	},
 	create: {
 		titleNew: 'Nouveau modèle',
@@ -59,6 +71,7 @@ const templates: typeof en = {
 		exists: '« {type} » existe déjà — ouvrez-le depuis la liste pour le modifier.',
 		existsLocale: '« {type} » ({locale}) existe déjà — ouvrez-le depuis la liste pour le modifier.',
 		untranslated: 'Encore dans la version par défaut : {fields}. Traduisez-les avant d’ajouter cette langue.',
+		errorDefaultLocale: '{locale} est la version par défaut de cet e-mail. Modifiez plutôt la version par défaut.',
 	},
 };
 export default templates;

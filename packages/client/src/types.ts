@@ -442,6 +442,47 @@ export interface IWorkspaceSettingsResult {
 // CourierAdminClient. Result shapes here are the raw resource, not wrapped
 // in a named key, matching @fonderie/courier's admin route handlers.
 
+// Every email the app can send — saved or built-in only — with the languages it
+// exists in. GET /admin/template-catalog.
+export interface ITemplateCatalog {
+	/** The system locale: the default (untagged) version is written in it. */
+	defaultLocale: string;
+	/** Per market or language, where its content comes from, before the system locale. */
+	fallbacks: Record<string, string[]>;
+	emails: ITemplateCatalogEntry[];
+}
+
+export interface ITemplateCatalogEntry {
+	type: string;
+	/** Built-in email: its default version can be edited and rolled back, never deleted. */
+	system: boolean;
+	/** What Fonderie ships: the English default, and the other languages. */
+	builtIn: { default: boolean; languages: string[] };
+	/** The app's saved versions (locale null = the default version). */
+	versions: Array<{ locale: string | null; active: boolean; version: number; updatedAt: string }>;
+}
+
+// Fonderie's own copy of an email in one language.
+export interface IBuiltInTemplate {
+	type: string;
+	/** The language key it matched ('fr' for fr-CA), or the system locale for the English. */
+	locale: string;
+	subject: string | null;
+	html: string | null;
+	text: string;
+}
+
+// Who receives what: the version a send in `requested` would use.
+export interface ITemplateResolution {
+	requested: string;
+	/** Locales tried before the system locale, in order. */
+	chain: string[];
+	defaultLocale: string;
+	/** The version used: a saved tag, a built-in language, or the system locale. */
+	sent: string;
+	source: 'saved' | 'built-in';
+}
+
 export interface ITemplateEntry {
 	// A built-in email's default-locale row: edit and roll back, never delete.
 	// Present on list results from @fonderie/courier ≥ the system-template release.

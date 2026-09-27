@@ -3,14 +3,25 @@ import type {
 	AdminMessageKey,
 	AdminMessageParams,
 	CourierAdminClient,
-	ITemplateEntry,
+	ITemplateCatalogEntry,
+	ITemplateLanguage,
 } from '@fonderie/client';
-import { createAdminT, groupTemplatesByType } from '@fonderie/client';
-import type { ITemplateGroup } from '@fonderie/client';
-import { useTemplates } from '@fonderie/vue-courier-admin';
+import { createAdminT, templateLanguages } from '@fonderie/client';
+import { useTemplateCatalog } from '@fonderie/vue-courier-admin';
 import type { CSSProperties, PropType } from 'vue';
 import { defineComponent, h } from 'vue';
 import { styles } from '../styles';
+
+/** Which version of which email to open. `locale` null is the default version. */
+export interface ITemplateSelection {
+	type: string;
+	locale: string | null;
+	/** A built-in email: its default version can be edited, never deleted. */
+	system: boolean;
+}
+
+const MONO =
+	'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)';
 
 const builtIn: CSSProperties = {
 	fontSize: '11px',
@@ -19,8 +30,10 @@ const builtIn: CSSProperties = {
 	borderRadius: '999px',
 	border: '1px solid var(--fonderie-border,#e0e0e0)',
 	color: 'var(--fonderie-text-muted,#5c5c5c)',
+	flexShrink: 0,
 };
-// One per locale the email exists in. Monospace: they are language tags.
+// One per language the email exists in. Monospace: they are language tags.
+// Solid = a version the app saved; dashed = Fonderie's built-in copy, untouched.
 const chip: CSSProperties = {
 	height: '24px',
 	boxSizing: 'border-box',
@@ -30,24 +43,43 @@ const chip: CSSProperties = {
 	background: 'var(--fonderie-surface,#fff)',
 	color: 'var(--fonderie-text,#171717)',
 	fontSize: '12px',
-	fontFamily:
-		'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+	fontFamily: MONO,
 	cursor: 'pointer',
 };
-const chipInactive: CSSProperties = { ...chip, opacity: 0.5, textDecoration: 'line-through' };
+const chipBuiltIn: CSSProperties = {
+	borderStyle: 'dashed',
+	background: 'transparent',
+	color: 'var(--fonderie-text-muted,#5c5c5c)',
+};
+const chipOff: CSSProperties = { opacity: 0.5, textDecoration: 'line-through' };
+// name + badge | languages | status — fixed tracks so every column aligns.
 const row: CSSProperties = {
 	...styles.row,
-	display: 'flex',
+	display: 'grid',
+	gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, 280px) 88px',
 	alignItems: 'center',
-	gap: '8px',
+	gap: '16px',
 	paddingRight: '16px',
 };
-const rowButton: CSSProperties = { ...styles.rowButton, width: 'auto', flex: '1', minWidth: '0' };
-const chips: CSSProperties = {
-	display: 'flex',
-	flexWrap: 'wrap',
-	justifyContent: 'flex-end',
-	gap: '6px',
+const rowButton: CSSProperties = {
+	...styles.rowButton,
+	width: 'auto',
+	minWidth: '0',
+	justifyContent: 'flex-start',
+	gap: '12px',
+};
+const typeName: CSSProperties = {
+	...styles.type,
+	flex: 'none',
+	overflow: 'hidden',
+	textOverflow: 'ellipsis',
+	whiteSpace: 'nowrap',
+};
+const chips: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: '6px' };
+const legend: CSSProperties = {
+	fontSize: '12.5px',
+	color: 'var(--fonderie-text-muted,#5c5c5c)',
+	margin: '10px 2px 0',
 };
 const newButton: CSSProperties = {
 	display: 'inline-flex',
@@ -76,62 +108,63 @@ export const TemplateListScreen = defineComponent({
 	},
 	emits: {
 		/**
-		 * The whole row — type AND locale, and whether it is built-in. One row
-		 * per email: the row opens the default locale, a locale chip that locale.
+		 * One row per email — built-in ones included, even when nobody saved a
+		 * copy. The row opens the default version; a language chip that language.
 		 */
-		'select-template': (_template: ITemplateEntry) => true,
+		'select-template': (_template: ITemplateSelection) => true,
 		/** Receives the locales in use, to suggest. */
 		'create-template': (_context: { locales: string[] }) => true,
 	},
 	setup(props, { emit }) {
-		const { templates, isLoading, error } = useTemplates(props.client);
+		const { catalog, isLoading, error } = useTemplateCatalog(props.client);
 		const t = (key: AdminMessageKey, params?: AdminMessageParams) =>
 			createAdminT(props.locale)(key, params);
+		const defaultLocale = () => catalog.value?.defaultLocale ?? 'en-US';
 
-		function renderRow(group: ITemplateGroup) {
-			const primary: ITemplateEntry = group.primary;
-			return h('li', { key: group.type, style: row }, [
-				h(
-					'button',
-					{
-						type: 'button',
-						style: rowButton,
-						onClick: () => emit('select-template', primary),
-					},
-					[
-						h('span', { style: styles.type }, group.type),
-						group.system ? h('span', { style: builtIn }, t('templates.builtInBadge')) : null,
-						h('span', { style: primary.active ? styles.active : styles.inactive }, [
-							h('span', { style: styles.dot }),
-							primary.active ? t('common.status.active') : t('common.status.inactive'),
-						]),
-					],
-				),
-				// Siblings of the row button, not inside it: a button cannot hold buttons.
+		function renderRow(email: ITemplateCatalogEntry) {
+			const languages = templateLanguages(email, defaultLocale());
+			const primary = languages.find((l) => l.locale === null) ?? languages[0];
+			const open = (l: ITemplateLanguage | undefined) =>
+				emit('select-template', {
+					type: email.type,
+					locale: l?.locale ?? null,
+					system: email.system,
+				});
+			return h('li', { key: email.type, style: row }, [
+				h('button', { type: 'button', style: rowButton, onClick: () => open(primary) }, [
+					h('span', { style: typeName }, email.type),
+					email.system ? h('span', { style: builtIn }, t('templates.builtInBadge')) : null,
+				]),
+				// Siblings of the row button: a button cannot hold buttons. Each chip
+				// names its email and language for screen readers.
 				h(
 					'span',
 					{ style: chips },
-					group.entries.map((entry) => {
-						const name = entry.locale ?? t('templates.defaultChip');
-						return h(
+					languages.map((l) =>
+						h(
 							'button',
 							{
-								key: entry.locale ?? '',
+								key: l.label,
 								type: 'button',
-								style: entry.active ? chip : chipInactive,
-								'aria-label': t('templates.list.openLocale', { type: group.type, locale: name }),
-								title: entry.active ? undefined : t('common.status.inactive'),
-								onClick: () => emit('select-template', entry),
+								style: { ...chip, ...(l.saved ? {} : chipBuiltIn), ...(l.active ? {} : chipOff) },
+								'aria-label': t('templates.list.openLocale', { type: email.type, locale: l.label }),
+								title: l.active ? undefined : t('common.status.inactive'),
+								onClick: () => open(l),
 							},
-							name,
-						);
-					}),
+							l.label,
+						),
+					),
 				),
+				h('span', { style: primary?.active === false ? styles.inactive : styles.active }, [
+					h('span', { style: styles.dot }),
+					primary?.active === false ? t('common.status.inactive') : t('common.status.active'),
+				]),
 			]);
 		}
 
-		return () =>
-			h('div', { style: styles.listContainer }, [
+		return () => {
+			const emails = catalog.value?.emails ?? [];
+			return h('div', { style: styles.listContainer }, [
 				h(
 					'div',
 					{
@@ -154,11 +187,13 @@ export const TemplateListScreen = defineComponent({
 											emit('create-template', {
 												locales: [
 													...new Set(
-														templates.value
-															.map((tpl) => tpl.locale)
-															.filter((l): l is string => !!l),
+														emails.flatMap((e) =>
+															templateLanguages(e, defaultLocale())
+																.filter((l) => l.locale !== null)
+																.map((l) => l.label),
+														),
 													),
-												],
+												].sort(),
 											}),
 									},
 									t('templates.list.newTemplate'),
@@ -171,7 +206,11 @@ export const TemplateListScreen = defineComponent({
 					? h('p', { style: styles.status }, t('templates.list.loading'))
 					: error.value
 						? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
-						: h('ul', { style: styles.list }, groupTemplatesByType(templates.value).map(renderRow)),
+						: [
+								h('ul', { style: styles.list }, emails.map(renderRow)),
+								h('p', { style: legend }, t('templates.list.legend')),
+							],
 			]);
+		};
 	},
 });

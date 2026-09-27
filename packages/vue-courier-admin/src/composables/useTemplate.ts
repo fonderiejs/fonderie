@@ -16,6 +16,9 @@ export function useTemplate(client: CourierAdminClient, type: string, locale?: s
 		} catch (err) {
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
+			// Gone (deleted, or never saved): drop what was shown, or a screen keeps
+			// rendering a version that no longer exists.
+			if (apiError.status === 404) template.value = null;
 			error.value = apiError;
 		} finally {
 			isLoading.value = false;

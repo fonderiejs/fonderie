@@ -205,7 +205,7 @@ export function AdminShell({
 	const [editing, setEditing] = useState<
 		| { kind: 'config' | 'secret'; key: string; environment?: string; environments?: string[] }
 		| { kind: 'template'; type: string; locale: string | null; system: boolean }
-		| { kind: 'template-new'; type?: string; locales?: string[] }
+		| { kind: 'template-new'; type?: string; locales?: string[]; defaultLocale?: string }
 		| null
 	>(null);
 
@@ -374,6 +374,7 @@ export function AdminShell({
 						locale={locale}
 						{...(editing.type ? { type: editing.type } : {})}
 						{...(editing.locales ? { locales: editing.locales } : {})}
+						{...(editing.defaultLocale ? { defaultLocale: editing.defaultLocale } : {})}
 						onCreated={(c) =>
 							setEditing({ kind: 'template', type: c.type, locale: c.locale, system: false })
 						}
@@ -395,7 +396,14 @@ export function AdminShell({
 						system={editing.system}
 						onSaved={() => setEditing(null)}
 						onDeleted={() => setEditing(null)}
-						onAddLocale={(type, c) => setEditing({ kind: 'template-new', type, locales: c.locales })}
+						onAddLocale={(type, c) =>
+							setEditing({
+								kind: 'template-new',
+								type,
+								locales: c.locales,
+								...(c.defaultLocale ? { defaultLocale: c.defaultLocale } : {}),
+							})
+						}
 						onSelectLocale={(tpl) =>
 							setEditing({
 								kind: 'template',
@@ -412,12 +420,7 @@ export function AdminShell({
 					client={courierClient}
 					locale={locale}
 					onSelectTemplate={(tpl) =>
-						setEditing({
-							kind: 'template',
-							type: tpl.type,
-							locale: tpl.locale ?? null,
-							system: tpl.system === true,
-						})
+						setEditing({ kind: 'template', type: tpl.type, locale: tpl.locale, system: tpl.system })
 					}
 					onCreateTemplate={(c) => setEditing({ kind: 'template-new', locales: c.locales })}
 				/>

@@ -62,12 +62,11 @@ export class CourierModule implements IFonderieModule {
 		// The module-shipped default types are system templates too: their
 		// default-locale row can be edited, never deleted.
 		const input = this.config.templates?.defaults;
-		const systemTypes = new DefaultTemplates(
-			input ? (Array.isArray(input) ? input : [input]) : [],
-		).types();
+		const defaults = new DefaultTemplates(input ? (Array.isArray(input) ? input : [input]) : []);
 		return {
 			...(this.config.brandName ? { brandName: this.config.brandName } : {}),
-			systemTypes,
+			systemTypes: defaults.types(),
+			defaults,
 			// A getter: routes are described before install, and read the locales
 			// per request, after install has set them.
 			locales: () => this.locales,

@@ -12,6 +12,8 @@ const templates = {
 		hint: 'Every email the app sends. Open one to edit its copy and preview it live.',
 		loading: 'Loading templates…',
 		openLocale: 'Open the {locale} version of {type}',
+		legend: 'Solid: a version you saved. Dashed: Fonderie’s built-in copy, not edited. Struck through: switched off.',
+		languages: 'Languages',
 	},
 	editor: {
 		loading: 'Loading template…',
@@ -37,6 +39,16 @@ const templates = {
 		confirmDelete: 'Delete "{type}"?',
 		confirmDeleteLocale:
 			'Delete the {locale} version of "{type}"? People in that locale will receive the default version.',
+		builtInCopy: 'Fonderie’s built-in copy. Saving creates your own version of it.',
+		resetToBuiltIn: 'Reset to built-in',
+		confirmReset: 'Replace your {locale} version with Fonderie’s built-in copy?',
+		chain: 'Fallback: {chain}',
+		whoReceives: 'Who receives what',
+		whoPlaceholder: 'A locale, e.g. fr-BE',
+		check: 'Check',
+		receives: 'A {requested} user receives the {sent} version.',
+		sourceSaved: 'It is your saved version.',
+		sourceBuiltIn: 'It is Fonderie’s built-in copy.',
 	},
 	create: {
 		titleNew: 'New template',
@@ -58,6 +70,7 @@ const templates = {
 		exists: '"{type}" already exists — open it from the list to edit.',
 		existsLocale: '"{type}" ({locale}) already exists — open it from the list to edit.',
 		untranslated: 'Still the default copy: {fields}. Translate them before adding this locale.',
+		errorDefaultLocale: '{locale} is the default version of this email. Edit the default instead.',
 	},
 };
 export default templates;
