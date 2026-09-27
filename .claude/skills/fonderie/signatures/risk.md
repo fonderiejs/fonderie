@@ -18,7 +18,7 @@ interface Queryable {
     query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
 }
 
-const DEFAULT_RULESETS: { [x: string]: RuleSet; }
+const DEFAULT_RULESETS: Record<string, RuleSet>
 
 const TRIAL_START_RULESET: RuleSet
 

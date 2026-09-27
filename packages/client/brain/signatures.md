@@ -1722,11 +1722,11 @@ interface IRemoteConfigState {
 
 const ADMIN_LOCALES: readonly ["en", "fr", "es"]
 
-const DEFAULT_ADMIN_LOCALE: "en" | "fr" | "es"
+const DEFAULT_ADMIN_LOCALE: AdminLocale
 
-const adminLocaleNames: { en: string; fr: string; es: string; }
+const adminLocaleNames: LocaleMap<string>
 
-const adminLocaleTags: { en: string; fr: string; es: string; }
+const adminLocaleTags: LocaleMap<string>
 
 function createAdminT(locale?: "en" | "fr" | "es" | undefined): (key: AdminMessageKey, params?: AdminMessageParams | undefined) => string
 
@@ -1737,6 +1737,8 @@ function formatAdminDate(value: string | number | Date, locale?: "en" | "fr" | "
 function isAdminLocale(value: unknown): value is "en" | "fr" | "es"
 
 type AdminLocale = (typeof ADMIN_LOCALES)[number];
+
+type LocaleMap<T> = Readonly<Record<AdminLocale, T>>;
 
 type AdminMessageKey = MessagePath<AdminMessages>;
 
