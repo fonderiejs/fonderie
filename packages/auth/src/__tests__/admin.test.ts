@@ -197,6 +197,34 @@ test('list: no email lists a page, secrets never leave, and the cursor round-tri
 	assert.equal(last.result.nextCursor, null);
 });
 
+test('deleted accounts: ?deleted=1 lists ONLY soft-deleted rows; by id a deleted account still resolves, with deletedAt', async () => {
+	const { store, state } = makeStore();
+	const app = new FonderieApp(config).register(mounter(store));
+	await app.boot();
+	state.pageRows = [];
+	await app.handle(req('GET', '/_admin/users?deleted=1'));
+	assert.match(state.listSql, /deleted_at IS NOT NULL/);
+	await app.handle(req('GET', '/_admin/users'));
+	assert.match(state.listSql, /deleted_at IS NULL/, 'the default list still hides them');
+
+	state.user = { ...state.user, deletedAt: new Date('2026-09-01T00:00:00Z') } as typeof state.user;
+	let byIdSql = '';
+	const spy: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			if (sql.includes('WHERE id = $1') && sql.startsWith('SELECT')) byIdSql = sql;
+			return store.query<T>(sql, params);
+		},
+		transaction: async (fn) => fn(spy),
+	};
+	const app2 = new FonderieApp(config).register(mounter(spy));
+	await app2.boot();
+	const res = await app2.handle(req('GET', '/_admin/users/u1'));
+	assert.equal(res.status, 200);
+	assert.doesNotMatch(byIdSql, /deleted_at IS NULL/, 'the operator view does not filter the deleted row out');
+	const body = (await res.json()) as { result: { deletedAt: string | null } };
+	assert.equal(body.result.deletedAt, '2026-09-01T00:00:00.000Z');
+});
+
 test('list: a malformed cursor is 422, not a database cast error', async () => {
 	const { store } = makeStore();
 	const app = await new FonderieApp(config).register(mounter(store)).boot();

@@ -213,12 +213,15 @@ function normalizeEmailSafe(email: string): string | null
 
 function importUser(store: IStoreAdapter, user: IImportUser): Promise<{ id: string; }>
 
-function purgeSoftDeletedUsers(store: IStoreAdapter, { olderThanDays }: IPurgeOptions): Promise<number>
+function purgeSoftDeletedUsers(store: IStoreAdapter, { olderThanDays, bus }: IPurgeOptions): Promise<number>
 
 function startUserRetention(store: IStoreAdapter, options: IUserRetentionScheduleOptions): { stop: () => void; }
 
 interface IPurgeOptions {
     olderThanDays: number;
+    bus?: {
+        emit(type: string, payload: unknown): Promise<void>;
+    } | undefined;
 }
 
 interface IUserRetentionScheduleOptions extends IPurgeOptions {

@@ -37,7 +37,13 @@ export function UsersScreen({
 	);
 	const plans = useSubscriptionIndex(billingClient);
 
-	const list = useAdminUsers(client, { limit: pageSize });
+	// Soft-deleted accounts are their own view: they cannot sign in and are
+	// erased by the retention purge, but until then an operator can see them.
+	const [showDeleted, setShowDeleted] = useState(false);
+	const list = useAdminUsers(client, {
+		limit: pageSize,
+		...(showDeleted ? { deleted: true } : {}),
+	});
 	const { user, isLoading, error, suspend, unsuspend, revokeSessions } = useAdminUser(
 		client,
 		selected ?? {},
@@ -94,6 +100,34 @@ export function UsersScreen({
 						Refresh
 					</button>
 				)}
+				{!selected ? (
+					<fieldset
+						style={{
+							display: 'flex',
+							gap: 6,
+							border: 'none',
+							margin: '0 0 0 auto',
+							padding: 0,
+							minWidth: 0,
+						}}
+						aria-label="Which accounts"
+					>
+						{[false, true].map((d) => (
+							<button
+								key={String(d)}
+								type="button"
+								aria-pressed={showDeleted === d}
+								onClick={() => setShowDeleted(d)}
+								style={{
+									...(showDeleted === d ? styles.buttonPrimary : styles.button),
+									height: 28,
+								}}
+							>
+								{d ? 'Deleted' : 'Active'}
+							</button>
+						))}
+					</fieldset>
+				) : null}
 			</form>
 			{error && !(error.status === 404 && selected?.id) ? (
 				<p style={styles.error} role="alert">
@@ -250,35 +284,43 @@ export function UsersScreen({
 							</tr>
 						</tbody>
 					</table>
-					<div style={{ ...styles.toolbar, marginTop: 12 }}>
-						{user.suspended ? (
+					{user.deletedAt ? (
+						<div style={{ ...styles.notice, marginTop: 12 }} role="status">
+							<strong>Deleted on {new Date(user.deletedAt).toLocaleString()}.</strong> The account
+							cannot sign in, and it is erased when the retention purge runs. Its billing records
+							stay.
+						</div>
+					) : (
+						<div style={{ ...styles.toolbar, marginTop: 12 }}>
+							{user.suspended ? (
+								<button
+									type="button"
+									style={styles.button}
+									onClick={() => void unsuspend()}
+									disabled={isLoading}
+								>
+									Unsuspend
+								</button>
+							) : (
+								<button
+									type="button"
+									style={styles.buttonDanger}
+									onClick={() => void suspend()}
+									disabled={isLoading}
+								>
+									Suspend
+								</button>
+							)}
 							<button
 								type="button"
 								style={styles.button}
-								onClick={() => void unsuspend()}
+								onClick={() => void revokeSessions().then(() => sessions.refresh())}
 								disabled={isLoading}
 							>
-								Unsuspend
+								Sign out everywhere
 							</button>
-						) : (
-							<button
-								type="button"
-								style={styles.buttonDanger}
-								onClick={() => void suspend()}
-								disabled={isLoading}
-							>
-								Suspend
-							</button>
-						)}
-						<button
-							type="button"
-							style={styles.button}
-							onClick={() => void revokeSessions().then(() => sessions.refresh())}
-							disabled={isLoading}
-						>
-							Sign out everywhere
-						</button>
-					</div>
+						</div>
+					)}
 
 					{billingClient ? (
 						<>
@@ -290,56 +332,62 @@ export function UsersScreen({
 						</>
 					) : null}
 
-					<h2 style={styles.subtitle}>Live sessions</h2>
-					{sessions.sessions.length === 0 ? (
-						<p style={styles.muted}>None.</p>
-					) : (
-						<ul style={styles.list}>
-							{sessions.sessions.map((s) => (
-								<li key={s.id} style={styles.row}>
-									<span style={styles.mono}>{s.ipAddress ?? '—'}</span>{' '}
-									{describeLocation(s.location) ? (
-										<span style={styles.muted}>{describeLocation(s.location)} </span>
-									) : null}
-									<span style={styles.muted}>{s.userAgent ?? ''}</span>{' '}
-									<span style={styles.muted}>since {new Date(s.createdAt).toLocaleString()}</span>
-								</li>
-							))}
-						</ul>
-					)}
+					{!user.deletedAt ? (
+						<>
+							<h2 style={styles.subtitle}>Live sessions</h2>
+							{sessions.sessions.length === 0 ? (
+								<p style={styles.muted}>None.</p>
+							) : (
+								<ul style={styles.list}>
+									{sessions.sessions.map((s) => (
+										<li key={s.id} style={styles.row}>
+											<span style={styles.mono}>{s.ipAddress ?? '—'}</span>{' '}
+											{describeLocation(s.location) ? (
+												<span style={styles.muted}>{describeLocation(s.location)} </span>
+											) : null}
+											<span style={styles.muted}>{s.userAgent ?? ''}</span>{' '}
+											<span style={styles.muted}>
+												since {new Date(s.createdAt).toLocaleString()}
+											</span>
+										</li>
+									))}
+								</ul>
+							)}
 
-					<h2 style={styles.subtitle}>Recent sign-ins</h2>
-					{history.events.length === 0 && !history.isLoading ? (
-						<p style={styles.muted}>None recorded.</p>
-					) : (
-						<ul style={styles.list}>
-							{history.events.map((e) => (
-								<li key={e.id} style={styles.row}>
-									<Pill tone={e.outcome === 'success' ? 'ok' : 'bad'}>{e.outcome}</Pill>{' '}
-									<span style={styles.muted}>{e.method}</span>{' '}
-									<span style={styles.mono}>{e.ipAddress ?? '—'}</span>{' '}
-									{describeLocation(e.location) ? (
-										<span style={styles.muted}>{describeLocation(e.location)}</span>
-									) : null}
-									{e.location?.proxy || e.location?.hosting ? (
-										<>
-											{' '}
-											<Pill tone="warn">{e.location.proxy ? 'proxy/VPN' : 'hosting'}</Pill>
-										</>
-									) : null}{' '}
-									<span style={styles.muted}>{new Date(e.createdAt).toLocaleString()}</span>
-								</li>
-							))}
-						</ul>
-					)}
-					{history.hasMore && !history.isLoading ? (
-						<button
-							type="button"
-							style={{ ...styles.button, marginTop: 8 }}
-							onClick={() => void history.loadMore()}
-						>
-							Load more
-						</button>
+							<h2 style={styles.subtitle}>Recent sign-ins</h2>
+							{history.events.length === 0 && !history.isLoading ? (
+								<p style={styles.muted}>None recorded.</p>
+							) : (
+								<ul style={styles.list}>
+									{history.events.map((e) => (
+										<li key={e.id} style={styles.row}>
+											<Pill tone={e.outcome === 'success' ? 'ok' : 'bad'}>{e.outcome}</Pill>{' '}
+											<span style={styles.muted}>{e.method}</span>{' '}
+											<span style={styles.mono}>{e.ipAddress ?? '—'}</span>{' '}
+											{describeLocation(e.location) ? (
+												<span style={styles.muted}>{describeLocation(e.location)}</span>
+											) : null}
+											{e.location?.proxy || e.location?.hosting ? (
+												<>
+													{' '}
+													<Pill tone="warn">{e.location.proxy ? 'proxy/VPN' : 'hosting'}</Pill>
+												</>
+											) : null}{' '}
+											<span style={styles.muted}>{new Date(e.createdAt).toLocaleString()}</span>
+										</li>
+									))}
+								</ul>
+							)}
+							{history.hasMore && !history.isLoading ? (
+								<button
+									type="button"
+									style={{ ...styles.button, marginTop: 8 }}
+									onClick={() => void history.loadMore()}
+								>
+									Load more
+								</button>
+							) : null}
+						</>
 					) : null}
 				</>
 			) : null}

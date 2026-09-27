@@ -21,6 +21,7 @@ export function useAdminUsers(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 	const limit = query.limit;
+	const deleted = query.deleted;
 
 	const fetchPage = useCallback(
 		async (cursor?: string) => {
@@ -30,6 +31,7 @@ export function useAdminUsers(
 				const { result } = await client.listUsers({
 					...(limit ? { limit } : {}),
 					...(cursor ? { cursor } : {}),
+					...(deleted ? { deleted } : {}),
 				});
 				setUsers((prev) => (cursor ? [...prev, ...result.users] : result.users));
 				setNext(result.nextCursor);
@@ -41,7 +43,7 @@ export function useAdminUsers(
 				setIsLoading(false);
 			}
 		},
-		[client, limit],
+		[client, limit, deleted],
 	);
 
 	const refresh = useCallback(() => fetchPage(), [fetchPage]);

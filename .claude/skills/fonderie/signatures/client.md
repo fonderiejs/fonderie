@@ -320,6 +320,7 @@ interface IAdminLoginHistoryQuery {
 interface IAdminUsersQuery {
     limit?: number;
     cursor?: string;
+    deleted?: boolean;
 }
 
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
