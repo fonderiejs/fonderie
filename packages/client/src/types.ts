@@ -443,6 +443,9 @@ export interface IWorkspaceSettingsResult {
 // in a named key, matching @fonderie/courier's admin route handlers.
 
 export interface ITemplateEntry {
+	// A built-in email's default-locale row: edit and roll back, never delete.
+	// Present on list results from @fonderie/courier ≥ the system-template release.
+	system?: boolean;
 	type: string;
 	locale: string | null;
 	subject: string | null;

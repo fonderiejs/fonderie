@@ -136,6 +136,25 @@ test('versionedWrite: create inserts key + content + version, appends revision, 
 	assert.ok(seen.some((s) => s.includes("pg_notify('cfg_ch'")), 'invalidation notified');
 });
 
+test('versionedWrite: re-creating a deleted key continues after its revisions (no version-1 collision)', async () => {
+	const writes: Array<{ sql: string; params: unknown[] }> = [];
+	const stub: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			if (sql.includes('SELECT version')) return [] as T[]; // no live row: it was deleted
+			if (sql.includes('max(version)')) return [{ v: 7 }] as T[]; // …but history reaches v7
+			if (sql.startsWith('INSERT INTO cfg ') || sql.includes('INSERT INTO cfg_rev')) writes.push({ sql, params });
+			return (sql.includes('RETURNING') ? [{ key: 'k', version: 8 }] : []) as T[];
+		},
+		transaction: async (fn) => fn(stub),
+	};
+	await versionedWrite(CFG, stub, { key: 'k', scope: 'all', data: { value: 'v' }, actor: 'ada' });
+	const row = writes.find((w) => w.sql.startsWith('INSERT INTO cfg '))!;
+	const rev = writes.find((w) => w.sql.includes('INSERT INTO cfg_rev'))!;
+	assert.ok(row.params.includes(8), `new row is version 8, got ${JSON.stringify(row.params)}`);
+	assert.ok(rev.params.includes(8), 'its revision is version 8 too');
+	assert.ok(!row.params.includes(1), 'never restarts at version 1');
+});
+
 test('versionedWrite: optimistic concurrency — stale ifVersion throws', async () => {
 	const { store } = captureStore((sql) => (sql.includes('SELECT version') ? [{ version: 5 }] : []));
 	await assert.rejects(

@@ -5,7 +5,7 @@
 ## @fonderie/vue-config-admin-screens
 
 ```ts
-component ConfigEditorScreen(props: { client, kind, configKey, environment }) — emits: saved
+component ConfigEditorScreen(props: { client, kind, configKey, environment, environments }) — emits: saved, deleted
 
-component ConfigListScreen(props: { client, environment, allowCreate }) — emits: select-config, select-secret, create-config, create-secret
+component ConfigListScreen(props: { client, environment, allowCreate, publicConfigUrl }) — emits: select-config, select-secret, create-config, create-secret
 ```

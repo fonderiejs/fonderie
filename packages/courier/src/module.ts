@@ -53,7 +53,16 @@ export class CourierModule implements IFonderieModule {
 	// Conditional spread rather than `{ brandName: this.config.brandName }` —
 	// exactOptionalPropertyTypes rejects an explicit undefined here.
 	private brandOpts(): ITemplateAdminOptions {
-		return this.config.brandName ? { brandName: this.config.brandName } : {};
+		// The module-shipped default types are system templates too: their
+		// default-locale row can be edited, never deleted.
+		const input = this.config.templates?.defaults;
+		const systemTypes = new DefaultTemplates(
+			input ? (Array.isArray(input) ? input : [input]) : [],
+		).types();
+		return {
+			...(this.config.brandName ? { brandName: this.config.brandName } : {}),
+			systemTypes,
+		};
 	}
 
 	// Template admin needs db templates; the DNS check needs an email channel.
@@ -61,8 +70,7 @@ export class CourierModule implements IFonderieModule {
 		const out: IAdminDescription = {};
 		// brandName travels with the routes: the preview renders the shell, and on a
 		// real send the Dispatcher — not the resolver — is what merges it in.
-		if (this.store)
-			out.routes = describeTemplateAdminRoutes(this.store, this.brandOpts());
+		if (this.store) out.routes = describeTemplateAdminRoutes(this.store, this.brandOpts());
 		if (this.config.email) out.checks = [senderDnsCheck(this.config.email)];
 		return out;
 	}

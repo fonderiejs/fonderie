@@ -20,8 +20,12 @@ export interface ISubscriberBillingProps {
 // subscribers. A subscription is NOT required: everyone has a wallet, and a
 // user with no subscription is on the free tier.
 export function SubscriberBilling({ client, subscriber }: ISubscriberBillingProps) {
+	// A wallet exists per currency. Empty ⇒ the billing default; typing another
+	// (e.g. EUR) reads that wallet instead — same as the CLI's --currency.
+	const [currency, setCurrency] = useState('');
+	const [currencyDraft, setCurrencyDraft] = useState('');
 	const { subscription, wallet, ledger, hasMoreLedger, isLoading, error, loadMoreLedger, grant } =
-		useAdminSubscriber(client, subscriber, { limit: 20 });
+		useAdminSubscriber(client, subscriber, { limit: 20, ...(currency ? { currency } : {}) });
 	const [amount, setAmount] = useState('');
 	const [note, setNote] = useState('');
 	const [granted, setGranted] = useState<string | null>(null);
@@ -70,7 +74,33 @@ export function SubscriberBilling({ client, subscriber }: ISubscriberBillingProp
 					) : null}
 				</div>
 				<div style={styles.card}>
-					<div style={styles.statLabel}>Credits</div>
+					<div
+						style={{
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							gap: 8,
+						}}
+					>
+						<div style={styles.statLabel}>Credits</div>
+						<form
+							style={{ display: 'flex', gap: 4 }}
+							onSubmit={(e) => {
+								e.preventDefault();
+								setCurrency(currencyDraft.trim().toUpperCase());
+							}}
+						>
+							<input
+								value={currencyDraft}
+								onChange={(e) => setCurrencyDraft(e.target.value)}
+								placeholder={wallet?.currency ?? 'currency'}
+								maxLength={8}
+								style={{ ...styles.input, height: 26, width: 84, fontSize: 12 }}
+								aria-label="Wallet currency"
+								title="Show the wallet in another currency"
+							/>
+						</form>
+					</div>
 					{wallet ? (
 						<>
 							<div style={styles.statValue}>
