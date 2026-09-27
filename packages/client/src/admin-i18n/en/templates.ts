@@ -57,6 +57,7 @@ const templates = {
 		errorText: 'The plain-text body is required — it is what every email client can show.',
 		exists: '"{type}" already exists — open it from the list to edit.',
 		existsLocale: '"{type}" ({locale}) already exists — open it from the list to edit.',
+		untranslated: 'Still the default copy: {fields}. Translate them before adding this locale.',
 	},
 };
 export default templates;

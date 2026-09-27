@@ -6,12 +6,24 @@ import type {
 	ISetTemplateInput,
 } from '@fonderie/client';
 import { createAdminT, FonderieApiError } from '@fonderie/client';
+import { useTemplatePreview } from '@fonderie/vue-courier-admin';
 import type { PropType } from 'vue';
-import { defineComponent, h, onMounted, ref } from 'vue';
+import { computed, defineComponent, h, onMounted, ref, watch } from 'vue';
 import { styles } from '../styles';
 
 const TYPE_RE = /^[a-z0-9][a-z0-9_-]{0,80}$/;
 const LOCALE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
+// Variables the layout injects — never sample values, as in the editor.
+const IMPLICIT = new Set(['subject', 'preheader', 'brandName']);
+const PREVIEW_DEBOUNCE_MS = 500;
+const notice = {
+	fontSize: '13px',
+	color: 'var(--fonderie-text,#171717)',
+	background: 'color-mix(in srgb, var(--fonderie-warning,#f5a623) 16%, transparent)',
+	borderRadius: '6px',
+	padding: '8px 12px',
+	margin: '12px 0 0',
+};
 
 // Creating is its own screen: the editor loads an existing row, and a new
 // template or locale has none yet. Once saved, the editor takes over.
@@ -43,6 +55,17 @@ export const TemplateCreateScreen = defineComponent({
 		const text = ref('');
 		const error = ref<string | null>(null);
 		const busy = ref(false);
+		// The default copy this locale started from, to flag fields not yet translated.
+		const source = ref<{ subject: string; html: string; text: string } | null>(null);
+		const {
+			preview,
+			isPreviewing,
+			error: previewError,
+			renderPreview,
+		} = useTemplatePreview(props.client);
+		// Each variable renders as its own name, so the preview shows where it
+		// lands. Learned from the server's answer, not re-parsed here.
+		let variables: string[] = [];
 		// `tr`, not `t`: submit() uses `t` for the template type.
 		const tr = (key: AdminMessageKey, params?: AdminMessageParams) =>
 			createAdminT(props.locale)(key, params);
@@ -56,8 +79,57 @@ export const TemplateCreateScreen = defineComponent({
 					subject.value = result.subject ?? '';
 					html.value = result.html ?? '';
 					text.value = result.text;
+					source.value = {
+						subject: result.subject ?? '',
+						html: result.html ?? '',
+						text: result.text,
+					};
 				})
 				.catch(() => undefined);
+		});
+
+		// Live preview, as in the editor: translating is where it matters most — a
+		// half-translated email looks finished in a textarea and wrong in the render.
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		watch([newType, targetLocale, subject, html, text], () => {
+			clearTimeout(timer);
+			const type = addingLocale ? (props.type as string) : newType.value.trim();
+			const l = targetLocale.value.trim();
+			if (!TYPE_RE.test(type) || !text.value.trim()) return;
+			timer = setTimeout(async () => {
+				const input = {
+					text: text.value,
+					...(subject.value ? { subject: subject.value } : {}),
+					...(html.value ? { html: html.value } : {}),
+				};
+				const render = () =>
+					renderPreview(
+						type,
+						{ ...input, data: Object.fromEntries(variables.map((v) => [v, v])) },
+						LOCALE_RE.test(l) ? l : null,
+					);
+				try {
+					const result = await render();
+					const used = result.variables.filter((v) => !IMPLICIT.has(v));
+					// A variable not seen before rendered empty: render once more with it.
+					if (used.some((v) => !variables.includes(v))) {
+						variables = used;
+						await render();
+					}
+				} catch {
+					// Shown through previewError.
+				}
+			}, PREVIEW_DEBOUNCE_MS);
+		});
+
+		const untranslated = computed(() => {
+			const src = source.value;
+			if (!src) return [];
+			return [
+				subject.value && subject.value === src.subject ? tr('templates.subject') : null,
+				html.value && html.value === src.html ? tr('templates.htmlBody') : null,
+				text.value === src.text ? tr('templates.textBody') : null,
+			].filter((f): f is string => f !== null);
 		});
 
 		async function submit(e: Event) {
@@ -128,7 +200,7 @@ export const TemplateCreateScreen = defineComponent({
 		];
 
 		return () =>
-			h('div', { style: { ...styles.container, maxWidth: '760px' } }, [
+			h('div', { style: styles.container }, [
 				h(
 					'h1',
 					{ style: styles.title },
@@ -139,45 +211,85 @@ export const TemplateCreateScreen = defineComponent({
 				h(
 					'p',
 					{ style: { ...styles.meta, lineHeight: 1.5 } },
-					addingLocale
-						? tr('templates.create.hintLocale')
-						: tr('templates.create.hintNew'),
+					addingLocale ? tr('templates.create.hintLocale') : tr('templates.create.hintNew'),
 				),
-				h('form', { style: styles.form, onSubmit: (ev: Event) => void submit(ev) }, [
-					...(addingLocale
-						? []
-						: field('new-template-type', tr('templates.create.type'), newType, { placeholder: 'weekly-digest' })),
-					...field(
-						'new-template-locale',
-						addingLocale ? tr('templates.create.locale') : tr('templates.create.localeOptional'),
-						targetLocale,
-						{ placeholder: 'fr', list: 'new-template-locales' },
-					),
-					h(
-						'datalist',
-						{ id: 'new-template-locales' },
-						[...new Set(props.locales)].map((l) => h('option', { key: l, value: l })),
-					),
-					...field('new-template-subject', tr('templates.subject'), subject),
-					...field('new-template-html', tr('templates.htmlBody'), html, { textarea: true, minHeight: '160px' }),
-					...field('new-template-text', tr('templates.textBody'), text, {
-						textarea: true,
-						minHeight: '100px',
-					}),
-					error.value ? h('p', { style: styles.error, role: 'alert' }, error.value) : null,
-					h(
-						'button',
-						{
-							type: 'submit',
-							disabled: busy.value,
-							style: { ...styles.button, marginTop: '16px' },
-						},
-						busy.value
-							? tr('templates.create.creating')
-							: addingLocale
-								? tr('templates.create.submitLocale')
-								: tr('templates.create.submitNew'),
-					),
+				h('div', { style: styles.split }, [
+					h('form', { style: styles.form, onSubmit: (ev: Event) => void submit(ev) }, [
+						...(addingLocale
+							? []
+							: field('new-template-type', tr('templates.create.type'), newType, {
+									placeholder: 'weekly-digest',
+								})),
+						...field(
+							'new-template-locale',
+							addingLocale ? tr('templates.create.locale') : tr('templates.create.localeOptional'),
+							targetLocale,
+							{ placeholder: 'fr', list: 'new-template-locales' },
+						),
+						h(
+							'datalist',
+							{ id: 'new-template-locales' },
+							[...new Set(props.locales)].map((l) => h('option', { key: l, value: l })),
+						),
+						...field('new-template-subject', tr('templates.subject'), subject),
+						...field('new-template-html', tr('templates.htmlBody'), html, {
+							textarea: true,
+							minHeight: '160px',
+						}),
+						...field('new-template-text', tr('templates.textBody'), text, {
+							textarea: true,
+							minHeight: '100px',
+						}),
+						untranslated.value.length > 0
+							? h(
+									'p',
+									{ style: notice },
+									tr('templates.create.untranslated', { fields: untranslated.value.join(', ') }),
+								)
+							: null,
+						error.value ? h('p', { style: styles.error, role: 'alert' }, error.value) : null,
+						h(
+							'button',
+							{
+								type: 'submit',
+								disabled: busy.value,
+								style: { ...styles.button, marginTop: '16px' },
+							},
+							busy.value
+								? tr('templates.create.creating')
+								: addingLocale
+									? tr('templates.create.submitLocale')
+									: tr('templates.create.submitNew'),
+						),
+					]),
+					h('div', { style: styles.previewColumn }, [
+						h('div', { style: styles.previewHeader }, [
+							h('span', { style: styles.label }, tr('templates.editor.preview')),
+							h(
+								'span',
+								{ style: styles.meta },
+								isPreviewing.value ? tr('templates.editor.rendering') : tr('templates.editor.live'),
+							),
+						]),
+						previewError.value
+							? h('p', { style: styles.error, role: 'alert' }, previewError.value.explanation)
+							: null,
+						preview.value?.subject
+							? h('p', { style: styles.previewSubject }, preview.value.subject)
+							: null,
+						preview.value?.html
+							? // sandbox= — no scripts, no same-origin: operator-authored HTML must
+								// never execute in the console's origin.
+								h('iframe', {
+									title: tr('templates.editor.previewTitle'),
+									style: styles.previewFrame,
+									sandbox: '',
+									srcdoc: preview.value.html,
+								})
+							: preview.value
+								? h('pre', { style: styles.previewText }, preview.value.text)
+								: h('p', { style: styles.meta }, tr('templates.editor.nothingRendered')),
+					]),
 				]),
 			]);
 	},
