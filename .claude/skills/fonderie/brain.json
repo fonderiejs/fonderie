@@ -724,7 +724,9 @@
         "CustomersClient",
         "MediaClient",
         "WebhooksClient",
-        "WorkspacesClient"
+        "WorkspacesClient",
+        "CONFIG_KEY_PATTERN",
+        "CONFIG_VALUE_TYPES"
       ],
       "subpaths": [],
       "tables": [],
@@ -5250,6 +5252,12 @@
       "client"
     ],
     "workspacesclient": [
+      "client"
+    ],
+    "config_key_pattern": [
+      "client"
+    ],
+    "config_value_types": [
       "client"
     ],
     "configmodule": [

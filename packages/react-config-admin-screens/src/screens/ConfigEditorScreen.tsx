@@ -1,4 +1,12 @@
-import type { ConfigAdminClient } from '@fonderie/client';
+import {
+	type ConfigAdminClient,
+	type ConfigValueType,
+	CONFIG_VALUE_TYPES,
+	castConfigValue,
+	configKeyProblem,
+	configValueType,
+	formatConfigValue,
+} from '@fonderie/client';
 import {
 	FonderieApiError,
 	useConfigEntries,
@@ -15,6 +23,7 @@ import { useEffect, useState } from 'react';
 export interface IConfigEditorScreenProps {
 	client: ConfigAdminClient;
 	kind: 'config' | 'secret';
+	/** Empty string ⇒ create mode: the operator names the new key. */
 	configKey: string;
 	environment?: string;
 	onSaved?: () => void;
@@ -28,16 +37,21 @@ export function ConfigEditorScreen({
 	onSaved,
 }: IConfigEditorScreenProps) {
 	const isSecret = kind === 'secret';
+	const isNew = configKey === '';
+	const [newKey, setNewKey] = useState('');
+	const key = isNew ? newKey.trim() : configKey;
+	const [valueType, setValueType] = useState<ConfigValueType>('string');
+	const [inputError, setInputError] = useState<string | null>(null);
 
-	const configEntry = useConfigEntry(client, isSecret ? '' : configKey, environment);
-	const secretEntry = useSecret(client, isSecret ? configKey : '', environment);
+	const configEntry = useConfigEntry(client, isSecret || isNew ? '' : configKey, environment);
+	const secretEntry = useSecret(client, isSecret && !isNew ? configKey : '', environment);
 	// Saves go through the list hooks (which re-fetch their lists after each
 	// write); mounting them adds a config-list and a secrets-list fetch to this
 	// single-entry editor — acceptable for an admin dashboard.
 	const configEntries = useConfigEntries(client, environment);
 	const secrets = useSecrets(client, environment);
-	const configRevisions = useConfigRevisions(client, isSecret ? '' : configKey, environment);
-	const secretRevisions = useSecretRevisions(client, isSecret ? configKey : '', environment);
+	const configRevisions = useConfigRevisions(client, isSecret || isNew ? '' : configKey, environment);
+	const secretRevisions = useSecretRevisions(client, isSecret && !isNew ? configKey : '', environment);
 	const { revealSecret, isLoading: isRevealing } = useRevealSecret(client);
 
 	const entry = isSecret ? secretEntry : configEntry;
@@ -54,7 +68,9 @@ export function ConfigEditorScreen({
 	useEffect(() => {
 		if (isSecret) return;
 		if (!configEntry.entry) return;
-		setValue(JSON.stringify(configEntry.entry.value, null, 2));
+		const type = configValueType(configEntry.entry.value);
+		setValueType(type);
+		setValue(formatConfigValue(configEntry.entry.value, type));
 		setDescription(configEntry.entry.description ?? '');
 	}, [isSecret, configEntry.entry]);
 
@@ -66,25 +82,42 @@ export function ConfigEditorScreen({
 
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
-		setIsSaving(true);
 		setSaveError(null);
+		setInputError(null);
+		if (isNew) {
+			const problem = configKeyProblem(key);
+			if (problem) return setInputError(problem);
+			// Creating must never overwrite: a save to an existing key would
+			// silently replace its value.
+			const taken = isSecret
+				? secrets.secrets.some((s) => s.key === key)
+				: configEntries.entries.some((e) => e.key === key);
+			if (taken) return setInputError(`"${key}" already exists — open it from the list to edit.`);
+		}
+		let typed: unknown = value;
+		if (!isSecret) {
+			const cast = castConfigValue(valueType, value);
+			if (!cast.ok) return setInputError(cast.error);
+			typed = cast.value;
+		}
+		setIsSaving(true);
 		try {
 			if (isSecret) {
 				const opts: Parameters<typeof secrets.saveSecret>[1] = { value };
 				if (description) opts.description = description;
-				await secrets.saveSecret(configKey, opts);
+				await secrets.saveSecret(key, opts);
 			} else {
-				const opts: Parameters<typeof configEntries.saveEntry>[1] = { value: JSON.parse(value) };
+				const opts: Parameters<typeof configEntries.saveEntry>[1] = { value: typed };
 				if (description) opts.description = description;
-				await configEntries.saveEntry(configKey, opts);
+				await configEntries.saveEntry(key, opts);
 			}
 			// The list hooks refresh their own lists; this screen renders the
 			// single entry, so re-read it too.
-			await entry.refresh();
+			if (!isNew) await entry.refresh();
 			onSaved?.();
 		} catch (err) {
-			// API failures surface inline; JSON.parse errors stay silent as before.
 			if (err instanceof FonderieApiError) setSaveError(err);
+			else setInputError((err as Error).message);
 		} finally {
 			setIsSaving(false);
 		}
@@ -98,8 +131,8 @@ export function ConfigEditorScreen({
 		}
 	};
 
-	if (entry.isLoading) return <p style={styles.status}>Loading…</p>;
-	if (entry.error)
+	if (!isNew && entry.isLoading) return <p style={styles.status}>Loading…</p>;
+	if (!isNew && entry.error)
 		return (
 			<p style={styles.error} role="alert">
 				{entry.error.explanation}
@@ -108,13 +141,13 @@ export function ConfigEditorScreen({
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>{configKey}</h1>
+			<h1 style={styles.title}>{isNew ? (isSecret ? 'New secret' : 'New config entry') : configKey}</h1>
 			<p style={styles.meta}>
-				{environment ?? 'all'} · v
-				{isSecret ? secretEntry.secret?.version : configEntry.entry?.version}
+				{environment ?? 'all'}
+				{!isNew && <> · v{isSecret ? secretEntry.secret?.version : configEntry.entry?.version}</>}
 			</p>
 
-			{isSecret && (
+			{isSecret && !isNew && (
 				<div style={styles.revealBox}>
 					<span style={styles.revealedValue}>{revealedValue ?? '••••••••'}</span>
 					<button
@@ -129,17 +162,92 @@ export function ConfigEditorScreen({
 			)}
 
 			<form style={styles.form} onSubmit={handleSubmit}>
+				{isNew && (
+					<>
+						<label style={styles.label} htmlFor="config-key">
+							Key
+						</label>
+						<input
+							id="config-key"
+							style={styles.input}
+							value={newKey}
+							placeholder={isSecret ? 'STRIPE_SECRET_KEY' : 'ENABLE_JOB_LISTING'}
+							onChange={(event) => setNewKey(event.target.value)}
+							autoComplete="off"
+							spellCheck={false}
+							required
+						/>
+					</>
+				)}
+
+				{!isSecret && (
+					<>
+						<label style={styles.label} htmlFor="config-type">
+							Type
+						</label>
+						<select
+							id="config-type"
+							style={styles.input}
+							value={valueType}
+							onChange={(event) => {
+								const next = event.target.value as ConfigValueType;
+								// Carry the value across when it still makes sense
+								// (e.g. "true" → On/off); otherwise start clean.
+								const cast = castConfigValue(next, value);
+								setValue(cast.ok ? formatConfigValue(cast.value, next) : next === 'boolean' ? 'false' : '');
+								setValueType(next);
+								setInputError(null);
+							}}
+						>
+							{CONFIG_VALUE_TYPES.map((t) => (
+								<option key={t} value={t}>
+									{TYPE_LABEL[t]}
+								</option>
+							))}
+						</select>
+					</>
+				)}
+
 				<label style={styles.label} htmlFor="config-value">
-					{isSecret ? 'New value' : 'Value (JSON)'}
+					{isSecret ? (isNew ? 'Value' : 'New value') : 'Value'}
 				</label>
-				<textarea
-					id="config-value"
-					style={styles.textarea}
-					value={value}
-					onChange={(event) => setValue(event.target.value)}
-					rows={isSecret ? 2 : 8}
-					required
-				/>
+				{!isSecret && valueType === 'boolean' ? (
+					<label style={styles.toggle}>
+						<input
+							id="config-value"
+							type="checkbox"
+							checked={value === 'true'}
+							onChange={(event) => setValue(event.target.checked ? 'true' : 'false')}
+						/>
+						{value === 'true' ? 'On (true)' : 'Off (false)'}
+					</label>
+				) : !isSecret && valueType === 'number' ? (
+					<input
+						id="config-value"
+						style={styles.input}
+						inputMode="decimal"
+						value={value}
+						onChange={(event) => setValue(event.target.value)}
+						required
+					/>
+				) : !isSecret && valueType === 'string' ? (
+					<input id="config-value" style={styles.input} value={value} onChange={(event) => setValue(event.target.value)} />
+				) : (
+					<textarea
+						id="config-value"
+						style={styles.textarea}
+						value={value}
+						onChange={(event) => setValue(event.target.value)}
+						rows={isSecret ? 2 : 8}
+						spellCheck={false}
+						required
+					/>
+				)}
+				{inputError && (
+					<p style={styles.error} role="alert">
+						{inputError}
+					</p>
+				)}
 
 				<label style={styles.label} htmlFor="config-description">
 					Description
@@ -162,7 +270,7 @@ export function ConfigEditorScreen({
 				</button>
 			</form>
 
-			{revisions.revisions.length > 0 && (
+			{!isNew && revisions.revisions.length > 0 && (
 				<div style={styles.revisions}>
 					<h2 style={styles.subtitle}>History</h2>
 					<ul style={styles.list}>
@@ -188,7 +296,15 @@ export function ConfigEditorScreen({
 	);
 }
 
+const TYPE_LABEL: Record<ConfigValueType, string> = {
+	string: 'Text',
+	number: 'Number',
+	boolean: 'On / off',
+	json: 'JSON (list or object)',
+};
+
 const styles: Record<string, CSSProperties> = {
+	toggle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, padding: '6px 0' },
 	container: { padding: 24, maxWidth: 640 },
 	title: { fontSize: 24, fontWeight: 700 },
 	meta: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginBottom: 16 },
