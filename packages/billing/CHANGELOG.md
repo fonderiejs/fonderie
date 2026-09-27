@@ -1,5 +1,12 @@
 # @fonderie/billing
 
+## 10.0.3
+
+### Patch Changes
+
+- Updated dependencies [cc51775]
+  - @fonderie/store@0.7.0
+
 ## 10.0.2
 
 ### Patch Changes

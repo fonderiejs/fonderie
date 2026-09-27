@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/workspaces",
-	"version": "6.0.19",
+	"version": "6.0.20",
 	"fonderie": {
 		"stability": "stable"
 	},
@@ -57,7 +57,7 @@
 	"peerDependencies": {
 		"@fonderie/core": "^0.21.0",
 		"@fonderie/events": "^5.0.0",
-		"@fonderie/store": "^0.6.0"
+		"@fonderie/store": "^0.7.0"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/events": {
@@ -95,6 +95,6 @@
 	},
 	"dependencies": {
 		"zod": "^4.6.5",
-		"@fonderie/rate-limit": "^4.0.22"
+		"@fonderie/rate-limit": "^4.0.23"
 	}
 }

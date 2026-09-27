@@ -1,5 +1,12 @@
 # @fonderie/storage
 
+## 0.1.19
+
+### Patch Changes
+
+- Updated dependencies [cc51775]
+  - @fonderie/store@0.7.0
+
 ## 0.1.18
 
 ### Patch Changes

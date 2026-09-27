@@ -1,5 +1,12 @@
 # @fonderie/courier
 
+## 7.9.5
+
+### Patch Changes
+
+- Updated dependencies [cc51775]
+  - @fonderie/store@0.7.0
+
 ## 7.9.4
 
 ### Patch Changes
