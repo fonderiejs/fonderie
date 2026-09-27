@@ -173,6 +173,58 @@ A refused request is still logged — the caller learns nothing from a 404,
 and you learn that someone went looking. `GET /_admin/manifest` reports the
 binding as `admin.host`, so the Configuration page can show it.
 
+## Operators: people sign in, tokens are for machines
+
+A pasted token is a shared secret with no name on it. With a `store`, the
+console instead has **operator accounts**: email, password, and a mandatory
+authenticator app, with backup codes as the fallback.
+
+```ts
+new AdminModule({
+  adminToken: process.env.ADMIN_TOKEN,        // machines (CLI, CI) + the break-glass
+  operatorKey: process.env.ADMIN_OPERATOR_KEY, // 64 hex — encrypts authenticator secrets at rest
+  store,
+  ui: true,
+});
+```
+
+- **No registration.** The first operator is claimed once, on the console's
+  own sign-in page, with the root `adminToken`. Every other operator is invited
+  by an Owner: a single-use link that expires, where they set a password and
+  scan the QR code before anything opens.
+- **Two factors, always.** Password, then a six-digit code (RFC 6238). Ten
+  single-use backup codes are shown once at setup. A code cannot be replayed
+  within its window.
+- **A fresh code for dangerous actions.** Revealing a secret, minting a token
+  or link, applying a migration and deleting anything ask for a code from the
+  last five minutes. The console prompts and retries the action for you.
+- **Sessions** are an HttpOnly, SameSite=Strict cookie (`__Host-` over
+  HTTPS), 30 minutes idle and 12 hours at most, rotated at every privilege
+  change. Cookie-authenticated writes must come from this origin.
+- **Brute force** locks the account after 5 failures, doubling from a minute
+  to an hour; one address is also limited across accounts. Error messages do
+  not say which part was wrong.
+- **Recovery without email.** A lost phone uses a backup code. Lost both, or a
+  forgotten password: another Owner creates a recovery link (new password, new
+  authenticator, signed out everywhere). Every Owner locked out: the root token
+  does it from the terminal —
+
+```bash
+FONDERIE_ADMIN_URL=https://api.example.com FONDERIE_ADMIN_TOKEN=$ADMIN_TOKEN \
+  npx fonderie admin operator recover you@example.com
+```
+
+Access levels map to scopes: **Read only** (`read`), **Editor** (`read`,
+`write`), **Owner** (`read`, `write`, `secrets` — and operators and tokens).
+Operator actions are logged under `operator:<email>`, which a client header
+cannot override.
+
+`operatorKey` is optional but recommended; without it readiness warns.
+Setting it later is safe — existing secrets keep working and are sealed at
+the next enrollment. Changing it once set invalidates every enrolled
+authenticator. `operators: false` turns the sign-in routes off and brings
+back the token gate.
+
 ## Scoped tokens
 
 The `adminToken` you configure is the **root**: every scope, and the only

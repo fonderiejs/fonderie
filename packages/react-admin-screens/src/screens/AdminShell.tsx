@@ -19,6 +19,7 @@ import { DoctorScreen } from './DoctorScreen';
 import { ModulesScreen } from './ModulesScreen';
 import { RoutesScreen } from './RoutesScreen';
 import { MigrationsScreen } from './MigrationsScreen';
+import { OperatorsScreen } from './OperatorsScreen';
 import { TokensScreen } from './TokensScreen';
 import { UsersScreen } from './UsersScreen';
 import { CatalogScreen } from './CatalogScreen';
@@ -33,6 +34,7 @@ export type AdminPage =
 	| 'routes'
 	| 'migrations'
 	| 'tokens'
+	| 'operators'
 	| 'log'
 	| 'settings'
 	| 'templates'
@@ -65,6 +67,11 @@ export interface IAdminShellProps {
 	envLabel?: string;
 	// Pinned to the bottom of the sidebar: session controls (theme, sign out).
 	footer?: ReactNode;
+	// The deployment has operator accounts (@fonderie/admin with a store):
+	// shows the Operators page.
+	operators?: boolean;
+	// The signed-in operator's email, when a person (not a token) is signed in.
+	currentOperator?: string;
 }
 
 const ICON: Record<AdminPage, IconName> = {
@@ -81,6 +88,7 @@ const ICON: Record<AdminPage, IconName> = {
 	audit: 'audit',
 	log: 'log',
 	tokens: 'tokens',
+	operators: 'users',
 	migrations: 'migrations',
 };
 
@@ -105,7 +113,7 @@ const NAV: Array<{
 	items: Array<{
 		page: AdminPage;
 		label: string;
-		needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit';
+		needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit' | 'operators';
 	}>;
 }> = [
 	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
@@ -133,7 +141,8 @@ const NAV: Array<{
 		items: [
 			{ page: 'audit', label: 'Audit', needs: 'audit' },
 			{ page: 'log', label: 'Admin log' },
-			{ page: 'tokens', label: 'Access' },
+			{ page: 'operators', label: 'Operators', needs: 'operators' },
+			{ page: 'tokens', label: 'Tokens' },
 			{ page: 'migrations', label: 'Migrations' },
 		],
 	},
@@ -152,6 +161,8 @@ export function AdminShell({
 	appName = 'Admin',
 	envLabel,
 	footer,
+	operators = false,
+	currentOperator,
 }: IAdminShellProps) {
 	const narrow = useNarrow();
 	const [drawer, setDrawer] = useState(false);
@@ -172,6 +183,7 @@ export function AdminShell({
 		auth: Boolean(authClient),
 		billing: Boolean(billingClient),
 		audit: Boolean(auditClient),
+		operators,
 	};
 
 	let body: React.ReactNode;
@@ -193,6 +205,9 @@ export function AdminShell({
 			break;
 		case 'tokens':
 			body = <TokensScreen client={client} />;
+			break;
+		case 'operators':
+			body = <OperatorsScreen client={client} me={currentOperator} />;
 			break;
 		case 'migrations':
 			body = <MigrationsScreen client={client} />;

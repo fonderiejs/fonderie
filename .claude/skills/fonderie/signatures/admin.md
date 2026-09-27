@@ -49,7 +49,7 @@ function applyModuleMigrations(store: IStoreAdapter, sets: readonly IMigrationSe
 
 const applyMigrationsSchema: IRequestSchema
 
-function requireAdminScope(bootstrap: string, store: IStoreAdapter | undefined, needed: AdminScope | "root"): Middleware
+function requireAdminScope(bootstrap: string, store: IStoreAdapter | undefined, needed: AdminScope | "root", opts?: { stepUp?: boolean; operators?: boolean; }): Middleware
 
 function scopeFor(method: string, path: string): AdminScope
 
@@ -75,6 +75,8 @@ interface IAdminOptions {
     host?: string | string[];
     store?: IStoreAdapter;
     env?: string[];
+    operators?: boolean;
+    operatorKey?: string;
 }
 
 interface IAdminManifest {

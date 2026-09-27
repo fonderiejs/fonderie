@@ -14,3 +14,5 @@ export { useAdminSubscriber } from './useAdminSubscriber';
 export { useAdminSubscribers } from './useAdminSubscribers';
 export { useAdminAudit } from './useAdminAudit';
 export { useAdminMigrations } from './useAdminMigrations';
+export { useAdminSession } from './useAdminSession';
+export { useAdminOperators } from './useAdminOperators';

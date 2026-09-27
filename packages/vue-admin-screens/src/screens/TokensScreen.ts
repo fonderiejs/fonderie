@@ -28,8 +28,8 @@ export const TokensScreen = defineComponent({
 			const r = report.value;
 			return h('div', { style: styles.container }, [
 				pageHeader(
-					'Access',
-					"Who can open this surface: the root token's strength, scoped tokens you have issued, and any legacy per-module tokens.",
+					'Tokens',
+					"Credentials for machines: the root token's strength, scoped tokens for the CLI and CI, and any legacy per-module tokens. People sign in as operators.",
 				),
 				error.value
 					? h(

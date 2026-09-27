@@ -267,7 +267,7 @@ new ConfigAdminClient(opts: IConfigAdminClientOptions): ConfigAdminClient
 
 interface IAdminClientOptions {
     baseUrl: string;
-    adminToken: string;
+    adminToken?: string;
     prefix?: string;
     actor?: string;
 }
@@ -289,6 +289,21 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .revokeToken(id: string): Promise<IApiResponse<undefined>>
   .migrations(): Promise<IApiResponse<IAdminMigrationsReport>>
   .applyMigrations(module: string, expect: readonly string[]): Promise<IApiResponse<IAdminMigrationModule>>
+  .session(): Promise<IApiResponse<IAdminSession>>
+  .claim(input: { email: string; password: string; name?: string; }): Promise<IApiResponse<IAdminSession>>
+  .login(input: { email: string; password: string; }): Promise<IApiResponse<IAdminSession>>
+  .enrollment(): Promise<IApiResponse<IAdminEnrollment>>
+  .confirmEnrollment(code: string): Promise<IApiResponse<IAdminSession>>
+  .verify(factor: IAdminSecondFactor): Promise<IApiResponse<IAdminSession>>
+  .stepUp(factor: IAdminSecondFactor): Promise<IApiResponse<{ stepUpFresh: boolean; backupCodesLeft?: number; }>>
+  .logout(): Promise<IApiResponse<undefined>>
+  .inspectLink(token: string): Promise<IApiResponse<{ kind: "invite" | "recovery"; email: string; }>>
+  .redeemLink(input: { token: string; password: string; name?: string; }): Promise<IApiResponse<IAdminSession>>
+  .operators(): Promise<IApiResponse<IAdminOperatorsReport>>
+  .inviteOperator(input: { email: string; scopes: AdminScope[]; expiresInHours?: number; }): Promise<IApiResponse<IAdminCreatedLink>>
+  .recoverOperator(id: string): Promise<IApiResponse<IAdminCreatedLink>>
+  .updateOperator(id: string, input: { scopes?: AdminScope[]; name?: string; disabled?: boolean; }): Promise<IApiResponse<IAdminOperator>>
+  .revokeOperatorLink(id: string): Promise<IApiResponse<undefined>>
 
 interface IAuthAdminClientOptions {
     baseUrl: string;
@@ -877,6 +892,68 @@ interface IAdminTokenRecord {
     revokedAt: string | null;
     lastUsedAt: string | null;
 }
+
+interface IAdminOperator {
+    id: string;
+    email: string;
+    name: string | null;
+    scopes: AdminScope[];
+    enrolled: boolean;
+    backupCodesLeft: number;
+    locked: boolean;
+    createdBy: string;
+    createdAt: string;
+    lastLoginAt: string | null;
+    disabledAt: string | null;
+}
+
+interface IAdminOperatorLink {
+    id: string;
+    kind: 'invite' | 'recovery';
+    email: string;
+    scopes: AdminScope[];
+    createdBy: string;
+    createdAt: string;
+    expiresAt: string;
+}
+
+interface IAdminOperatorsReport {
+    operators: IAdminOperator[];
+    links: IAdminOperatorLink[];
+}
+
+interface IAdminCreatedLink {
+    id: string;
+    email: string;
+    scopes?: AdminScope[];
+    expiresAt: string;
+    token: string;
+    url: string;
+}
+
+type AdminSessionState = 'signed-out' | 'needs-2fa' | 'needs-enrollment' | 'signed-in';
+
+interface IAdminSession {
+    state: AdminSessionState;
+    operator: IAdminOperator | null;
+    claimable?: boolean;
+    stepUpFresh?: boolean;
+    backupCodes?: string[];
+    backupCodesLeft?: number;
+}
+
+interface IAdminEnrollment {
+    secret: string;
+    uri: string;
+    account: string;
+    issuer: string;
+}
+
+type IAdminSecondFactor = {
+    code: string;
+} | {
+    backupCode: string;
+};
 
 interface IAdminIssueTokenInput {
     name: string;

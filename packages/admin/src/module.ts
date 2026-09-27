@@ -16,6 +16,8 @@ import {
 	revokeToken,
 	scopeFor,
 } from './tokens';
+import { secretBox } from './operators/crypto';
+import { needsStepUp, operatorAdminRoutes, sessionRoutes } from './operators/http';
 import { uiHtml } from './ui/html';
 import type { AdminScope } from './types';
 import type { IAdminOptions } from './types';
@@ -288,6 +290,22 @@ export class AdminModule implements IFonderieModule {
 						],
 					]
 				: [];
+		// Operator accounts ride on the store: sessions, lockouts and links are rows.
+		const operatorsOn = Boolean(store) && this.options.operators !== false;
+		const operatorDeps =
+			store && operatorsOn
+				? {
+						store,
+						box: secretBox(this.options.operatorKey),
+						rootToken: token,
+						// From the request, so a basePath in front of the surface is kept.
+						uiPath: (ctx: { request: Request }) => {
+							const p = new URL(ctx.request.url).pathname;
+							const i = p.indexOf(this.path);
+							return `${i >= 0 ? p.slice(0, i + this.path.length) : this.path}/ui`;
+						},
+					}
+				: null;
 		const mounted = new Map<string, string>();
 		const mount = (
 			module: string,
@@ -306,7 +324,11 @@ export class AdminModule implements IFonderieModule {
 			mounted.set(key, module);
 			// The scope comes from the route itself. The log sits before the guard:
 			// a refused request is a row too.
-			const guard = requireAdminScope(token, store, needed ?? scopeFor(method, path));
+			const need = needed ?? scopeFor(method, path);
+			const guard = requireAdminScope(token, store, need, {
+				stepUp: needsStepUp(method, path, need),
+				operators: operatorsOn,
+			});
 			const chain: Middleware[] = [
 				// Logged first so a wrong-host attempt still leaves a row: the
 				// caller learns nothing from a 404, the operator learns something.
@@ -377,6 +399,23 @@ export class AdminModule implements IFonderieModule {
 			);
 		}
 
+		if (operatorDeps && store) {
+			// The sign-in routes sit OUTSIDE the guard — they are how a session that
+			// passes it comes to exist — but inside the host guard and the log.
+			for (const [method, path, handlers] of sessionRoutes(operatorDeps)) {
+				const full = at(path);
+				mounted.set(`${method} ${full}`, this.name);
+				app.addRoute(
+					method,
+					full,
+					adminLog(store, full, this.name),
+					...(hostGuard ? [hostGuard] : []),
+					...handlers,
+				);
+			}
+			for (const [method, path, handlers, needed] of operatorAdminRoutes(operatorDeps))
+				mount(this.name, method, at(path), handlers, needed);
+		}
 		for (const [method, path, handler] of own) mount(this.name, method, at(path), [handler]);
 		for (const [method, path, handlers] of rootOnly)
 			mount(this.name, method, at(path), handlers, 'root');
@@ -388,6 +427,26 @@ export class AdminModule implements IFonderieModule {
 	}
 
 	checkReadiness(): IReadinessProblem[] {
-		return validateAdminToken(this.options.adminToken, { module: this.name });
+		const problems = validateAdminToken(this.options.adminToken, { module: this.name });
+		const operatorsOn = Boolean(this.options.store) && this.options.operators !== false;
+		if (
+			operatorsOn &&
+			this.options.operatorKey &&
+			!/^[0-9a-fA-F]{64}$/.test(this.options.operatorKey)
+		) {
+			problems.push({
+				module: this.name,
+				severity: 'error',
+				message: 'operatorKey must be 64 hex characters (`openssl rand -hex 32`)',
+			});
+		} else if (operatorsOn && !this.options.operatorKey) {
+			problems.push({
+				module: this.name,
+				severity: 'warning',
+				message:
+					"operatorKey is unset — operators' authenticator secrets are stored unencrypted. Set a 64-hex operatorKey.",
+			});
+		}
+		return problems;
 	}
 }

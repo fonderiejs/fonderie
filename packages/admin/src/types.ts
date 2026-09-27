@@ -52,6 +52,21 @@ export interface IAdminOptions {
 	// process.env — the app injects config — so only the app can say which
 	// names matter. GET /_admin/environment reports presence, never values.
 	env?: string[];
+	/**
+	 * Operator accounts: people sign in to the console with email, password and
+	 * an authenticator app (backup codes as the fallback) instead of pasting a
+	 * token. On by default whenever a `store` is given; `false` turns the sign-in
+	 * routes off. There is no registration: the first operator is claimed once
+	 * with the root adminToken, every other one is invited by an operator.
+	 * adminToken stays the machine credential (CLI, CI) and the break-glass.
+	 */
+	operators?: boolean;
+	/**
+	 * 64 hex chars (`openssl rand -hex 32`). Encrypts operators' authenticator
+	 * secrets at rest (AES-256-GCM). Unset ⇒ they are stored as-is and readiness
+	 * warns. Keep it stable: changing it invalidates every enrolled authenticator.
+	 */
+	operatorKey?: string;
 }
 
 export interface IAdminModuleEntry {

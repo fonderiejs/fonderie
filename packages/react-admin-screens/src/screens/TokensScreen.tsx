@@ -25,8 +25,8 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 	return (
 		<div style={styles.container}>
 			<PageHeader
-				title="Access"
-				lead="Who can open this surface: the root token's strength, scoped tokens you have issued, and any legacy per-module tokens."
+				title="Tokens"
+				lead="Credentials for machines: the root token's strength, scoped tokens for the CLI and CI, and any legacy per-module tokens. People sign in as operators."
 			/>
 			{error ? (
 				<p style={styles.error} role="alert">

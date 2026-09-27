@@ -20,6 +20,7 @@ import { DoctorScreen } from './DoctorScreen';
 import { ModulesScreen } from './ModulesScreen';
 import { RoutesScreen } from './RoutesScreen';
 import { MigrationsScreen } from './MigrationsScreen';
+import { OperatorsScreen } from './OperatorsScreen';
 import { TokensScreen } from './TokensScreen';
 import { UsersScreen } from './UsersScreen';
 import { CatalogScreen } from './CatalogScreen';
@@ -34,6 +35,7 @@ export type AdminPage =
 	| 'routes'
 	| 'migrations'
 	| 'tokens'
+	| 'operators'
 	| 'log'
 	| 'settings'
 	| 'templates'
@@ -47,7 +49,7 @@ const NAV: Array<{
 	items: Array<{
 		page: AdminPage;
 		label: string;
-		needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit';
+		needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit' | 'operators';
 	}>;
 }> = [
 	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
@@ -75,7 +77,8 @@ const NAV: Array<{
 		items: [
 			{ page: 'audit', label: 'Audit', needs: 'audit' },
 			{ page: 'log', label: 'Admin log' },
-			{ page: 'tokens', label: 'Access' },
+			{ page: 'operators', label: 'Operators', needs: 'operators' },
+			{ page: 'tokens', label: 'Tokens' },
 			{ page: 'migrations', label: 'Migrations' },
 		],
 	},
@@ -95,6 +98,7 @@ const ICON: Record<AdminPage, IconName> = {
 	audit: 'audit',
 	log: 'log',
 	tokens: 'tokens',
+	operators: 'users',
 	migrations: 'migrations',
 };
 
@@ -130,6 +134,11 @@ export const AdminShell = defineComponent({
 		// A badge beside the name — the deployment's environment ("production").
 		// Production is tinted so an operator always knows where their clicks land.
 		envLabel: { type: String, default: undefined },
+		// The deployment has operator accounts (@fonderie/admin with a store):
+		// shows the Operators page.
+		operators: { type: Boolean, default: false },
+		// The signed-in operator's email, when a person (not a token) is signed in.
+		currentOperator: { type: String, default: undefined },
 	},
 	// `footer` slot: pinned to the bottom of the sidebar — session controls
 	// (theme, sign out). The React shell takes the same thing as a `footer` prop.
@@ -177,6 +186,11 @@ export const AdminShell = defineComponent({
 					return h(RoutesScreen, { client: c });
 				case 'tokens':
 					return h(TokensScreen, { client: c });
+				case 'operators':
+					return h(OperatorsScreen, {
+						client: c,
+						...(props.currentOperator ? { me: props.currentOperator } : {}),
+					});
 				case 'migrations':
 					return h(MigrationsScreen, { client: c });
 				case 'log':
@@ -244,17 +258,21 @@ export const AdminShell = defineComponent({
 			}
 		};
 
-		const visible = (i: { needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit' }) =>
+		const visible = (i: {
+			needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit' | 'operators';
+		}) =>
 			!i.needs ||
-			(i.needs === 'config'
-				? props.configClient
-				: i.needs === 'courier'
-					? props.courierClient
-					: i.needs === 'auth'
-						? props.authClient
-						: i.needs === 'billing'
-							? props.billingClient
-							: props.auditClient);
+			(i.needs === 'operators'
+				? props.operators
+				: i.needs === 'config'
+					? props.configClient
+					: i.needs === 'courier'
+						? props.courierClient
+						: i.needs === 'auth'
+							? props.authClient
+							: i.needs === 'billing'
+								? props.billingClient
+								: props.auditClient);
 
 		const brand = () => {
 			const production = props.envLabel ? /^prod/i.test(props.envLabel) : false;

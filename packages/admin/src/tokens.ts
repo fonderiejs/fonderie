@@ -4,6 +4,7 @@ import { HTTP, constantTimeEqual, setApiResponse } from '@fonderie/core';
 import type { IRequestSchema } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
 
+import { authorizeOperator } from './operators/http';
 import type { AdminScope, IAdminTokenRecord } from './types';
 
 export const SCOPES: readonly AdminScope[] = ['read', 'write', 'secrets'];
@@ -81,14 +82,24 @@ const UNAUTHORIZED = () =>
 // may issue or revoke tokens. Issued tokens carry their scopes; a valid token
 // short of the route's scope is 403, an unknown, revoked or expired one is
 // the same 401 as a missing one. The token's name becomes the log's actor.
+//
+// Without a Bearer header, an operator's session cookie is the other way in
+// (see operators/http.ts): same scopes, plus a fresh authenticator code for
+// the dangerous actions `stepUp` marks.
 export function requireAdminScope(
 	bootstrap: string,
 	store: IStoreAdapter | undefined,
 	needed: AdminScope | 'root',
+	opts: { stepUp?: boolean; operators?: boolean } = {},
 ): Middleware {
 	return async (ctx, next) => {
 		const token = bearer(ctx);
-		if (!token) return UNAUTHORIZED();
+		if (!token) {
+			if (!store || !opts.operators) return UNAUTHORIZED();
+			const verdict = await authorizeOperator(store, ctx, needed, opts.stepUp ?? false);
+			if (verdict === null) return UNAUTHORIZED();
+			return verdict === 'ok' ? next() : verdict;
+		}
 		if (constantTimeEqual(token, bootstrap)) return next();
 		if (needed === 'root' || !store) return UNAUTHORIZED();
 		const record = await findLive(store, token);

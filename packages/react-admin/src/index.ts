@@ -16,6 +16,14 @@ export type {
 	IAdminRouteEntry,
 	IAdminRoutesReport,
 	IAdminTokensReport,
+	IAdminOperator,
+	IAdminOperatorLink,
+	IAdminOperatorsReport,
+	IAdminCreatedLink,
+	IAdminSession,
+	IAdminEnrollment,
+	IAdminSecondFactor,
+	AdminSessionState,
 	IAdminMigrationsReport,
 	IAdminMigrationModule,
 	IAdminPendingMigration,
@@ -68,6 +76,8 @@ export type {
 	IUseAdminSubscriberReturn,
 	IUseAdminSubscribersReturn,
 	IUseAdminAuditReturn,
+	IUseAdminSessionReturn,
+	IUseAdminOperatorsReturn,
 } from './hooks';
 export {
 	useAttention,
@@ -86,4 +96,6 @@ export {
 	useAdminSubscriber,
 	useAdminSubscribers,
 	useAdminAudit,
+	useAdminSession,
+	useAdminOperators,
 } from './hooks';
