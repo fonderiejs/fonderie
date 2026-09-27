@@ -36,7 +36,7 @@ function listConfigEntries(environment: string | null, store: IStoreAdapter): Pr
 
 function getConfigEntry(key: string, environment: string, store: IStoreAdapter): Promise<IConfigEntry | null>
 
-function setConfigEntry(opts: { key: string; value: unknown; environment?: string; description?: string; active?: boolean; ifVersion?: number; actor?: string; }, store: IStoreAdapter): Promise<IConfigEntry>
+function setConfigEntry(opts: { key: string; value: unknown; environment?: string; description?: string; active?: boolean; ifVersion?: number; actor?: string; allowTypeChange?: boolean; }, store: IStoreAdapter): Promise<...>
 
 function deleteConfigEntry(key: string, environment: string, store: IStoreAdapter): Promise<boolean>
 
@@ -146,4 +146,17 @@ interface IPublicConfigResult {
 }
 
 type PublicConfigKeys = readonly string[] | Readonly<Record<string, unknown>>;
+
+new ConfigTypeChangeError(key: string, from: ConfigValueKind, to: ConfigValueKind): ConfigTypeChangeError
+  .key: string
+  .from: ConfigValueKind
+  .to: ConfigValueKind
+  .name: string
+  .message: string
+  .stack: string
+  .cause: unknown
+
+function configValueKind(value: unknown): ConfigValueKind
+
+type ConfigValueKind = 'text' | 'number' | 'on/off' | 'object' | 'list' | 'empty';
 ```

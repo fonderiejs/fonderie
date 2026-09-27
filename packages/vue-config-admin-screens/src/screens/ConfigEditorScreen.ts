@@ -1,11 +1,12 @@
 import {
 	type ConfigAdminClient,
 	type ConfigValueType,
-	CONFIG_VALUE_TYPES,
 	castConfigValue,
 	configKeyProblem,
+	configValueLabel,
 	configValueType,
 	formatConfigValue,
+	inferConfigValue,
 } from '@fonderie/client';
 import {
 	FonderieApiError,
@@ -20,13 +21,6 @@ import {
 import type { PropType } from 'vue';
 import { computed, defineComponent, h, ref, watch } from 'vue';
 import { styles } from '../styles';
-
-const TYPE_LABEL: Record<ConfigValueType, string> = {
-	string: 'Text',
-	number: 'Number',
-	boolean: 'On / off',
-	json: 'JSON (list or object)',
-};
 
 export const ConfigEditorScreen = defineComponent({
 	name: 'FonderieConfigEditorScreen',
@@ -45,6 +39,13 @@ export const ConfigEditorScreen = defineComponent({
 		const isNew = props.configKey === '';
 		const newKey = ref('');
 		const valueType = ref<ConfigValueType>('string');
+		// Free-form mode: creating, or deliberately changing an entry's type. The
+		// type is inferred from what is typed; ambiguous input ("true", "42") can
+		// be kept as text with one click. Editing otherwise locks the type to
+		// what is stored, so a flag cannot silently turn into text.
+		const changingType = ref(false);
+		const asText = ref(false);
+		const freeForm = () => isNew || changingType.value;
 		const inputError = ref<string | null>(null);
 		const targetKey = () => (isNew ? newKey.value.trim() : props.configKey);
 
@@ -124,12 +125,16 @@ export const ConfigEditorScreen = defineComponent({
 			}
 			let typed: unknown = value.value;
 			if (!isSecret.value) {
-				const cast = castConfigValue(valueType.value, value.value);
-				if (!cast.ok) {
-					inputError.value = cast.error;
-					return;
+				if (freeForm()) {
+					typed = asText.value ? value.value : inferConfigValue(value.value).value;
+				} else {
+					const cast = castConfigValue(valueType.value, value.value);
+					if (!cast.ok) {
+						inputError.value = cast.error;
+						return;
+					}
+					typed = cast.value;
 				}
-				typed = cast.value;
 			}
 			isSaving.value = true;
 			try {
@@ -143,6 +148,9 @@ export const ConfigEditorScreen = defineComponent({
 				} else {
 					const opts: Parameters<typeof configEntries.saveEntry>[1] = { value: typed };
 					if (description.value) opts.description = description.value;
+					// Only an explicit "Change type" may change an existing key's shape;
+					// the server refuses it otherwise (409 CONFIG_TYPE_CHANGE).
+					if (changingType.value) opts.allowTypeChange = true;
 					await configEntries.saveEntry(key, opts);
 					if (!isNew) await configEntry.refresh();
 				}
@@ -181,7 +189,7 @@ export const ConfigEditorScreen = defineComponent({
 					{ style: styles.editorTitle },
 					isNew ? (isSecret.value ? 'New secret' : 'New config entry') : props.configKey,
 				),
-				h('p', { style: styles.meta }, isNew ? (props.environment ?? 'all') : `${props.environment ?? 'all'} · v${version}`),
+				h('p', { style: styles.meta }, isNew ? `Environment: ${props.environment ?? 'all'}` : `Environment: ${props.environment ?? 'all'} · v${version}`),
 
 				isSecret.value && !isNew
 					? h('div', { style: styles.revealBox }, [
@@ -217,68 +225,109 @@ export const ConfigEditorScreen = defineComponent({
 								}),
 							]
 						: []),
-					...(!isSecret.value
-						? [
-								h('label', { style: styles.label, for: 'config-type' }, 'Type'),
-								h(
-									'select',
-									{
-										id: 'config-type',
-										style: styles.input,
-										value: valueType.value,
-										onChange: (e: Event) => {
-											const next = (e.target as HTMLSelectElement).value as ConfigValueType;
-											// Carry the value across when it still makes sense
-											// (e.g. "true" → On/off); otherwise start clean.
-											const cast = castConfigValue(next, value.value);
-											value.value = cast.ok ? formatConfigValue(cast.value, next) : next === 'boolean' ? 'false' : '';
-											valueType.value = next;
-											inputError.value = null;
-										},
-									},
-									CONFIG_VALUE_TYPES.map((t) => h('option', { value: t, selected: t === valueType.value }, TYPE_LABEL[t])),
-								),
-							]
-						: []),
 					h(
 						'label',
 						{ style: styles.label, for: 'config-value' },
 						isSecret.value ? (isNew ? 'Value' : 'New value') : 'Value',
 					),
-					!isSecret.value && valueType.value === 'boolean'
-						? h('label', { style: styles.toggle }, [
-								h('input', {
-									id: 'config-value',
-									type: 'checkbox',
-									checked: value.value === 'true',
-									onChange: (e: Event) => {
-										value.value = (e.target as HTMLInputElement).checked ? 'true' : 'false';
-									},
-								}),
-								value.value === 'true' ? 'On (true)' : 'Off (false)',
-							])
-						: !isSecret.value && (valueType.value === 'number' || valueType.value === 'string')
-							? h('input', {
-									id: 'config-value',
-									style: styles.input,
-									inputmode: valueType.value === 'number' ? 'decimal' : undefined,
-									required: valueType.value === 'number',
-									value: value.value,
-									onInput: (e: Event) => {
-										value.value = (e.target as HTMLInputElement).value;
-									},
-								})
-							: h('textarea', {
-									id: 'config-value',
-									style: styles.textarea,
-									rows: isSecret.value ? 2 : 8,
-									spellcheck: false,
-									required: true,
-									value: value.value,
-									onInput: (e: Event) => {
-										value.value = (e.target as HTMLTextAreaElement).value;
-									},
-								}),
+					...(!isSecret.value && freeForm()
+						? (() => {
+								const inferred = inferConfigValue(value.value);
+								return [
+									// One field for every shape: text, a number, true/false, or JSON
+									// for an object or a list of objects.
+									h('textarea', {
+										id: 'config-value',
+										style: styles.textarea,
+										rows: /^\s*[[{]/.test(value.value) || value.value.includes('\n') ? 8 : 2,
+										placeholder: 'true · 42 · Scheduled maintenance tonight · {"ids": ["m1", "m2"]}',
+										spellcheck: false,
+										value: value.value,
+										onInput: (e: Event) => {
+											value.value = (e.target as HTMLTextAreaElement).value;
+											asText.value = false;
+										},
+									}),
+									h('div', { style: styles.detected }, [
+										h('span', [
+											'Detected: ',
+											h('strong', asText.value ? 'Text' : inferred.label),
+										]),
+										inferred.ambiguous
+											? h('label', { style: styles.inline }, [
+													h('input', {
+														type: 'checkbox',
+														checked: asText.value,
+														onChange: (e: Event) => {
+															asText.value = (e.target as HTMLInputElement).checked;
+														},
+													}),
+													'Save as text instead',
+												])
+											: null,
+									]),
+								];
+							})()
+						: [
+								!isSecret.value && valueType.value === 'boolean'
+									? h('label', { style: styles.toggle }, [
+											h('input', {
+												id: 'config-value',
+												type: 'checkbox',
+												checked: value.value === 'true',
+												onChange: (e: Event) => {
+													value.value = (e.target as HTMLInputElement).checked ? 'true' : 'false';
+												},
+											}),
+											value.value === 'true' ? 'On (true)' : 'Off (false)',
+										])
+									: !isSecret.value && (valueType.value === 'number' || valueType.value === 'string')
+										? h('input', {
+												id: 'config-value',
+												style: styles.input,
+												inputmode: valueType.value === 'number' ? 'decimal' : undefined,
+												required: valueType.value === 'number',
+												value: value.value,
+												onInput: (e: Event) => {
+													value.value = (e.target as HTMLInputElement).value;
+												},
+											})
+										: h('textarea', {
+												id: 'config-value',
+												style: styles.textarea,
+												rows: isSecret.value ? 2 : 8,
+												spellcheck: false,
+												required: true,
+												value: value.value,
+												onInput: (e: Event) => {
+													value.value = (e.target as HTMLTextAreaElement).value;
+												},
+											}),
+								!isSecret.value && configEntry.entry.value
+									? h('div', { style: styles.detected }, [
+											h('span', ['Type: ', h('strong', configValueLabel(configEntry.entry.value.value))]),
+											h(
+												'button',
+												{
+													type: 'button',
+													style: styles.linkButton,
+													onClick: () => {
+														changingType.value = true;
+														asText.value = false;
+													},
+												},
+												'Change type…',
+											),
+										])
+									: null,
+							]),
+					changingType.value
+						? h(
+								'p',
+								{ style: styles.warning },
+								'Changing the type changes what every screen reading this key receives. Check the code that reads it first.',
+							)
+						: null,
 					inputError.value ? h('p', { style: styles.error, role: 'alert' }, inputError.value) : null,
 					h('label', { style: styles.label, for: 'config-description' }, 'Description'),
 					h('input', {

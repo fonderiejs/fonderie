@@ -240,6 +240,7 @@ interface ISetConfigInput {
     description?: string;
     active?: boolean;
     ifVersion?: number;
+    allowTypeChange?: boolean;
 }
 
 interface ISetSecretInput {
@@ -1602,9 +1603,13 @@ function castConfigValue(type: ConfigValueType, raw: string): CastResult
 
 function configKeyProblem(key: string): string | null
 
+function configValueLabel(value: unknown): string
+
 function configValueType(value: unknown): ConfigValueType
 
 function formatConfigValue(value: unknown, type?: ConfigValueType): string
+
+function inferConfigValue(raw: string): IInferredConfigValue
 
 type CastResult = {
     ok: true;
@@ -1615,6 +1620,13 @@ type CastResult = {
 };
 
 type ConfigValueType = 'string' | 'number' | 'boolean' | 'json';
+
+interface IInferredConfigValue {
+    type: ConfigValueType;
+    value: unknown;
+    label: string;
+    ambiguous: boolean;
+}
 
 new ConfigClient(http: HttpClient, tokens: TokenStore): ConfigClient
   .load(): Promise<IRemoteConfigState>
