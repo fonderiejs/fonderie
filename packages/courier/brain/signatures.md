@@ -53,19 +53,23 @@ new EmailChannel(config: IEmailChannelConfig): EmailChannel
   .send(message: ICourierMessage, template: IRenderedTemplate): Promise<void | ISendResult>
 
 new DBTemplateResolver(store: IStoreAdapter, defaults?: DefaultTemplates | undefined): DBTemplateResolver
+  .setLocales(settings: ILocaleSettings): void
   .resolve(type: string, data: Record<string, unknown>, locale?: string | undefined): Promise<IRenderedTemplate>
 
 new FSTemplateResolver(directory: string, defaults?: DefaultTemplates | undefined): FSTemplateResolver
+  .setLocales(settings: ILocaleSettings): void
   .resolve(type: string, data: Record<string, unknown>, locale?: string | undefined): Promise<IRenderedTemplate>
 
 new DefaultTemplates(maps?: DefaultTemplateMap[]): DefaultTemplates
   .get(type: string): IDefaultTemplate | undefined
+  .getLocalized(type: string, locale: string): { copy: IDefaultTemplateCopy; locale: string; } | undefined
+  .languages(type: string): string[]
   .size: number
   .types(): string[]
 
-function renderFragment(frag: { subject?: string | null; text: string; html?: string | null; }, layoutHtml: string | undefined, data: Record<string, unknown>): IRenderedTemplate
+function renderFragment(frag: { subject?: string | null; text: string; html?: string | null; }, layoutHtml: string | undefined, data: Record<string, unknown>, locale?: string | undefined): IRenderedTemplate
 
-function getLayoutHtml(store: IStoreAdapter, locale?: string | undefined): Promise<string | undefined>
+function getLayoutHtml(store: IStoreAdapter, locale?: string | undefined, settings?: ILocaleSettings): Promise<string | undefined>
 
 function templateVariables(...parts: (string | null | undefined)[]): string[]
 
@@ -86,6 +90,7 @@ function buildTemplateAdminRoutes(store: IStoreAdapter, adminToken: string, opts
 interface ITemplateAdminOptions {
     brandName?: string;
     systemTypes?: Iterable<string>;
+    locales?: () => ILocaleSettings;
 }
 
 interface ITemplateEntry {
@@ -117,6 +122,7 @@ interface IMessageLog {
     channel: string;
     recipient: string;
     locale: string | null;
+    resolvedLocale: string | null;
     status: MessageLogStatus;
     error: string | null;
     attempts: number;
@@ -152,16 +158,19 @@ interface IRenderedTemplate {
     subject?: string;
     html?: string;
     text: string;
+    locale?: string;
 }
 
 interface ITemplateResolver {
     resolve(type: string, data: Record<string, unknown>, locale?: string): Promise<IRenderedTemplate>;
+    setLocales?(settings: ILocaleSettings): void;
 }
 
 interface IDefaultTemplate {
     subject?: string;
     text: string;
     html?: string;
+    locales?: Readonly<Record<string, IDefaultTemplateCopy>>;
 }
 
 type DefaultTemplateMap = Record<string, IDefaultTemplate>;

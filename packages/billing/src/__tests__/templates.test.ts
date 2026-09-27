@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { IDefaultTemplate } from '@fonderie/core';
+import { translationProblems } from '@fonderie/core';
 
 import { MESSAGE_KEYS } from '../config';
 import { DEFAULT_TEMPLATES, SAMPLE_PAYLOADS } from '../templates';
@@ -171,4 +172,19 @@ test('buildReceiptData supplies every variable the receipt template uses', () =>
 		source: 'test',
 	});
 	assert.equal(paid['amountPaidDisplay'], '$38.00', 'money is 2dp regardless of wallet precision');
+});
+
+// Every built-in email ships in each shipped language with the English's parts
+// and exactly its {{variables}} and {{#sections}} — a French receipt missing
+// {{amountPaidDisplay}} still sends.
+test('billing: every email ships in es and fr, with the same parts and variables as the English', () => {
+	assert.deepEqual(translationProblems(DEFAULT_TEMPLATES), []);
+	for (const [key, tmpl] of Object.entries(DEFAULT_TEMPLATES)) {
+		const sample = (SAMPLE_PAYLOADS as Record<string, Record<string, unknown>>)[key] ?? {};
+		for (const [lang, copy] of Object.entries(tmpl.locales ?? {})) {
+			for (const field of [copy.subject ?? '', copy.text, copy.html ?? '']) {
+				assert.ok(!render(field, sample).includes('{{'), `'${key}' (${lang}): unresolved '{{' after render`);
+			}
+		}
+	}
 });

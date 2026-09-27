@@ -1,3 +1,5 @@
+import type { ILocaleSettings } from './locale';
+
 // ── Identity contracts ───────────────────────────────────────────
 // Owned by core so packages that only peer on core (the adapters) can name
 // them without importing optional peers. @fonderie/auth populates `user`/
@@ -47,6 +49,20 @@ export interface ICourierMessage {
 // channel), `subject`/`html` are email-only. A module exports a
 // Record<ItsMessageKey, IDefaultTemplate> so an unfilled key is a compile error.
 export interface IDefaultTemplate {
+	subject?: string;
+	text: string;
+	html?: string;
+	/**
+	 * The same email in other languages, keyed by language ('fr', 'es'). The
+	 * fields above are the English copy. Built-in copy carries no market-specific
+	 * terms, so it matches by language: a fr-CA user gets 'fr'. An app's own saved
+	 * versions still win, and still follow the app's fallback chains.
+	 */
+	locales?: Readonly<Record<string, IDefaultTemplateCopy>>;
+}
+
+/** One language's copy of a built-in email. */
+export interface IDefaultTemplateCopy {
 	subject?: string;
 	text: string;
 	html?: string;
@@ -129,6 +145,9 @@ export interface IFonderieApp {
 	securityReport(): ISecurityReport;
 	// Every registered module's admin description, for modules that give one.
 	adminDescriptions(): IAdminDescriptionEntry[];
+	// The app's validated locales. Optional so hand-rolled test doubles still
+	// satisfy the interface; a module reads `app.locales ?? defineLocales()`.
+	readonly locales?: ILocaleSettings;
 }
 
 // A production-readiness finding a module reports about its own config.

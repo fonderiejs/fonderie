@@ -931,6 +931,9 @@
         "OPERATIONS",
         "FonderieApp",
         "DEFAULT_MAX_BODY_BYTES",
+        "DEFAULT_SYSTEM_LOCALE",
+        "MAX_LOCALE_FALLBACKS",
+        "SHIPPED_TEMPLATE_LANGUAGES",
         "MIN_SECRET_LENGTH",
         "PLACEHOLDER_SECRET",
         "HTTP",
@@ -1015,12 +1018,12 @@
         {
           "method": "PUT",
           "path": "/admin/templates/:type",
-          "mw": "async (ctx) => { const b = body(ctx); if (typeof b['text'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required'); } try { const opts: Parameters<typeof setTemplate>[0] = { type: typeOf(ctx), text: b['text'], locale: localeOf(ctx), actor: actorOf(ctx), }; if (typeof b['subject'] === 'string') opts.subject = b['subject']; if (typeof b['html'] === 'string') opts.html = b['html']; if (typeof b['active'] === 'boolean') opts.active = b['active']; if (typeof b['ifVersion'] === 'number') opts.ifVersion = b['ifVersion']; return setApiResponse(HTTP.OK, 'TEMPLATE_SET', 'Template saved', await setTemplate(opts, store)); } catch (err) { return conflictOr(err); } }"
+          "mw": "async (ctx) => { const b = body(ctx); if (typeof b['text'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required'); } // Stored canonical ('fr-ca' → 'fr-CA'), so one locale is one row. const requested = localeOf(ctx); const locale = requested === null ? null : canonicalLocale(requested); if (requested !== null && !locale) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', `\"${requested}\" is not a locale tag`); } // The untagged row IS the system locale's version. A second copy tagged // with it would silently override the default for exactly those users, // and edits would land in one copy while mail went out from the other. const system = locales().default; if (locale === system) { return setApiResponse( HTTP.CONFLICT, 'DEFAULT_LOCALE', `${system} is the default version of this email. Edit the default instead of adding ${system}.`, { defaultLocale: system }, ); } try { const opts: Parameters<typeof setTemplate>[0] = { type: typeOf(ctx), text: b['text'], locale, actor: actorOf(ctx), }; if (typeof b['subject'] === 'string') opts.subject = b['subject']; if (typeof b['html'] === 'string') opts.html = b['html']; if (typeof b['active'] === 'boolean') opts.active = b['active']; if (typeof b['ifVersion'] === 'number') opts.ifVersion = b['ifVersion']; return setApiResponse(HTTP.OK, 'TEMPLATE_SET', 'Template saved', await setTemplate(opts, store)); } catch (err) { return conflictOr(err); } }"
         },
         {
           "method": "POST",
           "path": "/admin/templates/:type/preview",
-          "mw": "async (ctx) => { const b = body(ctx); if (typeof b['text'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required'); } const data = (b['data'] ?? {}) as Record<string, unknown>; if (typeof data !== 'object' || Array.isArray(data)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.data must be an object'); } const locale = localeOf(ctx); const html = typeof b['html'] === 'string' && b['html'] ? b['html'] : null; const rendered = renderFragment( { text: b['text'], ...(typeof b['subject'] === 'string' ? { subject: b['subject'] } : {}), ...(html ? { html } : {}), }, // Only fetched when there is HTML to wrap, mirroring the resolver. html ? await getLayoutHtml(store, locale ?? undefined) : undefined, // brandName is merged by the Dispatcher on a real send, never by // the resolver — so without this the shell renders the default // brand and the preview quietly misreports it. { ...(brandName ? { brandName } : {}), ...data }, ); // The variables THIS content uses, so an editor can offer exactly the // right fields without re-implementing the {{var}} contract on the // client — four copies of that regex already exist in this repo. return setApiResponse(HTTP.OK, 'TEMPLATE_PREVIEW', 'Rendered preview', { ...rendered, variables: templateVariables(b['subject'] as string, b['text'], html), }); }"
+          "mw": "async (ctx) => { const b = body(ctx); if (typeof b['text'] !== 'string') { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required'); } const data = (b['data'] ?? {}) as Record<string, unknown>; if (typeof data !== 'object' || Array.isArray(data)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.data must be an object'); } // Rendered as it would send in this locale: its saved shell along its // chain, else the built-in shell in its language. const settings = locales(); const tag = canonicalLocale(localeOf(ctx)) ?? settings.default; const html = typeof b['html'] === 'string' && b['html'] ? b['html'] : null; const rendered = renderFragment( { text: b['text'], ...(typeof b['subject'] === 'string' ? { subject: b['subject'] } : {}), ...(html ? { html } : {}), }, // Only fetched when there is HTML to wrap, mirroring the resolver. html ? await getLayoutHtml(store, tag === settings.default ? undefined : tag, settings) : undefined, // brandName is merged by the Dispatcher on a real send, never by // the resolver — so without this the shell renders the default // brand and the preview quietly misreports it. { ...(brandName ? { brandName } : {}), ...data }, tag, ); // The variables THIS content uses, so an editor can offer exactly the // right fields without re-implementing the {{var}} contract on the // client — four copies of that regex already exist in this repo. return setApiResponse(HTTP.OK, 'TEMPLATE_PREVIEW', 'Rendered preview', { ...rendered, variables: templateVariables(b['subject'] as string, b['text'], html), }); }"
         },
         {
           "method": "GET",
@@ -5397,6 +5400,15 @@
       "core"
     ],
     "default_max_body_bytes": [
+      "core"
+    ],
+    "default_system_locale": [
+      "core"
+    ],
+    "max_locale_fallbacks": [
+      "core"
+    ],
+    "shipped_template_languages": [
       "core"
     ],
     "min_secret_length": [

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { IDefaultTemplate } from '@fonderie/core';
+import { translationProblems } from '@fonderie/core';
 
 import { MESSAGE_KEYS } from '../config';
 import { DEFAULT_TEMPLATES, SAMPLE_PAYLOADS } from '../templates';
@@ -63,4 +64,18 @@ test('auth: DEFAULT_TEMPLATES and SAMPLE_PAYLOADS cover exactly the live message
 	const keys = new Set<string>(Object.values(MESSAGE_KEYS));
 	assert.deepEqual(new Set(Object.keys(DEFAULT_TEMPLATES)), keys, 'DEFAULT_TEMPLATES key set drift');
 	assert.deepEqual(new Set(Object.keys(SAMPLE_PAYLOADS)), keys, 'SAMPLE_PAYLOADS key set drift');
+});
+
+// Every built-in email ships in each shipped language with the English's parts
+// and exactly its {{variables}} — a French reset without {{pin}} still sends.
+test('auth: every email ships in es and fr, with the same parts and variables as the English', () => {
+	assert.deepEqual(translationProblems(DEFAULT_TEMPLATES), []);
+	for (const [key, tmpl] of Object.entries(DEFAULT_TEMPLATES)) {
+		const sample = (SAMPLE_PAYLOADS as Record<string, Record<string, unknown>>)[key] ?? {};
+		for (const [lang, copy] of Object.entries(tmpl.locales ?? {})) {
+			for (const field of [copy.subject ?? '', copy.text, copy.html ?? '']) {
+				assert.ok(!render(field, sample).includes('{{'), `'${key}' (${lang}): unresolved '{{' after render`);
+			}
+		}
+	}
 });

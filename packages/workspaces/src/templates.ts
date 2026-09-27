@@ -1,6 +1,9 @@
 import type { IDefaultTemplate } from '@fonderie/core';
+import { withTranslations } from '@fonderie/core';
 
 import { MESSAGE_KEYS, type WorkspacesMessageKey } from './config';
+import { ES_TEMPLATES } from './templates.es';
+import { FR_TEMPLATES } from './templates.fr';
 
 // Built-in default copy for @fonderie/workspaces notifications, shipped so the
 // email renders out of the box (never the raw-JSON fallback). `html` is a BODY
@@ -8,7 +11,7 @@ import { MESSAGE_KEYS, type WorkspacesMessageKey } from './config';
 // Pass to courier via config.templates.defaults; override per-app with a DB
 // row / FS file. `satisfies Record<WorkspacesMessageKey, IDefaultTemplate>` makes
 // a missing key a compile error.
-export const DEFAULT_TEMPLATES = {
+const EN_TEMPLATES = {
 	// Payload carries { token, pin }; the code path is PIN-based, so the copy
 	// uses {{pin}} only — token is intentionally not surfaced.
 	[MESSAGE_KEYS.workspaceInvitation]: {
@@ -24,6 +27,10 @@ You've been invited to join a workspace. Use this code to accept the invitation:
 Enter this code on the invitation screen to join the team.`,
 	},
 } satisfies Record<WorkspacesMessageKey, IDefaultTemplate>;
+
+// The English above, with French and Spanish attached. Courier sends the one
+// matching the recipient's language; anything else gets the English.
+export const DEFAULT_TEMPLATES = withTranslations(EN_TEMPLATES, { fr: FR_TEMPLATES, es: ES_TEMPLATES });
 
 // Representative payloads for the coverage test — the full emitted payload
 // (token is passed but unused by the copy; kept here to document the shape).

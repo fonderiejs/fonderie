@@ -37,7 +37,9 @@ export class AuthModule implements IFonderieModule {
 	install(app: IFonderieApp): void {
 		app.use(withSession(this.store, this.config));
 
-		const routes = buildAuthRoutes(this.store, this.config, this.bus);
+		// New users start in the app's system locale (core owns it) unless they
+		// signed up in another one.
+		const routes = buildAuthRoutes(this.store, this.config, this.bus, app.locales);
 		for (const [method, path, ...handlers] of routes) {
 			app.addRoute(method, path, ...handlers);
 		}

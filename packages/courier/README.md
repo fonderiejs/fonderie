@@ -39,6 +39,39 @@ import { EmailChannel, SmsChannel, PushChannel, DBTemplateResolver } from '@fond
 Delivery webhooks for SendGrid, Mailgun, and Mailtrap are handled by the
 exported `handle*Delivery` functions; `IMessageLog` tracks status per send.
 
+## Locales
+
+Each message carries the recipient's locale (auth sends the account's). The app
+declares its locales once, in the core config — every brick reads the same ones:
+
+```ts
+defineConfig({
+  locales: {
+    default: 'en-US',                 // the system locale: what the default copy is in
+    fallbacks: {
+      fr: 'fr-CA',                    // any French market without its own → fr-CA
+      'fr-BE': ['fr-FR', 'fr-CA'],    // a market overrides its language
+    },
+  },
+});
+```
+
+First match wins, for a user in `fr-BE`:
+
+1. your saved `fr-BE`, then `fr-FR`, then `fr-CA` — along the declared chain only
+2. the built-in copy in French — modules ship en, fr and es; it has no market-specific terms, so it matches by language
+3. your saved default version
+4. the built-in English
+
+A locale is a market as much as a language — `en-US` and `en-CA` can carry
+different terms — so your versions never fall back to a sibling market unless a
+chain says so. Tags match case-insensitively and are stored canonical
+(`fr-ca` → `fr-CA`). A version tagged with the system locale is refused: the
+default copy already is that version. Every send records the locale asked for
+and the version actually used (`fonderie_message_log.locale` /
+`resolved_locale`). A bad chain — an invalid tag, a locale falling back to
+itself, more than five fallbacks — stops the app at startup.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —

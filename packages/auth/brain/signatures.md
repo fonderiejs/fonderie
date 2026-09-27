@@ -107,7 +107,7 @@ const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly
 
 type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
 
-const DEFAULT_TEMPLATES: { "email-registration": { subject: string; html: string; text: string; }; "email-verification": { subject: string; html: string; text: string; }; "password-reset": { subject: string; html: string; text: string; }; "phone-otp": { text: string; }; "mfa-enabled": { subject: string; html: string; text: string; }; "mfa-disabled": { subject: string; html: string; text: string; }; "mfa-backup-codes-regenerated": { subject: string; html: string; text: string; }; "email-changed": { subject: string; html: string; text: string; }; "phone-changed": { subject: string; html: string; text: string; }; "password-revoked": { subject: string; html: string; text: string; }; "oauth-registration": { subject: string; html: string; text: string; }; "oauth-linked": { subject: string; html: string; text: string; }; "oauth-unlinked": { subject: string; html: string; text: string; }; }
+const DEFAULT_TEMPLATES: { "email-registration": IDefaultTemplate; "email-verification": IDefaultTemplate; "password-reset": IDefaultTemplate; "phone-otp": IDefaultTemplate; "mfa-enabled": IDefaultTemplate; "mfa-disabled": IDefaultTemplate; "mfa-backup-codes-regenerated": IDefaultTemplate; "email-changed": IDefaultTemplate; "phone-changed": IDefaultTemplate; "password-revoked": IDefaultTemplate; "oauth-registration": IDefaultTemplate; "oauth-linked": IDefaultTemplate; "oauth-unlinked": IDefaultTemplate; }
 
 interface IUserDTO {
     id: string;

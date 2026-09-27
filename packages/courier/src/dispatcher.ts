@@ -2,7 +2,13 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { ICourierConfig } from './config';
 import type { ICourierMessage, ICourierChannel, ITemplateResolver } from './types';
-import { insertMessageLog, markMessageSent, markMessageFailed, setMessageProviderId } from './log';
+import {
+	insertMessageLog,
+	markMessageSent,
+	markMessageFailed,
+	setMessageProviderId,
+	setMessageResolvedLocale,
+} from './log';
 
 function resolveRecipient(message: ICourierMessage, channel: string): string {
 	if (channel === 'email') return message.recipient.email ?? '';
@@ -66,6 +72,9 @@ export class Dispatcher {
 				const logId = this.store
 					? await insertMessageLog(logEntry, this.store).catch(() => '')
 					: '';
+				if (this.store && logId && template.locale) {
+					await setMessageResolvedLocale(logId, template.locale, this.store).catch(() => undefined);
+				}
 
 				try {
 					const result = await channel.send(message, template);

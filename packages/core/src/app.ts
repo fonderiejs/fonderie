@@ -20,6 +20,7 @@ import { notFoundMiddleware, defaultErrorHandler } from './middlewares';
 import { bodyParser, DEFAULT_MAX_BODY_BYTES } from './middlewares/body-parser';
 import { withSecurityHeaders } from './middlewares/security-headers';
 import { MetricsRegistry, withMetrics } from './metrics';
+import { defineLocales, type ILocaleSettings } from './locale';
 
 // Re-exported from the body parser, which is where the cap is actually
 // enforced (so every adapter's buildContext()/handle() inherits it — not
@@ -51,9 +52,12 @@ export class FonderieApp implements IFonderieApp {
 	// Set while a module's install() runs; attributes its routes and reservations.
 	private installing: string | undefined;
 	readonly metrics = new MetricsRegistry();
+	readonly locales: ILocaleSettings;
 
 	constructor(config: FonderieConfig) {
 		this.config = config;
+		// Throws on a bad locale chain: better no app than the wrong market's content.
+		this.locales = defineLocales(config.locales);
 		// Was a single-slash strip, so a basePath typed '/v1//' left every route
 		// with a double slash. One definition now, shared with reserve().
 		this.prefix = normalizeMountPath(config.basePath ?? '');
