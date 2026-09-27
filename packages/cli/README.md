@@ -47,7 +47,7 @@ are numbers — and anything that only *looks* like a number (`1.10`, `0123`,
 as text. Changing an existing key's type (on/off → text…) is refused (exit 2)
 unless you pass `--allow-type-change`.
 
-### Config and secrets as files (export · diff · apply)
+### Config, secrets and templates as files (export · diff · apply)
 
 Keep a deployment's remote config and secrets in a file, review changes in a
 pull request, and apply them the way `kubectl` does:
@@ -78,8 +78,11 @@ fonderie config public                           # exactly what frontends receiv
   changes nothing.
 - **No lost updates.** Each update carries the version read at plan time. If
   someone edited the key in between, the server refuses it and the CLI exits 2.
-- **Scoped.** `--env <e>` manages that environment's rows only. Without it,
-  the file manages the shared `all` rows.
+- **Scoped.** A file manages one environment: `metadata.environment`, or
+  `--env <e>`. If both are given and disagree, the CLI refuses rather than pick
+  one, so a prod export can't land on the shared `all` rows by accident.
+- **Typos are errors.** An unknown field such as `descripton` is reported, not
+  ignored.
 
 Secrets use the same commands with `kind: "SecretSet"`. The file names where
 each value comes from instead of holding it, so it can be committed:
@@ -93,6 +96,29 @@ each value comes from instead of holding it, so it can be committed:
 - `fonderie secret diff` and `apply` compare against the revealed values but
   never print one.
 - `fonderie secret apply --from-env-file .env` loads a `.env` file directly.
+
+Email templates use the same commands with `kind: "TemplateSet"` and one file
+per locale (`metadata.locale`, or `--locale`; `null` is the default locale).
+Long bodies live in their own files next to the manifest, so a copy change
+reviews as a copy change:
+
+```bash
+fonderie template export --locale fr -o templates/fr.json   # writes fr.json + auth.welcome.fr.html …
+fonderie template diff  -f templates/fr.json                # ~ auth.welcome: html changed (12 → 14 lines)
+fonderie template apply -f templates/fr.json
+```
+
+```json
+"auth.welcome": {
+  "subject": "Bienvenue",
+  "text": "Salut {{name}}",
+  "htmlFrom": { "file": "auth.welcome.fr.html" }
+}
+```
+
+Each entry is the whole template, the way the server stores it: an omitted
+`subject` or `html` means none, and `"active": false` turns one off. Export to
+stdout keeps everything inline; with `-o`, HTML and multi-line text go to files.
 
 The CLI finds the routes at `/admin/*` (the config brick's own token) or
 `/_admin/*` (`@fonderie/admin`). Set `FONDERIE_ADMIN_PREFIX` if the admin

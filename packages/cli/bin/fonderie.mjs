@@ -483,7 +483,7 @@ const MANIFEST_VERBS = { export: 'exportCmd', diff: 'diffCmd', apply: 'applyCmd'
 async function resourceCmd(resource) {
   const shape = RESOURCE_SHAPE[resource];
   const verb = argv[1];
-  if (resource !== 'template' && MANIFEST_VERBS[verb]) return manifest[MANIFEST_VERBS[verb]](resource);
+  if (MANIFEST_VERBS[verb]) return manifest[MANIFEST_VERBS[verb]](resource);
   if (resource === 'config' && verb === 'public') return manifest.publicCmd();
   const spec = VERBS[verb];
   if (!spec || (spec.secretOnly && resource !== 'secret')) return usageErr(resource);
@@ -529,7 +529,7 @@ async function resourceCmd(resource) {
 
 function usageErr(resource) {
   const verbs = Object.keys(VERBS).filter((v) => !VERBS[v].secretOnly || resource === 'secret');
-  if (resource !== 'template') verbs.push('export', 'diff', 'apply');
+  verbs.push('export', 'diff', 'apply');
   if (resource === 'config') verbs.push('public');
   const scopeFlag = (RESOURCE_SHAPE[resource] ?? { scopeFlag: '--env' }).scopeFlag;
   console.error(`usage: fonderie ${resource} <${verbs.join('|')}> [key] [value] [${scopeFlag} <s>] [--if-version <n>] [--to-version <n>]`);
