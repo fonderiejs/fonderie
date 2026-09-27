@@ -8,8 +8,10 @@ import type {
 } from '@fonderie/client';
 import { ConfigEditorScreen, ConfigListScreen } from '@fonderie/react-config-admin-screens';
 import { TemplateEditorScreen, TemplateListScreen } from '@fonderie/react-courier-admin-screens';
-import { useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+import type { IconName } from '../icons';
 import { styles } from '../styles';
+import { Icon } from '../ui';
 import { AdminLogScreen } from './AdminLogScreen';
 import { AttentionScreen } from './AttentionScreen';
 import { EnvironmentScreen } from './EnvironmentScreen';
@@ -56,6 +58,46 @@ export interface IAdminShellProps {
 	// keeps the page itself.
 	page?: AdminPage;
 	onNavigate?: (page: AdminPage) => void;
+	// Shown at the top of the sidebar. Defaults to "Admin".
+	appName?: string;
+	// A badge beside the name — the deployment's environment ("production").
+	// Production is tinted so an operator always knows where their clicks land.
+	envLabel?: string;
+	// Pinned to the bottom of the sidebar: session controls (theme, sign out).
+	footer?: ReactNode;
+}
+
+const ICON: Record<AdminPage, IconName> = {
+	attention: 'attention',
+	modules: 'modules',
+	environment: 'environment',
+	doctor: 'doctor',
+	routes: 'routes',
+	users: 'users',
+	catalog: 'catalog',
+	subscriber: 'subscriber',
+	settings: 'settings',
+	templates: 'templates',
+	audit: 'audit',
+	log: 'log',
+	tokens: 'tokens',
+	migrations: 'migrations',
+};
+
+// Below this width the sidebar becomes a drawer behind a top bar. Measured in
+// JS rather than a media query so it also works embedded, with no stylesheet.
+const NARROW = '(max-width: 820px)';
+function useNarrow(): boolean {
+	const query =
+		typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(NARROW) : null;
+	const [narrow, setNarrow] = useState(() => query?.matches ?? false);
+	useEffect(() => {
+		if (!query) return;
+		const on = (e: MediaQueryListEvent) => setNarrow(e.matches);
+		query.addEventListener('change', on);
+		return () => query.removeEventListener('change', on);
+	}, [query]);
+	return narrow;
 }
 
 const NAV: Array<{
@@ -107,12 +149,18 @@ export function AdminShell({
 	environment,
 	page,
 	onNavigate,
+	appName = 'Admin',
+	envLabel,
+	footer,
 }: IAdminShellProps) {
+	const narrow = useNarrow();
+	const [drawer, setDrawer] = useState(false);
 	const [own, setOwn] = useState<AdminPage>('attention');
 	const current = page ?? own;
 	const go = (p: AdminPage) => {
 		if (onNavigate) onNavigate(p);
 		if (page === undefined) setOwn(p);
+		setDrawer(false);
 	};
 	const [editing, setEditing] = useState<
 		{ kind: 'config' | 'secret'; key: string } | { kind: 'template'; type: string } | null
@@ -156,38 +204,51 @@ export function AdminShell({
 			body = billingClient ? (
 				<CatalogScreen client={billingClient} />
 			) : (
-				<p style={styles.status}>Pass a BillingAdminClient to see the catalog here.</p>
+				<p style={{ ...styles.status, padding: '32px 40px' }}>
+					Pass a BillingAdminClient to see the catalog here.
+				</p>
 			);
 			break;
 		case 'subscriber':
 			body = billingClient ? (
 				<SubscriberScreen client={billingClient} />
 			) : (
-				<p style={styles.status}>Pass a BillingAdminClient to look up subscribers here.</p>
+				<p style={{ ...styles.status, padding: '32px 40px' }}>
+					Pass a BillingAdminClient to look up subscribers here.
+				</p>
 			);
 			break;
 		case 'audit':
 			body = auditClient ? (
 				<AuditScreen client={auditClient} />
 			) : (
-				<p style={styles.status}>Pass an AuditAdminClient to see the audit trail here.</p>
+				<p style={{ ...styles.status, padding: '32px 40px' }}>
+					Pass an AuditAdminClient to see the audit trail here.
+				</p>
 			);
 			break;
 		case 'users':
 			body = authClient ? (
 				<UsersScreen client={authClient} />
 			) : (
-				<p style={styles.status}>Pass an AuthAdminClient to look up users here.</p>
+				<p style={{ ...styles.status, padding: '32px 40px' }}>
+					Pass an AuthAdminClient to look up users here.
+				</p>
 			);
 			break;
 		case 'settings':
 			body = !configClient ? (
-				<p style={styles.status}>Pass a ConfigAdminClient to manage config and secrets here.</p>
+				<p style={{ ...styles.status, padding: '32px 40px' }}>
+					Pass a ConfigAdminClient to manage config and secrets here.
+				</p>
 			) : editing && editing.kind !== 'template' ? (
 				<>
-					<button type="button" style={styles.button} onClick={() => setEditing(null)}>
-						← Back
-					</button>
+					<div style={{ padding: '24px 40px 0' }}>
+						<button type="button" style={styles.buttonGhost} onClick={() => setEditing(null)}>
+							<Icon name="back" size={14} />
+							Config &amp; secrets
+						</button>
+					</div>
 					<ConfigEditorScreen
 						client={configClient}
 						kind={editing.kind}
@@ -209,12 +270,17 @@ export function AdminShell({
 			break;
 		case 'templates':
 			body = !courierClient ? (
-				<p style={styles.status}>Pass a CourierAdminClient to manage templates here.</p>
+				<p style={{ ...styles.status, padding: '32px 40px' }}>
+					Pass a CourierAdminClient to manage templates here.
+				</p>
 			) : editing?.kind === 'template' ? (
 				<>
-					<button type="button" style={styles.button} onClick={() => setEditing(null)}>
-						← Back
-					</button>
+					<div style={{ padding: '24px 40px 0' }}>
+						<button type="button" style={styles.buttonGhost} onClick={() => setEditing(null)}>
+							<Icon name="back" size={14} />
+							Templates
+						</button>
+					</div>
 					<TemplateEditorScreen
 						client={courierClient}
 						type={editing.type}
@@ -230,34 +296,125 @@ export function AdminShell({
 			break;
 	}
 
-	return (
-		<div style={styles.shell}>
-			<nav style={styles.nav} aria-label="Admin">
+	const production = envLabel ? /^prod/i.test(envLabel) : false;
+	const brand = (
+		<div style={styles.navBrand}>
+			<div style={styles.navMark}>
+				<Icon name="mark" size={15} />
+			</div>
+			<div style={{ minWidth: 0, flex: 1 }}>
+				<div style={styles.navBrandTitle}>{appName}</div>
+				{envLabel ? (
+					<span
+						style={{
+							...styles.badge,
+							marginTop: 3,
+							padding: '0 7px',
+							fontSize: 11,
+							...(production
+								? {
+										color: 'var(--fonderie-danger,#e00)',
+										borderColor: 'color-mix(in srgb, var(--fonderie-danger,#e00) 35%, transparent)',
+									}
+								: {}),
+						}}
+					>
+						{envLabel}
+					</span>
+				) : null}
+			</div>
+			{narrow ? (
+				<button
+					type="button"
+					style={styles.buttonGhost}
+					aria-label="Close menu"
+					onClick={() => setDrawer(false)}
+				>
+					<Icon name="close" />
+				</button>
+			) : null}
+		</div>
+	);
+
+	const nav = (
+		<nav
+			style={{
+				...styles.nav,
+				...(narrow
+					? { width: 280, maxWidth: '85vw', boxShadow: '0 10px 40px rgba(0,0,0,.25)' }
+					: {}),
+			}}
+			aria-label="Admin"
+		>
+			{brand}
+			<div style={styles.navScroll}>
 				{NAV.map((g) => {
 					const items = g.items.filter((i) => !i.needs || has[i.needs]);
 					if (items.length === 0) return null;
 					return (
 						<div key={g.group}>
 							<div style={styles.navGroup}>{g.group}</div>
-							{items.map((i) => (
-								<button
-									key={i.page}
-									type="button"
-									style={{ ...styles.navItem, ...(current === i.page ? styles.navItemActive : {}) }}
-									aria-current={current === i.page ? 'page' : undefined}
-									onClick={() => {
-										setEditing(null);
-										go(i.page);
-									}}
-								>
-									{i.label}
-								</button>
-							))}
+							{items.map((i) => {
+								const active = current === i.page;
+								return (
+									<button
+										key={i.page}
+										type="button"
+										className="fonderie-admin-nav-item"
+										style={{ ...styles.navItem, ...(active ? styles.navItemActive : {}) }}
+										aria-current={active ? 'page' : undefined}
+										onClick={() => {
+											setEditing(null);
+											go(i.page);
+										}}
+									>
+										<Icon name={ICON[i.page]} style={active ? styles.navIconActive : undefined} />
+										{i.label}
+									</button>
+								);
+							})}
 						</div>
 					);
 				})}
-			</nav>
-			<main style={styles.main}>{body}</main>
+			</div>
+			{footer ? <div style={styles.navFooter}>{footer}</div> : null}
+		</nav>
+	);
+
+	const title = NAV.flatMap((g) => g.items).find((i) => i.page === current)?.label ?? '';
+
+	return (
+		<div style={{ ...styles.shell, ...(narrow ? { flexDirection: 'column' } : {}) }}>
+			{narrow ? (
+				<>
+					<div style={styles.topbar}>
+						<button
+							type="button"
+							style={styles.buttonGhost}
+							aria-label="Open menu"
+							aria-expanded={drawer}
+							onClick={() => setDrawer(true)}
+						>
+							<Icon name="menu" />
+						</button>
+						<span style={{ fontWeight: 600, fontSize: 14 }}>{title}</span>
+						{envLabel ? (
+							<span style={{ ...styles.badge, marginLeft: 'auto' }}>{envLabel}</span>
+						) : null}
+					</div>
+					{drawer ? (
+						<div style={styles.drawer}>
+							{nav}
+							<div style={styles.scrim} onClick={() => setDrawer(false)} aria-hidden="true" />
+						</div>
+					) : null}
+				</>
+			) : (
+				nav
+			)}
+			<main className="fonderie-admin-main" style={styles.main}>
+				{body}
+			</main>
 		</div>
 	);
 }

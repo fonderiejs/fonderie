@@ -10,58 +10,110 @@ export interface ITemplateListScreenProps {
 export function TemplateListScreen({ client, onSelectTemplate }: ITemplateListScreenProps) {
 	const { templates, isLoading, error } = useTemplates(client);
 
-	if (isLoading) return <p style={styles.status}>Loading templates…</p>;
-	if (error)
-		return (
-			<p style={styles.error} role="alert">
-				{error.explanation}
-			</p>
-		);
-
 	return (
 		<div style={styles.container}>
 			<h1 style={styles.title}>Templates</h1>
-			<ul style={styles.list}>
-				{templates.map((template) => (
-					<li key={`${template.type}:${template.locale ?? 'base'}`} style={styles.row}>
-						<button
-							type="button"
-							onClick={() => onSelectTemplate?.(template)}
-							style={styles.rowButton}
-						>
-							<span style={styles.type}>{template.type}</span>
-							<span style={styles.locale}>{template.locale ?? 'base'}</span>
-							<span style={template.active ? styles.active : styles.inactive}>
-								{template.active ? 'Active' : 'Inactive'}
-							</span>
-						</button>
-					</li>
-				))}
-			</ul>
+			<p style={styles.hint}>
+				Every email the app sends. Open one to edit its copy and preview it live.
+			</p>
+			{isLoading ? (
+				<p style={styles.status}>Loading templates…</p>
+			) : error ? (
+				<p style={styles.error} role="alert">
+					{error.explanation}
+				</p>
+			) : (
+				<ul style={styles.list}>
+					{templates.map((template) => (
+						<li key={`${template.type}:${template.locale ?? 'base'}`} style={styles.row}>
+							<button
+								type="button"
+								onClick={() => onSelectTemplate?.(template)}
+								style={styles.rowButton}
+							>
+								<span style={styles.type}>{template.type}</span>
+								<span style={styles.locale}>{template.locale ?? 'default locale'}</span>
+								<span style={template.active ? styles.active : styles.inactive}>
+									<span style={styles.dot} />
+									{template.active ? 'active' : 'inactive'}
+								</span>
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
 		</div>
 	);
 }
 
+// Matches @fonderie/react-admin-screens' shell look with local values: this
+// package sits below the admin screens and cannot import their blocks.
+const pill: CSSProperties = {
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: 6,
+	borderRadius: 999,
+	padding: '2px 9px 2px 8px',
+	fontSize: 12,
+	fontWeight: 600,
+	lineHeight: 1.5,
+	minWidth: 64,
+};
+
 const styles: Record<string, CSSProperties> = {
-	container: { padding: 24, maxWidth: 640 },
-	title: { fontSize: 24, fontWeight: 700, marginBottom: 16 },
-	status: { padding: 24, textAlign: 'center', color: 'var(--fonderie-text-muted,#5c5c5c)' },
+	container: { padding: '32px 40px 64px', maxWidth: 1160, boxSizing: 'border-box' },
+	title: {
+		fontSize: 22,
+		fontWeight: 600,
+		margin: 0,
+		letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
+		lineHeight: 1.25,
+	},
+	hint: { fontSize: 13.5, color: 'var(--fonderie-text-muted,#5c5c5c)', margin: '4px 0 24px' },
+	status: { padding: '24px 0', color: 'var(--fonderie-text-muted,#5c5c5c)', fontSize: 13.5 },
 	error: { color: 'var(--fonderie-danger,#e00)', marginBottom: 12, fontSize: 14 },
-	list: { listStyle: 'none', padding: 0, margin: 0 },
+	list: {
+		listStyle: 'none',
+		padding: 0,
+		margin: 0,
+		background: 'var(--fonderie-surface,#fff)',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		borderRadius: 'var(--fonderie-radius-lg,8px)',
+		overflow: 'hidden',
+		boxShadow: 'var(--fonderie-shadow-card,0 2px 3px 0 rgba(0,0,0,.05))',
+	},
 	row: { borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)' },
 	rowButton: {
 		width: '100%',
 		display: 'flex',
 		justifyContent: 'space-between',
 		alignItems: 'center',
-		padding: '12px 0',
+		gap: 16,
+		padding: '13px 16px',
 		background: 'none',
 		border: 'none',
 		cursor: 'pointer',
 		textAlign: 'left',
+		color: 'var(--fonderie-text,#171717)',
+		fontFamily: 'inherit',
 	},
-	type: { fontSize: 14, fontWeight: 600, flex: 1 },
-	locale: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginRight: 16 },
-	active: { fontSize: 12, color: 'var(--fonderie-accent-strong,#009767)' },
-	inactive: { fontSize: 12, color: 'var(--fonderie-text-muted,#5c5c5c)' },
+	type: {
+		fontSize: 13,
+		fontWeight: 600,
+		flex: 1,
+		fontFamily:
+			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+	},
+	locale: { fontSize: 12.5, color: 'var(--fonderie-text-muted,#5c5c5c)' },
+	dot: { width: 6, height: 6, borderRadius: 999, background: 'currentColor' },
+	active: {
+		...pill,
+		color: 'var(--fonderie-accent-strong,#009767)',
+		background: 'color-mix(in srgb, var(--fonderie-accent-strong,#009767) 13%, transparent)',
+	},
+	inactive: {
+		...pill,
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		background: 'color-mix(in srgb, var(--fonderie-text-muted,#5c5c5c) 10%, transparent)',
+	},
 };

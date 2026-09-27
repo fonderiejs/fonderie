@@ -3,6 +3,7 @@ import { useAdminCatalog } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
 import { styles } from '../styles';
+import { empty, pageHeader } from '../ui';
 import { refreshButton, table, td } from './common';
 
 // What am I selling: the plans as configured in code, and as stored in the
@@ -16,32 +17,39 @@ export const CatalogScreen = defineComponent({
 		return () => {
 			const c = catalog.value;
 			return h('div', { style: styles.container }, [
-				h('div', { style: styles.toolbar }, [
-					h('h1', { style: { ...styles.title, marginBottom: 0 } }, 'Catalog'),
-					refreshButton('Refresh', isLoading.value, () => void refresh()),
-				]),
+				pageHeader(
+					'Catalog',
+					'What you sell: plans as configured in code, and as stored in the database, side by side.',
+					[refreshButton('Refresh', isLoading.value, () => void refresh())],
+				),
 				error.value
 					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
 					: null,
 				isLoading.value && !c ? h('p', { style: styles.status }, 'Loading…') : null,
 				c
 					? [
-							h('h2', { style: styles.subtitle }, 'Configured (code)'),
+							h('h2', { style: { ...styles.subtitle, marginTop: 0 } }, 'Configured (code)'),
 							h(
 								'pre',
 								{
 									style: {
+										...styles.card,
 										...styles.mono,
-										background: 'var(--fonderie-surface-alt,#fafafa)',
-										padding: '12px',
+										margin: 0,
 										overflowX: 'auto',
+										maxHeight: '360px',
+										lineHeight: 1.6,
 									},
 								},
 								JSON.stringify(c.configured, null, 2),
 							),
 							h('h2', { style: styles.subtitle }, 'Stored (database)'),
 							c.stored.length === 0
-								? h('p', { style: styles.muted }, 'No stored plans.')
+								? empty(
+										'No stored plans',
+										'Plans are configured in code; nothing has been written to the database.',
+										'catalog',
+									)
 								: table(
 										['Plan', 'Tier', 'Seats', 'Monthly', 'Yearly', 'Trial', ''],
 										c.stored.map((p) =>
@@ -60,7 +68,7 @@ export const CatalogScreen = defineComponent({
 														'button',
 														{
 															type: 'button',
-															style: styles.button,
+															style: styles.buttonDanger,
 															onClick: () => {
 																if (window.confirm(`Delete stored plan "${p.name}"?`))
 																	void deletePlan(p.id).catch(() => {});

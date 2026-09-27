@@ -9,8 +9,10 @@ import type {
 import { ConfigEditorScreen, ConfigListScreen } from '@fonderie/vue-config-admin-screens';
 import { TemplateEditorScreen, TemplateListScreen } from '@fonderie/vue-courier-admin-screens';
 import type { PropType, VNode } from 'vue';
-import { computed, defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref } from 'vue';
+import type { IconName } from '../icons';
 import { styles } from '../styles';
+import { icon } from '../ui';
 import { AdminLogScreen } from './AdminLogScreen';
 import { AttentionScreen } from './AttentionScreen';
 import { EnvironmentScreen } from './EnvironmentScreen';
@@ -79,6 +81,27 @@ const NAV: Array<{
 	},
 ];
 
+const ICON: Record<AdminPage, IconName> = {
+	attention: 'attention',
+	modules: 'modules',
+	environment: 'environment',
+	doctor: 'doctor',
+	routes: 'routes',
+	users: 'users',
+	catalog: 'catalog',
+	subscriber: 'subscriber',
+	settings: 'settings',
+	templates: 'templates',
+	audit: 'audit',
+	log: 'log',
+	tokens: 'tokens',
+	migrations: 'migrations',
+};
+
+// Below this width the sidebar becomes a drawer behind a top bar. Measured in
+// JS rather than a media query so it also works embedded, with no stylesheet.
+const NARROW = '(max-width: 820px)';
+
 type Editing =
 	| { kind: 'config' | 'secret'; key: string }
 	| { kind: 'template'; type: string }
@@ -102,9 +125,23 @@ export const AdminShell = defineComponent({
 		// Controlled navigation: pass `page` and listen to `navigate` to own the
 		// URL. Omit `page` and the shell keeps it itself.
 		page: { type: String as PropType<AdminPage>, default: undefined },
+		// Shown at the top of the sidebar. Defaults to "Admin".
+		appName: { type: String, default: 'Admin' },
+		// A badge beside the name — the deployment's environment ("production").
+		// Production is tinted so an operator always knows where their clicks land.
+		envLabel: { type: String, default: undefined },
 	},
+	// `footer` slot: pinned to the bottom of the sidebar — session controls
+	// (theme, sign out). The React shell takes the same thing as a `footer` prop.
 	emits: { navigate: (_page: AdminPage) => true },
-	setup(props, { emit }) {
+	setup(props, { emit, slots }) {
+		const query =
+			typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(NARROW) : null;
+		const narrow = ref(query?.matches ?? false);
+		const drawer = ref(false);
+		const onMedia = (e: MediaQueryListEvent) => (narrow.value = e.matches);
+		onMounted(() => query?.addEventListener('change', onMedia));
+		onBeforeUnmount(() => query?.removeEventListener('change', onMedia));
 		const own = ref<AdminPage>('attention');
 		const current = computed(() => props.page ?? own.value);
 		const editing = ref<Editing>(null);
@@ -112,13 +149,18 @@ export const AdminShell = defineComponent({
 			editing.value = null;
 			emit('navigate', p);
 			if (props.page === undefined) own.value = p;
+			drawer.value = false;
 		};
-		const back = () =>
-			h(
-				'button',
-				{ type: 'button', style: styles.button, onClick: () => (editing.value = null) },
-				'← Back',
-			);
+		const back = (label: string) =>
+			h('div', { style: { padding: '24px 40px 0' } }, [
+				h(
+					'button',
+					{ type: 'button', style: styles.buttonGhost, onClick: () => (editing.value = null) },
+					[icon('back', 14), label],
+				),
+			]);
+		const missing = (text: string) =>
+			h('p', { style: { ...styles.status, padding: '32px 40px' } }, text);
 
 		const body = (): VNode | VNode[] => {
 			const c = props.client;
@@ -142,43 +184,26 @@ export const AdminShell = defineComponent({
 				case 'catalog':
 					return props.billingClient
 						? h(CatalogScreen, { client: props.billingClient })
-						: h(
-								'p',
-								{ style: styles.status },
-								'Pass a BillingAdminClient to see the catalog here.',
-							);
+						: missing('Pass a BillingAdminClient to see the catalog here.');
 				case 'subscriber':
 					return props.billingClient
 						? h(SubscriberScreen, { client: props.billingClient })
-						: h(
-								'p',
-								{ style: styles.status },
-								'Pass a BillingAdminClient to look up subscribers here.',
-							);
+						: missing('Pass a BillingAdminClient to look up subscribers here.');
 				case 'audit':
 					return props.auditClient
 						? h(AuditScreen, { client: props.auditClient })
-						: h(
-								'p',
-								{ style: styles.status },
-								'Pass an AuditAdminClient to see the audit trail here.',
-							);
+						: missing('Pass an AuditAdminClient to see the audit trail here.');
 				case 'users':
 					return props.authClient
 						? h(UsersScreen, { client: props.authClient })
-						: h('p', { style: styles.status }, 'Pass an AuthAdminClient to look up users here.');
+						: missing('Pass an AuthAdminClient to look up users here.');
 				case 'settings': {
 					const cc = props.configClient;
-					if (!cc)
-						return h(
-							'p',
-							{ style: styles.status },
-							'Pass a ConfigAdminClient to manage config and secrets here.',
-						);
+					if (!cc) return missing('Pass a ConfigAdminClient to manage config and secrets here.');
 					const e = editing.value;
 					if (e && e.kind !== 'template')
 						return [
-							back(),
+							back('Config & secrets'),
 							h(ConfigEditorScreen, {
 								client: cc,
 								kind: e.kind,
@@ -199,16 +224,11 @@ export const AdminShell = defineComponent({
 				}
 				case 'templates': {
 					const kc = props.courierClient;
-					if (!kc)
-						return h(
-							'p',
-							{ style: styles.status },
-							'Pass a CourierAdminClient to manage templates here.',
-						);
+					if (!kc) return missing('Pass a CourierAdminClient to manage templates here.');
 					const e = editing.value;
 					if (e?.kind === 'template')
 						return [
-							back(),
+							back('Templates'),
 							h(TemplateEditorScreen, {
 								client: kc,
 								type: e.type,
@@ -224,48 +244,145 @@ export const AdminShell = defineComponent({
 			}
 		};
 
-		return () =>
-			h('div', { style: styles.shell }, [
-				h(
-					'nav',
-					{ style: styles.nav, 'aria-label': 'Admin' },
-					NAV.map((g) => {
-						const items = g.items.filter(
-							(i) =>
-								!i.needs ||
-								(i.needs === 'config'
-									? props.configClient
-									: i.needs === 'courier'
-										? props.courierClient
-										: i.needs === 'auth'
-											? props.authClient
-											: i.needs === 'billing'
-												? props.billingClient
-												: props.auditClient),
-						);
-						if (items.length === 0) return null;
-						return h('div', { key: g.group }, [
-							h('div', { style: styles.navGroup }, g.group),
-							...items.map((i) =>
-								h(
-									'button',
-									{
-										key: i.page,
-										type: 'button',
-										style: {
-											...styles.navItem,
-											...(current.value === i.page ? styles.navItemActive : {}),
-										},
-										'aria-current': current.value === i.page ? 'page' : undefined,
-										onClick: () => go(i.page),
+		const visible = (i: { needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit' }) =>
+			!i.needs ||
+			(i.needs === 'config'
+				? props.configClient
+				: i.needs === 'courier'
+					? props.courierClient
+					: i.needs === 'auth'
+						? props.authClient
+						: i.needs === 'billing'
+							? props.billingClient
+							: props.auditClient);
+
+		const brand = () => {
+			const production = props.envLabel ? /^prod/i.test(props.envLabel) : false;
+			return h('div', { style: styles.navBrand }, [
+				h('div', { style: styles.navMark }, [icon('mark', 15)]),
+				h('div', { style: { minWidth: 0, flex: 1 } }, [
+					h('div', { style: styles.navBrandTitle }, props.appName),
+					props.envLabel
+						? h(
+								'span',
+								{
+									style: {
+										...styles.badge,
+										marginTop: '3px',
+										padding: '0 7px',
+										fontSize: '11px',
+										...(production
+											? {
+													color: 'var(--fonderie-danger,#e00)',
+													borderColor:
+														'color-mix(in srgb, var(--fonderie-danger,#e00) 35%, transparent)',
+												}
+											: {}),
 									},
-									i.label,
-								),
-							),
-						]);
-					}),
-				),
-				h('main', { style: styles.main }, body()),
+								},
+								props.envLabel,
+							)
+						: null,
+				]),
+				narrow.value
+					? h(
+							'button',
+							{
+								type: 'button',
+								style: styles.buttonGhost,
+								'aria-label': 'Close menu',
+								onClick: () => (drawer.value = false),
+							},
+							[icon('close')],
+						)
+					: null,
 			]);
+		};
+
+		const nav = () =>
+			h(
+				'nav',
+				{
+					style: {
+						...styles.nav,
+						...(narrow.value
+							? { width: '280px', maxWidth: '85vw', boxShadow: '0 10px 40px rgba(0,0,0,.25)' }
+							: {}),
+					},
+					'aria-label': 'Admin',
+				},
+				[
+					brand(),
+					h(
+						'div',
+						{ style: styles.navScroll },
+						NAV.map((g) => {
+							const items = g.items.filter(visible);
+							if (items.length === 0) return null;
+							return h('div', { key: g.group }, [
+								h('div', { style: styles.navGroup }, g.group),
+								...items.map((i) => {
+									const active = current.value === i.page;
+									return h(
+										'button',
+										{
+											key: i.page,
+											type: 'button',
+											class: 'fonderie-admin-nav-item',
+											style: { ...styles.navItem, ...(active ? styles.navItemActive : {}) },
+											'aria-current': active ? 'page' : undefined,
+											onClick: () => go(i.page),
+										},
+										[icon(ICON[i.page], 16, active ? styles.navIconActive : undefined), i.label],
+									);
+								}),
+							]);
+						}),
+					),
+					slots['footer'] ? h('div', { style: styles.navFooter }, slots['footer']()) : null,
+				],
+			);
+
+		return () => {
+			const title = NAV.flatMap((g) => g.items).find((i) => i.page === current.value)?.label ?? '';
+			return h(
+				'div',
+				{ style: { ...styles.shell, ...(narrow.value ? { flexDirection: 'column' } : {}) } },
+				[
+					...(narrow.value
+						? [
+								h('div', { style: styles.topbar }, [
+									h(
+										'button',
+										{
+											type: 'button',
+											style: styles.buttonGhost,
+											'aria-label': 'Open menu',
+											'aria-expanded': drawer.value,
+											onClick: () => (drawer.value = true),
+										},
+										[icon('menu')],
+									),
+									h('span', { style: { fontWeight: 600, fontSize: '14px' } }, title),
+									props.envLabel
+										? h('span', { style: { ...styles.badge, marginLeft: 'auto' } }, props.envLabel)
+										: null,
+								]),
+								drawer.value
+									? h('div', { style: styles.drawer }, [
+											nav(),
+											h('div', {
+												style: styles.scrim,
+												'aria-hidden': 'true',
+												onClick: () => (drawer.value = false),
+											}),
+										])
+									: null,
+							]
+						: [nav()]),
+					h('main', { class: 'fonderie-admin-main', style: styles.main }, body()),
+				],
+			);
+		};
 	},
 });

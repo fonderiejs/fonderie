@@ -26,26 +26,29 @@ export const TemplateListScreen = defineComponent({
 					},
 					[
 						h('span', { style: styles.type }, template.type),
-						h('span', { style: styles.locale }, template.locale ?? 'base'),
-						h(
-							'span',
-							{ style: template.active ? styles.active : styles.inactive },
-							template.active ? 'Active' : 'Inactive',
-						),
+						h('span', { style: styles.locale }, template.locale ?? 'default locale'),
+						h('span', { style: template.active ? styles.active : styles.inactive }, [
+							h('span', { style: styles.dot }),
+							template.active ? 'active' : 'inactive',
+						]),
 					],
 				),
 			]);
 		}
 
-		return () => {
-			if (isLoading.value) return h('p', { style: styles.status }, 'Loading templates…');
-			if (error.value)
-				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
-
-			return h('div', { style: styles.container }, [
-				h('h1', { style: styles.title }, 'Templates'),
-				h('ul', { style: styles.list }, templates.value.map(renderRow)),
+		return () =>
+			h('div', { style: styles.listContainer }, [
+				h('h1', { style: styles.listTitle }, 'Templates'),
+				h(
+					'p',
+					{ style: styles.hint },
+					'Every email the app sends. Open one to edit its copy and preview it live.',
+				),
+				isLoading.value
+					? h('p', { style: styles.status }, 'Loading templates…')
+					: error.value
+						? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+						: h('ul', { style: styles.list }, templates.value.map(renderRow)),
 			]);
-		};
 	},
 });

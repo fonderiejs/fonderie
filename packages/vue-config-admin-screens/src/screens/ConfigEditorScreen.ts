@@ -189,7 +189,13 @@ export const ConfigEditorScreen = defineComponent({
 					{ style: styles.editorTitle },
 					isNew ? (isSecret.value ? 'New secret' : 'New config entry') : props.configKey,
 				),
-				h('p', { style: styles.meta }, isNew ? `Environment: ${props.environment ?? 'all'}` : `Environment: ${props.environment ?? 'all'} · v${version}`),
+				h(
+					'p',
+					{ style: styles.meta },
+					isNew
+						? `Environment: ${props.environment ?? 'all'}`
+						: `Environment: ${props.environment ?? 'all'} · v${version}`,
+				),
 
 				isSecret.value && !isNew
 					? h('div', { style: styles.revealBox }, [
@@ -240,7 +246,8 @@ export const ConfigEditorScreen = defineComponent({
 										id: 'config-value',
 										style: styles.textarea,
 										rows: /^\s*[[{]/.test(value.value) || value.value.includes('\n') ? 8 : 2,
-										placeholder: 'true · 42 · Scheduled maintenance tonight · {"ids": ["m1", "m2"]}',
+										placeholder:
+											'true · 42 · Scheduled maintenance tonight · {"ids": ["m1", "m2"]}',
 										spellcheck: false,
 										value: value.value,
 										onInput: (e: Event) => {
@@ -249,10 +256,7 @@ export const ConfigEditorScreen = defineComponent({
 										},
 									}),
 									h('div', { style: styles.detected }, [
-										h('span', [
-											'Detected: ',
-											h('strong', asText.value ? 'Text' : inferred.label),
-										]),
+										h('span', ['Detected: ', h('strong', asText.value ? 'Text' : inferred.label)]),
 										inferred.ambiguous
 											? h('label', { style: styles.inline }, [
 													h('input', {
@@ -281,7 +285,8 @@ export const ConfigEditorScreen = defineComponent({
 											}),
 											value.value === 'true' ? 'On (true)' : 'Off (false)',
 										])
-									: !isSecret.value && (valueType.value === 'number' || valueType.value === 'string')
+									: !isSecret.value &&
+											(valueType.value === 'number' || valueType.value === 'string')
 										? h('input', {
 												id: 'config-value',
 												style: styles.input,
@@ -305,7 +310,10 @@ export const ConfigEditorScreen = defineComponent({
 											}),
 								!isSecret.value && configEntry.entry.value
 									? h('div', { style: styles.detected }, [
-											h('span', ['Type: ', h('strong', configValueLabel(configEntry.entry.value.value))]),
+											h('span', [
+												'Type: ',
+												h('strong', configValueLabel(configEntry.entry.value.value)),
+											]),
 											h(
 												'button',
 												{
@@ -328,7 +336,9 @@ export const ConfigEditorScreen = defineComponent({
 								'Changing the type changes what every screen reading this key receives. Check the code that reads it first.',
 							)
 						: null,
-					inputError.value ? h('p', { style: styles.error, role: 'alert' }, inputError.value) : null,
+					inputError.value
+						? h('p', { style: styles.error, role: 'alert' }, inputError.value)
+						: null,
 					h('label', { style: styles.label, for: 'config-description' }, 'Description'),
 					h('input', {
 						id: 'config-description',

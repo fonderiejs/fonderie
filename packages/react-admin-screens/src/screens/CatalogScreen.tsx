@@ -1,6 +1,7 @@
 import type { BillingAdminClient } from '@fonderie/client';
 import { useAdminCatalog } from '@fonderie/react-admin';
 import { styles } from '../styles';
+import { Empty, PageHeader, RefreshButton } from '../ui';
 
 export interface ICatalogScreenProps {
 	client: BillingAdminClient;
@@ -13,17 +14,11 @@ export function CatalogScreen({ client }: ICatalogScreenProps) {
 	const money = (v: number | null | undefined) => (v == null ? '—' : (v / 100).toFixed(2));
 	return (
 		<div style={styles.container}>
-			<div style={styles.toolbar}>
-				<h1 style={{ ...styles.title, marginBottom: 0 }}>Catalog</h1>
-				<button
-					type="button"
-					style={styles.button}
-					onClick={() => void refresh()}
-					disabled={isLoading}
-				>
-					Refresh
-				</button>
-			</div>
+			<PageHeader
+				title="Catalog"
+				lead="What you sell: plans as configured in code, and as stored in the database, side by side."
+				actions={<RefreshButton onClick={() => void refresh()} busy={isLoading} />}
+			/>
 			{error ? (
 				<p style={styles.error} role="alert">
 					{error.explanation}
@@ -32,13 +27,24 @@ export function CatalogScreen({ client }: ICatalogScreenProps) {
 			{isLoading && !catalog ? <p style={styles.status}>Loading…</p> : null}
 			{catalog ? (
 				<>
-					<h2 style={styles.subtitle}>Configured (code)</h2>
-					<pre style={{ ...styles.mono, background: 'var(--fonderie-surface-alt,#fafafa)', padding: 12, overflowX: 'auto' }}>
+					<h2 style={{ ...styles.subtitle, marginTop: 0 }}>Configured (code)</h2>
+					<pre
+						style={{
+							...styles.card,
+							...styles.mono,
+							margin: 0,
+							overflowX: 'auto',
+							maxHeight: 360,
+							lineHeight: 1.6,
+						}}
+					>
 						{JSON.stringify(catalog.configured, null, 2)}
 					</pre>
 					<h2 style={styles.subtitle}>Stored (database)</h2>
 					{catalog.stored.length === 0 ? (
-						<p style={styles.muted}>No stored plans.</p>
+						<Empty icon="catalog" title="No stored plans">
+							Plans are configured in code; nothing has been written to the database.
+						</Empty>
 					) : (
 						<table style={styles.table}>
 							<thead>
@@ -69,7 +75,7 @@ export function CatalogScreen({ client }: ICatalogScreenProps) {
 										<td style={styles.td}>
 											<button
 												type="button"
-												style={styles.button}
+												style={styles.buttonDanger}
 												onClick={() => {
 													if (window.confirm(`Delete stored plan "${p.name}"?`))
 														void deletePlan(p.id).catch(() => {});

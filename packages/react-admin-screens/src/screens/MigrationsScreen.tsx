@@ -1,6 +1,7 @@
 import type { AdminClient, IAdminMigrationModule } from '@fonderie/client';
 import { useAdminMigrations } from '@fonderie/react-admin';
 import { styles } from '../styles';
+import { Empty, PageHeader, Pill, RefreshButton } from '../ui';
 
 export interface IMigrationsScreenProps {
 	client: AdminClient;
@@ -24,7 +25,11 @@ export function MigrationsScreen({ client }: IMigrationsScreenProps) {
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Migrations</h1>
+			<PageHeader
+				title="Migrations"
+				lead="Schema changes each module ships, and whether this database has them."
+				actions={<RefreshButton onClick={() => void refresh()} busy={isLoading} />}
+			/>
 
 			{error ? (
 				<p style={styles.error} role="alert">
@@ -34,38 +39,36 @@ export function MigrationsScreen({ client }: IMigrationsScreenProps) {
 				</p>
 			) : null}
 
-			<p>
-				<button type="button" style={styles.button} onClick={() => void refresh()} disabled={isLoading}>
-					{isLoading ? 'Checking…' : 'Refresh'}
-				</button>{' '}
-				{report && !report.everApplied ? (
-					<span style={styles.advice}>
-						This database has never been migrated — treating it as a first install, so nothing is
-						held back.
-					</span>
-				) : null}
-			</p>
+			{report && !report.everApplied ? (
+				<p style={styles.notice}>
+					This database has never been migrated — treating it as a first install, so nothing is held
+					back.
+				</p>
+			) : null}
 
 			{report && behind.length === 0 ? (
-				<p style={styles.ok}>Every module is up to date.</p>
+				<Empty icon="migrations" title="Every module is up to date">
+					No pending migrations.
+				</Empty>
 			) : null}
 
 			{behind.map((m) => {
 				const blocked = why(m, report?.everApplied ?? false);
 				const files = m.pending.map((p) => p.file);
 				return (
-					<section key={m.name} style={{ marginBottom: 24 }}>
-						<h2 style={styles.subtitle}>
-							{m.name} — {m.pending.length} pending
+					<section key={m.name} style={{ ...styles.card, marginBottom: 16 }}>
+						<h2 style={{ ...styles.subtitle, marginTop: 0 }}>
+							<span style={styles.mono}>{m.name}</span>
+							<Pill tone="warn">{m.pending.length} pending</Pill>
 						</h2>
-						<ul>
+						<ul style={{ margin: '0 0 12px', paddingLeft: 18, lineHeight: 1.9 }}>
 							{m.pending.map((p) => (
 								<li key={p.file}>
-									<code>{p.file}</code>{' '}
+									<code style={styles.code}>{p.file}</code>{' '}
 									{p.impact === 'destructive' ? (
-										<span style={styles.bad}>destructive</span>
+										<Pill tone="bad">destructive</Pill>
 									) : (
-										<span style={styles.advice}>additive</span>
+										<Pill tone="neutral">additive</Pill>
 									)}
 									{p.destructive.length > 0 ? (
 										<ul>
@@ -80,11 +83,11 @@ export function MigrationsScreen({ client }: IMigrationsScreenProps) {
 							))}
 						</ul>
 						{blocked ? (
-							<p style={styles.advice}>{blocked}</p>
+							<p style={{ ...styles.notice, marginBottom: 0 }}>{blocked}</p>
 						) : (
 							<button
 								type="button"
-								style={styles.button}
+								style={styles.buttonPrimary}
 								disabled={isLoading || !m.appliable}
 								onClick={() => {
 									if (
