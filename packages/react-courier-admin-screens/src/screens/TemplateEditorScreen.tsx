@@ -19,6 +19,15 @@ export interface ITemplateEditorScreenProps {
 	type: string;
 	locale?: string | null;
 	onSaved?: () => void;
+	/**
+	 * A built-in email's default-locale row (the list's `system` flag): it can
+	 * be edited and rolled back, never deleted — Delete is not offered.
+	 */
+	system?: boolean;
+	/** Called after a delete; the template no longer exists. */
+	onDeleted?: () => void;
+	/** Shows "Add locale": create a translation of this template. */
+	onAddLocale?: (type: string) => void;
 }
 
 export function TemplateEditorScreen({
@@ -26,13 +35,17 @@ export function TemplateEditorScreen({
 	type,
 	locale,
 	onSaved,
+	system = false,
+	onDeleted,
+	onAddLocale,
 }: ITemplateEditorScreenProps) {
 	const { template, isLoading, error, refresh } = useTemplate(client, type, locale);
 	// Saves go through the list hook (which re-fetches the template list after
 	// each write); mounting it adds a template-list fetch to this single-template
 	// editor — acceptable for an admin dashboard. Its isLoading/error track that
 	// list fetch, so the save action keeps local state.
-	const { saveTemplate } = useTemplates(client);
+	const { saveTemplate, removeTemplate } = useTemplates(client);
+	const [isDeleting, setIsDeleting] = useState(false);
 	const { revisions, rollback } = useTemplateRevisions(client, type, locale);
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveError, setSaveError] = useState<FonderieApiError | null>(null);
@@ -133,6 +146,22 @@ export function TemplateEditorScreen({
 		}
 	};
 
+	const handleDelete = async () => {
+		const which = locale ? `the ${locale} version of "${type}"` : `"${type}"`;
+		const fallback = locale ? ' People in that locale will receive the default version.' : '';
+		if (!window.confirm(`Delete ${which}?${fallback}`)) return;
+		setIsDeleting(true);
+		setSaveError(null);
+		try {
+			await removeTemplate(type, locale);
+			onDeleted?.();
+		} catch (err) {
+			setSaveError(err as FonderieApiError);
+		} finally {
+			setIsDeleting(false);
+		}
+	};
+
 	if (isLoading) return <p style={styles.status}>Loading template…</p>;
 	if (error)
 		return (
@@ -143,9 +172,21 @@ export function TemplateEditorScreen({
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>{type}</h1>
+			<div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+				<h1 style={styles.title}>{type}</h1>
+				{onAddLocale && !locale ? (
+					<button
+						type="button"
+						style={{ ...styles.rollbackButton, marginLeft: 'auto' }}
+						onClick={() => onAddLocale(type)}
+					>
+						+ Add locale
+					</button>
+				) : null}
+			</div>
 			<p style={styles.meta}>
-				{locale ?? 'base'} · v{template?.version ?? 1}
+				<strong>{locale ?? 'default locale'}</strong> · v{template?.version ?? 1}
+				{system ? ' · built-in email: edit or roll back, it cannot be deleted' : ''}
 			</p>
 
 			<div style={styles.split}>
@@ -193,11 +234,26 @@ export function TemplateEditorScreen({
 							Active
 						</label>
 
-						{saveError && (
+						{saveError?.reason === 'VERSION_CONFLICT' ? (
+							<p style={styles.error} role="alert">
+								Someone changed this template since you opened it. Reload to see their change, then
+								edit again.{' '}
+								<button
+									type="button"
+									style={styles.rollbackButton}
+									onClick={() => {
+										setSaveError(null);
+										void refresh();
+									}}
+								>
+									Reload
+								</button>
+							</p>
+						) : saveError ? (
 							<p style={styles.error} role="alert">
 								{saveError.explanation}
 							</p>
-						)}
+						) : null}
 
 						<div style={styles.saveRow}>
 							<button
@@ -208,6 +264,22 @@ export function TemplateEditorScreen({
 								{isSaving ? 'Saving…' : 'Save'}
 							</button>
 							{!dirty && !isSaving && <span style={styles.meta}>No changes to save</span>}
+							{!system ? (
+								<button
+									type="button"
+									disabled={isDeleting}
+									onClick={() => void handleDelete()}
+									style={{
+										...styles.rollbackButton,
+										height: 36,
+										marginLeft: 'auto',
+										color: 'var(--fonderie-danger,#e00)',
+										borderColor: 'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
+									}}
+								>
+									{isDeleting ? 'Deleting…' : 'Delete'}
+								</button>
+							) : null}
 						</div>
 					</form>
 

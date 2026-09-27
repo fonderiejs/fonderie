@@ -1455,6 +1455,7 @@ interface ISubscriptionResult {
 }
 
 interface ITemplateEntry {
+    system?: boolean;
     type: string;
     locale: string | null;
     subject: string | null;

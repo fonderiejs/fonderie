@@ -1,1 +1,1 @@
-export { TemplateEditorScreen, TemplateListScreen } from './screens';
+export { TemplateCreateScreen, TemplateEditorScreen, TemplateListScreen } from './screens';

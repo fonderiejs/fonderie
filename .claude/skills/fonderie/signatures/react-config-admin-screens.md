@@ -11,18 +11,27 @@ interface IConfigEditorScreenProps {
     configKey: string;
     environment?: string;
     onSaved?: () => void;
+    onDeleted?: () => void;
+    environments?: string[];
 }
 
 interface IConfigListScreenProps {
     client: ConfigAdminClient;
     environment?: string;
-    onSelectConfig?: (key: string) => void;
-    onSelectSecret?: (key: string) => void;
-    onCreateConfig?: () => void;
-    onCreateSecret?: () => void;
+    onSelectConfig?: (key: string, environment: string) => void;
+    onSelectSecret?: (key: string, environment: string) => void;
+    publicConfigUrl?: string;
+    onCreateConfig?: (context: {
+        environments: string[];
+        environment: string | null;
+    }) => void;
+    onCreateSecret?: (context: {
+        environments: string[];
+        environment: string | null;
+    }) => void;
 }
 
-function ConfigEditorScreen({ client, kind, configKey, environment, onSaved, }: IConfigEditorScreenProps): Element
+function ConfigEditorScreen({ client, kind, configKey, environment, onSaved, onDeleted, environments, }: IConfigEditorScreenProps): Element
 
-function ConfigListScreen({ client, environment, onSelectConfig, onSelectSecret, onCreateConfig, onCreateSecret, }: IConfigListScreenProps): Element
+function ConfigListScreen({ client, environment, onSelectConfig, onSelectSecret, onCreateConfig, onCreateSecret, publicConfigUrl, }: IConfigListScreenProps): Element
 ```

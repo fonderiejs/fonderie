@@ -10,6 +10,7 @@ import {
 	listTemplateRevisions,
 	getTemplateEntry,
 	listTemplateEntries,
+	SEEDED_TEMPLATE_TYPES,
 	deleteTemplate,
 } from './admin';
 import { getLayoutHtml, renderFragment, templateVariables } from './resolver';
@@ -45,6 +46,22 @@ type RouteRow = [string, string, Middleware];
 // every other handler is pure storage.
 export interface ITemplateAdminOptions {
 	brandName?: string;
+	/**
+	 * Types a module ships a default for (auth, billing, workspaces …). With
+	 * the seeded built-ins, their DEFAULT-LOCALE row is a system template: it
+	 * can be edited and rolled back, never deleted — deleting a seeded row with
+	 * no code default would leave that email as a raw data dump.
+	 */
+	systemTypes?: Iterable<string>;
+}
+
+/** A built-in email's default-locale row. Locale variants and app types are the operator's. */
+export function isSystemTemplate(
+	type: string,
+	locale: string | null,
+	systemTypes: ReadonlySet<string>,
+): boolean {
+	return locale === null && (SEEDED_TEMPLATE_TYPES.includes(type) || systemTypes.has(type));
 }
 
 // The legacy standalone surface (bare /admin/*, guarded by this module's own
@@ -72,9 +89,17 @@ export function describeTemplateAdminRoutes(
 
 function templateAdminRouteTable(store: IStoreAdapter, opts: ITemplateAdminOptions = {}): RouteRow[] {
 	const brandName = opts.brandName;
+	const systemTypes = new Set(opts.systemTypes ?? []);
 	return [
 		['GET', '/admin/templates', async () => {
-			return setApiResponse(HTTP.OK, 'TEMPLATES_LISTED', 'Templates', await listTemplateEntries(store));
+			const rows = await listTemplateEntries(store);
+			// `system` tells a console which rows it must not offer to delete.
+			return setApiResponse(
+				HTTP.OK,
+				'TEMPLATES_LISTED',
+				'Templates',
+				rows.map((r) => ({ ...r, system: isSystemTemplate(r.type, r.locale, systemTypes) })),
+			);
 		}],
 		['GET', '/admin/templates/:type', async (ctx) => {
 			const row = await getTemplateEntry(typeOf(ctx), localeOf(ctx), store);
@@ -104,6 +129,13 @@ function templateAdminRouteTable(store: IStoreAdapter, opts: ITemplateAdminOptio
 			}
 		}],
 		['DELETE', '/admin/templates/:type', async (ctx) => {
+			if (isSystemTemplate(typeOf(ctx), localeOf(ctx), systemTypes)) {
+				return setApiResponse(
+					HTTP.CONFLICT,
+					'SYSTEM_TEMPLATE',
+					'This is a built-in email. Edit it or roll it back to an earlier version; it cannot be deleted.',
+				);
+			}
 			const ok = await deleteTemplate(typeOf(ctx), localeOf(ctx), store);
 			return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such template');
 		}],

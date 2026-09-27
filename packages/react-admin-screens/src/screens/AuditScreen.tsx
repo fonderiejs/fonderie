@@ -12,10 +12,14 @@ export interface IAuditScreenProps {
 // What happened — every workspace unless one is named. The chain's integrity
 // verdict is on the Doctor page (events.integrity).
 export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
-	const [draft, setDraft] = useState({ workspaceId: '', type: '', actorId: '' });
-	const [filter, setFilter] = useState<{ workspaceId?: string; type?: string; actorId?: string }>(
-		{},
-	);
+	const [draft, setDraft] = useState({ workspaceId: '', type: '', actorId: '', from: '', to: '' });
+	const [filter, setFilter] = useState<{
+		workspaceId?: string;
+		type?: string;
+		actorId?: string;
+		from?: Date;
+		to?: Date;
+	}>({});
 	const { events, hasMore, isLoading, error, refresh, loadMore } = useAdminAudit(client, {
 		...filter,
 		limit: pageSize,
@@ -43,12 +47,31 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 						...(draft.workspaceId.trim() ? { workspaceId: draft.workspaceId.trim() } : {}),
 						...(draft.type.trim() ? { type: draft.type.trim() } : {}),
 						...(draft.actorId.trim() ? { actorId: draft.actorId.trim() } : {}),
+						// Dates are whole days in the operator's time zone: "to" includes that day.
+						...(draft.from ? { from: new Date(`${draft.from}T00:00:00`) } : {}),
+						...(draft.to ? { to: new Date(`${draft.to}T23:59:59.999`) } : {}),
 					});
 				}}
 			>
 				{field('workspaceId', 'workspace id (all if empty)')}
 				{field('type', 'event type')}
 				{field('actorId', 'actor id')}
+				<input
+					type="date"
+					value={draft.from}
+					onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+					style={styles.input}
+					aria-label="From date"
+					title="From (inclusive)"
+				/>
+				<input
+					type="date"
+					value={draft.to}
+					onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+					style={styles.input}
+					aria-label="To date"
+					title="To (inclusive)"
+				/>
 				<button type="submit" style={styles.buttonPrimary} disabled={isLoading}>
 					<Icon name="search" size={14} />
 					Filter

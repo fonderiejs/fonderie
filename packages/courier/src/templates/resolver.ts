@@ -1,6 +1,11 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { ITemplateResolver, IRenderedTemplate, IDefaultTemplate, DefaultTemplateMap } from '../types';
+import type {
+	ITemplateResolver,
+	IRenderedTemplate,
+	IDefaultTemplate,
+	DefaultTemplateMap,
+} from '../types';
 import { EMAIL_THEME, wrapLayout } from './layout';
 
 // The stored template id for a founder-supplied layout shell (DB row `type` or
@@ -153,6 +158,10 @@ export class DefaultTemplates {
 	}
 	get size(): number {
 		return this.map.size;
+	}
+	/** Every type a module ships a default for. */
+	types(): string[] {
+		return [...this.map.keys()];
 	}
 }
 

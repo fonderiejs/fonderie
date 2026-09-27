@@ -30,9 +30,13 @@ export const ConfigEditorScreen = defineComponent({
 		/** Empty string ⇒ create mode: the operator names the new key. */
 		configKey: { type: String, required: true },
 		environment: { type: String, default: undefined },
+		/** Environments already in use, offered when creating an entry. */
+		environments: { type: Array as PropType<string[]>, default: () => [] },
 	},
 	emits: {
 		saved: () => true,
+		/** The entry was deleted and no longer exists. */
+		deleted: () => true,
 	},
 	setup(props, { emit }) {
 		const isSecret = computed(() => props.kind === 'secret');
@@ -48,6 +52,10 @@ export const ConfigEditorScreen = defineComponent({
 		const freeForm = () => isNew || changingType.value;
 		const inputError = ref<string | null>(null);
 		const targetKey = () => (isNew ? newKey.value.trim() : props.configKey);
+		// Creating: which environment the new entry belongs to. 'all' is the
+		// shared value every environment reads unless it has its own.
+		const targetEnv = ref(props.environment ?? 'all');
+		const isDeleting = ref(false);
 
 		const configEntry = useConfigEntry(
 			props.client,
@@ -115,11 +123,14 @@ export const ConfigEditorScreen = defineComponent({
 				}
 				// Creating must never overwrite: a save to an existing key would
 				// silently replace its value.
+				const env = targetEnv.value.trim() || 'all';
+				const inEnv = (e: { key: string; environment?: string | null }) =>
+					e.key === key && (e.environment ?? 'all') === env;
 				const taken = isSecret.value
-					? secrets.secrets.value.some((s) => s.key === key)
-					: configEntries.entries.value.some((e) => e.key === key);
+					? secrets.secrets.value.some(inEnv)
+					: configEntries.entries.value.some(inEnv);
 				if (taken) {
-					inputError.value = `"${key}" already exists — open it from the list to edit.`;
+					inputError.value = `"${key}" already exists in ${env} — open it from the list to edit.`;
 					return;
 				}
 			}
@@ -138,10 +149,20 @@ export const ConfigEditorScreen = defineComponent({
 			}
 			isSaving.value = true;
 			try {
+				// Editing sends the version this screen loaded: if someone changed the
+				// entry since, the server answers 409 VERSION_CONFLICT instead of
+				// silently overwriting their change.
+				const loadedVersion = isSecret.value
+					? secretEntry.secret.value?.version
+					: configEntry.entry.value?.version;
+				const env = isNew ? targetEnv.value.trim() || 'all' : (props.environment ?? 'all');
+				const envArg = env === 'all' ? undefined : env;
 				if (isSecret.value) {
 					const opts: Parameters<typeof secrets.saveSecret>[1] = { value: value.value };
 					if (description.value) opts.description = description.value;
-					await secrets.saveSecret(key, opts);
+					if (!isNew && loadedVersion !== undefined) opts.ifVersion = loadedVersion;
+					if (isNew) await props.client.setSecret(key, opts, envArg);
+					else await secrets.saveSecret(key, opts);
 					// The list composable refreshes its own list; this screen renders
 					// the single entry, so re-read it too.
 					if (!isNew) await secretEntry.refresh();
@@ -151,7 +172,9 @@ export const ConfigEditorScreen = defineComponent({
 					// Only an explicit "Change type" may change an existing key's shape;
 					// the server refuses it otherwise (409 CONFIG_TYPE_CHANGE).
 					if (changingType.value) opts.allowTypeChange = true;
-					await configEntries.saveEntry(key, opts);
+					if (!isNew && loadedVersion !== undefined) opts.ifVersion = loadedVersion;
+					if (isNew) await props.client.setConfig(key, opts, envArg);
+					else await configEntries.saveEntry(key, opts);
 					if (!isNew) await configEntry.refresh();
 				}
 				emit('saved');
@@ -160,6 +183,29 @@ export const ConfigEditorScreen = defineComponent({
 				else inputError.value = (err as Error).message;
 			} finally {
 				isSaving.value = false;
+			}
+		}
+
+		async function handleDelete() {
+			const where =
+				props.environment && props.environment !== 'all' ? ` from ${props.environment}` : '';
+			if (
+				!window.confirm(
+					`Delete "${props.configKey}"${where}? Anything that reads it falls back to its default.`,
+				)
+			)
+				return;
+			isDeleting.value = true;
+			saveError.value = null;
+			try {
+				if (isSecret.value) await secrets.removeSecret(props.configKey);
+				else await configEntries.removeEntry(props.configKey);
+				emit('deleted');
+			} catch (err) {
+				if (err instanceof FonderieApiError) saveError.value = err;
+				else inputError.value = (err as Error).message;
+			} finally {
+				isDeleting.value = false;
 			}
 		}
 
@@ -189,13 +235,11 @@ export const ConfigEditorScreen = defineComponent({
 					{ style: styles.editorTitle },
 					isNew ? (isSecret.value ? 'New secret' : 'New config entry') : props.configKey,
 				),
-				h(
-					'p',
-					{ style: styles.meta },
-					isNew
-						? `Environment: ${props.environment ?? 'all'}`
-						: `Environment: ${props.environment ?? 'all'} · v${version}`,
-				),
+				h('p', { style: styles.meta }, [
+					'Environment: ',
+					h('strong', isNew ? targetEnv.value || 'all' : (props.environment ?? 'all')),
+					isNew ? null : ` · v${version}`,
+				]),
 
 				isSecret.value && !isNew
 					? h('div', { style: styles.revealBox }, [
@@ -229,6 +273,39 @@ export const ConfigEditorScreen = defineComponent({
 										newKey.value = (e.target as HTMLInputElement).value;
 									},
 								}),
+								h('label', { style: styles.label, for: 'config-env' }, 'Environment'),
+								h('input', {
+									id: 'config-env',
+									style: styles.input,
+									value: targetEnv.value,
+									list: 'config-env-options',
+									autocomplete: 'off',
+									spellcheck: false,
+									onInput: (e: Event) => {
+										targetEnv.value = (e.target as HTMLInputElement).value;
+									},
+								}),
+								h(
+									'datalist',
+									{ id: 'config-env-options' },
+									[...new Set(['all', ...props.environments])].map((e) =>
+										h('option', { key: e, value: e }),
+									),
+								),
+								h(
+									'p',
+									{
+										style: {
+											fontSize: '12.5px',
+											color: 'var(--fonderie-text-muted,#5c5c5c)',
+											margin: '4px 0 0',
+										},
+									},
+									[
+										h('code', 'all'),
+										' is shared by every environment; a named one (production, staging…) overrides it there.',
+									],
+								),
 							]
 						: []),
 					h(
@@ -348,13 +425,58 @@ export const ConfigEditorScreen = defineComponent({
 							description.value = (e.target as HTMLInputElement).value;
 						},
 					}),
-					saveError.value
-						? h('p', { style: styles.error, role: 'alert' }, saveError.value.explanation)
-						: null,
+					saveError.value?.reason === 'VERSION_CONFLICT'
+						? h('p', { style: styles.error, role: 'alert' }, [
+								'Someone changed this entry since you opened it. Reload to see their change, then edit again. ',
+								h(
+									'button',
+									{
+										type: 'button',
+										style: styles.revealButton,
+										onClick: () => {
+											saveError.value = null;
+											void entry.refresh();
+										},
+									},
+									'Reload',
+								),
+							])
+						: saveError.value
+							? h('p', { style: styles.error, role: 'alert' }, saveError.value.explanation)
+							: null,
 					h(
-						'button',
-						{ type: 'submit', disabled: isSaving.value, style: styles.button },
-						isSaving.value ? 'Saving…' : 'Save',
+						'div',
+						{ style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '16px' } },
+						[
+							h(
+								'button',
+								{
+									type: 'submit',
+									disabled: isSaving.value,
+									style: { ...styles.button, marginTop: '0' },
+								},
+								isSaving.value ? 'Saving…' : 'Save',
+							),
+							!isNew
+								? h(
+										'button',
+										{
+											type: 'button',
+											disabled: isDeleting.value,
+											onClick: () => void handleDelete(),
+											style: {
+												...styles.revealButton,
+												height: '36px',
+												marginLeft: 'auto',
+												color: 'var(--fonderie-danger,#e00)',
+												borderColor:
+													'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
+											},
+										},
+										isDeleting.value ? 'Deleting…' : 'Delete',
+									)
+								: null,
+						],
 					),
 				]),
 

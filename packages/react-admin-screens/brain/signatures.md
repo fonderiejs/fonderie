@@ -27,6 +27,7 @@ interface IAdminShellProps {
     footer?: ReactNode;
     operators?: boolean;
     currentOperator?: string;
+    publicConfigUrl?: string;
 }
 
 interface IAttentionScreenProps {
@@ -94,7 +95,7 @@ interface IAuditScreenProps {
 
 function AdminLogScreen({ client, pageSize }: IAdminLogScreenProps): Element
 
-function AdminShell({ client, configClient, courierClient, authClient, billingClient, auditClient, environment, page, onNavigate, appName, envLabel, footer, operators, currentOperator, }: IAdminShellProps): Element
+function AdminShell({ client, configClient, courierClient, authClient, billingClient, auditClient, environment, page, onNavigate, appName, envLabel, footer, operators, currentOperator, publicConfigUrl, }: IAdminShellProps): Element
 
 function AttentionScreen({ client }: IAttentionScreenProps): Element
 

@@ -517,6 +517,11 @@ function Dashboard({
 	// anyway: it is the narrower claim, and a probe should not depend on a route
 	// this module could plausibly want back one day.
 	const mounted = new Set(manifest.routes.map((r) => r.path));
+	// The app's public config route, taken from the route table so it is right
+	// under any basePath: frontends' view of config, shown on the Config page.
+	const publicConfigPath = manifest.routes.find(
+		(r) => r.method === 'GET' && r.path.endsWith('/config/public'),
+	)?.path;
 	const has = (suffix: string) => mounted.has(`${PREFIX}${suffix}`);
 	const opts = { baseUrl: window.location.origin, adminToken: token, prefix: PREFIX };
 
@@ -527,6 +532,9 @@ function Dashboard({
 			onNavigate={setPage}
 			appName={window.location.hostname || 'Admin'}
 			envLabel={manifest.env}
+			{...(publicConfigPath
+				? { publicConfigUrl: `${window.location.origin}${publicConfigPath}` }
+				: {})}
 			operators={operators}
 			{...(me ? { currentOperator: me } : {})}
 			footer={footer}

@@ -28,6 +28,10 @@ export interface IConfigEditorScreenProps {
 	configKey: string;
 	environment?: string;
 	onSaved?: () => void;
+	/** Called after a successful delete; the entry no longer exists. */
+	onDeleted?: () => void;
+	/** Environments already in use, offered when creating an entry. */
+	environments?: string[];
 }
 
 export function ConfigEditorScreen({
@@ -36,6 +40,8 @@ export function ConfigEditorScreen({
 	configKey,
 	environment,
 	onSaved,
+	onDeleted,
+	environments = [],
 }: IConfigEditorScreenProps) {
 	const isSecret = kind === 'secret';
 	const isNew = configKey === '';
@@ -50,6 +56,10 @@ export function ConfigEditorScreen({
 	const [asText, setAsText] = useState(false);
 	const freeForm = isNew || changingType;
 	const [inputError, setInputError] = useState<string | null>(null);
+	// Creating: which environment the new entry belongs to. 'all' is the shared
+	// value every environment reads unless it has its own.
+	const [targetEnv, setTargetEnv] = useState(environment ?? 'all');
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	const configEntry = useConfigEntry(client, isSecret || isNew ? '' : configKey, environment);
 	const secretEntry = useSecret(client, isSecret && !isNew ? configKey : '', environment);
@@ -106,10 +116,12 @@ export function ConfigEditorScreen({
 			if (problem) return setInputError(problem);
 			// Creating must never overwrite: a save to an existing key would
 			// silently replace its value.
-			const taken = isSecret
-				? secrets.secrets.some((s) => s.key === key)
-				: configEntries.entries.some((e) => e.key === key);
-			if (taken) return setInputError(`"${key}" already exists — open it from the list to edit.`);
+			const env = targetEnv.trim() || 'all';
+			const inEnv = (e: { key: string; environment?: string | null }) =>
+				e.key === key && (e.environment ?? 'all') === env;
+			const taken = isSecret ? secrets.secrets.some(inEnv) : configEntries.entries.some(inEnv);
+			if (taken)
+				return setInputError(`"${key}" already exists in ${env} — open it from the list to edit.`);
 		}
 		let typed: unknown = value;
 		if (!isSecret) {
@@ -123,17 +135,27 @@ export function ConfigEditorScreen({
 		}
 		setIsSaving(true);
 		try {
+			// Editing sends the version this screen loaded: if someone changed the
+			// entry since, the server answers 409 VERSION_CONFLICT instead of
+			// silently overwriting their change.
+			const loadedVersion = isSecret ? secretEntry.secret?.version : configEntry.entry?.version;
+			const env = isNew ? targetEnv.trim() || 'all' : (environment ?? 'all');
+			const envArg = env === 'all' ? undefined : env;
 			if (isSecret) {
 				const opts: Parameters<typeof secrets.saveSecret>[1] = { value };
 				if (description) opts.description = description;
-				await secrets.saveSecret(key, opts);
+				if (!isNew && loadedVersion !== undefined) opts.ifVersion = loadedVersion;
+				if (isNew) await client.setSecret(key, opts, envArg);
+				else await secrets.saveSecret(key, opts);
 			} else {
 				const opts: Parameters<typeof configEntries.saveEntry>[1] = { value: typed };
 				if (description) opts.description = description;
 				// Only an explicit "Change type" may change an existing key's shape;
 				// the server refuses it otherwise (409 CONFIG_TYPE_CHANGE).
 				if (changingType) opts.allowTypeChange = true;
-				await configEntries.saveEntry(key, opts);
+				if (!isNew && loadedVersion !== undefined) opts.ifVersion = loadedVersion;
+				if (isNew) await client.setConfig(key, opts, envArg);
+				else await configEntries.saveEntry(key, opts);
 			}
 			// The list hooks refresh their own lists; this screen renders the
 			// single entry, so re-read it too.
@@ -144,6 +166,28 @@ export function ConfigEditorScreen({
 			else setInputError((err as Error).message);
 		} finally {
 			setIsSaving(false);
+		}
+	};
+
+	const handleDelete = async () => {
+		const where = environment && environment !== 'all' ? ` from ${environment}` : '';
+		if (
+			!window.confirm(
+				`Delete "${configKey}"${where}? Anything that reads it falls back to its default.`,
+			)
+		)
+			return;
+		setIsDeleting(true);
+		setSaveError(null);
+		try {
+			if (isSecret) await secrets.removeSecret(configKey);
+			else await configEntries.removeEntry(configKey);
+			onDeleted?.();
+		} catch (err) {
+			if (err instanceof FonderieApiError) setSaveError(err);
+			else setInputError((err as Error).message);
+		} finally {
+			setIsDeleting(false);
 		}
 	};
 
@@ -169,7 +213,7 @@ export function ConfigEditorScreen({
 				{isNew ? (isSecret ? 'New secret' : 'New config entry') : configKey}
 			</h1>
 			<p style={styles.meta}>
-				Environment: {environment ?? 'all'}
+				Environment: <strong>{isNew ? targetEnv || 'all' : (environment ?? 'all')}</strong>
 				{!isNew && <> · v{isSecret ? secretEntry.secret?.version : configEntry.entry?.version}</>}
 			</p>
 
@@ -203,6 +247,31 @@ export function ConfigEditorScreen({
 							spellCheck={false}
 							required
 						/>
+					</>
+				)}
+				{isNew && (
+					<>
+						<label style={styles.label} htmlFor="config-env">
+							Environment
+						</label>
+						<input
+							id="config-env"
+							style={styles.input}
+							value={targetEnv}
+							list="config-env-options"
+							autoComplete="off"
+							spellCheck={false}
+							onChange={(event) => setTargetEnv(event.target.value)}
+						/>
+						<datalist id="config-env-options">
+							{[...new Set(['all', ...environments])].map((e) => (
+								<option key={e} value={e} />
+							))}
+						</datalist>
+						<p style={styles.hint}>
+							<code>all</code> is shared by every environment; a named one (production, staging…)
+							overrides it there.
+						</p>
 					</>
 				)}
 
@@ -317,15 +386,48 @@ export function ConfigEditorScreen({
 					onChange={(event) => setDescription(event.target.value)}
 				/>
 
-				{saveError && (
+				{saveError && saveError.reason === 'VERSION_CONFLICT' ? (
+					<p style={styles.error} role="alert">
+						Someone changed this entry since you opened it. Reload to see their change, then edit
+						again.{' '}
+						<button
+							type="button"
+							style={styles.smallButton}
+							onClick={() => {
+								setSaveError(null);
+								void entry.refresh();
+							}}
+						>
+							Reload
+						</button>
+					</p>
+				) : saveError ? (
 					<p style={styles.error} role="alert">
 						{saveError.explanation}
 					</p>
-				)}
+				) : null}
 
-				<button type="submit" disabled={isSaving} style={styles.button}>
-					{isSaving ? 'Saving…' : 'Save'}
-				</button>
+				<div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 16 }}>
+					<button type="submit" disabled={isSaving} style={{ ...styles.button, marginTop: 0 }}>
+						{isSaving ? 'Saving…' : 'Save'}
+					</button>
+					{!isNew && (
+						<button
+							type="button"
+							disabled={isDeleting}
+							onClick={() => void handleDelete()}
+							style={{
+								...styles.smallButton,
+								height: 36,
+								marginLeft: 'auto',
+								color: 'var(--fonderie-danger,#e00)',
+								borderColor: 'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
+							}}
+						>
+							{isDeleting ? 'Deleting…' : 'Delete'}
+						</button>
+					)}
+				</div>
 			</form>
 
 			{!isNew && revisions.revisions.length > 0 && (
@@ -383,6 +485,7 @@ const styles: Record<string, CSSProperties> = {
 		letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
 		lineHeight: 1.25,
 	},
+	hint: { fontSize: 12.5, color: 'var(--fonderie-text-muted,#5c5c5c)', margin: '4px 0 0' },
 	meta: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginBottom: 20 },
 	status: { padding: 24, textAlign: 'center', color: 'var(--fonderie-text-muted,#5c5c5c)' },
 	error: {

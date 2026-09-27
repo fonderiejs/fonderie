@@ -61,6 +61,7 @@ new FSTemplateResolver(directory: string, defaults?: DefaultTemplates | undefine
 new DefaultTemplates(maps?: DefaultTemplateMap[]): DefaultTemplates
   .get(type: string): IDefaultTemplate | undefined
   .size: number
+  .types(): string[]
 
 function renderFragment(frag: { subject?: string | null; text: string; html?: string | null; }, layoutHtml: string | undefined, data: Record<string, unknown>): IRenderedTemplate
 
@@ -84,6 +85,7 @@ function buildTemplateAdminRoutes(store: IStoreAdapter, adminToken: string, opts
 
 interface ITemplateAdminOptions {
     brandName?: string;
+    systemTypes?: Iterable<string>;
 }
 
 interface ITemplateEntry {

@@ -26,9 +26,20 @@ export const TemplateEditorScreen = defineComponent({
 		client: { type: Object as PropType<CourierAdminClient>, required: true },
 		type: { type: String, required: true },
 		locale: { type: String as PropType<string | null>, default: null },
+		/**
+		 * A built-in email's default-locale row (the list's `system` flag): it can
+		 * be edited and rolled back, never deleted — Delete is not offered.
+		 */
+		system: { type: Boolean, default: false },
+		/** Shows "+ Add locale" on the default locale (emits add-locale). */
+		allowAddLocale: { type: Boolean, default: false },
 	},
 	emits: {
 		saved: () => true,
+		/** The template was deleted and no longer exists. */
+		deleted: () => true,
+		/** Create a translation of this template. */
+		'add-locale': (_type: string) => true,
 	},
 	setup(props, { emit }) {
 		const { template, isLoading, error, refresh } = useTemplate(
@@ -40,7 +51,8 @@ export const TemplateEditorScreen = defineComponent({
 		// after each write); mounting it adds a template-list fetch to this
 		// single-template editor — acceptable for an admin dashboard. Its
 		// isLoading/error track that list fetch, so the save action keeps local state.
-		const { saveTemplate } = useTemplates(props.client);
+		const { saveTemplate, removeTemplate } = useTemplates(props.client);
+		const isDeleting = ref(false);
 		const { revisions, rollback } = useTemplateRevisions(props.client, props.type, props.locale);
 		const isSaving = ref(false);
 		const saveError = ref<FonderieApiError | null>(null);
@@ -151,6 +163,26 @@ export const TemplateEditorScreen = defineComponent({
 			}
 		}
 
+		async function handleDelete() {
+			const which = props.locale
+				? `the ${props.locale} version of "${props.type}"`
+				: `"${props.type}"`;
+			const fallback = props.locale
+				? ' People in that locale will receive the default version.'
+				: '';
+			if (!window.confirm(`Delete ${which}?${fallback}`)) return;
+			isDeleting.value = true;
+			saveError.value = null;
+			try {
+				await removeTemplate(props.type, props.locale);
+				emit('deleted');
+			} catch (err) {
+				saveError.value = err as FonderieApiError;
+			} finally {
+				isDeleting.value = false;
+			}
+		}
+
 		function renderRevision(rev: ITemplateRevision) {
 			return h('li', { key: rev.version, style: styles.revisionRow }, [
 				h(
@@ -171,12 +203,29 @@ export const TemplateEditorScreen = defineComponent({
 				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
 
 			return h('div', { style: styles.container }, [
-				h('h1', { style: styles.title }, props.type),
 				h(
-					'p',
-					{ style: styles.meta },
-					`${props.locale ?? 'base'} · v${template.value?.version ?? 1}`,
+					'div',
+					{ style: { display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' } },
+					[
+						h('h1', { style: styles.title }, props.type),
+						props.allowAddLocale && !props.locale
+							? h(
+									'button',
+									{
+										type: 'button',
+										style: { ...styles.rollbackButton, marginLeft: 'auto' },
+										onClick: () => emit('add-locale', props.type),
+									},
+									'+ Add locale',
+								)
+							: null,
+					],
 				),
+				h('p', { style: styles.meta }, [
+					h('strong', props.locale ?? 'default locale'),
+					` · v${template.value?.version ?? 1}`,
+					props.system ? ' · built-in email: edit or roll back, it cannot be deleted' : '',
+				]),
 				h('div', { style: styles.split }, [
 					h('div', { style: styles.column }, [
 						h('form', { style: styles.form, onSubmit: handleSubmit }, [
@@ -220,9 +269,25 @@ export const TemplateEditorScreen = defineComponent({
 								}),
 								'Active',
 							]),
-							saveError.value
-								? h('p', { style: styles.error, role: 'alert' }, saveError.value.explanation)
-								: null,
+							saveError.value?.reason === 'VERSION_CONFLICT'
+								? h('p', { style: styles.error, role: 'alert' }, [
+										'Someone changed this template since you opened it. Reload to see their change, then edit again. ',
+										h(
+											'button',
+											{
+												type: 'button',
+												style: styles.rollbackButton,
+												onClick: () => {
+													saveError.value = null;
+													void refresh();
+												},
+											},
+											'Reload',
+										),
+									])
+								: saveError.value
+									? h('p', { style: styles.error, role: 'alert' }, saveError.value.explanation)
+									: null,
 							h('div', { style: styles.saveRow }, [
 								h(
 									'button',
@@ -235,6 +300,25 @@ export const TemplateEditorScreen = defineComponent({
 								),
 								!dirty.value && !isSaving.value
 									? h('span', { style: styles.meta }, 'No changes to save')
+									: null,
+								!props.system
+									? h(
+											'button',
+											{
+												type: 'button',
+												disabled: isDeleting.value,
+												onClick: () => void handleDelete(),
+												style: {
+													...styles.rollbackButton,
+													height: '36px',
+													marginLeft: 'auto',
+													color: 'var(--fonderie-danger,#e00)',
+													borderColor:
+														'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
+												},
+											},
+											isDeleting.value ? 'Deleting…' : 'Delete',
+										)
 									: null,
 							]),
 						]),

@@ -11,17 +11,23 @@ import { loadMoreButton, table, td } from './common';
 // idempotency-keyed) and what moved. Used on a user's page and for workspace
 // subscribers. A subscription is NOT required: everyone has a wallet, and a
 // user with no subscription is on the free tier.
-export const SubscriberBilling = defineComponent({
-	name: 'FonderieSubscriberBilling',
+const SubscriberBillingInner = defineComponent({
+	name: 'FonderieSubscriberBillingInner',
 	props: {
 		client: { type: Object as PropType<BillingAdminClient>, required: true },
 		subscriberType: { type: String as PropType<SubscriberType>, required: true },
 		subscriberId: { type: String, required: true },
+		currency: { type: String, default: '' },
 	},
-	setup(props) {
+	emits: { 'change-currency': (_currency: string) => true },
+	setup(props, { emit }) {
 		const subscriber = computed(() => ({ type: props.subscriberType, id: props.subscriberId }));
 		const { subscription, wallet, ledger, hasMoreLedger, isLoading, error, loadMoreLedger, grant } =
-			useAdminSubscriber(props.client, subscriber, { limit: 20 });
+			useAdminSubscriber(props.client, subscriber, {
+				limit: 20,
+				...(props.currency ? { currency: props.currency } : {}),
+			});
+		const currencyDraft = ref(props.currency);
 		const amount = ref('');
 		const note = ref('');
 		const granted = ref<string | null>(null);
@@ -69,7 +75,43 @@ export const SubscriberBilling = defineComponent({
 							: null,
 					]),
 					h('div', { style: styles.card }, [
-						h('div', { style: styles.statLabel }, 'Credits'),
+						h(
+							'div',
+							{
+								style: {
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
+									gap: '8px',
+								},
+							},
+							[
+								h('div', { style: styles.statLabel }, 'Credits'),
+								h(
+									'form',
+									{
+										style: { display: 'flex', gap: '4px' },
+										onSubmit: (e: Event) => {
+											e.preventDefault();
+											emit('change-currency', currencyDraft.value.trim().toUpperCase());
+										},
+									},
+									[
+										h('input', {
+											value: currencyDraft.value,
+											onInput: (e: Event) => {
+												currencyDraft.value = (e.target as HTMLInputElement).value;
+											},
+											placeholder: w?.currency ?? 'currency',
+											maxlength: 8,
+											style: { ...styles.input, height: '26px', width: '84px', fontSize: '12px' },
+											'aria-label': 'Wallet currency',
+											title: 'Show the wallet in another currency',
+										}),
+									],
+								),
+							],
+						),
 						...(w
 							? [
 									h('div', { style: styles.statValue }, [
@@ -173,5 +215,31 @@ export const SubscriberBilling = defineComponent({
 					: null,
 			]);
 		};
+	},
+});
+
+// A wallet exists per currency. Empty ⇒ the billing default; submitting another
+// (e.g. EUR) reads that wallet instead — same as the CLI's --currency. The
+// composable reads its options once, so a currency change remounts the inner view.
+export const SubscriberBilling = defineComponent({
+	name: 'FonderieSubscriberBilling',
+	props: {
+		client: { type: Object as PropType<BillingAdminClient>, required: true },
+		subscriberType: { type: String as PropType<SubscriberType>, required: true },
+		subscriberId: { type: String, required: true },
+	},
+	setup(props) {
+		const currency = ref('');
+		return () =>
+			h(SubscriberBillingInner, {
+				key: `${props.subscriberType}:${props.subscriberId}:${currency.value}`,
+				client: props.client,
+				subscriberType: props.subscriberType,
+				subscriberId: props.subscriberId,
+				currency: currency.value,
+				'onChange-currency': (c: string) => {
+					currency.value = c;
+				},
+			});
 	},
 });
