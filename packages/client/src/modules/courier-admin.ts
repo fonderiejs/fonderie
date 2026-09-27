@@ -1,6 +1,13 @@
 import { HttpClient } from '../http';
 import { normalizeMountPath } from '../path';
-import type { IApiResponse, ITemplateEntry, ITemplateRevision } from '../types';
+import type {
+	IApiResponse,
+	IBuiltInTemplate,
+	ITemplateCatalog,
+	ITemplateEntry,
+	ITemplateResolution,
+	ITemplateRevision,
+} from '../types';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
 
@@ -83,6 +90,44 @@ export class CourierAdminClient {
 			this.rebase({
 				method: 'GET',
 				path: '/admin/templates',
+				token: this.adminToken,
+			}),
+		);
+	}
+
+	// Every email — saved or built-in only — with its languages and the app's
+	// locales. The flat listTemplates() only sees saved rows.
+	getTemplateCatalog() {
+		return this.http.request<IApiResponse<ITemplateCatalog>>(
+			this.rebase({
+				method: 'GET',
+				path: '/admin/template-catalog',
+				token: this.adminToken,
+			}),
+		);
+	}
+
+	// Fonderie's own copy in a language (omitted: the English default). 404 when
+	// none ships in that language.
+	getBuiltInTemplate(type: string, locale?: string | null) {
+		const q = locale ? `?locale=${encodeURIComponent(locale)}` : '';
+		return this.http.request<IApiResponse<IBuiltInTemplate>>(
+			this.rebase({
+				method: 'GET',
+				path: `/admin/templates/${encodeURIComponent(type)}/built-in${q}`,
+				token: this.adminToken,
+			}),
+		);
+	}
+
+	// Who receives what: decided server-side by the same function a real send
+	// runs, so the answer cannot drift from delivery.
+	resolveTemplate(type: string, locale?: string | null) {
+		const q = locale ? `?locale=${encodeURIComponent(locale)}` : '';
+		return this.http.request<IApiResponse<ITemplateResolution>>(
+			this.rebase({
+				method: 'GET',
+				path: `/admin/templates/${encodeURIComponent(type)}/resolve${q}`,
 				token: this.adminToken,
 			}),
 		);

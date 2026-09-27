@@ -5,17 +5,19 @@ import type {
 	CourierAdminClient,
 	FonderieApiError,
 	ISetTemplateInput,
-	ITemplateEntry,
 	ITemplateRevision,
 } from '@fonderie/client';
 import {
 	createAdminT,
 	formatAdminDate,
-	groupTemplatesByType,
-	missingTemplateLocales,
+	suggestTemplateLocales,
+	templateLanguages,
 } from '@fonderie/client';
 import {
+	useBuiltInTemplate,
 	useTemplate,
+	useTemplateCatalog,
+	useTemplateResolution,
 	useTemplatePreview,
 	useTemplateRevisions,
 	useTemplates,
@@ -25,6 +27,7 @@ import { computed, defineComponent, h, ref, watch } from 'vue';
 
 const PREVIEW_DEBOUNCE_MS = 500;
 import { styles } from '../styles';
+import type { ITemplateSelection } from './TemplateListScreen';
 
 // Implicit variables the layout injects — an operator never supplies these, so
 // offering them as fields would just be noise.
@@ -50,7 +53,9 @@ const tabSelected: CSSProperties = {
 	borderBottomColor: 'var(--fonderie-text,#171717)',
 	cursor: 'default',
 };
-const tabInactive: CSSProperties = { ...tab, opacity: 0.55, textDecoration: 'line-through' };
+const tabInactive: CSSProperties = { opacity: 0.55, textDecoration: 'line-through' };
+// Fonderie's built-in copy, not saved by the app — the list's dashed chip.
+const tabBuiltIn: CSSProperties = { fontStyle: 'italic' };
 const tabBar: CSSProperties = {
 	display: 'flex',
 	alignItems: 'flex-end',
@@ -90,9 +95,9 @@ export const TemplateEditorScreen = defineComponent({
 		 * Create a translation of this template. `locales` are the ones the app
 		 * uses elsewhere that this email lacks — suggest them first.
 		 */
-		'add-locale': (_type: string, _context: { locales: string[] }) => true,
+		'add-locale': (_type: string, _context: { locales: string[]; defaultLocale?: string }) => true,
 		/** Open another locale of this email. */
-		'select-locale': (_template: ITemplateEntry) => true,
+		'select-locale': (_template: ITemplateSelection) => true,
 	},
 	setup(props, { emit }) {
 		const t = (key: AdminMessageKey, params?: AdminMessageParams) =>
@@ -106,11 +111,35 @@ export const TemplateEditorScreen = defineComponent({
 		// after each write); mounting it adds a template-list fetch to this
 		// single-template editor — acceptable for an admin dashboard. Its
 		// isLoading/error track that list fetch, so the save action keeps local state.
-		const { templates, saveTemplate, removeTemplate } = useTemplates(props.client);
-		// This email's locales, for the tabs. The list is already fetched for saves.
-		const siblings = computed(
-			() => groupTemplatesByType(templates.value).find((g) => g.type === props.type)?.entries ?? [],
+		const { saveTemplate, removeTemplate } = useTemplates(props.client);
+		// No saved version in this language is not an error: it may be Fonderie's
+		// built-in copy, which opens prefilled and saves as the app's own version.
+		const notSaved = computed(() => error.value?.status === 404);
+		const { builtIn, isLoading: builtInLoading } = useBuiltInTemplate(
+			props.client,
+			props.type,
+			props.locale,
 		);
+		const { catalog, refresh: refreshCatalog } = useTemplateCatalog(props.client);
+		const defaultLocale = computed(() => catalog.value?.defaultLocale ?? 'en-US');
+		const email = computed(() => catalog.value?.emails.find((e) => e.type === props.type));
+		const languages = computed(() =>
+			email.value ? templateLanguages(email.value, defaultLocale.value) : [],
+		);
+		// What the fields start from, and what "dirty" is measured against.
+		const source = computed(() => template.value ?? (notSaved.value ? builtIn.value : null));
+		// Only the default version of a built-in email is protected; its language
+		// versions are the app's to delete (the built-in copy then sends again).
+		const protectedRow = computed(() => !props.locale && (email.value?.system ?? props.system));
+		const shipsHere = computed(() =>
+			props.locale
+				? languages.value.some((l) => l.locale === props.locale && l.builtIn)
+				: !!email.value?.builtIn.default,
+		);
+		const { resolution, resolve } = useTemplateResolution(props.client);
+		const probe = ref('');
+		// The chain this language falls back along, from the server's own decision.
+		watch(defaultLocale, (dl) => void resolve(props.type, props.locale ?? dl), { immediate: true });
 		const isDeleting = ref(false);
 		const { revisions, rollback } = useTemplateRevisions(props.client, props.type, props.locale);
 		const isSaving = ref(false);
@@ -121,12 +150,12 @@ export const TemplateEditorScreen = defineComponent({
 		const text = ref('');
 		const active = ref(true);
 
-		watch(template, (tpl) => {
-			if (!tpl) return;
-			subject.value = tpl.subject ?? '';
-			html.value = tpl.html ?? '';
-			text.value = tpl.text;
-			active.value = tpl.active;
+		watch(source, (src) => {
+			if (!src) return;
+			subject.value = src.subject ?? '';
+			html.value = src.html ?? '';
+			text.value = src.text;
+			active.value = template.value ? template.value.active : true;
 		});
 
 		const {
@@ -182,21 +211,24 @@ export const TemplateEditorScreen = defineComponent({
 		// data — debounced, so typing a paragraph costs one request, not one per key.
 		let previewTimer: ReturnType<typeof setTimeout> | undefined;
 		watch([template, subject, html, text, sampleJson], () => {
-			if (!template.value) return;
+			if (!source.value) return;
 			clearTimeout(previewTimer);
 			previewTimer = setTimeout(() => void run(), PREVIEW_DEBOUNCE_MS);
 		});
 
 		// Saving what is already stored would only mint an identical version (the
 		// server treats it as a no-op anyway), so Save waits for a real change.
+		// A built-in copy nobody saved is always saveable: saving is what makes it
+		// the app's own version.
 		const dirty = computed(() => {
 			const tpl = template.value;
 			return (
-				!!tpl &&
-				(subject.value !== (tpl.subject ?? '') ||
-					html.value !== (tpl.html ?? '') ||
-					text.value !== tpl.text ||
-					active.value !== tpl.active)
+				(notSaved.value && !!builtIn.value) ||
+				(!!tpl &&
+					(subject.value !== (tpl.subject ?? '') ||
+						html.value !== (tpl.html ?? '') ||
+						text.value !== tpl.text ||
+						active.value !== tpl.active))
 			);
 		});
 
@@ -211,8 +243,8 @@ export const TemplateEditorScreen = defineComponent({
 				if (template.value?.version !== undefined) input.ifVersion = template.value.version;
 				await saveTemplate(props.type, input, props.locale);
 				// The list composable refreshes its own list; this screen renders the
-				// single template, so re-read it too.
-				await refresh();
+				// single template and the tabs, so re-read both.
+				await Promise.all([refresh(), refreshCatalog()]);
 				emit('saved');
 			} catch (err) {
 				// useTemplates normalizes every failure to FonderieApiError before throwing.
@@ -223,7 +255,43 @@ export const TemplateEditorScreen = defineComponent({
 		}
 
 		// Leaving a locale with unsaved edits asks first: they would be lost.
-		const leave = () => !dirty.value || window.confirm(t('templates.editor.discardChanges'));
+		const leave = () =>
+			!dirty.value ||
+			(notSaved.value && !!builtIn.value) ||
+			window.confirm(t('templates.editor.discardChanges'));
+
+		// Back to what Fonderie ships. A language version is deleted, so the
+		// built-in copy sends again and later Fonderie updates reach it; the default
+		// version of a built-in email cannot be deleted, so it is saved over with the
+		// built-in copy as a new version — its history keeps the old one.
+		async function handleReset() {
+			const copy = builtIn.value;
+			if (
+				!copy ||
+				!window.confirm(
+					t('templates.editor.confirmReset', { locale: props.locale ?? defaultLocale.value }),
+				)
+			)
+				return;
+			isDeleting.value = true;
+			saveError.value = null;
+			try {
+				if (props.locale) {
+					await removeTemplate(props.type, props.locale);
+				} else {
+					const input: ISetTemplateInput = { text: copy.text, active: active.value };
+					if (copy.subject) input.subject = copy.subject;
+					if (copy.html) input.html = copy.html;
+					if (template.value?.version !== undefined) input.ifVersion = template.value.version;
+					await saveTemplate(props.type, input, null);
+				}
+				await Promise.all([refresh(), refreshCatalog()]);
+			} catch (err) {
+				saveError.value = err as FonderieApiError;
+			} finally {
+				isDeleting.value = false;
+			}
+		}
 
 		function renderTabBar() {
 			if (!props.localeTabs && !props.allowAddLocale) return null;
@@ -234,21 +302,30 @@ export const TemplateEditorScreen = defineComponent({
 						h(
 							'nav',
 							{ 'aria-label': t('templates.editor.locales'), style: tabs },
-							siblings.value.map((entry) => {
-								const selected = entry.locale === (props.locale ?? null);
+							languages.value.map((l) => {
+								const selected = l.locale === (props.locale ?? null);
 								return h(
 									'button',
 									{
-										key: entry.locale ?? '',
+										key: l.label,
 										type: 'button',
 										'aria-current': selected ? 'true' : undefined,
-										style: selected ? tabSelected : entry.active ? tab : tabInactive,
-										title: entry.active ? undefined : t('common.status.inactive'),
+										style: {
+											...(selected ? tabSelected : tab),
+											...(l.saved ? {} : tabBuiltIn),
+											...(l.active ? {} : tabInactive),
+										},
+										title: l.active ? undefined : t('common.status.inactive'),
 										onClick: () => {
-											if (!selected && leave()) emit('select-locale', entry);
+											if (!selected && leave())
+												emit('select-locale', {
+													type: props.type,
+													locale: l.locale,
+													system: !!email.value?.system,
+												});
 										},
 									},
-									entry.locale ?? t('templates.defaultChip'),
+									l.label,
 								);
 							}),
 						)
@@ -262,7 +339,10 @@ export const TemplateEditorScreen = defineComponent({
 								onClick: () => {
 									if (leave())
 										emit('add-locale', props.type, {
-											locales: missingTemplateLocales(templates.value, props.type),
+											locales: catalog.value
+												? suggestTemplateLocales(catalog.value, props.type)
+												: [],
+											defaultLocale: defaultLocale.value,
 										});
 								},
 							},
@@ -304,17 +384,24 @@ export const TemplateEditorScreen = defineComponent({
 		}
 
 		return () => {
-			if (isLoading.value) return h('p', { style: styles.status }, t('templates.editor.loading'));
-			if (error.value)
+			if (isLoading.value || (notSaved.value && builtInLoading.value))
+				return h('p', { style: styles.status }, t('templates.editor.loading'));
+			if (error.value && !(notSaved.value && builtIn.value))
 				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
 
 			return h('div', { style: styles.container }, [
 				h('h1', { style: styles.title }, props.type),
 				renderTabBar(),
 				h('p', { style: styles.meta }, [
-					h('strong', props.locale ?? t('templates.defaultLocale')),
-					` · v${template.value?.version ?? 1}`,
-					props.system ? ` · ${t('templates.editor.builtInNote')}` : '',
+					h('strong', props.locale ?? defaultLocale.value),
+					template.value ? ` · v${template.value.version}` : '',
+					template.value && protectedRow.value ? ` · ${t('templates.editor.builtInNote')}` : '',
+					!template.value && builtIn.value ? ` · ${t('templates.editor.builtInCopy')}` : '',
+					resolution.value &&
+					resolution.value.chain.length > 1 &&
+					resolution.value.requested === (props.locale ?? defaultLocale.value)
+						? ` · ${t('templates.editor.chain', { chain: [...resolution.value.chain, defaultLocale.value].join(' → ') })}`
+						: '',
 				]),
 				h('div', { style: styles.split }, [
 					h('div', { style: styles.column }, [
@@ -391,25 +478,36 @@ export const TemplateEditorScreen = defineComponent({
 								!dirty.value && !isSaving.value
 									? h('span', { style: styles.meta }, t('templates.editor.noChanges'))
 									: null,
-								!props.system
+								template.value && shipsHere.value && builtIn.value
 									? h(
 											'button',
 											{
 												type: 'button',
 												disabled: isDeleting.value,
-												onClick: () => void handleDelete(),
-												style: {
-													...styles.rollbackButton,
-													height: '36px',
-													marginLeft: 'auto',
-													color: 'var(--fonderie-danger,#e00)',
-													borderColor:
-														'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
-												},
+												onClick: () => void handleReset(),
+												style: { ...styles.rollbackButton, height: '36px', marginLeft: 'auto' },
 											},
-											isDeleting.value ? t('common.deleting') : t('common.delete'),
+											t('templates.editor.resetToBuiltIn'),
 										)
-									: null,
+									: template.value && !protectedRow.value
+										? h(
+												'button',
+												{
+													type: 'button',
+													disabled: isDeleting.value,
+													onClick: () => void handleDelete(),
+													style: {
+														...styles.rollbackButton,
+														height: '36px',
+														marginLeft: 'auto',
+														color: 'var(--fonderie-danger,#e00)',
+														borderColor:
+															'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
+													},
+												},
+												isDeleting.value ? t('common.deleting') : t('common.delete'),
+											)
+										: null,
 							]),
 						]),
 						h(
@@ -460,6 +558,52 @@ export const TemplateEditorScreen = defineComponent({
 								? h('pre', { style: styles.previewText }, preview.value.text)
 								: h('p', { style: styles.meta }, t('templates.editor.nothingRendered')),
 					]),
+				]),
+				// Who receives what: any locale, answered by the same decision a send makes.
+				h('div', { style: styles.revisions }, [
+					h('h2', { style: styles.subtitle }, t('templates.editor.whoReceives')),
+					h(
+						'form',
+						{
+							style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' },
+							onSubmit: (event: Event) => {
+								event.preventDefault();
+								if (probe.value.trim()) void resolve(props.type, probe.value.trim());
+							},
+						},
+						[
+							h('input', {
+								'aria-label': t('templates.editor.whoReceives'),
+								style: { ...styles.input, width: '200px' },
+								value: probe.value,
+								placeholder: t('templates.editor.whoPlaceholder'),
+								spellcheck: false,
+								onInput: (e: Event) => {
+									probe.value = (e.target as HTMLInputElement).value;
+								},
+							}),
+							h(
+								'button',
+								{ type: 'submit', style: { ...styles.rollbackButton, height: '36px' } },
+								t('templates.editor.check'),
+							),
+							resolution.value && probe.value.trim()
+								? h('span', { style: { ...styles.meta, marginBottom: '0' }, role: 'status' }, [
+										t('templates.editor.receives', {
+											requested: resolution.value.requested,
+											sent: resolution.value.sent,
+										}),
+										' ',
+										resolution.value.source === 'saved'
+											? t('templates.editor.sourceSaved')
+											: t('templates.editor.sourceBuiltIn'),
+										resolution.value.chain.length > 0
+											? ` (${[...resolution.value.chain, resolution.value.defaultLocale].join(' → ')})`
+											: '',
+									])
+								: null,
+						],
+					),
 				]),
 				revisions.value.length > 0
 					? h('div', { style: styles.revisions }, [

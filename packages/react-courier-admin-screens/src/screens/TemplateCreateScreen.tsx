@@ -19,6 +19,8 @@ export interface ITemplateCreateScreenProps {
 	type?: string;
 	/** Locales already in use, offered as suggestions. */
 	locales?: string[];
+	/** The system locale: the default version already is it, so adding it is refused. */
+	defaultLocale?: string;
 	/** Called with what was created, so the caller can open it in the editor. */
 	onCreated?: (created: { type: string; locale: string | null }) => void;
 	/** The console's language. Default English. */
@@ -37,6 +39,7 @@ export function TemplateCreateScreen({
 	client,
 	type,
 	locales = [],
+	defaultLocale,
 	onCreated,
 	locale,
 }: ITemplateCreateScreenProps) {
@@ -63,6 +66,9 @@ export function TemplateCreateScreen({
 		if (!type) return;
 		client
 			.getTemplate(type, null)
+			// A built-in email nobody saved has no stored default: start from
+			// Fonderie's English instead of an empty form.
+			.catch(() => client.getBuiltInTemplate(type, null))
 			.then(({ result }) => {
 				setSubject(result.subject ?? '');
 				setHtml(result.html ?? '');
@@ -117,6 +123,9 @@ export function TemplateCreateScreen({
 		if (!TYPE_RE.test(t)) return setError(tr('templates.create.errorType'));
 		if (addingLocale && !l) return setError(tr('templates.create.errorLocaleRequired'));
 		if (l && !LOCALE_RE.test(l)) return setError(tr('templates.create.errorLocale'));
+		if (l && defaultLocale && l.toLowerCase() === defaultLocale.toLowerCase()) {
+			return setError(tr('templates.create.errorDefaultLocale', { locale: defaultLocale }));
+		}
 		if (!text.trim()) return setError(tr('templates.create.errorText'));
 		setBusy(true);
 		try {

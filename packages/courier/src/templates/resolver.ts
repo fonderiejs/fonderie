@@ -222,23 +222,10 @@ export class DBTemplateResolver implements ITemplateResolver {
 		data: Record<string, unknown>,
 		locale?: string,
 	): Promise<IRenderedTemplate> {
-		const chain = localeChain(locale, this.locales);
-		const row = await pickRow(this.store, type, chain);
-		const system = this.locales.default;
-		const def = this.defaults?.get(type);
-
-		if (row?.locale) return this.renderWith(row, data, row.locale);
-		if (def) {
-			for (const tag of chain) {
-				const shipped = this.defaults?.getLocalized(type, tag);
-				if (shipped) return this.renderWith(shipped.copy, data, shipped.locale);
-			}
-		}
-		if (row) return this.renderWith(row, data, system);
-		// No app row → the module default (rendered identically), then the JSON
-		// dump — only reached for a type neither the app nor any module provides.
-		if (def) return this.renderWith(def, data, system);
-		return { text: `${type}: ${JSON.stringify(data)}` };
+		const choice = await chooseCopy(this.store, this.defaults, this.locales, type, locale);
+		// Neither the app nor any module provides this type: the JSON dump.
+		if (!choice) return { text: `${type}: ${JSON.stringify(data)}` };
+		return this.renderWith(choice.copy, data, choice.sent);
 	}
 
 	private async renderWith(
@@ -251,6 +238,41 @@ export class DBTemplateResolver implements ITemplateResolver {
 			: undefined;
 		return renderFragment(frag, layoutHtml, data, sent);
 	}
+}
+
+/** Which copy a send in `locale` uses, and why — shared by sends and the console. */
+export interface ICopyChoice {
+	copy: { subject?: string | null; text: string; html?: string | null };
+	/** The version used: a saved row's tag, a built-in's language, or the system locale. */
+	sent: string;
+	source: 'saved' | 'built-in';
+	/** The locales tried before the system locale, in order. */
+	chain: string[];
+}
+
+/**
+ * The one decision both a real send and the console's "who receives what" make,
+ * so the two can never disagree. First match wins: saved along the chain,
+ * built-in by language along the chain, saved default, built-in English.
+ */
+export async function chooseCopy(
+	store: IStoreAdapter,
+	defaults: DefaultTemplates | undefined,
+	settings: ILocaleSettings,
+	type: string,
+	locale?: string,
+): Promise<ICopyChoice | undefined> {
+	const chain = localeChain(locale, settings);
+	const row = await pickRow(store, type, chain);
+	if (row?.locale) return { copy: row, sent: row.locale, source: 'saved', chain };
+	for (const tag of chain) {
+		const shipped = defaults?.getLocalized(type, tag);
+		if (shipped) return { copy: shipped.copy, sent: shipped.locale, source: 'built-in', chain };
+	}
+	if (row) return { copy: row, sent: settings.default, source: 'saved', chain };
+	const def = defaults?.get(type);
+	if (def) return { copy: def, sent: settings.default, source: 'built-in', chain };
+	return undefined;
 }
 
 interface IStoredCopy {

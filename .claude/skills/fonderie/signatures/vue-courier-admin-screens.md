@@ -5,7 +5,13 @@
 ## @fonderie/vue-courier-admin-screens
 
 ```ts
-component TemplateCreateScreen(props: { client, type, locales, locale }) — emits: created
+interface ITemplateSelection {
+    type: string;
+    locale: string | null;
+    system: boolean;
+}
+
+component TemplateCreateScreen(props: { client, type, locales, defaultLocale, locale }) — emits: created
 
 component TemplateEditorScreen(props: { client, type, locale, system, allowAddLocale, localeTabs, uiLocale }) — emits: saved, deleted, add-locale, select-locale
 

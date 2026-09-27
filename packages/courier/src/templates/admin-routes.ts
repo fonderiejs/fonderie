@@ -13,7 +13,7 @@ import {
 	SEEDED_TEMPLATE_TYPES,
 	deleteTemplate,
 } from './admin';
-import { getLayoutHtml, renderFragment, templateVariables } from './resolver';
+import { DefaultTemplates, chooseCopy, getLayoutHtml, renderFragment, templateVariables } from './resolver';
 
 // Bearer-token guard (mirrors @fonderie/config's admin surface). Only registered
 // when a token is configured — no token, no exposed template admin routes.
@@ -55,6 +55,8 @@ export interface ITemplateAdminOptions {
 	systemTypes?: Iterable<string>;
 	/** The app's locales, read per request (they are set at install). */
 	locales?: () => ILocaleSettings;
+	/** The module-shipped copy, in every language it ships in. */
+	defaults?: DefaultTemplates;
 }
 
 /** A built-in email's default-locale row. Locale variants and app types are the operator's. */
@@ -93,7 +95,42 @@ function templateAdminRouteTable(store: IStoreAdapter, opts: ITemplateAdminOptio
 	const brandName = opts.brandName;
 	const systemTypes = new Set(opts.systemTypes ?? []);
 	const locales = opts.locales ?? (() => defineLocales());
+	const defaults = opts.defaults ?? new DefaultTemplates();
 	return [
+		// Everything an operator needs to see which emails exist and in which
+		// languages — saved AND built-in — in one read. The flat /templates list
+		// only has saved rows, so a built-in email nobody edited (every billing
+		// email, until someone does) was invisible. Its own path, not
+		// /templates/catalog, so it can never shadow a template named "catalog".
+		['GET', '/admin/template-catalog', async () => {
+			const settings = locales();
+			const rows = await listTemplateEntries(store);
+			const types = [...new Set([...rows.map((r) => r.type), ...defaults.types()])]
+				.filter((t) => t !== '_layout')
+				.sort();
+			const emails = types.map((type) => ({
+				type,
+				system: isSystemTemplate(type, null, systemTypes),
+				builtIn: {
+					// The English copy is the default version's built-in fallback.
+					default: defaults.get(type) !== undefined,
+					languages: defaults.languages(type).sort(),
+				},
+				versions: rows
+					.filter((r) => r.type === type)
+					.map((r) => ({
+						locale: r.locale,
+						active: r.active,
+						version: r.version,
+						updatedAt: r.updatedAt,
+					})),
+			}));
+			return setApiResponse(HTTP.OK, 'TEMPLATE_CATALOG', 'Template catalog', {
+				defaultLocale: settings.default,
+				fallbacks: settings.fallbacks,
+				emails,
+			});
+		}],
 		['GET', '/admin/templates', async () => {
 			const rows = await listTemplateEntries(store);
 			// `system` tells a console which rows it must not offer to delete.
@@ -159,6 +196,46 @@ function templateAdminRouteTable(store: IStoreAdapter, opts: ITemplateAdminOptio
 			}
 			const ok = await deleteTemplate(typeOf(ctx), localeOf(ctx), store);
 			return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such template');
+		}],
+		// Fonderie's own copy of an email in one language (none = the English
+		// default), so an editor can open a language nobody has saved yet and a
+		// saved version can be compared with — or reset to — what ships.
+		['GET', '/admin/templates/:type/built-in', async (ctx) => {
+			const settings = locales();
+			const tag = canonicalLocale(localeOf(ctx));
+			const type = typeOf(ctx);
+			const shipped =
+				tag && tag !== settings.default
+					? defaults.getLocalized(type, tag)
+					: (() => {
+							const def = defaults.get(type);
+							return def ? { copy: def, locale: settings.default } : undefined;
+						})();
+			if (!shipped) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No built-in copy in that language');
+			const { subject, html, text } = shipped.copy;
+			return setApiResponse(HTTP.OK, 'BUILT_IN_TEMPLATE', 'Built-in copy', {
+				type,
+				locale: shipped.locale,
+				subject: subject ?? null,
+				html: html ?? null,
+				text,
+			});
+		}],
+		// Who receives what: the version a send in `locale` would use, decided by
+		// the same function a real send runs — so the console cannot disagree
+		// with delivery.
+		['GET', '/admin/templates/:type/resolve', async (ctx) => {
+			const settings = locales();
+			const requested = localeOf(ctx);
+			const choice = await chooseCopy(store, defaults, settings, typeOf(ctx), requested ?? undefined);
+			if (!choice) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Nothing would be sent for this email');
+			return setApiResponse(HTTP.OK, 'TEMPLATE_RESOLUTION', 'Resolution', {
+				requested: canonicalLocale(requested) ?? settings.default,
+				chain: choice.chain,
+				defaultLocale: settings.default,
+				sent: choice.sent,
+				source: choice.source,
+			});
 		}],
 		['GET', '/admin/templates/:type/revisions', async (ctx) => {
 			return setApiResponse(HTTP.OK, 'REVISIONS', 'Template revisions', await listTemplateRevisions(typeOf(ctx), localeOf(ctx), store));

@@ -127,7 +127,7 @@ const NARROW = '(max-width: 820px)';
 type Editing =
 	| { kind: 'config' | 'secret'; key: string; environment?: string; environments?: string[] }
 	| { kind: 'template'; type: string; locale: string | null; system: boolean }
-	| { kind: 'template-new'; type?: string; locales?: string[] }
+	| { kind: 'template-new'; type?: string; locales?: string[]; defaultLocale?: string }
 	| null;
 
 export const AdminShell = defineComponent({
@@ -315,6 +315,7 @@ export const AdminShell = defineComponent({
 								...loc,
 								...(e.type ? { type: e.type } : {}),
 								...(e.locales ? { locales: e.locales } : {}),
+								...(e.defaultLocale ? { defaultLocale: e.defaultLocale } : {}),
 								onCreated: (c: { type: string; locale: string | null }) =>
 									(editing.value = {
 										kind: 'template',
@@ -338,8 +339,13 @@ export const AdminShell = defineComponent({
 								localeTabs: true,
 								onSaved: () => (editing.value = null),
 								onDeleted: () => (editing.value = null),
-								'onAdd-locale': (type: string, c: { locales: string[] }) =>
-									(editing.value = { kind: 'template-new', type, locales: c.locales }),
+								'onAdd-locale': (type: string, c: { locales: string[]; defaultLocale?: string }) =>
+									(editing.value = {
+										kind: 'template-new',
+										type,
+										locales: c.locales,
+										...(c.defaultLocale ? { defaultLocale: c.defaultLocale } : {}),
+									}),
 								'onSelect-locale': (tpl: {
 									type: string;
 									locale: string | null;
@@ -357,12 +363,12 @@ export const AdminShell = defineComponent({
 						client: kc,
 						...loc,
 						allowCreate: true,
-						'onSelect-template': (t: { type: string; locale: string | null; system?: boolean }) =>
+						'onSelect-template': (t: { type: string; locale: string | null; system: boolean }) =>
 							(editing.value = {
 								kind: 'template',
 								type: t.type,
-								locale: t.locale ?? null,
-								system: t.system === true,
+								locale: t.locale,
+								system: t.system,
 							}),
 						'onCreate-template': (c: { locales: string[] }) =>
 							(editing.value = { kind: 'template-new', locales: c.locales }),

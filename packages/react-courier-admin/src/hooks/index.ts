@@ -1,3 +1,9 @@
+export type { IUseBuiltInTemplateReturn } from './useBuiltInTemplate';
+export { useBuiltInTemplate } from './useBuiltInTemplate';
+export type { IUseTemplateCatalogReturn } from './useTemplateCatalog';
+export { useTemplateCatalog } from './useTemplateCatalog';
+export type { IUseTemplateResolutionReturn } from './useTemplateResolution';
+export { useTemplateResolution } from './useTemplateResolution';
 export type { IUseTemplateReturn } from './useTemplate';
 export { useTemplate } from './useTemplate';
 export type { IUseTemplateRevisionsReturn } from './useTemplateRevisions';
