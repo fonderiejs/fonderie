@@ -3,20 +3,23 @@ import {
 	type CourierAdminClient,
 	type FonderieApiError,
 	type ISetTemplateInput,
-	type ITemplateEntry,
 	createAdminT,
 	formatAdminDate,
-	groupTemplatesByType,
-	missingTemplateLocales,
+	suggestTemplateLocales,
+	templateLanguages,
 } from '@fonderie/client';
 import {
+	useBuiltInTemplate,
 	useTemplate,
+	useTemplateCatalog,
 	useTemplatePreview,
+	useTemplateResolution,
 	useTemplateRevisions,
 	useTemplates,
 } from '@fonderie/react-courier-admin';
 import type { CSSProperties, FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ITemplateSelection } from './TemplateListScreen';
 
 // Implicit variables the layout injects — an operator never supplies these, so
 // offering them as fields would just be noise.
@@ -40,12 +43,12 @@ export interface ITemplateEditorScreenProps {
 	 * Shows "Add locale": create a translation of this template. `locales` are
 	 * the ones the app uses elsewhere that this email lacks — suggest them first.
 	 */
-	onAddLocale?: (type: string, context: { locales: string[] }) => void;
+	onAddLocale?: (type: string, context: { locales: string[]; defaultLocale?: string }) => void;
 	/**
 	 * Shows a tab per locale this email exists in; receives the row to open.
 	 * Unsaved edits are confirmed before switching away.
 	 */
-	onSelectLocale?: (template: ITemplateEntry) => void;
+	onSelectLocale?: (template: ITemplateSelection) => void;
 	/**
 	 * The CONSOLE's language (default English). Named `uiLocale` because
 	 * `locale` here is the template's own locale.
@@ -68,13 +71,23 @@ export function TemplateEditorScreen({
 	// restart the preview debounce on every render.
 	const t = useMemo(() => createAdminT(uiLocale), [uiLocale]);
 	const { template, isLoading, error, refresh } = useTemplate(client, type, locale);
+	// No saved version in this language is not an error: it may be Fonderie's
+	// built-in copy, which opens prefilled and saves as the app's own version.
+	const notSaved = error?.status === 404;
+	const { builtIn, isLoading: builtInLoading } = useBuiltInTemplate(client, type, locale);
+	const { catalog, refresh: refreshCatalog } = useTemplateCatalog(client);
+	const defaultLocale = catalog?.defaultLocale ?? 'en-US';
+	const email = catalog?.emails.find((e) => e.type === type);
+	const languages = email ? templateLanguages(email, defaultLocale) : [];
+	// What the fields start from, and what "dirty" is measured against.
+	const source = template ?? (notSaved ? builtIn : null);
+	const { resolution, resolve } = useTemplateResolution(client);
+	const [probe, setProbe] = useState('');
 	// Saves go through the list hook (which re-fetches the template list after
 	// each write); mounting it adds a template-list fetch to this single-template
 	// editor — acceptable for an admin dashboard. Its isLoading/error track that
 	// list fetch, so the save action keeps local state.
-	const { templates, saveTemplate, removeTemplate } = useTemplates(client);
-	// This email's locales, for the tabs. The list is already fetched for saves.
-	const siblings = groupTemplatesByType(templates).find((g) => g.type === type)?.entries ?? [];
+	const { saveTemplate, removeTemplate } = useTemplates(client);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const { revisions, rollback } = useTemplateRevisions(client, type, locale);
 	const [isSaving, setIsSaving] = useState(false);
@@ -92,12 +105,17 @@ export function TemplateEditorScreen({
 	const [sampleError, setSampleError] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (!template) return;
-		setSubject(template.subject ?? '');
-		setHtml(template.html ?? '');
-		setText(template.text);
-		setActive(template.active);
-	}, [template]);
+		if (!source) return;
+		setSubject(source.subject ?? '');
+		setHtml(source.html ?? '');
+		setText(source.text);
+		setActive(template ? template.active : true);
+	}, [source, template]);
+
+	// The chain this language falls back along, from the server's own decision.
+	useEffect(() => {
+		void resolve(type, locale ?? defaultLocale);
+	}, [resolve, type, locale, defaultLocale]);
 
 	const run = useCallback(async () => {
 		let data: Record<string, unknown> = {};
@@ -135,7 +153,7 @@ export function TemplateEditorScreen({
 	// the effect keys on the fields themselves and calls the latest `run`.
 	const runRef = useRef(run);
 	runRef.current = run;
-	const loadedType = template ? `${type}:${locale ?? ''}` : null;
+	const loadedType = source ? `${type}:${locale ?? ''}` : null;
 	// The fields ARE the trigger: each edit restarts the debounce. The effect
 	// body reads the latest `run` through the ref, so it does not use them.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
@@ -147,12 +165,22 @@ export function TemplateEditorScreen({
 
 	// Saving what is already stored would only mint an identical version (the
 	// server treats it as a no-op anyway), so Save waits for a real change.
+	// A built-in copy nobody saved is always saveable: saving is what makes it
+	// the app's own version.
 	const dirty =
-		!!template &&
-		(subject !== (template.subject ?? '') ||
-			html !== (template.html ?? '') ||
-			text !== template.text ||
-			active !== template.active);
+		(notSaved && !!builtIn) ||
+		(!!template &&
+			(subject !== (template.subject ?? '') ||
+				html !== (template.html ?? '') ||
+				text !== template.text ||
+				active !== template.active));
+	// Only the default version of a built-in email is protected; its language
+	// versions are the app's to delete (the built-in copy then sends again).
+	const protectedRow = !locale && (email?.system ?? system);
+	// Fonderie ships this language (or, for the default version, the English).
+	const shipsHere = locale
+		? languages.some((l) => l.locale === locale && l.builtIn)
+		: !!email?.builtIn.default;
 
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
@@ -165,8 +193,8 @@ export function TemplateEditorScreen({
 			if (template?.version !== undefined) input.ifVersion = template.version;
 			await saveTemplate(type, input, locale);
 			// The list hook refreshes its own list; this screen renders the single
-			// template, so re-read it too.
-			await refresh();
+			// template and the tabs, so re-read both.
+			await Promise.all([refresh(), refreshCatalog()]);
 			onSaved?.();
 		} catch (err) {
 			// useTemplates normalizes every failure to FonderieApiError before throwing.
@@ -176,9 +204,40 @@ export function TemplateEditorScreen({
 		}
 	};
 
-	const switchTo = (entry: ITemplateEntry) => {
-		if (dirty && !window.confirm(t('templates.editor.discardChanges'))) return;
-		onSelectLocale?.(entry);
+	const switchTo = (next: ITemplateSelection) => {
+		if (dirty && !(notSaved && !!builtIn) && !window.confirm(t('templates.editor.discardChanges')))
+			return;
+		onSelectLocale?.(next);
+	};
+
+	// Back to what Fonderie ships. A language version is deleted, so the built-in
+	// copy sends again and later Fonderie updates reach it; the default version
+	// of a built-in email cannot be deleted, so it is saved over with the
+	// built-in copy as a new version — its history keeps the old one.
+	const handleReset = async () => {
+		if (
+			!builtIn ||
+			!window.confirm(t('templates.editor.confirmReset', { locale: locale ?? defaultLocale }))
+		)
+			return;
+		setIsDeleting(true);
+		setSaveError(null);
+		try {
+			if (locale) {
+				await removeTemplate(type, locale);
+			} else {
+				const input: ISetTemplateInput = { text: builtIn.text, active };
+				if (builtIn.subject) input.subject = builtIn.subject;
+				if (builtIn.html) input.html = builtIn.html;
+				if (template?.version !== undefined) input.ifVersion = template.version;
+				await saveTemplate(type, input, null);
+			}
+			await Promise.all([refresh(), refreshCatalog()]);
+		} catch (err) {
+			setSaveError(err as FonderieApiError);
+		} finally {
+			setIsDeleting(false);
+		}
 	};
 
 	const handleDelete = async () => {
@@ -198,8 +257,9 @@ export function TemplateEditorScreen({
 		}
 	};
 
-	if (isLoading) return <p style={styles.status}>{t('templates.editor.loading')}</p>;
-	if (error)
+	if (isLoading || (notSaved && builtInLoading))
+		return <p style={styles.status}>{t('templates.editor.loading')}</p>;
+	if (error && !(notSaved && builtIn))
 		return (
 			<p style={styles.error} role="alert">
 				{error.explanation}
@@ -215,18 +275,26 @@ export function TemplateEditorScreen({
 						// Each tab opens another stored row, so this is navigation, not an
 						// ARIA tablist: plain buttons, the open one marked aria-current.
 						<nav aria-label={t('templates.editor.locales')} style={styles.tabs}>
-							{siblings.map((entry) => {
-								const selected = entry.locale === (locale ?? null);
+							{languages.map((l) => {
+								const selected = l.locale === (locale ?? null);
 								return (
 									<button
-										key={entry.locale ?? ''}
+										key={l.label}
 										type="button"
 										aria-current={selected ? 'true' : undefined}
-										onClick={() => (selected ? undefined : switchTo(entry))}
-										style={selected ? styles.tabSelected : entry.active ? styles.tab : styles.tabInactive}
-										title={entry.active ? undefined : t('common.status.inactive')}
+										onClick={() =>
+											selected
+												? undefined
+												: switchTo({ type, locale: l.locale, system: !!email?.system })
+										}
+										style={{
+											...(selected ? styles.tabSelected : styles.tab),
+											...(l.saved ? {} : styles.tabBuiltIn),
+											...(l.active ? {} : styles.tabInactive),
+										}}
+										title={l.active ? undefined : t('common.status.inactive')}
 									>
-										{entry.locale ?? t('templates.defaultChip')}
+										{l.label}
 									</button>
 								);
 							})}
@@ -238,7 +306,10 @@ export function TemplateEditorScreen({
 							style={{ ...styles.rollbackButton, marginLeft: 'auto' }}
 							onClick={() => {
 								if (dirty && !window.confirm(t('templates.editor.discardChanges'))) return;
-								onAddLocale(type, { locales: missingTemplateLocales(templates, type) });
+								onAddLocale(type, {
+									locales: catalog ? suggestTemplateLocales(catalog, type) : [],
+									defaultLocale,
+								});
 							}}
 						>
 							{t('templates.editor.addLocale')}
@@ -247,8 +318,15 @@ export function TemplateEditorScreen({
 				</div>
 			) : null}
 			<p style={styles.meta}>
-				<strong>{locale ?? t('templates.defaultLocale')}</strong> · v{template?.version ?? 1}
-				{system ? ` · ${t('templates.editor.builtInNote')}` : ''}
+				<strong>{locale ?? defaultLocale}</strong>
+				{template ? ` · v${template.version}` : ''}
+				{template && protectedRow ? ` · ${t('templates.editor.builtInNote')}` : ''}
+				{!template && builtIn ? ` · ${t('templates.editor.builtInCopy')}` : ''}
+				{resolution &&
+				resolution.chain.length > 1 &&
+				resolution.requested === (locale ?? defaultLocale)
+					? ` · ${t('templates.editor.chain', { chain: [...resolution.chain, defaultLocale].join(' → ') })}`
+					: ''}
 			</p>
 
 			<div style={styles.split}>
@@ -327,7 +405,16 @@ export function TemplateEditorScreen({
 							{!dirty && !isSaving && (
 								<span style={styles.meta}>{t('templates.editor.noChanges')}</span>
 							)}
-							{!system ? (
+							{template && shipsHere && builtIn ? (
+								<button
+									type="button"
+									disabled={isDeleting}
+									onClick={() => void handleReset()}
+									style={{ ...styles.rollbackButton, height: 36, marginLeft: 'auto' }}
+								>
+									{t('templates.editor.resetToBuiltIn')}
+								</button>
+							) : template && !protectedRow ? (
 								<button
 									type="button"
 									disabled={isDeleting}
@@ -395,6 +482,44 @@ export function TemplateEditorScreen({
 				</div>
 			</div>
 
+			{/* Who receives what: any locale, answered by the same decision a send makes. */}
+			<div style={styles.revisions}>
+				<h2 style={styles.subtitle}>{t('templates.editor.whoReceives')}</h2>
+				<form
+					style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}
+					onSubmit={(event) => {
+						event.preventDefault();
+						if (probe.trim()) void resolve(type, probe.trim());
+					}}
+				>
+					<input
+						aria-label={t('templates.editor.whoReceives')}
+						style={{ ...styles.input, width: 200 }}
+						value={probe}
+						placeholder={t('templates.editor.whoPlaceholder')}
+						spellCheck={false}
+						onChange={(event) => setProbe(event.target.value)}
+					/>
+					<button type="submit" style={{ ...styles.rollbackButton, height: 36 }}>
+						{t('templates.editor.check')}
+					</button>
+					{resolution && probe.trim() ? (
+						<span style={{ ...styles.meta, marginBottom: 0 }} role="status">
+							{t('templates.editor.receives', {
+								requested: resolution.requested,
+								sent: resolution.sent,
+							})}{' '}
+							{resolution.source === 'saved'
+								? t('templates.editor.sourceSaved')
+								: t('templates.editor.sourceBuiltIn')}{' '}
+							{resolution.chain.length > 0
+								? `(${[...resolution.chain, resolution.defaultLocale].join(' → ')})`
+								: ''}
+						</span>
+					) : null}
+				</form>
+			</div>
+
 			{revisions.length > 0 && (
 				<div style={styles.revisions}>
 					<h2 style={styles.subtitle}>{t('templates.editor.history')}</h2>
@@ -454,7 +579,9 @@ const styles: Record<string, CSSProperties> = {
 		borderBottomColor: 'var(--fonderie-text,#171717)',
 		cursor: 'default',
 	},
-	tabInactive: { ...tab, opacity: 0.55, textDecoration: 'line-through' },
+	tabInactive: { opacity: 0.55, textDecoration: 'line-through' },
+	// Fonderie's built-in copy, not saved by the app — the list's dashed chip.
+	tabBuiltIn: { fontStyle: 'italic' },
 	// Two columns, always: the editor on the left, the rendered result on the
 	// right. Stacking the preview under a long form hid it below the fold.
 	split: {

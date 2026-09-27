@@ -91,6 +91,7 @@ interface ITemplateAdminOptions {
     brandName?: string;
     systemTypes?: Iterable<string>;
     locales?: () => ILocaleSettings;
+    defaults?: DefaultTemplates;
 }
 
 interface ITemplateEntry {

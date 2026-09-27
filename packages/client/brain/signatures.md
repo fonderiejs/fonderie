@@ -418,6 +418,9 @@ interface ISetTemplateInput {
 
 new CourierAdminClient(opts: ICourierAdminClientOptions): CourierAdminClient
   .listTemplates(): Promise<IApiResponse<ITemplateEntry[]>>
+  .getTemplateCatalog(): Promise<IApiResponse<ITemplateCatalog>>
+  .getBuiltInTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<IBuiltInTemplate>>
+  .resolveTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateResolution>>
   .getTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
   .setTemplate(type: string, input: ISetTemplateInput, locale?: string | null | undefined): Promise<IApiResponse<ITemplateEntry>>
   .deleteTemplate(type: string, locale?: string | null | undefined): Promise<IApiResponse<undefined>>
@@ -432,9 +435,21 @@ interface ITemplateGroup {
     system: boolean;
 }
 
+interface ITemplateLanguage {
+    locale: string | null;
+    label: string;
+    saved: boolean;
+    builtIn: boolean;
+    active: boolean;
+}
+
 function groupTemplatesByType(rows: readonly ITemplateEntry[]): ITemplateGroup[]
 
 function missingTemplateLocales(rows: readonly ITemplateEntry[], type: string): string[]
+
+function suggestTemplateLocales(catalog: ITemplateCatalog, type: string): string[]
+
+function templateLanguages(email: ITemplateCatalogEntry, defaultLocale: string): ITemplateLanguage[]
 
 interface IAddAddressInput {
     countryIso: string;
@@ -1464,6 +1479,43 @@ interface ISubscriptionDTO {
 
 interface ISubscriptionResult {
     subscription: ISubscriptionDTO;
+}
+
+interface IBuiltInTemplate {
+    type: string;
+    locale: string;
+    subject: string | null;
+    html: string | null;
+    text: string;
+}
+
+interface ITemplateCatalog {
+    defaultLocale: string;
+    fallbacks: Record<string, string[]>;
+    emails: ITemplateCatalogEntry[];
+}
+
+interface ITemplateCatalogEntry {
+    type: string;
+    system: boolean;
+    builtIn: {
+        default: boolean;
+        languages: string[];
+    };
+    versions: Array<{
+        locale: string | null;
+        active: boolean;
+        version: number;
+        updatedAt: string;
+    }>;
+}
+
+interface ITemplateResolution {
+    requested: string;
+    chain: string[];
+    defaultLocale: string;
+    sent: string;
+    source: 'saved' | 'built-in';
 }
 
 interface ITemplateEntry {

@@ -13,6 +13,8 @@ const templates: typeof en = {
 		hint: 'Cada correo que envía la aplicación. Abre uno para editar su contenido y ver la vista previa en directo.',
 		loading: 'Cargando plantillas…',
 		openLocale: 'Abrir la versión {locale} de {type}',
+		legend: 'Sólido: una versión que guardaste. Discontinuo: la versión integrada de Fonderie, sin editar. Tachado: desactivada.',
+		languages: 'Idiomas',
 	},
 	editor: {
 		loading: 'Cargando plantilla…',
@@ -38,6 +40,16 @@ const templates: typeof en = {
 		confirmDelete: '¿Eliminar "{type}"?',
 		confirmDeleteLocale:
 			'¿Eliminar la versión {locale} de "{type}"? Las personas de ese idioma recibirán la versión predeterminada.',
+		builtInCopy: 'Versión integrada de Fonderie. Al guardarla se crea tu propia versión.',
+		resetToBuiltIn: 'Restablecer la versión integrada',
+		confirmReset: '¿Reemplazar tu versión {locale} por la versión integrada de Fonderie?',
+		chain: 'Respaldo: {chain}',
+		whoReceives: 'Quién recibe qué',
+		whoPlaceholder: 'Un idioma, p. ej. fr-BE',
+		check: 'Comprobar',
+		receives: 'Un usuario {requested} recibe la versión {sent}.',
+		sourceSaved: 'Es tu versión guardada.',
+		sourceBuiltIn: 'Es la versión integrada de Fonderie.',
 	},
 	create: {
 		titleNew: 'Nueva plantilla',
@@ -59,6 +71,7 @@ const templates: typeof en = {
 		exists: '"{type}" ya existe — ábrela desde la lista para editarla.',
 		existsLocale: '"{type}" ({locale}) ya existe — ábrela desde la lista para editarla.',
 		untranslated: 'Todavía en la versión predeterminada: {fields}. Tradúcelos antes de añadir este idioma.',
+		errorDefaultLocale: '{locale} es la versión predeterminada de este correo. Edita la predeterminada en su lugar.',
 	},
 };
 export default templates;
