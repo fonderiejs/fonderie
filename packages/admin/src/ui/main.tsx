@@ -576,20 +576,73 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 const errText = (err: unknown): string =>
 	err instanceof FonderieApiError ? err.explanation : 'Something went wrong. Try again.';
 
+type Steps = { labels: readonly string[]; at: number };
+
+// First-time setup is an onboarding flow, not a login: a progress bar across
+// the screens it spans (claim: token → account → authenticator → backup
+// codes; invite and recovery: the last three).
+function StepBar({ labels, at }: Steps) {
+	return (
+		<ol
+			aria-label={`Step ${at + 1} of ${labels.length}`}
+			style={{ display: 'flex', gap: 6, listStyle: 'none', padding: 0, margin: '0 0 22px' }}
+		>
+			{labels.map((label, i) => (
+				<li
+					key={label}
+					style={{ flex: 1, minWidth: 0 }}
+					aria-current={i === at ? 'step' : undefined}
+				>
+					<div style={{ height: 3, borderRadius: 2, background: i <= at ? T.text : T.border }} />
+					<div
+						style={{
+							fontSize: 11,
+							marginTop: 6,
+							color: i === at ? T.text : T.muted,
+							fontWeight: i === at ? 600 : 400,
+							whiteSpace: 'nowrap',
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+						}}
+					>
+						{label}
+					</div>
+				</li>
+			))}
+		</ol>
+	);
+}
+
+const CLAIM_STEPS = ['Admin token', 'Your account', 'Authenticator', 'Backup codes'] as const;
+const INVITE_STEPS = ['Your account', 'Authenticator', 'Backup codes'] as const;
+const RECOVERY_STEPS = ['New password', 'Authenticator', 'Backup codes'] as const;
+type Flow = 'claim' | 'invite' | 'recovery';
+const STEPS_OF: Record<Flow, readonly string[]> = {
+	claim: CLAIM_STEPS,
+	invite: INVITE_STEPS,
+	recovery: RECOVERY_STEPS,
+};
+/** Where the authenticator and backup-code screens sit in a flow. */
+const stepsFor = (flow: Flow | null, name: 'Authenticator' | 'Backup codes'): Steps | undefined =>
+	flow ? { labels: STEPS_OF[flow], at: STEPS_OF[flow].indexOf(name) } : undefined;
+
 function AuthCard({
 	icon,
 	title,
 	subtitle,
+	steps,
 	children,
 }: {
 	icon?: ReactNode;
 	title: string;
 	subtitle?: ReactNode;
+	steps?: Steps | undefined;
 	children: ReactNode;
 }) {
 	return (
 		<div style={styles.page}>
 			<div style={styles.gate}>
+				{steps ? <StepBar {...steps} /> : null}
 				<div style={styles.mark}>{icon ?? LOCK}</div>
 				<h1 style={styles.h1}>{title}</h1>
 				{subtitle ? <p style={styles.p}>{subtitle}</p> : null}
@@ -671,22 +724,85 @@ const ErrorLine = ({ error }: { error: string | null }) =>
 		</p>
 	) : null;
 
+// First sign-in: the admin token from the deployment's configuration, alone —
+// the credential the operator already has. Only once it is accepted does the
+// page ask for the account it creates. Checked against the server first, so a
+// mistyped token fails on the token screen, not after filling in a form.
 function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
-	const [f, setF] = useState({ token: '', email: '', name: '', password: '' });
+	const [token, setToken] = useState('');
+	const [accepted, setAccepted] = useState<string | null>(null);
+	const [f, setF] = useState({ email: '', name: '', password: '', confirm: '' });
 	const { busy, error, run } = useSubmit();
+
+	if (!accepted) {
+		return (
+			<AuthCard
+				steps={{ labels: CLAIM_STEPS, at: 0 }}
+				title="Welcome — let's set up your console"
+				subtitle={`This is the first sign-in on ${window.location.hostname}. Paste the admin token from your deployment's configuration to begin. It is needed only this once.`}
+			>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault();
+						void run(async () => {
+							const root = new AdminClient({
+								baseUrl: window.location.origin,
+								prefix: PREFIX,
+								adminToken: token.trim(),
+							});
+							try {
+								await root.manifest();
+							} catch (err) {
+								if (err instanceof FonderieApiError && err.status === 401) {
+									throw new FonderieApiError('UNAUTHORIZED', 'That token was refused.', 401);
+								}
+								throw err;
+							}
+							setAccepted(token.trim());
+						});
+					}}
+				>
+					<Field
+						id="fa-root"
+						label="Admin token"
+						type="password"
+						autoComplete="off"
+						required
+						autoFocus
+						value={token}
+						onChange={(e) => setToken(e.target.value)}
+					/>
+					<ErrorLine error={error} />
+					<button type="submit" style={styles.primary} disabled={busy}>
+						{busy ? 'Checking…' : 'Continue'}
+					</button>
+				</form>
+			</AuthCard>
+		);
+	}
+
 	return (
 		<AuthCard
-			title="Set up the admin console"
-			subtitle={`No operator exists yet on ${window.location.hostname}. The root admin token from the deployment's configuration claims it — once.`}
+			steps={{ labels: CLAIM_STEPS, at: 1 }}
+			title="Create your account"
+			subtitle="From now on you sign in with this email and password, plus an authenticator app. The admin token stays for scripts and emergencies."
 		>
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
+					if (f.password !== f.confirm) {
+						void run(async () =>
+							Promise.reject(
+								new FonderieApiError('MISMATCH', 'The two passwords do not match.', 422),
+							),
+						);
+						return;
+					}
 					void run(async () => {
 						const root = new AdminClient({
 							baseUrl: window.location.origin,
 							prefix: PREFIX,
-							adminToken: f.token.trim(),
+							adminToken: accepted,
 						});
 						const { result } = await root.claim({
 							email: f.email,
@@ -698,26 +814,18 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 				}}
 			>
 				<Field
-					id="fa-root"
-					label="Root admin token"
-					type="password"
-					autoComplete="off"
-					required
-					value={f.token}
-					onChange={(e) => setF({ ...f, token: e.target.value })}
-				/>
-				<Field
 					id="fa-email"
-					label="Your email"
+					label="Email"
 					type="email"
 					autoComplete="username"
 					required
+					autoFocus
 					value={f.email}
 					onChange={(e) => setF({ ...f, email: e.target.value })}
 				/>
 				<Field
 					id="fa-name"
-					label="Your name (optional)"
+					label="Name (optional)"
 					autoComplete="name"
 					value={f.name}
 					onChange={(e) => setF({ ...f, name: e.target.value })}
@@ -732,12 +840,21 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 					value={f.password}
 					onChange={(e) => setF({ ...f, password: e.target.value })}
 				/>
+				<Field
+					id="fa-confirm"
+					label="Confirm password"
+					type="password"
+					autoComplete="new-password"
+					required
+					value={f.confirm}
+					onChange={(e) => setF({ ...f, confirm: e.target.value })}
+				/>
 				<p style={styles.foot}>
 					At least 12 characters. You will set up an authenticator app next.
 				</p>
 				<ErrorLine error={error} />
 				<button type="submit" style={styles.primary} disabled={busy}>
-					{busy ? 'Creating…' : 'Create the first operator'}
+					{busy ? 'Creating…' : 'Create account'}
 				</button>
 			</form>
 		</AuthCard>
@@ -863,9 +980,11 @@ function CodeForm({
 function EnrollForm({
 	onDone,
 	onCancel,
+	steps,
 }: {
 	onDone: (s: IAdminSession) => void;
 	onCancel: () => void;
+	steps?: Steps | undefined;
 }) {
 	const [enrollment, setEnrollment] = useState<IAdminEnrollment | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -886,6 +1005,7 @@ function EnrollForm({
 	return (
 		<AuthCard
 			icon={SHIELD}
+			steps={steps}
 			title="Set up your authenticator"
 			subtitle="Every sign-in to this console needs a code from an authenticator app — 1Password, Google Authenticator, Authy, or any TOTP app."
 		>
@@ -972,12 +1092,21 @@ function ConfirmCode({ onDone }: { onDone: (s: IAdminSession) => void }) {
 	);
 }
 
-function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+function BackupCodes({
+	codes,
+	onDone,
+	steps,
+}: {
+	codes: string[];
+	onDone: () => void;
+	steps?: Steps | undefined;
+}) {
 	const [saved, setSaved] = useState(false);
 	const text = `Backup codes for ${window.location.hostname} admin\n${codes.join('\n')}\n`;
 	return (
 		<AuthCard
 			icon={SHIELD}
+			steps={steps}
 			title="Save your backup codes"
 			subtitle="If you lose your phone, each of these signs you in once. They are shown only now."
 		>
@@ -1026,7 +1155,15 @@ function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void })
 	);
 }
 
-function LinkForm({ token, onDone }: { token: string; onDone: (s: IAdminSession) => void }) {
+function LinkForm({
+	token,
+	onDone,
+	onKind,
+}: {
+	token: string;
+	onDone: (s: IAdminSession) => void;
+	onKind: (kind: Flow) => void;
+}) {
 	const [link, setLink] = useState<{ kind: 'invite' | 'recovery'; email: string } | null>(null);
 	const [bad, setBad] = useState<string | null>(null);
 	const [f, setF] = useState({ name: '', password: '', confirm: '' });
@@ -1034,9 +1171,12 @@ function LinkForm({ token, onDone }: { token: string; onDone: (s: IAdminSession)
 	useEffect(() => {
 		cookieClient
 			.inspectLink(token)
-			.then(({ result }) => setLink(result))
+			.then(({ result }) => {
+				setLink(result);
+				onKind(result.kind);
+			})
 			.catch((err) => setBad(errText(err)));
-	}, [token]);
+	}, [token, onKind]);
 	if (bad)
 		return (
 			<AuthCard title="This link cannot be used" subtitle={bad}>
@@ -1047,6 +1187,7 @@ function LinkForm({ token, onDone }: { token: string; onDone: (s: IAdminSession)
 	const invite = link.kind === 'invite';
 	return (
 		<AuthCard
+			steps={{ labels: invite ? INVITE_STEPS : RECOVERY_STEPS, at: 0 }}
 			title={invite ? 'Join the admin console' : 'Recover your account'}
 			subtitle={
 				invite
@@ -1166,6 +1307,9 @@ function OperatorApp() {
 	const { session, refresh, logout } = useAdminSession(cookieClient);
 	const [override, setOverride] = useState<IAdminSession | null>(null);
 	const [codes, setCodes] = useState<string[] | null>(null);
+	// The onboarding flow the person is in, so the authenticator and backup-code
+	// screens keep showing where they are. null for an ordinary sign-in.
+	const [flow, setFlow] = useState<Flow | null>(null);
 	const [manifest, setManifest] = useState<IAdminManifest | null>(null);
 	const current = override ?? session;
 	const linkToken = /^#\/link\/(.+)$/.exec(window.location.hash)?.[1] ?? null;
@@ -1207,7 +1351,17 @@ function OperatorApp() {
 	if (!current) return dock;
 
 	let screen: ReactNode;
-	if (codes) screen = <BackupCodes codes={codes} onDone={() => setCodes(null)} />;
+	if (codes)
+		screen = (
+			<BackupCodes
+				codes={codes}
+				steps={stepsFor(flow, 'Backup codes')}
+				onDone={() => {
+					setCodes(null);
+					setFlow(null);
+				}}
+			/>
+		);
 	else if (current.state === 'signed-in') {
 		if (!manifest) return dock;
 		const op = current.operator;
@@ -1268,9 +1422,23 @@ function OperatorApp() {
 			/>
 		);
 	else if (current.state === 'needs-enrollment')
-		screen = <EnrollForm onDone={next} onCancel={() => void signOut()} />;
-	else if (linkToken) screen = <LinkForm token={linkToken} onDone={next} />;
-	else if (current.claimable) screen = <ClaimForm onDone={next} />;
+		screen = (
+			<EnrollForm
+				steps={stepsFor(flow, 'Authenticator')}
+				onDone={next}
+				onCancel={() => void signOut()}
+			/>
+		);
+	else if (linkToken) screen = <LinkForm token={linkToken} onDone={next} onKind={setFlow} />;
+	else if (current.claimable)
+		screen = (
+			<ClaimForm
+				onDone={(s) => {
+					setFlow('claim');
+					next(s);
+				}}
+			/>
+		);
 	else screen = <LoginForm onDone={next} />;
 	return (
 		<>

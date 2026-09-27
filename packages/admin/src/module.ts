@@ -439,14 +439,11 @@ export class AdminModule implements IFonderieModule {
 				severity: 'error',
 				message: 'operatorKey must be 64 hex characters (`openssl rand -hex 32`)',
 			});
-		} else if (operatorsOn && !this.options.operatorKey) {
-			problems.push({
-				module: this.name,
-				severity: 'warning',
-				message:
-					"operatorKey is unset — operators' authenticator secrets are stored unencrypted. Set a 64-hex operatorKey.",
-			});
 		}
+		// No key is a supported setup, not a problem: authenticator secrets are
+		// stored as-is (as django-otp and many SaaS do), and a leaked one alone
+		// opens nothing — the operator's scrypt-hashed password is still needed.
+		// operatorKey is optional hardening against a database leak.
 		return problems;
 	}
 }
