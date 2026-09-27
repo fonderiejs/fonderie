@@ -362,6 +362,11 @@ export interface IBillingProvider {
 	// answers 501 when absent.
 	detachPaymentMethod?(opts: { customerId: string; paymentMethodId: string }): Promise<void>;
 
+	// Delete the customer record at the provider — its email and saved cards.
+	// Used when an account is purged. A customer already gone is a no-op. The
+	// provider keeps the customer's invoices. Optional.
+	deleteCustomer?(customerId: string): Promise<void>;
+
 	// List the customer's invoices, newest first, for an in-app billing history
 	// that links out to the provider-hosted invoice. Optional; when absent, the
 	// invoices route answers 501.

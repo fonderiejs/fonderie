@@ -3098,6 +3098,32 @@ test('purgeSoftDeletedUsers: deletes aged soft-deletes and returns count', async
 	assert.deepEqual(captured!.params, [30]);
 });
 
+test('purgeSoftDeletedUsers: given a bus, announces each purged account AFTER the delete', async () => {
+	const { purgeSoftDeletedUsers } = await import('../services/retention');
+	const order: string[] = [];
+	const store = {
+		query: async <T = unknown>(): Promise<T[]> => {
+			order.push('delete');
+			return [{ id: 'u1' }, { id: 'u2' }] as unknown as T[];
+		},
+		transaction: async (fn: any) => fn(store),
+	} as any;
+	const emitted: Array<[string, unknown]> = [];
+	const bus = {
+		emit: async (type: string, payload: unknown) => {
+			order.push('emit');
+			emitted.push([type, payload]);
+		},
+	};
+	const n = await purgeSoftDeletedUsers(store, { olderThanDays: 30, bus });
+	assert.equal(n, 2);
+	assert.deepEqual(emitted, [
+		['fonderie.user.purged', { userId: 'u1' }],
+		['fonderie.user.purged', { userId: 'u2' }],
+	]);
+	assert.equal(order[0], 'delete', 'nothing is announced before the rows are gone');
+});
+
 test('purgeSoftDeletedUsers: rejects a negative window', async () => {
 	const { purgeSoftDeletedUsers } = await import('../services/retention');
 	const store = { query: async () => [], transaction: async (fn: any) => fn(store) } as any;

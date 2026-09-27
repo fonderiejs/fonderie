@@ -16,6 +16,12 @@ import { syncCreditPacksToDB } from './services/credit-packs';
 import { collectBillingReadinessProblems } from './services/notify';
 import { withBilling } from './middlewares/billing';
 import { createBackend } from './backends';
+import {
+	USER_DELETED_EVENT,
+	USER_PURGED_EVENT,
+	handleSubscriberDeleted,
+	handleSubscriberPurged,
+} from './services/subscriber-lifecycle';
 
 export class BillingModule implements IFonderieModule {
 	readonly name = '@fonderie/billing';
@@ -31,7 +37,24 @@ export class BillingModule implements IFonderieModule {
 		// events (subscription lifecycle, wallet credits, pack purchases,
 		// grants) that in-process subscribers and @fonderie/webhooks consume.
 		private bus?: EventBus,
-	) {}
+	) {
+		// Account lifecycle, from @fonderie/auth. A handler that throws is
+		// redelivered by the bus, and both handlers are idempotent.
+		bus?.on<{ userId: string }>(
+			USER_DELETED_EVENT,
+			async ({ userId }) => {
+				await handleSubscriberDeleted(this.store, this.config, { type: 'user', id: userId });
+			},
+			'billing:user-deleted',
+		);
+		bus?.on<{ userId: string }>(
+			USER_PURGED_EVENT,
+			async ({ userId }) => {
+				await handleSubscriberPurged(this.store, this.config, { type: 'user', id: userId });
+			},
+			'billing:user-purged',
+		);
+	}
 
 	async install(app: IFonderieApp): Promise<void> {
 		if (!this.config.wallet && this.config.plans.some((p) => p.wallet)) {

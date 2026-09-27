@@ -9,11 +9,15 @@ import type { IStoreAdapter } from '@fonderie/store';
 export interface IPurgeOptions {
 	// Hard-delete users whose deleted_at is older than this many days.
 	olderThanDays: number;
+	// Given ⇒ `fonderie.user.purged` { userId } is emitted for each removed
+	// account, so other bricks can erase what they hold about it (billing
+	// deletes the payment provider's customer record). Emitted after the delete.
+	bus?: { emit(type: string, payload: unknown): Promise<void> } | undefined;
 }
 
 export async function purgeSoftDeletedUsers(
 	store: IStoreAdapter,
-	{ olderThanDays }: IPurgeOptions,
+	{ olderThanDays, bus }: IPurgeOptions,
 ): Promise<number> {
 	if (!Number.isFinite(olderThanDays) || olderThanDays < 0) {
 		throw new Error('[auth] purgeSoftDeletedUsers: olderThanDays must be a non-negative number');
@@ -25,6 +29,9 @@ export async function purgeSoftDeletedUsers(
 		 RETURNING id`,
 		[olderThanDays],
 	);
+	if (bus) {
+		for (const { id } of rows) await bus.emit('fonderie.user.purged', { userId: id });
+	}
 	return rows.length;
 }
 
@@ -45,7 +52,10 @@ export function startUserRetention(
 	const run = async () => {
 		if (stopped) return;
 		try {
-			const deleted = await purgeSoftDeletedUsers(store, { olderThanDays: options.olderThanDays });
+			const deleted = await purgeSoftDeletedUsers(store, {
+				olderThanDays: options.olderThanDays,
+				...(options.bus ? { bus: options.bus } : {}),
+			});
 			options.onPurge?.(deleted);
 		} catch (err) {
 			console.error('[auth] scheduled user retention purge failed:', err);

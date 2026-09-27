@@ -378,12 +378,12 @@
         {
           "method": "GET",
           "path": "/_admin/users",
-          "mw": "async (ctx) => { const params = new URL(ctx.request.url).searchParams; const email = params.get('email')?.trim().toLowerCase(); if (email) { const user = await users.findByEmail(email); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); } const rawLimit = Number(params.get('limit') ?? 50); const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 200) : 50; const cursorParam = params.get('cursor'); const cursor = cursorParam ? decodeLoginCursor(cursorParam) : null; if (cursorParam && !cursor) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor'); const page = await users.list({ limit, ...(cursor ? { cursor } : {}) }); return setApiResponse(HTTP.OK, 'USERS', 'Users', toAdminUserPageDTO(page)); }"
+          "mw": "async (ctx) => { const params = new URL(ctx.request.url).searchParams; const email = params.get('email')?.trim().toLowerCase(); if (email) { const user = await users.findByEmail(email); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); } const rawLimit = Number(params.get('limit') ?? 50); const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 200) : 50; const cursorParam = params.get('cursor'); const cursor = cursorParam ? decodeLoginCursor(cursorParam) : null; if (cursorParam && !cursor) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor'); const deleted = params.get('deleted') === '1' || params.get('deleted') === 'true'; const page = await users.list({ limit, ...(cursor ? { cursor } : {}), ...(deleted ? { deleted } : {}), }); return setApiResponse(HTTP.OK, 'USERS', 'Users', toAdminUserPageDTO(page)); }"
         },
         {
           "method": "GET",
           "path": "/_admin/users/:id",
-          "mw": "async (ctx) => { const user = await users.findById(idOf(ctx)); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); }"
+          "mw": "async (ctx) => { // Read-only view: a soft-deleted account resolves (deletedAt set), so // an operator arriving from billing sees what happened to it. const user = await users.findByIdIncludingDeleted(idOf(ctx)); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); }"
         },
         {
           "method": "GET",
@@ -603,7 +603,9 @@
         "SUBSCRIPTION_LIFECYCLE_EVENTS",
         "SUBSCRIPTION_INVOICE_EVENTS",
         "PAYMENT_WEBHOOK_EVENTS",
-        "ALL_WEBHOOK_EVENTS"
+        "ALL_WEBHOOK_EVENTS",
+        "USER_DELETED_EVENT",
+        "USER_PURGED_EVENT"
       ],
       "subpaths": [
         "@fonderie/billing/types",
@@ -5273,6 +5275,12 @@
       "billing"
     ],
     "all_webhook_events": [
+      "billing"
+    ],
+    "user_deleted_event": [
+      "billing"
+    ],
+    "user_purged_event": [
       "billing"
     ],
     "fonderieclient": [

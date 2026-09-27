@@ -36,6 +36,7 @@ new StripeProvider(secretKey: string, webhookSecret?: string | undefined, option
   .createSetupIntent(opts: { customerId: string; }): Promise<{ clientSecret: string; setupIntentId: string; }>
   .setDefaultPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
   .detachPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
+  .deleteCustomer(customerId: string): Promise<void>
   .listInvoices(opts: { customerId: string; limit?: number; }): Promise<INormalizedInvoiceSummary[]>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
 
@@ -83,6 +84,7 @@ const DEFAULT_TEMPLATES: { "billing.subscription-canceled": { subject: string; h
 
 interface IBillingConfig {
     provider: IBillingProvider;
+    onSubscriberDeleted?: 'cancel' | 'cancel-at-period-end' | 'keep';
     plans: IBillingPlan[];
     successUrl: string;
     cancelUrl: string;
@@ -328,6 +330,7 @@ interface IBillingProvider {
         customerId: string;
         paymentMethodId: string;
     }): Promise<void>;
+    deleteCustomer?(customerId: string): Promise<void>;
     listInvoices?(opts: {
         customerId: string;
         limit?: number;
@@ -892,4 +895,19 @@ interface ISubscriptionDriftReport {
 }
 
 function describeBillingAdminReads(store: IStoreAdapter, config: IBillingConfig): IAdminRoute[]
+
+const USER_DELETED_EVENT: "fonderie.user.deleted"
+
+const USER_PURGED_EVENT: "fonderie.user.purged"
+
+function handleSubscriberDeleted(store: IStoreAdapter, config: Pick<IBillingConfig, "provider" | "onSubscriberDeleted">, subscriber: ISubscriberRef): Promise<...>
+
+function handleSubscriberPurged(store: IStoreAdapter, config: Pick<IBillingConfig, "provider">, subscriber: ISubscriberRef): Promise<{ customersDeleted: number; }>
+
+interface ISubscriberDeletedOutcome {
+    canceled: 'now' | 'at-period-end' | 'none';
+    chargingDisarmed: boolean;
+}
+
+type SubscriberDeletedPolicy = 'cancel' | 'cancel-at-period-end' | 'keep';
 ```

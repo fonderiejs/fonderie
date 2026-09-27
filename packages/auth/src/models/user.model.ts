@@ -45,7 +45,7 @@ export class UserModel {
 	async list(query: IUserListQuery = {}): Promise<IUserPage> {
 		const limit = Math.min(query.limit ?? 50, MAX_LIST_LIMIT);
 		const params: unknown[] = [];
-		const where: string[] = ['deleted_at IS NULL'];
+		const where: string[] = [query.deleted ? 'deleted_at IS NOT NULL' : 'deleted_at IS NULL'];
 
 		if (query.cursor) {
 			params.push(query.cursor.createdAt, query.cursor.id);
@@ -62,6 +62,17 @@ export class UserModel {
 			params,
 		);
 		return { users: rows.slice(0, limit), hasMore: rows.length > limit };
+	}
+
+	// For operator views only: a soft-deleted account still resolves, with
+	// deletedAt set, so the console can say "deleted on …" instead of "no such
+	// user". Nothing that authenticates or acts on an account may use this.
+	async findByIdIncludingDeleted(id: string): Promise<IUser | null> {
+		const [row] = await this.store.query<IUser>(
+			`SELECT ${USER_COLUMNS} FROM fonderie_users WHERE id = $1`,
+			[id],
+		);
+		return row ?? null;
 	}
 
 	async findById(id: string): Promise<IUser | null> {
@@ -399,6 +410,9 @@ const MAX_LIST_LIMIT = 200;
 export interface IUserListQuery {
 	limit?: number;
 	cursor?: { createdAt: string; id: string };
+	// true ⇒ ONLY soft-deleted accounts (an operator view; every other finder
+	// excludes them). They stay until the retention purge hard-deletes them.
+	deleted?: boolean;
 }
 
 export interface IUserPage {

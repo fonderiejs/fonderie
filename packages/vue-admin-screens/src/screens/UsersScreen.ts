@@ -33,7 +33,12 @@ export const UsersScreen = defineComponent({
 		const email = ref('');
 		const selectedId = ref(props.openUserId ?? '');
 		const plans = useSubscriptionIndex(props.billingClient);
-		const list = useAdminUsers(props.client, { limit: props.pageSize });
+		// Soft-deleted accounts are their own view: they cannot sign in and are
+		// erased by the retention purge, but until then an operator can see them.
+		// One list per mode — the composable reads its query once, at setup.
+		const showDeleted = ref(false);
+		const activeList = useAdminUsers(props.client, { limit: props.pageSize });
+		const deletedList = useAdminUsers(props.client, { limit: props.pageSize, deleted: true });
 		const { user, isLoading, error, suspend, unsuspend, revokeSessions } = useAdminUser(
 			props.client,
 			{ email, id: selectedId },
@@ -62,6 +67,7 @@ export const UsersScreen = defineComponent({
 
 		return () => {
 			const u = user.value;
+			const list = showDeleted.value ? deletedList : activeList;
 			return h('div', { style: styles.container }, [
 				pageHeader(
 					'Users',
@@ -94,6 +100,38 @@ export const UsersScreen = defineComponent({
 						showList.value
 							? refreshButton('Refresh', list.isLoading.value, () => void list.refresh())
 							: actionButton([icon('back', 14), 'All users'], false, clear, styles.buttonGhost),
+						showList.value
+							? h(
+									'fieldset',
+									{
+										style: {
+											display: 'flex',
+											gap: '6px',
+											border: 'none',
+											margin: '0 0 0 auto',
+											padding: '0',
+											minWidth: '0',
+										},
+										'aria-label': 'Which accounts',
+									},
+									[false, true].map((d) =>
+										h(
+											'button',
+											{
+												key: String(d),
+												type: 'button',
+												'aria-pressed': showDeleted.value === d,
+												onClick: () => (showDeleted.value = d),
+												style: {
+													...(showDeleted.value === d ? styles.buttonPrimary : styles.button),
+													height: '28px',
+												},
+											},
+											d ? 'Deleted' : 'Active',
+										),
+									),
+								)
+							: null,
 					],
 				),
 				showList.value
@@ -197,21 +235,26 @@ export const UsersScreen = defineComponent({
 									row('created', new Date(u.createdAt).toLocaleString()),
 								]),
 							]),
-							h('div', { style: { ...styles.toolbar, marginTop: '12px' } }, [
-								u.suspended
-									? actionButton('Unsuspend', isLoading.value, () => void unsuspend())
-									: actionButton(
-											'Suspend',
+							u.deletedAt
+								? h('div', { style: { ...styles.notice, marginTop: '12px' }, role: 'status' }, [
+										h('strong', `Deleted on ${new Date(u.deletedAt).toLocaleString()}.`),
+										' The account cannot sign in, and it is erased when the retention purge runs. Its billing records stay.',
+									])
+								: h('div', { style: { ...styles.toolbar, marginTop: '12px' } }, [
+										u.suspended
+											? actionButton('Unsuspend', isLoading.value, () => void unsuspend())
+											: actionButton(
+													'Suspend',
+													isLoading.value,
+													() => void suspend(),
+													styles.buttonDanger,
+												),
+										actionButton(
+											'Sign out everywhere',
 											isLoading.value,
-											() => void suspend(),
-											styles.buttonDanger,
+											() => void revokeSessions().then(() => sessions.refresh()),
 										),
-								actionButton(
-									'Sign out everywhere',
-									isLoading.value,
-									() => void revokeSessions().then(() => sessions.refresh()),
-								),
-							]),
+									]),
 							props.billingClient ? h('h2', { style: styles.subtitle }, 'Plan & credits') : null,
 							props.billingClient
 								? h(SubscriberBilling, {
@@ -221,54 +264,70 @@ export const UsersScreen = defineComponent({
 										subscriberId: u.id,
 									})
 								: null,
-							h('h2', { style: styles.subtitle }, 'Live sessions'),
-							sessions.sessions.value.length === 0
-								? h('p', { style: styles.muted }, 'None.')
-								: h(
-										'ul',
-										{ style: styles.list },
-										sessions.sessions.value.map((s) =>
-											h('li', { key: s.id, style: styles.row }, [
-												h('span', { style: styles.mono }, s.ipAddress ?? '—'),
-												' ',
-												h('span', { style: styles.muted }, describeLocation(s.location) ?? ''),
-												' ',
-												h('span', { style: styles.muted }, s.userAgent ?? ''),
-												' ',
-												h(
-													'span',
-													{ style: styles.muted },
-													`since ${new Date(s.createdAt).toLocaleString()}`,
+							u.deletedAt
+								? null
+								: [
+										h('h2', { style: styles.subtitle }, 'Live sessions'),
+										sessions.sessions.value.length === 0
+											? h('p', { style: styles.muted }, 'None.')
+											: h(
+													'ul',
+													{ style: styles.list },
+													sessions.sessions.value.map((s) =>
+														h('li', { key: s.id, style: styles.row }, [
+															h('span', { style: styles.mono }, s.ipAddress ?? '—'),
+															' ',
+															h(
+																'span',
+																{ style: styles.muted },
+																describeLocation(s.location) ?? '',
+															),
+															' ',
+															h('span', { style: styles.muted }, s.userAgent ?? ''),
+															' ',
+															h(
+																'span',
+																{ style: styles.muted },
+																`since ${new Date(s.createdAt).toLocaleString()}`,
+															),
+														]),
+													),
 												),
-											]),
-										),
-									),
-							h('h2', { style: styles.subtitle }, 'Recent sign-ins'),
-							history.events.value.length === 0 && !history.isLoading.value
-								? h('p', { style: styles.muted }, 'None recorded.')
-								: h(
-										'ul',
-										{ style: styles.list },
-										history.events.value.map((e) =>
-											h('li', { key: e.id, style: styles.row }, [
-												pill(e.outcome === 'success' ? 'ok' : 'bad', e.outcome),
-												' ',
-												h('span', { style: styles.muted }, e.method),
-												' ',
-												h('span', { style: styles.mono }, e.ipAddress ?? '—'),
-												' ',
-												h('span', { style: styles.muted }, describeLocation(e.location) ?? ''),
-												e.location?.proxy || e.location?.hosting
-													? [' ', pill('warn', e.location.proxy ? 'proxy/VPN' : 'hosting')]
-													: '',
-												' ',
-												h('span', { style: styles.muted }, new Date(e.createdAt).toLocaleString()),
-											]),
-										),
-									),
-							history.hasMore.value && !history.isLoading.value
-								? loadMoreButton(() => void history.loadMore())
-								: null,
+										h('h2', { style: styles.subtitle }, 'Recent sign-ins'),
+										history.events.value.length === 0 && !history.isLoading.value
+											? h('p', { style: styles.muted }, 'None recorded.')
+											: h(
+													'ul',
+													{ style: styles.list },
+													history.events.value.map((e) =>
+														h('li', { key: e.id, style: styles.row }, [
+															pill(e.outcome === 'success' ? 'ok' : 'bad', e.outcome),
+															' ',
+															h('span', { style: styles.muted }, e.method),
+															' ',
+															h('span', { style: styles.mono }, e.ipAddress ?? '—'),
+															' ',
+															h(
+																'span',
+																{ style: styles.muted },
+																describeLocation(e.location) ?? '',
+															),
+															e.location?.proxy || e.location?.hosting
+																? [' ', pill('warn', e.location.proxy ? 'proxy/VPN' : 'hosting')]
+																: '',
+															' ',
+															h(
+																'span',
+																{ style: styles.muted },
+																new Date(e.createdAt).toLocaleString(),
+															),
+														]),
+													),
+												),
+										history.hasMore.value && !history.isLoading.value
+											? loadMoreButton(() => void history.loadMore())
+											: null,
+									],
 						]
 					: null,
 			]);
