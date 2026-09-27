@@ -30,7 +30,7 @@ interface IAdminCheckResult {
 
 interface IAdminClientOptions {
     baseUrl: string;
-    adminToken: string;
+    adminToken?: string;
     prefix?: string;
     actor?: string;
 }
@@ -134,6 +134,68 @@ interface IAdminTokensReport {
     }>;
     issued: IAdminTokenRecord[] | null;
 }
+
+interface IAdminOperator {
+    id: string;
+    email: string;
+    name: string | null;
+    scopes: AdminScope[];
+    enrolled: boolean;
+    backupCodesLeft: number;
+    locked: boolean;
+    createdBy: string;
+    createdAt: string;
+    lastLoginAt: string | null;
+    disabledAt: string | null;
+}
+
+interface IAdminOperatorLink {
+    id: string;
+    kind: 'invite' | 'recovery';
+    email: string;
+    scopes: AdminScope[];
+    createdBy: string;
+    createdAt: string;
+    expiresAt: string;
+}
+
+interface IAdminOperatorsReport {
+    operators: IAdminOperator[];
+    links: IAdminOperatorLink[];
+}
+
+interface IAdminCreatedLink {
+    id: string;
+    email: string;
+    scopes?: AdminScope[];
+    expiresAt: string;
+    token: string;
+    url: string;
+}
+
+interface IAdminSession {
+    state: AdminSessionState;
+    operator: IAdminOperator | null;
+    claimable?: boolean;
+    stepUpFresh?: boolean;
+    backupCodes?: string[];
+    backupCodesLeft?: number;
+}
+
+interface IAdminEnrollment {
+    secret: string;
+    uri: string;
+    account: string;
+    issuer: string;
+}
+
+type IAdminSecondFactor = {
+    code: string;
+} | {
+    backupCode: string;
+};
+
+type AdminSessionState = 'signed-out' | 'needs-2fa' | 'needs-enrollment' | 'signed-in';
 
 interface IAdminMigrationsReport {
     everApplied: boolean;
@@ -361,6 +423,21 @@ new AdminClient(opts: IAdminClientOptions): AdminClient
   .revokeToken(id: string): Promise<IApiResponse<undefined>>
   .migrations(): Promise<IApiResponse<IAdminMigrationsReport>>
   .applyMigrations(module: string, expect: readonly string[]): Promise<IApiResponse<IAdminMigrationModule>>
+  .session(): Promise<IApiResponse<IAdminSession>>
+  .claim(input: { email: string; password: string; name?: string; }): Promise<IApiResponse<IAdminSession>>
+  .login(input: { email: string; password: string; }): Promise<IApiResponse<IAdminSession>>
+  .enrollment(): Promise<IApiResponse<IAdminEnrollment>>
+  .confirmEnrollment(code: string): Promise<IApiResponse<IAdminSession>>
+  .verify(factor: IAdminSecondFactor): Promise<IApiResponse<IAdminSession>>
+  .stepUp(factor: IAdminSecondFactor): Promise<IApiResponse<{ stepUpFresh: boolean; backupCodesLeft?: number; }>>
+  .logout(): Promise<IApiResponse<undefined>>
+  .inspectLink(token: string): Promise<IApiResponse<{ kind: "invite" | "recovery"; email: string; }>>
+  .redeemLink(input: { token: string; password: string; name?: string; }): Promise<IApiResponse<IAdminSession>>
+  .operators(): Promise<IApiResponse<IAdminOperatorsReport>>
+  .inviteOperator(input: { email: string; scopes: AdminScope[]; expiresInHours?: number; }): Promise<IApiResponse<IAdminCreatedLink>>
+  .recoverOperator(id: string): Promise<IApiResponse<IAdminCreatedLink>>
+  .updateOperator(id: string, input: { scopes?: AdminScope[]; name?: string; disabled?: boolean; }): Promise<IApiResponse<IAdminOperator>>
+  .revokeOperatorLink(id: string): Promise<IApiResponse<undefined>>
 
 new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .listUsers(query?: IAdminUsersQuery | undefined): Promise<IApiResponse<IAdminUserPageResult>>
@@ -405,6 +482,10 @@ function useAdminEnvironment(client: AdminClient): { report: Ref<{ generatedAt: 
 function useAdminRoutes(client: AdminClient): { report: Ref<{ generatedAt: string; routes: { method: string; path: string; module?: string; guard: AdminRouteGuard; }[]; } | null, IAdminRoutesReport | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useAdminTokens(client: AdminClient): { report: Ref<{ generatedAt: string; admin: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; legacy: { module: string; set: boolean; }[]; issued: { ...; }[] | null; } | null, IAdminTokensReport | ... 1 more ... | null>; ... 4 more ...; revoke: (id: string) => Promise<...>; }
+
+function useAdminSession(client: AdminClient): { session: Ref<{ state: AdminSessionState; operator: { id: string; email: string; name: string | null; scopes: AdminScope[]; ... 6 more ...; disabledAt: string | null; } | null; claimable?: boolean; stepUpFresh?: boolean; backupCodes?: string[]; backupCodesLeft?: number; } | null, IAdminSession | ... 1 more ... | null>; ... 11 more ...; redeemLink: (input: { ...; }) => Promise<...>; }
+
+function useAdminOperators(client: AdminClient): { report: Ref<{ operators: { id: string; email: string; name: string | null; scopes: AdminScope[]; enrolled: boolean; backupCodesLeft: number; ... 4 more ...; disabledAt: string | null; }[]; links: { ...; }[]; } | null, IAdminOperatorsReport | ... 1 more ... | null>; ... 6 more ...; revokeLink: (id: string) => Promise<...>; }
 
 function useAdminMigrations(client: AdminClient): { report: Ref<{ everApplied: boolean; modules: { name: string; pending: { file: string; impact: MigrationImpact; destructive: string[]; }[]; blockedBy: string | null; appliable: boolean; }[]; } | null, IAdminMigrationsReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; apply: (module: string, expect: readonly string[]) => Promise<...>; }
 

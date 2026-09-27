@@ -14,7 +14,13 @@ export function adminLog(store: IStoreAdapter, route: string, module: string): M
 		const res = await next();
 		const row = {
 			// A scoped token names itself; X-Actor refines it; the root token is 'admin-token'.
+			// An operator session names itself and cannot be overridden: X-Actor
+			// is a client-supplied label, fine for a token, not for a person.
 			actor:
+				(typeof ctx.meta['adminOperator'] === 'string'
+					? `operator:${ctx.meta['adminOperator']}`
+					: null) ||
+				(typeof ctx.meta['adminActor'] === 'string' ? ctx.meta['adminActor'] : null) ||
 				ctx.request.headers.get('x-actor') ||
 				(typeof ctx.meta['adminTokenName'] === 'string'
 					? `token:${ctx.meta['adminTokenName']}`

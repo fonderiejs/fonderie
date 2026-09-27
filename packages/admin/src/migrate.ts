@@ -89,7 +89,10 @@ export async function migrationsReport(
 			blockedBy: firstBehind,
 			// A file that deletes data on a database with nothing in it yet is not
 			// destroying anything. Same rule the CLI's --check applies.
-			appliable: files.length > 0 && firstBehind === null && (!everApplied || files.every((f) => f.impact === 'additive')),
+			appliable:
+				files.length > 0 &&
+				firstBehind === null &&
+				(!everApplied || files.every((f) => f.impact === 'additive')),
 		});
 		if (files.length > 0 && firstBehind === null) firstBehind = name;
 	}
@@ -98,7 +101,11 @@ export async function migrationsReport(
 }
 
 export type ApplyOutcome =
-	| { ok: true; reason: 'MIGRATIONS_APPLIED' | 'MIGRATIONS_UP_TO_DATE'; module: IAdminMigrationModule }
+	| {
+			ok: true;
+			reason: 'MIGRATIONS_APPLIED' | 'MIGRATIONS_UP_TO_DATE';
+			module: IAdminMigrationModule;
+	  }
 	| { ok: false; reason: 'NOT_FOUND' }
 	| { ok: false; reason: 'MIGRATIONS_OUT_OF_ORDER'; blockedBy: string }
 	| { ok: false; reason: 'MIGRATIONS_CHANGED'; expected: string[]; actual: string[] }

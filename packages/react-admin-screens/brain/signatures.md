@@ -5,7 +5,7 @@
 ## @fonderie/react-admin-screens
 
 ```ts
-type AdminPage = 'attention' | 'modules' | 'doctor' | 'environment' | 'routes' | 'migrations' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
+type AdminPage = 'attention' | 'modules' | 'doctor' | 'environment' | 'routes' | 'migrations' | 'tokens' | 'operators' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
 
 interface IAdminLogScreenProps {
     client: AdminClient;
@@ -25,6 +25,8 @@ interface IAdminShellProps {
     appName?: string;
     envLabel?: string;
     footer?: ReactNode;
+    operators?: boolean;
+    currentOperator?: string;
 }
 
 interface IAttentionScreenProps {
@@ -49,6 +51,11 @@ interface IRoutesScreenProps {
 
 interface ITokensScreenProps {
     client: AdminClient;
+}
+
+interface IOperatorsScreenProps {
+    client: AdminClient;
+    me?: string | undefined;
 }
 
 interface IMigrationsScreenProps {
@@ -76,7 +83,7 @@ interface IAuditScreenProps {
 
 function AdminLogScreen({ client, pageSize }: IAdminLogScreenProps): Element
 
-function AdminShell({ client, configClient, courierClient, authClient, billingClient, auditClient, environment, page, onNavigate, appName, envLabel, footer, }: IAdminShellProps): Element
+function AdminShell({ client, configClient, courierClient, authClient, billingClient, auditClient, environment, page, onNavigate, appName, envLabel, footer, operators, currentOperator, }: IAdminShellProps): Element
 
 function AttentionScreen({ client }: IAttentionScreenProps): Element
 
@@ -89,6 +96,8 @@ function ModulesScreen({ client }: IModulesScreenProps): Element
 function RoutesScreen({ client }: IRoutesScreenProps): Element
 
 function TokensScreen({ client }: ITokensScreenProps): Element
+
+function OperatorsScreen({ client, me }: IOperatorsScreenProps): Element
 
 function MigrationsScreen({ client }: IMigrationsScreenProps): Element
 

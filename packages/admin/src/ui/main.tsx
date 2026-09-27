@@ -7,9 +7,11 @@ import {
 	CourierAdminClient,
 	FonderieApiError,
 } from '@fonderie/client';
-import type { IAdminManifest } from '@fonderie/client';
+import type { IAdminEnrollment, IAdminManifest, IAdminSession } from '@fonderie/client';
+import { useAdminSession } from '@fonderie/react-admin';
 import { type AdminPage, AdminShell } from '@fonderie/react-admin-screens';
-import { useEffect, useState } from 'react';
+import qrcode from 'qrcode-generator';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 // The page is served AT `<prefix>/ui`, so it knows its own prefix without being
@@ -265,6 +267,16 @@ const styles: Record<string, React.CSSProperties> = {
 		background: 'color-mix(in srgb, var(--fonderie-danger,#e00) 8%, transparent)',
 	},
 	foot: { color: T.muted, fontSize: 12, marginTop: 16, lineHeight: 1.5 },
+	link: {
+		background: 'none',
+		border: 'none',
+		padding: 0,
+		color: T.text,
+		textDecoration: 'underline',
+		cursor: 'pointer',
+		fontSize: 12,
+		fontFamily: 'inherit',
+	},
 	// Bottom-right, fixed, over the gate only. On the dashboard the switcher
 	// lives in the sidebar footer with the sign-out: both are session settings,
 	// not navigation, and docking them there removes two floating controls
@@ -374,6 +386,7 @@ const PAGES: ReadonlySet<string> = new Set([
 	'audit',
 	'log',
 	'tokens',
+	'operators',
 	'migrations',
 ]);
 const pageFromHash = (): AdminPage => {
@@ -397,7 +410,7 @@ function useHashPage(): [AdminPage, (p: AdminPage) => void] {
 	];
 }
 
-function App() {
+function TokenApp() {
 	const [token, setToken] = useState(read);
 	const [manifest, setManifest] = useState<IAdminManifest | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -452,17 +465,36 @@ function App() {
 			</>
 		);
 	}
-	return <Dashboard token={token} manifest={manifest} onForget={forget} />;
+	return (
+		<Dashboard
+			token={token}
+			manifest={manifest}
+			footer={
+				<>
+					<ThemeSwitch />
+					<button type="button" style={styles.button} onClick={forget}>
+						{LOGOUT}
+						Forget token
+					</button>
+				</>
+			}
+		/>
+	);
 }
 
 function Dashboard({
 	token,
 	manifest,
-	onForget,
+	footer,
+	operators = false,
+	me,
 }: {
+	// Empty in operator mode: the session cookie authenticates every request.
 	token: string;
 	manifest: IAdminManifest;
-	onForget: () => void;
+	footer: ReactNode;
+	operators?: boolean;
+	me?: string | undefined;
 }) {
 	const [page, setPage] = useHashPage();
 	// Which pages to show is a question the manifest already answers: a brick
@@ -495,15 +527,9 @@ function Dashboard({
 			onNavigate={setPage}
 			appName={window.location.hostname || 'Admin'}
 			envLabel={manifest.env}
-			footer={
-				<>
-					<ThemeSwitch />
-					<button type="button" style={styles.button} onClick={onForget}>
-						{LOGOUT}
-						Forget token
-					</button>
-				</>
-			}
+			operators={operators}
+			{...(me ? { currentOperator: me } : {})}
+			footer={footer}
 			{...(has('/secrets') ? { configClient: new ConfigAdminClient(opts) } : {})}
 			{...(has('/templates') ? { courierClient: new CourierAdminClient(opts) } : {})}
 			{...(has('/users') ? { authClient: new AuthAdminClient(opts) } : {})}
@@ -511,6 +537,763 @@ function Dashboard({
 			{...(has('/audit') ? { auditClient: new AuditAdminClient(opts) } : {})}
 		/>
 	);
+}
+
+// ═══ Operator mode ═══════════════════════════════════════════════════════
+// People sign in with email, password and an authenticator app. The session
+// is an HttpOnly cookie: nothing on this page can read it, and nothing here
+// stores a credential. A deployment without operators (no store) keeps the
+// token gate above.
+
+const cookieClient = new AdminClient({ baseUrl: window.location.origin, prefix: PREFIX });
+
+// ── the step-up prompt ───────────────────────────────────────────────────
+// Any request the server refuses with STEP_UP_REQUIRED (revealing a secret,
+// minting a token or link, applying a migration, deleting) pauses here: the
+// prompt asks for a fresh code, and on success the ORIGINAL request is sent
+// again. Screens need no idea this exists. A 401 on a guarded route means the
+// session ended (idle or revoked), so the page drops back to sign-in.
+let askForCode: (() => Promise<boolean>) | null = null;
+let onSessionEnded: (() => void) | null = null;
+const rawFetch = window.fetch.bind(window);
+window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+	const res = await rawFetch(input, init);
+	const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+	if (!url.includes(PREFIX) || url.includes(`${PREFIX}/session`)) return res;
+	if (res.status === 401 && onSessionEnded) {
+		onSessionEnded();
+		return res;
+	}
+	if (res.status !== 403 || !askForCode) return res;
+	const body = (await res
+		.clone()
+		.json()
+		.catch(() => null)) as { reason?: string } | null;
+	if (body?.reason !== 'STEP_UP_REQUIRED') return res;
+	return (await askForCode()) ? rawFetch(input, init) : res;
+};
+
+const errText = (err: unknown): string =>
+	err instanceof FonderieApiError ? err.explanation : 'Something went wrong. Try again.';
+
+function AuthCard({
+	icon,
+	title,
+	subtitle,
+	children,
+}: {
+	icon?: ReactNode;
+	title: string;
+	subtitle?: ReactNode;
+	children: ReactNode;
+}) {
+	return (
+		<div style={styles.page}>
+			<div style={styles.gate}>
+				<div style={styles.mark}>{icon ?? LOCK}</div>
+				<h1 style={styles.h1}>{title}</h1>
+				{subtitle ? <p style={styles.p}>{subtitle}</p> : null}
+				{children}
+			</div>
+		</div>
+	);
+}
+
+const LOCK = (
+	<svg
+		width="18"
+		height="18"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2.2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		aria-hidden="true"
+	>
+		<path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z" />
+		<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+	</svg>
+);
+const SHIELD = (
+	<svg
+		width="18"
+		height="18"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2.2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		aria-hidden="true"
+	>
+		<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+		<path d="m9 12 2 2 4-4" />
+	</svg>
+);
+
+function Field({
+	label,
+	id,
+	...rest
+}: { label: string; id: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+	return (
+		<>
+			<label htmlFor={id} style={styles.label}>
+				{label}
+			</label>
+			<input id={id} style={styles.input} {...rest} />
+		</>
+	);
+}
+
+function useSubmit() {
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const run = async (fn: () => Promise<unknown>) => {
+		setBusy(true);
+		setError(null);
+		try {
+			await fn();
+		} catch (err) {
+			setError(errText(err));
+		} finally {
+			setBusy(false);
+		}
+	};
+	return { busy, error, run };
+}
+
+const ErrorLine = ({ error }: { error: string | null }) =>
+	error ? (
+		<p style={styles.err} role="alert">
+			{error}
+		</p>
+	) : null;
+
+function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
+	const [f, setF] = useState({ token: '', email: '', name: '', password: '' });
+	const { busy, error, run } = useSubmit();
+	return (
+		<AuthCard
+			title="Set up the admin console"
+			subtitle={`No operator exists yet on ${window.location.hostname}. The root admin token from the deployment's configuration claims it — once.`}
+		>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					void run(async () => {
+						const root = new AdminClient({
+							baseUrl: window.location.origin,
+							prefix: PREFIX,
+							adminToken: f.token.trim(),
+						});
+						const { result } = await root.claim({
+							email: f.email,
+							password: f.password,
+							...(f.name ? { name: f.name } : {}),
+						});
+						onDone(result);
+					});
+				}}
+			>
+				<Field
+					id="fa-root"
+					label="Root admin token"
+					type="password"
+					autoComplete="off"
+					required
+					value={f.token}
+					onChange={(e) => setF({ ...f, token: e.target.value })}
+				/>
+				<Field
+					id="fa-email"
+					label="Your email"
+					type="email"
+					autoComplete="username"
+					required
+					value={f.email}
+					onChange={(e) => setF({ ...f, email: e.target.value })}
+				/>
+				<Field
+					id="fa-name"
+					label="Your name (optional)"
+					autoComplete="name"
+					value={f.name}
+					onChange={(e) => setF({ ...f, name: e.target.value })}
+				/>
+				<Field
+					id="fa-password"
+					label="Password"
+					type="password"
+					autoComplete="new-password"
+					required
+					minLength={12}
+					value={f.password}
+					onChange={(e) => setF({ ...f, password: e.target.value })}
+				/>
+				<p style={styles.foot}>
+					At least 12 characters. You will set up an authenticator app next.
+				</p>
+				<ErrorLine error={error} />
+				<button type="submit" style={styles.primary} disabled={busy}>
+					{busy ? 'Creating…' : 'Create the first operator'}
+				</button>
+			</form>
+		</AuthCard>
+	);
+}
+
+function LoginForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
+	const [f, setF] = useState({ email: '', password: '' });
+	const { busy, error, run } = useSubmit();
+	return (
+		<AuthCard title="Sign in to Admin" subtitle={window.location.hostname}>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					void run(async () => onDone((await cookieClient.login(f)).result));
+				}}
+			>
+				<Field
+					id="fa-email"
+					label="Email"
+					type="email"
+					autoComplete="username"
+					required
+					autoFocus
+					value={f.email}
+					onChange={(e) => setF({ ...f, email: e.target.value })}
+				/>
+				<Field
+					id="fa-password"
+					label="Password"
+					type="password"
+					autoComplete="current-password"
+					required
+					value={f.password}
+					onChange={(e) => setF({ ...f, password: e.target.value })}
+				/>
+				<ErrorLine error={error} />
+				<button type="submit" style={styles.primary} disabled={busy}>
+					{busy ? 'Checking…' : 'Continue'}
+				</button>
+				<p style={styles.foot}>
+					There is no sign-up. Operators are invited by another operator. Locked out? Ask another
+					operator for a recovery link.
+				</p>
+			</form>
+		</AuthCard>
+	);
+}
+
+/** Six digits, or a backup code when the phone is not at hand. */
+function CodeForm({
+	title,
+	subtitle,
+	submitLabel,
+	onSubmit,
+	onCancel,
+}: {
+	title: string;
+	subtitle: ReactNode;
+	submitLabel: string;
+	onSubmit: (factor: { code: string } | { backupCode: string }) => Promise<unknown>;
+	onCancel?: () => void;
+}) {
+	const [backup, setBackup] = useState(false);
+	const [value, setValue] = useState('');
+	const { busy, error, run } = useSubmit();
+	return (
+		<AuthCard icon={SHIELD} title={title} subtitle={subtitle}>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					void run(() =>
+						onSubmit(backup ? { backupCode: value } : { code: value.replace(/\s/g, '') }),
+					);
+				}}
+			>
+				<Field
+					id="fa-code"
+					label={backup ? 'Backup code' : 'Authenticator code'}
+					inputMode={backup ? 'text' : 'numeric'}
+					autoComplete="one-time-code"
+					placeholder={backup ? 'ABCDE-FGHIJ' : '123 456'}
+					required
+					autoFocus
+					value={value}
+					onChange={(e) => setValue(e.target.value)}
+					style={{
+						...styles.input,
+						fontFamily: 'var(--fonderie-mono,monospace)',
+						letterSpacing: backup ? 1 : 4,
+						fontSize: 18,
+					}}
+				/>
+				<ErrorLine error={error} />
+				<button type="submit" style={styles.primary} disabled={busy}>
+					{busy ? 'Checking…' : submitLabel}
+				</button>
+				<p style={styles.foot}>
+					<button
+						type="button"
+						style={styles.link}
+						onClick={() => {
+							setBackup(!backup);
+							setValue('');
+						}}
+					>
+						{backup ? 'Use the authenticator app instead' : 'Use a backup code instead'}
+					</button>
+					{onCancel ? (
+						<>
+							{' · '}
+							<button type="button" style={styles.link} onClick={onCancel}>
+								Cancel
+							</button>
+						</>
+					) : null}
+				</p>
+			</form>
+		</AuthCard>
+	);
+}
+
+function EnrollForm({
+	onDone,
+	onCancel,
+}: {
+	onDone: (s: IAdminSession) => void;
+	onCancel: () => void;
+}) {
+	const [enrollment, setEnrollment] = useState<IAdminEnrollment | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [showKey, setShowKey] = useState(false);
+	useEffect(() => {
+		cookieClient
+			.enrollment()
+			.then(({ result }) => setEnrollment(result))
+			.catch((err) => setError(errText(err)));
+	}, []);
+	const qr = useMemo(() => {
+		if (!enrollment) return null;
+		const q = qrcode(0, 'M');
+		q.addData(enrollment.uri);
+		q.make();
+		return q.createDataURL(5, 4);
+	}, [enrollment]);
+	return (
+		<AuthCard
+			icon={SHIELD}
+			title="Set up your authenticator"
+			subtitle="Every sign-in to this console needs a code from an authenticator app — 1Password, Google Authenticator, Authy, or any TOTP app."
+		>
+			{error ? <ErrorLine error={error} /> : null}
+			{enrollment && qr ? (
+				<>
+					<ol style={{ ...styles.p, paddingLeft: 18, margin: '16px 0 0' }}>
+						<li>Open your authenticator app and scan this code.</li>
+						<li>Enter the six digits it shows.</li>
+					</ol>
+					<div style={{ display: 'grid', placeItems: 'center', margin: '16px 0 8px' }}>
+						<img
+							src={qr}
+							alt="QR code for your authenticator app"
+							width={200}
+							height={200}
+							style={{
+								imageRendering: 'pixelated',
+								borderRadius: 8,
+								background: '#fff',
+								padding: 6,
+								border: `1px solid ${T.border}`,
+							}}
+						/>
+					</div>
+					<p style={{ ...styles.foot, textAlign: 'center', marginTop: 4 }}>
+						{showKey ? (
+							<code style={{ wordBreak: 'break-all', fontSize: 13 }}>
+								{enrollment.secret.replace(/(.{4})/g, '$1 ').trim()}
+							</code>
+						) : (
+							<button type="button" style={styles.link} onClick={() => setShowKey(true)}>
+								Can't scan? Enter a setup key instead
+							</button>
+						)}
+					</p>
+					<ConfirmCode onDone={onDone} />
+				</>
+			) : !error ? (
+				<p style={styles.p}>Preparing…</p>
+			) : null}
+			<p style={styles.foot}>
+				<button type="button" style={styles.link} onClick={onCancel}>
+					Cancel and sign out
+				</button>
+			</p>
+		</AuthCard>
+	);
+}
+
+function ConfirmCode({ onDone }: { onDone: (s: IAdminSession) => void }) {
+	const [code, setCode] = useState('');
+	const { busy, error, run } = useSubmit();
+	return (
+		<form
+			onSubmit={(e) => {
+				e.preventDefault();
+				void run(async () =>
+					onDone((await cookieClient.confirmEnrollment(code.replace(/\s/g, ''))).result),
+				);
+			}}
+		>
+			<Field
+				id="fa-code"
+				label="Code from the app"
+				inputMode="numeric"
+				autoComplete="one-time-code"
+				placeholder="123 456"
+				required
+				value={code}
+				onChange={(e) => setCode(e.target.value)}
+				style={{
+					...styles.input,
+					fontFamily: 'var(--fonderie-mono,monospace)',
+					letterSpacing: 4,
+					fontSize: 18,
+				}}
+			/>
+			<ErrorLine error={error} />
+			<button type="submit" style={styles.primary} disabled={busy}>
+				{busy ? 'Checking…' : 'Verify and continue'}
+			</button>
+		</form>
+	);
+}
+
+function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+	const [saved, setSaved] = useState(false);
+	const text = `Backup codes for ${window.location.hostname} admin\n${codes.join('\n')}\n`;
+	return (
+		<AuthCard
+			icon={SHIELD}
+			title="Save your backup codes"
+			subtitle="If you lose your phone, each of these signs you in once. They are shown only now."
+		>
+			<div
+				style={{
+					display: 'grid',
+					gridTemplateColumns: '1fr 1fr',
+					gap: '6px 16px',
+					margin: '16px 0',
+					padding: 14,
+					borderRadius: 8,
+					border: `1px solid ${T.border}`,
+					fontFamily: 'var(--fonderie-mono,monospace)',
+					fontSize: 14,
+					letterSpacing: 0.5,
+				}}
+			>
+				{codes.map((c) => (
+					<span key={c}>{c}</span>
+				))}
+			</div>
+			<div style={{ display: 'flex', gap: 8 }}>
+				<button
+					type="button"
+					style={styles.button}
+					onClick={() => void navigator.clipboard?.writeText(text)}
+				>
+					Copy
+				</button>
+				<a
+					href={`data:text/plain;charset=utf-8,${encodeURIComponent(text)}`}
+					download={`admin-backup-codes-${window.location.hostname}.txt`}
+					style={{ ...styles.button, textDecoration: 'none' }}
+				>
+					Download
+				</a>
+			</div>
+			<label style={{ ...styles.p, display: 'flex', gap: 8, alignItems: 'center', marginTop: 16 }}>
+				<input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />I have
+				saved these codes somewhere safe
+			</label>
+			<button type="button" style={styles.primary} disabled={!saved} onClick={onDone}>
+				Open the console
+			</button>
+		</AuthCard>
+	);
+}
+
+function LinkForm({ token, onDone }: { token: string; onDone: (s: IAdminSession) => void }) {
+	const [link, setLink] = useState<{ kind: 'invite' | 'recovery'; email: string } | null>(null);
+	const [bad, setBad] = useState<string | null>(null);
+	const [f, setF] = useState({ name: '', password: '', confirm: '' });
+	const { busy, error, run } = useSubmit();
+	useEffect(() => {
+		cookieClient
+			.inspectLink(token)
+			.then(({ result }) => setLink(result))
+			.catch((err) => setBad(errText(err)));
+	}, [token]);
+	if (bad)
+		return (
+			<AuthCard title="This link cannot be used" subtitle={bad}>
+				{null}
+			</AuthCard>
+		);
+	if (!link) return <AuthCard title="Checking your link…">{null}</AuthCard>;
+	const invite = link.kind === 'invite';
+	return (
+		<AuthCard
+			title={invite ? 'Join the admin console' : 'Recover your account'}
+			subtitle={
+				invite
+					? `You were invited as ${link.email}. Choose a password, then set up an authenticator app.`
+					: `Set a new password for ${link.email}. You will set up your authenticator again.`
+			}
+		>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					if (f.password !== f.confirm)
+						return void run(async () =>
+							Promise.reject(
+								new FonderieApiError('MISMATCH', 'The two passwords do not match.', 422),
+							),
+						);
+					void run(async () => {
+						const { result } = await cookieClient.redeemLink({
+							token,
+							password: f.password,
+							...(invite && f.name ? { name: f.name } : {}),
+						});
+						window.history.replaceState(null, '', window.location.pathname);
+						onDone(result);
+					});
+				}}
+			>
+				<input type="email" autoComplete="username" value={link.email} readOnly hidden />
+				{invite ? (
+					<Field
+						id="fa-name"
+						label="Your name (optional)"
+						autoComplete="name"
+						value={f.name}
+						onChange={(e) => setF({ ...f, name: e.target.value })}
+					/>
+				) : null}
+				<Field
+					id="fa-password"
+					label="New password"
+					type="password"
+					autoComplete="new-password"
+					required
+					minLength={12}
+					value={f.password}
+					onChange={(e) => setF({ ...f, password: e.target.value })}
+				/>
+				<Field
+					id="fa-confirm"
+					label="Confirm password"
+					type="password"
+					autoComplete="new-password"
+					required
+					value={f.confirm}
+					onChange={(e) => setF({ ...f, confirm: e.target.value })}
+				/>
+				<p style={styles.foot}>At least 12 characters.</p>
+				<ErrorLine error={error} />
+				<button type="submit" style={styles.primary} disabled={busy}>
+					{busy ? 'Saving…' : 'Continue'}
+				</button>
+			</form>
+		</AuthCard>
+	);
+}
+
+function StepUpPrompt() {
+	const [open, setOpen] = useState(false);
+	const resolver = useRef<((ok: boolean) => void) | null>(null);
+	useEffect(() => {
+		askForCode = () =>
+			new Promise<boolean>((resolve) => {
+				resolver.current = resolve;
+				setOpen(true);
+			});
+		return () => {
+			askForCode = null;
+		};
+	}, []);
+	const finish = (ok: boolean) => {
+		setOpen(false);
+		resolver.current?.(ok);
+		resolver.current = null;
+	};
+	if (!open) return null;
+	return (
+		<div
+			role="dialog"
+			aria-modal="true"
+			aria-label="Confirm it's you"
+			style={{
+				position: 'fixed',
+				inset: 0,
+				zIndex: 50,
+				background: 'rgba(0,0,0,.45)',
+				display: 'grid',
+				placeItems: 'center',
+			}}
+		>
+			<div style={{ width: '100%', maxWidth: 440 }}>
+				<CodeForm
+					title="Confirm it's you"
+					subtitle="This action needs a fresh code. It covers the next five minutes."
+					submitLabel="Confirm"
+					onSubmit={async (factor) => {
+						await cookieClient.stepUp(factor);
+						finish(true);
+					}}
+					onCancel={() => finish(false)}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function OperatorApp() {
+	const { session, refresh, logout } = useAdminSession(cookieClient);
+	const [override, setOverride] = useState<IAdminSession | null>(null);
+	const [codes, setCodes] = useState<string[] | null>(null);
+	const [manifest, setManifest] = useState<IAdminManifest | null>(null);
+	const current = override ?? session;
+	const linkToken = /^#\/link\/(.+)$/.exec(window.location.hash)?.[1] ?? null;
+
+	const next = (s: IAdminSession) => {
+		if (s.backupCodes?.length) setCodes(s.backupCodes);
+		setOverride(s);
+	};
+	const signOut = async () => {
+		await logout().catch(() => undefined);
+		setOverride({ state: 'signed-out', operator: null, claimable: false });
+		setManifest(null);
+	};
+
+	useEffect(() => {
+		onSessionEnded = () => {
+			setOverride(null);
+			setManifest(null);
+			void refresh();
+		};
+		return () => {
+			onSessionEnded = null;
+		};
+	}, [refresh]);
+
+	useEffect(() => {
+		if (current?.state !== 'signed-in' || codes) return;
+		cookieClient
+			.manifest()
+			.then(({ result }) => setManifest(result))
+			.catch(() => undefined);
+	}, [current?.state, codes]);
+
+	const dock = (
+		<div style={styles.themeDock}>
+			<ThemeSwitch />
+		</div>
+	);
+	if (!current) return dock;
+
+	let screen: ReactNode;
+	if (codes) screen = <BackupCodes codes={codes} onDone={() => setCodes(null)} />;
+	else if (current.state === 'signed-in') {
+		if (!manifest) return dock;
+		const op = current.operator;
+		return (
+			<>
+				<StepUpPrompt />
+				<Dashboard
+					token=""
+					manifest={manifest}
+					operators
+					me={op?.email}
+					footer={
+						<>
+							{op ? (
+								<div style={{ fontSize: 12.5, lineHeight: 1.35, minWidth: 0 }}>
+									<div
+										style={{
+											fontWeight: 600,
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											whiteSpace: 'nowrap',
+										}}
+									>
+										{op.name || op.email}
+									</div>
+									{op.name ? (
+										<div
+											style={{
+												color: T.muted,
+												overflow: 'hidden',
+												textOverflow: 'ellipsis',
+												whiteSpace: 'nowrap',
+											}}
+										>
+											{op.email}
+										</div>
+									) : null}
+								</div>
+							) : null}
+							<ThemeSwitch />
+							<button type="button" style={styles.button} onClick={() => void signOut()}>
+								{LOGOUT}
+								Sign out
+							</button>
+						</>
+					}
+				/>
+			</>
+		);
+	} else if (current.state === 'needs-2fa')
+		screen = (
+			<CodeForm
+				title="Two-step verification"
+				subtitle="Enter the code from your authenticator app."
+				submitLabel="Verify"
+				onSubmit={async (factor) => next((await cookieClient.verify(factor)).result)}
+				onCancel={() => void signOut()}
+			/>
+		);
+	else if (current.state === 'needs-enrollment')
+		screen = <EnrollForm onDone={next} onCancel={() => void signOut()} />;
+	else if (linkToken) screen = <LinkForm token={linkToken} onDone={next} />;
+	else if (current.claimable) screen = <ClaimForm onDone={next} />;
+	else screen = <LoginForm onDone={next} />;
+	return (
+		<>
+			{screen}
+			{dock}
+		</>
+	);
+}
+
+// Operators when the deployment offers them (GET <prefix>/session answers);
+// the token gate when it does not (no store, or operators: false).
+function App() {
+	const [mode, setMode] = useState<'loading' | 'operators' | 'token'>('loading');
+	useEffect(() => {
+		cookieClient
+			.session()
+			.then(() => setMode('operators'))
+			.catch((err: unknown) =>
+				setMode(err instanceof FonderieApiError && err.status === 404 ? 'token' : 'operators'),
+			);
+	}, []);
+	if (mode === 'loading') return null;
+	return mode === 'operators' ? <OperatorApp /> : <TokenApp />;
 }
 
 const el = document.getElementById('root');

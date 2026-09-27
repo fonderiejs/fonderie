@@ -52,6 +52,8 @@ const EXEMPT = new Map([
 	// @fonderie/media upload: the meaningful validation (base64 decode, magic-byte
 	// sniff over the DECODED content — not the claimed MIME, size cap on decoded
 	// bytes) is inline and not schema-expressible; the envelope is a single string.
+	// @fonderie/admin operators: the id is the path param; no body is read.
+	['POST /_admin/access/operators/:id/recovery', 'no body — the operator id is the path param; mints a single-use link'],
 	['POST /media', 'body.dataBase64 inline-validated: base64-decoded, magic-byte-sniffed, and size-capped'],
 ]);
 
@@ -81,7 +83,10 @@ for (const pkg of pkgs) {
 	for (const file of files) {
 		const src = readFileSync(file, 'utf8');
 		for (const re of [
-			/\[\s*'(POST|PUT|PATCH)'\s*,\s*'(\/[^']*)'\s*,([\s\S]*?)\]/g,
+			// Line comments may sit between the bracket, the method and the path —
+			// without tolerating them a commented route was invisible to this gate,
+			// which then passed by never seeing it.
+			/\[\s*(?:\/\/[^\n]*\n\s*)*'(POST|PUT|PATCH)'\s*,\s*(?:\/\/[^\n]*\n\s*)*'(\/[^']*)'\s*,([\s\S]*?)\]/g,
 			/addRoute\(\s*'(POST|PUT|PATCH)'\s*,\s*'(\/[^']*)'\s*,([\s\S]*?)\)/g,
 		]) {
 			let m;

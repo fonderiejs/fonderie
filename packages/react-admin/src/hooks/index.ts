@@ -30,3 +30,7 @@ export type { IUseAdminAuditReturn } from './useAdminAudit';
 export { useAdminAudit } from './useAdminAudit';
 export type { IUseAdminMigrationsReturn } from './useAdminMigrations';
 export { useAdminMigrations } from './useAdminMigrations';
+export type { IUseAdminSessionReturn } from './useAdminSession';
+export { useAdminSession } from './useAdminSession';
+export type { IUseAdminOperatorsReturn } from './useAdminOperators';
+export { useAdminOperators } from './useAdminOperators';

@@ -368,12 +368,14 @@ const ADMIN_PAGES = {
   config:    { path: '/environment',         about: 'alias of environment (the page was renamed)' },
   routes:    { path: '/routes',              about: 'every exposed route with its guard' },
   tokens:    { path: '/access/tokens',       about: 'the admin token verdict + legacy per-brick tokens' },
+  operators: { path: '/access/operators',    about: 'people who sign in (email + authenticator), and pending links' },
   log:       { path: '/activity/admin-log',  about: 'who did what through the surface (--limit, --before)' },
   user:      { path: '/users',               about: 'look up a user: admin user <email|id> [sessions|history|revoke-sessions|suspend|unsuspend]' },
   catalog:   { path: '/catalog',             about: 'plans as configured and as stored' },
   subscriber:{ path: '/subscriptions',       about: 'admin subscriber <user|workspace> <id> [subscription|wallet|ledger]' },
   audit:     { path: '/audit',               about: 'events across every workspace (--workspace, --type, --actor, --from, --to, --limit, --cursor)' },
   token:     { path: '/access/tokens',       about: 'admin token issue <name> --scopes read[,write[,secrets]] [--days <n>] · admin token revoke <id> (root token only)' },
+  operator:  { path: '', about: 'admin operator invite <email> [--level read|editor|owner] · recover · disable · enable <email|id> (root token: the break-glass)' },
 };
 async function adminCmd() {
   const pageName = argv[1];
@@ -410,6 +412,36 @@ async function adminCmd() {
       return adminFetch('DELETE', `${prefix}/access/tokens/${encodeURIComponent(id)}`);
     }
     console.error('fonderie admin token <issue|revoke> …'); process.exit(2);
+  }
+  // Operators: the people who sign in to the console. From the CLI this runs
+  // with the ROOT token — the break-glass when every operator is locked out.
+  if (pageName === 'operator') {
+    const verb = argv[2]; const who = argv[3];
+    const LEVELS = { read: ['read'], editor: ['read', 'write'], owner: ['read', 'write', 'secrets'] };
+    const origin = (process.env.FONDERIE_ADMIN_URL || '').replace(/\/$/, '').replace(/^(https?:\/\/[^/]+).*$/, '$1');
+    const printLink = (r) => { console.log(`${r.email}: ${origin}${r.url}`); console.log(`single use, expires ${r.expiresAt} — send it privately; it is not shown again`); };
+    const resolveId = async (x) => {
+      if (!x.includes('@')) return x;
+      const report = await adminJson('GET', `${prefix}/access/operators`).catch(exitOnAdminError);
+      const op = (report?.operators ?? []).find((o) => o.email === x.toLowerCase());
+      if (!op) { console.error(`no operator with email ${x}`); process.exit(1); }
+      return op.id;
+    };
+    try {
+      if (verb === 'invite' && who) {
+        const level = arg('--level', 'editor');
+        if (!LEVELS[level]) { console.error('--level must be read, editor or owner'); process.exit(2); }
+        return printLink(await adminJson('POST', `${prefix}/access/operators/invites`, { email: who, scopes: LEVELS[level] }));
+      }
+      if (verb === 'recover' && who) {
+        return printLink(await adminJson('POST', `${prefix}/access/operators/${encodeURIComponent(await resolveId(who))}/recovery`));
+      }
+      if ((verb === 'disable' || verb === 'enable') && who) {
+        return adminFetch('PUT', `${prefix}/access/operators/${encodeURIComponent(await resolveId(who))}`, { disabled: verb === 'disable' });
+      }
+    } catch (err) { exitOnAdminError(err); }
+    console.error('fonderie admin operator <invite <email> [--level read|editor|owner] | recover <email|id> | disable <email|id> | enable <email|id>>');
+    process.exit(2);
   }
   if (pageName === 'subscriber') {
     const type = argv[2]; const id = argv[3]; const verb = argv[4] ?? 'subscription';
@@ -579,6 +611,7 @@ else {
   fonderie admin catalog · admin subscriber <user|workspace> <id> [subscription|wallet|ledger] [--currency <c>]
   fonderie admin audit [--workspace <id>] [--type <t>] [--actor <id>] [--from <iso>] [--to <iso>] [--limit <n>]
   fonderie admin token issue <name> --scopes read[,write[,secrets]] [--days <n>] · admin token revoke <id>   (root token only)
+  fonderie admin operator invite <email> [--level read|editor|owner] · recover <email|id> · disable|enable <email|id>   (root token: the break-glass)
       read a deployment's operator surface (@fonderie/admin) — same env; FONDERIE_ADMIN_PREFIX if moved
 
 Zero deps. No MCP server. A binary + markdown that runs in any agent harness.`);

@@ -156,6 +156,23 @@ const ROUTE_ALLOW = new Map([
 	// Root-only token writes, reached through AdminClient (+ hooks). Same prefix caveat.
 	['POST /_admin/access/tokens', 'AdminClient.issueToken() — prefix is configurable, invisible to the static match'],
 	['DELETE /_admin/access/tokens/:id', 'AdminClient.revokeToken() — prefix is configurable, invisible to the static match'],
+	// Operator sign-in and management, reached through AdminClient (+ useAdminSession /
+	// useAdminOperators, which leg 1 verifies). Same prefix caveat.
+	['GET /_admin/session', 'AdminClient.session() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/session/claim', 'AdminClient.claim() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/session/login', 'AdminClient.login() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/session/enrollment', 'AdminClient.enrollment() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/session/enrollment', 'AdminClient.confirmEnrollment() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/session/verify', 'AdminClient.verify() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/session/step-up', 'AdminClient.stepUp() — prefix is configurable, invisible to the static match'],
+	['DELETE /_admin/session', 'AdminClient.logout() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/session/link/inspect', 'AdminClient.inspectLink() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/session/link', 'AdminClient.redeemLink() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/access/operators', 'AdminClient.operators() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/access/operators/invites', 'AdminClient.inviteOperator() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/access/operators/:id/recovery', 'AdminClient.recoverOperator() — prefix is configurable, invisible to the static match'],
+	['PUT /_admin/access/operators/:id', 'AdminClient.updateOperator() — prefix is configurable, invisible to the static match'],
+	['DELETE /_admin/access/operators/links/:id', 'AdminClient.revokeOperatorLink() — prefix is configurable, invisible to the static match'],
 ]);
 
 const sigDir = join(root, '.claude/skills/fonderie/signatures');
