@@ -27,11 +27,13 @@ component OperatorsScreen(props: { client, me })
 
 component MigrationsScreen(props: { client })
 
-component UsersScreen(props: { client, pageSize })
+component UsersScreen(props: { client, pageSize, billingClient, openUserId })
 
 component CatalogScreen(props: { client })
 
-component SubscriberScreen(props: { client, pageSize })
+component SubscriberScreen(props: { client, pageSize, onOpenUser })
+
+component SubscriberBilling(props: { client, subscriberType, subscriberId })
 
 component AuditScreen(props: { client, pageSize })
 ```

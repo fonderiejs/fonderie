@@ -1,4 +1,4 @@
-import { type AuthAdminClient, describeLocation } from '@fonderie/client';
+import { type AuthAdminClient, type BillingAdminClient, describeLocation } from '@fonderie/client';
 import {
 	useAdminLoginHistory,
 	useAdminUser,
@@ -7,9 +7,11 @@ import {
 } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { computed, defineComponent, h, ref } from 'vue';
+import { statusTone, useSubscriptionIndex } from '../billing';
 import { styles } from '../styles';
 import { empty, icon, pageHeader, pill } from '../ui';
 import { actionButton, loadMoreButton, refreshButton, table, td } from './common';
+import { SubscriberBilling } from './SubscriberBilling';
 
 // Who is signed up, and why can't this one log in. Lists on arrival — an
 // operator who must know an address before they can see anything cannot find
@@ -20,11 +22,17 @@ export const UsersScreen = defineComponent({
 	props: {
 		client: { type: Object as PropType<AuthAdminClient>, required: true },
 		pageSize: { type: Number, default: 50 },
+		// Given ⇒ a Plan column, and each user's plan, credits and grant form on
+		// their page. Everyone has a wallet; no subscription means the free tier.
+		billingClient: { type: Object as PropType<BillingAdminClient>, default: undefined },
+		// Open this user on arrival (e.g. from the Subscriptions list).
+		openUserId: { type: String, default: undefined },
 	},
 	setup(props) {
 		const input = ref('');
 		const email = ref('');
-		const selectedId = ref('');
+		const selectedId = ref(props.openUserId ?? '');
+		const plans = useSubscriptionIndex(props.billingClient);
 		const list = useAdminUsers(props.client, { limit: props.pageSize });
 		const { user, isLoading, error, suspend, unsuspend, revokeSessions } = useAdminUser(
 			props.client,
@@ -36,6 +44,16 @@ export const UsersScreen = defineComponent({
 		const showList = computed(() => !email.value && !selectedId.value);
 		const yesNo = (v: boolean) => (v ? pill('ok', 'yes') : pill('neutral', 'no'));
 		const row = (k: string, v: unknown) => h('tr', [td(k), td(v as never)]);
+		const planCell = (id: string) => {
+			if (!plans.value) return h('span', { style: styles.muted }, '…');
+			const sub = plans.value.get(`user/${id}`);
+			if (!sub || sub.status === 'canceled') return h('span', { style: styles.muted }, 'free');
+			return [
+				h('strong', sub.plan),
+				' ',
+				sub.status !== 'active' ? pill(statusTone(sub.status), sub.status) : null,
+			];
+		};
 		const clear = () => {
 			email.value = '';
 			selectedId.value = '';
@@ -86,7 +104,9 @@ export const UsersScreen = defineComponent({
 							list.users.value.length === 0 && !list.isLoading.value
 								? empty('No users yet', 'Sign-ups appear here as they happen.', 'users')
 								: table(
-										['Email', 'Name', 'Created', 'Status'],
+										props.billingClient
+											? ['Email', 'Name', 'Plan', 'Created', 'Status']
+											: ['Email', 'Name', 'Created', 'Status'],
 										list.users.value.map((u) =>
 											h('tr', { key: u.id }, [
 												td(
@@ -104,6 +124,7 @@ export const UsersScreen = defineComponent({
 													`${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() ||
 														h('span', { style: styles.muted }, '—'),
 												),
+												props.billingClient ? td(planCell(u.id)) : null,
 												td(new Date(u.createdAt).toLocaleDateString()),
 												td(
 													u.suspended
@@ -169,6 +190,15 @@ export const UsersScreen = defineComponent({
 									() => void revokeSessions().then(() => sessions.refresh()),
 								),
 							]),
+							props.billingClient ? h('h2', { style: styles.subtitle }, 'Plan & credits') : null,
+							props.billingClient
+								? h(SubscriberBilling, {
+										key: u.id,
+										client: props.billingClient,
+										subscriberType: 'user',
+										subscriberId: u.id,
+									})
+								: null,
 							h('h2', { style: styles.subtitle }, 'Live sessions'),
 							sessions.sessions.value.length === 0
 								? h('p', { style: styles.muted }, 'None.')

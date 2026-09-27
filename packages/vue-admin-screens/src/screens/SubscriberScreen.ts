@@ -1,302 +1,193 @@
 import type { BillingAdminClient, SubscriberType } from '@fonderie/client';
-import { useAdminSubscriber, useAdminSubscribers } from '@fonderie/vue-admin';
+import { useAdminSubscribers } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
+import { periodEnd, statusTone } from '../billing';
 import { styles } from '../styles';
-import { empty, icon, pageHeader, pill } from '../ui';
-import { table, td } from './common';
+import { empty, icon, pageHeader, pill, refreshButton } from '../ui';
+import { loadMoreButton, table, td } from './common';
+import { SubscriberBilling } from './SubscriberBilling';
 
-// Who is subscribed, and then: what is this one on, what does their wallet
-// hold, what moved — and the one write, a manual grant, idempotency-keyed.
-// Lists on arrival; typing a type and an id was only possible if you already
-// knew both, which is not how anyone arrives at this page.
+const FILTERS: Array<{ label: string; match: (status: string) => boolean }> = [
+	{ label: 'All', match: () => true },
+	{ label: 'Active', match: (s) => s === 'active' },
+	{ label: 'Trialing', match: (s) => s === 'trialing' },
+	{ label: 'Past due', match: (s) => s === 'past_due' || s === 'unpaid' },
+	{ label: 'Canceled', match: (s) => s === 'canceled' },
+];
+
+// Who pays, and who is behind. A money list: plans and statuses across users
+// and workspaces. A user's own billing (plan, credits, grants) is on their
+// page under Users; free users have no subscription and appear only there.
 export const SubscriberScreen = defineComponent({
 	name: 'FonderieSubscriberScreen',
 	props: {
 		client: { type: Object as PropType<BillingAdminClient>, required: true },
 		pageSize: { type: Number, default: 50 },
+		/**
+		 * A user subscriber opens on the Users page, where their plan and credits
+		 * live beside their account. Omit to open everything here.
+		 */
+		onOpenUser: { type: Function as PropType<(userId: string) => void>, default: undefined },
 	},
 	setup(props) {
-		const type = ref<SubscriberType>('user');
-		const idInput = ref('');
-		const subscriber = ref<{ type: SubscriberType; id: string } | null>(null);
 		const list = useAdminSubscribers(props.client, { limit: props.pageSize });
-		const { subscription, wallet, ledger, hasMoreLedger, isLoading, error, loadMoreLedger, grant } =
-			useAdminSubscriber(props.client, subscriber, { limit: 20 });
-		const open = (t: SubscriberType, id: string) => {
-			granted.value = null;
-			type.value = t;
-			idInput.value = id;
-			subscriber.value = { type: t, id };
+		const filter = ref('All');
+		const open = ref<{ type: SubscriberType; id: string } | null>(null);
+		const type = ref<SubscriberType>('workspace');
+		const idInput = ref('');
+		const openRow = (t: SubscriberType, id: string) => {
+			if (t === 'user' && props.onOpenUser) props.onOpenUser(id);
+			else open.value = { type: t, id };
 		};
-		const amount = ref('');
-		const note = ref('');
-		const granted = ref<string | null>(null);
-		const input = (model: { value: string }, placeholder: string, extra: object = {}) =>
-			h('input', {
-				value: model.value,
-				onInput: (e: Event) => (model.value = (e.target as HTMLInputElement).value),
-				placeholder,
-				style: { ...styles.input, ...extra },
-				'aria-label': placeholder,
-			});
 
 		return () => {
-			const s = subscription.value;
-			const w = wallet.value;
-			return h('div', { style: styles.container }, [
-				pageHeader(
-					'Subscribers',
-					'Who is subscribed. Open one for their plan, wallet and ledger, and to grant credit.',
-				),
-				h(
-					'form',
-					{
-						style: styles.toolbar,
-						onSubmit: (e: Event) => {
-							e.preventDefault();
-							granted.value = null;
-							subscriber.value = idInput.value.trim()
-								? { type: type.value, id: idInput.value.trim() }
-								: null;
-						},
-					},
-					[
-						h(
-							'select',
-							{
-								value: type.value,
-								onChange: (e: Event) =>
-									(type.value = (e.target as HTMLSelectElement).value as SubscriberType),
-								style: styles.input,
-								'aria-label': 'Type',
-							},
-							[
-								h('option', { value: 'user' }, 'user'),
-								h('option', { value: 'workspace' }, 'workspace'),
-							],
-						),
-						input(idInput, 'subscriber id', { minWidth: '280px' }),
+			const o = open.value;
+			if (o) {
+				return h('div', { style: styles.container }, [
+					pageHeader(`${o.type}/${o.id}`, 'Plan, credits and what moved.', [
 						h(
 							'button',
-							{ type: 'submit', style: styles.buttonPrimary, disabled: isLoading.value },
-							[icon('search', 14), 'Look up'],
+							{ type: 'button', style: styles.buttonGhost, onClick: () => (open.value = null) },
+							[icon('back', 14), 'All subscriptions'],
 						),
-						subscriber.value
-							? h(
-									'button',
-									{
-										type: 'button',
-										style: styles.button,
-										onClick: () => {
-											subscriber.value = null;
-											idInput.value = '';
-											granted.value = null;
-										},
-									},
-									[icon('back', 14), 'All subscribers'],
-								)
-							: h(
-									'button',
-									{
-										type: 'button',
-										style: styles.button,
-										disabled: list.isLoading.value,
-										onClick: () => void list.refresh(),
-									},
-									'Refresh',
-								),
-					],
+					]),
+					h(SubscriberBilling, {
+						key: `${o.type}/${o.id}`,
+						client: props.client,
+						subscriberType: o.type,
+						subscriberId: o.id,
+					}),
+				]);
+			}
+			const match = FILTERS.find((f) => f.label === filter.value)?.match ?? (() => true);
+			const rows = list.subscriptions.value.filter((s) => match(s.status));
+			return h('div', { style: styles.container }, [
+				pageHeader(
+					'Subscriptions',
+					"Who pays, and who is behind. A user's plan and credits are also on their page under Users — free users appear only there.",
+					[refreshButton(() => void list.refresh(), list.isLoading.value)],
 				),
-				!subscriber.value
-					? h('div', [
-							list.error.value
-								? h('p', { style: styles.error, role: 'alert' }, list.error.value.explanation)
-								: null,
-							list.subscriptions.value.length === 0 && !list.isLoading.value
-								? empty(
-										'No subscribers yet',
-										'Subscriptions appear here once someone checks out.',
-										'subscriber',
-									)
-								: table(
-										['Subscriber', 'Plan', 'Status', 'Renews'],
-										list.subscriptions.value.map((sub) =>
-											h('tr', { key: sub.id }, [
-												td(
-													h(
-														'button',
-														{
-															type: 'button',
-															style: { ...styles.link, ...styles.mono },
-															onClick: () => open(sub.subscriberType, sub.subscriberId),
-														},
-														`${sub.subscriberType}/${sub.subscriberId}`,
-													),
-												),
-												td(`${sub.plan} · ${sub.interval}`),
-												td([
-													pill(
-														sub.status === 'active'
-															? 'ok'
-															: sub.status === 'trialing'
-																? 'info'
-																: sub.status === 'past_due'
-																	? 'warn'
-																	: 'neutral',
-														sub.status,
-													),
-													sub.cancelAtPeriodEnd ? [' ', pill('warn', 'cancels', false)] : null,
-												]),
-												td(
-													sub.currentPeriodEnd
-														? new Date(sub.currentPeriodEnd).toLocaleDateString()
-														: h('span', { style: styles.muted }, '—'),
-												),
-											]),
+				h('div', { style: { ...styles.toolbar, justifyContent: 'space-between' } }, [
+					h(
+						'fieldset',
+						{
+							style: {
+								display: 'flex',
+								gap: '6px',
+								flexWrap: 'wrap',
+								border: 'none',
+								margin: 0,
+								padding: 0,
+								minWidth: 0,
+							},
+							'aria-label': 'Filter by status',
+						},
+						FILTERS.map((f) => {
+							const n = list.subscriptions.value.filter((s) => f.match(s.status)).length;
+							const on = filter.value === f.label;
+							return h(
+								'button',
+								{
+									key: f.label,
+									type: 'button',
+									'aria-pressed': on,
+									onClick: () => (filter.value = f.label),
+									style: { ...(on ? styles.buttonPrimary : styles.button), height: '28px' },
+								},
+								[f.label, h('span', { style: { opacity: 0.7 } }, String(n))],
+							);
+						}),
+					),
+					h(
+						'form',
+						{
+							style: { display: 'flex', gap: '6px' },
+							onSubmit: (e: Event) => {
+								e.preventDefault();
+								if (idInput.value.trim()) openRow(type.value, idInput.value.trim());
+							},
+						},
+						[
+							h(
+								'select',
+								{
+									value: type.value,
+									onChange: (e: Event) =>
+										(type.value = (e.target as HTMLSelectElement).value as SubscriberType),
+									style: styles.input,
+									'aria-label': 'Type',
+								},
+								[
+									h('option', { value: 'workspace' }, 'workspace'),
+									h('option', { value: 'user' }, 'user'),
+								],
+							),
+							h('input', {
+								value: idInput.value,
+								onInput: (e: Event) => (idInput.value = (e.target as HTMLInputElement).value),
+								placeholder: 'subscriber id',
+								style: { ...styles.input, width: '220px' },
+								'aria-label': 'Subscriber id',
+							}),
+							h(
+								'button',
+								{ type: 'submit', style: styles.button, disabled: !idInput.value.trim() },
+								[icon('search', 14), 'Open'],
+							),
+						],
+					),
+				]),
+				list.error.value
+					? h('p', { style: styles.error, role: 'alert' }, list.error.value.explanation)
+					: null,
+				rows.length === 0 && !list.isLoading.value
+					? empty(
+							filter.value === 'All'
+								? 'No subscriptions yet'
+								: `No ${filter.value.toLowerCase()} subscriptions`,
+							'Subscriptions appear here once someone checks out.',
+							'subscriber',
+						)
+					: table(
+							['Subscriber', 'Plan', 'Status', 'Renews / ends'],
+							rows.map((s) => {
+								const end = periodEnd(s);
+								return h('tr', { key: s.id }, [
+									td(
+										h(
+											'button',
+											{
+												type: 'button',
+												style: { ...styles.link, ...styles.mono },
+												onClick: () => openRow(s.subscriberType, s.subscriberId),
+											},
+											`${s.subscriberType}/${s.subscriberId}`,
 										),
 									),
-							list.isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
-							list.hasMore.value && !list.isLoading.value
-								? h(
-										'button',
-										{
-											type: 'button',
-											style: { ...styles.button, marginTop: '8px' },
-											onClick: () => void list.loadMore(),
-										},
-										'Load more',
-									)
-								: null,
-						])
-					: null,
-				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
-					: null,
-				subscriber.value && !isLoading.value
-					? [
-							h('h2', { style: styles.subtitle }, 'Subscription'),
-							s
-								? h('table', { style: styles.table }, [
-										h('tbody', [
-											h('tr', [td('plan'), td([h('strong', s.plan), ` · ${s.interval}`])]),
-											h('tr', [
-												td('status'),
-												td(`${s.status}${s.cancelAtPeriodEnd ? ' · cancels at period end' : ''}`),
-											]),
-											h('tr', [
-												td('period'),
-												td(
-													`${s.currentPeriodStart ? new Date(s.currentPeriodStart).toLocaleDateString() : '—'} → ${s.currentPeriodEnd ? new Date(s.currentPeriodEnd).toLocaleDateString() : '—'}`,
-												),
-											]),
-											h('tr', [td('provider'), td(s.providerSubscriptionId ?? '—', styles.mono)]),
-										]),
-									])
-								: h('p', { style: styles.muted }, 'No subscription.'),
-							h('h2', { style: styles.subtitle }, 'Wallet'),
-							w
-								? [
-										h(
-											'p',
-											{
-												style: {
-													...styles.card,
-													display: 'flex',
-													alignItems: 'baseline',
-													gap: '8px',
-													flexWrap: 'wrap',
-												},
-											},
-											[
-												h(
-													'strong',
-													{
-														style: {
-															fontSize: '22px',
-															letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
-														},
-													},
-													w.balance,
-												),
-												` ${w.currency} `,
-												h(
-													'span',
-													{ style: styles.muted },
-													`(granted ${w.granted ?? '0'} · purchased ${w.purchased ?? '0'}) · minor units, precision ${w.precision}`,
-												),
-											],
-										),
-										h(
-											'form',
-											{
-												style: styles.toolbar,
-												onSubmit: (e: Event) => {
-													e.preventDefault();
-													const sub = subscriber.value;
-													if (!sub) return;
-													const key = `admin-grant-${sub.type}-${sub.id}-${Date.now()}`;
-													const amt = amount.value.trim();
-													void grant({
-														amount: amt,
-														...(note.value ? { description: note.value } : {}),
-														idempotencyKey: key,
-													})
-														.then(() => {
-															granted.value = `Granted ${amt} ${w.currency}.`;
-															amount.value = '';
-															note.value = '';
-														})
-														.catch(() => {});
-												},
-											},
-											[
-												input(amount, 'amount (minor units)'),
-												input(note, 'reason (optional)', { minWidth: '220px' }),
-												h(
-													'button',
-													{
-														type: 'submit',
-														style: styles.buttonPrimary,
-														disabled: !/^\d+$/.test(amount.value.trim()),
-													},
-													[icon('plus', 14), 'Grant'],
-												),
-												granted.value ? h('span', { style: styles.ok }, granted.value) : null,
-											],
-										),
-										h('h2', { style: styles.subtitle }, 'Ledger'),
-										ledger.value.length === 0
-											? empty('Nothing moved yet', undefined, 'subscriber')
-											: table(
-													['When', 'Kind', 'Amount', 'Note'],
-													ledger.value.map((t) =>
-														h('tr', { key: t.id }, [
-															td(new Date(t.createdAt).toLocaleString(), styles.muted),
-															td(t.type),
-															td(t.amount, styles.mono),
-															td(t.description ?? '', styles.muted),
-														]),
-													),
-												),
-										hasMoreLedger.value
-											? h(
-													'button',
-													{
-														type: 'button',
-														style: { ...styles.button, marginTop: '8px' },
-														onClick: () => void loadMoreLedger(),
-													},
-													'Load more',
-												)
+									td([
+										h('strong', s.plan),
+										' ',
+										h('span', { style: styles.muted }, `· ${s.interval}`),
+									]),
+									td([
+										pill(statusTone(s.status), s.status),
+										s.cancelAtPeriodEnd && s.status !== 'canceled'
+											? h('span', [' ', pill('warn', 'cancels', false)])
 											: null,
-									]
-								: h(
-										'p',
-										{ style: styles.muted },
-										'No wallet — billing has no wallet configuration.',
+									]),
+									td(
+										end
+											? [h('span', { style: styles.muted }, end.label), ` ${end.date}`]
+											: h('span', { style: styles.muted }, '—'),
+										{ whiteSpace: 'nowrap' },
 									),
-						]
+								]);
+							}),
+						),
+				list.isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
+				list.hasMore.value && !list.isLoading.value
+					? loadMoreButton(() => void list.loadMore())
 					: null,
 			]);
 		};

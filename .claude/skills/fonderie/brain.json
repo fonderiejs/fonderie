@@ -1531,6 +1531,7 @@
         "UsersScreen",
         "CatalogScreen",
         "SubscriberScreen",
+        "SubscriberBilling",
         "AuditScreen"
       ],
       "subpaths": [],
@@ -2370,6 +2371,7 @@
         "UsersScreen",
         "CatalogScreen",
         "SubscriberScreen",
+        "SubscriberBilling",
         "AuditScreen"
       ],
       "subpaths": [],
@@ -5650,6 +5652,10 @@
       "vue-admin-screens"
     ],
     "subscriberscreen": [
+      "react-admin-screens",
+      "vue-admin-screens"
+    ],
+    "subscriberbilling": [
       "react-admin-screens",
       "vue-admin-screens"
     ],

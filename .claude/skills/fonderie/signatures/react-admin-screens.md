@@ -65,6 +65,8 @@ interface IMigrationsScreenProps {
 interface IUsersScreenProps {
     client: AuthAdminClient;
     pageSize?: number;
+    billingClient?: BillingAdminClient | undefined;
+    openUserId?: string | undefined;
 }
 
 interface ICatalogScreenProps {
@@ -74,6 +76,15 @@ interface ICatalogScreenProps {
 interface ISubscriberScreenProps {
     client: BillingAdminClient;
     pageSize?: number;
+    onOpenUser?: (userId: string) => void;
+}
+
+interface ISubscriberBillingProps {
+    client: BillingAdminClient;
+    subscriber: {
+        type: SubscriberType;
+        id: string;
+    };
 }
 
 interface IAuditScreenProps {
@@ -101,11 +112,13 @@ function OperatorsScreen({ client, me }: IOperatorsScreenProps): Element
 
 function MigrationsScreen({ client }: IMigrationsScreenProps): Element
 
-function UsersScreen({ client, pageSize }: IUsersScreenProps): Element
+function UsersScreen({ client, pageSize, billingClient, openUserId, }: IUsersScreenProps): Element
 
 function CatalogScreen({ client }: ICatalogScreenProps): Element
 
-function SubscriberScreen({ client, pageSize }: ISubscriberScreenProps): Element
+function SubscriberScreen({ client, pageSize, onOpenUser }: ISubscriberScreenProps): Element
+
+function SubscriberBilling({ client, subscriber }: ISubscriberBillingProps): Element
 
 function AuditScreen({ client, pageSize }: IAuditScreenProps): Element
 ```

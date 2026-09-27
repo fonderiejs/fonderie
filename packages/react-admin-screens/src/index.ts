@@ -13,6 +13,7 @@ export type {
 	IUsersScreenProps,
 	ICatalogScreenProps,
 	ISubscriberScreenProps,
+	ISubscriberBillingProps,
 	IAuditScreenProps,
 } from './screens';
 export {
@@ -29,5 +30,6 @@ export {
 	UsersScreen,
 	CatalogScreen,
 	SubscriberScreen,
+	SubscriberBilling,
 	AuditScreen,
 } from './screens';
