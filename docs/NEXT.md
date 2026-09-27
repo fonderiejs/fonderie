@@ -126,6 +126,16 @@ assert *at most* one follow-up pass rather than exactly one (or drive the wakes
 deterministically). Until then, a rerun is legitimate — the flake is in the
 test, not in the change under test.
 
+**Fixed 2026-09-27** (it hung a third time, on Version Packages #473). The
+exact-count assertion is replaced by the invariants it stood for — passes never
+overlap, and a mid-pass wake gets at least one follow-up — because a wake that
+reaches the server after the follow-up finished *correctly* starts its own
+pass. Every worker a test starts is now stopped in `afterEach`, so a failing
+assertion reports red in seconds instead of leaving a listening server.
+Verified: the rewritten test fails with coalescing removed from `worker.ts`,
+passed 25 consecutive runs, and a deliberately failing test exits (it hung
+without the safety net).
+
 ### The postmortem, because the lesson generalises
 
 `runWorker(...).stop()` awaited the in-flight drain unconditionally:

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 
-import { runWorker } from '../worker';
+import { runWorker as startWorker } from '../worker';
 import type { EventBus } from '../bus';
 
 /**
@@ -19,6 +19,21 @@ import type { EventBus } from '../bus';
  * The transport itself is exercised against real Postgres in claiming.test.ts.
  * The question here is this entrypoint's control flow.
  */
+
+// Every worker a test starts is stopped after it — even when an assertion
+// throws first. Without this, a failing test skipped its handle.stop(), the
+// worker's HTTP server kept listening, and the whole CI job idled to its
+// 30-minute timeout instead of reporting one red test in seconds. stop() is
+// idempotent, so tests that already call it are unaffected.
+const started: Array<{ stop: () => Promise<void> }> = [];
+const runWorker: typeof startWorker = async (...args) => {
+	const handle = await startWorker(...args);
+	started.push(handle);
+	return handle;
+};
+afterEach(async () => {
+	await Promise.all(started.splice(0).map((h) => h.stop()));
+});
 
 function fakeBus(opts: { onDrain?: () => Promise<void> | void } = {}) {
 	const calls = { start: 0, drain: 0, stop: 0 };
@@ -116,20 +131,36 @@ test('a port with no secret is refused at boot, not served openly', async () => 
 	await assert.rejects(() => runWorker(bus, { port: 0 }), /secret/);
 });
 
-test('overlapping wakes coalesce into one pass, and the later one still runs', async () => {
+test('overlapping wakes coalesce: never two passes at once, and a mid-pass wake still gets a pass', async () => {
 	// Several requests can land on one instance. Running them concurrently is
 	// wasteful; dropping the later one loses work published after the running
 	// pass began scanning. It must run again instead.
+	//
+	// The invariants are asserted directly — at most one pass in flight, and at
+	// least one follow-up after the blocked pass — rather than an exact total.
+	// The exact count depends on when each HTTP request reaches the server: a
+	// wake that lands after the follow-up finished correctly starts its own
+	// pass, so "exactly 2" failed on slow CI runners while the worker was right.
 	let release!: () => void;
 	const gate = new Promise<void>((r) => { release = r; });
 	let n = 0;
-	const { bus, calls } = fakeBus({ onDrain: () => (++n === 1 ? gate : undefined) });
+	let active = 0;
+	let maxActive = 0;
+	const { bus, calls } = fakeBus({
+		onDrain: async () => {
+			active++;
+			maxActive = Math.max(maxActive, active);
+			try {
+				if (++n === 1) await gate;
+			} finally {
+				active--;
+			}
+		},
+	});
 
 	const handle = await runWorker(bus, { port: 0, secret: 's', intervalMs: 0 });
-	await new Promise((r) => setTimeout(r, 30)); // boot pass now blocked in the gate
-	assert.equal(calls.drain, 1);
+	while (calls.drain < 1) await new Promise((r) => setTimeout(r, 5)); // boot pass is now blocked in the gate
 
-	// Three wakes arrive while the first pass is still running.
 	const wakes = [0, 1, 2].map(() =>
 		fetch(`http://127.0.0.1:${handle.port}/drain`, {
 			method: 'POST',
@@ -137,11 +168,14 @@ test('overlapping wakes coalesce into one pass, and the later one still runs', a
 		}),
 	);
 	await new Promise((r) => setTimeout(r, 30));
-	assert.equal(calls.drain, 1, 'no concurrent second pass while one is in flight');
+	assert.equal(calls.drain, 1, 'no second pass may start while the first is in flight');
 
 	release();
-	await Promise.all(wakes);
-	assert.equal(calls.drain, 2, 'the wakes that arrived mid-pass collapse into exactly one follow-up');
+	const responses = await Promise.all(wakes);
+	assert.ok(responses.every((r) => r.ok), 'every wake is answered once its pass is done');
+	assert.equal(maxActive, 1, 'passes never overlap');
+	assert.ok(calls.drain >= 2, 'a wake that arrived mid-pass got a follow-up pass');
+	assert.ok(calls.drain <= 1 + wakes.length, 'at most one pass per wake, never a loop');
 	await handle.stop();
 });
 
