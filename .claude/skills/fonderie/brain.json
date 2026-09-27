@@ -749,7 +749,8 @@
         "ConfigModule",
         "RemoteConfigManager",
         "CONFIG_MANAGER_KEY",
-        "ConfigConflictError"
+        "ConfigConflictError",
+        "ConfigTypeChangeError"
       ],
       "subpaths": [
         "@fonderie/config/types",
@@ -782,7 +783,7 @@
         {
           "method": "PUT",
           "path": "/admin/config/:key",
-          "mw": "async (ctx) => { const b = body(ctx); if (!('value' in b)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value is required'); } try { const row = await setConfigEntry( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) }, store, ); return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', withParsedValue(row)); } catch (err) { return conflictOr(err); } }"
+          "mw": "async (ctx) => { const b = body(ctx); if (!('value' in b)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.value is required'); } try { const row = await setConfigEntry( { key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b), ...(b['allowTypeChange'] === true ? { allowTypeChange: true } : {}), }, store, ); return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', withParsedValue(row)); } catch (err) { if (err instanceof ConfigTypeChangeError) { return setApiResponse(HTTP.CONFLICT, 'CONFIG_TYPE_CHANGE', err.message, { from: err.from, to: err.to }); } return conflictOr(err); } }"
         },
         {
           "method": "GET",
@@ -5283,6 +5284,9 @@
       "config"
     ],
     "configconflicterror": [
+      "config"
+    ],
+    "configtypechangeerror": [
       "config"
     ],
     "fonderieapp": [

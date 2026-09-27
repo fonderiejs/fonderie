@@ -59,6 +59,7 @@ interface ISetConfigInput {
     description?: string;
     active?: boolean;
     ifVersion?: number;
+    allowTypeChange?: boolean;
 }
 
 interface ISetSecretInput {

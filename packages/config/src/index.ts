@@ -36,3 +36,5 @@ export type { ISecretEncryptor } from './crypto';
 export type { IConfigOptions } from './config';
 export { publicConfigHandler, publicConfigValues } from './public';
 export type { IPublicConfigResult, PublicConfigKeys } from './public';
+export { ConfigTypeChangeError, configValueKind } from './services/config';
+export type { ConfigValueKind } from './services/config';

@@ -17,6 +17,9 @@ export interface ISetConfigInput {
 	// Deactivated entries stay stored but are excluded from runtime reads.
 	active?: boolean;
 	ifVersion?: number;
+	/** Required to change an existing key's value kind (on/off → text, list → object);
+	 * without it the server answers 409 CONFIG_TYPE_CHANGE. */
+	allowTypeChange?: boolean;
 }
 
 export interface ISetSecretInput {

@@ -37,6 +37,16 @@ at equal completion and quality** (harness kept in our private research reposito
   auth-session pilot found the wiring isn't the turn bottleneck; the notes
   live in the private research repository).
 
+
+### Config values
+
+`fonderie config set KEY VALUE` infers the type the same way the admin UI does:
+`{…}` and `[…]` are objects and lists, `true`/`false` are on/off, plain numbers
+are numbers — and anything that only *looks* like a number (`1.10`, `0123`,
+`1e3`, long IDs) stays text. `--text` stores an ambiguous value (`true`, `42`)
+as text. Changing an existing key's type (on/off → text…) is refused (exit 2)
+unless you pass `--allow-type-change`.
+
 ## How it stays correct
 
 Each package ships its own `brain/` fragment **inside its tarball**, version-
