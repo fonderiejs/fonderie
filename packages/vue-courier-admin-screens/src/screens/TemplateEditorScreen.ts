@@ -5,16 +5,22 @@ import type {
 	CourierAdminClient,
 	FonderieApiError,
 	ISetTemplateInput,
+	ITemplateEntry,
 	ITemplateRevision,
 } from '@fonderie/client';
-import { createAdminT, formatAdminDate } from '@fonderie/client';
+import {
+	createAdminT,
+	formatAdminDate,
+	groupTemplatesByType,
+	missingTemplateLocales,
+} from '@fonderie/client';
 import {
 	useTemplate,
 	useTemplatePreview,
 	useTemplateRevisions,
 	useTemplates,
 } from '@fonderie/vue-courier-admin';
-import type { PropType } from 'vue';
+import type { CSSProperties, PropType } from 'vue';
 import { computed, defineComponent, h, ref, watch } from 'vue';
 
 const PREVIEW_DEBOUNCE_MS = 500;
@@ -23,6 +29,37 @@ import { styles } from '../styles';
 // Implicit variables the layout injects — an operator never supplies these, so
 // offering them as fields would just be noise.
 const IMPLICIT = new Set(['subject', 'preheader', 'brandName']);
+
+// One tab per locale of this email, underlined like a document's tabs.
+const tab: CSSProperties = {
+	height: '32px',
+	padding: '0 10px',
+	background: 'none',
+	border: 'none',
+	borderBottom: '2px solid transparent',
+	color: 'var(--fonderie-text-muted,#5c5c5c)',
+	fontSize: '13px',
+	fontFamily:
+		'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+	cursor: 'pointer',
+};
+const tabSelected: CSSProperties = {
+	...tab,
+	color: 'var(--fonderie-text,#171717)',
+	fontWeight: 600,
+	borderBottomColor: 'var(--fonderie-text,#171717)',
+	cursor: 'default',
+};
+const tabInactive: CSSProperties = { ...tab, opacity: 0.55, textDecoration: 'line-through' };
+const tabBar: CSSProperties = {
+	display: 'flex',
+	alignItems: 'flex-end',
+	gap: '12px',
+	borderBottom: '1px solid var(--fonderie-border,#e0e0e0)',
+	margin: '4px 0 12px',
+	paddingBottom: '6px',
+};
+const tabs: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '-7px' };
 
 export const TemplateEditorScreen = defineComponent({
 	name: 'FonderieTemplateEditorScreen',
@@ -35,8 +72,13 @@ export const TemplateEditorScreen = defineComponent({
 		 * be edited and rolled back, never deleted — Delete is not offered.
 		 */
 		system: { type: Boolean, default: false },
-		/** Shows "+ Add locale" on the default locale (emits add-locale). */
+		/** Shows "+ Add locale" (emits add-locale). */
 		allowAddLocale: { type: Boolean, default: false },
+		/**
+		 * Shows a tab per locale this email exists in (emits select-locale).
+		 * Unsaved edits are confirmed before switching away.
+		 */
+		localeTabs: { type: Boolean, default: false },
 		/** The console language (`locale` is the template's); defaults to English. */
 		uiLocale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
@@ -44,8 +86,13 @@ export const TemplateEditorScreen = defineComponent({
 		saved: () => true,
 		/** The template was deleted and no longer exists. */
 		deleted: () => true,
-		/** Create a translation of this template. */
-		'add-locale': (_type: string) => true,
+		/**
+		 * Create a translation of this template. `locales` are the ones the app
+		 * uses elsewhere that this email lacks — suggest them first.
+		 */
+		'add-locale': (_type: string, _context: { locales: string[] }) => true,
+		/** Open another locale of this email. */
+		'select-locale': (_template: ITemplateEntry) => true,
 	},
 	setup(props, { emit }) {
 		const t = (key: AdminMessageKey, params?: AdminMessageParams) =>
@@ -59,7 +106,11 @@ export const TemplateEditorScreen = defineComponent({
 		// after each write); mounting it adds a template-list fetch to this
 		// single-template editor — acceptable for an admin dashboard. Its
 		// isLoading/error track that list fetch, so the save action keeps local state.
-		const { saveTemplate, removeTemplate } = useTemplates(props.client);
+		const { templates, saveTemplate, removeTemplate } = useTemplates(props.client);
+		// This email's locales, for the tabs. The list is already fetched for saves.
+		const siblings = computed(
+			() => groupTemplatesByType(templates.value).find((g) => g.type === props.type)?.entries ?? [],
+		);
 		const isDeleting = ref(false);
 		const { revisions, rollback } = useTemplateRevisions(props.client, props.type, props.locale);
 		const isSaving = ref(false);
@@ -171,6 +222,56 @@ export const TemplateEditorScreen = defineComponent({
 			}
 		}
 
+		// Leaving a locale with unsaved edits asks first: they would be lost.
+		const leave = () => !dirty.value || window.confirm(t('templates.editor.discardChanges'));
+
+		function renderTabBar() {
+			if (!props.localeTabs && !props.allowAddLocale) return null;
+			return h('div', { style: tabBar }, [
+				props.localeTabs
+					? // Each tab opens another stored row, so this is navigation, not an
+						// ARIA tablist: plain buttons, the open one marked aria-current.
+						h(
+							'nav',
+							{ 'aria-label': t('templates.editor.locales'), style: tabs },
+							siblings.value.map((entry) => {
+								const selected = entry.locale === (props.locale ?? null);
+								return h(
+									'button',
+									{
+										key: entry.locale ?? '',
+										type: 'button',
+										'aria-current': selected ? 'true' : undefined,
+										style: selected ? tabSelected : entry.active ? tab : tabInactive,
+										title: entry.active ? undefined : t('common.status.inactive'),
+										onClick: () => {
+											if (!selected && leave()) emit('select-locale', entry);
+										},
+									},
+									entry.locale ?? t('templates.defaultChip'),
+								);
+							}),
+						)
+					: null,
+				props.allowAddLocale
+					? h(
+							'button',
+							{
+								type: 'button',
+								style: { ...styles.rollbackButton, marginLeft: 'auto' },
+								onClick: () => {
+									if (leave())
+										emit('add-locale', props.type, {
+											locales: missingTemplateLocales(templates.value, props.type),
+										});
+								},
+							},
+							t('templates.editor.addLocale'),
+						)
+					: null,
+			]);
+		}
+
 		async function handleDelete() {
 			const message = props.locale
 				? t('templates.editor.confirmDeleteLocale', { locale: props.locale, type: props.type })
@@ -208,24 +309,8 @@ export const TemplateEditorScreen = defineComponent({
 				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
 
 			return h('div', { style: styles.container }, [
-				h(
-					'div',
-					{ style: { display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' } },
-					[
-						h('h1', { style: styles.title }, props.type),
-						props.allowAddLocale && !props.locale
-							? h(
-									'button',
-									{
-										type: 'button',
-										style: { ...styles.rollbackButton, marginLeft: 'auto' },
-										onClick: () => emit('add-locale', props.type),
-									},
-									t('templates.editor.addLocale'),
-								)
-							: null,
-					],
-				),
+				h('h1', { style: styles.title }, props.type),
+				renderTabBar(),
 				h('p', { style: styles.meta }, [
 					h('strong', props.locale ?? t('templates.defaultLocale')),
 					` · v${template.value?.version ?? 1}`,
@@ -327,7 +412,11 @@ export const TemplateEditorScreen = defineComponent({
 									: null,
 							]),
 						]),
-						h('label', { style: styles.label, for: 'template-sample' }, t('templates.editor.sampleData')),
+						h(
+							'label',
+							{ style: styles.label, for: 'template-sample' },
+							t('templates.editor.sampleData'),
+						),
 						h('textarea', {
 							id: 'template-sample',
 							style: styles.textarea,
@@ -345,7 +434,11 @@ export const TemplateEditorScreen = defineComponent({
 					h('div', { style: styles.previewColumn }, [
 						h('div', { style: styles.previewHeader }, [
 							h('span', { style: styles.label }, t('templates.editor.preview')),
-							h('span', { style: styles.meta }, isPreviewing.value ? t('templates.editor.rendering') : t('templates.editor.live')),
+							h(
+								'span',
+								{ style: styles.meta },
+								isPreviewing.value ? t('templates.editor.rendering') : t('templates.editor.live'),
+							),
 						]),
 						previewError.value
 							? h('p', { style: styles.error, role: 'alert' }, previewError.value.explanation)

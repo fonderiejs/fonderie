@@ -3,8 +3,11 @@ import {
 	type CourierAdminClient,
 	type FonderieApiError,
 	type ISetTemplateInput,
+	type ITemplateEntry,
 	createAdminT,
 	formatAdminDate,
+	groupTemplatesByType,
+	missingTemplateLocales,
 } from '@fonderie/client';
 import {
 	useTemplate,
@@ -33,8 +36,16 @@ export interface ITemplateEditorScreenProps {
 	system?: boolean;
 	/** Called after a delete; the template no longer exists. */
 	onDeleted?: () => void;
-	/** Shows "Add locale": create a translation of this template. */
-	onAddLocale?: (type: string) => void;
+	/**
+	 * Shows "Add locale": create a translation of this template. `locales` are
+	 * the ones the app uses elsewhere that this email lacks — suggest them first.
+	 */
+	onAddLocale?: (type: string, context: { locales: string[] }) => void;
+	/**
+	 * Shows a tab per locale this email exists in; receives the row to open.
+	 * Unsaved edits are confirmed before switching away.
+	 */
+	onSelectLocale?: (template: ITemplateEntry) => void;
 	/**
 	 * The CONSOLE's language (default English). Named `uiLocale` because
 	 * `locale` here is the template's own locale.
@@ -50,6 +61,7 @@ export function TemplateEditorScreen({
 	system = false,
 	onDeleted,
 	onAddLocale,
+	onSelectLocale,
 	uiLocale,
 }: ITemplateEditorScreenProps) {
 	// Memoized: `run` below depends on it, and a new translator per render would
@@ -60,7 +72,9 @@ export function TemplateEditorScreen({
 	// each write); mounting it adds a template-list fetch to this single-template
 	// editor — acceptable for an admin dashboard. Its isLoading/error track that
 	// list fetch, so the save action keeps local state.
-	const { saveTemplate, removeTemplate } = useTemplates(client);
+	const { templates, saveTemplate, removeTemplate } = useTemplates(client);
+	// This email's locales, for the tabs. The list is already fetched for saves.
+	const siblings = groupTemplatesByType(templates).find((g) => g.type === type)?.entries ?? [];
 	const [isDeleting, setIsDeleting] = useState(false);
 	const { revisions, rollback } = useTemplateRevisions(client, type, locale);
 	const [isSaving, setIsSaving] = useState(false);
@@ -162,6 +176,11 @@ export function TemplateEditorScreen({
 		}
 	};
 
+	const switchTo = (entry: ITemplateEntry) => {
+		if (dirty && !window.confirm(t('templates.editor.discardChanges'))) return;
+		onSelectLocale?.(entry);
+	};
+
 	const handleDelete = async () => {
 		const message = locale
 			? t('templates.editor.confirmDeleteLocale', { type, locale })
@@ -189,18 +208,44 @@ export function TemplateEditorScreen({
 
 	return (
 		<div style={styles.container}>
-			<div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-				<h1 style={styles.title}>{type}</h1>
-				{onAddLocale && !locale ? (
-					<button
-						type="button"
-						style={{ ...styles.rollbackButton, marginLeft: 'auto' }}
-						onClick={() => onAddLocale(type)}
-					>
-						{t('templates.editor.addLocale')}
-					</button>
-				) : null}
-			</div>
+			<h1 style={styles.title}>{type}</h1>
+			{onSelectLocale || onAddLocale ? (
+				<div style={styles.tabBar}>
+					{onSelectLocale ? (
+						// Each tab opens another stored row, so this is navigation, not an
+						// ARIA tablist: plain buttons, the open one marked aria-current.
+						<nav aria-label={t('templates.editor.locales')} style={styles.tabs}>
+							{siblings.map((entry) => {
+								const selected = entry.locale === (locale ?? null);
+								return (
+									<button
+										key={entry.locale ?? ''}
+										type="button"
+										aria-current={selected ? 'true' : undefined}
+										onClick={() => (selected ? undefined : switchTo(entry))}
+										style={selected ? styles.tabSelected : entry.active ? styles.tab : styles.tabInactive}
+										title={entry.active ? undefined : t('common.status.inactive')}
+									>
+										{entry.locale ?? t('templates.defaultChip')}
+									</button>
+								);
+							})}
+						</nav>
+					) : null}
+					{onAddLocale ? (
+						<button
+							type="button"
+							style={{ ...styles.rollbackButton, marginLeft: 'auto' }}
+							onClick={() => {
+								if (dirty && !window.confirm(t('templates.editor.discardChanges'))) return;
+								onAddLocale(type, { locales: missingTemplateLocales(templates, type) });
+							}}
+						>
+							{t('templates.editor.addLocale')}
+						</button>
+					) : null}
+				</div>
+			) : null}
 			<p style={styles.meta}>
 				<strong>{locale ?? t('templates.defaultLocale')}</strong> · v{template?.version ?? 1}
 				{system ? ` · ${t('templates.editor.builtInNote')}` : ''}
@@ -376,8 +421,40 @@ export function TemplateEditorScreen({
 	);
 }
 
+const tab: CSSProperties = {
+	height: 32,
+	padding: '0 10px',
+	background: 'none',
+	border: 'none',
+	borderBottom: '2px solid transparent',
+	color: 'var(--fonderie-text-muted,#5c5c5c)',
+	fontSize: 13,
+	fontFamily:
+		'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+	cursor: 'pointer',
+};
+
 const styles: Record<string, CSSProperties> = {
 	container: { padding: '8px 40px 64px', maxWidth: 1400, boxSizing: 'border-box' },
+	// One tab per locale of this email, underlined like a document's tabs.
+	tabBar: {
+		display: 'flex',
+		alignItems: 'flex-end',
+		gap: 12,
+		borderBottom: '1px solid var(--fonderie-border,#e0e0e0)',
+		margin: '4px 0 12px',
+		paddingBottom: 6,
+	},
+	tabs: { display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: -7 },
+	tab,
+	tabSelected: {
+		...tab,
+		color: 'var(--fonderie-text,#171717)',
+		fontWeight: 600,
+		borderBottomColor: 'var(--fonderie-text,#171717)',
+		cursor: 'default',
+	},
+	tabInactive: { ...tab, opacity: 0.55, textDecoration: 'line-through' },
 	// Two columns, always: the editor on the left, the rendered result on the
 	// right. Stacking the preview under a long form hid it below the fold.
 	split: {

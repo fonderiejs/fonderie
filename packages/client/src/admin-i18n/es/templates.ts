@@ -2,6 +2,7 @@ import type en from '../en/templates';
 
 const templates: typeof en = {
 	defaultLocale: 'idioma predeterminado',
+	defaultChip: 'predeterminado',
 	builtInBadge: 'integrado',
 	subject: 'Asunto',
 	htmlBody: 'Cuerpo HTML',
@@ -11,9 +12,12 @@ const templates: typeof en = {
 		newTemplate: 'Nueva plantilla',
 		hint: 'Cada correo que envía la aplicación. Abre uno para editar su contenido y ver la vista previa en directo.',
 		loading: 'Cargando plantillas…',
+		openLocale: 'Abrir la versión {locale} de {type}',
 	},
 	editor: {
 		loading: 'Cargando plantilla…',
+		locales: 'Idiomas',
+		discardChanges: 'Este idioma tiene cambios sin guardar. ¿Descartarlos y cambiar de idioma?',
 		addLocale: '+ Añadir idioma',
 		builtInNote: 'correo integrado: se puede editar o restaurar, no eliminar',
 		active: 'Activa',

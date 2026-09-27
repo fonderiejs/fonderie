@@ -3,13 +3,18 @@ import {
 	type CourierAdminClient,
 	type ITemplateEntry,
 	createAdminT,
+	groupTemplatesByType,
 } from '@fonderie/client';
 import { useTemplates } from '@fonderie/react-courier-admin';
 import type { CSSProperties } from 'react';
 
 export interface ITemplateListScreenProps {
 	client: CourierAdminClient;
-	/** Receives the whole row — type AND locale, and whether it is built-in. */
+	/**
+	 * Receives the whole row — type AND locale, and whether it is built-in. The
+	 * list shows one row per email: clicking it opens the default locale, a
+	 * locale chip opens that locale.
+	 */
 	onSelectTemplate?: (template: ITemplateEntry) => void;
 	/** Shows a "New template" button. Receives the locales in use, to suggest. */
 	onCreateTemplate?: (context: { locales: string[] }) => void;
@@ -25,6 +30,7 @@ export function TemplateListScreen({
 }: ITemplateListScreenProps) {
 	const t = createAdminT(locale);
 	const { templates, isLoading, error } = useTemplates(client);
+	const groups = groupTemplatesByType(templates);
 
 	return (
 		<div style={styles.container}>
@@ -57,23 +63,40 @@ export function TemplateListScreen({
 				</p>
 			) : (
 				<ul style={styles.list}>
-					{templates.map((template) => (
-						<li key={`${template.type}:${template.locale ?? 'base'}`} style={styles.row}>
+					{groups.map((group) => (
+						<li key={group.type} style={styles.row}>
 							<button
 								type="button"
-								onClick={() => onSelectTemplate?.(template)}
+								onClick={() => onSelectTemplate?.(group.primary)}
 								style={styles.rowButton}
 							>
-								<span style={styles.type}>{template.type}</span>
-								<span style={styles.locale}>{template.locale ?? t('templates.defaultLocale')}</span>
-								{template.system ? (
+								<span style={styles.type}>{group.type}</span>
+								{group.system ? (
 									<span style={styles.builtIn}>{t('templates.builtInBadge')}</span>
 								) : null}
-								<span style={template.active ? styles.active : styles.inactive}>
+								<span style={group.primary.active ? styles.active : styles.inactive}>
 									<span style={styles.dot} />
-									{template.active ? t('common.status.active') : t('common.status.inactive')}
+									{group.primary.active ? t('common.status.active') : t('common.status.inactive')}
 								</span>
 							</button>
+							{/* Siblings of the row button, not inside it: a button cannot hold buttons. */}
+							<span style={styles.chips}>
+								{group.entries.map((entry) => {
+									const name = entry.locale ?? t('templates.defaultChip');
+									return (
+										<button
+											key={entry.locale ?? ''}
+											type="button"
+											onClick={() => onSelectTemplate?.(entry)}
+											style={entry.active ? styles.chip : styles.chipInactive}
+											aria-label={t('templates.list.openLocale', { type: group.type, locale: name })}
+											title={entry.active ? undefined : t('common.status.inactive')}
+										>
+											{name}
+										</button>
+									);
+								})}
+							</span>
 						</li>
 					))}
 				</ul>
@@ -94,6 +117,21 @@ const pill: CSSProperties = {
 	fontWeight: 600,
 	lineHeight: 1.5,
 	minWidth: 64,
+};
+
+// One per locale the email exists in. Monospace: they are language tags.
+const chip: CSSProperties = {
+	height: 24,
+	boxSizing: 'border-box',
+	padding: '0 8px',
+	borderRadius: 6,
+	border: '1px solid var(--fonderie-border,#e0e0e0)',
+	background: 'var(--fonderie-surface,#fff)',
+	color: 'var(--fonderie-text,#171717)',
+	fontSize: 12,
+	fontFamily:
+		'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+	cursor: 'pointer',
 };
 
 const styles: Record<string, CSSProperties> = {
@@ -118,9 +156,16 @@ const styles: Record<string, CSSProperties> = {
 		overflow: 'hidden',
 		boxShadow: 'var(--fonderie-shadow-card,0 2px 3px 0 rgba(0,0,0,.05))',
 	},
-	row: { borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)' },
+	row: {
+		display: 'flex',
+		alignItems: 'center',
+		gap: 8,
+		paddingRight: 16,
+		borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)',
+	},
 	rowButton: {
-		width: '100%',
+		flex: 1,
+		minWidth: 0,
 		display: 'flex',
 		justifyContent: 'space-between',
 		alignItems: 'center',
@@ -140,7 +185,9 @@ const styles: Record<string, CSSProperties> = {
 		fontFamily:
 			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
 	},
-	locale: { fontSize: 12.5, color: 'var(--fonderie-text-muted,#5c5c5c)' },
+	chips: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6 },
+	chip,
+	chipInactive: { ...chip, opacity: 0.5, textDecoration: 'line-through' },
 	dot: { width: 6, height: 6, borderRadius: 999, background: 'currentColor' },
 	builtIn: {
 		fontSize: 11,

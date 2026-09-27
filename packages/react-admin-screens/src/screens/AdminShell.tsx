@@ -395,7 +395,15 @@ export function AdminShell({
 						system={editing.system}
 						onSaved={() => setEditing(null)}
 						onDeleted={() => setEditing(null)}
-						onAddLocale={(type) => setEditing({ kind: 'template-new', type })}
+						onAddLocale={(type, c) => setEditing({ kind: 'template-new', type, locales: c.locales })}
+						onSelectLocale={(tpl) =>
+							setEditing({
+								kind: 'template',
+								type: tpl.type,
+								locale: tpl.locale,
+								system: tpl.system === true,
+							})
+						}
 						uiLocale={locale}
 					/>
 				</>
