@@ -1,5 +1,5 @@
 import type { IStoreAdapter } from '@fonderie/store';
-import type { Middleware } from '@fonderie/core';
+import type { ILocaleSettings, Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
 import type { IAuthConfig, AuthRouteId } from './config';
@@ -35,9 +35,10 @@ export function buildAuthRoutes(
 	store: IStoreAdapter,
 	config: IAuthConfig,
 	bus?: EventBus,
+	locales?: ILocaleSettings,
 ): RouteDefinition[] {
 	const user = userController(store, config, bus);
-	const auth = authController(store, config, bus);
+	const auth = authController(store, config, bus, locales);
 	const oauth = oauthController(store, config, bus);
 	const mfa = mfaController(store, config, config.appName ?? 'Fonderie', bus);
 

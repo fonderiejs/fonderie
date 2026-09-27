@@ -1,4 +1,5 @@
-import type { IAdminDescription, IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IAdminDescription, IFonderieModule, IFonderieApp, ILocaleSettings } from '@fonderie/core';
+import { defineLocales } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
@@ -26,6 +27,11 @@ export class CourierModule implements IFonderieModule {
 	readonly version = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';
 	readonly deps = ['@fonderie/events'];
 	readonly dispatcher: Dispatcher;
+	private readonly resolver: ITemplateResolver;
+	// The app's locales arrive at install; until then (describeAdmin runs from
+	// constructor state) the core default, which is what an app without a
+	// `locales` config gets anyway.
+	private locales: ILocaleSettings = defineLocales();
 
 	constructor(
 		private config: ICourierConfig,
@@ -33,9 +39,9 @@ export class CourierModule implements IFonderieModule {
 		bus?: EventBus,
 	) {
 		const templateSource = config.templates?.source ?? 'db';
-		const resolver = createTemplateResolver(templateSource, config, store);
+		this.resolver = createTemplateResolver(templateSource, config, store);
 
-		this.dispatcher = new Dispatcher(config, resolver, store);
+		this.dispatcher = new Dispatcher(config, this.resolver, store);
 
 		if (config.email) this.dispatcher.registerChannel(new EmailChannel(config.email));
 		if (config.sms) this.dispatcher.registerChannel(new SmsChannel(config.sms));
@@ -62,6 +68,9 @@ export class CourierModule implements IFonderieModule {
 		return {
 			...(this.config.brandName ? { brandName: this.config.brandName } : {}),
 			systemTypes,
+			// A getter: routes are described before install, and read the locales
+			// per request, after install has set them.
+			locales: () => this.locales,
 		};
 	}
 
@@ -86,6 +95,11 @@ export class CourierModule implements IFonderieModule {
 	}
 
 	install(app: IFonderieApp): void {
+		// Core owns the locales: which one the default copy is in, and each
+		// market's fallback chain. The resolver follows them on every send.
+		this.locales = app.locales ?? defineLocales();
+		this.resolver.setLocales?.(this.locales);
+
 		// Boot-time preflight: warn if any routed message type has no provider.
 		validateCourierConfig(this.config, this.dispatcher.channelNames());
 

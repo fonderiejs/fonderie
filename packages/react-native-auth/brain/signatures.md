@@ -57,6 +57,7 @@ interface IRegisterInput {
     password: string;
     firstName?: string;
     lastName?: string;
+    locale?: string;
 }
 
 interface IRegisterResult {

@@ -18,6 +18,7 @@ export type {
 	IFonderieContext,
 	ICourierMessage,
 	IDefaultTemplate,
+	IDefaultTemplateCopy,
 	IFonderieContextMeta,
 	IHandleInit,
 	IReadinessProblem,
@@ -37,6 +38,18 @@ export {
 
 export { FonderieApp, DEFAULT_MAX_BODY_BYTES } from './app';
 export { defineConfig } from './config';
+export type { ILocaleConfig, ILocaleSettings } from './locale';
+export {
+	DEFAULT_SYSTEM_LOCALE,
+	MAX_LOCALE_FALLBACKS,
+	canonicalLocale,
+	defineLocales,
+	localeChain,
+	localeLanguage,
+	SHIPPED_TEMPLATE_LANGUAGES,
+	translationProblems,
+	withTranslations,
+} from './locale';
 export { compose } from './compose';
 export { normalizeMountPath, normalizeRequestPath } from './router';
 export type { FonderieConfig } from './config';

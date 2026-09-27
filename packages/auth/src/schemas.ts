@@ -18,14 +18,19 @@ const sixDigitPin = z
 	.trim()
 	.regex(/^\d{6}$/, 'must be a 6-digit code');
 
+// The language the person signed up in. Optional and lenient: an unreadable
+// tag falls back to the app's system locale rather than failing sign-up.
+const signupLocale = z.string().max(35).nullish();
+
 export const registerSchema = z.union([
 	z.object({
 		email,
 		password,
 		firstName: z.string().max(100).nullish(),
 		lastName: z.string().max(100).nullish(),
+		locale: signupLocale,
 	}),
-	z.object({ phone }),
+	z.object({ phone, locale: signupLocale }),
 ]);
 
 export const loginSchema = z.union([

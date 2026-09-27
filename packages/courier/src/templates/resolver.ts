@@ -1,3 +1,5 @@
+import { canonicalLocale, defineLocales, localeChain, localeLanguage } from '@fonderie/core';
+import type { IDefaultTemplateCopy, ILocaleSettings } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type {
@@ -6,7 +8,7 @@ import type {
 	IDefaultTemplate,
 	DefaultTemplateMap,
 } from '../types';
-import { EMAIL_THEME, wrapLayout } from './layout';
+import { EMAIL_THEME, defaultEmailLayout, wrapLayout } from './layout';
 
 // The stored template id for a founder-supplied layout shell (DB row `type` or
 // FS file `_layout.html`). Absent → the built-in DEFAULT_EMAIL_LAYOUT is used.
@@ -116,8 +118,10 @@ function composeHtml(
 	layoutHtml: string | undefined,
 	subject: string | undefined,
 	data: Record<string, unknown>,
+	language?: string,
 ): string {
-	const wrapped = wrapLayout(bodyHtml, layoutHtml);
+	// No operator shell → the built-in one, in the email's own language.
+	const wrapped = wrapLayout(bodyHtml, layoutHtml ?? defaultEmailLayout(language));
 	return render(
 		wrapped,
 		{ subject: subject ?? '', preheader: '', brandName: EMAIL_THEME.brand, ...data },
@@ -133,12 +137,16 @@ export function renderFragment(
 	frag: { subject?: string | null; text: string; html?: string | null },
 	layoutHtml: string | undefined,
 	data: Record<string, unknown>,
+	// The locale this copy is in: names the built-in shell's language, and is
+	// reported as the version sent.
+	locale?: string,
 ): IRenderedTemplate {
 	const subject = frag.subject ? render(frag.subject, data) : undefined;
 	return {
 		text: render(frag.text, data),
 		...(subject ? { subject } : {}),
-		...(frag.html ? { html: composeHtml(frag.html, layoutHtml, subject, data) } : {}),
+		...(frag.html ? { html: composeHtml(frag.html, layoutHtml, subject, data, locale) } : {}),
+		...(locale ? { locale } : {}),
 	};
 }
 
@@ -156,6 +164,25 @@ export class DefaultTemplates {
 	get(type: string): IDefaultTemplate | undefined {
 		return this.map.get(type);
 	}
+	/**
+	 * The built-in copy of `type` in `locale`: its exact key, else its language
+	 * ('fr-CA' → 'fr'). Built-in copy has no market-specific terms, so the
+	 * language is safe here where it would not be for an app's own versions.
+	 * Returns the matched key with it — that is the version reported as sent.
+	 */
+	getLocalized(type: string, locale: string): { copy: IDefaultTemplateCopy; locale: string } | undefined {
+		const all = this.map.get(type)?.locales;
+		if (!all) return undefined;
+		for (const key of [locale, localeLanguage(locale)]) {
+			const copy = all[key];
+			if (copy) return { copy, locale: key };
+		}
+		return undefined;
+	}
+	/** Every language a built-in email ships in besides English. */
+	languages(type: string): string[] {
+		return Object.keys(this.map.get(type)?.locales ?? {});
+	}
 	get size(): number {
 		return this.map.size;
 	}
@@ -165,58 +192,95 @@ export class DefaultTemplates {
 	}
 }
 
-// DB-backed resolver — reads from fonderie_courier_templates with locale fallback
+// DB-backed resolver. First match wins, for a user in fr-FR whose app declares
+// fr-FR → fr-CA:
+//
+//   1 saved fr-FR, 2 saved fr-CA   the app's versions, along the declared chain
+//   3 built-in French              Fonderie's copy, matched by language
+//   4 saved default                the system locale's version (untagged row)
+//   5 built-in English
+//
+// The system locale comes LAST on purpose: every built-in email also has a
+// saved default row, so trying it before step 3 would send a French user the
+// app's English instead of the French that ships. An app's versions never fall
+// to a sibling market on their own — only along a chain it declared.
 export class DBTemplateResolver implements ITemplateResolver {
+	private locales: ILocaleSettings = defineLocales();
+
 	constructor(
 		private store: IStoreAdapter,
 		private defaults?: DefaultTemplates,
 	) {}
+
+	/** The app's locales, handed over at install (core owns them). */
+	setLocales(settings: ILocaleSettings): void {
+		this.locales = settings;
+	}
 
 	async resolve(
 		type: string,
 		data: Record<string, unknown>,
 		locale?: string,
 	): Promise<IRenderedTemplate> {
-		const [row] = await this.store.query<{
-			subject: string | null;
-			html: string | null;
-			text: string;
-		}>(
-			// Serve the exact locale, else the neutral NULL default — never a
-			// sibling region (en-CA must not fall back to en-US); the WHERE
-			// excludes other locales so legal/jurisdictional copy can't bleed.
-			`SELECT subject, html, text
-			 FROM fonderie_courier_templates
-			 WHERE type = $1 AND active = true AND (locale = $2 OR locale IS NULL)
-			 ORDER BY (locale IS NOT DISTINCT FROM $2) DESC
-			 LIMIT 1`,
-			[type, locale ?? null],
-		);
+		const chain = localeChain(locale, this.locales);
+		const row = await pickRow(this.store, type, chain);
+		const system = this.locales.default;
+		const def = this.defaults?.get(type);
 
-		if (!row) {
-			// No app row → fall back to the module default (rendered identically),
-			// then to the JSON dump — now only reached for a type neither the app
-			// nor any module provides.
-			const def = this.defaults?.get(type);
-			if (def) {
-				return renderFragment(def, def.html ? await this.layout(locale) : undefined, data);
+		if (row?.locale) return this.renderWith(row, data, row.locale);
+		if (def) {
+			for (const tag of chain) {
+				const shipped = this.defaults?.getLocalized(type, tag);
+				if (shipped) return this.renderWith(shipped.copy, data, shipped.locale);
 			}
-			return { text: `${type}: ${JSON.stringify(data)}` };
 		}
-
-		const layoutHtml = row.html ? await this.layout(locale) : undefined;
-		return renderFragment(row, layoutHtml, data);
+		if (row) return this.renderWith(row, data, system);
+		// No app row → the module default (rendered identically), then the JSON
+		// dump — only reached for a type neither the app nor any module provides.
+		if (def) return this.renderWith(def, data, system);
+		return { text: `${type}: ${JSON.stringify(data)}` };
 	}
 
-	// Optional founder-supplied layout shell; undefined → built-in default.
-	private async layout(locale?: string): Promise<string | undefined> {
-		return getLayoutHtml(this.store, locale);
+	private async renderWith(
+		frag: { subject?: string | null; text: string; html?: string | null },
+		data: Record<string, unknown>,
+		sent: string,
+	): Promise<IRenderedTemplate> {
+		const layoutHtml = frag.html
+			? await getLayoutHtml(this.store, sent === this.locales.default ? undefined : sent, this.locales)
+			: undefined;
+		return renderFragment(frag, layoutHtml, data, sent);
 	}
 }
 
-// The operator's shell for this locale, or undefined to mean "the built-in
-// one" — wrapLayout's default parameter handles that, so callers never pick
-// the fallback themselves.
+interface IStoredCopy {
+	locale: string | null;
+	subject: string | null;
+	html: string | null;
+	text: string;
+}
+
+// The first active row along `chain`, else the untagged default row, in one
+// query. Tags compare case-insensitively: rows saved before canonicalization
+// may say 'fr-ca'. Returns the row with its canonical tag (null = default).
+async function pickRow(store: IStoreAdapter, type: string, chain: string[]): Promise<IStoredCopy | undefined> {
+	const rows = await store.query<IStoredCopy>(
+		`SELECT locale, subject, html, text
+		 FROM fonderie_courier_templates
+		 WHERE type = $1 AND active = true AND (locale IS NULL OR lower(locale) = ANY($2::text[]))`,
+		[type, chain.map((t) => t.toLowerCase())],
+	);
+	for (const tag of chain) {
+		const hit = rows.find((r) => r.locale != null && canonicalLocale(r.locale) === tag);
+		if (hit) return { ...hit, locale: tag };
+	}
+	const base = rows.find((r) => r.locale == null);
+	return base ? { ...base, locale: null } : undefined;
+}
+
+// The operator's shell for this locale — the first saved _layout along its
+// chain, else the untagged one — or undefined to mean "the built-in shell",
+// which the renderer then draws in the email's language.
 //
 // Exported because the admin preview has to reach it: rendering a fragment
 // without the shell produces an email that looks nothing like the one that
@@ -225,24 +289,28 @@ export class DBTemplateResolver implements ITemplateResolver {
 export async function getLayoutHtml(
 	store: IStoreAdapter,
 	locale?: string,
+	settings: ILocaleSettings = defineLocales(),
 ): Promise<string | undefined> {
-	const [row] = await store.query<{ html: string | null }>(
-		`SELECT html
-		 FROM fonderie_courier_templates
-		 WHERE type = $1 AND active = true AND (locale = $2 OR locale IS NULL)
-		 ORDER BY (locale IS NOT DISTINCT FROM $2) DESC
-		 LIMIT 1`,
-		[LAYOUT_TYPE, locale ?? null],
-	);
+	const row = await pickRow(store, LAYOUT_TYPE, localeChain(locale, settings));
 	return row?.html ?? undefined;
 }
 
-// Filesystem resolver — reads {type}.{locale}.txt → {type}.txt with fallback
+// Filesystem resolver — {type}.{locale}.txt|.html|.subject.txt, then {type}.*,
+// with the same order as the DB resolver. A locale's files are one version: if
+// any of them exists that locale is used, and a part it lacks is NOT borrowed
+// from another locale — mixing a French body with the default subject is how
+// half-translated mail goes out.
 export class FSTemplateResolver implements ITemplateResolver {
+	private locales: ILocaleSettings = defineLocales();
+
 	constructor(
 		private directory: string,
 		private defaults?: DefaultTemplates,
 	) {}
+
+	setLocales(settings: ILocaleSettings): void {
+		this.locales = settings;
+	}
 
 	async resolve(
 		type: string,
@@ -259,56 +327,63 @@ export class FSTemplateResolver implements ITemplateResolver {
 				return null;
 			}
 		};
-
-		// Per-locale variants take priority over generic variants
-		const localePrefix = locale ? `${type}.${locale}` : null;
-		const layoutPrefix = locale ? `${LAYOUT_TYPE}.${locale}` : null;
-
-		const [text, html, subject, layout] = await Promise.all([
-			localePrefix
-				? readOptional(join(this.directory, `${localePrefix}.txt`)).then(
-						(v) => v ?? readOptional(join(this.directory, `${type}.txt`)),
-					)
-				: readOptional(join(this.directory, `${type}.txt`)),
-
-			localePrefix
-				? readOptional(join(this.directory, `${localePrefix}.html`)).then(
-						(v) => v ?? readOptional(join(this.directory, `${type}.html`)),
-					)
-				: readOptional(join(this.directory, `${type}.html`)),
-
-			localePrefix
-				? readOptional(join(this.directory, `${localePrefix}.subject.txt`)).then(
-						(v) => v ?? readOptional(join(this.directory, `${type}.subject.txt`)),
-					)
-				: readOptional(join(this.directory, `${type}.subject.txt`)),
-
-			layoutPrefix
-				? readOptional(join(this.directory, `${layoutPrefix}.html`)).then(
-						(v) => v ?? readOptional(join(this.directory, `${LAYOUT_TYPE}.html`)),
-					)
-				: readOptional(join(this.directory, `${LAYOUT_TYPE}.html`)),
-		]);
-
-		// App shipped NOTHING for this type (no text/html/subject file) → fall back
-		// to the module default, using the app's own _layout shell if it ships one,
-		// then to the JSON dump. Test file PRESENCE (=== null), not truthiness, so an
-		// app that ships even an empty file keeps per-key control below — mirroring
-		// the DB resolver's row-presence check, not overriding it with a default.
-		if (text === null && html === null && subject === null) {
-			const def = this.defaults?.get(type);
-			if (def) {
-				return renderFragment(def, def.html ? (layout ?? undefined) : undefined, data);
+		const readSet = async (prefix: string) => {
+			const [text, html, subject] = await Promise.all([
+				readOptional(join(this.directory, `${prefix}.txt`)),
+				readOptional(join(this.directory, `${prefix}.html`)),
+				readOptional(join(this.directory, `${prefix}.subject.txt`)),
+			]);
+			// Presence (=== null), not truthiness: an app that ships even an empty
+			// file keeps control of that version, mirroring the DB's row check.
+			return text === null && html === null && subject === null ? null : { text, html, subject };
+		};
+		const layoutFor = async (sent: string): Promise<string | undefined> => {
+			const tags = sent === this.locales.default ? [] : localeChain(sent, this.locales);
+			for (const tag of tags) {
+				const v = await readOptional(join(this.directory, `${LAYOUT_TYPE}.${tag}.html`));
+				if (v !== null) return v;
 			}
+			return (await readOptional(join(this.directory, `${LAYOUT_TYPE}.html`))) ?? undefined;
+		};
+		const system = this.locales.default;
+		const chain = localeChain(locale, this.locales);
+
+		let files: Awaited<ReturnType<typeof readSet>> = null;
+		let sent = system;
+		for (const tag of chain) {
+			files = await readSet(`${type}.${tag}`);
+			if (files) {
+				sent = tag;
+				break;
+			}
+		}
+		if (!files) {
+			for (const tag of chain) {
+				const shipped = this.defaults?.getLocalized(type, tag);
+				if (shipped) {
+					const layout = shipped.copy.html ? await layoutFor(shipped.locale) : undefined;
+					return renderFragment(shipped.copy, layout, data, shipped.locale);
+				}
+			}
+			files = await readSet(type);
+		}
+
+		// App shipped NOTHING for this type → the module default, in the app's own
+		// _layout shell if it ships one, then the JSON dump.
+		if (!files) {
+			const def = this.defaults?.get(type);
+			if (def) return renderFragment(def, def.html ? await layoutFor(system) : undefined, data, system);
 			return { text: `${type}: ${JSON.stringify(data)}` };
 		}
 
+		const { text, html, subject } = files;
 		const renderedSubject = subject ? render(subject, data) : undefined;
-
+		const layout = html ? await layoutFor(sent) : undefined;
 		return {
 			text: text ? render(text, data) : `${type}: ${JSON.stringify(data)}`,
 			...(renderedSubject ? { subject: renderedSubject } : {}),
-			...(html ? { html: composeHtml(html, layout ?? undefined, renderedSubject, data) } : {}),
+			...(html ? { html: composeHtml(html, layout, renderedSubject, data, sent) } : {}),
+			locale: sent,
 		};
 	}
 }

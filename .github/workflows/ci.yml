@@ -47,6 +47,10 @@ jobs:
       # locking, single-use links, backup-code consumption and the TOTP replay
       # guard are conditional UPDATEs a mocked store cannot prove.
       ADMIN_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
+      # Enables the gated locale-resolution tests in @fonderie/courier: the chain
+      # lookup is an ANY() array match with case-insensitive legacy rows, which
+      # a mocked store only emulates.
+      COURIER_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

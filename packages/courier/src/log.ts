@@ -10,6 +10,8 @@ export interface IMessageLog {
 	channel: string;
 	recipient: string;
 	locale: string | null;
+	/** The version sent: a saved row's tag, a built-in's language, or the system locale. */
+	resolvedLocale: string | null;
 	status: MessageLogStatus;
 	error: string | null;
 	attempts: number;
@@ -64,6 +66,22 @@ export async function setMessageProviderId(
 		 SET provider_message_id = $2
 		 WHERE id = $1`,
 		[id, providerMessageId],
+	);
+}
+
+// Separate from the insert on purpose: an app deployed before its migration ran
+// has no resolved_locale column, and folding it into the INSERT would lose the
+// whole log row — the only record the send happened — over a missing detail.
+export async function setMessageResolvedLocale(
+	id: string,
+	resolvedLocale: string,
+	store: IStoreAdapter,
+): Promise<void> {
+	await store.query(
+		`UPDATE fonderie_message_log
+		 SET resolved_locale = $2
+		 WHERE id = $1`,
+		[id, resolvedLocale],
 	);
 }
 

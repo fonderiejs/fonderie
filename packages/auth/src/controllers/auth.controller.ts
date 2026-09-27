@@ -4,8 +4,8 @@ import { randomBytes, randomInt } from 'node:crypto';
 import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
-import { setApiResponse, HTTP, background } from '@fonderie/core';
-import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
+import { setApiResponse, HTTP, background, canonicalLocale, defineLocales } from '@fonderie/core';
+import type { IFonderieContext, ICourierMessage, ILocaleSettings } from '@fonderie/core';
 
 import { EVENT_KEYS } from '../config';
 import { toUserDTO } from '../dtos/user';
@@ -48,7 +48,12 @@ function extractRefreshToken(ctx: IFonderieContext): string | null {
 	return match?.[1] ?? null;
 }
 
-export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
+export function authController(
+	store: IStoreAdapter,
+	config: IAuthConfig,
+	bus?: EventBus,
+	locales: ILocaleSettings = defineLocales(),
+) {
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store, config.location);
 	const loginEvents = new LoginEventModel(store, config.location);
@@ -62,6 +67,9 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 		register: async (ctx: IFonderieContext): Promise<Response> => {
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const { email, password, phone, firstName = null, lastName = null } = body ?? {};
+			// The language the person signed up in, so the very first email — the
+			// verification code — already arrives in it. Else the app's system locale.
+			const locale = canonicalLocale(body?.['locale'] as string | undefined) ?? locales.default;
 
 			// ── Email branch takes priority (cheaper than SMS) ───────
 			if (typeof email === 'string' && typeof password === 'string') {
@@ -89,6 +97,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					passwordHash,
 					firstName as string | null,
 					lastName as string | null,
+					locale,
 				);
 
 				if (!row) {
@@ -177,6 +186,7 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					normalizePhone(phone),
 					(firstName as string | null) ?? null,
 					(lastName as string | null) ?? null,
+					locale,
 				);
 
 				const otp = randomInt(100000, 1000000).toString();

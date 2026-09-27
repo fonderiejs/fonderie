@@ -1,4 +1,5 @@
 import type { ICourierMessage, IDefaultTemplate } from '@fonderie/core/types';
+import type { ILocaleSettings } from '@fonderie/core';
 
 export type { ICourierMessage, IDefaultTemplate };
 
@@ -24,10 +25,16 @@ export interface IRenderedTemplate {
 	subject?: string; // email only
 	html?: string; // email only
 	text: string; // all channels
+	// The version actually used — a saved row's tag, a built-in's language, or
+	// the system locale for the default copy. Absent for the last-resort dump.
+	// Recorded in the message log beside the locale that was asked for.
+	locale?: string;
 }
 
 export interface ITemplateResolver {
 	resolve(type: string, data: Record<string, unknown>, locale?: string): Promise<IRenderedTemplate>;
+	/** Receives the app's locales at install (core owns them). Optional for custom resolvers. */
+	setLocales?(settings: ILocaleSettings): void;
 }
 
 export type { IMessageLog, MessageLogStatus } from './log';

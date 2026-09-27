@@ -1,5 +1,5 @@
-import type { IAdminRoute, IFonderieContext, Middleware } from '@fonderie/core';
-import { setApiResponse, HTTP } from '@fonderie/core';
+import type { IAdminRoute, IFonderieContext, ILocaleSettings, Middleware } from '@fonderie/core';
+import { canonicalLocale, defineLocales, setApiResponse, HTTP } from '@fonderie/core';
 import { requireAdminToken } from '@fonderie/core/middlewares';
 import { VersionConflictError } from '@fonderie/store';
 import type { IStoreAdapter } from '@fonderie/store';
@@ -53,6 +53,8 @@ export interface ITemplateAdminOptions {
 	 * no code default would leave that email as a raw data dump.
 	 */
 	systemTypes?: Iterable<string>;
+	/** The app's locales, read per request (they are set at install). */
+	locales?: () => ILocaleSettings;
 }
 
 /** A built-in email's default-locale row. Locale variants and app types are the operator's. */
@@ -90,6 +92,7 @@ export function describeTemplateAdminRoutes(
 function templateAdminRouteTable(store: IStoreAdapter, opts: ITemplateAdminOptions = {}): RouteRow[] {
 	const brandName = opts.brandName;
 	const systemTypes = new Set(opts.systemTypes ?? []);
+	const locales = opts.locales ?? (() => defineLocales());
 	return [
 		['GET', '/admin/templates', async () => {
 			const rows = await listTemplateEntries(store);
@@ -112,11 +115,29 @@ function templateAdminRouteTable(store: IStoreAdapter, opts: ITemplateAdminOptio
 			if (typeof b['text'] !== 'string') {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.text (string) is required');
 			}
+			// Stored canonical ('fr-ca' → 'fr-CA'), so one locale is one row.
+			const requested = localeOf(ctx);
+			const locale = requested === null ? null : canonicalLocale(requested);
+			if (requested !== null && !locale) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', `"${requested}" is not a locale tag`);
+			}
+			// The untagged row IS the system locale's version. A second copy tagged
+			// with it would silently override the default for exactly those users,
+			// and edits would land in one copy while mail went out from the other.
+			const system = locales().default;
+			if (locale === system) {
+				return setApiResponse(
+					HTTP.CONFLICT,
+					'DEFAULT_LOCALE',
+					`${system} is the default version of this email. Edit the default instead of adding ${system}.`,
+					{ defaultLocale: system },
+				);
+			}
 			try {
 				const opts: Parameters<typeof setTemplate>[0] = {
 					type: typeOf(ctx),
 					text: b['text'],
-					locale: localeOf(ctx),
+					locale,
 					actor: actorOf(ctx),
 				};
 				if (typeof b['subject'] === 'string') opts.subject = b['subject'];
@@ -172,7 +193,10 @@ function templateAdminRouteTable(store: IStoreAdapter, opts: ITemplateAdminOptio
 			if (typeof data !== 'object' || Array.isArray(data)) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.data must be an object');
 			}
-			const locale = localeOf(ctx);
+			// Rendered as it would send in this locale: its saved shell along its
+			// chain, else the built-in shell in its language.
+			const settings = locales();
+			const tag = canonicalLocale(localeOf(ctx)) ?? settings.default;
 			const html = typeof b['html'] === 'string' && b['html'] ? b['html'] : null;
 			const rendered = renderFragment(
 				{
@@ -181,11 +205,14 @@ function templateAdminRouteTable(store: IStoreAdapter, opts: ITemplateAdminOptio
 					...(html ? { html } : {}),
 				},
 				// Only fetched when there is HTML to wrap, mirroring the resolver.
-				html ? await getLayoutHtml(store, locale ?? undefined) : undefined,
+				html
+					? await getLayoutHtml(store, tag === settings.default ? undefined : tag, settings)
+					: undefined,
 				// brandName is merged by the Dispatcher on a real send, never by
 				// the resolver — so without this the shell renders the default
 				// brand and the preview quietly misreports it.
 				{ ...(brandName ? { brandName } : {}), ...data },
+				tag,
 			);
 			// The variables THIS content uses, so an editor can offer exactly the
 			// right fields without re-implementing the {{var}} contract on the

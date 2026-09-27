@@ -1,3 +1,5 @@
+import type { ILocaleConfig } from './locale';
+
 export interface IBillingPlan {
 	name: string;
 	price: number | null; // null = custom/enterprise pricing
@@ -36,6 +38,11 @@ export interface FonderieConfig {
 		smtp?: ISMTPConfig;
 		provider: 'resend' | 'ses' | 'smtp';
 	};
+
+	// The system locale and each market's fallback chain, shared by every brick
+	// that holds per-locale content (see ./locale.ts). Omitted: en-US, no chains.
+	// Validated when the app is constructed — a bad chain stops startup.
+	locales?: ILocaleConfig;
 
 	// Fail-closed production boot gate. In production, `boot()` refuses to start
 	// when any registered module reports an `error`-severity readiness problem
