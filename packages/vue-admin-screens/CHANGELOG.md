@@ -1,5 +1,11 @@
 # @fonderie/vue-admin-screens
 
+## 1.3.1
+
+### Patch Changes
+
+- 42f52ae: Opening a subscriber whose account no longer exists (deleted or purged, billing rows left behind) showed "No user with that email." — wrong on two counts: the lookup was by id, and the page dead-ended. It now says "No account with id … — it was deleted, or never existed here. Its billing records remain." and still shows that subscriber's plan, credits, grant form and ledger.
+
 ## 1.3.0
 
 ### Minor Changes
