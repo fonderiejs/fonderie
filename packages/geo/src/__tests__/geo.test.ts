@@ -22,9 +22,10 @@ test('parseBlocksCsv: maps MaxMind block columns, skips header + blanks', () => 
 		'\n';
 	const rows = parseBlocksCsv(csv);
 	assert.equal(rows.length, 2);
-	assert.deepEqual(rows[0], { network: '1.2.3.0/24', geonameId: 6252001, latitude: 47.6062, longitude: -122.3321, accuracyRadius: 20 });
+	assert.deepEqual(rows[0], { network: '1.2.3.0/24', geonameId: 6252001, postalCode: '98101', latitude: 47.6062, longitude: -122.3321, accuracyRadius: 20 });
 	assert.equal(rows[1]?.network, '2001:db8::/32'); // IPv6 block parsed
 	assert.equal(rows[1]?.geonameId, 2921044);
+	assert.equal(rows[1]?.postalCode, null); // empty column → null
 });
 
 test('parseLocationsCsv: maps name columns incl. quoted city', () => {
@@ -66,14 +67,14 @@ test('lookup: a hit maps DB columns to GeoLocation', async () => {
 		country_iso: 'US', country_name: 'United States',
 		subdivision_iso: 'WA', subdivision_name: 'Washington',
 		city_name: 'Seattle', continent_code: 'NA', time_zone: 'America/Los_Angeles',
-		latitude: 47.6062, longitude: -122.3321, accuracy_radius: 20,
+		postal_code: '98101', latitude: 47.6062, longitude: -122.3321, accuracy_radius: 20,
 	});
 	const r = await new PostgresGeoProvider(store).lookup('1.2.3.4');
 	assert.equal(store.queried, true);
 	assert.deepEqual(r, {
 		country: 'US', countryName: 'United States',
 		subdivision: 'WA', subdivisionName: 'Washington',
-		city: 'Seattle', postalCode: null, continent: 'NA', timeZone: 'America/Los_Angeles',
+		city: 'Seattle', postalCode: '98101', continent: 'NA', timeZone: 'America/Los_Angeles',
 		latitude: 47.6062, longitude: -122.3321, accuracyRadius: 20,
 	});
 });
@@ -141,4 +142,21 @@ test('blockRowFromLine: falls back to registered_country_geoname_id when geoname
 			'5.6.7.0/24,,6252001,,0,0,,0,0,50\n',
 	)[0];
 	assert.equal(row?.geonameId, 6252001, 'registered-country geoname used when city geoname is absent');
+});
+
+test('ingestBlocks: placeholders match the column list (postal_code included)', async () => {
+	const { ingestBlocks } = await import('../ingest.js');
+	const seen: { sql: string; params: unknown[] }[] = [];
+	const store = { query: async (sql: string, params?: unknown[]) => { seen.push({ sql, params: params ?? [] }); return []; } };
+	await ingestBlocks(store, [
+		{ network: '1.2.3.0/24', geonameId: 1, postalCode: '98101', latitude: 1, longitude: 2, accuracyRadius: 20 },
+		{ network: '1.2.4.0/24', geonameId: 2, postalCode: null, latitude: 3, longitude: 4, accuracyRadius: 50 },
+	]);
+	const { sql, params } = seen[0]!;
+	const columns = sql.slice(sql.indexOf('(') + 1, sql.indexOf(')')).split(',').length;
+	const placeholders = (sql.match(/\$\d+/g) ?? []).length;
+	assert.equal(columns, 6);
+	assert.equal(placeholders, 2 * columns, 'one placeholder per column per row');
+	assert.equal(params.length, placeholders);
+	assert.equal(params[2], '98101');
 });

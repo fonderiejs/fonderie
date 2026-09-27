@@ -44,13 +44,14 @@ export class PostgresGeoProvider implements IGeoProvider {
 				city_name: string | null;
 				continent_code: string | null;
 				time_zone: string | null;
+				postal_code: string | null;
 				latitude: number | null;
 				longitude: number | null;
 				accuracy_radius: number | null;
 			}>(
 				`SELECT n.country_iso, n.country_name, n.subdivision_iso, n.subdivision_name,
 				        n.city_name, n.continent_code, n.time_zone,
-				        b.latitude, b.longitude, b.accuracy_radius
+				        b.postal_code, b.latitude, b.longitude, b.accuracy_radius
 				 FROM geo_blocks b
 				 LEFT JOIN geo_names n ON n.geoname_id = b.geoname_id
 				 WHERE b.network >>= $1::inet
@@ -70,7 +71,7 @@ export class PostgresGeoProvider implements IGeoProvider {
 				timeZone: r.time_zone ?? null,
 				latitude: r.latitude != null ? Number(r.latitude) : null,
 				longitude: r.longitude != null ? Number(r.longitude) : null,
-				postalCode: null,
+				postalCode: r.postal_code ?? null,
 				accuracyRadius: r.accuracy_radius != null ? Number(r.accuracy_radius) : null,
 			};
 		} catch (err) {

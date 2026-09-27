@@ -8,7 +8,7 @@ export interface GeoLocation {
 	subdivision: string | null; // ISO-3166-2 (state/region)
 	subdivisionName: string | null;
 	city: string | null;
-	postalCode: string | null; // ZIP / postal code; header sources only
+	postalCode: string | null; // ZIP / postal code — approximate for an IP
 	continent: string | null; // continent code (NA, EU, …)
 	timeZone: string | null;
 	latitude: number | null;

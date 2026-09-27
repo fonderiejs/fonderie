@@ -19,6 +19,7 @@ export interface TxStore extends Queryable {
 export interface BlockRow {
 	network: string;
 	geonameId: number | null;
+	postalCode: string | null;
 	latitude: number | null;
 	longitude: number | null;
 	accuracyRadius: number | null;
@@ -61,6 +62,13 @@ const num = (s: string | undefined): number | null => {
 };
 const str = (s: string | undefined): string | null => (s == null || s === '' ? null : s);
 
+// Postal / ZIP code as MaxMind reports it (98101, H2X, SW1A); bounded so a
+// malformed row can't carry arbitrary text into the table.
+const postal = (s: string | undefined): string | null => {
+	const t = s?.trim();
+	return t && /^[A-Za-z0-9][A-Za-z0-9 -]{0,11}$/.test(t) ? t.toUpperCase() : null;
+};
+
 // Blocks columns: network, geoname_id, registered_country_geoname_id,
 // represented_country_geoname_id, is_anonymous_proxy, is_satellite_provider,
 // postal_code, latitude, longitude, accuracy_radius.
@@ -73,6 +81,7 @@ export function blockRowFromLine(line: string): BlockRow | null {
 		// city-level geoname (MaxMind's documented behavior) — otherwise a large
 		// slice of the address space loses all country resolution.
 		geonameId: num(c[1]) ?? num(c[2]),
+		postalCode: postal(c[6]),
 		latitude: num(c[7]),
 		longitude: num(c[8]),
 		accuracyRadius: num(c[9]),
@@ -137,10 +146,10 @@ const NAMES_CONFLICT =
 	'ON CONFLICT (geoname_id) DO UPDATE SET continent_code = EXCLUDED.continent_code, country_iso = EXCLUDED.country_iso, country_name = EXCLUDED.country_name, subdivision_iso = EXCLUDED.subdivision_iso, subdivision_name = EXCLUDED.subdivision_name, city_name = EXCLUDED.city_name, time_zone = EXCLUDED.time_zone';
 const nameParams = (r: NameRow) => [r.geonameId, r.continentCode, r.countryIso, r.countryName, r.subdivisionIso, r.subdivisionName, r.cityName, r.timeZone];
 
-const BLOCKS_HEAD = 'INSERT INTO geo_blocks (network, geoname_id, latitude, longitude, accuracy_radius)';
+const BLOCKS_HEAD = 'INSERT INTO geo_blocks (network, geoname_id, postal_code, latitude, longitude, accuracy_radius)';
 const BLOCKS_CONFLICT =
-	'ON CONFLICT (network) DO UPDATE SET geoname_id = EXCLUDED.geoname_id, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, accuracy_radius = EXCLUDED.accuracy_radius';
-const blockParams = (r: BlockRow) => [r.network, r.geonameId, r.latitude, r.longitude, r.accuracyRadius];
+	'ON CONFLICT (network) DO UPDATE SET geoname_id = EXCLUDED.geoname_id, postal_code = EXCLUDED.postal_code, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, accuracy_radius = EXCLUDED.accuracy_radius';
+const blockParams = (r: BlockRow) => [r.network, r.geonameId, r.postalCode, r.latitude, r.longitude, r.accuracyRadius];
 
 /** Upsert name rows (idempotent — safe to call without a prior truncate). */
 export function ingestNames(store: Queryable, rows: NameRow[]): Promise<number> {
@@ -149,7 +158,7 @@ export function ingestNames(store: Queryable, rows: NameRow[]): Promise<number> 
 
 /** Upsert block rows (idempotent on `network`). */
 export function ingestBlocks(store: Queryable, rows: BlockRow[]): Promise<number> {
-	return insertChunked(store, rows, 5, BLOCKS_HEAD, BLOCKS_CONFLICT, blockParams);
+	return insertChunked(store, rows, 6, BLOCKS_HEAD, BLOCKS_CONFLICT, blockParams);
 }
 
 /** Stream a CSV file line-by-line (header skipped), batching mapped rows — so a
