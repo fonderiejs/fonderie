@@ -95,10 +95,32 @@ export function UsersScreen({
 					</button>
 				)}
 			</form>
-			{error ? (
+			{error && !(error.status === 404 && selected?.id) ? (
 				<p style={styles.error} role="alert">
 					{error.status === 404 ? 'No user with that email.' : error.explanation}
 				</p>
+			) : null}
+			{/* Opened by id (e.g. from Subscriptions) and the account is gone —
+			    deleted or purged — while its billing rows remain. Say so, and
+			    still show the money: a subscription and wallet outlive the
+			    account row, and the operator came here to look at them. */}
+			{error?.status === 404 && selected?.id ? (
+				<>
+					<div style={styles.notice} role="status">
+						<strong>No account with id </strong>
+						<code style={styles.code}>{selected.id}</code>
+						<strong>.</strong> It was deleted, or never existed here. Its billing records remain.
+					</div>
+					{billingClient ? (
+						<>
+							<h2 style={styles.subtitle}>Plan &amp; credits</h2>
+							<SubscriberBilling
+								client={billingClient}
+								subscriber={{ type: 'user', id: selected.id }}
+							/>
+						</>
+					) : null}
+				</>
 			) : null}
 			{!selected ? (
 				<>
