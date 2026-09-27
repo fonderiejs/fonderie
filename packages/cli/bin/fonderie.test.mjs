@@ -393,6 +393,19 @@ await (async () => {
   const b = await code(['config', 'apply', '-f', bad]);
   if (b.code !== 1 || !/kind must be "ConfigSet"/.test(b.stderr) || !/9bad: invalid key/.test(b.stderr) || !/OK: needs "value"/.test(b.stderr)) fail(`bad manifest should list every problem:\n${b.stderr}`);
 
+  // the scope travels in the file: a prod export applies to prod, and a flag
+  // that disagrees with it is an error, not a silent precedence rule
+  const prodFile = join(dir, 'prod.json');
+  await cli(['config', 'export', '--env', 'prod', '-o', prodFile]);
+  const prodDiff = await code(['config', 'diff', '-f', prodFile]);
+  if (prodDiff.code !== 0) fail(`a prod export must diff clean against prod without --env, got ${prodDiff.code}:\n${prodDiff.stdout}`);
+  const clash = await code(['config', 'apply', '-f', prodFile, '--env', 'staging']);
+  if (clash.code !== 1 || !/disagrees with the manifest's metadata.environment/.test(clash.stderr)) fail(`--env vs metadata clash must refuse:\n${clash.stderr}`);
+  const typo = join(dir, 'typo.json');
+  writeFileSync(typo, JSON.stringify({ kind: 'ConfigSet', entries: { A: { value: 1, descripton: 'x' } } }));
+  const ty = await code(['config', 'diff', '-f', typo]);
+  if (ty.code !== 1 || !/unknown field\(s\) descripton/.test(ty.stderr)) fail('a misspelled field must be reported, not ignored');
+
   // ── secrets: the same flow, and no value ever reaches stdout ──
   const secretOut = (await cli(['secret', 'export'])).stdout;
   const sx = JSON.parse(secretOut);
@@ -441,4 +454,108 @@ await (async () => {
   console.log('  ✓ config/secret export · diff · apply (fallback, round-trip, type guard, dry-run, prune, ifVersion, idempotent, secrets never printed, .env, public)');
 })();
 
-console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall, add guards, config/secret management, manifests)');
+// ── template export · diff · apply (bodies in files next to the manifest) ────
+await (async () => {
+  const requests = [];
+  const rows = [
+    { type: 'auth.welcome', locale: null, subject: 'Welcome', text: 'Hi {{name}}', html: '<p>Hi {{name}}</p>\n<p>Thanks</p>', active: true, version: 3 },
+    { type: 'auth.welcome', locale: 'fr', subject: 'Bienvenue', text: 'Salut {{name}}\nMerci', html: null, active: true, version: 1 },
+    { type: 'billing.receipt', locale: null, subject: null, text: 'Receipt', html: null, active: false, version: 2 },
+  ];
+  const server = createServer((req, res) => {
+    let raw = '';
+    req.on('data', (c) => { raw += c; });
+    req.on('end', () => {
+      const body = raw ? JSON.parse(raw) : undefined;
+      requests.push({ method: req.method, url: req.url, body });
+      const u = new URL(req.url, 'http://x');
+      const send = (status, result) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify({ reason: 'X', explanation: status === 409 ? 'stale' : 'ok', result })); };
+      const m = /^\/_admin\/templates(?:\/([^/]+))?$/.exec(u.pathname);
+      if (!m) return send(404, null);
+      if (!m[1]) return send(200, rows);
+      const type = decodeURIComponent(m[1]);
+      const locale = u.searchParams.get('locale');
+      const row = rows.find((r) => r.type === type && r.locale === locale);
+      if (req.method === 'DELETE') { rows.splice(rows.indexOf(row), 1); return send(200, null); }
+      if (req.method === 'PUT') {
+        if (row && body.ifVersion !== undefined && body.ifVersion !== row.version) return send(409, null);
+        // full replace, like the server: omitted subject/html become null
+        const next = { type, locale, subject: body.subject ?? null, text: body.text, html: body.html ?? null, active: body.active ?? true, version: (row?.version ?? 0) + 1 };
+        if (row) rows.splice(rows.indexOf(row), 1, next); else rows.push(next);
+        return send(200, next);
+      }
+      return send(404, null);
+    });
+  });
+  await new Promise((r) => server.listen(0, r));
+  const env = { ...process.env, FONDERIE_ADMIN_URL: `http://127.0.0.1:${server.address().port}`, FONDERIE_ADMIN_TOKEN: 'sekret', FONDERIE_ADMIN_PREFIX: '/_admin' };
+  const code = async (args) => { try { return { code: 0, ...(await execFileP('node', [bin, ...args], { env })) }; } catch (e) { return { code: e.code, stdout: e.stdout, stderr: e.stderr }; } };
+  const writes = () => requests.filter((r) => r.method === 'PUT' || r.method === 'DELETE');
+  const dir = mkdtempSync(join(tmpdir(), 'fonderie-templates-'));
+
+  // stdout export: default locale only, everything inline
+  const inline = JSON.parse((await code(['template', 'export'])).stdout);
+  if (inline.kind !== 'TemplateSet' || inline.metadata.locale !== null) fail('template export: wrong envelope');
+  if (Object.keys(inline.entries).join() !== 'auth.welcome,billing.receipt') fail(`template export: default locale only, got ${Object.keys(inline.entries)}`);
+  if (inline.entries['auth.welcome'].html !== '<p>Hi {{name}}</p>\n<p>Thanks</p>') fail('template export to stdout keeps html inline');
+  if ('subject' in inline.entries['billing.receipt'] || inline.entries['billing.receipt'].active !== false) fail('template export: omit null subject, keep active:false');
+
+  // -o export: html and multi-line text to files, named with the locale
+  const fr = join(dir, 'fr.json');
+  const ex = await code(['template', 'export', '--locale', 'fr', '-o', fr]);
+  const frm = JSON.parse(readFileSync(fr, 'utf8'));
+  if (frm.metadata.locale !== 'fr' || frm.entries['auth.welcome'].textFrom?.file !== 'auth.welcome.fr.txt') fail('template export -o: multi-line text should go to auth.welcome.fr.txt');
+  if (readFileSync(join(dir, 'auth.welcome.fr.txt'), 'utf8') !== 'Salut {{name}}\nMerci') fail('template export -o: body file content wrong');
+  if (!/\+1 body file/.test(ex.stderr)) fail('template export -o: should report the body files');
+  const def = join(dir, 'default.json');
+  await code(['template', 'export', '-o', def]);
+  const defm = JSON.parse(readFileSync(def, 'utf8'));
+  if (defm.entries['auth.welcome'].htmlFrom?.file !== 'auth.welcome.html' || defm.entries['auth.welcome'].text !== 'Hi {{name}}') fail('template export -o: html to a file, one-line text inline');
+
+  // round trip is clean for both locales (fr resolved from metadata, no flag)
+  for (const f of [fr, def]) {
+    const r = await code(['template', 'diff', '-f', f]);
+    if (r.code !== 0) fail(`template diff of its own export must be clean (${f}):\n${r.stdout}${r.stderr}`);
+  }
+
+  // edit a body file → diff names the field and the size, apply sends the whole template
+  writeFileSync(join(dir, 'auth.welcome.html'), '<p>Hello {{name}}</p>\n<p>Thanks</p>\n<p>The team</p>');
+  defm.entries['auth.welcome'].subject = 'Welcome aboard';
+  defm.entries['billing.receipt'].active = true;
+  defm.entries['auth.goodbye'] = { text: 'Bye' };
+  writeFileSync(def, JSON.stringify(defm));
+  const d = await code(['template', 'diff', '-f', def]);
+  if (d.code !== 1) fail('template diff with changes should exit 1');
+  for (const want of [/~ auth\.welcome: subject "Welcome" → "Welcome aboard", html changed \(2 → 3 lines\)/, /~ billing\.receipt: activated/, /\+ auth\.goodbye  \(new\)/]) {
+    if (!want.test(d.stdout)) fail(`template diff missing ${want}:\n${d.stdout}`);
+  }
+  if (writes().length) fail('template diff must not write');
+  await code(['template', 'apply', '-f', def]);
+  const w = writes().find((r) => r.url === '/_admin/templates/auth.welcome');
+  if (!w || w.body.ifVersion !== 3 || w.body.subject !== 'Welcome aboard' || !w.body.html.includes('The team') || w.body.text !== 'Hi {{name}}' || w.body.active !== true) fail(`template apply: must send the whole template with ifVersion, got ${JSON.stringify(w?.body)}`);
+  if (writes().some((r) => r.url.includes('locale='))) fail('template apply on the default locale must not send ?locale=');
+  if ((await code(['template', 'diff', '-f', def])).code !== 0) fail('template apply is idempotent');
+
+  // --prune on fr deletes only fr rows; the default locale is untouched
+  delete frm.entries['auth.welcome'];
+  frm.entries['auth.reset'] = { subject: 'Réinitialiser', text: 'Lien : {{url}}' };
+  writeFileSync(fr, JSON.stringify(frm));
+  await code(['template', 'apply', '-f', fr, '--prune']);
+  if (!writes().some((r) => r.method === 'DELETE' && r.url === '/_admin/templates/auth.welcome?locale=fr')) fail('template --prune: fr auth.welcome should be deleted');
+  if (!writes().some((r) => r.method === 'PUT' && r.url === '/_admin/templates/auth.reset?locale=fr')) fail('template apply: new fr template should PUT with ?locale=fr');
+  if (!rows.some((r) => r.type === 'auth.welcome' && r.locale === null)) fail('template --prune on fr must not touch the default locale');
+
+  // validation: missing body file, both text and textFrom, bad active
+  const bad = join(dir, 'bad.json');
+  writeFileSync(bad, JSON.stringify({ kind: 'TemplateSet', entries: { a: { textFrom: { file: 'missing.txt' } }, b: { text: 'x', textFrom: { file: 'x' } }, c: { text: 'x', active: 'yes' }, d: { subject: 's' } } }));
+  const b = await code(['template', 'apply', '-f', bad]);
+  for (const want of [/a: textFrom file missing\.txt cannot be read/, /b: give text or textFrom, not both/, /c: active must be true or false/, /d: needs "text" or "textFrom"/]) {
+    if (!want.test(b.stderr)) fail(`template manifest validation missing ${want}:\n${b.stderr}`);
+  }
+  if (b.code !== 1) fail('template bad manifest should exit 1');
+
+  server.close();
+  console.log('  ✓ template export · diff · apply (inline vs body files, per-locale, round-trip, whole-template PUT + ifVersion, idempotent, locale-scoped prune, validation)');
+})();
+
+console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall, add guards, config/secret management, config/secret/template manifests)');
