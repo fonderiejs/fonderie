@@ -139,6 +139,16 @@ function renderSymbol(checker, name, symbol) {
 		const type = checker.getTypeOfSymbolAtLocation(target, decl);
 		const call = type.getCallSignatures()[0];
 		if (call) return `function ${name}${checker.signatureToString(call)}`;
+		// A written annotation is the author's chosen vocabulary — print it as
+		// written (`Record<AdminLocale, string>`, `AdminLocale`). The checker's
+		// resolved type expands every alias (`{ en: string; fr: string; … }`,
+		// `"en" | "fr" | "es"`), which reads like a different, noisier API.
+		// Unannotated constants still show the inferred type — for an `as const`
+		// literal that IS the most useful form.
+		if (decl.type) {
+			const written = decl.type.getText(decl.getSourceFile()).replace(/\s+/g, ' ').trim();
+			return `const ${name}: ${written}`;
+		}
 		const str = checker.typeToString(type, decl, ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.InTypeAlias);
 		return `const ${name}: ${str}`;
 	}

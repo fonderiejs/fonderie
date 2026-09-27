@@ -259,6 +259,7 @@ export {
 } from './admin-i18n';
 export type {
 	AdminLocale,
+	LocaleMap,
 	AdminMessageKey,
 	AdminMessageParams,
 	AdminMessages,
