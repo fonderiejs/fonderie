@@ -89,13 +89,21 @@ export class MigrationRunner {
 		return files.filter((f) => !applied.has(f));
 	}
 
+	// CREATE TABLE IF NOT EXISTS is not concurrency-safe in Postgres: two
+	// sessions racing it can both pass the existence check and one fails with
+	// `duplicate key … pg_type_typname_nsp_index` (23505). Taking the same
+	// advisory lock the appliers use serializes the create, so concurrent boots
+	// (or parallel test suites sharing a database) can never trip on it.
 	private async ensureTable(): Promise<void> {
-		await this.store.query(`
-			CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
-			        name       TEXT PRIMARY KEY,
-			        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-			)
-		`);
+		await this.store.transaction(async (tx) => {
+			await tx.query(`SELECT pg_advisory_xact_lock(hashtext('${MIGRATIONS_TABLE}'))`);
+			await tx.query(`
+				CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
+				        name       TEXT PRIMARY KEY,
+				        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+				)
+			`);
+		});
 	}
 
 	private async getApplied(): Promise<Set<string>> {

@@ -98,7 +98,9 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	// / time zone, plus network facts if the resolver knows them). Called at
 	// most once per request. Absent ⇒ no location, exactly as before. The result
 	// is sanitized and bounded; a resolver that throws or takes longer than
-	// 1.5 s leaves the row without a location and never fails the request.
+	// 500 ms leaves the row without a location and never fails the request.
+	// In-process resolvers never approach that; the cap exists for a DB-backed
+	// or hosted-API resolver (richer data: ISP, ASN, proxy/VPN).
 	// On Vercel/Cloudflare: ({ headers }) => geoFromHeaders(headers, { trust })
 	// from @fonderie/geo — zero infrastructure.
 	location?: LocationResolver;
