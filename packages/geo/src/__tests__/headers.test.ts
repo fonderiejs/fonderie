@@ -43,6 +43,7 @@ test('geoFromHeaders: vercel headers map onto GeoLocation; city is percent-decod
 		latitude: 45.5019,
 		longitude: -73.5674,
 		accuracyRadius: null,
+		geonameId: null,
 		asn: null,
 		org: null,
 	});

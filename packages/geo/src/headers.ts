@@ -158,6 +158,7 @@ export function geoFromHeaders(headers: HeadersLike, opts: GeoFromHeadersOptions
 			latitude: coordinate(read(headers, names.latitude), 90),
 			longitude: coordinate(read(headers, names.longitude), 180),
 			accuracyRadius: null,
+			geonameId: null, // the platforms send names, not a place key
 			asn: null, // the platforms send no network data
 			org: null,
 		};

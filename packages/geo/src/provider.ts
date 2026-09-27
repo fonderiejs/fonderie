@@ -22,6 +22,7 @@ const PG_UNDEFINED_TABLE = '42P01';
 let warnedNoAsnTable = false;
 
 interface LookupRow {
+	geoname_id: number | string | null;
 	country_iso: string | null;
 	country_name: string | null;
 	subdivision_iso: string | null;
@@ -38,7 +39,7 @@ interface LookupRow {
 }
 
 // Most-specific City block for the address.
-const CITY_LATERAL = `SELECT n.country_iso, n.country_name, n.subdivision_iso, n.subdivision_name,
+const CITY_LATERAL = `SELECT b.geoname_id, n.country_iso, n.country_name, n.subdivision_iso, n.subdivision_name,
 		        n.city_name, n.continent_code, n.time_zone,
 		        b.postal_code, b.latitude, b.longitude, b.accuracy_radius
 		 FROM geo_blocks b
@@ -94,6 +95,7 @@ export class PostgresGeoProvider implements IGeoProvider {
 				longitude: r.longitude != null ? Number(r.longitude) : null,
 				postalCode: r.postal_code ?? null,
 				accuracyRadius: r.accuracy_radius != null ? Number(r.accuracy_radius) : null,
+				geonameId: r.geoname_id != null && r.geoname_id !== '' ? Number(r.geoname_id) : null,
 				asn: r.asn != null && r.asn !== '' ? `AS${r.asn}` : null,
 				org: r.organization ?? null,
 			};

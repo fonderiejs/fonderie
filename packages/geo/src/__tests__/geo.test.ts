@@ -76,7 +76,7 @@ test('lookup: a hit maps DB columns to GeoLocation', async () => {
 		subdivision: 'WA', subdivisionName: 'Washington',
 		city: 'Seattle', postalCode: '98101', continent: 'NA', timeZone: 'America/Los_Angeles',
 		latitude: 47.6062, longitude: -122.3321, accuracyRadius: 20,
-		asn: null, org: null, // no ASN block in this row
+		geonameId: null, asn: null, org: null, // no geoname/ASN in this row
 	});
 });
 
@@ -195,7 +195,7 @@ test('lookup: one query returns City and ASN together; asn is rendered "AS…"',
 	const store: Queryable = {
 		async query<T>(sql: string): Promise<T[]> {
 			sqls.push(sql);
-			return [{ country_iso: 'US', city_name: 'Mountain View', asn: '15169', organization: 'Google LLC' }] as T[];
+			return [{ geoname_id: '5375480', country_iso: 'US', city_name: 'Mountain View', asn: '15169', organization: 'Google LLC' }] as T[];
 		},
 	};
 	const r = await new PostgresGeoProvider(store).lookup('64.233.178.102');
@@ -204,6 +204,7 @@ test('lookup: one query returns City and ASN together; asn is rendered "AS…"',
 	assert.equal(r?.asn, 'AS15169');
 	assert.equal(r?.org, 'Google LLC');
 	assert.equal(r?.city, 'Mountain View');
+	assert.equal(r?.geonameId, 5375480, 'BIGINT string → number');
 });
 
 test('lookup: an ASN hit with no City block still returns the network facts', async () => {

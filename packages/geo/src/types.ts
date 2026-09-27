@@ -15,6 +15,10 @@ export interface GeoLocation {
 	longitude: number | null;
 	accuracyRadius: number | null;
 	/** Autonomous system, e.g. "AS15169" — from MaxMind's GeoLite2 ASN database. */
+	/** MaxMind's geoname id for the most specific place resolved (city, else
+	 * region/country) — a stable, language-neutral key. Store it and any reader
+	 * can see the place in their own language later. Null from header sources. */
+	geonameId: number | null;
 	asn: string | null;
 	/** The organization that operates that network, e.g. "Google LLC" (the ISP or
 	 * hosting company). Same field names as @fonderie/auth's location, so a
