@@ -20,6 +20,7 @@ import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from 
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { createManifestCommands } from './manifest.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, '..');
@@ -292,14 +293,16 @@ function doAdd() {
 //   FONDERIE_ADMIN_URL   e.g. https://app.example.com
 //   FONDERIE_ADMIN_TOKEN the bootstrap admin token
 //   FONDERIE_ACTOR       optional — recorded on writes (X-Actor)
-async function adminFetch(method, path, body) {
+// Non-exiting core: returns `result`, or throws an Error carrying `status`
+// and `details`. Callers decide how a failure ends the process.
+async function adminJson(method, path, body, { auth = true } = {}) {
   const base = process.env.FONDERIE_ADMIN_URL;
   const token = process.env.FONDERIE_ADMIN_TOKEN;
-  if (!base || !token) {
-    console.error('Set FONDERIE_ADMIN_URL and FONDERIE_ADMIN_TOKEN to manage a deployment.');
-    process.exit(1);
+  if (!base || (auth && !token)) {
+    throw Object.assign(new Error('Set FONDERIE_ADMIN_URL and FONDERIE_ADMIN_TOKEN to manage a deployment.'), { status: 0 });
   }
-  const headers = { authorization: `Bearer ${token}` };
+  const headers = {};
+  if (auth) headers.authorization = `Bearer ${token}`;
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (process.env.FONDERIE_ACTOR) headers['x-actor'] = process.env.FONDERIE_ACTOR;
   const res = await fetch(base.replace(/\/$/, '') + path, {
@@ -309,12 +312,49 @@ async function adminFetch(method, path, body) {
   });
   const json = await res.json().catch(() => ({}));
   if (res.status >= 400) {
-    console.error(json.explanation || json.reason || `HTTP ${res.status}`);
-    if (json.details) console.error(JSON.stringify(json.details));
-    process.exit(res.status === 409 ? 2 : 1); // 409 conflict → exit 2 (reload + retry)
+    const err = new Error(json.explanation || json.reason || `HTTP ${res.status} on ${method} ${path}`);
+    err.status = res.status;
+    err.details = json.details;
+    throw err;
   }
-  const result = json.result;
+  return json.result;
+}
+
+function exitOnAdminError(err) {
+  console.error(err.message);
+  if (err.details) console.error(JSON.stringify(err.details));
+  process.exit(err.status === 409 ? 2 : 1); // 409 conflict → exit 2 (reload + retry)
+}
+
+async function adminFetch(method, path, body) {
+  let result;
+  try {
+    result = await adminJson(method, path, body);
+  } catch (err) {
+    exitOnAdminError(err);
+  }
   console.log(typeof result === 'string' ? result : JSON.stringify(result, null, 2));
+}
+
+// Where a resource's admin routes live on this deployment. The config brick
+// serves /admin/<resource> when given its own adminToken; @fonderie/admin mounts
+// the same handlers under its prefix (/_admin by default). FONDERIE_ADMIN_PREFIX
+// pins it; otherwise probe the brick path and fall back on 404.
+const ADMIN_PATHS = { config: 'config', secret: 'secrets', template: 'templates' };
+const resolvedBases = {};
+async function resourceBase(resource) {
+  if (resolvedBases[resource]) return resolvedBases[resource];
+  const tail = ADMIN_PATHS[resource];
+  const pinned = process.env.FONDERIE_ADMIN_PREFIX;
+  if (pinned) return (resolvedBases[resource] = `${pinned.replace(/\/$/, '')}/${tail}`);
+  const legacy = `/admin/${tail}`;
+  try {
+    await adminJson('GET', legacy);
+    return (resolvedBases[resource] = legacy);
+  } catch (err) {
+    if (err.status !== 404) throw err;
+    return (resolvedBases[resource] = `/_admin/${tail}`);
+  }
 }
 
 // ── fonderie admin <page> — read a deployment's operator surface (@fonderie/admin) ─
@@ -324,7 +364,8 @@ const ADMIN_PAGES = {
   attention: { path: '',                     about: 'what needs the operator today' },
   manifest:  { path: '/manifest',            about: 'modules, versions, readiness, the route table' },
   doctor:    { path: '/doctor',              about: 'every reconciliation check, on demand' },
-  config:    { path: '/config',              about: 'readiness per module + env presence' },
+  environment: { path: '/environment',       about: 'readiness per module + env presence' },
+  config:    { path: '/environment',         about: 'alias of environment (the page was renamed)' },
   routes:    { path: '/routes',              about: 'every exposed route with its guard' },
   tokens:    { path: '/access/tokens',       about: 'the admin token verdict + legacy per-brick tokens' },
   log:       { path: '/activity/admin-log',  about: 'who did what through the surface (--limit, --before)' },
@@ -436,14 +477,20 @@ const RESOURCE_SHAPE = {
   template: { scopeFlag: '--locale', scopeParam: 'locale',      valueKey: 'text' },
 };
 
-async function resourceCmd(resource, base) {
+const manifest = createManifestCommands({ argv, arg, adminJson, resourceBase });
+const MANIFEST_VERBS = { export: 'exportCmd', diff: 'diffCmd', apply: 'applyCmd' };
+
+async function resourceCmd(resource) {
   const shape = RESOURCE_SHAPE[resource];
   const verb = argv[1];
+  if (resource !== 'template' && MANIFEST_VERBS[verb]) return manifest[MANIFEST_VERBS[verb]](resource);
+  if (resource === 'config' && verb === 'public') return manifest.publicCmd();
   const spec = VERBS[verb];
   if (!spec || (spec.secretOnly && resource !== 'secret')) return usageErr(resource);
 
   const key = argv[2];
   if (spec.needsKey && !key) return usageErr(resource);
+  const base = await resourceBase(resource);
 
   const scope = arg(shape.scopeFlag, undefined);
   const q = scope ? `?${shape.scopeParam}=${encodeURIComponent(scope)}` : '';
@@ -482,6 +529,8 @@ async function resourceCmd(resource, base) {
 
 function usageErr(resource) {
   const verbs = Object.keys(VERBS).filter((v) => !VERBS[v].secretOnly || resource === 'secret');
+  if (resource !== 'template') verbs.push('export', 'diff', 'apply');
+  if (resource === 'config') verbs.push('public');
   const scopeFlag = (RESOURCE_SHAPE[resource] ?? { scopeFlag: '--env' }).scopeFlag;
   console.error(`usage: fonderie ${resource} <${verbs.join('|')}> [key] [value] [${scopeFlag} <s>] [--if-version <n>] [--to-version <n>]`);
   process.exit(1);
@@ -492,9 +541,9 @@ if (cmd === 'query') doQuery();
 else if (cmd === 'skill') doSkill();
 else if (cmd === 'add') doAdd();
 else if (cmd === 'init') doInit();
-else if (cmd === 'config') resourceCmd('config', '/admin/config').catch((e) => { console.error(e.message); process.exit(1); });
-else if (cmd === 'secret') resourceCmd('secret', '/admin/secrets').catch((e) => { console.error(e.message); process.exit(1); });
-else if (cmd === 'template') resourceCmd('template', '/admin/templates').catch((e) => { console.error(e.message); process.exit(1); });
+else if (cmd === 'config') resourceCmd('config').catch(exitOnAdminError);
+else if (cmd === 'secret') resourceCmd('secret').catch(exitOnAdminError);
+else if (cmd === 'template') resourceCmd('template').catch(exitOnAdminError);
 else if (cmd === 'migrate') doMigrate().catch((e) => { console.error(e.message); process.exit(1); });
 else if (cmd === 'admin') adminCmd().catch((e) => { console.error(e.message); process.exit(1); });
 else {
@@ -517,7 +566,15 @@ else {
   fonderie secret <get|set|delete|history|rollback|reveal> [key] [value] [--env <e>] ...
   fonderie template <get|set|delete|history|rollback> [type] [text] [--locale <l>] [--subject <s>] [--html <h>] ...
       manage a live deployment over its admin API — set FONDERIE_ADMIN_URL + FONDERIE_ADMIN_TOKEN
-  fonderie admin <attention|manifest|doctor|config|routes|tokens|log> [--limit <n>] [--before <cursor>]
+      (routes found at /admin/* or /_admin/*; FONDERIE_ADMIN_PREFIX pins the second)
+
+  fonderie config|secret export [--env <e>] [-o <file>]          the current state as a manifest
+      secrets export valueFrom placeholders; --reveal writes the values (file mode 0600)
+  fonderie config|secret diff  -f <manifest> [--env <e>]         what apply would change; exit 1 if anything
+  fonderie config|secret apply -f <manifest> [--env <e>] [--dry-run] [--prune] [--allow-type-change]
+  fonderie secret diff|apply --from-env-file <.env> [--env <e>]  secrets from a .env file; values never printed
+  fonderie config public                                         exactly what frontends receive
+  fonderie admin <attention|manifest|doctor|environment|routes|tokens|log> [--limit <n>] [--before <cursor>]
   fonderie admin user <email|id> [sessions|history|revoke-sessions|suspend|unsuspend]
   fonderie admin catalog · admin subscriber <user|workspace> <id> [subscription|wallet|ledger] [--currency <c>]
   fonderie admin audit [--workspace <id>] [--type <t>] [--actor <id>] [--from <iso>] [--to <iso>] [--limit <n>]

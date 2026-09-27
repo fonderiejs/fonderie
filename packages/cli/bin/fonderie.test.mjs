@@ -225,6 +225,9 @@ await (async () => {
 
   // fonderie admin <page> — the operator surface, read-only, prefix-aware
   await cli(['admin', 'manifest']);
+  await cli(['admin', 'environment']);
+  await cli(['admin', 'config']);
+  if (requests.filter((r) => r.url === '/_admin/environment').length !== 2) fail('admin environment/config: should both read /_admin/environment');
   await cli(['admin', 'attention']);
   await cli(['admin', 'log', '--limit', '5', '--before', 'abc']);
   await execFileP('node', [bin, 'admin', 'doctor'], { env: { ...env, FONDERIE_ADMIN_PREFIX: '/ops/' } });
@@ -276,4 +279,166 @@ await (async () => {
   console.log('  ✓ config/secret management commands (get/set/history/rollback/reveal, 409→exit2, env guard)');
 })();
 
-console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall, add guards, config/secret management)');
+// ── config/secret export · diff · apply (kubectl-style manifests) ────────────
+// A STATEFUL fake mounted the way @fonderie/admin mounts it (/_admin/*, with
+// /admin/* answering 404), so apply's writes are visible to the next diff.
+await (async () => {
+  const { statSync } = await import('node:fs');
+  const requests = [];
+  const rows = {
+    config: [
+      { key: 'FLAG', environment: 'all', value: true, description: 'show jobs', version: 1 },
+      { key: 'LIMIT', environment: 'all', value: 10, description: null, version: 4 },
+      { key: 'OLD', environment: 'all', value: 'x', description: null, version: 3 },
+      { key: 'FLAG', environment: 'prod', value: false, description: null, version: 7 },
+    ],
+    secrets: [{ key: 'API_KEY', environment: 'all', plain: 'aaaa-old-secret-value', description: null, version: 2 }],
+  };
+  const reply = (res, status, result, extra = {}) => {
+    res.writeHead(status, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ reason: status < 400 ? 'OK' : 'ERR', explanation: extra.explanation ?? 'ok', result, details: extra.details }));
+  };
+  const server = createServer((req, res) => {
+    let raw = '';
+    req.on('data', (c) => { raw += c; });
+    req.on('end', () => {
+      const body = raw ? JSON.parse(raw) : undefined;
+      requests.push({ method: req.method, url: req.url, auth: req.headers.authorization, body });
+      const u = new URL(req.url, 'http://x');
+      if (u.pathname === '/config/public') return reply(res, 200, { values: { FLAG: true } });
+      const m = /^\/(?:_admin|ops)\/(config|secrets)(?:\/([^/]+))?(?:\/(reveal))?$/.exec(u.pathname);
+      if (!m) return reply(res, 404, null, { explanation: 'Not found' });
+      const [, kind, rawKey, action] = m;
+      const table = rows[kind];
+      const envQ = u.searchParams.get('environment');
+      const scope = body?.environment ?? envQ ?? 'all';
+      const pub = (r) => (kind === 'secrets' ? { ...r, plain: undefined } : r);
+      if (!rawKey) return reply(res, 200, table.filter((r) => !envQ || r.environment === envQ || r.environment === 'all').map(pub));
+      const key = decodeURIComponent(rawKey);
+      const row = table.find((r) => r.key === key && r.environment === scope);
+      if (action === 'reveal') return row ? reply(res, 200, row.plain) : reply(res, 404, null);
+      if (req.method === 'DELETE') {
+        table.splice(table.indexOf(row), 1);
+        return reply(res, 200, null);
+      }
+      if (req.method === 'PUT') {
+        if (row && body.ifVersion !== undefined && body.ifVersion !== row.version) return reply(res, 409, null, { explanation: 'stale', details: { currentVersion: row.version } });
+        const next = { key, environment: scope, description: body.description ?? row?.description ?? null, version: (row?.version ?? 0) + 1 };
+        if (kind === 'secrets') next.plain = body.value; else next.value = body.value;
+        if (row) table.splice(table.indexOf(row), 1, next); else table.push(next);
+        return reply(res, 200, pub(next));
+      }
+      return reply(res, 404, null);
+    });
+  });
+  await new Promise((r) => server.listen(0, r));
+  const env = { ...process.env, FONDERIE_ADMIN_URL: `http://127.0.0.1:${server.address().port}`, FONDERIE_ADMIN_TOKEN: 'sekret', FONDERIE_ADMIN_PREFIX: '' };
+  const cli = (args, extraEnv = {}) => execFileP('node', [bin, ...args], { env: { ...env, ...extraEnv } });
+  const code = async (args, extraEnv) => { try { const r = await cli(args, extraEnv); return { code: 0, ...r }; } catch (e) { return { code: e.code, stdout: e.stdout, stderr: e.stderr }; } };
+  const dir = mkdtempSync(join(tmpdir(), 'fonderie-manifest-'));
+  const writes = () => requests.filter((r) => r.method === 'PUT' || r.method === 'DELETE');
+
+  // export: falls back from /admin to /_admin, scopes to 'all', sorted, no version noise
+  const exported = JSON.parse((await cli(['config', 'export'])).stdout);
+  if (!requests.some((r) => r.url === '/admin/config') || !requests.some((r) => r.url === '/_admin/config')) fail('export: should probe /admin then fall back to /_admin');
+  if (exported.kind !== 'ConfigSet' || exported.apiVersion !== 'fonderie/v1' || exported.metadata.environment !== 'all') fail('export: wrong envelope');
+  if (Object.keys(exported.entries).join() !== 'FLAG,LIMIT,OLD') fail(`export: wrong keys ${Object.keys(exported.entries)}`);
+  if (exported.entries.FLAG.value !== true || exported.entries.FLAG.description !== 'show jobs' || 'version' in exported.entries.FLAG) fail('export: FLAG entry wrong');
+  const prodExport = JSON.parse((await cli(['config', 'export', '--env', 'prod'])).stdout);
+  if (Object.keys(prodExport.entries).join() !== 'FLAG' || prodExport.entries.FLAG.value !== false) fail('export --env prod: should hold only prod rows');
+
+  // round trip: applying what was exported changes nothing
+  const same = join(dir, 'same.json');
+  await cli(['config', 'export', '-o', same]);
+  const noop = await code(['config', 'diff', '-f', same]);
+  if (noop.code !== 0 || !/no changes/.test(noop.stdout)) fail(`diff of an export should be clean, got ${noop.code}: ${noop.stdout}`);
+
+  const desired = join(dir, 'config.json');
+  writeFileSync(desired, JSON.stringify({ apiVersion: 'fonderie/v1', kind: 'ConfigSet', entries: {
+    FLAG: { value: false, description: 'show jobs' },
+    LIMIT: { value: 'ten' },
+    NEW: { value: [{ id: 'm1' }] },
+  } }));
+  const d = await code(['config', 'diff', '-f', desired]);
+  if (d.code !== 1) fail(`diff with changes should exit 1, got ${d.code}`);
+  for (const want of [/~ FLAG: true → false/, /\+ NEW = \[\{"id":"m1"\}\]/, /! LIMIT: type number → text/, /kept .*OLD/]) {
+    if (!want.test(d.stdout)) fail(`diff output missing ${want}:\n${d.stdout}`);
+  }
+  const blocked = await code(['config', 'apply', '-f', desired]);
+  if (blocked.code !== 2 || writes().length) fail(`a blocked type change must apply nothing and exit 2 (got ${blocked.code}, ${writes().length} writes)`);
+  const dry = await code(['config', 'apply', '-f', desired, '--allow-type-change', '--prune', '--dry-run']);
+  if (dry.code !== 0 || writes().length || !/dry run/.test(dry.stdout) || !/- OLD/.test(dry.stdout)) fail('--dry-run must print the plan and write nothing');
+
+  await cli(['config', 'apply', '-f', desired, '--allow-type-change', '--prune']);
+  const put = (k) => writes().find((r) => r.method === 'PUT' && r.url === `/_admin/config/${k}`);
+  if (put('FLAG')?.body?.ifVersion !== 1 || put('FLAG').body.value !== false) fail('apply: FLAG update must carry ifVersion (no lost updates)');
+  if (put('LIMIT')?.body?.allowTypeChange !== true) fail('apply: the type change must be explicit on the wire');
+  if (put('FLAG').body.allowTypeChange) fail('apply: allowTypeChange must go only on writes that change the type');
+  if (put('NEW')?.body?.ifVersion !== undefined || put('NEW').body.value[0].id !== 'm1') fail('apply: NEW should be created without ifVersion');
+  if (!writes().some((r) => r.method === 'DELETE' && r.url === '/_admin/config/OLD')) fail('apply --prune: OLD should be deleted');
+  if (writes().some((r) => r.url.includes('prod'))) fail('apply without --env must not touch prod rows');
+  const again = await code(['config', 'apply', '-f', desired]);
+  if (again.code !== 0 || !/no changes/.test(again.stdout)) fail('apply is idempotent: a second run changes nothing');
+
+  // ifVersion is the version read by THIS run, so a concurrent edit gets a 409, not an overwrite
+  rows.config.find((r) => r.key === 'FLAG' && r.environment === 'all').version = 99;
+  writeFileSync(desired, JSON.stringify({ kind: 'ConfigSet', entries: { FLAG: { value: true } } }));
+  // (the plan re-reads, so it sees v99 — prove ifVersion is the read version, not a stale constant)
+  await cli(['config', 'apply', '-f', desired]);
+  if (writes().at(-1).body.ifVersion !== 99) fail('apply: ifVersion must be the version read for this run');
+
+  // manifests are validated whole before anything is sent
+  const bad = join(dir, 'bad.json');
+  writeFileSync(bad, JSON.stringify({ kind: 'SecretSet', entries: { '9bad': { value: 1 }, OK: {} } }));
+  const b = await code(['config', 'apply', '-f', bad]);
+  if (b.code !== 1 || !/kind must be "ConfigSet"/.test(b.stderr) || !/9bad: invalid key/.test(b.stderr) || !/OK: needs "value"/.test(b.stderr)) fail(`bad manifest should list every problem:\n${b.stderr}`);
+
+  // ── secrets: the same flow, and no value ever reaches stdout ──
+  const secretOut = (await cli(['secret', 'export'])).stdout;
+  const sx = JSON.parse(secretOut);
+  if (sx.kind !== 'SecretSet' || sx.entries.API_KEY.valueFrom?.env !== 'API_KEY' || 'value' in sx.entries.API_KEY) fail('secret export: should emit a valueFrom placeholder');
+  if (secretOut.includes('aaaa-old')) fail('secret export without --reveal must not contain a value');
+  if (requests.some((r) => r.url.includes('/reveal'))) fail('secret export without --reveal must not reveal');
+  const revealed = join(dir, 'secrets.json');
+  const rv = await cli(['secret', 'export', '--reveal', '-o', revealed]);
+  if (JSON.parse(readFileSync(revealed, 'utf8')).entries.API_KEY.value !== 'aaaa-old-secret-value') fail('secret export --reveal: value missing');
+  if ((statSync(revealed).mode & 0o777) !== 0o600) fail('secret export --reveal: file must be 0600');
+  if (!/plaintext/.test(rv.stderr)) fail('secret export --reveal: should warn about plaintext');
+
+  const secretFile = join(dir, 'secretset.json');
+  writeFileSync(secretFile, readFileSync(join(dir, 'secrets.json'), 'utf8').replace(/"value": "[^"]*"/, '"valueFrom": { "env": "API_KEY" }'));
+  const sd = await code(['secret', 'diff', '-f', secretFile], { API_KEY: 'aaaa-new-secret-value' });
+  if (sd.code !== 1 || !/~ API_KEY: value changed/.test(sd.stdout)) fail(`secret diff should see the change:\n${sd.stdout}`);
+  if ((sd.stdout + sd.stderr).includes('aaaa-')) fail('secret diff must never print a value');
+  const missingEnv = await code(['secret', 'diff', '-f', secretFile], { API_KEY: undefined });
+  if (missingEnv.code !== 1 || !/API_KEY is not set/.test(missingEnv.stderr)) fail('valueFrom with the variable unset must fail before sending anything');
+  const sa = await code(['secret', 'apply', '-f', secretFile], { API_KEY: 'aaaa-new-secret-value' });
+  if (sa.code !== 0 || (sa.stdout + sa.stderr).includes('aaaa-')) fail('secret apply must succeed without printing values');
+  if (writes().at(-1).body.value !== 'aaaa-new-secret-value' || writes().at(-1).body.ifVersion !== 2) fail('secret apply: wrong PUT');
+
+  const dotenv = join(dir, '.env');
+  writeFileSync(dotenv, '# comment\nAPI_KEY="aaaa-new-secret-value"\nexport WEBHOOK_SECRET=aaaa-bbbb-cccc-dddd\n\n');
+  const fe = await code(['secret', 'apply', '--from-env-file', dotenv, '--env', 'prod']);
+  if (fe.code !== 0 || !/\+ API_KEY/.test(fe.stdout) || !/\+ WEBHOOK_SECRET/.test(fe.stdout)) fail(`--from-env-file --env prod should add both to prod:\n${fe.stdout}`);
+  if (writes().at(-1).body.environment !== 'prod' || !writes().at(-1).url.endsWith('?environment=prod')) fail('--env prod must scope the writes');
+  const feAgain = await code(['secret', 'diff', '--from-env-file', dotenv, '--env', 'prod']);
+  if (feAgain.code !== 0) fail('--from-env-file is idempotent');
+  const feCfg = await code(['config', 'apply', '--from-env-file', dotenv]);
+  if (feCfg.code !== 1 || !/for `fonderie secret`/.test(feCfg.stderr)) fail('--from-env-file is refused for config');
+
+  // config public: unauthenticated, exactly what frontends get
+  const pub = await cli(['config', 'public']);
+  if (JSON.parse(pub.stdout).FLAG !== true) fail('config public: wrong output');
+  if (requests.find((r) => r.url === '/config/public').auth) fail('config public must not send the admin token');
+
+  // FONDERIE_ADMIN_PREFIX pins the base — no probe
+  const before = requests.length;
+  await cli(['config', 'export'], { FONDERIE_ADMIN_PREFIX: '/ops/' });
+  const hits = requests.slice(before).map((r) => r.url);
+  if (hits.join() !== '/ops/config') fail(`FONDERIE_ADMIN_PREFIX should skip the probe, saw ${hits}`);
+
+  server.close();
+  console.log('  ✓ config/secret export · diff · apply (fallback, round-trip, type guard, dry-run, prune, ifVersion, idempotent, secrets never printed, .env, public)');
+})();
+
+console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall, add guards, config/secret management, manifests)');

@@ -47,6 +47,57 @@ are numbers — and anything that only *looks* like a number (`1.10`, `0123`,
 as text. Changing an existing key's type (on/off → text…) is refused (exit 2)
 unless you pass `--allow-type-change`.
 
+### Config and secrets as files (export · diff · apply)
+
+Keep a deployment's remote config and secrets in a file, review changes in a
+pull request, and apply them the way `kubectl` does:
+
+```bash
+fonderie config export -o config.json            # what the deployment holds now
+fonderie config diff  -f config.json             # what apply would change; exit 1 if anything
+fonderie config apply -f config.json --dry-run   # print the plan, write nothing
+fonderie config apply -f config.json             # add and update; never deletes without --prune
+fonderie config public                           # exactly what frontends receive
+```
+
+```json
+{
+  "apiVersion": "fonderie/v1",
+  "kind": "ConfigSet",
+  "metadata": { "environment": "all" },
+  "entries": {
+    "ENABLE_JOB_LISTING": { "value": true, "description": "Show the jobs tab" },
+    "ALLOWED_MERCHANT_IDS": { "value": ["m1", "m2"] }
+  }
+}
+```
+
+- **Safe by default.** A key the file omits is kept unless you pass `--prune`.
+  A type change is blocked, and nothing is applied, unless you pass
+  `--allow-type-change`. Identical entries are skipped, so applying twice
+  changes nothing.
+- **No lost updates.** Each update carries the version read at plan time. If
+  someone edited the key in between, the server refuses it and the CLI exits 2.
+- **Scoped.** `--env <e>` manages that environment's rows only. Without it,
+  the file manages the shared `all` rows.
+
+Secrets use the same commands with `kind: "SecretSet"`. The file names where
+each value comes from instead of holding it, so it can be committed:
+
+```json
+"STRIPE_SECRET_KEY": { "valueFrom": { "env": "STRIPE_SECRET_KEY" } }
+```
+
+- `fonderie secret export` writes these placeholders. `--reveal` writes the
+  values instead, to a file with mode 0600, and warns you.
+- `fonderie secret diff` and `apply` compare against the revealed values but
+  never print one.
+- `fonderie secret apply --from-env-file .env` loads a `.env` file directly.
+
+The CLI finds the routes at `/admin/*` (the config brick's own token) or
+`/_admin/*` (`@fonderie/admin`). Set `FONDERIE_ADMIN_PREFIX` if the admin
+surface was moved.
+
 ## How it stays correct
 
 Each package ships its own `brain/` fragment **inside its tarball**, version-
