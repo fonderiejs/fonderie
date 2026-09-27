@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ADMIN_LOCALES, createAdminT, detectAdminLocale, formatAdminDate } from '../admin-i18n';
+import {
+	ADMIN_LOCALES,
+	adminLocaleNames,
+	adminLocaleTags,
+	createAdminT,
+	detectAdminLocale,
+	formatAdminDate,
+} from '../admin-i18n';
 import en from '../admin-i18n/en';
 import es from '../admin-i18n/es';
 import fr from '../admin-i18n/fr';
@@ -13,14 +20,23 @@ import fr from '../admin-i18n/fr';
 type Tree = { [k: string]: string | Tree };
 function leaves(t: Tree, prefix = ''): Array<[string, string]> {
 	return Object.entries(t).flatMap(([k, v]) =>
-		typeof v === 'string' ? [[`${prefix}${k}`, v] as [string, string]] : leaves(v, `${prefix}${k}.`),
+		typeof v === 'string'
+			? [[`${prefix}${k}`, v] as [string, string]]
+			: leaves(v, `${prefix}${k}.`),
 	);
 }
-const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
+const placeholders = (s: string) =>
+	[...s.matchAll(/\{(\w+)\}/g)]
+		.map((m) => m[1])
+		.sort()
+		.join(',');
 
 test('every locale has a non-empty string for every key, with the same {placeholders} as English', () => {
 	const base = new Map(leaves(en as unknown as Tree));
-	assert.ok(base.size > 100, `the dictionary is populated (${base.size} keys) — not a vacuous pass`);
+	assert.ok(
+		base.size > 100,
+		`the dictionary is populated (${base.size} keys) — not a vacuous pass`,
+	);
 	for (const [name, dict] of [
 		['fr', fr],
 		['es', es],
@@ -30,7 +46,11 @@ test('every locale has a non-empty string for every key, with the same {placehol
 			const tr = got.get(key);
 			assert.ok(tr !== undefined, `${name}: missing ${key}`);
 			assert.ok(tr.trim().length > 0, `${name}: empty ${key}`);
-			assert.equal(placeholders(tr), placeholders(text), `${name}: ${key} placeholders differ — en "${text}" vs "${tr}"`);
+			assert.equal(
+				placeholders(tr),
+				placeholders(text),
+				`${name}: ${key} placeholders differ — en "${text}" vs "${tr}"`,
+			);
 		}
 	}
 });
@@ -53,5 +73,21 @@ test('detectAdminLocale: first supported browser language, else English', () => 
 
 test('formatAdminDate: dates follow the console language', () => {
 	const d = new Date(Date.UTC(2026, 8, 27, 12, 0, 0));
-	assert.notEqual(formatAdminDate(d, 'en', 'date'), formatAdminDate(d, 'fr', 'date'), 'en-US and fr-FR order dates differently');
+	assert.notEqual(
+		formatAdminDate(d, 'en', 'date'),
+		formatAdminDate(d, 'fr', 'date'),
+		'en-US and fr-FR order dates differently',
+	);
+});
+
+test('the shared locale maps are frozen: an embedding app cannot rename a language for everyone', () => {
+	assert.ok(Object.isFrozen(adminLocaleNames));
+	assert.ok(Object.isFrozen(adminLocaleTags));
+	assert.throws(() => {
+		'use strict';
+		(adminLocaleNames as Record<string, string>).fr = 'French';
+	}, TypeError);
+	assert.equal(adminLocaleNames.fr, 'Français');
+	for (const l of ADMIN_LOCALES)
+		assert.ok(adminLocaleNames[l] && adminLocaleTags[l], `${l} has a name and a tag`);
 });

@@ -101,7 +101,7 @@ interface IDataExportContributor {
     collect: (userId: string) => Promise<unknown> | unknown;
 }
 
-const AUTH_CONFIG_KEYS: { sessionDuration: string; verificationCooldown: string; mfa: string; requireVerification: string; }
+const AUTH_CONFIG_KEYS: Record<keyof IAuthRuntimeConfig, string>
 
 const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly passwordRevoked: "password-revoked"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; }
 

@@ -24,9 +24,9 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .patch<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .delete<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
 
-const FONDERIE_INJECTION_KEY: symbol & InjectionConstraint<FonderieClient>
+const FONDERIE_INJECTION_KEY: InjectionKey<FonderieClient>
 
-const FonderiePlugin: import("vue").ObjectPlugin<[FonderieClient]> | import("vue").FunctionPlugin<[FonderieClient]>
+const FonderiePlugin: Plugin<[FonderieClient]>
 
 function provideFonderie(client: FonderieClient): void
 

@@ -65,7 +65,7 @@ interface IPermissionsConfig {
 
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
-const PERMISSION_COLUMN: { create: string; read: string; update: string; delete: string; }
+const PERMISSION_COLUMN: Record<Operation, string>
 
 function requireRole(roleName: string | string[], store: IStoreAdapter): Middleware
 

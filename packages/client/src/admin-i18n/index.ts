@@ -14,19 +14,26 @@ export const ADMIN_LOCALES = ['en', 'fr', 'es'] as const;
 export type AdminLocale = (typeof ADMIN_LOCALES)[number];
 export const DEFAULT_ADMIN_LOCALE: AdminLocale = 'en';
 
+/**
+ * One value per console language, read-only. Frozen at runtime too: these
+ * maps are shared by every console on the page, so an embedding app must not
+ * be able to rename "Français" for everyone by assignment.
+ */
+export type LocaleMap<T> = Readonly<Record<AdminLocale, T>>;
+
 /** Native-language names, for the language menu. */
-export const adminLocaleNames: Record<AdminLocale, string> = {
+export const adminLocaleNames: LocaleMap<string> = Object.freeze({
 	en: 'English',
 	fr: 'Français',
 	es: 'Español',
-};
+});
 
 /** BCP 47 tags for Intl (dates, numbers). */
-export const adminLocaleTags: Record<AdminLocale, string> = {
+export const adminLocaleTags: LocaleMap<string> = Object.freeze({
 	en: 'en-US',
 	fr: 'fr-FR',
 	es: 'es-ES',
-};
+});
 
 export const isAdminLocale = (value: unknown): value is AdminLocale =>
 	(ADMIN_LOCALES as readonly unknown[]).includes(value);
@@ -52,7 +59,7 @@ type MessagePath<T> = {
 export type AdminMessageKey = MessagePath<AdminMessages>;
 export type AdminMessageParams = Record<string, string | number>;
 
-const dictionaries: Record<AdminLocale, AdminMessages> = { en, fr, es };
+const dictionaries: LocaleMap<AdminMessages> = { en, fr, es };
 
 /**
  * A translator for one locale: t('users.title'), t('users.count', { n: 3 }).
@@ -68,7 +75,9 @@ export function createAdminT(locale: AdminLocale | undefined = DEFAULT_ADMIN_LOC
 			node = (node as Record<string, unknown>)[part];
 		}
 		const text = typeof node === 'string' ? node : key;
-		return params ? text.replace(/\{(\w+)\}/g, (m, n: string) => (n in params ? String(params[n]) : m)) : text;
+		return params
+			? text.replace(/\{(\w+)\}/g, (m, n: string) => (n in params ? String(params[n]) : m))
+			: text;
 	};
 	return t;
 }
