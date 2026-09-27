@@ -142,12 +142,34 @@ export const UsersScreen = defineComponent({
 								: null,
 						])
 					: null,
-				error.value
+				error.value && !(error.value.status === 404 && selectedId.value)
 					? h(
 							'p',
 							{ style: styles.error, role: 'alert' },
 							error.value.status === 404 ? 'No user with that email.' : error.value.explanation,
 						)
+					: null,
+				// Opened by id (e.g. from Subscriptions) and the account is gone —
+				// deleted or purged — while its billing rows remain. Say so, and
+				// still show the money.
+				error.value?.status === 404 && selectedId.value
+					? [
+							h('div', { style: styles.notice, role: 'status' }, [
+								h('strong', 'No account with id '),
+								h('code', { style: styles.code }, selectedId.value),
+								h('strong', '.'),
+								' It was deleted, or never existed here. Its billing records remain.',
+							]),
+							props.billingClient ? h('h2', { style: styles.subtitle }, 'Plan & credits') : null,
+							props.billingClient
+								? h(SubscriberBilling, {
+										key: `missing-${selectedId.value}`,
+										client: props.billingClient,
+										subscriberType: 'user',
+										subscriberId: selectedId.value,
+									})
+								: null,
+						]
 					: null,
 				u
 					? [
