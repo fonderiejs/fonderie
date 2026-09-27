@@ -213,3 +213,14 @@ export type {
 	ISubscriptionDriftReport,
 } from './services/subscription-drift';
 export { describeBillingAdminReads } from './admin-reads';
+
+export {
+	USER_DELETED_EVENT,
+	USER_PURGED_EVENT,
+	handleSubscriberDeleted,
+	handleSubscriberPurged,
+} from './services/subscriber-lifecycle';
+export type {
+	ISubscriberDeletedOutcome,
+	SubscriberDeletedPolicy,
+} from './services/subscriber-lifecycle';

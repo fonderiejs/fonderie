@@ -25,6 +25,8 @@ export interface IAdminLoginHistoryQuery {
 export interface IAdminUsersQuery {
 	limit?: number;
 	cursor?: string;
+	// true ⇒ only soft-deleted accounts (not yet purged).
+	deleted?: boolean;
 }
 
 // @fonderie/auth's operator routes, which exist only through @fonderie/admin.
@@ -57,6 +59,7 @@ export class AuthAdminClient {
 		const q = new URLSearchParams();
 		if (query.limit) q.set('limit', String(query.limit));
 		if (query.cursor) q.set('cursor', query.cursor);
+		if (query.deleted) q.set('deleted', '1');
 		const qs = q.toString();
 		return this.call<IAdminUserPageResult>('GET', qs ? `?${qs}` : '');
 	}

@@ -85,6 +85,8 @@ export type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
 export const EVENT_KEYS = {
 	userRegistered: 'fonderie.user.registered',
 	userDeleted: 'fonderie.user.deleted',
+	// Emitted by purgeSoftDeletedUsers (given a bus) once the row is hard-deleted.
+	userPurged: 'fonderie.user.purged',
 	emailVerified: 'fonderie.user.email_verified',
 	passwordChanged: 'fonderie.user.password_changed',
 } as const;

@@ -12,6 +12,7 @@ export function useAdminUsers(
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 	const limit = query.limit;
+	const deleted = query.deleted;
 
 	async function fetchPage(cursor?: string) {
 		isLoading.value = true;
@@ -20,6 +21,7 @@ export function useAdminUsers(
 			const { result } = await client.listUsers({
 				...(limit ? { limit } : {}),
 				...(cursor ? { cursor } : {}),
+				...(deleted ? { deleted } : {}),
 			});
 			users.value = cursor ? [...users.value, ...result.users] : result.users;
 			next.value = result.nextCursor;

@@ -1016,6 +1016,19 @@ export class StripeProvider implements IBillingProvider {
 		await stripe.paymentMethods.detach(opts.paymentMethodId);
 	}
 
+	// Delete the customer: Stripe removes its saved payment methods and cancels
+	// any subscription still on it, and KEEPS its invoices. Already deleted or
+	// never existed is a no-op, so a redelivered purge event is harmless.
+	async deleteCustomer(customerId: string): Promise<void> {
+		const stripe = await this.client();
+		try {
+			await stripe.customers.del(customerId);
+		} catch (err) {
+			if ((err as { code?: string }).code === 'resource_missing') return;
+			throw err;
+		}
+	}
+
 	// The customer's invoices, newest first (Stripe returns them so). Amounts
 	// stay in the smallest currency unit; currency is upper-cased to match the
 	// wallet/ledger DTO convention.

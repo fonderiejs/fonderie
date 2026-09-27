@@ -227,6 +227,18 @@ export type ResolveRecipient = (
 
 export interface IBillingConfig {
 	provider: IBillingProvider;
+	/**
+	 * When a user account is deleted (`fonderie.user.deleted`, emitted by
+	 * @fonderie/auth), what happens to their subscription. Needs the event bus.
+	 *   'cancel' (default) — cancel now: the account can no longer sign in, so
+	 *     it cannot use what it would keep paying for. No automatic refund —
+	 *     the app decides that.
+	 *   'cancel-at-period-end' — let the paid-through period run out.
+	 *   'keep' — do nothing (the app handles it).
+	 * Either way off-session charging (auto-recharge) is disarmed, unless 'keep'.
+	 * Workspace subscriptions are untouched: a workspace outlives a member.
+	 */
+	onSubscriberDeleted?: 'cancel' | 'cancel-at-period-end' | 'keep';
 	plans: IBillingPlan[];
 	successUrl: string;
 	cancelUrl: string;

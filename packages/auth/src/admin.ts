@@ -95,7 +95,12 @@ function adminRouteTable(store: IStoreAdapter): Array<[string, string, Middlewar
 				const cursor = cursorParam ? decodeLoginCursor(cursorParam) : null;
 				if (cursorParam && !cursor)
 					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor');
-				const page = await users.list({ limit, ...(cursor ? { cursor } : {}) });
+				const deleted = params.get('deleted') === '1' || params.get('deleted') === 'true';
+				const page = await users.list({
+					limit,
+					...(cursor ? { cursor } : {}),
+					...(deleted ? { deleted } : {}),
+				});
 				return setApiResponse(HTTP.OK, 'USERS', 'Users', toAdminUserPageDTO(page));
 			},
 		],
@@ -103,7 +108,9 @@ function adminRouteTable(store: IStoreAdapter): Array<[string, string, Middlewar
 			'GET',
 			'/_admin/users/:id',
 			async (ctx) => {
-				const user = await users.findById(idOf(ctx));
+				// Read-only view: a soft-deleted account resolves (deletedAt set), so
+				// an operator arriving from billing sees what happened to it.
+				const user = await users.findByIdIncludingDeleted(idOf(ctx));
 				return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND();
 			},
 		],
