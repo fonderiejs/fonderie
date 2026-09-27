@@ -55,6 +55,8 @@ export type {
 	ISetTemplateInput,
 } from './modules/courier-admin';
 export { CourierAdminClient } from './modules/courier-admin';
+export type { ITemplateGroup } from './template-locales';
+export { groupTemplatesByType, missingTemplateLocales } from './template-locales';
 export type {
 	IAddAddressInput,
 	IAddEmailInput,

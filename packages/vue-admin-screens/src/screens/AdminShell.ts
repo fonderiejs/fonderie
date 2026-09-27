@@ -335,9 +335,22 @@ export const AdminShell = defineComponent({
 								locale: e.locale,
 								system: e.system,
 								allowAddLocale: true,
+								localeTabs: true,
 								onSaved: () => (editing.value = null),
 								onDeleted: () => (editing.value = null),
-								'onAdd-locale': (type: string) => (editing.value = { kind: 'template-new', type }),
+								'onAdd-locale': (type: string, c: { locales: string[] }) =>
+									(editing.value = { kind: 'template-new', type, locales: c.locales }),
+								'onSelect-locale': (tpl: {
+									type: string;
+									locale: string | null;
+									system?: boolean;
+								}) =>
+									(editing.value = {
+										kind: 'template',
+										type: tpl.type,
+										locale: tpl.locale,
+										system: tpl.system === true,
+									}),
 							}),
 						];
 					return h(TemplateListScreen, {
