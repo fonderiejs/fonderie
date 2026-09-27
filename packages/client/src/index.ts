@@ -226,3 +226,12 @@ export type {
 	SubscriberType,
 } from './types';
 export { isMfaRequired, describeLocation } from './types';
+export {
+	CONFIG_KEY_PATTERN,
+	CONFIG_VALUE_TYPES,
+	castConfigValue,
+	configKeyProblem,
+	configValueType,
+	formatConfigValue,
+} from './config-value';
+export type { CastResult, ConfigValueType } from './config-value';

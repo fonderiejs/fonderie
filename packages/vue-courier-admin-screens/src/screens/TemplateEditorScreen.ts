@@ -11,7 +11,9 @@ import {
 	useTemplates,
 } from '@fonderie/vue-courier-admin';
 import type { PropType } from 'vue';
-import { defineComponent, h, ref, watch } from 'vue';
+import { computed, defineComponent, h, ref, watch } from 'vue';
+
+const PREVIEW_DEBOUNCE_MS = 500;
 import { styles } from '../styles';
 
 // Implicit variables the layout injects — an operator never supplies these, so
@@ -104,11 +106,27 @@ export const TemplateEditorScreen = defineComponent({
 			}
 		}
 
-		// One render once the template has loaded, so the pane is never empty on
-		// arrival. After that it is explicit — a request per keystroke is not a
-		// preview, it is a load test.
-		watch(template, (tpl) => {
-			if (tpl) void run();
+		// The preview is always live: it renders once the template loads, then
+		// again PREVIEW_DEBOUNCE_MS after the last edit to the content or the sample
+		// data — debounced, so typing a paragraph costs one request, not one per key.
+		let previewTimer: ReturnType<typeof setTimeout> | undefined;
+		watch([template, subject, html, text, sampleJson], () => {
+			if (!template.value) return;
+			clearTimeout(previewTimer);
+			previewTimer = setTimeout(() => void run(), PREVIEW_DEBOUNCE_MS);
+		});
+
+		// Saving what is already stored would only mint an identical version (the
+		// server treats it as a no-op anyway), so Save waits for a real change.
+		const dirty = computed(() => {
+			const tpl = template.value;
+			return (
+				!!tpl &&
+				(subject.value !== (tpl.subject ?? '') ||
+					html.value !== (tpl.html ?? '') ||
+					text.value !== tpl.text ||
+					active.value !== tpl.active)
+			);
 		});
 
 		async function handleSubmit(event: Event) {
@@ -205,11 +223,18 @@ export const TemplateEditorScreen = defineComponent({
 					saveError.value
 						? h('p', { style: styles.error, role: 'alert' }, saveError.value.explanation)
 						: null,
-					h(
-						'button',
-						{ type: 'submit', disabled: isSaving.value, style: styles.button },
-						isSaving.value ? 'Saving…' : 'Save',
-					),
+					h('div', { style: styles.saveRow }, [
+						h(
+							'button',
+							{
+								type: 'submit',
+								disabled: isSaving.value || !dirty.value,
+								style: dirty.value ? styles.button : styles.buttonDisabled,
+							},
+							isSaving.value ? 'Saving…' : 'Save',
+						),
+						!dirty.value && !isSaving.value ? h('span', { style: styles.meta }, 'No changes to save') : null,
+					]),
 				]),
 				h('label', { style: styles.label, for: 'template-sample' }, 'Sample data'),
 				h('textarea', {
@@ -226,19 +251,10 @@ export const TemplateEditorScreen = defineComponent({
 					? h('p', { style: styles.error, role: 'alert' }, sampleError.value)
 					: null,
 				]),
-				h('div', { style: styles.column }, [
+				h('div', { style: styles.previewColumn }, [
 					h('div', { style: styles.previewHeader }, [
 						h('span', { style: styles.label }, 'Preview'),
-						h(
-							'button',
-							{
-								type: 'button',
-								style: styles.rollbackButton,
-								disabled: isPreviewing.value,
-								onClick: () => void run(),
-							},
-							isPreviewing.value ? 'Rendering…' : 'Render',
-						),
+						h('span', { style: styles.meta }, isPreviewing.value ? 'Rendering…' : 'Live'),
 					]),
 					previewError.value
 						? h('p', { style: styles.error, role: 'alert' }, previewError.value.explanation)

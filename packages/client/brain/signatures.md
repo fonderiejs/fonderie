@@ -1592,4 +1592,26 @@ type SubscriberType = 'user' | 'workspace';
 function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult
 
 function describeLocation(loc: IRequestLocationDTO | null | undefined, countryName?: ((code: string) => string | undefined) | undefined): string | null
+
+const CONFIG_KEY_PATTERN: RegExp
+
+const CONFIG_VALUE_TYPES: readonly ConfigValueType[]
+
+function castConfigValue(type: ConfigValueType, raw: string): CastResult
+
+function configKeyProblem(key: string): string | null
+
+function configValueType(value: unknown): ConfigValueType
+
+function formatConfigValue(value: unknown, type?: ConfigValueType): string
+
+type CastResult = {
+    ok: true;
+    value: unknown;
+} | {
+    ok: false;
+    error: string;
+};
+
+type ConfigValueType = 'string' | 'number' | 'boolean' | 'json';
 ```

@@ -56,7 +56,8 @@ function keyMatch(r: IVersionedResource): string {
 // Write one versioned entry: advisory-lock the (key, scope) pair (serializes even
 // a create), enforce optimistic concurrency when `ifVersion` is given, bump the
 // version, append a revision (content columns only), and broadcast invalidation
-// on commit. `data` supplies every content column and any meta columns to set.
+// on commit. Writing values identical to the current row is a no-op that returns
+// it unchanged — no new version. `data` supplies every content column and any meta columns to set.
 export async function versionedWrite<T>(
 	r: IVersionedResource,
 	store: IStoreAdapter,
@@ -77,13 +78,31 @@ export async function versionedWrite<T>(
 	return store.transaction(async (tx) => {
 		await tx.query(lockSql, [opts.key, opts.scope ?? '']);
 
-		const [cur] = await tx.query<{ version: number }>(
-			`SELECT version FROM ${r.table} WHERE ${keyMatch(r)} FOR UPDATE`,
-			[opts.key, opts.scope],
+		// `unchanged`: every content column, and every meta column the caller
+		// supplied, already holds the value being written. Compared in SQL with
+		// IS NOT DISTINCT FROM so NULLs and column types compare exactly as
+		// Postgres stores them — not as JavaScript would guess.
+		const same = [...content, ...meta].map((c, i) => `${c} IS NOT DISTINCT FROM $${3 + i}`);
+		const [cur] = await tx.query<{ version: number; unchanged: boolean }>(
+			`SELECT version, ${same.length ? same.join(' AND ') : 'false'} AS unchanged
+			 FROM ${r.table} WHERE ${keyMatch(r)} FOR UPDATE`,
+			[opts.key, opts.scope, ...contentVals, ...metaVals],
 		);
 		const currentVersion = cur?.version ?? null;
 		if (opts.ifVersion !== undefined && currentVersion !== opts.ifVersion) {
 			throw new VersionConflictError(opts.key, opts.scope, currentVersion, opts.ifVersion);
+		}
+		// Saving what is already there is not a change: no version bump, no
+		// revision, no invalidation broadcast. A history full of identical
+		// versions hides the edits that matter and makes "roll back one version"
+		// a no-op. The current row is returned, so callers see the same shape.
+		if (cur?.unchanged) {
+			const [row] = await tx.query<T>(
+				`SELECT ${r.returning} FROM ${r.table} WHERE ${keyMatch(r)}`,
+				[opts.key, opts.scope],
+			);
+			if (!row) throw new Error(`Failed to read ${r.table} entry`);
+			return row;
 		}
 		const version = (currentVersion ?? 0) + 1;
 		const writeVals = [opts.key, opts.scope, ...contentVals, ...metaVals, version, opts.actor];
