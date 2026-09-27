@@ -182,14 +182,14 @@ authenticator app, with backup codes as the fallback.
 ```ts
 new AdminModule({
   adminToken: process.env.ADMIN_TOKEN,        // machines (CLI, CI) + the break-glass
-  operatorKey: process.env.ADMIN_OPERATOR_KEY, // 64 hex — encrypts authenticator secrets at rest
+  // operatorKey: optional — see below
   store,
   ui: true,
 });
 ```
 
 - **No registration.** The first operator is claimed once, on the console's
-  own sign-in page, with the root `adminToken`. Every other operator is invited
+  own sign-in page: paste the root `adminToken`, then create your account. Every other operator is invited
   by an Owner: a single-use link that expires, where they set a password and
   scan the QR code before anything opens.
 - **Two factors, always.** Password, then a six-digit code (RFC 6238). Ten
@@ -219,9 +219,13 @@ Access levels map to scopes: **Read only** (`read`), **Editor** (`read`,
 Operator actions are logged under `operator:<email>`, which a client header
 cannot override.
 
-`operatorKey` is optional but recommended; without it readiness warns.
-Setting it later is safe — existing secrets keep working and are sealed at
-the next enrollment. Changing it once set invalidates every enrolled
+**Nothing to configure.** First sign-in on the console is the admin token
+alone; the page then asks you to create your account and set up an
+authenticator. `operatorKey` is optional hardening: it encrypts authenticator
+secrets at rest so a database leak alone does not yield them (without it they
+are stored as-is — a leaked one still needs the operator's password). Adding
+it later is safe — existing secrets keep working and are sealed at the next
+enrollment. Changing it once set invalidates every enrolled
 authenticator. `operators: false` turns the sign-in routes off and brings
 back the token gate.
 

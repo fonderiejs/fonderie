@@ -62,9 +62,11 @@ export interface IAdminOptions {
 	 */
 	operators?: boolean;
 	/**
-	 * 64 hex chars (`openssl rand -hex 32`). Encrypts operators' authenticator
-	 * secrets at rest (AES-256-GCM). Unset ⇒ they are stored as-is and readiness
-	 * warns. Keep it stable: changing it invalidates every enrolled authenticator.
+	 * OPTIONAL hardening. 64 hex chars (`openssl rand -hex 32`) that encrypt
+	 * operators' authenticator secrets at rest (AES-256-GCM), so a database leak
+	 * alone does not yield them. Unset ⇒ stored as-is — a supported setup: a
+	 * leaked secret still needs the operator's password. Adding it later is safe;
+	 * changing it once set invalidates every enrolled authenticator.
 	 */
 	operatorKey?: string;
 }
