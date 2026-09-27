@@ -3,7 +3,8 @@ import { useAdminAudit } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
-import { refreshButton, table, td } from './common';
+import { empty, icon, pageHeader } from '../ui';
+import { loadMoreButton, refreshButton, table, td } from './common';
 
 // What happened — every workspace unless one is named. The chain's integrity
 // verdict is on the Doctor page (events.integrity).
@@ -26,12 +27,15 @@ export const AuditScreen = defineComponent({
 				onInput: (e: Event) =>
 					(draft.value = { ...draft.value, [key]: (e.target as HTMLInputElement).value }),
 				placeholder,
-				style: { ...styles.button, cursor: 'text' },
+				style: styles.input,
 				'aria-label': placeholder,
 			});
 		return () =>
 			h('div', { style: styles.container }, [
-				h('h1', { style: styles.title }, 'Audit'),
+				pageHeader(
+					'Audit',
+					"What happened, across every workspace unless you name one. The chain's integrity verdict is on the Doctor page.",
+				),
 				h(
 					'form',
 					{
@@ -53,8 +57,8 @@ export const AuditScreen = defineComponent({
 						field('actorId', 'actor id'),
 						h(
 							'button',
-							{ type: 'submit', style: styles.button, disabled: isLoading.value },
-							'Filter',
+							{ type: 'submit', style: styles.buttonPrimary, disabled: isLoading.value },
+							[icon('search', 14), 'Filter'],
 						),
 						refreshButton('Refresh', isLoading.value, () => void refresh()),
 					],
@@ -63,7 +67,7 @@ export const AuditScreen = defineComponent({
 					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
 					: null,
 				events.value.length === 0 && !isLoading.value
-					? h('p', { style: styles.muted }, 'Nothing recorded for this filter.')
+					? empty('Nothing recorded for this filter', undefined, 'audit')
 					: table(
 							['When', 'Type', 'Workspace', 'Actor', 'Request'],
 							events.value.map((e) =>
@@ -77,17 +81,7 @@ export const AuditScreen = defineComponent({
 							),
 						),
 				isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
-				hasMore.value && !isLoading.value
-					? h(
-							'button',
-							{
-								type: 'button',
-								style: { ...styles.button, marginTop: '8px' },
-								onClick: () => void loadMore(),
-							},
-							'Load more',
-						)
-					: null,
+				hasMore.value && !isLoading.value ? loadMoreButton(() => void loadMore()) : null,
 			]);
 	},
 });

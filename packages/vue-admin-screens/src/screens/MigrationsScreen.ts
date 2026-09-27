@@ -3,6 +3,7 @@ import { useAdminMigrations } from '@fonderie/vue-admin';
 import type { PropType, VNode } from 'vue';
 import { defineComponent, h } from 'vue';
 import { styles } from '../styles';
+import { empty, pill } from '../ui';
 import { page, refreshButton } from './common';
 
 // Why a module might not be appliable, in the operator's terms. Order matters:
@@ -25,19 +26,19 @@ export const MigrationsScreen = defineComponent({
 		const section = (m: IAdminMigrationModule, everApplied: boolean): VNode => {
 			const blocked = why(m, everApplied);
 			const files = m.pending.map((p) => p.file);
-			return h('section', { style: { marginBottom: '24px' } }, [
-				h('h2', { style: styles.subtitle }, `${m.name} — ${m.pending.length} pending`),
+			return h('section', { style: { ...styles.card, marginBottom: '16px' } }, [
+				h('h2', { style: { ...styles.subtitle, marginTop: 0 } }, [
+					h('span', { style: styles.mono }, m.name),
+					pill('warn', `${m.pending.length} pending`),
+				]),
 				h(
 					'ul',
+					{ style: { margin: '0 0 12px', paddingLeft: '18px', lineHeight: 1.9 } },
 					m.pending.map((p) =>
 						h('li', [
-							h('code', p.file),
+							h('code', { style: styles.code }, p.file),
 							' ',
-							h(
-								'span',
-								{ style: p.impact === 'destructive' ? styles.bad : styles.advice },
-								p.impact,
-							),
+							p.impact === 'destructive' ? pill('bad', 'destructive') : pill('neutral', 'additive'),
 							p.destructive.length > 0
 								? h(
 										'ul',
@@ -48,12 +49,12 @@ export const MigrationsScreen = defineComponent({
 					),
 				),
 				blocked
-					? h('p', { style: styles.advice }, blocked)
+					? h('p', { style: { ...styles.notice, marginBottom: 0 } }, blocked)
 					: h(
 							'button',
 							{
 								type: 'button',
-								style: styles.button,
+								style: styles.buttonPrimary,
 								disabled: isLoading.value || !m.appliable,
 								onClick: () => {
 									if (
@@ -79,13 +80,14 @@ export const MigrationsScreen = defineComponent({
 					const r = report.value;
 					if (!r) return null;
 					const behind = r.modules.filter((m) => m.pending.length > 0);
-					if (behind.length === 0) return h('p', { style: styles.ok }, 'Every module is up to date.');
+					if (behind.length === 0)
+						return empty('Every module is up to date', 'No pending migrations.', 'migrations');
 					return [
 						r.everApplied
 							? null
 							: h(
 									'p',
-									{ style: styles.advice },
+									{ style: styles.notice },
 									'This database has never been migrated — treating it as a first install, so nothing is held back.',
 								),
 						...behind.map((m) => section(m, r.everApplied)),
@@ -93,6 +95,7 @@ export const MigrationsScreen = defineComponent({
 				},
 				[refreshButton('Refresh', isLoading.value, () => void refresh())],
 				{
+					lead: 'Schema changes each module ships, and whether this database has them.',
 					errorText: (e) =>
 						e.status === 403
 							? 'Applying migrations needs a token with the write scope.'

@@ -1,15 +1,21 @@
 import type { FonderieApiError } from '@fonderie/client';
-import type { Ref, VNode } from 'vue';
+import type { CSSProperties, Ref, VNode, VNodeChild } from 'vue';
 import { h } from 'vue';
 import { styles } from '../styles';
+import { icon, pageHeader } from '../ui';
 
-// Shared frame: title (+ toolbar), then loading / error / content.
+// Shared frame: header (title, lead, actions on the right), then
+// loading / error / content.
 export function page(
 	title: string,
-	state: { isLoading: Ref<boolean>; error: Ref<FonderieApiError | null> },
+	state: { isLoading: { readonly value: boolean }; error: Ref<FonderieApiError | null> },
 	content: () => VNode | VNode[] | null,
-	toolbar: VNode[] = [],
-	options: { loadingText?: string; errorText?: (e: FonderieApiError) => string } = {},
+	toolbar: (VNode | null)[] = [],
+	options: {
+		loadingText?: string;
+		errorText?: (e: FonderieApiError) => string;
+		lead?: VNodeChild;
+	} = {},
 ): VNode {
 	const body = state.isLoading.value
 		? h('p', { style: styles.status }, options.loadingText ?? 'Loading…')
@@ -20,29 +26,48 @@ export function page(
 					(options.errorText ?? ((e) => e.explanation))(state.error.value),
 				)
 			: content();
-	return h('div', { style: styles.container }, [
-		h('div', { style: styles.toolbar }, [
-			h('h1', { style: { ...styles.title, marginBottom: 0 } }, title),
-			...toolbar,
-		]),
-		body,
-	]);
+	return h('div', { style: styles.container }, [pageHeader(title, options.lead, toolbar), body]);
 }
 
-export function table(headers: string[], rows: VNode[]): VNode {
+export function table(
+	headers: (string | { label: string; style: CSSProperties })[],
+	rows: VNode[],
+): VNode {
 	return h('table', { style: styles.table }, [
 		h('thead', [
 			h(
 				'tr',
-				headers.map((t) => h('th', { style: styles.th }, t)),
+				headers.map((t) =>
+					typeof t === 'string'
+						? h('th', { style: styles.th }, t)
+						: h('th', { style: { ...styles.th, ...t.style } }, t.label),
+				),
 			),
 		]),
 		h('tbody', rows),
 	]);
 }
 
-export const td = (children: VNode | string | (VNode | string)[], extra: object = {}) =>
-	h('td', { style: { ...styles.td, ...extra } }, children);
+export const td = (children: VNodeChild, extra: object = {}) =>
+	h('td', { style: { ...styles.td, ...extra } }, children as never);
 
 export const refreshButton = (label: string, disabled: boolean, onClick: () => void) =>
-	h('button', { type: 'button', style: styles.button, disabled, onClick }, label);
+	h('button', { type: 'button', style: styles.button, disabled, onClick }, [
+		icon('refresh', 14),
+		disabled ? 'Working…' : label,
+	]);
+
+export const loadMoreButton = (onClick: () => void) =>
+	h(
+		'button',
+		{ type: 'button', style: { ...styles.button, marginTop: '12px' }, onClick },
+		'Load more',
+	);
+
+// A plain action button (no refresh glyph); `style` picks the variant.
+export const actionButton = (
+	label: VNodeChild,
+	disabled: boolean,
+	onClick: () => void,
+	style: CSSProperties | undefined = styles.button,
+) => h('button', { type: 'button', style, disabled, onClick }, label as never);

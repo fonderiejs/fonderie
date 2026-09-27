@@ -54,7 +54,7 @@ export function ConfigListScreen({
 
 	return (
 		<div style={styles.container}>
-			<div style={styles.heading}>
+			<div style={{ ...styles.heading, marginTop: 0 }}>
 				<h1 style={styles.title}>Config</h1>
 				{onCreateConfig && (
 					<button type="button" onClick={onCreateConfig} style={styles.newButton}>
@@ -62,7 +62,10 @@ export function ConfigListScreen({
 					</button>
 				)}
 			</div>
-			<p style={styles.hint}>Feature flags and runtime settings — text, numbers, on/off or JSON. Read by the app without a deploy.</p>
+			<p style={styles.hint}>
+				Feature flags and runtime settings — text, numbers, on/off or JSON. Read by the app without
+				a deploy.
+			</p>
 			{isLoadingConfig ? (
 				<p style={styles.status}>Loading…</p>
 			) : configError ? (
@@ -70,7 +73,12 @@ export function ConfigListScreen({
 					{configError.explanation}
 				</p>
 			) : entries.length === 0 ? (
-				<p style={styles.empty}>No config entries yet.{onCreateConfig ? ' Create one to toggle a feature or tune a setting without redeploying.' : ''}</p>
+				<p style={styles.empty}>
+					No config entries yet.
+					{onCreateConfig
+						? ' Create one to toggle a feature or tune a setting without redeploying.'
+						: ''}
+				</p>
 			) : (
 				<ul style={styles.list}>
 					{entries.map((entry) => (
@@ -91,7 +99,7 @@ export function ConfigListScreen({
 			)}
 
 			<div style={styles.heading}>
-				<h1 style={styles.title}>Secrets</h1>
+				<h2 style={styles.title}>Secrets</h2>
 				{onCreateSecret && (
 					<button type="button" onClick={onCreateSecret} style={styles.newButton}>
 						New secret
@@ -136,53 +144,145 @@ export function ConfigListScreen({
 	);
 }
 
+// Matches @fonderie/react-admin-screens' shell look (cards, pills, 32px
+// page padding) with local values: this package sits BELOW the admin screens
+// in the dependency graph, so it cannot import their building blocks.
+const card: CSSProperties = {
+	listStyle: 'none',
+	padding: 0,
+	margin: 0,
+	background: 'var(--fonderie-surface,#fff)',
+	border: '1px solid var(--fonderie-border,#e0e0e0)',
+	borderRadius: 'var(--fonderie-radius-lg,8px)',
+	overflow: 'hidden',
+	boxShadow: 'var(--fonderie-shadow-card,0 2px 3px 0 rgba(0,0,0,.05))',
+};
+const control: CSSProperties = {
+	display: 'inline-flex',
+	alignItems: 'center',
+	height: 32,
+	boxSizing: 'border-box',
+	borderRadius: 6,
+	padding: '0 12px',
+	fontSize: 13,
+	fontWeight: 500,
+	fontFamily: 'inherit',
+	cursor: 'pointer',
+	whiteSpace: 'nowrap',
+};
+
 const styles: Record<string, CSSProperties> = {
-	container: { padding: 24, maxWidth: 880 },
-	heading: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24 },
-	title: { fontSize: 20, fontWeight: 700, margin: 0 },
-	hint: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', margin: '4px 0 12px' },
-	empty: { fontSize: 14, color: 'var(--fonderie-text-muted,#5c5c5c)', padding: '16px 0', borderTop: '1px solid var(--fonderie-border-light,#f5f5f5)' },
+	container: { padding: '32px 40px 64px', maxWidth: 1160, boxSizing: 'border-box' },
+	heading: {
+		display: 'flex',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: 16,
+		marginTop: 36,
+	},
+	title: {
+		fontSize: 22,
+		fontWeight: 600,
+		margin: 0,
+		letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
+		lineHeight: 1.25,
+	},
+	hint: { fontSize: 13.5, color: 'var(--fonderie-text-muted,#5c5c5c)', margin: '4px 0 16px' },
+	empty: {
+		fontSize: 13.5,
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		padding: '28px 24px',
+		textAlign: 'center',
+		border: '1px dashed var(--fonderie-border,#e0e0e0)',
+		borderRadius: 'var(--fonderie-radius-lg,8px)',
+		background: 'var(--fonderie-surface,#fff)',
+		margin: 0,
+	},
 	newButton: {
+		...control,
 		backgroundColor: 'var(--fonderie-text,#171717)',
 		color: 'var(--fonderie-surface,#fff)',
-		padding: '6px 14px',
-		borderRadius: 8,
-		border: 'none',
-		fontSize: 13,
-		fontWeight: 600,
-		cursor: 'pointer',
+		border: '1px solid var(--fonderie-text,#171717)',
 	},
-	valuePreview: { flex: 1, margin: '0 12px', fontSize: 13, color: 'var(--fonderie-text,#171717)', fontFamily: 'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-	badge: { fontSize: 11, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--fonderie-border,#e0e0e0)', color: 'var(--fonderie-text-muted,#5c5c5c)', marginRight: 12 },
-	status: { padding: 12, color: 'var(--fonderie-text-muted,#5c5c5c)' },
-	error: { color: 'var(--fonderie-danger,#e00)', marginBottom: 12, fontSize: 14 },
-	list: { listStyle: 'none', padding: 0, margin: 0 },
+	valuePreview: {
+		flex: 1,
+		margin: '0 12px',
+		fontSize: 12.5,
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		fontFamily:
+			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+		overflow: 'hidden',
+		textOverflow: 'ellipsis',
+		whiteSpace: 'nowrap',
+	},
+	badge: {
+		fontSize: 11.5,
+		fontWeight: 500,
+		padding: '1px 8px',
+		borderRadius: 999,
+		background: 'var(--fonderie-surface-alt,#fafafa)',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		marginRight: 12,
+		whiteSpace: 'nowrap',
+	},
+	status: { padding: '24px 0', color: 'var(--fonderie-text-muted,#5c5c5c)', fontSize: 13.5 },
+	error: {
+		color: 'var(--fonderie-danger,#e00)',
+		background: 'color-mix(in srgb, var(--fonderie-danger,#e00) 8%, transparent)',
+		borderRadius: 'var(--fonderie-radius-lg,8px)',
+		padding: '10px 14px',
+		marginBottom: 12,
+		fontSize: 13.5,
+	},
+	list: card,
 	row: {
 		display: 'flex',
 		alignItems: 'center',
 		gap: 12,
 		borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)',
-		padding: '10px 0',
+		padding: '0 16px 0 0',
 	},
 	rowButton: {
 		flex: 1,
+		minWidth: 0,
 		display: 'flex',
+		alignItems: 'center',
 		justifyContent: 'space-between',
 		background: 'none',
 		border: 'none',
 		cursor: 'pointer',
 		textAlign: 'left',
-		padding: 0,
+		padding: '13px 0 13px 16px',
+		color: 'var(--fonderie-text,#171717)',
+		fontFamily: 'inherit',
 	},
-	key: { fontSize: 14, fontWeight: 600 },
-	env: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)' },
-	revealed: { fontSize: 13, fontFamily: 'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)', color: 'var(--fonderie-text,#171717)', minWidth: 100 },
+	key: {
+		fontSize: 13,
+		fontWeight: 600,
+		fontFamily:
+			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+	},
+	env: {
+		fontSize: 12.5,
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		minWidth: 32,
+		textAlign: 'right',
+	},
+	revealed: {
+		fontSize: 12.5,
+		fontFamily:
+			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+		color: 'var(--fonderie-text,#171717)',
+		minWidth: 100,
+	},
 	revealButton: {
-		background: 'none',
+		...control,
+		height: 28,
+		padding: '0 10px',
+		fontSize: 12.5,
+		background: 'var(--fonderie-surface,#fff)',
 		border: '1px solid var(--fonderie-border,#e0e0e0)',
-		borderRadius: 8,
-		padding: '4px 10px',
-		fontSize: 12,
-		cursor: 'pointer',
+		color: 'var(--fonderie-text,#171717)',
 	},
 };

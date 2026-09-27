@@ -3,6 +3,7 @@ import { useAdminSubscriber, useAdminSubscribers } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
+import { empty, icon, pageHeader, pill } from '../ui';
 import { table, td } from './common';
 
 // Who is subscribed, and then: what is this one on, what does their wallet
@@ -36,7 +37,7 @@ export const SubscriberScreen = defineComponent({
 				value: model.value,
 				onInput: (e: Event) => (model.value = (e.target as HTMLInputElement).value),
 				placeholder,
-				style: { ...styles.button, cursor: 'text', ...extra },
+				style: { ...styles.input, ...extra },
 				'aria-label': placeholder,
 			});
 
@@ -44,7 +45,10 @@ export const SubscriberScreen = defineComponent({
 			const s = subscription.value;
 			const w = wallet.value;
 			return h('div', { style: styles.container }, [
-				h('h1', { style: styles.title }, 'Subscriber'),
+				pageHeader(
+					'Subscribers',
+					'Who is subscribed. Open one for their plan, wallet and ledger, and to grant credit.',
+				),
 				h(
 					'form',
 					{
@@ -64,7 +68,7 @@ export const SubscriberScreen = defineComponent({
 								value: type.value,
 								onChange: (e: Event) =>
 									(type.value = (e.target as HTMLSelectElement).value as SubscriberType),
-								style: styles.button,
+								style: styles.input,
 								'aria-label': 'Type',
 							},
 							[
@@ -75,8 +79,8 @@ export const SubscriberScreen = defineComponent({
 						input(idInput, 'subscriber id', { minWidth: '280px' }),
 						h(
 							'button',
-							{ type: 'submit', style: styles.button, disabled: isLoading.value },
-							'Look up',
+							{ type: 'submit', style: styles.buttonPrimary, disabled: isLoading.value },
+							[icon('search', 14), 'Look up'],
 						),
 						subscriber.value
 							? h(
@@ -90,7 +94,7 @@ export const SubscriberScreen = defineComponent({
 											granted.value = null;
 										},
 									},
-									'← All subscribers',
+									[icon('back', 14), 'All subscribers'],
 								)
 							: h(
 									'button',
@@ -110,7 +114,11 @@ export const SubscriberScreen = defineComponent({
 								? h('p', { style: styles.error, role: 'alert' }, list.error.value.explanation)
 								: null,
 							list.subscriptions.value.length === 0 && !list.isLoading.value
-								? h('p', { style: styles.muted }, 'No subscribers yet.')
+								? empty(
+										'No subscribers yet',
+										'Subscriptions appear here once someone checks out.',
+										'subscriber',
+									)
 								: table(
 										['Subscriber', 'Plan', 'Status', 'Renews'],
 										list.subscriptions.value.map((sub) =>
@@ -120,18 +128,26 @@ export const SubscriberScreen = defineComponent({
 														'button',
 														{
 															type: 'button',
-															style: { ...styles.navItem, padding: 0, ...styles.mono },
+															style: { ...styles.link, ...styles.mono },
 															onClick: () => open(sub.subscriberType, sub.subscriberId),
 														},
 														`${sub.subscriberType}/${sub.subscriberId}`,
 													),
 												),
 												td(`${sub.plan} · ${sub.interval}`),
-												td(
-													sub.cancelAtPeriodEnd
-														? [sub.status, ' ', h('span', { style: styles.badge }, 'cancels')]
-														: sub.status,
-												),
+												td([
+													pill(
+														sub.status === 'active'
+															? 'ok'
+															: sub.status === 'trialing'
+																? 'info'
+																: sub.status === 'past_due'
+																	? 'warn'
+																	: 'neutral',
+														sub.status,
+													),
+													sub.cancelAtPeriodEnd ? [' ', pill('warn', 'cancels', false)] : null,
+												]),
 												td(
 													sub.currentPeriodEnd
 														? new Date(sub.currentPeriodEnd).toLocaleDateString()
@@ -181,15 +197,36 @@ export const SubscriberScreen = defineComponent({
 							h('h2', { style: styles.subtitle }, 'Wallet'),
 							w
 								? [
-										h('p', [
-											h('strong', w.balance),
-											` ${w.currency} `,
-											h(
-												'span',
-												{ style: styles.muted },
-												`(granted ${w.granted ?? '0'} · purchased ${w.purchased ?? '0'}) · minor units, precision ${w.precision}`,
-											),
-										]),
+										h(
+											'p',
+											{
+												style: {
+													...styles.card,
+													display: 'flex',
+													alignItems: 'baseline',
+													gap: '8px',
+													flexWrap: 'wrap',
+												},
+											},
+											[
+												h(
+													'strong',
+													{
+														style: {
+															fontSize: '22px',
+															letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
+														},
+													},
+													w.balance,
+												),
+												` ${w.currency} `,
+												h(
+													'span',
+													{ style: styles.muted },
+													`(granted ${w.granted ?? '0'} · purchased ${w.purchased ?? '0'}) · minor units, precision ${w.precision}`,
+												),
+											],
+										),
 										h(
 											'form',
 											{
@@ -220,17 +257,17 @@ export const SubscriberScreen = defineComponent({
 													'button',
 													{
 														type: 'submit',
-														style: styles.button,
+														style: styles.buttonPrimary,
 														disabled: !/^\d+$/.test(amount.value.trim()),
 													},
-													'Grant',
+													[icon('plus', 14), 'Grant'],
 												),
 												granted.value ? h('span', { style: styles.ok }, granted.value) : null,
 											],
 										),
 										h('h2', { style: styles.subtitle }, 'Ledger'),
 										ledger.value.length === 0
-											? h('p', { style: styles.muted }, 'Nothing moved yet.')
+											? empty('Nothing moved yet', undefined, 'subscriber')
 											: table(
 													['When', 'Kind', 'Amount', 'Note'],
 													ledger.value.map((t) =>

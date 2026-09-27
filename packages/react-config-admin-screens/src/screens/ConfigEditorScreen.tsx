@@ -58,8 +58,16 @@ export function ConfigEditorScreen({
 	// single-entry editor — acceptable for an admin dashboard.
 	const configEntries = useConfigEntries(client, environment);
 	const secrets = useSecrets(client, environment);
-	const configRevisions = useConfigRevisions(client, isSecret || isNew ? '' : configKey, environment);
-	const secretRevisions = useSecretRevisions(client, isSecret && !isNew ? configKey : '', environment);
+	const configRevisions = useConfigRevisions(
+		client,
+		isSecret || isNew ? '' : configKey,
+		environment,
+	);
+	const secretRevisions = useSecretRevisions(
+		client,
+		isSecret && !isNew ? configKey : '',
+		environment,
+	);
 	const { revealSecret, isLoading: isRevealing } = useRevealSecret(client);
 
 	const entry = isSecret ? secretEntry : configEntry;
@@ -157,7 +165,9 @@ export function ConfigEditorScreen({
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>{isNew ? (isSecret ? 'New secret' : 'New config entry') : configKey}</h1>
+			<h1 style={styles.title}>
+				{isNew ? (isSecret ? 'New secret' : 'New config entry') : configKey}
+			</h1>
 			<p style={styles.meta}>
 				Environment: {environment ?? 'all'}
 				{!isNew && <> · v{isSecret ? secretEntry.secret?.version : configEntry.entry?.version}</>}
@@ -221,7 +231,11 @@ export function ConfigEditorScreen({
 							</span>
 							{inferred.ambiguous && (
 								<label style={styles.inline}>
-									<input type="checkbox" checked={asText} onChange={(event) => setAsText(event.target.checked)} />
+									<input
+										type="checkbox"
+										checked={asText}
+										onChange={(event) => setAsText(event.target.checked)}
+									/>
 									Save as text instead
 								</label>
 							)}
@@ -247,7 +261,12 @@ export function ConfigEditorScreen({
 						required
 					/>
 				) : !isSecret && valueType === 'string' ? (
-					<input id="config-value" style={styles.input} value={value} onChange={(event) => setValue(event.target.value)} />
+					<input
+						id="config-value"
+						style={styles.input}
+						value={value}
+						onChange={(event) => setValue(event.target.value)}
+					/>
 				) : (
 					<textarea
 						id="config-value"
@@ -278,7 +297,8 @@ export function ConfigEditorScreen({
 				)}
 				{changingType && (
 					<p style={styles.warning}>
-						Changing the type changes what every screen reading this key receives. Check the code that reads it first.
+						Changing the type changes what every screen reading this key receives. Check the code
+						that reads it first.
 					</p>
 				)}
 				{inputError && (
@@ -335,56 +355,138 @@ export function ConfigEditorScreen({
 }
 
 const styles: Record<string, CSSProperties> = {
-	detected: { display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginTop: 6 },
+	detected: {
+		display: 'flex',
+		alignItems: 'center',
+		gap: 16,
+		fontSize: 13,
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+		marginTop: 6,
+	},
 	inline: { display: 'flex', alignItems: 'center', gap: 6 },
-	linkButton: { background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--fonderie-link,#0b6)', cursor: 'pointer', textDecoration: 'underline' },
+	linkButton: {
+		background: 'none',
+		border: 'none',
+		padding: 0,
+		fontSize: 13,
+		color: 'var(--fonderie-link,#0b6)',
+		cursor: 'pointer',
+		textDecoration: 'underline',
+	},
 	warning: { fontSize: 13, color: 'var(--fonderie-warning,#a15c00)', marginTop: 6 },
 	toggle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, padding: '6px 0' },
-	container: { padding: 24, maxWidth: 640 },
-	title: { fontSize: 24, fontWeight: 700 },
-	meta: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginBottom: 16 },
+	container: { padding: '8px 40px 64px', maxWidth: 760, boxSizing: 'border-box' },
+	title: {
+		fontSize: 22,
+		fontWeight: 600,
+		margin: '8px 0 4px',
+		letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
+		lineHeight: 1.25,
+	},
+	meta: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginBottom: 20 },
 	status: { padding: 24, textAlign: 'center', color: 'var(--fonderie-text-muted,#5c5c5c)' },
-	error: { color: 'var(--fonderie-danger,#e00)', marginBottom: 12, fontSize: 14 },
+	error: {
+		color: 'var(--fonderie-danger,#e00)',
+		background: 'color-mix(in srgb, var(--fonderie-danger,#e00) 8%, transparent)',
+		borderRadius: 6,
+		padding: '8px 12px',
+		margin: '8px 0',
+		fontSize: 13.5,
+	},
 	revealBox: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 },
-	revealedValue: { fontFamily: 'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)', fontSize: 13, color: 'var(--fonderie-text,#171717)' },
-	form: { display: 'flex', flexDirection: 'column', gap: 4 },
-	label: { fontSize: 13, fontWeight: 600, marginTop: 12 },
-	input: { border: '1px solid var(--fonderie-border,#e0e0e0)', borderRadius: 8, padding: 10, fontSize: 14 },
+	revealedValue: {
+		fontFamily:
+			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+		fontSize: 13,
+		color: 'var(--fonderie-text,#171717)',
+	},
+	form: {
+		display: 'flex',
+		flexDirection: 'column',
+		gap: 4,
+		background: 'var(--fonderie-surface,#fff)',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		borderRadius: 'var(--fonderie-radius-lg,8px)',
+		padding: '6px 20px 20px',
+		boxShadow: 'var(--fonderie-shadow-card,0 2px 3px 0 rgba(0,0,0,.05))',
+	},
+	label: { fontSize: 13, fontWeight: 500, marginTop: 14, marginBottom: 2 },
+	input: {
+		height: 36,
+		boxSizing: 'border-box',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		borderRadius: 6,
+		padding: '0 10px',
+		fontSize: 13.5,
+		fontFamily: 'inherit',
+		background: 'var(--fonderie-surface,#fff)',
+		color: 'var(--fonderie-text,#171717)',
+	},
 	textarea: {
 		border: '1px solid var(--fonderie-border,#e0e0e0)',
-		borderRadius: 8,
+		borderRadius: 6,
 		padding: 10,
-		fontSize: 14,
-		fontFamily: 'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+		fontSize: 13,
+		lineHeight: 1.55,
+		background: 'var(--fonderie-surface,#fff)',
+		color: 'var(--fonderie-text,#171717)',
+		fontFamily:
+			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
 	},
 	button: {
-		marginTop: 16,
+		display: 'inline-flex',
+		alignItems: 'center',
+		height: 36,
+		boxSizing: 'border-box',
 		backgroundColor: 'var(--fonderie-text,#171717)',
 		color: 'var(--fonderie-surface,#fff)',
-		padding: '10px 20px',
-		borderRadius: 8,
-		border: 'none',
-		fontSize: 14,
+		padding: '0 16px',
+		borderRadius: 6,
+		border: '1px solid var(--fonderie-text,#171717)',
+		fontSize: 13.5,
 		fontWeight: 600,
+		fontFamily: 'inherit',
 		cursor: 'pointer',
 		alignSelf: 'flex-start',
+		marginTop: 16,
 	},
 	smallButton: {
-		background: 'none',
+		display: 'inline-flex',
+		alignItems: 'center',
+		height: 28,
+		boxSizing: 'border-box',
+		background: 'var(--fonderie-surface,#fff)',
+		color: 'var(--fonderie-text,#171717)',
 		border: '1px solid var(--fonderie-border,#e0e0e0)',
-		borderRadius: 8,
-		padding: '4px 10px',
-		fontSize: 12,
+		borderRadius: 6,
+		padding: '0 10px',
+		fontSize: 12.5,
+		fontWeight: 500,
+		fontFamily: 'inherit',
 		cursor: 'pointer',
 	},
 	revisions: { marginTop: 32 },
-	subtitle: { fontSize: 16, fontWeight: 600, marginBottom: 8 },
-	list: { listStyle: 'none', padding: 0, margin: 0 },
+	subtitle: {
+		fontSize: 15,
+		fontWeight: 600,
+		margin: '0 0 10px',
+		letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
+	},
+	list: {
+		listStyle: 'none',
+		padding: 0,
+		margin: 0,
+		background: 'var(--fonderie-surface,#fff)',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		borderRadius: 'var(--fonderie-radius-lg,8px)',
+		overflow: 'hidden',
+	},
 	row: {
 		display: 'flex',
 		justifyContent: 'space-between',
 		alignItems: 'center',
-		padding: '8px 0',
+		gap: 12,
+		padding: '9px 16px',
 		borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)',
 		fontSize: 13,
 	},

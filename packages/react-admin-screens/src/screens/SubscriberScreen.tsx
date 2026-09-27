@@ -2,6 +2,7 @@ import type { BillingAdminClient, SubscriberType } from '@fonderie/client';
 import { useAdminSubscriber, useAdminSubscribers } from '@fonderie/react-admin';
 import { useState } from 'react';
 import { styles } from '../styles';
+import { Empty, Icon, PageHeader, Pill } from '../ui';
 
 export interface ISubscriberScreenProps {
 	client: BillingAdminClient;
@@ -32,7 +33,10 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Subscriber</h1>
+			<PageHeader
+				title="Subscribers"
+				lead="Who is subscribed. Open one for their plan, wallet and ledger, and to grant credit."
+			/>
 			<form
 				style={styles.toolbar}
 				onSubmit={(e) => {
@@ -44,7 +48,7 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 				<select
 					value={type}
 					onChange={(e) => setType(e.target.value as SubscriberType)}
-					style={styles.button}
+					style={styles.input}
 					aria-label="Type"
 				>
 					<option value="user">user</option>
@@ -54,10 +58,11 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 					value={idInput}
 					onChange={(e) => setIdInput(e.target.value)}
 					placeholder="subscriber id"
-					style={{ ...styles.button, cursor: 'text', minWidth: 280 }}
+					style={{ ...styles.input, minWidth: 280 }}
 					aria-label="Subscriber id"
 				/>
-				<button type="submit" style={styles.button} disabled={isLoading}>
+				<button type="submit" style={styles.buttonPrimary} disabled={isLoading}>
+					<Icon name="search" size={14} />
 					Look up
 				</button>
 				{subscriber ? (
@@ -70,7 +75,8 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 							setGranted(null);
 						}}
 					>
-						← All subscribers
+						<Icon name="back" size={14} />
+						All subscribers
 					</button>
 				) : (
 					<button
@@ -96,7 +102,9 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 						</p>
 					) : null}
 					{list.subscriptions.length === 0 && !list.isLoading ? (
-						<p style={styles.muted}>No subscribers yet.</p>
+						<Empty icon="subscriber" title="No subscribers yet">
+							Subscriptions appear here once someone checks out.
+						</Empty>
 					) : (
 						<table style={styles.table}>
 							<thead>
@@ -113,7 +121,7 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 										<td style={styles.td}>
 											<button
 												type="button"
-												style={{ ...styles.navItem, padding: 0, ...styles.mono }}
+												style={{ ...styles.link, ...styles.mono }}
 												onClick={() => open(s.subscriberType, s.subscriberId)}
 											>
 												{s.subscriberType}/{s.subscriberId}
@@ -123,8 +131,27 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 											<strong>{s.plan}</strong> · {s.interval}
 										</td>
 										<td style={styles.td}>
-											{s.status}
-											{s.cancelAtPeriodEnd ? <span style={styles.badge}>cancels</span> : null}
+											<Pill
+												tone={
+													s.status === 'active'
+														? 'ok'
+														: s.status === 'trialing'
+															? 'info'
+															: s.status === 'past_due'
+																? 'warn'
+																: 'neutral'
+												}
+											>
+												{s.status}
+											</Pill>
+											{s.cancelAtPeriodEnd ? (
+												<>
+													{' '}
+													<Pill tone="warn" dot={false}>
+														cancels
+													</Pill>
+												</>
+											) : null}
 										</td>
 										<td style={styles.td}>
 											{s.currentPeriodEnd ? (
@@ -195,8 +222,24 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 					<h2 style={styles.subtitle}>Wallet</h2>
 					{wallet ? (
 						<>
-							<p>
-								<strong>{wallet.balance}</strong> {wallet.currency}{' '}
+							<p
+								style={{
+									...styles.card,
+									display: 'flex',
+									alignItems: 'baseline',
+									gap: 8,
+									flexWrap: 'wrap',
+								}}
+							>
+								<strong
+									style={{
+										fontSize: 22,
+										letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
+									}}
+								>
+									{wallet.balance}
+								</strong>{' '}
+								{wallet.currency}{' '}
 								<span style={styles.muted}>
 									(granted {wallet.granted ?? '0'} · purchased {wallet.purchased ?? '0'}) · minor
 									units, precision {wallet.precision}
@@ -224,24 +267,29 @@ export function SubscriberScreen({ client, pageSize = 50 }: ISubscriberScreenPro
 									value={amount}
 									onChange={(e) => setAmount(e.target.value)}
 									placeholder="amount (minor units)"
-									style={{ ...styles.button, cursor: 'text' }}
+									style={styles.input}
 									aria-label="Amount"
 								/>
 								<input
 									value={note}
 									onChange={(e) => setNote(e.target.value)}
 									placeholder="reason (optional)"
-									style={{ ...styles.button, cursor: 'text', minWidth: 220 }}
+									style={{ ...styles.input, minWidth: 220 }}
 									aria-label="Reason"
 								/>
-								<button type="submit" style={styles.button} disabled={!/^\d+$/.test(amount.trim())}>
+								<button
+									type="submit"
+									style={styles.buttonPrimary}
+									disabled={!/^\d+$/.test(amount.trim())}
+								>
+									<Icon name="plus" size={14} />
 									Grant
 								</button>
 								{granted ? <span style={styles.ok}>{granted}</span> : null}
 							</form>
 							<h2 style={styles.subtitle}>Ledger</h2>
 							{ledger.length === 0 ? (
-								<p style={styles.muted}>Nothing moved yet.</p>
+								<Empty icon="subscriber" title="Nothing moved yet" />
 							) : (
 								<table style={styles.table}>
 									<thead>

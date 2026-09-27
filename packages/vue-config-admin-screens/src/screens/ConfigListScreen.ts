@@ -98,25 +98,41 @@ export const ConfigListScreen = defineComponent({
 
 		return () =>
 			h('div', { style: styles.listContainer }, [
-				h('div', { style: styles.heading }, [
+				h('div', { style: { ...styles.heading, marginTop: '0' } }, [
 					h('h1', { style: styles.headingTitle }, 'Config'),
 					props.allowCreate
-						? h('button', { type: 'button', style: styles.newButton, onClick: () => emit('create-config') }, 'New entry')
+						? h(
+								'button',
+								{ type: 'button', style: styles.newButton, onClick: () => emit('create-config') },
+								'New entry',
+							)
 						: null,
 				]),
-				h('p', { style: styles.hint }, 'Feature flags and runtime settings — text, numbers, on/off or JSON. Read by the app without a deploy.'),
+				h(
+					'p',
+					{ style: styles.hint },
+					'Feature flags and runtime settings — text, numbers, on/off or JSON. Read by the app without a deploy.',
+				),
 				isLoadingConfig.value
 					? h('p', { style: styles.status }, 'Loading…')
 					: configError.value
 						? h('p', { style: styles.error, role: 'alert' }, configError.value.explanation)
 						: entries.value.length === 0
-							? h('p', { style: styles.empty }, `No config entries yet.${props.allowCreate ? ' Create one to toggle a feature or tune a setting without redeploying.' : ''}`)
+							? h(
+									'p',
+									{ style: styles.empty },
+									`No config entries yet.${props.allowCreate ? ' Create one to toggle a feature or tune a setting without redeploying.' : ''}`,
+								)
 							: h('ul', { style: styles.list }, entries.value.map(renderConfigRow)),
 
 				h('div', { style: styles.heading }, [
-					h('h1', { style: styles.headingTitle }, 'Secrets'),
+					h('h2', { style: styles.headingTitle }, 'Secrets'),
 					props.allowCreate
-						? h('button', { type: 'button', style: styles.newButton, onClick: () => emit('create-secret') }, 'New secret')
+						? h(
+								'button',
+								{ type: 'button', style: styles.newButton, onClick: () => emit('create-secret') },
+								'New secret',
+							)
 						: null,
 				]),
 				h('p', { style: styles.hint }, 'Encrypted at rest; values are hidden until revealed.'),

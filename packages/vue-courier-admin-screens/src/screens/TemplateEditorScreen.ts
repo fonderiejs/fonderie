@@ -178,104 +178,106 @@ export const TemplateEditorScreen = defineComponent({
 					`${props.locale ?? 'base'} · v${template.value?.version ?? 1}`,
 				),
 				h('div', { style: styles.split }, [
-				h('div', { style: styles.column }, [
-				h('form', { style: styles.form, onSubmit: handleSubmit }, [
-					h('label', { style: styles.label, for: 'template-subject' }, 'Subject'),
-					h('input', {
-						id: 'template-subject',
-						style: styles.input,
-						value: subject.value,
-						onInput: (e: Event) => {
-							subject.value = (e.target as HTMLInputElement).value;
-						},
-					}),
-					h('label', { style: styles.label, for: 'template-html' }, 'HTML body'),
-					h('textarea', {
-						id: 'template-html',
-						style: styles.textarea,
-						rows: 8,
-						value: html.value,
-						onInput: (e: Event) => {
-							html.value = (e.target as HTMLTextAreaElement).value;
-						},
-					}),
-					h('label', { style: styles.label, for: 'template-text' }, 'Plain-text body'),
-					h('textarea', {
-						id: 'template-text',
-						style: styles.textarea,
-						rows: 4,
-						required: true,
-						value: text.value,
-						onInput: (e: Event) => {
-							text.value = (e.target as HTMLTextAreaElement).value;
-						},
-					}),
-					h('label', { style: styles.checkboxLabel }, [
-						h('input', {
-							type: 'checkbox',
-							checked: active.value,
-							onChange: (e: Event) => {
-								active.value = (e.target as HTMLInputElement).checked;
+					h('div', { style: styles.column }, [
+						h('form', { style: styles.form, onSubmit: handleSubmit }, [
+							h('label', { style: styles.label, for: 'template-subject' }, 'Subject'),
+							h('input', {
+								id: 'template-subject',
+								style: styles.input,
+								value: subject.value,
+								onInput: (e: Event) => {
+									subject.value = (e.target as HTMLInputElement).value;
+								},
+							}),
+							h('label', { style: styles.label, for: 'template-html' }, 'HTML body'),
+							h('textarea', {
+								id: 'template-html',
+								style: styles.textarea,
+								rows: 8,
+								value: html.value,
+								onInput: (e: Event) => {
+									html.value = (e.target as HTMLTextAreaElement).value;
+								},
+							}),
+							h('label', { style: styles.label, for: 'template-text' }, 'Plain-text body'),
+							h('textarea', {
+								id: 'template-text',
+								style: styles.textarea,
+								rows: 4,
+								required: true,
+								value: text.value,
+								onInput: (e: Event) => {
+									text.value = (e.target as HTMLTextAreaElement).value;
+								},
+							}),
+							h('label', { style: styles.checkboxLabel }, [
+								h('input', {
+									type: 'checkbox',
+									checked: active.value,
+									onChange: (e: Event) => {
+										active.value = (e.target as HTMLInputElement).checked;
+									},
+								}),
+								'Active',
+							]),
+							saveError.value
+								? h('p', { style: styles.error, role: 'alert' }, saveError.value.explanation)
+								: null,
+							h('div', { style: styles.saveRow }, [
+								h(
+									'button',
+									{
+										type: 'submit',
+										disabled: isSaving.value || !dirty.value,
+										style: dirty.value ? styles.button : styles.buttonDisabled,
+									},
+									isSaving.value ? 'Saving…' : 'Save',
+								),
+								!dirty.value && !isSaving.value
+									? h('span', { style: styles.meta }, 'No changes to save')
+									: null,
+							]),
+						]),
+						h('label', { style: styles.label, for: 'template-sample' }, 'Sample data'),
+						h('textarea', {
+							id: 'template-sample',
+							style: styles.textarea,
+							rows: 6,
+							spellcheck: false,
+							value: sampleJson.value,
+							onInput: (e: Event) => {
+								sampleJson.value = (e.target as HTMLTextAreaElement).value;
 							},
 						}),
-						'Active',
+						sampleError.value
+							? h('p', { style: styles.error, role: 'alert' }, sampleError.value)
+							: null,
 					]),
-					saveError.value
-						? h('p', { style: styles.error, role: 'alert' }, saveError.value.explanation)
-						: null,
-					h('div', { style: styles.saveRow }, [
-						h(
-							'button',
-							{
-								type: 'submit',
-								disabled: isSaving.value || !dirty.value,
-								style: dirty.value ? styles.button : styles.buttonDisabled,
-							},
-							isSaving.value ? 'Saving…' : 'Save',
-						),
-						!dirty.value && !isSaving.value ? h('span', { style: styles.meta }, 'No changes to save') : null,
+					h('div', { style: styles.previewColumn }, [
+						h('div', { style: styles.previewHeader }, [
+							h('span', { style: styles.label }, 'Preview'),
+							h('span', { style: styles.meta }, isPreviewing.value ? 'Rendering…' : 'Live'),
+						]),
+						previewError.value
+							? h('p', { style: styles.error, role: 'alert' }, previewError.value.explanation)
+							: null,
+						preview.value?.subject
+							? h('p', { style: styles.previewSubject }, preview.value.subject)
+							: null,
+						preview.value?.html
+							? // sandbox= — no scripts, no same-origin. Operator-authored HTML
+								// must never execute in the dashboard's origin, where the admin
+								// token lives.
+								h('iframe', {
+									title: 'Template preview',
+									style: styles.previewFrame,
+									sandbox: '',
+									srcdoc: preview.value.html,
+								})
+							: preview.value
+								? h('pre', { style: styles.previewText }, preview.value.text)
+								: h('p', { style: styles.meta }, 'Nothing rendered yet.'),
 					]),
-				]),
-				h('label', { style: styles.label, for: 'template-sample' }, 'Sample data'),
-				h('textarea', {
-					id: 'template-sample',
-					style: styles.textarea,
-					rows: 6,
-					spellcheck: false,
-					value: sampleJson.value,
-					onInput: (e: Event) => {
-						sampleJson.value = (e.target as HTMLTextAreaElement).value;
-					},
-				}),
-				sampleError.value
-					? h('p', { style: styles.error, role: 'alert' }, sampleError.value)
-					: null,
-				]),
-				h('div', { style: styles.previewColumn }, [
-					h('div', { style: styles.previewHeader }, [
-						h('span', { style: styles.label }, 'Preview'),
-						h('span', { style: styles.meta }, isPreviewing.value ? 'Rendering…' : 'Live'),
-					]),
-					previewError.value
-						? h('p', { style: styles.error, role: 'alert' }, previewError.value.explanation)
-						: null,
-					preview.value?.subject
-						? h('p', { style: styles.previewSubject }, preview.value.subject)
-						: null,
-					preview.value?.html
-						? // sandbox= — no scripts, no same-origin. Operator-authored HTML
-							// must never execute in the dashboard's origin, where the admin
-							// token lives.
-							h('iframe', {
-								title: 'Template preview',
-								style: styles.previewFrame,
-								sandbox: '',
-								srcdoc: preview.value.html,
-							})
-						: preview.value
-							? h('pre', { style: styles.previewText }, preview.value.text)
-							: h('p', { style: styles.meta }, 'Nothing rendered yet.'),
-				]),
 				]),
 				revisions.value.length > 0
 					? h('div', { style: styles.revisions }, [

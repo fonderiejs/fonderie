@@ -2,6 +2,7 @@ import type { AuditAdminClient } from '@fonderie/client';
 import { useAdminAudit } from '@fonderie/react-admin';
 import { useState } from 'react';
 import { styles } from '../styles';
+import { Empty, Icon, PageHeader } from '../ui';
 
 export interface IAuditScreenProps {
 	client: AuditAdminClient;
@@ -24,13 +25,16 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 			value={draft[key]}
 			onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
 			placeholder={placeholder}
-			style={{ ...styles.button, cursor: 'text' }}
+			style={styles.input}
 			aria-label={placeholder}
 		/>
 	);
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Audit</h1>
+			<PageHeader
+				title="Audit"
+				lead="What happened, across every workspace unless you name one. The chain's integrity verdict is on the Doctor page."
+			/>
 			<form
 				style={styles.toolbar}
 				onSubmit={(e) => {
@@ -45,7 +49,8 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 				{field('workspaceId', 'workspace id (all if empty)')}
 				{field('type', 'event type')}
 				{field('actorId', 'actor id')}
-				<button type="submit" style={styles.button} disabled={isLoading}>
+				<button type="submit" style={styles.buttonPrimary} disabled={isLoading}>
+					<Icon name="search" size={14} />
 					Filter
 				</button>
 				<button
@@ -63,7 +68,7 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 				</p>
 			) : null}
 			{events.length === 0 && !isLoading ? (
-				<p style={styles.muted}>Nothing recorded for this filter.</p>
+				<Empty icon="audit" title="Nothing recorded for this filter" />
 			) : (
 				<table style={styles.table}>
 					<thead>
