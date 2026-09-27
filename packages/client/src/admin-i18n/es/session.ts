@@ -1,0 +1,95 @@
+import type en from '../en/session';
+
+const session: typeof en = {
+	signInTitle: 'Iniciar sesión en la administración',
+	adminToken: 'Token de administración',
+	pasteToken: 'Pega tu token',
+	tokenFoot:
+		'Se guarda solo para esta pestaña y se envía en un encabezado Bearer — nunca se almacena en el servidor. Un token de solo lectura basta para consultar y no puede revelar secretos.',
+	tokenRefused: 'Ese token fue rechazado.',
+	unreachable: 'No se pudo acceder a la interfaz de administración: {error}',
+	forgetToken: 'Olvidar el token',
+	signOut: 'Cerrar sesión',
+	genericError: 'Algo salió mal. Inténtalo de nuevo.',
+	stepOf: 'Paso {n} de {total}',
+	steps: {
+		adminToken: 'Token de administración',
+		account: 'Tu cuenta',
+		authenticator: 'Autenticador',
+		backupCodes: 'Códigos de respaldo',
+		newPassword: 'Nueva contraseña',
+	},
+	checking: 'Comprobando…',
+	welcomeTitle: 'Bienvenido — configuremos tu consola',
+	welcomeSubtitle:
+		'Este es el primer inicio de sesión en {host}. Pega el token de administración de la configuración de tu despliegue para empezar. Solo se necesita esta vez.',
+	createAccountTitle: 'Crea tu cuenta',
+	createAccountSubtitle:
+		'A partir de ahora inicias sesión con este correo y esta contraseña, además de una aplicación de autenticación. El token de administración queda para scripts y emergencias.',
+	email: 'Correo electrónico',
+	nameOptional: 'Nombre (opcional)',
+	yourNameOptional: 'Tu nombre (opcional)',
+	password: 'Contraseña',
+	newPassword: 'Nueva contraseña',
+	confirmPassword: 'Confirma la contraseña',
+	passwordHint: 'Al menos 12 caracteres.',
+	passwordHintNext:
+		'Al menos 12 caracteres. A continuación configurarás una aplicación de autenticación.',
+	passwordsMismatch: 'Las dos contraseñas no coinciden.',
+	creating: 'Creando…',
+	createAccount: 'Crear cuenta',
+	loginFoot:
+		'No hay registro: los operadores son invitados por otro operador. ¿Sin acceso? Pide a otro operador un enlace de recuperación.',
+	backupCode: 'Código de respaldo',
+	authenticatorCode: 'Código de autenticación',
+	useApp: 'Usar la aplicación de autenticación',
+	useBackup: 'Usar un código de respaldo',
+	enrollTitle: 'Configura tu autenticador',
+	enrollSubtitle:
+		'Cada inicio de sesión en esta consola requiere un código de una aplicación de autenticación — 1Password, Google Authenticator, Authy o cualquier aplicación TOTP.',
+	enrollScan: 'Abre tu aplicación de autenticación y escanea este código.',
+	enrollEnter: 'Introduce los seis dígitos que muestra.',
+	qrAlt: 'Código QR para tu aplicación de autenticación',
+	cantScan: '¿No puedes escanear? Introduce una clave de configuración',
+	preparing: 'Preparando…',
+	cancelSignOut: 'Cancelar y cerrar sesión',
+	codeFromApp: 'Código de la aplicación',
+	verifyContinue: 'Verificar y continuar',
+	backupTitle: 'Guarda tus códigos de respaldo',
+	backupSubtitle:
+		'Si pierdes tu teléfono, cada uno de estos códigos te permite iniciar sesión una vez. Solo se muestran ahora.',
+	backupFileHeader: 'Códigos de respaldo para la administración de {host}',
+	download: 'Descargar',
+	savedCheckbox: 'He guardado estos códigos en un lugar seguro',
+	openConsole: 'Abrir la consola',
+	linkInvalidTitle: 'Este enlace no se puede usar',
+	checkingLink: 'Comprobando tu enlace…',
+	joinTitle: 'Únete a la consola de administración',
+	recoverTitle: 'Recupera tu cuenta',
+	joinSubtitle:
+		'Te invitaron como {email}. Elige una contraseña y luego configura una aplicación de autenticación.',
+	recoverSubtitle:
+		'Define una nueva contraseña para {email}. Volverás a configurar tu autenticador.',
+	stepUpTitle: 'Confirma que eres tú',
+	stepUpSubtitle:
+		'Esta acción requiere un código nuevo. Es válido durante los próximos cinco minutos.',
+	twoStepTitle: 'Verificación en dos pasos',
+	twoStepSubtitle: 'Introduce el código de tu aplicación de autenticación.',
+	verify: 'Verificar',
+	changeLanguage: 'Cambiar idioma (actual: {name})',
+	themeChoice: 'Tema: {name}',
+	errors: {
+		INVALID_CREDENTIALS: 'Ese correo y esa contraseña no corresponden a ningún operador.',
+		INVALID_CODE: 'Ese código no funcionó. Los códigos cambian cada 30 segundos.',
+		LOCKED: 'Demasiados intentos. Inténtalo de nuevo en {minutes} minuto(s).',
+		LOCKED_GENERIC: 'Demasiados intentos. Inténtalo de nuevo en unos minutos.',
+		RATE_LIMITED: 'Demasiados intentos desde esta dirección. Espera unos minutos.',
+		WEAK_PASSWORD:
+			'Elige una contraseña más segura — al menos 12 caracteres y difícil de adivinar.',
+		INVALID_LINK: 'Este enlace caducó o ya se usó. Pide uno nuevo.',
+		ALREADY_OPERATOR: 'Ese correo ya pertenece a un operador. Inicia sesión.',
+		ALREADY_CLAIMED: 'Esta consola ya tiene operadores. Pide una invitación a uno de ellos.',
+		CROSS_ORIGIN: 'Esta solicitud no proviene de la página de administración.',
+	},
+};
+export default session;

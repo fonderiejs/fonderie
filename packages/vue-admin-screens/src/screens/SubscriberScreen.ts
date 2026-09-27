@@ -1,19 +1,25 @@
-import type { BillingAdminClient, SubscriberType } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type BillingAdminClient,
+	createAdminT,
+	type SubscriberType,
+} from '@fonderie/client';
 import { useAdminSubscribers } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
-import { periodEnd, statusTone } from '../billing';
+import { intervalLabel, periodEnd, statusLabel, statusTone } from '../billing';
 import { styles } from '../styles';
 import { empty, icon, pageHeader, pill, refreshButton } from '../ui';
 import { loadMoreButton, table, td } from './common';
 import { SubscriberBilling } from './SubscriberBilling';
 
-const FILTERS: Array<{ label: string; match: (status: string) => boolean }> = [
-	{ label: 'All', match: () => true },
-	{ label: 'Active', match: (s) => s === 'active' },
-	{ label: 'Trialing', match: (s) => s === 'trialing' },
-	{ label: 'Past due', match: (s) => s === 'past_due' || s === 'unpaid' },
-	{ label: 'Canceled', match: (s) => s === 'canceled' },
+type FilterId = 'all' | 'active' | 'trialing' | 'pastDue' | 'canceled';
+const FILTERS: Array<{ id: FilterId; match: (status: string) => boolean }> = [
+	{ id: 'all', match: () => true },
+	{ id: 'active', match: (s) => s === 'active' },
+	{ id: 'trialing', match: (s) => s === 'trialing' },
+	{ id: 'pastDue', match: (s) => s === 'past_due' || s === 'unpaid' },
+	{ id: 'canceled', match: (s) => s === 'canceled' },
 ];
 
 // Who pays, and who is behind. A money list: plans and statuses across users
@@ -29,10 +35,11 @@ export const SubscriberScreen = defineComponent({
 		 * live beside their account. Omit to open everything here.
 		 */
 		onOpenUser: { type: Function as PropType<(userId: string) => void>, default: undefined },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	setup(props) {
 		const list = useAdminSubscribers(props.client, { limit: props.pageSize });
-		const filter = ref('All');
+		const filter = ref<FilterId>('all');
 		const open = ref<{ type: SubscriberType; id: string } | null>(null);
 		const type = ref<SubscriberType>('workspace');
 		const idInput = ref('');
@@ -42,14 +49,16 @@ export const SubscriberScreen = defineComponent({
 		};
 
 		return () => {
+			const t = createAdminT(props.locale);
+			const loc = props.locale ? { locale: props.locale } : {};
 			const o = open.value;
 			if (o) {
 				return h('div', { style: styles.container }, [
-					pageHeader(`${o.type}/${o.id}`, 'Plan, credits and what moved.', [
+					pageHeader(`${o.type}/${o.id}`, t('billing.subscriptions.detailLead'), [
 						h(
 							'button',
 							{ type: 'button', style: styles.buttonGhost, onClick: () => (open.value = null) },
-							[icon('back', 14), 'All subscriptions'],
+							[icon('back', 14), t('billing.subscriptions.back')],
 						),
 					]),
 					h(SubscriberBilling, {
@@ -57,17 +66,21 @@ export const SubscriberScreen = defineComponent({
 						client: props.client,
 						subscriberType: o.type,
 						subscriberId: o.id,
+						...loc,
 					}),
 				]);
 			}
-			const match = FILTERS.find((f) => f.label === filter.value)?.match ?? (() => true);
+			const match = FILTERS.find((f) => f.id === filter.value)?.match ?? (() => true);
 			const rows = list.subscriptions.value.filter((s) => match(s.status));
 			return h('div', { style: styles.container }, [
-				pageHeader(
-					'Subscriptions',
-					"Who pays, and who is behind. A user's plan and credits are also on their page under Users — free users appear only there.",
-					[refreshButton(() => void list.refresh(), list.isLoading.value)],
-				),
+				pageHeader(t('billing.subscriptions.title'), t('billing.subscriptions.lead'), [
+					refreshButton(
+						() => void list.refresh(),
+						list.isLoading.value,
+						t('common.refresh'),
+						t('common.working'),
+					),
+				]),
 				h('div', { style: { ...styles.toolbar, justifyContent: 'space-between' } }, [
 					h(
 						'fieldset',
@@ -81,21 +94,24 @@ export const SubscriberScreen = defineComponent({
 								padding: 0,
 								minWidth: 0,
 							},
-							'aria-label': 'Filter by status',
+							'aria-label': t('billing.subscriptions.filterLabel'),
 						},
 						FILTERS.map((f) => {
 							const n = list.subscriptions.value.filter((s) => f.match(s.status)).length;
-							const on = filter.value === f.label;
+							const on = filter.value === f.id;
 							return h(
 								'button',
 								{
-									key: f.label,
+									key: f.id,
 									type: 'button',
 									'aria-pressed': on,
-									onClick: () => (filter.value = f.label),
+									onClick: () => (filter.value = f.id),
 									style: { ...(on ? styles.buttonPrimary : styles.button), height: '28px' },
 								},
-								[f.label, h('span', { style: { opacity: 0.7 } }, String(n))],
+								[
+									t(`billing.subscriptions.filter.${f.id}`),
+									h('span', { style: { opacity: 0.7 } }, String(n)),
+								],
 							);
 						}),
 					),
@@ -116,24 +132,24 @@ export const SubscriberScreen = defineComponent({
 									onChange: (e: Event) =>
 										(type.value = (e.target as HTMLSelectElement).value as SubscriberType),
 									style: styles.input,
-									'aria-label': 'Type',
+									'aria-label': t('billing.subscriptions.typeLabel'),
 								},
 								[
-									h('option', { value: 'workspace' }, 'workspace'),
-									h('option', { value: 'user' }, 'user'),
+									h('option', { value: 'workspace' }, t('billing.subscriptions.typeWorkspace')),
+									h('option', { value: 'user' }, t('billing.subscriptions.typeUser')),
 								],
 							),
 							h('input', {
 								value: idInput.value,
 								onInput: (e: Event) => (idInput.value = (e.target as HTMLInputElement).value),
-								placeholder: 'subscriber id',
+								placeholder: t('billing.subscriptions.idPlaceholder'),
 								style: { ...styles.input, width: '220px' },
-								'aria-label': 'Subscriber id',
+								'aria-label': t('billing.subscriptions.idLabel'),
 							}),
 							h(
 								'button',
 								{ type: 'submit', style: styles.button, disabled: !idInput.value.trim() },
-								[icon('search', 14), 'Open'],
+								[icon('search', 14), t('common.open')],
 							),
 						],
 					),
@@ -143,16 +159,19 @@ export const SubscriberScreen = defineComponent({
 					: null,
 				rows.length === 0 && !list.isLoading.value
 					? empty(
-							filter.value === 'All'
-								? 'No subscriptions yet'
-								: `No ${filter.value.toLowerCase()} subscriptions`,
-							'Subscriptions appear here once someone checks out.',
+							t(`billing.subscriptions.empty.${filter.value}`),
+							t('billing.subscriptions.emptyHint'),
 							'subscriber',
 						)
 					: table(
-							['Subscriber', 'Plan', 'Status', 'Renews / ends'],
+							[
+								t('billing.subscriptions.col.subscriber'),
+								t('billing.subscriptions.col.plan'),
+								t('billing.subscriptions.col.status'),
+								t('billing.subscriptions.col.renewsEnds'),
+							],
 							rows.map((s) => {
-								const end = periodEnd(s);
+								const end = periodEnd(s, props.locale);
 								return h('tr', { key: s.id }, [
 									td(
 										h(
@@ -168,12 +187,12 @@ export const SubscriberScreen = defineComponent({
 									td([
 										h('strong', s.plan),
 										' ',
-										h('span', { style: styles.muted }, `· ${s.interval}`),
+										h('span', { style: styles.muted }, `· ${intervalLabel(t, s.interval)}`),
 									]),
 									td([
-										pill(statusTone(s.status), s.status),
+										pill(statusTone(s.status), statusLabel(t, s.status)),
 										s.cancelAtPeriodEnd && s.status !== 'canceled'
-											? h('span', [' ', pill('warn', 'cancels', false)])
+											? h('span', [' ', pill('warn', t('billing.subscriptions.cancels'), false)])
 											: null,
 									]),
 									td(
@@ -185,9 +204,9 @@ export const SubscriberScreen = defineComponent({
 								]);
 							}),
 						),
-				list.isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
+				list.isLoading.value ? h('p', { style: styles.status }, t('common.loading')) : null,
 				list.hasMore.value && !list.isLoading.value
-					? loadMoreButton(() => void list.loadMore())
+					? loadMoreButton(() => void list.loadMore(), t('common.loadMore'))
 					: null,
 			]);
 		};

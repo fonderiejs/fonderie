@@ -1,0 +1,58 @@
+// English — canonical: this shape defines the keys fr and es must match.
+const templates = {
+	defaultLocale: 'default locale',
+	builtInBadge: 'built-in',
+	subject: 'Subject',
+	htmlBody: 'HTML body',
+	textBody: 'Plain-text body',
+	list: {
+		title: 'Templates',
+		newTemplate: 'New template',
+		hint: 'Every email the app sends. Open one to edit its copy and preview it live.',
+		loading: 'Loading templates…',
+	},
+	editor: {
+		loading: 'Loading template…',
+		addLocale: '+ Add locale',
+		builtInNote: 'built-in email: edit or roll back, it cannot be deleted',
+		active: 'Active',
+		conflict:
+			'Someone changed this template since you opened it. Reload to see their change, then edit again.',
+		noChanges: 'No changes to save',
+		sampleData: 'Sample data',
+		sampleNotObject: 'Sample data must be a JSON object.',
+		sampleInvalid: 'Sample data is not valid JSON.',
+		preview: 'Preview',
+		previewTitle: 'Template preview',
+		rendering: 'Rendering…',
+		live: 'Live',
+		nothingRendered: 'Nothing rendered yet.',
+		history: 'History',
+		unknownActor: 'unknown',
+		rollBack: 'Roll back',
+		confirmDelete: 'Delete "{type}"?',
+		confirmDeleteLocale:
+			'Delete the {locale} version of "{type}"? People in that locale will receive the default version.',
+	},
+	create: {
+		titleNew: 'New template',
+		titleLocale: 'Add a locale to {type}',
+		hintNew:
+			'For an email your app sends that has no stored copy yet. The type must match what the app sends.',
+		hintLocale:
+			'Starts from the default copy. People whose locale matches receive this version; everyone else keeps the default.',
+		type: 'Type',
+		locale: 'Locale',
+		localeOptional: 'Locale (optional — empty is the default)',
+		creating: 'Creating…',
+		submitNew: 'Create template',
+		submitLocale: 'Add locale',
+		errorType: 'Type: lowercase letters, digits, - and _ (e.g. weekly-digest).',
+		errorLocaleRequired: 'Choose the locale to add, e.g. fr or fr-CA.',
+		errorLocale: 'Locale: a language tag such as fr, es or fr-CA.',
+		errorText: 'The plain-text body is required — it is what every email client can show.',
+		exists: '"{type}" already exists — open it from the list to edit.',
+		existsLocale: '"{type}" ({locale}) already exists — open it from the list to edit.',
+	},
+};
+export default templates;

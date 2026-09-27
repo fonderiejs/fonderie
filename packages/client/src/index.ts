@@ -247,3 +247,20 @@ export {
 export type { CastResult, ConfigValueType, IInferredConfigValue } from './config-value';
 export { ConfigClient } from './modules/config';
 export type { IRemoteConfigState } from './modules/config';
+export {
+	ADMIN_LOCALES,
+	DEFAULT_ADMIN_LOCALE,
+	adminLocaleNames,
+	adminLocaleTags,
+	createAdminT,
+	detectAdminLocale,
+	formatAdminDate,
+	isAdminLocale,
+} from './admin-i18n';
+export type {
+	AdminLocale,
+	AdminMessageKey,
+	AdminMessageParams,
+	AdminMessages,
+	AdminT,
+} from './admin-i18n';

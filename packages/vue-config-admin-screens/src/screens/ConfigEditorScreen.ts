@@ -1,10 +1,14 @@
 import {
+	type AdminLocale,
+	type AdminMessageKey,
+	type AdminMessageParams,
 	type ConfigAdminClient,
 	type ConfigValueType,
 	castConfigValue,
 	configKeyProblem,
-	configValueLabel,
 	configValueType,
+	createAdminT,
+	formatAdminDate,
 	formatConfigValue,
 	inferConfigValue,
 } from '@fonderie/client';
@@ -32,6 +36,8 @@ export const ConfigEditorScreen = defineComponent({
 		environment: { type: String, default: undefined },
 		/** Environments already in use, offered when creating an entry. */
 		environments: { type: Array as PropType<string[]>, default: () => [] },
+		/** The console's language. Default English. */
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	emits: {
 		saved: () => true,
@@ -39,6 +45,22 @@ export const ConfigEditorScreen = defineComponent({
 		deleted: () => true,
 	},
 	setup(props, { emit }) {
+		const t = (key: AdminMessageKey, params?: AdminMessageParams) =>
+			createAdminT(props.locale)(key, params);
+		// The shape of a value, in the console's language (the client's own labels
+		// are English-only).
+		const shapeLabel = (v: unknown): string =>
+			typeof v === 'string'
+				? t('config.shape.text')
+				: typeof v === 'number'
+					? t('config.shape.number')
+					: typeof v === 'boolean'
+						? t('config.shape.onOff')
+						: Array.isArray(v)
+							? t('config.shape.list')
+							: v === null
+								? t('config.shape.empty')
+								: t('config.shape.object');
 		const isSecret = computed(() => props.kind === 'secret');
 		const isNew = props.configKey === '';
 		const newKey = ref('');
@@ -118,7 +140,7 @@ export const ConfigEditorScreen = defineComponent({
 			if (isNew) {
 				const problem = configKeyProblem(key);
 				if (problem) {
-					inputError.value = problem;
+					inputError.value = key ? t('config.errors.keyPattern') : t('config.errors.keyRequired');
 					return;
 				}
 				// Creating must never overwrite: a save to an existing key would
@@ -130,7 +152,7 @@ export const ConfigEditorScreen = defineComponent({
 					? secrets.secrets.value.some(inEnv)
 					: configEntries.entries.value.some(inEnv);
 				if (taken) {
-					inputError.value = `"${key}" already exists in ${env} — open it from the list to edit.`;
+					inputError.value = t('config.errors.exists', { key, env });
 					return;
 				}
 			}
@@ -141,7 +163,16 @@ export const ConfigEditorScreen = defineComponent({
 				} else {
 					const cast = castConfigValue(valueType.value, value.value);
 					if (!cast.ok) {
-						inputError.value = cast.error;
+						inputError.value =
+							valueType.value === 'number'
+								? t('config.errors.number')
+								: valueType.value === 'boolean'
+									? t('config.errors.boolean')
+									: valueType.value === 'json'
+										? t('config.errors.json', {
+												detail: cast.error.replace(/^Not valid JSON:\s*/, ''),
+											})
+										: cast.error;
 						return;
 					}
 					typed = cast.value;
@@ -187,14 +218,11 @@ export const ConfigEditorScreen = defineComponent({
 		}
 
 		async function handleDelete() {
-			const where =
-				props.environment && props.environment !== 'all' ? ` from ${props.environment}` : '';
-			if (
-				!window.confirm(
-					`Delete "${props.configKey}"${where}? Anything that reads it falls back to its default.`,
-				)
-			)
-				return;
+			const message =
+				props.environment && props.environment !== 'all'
+					? t('config.editor.confirmDeleteIn', { key: props.configKey, env: props.environment })
+					: t('config.editor.confirmDelete', { key: props.configKey });
+			if (!window.confirm(message)) return;
 			isDeleting.value = true;
 			saveError.value = null;
 			try {
@@ -221,7 +249,7 @@ export const ConfigEditorScreen = defineComponent({
 			const entry = isSecret.value ? secretEntry : configEntry;
 			const revisions = isSecret.value ? secretRevisions : configRevisions;
 
-			if (!isNew && entry.isLoading.value) return h('p', { style: styles.status }, 'Loading…');
+			if (!isNew && entry.isLoading.value) return h('p', { style: styles.status }, t('common.loading'));
 			if (!isNew && entry.error.value)
 				return h('p', { style: styles.error, role: 'alert' }, entry.error.value.explanation);
 
@@ -233,10 +261,14 @@ export const ConfigEditorScreen = defineComponent({
 				h(
 					'h1',
 					{ style: styles.editorTitle },
-					isNew ? (isSecret.value ? 'New secret' : 'New config entry') : props.configKey,
+					isNew
+						? isSecret.value
+							? t('config.editor.newSecret')
+							: t('config.editor.newEntry')
+						: props.configKey,
 				),
 				h('p', { style: styles.meta }, [
-					'Environment: ',
+					`${t('config.editor.environmentLabel')} `,
 					h('strong', isNew ? targetEnv.value || 'all' : (props.environment ?? 'all')),
 					isNew ? null : ` · v${version}`,
 				]),
@@ -252,7 +284,7 @@ export const ConfigEditorScreen = defineComponent({
 									style: styles.revealButton,
 									onClick: handleReveal,
 								},
-								'Reveal',
+								t('config.reveal'),
 							),
 						])
 					: null,
@@ -260,7 +292,7 @@ export const ConfigEditorScreen = defineComponent({
 				h('form', { style: styles.form, onSubmit: handleSubmit }, [
 					...(isNew
 						? [
-								h('label', { style: styles.label, for: 'config-key' }, 'Key'),
+								h('label', { style: styles.label, for: 'config-key' }, t('config.editor.key')),
 								h('input', {
 									id: 'config-key',
 									style: styles.input,
@@ -273,7 +305,7 @@ export const ConfigEditorScreen = defineComponent({
 										newKey.value = (e.target as HTMLInputElement).value;
 									},
 								}),
-								h('label', { style: styles.label, for: 'config-env' }, 'Environment'),
+								h('label', { style: styles.label, for: 'config-env' }, t('config.environment')),
 								h('input', {
 									id: 'config-env',
 									style: styles.input,
@@ -301,17 +333,14 @@ export const ConfigEditorScreen = defineComponent({
 											margin: '4px 0 0',
 										},
 									},
-									[
-										h('code', 'all'),
-										' is shared by every environment; a named one (production, staging…) overrides it there.',
-									],
+									t('config.editor.environmentHint'),
 								),
 							]
 						: []),
 					h(
 						'label',
 						{ style: styles.label, for: 'config-value' },
-						isSecret.value ? (isNew ? 'Value' : 'New value') : 'Value',
+						isSecret.value && !isNew ? t('config.editor.newValue') : t('config.editor.value'),
 					),
 					...(!isSecret.value && freeForm()
 						? (() => {
@@ -323,8 +352,7 @@ export const ConfigEditorScreen = defineComponent({
 										id: 'config-value',
 										style: styles.textarea,
 										rows: /^\s*[[{]/.test(value.value) || value.value.includes('\n') ? 8 : 2,
-										placeholder:
-											'true · 42 · Scheduled maintenance tonight · {"ids": ["m1", "m2"]}',
+										placeholder: t('config.editor.valuePlaceholder'),
 										spellcheck: false,
 										value: value.value,
 										onInput: (e: Event) => {
@@ -333,7 +361,10 @@ export const ConfigEditorScreen = defineComponent({
 										},
 									}),
 									h('div', { style: styles.detected }, [
-										h('span', ['Detected: ', h('strong', asText.value ? 'Text' : inferred.label)]),
+										h('span', [
+											`${t('config.editor.detected')} `,
+											h('strong', asText.value ? t('config.shape.text') : shapeLabel(inferred.value)),
+										]),
 										inferred.ambiguous
 											? h('label', { style: styles.inline }, [
 													h('input', {
@@ -343,7 +374,7 @@ export const ConfigEditorScreen = defineComponent({
 															asText.value = (e.target as HTMLInputElement).checked;
 														},
 													}),
-													'Save as text instead',
+													t('config.editor.saveAsText'),
 												])
 											: null,
 									]),
@@ -360,7 +391,7 @@ export const ConfigEditorScreen = defineComponent({
 													value.value = (e.target as HTMLInputElement).checked ? 'true' : 'false';
 												},
 											}),
-											value.value === 'true' ? 'On (true)' : 'Off (false)',
+											value.value === 'true' ? t('config.editor.on') : t('config.editor.off'),
 										])
 									: !isSecret.value &&
 											(valueType.value === 'number' || valueType.value === 'string')
@@ -388,8 +419,8 @@ export const ConfigEditorScreen = defineComponent({
 								!isSecret.value && configEntry.entry.value
 									? h('div', { style: styles.detected }, [
 											h('span', [
-												'Type: ',
-												h('strong', configValueLabel(configEntry.entry.value.value)),
+												`${t('config.editor.type')} `,
+												h('strong', shapeLabel(configEntry.entry.value.value)),
 											]),
 											h(
 												'button',
@@ -401,7 +432,7 @@ export const ConfigEditorScreen = defineComponent({
 														asText.value = false;
 													},
 												},
-												'Change type…',
+												t('config.editor.changeType'),
 											),
 										])
 									: null,
@@ -410,13 +441,13 @@ export const ConfigEditorScreen = defineComponent({
 						? h(
 								'p',
 								{ style: styles.warning },
-								'Changing the type changes what every screen reading this key receives. Check the code that reads it first.',
+								t('config.editor.changeTypeWarning'),
 							)
 						: null,
 					inputError.value
 						? h('p', { style: styles.error, role: 'alert' }, inputError.value)
 						: null,
-					h('label', { style: styles.label, for: 'config-description' }, 'Description'),
+					h('label', { style: styles.label, for: 'config-description' }, t('config.editor.description')),
 					h('input', {
 						id: 'config-description',
 						style: styles.input,
@@ -427,7 +458,7 @@ export const ConfigEditorScreen = defineComponent({
 					}),
 					saveError.value?.reason === 'VERSION_CONFLICT'
 						? h('p', { style: styles.error, role: 'alert' }, [
-								'Someone changed this entry since you opened it. Reload to see their change, then edit again. ',
+								`${t('config.editor.conflict')} `,
 								h(
 									'button',
 									{
@@ -438,7 +469,7 @@ export const ConfigEditorScreen = defineComponent({
 											void entry.refresh();
 										},
 									},
-									'Reload',
+									t('common.reload'),
 								),
 							])
 						: saveError.value
@@ -455,7 +486,7 @@ export const ConfigEditorScreen = defineComponent({
 									disabled: isSaving.value,
 									style: { ...styles.button, marginTop: '0' },
 								},
-								isSaving.value ? 'Saving…' : 'Save',
+								isSaving.value ? t('common.saving') : t('common.save'),
 							),
 							!isNew
 								? h(
@@ -473,7 +504,7 @@ export const ConfigEditorScreen = defineComponent({
 													'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
 											},
 										},
-										isDeleting.value ? 'Deleting…' : 'Delete',
+										isDeleting.value ? t('common.deleting') : t('common.delete'),
 									)
 								: null,
 						],
@@ -482,7 +513,7 @@ export const ConfigEditorScreen = defineComponent({
 
 				!isNew && revisions.revisions.value.length > 0
 					? h('div', { style: styles.revisions }, [
-							h('h2', { style: styles.subtitle }, 'History'),
+							h('h2', { style: styles.subtitle }, t('config.editor.history')),
 							h(
 								'ul',
 								{ style: styles.list },
@@ -490,7 +521,7 @@ export const ConfigEditorScreen = defineComponent({
 									h('li', { key: rev.version, style: styles.revisionRow }, [
 										h(
 											'span',
-											`v${rev.version} — ${rev.actor ?? 'unknown'} — ${new Date(rev.createdAt).toLocaleString()}`,
+											`v${rev.version} — ${rev.actor ?? t('config.editor.unknownActor')} — ${formatAdminDate(rev.createdAt, props.locale)}`,
 										),
 										h(
 											'button',
@@ -499,7 +530,7 @@ export const ConfigEditorScreen = defineComponent({
 												style: styles.revealButton,
 												onClick: () => revisions.rollback(rev.version),
 											},
-											'Roll back',
+											t('config.editor.rollBack'),
 										),
 									]),
 								),

@@ -1,4 +1,9 @@
-import type { AdminClient } from '@fonderie/client';
+import {
+	type AdminClient,
+	type AdminLocale,
+	createAdminT,
+	formatAdminDate,
+} from '@fonderie/client';
 import { useAdminLog } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
@@ -12,34 +17,43 @@ export const AdminLogScreen = defineComponent({
 	props: {
 		client: { type: Object as PropType<AdminClient>, required: true },
 		pageSize: { type: Number, default: 50 },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	setup(props) {
 		const { entries, hasMore, isLoading, error, refresh, loadMore } = useAdminLog(props.client, {
 			limit: props.pageSize,
 		});
-		return () =>
-			h('div', { style: styles.container }, [
-				pageHeader(
-					'Admin log',
-					'Every request made through this surface, newest first — refused ones included.',
-					[refreshButton('Refresh', isLoading.value, () => void refresh())],
-				),
+		return () => {
+			const t = createAdminT(props.locale);
+			return h('div', { style: styles.container }, [
+				pageHeader(t('log.title'), t('log.lead'), [
+					refreshButton(
+						t('common.refresh'),
+						isLoading.value,
+						() => void refresh(),
+						t('common.working'),
+					),
+				]),
 				error.value
 					? h(
 							'p',
 							{ style: styles.error, role: 'alert' },
-							error.value.status === 404
-								? 'The admin log is off — give AdminModule a store.'
-								: error.value.explanation,
+							error.value.status === 404 ? t('log.off') : error.value.explanation,
 						)
 					: entries.value.length === 0 && !isLoading.value
-						? empty('No requests yet', undefined, 'log')
+						? empty(t('log.empty'), undefined, 'log')
 						: [
 								table(
-									['When', 'Actor', 'Request', 'Status', 'Module'],
+									[
+										t('log.colWhen'),
+										t('log.colActor'),
+										t('log.colRequest'),
+										t('log.colStatus'),
+										t('log.colModule'),
+									],
 									entries.value.map((e) =>
 										h('tr', { key: e.id }, [
-											td(new Date(e.at).toLocaleString(), {
+											td(formatAdminDate(e.at, props.locale), {
 												...styles.muted,
 												whiteSpace: 'nowrap',
 											}),
@@ -64,9 +78,12 @@ export const AdminLogScreen = defineComponent({
 										]),
 									),
 								),
-								isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
-								hasMore.value && !isLoading.value ? loadMoreButton(() => void loadMore()) : null,
+								isLoading.value ? h('p', { style: styles.status }, t('common.loading')) : null,
+								hasMore.value && !isLoading.value
+									? loadMoreButton(() => void loadMore(), t('common.loadMore'))
+									: null,
 							],
 			]);
+		};
 	},
 });

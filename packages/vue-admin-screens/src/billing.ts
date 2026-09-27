@@ -1,15 +1,54 @@
-import type { BillingAdminClient, IAdminSubscriptionDTO } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type AdminT,
+	type BillingAdminClient,
+	type IAdminSubscriptionDTO,
+	createAdminT,
+	formatAdminDate,
+} from '@fonderie/client';
 import { type Ref, ref } from 'vue';
 import type { Tone } from './styles';
 
 /** What the period end means for this subscription. A canceled one does not renew. */
-export function periodEnd(s: IAdminSubscriptionDTO): { label: string; date: string } | null {
+export function periodEnd(
+	s: IAdminSubscriptionDTO,
+	locale?: AdminLocale,
+): { label: string; date: string } | null {
 	if (!s.currentPeriodEnd) return null;
-	const date = new Date(s.currentPeriodEnd).toLocaleDateString();
+	const t = createAdminT(locale);
+	const date = formatAdminDate(s.currentPeriodEnd, locale, 'date');
 	if (s.status === 'canceled')
-		return { label: new Date(s.currentPeriodEnd) < new Date() ? 'Ended' : 'Ends', date };
-	if (s.cancelAtPeriodEnd) return { label: 'Ends', date };
-	return { label: 'Renews', date };
+		return {
+			label: new Date(s.currentPeriodEnd) < new Date() ? t('billing.ended') : t('billing.ends'),
+			date,
+		};
+	if (s.cancelAtPeriodEnd) return { label: t('billing.ends'), date };
+	return { label: t('billing.renews'), date };
+}
+
+const STATUS_KEYS = [
+	'active',
+	'trialing',
+	'past_due',
+	'unpaid',
+	'canceled',
+	'incomplete',
+	'incomplete_expired',
+	'paused',
+] as const;
+
+/** A subscription status in the console's language; an unknown one is shown as sent. */
+export function statusLabel(t: AdminT, status: string): string {
+	return (STATUS_KEYS as readonly string[]).includes(status)
+		? t(`billing.statusLabel.${status as (typeof STATUS_KEYS)[number]}`)
+		: status;
+}
+
+/** A billing interval in the console's language; an unknown one is shown as sent. */
+export function intervalLabel(t: AdminT, interval: string): string {
+	return interval === 'month' || interval === 'year'
+		? t(`billing.intervalLabel.${interval}`)
+		: interval;
 }
 
 export const statusTone = (status: string): Tone =>

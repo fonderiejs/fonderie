@@ -1,4 +1,7 @@
 import {
+	ADMIN_LOCALES,
+	type AdminLocale,
+	type AdminT,
 	AdminClient,
 	AuditAdminClient,
 	AuthAdminClient,
@@ -6,12 +9,24 @@ import {
 	ConfigAdminClient,
 	CourierAdminClient,
 	FonderieApiError,
+	adminLocaleNames,
+	createAdminT,
+	detectAdminLocale,
+	isAdminLocale,
 } from '@fonderie/client';
 import type { IAdminEnrollment, IAdminManifest, IAdminSession } from '@fonderie/client';
 import { useAdminSession } from '@fonderie/react-admin';
 import { type AdminPage, AdminShell } from '@fonderie/react-admin-screens';
 import qrcode from 'qrcode-generator';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import {
+	type ReactNode,
+	createContext,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import { createRoot } from 'react-dom/client';
 
 // The page is served AT `<prefix>/ui`, so it knows its own prefix without being
@@ -132,33 +147,315 @@ const ICONS: Record<ThemeChoice, React.ReactElement> = {
 	),
 };
 
-const CHOICES: ReadonlyArray<readonly [ThemeChoice, string]> = [
-	['system', 'System'],
-	['light', 'Light'],
-	['dark', 'Dark'],
-];
+const THEME_CHOICES: readonly ThemeChoice[] = ['system', 'light', 'dark'];
 
-function ThemeSwitch() {
+// ── Console language ──────────────────────────────────────────────────────
+// The OPERATOR's language for this console — independent of the locales the
+// app serves its customers: someone in France can run the console in French
+// while every customer email stays English. Browser language by default, then
+// whatever they pick; localStorage because, like the theme, it is a display
+// preference that should outlive the tab (and not a secret). Namespaced for
+// the same reason as the theme key.
+const LOCALE_KEY = 'fonderie.admin.locale';
+
+const readLocale = (): AdminLocale => {
+	try {
+		const v = window.localStorage.getItem(LOCALE_KEY);
+		if (isAdminLocale(v)) return v;
+	} catch {
+		/* private mode — fall through to the browser's language */
+	}
+	return detectAdminLocale(typeof navigator === 'undefined' ? [] : (navigator.languages ?? []));
+};
+
+const storeLocale = (locale: AdminLocale): void => {
+	try {
+		window.localStorage.setItem(LOCALE_KEY, locale);
+	} catch {
+		/* private mode — the choice holds for this page */
+	}
+};
+
+interface II18n {
+	locale: AdminLocale;
+	setLocale: (l: AdminLocale) => void;
+	t: AdminT;
+}
+const I18nContext = createContext<II18n>({
+	locale: 'en',
+	setLocale: () => undefined,
+	t: createAdminT('en'),
+});
+const useI18n = () => useContext(I18nContext);
+
+const GLOBE = (
+	<svg
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		aria-hidden="true"
+	>
+		<circle cx="12" cy="12" r="10" />
+		<path d="M2 12h20" />
+		<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+	</svg>
+);
+const CHEVRON = (
+	<svg
+		width="14"
+		height="14"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		aria-hidden="true"
+	>
+		<path d="m6 9 6 6 6-6" />
+	</svg>
+);
+const CHECK = (
+	<svg
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		aria-hidden="true"
+	>
+		<path d="M20 6 9 17l-5-5" />
+	</svg>
+);
+
+const themeLabel = (t: AdminT, c: ThemeChoice): string =>
+	c === 'system'
+		? t('common.themeSystem')
+		: c === 'light'
+			? t('common.themeLight')
+			: t('common.themeDark');
+
+/** Icon-only System / Light / Dark control. Same storage and CSS states as before. */
+function ThemeSegment() {
+	const { t } = useI18n();
 	const [choice, setChoice] = useState<ThemeChoice>(readTheme);
 	return (
-		<fieldset className="theme-switch" aria-label="Theme switcher">
-			{CHOICES.map(([value, label]) => (
-				<label key={value} className="theme-switch__option" data-theme-value={value}>
-					<input
-						type="radio"
-						name="theme"
-						value={value}
-						checked={choice === value}
-						onChange={() => {
-							applyTheme(value);
-							setChoice(value);
+		<fieldset
+			aria-label={t('common.theme')}
+			style={{
+				display: 'inline-flex',
+				margin: 0,
+				minWidth: 0,
+				padding: 3,
+				gap: 2,
+				borderRadius: 9999,
+				border: '1px solid var(--fonderie-border,#e0e0e0)',
+				background: 'var(--fonderie-bg,#fafafa)',
+			}}
+		>
+			{THEME_CHOICES.map((c) => {
+				const on = choice === c;
+				return (
+					<button
+						key={c}
+						type="button"
+						aria-pressed={on}
+						aria-label={themeLabel(t, c)}
+						title={themeLabel(t, c)}
+						onClick={() => {
+							applyTheme(c);
+							setChoice(c);
 						}}
-					/>
-					{ICONS[value]}
-					<span>{label}</span>
-				</label>
-			))}
+						style={{
+							display: 'grid',
+							placeItems: 'center',
+							width: 30,
+							height: 26,
+							borderRadius: 9999,
+							border: 'none',
+							cursor: 'pointer',
+							background: on ? 'var(--fonderie-surface,#fff)' : 'transparent',
+							color: on ? 'var(--fonderie-text,#171717)' : 'var(--fonderie-text-muted,#5c5c5c)',
+							boxShadow: on ? '0 1px 2px rgba(0,0,0,.08)' : 'none',
+						}}
+					>
+						{ICONS[c]}
+					</button>
+				);
+			})}
 		</fieldset>
+	);
+}
+
+/** EN ▾ — opens a menu of languages (upward), with a check on the current one. */
+function LanguageButton() {
+	const { locale, setLocale, t } = useI18n();
+	const [open, setOpen] = useState(false);
+	const wrap = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		if (!open) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') setOpen(false);
+		};
+		const onDown = (e: MouseEvent) => {
+			if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
+		};
+		document.addEventListener('keydown', onKey);
+		document.addEventListener('mousedown', onDown);
+		return () => {
+			document.removeEventListener('keydown', onKey);
+			document.removeEventListener('mousedown', onDown);
+		};
+	}, [open]);
+	return (
+		<div ref={wrap} style={{ position: 'relative' }}>
+			<button
+				type="button"
+				aria-haspopup="menu"
+				aria-expanded={open}
+				aria-label={t('session.changeLanguage', { name: adminLocaleNames[locale] })}
+				onClick={() => setOpen((o) => !o)}
+				style={{
+					display: 'inline-flex',
+					alignItems: 'center',
+					gap: 4,
+					height: 28,
+					padding: '0 6px 0 8px',
+					border: 'none',
+					borderRadius: 6,
+					background: 'transparent',
+					cursor: 'pointer',
+					fontFamily: 'inherit',
+					fontSize: 13,
+					fontWeight: 600,
+					color: 'var(--fonderie-text,#171717)',
+				}}
+			>
+				{locale.toUpperCase()}
+				{CHEVRON}
+			</button>
+			{open ? (
+				<div
+					role="menu"
+					aria-label={t('common.language')}
+					style={{
+						position: 'absolute',
+						bottom: 'calc(100% + 6px)',
+						right: 0,
+						zIndex: 60,
+						minWidth: 170,
+						padding: 6,
+						background: 'var(--fonderie-surface,#fff)',
+						border: '1px solid var(--fonderie-border,#e0e0e0)',
+						borderRadius: 10,
+						boxShadow: '0 12px 32px -12px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.06)',
+					}}
+				>
+					{ADMIN_LOCALES.map((l) => {
+						const on = l === locale;
+						return (
+							<button
+								key={l}
+								type="button"
+								role="menuitemradio"
+								aria-checked={on}
+								lang={l}
+								onClick={() => {
+									setLocale(l);
+									setOpen(false);
+								}}
+								style={{
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'space-between',
+									width: '100%',
+									padding: '8px 10px',
+									border: 'none',
+									borderRadius: 6,
+									background: 'transparent',
+									cursor: 'pointer',
+									fontFamily: 'inherit',
+									fontSize: 14,
+									fontWeight: on ? 600 : 400,
+									color: on ? 'var(--fonderie-text,#171717)' : 'var(--fonderie-text-muted,#5c5c5c)',
+									textAlign: 'left',
+								}}
+							>
+								{adminLocaleNames[l]}
+								{on ? (
+									<span style={{ color: 'var(--fonderie-accent-strong,#009767)' }}>{CHECK}</span>
+								) : null}
+							</button>
+						);
+					})}
+				</div>
+			) : null}
+		</div>
+	);
+}
+
+/** The sidebar-footer preference rows: Language · EN ▾ and Theme · [◐ ☀ ☾]. */
+function PreferenceRows() {
+	const { t } = useI18n();
+	const row: React.CSSProperties = {
+		display: 'flex',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: 8,
+		minHeight: 32,
+	};
+	const label: React.CSSProperties = {
+		display: 'inline-flex',
+		alignItems: 'center',
+		gap: 8,
+		fontSize: 13,
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+	};
+	return (
+		<div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+			<div style={row}>
+				<span style={label}>
+					{GLOBE}
+					{t('common.language')}
+				</span>
+				<LanguageButton />
+			</div>
+			<div style={row}>
+				<span style={label}>
+					{ICONS.system}
+					{t('common.theme')}
+				</span>
+				<ThemeSegment />
+			</div>
+		</div>
+	);
+}
+
+/** Bottom-right on the sign-in and onboarding cards: language + theme. */
+function PreferenceDock() {
+	return (
+		<div
+			style={{
+				...styles.themeDock,
+				display: 'inline-flex',
+				alignItems: 'center',
+				gap: 6,
+				padding: '3px 3px 3px 6px',
+				background: 'var(--fonderie-surface,#fff)',
+				border: '1px solid var(--fonderie-border,#e0e0e0)',
+			}}
+		>
+			<LanguageButton />
+			<ThemeSegment />
+		</div>
 	);
 }
 
@@ -310,6 +607,7 @@ const LOGOUT = (
 );
 
 function Gate({ onToken, error }: { onToken: (t: string) => void; error: string | null }) {
+	const { t } = useI18n();
 	const [value, setValue] = useState('');
 	return (
 		<div style={styles.page}>
@@ -336,17 +634,17 @@ function Gate({ onToken, error }: { onToken: (t: string) => void; error: string 
 						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 					</svg>
 				</div>
-				<h1 style={styles.h1}>Sign in to Admin</h1>
+				<h1 style={styles.h1}>{t('session.signInTitle')}</h1>
 				<p style={styles.p}>{window.location.hostname}</p>
 				<label htmlFor="admin-token" style={styles.label}>
-					Admin token
+					{t('session.adminToken')}
 				</label>
 				<input
 					id="admin-token"
 					type="password"
 					value={value}
 					onChange={(e) => setValue(e.target.value)}
-					placeholder="Paste your token"
+					placeholder={t('session.pasteToken')}
 					style={styles.input}
 					autoComplete="off"
 					// biome-ignore lint/a11y/noAutofocus: the gate has one field; focusing it is the whole task.
@@ -358,12 +656,9 @@ function Gate({ onToken, error }: { onToken: (t: string) => void; error: string 
 					</p>
 				) : null}
 				<button type="submit" style={styles.primary}>
-					Continue
+					{t('common.continue')}
 				</button>
-				<p style={styles.foot}>
-					Kept for this tab only and sent as a Bearer header — never stored on the server. A{' '}
-					<code>read</code>-scoped token is enough to look around and cannot reveal secrets.
-				</p>
+				<p style={styles.foot}>{t('session.tokenFoot')}</p>
 			</form>
 		</div>
 	);
@@ -411,9 +706,11 @@ function useHashPage(): [AdminPage, (p: AdminPage) => void] {
 }
 
 function TokenApp() {
+	const { t } = useI18n();
 	const [token, setToken] = useState(read);
+	// Kept as a code, not a sentence, so switching language re-renders it.
+	const [error, setError] = useState<{ refused: true } | { detail: string } | null>(null);
 	const [manifest, setManifest] = useState<IAdminManifest | null>(null);
-	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!token) return;
@@ -438,8 +735,8 @@ function TokenApp() {
 				setManifest(null);
 				setError(
 					err instanceof FonderieApiError && err.status === 401
-						? 'That token was refused.'
-						: `Could not reach the admin surface: ${err instanceof FonderieApiError ? err.explanation : String(err)}`,
+						? { refused: true }
+						: { detail: err instanceof FonderieApiError ? err.explanation : String(err) },
 				);
 			});
 		return () => {
@@ -458,10 +755,17 @@ function TokenApp() {
 		// operator sees before they can do anything else.
 		return (
 			<>
-				<Gate onToken={setToken} error={error} />
-				<div style={styles.themeDock}>
-					<ThemeSwitch />
-				</div>
+				<Gate
+					onToken={setToken}
+					error={
+						error === null
+							? null
+							: 'refused' in error
+								? t('session.tokenRefused')
+								: t('session.unreachable', { error: error.detail })
+					}
+				/>
+				<PreferenceDock />
 			</>
 		);
 	}
@@ -471,10 +775,10 @@ function TokenApp() {
 			manifest={manifest}
 			footer={
 				<>
-					<ThemeSwitch />
+					<PreferenceRows />
 					<button type="button" style={styles.button} onClick={forget}>
 						{LOGOUT}
-						Forget token
+						{t('session.forgetToken')}
 					</button>
 				</>
 			}
@@ -497,6 +801,7 @@ function Dashboard({
 	me?: string | undefined;
 }) {
 	const [page, setPage] = useHashPage();
+	const { locale } = useI18n();
 	// Which pages to show is a question the manifest already answers: a brick
 	// that mounted nothing has no route here, so its client is never built and
 	// the shell hides the page.
@@ -528,6 +833,7 @@ function Dashboard({
 	return (
 		<AdminShell
 			client={new AdminClient(opts)}
+			locale={locale}
 			page={page}
 			onNavigate={setPage}
 			appName={window.location.hostname || 'Admin'}
@@ -581,18 +887,42 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 	return (await askForCode()) ? rawFetch(input, init) : res;
 };
 
-const errText = (err: unknown): string =>
-	err instanceof FonderieApiError ? err.explanation : 'Something went wrong. Try again.';
+// The server's sign-in answers carry a stable reason code; show the operator's
+// language for the ones this page knows, and the server's own words otherwise.
+const KNOWN_REASONS = [
+	'INVALID_CREDENTIALS',
+	'INVALID_CODE',
+	'RATE_LIMITED',
+	'WEAK_PASSWORD',
+	'INVALID_LINK',
+	'ALREADY_OPERATOR',
+	'ALREADY_CLAIMED',
+	'CROSS_ORIGIN',
+] as const;
+const errText = (err: unknown, t: AdminT): string => {
+	if (!(err instanceof FonderieApiError)) return t('session.genericError');
+	if (err.reason === 'MISMATCH') return t('session.passwordsMismatch');
+	if (err.reason === 'UNAUTHORIZED') return t('session.tokenRefused');
+	if (err.reason === 'LOCKED') {
+		const m = /(\d+)\s*minute/.exec(err.explanation);
+		return m
+			? t('session.errors.LOCKED', { minutes: m[1] ?? '' })
+			: t('session.errors.LOCKED_GENERIC');
+	}
+	const known = KNOWN_REASONS.find((r) => r === err.reason);
+	return known ? t(`session.errors.${known}`) : err.explanation;
+};
 
-type Steps = { labels: readonly string[]; at: number };
+type Steps = { labels: readonly StepId[]; at: number };
 
 // First-time setup is an onboarding flow, not a login: a progress bar across
 // the screens it spans (claim: token → account → authenticator → backup
 // codes; invite and recovery: the last three).
 function StepBar({ labels, at }: Steps) {
+	const { t } = useI18n();
 	return (
 		<ol
-			aria-label={`Step ${at + 1} of ${labels.length}`}
+			aria-label={t('session.stepOf', { n: at + 1, total: labels.length })}
 			style={{ display: 'flex', gap: 6, listStyle: 'none', padding: 0, margin: '0 0 22px' }}
 		>
 			{labels.map((label, i) => (
@@ -613,7 +943,7 @@ function StepBar({ labels, at }: Steps) {
 							textOverflow: 'ellipsis',
 						}}
 					>
-						{label}
+						{t(`session.steps.${label}`)}
 					</div>
 				</li>
 			))}
@@ -621,17 +951,19 @@ function StepBar({ labels, at }: Steps) {
 	);
 }
 
-const CLAIM_STEPS = ['Admin token', 'Your account', 'Authenticator', 'Backup codes'] as const;
-const INVITE_STEPS = ['Your account', 'Authenticator', 'Backup codes'] as const;
-const RECOVERY_STEPS = ['New password', 'Authenticator', 'Backup codes'] as const;
+// Step ids, rendered through t('session.steps.<id>').
+type StepId = 'adminToken' | 'account' | 'authenticator' | 'backupCodes' | 'newPassword';
+const CLAIM_STEPS: readonly StepId[] = ['adminToken', 'account', 'authenticator', 'backupCodes'];
+const INVITE_STEPS: readonly StepId[] = ['account', 'authenticator', 'backupCodes'];
+const RECOVERY_STEPS: readonly StepId[] = ['newPassword', 'authenticator', 'backupCodes'];
 type Flow = 'claim' | 'invite' | 'recovery';
-const STEPS_OF: Record<Flow, readonly string[]> = {
+const STEPS_OF: Record<Flow, readonly StepId[]> = {
 	claim: CLAIM_STEPS,
 	invite: INVITE_STEPS,
 	recovery: RECOVERY_STEPS,
 };
 /** Where the authenticator and backup-code screens sit in a flow. */
-const stepsFor = (flow: Flow | null, name: 'Authenticator' | 'Backup codes'): Steps | undefined =>
+const stepsFor = (flow: Flow | null, name: 'authenticator' | 'backupCodes'): Steps | undefined =>
 	flow ? { labels: STEPS_OF[flow], at: STEPS_OF[flow].indexOf(name) } : undefined;
 
 function AuthCard({
@@ -709,20 +1041,22 @@ function Field({
 }
 
 function useSubmit() {
+	const { t } = useI18n();
 	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	// The raw error, translated at render time so a language switch applies.
+	const [failure, setFailure] = useState<unknown>(null);
 	const run = async (fn: () => Promise<unknown>) => {
 		setBusy(true);
-		setError(null);
+		setFailure(null);
 		try {
 			await fn();
 		} catch (err) {
-			setError(errText(err));
+			setFailure(err ?? new Error('failed'));
 		} finally {
 			setBusy(false);
 		}
 	};
-	return { busy, error, run };
+	return { busy, error: failure === null ? null : errText(failure, t), run };
 }
 
 const ErrorLine = ({ error }: { error: string | null }) =>
@@ -737,6 +1071,7 @@ const ErrorLine = ({ error }: { error: string | null }) =>
 // page ask for the account it creates. Checked against the server first, so a
 // mistyped token fails on the token screen, not after filling in a form.
 function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
+	const { t } = useI18n();
 	const [token, setToken] = useState('');
 	const [accepted, setAccepted] = useState<string | null>(null);
 	const [f, setF] = useState({ email: '', name: '', password: '', confirm: '' });
@@ -746,8 +1081,8 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 		return (
 			<AuthCard
 				steps={{ labels: CLAIM_STEPS, at: 0 }}
-				title="Welcome — let's set up your console"
-				subtitle={`This is the first sign-in on ${window.location.hostname}. Paste the admin token from your deployment's configuration to begin. It is needed only this once.`}
+				title={t('session.welcomeTitle')}
+				subtitle={t('session.welcomeSubtitle', { host: window.location.hostname })}
 			>
 				<form
 					onSubmit={(e) => {
@@ -762,7 +1097,7 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 								await root.manifest();
 							} catch (err) {
 								if (err instanceof FonderieApiError && err.status === 401) {
-									throw new FonderieApiError('UNAUTHORIZED', 'That token was refused.', 401);
+									throw new FonderieApiError('UNAUTHORIZED', t('session.tokenRefused'), 401);
 								}
 								throw err;
 							}
@@ -772,7 +1107,7 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 				>
 					<Field
 						id="fa-root"
-						label="Admin token"
+						label={t('session.adminToken')}
 						type="password"
 						autoComplete="off"
 						required
@@ -782,7 +1117,7 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 					/>
 					<ErrorLine error={error} />
 					<button type="submit" style={styles.primary} disabled={busy}>
-						{busy ? 'Checking…' : 'Continue'}
+						{busy ? t('session.checking') : t('common.continue')}
 					</button>
 				</form>
 			</AuthCard>
@@ -792,17 +1127,15 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 	return (
 		<AuthCard
 			steps={{ labels: CLAIM_STEPS, at: 1 }}
-			title="Create your account"
-			subtitle="From now on you sign in with this email and password, plus an authenticator app. The admin token stays for scripts and emergencies."
+			title={t('session.createAccountTitle')}
+			subtitle={t('session.createAccountSubtitle')}
 		>
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
 					if (f.password !== f.confirm) {
 						void run(async () =>
-							Promise.reject(
-								new FonderieApiError('MISMATCH', 'The two passwords do not match.', 422),
-							),
+							Promise.reject(new FonderieApiError('MISMATCH', t('session.passwordsMismatch'), 422)),
 						);
 						return;
 					}
@@ -823,7 +1156,7 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 			>
 				<Field
 					id="fa-email"
-					label="Email"
+					label={t('session.email')}
 					type="email"
 					autoComplete="username"
 					required
@@ -833,14 +1166,14 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 				/>
 				<Field
 					id="fa-name"
-					label="Name (optional)"
+					label={t('session.nameOptional')}
 					autoComplete="name"
 					value={f.name}
 					onChange={(e) => setF({ ...f, name: e.target.value })}
 				/>
 				<Field
 					id="fa-password"
-					label="Password"
+					label={t('session.password')}
 					type="password"
 					autoComplete="new-password"
 					required
@@ -850,19 +1183,17 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 				/>
 				<Field
 					id="fa-confirm"
-					label="Confirm password"
+					label={t('session.confirmPassword')}
 					type="password"
 					autoComplete="new-password"
 					required
 					value={f.confirm}
 					onChange={(e) => setF({ ...f, confirm: e.target.value })}
 				/>
-				<p style={styles.foot}>
-					At least 12 characters. You will set up an authenticator app next.
-				</p>
+				<p style={styles.foot}>{t('session.passwordHintNext')}</p>
 				<ErrorLine error={error} />
 				<button type="submit" style={styles.primary} disabled={busy}>
-					{busy ? 'Creating…' : 'Create account'}
+					{busy ? t('session.creating') : t('session.createAccount')}
 				</button>
 			</form>
 		</AuthCard>
@@ -870,10 +1201,11 @@ function ClaimForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 }
 
 function LoginForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
+	const { t } = useI18n();
 	const [f, setF] = useState({ email: '', password: '' });
 	const { busy, error, run } = useSubmit();
 	return (
-		<AuthCard title="Sign in to Admin" subtitle={window.location.hostname}>
+		<AuthCard title={t('session.signInTitle')} subtitle={window.location.hostname}>
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -882,7 +1214,7 @@ function LoginForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 			>
 				<Field
 					id="fa-email"
-					label="Email"
+					label={t('session.email')}
 					type="email"
 					autoComplete="username"
 					required
@@ -892,7 +1224,7 @@ function LoginForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 				/>
 				<Field
 					id="fa-password"
-					label="Password"
+					label={t('session.password')}
 					type="password"
 					autoComplete="current-password"
 					required
@@ -901,12 +1233,9 @@ function LoginForm({ onDone }: { onDone: (s: IAdminSession) => void }) {
 				/>
 				<ErrorLine error={error} />
 				<button type="submit" style={styles.primary} disabled={busy}>
-					{busy ? 'Checking…' : 'Continue'}
+					{busy ? t('session.checking') : t('common.continue')}
 				</button>
-				<p style={styles.foot}>
-					There is no sign-up. Operators are invited by another operator. Locked out? Ask another
-					operator for a recovery link.
-				</p>
+				<p style={styles.foot}>{t('session.loginFoot')}</p>
 			</form>
 		</AuthCard>
 	);
@@ -926,6 +1255,7 @@ function CodeForm({
 	onSubmit: (factor: { code: string } | { backupCode: string }) => Promise<unknown>;
 	onCancel?: () => void;
 }) {
+	const { t } = useI18n();
 	const [backup, setBackup] = useState(false);
 	const [value, setValue] = useState('');
 	const { busy, error, run } = useSubmit();
@@ -941,7 +1271,7 @@ function CodeForm({
 			>
 				<Field
 					id="fa-code"
-					label={backup ? 'Backup code' : 'Authenticator code'}
+					label={backup ? t('session.backupCode') : t('session.authenticatorCode')}
 					inputMode={backup ? 'text' : 'numeric'}
 					autoComplete="one-time-code"
 					placeholder={backup ? 'ABCDE-FGHIJ' : '123 456'}
@@ -958,7 +1288,7 @@ function CodeForm({
 				/>
 				<ErrorLine error={error} />
 				<button type="submit" style={styles.primary} disabled={busy}>
-					{busy ? 'Checking…' : submitLabel}
+					{busy ? t('session.checking') : submitLabel}
 				</button>
 				<p style={styles.foot}>
 					<button
@@ -969,13 +1299,13 @@ function CodeForm({
 							setValue('');
 						}}
 					>
-						{backup ? 'Use the authenticator app instead' : 'Use a backup code instead'}
+						{backup ? t('session.useApp') : t('session.useBackup')}
 					</button>
 					{onCancel ? (
 						<>
 							{' · '}
 							<button type="button" style={styles.link} onClick={onCancel}>
-								Cancel
+								{t('common.cancel')}
 							</button>
 						</>
 					) : null}
@@ -994,14 +1324,16 @@ function EnrollForm({
 	onCancel: () => void;
 	steps?: Steps | undefined;
 }) {
+	const { t } = useI18n();
 	const [enrollment, setEnrollment] = useState<IAdminEnrollment | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [failure, setFailure] = useState<unknown>(null);
+	const error = failure === null ? null : errText(failure, t);
 	const [showKey, setShowKey] = useState(false);
 	useEffect(() => {
 		cookieClient
 			.enrollment()
 			.then(({ result }) => setEnrollment(result))
-			.catch((err) => setError(errText(err)));
+			.catch((err) => setFailure(err ?? new Error('failed')));
 	}, []);
 	const qr = useMemo(() => {
 		if (!enrollment) return null;
@@ -1014,20 +1346,20 @@ function EnrollForm({
 		<AuthCard
 			icon={SHIELD}
 			steps={steps}
-			title="Set up your authenticator"
-			subtitle="Every sign-in to this console needs a code from an authenticator app — 1Password, Google Authenticator, Authy, or any TOTP app."
+			title={t('session.enrollTitle')}
+			subtitle={t('session.enrollSubtitle')}
 		>
 			{error ? <ErrorLine error={error} /> : null}
 			{enrollment && qr ? (
 				<>
 					<ol style={{ ...styles.p, paddingLeft: 18, margin: '16px 0 0' }}>
-						<li>Open your authenticator app and scan this code.</li>
-						<li>Enter the six digits it shows.</li>
+						<li>{t('session.enrollScan')}</li>
+						<li>{t('session.enrollEnter')}</li>
 					</ol>
 					<div style={{ display: 'grid', placeItems: 'center', margin: '16px 0 8px' }}>
 						<img
 							src={qr}
-							alt="QR code for your authenticator app"
+							alt={t('session.qrAlt')}
 							width={200}
 							height={200}
 							style={{
@@ -1046,18 +1378,18 @@ function EnrollForm({
 							</code>
 						) : (
 							<button type="button" style={styles.link} onClick={() => setShowKey(true)}>
-								Can't scan? Enter a setup key instead
+								{t('session.cantScan')}
 							</button>
 						)}
 					</p>
 					<ConfirmCode onDone={onDone} />
 				</>
 			) : !error ? (
-				<p style={styles.p}>Preparing…</p>
+				<p style={styles.p}>{t('session.preparing')}</p>
 			) : null}
 			<p style={styles.foot}>
 				<button type="button" style={styles.link} onClick={onCancel}>
-					Cancel and sign out
+					{t('session.cancelSignOut')}
 				</button>
 			</p>
 		</AuthCard>
@@ -1065,6 +1397,7 @@ function EnrollForm({
 }
 
 function ConfirmCode({ onDone }: { onDone: (s: IAdminSession) => void }) {
+	const { t } = useI18n();
 	const [code, setCode] = useState('');
 	const { busy, error, run } = useSubmit();
 	return (
@@ -1078,7 +1411,7 @@ function ConfirmCode({ onDone }: { onDone: (s: IAdminSession) => void }) {
 		>
 			<Field
 				id="fa-code"
-				label="Code from the app"
+				label={t('session.codeFromApp')}
 				inputMode="numeric"
 				autoComplete="one-time-code"
 				placeholder="123 456"
@@ -1094,7 +1427,7 @@ function ConfirmCode({ onDone }: { onDone: (s: IAdminSession) => void }) {
 			/>
 			<ErrorLine error={error} />
 			<button type="submit" style={styles.primary} disabled={busy}>
-				{busy ? 'Checking…' : 'Verify and continue'}
+				{busy ? t('session.checking') : t('session.verifyContinue')}
 			</button>
 		</form>
 	);
@@ -1109,14 +1442,15 @@ function BackupCodes({
 	onDone: () => void;
 	steps?: Steps | undefined;
 }) {
+	const { t } = useI18n();
 	const [saved, setSaved] = useState(false);
-	const text = `Backup codes for ${window.location.hostname} admin\n${codes.join('\n')}\n`;
+	const text = `${t('session.backupFileHeader', { host: window.location.hostname })}\n${codes.join('\n')}\n`;
 	return (
 		<AuthCard
 			icon={SHIELD}
 			steps={steps}
-			title="Save your backup codes"
-			subtitle="If you lose your phone, each of these signs you in once. They are shown only now."
+			title={t('session.backupTitle')}
+			subtitle={t('session.backupSubtitle')}
 		>
 			<div
 				style={{
@@ -1142,22 +1476,22 @@ function BackupCodes({
 					style={styles.button}
 					onClick={() => void navigator.clipboard?.writeText(text)}
 				>
-					Copy
+					{t('common.copy')}
 				</button>
 				<a
 					href={`data:text/plain;charset=utf-8,${encodeURIComponent(text)}`}
 					download={`admin-backup-codes-${window.location.hostname}.txt`}
 					style={{ ...styles.button, textDecoration: 'none' }}
 				>
-					Download
+					{t('session.download')}
 				</a>
 			</div>
 			<label style={{ ...styles.p, display: 'flex', gap: 8, alignItems: 'center', marginTop: 16 }}>
-				<input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />I have
-				saved these codes somewhere safe
+				<input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
+				{t('session.savedCheckbox')}
 			</label>
 			<button type="button" style={styles.primary} disabled={!saved} onClick={onDone}>
-				Open the console
+				{t('session.openConsole')}
 			</button>
 		</AuthCard>
 	);
@@ -1172,8 +1506,10 @@ function LinkForm({
 	onDone: (s: IAdminSession) => void;
 	onKind: (kind: Flow) => void;
 }) {
+	const { t } = useI18n();
 	const [link, setLink] = useState<{ kind: 'invite' | 'recovery'; email: string } | null>(null);
-	const [bad, setBad] = useState<string | null>(null);
+	const [badErr, setBadErr] = useState<unknown>(null);
+	const bad = badErr === null ? null : errText(badErr, t);
 	const [f, setF] = useState({ name: '', password: '', confirm: '' });
 	const { busy, error, run } = useSubmit();
 	useEffect(() => {
@@ -1183,24 +1519,24 @@ function LinkForm({
 				setLink(result);
 				onKind(result.kind);
 			})
-			.catch((err) => setBad(errText(err)));
+			.catch((err) => setBadErr(err ?? new Error('failed')));
 	}, [token, onKind]);
 	if (bad)
 		return (
-			<AuthCard title="This link cannot be used" subtitle={bad}>
+			<AuthCard title={t('session.linkInvalidTitle')} subtitle={bad}>
 				{null}
 			</AuthCard>
 		);
-	if (!link) return <AuthCard title="Checking your link…">{null}</AuthCard>;
+	if (!link) return <AuthCard title={t('session.checkingLink')}>{null}</AuthCard>;
 	const invite = link.kind === 'invite';
 	return (
 		<AuthCard
 			steps={{ labels: invite ? INVITE_STEPS : RECOVERY_STEPS, at: 0 }}
-			title={invite ? 'Join the admin console' : 'Recover your account'}
+			title={invite ? t('session.joinTitle') : t('session.recoverTitle')}
 			subtitle={
 				invite
-					? `You were invited as ${link.email}. Choose a password, then set up an authenticator app.`
-					: `Set a new password for ${link.email}. You will set up your authenticator again.`
+					? t('session.joinSubtitle', { email: link.email })
+					: t('session.recoverSubtitle', { email: link.email })
 			}
 		>
 			<form
@@ -1208,9 +1544,7 @@ function LinkForm({
 					e.preventDefault();
 					if (f.password !== f.confirm)
 						return void run(async () =>
-							Promise.reject(
-								new FonderieApiError('MISMATCH', 'The two passwords do not match.', 422),
-							),
+							Promise.reject(new FonderieApiError('MISMATCH', t('session.passwordsMismatch'), 422)),
 						);
 					void run(async () => {
 						const { result } = await cookieClient.redeemLink({
@@ -1227,7 +1561,7 @@ function LinkForm({
 				{invite ? (
 					<Field
 						id="fa-name"
-						label="Your name (optional)"
+						label={t('session.yourNameOptional')}
 						autoComplete="name"
 						value={f.name}
 						onChange={(e) => setF({ ...f, name: e.target.value })}
@@ -1235,7 +1569,7 @@ function LinkForm({
 				) : null}
 				<Field
 					id="fa-password"
-					label="New password"
+					label={t('session.newPassword')}
 					type="password"
 					autoComplete="new-password"
 					required
@@ -1245,17 +1579,17 @@ function LinkForm({
 				/>
 				<Field
 					id="fa-confirm"
-					label="Confirm password"
+					label={t('session.confirmPassword')}
 					type="password"
 					autoComplete="new-password"
 					required
 					value={f.confirm}
 					onChange={(e) => setF({ ...f, confirm: e.target.value })}
 				/>
-				<p style={styles.foot}>At least 12 characters.</p>
+				<p style={styles.foot}>{t('session.passwordHint')}</p>
 				<ErrorLine error={error} />
 				<button type="submit" style={styles.primary} disabled={busy}>
-					{busy ? 'Saving…' : 'Continue'}
+					{busy ? t('common.saving') : t('common.continue')}
 				</button>
 			</form>
 		</AuthCard>
@@ -1263,6 +1597,7 @@ function LinkForm({
 }
 
 function StepUpPrompt() {
+	const { t } = useI18n();
 	const [open, setOpen] = useState(false);
 	const resolver = useRef<((ok: boolean) => void) | null>(null);
 	useEffect(() => {
@@ -1285,7 +1620,7 @@ function StepUpPrompt() {
 		<div
 			role="dialog"
 			aria-modal="true"
-			aria-label="Confirm it's you"
+			aria-label={t('session.stepUpTitle')}
 			style={{
 				position: 'fixed',
 				inset: 0,
@@ -1297,9 +1632,9 @@ function StepUpPrompt() {
 		>
 			<div style={{ width: '100%', maxWidth: 440 }}>
 				<CodeForm
-					title="Confirm it's you"
-					subtitle="This action needs a fresh code. It covers the next five minutes."
-					submitLabel="Confirm"
+					title={t('session.stepUpTitle')}
+					subtitle={t('session.stepUpSubtitle')}
+					submitLabel={t('common.confirm')}
 					onSubmit={async (factor) => {
 						await cookieClient.stepUp(factor);
 						finish(true);
@@ -1312,6 +1647,7 @@ function StepUpPrompt() {
 }
 
 function OperatorApp() {
+	const { t } = useI18n();
 	const { session, refresh, logout } = useAdminSession(cookieClient);
 	const [override, setOverride] = useState<IAdminSession | null>(null);
 	const [codes, setCodes] = useState<string[] | null>(null);
@@ -1351,11 +1687,7 @@ function OperatorApp() {
 			.catch(() => undefined);
 	}, [current?.state, codes]);
 
-	const dock = (
-		<div style={styles.themeDock}>
-			<ThemeSwitch />
-		</div>
-	);
+	const dock = <PreferenceDock />;
 	if (!current) return dock;
 
 	let screen: ReactNode;
@@ -1363,7 +1695,7 @@ function OperatorApp() {
 		screen = (
 			<BackupCodes
 				codes={codes}
-				steps={stepsFor(flow, 'Backup codes')}
+				steps={stepsFor(flow, 'backupCodes')}
 				onDone={() => {
 					setCodes(null);
 					setFlow(null);
@@ -1409,10 +1741,10 @@ function OperatorApp() {
 									) : null}
 								</div>
 							) : null}
-							<ThemeSwitch />
+							<PreferenceRows />
 							<button type="button" style={styles.button} onClick={() => void signOut()}>
 								{LOGOUT}
-								Sign out
+								{t('session.signOut')}
 							</button>
 						</>
 					}
@@ -1422,9 +1754,9 @@ function OperatorApp() {
 	} else if (current.state === 'needs-2fa')
 		screen = (
 			<CodeForm
-				title="Two-step verification"
-				subtitle="Enter the code from your authenticator app."
-				submitLabel="Verify"
+				title={t('session.twoStepTitle')}
+				subtitle={t('session.twoStepSubtitle')}
+				submitLabel={t('session.verify')}
 				onSubmit={async (factor) => next((await cookieClient.verify(factor)).result)}
 				onCancel={() => void signOut()}
 			/>
@@ -1432,7 +1764,7 @@ function OperatorApp() {
 	else if (current.state === 'needs-enrollment')
 		screen = (
 			<EnrollForm
-				steps={stepsFor(flow, 'Authenticator')}
+				steps={stepsFor(flow, 'authenticator')}
 				onDone={next}
 				onCancel={() => void signOut()}
 			/>
@@ -1460,6 +1792,21 @@ function OperatorApp() {
 // the token gate when it does not (no store, or operators: false).
 function App() {
 	const [mode, setMode] = useState<'loading' | 'operators' | 'token'>('loading');
+	const [locale, setLocaleState] = useState<AdminLocale>(readLocale);
+	useEffect(() => {
+		document.documentElement.lang = locale;
+	}, [locale]);
+	const i18n = useMemo<II18n>(
+		() => ({
+			locale,
+			setLocale: (l) => {
+				storeLocale(l);
+				setLocaleState(l);
+			},
+			t: createAdminT(locale),
+		}),
+		[locale],
+	);
 	useEffect(() => {
 		cookieClient
 			.session()
@@ -1469,7 +1816,11 @@ function App() {
 			);
 	}, []);
 	if (mode === 'loading') return null;
-	return mode === 'operators' ? <OperatorApp /> : <TokenApp />;
+	return (
+		<I18nContext.Provider value={i18n}>
+			{mode === 'operators' ? <OperatorApp /> : <TokenApp />}
+		</I18nContext.Provider>
+	);
 }
 
 const el = document.getElementById('root');

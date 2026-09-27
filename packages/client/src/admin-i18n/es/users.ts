@@ -1,0 +1,53 @@
+import type en from '../en/users';
+
+const users: typeof en = {
+	title: 'Usuarios',
+	lead: 'Todos los registrados. Abre una cuenta para ver sus sesiones, sus inicios de sesión y los controles para suspender y cerrar sesión.',
+	emailPlaceholder: 'correo electrónico',
+	emailLabel: 'Correo electrónico',
+	allUsers: 'Todos los usuarios',
+	whichAccounts: 'Qué cuentas',
+	activeAccounts: 'Activas',
+	deletedAccounts: 'Eliminadas',
+	noUserWithEmail: 'No hay ningún usuario con ese correo electrónico.',
+	missingIdPrefix: 'No hay ninguna cuenta con el id',
+	missingIdBody: 'Se eliminó o nunca existió aquí. Sus registros de facturación se conservan.',
+	planCredits: 'Plan y créditos',
+	emptyTitle: 'Aún no hay usuarios',
+	emptyBody: 'Los registros aparecen aquí a medida que ocurren.',
+	col: {
+		email: 'Correo electrónico',
+		name: 'Nombre',
+		plan: 'Plan',
+		created: 'Creado',
+		status: 'Estado',
+	},
+	field: {
+		id: 'id',
+		email: 'correo electrónico',
+		verified: 'verificado',
+		mfa: 'MFA',
+		provider: 'proveedor',
+		lastLogin: 'último inicio de sesión',
+		created: 'creado',
+	},
+	passwordProvider: 'contraseña',
+	noPasswordSet: 'sin contraseña',
+	deletedOn: 'Eliminada el {date}.',
+	deletedBody:
+		'La cuenta no puede iniciar sesión y se borrará cuando se ejecute la purga de retención. Sus registros de facturación se conservan.',
+	suspend: 'Suspender',
+	unsuspend: 'Reactivar',
+	signOutEverywhere: 'Cerrar sesión en todas partes',
+	liveSessions: 'Sesiones activas',
+	since: 'desde el {date}',
+	recentSignIns: 'Inicios de sesión recientes',
+	noneRecorded: 'Ninguno registrado.',
+	outcome: {
+		success: 'correcto',
+		failure: 'fallido',
+	},
+	proxyVpn: 'proxy/VPN',
+	hosting: 'hosting',
+};
+export default users;

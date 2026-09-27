@@ -1,5 +1,10 @@
-import type { CourierAdminClient, ISetTemplateInput } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type CourierAdminClient,
+	FonderieApiError,
+	type ISetTemplateInput,
+	createAdminT,
+} from '@fonderie/client';
 import type { CSSProperties, FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 
@@ -15,6 +20,8 @@ export interface ITemplateCreateScreenProps {
 	locales?: string[];
 	/** Called with what was created, so the caller can open it in the editor. */
 	onCreated?: (created: { type: string; locale: string | null }) => void;
+	/** The console's language. Default English. */
+	locale?: AdminLocale | undefined;
 }
 
 const TYPE_RE = /^[a-z0-9][a-z0-9_-]{0,80}$/;
@@ -27,10 +34,12 @@ export function TemplateCreateScreen({
 	type,
 	locales = [],
 	onCreated,
+	locale,
 }: ITemplateCreateScreenProps) {
+	const tr = createAdminT(locale);
 	const addingLocale = type !== undefined;
 	const [newType, setNewType] = useState('');
-	const [locale, setLocale] = useState('');
+	const [targetLocale, setTargetLocale] = useState('');
 	const [subject, setSubject] = useState('');
 	const [html, setHtml] = useState('');
 	const [text, setText] = useState('');
@@ -54,13 +63,11 @@ export function TemplateCreateScreen({
 		e.preventDefault();
 		setError(null);
 		const t = addingLocale ? (type as string) : newType.trim();
-		const l = locale.trim() || null;
-		if (!TYPE_RE.test(t))
-			return setError('Type: lowercase letters, digits, - and _ (e.g. weekly-digest).');
-		if (addingLocale && !l) return setError('Choose the locale to add, e.g. fr or fr-CA.');
-		if (l && !LOCALE_RE.test(l)) return setError('Locale: a language tag such as fr, es or fr-CA.');
-		if (!text.trim())
-			return setError('The plain-text body is required — it is what every email client can show.');
+		const l = targetLocale.trim() || null;
+		if (!TYPE_RE.test(t)) return setError(tr('templates.create.errorType'));
+		if (addingLocale && !l) return setError(tr('templates.create.errorLocaleRequired'));
+		if (l && !LOCALE_RE.test(l)) return setError(tr('templates.create.errorLocale'));
+		if (!text.trim()) return setError(tr('templates.create.errorText'));
 		setBusy(true);
 		try {
 			// Refuse to overwrite: creating an existing row would replace it.
@@ -69,7 +76,11 @@ export function TemplateCreateScreen({
 				(err: unknown) => !(err instanceof FonderieApiError && err.status === 404),
 			);
 			if (exists) {
-				setError(`"${t}"${l ? ` (${l})` : ''} already exists — open it from the list to edit.`);
+				setError(
+					l
+						? tr('templates.create.existsLocale', { type: t, locale: l })
+						: tr('templates.create.exists', { type: t }),
+				);
 				return;
 			}
 			const input: ISetTemplateInput = { text, active: true };
@@ -86,17 +97,19 @@ export function TemplateCreateScreen({
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>{addingLocale ? `Add a locale to ${type}` : 'New template'}</h1>
-			<p style={styles.meta}>
+			<h1 style={styles.title}>
 				{addingLocale
-					? 'Starts from the default copy. People whose locale matches receive this version; everyone else keeps the default.'
-					: 'For an email your app sends that has no stored copy yet. The type must match what the app sends.'}
+					? tr('templates.create.titleLocale', { type: type as string })
+					: tr('templates.create.titleNew')}
+			</h1>
+			<p style={styles.meta}>
+				{addingLocale ? tr('templates.create.hintLocale') : tr('templates.create.hintNew')}
 			</p>
 			<form style={styles.form} onSubmit={(e) => void submit(e)}>
 				{!addingLocale ? (
 					<>
 						<label style={styles.label} htmlFor="new-template-type">
-							Type
+							{tr('templates.create.type')}
 						</label>
 						<input
 							id="new-template-type"
@@ -110,17 +123,17 @@ export function TemplateCreateScreen({
 					</>
 				) : null}
 				<label style={styles.label} htmlFor="new-template-locale">
-					Locale {addingLocale ? '' : '(optional — empty is the default)'}
+					{addingLocale ? tr('templates.create.locale') : tr('templates.create.localeOptional')}
 				</label>
 				<input
 					id="new-template-locale"
 					style={styles.input}
-					value={locale}
+					value={targetLocale}
 					placeholder="fr"
 					list="new-template-locales"
 					autoComplete="off"
 					spellCheck={false}
-					onChange={(e) => setLocale(e.target.value)}
+					onChange={(e) => setTargetLocale(e.target.value)}
 				/>
 				<datalist id="new-template-locales">
 					{[...new Set(locales)].map((l) => (
@@ -128,7 +141,7 @@ export function TemplateCreateScreen({
 					))}
 				</datalist>
 				<label style={styles.label} htmlFor="new-template-subject">
-					Subject
+					{tr('templates.subject')}
 				</label>
 				<input
 					id="new-template-subject"
@@ -137,7 +150,7 @@ export function TemplateCreateScreen({
 					onChange={(e) => setSubject(e.target.value)}
 				/>
 				<label style={styles.label} htmlFor="new-template-html">
-					HTML body
+					{tr('templates.htmlBody')}
 				</label>
 				<textarea
 					id="new-template-html"
@@ -146,7 +159,7 @@ export function TemplateCreateScreen({
 					onChange={(e) => setHtml(e.target.value)}
 				/>
 				<label style={styles.label} htmlFor="new-template-text">
-					Plain-text body
+					{tr('templates.textBody')}
 				</label>
 				<textarea
 					id="new-template-text"
@@ -160,7 +173,11 @@ export function TemplateCreateScreen({
 					</p>
 				) : null}
 				<button type="submit" disabled={busy} style={styles.button}>
-					{busy ? 'Creating…' : addingLocale ? 'Add locale' : 'Create template'}
+					{busy
+						? tr('templates.create.creating')
+						: addingLocale
+							? tr('templates.create.submitLocale')
+							: tr('templates.create.submitNew')}
 				</button>
 			</form>
 		</div>
