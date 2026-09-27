@@ -32,9 +32,9 @@ export function mfaController(
 	bus?: EventBus,
 ) {
 	const users = new UserModel(store);
-	const sessions = new SessionModel(store);
+	const sessions = new SessionModel(store, config.location);
 	const backupCodes = new BackupCodeModel(store);
-	const loginEvents = new LoginEventModel(store);
+	const loginEvents = new LoginEventModel(store, config.location);
 	// Encrypts/decrypts TOTP secrets at rest. Passthrough when no key is set.
 	const mfaCipher = makeMfaCipher(config.mfaSecretKey);
 

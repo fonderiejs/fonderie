@@ -151,7 +151,27 @@ interface ILoginEventDTO {
     failureReason: string | null;
     ipAddress: string | null;
     userAgent: string | null;
+    location: IRequestLocationDTO | null;
     createdAt: string;
+}
+
+interface IRequestLocationDTO {
+    country?: string;
+    countryName?: string;
+    subdivision?: string;
+    subdivisionName?: string;
+    city?: string;
+    postalCode?: string;
+    continent?: string;
+    timeZone?: string;
+    latitude?: number;
+    longitude?: number;
+    isp?: string;
+    org?: string;
+    asn?: string;
+    mobile?: boolean;
+    proxy?: boolean;
+    hosting?: boolean;
 }
 
 interface ISessionDTO {
@@ -159,6 +179,7 @@ interface ISessionDTO {
     current: boolean;
     ipAddress: string | null;
     userAgent: string | null;
+    location: IRequestLocationDTO | null;
     createdAt: string;
     expiresAt: string;
 }

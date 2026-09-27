@@ -51,12 +51,19 @@ function ctxWith(headers: Record<string, string>, clientIp?: string): any {
 // ── requestMeta ──────────────────────────────────────────────────
 
 test('requestMeta: pulls clientIp from meta and UA from headers', () => {
-	const m = requestMeta(ctxWith({ 'user-agent': 'Mozilla/5.0 (Macintosh)' }, '203.0.113.7'));
-	assert.deepEqual(m, { ipAddress: '203.0.113.7', userAgent: 'Mozilla/5.0 (Macintosh)' });
+	const ctx = ctxWith({ 'user-agent': 'Mozilla/5.0 (Macintosh)' }, '203.0.113.7');
+	const m = requestMeta(ctx);
+	assert.deepEqual(
+		{ ipAddress: m.ipAddress, userAgent: m.userAgent },
+		{ ipAddress: '203.0.113.7', userAgent: 'Mozilla/5.0 (Macintosh)' },
+	);
+	// carried for the optional location resolver; never stored
+	assert.equal(m.headers, ctx.request.headers);
 });
 
 test('requestMeta: null when IP/UA absent (never throws)', () => {
-	assert.deepEqual(requestMeta(ctxWith({})), { ipAddress: null, userAgent: null });
+	const m = requestMeta(ctxWith({}));
+	assert.deepEqual({ ipAddress: m.ipAddress, userAgent: m.userAgent }, { ipAddress: null, userAgent: null });
 });
 
 test('requestMeta: truncates an abusive user-agent to 512 chars', () => {
@@ -87,6 +94,7 @@ test('LoginEventModel.record: failed attempt writes all fields', async () => {
 		'unknown_email',
 		'203.0.113.7',
 		'UA',
+		null, // no location resolver configured → no location
 	]);
 });
 
@@ -99,7 +107,7 @@ test('LoginEventModel.record: success defaults failure_reason to null', async ()
 		ipAddress: null,
 		userAgent: null,
 	});
-	assert.deepEqual(calls[0]!.params, ['u1', null, 'mfa', 'success', null, null, null]);
+	assert.deepEqual(calls[0]!.params, ['u1', null, 'mfa', 'success', null, null, null, null]);
 });
 
 test('LoginEventModel.recordSafe: a store failure never rejects', async () => {
@@ -130,13 +138,13 @@ test('SessionModel.create: INSERT includes user_agent + ip_address columns and v
 		userAgent: 'UA',
 	});
 	assert.match(calls[0]!.sql, /INSERT INTO fonderie_sessions .*user_agent, ip_address/s);
-	assert.deepEqual(calls[0]!.params.slice(4), ['UA', '203.0.113.7']);
+	assert.deepEqual(calls[0]!.params.slice(4), ['UA', '203.0.113.7', null]); // no resolver → no location
 });
 
 test('SessionModel.create: nulls when no meta passed (back-compat)', async () => {
 	const { store, calls } = capturingStore();
 	await new SessionModel(store).create('u1', 'tok', new Date('2026-01-01Z'), 'sid-1');
-	assert.deepEqual(calls[0]!.params.slice(4), [null, null]);
+	assert.deepEqual(calls[0]!.params.slice(4), [null, null, null]);
 });
 
 // ── Controller: failed login records a 'failed' event ────────────

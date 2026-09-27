@@ -1,6 +1,7 @@
 import { encodeKeysetCursor, decodeKeysetCursor } from '@fonderie/core';
 
 import type { ILoginEventRow, ILoginEventPage } from '../models/login-event.model';
+import { type IRequestLocation, sanitizeLocation } from '../services/request-location';
 
 // ── Login history ────────────────────────────────────────────────
 
@@ -11,6 +12,9 @@ export interface ILoginEventDTO {
 	failureReason: string | null;
 	ipAddress: string | null;
 	userAgent: string | null;
+	/** Where the attempt came from — present only when the app configures
+	 * `location`. Country is reliable; region/city are approximate. */
+	location: IRequestLocation | null;
 	createdAt: string;
 }
 
@@ -27,6 +31,9 @@ function toLoginEventDTO(row: ILoginEventRow): ILoginEventDTO {
 		failureReason: row.failureReason,
 		ipAddress: row.ipAddress,
 		userAgent: row.userAgent,
+		// Re-sanitized on read: the column is JSONB and could have been written
+		// by anything with database access.
+		location: sanitizeLocation(row.location),
 		createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
 	};
 }
@@ -51,6 +58,8 @@ export interface ISessionDTO {
 	current: boolean;
 	ipAddress: string | null;
 	userAgent: string | null;
+	/** Where the session was opened from, when `location` is configured. */
+	location: IRequestLocation | null;
 	createdAt: string;
 	expiresAt: string;
 }
@@ -61,6 +70,7 @@ export function toSessionDTO(
 		sid: string | null;
 		userAgent: string | null;
 		ipAddress: string | null;
+		location?: unknown;
 		createdAt: Date;
 		expiresAt: Date;
 	},
@@ -71,6 +81,7 @@ export function toSessionDTO(
 		current: currentSid !== null && row.sid === currentSid,
 		ipAddress: row.ipAddress,
 		userAgent: row.userAgent,
+		location: sanitizeLocation(row.location),
 		createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
 		expiresAt: row.expiresAt instanceof Date ? row.expiresAt.toISOString() : String(row.expiresAt),
 	};

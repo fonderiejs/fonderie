@@ -73,7 +73,7 @@ test('lookup: a hit maps DB columns to GeoLocation', async () => {
 	assert.deepEqual(r, {
 		country: 'US', countryName: 'United States',
 		subdivision: 'WA', subdivisionName: 'Washington',
-		city: 'Seattle', continent: 'NA', timeZone: 'America/Los_Angeles',
+		city: 'Seattle', postalCode: null, continent: 'NA', timeZone: 'America/Los_Angeles',
 		latitude: 47.6062, longitude: -122.3321, accuracyRadius: 20,
 	});
 });

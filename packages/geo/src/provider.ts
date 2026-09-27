@@ -70,6 +70,7 @@ export class PostgresGeoProvider implements IGeoProvider {
 				timeZone: r.time_zone ?? null,
 				latitude: r.latitude != null ? Number(r.latitude) : null,
 				longitude: r.longitude != null ? Number(r.longitude) : null,
+				postalCode: null,
 				accuracyRadius: r.accuracy_radius != null ? Number(r.accuracy_radius) : null,
 			};
 		} catch (err) {

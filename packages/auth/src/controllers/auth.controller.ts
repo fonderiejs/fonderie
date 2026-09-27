@@ -50,8 +50,8 @@ function extractRefreshToken(ctx: IFonderieContext): string | null {
 
 export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users = new UserModel(store);
-	const sessions = new SessionModel(store);
-	const loginEvents = new LoginEventModel(store);
+	const sessions = new SessionModel(store, config.location);
+	const loginEvents = new LoginEventModel(store, config.location);
 	const passwordReset = new PasswordResetModel(store);
 	const emailVerif = new EmailVerificationModel(store);
 	const phoneVerif = new PhoneVerificationModel(store);
@@ -133,7 +133,18 @@ export function authController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
 					loginMethod: 'email',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, requestMeta(ctx));
+				const registerMeta = requestMeta(ctx);
+				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, registerMeta);
+				// Where the account was created from — the user's first entry in
+				// their own history. Location resolves once for this request (the
+				// session above already asked).
+				await loginEvents.recordSafe({
+					userId: user.id,
+					emailAttempted: normalizedEmail,
+					method: 'registration',
+					outcome: 'success',
+					...registerMeta,
+				});
 
 				const resolvedRegister = { ...config, ...config.resolve?.(ctx) };
 				const requiresVerification = !!(resolvedRegister.requireVerification) && !user.emailVerifiedAt;
