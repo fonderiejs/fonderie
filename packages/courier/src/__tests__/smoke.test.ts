@@ -149,6 +149,51 @@ test('dispatcher: passes locale to resolver', async () => {
 	assert.equal(capturedLocale, 'fr-FR');
 });
 
+test('dispatcher: records the version sent beside the locale asked for', async () => {
+	const writes: Array<[string, unknown[]]> = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			writes.push([sql, params]);
+			return (sql.includes('INSERT INTO fonderie_message_log') ? [{ id: 'log-1' }] : []) as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const resolver: ITemplateResolver = { resolve: async () => ({ text: 'ok', locale: 'fr-CA' }) };
+	const dispatcher = new Dispatcher({ channels: { welcome: [Channel.EMAIL] } }, resolver, store);
+	dispatcher.registerChannel(makeChannel('email'));
+	await dispatcher.dispatch({
+		type: 'welcome',
+		locale: 'fr-BE',
+		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
+		data: {},
+	});
+	const insert = writes.find(([sql]) => sql.includes('INSERT INTO fonderie_message_log'));
+	assert.ok(insert?.[1].includes('fr-BE'), 'the locale asked for, on the row');
+	const resolved = writes.find(([sql]) => sql.includes('resolved_locale'));
+	assert.deepEqual(resolved?.[1], ['log-1', 'fr-CA'], 'the version sent, on the same row');
+});
+
+test('dispatcher: a failed resolved-locale write never loses the send or its log row', async () => {
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			if (sql.includes('resolved_locale')) throw new Error('column "resolved_locale" does not exist');
+			return (sql.includes('INSERT INTO fonderie_message_log') ? [{ id: 'log-1' }] : []) as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	const email = makeChannel('email');
+	const resolver: ITemplateResolver = { resolve: async () => ({ text: 'ok', locale: 'fr' }) };
+	const dispatcher = new Dispatcher({ channels: { welcome: [Channel.EMAIL] } }, resolver, store);
+	dispatcher.registerChannel(email);
+	await dispatcher.dispatch({
+		type: 'welcome',
+		locale: 'fr',
+		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
+		data: {},
+	});
+	assert.equal(email.sent.length, 1, 'an app deployed before its migration still sends');
+});
+
 test('dispatcher: logs messages when store provided', async () => {
 	const logged: string[] = [];
 	const store = makeStore((sql) => {
@@ -313,30 +358,87 @@ test('DBTemplateResolver: composes a body fragment into the layout + interpolate
 	assert.equal(r.text, 'code 123456');
 });
 
-test('DBTemplateResolver: serves exact locale, never a sibling region', async () => {
-	const { DBTemplateResolver } = await import('../templates/resolver');
-	// Rows: en-CA, en-US, and a NULL default — all for 'password-reset'.
-	const rows: Record<string, { subject: string; html: null; text: string }> = {
-		'en-CA': { subject: 'CA', html: null, text: 'reset (CA)' },
-		'en-US': { subject: 'US', html: null, text: 'reset (US)' },
-		DEFAULT: { subject: 'DEF', html: null, text: 'reset (default)' },
-	};
+// A store that answers the resolver's query the way Postgres would: rows of
+// `type` that are untagged, or whose lower(locale) is in the requested chain.
+function localeStore(rows: Array<{ type: string; locale: string | null; subject?: string; html?: string | null; text: string }>): IStoreAdapter {
 	const store: IStoreAdapter = {
-		// Emulate: WHERE (locale = $2 OR locale IS NULL) ORDER BY exact DESC LIMIT 1
 		query: async <T = unknown>(_sql: string, params?: unknown[]): Promise<T[]> => {
-			const [type, locale] = (params ?? []) as [string, string | null];
-			if (type !== 'password-reset') return [] as T[];
-			const exact = locale ? rows[locale] : undefined;
-			return [exact ?? rows.DEFAULT] as T[];
+			const [type, chain] = (params ?? []) as [string, string[]];
+			return rows
+				.filter((r) => r.type === type && (r.locale === null || chain.includes(r.locale.toLowerCase())))
+				.map((r) => ({ locale: r.locale, subject: r.subject ?? null, html: r.html ?? null, text: r.text })) as T[];
 		},
 		transaction: async (fn) => fn(store),
 	};
-	const resolver = new DBTemplateResolver(store);
+	return store;
+}
 
+test('DBTemplateResolver: serves the exact locale, never a sibling market', async () => {
+	const { DBTemplateResolver } = await import('../templates/resolver');
+	const resolver = new DBTemplateResolver(
+		localeStore([
+			{ type: 'password-reset', locale: 'en-CA', text: 'reset (CA)' },
+			{ type: 'password-reset', locale: 'en-GB', text: 'reset (GB)' },
+			{ type: 'password-reset', locale: null, text: 'reset (default)' },
+		]),
+	);
 	assert.equal((await resolver.resolve('password-reset', {}, 'en-CA')).text, 'reset (CA)');
-	assert.equal((await resolver.resolve('password-reset', {}, 'en-US')).text, 'reset (US)');
-	// A region we didn't seed must fall to the neutral default — not a sibling.
-	assert.equal((await resolver.resolve('password-reset', {}, 'de-DE')).text, 'reset (default)');
+	assert.equal((await resolver.resolve('password-reset', {}, 'en-gb')).text, 'reset (GB)', 'case-insensitive');
+	// A market with no version and no chain falls to the system locale — never a sibling.
+	const r = await resolver.resolve('password-reset', {}, 'en-AU');
+	assert.equal(r.text, 'reset (default)');
+	assert.equal(r.locale, 'en-US', 'reported as the system locale');
+});
+
+test('DBTemplateResolver: follows the declared chain, then built-in copy, then the system locale', async () => {
+	const { DBTemplateResolver, DefaultTemplates } = await import('../templates/resolver');
+	const { defineLocales } = await import('@fonderie/core');
+	const defaults = new DefaultTemplates([
+		{
+			welcome: {
+				subject: 'Welcome',
+				text: 'Hello {{name}}',
+				locales: { fr: { subject: 'Bienvenue', text: 'Bonjour {{name}}' } },
+			},
+		},
+	]);
+	const rows = [
+		{ type: 'welcome', locale: 'fr-CA', text: 'Allo {{name}} (CA)' },
+		{ type: 'welcome', locale: null, text: 'Hi {{name}} (app default)' },
+	];
+	const resolver = new DBTemplateResolver(localeStore(rows), defaults);
+	resolver.setLocales(defineLocales({ fallbacks: { 'fr-BE': ['fr-FR', 'fr-CA'] } }));
+
+	const be = await resolver.resolve('welcome', { name: 'Ada' }, 'fr-BE');
+	assert.equal(be.text, 'Allo Ada (CA)', 'fr-BE → fr-FR (none) → fr-CA (saved)');
+	assert.equal(be.locale, 'fr-CA', 'the version sent, not the one asked for');
+
+	const ch = await resolver.resolve('welcome', { name: 'Ada' }, 'fr-CH');
+	assert.equal(ch.text, 'Bonjour Ada', "no chain for fr-CH: Fonderie's French beats the app's English default");
+	assert.equal(ch.locale, 'fr');
+
+	const de = await resolver.resolve('welcome', { name: 'Ada' }, 'de-DE');
+	assert.equal(de.text, 'Hi Ada (app default)', 'no German anywhere: the system locale');
+	assert.equal(de.locale, 'en-US');
+
+	const none = new DBTemplateResolver(localeStore([]), defaults);
+	const en = await none.resolve('welcome', { name: 'Ada' }, 'en-US');
+	assert.equal(en.text, 'Hello Ada', 'nothing saved: the built-in English');
+	assert.equal(en.locale, 'en-US');
+});
+
+test('DBTemplateResolver: the built-in shell speaks the email\'s language', async () => {
+	const { DBTemplateResolver, DefaultTemplates } = await import('../templates/resolver');
+	const defaults = new DefaultTemplates([
+		{ hi: { text: 'hi', html: '<p>hi</p>', locales: { es: { text: 'hola', html: '<p>hola</p>' } } } },
+	]);
+	const resolver = new DBTemplateResolver(localeStore([]), defaults);
+	const es = await resolver.resolve('hi', { brandName: 'Acme' }, 'es-MX');
+	assert.ok(es.html?.includes('lang="es"'), 'html lang follows the copy');
+	assert.ok(es.html?.includes('Recibes este mensaje'), 'footer in Spanish');
+	assert.ok(es.html?.includes('<p>hola</p>'));
+	const en = await resolver.resolve('hi', { brandName: 'Acme' });
+	assert.ok(en.html?.includes("You're receiving this"), 'English shell for English copy');
 });
 
 // ── ICourierMessage type ─────────────────────────────────────────

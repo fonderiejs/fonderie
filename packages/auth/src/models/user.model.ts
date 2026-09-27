@@ -103,16 +103,18 @@ export class UserModel {
 		phone: string,
 		firstName: string | null = null,
 		lastName: string | null = null,
+		// Only on insert: an existing account keeps the locale it chose.
+		locale: string | null = null,
 	): Promise<{ id: string }> {
 		const [row] = await this.store.query<{ id: string }>(
-			`INSERT INTO fonderie_users (phone, first_name, last_name)
-			VALUES ($1, $2, $3)
+			`INSERT INTO fonderie_users (phone, first_name, last_name, locale)
+			VALUES ($1, $2, $3, COALESCE($4, 'en-US'))
 			ON CONFLICT (phone) DO UPDATE
 			SET first_name = COALESCE(EXCLUDED.first_name, fonderie_users.first_name),
 			    last_name  = COALESCE(EXCLUDED.last_name,  fonderie_users.last_name),
 			    updated_at = now()
 			RETURNING id`,
-			[phone, firstName, lastName],
+			[phone, firstName, lastName, locale],
 		);
 		return row!;
 	}
@@ -122,12 +124,15 @@ export class UserModel {
 		passwordHash: string,
 		firstName: string | null,
 		lastName: string | null,
+		// The sign-up language, else the app's system locale; null keeps the
+		// column default (en-US) for callers that predate locales.
+		locale: string | null = null,
 	): Promise<{ id: string } | null> {
 		const [row] = await this.store.query<{ id: string }>(
-			`INSERT INTO fonderie_users (email, password_hash, first_name, last_name)
-			VALUES ($1, $2, $3, $4)
+			`INSERT INTO fonderie_users (email, password_hash, first_name, last_name, locale)
+			VALUES ($1, $2, $3, $4, COALESCE($5, 'en-US'))
 			RETURNING id`,
-			[email.toLowerCase().trim(), passwordHash, firstName, lastName],
+			[email.toLowerCase().trim(), passwordHash, firstName, lastName, locale],
 		);
 		return row ?? null;
 	}

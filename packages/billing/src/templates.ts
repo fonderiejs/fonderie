@@ -1,6 +1,9 @@
 import type { IDefaultTemplate } from '@fonderie/core';
+import { withTranslations } from '@fonderie/core';
 
 import { MESSAGE_KEYS, type BillingMessageKey } from './config';
+import { ES_TEMPLATES } from './templates.es';
+import { FR_TEMPLATES } from './templates.fr';
 
 // Built-in default copy for every @fonderie/billing notification, shipped so the
 // emails render out of the box — never the raw-JSON fallback. `html` values are
@@ -17,7 +20,7 @@ import { MESSAGE_KEYS, type BillingMessageKey } from './config';
 //
 // `satisfies Record<BillingMessageKey, IDefaultTemplate>` makes a missing key a
 // compile error.
-export const DEFAULT_TEMPLATES = {
+const EN_TEMPLATES = {
 	[MESSAGE_KEYS.subscriptionCanceled]: {
 		subject: 'Your subscription has been canceled',
 		html: `<h1>Your subscription has been canceled</h1>
@@ -178,6 +181,11 @@ We tried to top up your balance automatically, but the payment couldn't be compl
 Please update your payment method in your billing settings to keep automatic top-ups on.`,
 	},
 } satisfies Record<BillingMessageKey, IDefaultTemplate>;
+
+// The English above, with every email's French and Spanish attached. Courier
+// sends the one matching the recipient's language (an app's own saved version
+// still wins); anything else gets the English.
+export const DEFAULT_TEMPLATES = withTranslations(EN_TEMPLATES, { fr: FR_TEMPLATES, es: ES_TEMPLATES });
 
 // Representative payloads for the coverage test — the full emitted shape per
 // key (documents what the emitter sends); templates use a subset. Money/credit

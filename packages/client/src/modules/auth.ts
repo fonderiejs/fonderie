@@ -29,6 +29,12 @@ export interface IRegisterInput {
 	password: string;
 	firstName?: string;
 	lastName?: string;
+	/**
+	 * The language the person is signing up in (e.g. 'fr-CA'). Stored on the
+	 * account, so the verification email already arrives in it. Omitted: the
+	 * app's system locale.
+	 */
+	locale?: string;
 }
 
 export interface IGetLoginHistoryInput {

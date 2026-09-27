@@ -74,8 +74,16 @@ const FONT_MONO = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liber
 // interpolation, so a body's own `{{firstName}}` etc. still resolve.
 export const LAYOUT_CONTENT_SLOT = '{{content}}';
 
-export const DEFAULT_EMAIL_LAYOUT = `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+// The shell's own words, per language. Placeholders rather than a function so
+// the template below stays one readable document; filled in by
+// defaultEmailLayout(). {{brandName}} stays a template variable — it
+// interpolates (escaped) with the rest at render time.
+const LAYOUT_LANG = '__LAYOUT_LANG__';
+const LAYOUT_FOOTER = '__LAYOUT_FOOTER__';
+const LAYOUT_POWERED_BY = '__LAYOUT_POWERED_BY__';
+
+const LAYOUT_TEMPLATE = `<!DOCTYPE html>
+<html lang="${LAYOUT_LANG}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -157,13 +165,13 @@ export const DEFAULT_EMAIL_LAYOUT = `<!DOCTYPE html>
 ${LAYOUT_CONTENT_SLOT}
 								</td></tr>
 								<tr><td class="email-footer" style="padding:16px 32px 28px 32px;color:${EMAIL_THEME.muted};font-size:13px;">
-									You're receiving this because someone used this address at {{brandName}}. If that wasn't you, you can ignore it.
+									${LAYOUT_FOOTER}
 								</td></tr>
 							</table>
 						</td>
 					</tr>
 					<tr><td class="email-powered" style="padding:18px 8px 0 8px;text-align:center;">
-						<span style="font:400 12px/1.5 ${FONT_SANS};color:${EMAIL_THEME.muted};letter-spacing:-0.01em;">Powered by <a href="https://fonderiejs.com" target="_blank" rel="noopener noreferrer" style="color:${EMAIL_THEME.muted};text-decoration:underline;">Fonderie</a></span>
+						<span style="font:400 12px/1.5 ${FONT_SANS};color:${EMAIL_THEME.muted};letter-spacing:-0.01em;">${LAYOUT_POWERED_BY} <a href="https://fonderiejs.com" target="_blank" rel="noopener noreferrer" style="color:${EMAIL_THEME.muted};text-decoration:underline;">Fonderie</a></span>
 					</td></tr>
 				</table>
 			</td>
@@ -171,6 +179,43 @@ ${LAYOUT_CONTENT_SLOT}
 	</table>
 </body>
 </html>`;
+
+/** Languages the built-in shell speaks; anything else gets English. */
+export const LAYOUT_STRINGS: Readonly<Record<string, { footer: string; poweredBy: string }>> = {
+	en: {
+		footer:
+			"You're receiving this because someone used this address at {{brandName}}. If that wasn't you, you can ignore it.",
+		poweredBy: 'Powered by',
+	},
+	fr: {
+		footer:
+			'Vous recevez ce message parce que quelqu’un a utilisé cette adresse sur {{brandName}}. Si ce n’était pas vous, vous pouvez l’ignorer.',
+		poweredBy: 'Propulsé par',
+	},
+	es: {
+		footer:
+			'Recibes este mensaje porque alguien usó esta dirección en {{brandName}}. Si no fuiste tú, puedes ignorarlo.',
+		poweredBy: 'Con la tecnología de',
+	},
+};
+
+/**
+ * The built-in shell in `language` ('fr', or a full tag like 'fr-CA'), English
+ * when the shell does not speak it. A French email in an English shell reads as
+ * a machine translation of half the message.
+ */
+export function defaultEmailLayout(language = 'en'): string {
+	const lang = language.split('-')[0]?.toLowerCase() ?? 'en';
+	const words = LAYOUT_STRINGS[lang] ?? (LAYOUT_STRINGS['en'] as { footer: string; poweredBy: string });
+	const tag = LAYOUT_STRINGS[lang] ? lang : 'en';
+	// Function replacers: a `$` in the copy must not be read as a pattern.
+	return LAYOUT_TEMPLATE.replace(LAYOUT_LANG, () => tag)
+		.replace(LAYOUT_FOOTER, () => words.footer)
+		.replace(LAYOUT_POWERED_BY, () => words.poweredBy);
+}
+
+/** The built-in shell in English — kept for callers that predate languages. */
+export const DEFAULT_EMAIL_LAYOUT = defaultEmailLayout('en');
 
 // Inject a body fragment into a layout shell. If the body is already a full
 // HTML document (a founder chose to store a complete template), it is returned

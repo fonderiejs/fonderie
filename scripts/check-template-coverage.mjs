@@ -37,6 +37,17 @@ function tsFiles(dir) {
 	return out;
 }
 
+// The languages every module ships its built-in emails in, besides English —
+// read from core so this gate and the runtime check can never disagree.
+const localeSrc = readFileSync(join(packagesDir, 'core', 'src', 'locale.ts'), 'utf8');
+const langMatch = localeSrc.match(/SHIPPED_TEMPLATE_LANGUAGES[^=]*=\s*Object\.freeze\(\[([^\]]*)\]\)/);
+const LANGUAGES = langMatch ? [...langMatch[1].matchAll(/'([a-z-]+)'/g)].map((m) => m[1]) : [];
+if (LANGUAGES.length === 0) {
+	// A gate that parsed nothing would pass everything.
+	console.error('check:template-coverage — could not read SHIPPED_TEMPLATE_LANGUAGES from packages/core/src/locale.ts');
+	process.exit(1);
+}
+
 const failures = [];
 let checked = 0;
 
@@ -66,6 +77,19 @@ for (const pkg of readdirSync(packagesDir)) {
 	if (!/export const SAMPLE_PAYLOADS\b/.test(allSrc)) missing.push('SAMPLE_PAYLOADS');
 	// A templates.test.ts must exist to prove the defaults render.
 	if (!files.some((f) => f.endsWith('templates.test.ts'))) missing.push('templates.test.ts');
+	// Every shipped language: its own file (typed against the module's keys, so a
+	// missing email is a compile error) and the runtime parity assertion — same
+	// parts, same {{variables}} as the English — in the coverage test.
+	for (const lang of LANGUAGES) {
+		if (!files.some((f) => f.endsWith(`templates.${lang}.ts`))) missing.push(`templates.${lang}.ts`);
+	}
+	const testSrc = files
+		.filter((f) => f.endsWith('templates.test.ts'))
+		.map((f) => readFileSync(f, 'utf8'))
+		.join('\n');
+	if (!/translationProblems\(DEFAULT_TEMPLATES\)/.test(testSrc)) {
+		missing.push('translationProblems(DEFAULT_TEMPLATES) assertion in templates.test.ts');
+	}
 
 	if (missing.length) failures.push({ pkg, missing });
 }
@@ -85,5 +109,5 @@ if (failures.length) {
 }
 
 console.log(
-	`check:template-coverage — ${checked} notifying module(s) checked; all ship default templates + coverage test (${ALLOW.size} allow-listed).`,
+	`check:template-coverage — ${checked} notifying module(s) checked; all ship default templates in en + ${LANGUAGES.join(', ')} with a coverage test (${ALLOW.size} allow-listed).`,
 );

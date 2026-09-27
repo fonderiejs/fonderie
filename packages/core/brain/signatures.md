@@ -97,6 +97,7 @@ interface IFonderieApp {
     checkProductionReadiness(): IReadinessReport;
     securityReport(): ISecurityReport;
     adminDescriptions(): IAdminDescriptionEntry[];
+    readonly locales?: ILocaleSettings;
 }
 
 interface IFonderieModule {
@@ -129,6 +130,13 @@ interface ICourierMessage {
 }
 
 interface IDefaultTemplate {
+    subject?: string;
+    text: string;
+    html?: string;
+    locales?: Readonly<Record<string, IDefaultTemplateCopy>>;
+}
+
+interface IDefaultTemplateCopy {
     subject?: string;
     text: string;
     html?: string;
@@ -187,6 +195,7 @@ type BackgroundMode = 'auto' | 'await' | 'detach';
 
 new FonderieApp(config: FonderieConfig): FonderieApp
   .metrics: MetricsRegistry
+  .locales: ILocaleSettings
   .listen(port: number, options?: { name?: string; version?: string; env?: string; quiet?: boolean; }): Server<typeof IncomingMessage, typeof ServerResponse>
   .register(module: IFonderieModule): FonderieApp
   .checkProductionReadiness(): IReadinessReport
@@ -204,6 +213,34 @@ new FonderieApp(config: FonderieConfig): FonderieApp
 const DEFAULT_MAX_BODY_BYTES: number
 
 function defineConfig(config: FonderieConfig): FonderieConfig
+
+interface ILocaleConfig {
+    default?: string;
+    fallbacks?: Record<string, string | readonly string[]>;
+}
+
+interface ILocaleSettings {
+    readonly default: string;
+    readonly fallbacks: Readonly<Record<string, readonly string[]>>;
+}
+
+const DEFAULT_SYSTEM_LOCALE: "en-US"
+
+const MAX_LOCALE_FALLBACKS: 5
+
+function canonicalLocale(tag: string | null | undefined): string | null
+
+function defineLocales(config?: ILocaleConfig): ILocaleSettings
+
+function localeChain(requested: string | null | undefined, settings: ILocaleSettings): string[]
+
+function localeLanguage(tag: string): string
+
+const SHIPPED_TEMPLATE_LANGUAGES: readonly string[]
+
+function translationProblems(defaults: Readonly<Record<string, IDefaultTemplate>>, languages?: readonly string[]): string[]
+
+function withTranslations<K extends string>(english: Record<K, IDefaultTemplate>, translations: Record<string, Record<K, IDefaultTemplateCopy>>): Record<...>
 
 function compose(middlewares: Middleware[]): (ctx: IFonderieContext, fallback: () => Promise<Response>) => Promise<Response>
 
@@ -227,6 +264,7 @@ interface FonderieConfig {
         smtp?: ISMTPConfig;
         provider: 'resend' | 'ses' | 'smtp';
     };
+    locales?: ILocaleConfig;
     skipProductionReadinessGate?: boolean;
     healthChecks?: boolean;
     readyProbe?: () => boolean | Promise<boolean>;
