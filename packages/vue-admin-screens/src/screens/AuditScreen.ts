@@ -1,4 +1,10 @@
-import type { AuditAdminClient, IAdminAuditQuery } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type AuditAdminClient,
+	createAdminT,
+	formatAdminDate,
+	type IAdminAuditQuery,
+} from '@fonderie/client';
 import { useAdminAudit } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -13,6 +19,7 @@ export const AuditScreen = defineComponent({
 	props: {
 		client: { type: Object as PropType<AuditAdminClient>, required: true },
 		pageSize: { type: Number, default: 50 },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	setup(props) {
 		const draft = ref({ workspaceId: '', type: '', actorId: '', from: '', to: '' });
@@ -30,12 +37,10 @@ export const AuditScreen = defineComponent({
 				style: styles.input,
 				'aria-label': placeholder,
 			});
-		return () =>
-			h('div', { style: styles.container }, [
-				pageHeader(
-					'Audit',
-					"What happened, across every workspace unless you name one. The chain's integrity verdict is on the Doctor page.",
-				),
+		return () => {
+			const t = createAdminT(props.locale);
+			return h('div', { style: styles.container }, [
+				pageHeader(t('audit.title'), t('audit.lead')),
 				h(
 					'form',
 					{
@@ -55,9 +60,9 @@ export const AuditScreen = defineComponent({
 						},
 					},
 					[
-						field('workspaceId', 'workspace id (all if empty)'),
-						field('type', 'event type'),
-						field('actorId', 'actor id'),
+						field('workspaceId', t('audit.workspacePlaceholder')),
+						field('type', t('audit.typePlaceholder')),
+						field('actorId', t('audit.actorPlaceholder')),
 						...(['from', 'to'] as const).map((k) =>
 							h('input', {
 								type: 'date',
@@ -65,28 +70,39 @@ export const AuditScreen = defineComponent({
 								onInput: (e: Event) =>
 									(draft.value = { ...draft.value, [k]: (e.target as HTMLInputElement).value }),
 								style: styles.input,
-								'aria-label': k === 'from' ? 'From date' : 'To date',
-								title: k === 'from' ? 'From (inclusive)' : 'To (inclusive)',
+								'aria-label': k === 'from' ? t('audit.fromLabel') : t('audit.toLabel'),
+								title: k === 'from' ? t('audit.fromTitle') : t('audit.toTitle'),
 							}),
 						),
 						h(
 							'button',
 							{ type: 'submit', style: styles.buttonPrimary, disabled: isLoading.value },
-							[icon('search', 14), 'Filter'],
+							[icon('search', 14), t('common.filter')],
 						),
-						refreshButton('Refresh', isLoading.value, () => void refresh()),
+						refreshButton(
+							t('common.refresh'),
+							isLoading.value,
+							() => void refresh(),
+							t('common.working'),
+						),
 					],
 				),
 				error.value
 					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
 					: null,
 				events.value.length === 0 && !isLoading.value
-					? empty('Nothing recorded for this filter', undefined, 'audit')
+					? empty(t('audit.empty'), undefined, 'audit')
 					: table(
-							['When', 'Type', 'Workspace', 'Actor', 'Request'],
+							[
+								t('audit.col.when'),
+								t('audit.col.type'),
+								t('audit.col.workspace'),
+								t('audit.col.actor'),
+								t('audit.col.request'),
+							],
 							events.value.map((e) =>
 								h('tr', { key: e.id }, [
-									td(new Date(e.createdAt).toLocaleString(), styles.muted),
+									td(formatAdminDate(e.createdAt, props.locale), styles.muted),
 									td(e.type, styles.mono),
 									td(String(e.payload['workspaceId'] ?? '—'), styles.mono),
 									td(e.actorId ?? '—', styles.mono),
@@ -94,8 +110,11 @@ export const AuditScreen = defineComponent({
 								]),
 							),
 						),
-				isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
-				hasMore.value && !isLoading.value ? loadMoreButton(() => void loadMore()) : null,
+				isLoading.value ? h('p', { style: styles.status }, t('common.loading')) : null,
+				hasMore.value && !isLoading.value
+					? loadMoreButton(() => void loadMore(), t('common.loadMore'))
+					: null,
 			]);
+		};
 	},
 });

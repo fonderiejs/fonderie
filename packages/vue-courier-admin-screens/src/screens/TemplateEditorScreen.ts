@@ -1,9 +1,13 @@
 import type {
+	AdminLocale,
+	AdminMessageKey,
+	AdminMessageParams,
 	CourierAdminClient,
 	FonderieApiError,
 	ISetTemplateInput,
 	ITemplateRevision,
 } from '@fonderie/client';
+import { createAdminT, formatAdminDate } from '@fonderie/client';
 import {
 	useTemplate,
 	useTemplatePreview,
@@ -33,6 +37,8 @@ export const TemplateEditorScreen = defineComponent({
 		system: { type: Boolean, default: false },
 		/** Shows "+ Add locale" on the default locale (emits add-locale). */
 		allowAddLocale: { type: Boolean, default: false },
+		/** The console language (`locale` is the template's); defaults to English. */
+		uiLocale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	emits: {
 		saved: () => true,
@@ -42,6 +48,8 @@ export const TemplateEditorScreen = defineComponent({
 		'add-locale': (_type: string) => true,
 	},
 	setup(props, { emit }) {
+		const t = (key: AdminMessageKey, params?: AdminMessageParams) =>
+			createAdminT(props.uiLocale)(key, params);
 		const { template, isLoading, error, refresh } = useTemplate(
 			props.client,
 			props.type,
@@ -79,20 +87,20 @@ export const TemplateEditorScreen = defineComponent({
 		// Sample values as JSON text rather than an object, so a half-typed value
 		// does not have to parse on every keystroke.
 		const sampleJson = ref('{}');
-		const sampleError = ref<string | null>(null);
+		const sampleError = ref<AdminMessageKey | null>(null);
 
 		async function run() {
 			let data: Record<string, unknown> = {};
 			try {
 				const parsed: unknown = JSON.parse(sampleJson.value || '{}');
 				if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-					sampleError.value = 'Sample data must be a JSON object.';
+					sampleError.value = 'templates.editor.sampleNotObject';
 					return;
 				}
 				data = parsed as Record<string, unknown>;
 				sampleError.value = null;
 			} catch {
-				sampleError.value = 'Sample data is not valid JSON.';
+				sampleError.value = 'templates.editor.sampleInvalid';
 				return;
 			}
 			const result = await renderPreview(
@@ -164,13 +172,10 @@ export const TemplateEditorScreen = defineComponent({
 		}
 
 		async function handleDelete() {
-			const which = props.locale
-				? `the ${props.locale} version of "${props.type}"`
-				: `"${props.type}"`;
-			const fallback = props.locale
-				? ' People in that locale will receive the default version.'
-				: '';
-			if (!window.confirm(`Delete ${which}?${fallback}`)) return;
+			const message = props.locale
+				? t('templates.editor.confirmDeleteLocale', { locale: props.locale, type: props.type })
+				: t('templates.editor.confirmDelete', { type: props.type });
+			if (!window.confirm(message)) return;
 			isDeleting.value = true;
 			saveError.value = null;
 			try {
@@ -187,18 +192,18 @@ export const TemplateEditorScreen = defineComponent({
 			return h('li', { key: rev.version, style: styles.revisionRow }, [
 				h(
 					'span',
-					`v${rev.version} — ${rev.actor ?? 'unknown'} — ${new Date(rev.createdAt).toLocaleString()}`,
+					`v${rev.version} — ${rev.actor ?? t('templates.editor.unknownActor')} — ${formatAdminDate(rev.createdAt, props.uiLocale)}`,
 				),
 				h(
 					'button',
 					{ type: 'button', style: styles.rollbackButton, onClick: () => rollback(rev.version) },
-					'Roll back',
+					t('templates.editor.rollBack'),
 				),
 			]);
 		}
 
 		return () => {
-			if (isLoading.value) return h('p', { style: styles.status }, 'Loading template…');
+			if (isLoading.value) return h('p', { style: styles.status }, t('templates.editor.loading'));
 			if (error.value)
 				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
 
@@ -216,20 +221,20 @@ export const TemplateEditorScreen = defineComponent({
 										style: { ...styles.rollbackButton, marginLeft: 'auto' },
 										onClick: () => emit('add-locale', props.type),
 									},
-									'+ Add locale',
+									t('templates.editor.addLocale'),
 								)
 							: null,
 					],
 				),
 				h('p', { style: styles.meta }, [
-					h('strong', props.locale ?? 'default locale'),
+					h('strong', props.locale ?? t('templates.defaultLocale')),
 					` · v${template.value?.version ?? 1}`,
-					props.system ? ' · built-in email: edit or roll back, it cannot be deleted' : '',
+					props.system ? ` · ${t('templates.editor.builtInNote')}` : '',
 				]),
 				h('div', { style: styles.split }, [
 					h('div', { style: styles.column }, [
 						h('form', { style: styles.form, onSubmit: handleSubmit }, [
-							h('label', { style: styles.label, for: 'template-subject' }, 'Subject'),
+							h('label', { style: styles.label, for: 'template-subject' }, t('templates.subject')),
 							h('input', {
 								id: 'template-subject',
 								style: styles.input,
@@ -238,7 +243,7 @@ export const TemplateEditorScreen = defineComponent({
 									subject.value = (e.target as HTMLInputElement).value;
 								},
 							}),
-							h('label', { style: styles.label, for: 'template-html' }, 'HTML body'),
+							h('label', { style: styles.label, for: 'template-html' }, t('templates.htmlBody')),
 							h('textarea', {
 								id: 'template-html',
 								style: styles.textarea,
@@ -248,7 +253,7 @@ export const TemplateEditorScreen = defineComponent({
 									html.value = (e.target as HTMLTextAreaElement).value;
 								},
 							}),
-							h('label', { style: styles.label, for: 'template-text' }, 'Plain-text body'),
+							h('label', { style: styles.label, for: 'template-text' }, t('templates.textBody')),
 							h('textarea', {
 								id: 'template-text',
 								style: styles.textarea,
@@ -267,11 +272,11 @@ export const TemplateEditorScreen = defineComponent({
 										active.value = (e.target as HTMLInputElement).checked;
 									},
 								}),
-								'Active',
+								t('templates.editor.active'),
 							]),
 							saveError.value?.reason === 'VERSION_CONFLICT'
 								? h('p', { style: styles.error, role: 'alert' }, [
-										'Someone changed this template since you opened it. Reload to see their change, then edit again. ',
+										`${t('templates.editor.conflict')} `,
 										h(
 											'button',
 											{
@@ -282,7 +287,7 @@ export const TemplateEditorScreen = defineComponent({
 													void refresh();
 												},
 											},
-											'Reload',
+											t('common.reload'),
 										),
 									])
 								: saveError.value
@@ -296,10 +301,10 @@ export const TemplateEditorScreen = defineComponent({
 										disabled: isSaving.value || !dirty.value,
 										style: dirty.value ? styles.button : styles.buttonDisabled,
 									},
-									isSaving.value ? 'Saving…' : 'Save',
+									isSaving.value ? t('common.saving') : t('common.save'),
 								),
 								!dirty.value && !isSaving.value
-									? h('span', { style: styles.meta }, 'No changes to save')
+									? h('span', { style: styles.meta }, t('templates.editor.noChanges'))
 									: null,
 								!props.system
 									? h(
@@ -317,12 +322,12 @@ export const TemplateEditorScreen = defineComponent({
 														'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
 												},
 											},
-											isDeleting.value ? 'Deleting…' : 'Delete',
+											isDeleting.value ? t('common.deleting') : t('common.delete'),
 										)
 									: null,
 							]),
 						]),
-						h('label', { style: styles.label, for: 'template-sample' }, 'Sample data'),
+						h('label', { style: styles.label, for: 'template-sample' }, t('templates.editor.sampleData')),
 						h('textarea', {
 							id: 'template-sample',
 							style: styles.textarea,
@@ -334,13 +339,13 @@ export const TemplateEditorScreen = defineComponent({
 							},
 						}),
 						sampleError.value
-							? h('p', { style: styles.error, role: 'alert' }, sampleError.value)
+							? h('p', { style: styles.error, role: 'alert' }, t(sampleError.value))
 							: null,
 					]),
 					h('div', { style: styles.previewColumn }, [
 						h('div', { style: styles.previewHeader }, [
-							h('span', { style: styles.label }, 'Preview'),
-							h('span', { style: styles.meta }, isPreviewing.value ? 'Rendering…' : 'Live'),
+							h('span', { style: styles.label }, t('templates.editor.preview')),
+							h('span', { style: styles.meta }, isPreviewing.value ? t('templates.editor.rendering') : t('templates.editor.live')),
 						]),
 						previewError.value
 							? h('p', { style: styles.error, role: 'alert' }, previewError.value.explanation)
@@ -353,19 +358,19 @@ export const TemplateEditorScreen = defineComponent({
 								// must never execute in the dashboard's origin, where the admin
 								// token lives.
 								h('iframe', {
-									title: 'Template preview',
+									title: t('templates.editor.previewTitle'),
 									style: styles.previewFrame,
 									sandbox: '',
 									srcdoc: preview.value.html,
 								})
 							: preview.value
 								? h('pre', { style: styles.previewText }, preview.value.text)
-								: h('p', { style: styles.meta }, 'Nothing rendered yet.'),
+								: h('p', { style: styles.meta }, t('templates.editor.nothingRendered')),
 					]),
 				]),
 				revisions.value.length > 0
 					? h('div', { style: styles.revisions }, [
-							h('h2', { style: styles.subtitle }, 'History'),
+							h('h2', { style: styles.subtitle }, t('templates.editor.history')),
 							h('ul', { style: styles.list }, revisions.value.map(renderRevision)),
 						])
 					: null,

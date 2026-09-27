@@ -1,4 +1,9 @@
-import type { AuditAdminClient } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type AuditAdminClient,
+	createAdminT,
+	formatAdminDate,
+} from '@fonderie/client';
 import { useAdminAudit } from '@fonderie/react-admin';
 import { useState } from 'react';
 import { styles } from '../styles';
@@ -7,11 +12,13 @@ import { Empty, Icon, PageHeader } from '../ui';
 export interface IAuditScreenProps {
 	client: AuditAdminClient;
 	pageSize?: number;
+	locale?: AdminLocale | undefined;
 }
 
 // What happened — every workspace unless one is named. The chain's integrity
 // verdict is on the Doctor page (events.integrity).
-export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
+export function AuditScreen({ client, pageSize = 50, locale }: IAuditScreenProps) {
+	const t = createAdminT(locale);
 	const [draft, setDraft] = useState({ workspaceId: '', type: '', actorId: '', from: '', to: '' });
 	const [filter, setFilter] = useState<{
 		workspaceId?: string;
@@ -35,10 +42,7 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 	);
 	return (
 		<div style={styles.container}>
-			<PageHeader
-				title="Audit"
-				lead="What happened, across every workspace unless you name one. The chain's integrity verdict is on the Doctor page."
-			/>
+			<PageHeader title={t('audit.title')} lead={t('audit.lead')} />
 			<form
 				style={styles.toolbar}
 				onSubmit={(e) => {
@@ -53,28 +57,28 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 					});
 				}}
 			>
-				{field('workspaceId', 'workspace id (all if empty)')}
-				{field('type', 'event type')}
-				{field('actorId', 'actor id')}
+				{field('workspaceId', t('audit.workspacePlaceholder'))}
+				{field('type', t('audit.typePlaceholder'))}
+				{field('actorId', t('audit.actorPlaceholder'))}
 				<input
 					type="date"
 					value={draft.from}
 					onChange={(e) => setDraft({ ...draft, from: e.target.value })}
 					style={styles.input}
-					aria-label="From date"
-					title="From (inclusive)"
+					aria-label={t('audit.fromLabel')}
+					title={t('audit.fromTitle')}
 				/>
 				<input
 					type="date"
 					value={draft.to}
 					onChange={(e) => setDraft({ ...draft, to: e.target.value })}
 					style={styles.input}
-					aria-label="To date"
-					title="To (inclusive)"
+					aria-label={t('audit.toLabel')}
+					title={t('audit.toTitle')}
 				/>
 				<button type="submit" style={styles.buttonPrimary} disabled={isLoading}>
 					<Icon name="search" size={14} />
-					Filter
+					{t('common.filter')}
 				</button>
 				<button
 					type="button"
@@ -82,7 +86,7 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 					onClick={() => void refresh()}
 					disabled={isLoading}
 				>
-					Refresh
+					{t('common.refresh')}
 				</button>
 			</form>
 			{error ? (
@@ -91,23 +95,23 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 				</p>
 			) : null}
 			{events.length === 0 && !isLoading ? (
-				<Empty icon="audit" title="Nothing recorded for this filter" />
+				<Empty icon="audit" title={t('audit.empty')} />
 			) : (
 				<table style={styles.table}>
 					<thead>
 						<tr>
-							<th style={styles.th}>When</th>
-							<th style={styles.th}>Type</th>
-							<th style={styles.th}>Workspace</th>
-							<th style={styles.th}>Actor</th>
-							<th style={styles.th}>Request</th>
+							<th style={styles.th}>{t('audit.col.when')}</th>
+							<th style={styles.th}>{t('audit.col.type')}</th>
+							<th style={styles.th}>{t('audit.col.workspace')}</th>
+							<th style={styles.th}>{t('audit.col.actor')}</th>
+							<th style={styles.th}>{t('audit.col.request')}</th>
 						</tr>
 					</thead>
 					<tbody>
 						{events.map((e) => (
 							<tr key={e.id}>
 								<td style={{ ...styles.td, ...styles.muted }}>
-									{new Date(e.createdAt).toLocaleString()}
+									{formatAdminDate(e.createdAt, locale)}
 								</td>
 								<td style={{ ...styles.td, ...styles.mono }}>{e.type}</td>
 								<td style={{ ...styles.td, ...styles.mono }}>
@@ -120,14 +124,14 @@ export function AuditScreen({ client, pageSize = 50 }: IAuditScreenProps) {
 					</tbody>
 				</table>
 			)}
-			{isLoading ? <p style={styles.status}>Loading…</p> : null}
+			{isLoading ? <p style={styles.status}>{t('common.loading')}</p> : null}
 			{hasMore && !isLoading ? (
 				<button
 					type="button"
 					style={{ ...styles.button, marginTop: 8 }}
 					onClick={() => void loadMore()}
 				>
-					Load more
+					{t('common.loadMore')}
 				</button>
 			) : null}
 		</div>

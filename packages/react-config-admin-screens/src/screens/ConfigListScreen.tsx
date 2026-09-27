@@ -1,4 +1,10 @@
-import { type ConfigAdminClient, configValueType, formatConfigValue } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type ConfigAdminClient,
+	configValueType,
+	createAdminT,
+	formatConfigValue,
+} from '@fonderie/client';
 import { useConfigEntries, useRevealSecret, useSecrets } from '@fonderie/react-config-admin';
 import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
@@ -22,9 +28,10 @@ export interface IConfigListScreenProps {
 	onCreateConfig?: (context: { environments: string[]; environment: string | null }) => void;
 	/** Shows a "New secret" button. Same context. */
 	onCreateSecret?: (context: { environments: string[]; environment: string | null }) => void;
+	/** The console's language. Default English. */
+	locale?: AdminLocale | undefined;
 }
 
-const TYPE_BADGE = { string: 'text', number: 'number', boolean: 'on/off', json: 'json' } as const;
 
 // One line of the value for the list: long text and JSON are cut, not wrapped.
 function preview(value: unknown): string {
@@ -40,7 +47,15 @@ export function ConfigListScreen({
 	onCreateConfig,
 	onCreateSecret,
 	publicConfigUrl,
+	locale,
 }: IConfigListScreenProps) {
+	const t = createAdminT(locale);
+	const typeBadge = {
+		string: t('config.type.text'),
+		number: t('config.type.number'),
+		boolean: t('config.type.onOff'),
+		json: t('config.type.json'),
+	} as const;
 	const {
 		entries,
 		isLoading: isLoadingConfig,
@@ -90,23 +105,20 @@ export function ConfigListScreen({
 	return (
 		<div style={styles.container}>
 			<div style={{ ...styles.heading, marginTop: 0 }}>
-				<h1 style={styles.title}>Config</h1>
+				<h1 style={styles.title}>{t('config.list.title')}</h1>
 				{onCreateConfig && (
 					<button
 						type="button"
 						onClick={() => onCreateConfig({ environments: envs, environment: envFilter })}
 						style={styles.newButton}
 					>
-						New entry
+						{t('config.list.newEntry')}
 					</button>
 				)}
 			</div>
-			<p style={styles.hint}>
-				Feature flags and runtime settings — text, numbers, on/off or JSON. Read by the app without
-				a deploy.
-			</p>
+			<p style={styles.hint}>{t('config.list.hint')}</p>
 			{envs.length > 1 ? (
-				<fieldset style={styles.envBar} aria-label="Environment">
+				<fieldset style={styles.envBar} aria-label={t('config.environment')}>
 					{[null, ...envs].map((e) => (
 						<button
 							key={e ?? '*'}
@@ -115,13 +127,13 @@ export function ConfigListScreen({
 							onClick={() => setEnvFilter(e)}
 							style={envFilter === e ? styles.envOn : styles.envOff}
 						>
-							{e ?? 'All environments'}
+							{e ?? t('common.allEnvironments')}
 						</button>
 					))}
 				</fieldset>
 			) : null}
 			{isLoadingConfig ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('common.loading')}</p>
 			) : configError ? (
 				<p style={styles.error} role="alert">
 					{configError.explanation}
@@ -129,8 +141,10 @@ export function ConfigListScreen({
 			) : shownEntries.length === 0 ? (
 				<p style={styles.empty}>
 					{envFilter
-						? `No config in ${envFilter}. Entries in "all" still apply there.`
-						: `No config entries yet.${onCreateConfig ? ' Create one to toggle a feature or tune a setting without redeploying.' : ''}`}
+						? t('config.list.emptyInEnv', { env: envFilter })
+						: onCreateConfig
+							? `${t('config.list.empty')} ${t('config.list.emptyCta')}`
+							: t('config.list.empty')}
 				</p>
 			) : (
 				<ul style={styles.list}>
@@ -145,13 +159,13 @@ export function ConfigListScreen({
 								{publicValues && Object.hasOwn(publicValues, entry.key) ? (
 									<span
 										style={styles.publicBadge}
-										title="Served to frontends by GET /config/public"
+										title={t('config.list.publicTitle')}
 									>
-										public
+										{t('config.list.publicBadge')}
 									</span>
 								) : null}
 								<span style={styles.valuePreview}>{preview(entry.value)}</span>
-								<span style={styles.badge}>{TYPE_BADGE[configValueType(entry.value)]}</span>
+								<span style={styles.badge}>{typeBadge[configValueType(entry.value)]}</span>
 								<span style={styles.env}>{entry.environment}</span>
 							</button>
 						</li>
@@ -162,38 +176,42 @@ export function ConfigListScreen({
 			{publicValues ? (
 				<details style={styles.publicBox}>
 					<summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13.5 }}>
-						What frontends receive ({Object.keys(publicValues).length} public{' '}
-						{Object.keys(publicValues).length === 1 ? 'key' : 'keys'})
+						{Object.keys(publicValues).length === 1
+							? t('config.list.publicSummaryOne')
+							: t('config.list.publicSummary', { n: Object.keys(publicValues).length })}
 					</summary>
 					<p style={{ ...styles.hint, margin: '8px 0' }}>
-						Exactly the body of <code>GET /config/public</code> — unauthenticated, so anyone can
-						read it. Only keys the app lists as public appear.
+						{t('config.list.publicHint', { route: 'GET /config/public' })}
 					</p>
 					<pre style={styles.publicPre}>{JSON.stringify(publicValues, null, 2)}</pre>
 				</details>
 			) : null}
 
 			<div style={styles.heading}>
-				<h2 style={styles.title}>Secrets</h2>
+				<h2 style={styles.title}>{t('config.list.secretsTitle')}</h2>
 				{onCreateSecret && (
 					<button
 						type="button"
 						onClick={() => onCreateSecret({ environments: envs, environment: envFilter })}
 						style={styles.newButton}
 					>
-						New secret
+						{t('config.list.newSecret')}
 					</button>
 				)}
 			</div>
-			<p style={styles.hint}>Encrypted at rest; values are hidden until revealed.</p>
+			<p style={styles.hint}>{t('config.list.secretsHint')}</p>
 			{isLoadingSecrets ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('common.loading')}</p>
 			) : secretsError ? (
 				<p style={styles.error} role="alert">
 					{secretsError.explanation}
 				</p>
 			) : shownSecrets.length === 0 ? (
-				<p style={styles.empty}>{envFilter ? `No secrets in ${envFilter}.` : 'No secrets yet.'}</p>
+				<p style={styles.empty}>
+					{envFilter
+						? t('config.list.secretsEmptyInEnv', { env: envFilter })
+						: t('config.list.secretsEmpty')}
+				</p>
 			) : (
 				<ul style={styles.list}>
 					{shownSecrets.map((secret) => (
@@ -215,7 +233,7 @@ export function ConfigListScreen({
 								onClick={() => handleReveal(secret.key, envOf(secret))}
 								style={styles.revealButton}
 							>
-								Reveal
+								{t('config.reveal')}
 							</button>
 						</li>
 					))}

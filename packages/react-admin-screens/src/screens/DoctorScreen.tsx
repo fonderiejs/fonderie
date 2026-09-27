@@ -1,34 +1,41 @@
-import type { AdminClient } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
 import { useDoctor } from '@fonderie/react-admin';
 import { styles } from '../styles';
 import { PageHeader, Pill, RefreshButton } from '../ui';
 
 export interface IDoctorScreenProps {
 	client: AdminClient;
+	locale?: AdminLocale | undefined;
 }
 
 // Every reconciliation check, on demand. ok is false only for a hard failure;
 // findings on a passing check are advice.
-export function DoctorScreen({ client }: IDoctorScreenProps) {
+export function DoctorScreen({ client, locale }: IDoctorScreenProps) {
+	const t = createAdminT(locale);
 	const { report, isLoading, error, refresh } = useDoctor(client);
 	return (
 		<div style={styles.container}>
 			<PageHeader
-				title="Doctor"
-				lead="Every reconciliation check across the installed modules, run on demand."
+				title={t('doctor.title')}
+				lead={t('doctor.lead')}
 				actions={
 					<>
 						{report && !isLoading ? (
 							<Pill tone={report.ok ? 'ok' : 'bad'}>
-								{report.ok ? 'all checks pass' : 'a check failed'}
+								{report.ok ? t('doctor.allPass') : t('doctor.oneFailed')}
 							</Pill>
 						) : null}
-						<RefreshButton onClick={() => void refresh()} busy={isLoading} label="Run again" />
+						<RefreshButton
+							onClick={() => void refresh()}
+							busy={isLoading}
+							label={t('doctor.runAgain')}
+							busyLabel={t('common.working')}
+						/>
 					</>
 				}
 			/>
 			{isLoading && !report ? (
-				<p style={styles.status}>Running the checks…</p>
+				<p style={styles.status}>{t('doctor.running')}</p>
 			) : error ? (
 				<p style={styles.error} role="alert">
 					{error.explanation}
@@ -37,9 +44,9 @@ export function DoctorScreen({ client }: IDoctorScreenProps) {
 				<table style={styles.table}>
 					<thead>
 						<tr>
-							<th style={{ ...styles.th, width: 110 }}>Result</th>
-							<th style={styles.th}>Check</th>
-							<th style={{ ...styles.th, textAlign: 'right', width: 90 }}>Time</th>
+							<th style={{ ...styles.th, width: 110 }}>{t('doctor.colResult')}</th>
+							<th style={styles.th}>{t('doctor.colCheck')}</th>
+							<th style={{ ...styles.th, textAlign: 'right', width: 90 }}>{t('doctor.colTime')}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -52,12 +59,12 @@ export function DoctorScreen({ client }: IDoctorScreenProps) {
 										}
 									>
 										{c.skipped
-											? 'skipped'
+											? t('common.status.skipped')
 											: c.ok
 												? c.findings.length
-													? 'advice'
-													: 'ok'
-												: 'failed'}
+													? t('common.status.advice')
+													: t('common.status.ok')
+												: t('common.status.failed')}
 									</Pill>
 								</td>
 								<td style={styles.td}>

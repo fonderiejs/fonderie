@@ -1,4 +1,13 @@
-import type { AdminClient, AdminScope, IAdminCreatedLink, IAdminOperator } from '@fonderie/client';
+import {
+	type AdminClient,
+	type AdminLocale,
+	type AdminScope,
+	type AdminT,
+	type IAdminCreatedLink,
+	type IAdminOperator,
+	createAdminT,
+	formatAdminDate,
+} from '@fonderie/client';
 import { useAdminOperators } from '@fonderie/react-admin';
 import { useState } from 'react';
 import { styles } from '../styles';
@@ -9,22 +18,30 @@ export interface IOperatorsScreenProps {
 	// The signed-in operator's email: their own row offers no disable or
 	// recovery (the server refuses both for yourself anyway).
 	me?: string | undefined;
+	locale?: AdminLocale | undefined;
 }
 
 // Access levels as people think of them; scopes underneath.
-const LEVELS: Array<{ label: string; scopes: AdminScope[]; hint: string }> = [
-	{ label: 'Read only', scopes: ['read'], hint: 'look around, change nothing' },
-	{ label: 'Editor', scopes: ['read', 'write'], hint: 'change config, templates, users' },
-	{
-		label: 'Owner',
-		scopes: ['read', 'write', 'secrets'],
-		hint: 'secrets, tokens and operators too',
-	},
+type LevelId = 'read' | 'editor' | 'owner';
+const LEVELS: Array<{ id: LevelId; scopes: AdminScope[] }> = [
+	{ id: 'read', scopes: ['read'] },
+	{ id: 'editor', scopes: ['read', 'write'] },
+	{ id: 'owner', scopes: ['read', 'write', 'secrets'] },
 ];
-const levelOf = (scopes: readonly AdminScope[]) =>
-	scopes.includes('secrets') ? 'Owner' : scopes.includes('write') ? 'Editor' : 'Read only';
+const levelOf = (scopes: readonly AdminScope[]): LevelId =>
+	scopes.includes('secrets') ? 'owner' : scopes.includes('write') ? 'editor' : 'read';
 
-function Minted({ link, onClose }: { link: IAdminCreatedLink; onClose: () => void }) {
+function Minted({
+	link,
+	onClose,
+	t,
+	locale,
+}: {
+	link: IAdminCreatedLink;
+	onClose: () => void;
+	t: AdminT;
+	locale: AdminLocale | undefined;
+}) {
 	const [copied, setCopied] = useState(false);
 	const url = `${window.location.origin}${link.url}`;
 	return (
@@ -35,8 +52,8 @@ function Minted({ link, onClose }: { link: IAdminCreatedLink; onClose: () => voi
 				borderColor: 'color-mix(in srgb, var(--fonderie-accent,#00d294) 35%, transparent)',
 			}}
 		>
-			<strong>Send this link to {link.email}. It is shown once.</strong> It works once and expires{' '}
-			{new Date(link.expiresAt).toLocaleString()}.
+			<strong>{t('operators.mintedTitle', { email: link.email })}</strong>{' '}
+			{t('operators.mintedBody', { date: formatAdminDate(link.expiresAt, locale) })}
 			<div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
 				<code style={{ ...styles.code, flex: 1, padding: '7px 10px', wordBreak: 'break-all' }}>
 					{url}
@@ -49,9 +66,14 @@ function Minted({ link, onClose }: { link: IAdminCreatedLink; onClose: () => voi
 						setCopied(true);
 					}}
 				>
-					{copied ? 'Copied' : 'Copy'}
+					{copied ? t('common.copied') : t('common.copy')}
 				</button>
-				<button type="button" style={styles.buttonGhost} onClick={onClose} aria-label="Dismiss">
+				<button
+					type="button"
+					style={styles.buttonGhost}
+					onClick={onClose}
+					aria-label={t('common.dismiss')}
+				>
 					<Icon name="close" size={14} />
 				</button>
 			</div>
@@ -62,39 +84,39 @@ function Minted({ link, onClose }: { link: IAdminCreatedLink; onClose: () => voi
 // The people who can sign in here. No registration: an owner invites, the
 // invitee sets a password and an authenticator. Lost device or password → a
 // recovery link from another owner.
-export function OperatorsScreen({ client, me }: IOperatorsScreenProps) {
+export function OperatorsScreen({ client, me, locale }: IOperatorsScreenProps) {
+	const t = createAdminT(locale);
 	const { report, isLoading, error, invite, recover, update, revokeLink } =
 		useAdminOperators(client);
 	const [email, setEmail] = useState('');
-	const [level, setLevel] = useState('Editor');
+	const [level, setLevel] = useState<LevelId>('editor');
 	const [minted, setMinted] = useState<IAdminCreatedLink | null>(null);
 
-	const scopesFor = (label: string) => LEVELS.find((l) => l.label === label)?.scopes ?? ['read'];
+	const scopesFor = (id: string) => LEVELS.find((l) => l.id === id)?.scopes ?? ['read'];
 	const status = (o: IAdminOperator) =>
 		o.disabledAt ? (
-			<Pill tone="neutral">disabled</Pill>
+			<Pill tone="neutral">{t('common.status.disabled')}</Pill>
 		) : o.locked ? (
-			<Pill tone="warn">locked</Pill>
+			<Pill tone="warn">{t('common.status.locked')}</Pill>
 		) : !o.enrolled ? (
-			<Pill tone="warn">setting up</Pill>
+			<Pill tone="warn">{t('operators.settingUp')}</Pill>
 		) : (
-			<Pill tone="ok">active</Pill>
+			<Pill tone="ok">{t('common.status.active')}</Pill>
 		);
 
 	return (
 		<div style={styles.container}>
-			<PageHeader
-				title="Operators"
-				lead="The people who can sign in to this console. Each one uses a password and an authenticator app; there is no sign-up."
-			/>
+			<PageHeader title={t('operators.title')} lead={t('operators.lead')} />
 			{error ? (
 				<p style={styles.error} role="alert">
 					{error.status === 403 && error.reason === 'FORBIDDEN'
-						? 'Managing operators needs the Owner level.'
+						? t('operators.needsOwner')
 						: error.explanation}
 				</p>
 			) : null}
-			{minted ? <Minted link={minted} onClose={() => setMinted(null)} /> : null}
+			{minted ? (
+				<Minted link={minted} onClose={() => setMinted(null)} t={t} locale={locale} />
+			) : null}
 
 			<form
 				style={{
@@ -116,46 +138,46 @@ export function OperatorsScreen({ client, me }: IOperatorsScreenProps) {
 				}}
 			>
 				<Icon name="users" size={16} />
-				<strong style={{ fontSize: 13.5, marginRight: 4 }}>Invite</strong>
+				<strong style={{ fontSize: 13.5, marginRight: 4 }}>{t('operators.invite')}</strong>
 				<input
 					type="email"
 					required
 					value={email}
 					onChange={(e) => setEmail(e.target.value)}
-					placeholder="teammate@company.com"
+					placeholder={t('operators.invitePlaceholder')}
 					style={{ ...styles.input, flex: 1, minWidth: 220 }}
-					aria-label="Email to invite"
+					aria-label={t('operators.inviteLabel')}
 				/>
 				<select
 					value={level}
-					onChange={(e) => setLevel(e.target.value)}
+					onChange={(e) => setLevel(e.target.value as LevelId)}
 					style={styles.input}
-					aria-label="Access level"
+					aria-label={t('operators.accessLevelLabel')}
 				>
 					{LEVELS.map((l) => (
-						<option key={l.label} value={l.label}>
-							{l.label} — {l.hint}
+						<option key={l.id} value={l.id}>
+							{t(`operators.level.${l.id}`)} — {t(`operators.levelHint.${l.id}`)}
 						</option>
 					))}
 				</select>
 				<button type="submit" style={styles.buttonPrimary} disabled={!email.trim()}>
 					<Icon name="plus" size={14} />
-					Create invite link
+					{t('operators.createInvite')}
 				</button>
 			</form>
 
 			{isLoading && !report ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('common.loading')}</p>
 			) : report && report.operators.length === 0 ? (
-				<Empty icon="users" title="No operators yet" />
+				<Empty icon="users" title={t('operators.emptyTitle')} />
 			) : report ? (
 				<table style={styles.table}>
 					<thead>
 						<tr>
-							<th style={styles.th}>Operator</th>
-							<th style={styles.th}>Access</th>
-							<th style={styles.th}>Status</th>
-							<th style={styles.th}>Last sign-in</th>
+							<th style={styles.th}>{t('operators.col.operator')}</th>
+							<th style={styles.th}>{t('operators.col.access')}</th>
+							<th style={styles.th}>{t('operators.col.status')}</th>
+							<th style={styles.th}>{t('operators.col.lastSignIn')}</th>
 							<th style={styles.th} />
 						</tr>
 					</thead>
@@ -174,11 +196,11 @@ export function OperatorsScreen({ client, me }: IOperatorsScreenProps) {
 										}
 										style={{ ...styles.input, height: 28, fontSize: 12.5 }}
 										disabled={o.email === me}
-										aria-label={`Access level for ${o.email}`}
+										aria-label={t('operators.accessLevelFor', { email: o.email })}
 									>
 										{LEVELS.map((l) => (
-											<option key={l.label} value={l.label}>
-												{l.label}
+											<option key={l.id} value={l.id}>
+												{t(`operators.level.${l.id}`)}
 											</option>
 										))}
 									</select>
@@ -187,33 +209,34 @@ export function OperatorsScreen({ client, me }: IOperatorsScreenProps) {
 									{status(o)}
 									{o.enrolled && o.backupCodesLeft <= 2 && !o.disabledAt ? (
 										<div style={{ ...styles.muted, marginTop: 4 }}>
-											{o.backupCodesLeft} backup code(s) left
+											{t(
+												o.backupCodesLeft === 1
+													? 'operators.backupCodesLeftOne'
+													: 'operators.backupCodesLeftMany',
+												{ n: o.backupCodesLeft },
+											)}
 										</div>
 									) : null}
 								</td>
 								<td style={{ ...styles.td, ...styles.muted, whiteSpace: 'nowrap' }}>
-									{o.lastLoginAt ? new Date(o.lastLoginAt).toLocaleString() : 'never'}
+									{o.lastLoginAt ? formatAdminDate(o.lastLoginAt, locale) : t('common.never')}
 								</td>
 								<td style={{ ...styles.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
 									{o.email === me ? (
-										<span style={styles.muted}>you</span>
+										<span style={styles.muted}>{t('common.you')}</span>
 									) : (
 										<>
 											<button
 												type="button"
 												style={{ ...styles.button, height: 28, marginRight: 6 }}
 												onClick={() => {
-													if (
-														window.confirm(
-															`Create a recovery link for ${o.email}? It signs them out everywhere; the link sets a new password and a new authenticator.`,
-														)
-													)
+													if (window.confirm(t('operators.recoveryConfirm', { email: o.email })))
 														void recover(o.id)
 															.then(setMinted)
 															.catch(() => {});
 												}}
 											>
-												Recovery link
+												{t('operators.recoveryLink')}
 											</button>
 											<button
 												type="button"
@@ -224,12 +247,12 @@ export function OperatorsScreen({ client, me }: IOperatorsScreenProps) {
 												onClick={() => {
 													if (
 														o.disabledAt ||
-														window.confirm(`Disable ${o.email}? They are signed out immediately.`)
+														window.confirm(t('operators.disableConfirm', { email: o.email }))
 													)
 														void update(o.id, { disabled: !o.disabledAt }).catch(() => {});
 												}}
 											>
-												{o.disabledAt ? 'Enable' : 'Disable'}
+												{o.disabledAt ? t('operators.enable') : t('operators.disable')}
 											</button>
 										</>
 									)}
@@ -242,7 +265,7 @@ export function OperatorsScreen({ client, me }: IOperatorsScreenProps) {
 
 			{report && report.links.length > 0 ? (
 				<>
-					<h2 style={styles.subtitle}>Pending links</h2>
+					<h2 style={styles.subtitle}>{t('operators.pendingLinks')}</h2>
 					<ul style={styles.list}>
 						{report.links.map((l) => (
 							<li
@@ -250,21 +273,25 @@ export function OperatorsScreen({ client, me }: IOperatorsScreenProps) {
 								style={{ ...styles.row, display: 'flex', gap: 12, alignItems: 'center' }}
 							>
 								<Pill tone={l.kind === 'invite' ? 'info' : 'warn'} dot={false}>
-									{l.kind}
+									{l.kind === 'invite'
+										? t('operators.linkKind.invite')
+										: t('operators.linkKind.recovery')}
 								</Pill>
 								<span style={{ flex: 1 }}>
 									{l.email}
 									{l.kind === 'invite' ? (
-										<span style={styles.muted}> · {levelOf(l.scopes)}</span>
+										<span style={styles.muted}> · {t(`operators.level.${levelOf(l.scopes)}`)}</span>
 									) : null}
 								</span>
-								<span style={styles.muted}>expires {new Date(l.expiresAt).toLocaleString()}</span>
+								<span style={styles.muted}>
+									{t('operators.expiresOn', { date: formatAdminDate(l.expiresAt, locale) })}
+								</span>
 								<button
 									type="button"
 									style={{ ...styles.buttonDanger, height: 28 }}
 									onClick={() => void revokeLink(l.id).catch(() => {})}
 								>
-									Revoke
+									{t('operators.revoke')}
 								</button>
 							</li>
 						))}

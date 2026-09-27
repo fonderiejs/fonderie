@@ -1,4 +1,11 @@
-import type { CourierAdminClient, ITemplateEntry } from '@fonderie/client';
+import type {
+	AdminLocale,
+	AdminMessageKey,
+	AdminMessageParams,
+	CourierAdminClient,
+	ITemplateEntry,
+} from '@fonderie/client';
+import { createAdminT } from '@fonderie/client';
 import { useTemplates } from '@fonderie/vue-courier-admin';
 import type { CSSProperties, PropType } from 'vue';
 import { defineComponent, h } from 'vue';
@@ -34,6 +41,8 @@ export const TemplateListScreen = defineComponent({
 		client: { type: Object as PropType<CourierAdminClient>, required: true },
 		/** Shows a "New template" button (emits create-template). */
 		allowCreate: { type: Boolean, default: false },
+		/** The console language; defaults to English. */
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	emits: {
 		/** The whole row — type AND locale, and whether it is built-in. */
@@ -43,6 +52,8 @@ export const TemplateListScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const { templates, isLoading, error } = useTemplates(props.client);
+		const t = (key: AdminMessageKey, params?: AdminMessageParams) =>
+			createAdminT(props.locale)(key, params);
 
 		function renderRow(template: ITemplateEntry) {
 			return h('li', { key: `${template.type}:${template.locale ?? 'base'}`, style: styles.row }, [
@@ -55,11 +66,11 @@ export const TemplateListScreen = defineComponent({
 					},
 					[
 						h('span', { style: styles.type }, template.type),
-						h('span', { style: styles.locale }, template.locale ?? 'default locale'),
-						template.system ? h('span', { style: builtIn }, 'built-in') : null,
+						h('span', { style: styles.locale }, template.locale ?? t('templates.defaultLocale')),
+						template.system ? h('span', { style: builtIn }, t('templates.builtInBadge')) : null,
 						h('span', { style: template.active ? styles.active : styles.inactive }, [
 							h('span', { style: styles.dot }),
-							template.active ? 'active' : 'inactive',
+							template.active ? t('common.status.active') : t('common.status.inactive'),
 						]),
 					],
 				),
@@ -79,7 +90,7 @@ export const TemplateListScreen = defineComponent({
 						},
 					},
 					[
-						h('h1', { style: styles.listTitle }, 'Templates'),
+						h('h1', { style: styles.listTitle }, t('templates.list.title')),
 						props.allowCreate
 							? h(
 									'button',
@@ -90,12 +101,12 @@ export const TemplateListScreen = defineComponent({
 											emit('create-template', {
 												locales: [
 													...new Set(
-														templates.value.map((t) => t.locale).filter((l): l is string => !!l),
+														templates.value.map((tpl) => tpl.locale).filter((l): l is string => !!l),
 													),
 												],
 											}),
 									},
-									'New template',
+									t('templates.list.newTemplate'),
 								)
 							: null,
 					],
@@ -103,10 +114,10 @@ export const TemplateListScreen = defineComponent({
 				h(
 					'p',
 					{ style: styles.hint },
-					'Every email the app sends. Open one to edit its copy and preview it live.',
+					t('templates.list.hint'),
 				),
 				isLoading.value
-					? h('p', { style: styles.status }, 'Loading templates…')
+					? h('p', { style: styles.status }, t('templates.list.loading'))
 					: error.value
 						? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
 						: h('ul', { style: styles.list }, templates.value.map(renderRow)),

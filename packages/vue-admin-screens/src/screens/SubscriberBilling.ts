@@ -1,11 +1,19 @@
-import type { BillingAdminClient, SubscriberType } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type BillingAdminClient,
+	createAdminT,
+	formatAdminDate,
+	type SubscriberType,
+} from '@fonderie/client';
 import { useAdminSubscriber } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { computed, defineComponent, h, ref } from 'vue';
-import { periodEnd, statusTone } from '../billing';
+import { intervalLabel, periodEnd, statusLabel, statusTone } from '../billing';
 import { styles } from '../styles';
 import { empty, icon, pill } from '../ui';
 import { loadMoreButton, table, td } from './common';
+
+const LEDGER_KINDS = ['purchase', 'grant', 'usage', 'refund', 'adjustment', 'expiry'] as const;
 
 // One subscriber's money: plan, wallet, the one write (a grant,
 // idempotency-keyed) and what moved. Used on a user's page and for workspace
@@ -18,6 +26,7 @@ const SubscriberBillingInner = defineComponent({
 		subscriberType: { type: String as PropType<SubscriberType>, required: true },
 		subscriberId: { type: String, required: true },
 		currency: { type: String, default: '' },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	emits: { 'change-currency': (_currency: string) => true },
 	setup(props, { emit }) {
@@ -33,17 +42,23 @@ const SubscriberBillingInner = defineComponent({
 		const granted = ref<string | null>(null);
 
 		return () => {
+			const t = createAdminT(props.locale);
+			const ledgerKind = (kind: string) =>
+				(LEDGER_KINDS as readonly string[]).includes(kind)
+					? t(`billing.ledgerKind.${kind as (typeof LEDGER_KINDS)[number]}`)
+					: kind;
 			const s = subscription.value;
 			const w = wallet.value;
-			if (isLoading.value && !w && !s) return h('p', { style: styles.status }, 'Loading billing…');
-			const end = s ? periodEnd(s) : null;
+			if (isLoading.value && !w && !s)
+				return h('p', { style: styles.status }, t('billing.loading'));
+			const end = s ? periodEnd(s, props.locale) : null;
 			return h('div', [
 				error.value
 					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
 					: null,
 				h('div', { style: { ...styles.grid, marginBottom: '16px' } }, [
 					h('div', { style: styles.card }, [
-						h('div', { style: styles.statLabel }, 'Plan'),
+						h('div', { style: styles.statLabel }, t('billing.plan')),
 						h(
 							'div',
 							{
@@ -56,13 +71,13 @@ const SubscriberBillingInner = defineComponent({
 								},
 							},
 							[
-								h('strong', { style: { fontSize: '18px' } }, s ? s.plan : 'Free'),
+								h('strong', { style: { fontSize: '18px' } }, s ? s.plan : t('billing.free')),
 								...(s
 									? [
-											h('span', { style: styles.muted }, `· ${s.interval}`),
-											pill(statusTone(s.status), s.status),
+											h('span', { style: styles.muted }, `· ${intervalLabel(t, s.interval)}`),
+											pill(statusTone(s.status), statusLabel(t, s.status)),
 										]
-									: [h('span', { style: styles.muted }, 'no subscription')]),
+									: [h('span', { style: styles.muted }, t('billing.noSubscription'))]),
 							],
 						),
 						end ? h('div', { style: styles.statHint }, `${end.label} ${end.date}`) : null,
@@ -86,7 +101,7 @@ const SubscriberBillingInner = defineComponent({
 								},
 							},
 							[
-								h('div', { style: styles.statLabel }, 'Credits'),
+								h('div', { style: styles.statLabel }, t('billing.credits')),
 								h(
 									'form',
 									{
@@ -102,11 +117,11 @@ const SubscriberBillingInner = defineComponent({
 											onInput: (e: Event) => {
 												currencyDraft.value = (e.target as HTMLInputElement).value;
 											},
-											placeholder: w?.currency ?? 'currency',
+											placeholder: w?.currency ?? t('billing.currencyPlaceholder'),
 											maxlength: 8,
 											style: { ...styles.input, height: '26px', width: '84px', fontSize: '12px' },
-											'aria-label': 'Wallet currency',
-											title: 'Show the wallet in another currency',
+											'aria-label': t('billing.currencyLabel'),
+											title: t('billing.currencyTitle'),
 										}),
 									],
 								),
@@ -121,16 +136,16 @@ const SubscriberBillingInner = defineComponent({
 									h(
 										'div',
 										{ style: styles.statHint },
-										`${w.purchased ?? '0'} permanent · ${w.granted ?? '0'} plan allowance${w.grantedExpiresAt ? ` (expires ${new Date(w.grantedExpiresAt).toLocaleDateString()})` : ''}`,
+										`${t('billing.breakdown', { permanent: w.purchased ?? '0', allowance: w.granted ?? '0' })}${
+											w.grantedExpiresAt
+												? t('billing.expires', {
+														date: formatAdminDate(w.grantedExpiresAt, props.locale, 'date'),
+													})
+												: ''
+										}`,
 									),
 								]
-							: [
-									h(
-										'div',
-										{ style: styles.statHint },
-										'No wallet — billing has no wallet configuration.',
-									),
-								]),
+							: [h('div', { style: styles.statHint }, t('billing.noWallet'))]),
 					]),
 				]),
 				w
@@ -155,7 +170,7 @@ const SubscriberBillingInner = defineComponent({
 										idempotencyKey: key,
 									})
 										.then(() => {
-											granted.value = `Granted ${a} ${w.currency}.`;
+											granted.value = t('billing.granted', { amount: a, currency: w.currency });
 											amount.value = '';
 											note.value = '';
 										})
@@ -163,21 +178,25 @@ const SubscriberBillingInner = defineComponent({
 								},
 							},
 							[
-								h('strong', { style: { fontSize: '13.5px', marginRight: '4px' } }, 'Grant credits'),
+								h(
+									'strong',
+									{ style: { fontSize: '13.5px', marginRight: '4px' } },
+									t('billing.grantCredits'),
+								),
 								h('input', {
 									value: amount.value,
 									onInput: (e: Event) => (amount.value = (e.target as HTMLInputElement).value),
-									placeholder: `amount (${w.currency})`,
+									placeholder: t('billing.amountPlaceholder', { currency: w.currency }),
 									inputmode: 'numeric',
 									style: { ...styles.input, width: '150px' },
-									'aria-label': 'Amount',
+									'aria-label': t('billing.amountLabel'),
 								}),
 								h('input', {
 									value: note.value,
 									onInput: (e: Event) => (note.value = (e.target as HTMLInputElement).value),
-									placeholder: 'reason (optional)',
+									placeholder: t('billing.reasonPlaceholder'),
 									style: { ...styles.input, flex: 1, minWidth: '180px' },
-									'aria-label': 'Reason',
+									'aria-label': t('billing.reasonLabel'),
 								}),
 								h(
 									'button',
@@ -186,7 +205,7 @@ const SubscriberBillingInner = defineComponent({
 										style: styles.buttonPrimary,
 										disabled: !/^\d+$/.test(amount.value.trim()),
 									},
-									[icon('plus', 14), 'Grant'],
+									[icon('plus', 14), t('billing.grant')],
 								),
 								granted.value ? h('span', { style: styles.ok }, granted.value) : null,
 							],
@@ -194,23 +213,30 @@ const SubscriberBillingInner = defineComponent({
 					: null,
 				w
 					? ledger.value.length === 0
-						? empty('No credit movements yet', undefined, 'subscriber')
+						? empty(t('billing.noMovements'), undefined, 'subscriber')
 						: h('div', [
 								table(
-									['When', 'Kind', 'Amount', 'Note'],
-									ledger.value.map((t) =>
-										h('tr', { key: t.id }, [
-											td(new Date(t.createdAt).toLocaleString(), {
+									[
+										t('billing.col.when'),
+										t('billing.col.kind'),
+										t('billing.col.amount'),
+										t('billing.col.note'),
+									],
+									ledger.value.map((tx) =>
+										h('tr', { key: tx.id }, [
+											td(formatAdminDate(tx.createdAt, props.locale), {
 												...styles.muted,
 												whiteSpace: 'nowrap',
 											}),
-											td(t.type),
-											td(t.amount, styles.mono),
-											td(t.description ?? '', styles.muted),
+											td(ledgerKind(tx.type)),
+											td(tx.amount, styles.mono),
+											td(tx.description ?? '', styles.muted),
 										]),
 									),
 								),
-								hasMoreLedger.value ? loadMoreButton(() => void loadMoreLedger()) : null,
+								hasMoreLedger.value
+									? loadMoreButton(() => void loadMoreLedger(), t('common.loadMore'))
+									: null,
 							])
 					: null,
 			]);
@@ -227,6 +253,7 @@ export const SubscriberBilling = defineComponent({
 		client: { type: Object as PropType<BillingAdminClient>, required: true },
 		subscriberType: { type: String as PropType<SubscriberType>, required: true },
 		subscriberId: { type: String, required: true },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	setup(props) {
 		const currency = ref('');
@@ -237,6 +264,7 @@ export const SubscriberBilling = defineComponent({
 				subscriberType: props.subscriberType,
 				subscriberId: props.subscriberId,
 				currency: currency.value,
+				...(props.locale ? { locale: props.locale } : {}),
 				'onChange-currency': (c: string) => {
 					currency.value = c;
 				},

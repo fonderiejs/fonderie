@@ -13,6 +13,7 @@ interface ITemplateCreateScreenProps {
         type: string;
         locale: string | null;
     }) => void;
+    locale?: AdminLocale | undefined;
 }
 
 interface ITemplateEditorScreenProps {
@@ -23,6 +24,7 @@ interface ITemplateEditorScreenProps {
     system?: boolean;
     onDeleted?: () => void;
     onAddLocale?: (type: string) => void;
+    uiLocale?: AdminLocale | undefined;
 }
 
 interface ITemplateListScreenProps {
@@ -31,11 +33,12 @@ interface ITemplateListScreenProps {
     onCreateTemplate?: (context: {
         locales: string[];
     }) => void;
+    locale?: AdminLocale | undefined;
 }
 
-function TemplateCreateScreen({ client, type, locales, onCreated, }: ITemplateCreateScreenProps): Element
+function TemplateCreateScreen({ client, type, locales, onCreated, locale, }: ITemplateCreateScreenProps): Element
 
-function TemplateEditorScreen({ client, type, locale, onSaved, system, onDeleted, onAddLocale, }: ITemplateEditorScreenProps): Element
+function TemplateEditorScreen({ client, type, locale, onSaved, system, onDeleted, onAddLocale, uiLocale, }: ITemplateEditorScreenProps): Element
 
-function TemplateListScreen({ client, onSelectTemplate, onCreateTemplate, }: ITemplateListScreenProps): Element
+function TemplateListScreen({ client, onSelectTemplate, onCreateTemplate, locale, }: ITemplateListScreenProps): Element
 ```

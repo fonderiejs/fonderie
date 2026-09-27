@@ -1,4 +1,9 @@
-import type { AdminClient } from '@fonderie/client';
+import {
+	type AdminClient,
+	type AdminLocale,
+	createAdminT,
+	formatAdminDate,
+} from '@fonderie/client';
 import { useAdminLog } from '@fonderie/react-admin';
 import { styles } from '../styles';
 import { Empty, MethodChip, PageHeader, Pill, RefreshButton } from '../ui';
@@ -6,45 +11,52 @@ import { Empty, MethodChip, PageHeader, Pill, RefreshButton } from '../ui';
 export interface IAdminLogScreenProps {
 	client: AdminClient;
 	pageSize?: number;
+	locale?: AdminLocale | undefined;
 }
 
 // Who did what through the surface, newest first — refused requests included.
-export function AdminLogScreen({ client, pageSize = 50 }: IAdminLogScreenProps) {
+export function AdminLogScreen({ client, pageSize = 50, locale }: IAdminLogScreenProps) {
+	const t = createAdminT(locale);
 	const { entries, hasMore, isLoading, error, refresh, loadMore } = useAdminLog(client, {
 		limit: pageSize,
 	});
 	return (
 		<div style={styles.container}>
 			<PageHeader
-				title="Admin log"
-				lead="Every request made through this surface, newest first — refused ones included."
-				actions={<RefreshButton onClick={() => void refresh()} busy={isLoading} />}
+				title={t('log.title')}
+				lead={t('log.lead')}
+				actions={
+					<RefreshButton
+						onClick={() => void refresh()}
+						busy={isLoading}
+						label={t('common.refresh')}
+						busyLabel={t('common.working')}
+					/>
+				}
 			/>
 			{error ? (
 				<p style={styles.error} role="alert">
-					{error.status === 404
-						? 'The admin log is off — give AdminModule a store.'
-						: error.explanation}
+					{error.status === 404 ? t('log.off') : error.explanation}
 				</p>
 			) : entries.length === 0 && !isLoading ? (
-				<Empty icon="log" title="No requests yet" />
+				<Empty icon="log" title={t('log.empty')} />
 			) : (
 				<>
 					<table style={styles.table}>
 						<thead>
 							<tr>
-								<th style={styles.th}>When</th>
-								<th style={styles.th}>Actor</th>
-								<th style={styles.th}>Request</th>
-								<th style={styles.th}>Status</th>
-								<th style={styles.th}>Module</th>
+								<th style={styles.th}>{t('log.colWhen')}</th>
+								<th style={styles.th}>{t('log.colActor')}</th>
+								<th style={styles.th}>{t('log.colRequest')}</th>
+								<th style={styles.th}>{t('log.colStatus')}</th>
+								<th style={styles.th}>{t('log.colModule')}</th>
 							</tr>
 						</thead>
 						<tbody>
 							{entries.map((e) => (
 								<tr key={e.id}>
 									<td style={{ ...styles.td, ...styles.muted, whiteSpace: 'nowrap' }}>
-										{new Date(e.at).toLocaleString()}
+										{formatAdminDate(e.at, locale, 'datetime')}
 									</td>
 									<td style={styles.td}>{e.actor}</td>
 									<td style={styles.td}>
@@ -62,14 +74,14 @@ export function AdminLogScreen({ client, pageSize = 50 }: IAdminLogScreenProps) 
 							))}
 						</tbody>
 					</table>
-					{isLoading ? <p style={styles.status}>Loading…</p> : null}
+					{isLoading ? <p style={styles.status}>{t('common.loading')}</p> : null}
 					{hasMore && !isLoading ? (
 						<button
 							type="button"
 							style={{ ...styles.button, marginTop: 12 }}
 							onClick={() => void loadMore()}
 						>
-							Load more
+							{t('common.loadMore')}
 						</button>
 					) : null}
 				</>

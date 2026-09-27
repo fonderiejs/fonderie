@@ -1,4 +1,11 @@
-import { type AuthAdminClient, type BillingAdminClient, describeLocation } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type AuthAdminClient,
+	type BillingAdminClient,
+	createAdminT,
+	describeLocation,
+	formatAdminDate,
+} from '@fonderie/client';
 import {
 	useAdminLoginHistory,
 	useAdminUser,
@@ -6,7 +13,7 @@ import {
 	useAdminUsers,
 } from '@fonderie/react-admin';
 import { useState } from 'react';
-import { statusTone, useSubscriptionIndex } from '../billing';
+import { statusLabel, statusTone, useSubscriptionIndex } from '../billing';
 import { styles } from '../styles';
 import { Empty, Icon, PageHeader, Pill } from '../ui';
 import { SubscriberBilling } from './SubscriberBilling';
@@ -19,6 +26,7 @@ export interface IUsersScreenProps {
 	billingClient?: BillingAdminClient | undefined;
 	// Open this user on arrival (e.g. from the Subscriptions list).
 	openUserId?: string | undefined;
+	locale?: AdminLocale | undefined;
 }
 
 // Who is signed up, and why can't this one log in. Lists on arrival — an
@@ -30,7 +38,9 @@ export function UsersScreen({
 	pageSize = 50,
 	billingClient,
 	openUserId,
+	locale,
 }: IUsersScreenProps) {
+	const t = createAdminT(locale);
 	const [input, setInput] = useState('');
 	const [selected, setSelected] = useState<{ id?: string; email?: string } | null>(
 		openUserId ? { id: openUserId } : null,
@@ -52,7 +62,8 @@ export function UsersScreen({
 	const sessions = useAdminUserSessions(client, userId);
 	const history = useAdminLoginHistory(client, userId, { limit: 20 });
 
-	const yesNo = (v: boolean) => (v ? <Pill tone="ok">yes</Pill> : <Pill tone="neutral">no</Pill>);
+	const yesNo = (v: boolean) =>
+		v ? <Pill tone="ok">{t('common.yes')}</Pill> : <Pill tone="neutral">{t('common.no')}</Pill>;
 
 	const clear = () => {
 		setSelected(null);
@@ -61,10 +72,7 @@ export function UsersScreen({
 
 	return (
 		<div style={styles.container}>
-			<PageHeader
-				title="Users"
-				lead="Everyone signed up. Open an account for its sessions, sign-ins and the suspend and sign-out controls."
-			/>
+			<PageHeader title={t('users.title')} lead={t('users.lead')} />
 			<form
 				style={styles.toolbar}
 				onSubmit={(e) => {
@@ -77,18 +85,18 @@ export function UsersScreen({
 					type="email"
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
-					placeholder="email address"
+					placeholder={t('users.emailPlaceholder')}
 					style={{ ...styles.input, minWidth: 280 }}
-					aria-label="Email"
+					aria-label={t('users.emailLabel')}
 				/>
 				<button type="submit" style={styles.buttonPrimary} disabled={isLoading}>
 					<Icon name="search" size={14} />
-					Look up
+					{t('common.lookUp')}
 				</button>
 				{selected ? (
 					<button type="button" style={styles.buttonGhost} onClick={clear}>
 						<Icon name="back" size={14} />
-						All users
+						{t('users.allUsers')}
 					</button>
 				) : (
 					<button
@@ -97,7 +105,7 @@ export function UsersScreen({
 						onClick={() => void list.refresh()}
 						disabled={list.isLoading}
 					>
-						Refresh
+						{t('common.refresh')}
 					</button>
 				)}
 				{!selected ? (
@@ -110,7 +118,7 @@ export function UsersScreen({
 							padding: 0,
 							minWidth: 0,
 						}}
-						aria-label="Which accounts"
+						aria-label={t('users.whichAccounts')}
 					>
 						{[false, true].map((d) => (
 							<button
@@ -123,7 +131,7 @@ export function UsersScreen({
 									height: 28,
 								}}
 							>
-								{d ? 'Deleted' : 'Active'}
+								{d ? t('users.deletedAccounts') : t('users.activeAccounts')}
 							</button>
 						))}
 					</fieldset>
@@ -131,7 +139,7 @@ export function UsersScreen({
 			</form>
 			{error && !(error.status === 404 && selected?.id) ? (
 				<p style={styles.error} role="alert">
-					{error.status === 404 ? 'No user with that email.' : error.explanation}
+					{error.status === 404 ? t('users.noUserWithEmail') : error.explanation}
 				</p>
 			) : null}
 			{/* Opened by id (e.g. from Subscriptions) and the account is gone —
@@ -141,16 +149,17 @@ export function UsersScreen({
 			{error?.status === 404 && selected?.id ? (
 				<>
 					<div style={styles.notice} role="status">
-						<strong>No account with id </strong>
+						<strong>{t('users.missingIdPrefix')} </strong>
 						<code style={styles.code}>{selected.id}</code>
-						<strong>.</strong> It was deleted, or never existed here. Its billing records remain.
+						<strong>.</strong> {t('users.missingIdBody')}
 					</div>
 					{billingClient ? (
 						<>
-							<h2 style={styles.subtitle}>Plan &amp; credits</h2>
+							<h2 style={styles.subtitle}>{t('users.planCredits')}</h2>
 							<SubscriberBilling
 								client={billingClient}
 								subscriber={{ type: 'user', id: selected.id }}
+								locale={locale}
 							/>
 						</>
 					) : null}
@@ -164,18 +173,18 @@ export function UsersScreen({
 						</p>
 					) : null}
 					{list.users.length === 0 && !list.isLoading ? (
-						<Empty icon="users" title="No users yet">
-							Sign-ups appear here as they happen.
+						<Empty icon="users" title={t('users.emptyTitle')}>
+							{t('users.emptyBody')}
 						</Empty>
 					) : (
 						<table style={styles.table}>
 							<thead>
 								<tr>
-									<th style={styles.th}>Email</th>
-									<th style={styles.th}>Name</th>
-									{billingClient ? <th style={styles.th}>Plan</th> : null}
-									<th style={styles.th}>Created</th>
-									<th style={styles.th}>Status</th>
+									<th style={styles.th}>{t('users.col.email')}</th>
+									<th style={styles.th}>{t('users.col.name')}</th>
+									{billingClient ? <th style={styles.th}>{t('users.col.plan')}</th> : null}
+									<th style={styles.th}>{t('users.col.created')}</th>
+									<th style={styles.th}>{t('users.col.status')}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -201,37 +210,43 @@ export function UsersScreen({
 													const sub = plans?.get(`user/${u.id}`);
 													if (!plans) return <span style={styles.muted}>…</span>;
 													if (!sub || sub.status === 'canceled')
-														return <span style={styles.muted}>free</span>;
+														return <span style={styles.muted}>{t('common.status.free')}</span>;
 													return (
 														<>
 															<strong>{sub.plan}</strong>{' '}
 															{sub.status !== 'active' ? (
-																<Pill tone={statusTone(sub.status)}>{sub.status}</Pill>
+																<Pill tone={statusTone(sub.status)}>
+																	{statusLabel(t, sub.status)}
+																</Pill>
 															) : null}
 														</>
 													);
 												})()}
 											</td>
 										) : null}
-										<td style={styles.td}>{new Date(u.createdAt).toLocaleDateString()}</td>
+										<td style={styles.td}>{formatAdminDate(u.createdAt, locale, 'date')}</td>
 										<td style={styles.td}>
-											{u.suspended ? <Pill tone="warn">suspended</Pill> : null}
-											{u.deletedAt ? <Pill tone="neutral">deleted</Pill> : null}
-											{!u.suspended && !u.deletedAt ? <Pill tone="ok">active</Pill> : null}
+											{u.suspended ? <Pill tone="warn">{t('common.status.suspended')}</Pill> : null}
+											{u.deletedAt ? (
+												<Pill tone="neutral">{t('common.status.deleted')}</Pill>
+											) : null}
+											{!u.suspended && !u.deletedAt ? (
+												<Pill tone="ok">{t('common.status.active')}</Pill>
+											) : null}
 										</td>
 									</tr>
 								))}
 							</tbody>
 						</table>
 					)}
-					{list.isLoading ? <p style={styles.status}>Loading…</p> : null}
+					{list.isLoading ? <p style={styles.status}>{t('common.loading')}</p> : null}
 					{list.hasMore && !list.isLoading ? (
 						<button
 							type="button"
 							style={{ ...styles.button, marginTop: 8 }}
 							onClick={() => void list.loadMore()}
 						>
-							Load more
+							{t('common.loadMore')}
 						</button>
 					) : null}
 				</>
@@ -242,53 +257,54 @@ export function UsersScreen({
 						{user.firstName || user.lastName
 							? `${user.firstName} ${user.lastName}`.trim()
 							: user.email}{' '}
-						{user.suspended ? <Pill tone="warn">suspended</Pill> : null}
-						{user.deletedAt ? <Pill tone="neutral">deleted</Pill> : null}
+						{user.suspended ? <Pill tone="warn">{t('common.status.suspended')}</Pill> : null}
+						{user.deletedAt ? <Pill tone="neutral">{t('common.status.deleted')}</Pill> : null}
 					</h2>
 					<table style={styles.table}>
 						<tbody>
 							<tr>
-								<td style={styles.td}>id</td>
+								<td style={styles.td}>{t('users.field.id')}</td>
 								<td style={{ ...styles.td, ...styles.mono }}>{user.id}</td>
 							</tr>
 							<tr>
-								<td style={styles.td}>email</td>
+								<td style={styles.td}>{t('users.field.email')}</td>
 								<td style={styles.td}>
-									{user.email} · verified {yesNo(user.isEmailVerified)}
+									{user.email} · {t('users.field.verified')} {yesNo(user.isEmailVerified)}
 								</td>
 							</tr>
 							<tr>
-								<td style={styles.td}>MFA</td>
+								<td style={styles.td}>{t('users.field.mfa')}</td>
 								<td style={styles.td}>{yesNo(user.mfaEnabled)}</td>
 							</tr>
 							<tr>
-								<td style={styles.td}>provider</td>
+								<td style={styles.td}>{t('users.field.provider')}</td>
 								<td style={styles.td}>
-									{user.provider || 'password'}
-									{user.hasPassword ? '' : ' · no password set'}
+									{user.provider || t('users.passwordProvider')}
+									{user.hasPassword ? '' : ` · ${t('users.noPasswordSet')}`}
 								</td>
 							</tr>
 							<tr>
-								<td style={styles.td}>last login</td>
+								<td style={styles.td}>{t('users.field.lastLogin')}</td>
 								<td style={styles.td}>
 									{user.lastLogin ? (
-										new Date(user.lastLogin).toLocaleString()
+										formatAdminDate(user.lastLogin, locale)
 									) : (
-										<span style={styles.muted}>never</span>
+										<span style={styles.muted}>{t('common.never')}</span>
 									)}
 								</td>
 							</tr>
 							<tr>
-								<td style={styles.td}>created</td>
-								<td style={styles.td}>{new Date(user.createdAt).toLocaleString()}</td>
+								<td style={styles.td}>{t('users.field.created')}</td>
+								<td style={styles.td}>{formatAdminDate(user.createdAt, locale)}</td>
 							</tr>
 						</tbody>
 					</table>
 					{user.deletedAt ? (
 						<div style={{ ...styles.notice, marginTop: 12 }} role="status">
-							<strong>Deleted on {new Date(user.deletedAt).toLocaleString()}.</strong> The account
-							cannot sign in, and it is erased when the retention purge runs. Its billing records
-							stay.
+							<strong>
+								{t('users.deletedOn', { date: formatAdminDate(user.deletedAt, locale) })}
+							</strong>{' '}
+							{t('users.deletedBody')}
 						</div>
 					) : (
 						<div style={{ ...styles.toolbar, marginTop: 12 }}>
@@ -299,7 +315,7 @@ export function UsersScreen({
 									onClick={() => void unsuspend()}
 									disabled={isLoading}
 								>
-									Unsuspend
+									{t('users.unsuspend')}
 								</button>
 							) : (
 								<button
@@ -308,7 +324,7 @@ export function UsersScreen({
 									onClick={() => void suspend()}
 									disabled={isLoading}
 								>
-									Suspend
+									{t('users.suspend')}
 								</button>
 							)}
 							<button
@@ -317,26 +333,27 @@ export function UsersScreen({
 								onClick={() => void revokeSessions().then(() => sessions.refresh())}
 								disabled={isLoading}
 							>
-								Sign out everywhere
+								{t('users.signOutEverywhere')}
 							</button>
 						</div>
 					)}
 
 					{billingClient ? (
 						<>
-							<h2 style={styles.subtitle}>Plan &amp; credits</h2>
+							<h2 style={styles.subtitle}>{t('users.planCredits')}</h2>
 							<SubscriberBilling
 								client={billingClient}
 								subscriber={{ type: 'user', id: user.id }}
+								locale={locale}
 							/>
 						</>
 					) : null}
 
 					{!user.deletedAt ? (
 						<>
-							<h2 style={styles.subtitle}>Live sessions</h2>
+							<h2 style={styles.subtitle}>{t('users.liveSessions')}</h2>
 							{sessions.sessions.length === 0 ? (
-								<p style={styles.muted}>None.</p>
+								<p style={styles.muted}>{t('common.none')}</p>
 							) : (
 								<ul style={styles.list}>
 									{sessions.sessions.map((s) => (
@@ -347,21 +364,27 @@ export function UsersScreen({
 											) : null}
 											<span style={styles.muted}>{s.userAgent ?? ''}</span>{' '}
 											<span style={styles.muted}>
-												since {new Date(s.createdAt).toLocaleString()}
+												{t('users.since', { date: formatAdminDate(s.createdAt, locale) })}
 											</span>
 										</li>
 									))}
 								</ul>
 							)}
 
-							<h2 style={styles.subtitle}>Recent sign-ins</h2>
+							<h2 style={styles.subtitle}>{t('users.recentSignIns')}</h2>
 							{history.events.length === 0 && !history.isLoading ? (
-								<p style={styles.muted}>None recorded.</p>
+								<p style={styles.muted}>{t('users.noneRecorded')}</p>
 							) : (
 								<ul style={styles.list}>
 									{history.events.map((e) => (
 										<li key={e.id} style={styles.row}>
-											<Pill tone={e.outcome === 'success' ? 'ok' : 'bad'}>{e.outcome}</Pill>{' '}
+											<Pill tone={e.outcome === 'success' ? 'ok' : 'bad'}>
+												{e.outcome === 'success'
+													? t('users.outcome.success')
+													: e.outcome === 'failure'
+														? t('users.outcome.failure')
+														: e.outcome}
+											</Pill>{' '}
 											<span style={styles.muted}>{e.method}</span>{' '}
 											<span style={styles.mono}>{e.ipAddress ?? '—'}</span>{' '}
 											{describeLocation(e.location) ? (
@@ -370,10 +393,12 @@ export function UsersScreen({
 											{e.location?.proxy || e.location?.hosting ? (
 												<>
 													{' '}
-													<Pill tone="warn">{e.location.proxy ? 'proxy/VPN' : 'hosting'}</Pill>
+													<Pill tone="warn">
+														{e.location.proxy ? t('users.proxyVpn') : t('users.hosting')}
+													</Pill>
 												</>
 											) : null}{' '}
-											<span style={styles.muted}>{new Date(e.createdAt).toLocaleString()}</span>
+											<span style={styles.muted}>{formatAdminDate(e.createdAt, locale)}</span>
 										</li>
 									))}
 								</ul>
@@ -384,7 +409,7 @@ export function UsersScreen({
 									style={{ ...styles.button, marginTop: 8 }}
 									onClick={() => void history.loadMore()}
 								>
-									Load more
+									{t('common.loadMore')}
 								</button>
 							) : null}
 						</>

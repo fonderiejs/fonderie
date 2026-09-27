@@ -13,6 +13,7 @@ interface IConfigEditorScreenProps {
     onSaved?: () => void;
     onDeleted?: () => void;
     environments?: string[];
+    locale?: AdminLocale | undefined;
 }
 
 interface IConfigListScreenProps {
@@ -29,9 +30,10 @@ interface IConfigListScreenProps {
         environments: string[];
         environment: string | null;
     }) => void;
+    locale?: AdminLocale | undefined;
 }
 
-function ConfigEditorScreen({ client, kind, configKey, environment, onSaved, onDeleted, environments, }: IConfigEditorScreenProps): Element
+function ConfigEditorScreen({ client, kind, configKey, environment, onSaved, onDeleted, environments, locale, }: IConfigEditorScreenProps): Element
 
-function ConfigListScreen({ client, environment, onSelectConfig, onSelectSecret, onCreateConfig, onCreateSecret, publicConfigUrl, }: IConfigListScreenProps): Element
+function ConfigListScreen({ client, environment, onSelectConfig, onSelectSecret, onCreateConfig, onCreateSecret, publicConfigUrl, locale, }: IConfigListScreenProps): Element
 ```

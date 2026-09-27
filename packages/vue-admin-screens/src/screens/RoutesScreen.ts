@@ -1,4 +1,4 @@
-import type { AdminClient } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
 import { useAdminRoutes } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -10,11 +10,15 @@ import { page, table, td } from './common';
 // page filters as you type.
 export const RoutesScreen = defineComponent({
 	name: 'FonderieRoutesScreen',
-	props: { client: { type: Object as PropType<AdminClient>, required: true } },
+	props: {
+		client: { type: Object as PropType<AdminClient>, required: true },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
+	},
 	setup(props) {
 		const { report, isLoading, error } = useAdminRoutes(props.client);
 		const q = ref('');
 		return () => {
+			const t = createAdminT(props.locale);
 			const needle = q.value.trim().toLowerCase();
 			const routes = (report.value?.routes ?? []).filter(
 				(r) =>
@@ -24,11 +28,16 @@ export const RoutesScreen = defineComponent({
 						.includes(needle),
 			);
 			return page(
-				'Routes',
+				t('routes.title'),
 				{ isLoading, error },
 				() =>
 					table(
-						[{ label: 'Method', style: { width: '80px' } }, 'Path', 'Guard', 'Module'],
+						[
+							{ label: t('routes.colMethod'), style: { width: '80px' } },
+							t('routes.colPath'),
+							t('routes.colGuard'),
+							t('routes.colModule'),
+						],
 						[
 							...routes.map((r) =>
 								h('tr', { key: `${r.method} ${r.path}` }, [
@@ -41,7 +50,7 @@ export const RoutesScreen = defineComponent({
 											false,
 										),
 									),
-									td(r.module ?? 'application', styles.muted),
+									td(r.module ?? t('routes.application'), styles.muted),
 								]),
 							),
 							...(routes.length === 0
@@ -50,7 +59,7 @@ export const RoutesScreen = defineComponent({
 											h(
 												'td',
 												{ style: { ...styles.td, ...styles.muted }, colspan: 4 },
-												`No route matches “${q.value}”.`,
+												t('routes.noMatch', { q: q.value }),
 											),
 										]),
 									]
@@ -61,18 +70,19 @@ export const RoutesScreen = defineComponent({
 					h('input', {
 						type: 'search',
 						value: q.value,
-						placeholder: 'Filter by path, method, module…',
+						placeholder: t('routes.filterPlaceholder'),
 						style: { ...styles.input, width: '280px' },
-						'aria-label': 'Filter routes',
+						'aria-label': t('routes.filterLabel'),
 						onInput: (e: Event) => {
 							q.value = (e.target as HTMLInputElement).value;
 						},
 					}),
 				],
 				{
+					loadingText: t('common.loading'),
 					lead: report.value
-						? `${report.value.routes.length} routes exposed by this deployment, with the guard in front of each.`
-						: 'Every exposed route, with its guard.',
+						? t('routes.leadCount', { n: report.value.routes.length })
+						: t('routes.lead'),
 				},
 			);
 		};

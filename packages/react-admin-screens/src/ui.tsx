@@ -118,15 +118,17 @@ export function RefreshButton({
 	onClick,
 	busy,
 	label = 'Refresh',
+	busyLabel = 'Working…',
 }: {
 	onClick: () => void;
 	busy?: boolean;
 	label?: string;
+	busyLabel?: string;
 }) {
 	return (
 		<button type="button" style={styles.button} onClick={onClick} disabled={busy}>
 			<Icon name="refresh" size={14} />
-			{busy ? 'Working…' : label}
+			{busy ? busyLabel : label}
 		</button>
 	);
 }

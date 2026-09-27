@@ -1,4 +1,4 @@
-import type { AdminClient } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
 import { useAdminEnvironment } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
@@ -10,25 +10,25 @@ import { page } from './common';
 // variable the app reads is set. Values are never shown.
 export const EnvironmentScreen = defineComponent({
 	name: 'FonderieEnvironmentScreen',
-	props: { client: { type: Object as PropType<AdminClient>, required: true } },
+	props: {
+		client: { type: Object as PropType<AdminClient>, required: true },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
+	},
 	setup(props) {
 		const { report, isLoading, error } = useAdminEnvironment(props.client);
 		return () => {
+			const t = createAdminT(props.locale);
 			const r = report.value;
 			const missing = r?.env.filter((e) => !e.set).length ?? 0;
 			return page(
-				'Environment',
+				t('environment.title'),
 				{ isLoading, error },
 				() => {
 					if (!r) return null;
 					return [
-						h('h2', { style: { ...styles.subtitle, marginTop: 0 } }, 'Variables'),
+						h('h2', { style: { ...styles.subtitle, marginTop: 0 } }, t('environment.variables')),
 						r.env.length === 0
-							? h(
-									'p',
-									{ style: styles.muted },
-									'No variables declared — pass `env` to AdminModule.',
-								)
+							? h('p', { style: styles.muted }, t('environment.noVariables'))
 							: h(
 									'div',
 									{
@@ -54,12 +54,15 @@ export const EnvironmentScreen = defineComponent({
 											},
 											[
 												h('span', { style: { ...styles.mono, wordBreak: 'break-all' } }, e.name),
-												pill(e.set ? 'ok' : 'bad', e.set ? 'set' : 'missing'),
+												pill(
+													e.set ? 'ok' : 'bad',
+													e.set ? t('common.status.set') : t('common.status.missing'),
+												),
 											],
 										),
 									),
 								),
-						h('h2', { style: styles.subtitle }, 'Module readiness'),
+						h('h2', { style: styles.subtitle }, t('environment.moduleReadiness')),
 						h(
 							'ul',
 							{ style: styles.list },
@@ -84,8 +87,10 @@ export const EnvironmentScreen = defineComponent({
 														? 'bad'
 														: 'warn',
 												m.problems.length === 0
-													? 'ready'
-													: `${m.problems.length} problem${m.problems.length === 1 ? '' : 's'}`,
+													? t('common.status.ready')
+													: m.problems.length === 1
+														? t('environment.problemOne')
+														: t('environment.problemMany', { n: m.problems.length }),
 											),
 										],
 									),
@@ -113,11 +118,15 @@ export const EnvironmentScreen = defineComponent({
 				},
 				[
 					r && r.env.length > 0
-						? pill(missing ? 'bad' : 'ok', missing ? `${missing} missing` : 'all set')
+						? pill(
+								missing ? 'bad' : 'ok',
+								missing ? t('environment.missingCount', { n: missing }) : t('environment.allSet'),
+							)
 						: null,
 				],
 				{
-					lead: 'Whether each module is configured and each variable the app reads is set. Values are never shown.',
+					loadingText: t('common.loading'),
+					lead: t('environment.lead'),
 				},
 			);
 		};

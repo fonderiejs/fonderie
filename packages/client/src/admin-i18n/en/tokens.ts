@@ -1,0 +1,38 @@
+// English — canonical: this shape defines the keys fr and es must match.
+const tokens = {
+	title: 'Tokens',
+	lead: "Credentials for machines: the root token's strength, scoped tokens for the CLI and CI, and any legacy per-module tokens. People sign in as operators.",
+	needsRoot: 'Issuing and revoking need the root token (the one in your deployment config).',
+	rootToken: 'Root token',
+	strong: 'strong',
+	weak: 'weak',
+	issuedTokens: 'Issued tokens',
+	issuingOff: 'Issuing is off — give AdminModule a store and run its migrations.',
+	copyNow: 'Copy this now — it is never shown again.',
+	namePlaceholder: 'name',
+	nameLabel: 'Name',
+	scope: {
+		read: 'read',
+		write: 'write',
+		secrets: 'secrets',
+	},
+	daysPlaceholder: 'days (optional)',
+	daysLabel: 'Days',
+	issue: 'Issue token',
+	col: {
+		name: 'Name',
+		scopes: 'Scopes',
+		created: 'Created',
+		expires: 'Expires',
+		lastUsed: 'Last used',
+	},
+	revoked: 'revoked',
+	revoke: 'Revoke',
+	revokeConfirm: 'Revoke "{name}"? Anything using it stops working immediately.',
+	emptyTitle: 'No scoped tokens yet',
+	emptyBody: 'Issue a read-only token for a dashboard or a teammate instead of sharing the root.',
+	legacyTitle: 'Legacy per-brick tokens',
+	legacyNone: "None — every brick's admin surface goes through this token.",
+	legacyRow: 'still registers its standalone routes with its own token (deprecated)',
+};
+export default tokens;

@@ -1,4 +1,4 @@
-import type { AdminClient } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
 import { useAdminRoutes } from '@fonderie/react-admin';
 import { useState } from 'react';
 import { styles } from '../styles';
@@ -6,11 +6,13 @@ import { MethodChip, PageHeader, Pill } from '../ui';
 
 export interface IRoutesScreenProps {
 	client: AdminClient;
+	locale?: AdminLocale | undefined;
 }
 
 // Every exposed route and what guards it. A hundred rows is normal, so the
 // page filters as you type.
-export function RoutesScreen({ client }: IRoutesScreenProps) {
+export function RoutesScreen({ client, locale }: IRoutesScreenProps) {
+	const t = createAdminT(locale);
 	const { report, isLoading, error } = useAdminRoutes(client);
 	const [q, setQ] = useState('');
 	const needle = q.trim().toLowerCase();
@@ -24,25 +26,21 @@ export function RoutesScreen({ client }: IRoutesScreenProps) {
 	return (
 		<div style={styles.container}>
 			<PageHeader
-				title="Routes"
-				lead={
-					report
-						? `${report.routes.length} routes exposed by this deployment, with the guard in front of each.`
-						: 'Every exposed route, with its guard.'
-				}
+				title={t('routes.title')}
+				lead={report ? t('routes.leadCount', { n: report.routes.length }) : t('routes.lead')}
 				actions={
 					<input
 						type="search"
 						value={q}
 						onChange={(e) => setQ(e.target.value)}
-						placeholder="Filter by path, method, module…"
+						placeholder={t('routes.filterPlaceholder')}
 						style={{ ...styles.input, width: 280 }}
-						aria-label="Filter routes"
+						aria-label={t('routes.filterLabel')}
 					/>
 				}
 			/>
 			{isLoading ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('common.loading')}</p>
 			) : error ? (
 				<p style={styles.error} role="alert">
 					{error.explanation}
@@ -51,10 +49,10 @@ export function RoutesScreen({ client }: IRoutesScreenProps) {
 				<table style={styles.table}>
 					<thead>
 						<tr>
-							<th style={{ ...styles.th, width: 80 }}>Method</th>
-							<th style={styles.th}>Path</th>
-							<th style={styles.th}>Guard</th>
-							<th style={styles.th}>Module</th>
+							<th style={{ ...styles.th, width: 80 }}>{t('routes.colMethod')}</th>
+							<th style={styles.th}>{t('routes.colPath')}</th>
+							<th style={styles.th}>{t('routes.colGuard')}</th>
+							<th style={styles.th}>{t('routes.colModule')}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -72,13 +70,15 @@ export function RoutesScreen({ client }: IRoutesScreenProps) {
 										{r.guard}
 									</Pill>
 								</td>
-								<td style={{ ...styles.td, ...styles.muted }}>{r.module ?? 'application'}</td>
+								<td style={{ ...styles.td, ...styles.muted }}>
+									{r.module ?? t('routes.application')}
+								</td>
 							</tr>
 						))}
 						{routes.length === 0 ? (
 							<tr>
 								<td style={{ ...styles.td, ...styles.muted }} colSpan={4}>
-									No route matches “{q}”.
+									{t('routes.noMatch', { q })}
 								</td>
 							</tr>
 						) : null}

@@ -1,4 +1,11 @@
-import type { CourierAdminClient, FonderieApiError, ISetTemplateInput } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type CourierAdminClient,
+	type FonderieApiError,
+	type ISetTemplateInput,
+	createAdminT,
+	formatAdminDate,
+} from '@fonderie/client';
 import {
 	useTemplate,
 	useTemplatePreview,
@@ -6,7 +13,7 @@ import {
 	useTemplates,
 } from '@fonderie/react-courier-admin';
 import type { CSSProperties, FormEvent } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // Implicit variables the layout injects — an operator never supplies these, so
 // offering them as fields would just be noise.
@@ -28,6 +35,11 @@ export interface ITemplateEditorScreenProps {
 	onDeleted?: () => void;
 	/** Shows "Add locale": create a translation of this template. */
 	onAddLocale?: (type: string) => void;
+	/**
+	 * The CONSOLE's language (default English). Named `uiLocale` because
+	 * `locale` here is the template's own locale.
+	 */
+	uiLocale?: AdminLocale | undefined;
 }
 
 export function TemplateEditorScreen({
@@ -38,7 +50,11 @@ export function TemplateEditorScreen({
 	system = false,
 	onDeleted,
 	onAddLocale,
+	uiLocale,
 }: ITemplateEditorScreenProps) {
+	// Memoized: `run` below depends on it, and a new translator per render would
+	// restart the preview debounce on every render.
+	const t = useMemo(() => createAdminT(uiLocale), [uiLocale]);
 	const { template, isLoading, error, refresh } = useTemplate(client, type, locale);
 	// Saves go through the list hook (which re-fetches the template list after
 	// each write); mounting it adds a template-list fetch to this single-template
@@ -74,13 +90,13 @@ export function TemplateEditorScreen({
 		try {
 			const parsed: unknown = JSON.parse(sampleJson || '{}');
 			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-				setSampleError('Sample data must be a JSON object.');
+				setSampleError(t('templates.editor.sampleNotObject'));
 				return;
 			}
 			data = parsed as Record<string, unknown>;
 			setSampleError(null);
 		} catch {
-			setSampleError('Sample data is not valid JSON.');
+			setSampleError(t('templates.editor.sampleInvalid'));
 			return;
 		}
 		const result = await renderPreview(
@@ -96,7 +112,7 @@ export function TemplateEditorScreen({
 			const seeded = { ...data, ...Object.fromEntries(missing.map((v) => [v, v])) };
 			setSampleJson(JSON.stringify(seeded, null, 2));
 		}
-	}, [renderPreview, type, text, subject, html, locale, sampleJson]);
+	}, [renderPreview, type, text, subject, html, locale, sampleJson, t]);
 
 	// The preview is always live: it renders once the template loads, then again
 	// PREVIEW_DEBOUNCE_MS after the last edit to the content or the sample data.
@@ -147,9 +163,10 @@ export function TemplateEditorScreen({
 	};
 
 	const handleDelete = async () => {
-		const which = locale ? `the ${locale} version of "${type}"` : `"${type}"`;
-		const fallback = locale ? ' People in that locale will receive the default version.' : '';
-		if (!window.confirm(`Delete ${which}?${fallback}`)) return;
+		const message = locale
+			? t('templates.editor.confirmDeleteLocale', { type, locale })
+			: t('templates.editor.confirmDelete', { type });
+		if (!window.confirm(message)) return;
 		setIsDeleting(true);
 		setSaveError(null);
 		try {
@@ -162,7 +179,7 @@ export function TemplateEditorScreen({
 		}
 	};
 
-	if (isLoading) return <p style={styles.status}>Loading template…</p>;
+	if (isLoading) return <p style={styles.status}>{t('templates.editor.loading')}</p>;
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
@@ -180,20 +197,20 @@ export function TemplateEditorScreen({
 						style={{ ...styles.rollbackButton, marginLeft: 'auto' }}
 						onClick={() => onAddLocale(type)}
 					>
-						+ Add locale
+						{t('templates.editor.addLocale')}
 					</button>
 				) : null}
 			</div>
 			<p style={styles.meta}>
-				<strong>{locale ?? 'default locale'}</strong> · v{template?.version ?? 1}
-				{system ? ' · built-in email: edit or roll back, it cannot be deleted' : ''}
+				<strong>{locale ?? t('templates.defaultLocale')}</strong> · v{template?.version ?? 1}
+				{system ? ` · ${t('templates.editor.builtInNote')}` : ''}
 			</p>
 
 			<div style={styles.split}>
 				<div style={styles.column}>
 					<form style={styles.form} onSubmit={handleSubmit}>
 						<label style={styles.label} htmlFor="template-subject">
-							Subject
+							{t('templates.subject')}
 						</label>
 						<input
 							id="template-subject"
@@ -203,7 +220,7 @@ export function TemplateEditorScreen({
 						/>
 
 						<label style={styles.label} htmlFor="template-html">
-							HTML body
+							{t('templates.htmlBody')}
 						</label>
 						<textarea
 							id="template-html"
@@ -214,7 +231,7 @@ export function TemplateEditorScreen({
 						/>
 
 						<label style={styles.label} htmlFor="template-text">
-							Plain-text body
+							{t('templates.textBody')}
 						</label>
 						<textarea
 							id="template-text"
@@ -231,13 +248,12 @@ export function TemplateEditorScreen({
 								checked={active}
 								onChange={(event) => setActive(event.target.checked)}
 							/>
-							Active
+							{t('templates.editor.active')}
 						</label>
 
 						{saveError?.reason === 'VERSION_CONFLICT' ? (
 							<p style={styles.error} role="alert">
-								Someone changed this template since you opened it. Reload to see their change, then
-								edit again.{' '}
+								{t('templates.editor.conflict')}{' '}
 								<button
 									type="button"
 									style={styles.rollbackButton}
@@ -246,7 +262,7 @@ export function TemplateEditorScreen({
 										void refresh();
 									}}
 								>
-									Reload
+									{t('common.reload')}
 								</button>
 							</p>
 						) : saveError ? (
@@ -261,9 +277,11 @@ export function TemplateEditorScreen({
 								disabled={isSaving || !dirty}
 								style={dirty ? styles.button : styles.buttonDisabled}
 							>
-								{isSaving ? 'Saving…' : 'Save'}
+								{isSaving ? t('common.saving') : t('common.save')}
 							</button>
-							{!dirty && !isSaving && <span style={styles.meta}>No changes to save</span>}
+							{!dirty && !isSaving && (
+								<span style={styles.meta}>{t('templates.editor.noChanges')}</span>
+							)}
 							{!system ? (
 								<button
 									type="button"
@@ -277,14 +295,14 @@ export function TemplateEditorScreen({
 										borderColor: 'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
 									}}
 								>
-									{isDeleting ? 'Deleting…' : 'Delete'}
+									{isDeleting ? t('common.deleting') : t('common.delete')}
 								</button>
 							) : null}
 						</div>
 					</form>
 
 					<label style={styles.label} htmlFor="template-sample">
-						Sample data
+						{t('templates.editor.sampleData')}
 					</label>
 					<textarea
 						id="template-sample"
@@ -303,8 +321,10 @@ export function TemplateEditorScreen({
 
 				<div style={styles.previewColumn}>
 					<div style={styles.previewHeader}>
-						<span style={styles.label}>Preview</span>
-						<span style={styles.meta}>{isPreviewing ? 'Rendering…' : 'Live'}</span>
+						<span style={styles.label}>{t('templates.editor.preview')}</span>
+						<span style={styles.meta}>
+							{isPreviewing ? t('templates.editor.rendering') : t('templates.editor.live')}
+						</span>
 					</div>
 					{previewError && (
 						<p style={styles.error} role="alert">
@@ -317,7 +337,7 @@ export function TemplateEditorScreen({
 						// HTML and it must never execute in the dashboard's origin, which is
 						// where the admin token lives.
 						<iframe
-							title="Template preview"
+							title={t('templates.editor.previewTitle')}
 							style={styles.previewFrame}
 							sandbox=""
 							srcDoc={preview.html}
@@ -325,27 +345,27 @@ export function TemplateEditorScreen({
 					) : preview ? (
 						<pre style={styles.previewText}>{preview.text}</pre>
 					) : (
-						<p style={styles.meta}>Nothing rendered yet.</p>
+						<p style={styles.meta}>{t('templates.editor.nothingRendered')}</p>
 					)}
 				</div>
 			</div>
 
 			{revisions.length > 0 && (
 				<div style={styles.revisions}>
-					<h2 style={styles.subtitle}>History</h2>
+					<h2 style={styles.subtitle}>{t('templates.editor.history')}</h2>
 					<ul style={styles.list}>
 						{revisions.map((rev) => (
 							<li key={rev.version} style={styles.row}>
 								<span>
-									v{rev.version} — {rev.actor ?? 'unknown'} —{' '}
-									{new Date(rev.createdAt).toLocaleString()}
+									v{rev.version} — {rev.actor ?? t('templates.editor.unknownActor')} —{' '}
+									{formatAdminDate(rev.createdAt, uiLocale)}
 								</span>
 								<button
 									type="button"
 									onClick={() => rollback(rev.version)}
 									style={styles.rollbackButton}
 								>
-									Roll back
+									{t('templates.editor.rollBack')}
 								</button>
 							</li>
 						))}

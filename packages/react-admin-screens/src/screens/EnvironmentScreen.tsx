@@ -1,39 +1,43 @@
-import type { AdminClient } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
 import { useAdminEnvironment } from '@fonderie/react-admin';
 import { styles } from '../styles';
 import { PageHeader, Pill } from '../ui';
 
 export interface IEnvironmentScreenProps {
 	client: AdminClient;
+	locale?: AdminLocale | undefined;
 }
 
 // Declared vs held: readiness per module, and whether each environment
 // variable the app reads is set. Values are never shown.
-export function EnvironmentScreen({ client }: IEnvironmentScreenProps) {
+export function EnvironmentScreen({ client, locale }: IEnvironmentScreenProps) {
+	const t = createAdminT(locale);
 	const { report, isLoading, error } = useAdminEnvironment(client);
 	const missing = report?.env.filter((e) => !e.set).length ?? 0;
 	return (
 		<div style={styles.container}>
 			<PageHeader
-				title="Environment"
-				lead="Whether each module is configured and each variable the app reads is set. Values are never shown."
+				title={t('environment.title')}
+				lead={t('environment.lead')}
 				actions={
 					report && report.env.length > 0 ? (
-						<Pill tone={missing ? 'bad' : 'ok'}>{missing ? `${missing} missing` : 'all set'}</Pill>
+						<Pill tone={missing ? 'bad' : 'ok'}>
+							{missing ? t('environment.missingCount', { n: missing }) : t('environment.allSet')}
+						</Pill>
 					) : null
 				}
 			/>
 			{isLoading ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('common.loading')}</p>
 			) : error ? (
 				<p style={styles.error} role="alert">
 					{error.explanation}
 				</p>
 			) : report ? (
 				<>
-					<h2 style={{ ...styles.subtitle, marginTop: 0 }}>Variables</h2>
+					<h2 style={{ ...styles.subtitle, marginTop: 0 }}>{t('environment.variables')}</h2>
 					{report.env.length === 0 ? (
-						<p style={styles.muted}>No variables declared — pass `env` to AdminModule.</p>
+						<p style={styles.muted}>{t('environment.noVariables')}</p>
 					) : (
 						<div
 							style={{
@@ -55,12 +59,14 @@ export function EnvironmentScreen({ client }: IEnvironmentScreenProps) {
 									}}
 								>
 									<span style={{ ...styles.mono, wordBreak: 'break-all' }}>{e.name}</span>
-									<Pill tone={e.set ? 'ok' : 'bad'}>{e.set ? 'set' : 'missing'}</Pill>
+									<Pill tone={e.set ? 'ok' : 'bad'}>
+										{e.set ? t('common.status.set') : t('common.status.missing')}
+									</Pill>
 								</div>
 							))}
 						</div>
 					)}
-					<h2 style={styles.subtitle}>Module readiness</h2>
+					<h2 style={styles.subtitle}>{t('environment.moduleReadiness')}</h2>
 					<ul style={styles.list}>
 						{report.modules.map((m) => (
 							<li key={m.name} style={styles.row}>
@@ -83,8 +89,10 @@ export function EnvironmentScreen({ client }: IEnvironmentScreenProps) {
 										}
 									>
 										{m.problems.length === 0
-											? 'ready'
-											: `${m.problems.length} problem${m.problems.length === 1 ? '' : 's'}`}
+											? t('common.status.ready')
+											: m.problems.length === 1
+												? t('environment.problemOne')
+												: t('environment.problemMany', { n: m.problems.length })}
 									</Pill>
 								</div>
 								{m.problems.map((p) => (

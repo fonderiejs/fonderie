@@ -1719,4 +1719,30 @@ interface IRemoteConfigState {
     isLoading: boolean;
     error: unknown;
 }
+
+const ADMIN_LOCALES: readonly ["en", "fr", "es"]
+
+const DEFAULT_ADMIN_LOCALE: "en" | "fr" | "es"
+
+const adminLocaleNames: { en: string; fr: string; es: string; }
+
+const adminLocaleTags: { en: string; fr: string; es: string; }
+
+function createAdminT(locale?: "en" | "fr" | "es" | undefined): (key: AdminMessageKey, params?: AdminMessageParams | undefined) => string
+
+function detectAdminLocale(languages?: readonly string[]): "en" | "fr" | "es"
+
+function formatAdminDate(value: string | number | Date, locale?: "en" | "fr" | "es" | undefined, style?: "date" | "datetime" | "time"): string
+
+function isAdminLocale(value: unknown): value is "en" | "fr" | "es"
+
+type AdminLocale = (typeof ADMIN_LOCALES)[number];
+
+type AdminMessageKey = MessagePath<AdminMessages>;
+
+type AdminMessageParams = Record<string, string | number>;
+
+type AdminMessages = typeof en;
+
+type AdminT = ReturnType<typeof createAdminT>;
 ```

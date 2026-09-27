@@ -51,18 +51,19 @@ export function table(
 export const td = (children: VNodeChild, extra: object = {}) =>
 	h('td', { style: { ...styles.td, ...extra } }, children as never);
 
-export const refreshButton = (label: string, disabled: boolean, onClick: () => void) =>
+export const refreshButton = (
+	label: string,
+	disabled: boolean,
+	onClick: () => void,
+	busyLabel = 'Working…',
+) =>
 	h('button', { type: 'button', style: styles.button, disabled, onClick }, [
 		icon('refresh', 14),
-		disabled ? 'Working…' : label,
+		disabled ? busyLabel : label,
 	]);
 
-export const loadMoreButton = (onClick: () => void) =>
-	h(
-		'button',
-		{ type: 'button', style: { ...styles.button, marginTop: '12px' }, onClick },
-		'Load more',
-	);
+export const loadMoreButton = (onClick: () => void, label = 'Load more') =>
+	h('button', { type: 'button', style: { ...styles.button, marginTop: '12px' }, onClick }, label);
 
 // A plain action button (no refresh glyph); `style` picks the variant.
 export const actionButton = (

@@ -1,0 +1,59 @@
+import type en from '../en/templates';
+
+const templates: typeof en = {
+	defaultLocale: 'langue par défaut',
+	builtInBadge: 'intégré',
+	subject: 'Objet',
+	htmlBody: 'Corps HTML',
+	textBody: 'Corps en texte brut',
+	list: {
+		title: 'Modèles',
+		newTemplate: 'Nouveau modèle',
+		hint: "Chaque e-mail envoyé par l'application. Ouvrez-en un pour modifier son contenu et le prévisualiser en direct.",
+		loading: 'Chargement des modèles…',
+	},
+	editor: {
+		loading: 'Chargement du modèle…',
+		addLocale: '+ Ajouter une langue',
+		builtInNote: 'e-mail intégré : modifiable ou restaurable, mais pas supprimable',
+		active: 'Actif',
+		conflict:
+			'Quelqu’un a modifié ce modèle depuis son ouverture. Rechargez pour voir sa modification, puis modifiez à nouveau.',
+		noChanges: 'Aucune modification à enregistrer',
+		sampleData: "Données d'exemple",
+		sampleNotObject: "Les données d'exemple doivent être un objet JSON.",
+		sampleInvalid: "Les données d'exemple ne sont pas un JSON valide.",
+		preview: 'Aperçu',
+		previewTitle: 'Aperçu du modèle',
+		rendering: 'Rendu en cours…',
+		live: 'En direct',
+		nothingRendered: 'Rien n’a encore été rendu.',
+		history: 'Historique',
+		unknownActor: 'inconnu',
+		rollBack: 'Restaurer',
+		confirmDelete: 'Supprimer « {type} » ?',
+		confirmDeleteLocale:
+			'Supprimer la version {locale} de « {type} » ? Les personnes de cette langue recevront la version par défaut.',
+	},
+	create: {
+		titleNew: 'Nouveau modèle',
+		titleLocale: 'Ajouter une langue à {type}',
+		hintNew:
+			"Pour un e-mail envoyé par votre application qui n'a pas encore de contenu enregistré. Le type doit correspondre à ce que l'application envoie.",
+		hintLocale:
+			'Part du contenu par défaut. Les personnes dont la langue correspond reçoivent cette version ; les autres gardent la version par défaut.',
+		type: 'Type',
+		locale: 'Langue',
+		localeOptional: 'Langue (facultative — vide correspond à la langue par défaut)',
+		creating: 'Création…',
+		submitNew: 'Créer le modèle',
+		submitLocale: 'Ajouter la langue',
+		errorType: 'Type : lettres minuscules, chiffres, - et _ (ex. weekly-digest).',
+		errorLocaleRequired: 'Choisissez la langue à ajouter, par ex. fr ou fr-CA.',
+		errorLocale: 'Langue : une étiquette de langue comme fr, es ou fr-CA.',
+		errorText: 'Le corps en texte brut est obligatoire — c’est ce que tout client e-mail peut afficher.',
+		exists: '« {type} » existe déjà — ouvrez-le depuis la liste pour le modifier.',
+		existsLocale: '« {type} » ({locale}) existe déjà — ouvrez-le depuis la liste pour le modifier.',
+	},
+};
+export default templates;

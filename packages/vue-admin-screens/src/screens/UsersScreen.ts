@@ -1,4 +1,11 @@
-import { type AuthAdminClient, type BillingAdminClient, describeLocation } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type AuthAdminClient,
+	type BillingAdminClient,
+	createAdminT,
+	describeLocation,
+	formatAdminDate,
+} from '@fonderie/client';
 import {
 	useAdminLoginHistory,
 	useAdminUser,
@@ -7,7 +14,7 @@ import {
 } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { computed, defineComponent, h, ref } from 'vue';
-import { statusTone, useSubscriptionIndex } from '../billing';
+import { statusLabel, statusTone, useSubscriptionIndex } from '../billing';
 import { styles } from '../styles';
 import { empty, icon, pageHeader, pill } from '../ui';
 import { actionButton, loadMoreButton, refreshButton, table, td } from './common';
@@ -27,6 +34,7 @@ export const UsersScreen = defineComponent({
 		billingClient: { type: Object as PropType<BillingAdminClient>, default: undefined },
 		// Open this user on arrival (e.g. from the Subscriptions list).
 		openUserId: { type: String, default: undefined },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	setup(props) {
 		const input = ref('');
@@ -47,16 +55,21 @@ export const UsersScreen = defineComponent({
 		const sessions = useAdminUserSessions(props.client, userId);
 		const history = useAdminLoginHistory(props.client, userId, { limit: 20 });
 		const showList = computed(() => !email.value && !selectedId.value);
-		const yesNo = (v: boolean) => (v ? pill('ok', 'yes') : pill('neutral', 'no'));
+		const tr = computed(() => createAdminT(props.locale));
+		const yesNo = (v: boolean) =>
+			v ? pill('ok', tr.value('common.yes')) : pill('neutral', tr.value('common.no'));
 		const row = (k: string, v: unknown) => h('tr', [td(k), td(v as never)]);
 		const planCell = (id: string) => {
 			if (!plans.value) return h('span', { style: styles.muted }, '…');
 			const sub = plans.value.get(`user/${id}`);
-			if (!sub || sub.status === 'canceled') return h('span', { style: styles.muted }, 'free');
+			if (!sub || sub.status === 'canceled')
+				return h('span', { style: styles.muted }, tr.value('common.status.free'));
 			return [
 				h('strong', sub.plan),
 				' ',
-				sub.status !== 'active' ? pill(statusTone(sub.status), sub.status) : null,
+				sub.status !== 'active'
+					? pill(statusTone(sub.status), statusLabel(tr.value, sub.status))
+					: null,
 			];
 		};
 		const clear = () => {
@@ -66,13 +79,12 @@ export const UsersScreen = defineComponent({
 		};
 
 		return () => {
+			const t = tr.value;
+			const loc = props.locale;
 			const u = user.value;
 			const list = showDeleted.value ? deletedList : activeList;
 			return h('div', { style: styles.container }, [
-				pageHeader(
-					'Users',
-					'Everyone signed up. Open an account for its sessions, sign-ins and the suspend and sign-out controls.',
-				),
+				pageHeader(t('users.title'), t('users.lead')),
 				h(
 					'form',
 					{
@@ -88,18 +100,28 @@ export const UsersScreen = defineComponent({
 							type: 'email',
 							value: input.value,
 							onInput: (e: Event) => (input.value = (e.target as HTMLInputElement).value),
-							placeholder: 'email address',
+							placeholder: t('users.emailPlaceholder'),
 							style: { ...styles.input, minWidth: '280px' },
-							'aria-label': 'Email',
+							'aria-label': t('users.emailLabel'),
 						}),
 						h(
 							'button',
 							{ type: 'submit', style: styles.buttonPrimary, disabled: isLoading.value },
-							[icon('search', 14), 'Look up'],
+							[icon('search', 14), t('common.lookUp')],
 						),
 						showList.value
-							? refreshButton('Refresh', list.isLoading.value, () => void list.refresh())
-							: actionButton([icon('back', 14), 'All users'], false, clear, styles.buttonGhost),
+							? refreshButton(
+									t('common.refresh'),
+									list.isLoading.value,
+									() => void list.refresh(),
+									t('common.working'),
+								)
+							: actionButton(
+									[icon('back', 14), t('users.allUsers')],
+									false,
+									clear,
+									styles.buttonGhost,
+								),
 						showList.value
 							? h(
 									'fieldset',
@@ -112,7 +134,7 @@ export const UsersScreen = defineComponent({
 											padding: '0',
 											minWidth: '0',
 										},
-										'aria-label': 'Which accounts',
+										'aria-label': t('users.whichAccounts'),
 									},
 									[false, true].map((d) =>
 										h(
@@ -127,7 +149,7 @@ export const UsersScreen = defineComponent({
 													height: '28px',
 												},
 											},
-											d ? 'Deleted' : 'Active',
+											d ? t('users.deletedAccounts') : t('users.activeAccounts'),
 										),
 									),
 								)
@@ -140,11 +162,22 @@ export const UsersScreen = defineComponent({
 								? h('p', { style: styles.error, role: 'alert' }, list.error.value.explanation)
 								: null,
 							list.users.value.length === 0 && !list.isLoading.value
-								? empty('No users yet', 'Sign-ups appear here as they happen.', 'users')
+								? empty(t('users.emptyTitle'), t('users.emptyBody'), 'users')
 								: table(
 										props.billingClient
-											? ['Email', 'Name', 'Plan', 'Created', 'Status']
-											: ['Email', 'Name', 'Created', 'Status'],
+											? [
+													t('users.col.email'),
+													t('users.col.name'),
+													t('users.col.plan'),
+													t('users.col.created'),
+													t('users.col.status'),
+												]
+											: [
+													t('users.col.email'),
+													t('users.col.name'),
+													t('users.col.created'),
+													t('users.col.status'),
+												],
 										list.users.value.map((u) =>
 											h('tr', { key: u.id }, [
 												td(
@@ -163,20 +196,20 @@ export const UsersScreen = defineComponent({
 														h('span', { style: styles.muted }, '—'),
 												),
 												props.billingClient ? td(planCell(u.id)) : null,
-												td(new Date(u.createdAt).toLocaleDateString()),
+												td(formatAdminDate(u.createdAt, loc, 'date')),
 												td(
 													u.suspended
-														? pill('warn', 'suspended')
+														? pill('warn', t('common.status.suspended'))
 														: u.deletedAt
-															? pill('neutral', 'deleted')
-															: pill('ok', 'active'),
+															? pill('neutral', t('common.status.deleted'))
+															: pill('ok', t('common.status.active')),
 												),
 											]),
 										),
 									),
-							list.isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
+							list.isLoading.value ? h('p', { style: styles.status }, t('common.loading')) : null,
 							list.hasMore.value && !list.isLoading.value
-								? loadMoreButton(() => void list.loadMore())
+								? loadMoreButton(() => void list.loadMore(), t('common.loadMore'))
 								: null,
 						])
 					: null,
@@ -184,7 +217,7 @@ export const UsersScreen = defineComponent({
 					? h(
 							'p',
 							{ style: styles.error, role: 'alert' },
-							error.value.status === 404 ? 'No user with that email.' : error.value.explanation,
+							error.value.status === 404 ? t('users.noUserWithEmail') : error.value.explanation,
 						)
 					: null,
 				// Opened by id (e.g. from Subscriptions) and the account is gone —
@@ -193,18 +226,21 @@ export const UsersScreen = defineComponent({
 				error.value?.status === 404 && selectedId.value
 					? [
 							h('div', { style: styles.notice, role: 'status' }, [
-								h('strong', 'No account with id '),
+								h('strong', `${t('users.missingIdPrefix')} `),
 								h('code', { style: styles.code }, selectedId.value),
 								h('strong', '.'),
-								' It was deleted, or never existed here. Its billing records remain.',
+								` ${t('users.missingIdBody')}`,
 							]),
-							props.billingClient ? h('h2', { style: styles.subtitle }, 'Plan & credits') : null,
+							props.billingClient
+								? h('h2', { style: styles.subtitle }, t('users.planCredits'))
+								: null,
 							props.billingClient
 								? h(SubscriberBilling, {
 										key: `missing-${selectedId.value}`,
 										client: props.billingClient,
 										subscriberType: 'user',
 										subscriberId: selectedId.value,
+										...(loc ? { locale: loc } : {}),
 									})
 								: null,
 						]
@@ -214,62 +250,69 @@ export const UsersScreen = defineComponent({
 							h('h2', { style: styles.subtitle }, [
 								u.firstName || u.lastName ? `${u.firstName} ${u.lastName}`.trim() : u.email,
 								' ',
-								u.suspended ? pill('warn', 'suspended') : null,
-								u.deletedAt ? pill('neutral', 'deleted') : null,
+								u.suspended ? pill('warn', t('common.status.suspended')) : null,
+								u.deletedAt ? pill('neutral', t('common.status.deleted')) : null,
 							]),
 							h('table', { style: styles.table }, [
 								h('tbody', [
-									row('id', h('span', { style: styles.mono }, u.id)),
-									row('email', [u.email, ' · verified ', yesNo(u.isEmailVerified)]),
-									row('MFA', yesNo(u.mfaEnabled)),
+									row(t('users.field.id'), h('span', { style: styles.mono }, u.id)),
+									row(t('users.field.email'), [
+										u.email,
+										` · ${t('users.field.verified')} `,
+										yesNo(u.isEmailVerified),
+									]),
+									row(t('users.field.mfa'), yesNo(u.mfaEnabled)),
 									row(
-										'provider',
-										`${u.provider || 'password'}${u.hasPassword ? '' : ' · no password set'}`,
+										t('users.field.provider'),
+										`${u.provider || t('users.passwordProvider')}${u.hasPassword ? '' : ` · ${t('users.noPasswordSet')}`}`,
 									),
 									row(
-										'last login',
+										t('users.field.lastLogin'),
 										u.lastLogin
-											? new Date(u.lastLogin).toLocaleString()
-											: h('span', { style: styles.muted }, 'never'),
+											? formatAdminDate(u.lastLogin, loc)
+											: h('span', { style: styles.muted }, t('common.never')),
 									),
-									row('created', new Date(u.createdAt).toLocaleString()),
+									row(t('users.field.created'), formatAdminDate(u.createdAt, loc)),
 								]),
 							]),
 							u.deletedAt
 								? h('div', { style: { ...styles.notice, marginTop: '12px' }, role: 'status' }, [
-										h('strong', `Deleted on ${new Date(u.deletedAt).toLocaleString()}.`),
-										' The account cannot sign in, and it is erased when the retention purge runs. Its billing records stay.',
+										h('strong', t('users.deletedOn', { date: formatAdminDate(u.deletedAt, loc) })),
+										` ${t('users.deletedBody')}`,
 									])
 								: h('div', { style: { ...styles.toolbar, marginTop: '12px' } }, [
 										u.suspended
-											? actionButton('Unsuspend', isLoading.value, () => void unsuspend())
+											? actionButton(t('users.unsuspend'), isLoading.value, () => void unsuspend())
 											: actionButton(
-													'Suspend',
+													t('users.suspend'),
 													isLoading.value,
 													() => void suspend(),
 													styles.buttonDanger,
 												),
 										actionButton(
-											'Sign out everywhere',
+											t('users.signOutEverywhere'),
 											isLoading.value,
 											() => void revokeSessions().then(() => sessions.refresh()),
 										),
 									]),
-							props.billingClient ? h('h2', { style: styles.subtitle }, 'Plan & credits') : null,
+							props.billingClient
+								? h('h2', { style: styles.subtitle }, t('users.planCredits'))
+								: null,
 							props.billingClient
 								? h(SubscriberBilling, {
 										key: u.id,
 										client: props.billingClient,
 										subscriberType: 'user',
 										subscriberId: u.id,
+										...(loc ? { locale: loc } : {}),
 									})
 								: null,
 							u.deletedAt
 								? null
 								: [
-										h('h2', { style: styles.subtitle }, 'Live sessions'),
+										h('h2', { style: styles.subtitle }, t('users.liveSessions')),
 										sessions.sessions.value.length === 0
-											? h('p', { style: styles.muted }, 'None.')
+											? h('p', { style: styles.muted }, t('common.none'))
 											: h(
 													'ul',
 													{ style: styles.list },
@@ -288,20 +331,27 @@ export const UsersScreen = defineComponent({
 															h(
 																'span',
 																{ style: styles.muted },
-																`since ${new Date(s.createdAt).toLocaleString()}`,
+																t('users.since', { date: formatAdminDate(s.createdAt, loc) }),
 															),
 														]),
 													),
 												),
-										h('h2', { style: styles.subtitle }, 'Recent sign-ins'),
+										h('h2', { style: styles.subtitle }, t('users.recentSignIns')),
 										history.events.value.length === 0 && !history.isLoading.value
-											? h('p', { style: styles.muted }, 'None recorded.')
+											? h('p', { style: styles.muted }, t('users.noneRecorded'))
 											: h(
 													'ul',
 													{ style: styles.list },
 													history.events.value.map((e) =>
 														h('li', { key: e.id, style: styles.row }, [
-															pill(e.outcome === 'success' ? 'ok' : 'bad', e.outcome),
+															pill(
+																e.outcome === 'success' ? 'ok' : 'bad',
+																e.outcome === 'success'
+																	? t('users.outcome.success')
+																	: e.outcome === 'failure'
+																		? t('users.outcome.failure')
+																		: e.outcome,
+															),
 															' ',
 															h('span', { style: styles.muted }, e.method),
 															' ',
@@ -313,19 +363,21 @@ export const UsersScreen = defineComponent({
 																describeLocation(e.location) ?? '',
 															),
 															e.location?.proxy || e.location?.hosting
-																? [' ', pill('warn', e.location.proxy ? 'proxy/VPN' : 'hosting')]
+																? [
+																		' ',
+																		pill(
+																			'warn',
+																			e.location.proxy ? t('users.proxyVpn') : t('users.hosting'),
+																		),
+																	]
 																: '',
 															' ',
-															h(
-																'span',
-																{ style: styles.muted },
-																new Date(e.createdAt).toLocaleString(),
-															),
+															h('span', { style: styles.muted }, formatAdminDate(e.createdAt, loc)),
 														]),
 													),
 												),
 										history.hasMore.value && !history.isLoading.value
-											? loadMoreButton(() => void history.loadMore())
+											? loadMoreButton(() => void history.loadMore(), t('common.loadMore'))
 											: null,
 									],
 						]

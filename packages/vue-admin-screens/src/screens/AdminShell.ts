@@ -1,10 +1,13 @@
-import type {
-	AdminClient,
-	AuditAdminClient,
-	AuthAdminClient,
-	BillingAdminClient,
-	ConfigAdminClient,
-	CourierAdminClient,
+import {
+	type AdminClient,
+	type AdminLocale,
+	type AdminMessageKey,
+	type AuditAdminClient,
+	type AuthAdminClient,
+	type BillingAdminClient,
+	type ConfigAdminClient,
+	type CourierAdminClient,
+	createAdminT,
 } from '@fonderie/client';
 import { ConfigEditorScreen, ConfigListScreen } from '@fonderie/vue-config-admin-screens';
 import {
@@ -49,41 +52,50 @@ export type AdminPage =
 	| 'audit';
 
 const NAV: Array<{
-	group: string;
+	group: AdminMessageKey;
 	items: Array<{
 		page: AdminPage;
-		label: string;
+		label: AdminMessageKey;
 		needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit' | 'operators';
 	}>;
 }> = [
-	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
+	{ group: 'nav.groups.today', items: [{ page: 'attention', label: 'nav.items.attention' }] },
 	{
-		group: 'System',
+		group: 'nav.groups.system',
 		items: [
-			{ page: 'modules', label: 'Modules' },
-			{ page: 'environment', label: 'Environment' },
-			{ page: 'doctor', label: 'Doctor' },
-			{ page: 'routes', label: 'Routes' },
+			{ page: 'modules', label: 'nav.items.modules' },
+			{ page: 'environment', label: 'nav.items.environment' },
+			{ page: 'doctor', label: 'nav.items.doctor' },
+			{ page: 'routes', label: 'nav.items.routes' },
 		],
 	},
-	{ group: 'People', items: [{ page: 'users', label: 'Users', needs: 'auth' }] },
 	{
-		group: 'Money',
+		group: 'nav.groups.people',
+		items: [{ page: 'users', label: 'nav.items.users', needs: 'auth' }],
+	},
+	{
+		group: 'nav.groups.money',
 		items: [
-			{ page: 'catalog', label: 'Catalog', needs: 'billing' },
-			{ page: 'subscriber', label: 'Subscriptions', needs: 'billing' },
+			{ page: 'catalog', label: 'nav.items.catalog', needs: 'billing' },
+			{ page: 'subscriber', label: 'nav.items.subscriptions', needs: 'billing' },
 		],
 	},
-	{ group: 'Settings', items: [{ page: 'settings', label: 'Config & secrets', needs: 'config' }] },
-	{ group: 'Messaging', items: [{ page: 'templates', label: 'Templates', needs: 'courier' }] },
 	{
-		group: 'Activity',
+		group: 'nav.groups.settings',
+		items: [{ page: 'settings', label: 'nav.items.settings', needs: 'config' }],
+	},
+	{
+		group: 'nav.groups.messaging',
+		items: [{ page: 'templates', label: 'nav.items.templates', needs: 'courier' }],
+	},
+	{
+		group: 'nav.groups.activity',
 		items: [
-			{ page: 'audit', label: 'Audit', needs: 'audit' },
-			{ page: 'log', label: 'Admin log' },
-			{ page: 'operators', label: 'Operators', needs: 'operators' },
-			{ page: 'tokens', label: 'Tokens' },
-			{ page: 'migrations', label: 'Migrations' },
+			{ page: 'audit', label: 'nav.items.audit', needs: 'audit' },
+			{ page: 'log', label: 'nav.items.log' },
+			{ page: 'operators', label: 'nav.items.operators', needs: 'operators' },
+			{ page: 'tokens', label: 'nav.items.tokens' },
+			{ page: 'migrations', label: 'nav.items.migrations' },
 		],
 	},
 ];
@@ -149,11 +161,15 @@ export const AdminShell = defineComponent({
 		// Where the app serves GET /config/public — marks public keys on the
 		// Config page and previews exactly what frontends receive.
 		publicConfigUrl: { type: String, default: undefined },
+		// The console's own language (the operator's choice, independent of the
+		// locales the app serves). Default English.
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	// `footer` slot: pinned to the bottom of the sidebar — session controls
 	// (theme, sign out). The React shell takes the same thing as a `footer` prop.
 	emits: { navigate: (_page: AdminPage) => true },
 	setup(props, { emit, slots }) {
+		const tr = computed(() => createAdminT(props.locale));
 		const query =
 			typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(NARROW) : null;
 		const narrow = ref(query?.matches ?? false);
@@ -185,36 +201,41 @@ export const AdminShell = defineComponent({
 
 		const body = (): VNode | VNode[] => {
 			const c = props.client;
+			const t = tr.value;
+			const loc = props.locale ? { locale: props.locale } : {};
+			const missingClient = (client: string) => missing(t('shell.missingClient', { client }));
 			switch (current.value) {
 				case 'attention':
-					return h(AttentionScreen, { client: c });
+					return h(AttentionScreen, { client: c, ...loc });
 				case 'modules':
-					return h(ModulesScreen, { client: c });
+					return h(ModulesScreen, { client: c, ...loc });
 				case 'doctor':
-					return h(DoctorScreen, { client: c });
+					return h(DoctorScreen, { client: c, ...loc });
 				case 'environment':
-					return h(EnvironmentScreen, { client: c });
+					return h(EnvironmentScreen, { client: c, ...loc });
 				case 'routes':
-					return h(RoutesScreen, { client: c });
+					return h(RoutesScreen, { client: c, ...loc });
 				case 'tokens':
-					return h(TokensScreen, { client: c });
+					return h(TokensScreen, { client: c, ...loc });
 				case 'operators':
 					return h(OperatorsScreen, {
 						client: c,
+						...loc,
 						...(props.currentOperator ? { me: props.currentOperator } : {}),
 					});
 				case 'migrations':
-					return h(MigrationsScreen, { client: c });
+					return h(MigrationsScreen, { client: c, ...loc });
 				case 'log':
-					return h(AdminLogScreen, { client: c });
+					return h(AdminLogScreen, { client: c, ...loc });
 				case 'catalog':
 					return props.billingClient
-						? h(CatalogScreen, { client: props.billingClient })
-						: missing('Pass a BillingAdminClient to see the catalog here.');
+						? h(CatalogScreen, { client: props.billingClient, ...loc })
+						: missingClient('BillingAdminClient');
 				case 'subscriber':
 					return props.billingClient
 						? h(SubscriberScreen, {
 								client: props.billingClient,
+								...loc,
 								...(props.authClient
 									? {
 											onOpenUser: (id: string) => {
@@ -224,31 +245,33 @@ export const AdminShell = defineComponent({
 										}
 									: {}),
 							})
-						: missing('Pass a BillingAdminClient to look up subscribers here.');
+						: missingClient('BillingAdminClient');
 				case 'audit':
 					return props.auditClient
-						? h(AuditScreen, { client: props.auditClient })
-						: missing('Pass an AuditAdminClient to see the audit trail here.');
+						? h(AuditScreen, { client: props.auditClient, ...loc })
+						: missingClient('AuditAdminClient');
 				case 'users':
 					return props.authClient
 						? h(UsersScreen, {
 								key: openUser.value ?? 'list',
 								client: props.authClient,
+								...loc,
 								...(props.billingClient ? { billingClient: props.billingClient } : {}),
 								...(openUser.value ? { openUserId: openUser.value } : {}),
 							})
-						: missing('Pass an AuthAdminClient to look up users here.');
+						: missingClient('AuthAdminClient');
 				case 'settings': {
 					const cc = props.configClient;
-					if (!cc) return missing('Pass a ConfigAdminClient to manage config and secrets here.');
+					if (!cc) return missingClient('ConfigAdminClient');
 					const e = editing.value;
 					if (e && (e.kind === 'config' || e.kind === 'secret')) {
 						const env = e.environment ?? props.environment;
 						return [
-							back('Config & secrets'),
+							back(t('nav.items.settings')),
 							h(ConfigEditorScreen, {
 								key: `${e.kind}:${e.key}:${e.environment ?? ''}`,
 								client: cc,
+								...loc,
 								kind: e.kind,
 								configKey: e.key,
 								...(env !== undefined ? { environment: env } : {}),
@@ -268,6 +291,7 @@ export const AdminShell = defineComponent({
 						});
 					return h(ConfigListScreen, {
 						client: cc,
+						...loc,
 						...(props.environment !== undefined ? { environment: props.environment } : {}),
 						...(props.publicConfigUrl ? { publicConfigUrl: props.publicConfigUrl } : {}),
 						'onSelect-config': (key: string, environment: string) =>
@@ -281,13 +305,14 @@ export const AdminShell = defineComponent({
 				}
 				case 'templates': {
 					const kc = props.courierClient;
-					if (!kc) return missing('Pass a CourierAdminClient to manage templates here.');
+					if (!kc) return missingClient('CourierAdminClient');
 					const e = editing.value;
 					if (e?.kind === 'template-new')
 						return [
-							back('Templates'),
+							back(t('nav.items.templates')),
 							h(TemplateCreateScreen, {
 								client: kc,
+								...loc,
 								...(e.type ? { type: e.type } : {}),
 								...(e.locales ? { locales: e.locales } : {}),
 								onCreated: (c: { type: string; locale: string | null }) =>
@@ -301,10 +326,11 @@ export const AdminShell = defineComponent({
 						];
 					if (e?.kind === 'template')
 						return [
-							back('Templates'),
+							back(t('nav.items.templates')),
 							h(TemplateEditorScreen, {
 								key: `${e.type}:${e.locale ?? ''}`,
 								client: kc,
+								...(props.locale ? { uiLocale: props.locale } : {}),
 								type: e.type,
 								locale: e.locale,
 								system: e.system,
@@ -316,6 +342,7 @@ export const AdminShell = defineComponent({
 						];
 					return h(TemplateListScreen, {
 						client: kc,
+						...loc,
 						allowCreate: true,
 						'onSelect-template': (t: { type: string; locale: string | null; system?: boolean }) =>
 							(editing.value = {
@@ -381,7 +408,7 @@ export const AdminShell = defineComponent({
 							{
 								type: 'button',
 								style: styles.buttonGhost,
-								'aria-label': 'Close menu',
+								'aria-label': tr.value('shell.closeMenu'),
 								onClick: () => (drawer.value = false),
 							},
 							[icon('close')],
@@ -400,7 +427,7 @@ export const AdminShell = defineComponent({
 							? { width: '280px', maxWidth: '85vw', boxShadow: '0 10px 40px rgba(0,0,0,.25)' }
 							: {}),
 					},
-					'aria-label': 'Admin',
+					'aria-label': tr.value('shell.navLabel'),
 				},
 				[
 					brand(),
@@ -411,7 +438,7 @@ export const AdminShell = defineComponent({
 							const items = g.items.filter(visible);
 							if (items.length === 0) return null;
 							return h('div', { key: g.group }, [
-								h('div', { style: styles.navGroup }, g.group),
+								h('div', { style: styles.navGroup }, tr.value(g.group)),
 								...items.map((i) => {
 									const active = current.value === i.page;
 									return h(
@@ -427,7 +454,10 @@ export const AdminShell = defineComponent({
 												go(i.page);
 											},
 										},
-										[icon(ICON[i.page], 16, active ? styles.navIconActive : undefined), i.label],
+										[
+											icon(ICON[i.page], 16, active ? styles.navIconActive : undefined),
+											tr.value(i.label),
+										],
 									);
 								}),
 							]);
@@ -438,7 +468,8 @@ export const AdminShell = defineComponent({
 			);
 
 		return () => {
-			const title = NAV.flatMap((g) => g.items).find((i) => i.page === current.value)?.label ?? '';
+			const titleKey = NAV.flatMap((g) => g.items).find((i) => i.page === current.value)?.label;
+			const title = titleKey ? tr.value(titleKey) : '';
 			return h(
 				'div',
 				{ style: { ...styles.shell, ...(narrow.value ? { flexDirection: 'column' } : {}) } },
@@ -451,7 +482,7 @@ export const AdminShell = defineComponent({
 										{
 											type: 'button',
 											style: styles.buttonGhost,
-											'aria-label': 'Open menu',
+											'aria-label': tr.value('shell.openMenu'),
 											'aria-expanded': drawer.value,
 											onClick: () => (drawer.value = true),
 										},

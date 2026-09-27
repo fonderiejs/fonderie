@@ -1,4 +1,4 @@
-import type { AdminClient } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
 import { useManifest } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
@@ -10,24 +10,39 @@ import { page, table, td } from './common';
 // offers anything to this surface.
 export const ModulesScreen = defineComponent({
 	name: 'FonderieModulesScreen',
-	props: { client: { type: Object as PropType<AdminClient>, required: true } },
+	props: {
+		client: { type: Object as PropType<AdminClient>, required: true },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
+	},
 	setup(props) {
 		const { manifest, isLoading, error } = useManifest(props.client);
 		return () => {
+			const t = createAdminT(props.locale);
 			const m = manifest.value;
 			return page(
-				'Modules',
+				t('modules.title'),
 				{ isLoading, error },
 				() => {
 					if (!m) return null;
 					return table(
-						['Module', 'Version', 'Readiness', 'Admin'],
+						[
+							t('modules.colModule'),
+							t('modules.colVersion'),
+							t('modules.colReadiness'),
+							t('modules.colAdmin'),
+						],
 						m.modules.map((mod) =>
 							h('tr', { key: mod.name }, [
 								td(mod.name, { ...styles.mono, fontWeight: 600 }),
-								td(mod.version ?? h('span', { style: styles.muted }, 'not reported'), styles.mono),
+								td(
+									mod.version ?? h('span', { style: styles.muted }, t('modules.notReported')),
+									styles.mono,
+								),
 								td([
-									pill(mod.readiness.ok ? 'ok' : 'bad', mod.readiness.ok ? 'ready' : 'error'),
+									pill(
+										mod.readiness.ok ? 'ok' : 'bad',
+										mod.readiness.ok ? t('common.status.ready') : t('common.status.error'),
+									),
 									...mod.readiness.problems.map((p) =>
 										h(
 											'div',
@@ -48,7 +63,7 @@ export const ModulesScreen = defineComponent({
 								]),
 								td(
 									mod.describesAdmin
-										? h('span', { style: styles.badge }, 'describes admin')
+										? h('span', { style: styles.badge }, t('modules.describesAdmin'))
 										: h('span', { style: styles.muted }, '—'),
 								),
 							]),
@@ -57,9 +72,15 @@ export const ModulesScreen = defineComponent({
 				},
 				[],
 				{
+					loadingText: t('common.loading'),
 					lead: m
-						? `${m.env} · admin ${m.admin.version} · admin log ${m.admin.log ? 'on' : 'off'} · ${m.routes.length} routes`
-						: 'Every installed module, its version and whether it is ready.',
+						? t('modules.leadSummary', {
+								env: m.env,
+								version: m.admin.version,
+								log: m.admin.log ? t('modules.logOn') : t('modules.logOff'),
+								routes: m.routes.length,
+							})
+						: t('modules.lead'),
 				},
 			);
 		};

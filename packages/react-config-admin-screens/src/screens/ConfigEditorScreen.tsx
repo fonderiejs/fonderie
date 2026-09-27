@@ -1,10 +1,12 @@
 import {
+	type AdminLocale,
 	type ConfigAdminClient,
 	type ConfigValueType,
 	castConfigValue,
 	configKeyProblem,
-	configValueLabel,
 	configValueType,
+	createAdminT,
+	formatAdminDate,
 	formatConfigValue,
 	inferConfigValue,
 } from '@fonderie/client';
@@ -32,6 +34,8 @@ export interface IConfigEditorScreenProps {
 	onDeleted?: () => void;
 	/** Environments already in use, offered when creating an entry. */
 	environments?: string[];
+	/** The console's language. Default English. */
+	locale?: AdminLocale | undefined;
 }
 
 export function ConfigEditorScreen({
@@ -42,7 +46,23 @@ export function ConfigEditorScreen({
 	onSaved,
 	onDeleted,
 	environments = [],
+	locale,
 }: IConfigEditorScreenProps) {
+	const t = createAdminT(locale);
+	// The shape of a value, in the console's language (the client's own labels
+	// are English-only).
+	const shapeLabel = (v: unknown): string =>
+		typeof v === 'string'
+			? t('config.shape.text')
+			: typeof v === 'number'
+				? t('config.shape.number')
+				: typeof v === 'boolean'
+					? t('config.shape.onOff')
+					: Array.isArray(v)
+						? t('config.shape.list')
+						: v === null
+							? t('config.shape.empty')
+							: t('config.shape.object');
 	const isSecret = kind === 'secret';
 	const isNew = configKey === '';
 	const [newKey, setNewKey] = useState('');
@@ -113,7 +133,7 @@ export function ConfigEditorScreen({
 		setInputError(null);
 		if (isNew) {
 			const problem = configKeyProblem(key);
-			if (problem) return setInputError(problem);
+			if (problem) return setInputError(key ? t('config.errors.keyPattern') : t('config.errors.keyRequired'));
 			// Creating must never overwrite: a save to an existing key would
 			// silently replace its value.
 			const env = targetEnv.trim() || 'all';
@@ -121,7 +141,7 @@ export function ConfigEditorScreen({
 				e.key === key && (e.environment ?? 'all') === env;
 			const taken = isSecret ? secrets.secrets.some(inEnv) : configEntries.entries.some(inEnv);
 			if (taken)
-				return setInputError(`"${key}" already exists in ${env} — open it from the list to edit.`);
+				return setInputError(t('config.errors.exists', { key, env }));
 		}
 		let typed: unknown = value;
 		if (!isSecret) {
@@ -129,7 +149,16 @@ export function ConfigEditorScreen({
 				typed = asText ? value : inferred.value;
 			} else {
 				const cast = castConfigValue(valueType, value);
-				if (!cast.ok) return setInputError(cast.error);
+				if (!cast.ok)
+					return setInputError(
+						valueType === 'number'
+							? t('config.errors.number')
+							: valueType === 'boolean'
+								? t('config.errors.boolean')
+								: valueType === 'json'
+									? t('config.errors.json', { detail: cast.error.replace(/^Not valid JSON:\s*/, '') })
+									: cast.error,
+					);
 				typed = cast.value;
 			}
 		}
@@ -170,13 +199,11 @@ export function ConfigEditorScreen({
 	};
 
 	const handleDelete = async () => {
-		const where = environment && environment !== 'all' ? ` from ${environment}` : '';
-		if (
-			!window.confirm(
-				`Delete "${configKey}"${where}? Anything that reads it falls back to its default.`,
-			)
-		)
-			return;
+		const message =
+			environment && environment !== 'all'
+				? t('config.editor.confirmDeleteIn', { key: configKey, env: environment })
+				: t('config.editor.confirmDelete', { key: configKey });
+		if (!window.confirm(message)) return;
 		setIsDeleting(true);
 		setSaveError(null);
 		try {
@@ -199,7 +226,7 @@ export function ConfigEditorScreen({
 		}
 	};
 
-	if (!isNew && entry.isLoading) return <p style={styles.status}>Loading…</p>;
+	if (!isNew && entry.isLoading) return <p style={styles.status}>{t('common.loading')}</p>;
 	if (!isNew && entry.error)
 		return (
 			<p style={styles.error} role="alert">
@@ -210,10 +237,11 @@ export function ConfigEditorScreen({
 	return (
 		<div style={styles.container}>
 			<h1 style={styles.title}>
-				{isNew ? (isSecret ? 'New secret' : 'New config entry') : configKey}
+				{isNew ? (isSecret ? t('config.editor.newSecret') : t('config.editor.newEntry')) : configKey}
 			</h1>
 			<p style={styles.meta}>
-				Environment: <strong>{isNew ? targetEnv || 'all' : (environment ?? 'all')}</strong>
+				{t('config.editor.environmentLabel')}{' '}
+				<strong>{isNew ? targetEnv || 'all' : (environment ?? 'all')}</strong>
 				{!isNew && <> · v{isSecret ? secretEntry.secret?.version : configEntry.entry?.version}</>}
 			</p>
 
@@ -226,7 +254,7 @@ export function ConfigEditorScreen({
 						onClick={handleReveal}
 						style={styles.smallButton}
 					>
-						Reveal
+						{t('config.reveal')}
 					</button>
 				</div>
 			)}
@@ -235,7 +263,7 @@ export function ConfigEditorScreen({
 				{isNew && (
 					<>
 						<label style={styles.label} htmlFor="config-key">
-							Key
+							{t('config.editor.key')}
 						</label>
 						<input
 							id="config-key"
@@ -252,7 +280,7 @@ export function ConfigEditorScreen({
 				{isNew && (
 					<>
 						<label style={styles.label} htmlFor="config-env">
-							Environment
+							{t('config.environment')}
 						</label>
 						<input
 							id="config-env"
@@ -268,15 +296,12 @@ export function ConfigEditorScreen({
 								<option key={e} value={e} />
 							))}
 						</datalist>
-						<p style={styles.hint}>
-							<code>all</code> is shared by every environment; a named one (production, staging…)
-							overrides it there.
-						</p>
+						<p style={styles.hint}>{t('config.editor.environmentHint')}</p>
 					</>
 				)}
 
 				<label style={styles.label} htmlFor="config-value">
-					{isSecret ? (isNew ? 'Value' : 'New value') : 'Value'}
+					{isSecret && !isNew ? t('config.editor.newValue') : t('config.editor.value')}
 				</label>
 				{!isSecret && freeForm ? (
 					<>
@@ -291,12 +316,13 @@ export function ConfigEditorScreen({
 								setAsText(false);
 							}}
 							rows={/^\s*[[{]/.test(value) || value.includes('\n') ? 8 : 2}
-							placeholder={'true · 42 · Scheduled maintenance tonight · {"ids": ["m1", "m2"]}'}
+							placeholder={t('config.editor.valuePlaceholder')}
 							spellCheck={false}
 						/>
 						<div style={styles.detected}>
 							<span>
-								Detected: <strong>{asText ? 'Text' : inferred.label}</strong>
+								{t('config.editor.detected')}{' '}
+								<strong>{asText ? t('config.shape.text') : shapeLabel(inferred.value)}</strong>
 							</span>
 							{inferred.ambiguous && (
 								<label style={styles.inline}>
@@ -305,7 +331,7 @@ export function ConfigEditorScreen({
 										checked={asText}
 										onChange={(event) => setAsText(event.target.checked)}
 									/>
-									Save as text instead
+									{t('config.editor.saveAsText')}
 								</label>
 							)}
 						</div>
@@ -318,7 +344,7 @@ export function ConfigEditorScreen({
 							checked={value === 'true'}
 							onChange={(event) => setValue(event.target.checked ? 'true' : 'false')}
 						/>
-						{value === 'true' ? 'On (true)' : 'Off (false)'}
+						{value === 'true' ? t('config.editor.on') : t('config.editor.off')}
 					</label>
 				) : !isSecret && valueType === 'number' ? (
 					<input
@@ -350,7 +376,7 @@ export function ConfigEditorScreen({
 				{!isSecret && !freeForm && configEntry.entry && (
 					<div style={styles.detected}>
 						<span>
-							Type: <strong>{configValueLabel(configEntry.entry.value)}</strong>
+							{t('config.editor.type')} <strong>{shapeLabel(configEntry.entry.value)}</strong>
 						</span>
 						<button
 							type="button"
@@ -360,15 +386,12 @@ export function ConfigEditorScreen({
 								setAsText(false);
 							}}
 						>
-							Change type…
+							{t('config.editor.changeType')}
 						</button>
 					</div>
 				)}
 				{changingType && (
-					<p style={styles.warning}>
-						Changing the type changes what every screen reading this key receives. Check the code
-						that reads it first.
-					</p>
+					<p style={styles.warning}>{t('config.editor.changeTypeWarning')}</p>
 				)}
 				{inputError && (
 					<p style={styles.error} role="alert">
@@ -377,7 +400,7 @@ export function ConfigEditorScreen({
 				)}
 
 				<label style={styles.label} htmlFor="config-description">
-					Description
+					{t('config.editor.description')}
 				</label>
 				<input
 					id="config-description"
@@ -388,8 +411,7 @@ export function ConfigEditorScreen({
 
 				{saveError && saveError.reason === 'VERSION_CONFLICT' ? (
 					<p style={styles.error} role="alert">
-						Someone changed this entry since you opened it. Reload to see their change, then edit
-						again.{' '}
+						{t('config.editor.conflict')}{' '}
 						<button
 							type="button"
 							style={styles.smallButton}
@@ -398,7 +420,7 @@ export function ConfigEditorScreen({
 								void entry.refresh();
 							}}
 						>
-							Reload
+							{t('common.reload')}
 						</button>
 					</p>
 				) : saveError ? (
@@ -409,7 +431,7 @@ export function ConfigEditorScreen({
 
 				<div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 16 }}>
 					<button type="submit" disabled={isSaving} style={{ ...styles.button, marginTop: 0 }}>
-						{isSaving ? 'Saving…' : 'Save'}
+						{isSaving ? t('common.saving') : t('common.save')}
 					</button>
 					{!isNew && (
 						<button
@@ -424,7 +446,7 @@ export function ConfigEditorScreen({
 								borderColor: 'color-mix(in srgb, var(--fonderie-danger,#e00) 40%, transparent)',
 							}}
 						>
-							{isDeleting ? 'Deleting…' : 'Delete'}
+							{isDeleting ? t('common.deleting') : t('common.delete')}
 						</button>
 					)}
 				</div>
@@ -432,20 +454,20 @@ export function ConfigEditorScreen({
 
 			{!isNew && revisions.revisions.length > 0 && (
 				<div style={styles.revisions}>
-					<h2 style={styles.subtitle}>History</h2>
+					<h2 style={styles.subtitle}>{t('config.editor.history')}</h2>
 					<ul style={styles.list}>
 						{revisions.revisions.map((rev) => (
 							<li key={rev.version} style={styles.row}>
 								<span>
-									v{rev.version} — {rev.actor ?? 'unknown'} —{' '}
-									{new Date(rev.createdAt).toLocaleString()}
+									v{rev.version} — {rev.actor ?? t('config.editor.unknownActor')} —{' '}
+									{formatAdminDate(rev.createdAt, locale)}
 								</span>
 								<button
 									type="button"
 									onClick={() => revisions.rollback(rev.version)}
 									style={styles.smallButton}
 								>
-									Roll back
+									{t('config.editor.rollBack')}
 								</button>
 							</li>
 						))}

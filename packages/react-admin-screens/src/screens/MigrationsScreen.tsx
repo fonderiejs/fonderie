@@ -1,24 +1,32 @@
-import type { AdminClient, IAdminMigrationModule } from '@fonderie/client';
+import {
+	type AdminClient,
+	type AdminLocale,
+	type AdminT,
+	type IAdminMigrationModule,
+	createAdminT,
+} from '@fonderie/client';
 import { useAdminMigrations } from '@fonderie/react-admin';
 import { styles } from '../styles';
 import { Empty, PageHeader, Pill, RefreshButton } from '../ui';
 
 export interface IMigrationsScreenProps {
 	client: AdminClient;
+	locale?: AdminLocale | undefined;
 }
 
 // Why a module might not be appliable, in the operator's terms. Order matters:
 // being blocked by an earlier module is the more actionable answer, so it is
 // reported before the destructive one even when both are true.
-function why(m: IAdminMigrationModule, everApplied: boolean): string | null {
+function why(m: IAdminMigrationModule, everApplied: boolean, t: AdminT): string | null {
 	if (m.pending.length === 0) return null;
-	if (m.blockedBy) return `Apply "${m.blockedBy}" first — it runs before this one and is behind.`;
+	if (m.blockedBy) return t('migrations.blockedBy', { module: m.blockedBy });
 	if (everApplied && m.pending.some((p) => p.impact === 'destructive'))
-		return 'Contains a migration that deletes data. No down-migration brings it back — apply this one through CI or `npm run migrate`.';
+		return t('migrations.destructiveBlocked');
 	return null;
 }
 
-export function MigrationsScreen({ client }: IMigrationsScreenProps) {
+export function MigrationsScreen({ client, locale }: IMigrationsScreenProps) {
+	const t = createAdminT(locale);
 	const { report, isLoading, error, refresh, apply } = useAdminMigrations(client);
 
 	const behind = report?.modules.filter((m) => m.pending.length > 0) ?? [];
@@ -26,49 +34,51 @@ export function MigrationsScreen({ client }: IMigrationsScreenProps) {
 	return (
 		<div style={styles.container}>
 			<PageHeader
-				title="Migrations"
-				lead="Schema changes each module ships, and whether this database has them."
-				actions={<RefreshButton onClick={() => void refresh()} busy={isLoading} />}
+				title={t('migrations.title')}
+				lead={t('migrations.lead')}
+				actions={
+					<RefreshButton
+						onClick={() => void refresh()}
+						busy={isLoading}
+						label={t('common.refresh')}
+						busyLabel={t('common.working')}
+					/>
+				}
 			/>
 
 			{error ? (
 				<p style={styles.error} role="alert">
-					{error.status === 403
-						? 'Applying migrations needs a token with the write scope.'
-						: error.explanation}
+					{error.status === 403 ? t('migrations.needsWrite') : error.explanation}
 				</p>
 			) : null}
 
 			{report && !report.everApplied ? (
-				<p style={styles.notice}>
-					This database has never been migrated — treating it as a first install, so nothing is held
-					back.
-				</p>
+				<p style={styles.notice}>{t('migrations.firstInstall')}</p>
 			) : null}
 
 			{report && behind.length === 0 ? (
-				<Empty icon="migrations" title="Every module is up to date">
-					No pending migrations.
+				<Empty icon="migrations" title={t('migrations.upToDate')}>
+					{t('migrations.noPending')}
 				</Empty>
 			) : null}
 
 			{behind.map((m) => {
-				const blocked = why(m, report?.everApplied ?? false);
+				const blocked = why(m, report?.everApplied ?? false, t);
 				const files = m.pending.map((p) => p.file);
 				return (
 					<section key={m.name} style={{ ...styles.card, marginBottom: 16 }}>
 						<h2 style={{ ...styles.subtitle, marginTop: 0 }}>
 							<span style={styles.mono}>{m.name}</span>
-							<Pill tone="warn">{m.pending.length} pending</Pill>
+							<Pill tone="warn">{t('migrations.pendingCount', { n: m.pending.length })}</Pill>
 						</h2>
 						<ul style={{ margin: '0 0 12px', paddingLeft: 18, lineHeight: 1.9 }}>
 							{m.pending.map((p) => (
 								<li key={p.file}>
 									<code style={styles.code}>{p.file}</code>{' '}
 									{p.impact === 'destructive' ? (
-										<Pill tone="bad">destructive</Pill>
+										<Pill tone="bad">{t('migrations.destructive')}</Pill>
 									) : (
-										<Pill tone="neutral">additive</Pill>
+										<Pill tone="neutral">{t('migrations.additive')}</Pill>
 									)}
 									{p.destructive.length > 0 ? (
 										<ul>
@@ -92,7 +102,7 @@ export function MigrationsScreen({ client }: IMigrationsScreenProps) {
 								onClick={() => {
 									if (
 										window.confirm(
-											`Apply ${m.pending.length} migration(s) to "${m.name}"? This changes the database schema.`,
+											t('migrations.confirmApply', { n: m.pending.length, module: m.name }),
 										)
 									)
 										// The hook already put any failure in `error` and re-read
@@ -100,7 +110,9 @@ export function MigrationsScreen({ client }: IMigrationsScreenProps) {
 										void apply(m.name, files).catch(() => {});
 								}}
 							>
-								Apply {m.pending.length} migration{m.pending.length === 1 ? '' : 's'}
+								{m.pending.length === 1
+									? t('migrations.applyOne')
+									: t('migrations.applyMany', { n: m.pending.length })}
 							</button>
 						)}
 					</section>
