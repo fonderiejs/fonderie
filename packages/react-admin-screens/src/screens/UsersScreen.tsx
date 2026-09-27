@@ -7,6 +7,7 @@ import {
 } from '@fonderie/react-admin';
 import { useState } from 'react';
 import { styles } from '../styles';
+import { Empty, Icon, PageHeader, Pill } from '../ui';
 
 export interface IUsersScreenProps {
 	client: AuthAdminClient;
@@ -30,8 +31,7 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 	const sessions = useAdminUserSessions(client, userId);
 	const history = useAdminLoginHistory(client, userId, { limit: 20 });
 
-	const yesNo = (v: boolean) =>
-		v ? <span style={styles.ok}>yes</span> : <span style={styles.muted}>no</span>;
+	const yesNo = (v: boolean) => (v ? <Pill tone="ok">yes</Pill> : <Pill tone="neutral">no</Pill>);
 
 	const clear = () => {
 		setSelected(null);
@@ -40,7 +40,10 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Users</h1>
+			<PageHeader
+				title="Users"
+				lead="Everyone signed up. Open an account for its sessions, sign-ins and the suspend and sign-out controls."
+			/>
 			<form
 				style={styles.toolbar}
 				onSubmit={(e) => {
@@ -54,15 +57,17 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					placeholder="email address"
-					style={{ ...styles.button, cursor: 'text', minWidth: 280 }}
+					style={{ ...styles.input, minWidth: 280 }}
 					aria-label="Email"
 				/>
-				<button type="submit" style={styles.button} disabled={isLoading}>
+				<button type="submit" style={styles.buttonPrimary} disabled={isLoading}>
+					<Icon name="search" size={14} />
 					Look up
 				</button>
 				{selected ? (
-					<button type="button" style={styles.button} onClick={clear}>
-						← All users
+					<button type="button" style={styles.buttonGhost} onClick={clear}>
+						<Icon name="back" size={14} />
+						All users
 					</button>
 				) : (
 					<button
@@ -88,7 +93,9 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 						</p>
 					) : null}
 					{list.users.length === 0 && !list.isLoading ? (
-						<p style={styles.muted}>No users yet.</p>
+						<Empty icon="users" title="No users yet">
+							Sign-ups appear here as they happen.
+						</Empty>
 					) : (
 						<table style={styles.table}>
 							<thead>
@@ -105,7 +112,7 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 										<td style={styles.td}>
 											<button
 												type="button"
-												style={{ ...styles.navItem, padding: 0 }}
+												style={styles.link}
 												onClick={() => setSelected({ id: u.id })}
 											>
 												{u.email}
@@ -118,9 +125,9 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 										</td>
 										<td style={styles.td}>{new Date(u.createdAt).toLocaleDateString()}</td>
 										<td style={styles.td}>
-											{u.suspended ? <span style={styles.badge}>suspended</span> : null}
-											{u.deletedAt ? <span style={styles.badge}>deleted</span> : null}
-											{!u.suspended && !u.deletedAt ? <span style={styles.muted}>active</span> : null}
+											{u.suspended ? <Pill tone="warn">suspended</Pill> : null}
+											{u.deletedAt ? <Pill tone="neutral">deleted</Pill> : null}
+											{!u.suspended && !u.deletedAt ? <Pill tone="ok">active</Pill> : null}
 										</td>
 									</tr>
 								))}
@@ -145,8 +152,8 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 						{user.firstName || user.lastName
 							? `${user.firstName} ${user.lastName}`.trim()
 							: user.email}{' '}
-						{user.suspended ? <span style={styles.badge}>suspended</span> : null}
-						{user.deletedAt ? <span style={styles.badge}>deleted</span> : null}
+						{user.suspended ? <Pill tone="warn">suspended</Pill> : null}
+						{user.deletedAt ? <Pill tone="neutral">deleted</Pill> : null}
 					</h2>
 					<table style={styles.table}>
 						<tbody>
@@ -200,7 +207,7 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 						) : (
 							<button
 								type="button"
-								style={styles.button}
+								style={styles.buttonDanger}
 								onClick={() => void suspend()}
 								disabled={isLoading}
 							>
@@ -242,14 +249,17 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 						<ul style={styles.list}>
 							{history.events.map((e) => (
 								<li key={e.id} style={styles.row}>
-									<span style={e.outcome === 'success' ? styles.ok : styles.bad}>{e.outcome}</span>{' '}
+									<Pill tone={e.outcome === 'success' ? 'ok' : 'bad'}>{e.outcome}</Pill>{' '}
 									<span style={styles.muted}>{e.method}</span>{' '}
 									<span style={styles.mono}>{e.ipAddress ?? '—'}</span>{' '}
 									{describeLocation(e.location) ? (
 										<span style={styles.muted}>{describeLocation(e.location)}</span>
 									) : null}
 									{e.location?.proxy || e.location?.hosting ? (
-										<span style={styles.bad}> {e.location.proxy ? 'proxy/VPN' : 'hosting'}</span>
+										<>
+											{' '}
+											<Pill tone="warn">{e.location.proxy ? 'proxy/VPN' : 'hosting'}</Pill>
+										</>
 									) : null}{' '}
 									<span style={styles.muted}>{new Date(e.createdAt).toLocaleString()}</span>
 								</li>

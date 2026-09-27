@@ -1,6 +1,7 @@
 import type { AdminClient } from '@fonderie/client';
 import { useAdminLog } from '@fonderie/react-admin';
 import { styles } from '../styles';
+import { Empty, MethodChip, PageHeader, Pill, RefreshButton } from '../ui';
 
 export interface IAdminLogScreenProps {
 	client: AdminClient;
@@ -14,23 +15,19 @@ export function AdminLogScreen({ client, pageSize = 50 }: IAdminLogScreenProps) 
 	});
 	return (
 		<div style={styles.container}>
-			<div style={styles.toolbar}>
-				<h1 style={{ ...styles.title, marginBottom: 0 }}>Admin log</h1>
-				<button
-					type="button"
-					style={styles.button}
-					onClick={() => void refresh()}
-					disabled={isLoading}
-				>
-					Refresh
-				</button>
-			</div>
+			<PageHeader
+				title="Admin log"
+				lead="Every request made through this surface, newest first — refused ones included."
+				actions={<RefreshButton onClick={() => void refresh()} busy={isLoading} />}
+			/>
 			{error ? (
 				<p style={styles.error} role="alert">
 					{error.status === 404
 						? 'The admin log is off — give AdminModule a store.'
 						: error.explanation}
 				</p>
+			) : entries.length === 0 && !isLoading ? (
+				<Empty icon="log" title="No requests yet" />
 			) : (
 				<>
 					<table style={styles.table}>
@@ -46,15 +43,18 @@ export function AdminLogScreen({ client, pageSize = 50 }: IAdminLogScreenProps) 
 						<tbody>
 							{entries.map((e) => (
 								<tr key={e.id}>
-									<td style={{ ...styles.td, ...styles.muted }}>
+									<td style={{ ...styles.td, ...styles.muted, whiteSpace: 'nowrap' }}>
 										{new Date(e.at).toLocaleString()}
 									</td>
 									<td style={styles.td}>{e.actor}</td>
-									<td style={{ ...styles.td, ...styles.mono }}>
-										{e.method} {e.path}
-									</td>
 									<td style={styles.td}>
-										<span style={e.status >= 400 ? styles.bad : styles.ok}>{e.status}</span>{' '}
+										<MethodChip method={e.method} />{' '}
+										<span style={{ ...styles.mono, wordBreak: 'break-all' }}>{e.path}</span>
+									</td>
+									<td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+										<Pill tone={e.status >= 500 ? 'bad' : e.status >= 400 ? 'warn' : 'ok'}>
+											{e.status}
+										</Pill>{' '}
 										<span style={styles.muted}>{e.durationMs} ms</span>
 									</td>
 									<td style={{ ...styles.td, ...styles.muted }}>{e.module}</td>

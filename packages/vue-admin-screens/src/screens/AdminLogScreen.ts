@@ -3,8 +3,10 @@ import { useAdminLog } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
 import { styles } from '../styles';
-import { refreshButton, table, td } from './common';
+import { empty, methodChip, pageHeader, pill } from '../ui';
+import { loadMoreButton, refreshButton, table, td } from './common';
 
+// Who did what through the surface, newest first — refused requests included.
 export const AdminLogScreen = defineComponent({
 	name: 'FonderieAdminLogScreen',
 	props: {
@@ -17,10 +19,11 @@ export const AdminLogScreen = defineComponent({
 		});
 		return () =>
 			h('div', { style: styles.container }, [
-				h('div', { style: styles.toolbar }, [
-					h('h1', { style: { ...styles.title, marginBottom: 0 } }, 'Admin log'),
-					refreshButton('Refresh', isLoading.value, () => void refresh()),
-				]),
+				pageHeader(
+					'Admin log',
+					'Every request made through this surface, newest first — refused ones included.',
+					[refreshButton('Refresh', isLoading.value, () => void refresh())],
+				),
 				error.value
 					? h(
 							'p',
@@ -29,40 +32,41 @@ export const AdminLogScreen = defineComponent({
 								? 'The admin log is off — give AdminModule a store.'
 								: error.value.explanation,
 						)
-					: [
-							table(
-								['When', 'Actor', 'Request', 'Status', 'Module'],
-								entries.value.map((e) =>
-									h('tr', { key: e.id }, [
-										td(new Date(e.at).toLocaleString(), styles.muted),
-										td(e.actor),
-										td(`${e.method} ${e.path}`, styles.mono),
-										td([
-											h(
-												'span',
-												{ style: e.status >= 400 ? styles.bad : styles.ok },
-												String(e.status),
+					: entries.value.length === 0 && !isLoading.value
+						? empty('No requests yet', undefined, 'log')
+						: [
+								table(
+									['When', 'Actor', 'Request', 'Status', 'Module'],
+									entries.value.map((e) =>
+										h('tr', { key: e.id }, [
+											td(new Date(e.at).toLocaleString(), {
+												...styles.muted,
+												whiteSpace: 'nowrap',
+											}),
+											td(e.actor),
+											td([
+												methodChip(e.method),
+												' ',
+												h('span', { style: { ...styles.mono, wordBreak: 'break-all' } }, e.path),
+											]),
+											td(
+												[
+													pill(
+														e.status >= 500 ? 'bad' : e.status >= 400 ? 'warn' : 'ok',
+														String(e.status),
+													),
+													' ',
+													h('span', { style: styles.muted }, `${e.durationMs} ms`),
+												],
+												{ whiteSpace: 'nowrap' },
 											),
-											' ',
-											h('span', { style: styles.muted }, `${e.durationMs} ms`),
+											td(e.module, styles.muted),
 										]),
-										td(e.module, styles.muted),
-									]),
+									),
 								),
-							),
-							isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
-							hasMore.value && !isLoading.value
-								? h(
-										'button',
-										{
-											type: 'button',
-											style: { ...styles.button, marginTop: '12px' },
-											onClick: () => void loadMore(),
-										},
-										'Load more',
-									)
-								: null,
-						],
+								isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
+								hasMore.value && !isLoading.value ? loadMoreButton(() => void loadMore()) : null,
+							],
 			]);
 	},
 });

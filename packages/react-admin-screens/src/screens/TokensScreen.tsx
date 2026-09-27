@@ -2,6 +2,7 @@ import type { AdminClient, AdminScope } from '@fonderie/client';
 import { useAdminTokens } from '@fonderie/react-admin';
 import { useState } from 'react';
 import { styles } from '../styles';
+import { Empty, Icon, PageHeader, Pill } from '../ui';
 
 export interface ITokensScreenProps {
 	client: AdminClient;
@@ -23,7 +24,10 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Access</h1>
+			<PageHeader
+				title="Access"
+				lead="Who can open this surface: the root token's strength, scoped tokens you have issued, and any legacy per-module tokens."
+			/>
 			{error ? (
 				<p style={styles.error} role="alert">
 					{error.status === 401
@@ -32,20 +36,22 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 				</p>
 			) : null}
 
-			<h2 style={styles.subtitle}>Root token</h2>
+			<h2 style={{ ...styles.subtitle, marginTop: 0 }}>Root token</h2>
 			{report ? (
-				<p>
-					{report.admin.ok ? (
-						<span style={styles.ok}>strong</span>
-					) : (
-						<span style={styles.bad}>weak</span>
-					)}
-					{report.admin.problems.map((p) => (
-						<div key={p.message} style={styles.bad}>
-							{p.message}
-						</div>
-					))}
-				</p>
+				<div style={{ ...styles.card, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+					<Icon name="lock" size={18} style={{ marginTop: 2 }} />
+					<div>
+						<Pill tone={report.admin.ok ? 'ok' : 'bad'}>{report.admin.ok ? 'strong' : 'weak'}</Pill>
+						{report.admin.problems.map((p) => (
+							<div
+								key={p.message}
+								style={{ marginTop: 6, color: 'var(--fonderie-danger,#e00)', fontSize: 13 }}
+							>
+								{p.message}
+							</div>
+						))}
+					</div>
+				</div>
 			) : null}
 
 			<h2 style={styles.subtitle}>Issued tokens</h2>
@@ -56,10 +62,26 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 			) : (
 				<>
 					{minted ? (
-						<p style={styles.ok}>
-							Copy this now — it is never shown again.{' '}
-							<span style={styles.mono}>{minted.token}</span> ({minted.name})
-						</p>
+						<div
+							style={{
+								...styles.notice,
+								background: 'color-mix(in srgb, var(--fonderie-accent,#00d294) 10%, transparent)',
+								borderColor: 'color-mix(in srgb, var(--fonderie-accent,#00d294) 35%, transparent)',
+							}}
+						>
+							<strong>Copy this now — it is never shown again.</strong> ({minted.name})
+							<div
+								style={{
+									...styles.code,
+									display: 'block',
+									marginTop: 8,
+									padding: '8px 10px',
+									wordBreak: 'break-all',
+								}}
+							>
+								{minted.token}
+							</div>
+						</div>
 					) : null}
 					<form
 						style={styles.toolbar}
@@ -83,11 +105,21 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="name"
-							style={{ ...styles.button, cursor: 'text' }}
+							style={styles.input}
 							aria-label="Name"
 						/>
 						{ALL.map((s) => (
-							<label key={s} style={{ ...styles.badge, cursor: 'pointer' }}>
+							<label
+								key={s}
+								style={{
+									...styles.badge,
+									cursor: 'pointer',
+									height: 32,
+									boxSizing: 'border-box',
+									padding: '0 10px',
+									fontSize: 13,
+								}}
+							>
 								<input type="checkbox" checked={scopes.includes(s)} onChange={() => toggle(s)} />{' '}
 								{s}
 							</label>
@@ -96,15 +128,16 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 							value={days}
 							onChange={(e) => setDays(e.target.value)}
 							placeholder="days (optional)"
-							style={{ ...styles.button, cursor: 'text', width: 140 }}
+							style={{ ...styles.input, width: 140 }}
 							aria-label="Days"
 						/>
 						<button
 							type="submit"
-							style={styles.button}
+							style={styles.buttonPrimary}
 							disabled={!name.trim() || scopes.length === 0 || isLoading}
 						>
-							Issue
+							<Icon name="plus" size={14} />
+							Issue token
 						</button>
 					</form>
 					{report?.issued && report.issued.length > 0 ? (
@@ -124,7 +157,12 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 									<tr key={t.id}>
 										<td style={styles.td}>
 											{t.name}
-											{t.revokedAt ? <span style={styles.badge}> revoked</span> : null}
+											{t.revokedAt ? (
+												<>
+													{' '}
+													<Pill tone="neutral">revoked</Pill>
+												</>
+											) : null}
 										</td>
 										<td style={{ ...styles.td, ...styles.mono }}>{t.scopes.join(', ')}</td>
 										<td style={{ ...styles.td, ...styles.muted }}>
@@ -140,7 +178,7 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 											{t.revokedAt ? null : (
 												<button
 													type="button"
-													style={styles.button}
+													style={styles.buttonDanger}
 													onClick={() => {
 														if (
 															window.confirm(
@@ -159,7 +197,9 @@ export function TokensScreen({ client }: ITokensScreenProps) {
 							</tbody>
 						</table>
 					) : (
-						<p style={styles.muted}>None issued.</p>
+						<Empty icon="tokens" title="No scoped tokens yet">
+							Issue a read-only token for a dashboard or a teammate instead of sharing the root.
+						</Empty>
 					)}
 				</>
 			)}

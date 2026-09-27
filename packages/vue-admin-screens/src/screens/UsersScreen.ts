@@ -8,7 +8,8 @@ import {
 import type { PropType } from 'vue';
 import { computed, defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
-import { refreshButton, table, td } from './common';
+import { empty, icon, pageHeader, pill } from '../ui';
+import { actionButton, loadMoreButton, refreshButton, table, td } from './common';
 
 // Who is signed up, and why can't this one log in. Lists on arrival — an
 // operator who must know an address before they can see anything cannot find
@@ -33,8 +34,7 @@ export const UsersScreen = defineComponent({
 		const sessions = useAdminUserSessions(props.client, userId);
 		const history = useAdminLoginHistory(props.client, userId, { limit: 20 });
 		const showList = computed(() => !email.value && !selectedId.value);
-		const yesNo = (v: boolean) =>
-			h('span', { style: v ? styles.ok : styles.muted }, v ? 'yes' : 'no');
+		const yesNo = (v: boolean) => (v ? pill('ok', 'yes') : pill('neutral', 'no'));
 		const row = (k: string, v: unknown) => h('tr', [td(k), td(v as never)]);
 		const clear = () => {
 			email.value = '';
@@ -45,7 +45,10 @@ export const UsersScreen = defineComponent({
 		return () => {
 			const u = user.value;
 			return h('div', { style: styles.container }, [
-				h('h1', { style: styles.title }, 'Users'),
+				pageHeader(
+					'Users',
+					'Everyone signed up. Open an account for its sessions, sign-ins and the suspend and sign-out controls.',
+				),
 				h(
 					'form',
 					{
@@ -62,17 +65,17 @@ export const UsersScreen = defineComponent({
 							value: input.value,
 							onInput: (e: Event) => (input.value = (e.target as HTMLInputElement).value),
 							placeholder: 'email address',
-							style: { ...styles.button, cursor: 'text', minWidth: '280px' },
+							style: { ...styles.input, minWidth: '280px' },
 							'aria-label': 'Email',
 						}),
 						h(
 							'button',
-							{ type: 'submit', style: styles.button, disabled: isLoading.value },
-							'Look up',
+							{ type: 'submit', style: styles.buttonPrimary, disabled: isLoading.value },
+							[icon('search', 14), 'Look up'],
 						),
 						showList.value
 							? refreshButton('Refresh', list.isLoading.value, () => void list.refresh())
-							: refreshButton('← All users', false, clear),
+							: actionButton([icon('back', 14), 'All users'], false, clear, styles.buttonGhost),
 					],
 				),
 				showList.value
@@ -81,7 +84,7 @@ export const UsersScreen = defineComponent({
 								? h('p', { style: styles.error, role: 'alert' }, list.error.value.explanation)
 								: null,
 							list.users.value.length === 0 && !list.isLoading.value
-								? h('p', { style: styles.muted }, 'No users yet.')
+								? empty('No users yet', 'Sign-ups appear here as they happen.', 'users')
 								: table(
 										['Email', 'Name', 'Created', 'Status'],
 										list.users.value.map((u) =>
@@ -91,7 +94,7 @@ export const UsersScreen = defineComponent({
 														'button',
 														{
 															type: 'button',
-															style: { ...styles.navItem, padding: 0 },
+															style: styles.link,
 															onClick: () => (selectedId.value = u.id),
 														},
 														u.email,
@@ -104,25 +107,17 @@ export const UsersScreen = defineComponent({
 												td(new Date(u.createdAt).toLocaleDateString()),
 												td(
 													u.suspended
-														? h('span', { style: styles.badge }, 'suspended')
+														? pill('warn', 'suspended')
 														: u.deletedAt
-															? h('span', { style: styles.badge }, 'deleted')
-															: h('span', { style: styles.muted }, 'active'),
+															? pill('neutral', 'deleted')
+															: pill('ok', 'active'),
 												),
 											]),
 										),
 									),
 							list.isLoading.value ? h('p', { style: styles.status }, 'Loading…') : null,
 							list.hasMore.value && !list.isLoading.value
-								? h(
-										'button',
-										{
-											type: 'button',
-											style: { ...styles.button, marginTop: '8px' },
-											onClick: () => void list.loadMore(),
-										},
-										'Load more',
-									)
+								? loadMoreButton(() => void list.loadMore())
 								: null,
 						])
 					: null,
@@ -138,8 +133,8 @@ export const UsersScreen = defineComponent({
 							h('h2', { style: styles.subtitle }, [
 								u.firstName || u.lastName ? `${u.firstName} ${u.lastName}`.trim() : u.email,
 								' ',
-								u.suspended ? h('span', { style: styles.badge }, 'suspended') : null,
-								u.deletedAt ? h('span', { style: styles.badge }, 'deleted') : null,
+								u.suspended ? pill('warn', 'suspended') : null,
+								u.deletedAt ? pill('neutral', 'deleted') : null,
 							]),
 							h('table', { style: styles.table }, [
 								h('tbody', [
@@ -161,9 +156,14 @@ export const UsersScreen = defineComponent({
 							]),
 							h('div', { style: { ...styles.toolbar, marginTop: '12px' } }, [
 								u.suspended
-									? refreshButton('Unsuspend', isLoading.value, () => void unsuspend())
-									: refreshButton('Suspend', isLoading.value, () => void suspend()),
-								refreshButton(
+									? actionButton('Unsuspend', isLoading.value, () => void unsuspend())
+									: actionButton(
+											'Suspend',
+											isLoading.value,
+											() => void suspend(),
+											styles.buttonDanger,
+										),
+								actionButton(
 									'Sign out everywhere',
 									isLoading.value,
 									() => void revokeSessions().then(() => sessions.refresh()),
@@ -199,11 +199,7 @@ export const UsersScreen = defineComponent({
 										{ style: styles.list },
 										history.events.value.map((e) =>
 											h('li', { key: e.id, style: styles.row }, [
-												h(
-													'span',
-													{ style: e.outcome === 'success' ? styles.ok : styles.bad },
-													e.outcome,
-												),
+												pill(e.outcome === 'success' ? 'ok' : 'bad', e.outcome),
 												' ',
 												h('span', { style: styles.muted }, e.method),
 												' ',
@@ -211,7 +207,7 @@ export const UsersScreen = defineComponent({
 												' ',
 												h('span', { style: styles.muted }, describeLocation(e.location) ?? ''),
 												e.location?.proxy || e.location?.hosting
-													? h('span', { style: styles.bad }, e.location.proxy ? ' proxy/VPN' : ' hosting')
+													? [' ', pill('warn', e.location.proxy ? 'proxy/VPN' : 'hosting')]
 													: '',
 												' ',
 												h('span', { style: styles.muted }, new Date(e.createdAt).toLocaleString()),
@@ -219,15 +215,7 @@ export const UsersScreen = defineComponent({
 										),
 									),
 							history.hasMore.value && !history.isLoading.value
-								? h(
-										'button',
-										{
-											type: 'button',
-											style: { ...styles.button, marginTop: '8px' },
-											onClick: () => void history.loadMore(),
-										},
-										'Load more',
-									)
+								? loadMoreButton(() => void history.loadMore())
 								: null,
 						]
 					: null,

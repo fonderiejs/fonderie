@@ -149,109 +149,113 @@ export function TemplateEditorScreen({
 			</p>
 
 			<div style={styles.split}>
-			<div style={styles.column}>
-			<form style={styles.form} onSubmit={handleSubmit}>
-				<label style={styles.label} htmlFor="template-subject">
-					Subject
-				</label>
-				<input
-					id="template-subject"
-					style={styles.input}
-					value={subject}
-					onChange={(event) => setSubject(event.target.value)}
-				/>
+				<div style={styles.column}>
+					<form style={styles.form} onSubmit={handleSubmit}>
+						<label style={styles.label} htmlFor="template-subject">
+							Subject
+						</label>
+						<input
+							id="template-subject"
+							style={styles.input}
+							value={subject}
+							onChange={(event) => setSubject(event.target.value)}
+						/>
 
-				<label style={styles.label} htmlFor="template-html">
-					HTML body
-				</label>
-				<textarea
-					id="template-html"
-					style={styles.textarea}
-					value={html}
-					onChange={(event) => setHtml(event.target.value)}
-					rows={8}
-				/>
+						<label style={styles.label} htmlFor="template-html">
+							HTML body
+						</label>
+						<textarea
+							id="template-html"
+							style={styles.textarea}
+							value={html}
+							onChange={(event) => setHtml(event.target.value)}
+							rows={8}
+						/>
 
-				<label style={styles.label} htmlFor="template-text">
-					Plain-text body
-				</label>
-				<textarea
-					id="template-text"
-					style={styles.textarea}
-					value={text}
-					onChange={(event) => setText(event.target.value)}
-					rows={4}
-					required
-				/>
+						<label style={styles.label} htmlFor="template-text">
+							Plain-text body
+						</label>
+						<textarea
+							id="template-text"
+							style={styles.textarea}
+							value={text}
+							onChange={(event) => setText(event.target.value)}
+							rows={4}
+							required
+						/>
 
-				<label style={styles.checkboxLabel}>
-					<input
-						type="checkbox"
-						checked={active}
-						onChange={(event) => setActive(event.target.checked)}
+						<label style={styles.checkboxLabel}>
+							<input
+								type="checkbox"
+								checked={active}
+								onChange={(event) => setActive(event.target.checked)}
+							/>
+							Active
+						</label>
+
+						{saveError && (
+							<p style={styles.error} role="alert">
+								{saveError.explanation}
+							</p>
+						)}
+
+						<div style={styles.saveRow}>
+							<button
+								type="submit"
+								disabled={isSaving || !dirty}
+								style={dirty ? styles.button : styles.buttonDisabled}
+							>
+								{isSaving ? 'Saving…' : 'Save'}
+							</button>
+							{!dirty && !isSaving && <span style={styles.meta}>No changes to save</span>}
+						</div>
+					</form>
+
+					<label style={styles.label} htmlFor="template-sample">
+						Sample data
+					</label>
+					<textarea
+						id="template-sample"
+						style={styles.textarea}
+						value={sampleJson}
+						onChange={(event) => setSampleJson(event.target.value)}
+						rows={6}
+						spellCheck={false}
 					/>
-					Active
-				</label>
-
-				{saveError && (
-					<p style={styles.error} role="alert">
-						{saveError.explanation}
-					</p>
-				)}
-
-				<div style={styles.saveRow}>
-					<button type="submit" disabled={isSaving || !dirty} style={dirty ? styles.button : styles.buttonDisabled}>
-						{isSaving ? 'Saving…' : 'Save'}
-					</button>
-					{!dirty && !isSaving && <span style={styles.meta}>No changes to save</span>}
+					{sampleError && (
+						<p style={styles.error} role="alert">
+							{sampleError}
+						</p>
+					)}
 				</div>
-			</form>
 
-			<label style={styles.label} htmlFor="template-sample">
-				Sample data
-			</label>
-			<textarea
-				id="template-sample"
-				style={styles.textarea}
-				value={sampleJson}
-				onChange={(event) => setSampleJson(event.target.value)}
-				rows={6}
-				spellCheck={false}
-			/>
-			{sampleError && (
-				<p style={styles.error} role="alert">
-					{sampleError}
-				</p>
-			)}
-			</div>
-
-			<div style={styles.previewColumn}>
-				<div style={styles.previewHeader}>
-					<span style={styles.label}>Preview</span>
-					<span style={styles.meta}>{isPreviewing ? 'Rendering…' : 'Live'}</span>
+				<div style={styles.previewColumn}>
+					<div style={styles.previewHeader}>
+						<span style={styles.label}>Preview</span>
+						<span style={styles.meta}>{isPreviewing ? 'Rendering…' : 'Live'}</span>
+					</div>
+					{previewError && (
+						<p style={styles.error} role="alert">
+							{previewError.explanation}
+						</p>
+					)}
+					{preview?.subject && <p style={styles.previewSubject}>{preview.subject}</p>}
+					{preview?.html ? (
+						// sandbox="" — no scripts, no same-origin. This is operator-authored
+						// HTML and it must never execute in the dashboard's origin, which is
+						// where the admin token lives.
+						<iframe
+							title="Template preview"
+							style={styles.previewFrame}
+							sandbox=""
+							srcDoc={preview.html}
+						/>
+					) : preview ? (
+						<pre style={styles.previewText}>{preview.text}</pre>
+					) : (
+						<p style={styles.meta}>Nothing rendered yet.</p>
+					)}
 				</div>
-				{previewError && (
-					<p style={styles.error} role="alert">
-						{previewError.explanation}
-					</p>
-				)}
-				{preview?.subject && <p style={styles.previewSubject}>{preview.subject}</p>}
-				{preview?.html ? (
-					// sandbox="" — no scripts, no same-origin. This is operator-authored
-					// HTML and it must never execute in the dashboard's origin, which is
-					// where the admin token lives.
-					<iframe
-						title="Template preview"
-						style={styles.previewFrame}
-						sandbox=""
-						srcDoc={preview.html}
-					/>
-				) : preview ? (
-					<pre style={styles.previewText}>{preview.text}</pre>
-				) : (
-					<p style={styles.meta}>Nothing rendered yet.</p>
-				)}
-			</div>
 			</div>
 
 			{revisions.length > 0 && (
@@ -281,13 +285,24 @@ export function TemplateEditorScreen({
 }
 
 const styles: Record<string, CSSProperties> = {
-	container: { padding: 24 },
+	container: { padding: '8px 40px 64px', maxWidth: 1400, boxSizing: 'border-box' },
 	// Two columns, always: the editor on the left, the rendered result on the
 	// right. Stacking the preview under a long form hid it below the fold.
-	split: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, alignItems: 'start' },
+	split: {
+		display: 'grid',
+		gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+		gap: 24,
+		alignItems: 'start',
+	},
 	column: { minWidth: 0, display: 'flex', flexDirection: 'column' },
 	// Pinned while the form scrolls, so the preview stays in view as you edit.
-	previewColumn: { minWidth: 0, display: 'flex', flexDirection: 'column', position: 'sticky', top: 16 },
+	previewColumn: {
+		minWidth: 0,
+		display: 'flex',
+		flexDirection: 'column',
+		position: 'sticky',
+		top: 16,
+	},
 	saveRow: { display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 },
 	previewHeader: {
 		display: 'flex',
@@ -297,6 +312,7 @@ const styles: Record<string, CSSProperties> = {
 	},
 	previewSubject: { fontSize: 14, fontWeight: 600, margin: '8px 0' },
 	previewFrame: {
+		boxShadow: 'var(--fonderie-shadow-card,0 2px 3px 0 rgba(0,0,0,.05))',
 		width: '100%',
 		height: 520,
 		border: '1px solid var(--fonderie-border,#e0e0e0)',
@@ -309,62 +325,131 @@ const styles: Record<string, CSSProperties> = {
 		borderRadius: 8,
 		padding: 12,
 		fontSize: 13,
-		fontFamily: 'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+		fontFamily:
+			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
 	},
-	title: { fontSize: 24, fontWeight: 700 },
-	meta: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginBottom: 16 },
+	title: {
+		fontSize: 22,
+		fontWeight: 600,
+		margin: '8px 0 4px',
+		letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
+		lineHeight: 1.25,
+	},
+	meta: { fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginBottom: 20 },
 	status: { padding: 24, textAlign: 'center', color: 'var(--fonderie-text-muted,#5c5c5c)' },
-	error: { color: 'var(--fonderie-danger,#e00)', marginBottom: 12, fontSize: 14 },
-	form: { display: 'flex', flexDirection: 'column', gap: 4 },
-	label: { fontSize: 13, fontWeight: 600, marginTop: 12 },
-	input: { border: '1px solid var(--fonderie-border,#e0e0e0)', borderRadius: 8, padding: 10, fontSize: 14 },
+	error: {
+		color: 'var(--fonderie-danger,#e00)',
+		background: 'color-mix(in srgb, var(--fonderie-danger,#e00) 8%, transparent)',
+		borderRadius: 6,
+		padding: '8px 12px',
+		margin: '8px 0',
+		fontSize: 13.5,
+	},
+	form: {
+		display: 'flex',
+		flexDirection: 'column',
+		gap: 4,
+		background: 'var(--fonderie-surface,#fff)',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		borderRadius: 'var(--fonderie-radius-lg,8px)',
+		padding: '6px 20px 20px',
+		boxShadow: 'var(--fonderie-shadow-card,0 2px 3px 0 rgba(0,0,0,.05))',
+	},
+	label: { fontSize: 13, fontWeight: 500, marginTop: 14, marginBottom: 2 },
+	input: {
+		height: 36,
+		boxSizing: 'border-box',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		borderRadius: 6,
+		padding: '0 10px',
+		fontSize: 13.5,
+		fontFamily: 'inherit',
+		background: 'var(--fonderie-surface,#fff)',
+		color: 'var(--fonderie-text,#171717)',
+	},
 	textarea: {
 		border: '1px solid var(--fonderie-border,#e0e0e0)',
-		borderRadius: 8,
+		borderRadius: 6,
 		padding: 10,
-		fontSize: 14,
-		fontFamily: 'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
+		fontSize: 13,
+		lineHeight: 1.55,
+		background: 'var(--fonderie-surface,#fff)',
+		color: 'var(--fonderie-text,#171717)',
+		fontFamily:
+			'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)',
 	},
 	checkboxLabel: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 14 },
 	button: {
+		display: 'inline-flex',
+		alignItems: 'center',
+		height: 36,
+		boxSizing: 'border-box',
 		backgroundColor: 'var(--fonderie-text,#171717)',
 		color: 'var(--fonderie-surface,#fff)',
-		padding: '10px 20px',
-		borderRadius: 8,
-		border: 'none',
-		fontSize: 14,
+		padding: '0 16px',
+		borderRadius: 6,
+		border: '1px solid var(--fonderie-text,#171717)',
+		fontSize: 13.5,
 		fontWeight: 600,
+		fontFamily: 'inherit',
 		cursor: 'pointer',
 		alignSelf: 'flex-start',
 	},
 	buttonDisabled: {
-		backgroundColor: 'var(--fonderie-border,#e0e0e0)',
-		color: 'var(--fonderie-text-muted,#5c5c5c)',
-		padding: '10px 20px',
-		borderRadius: 8,
-		border: 'none',
-		fontSize: 14,
+		display: 'inline-flex',
+		alignItems: 'center',
+		height: 36,
+		boxSizing: 'border-box',
+		backgroundColor: 'var(--fonderie-text,#171717)',
+		color: 'var(--fonderie-surface,#fff)',
+		padding: '0 16px',
+		borderRadius: 6,
+		border: '1px solid var(--fonderie-text,#171717)',
+		fontSize: 13.5,
 		fontWeight: 600,
-		cursor: 'not-allowed',
+		fontFamily: 'inherit',
 		alignSelf: 'flex-start',
+		opacity: 0.45,
+		cursor: 'not-allowed',
 	},
 	revisions: { marginTop: 32 },
-	subtitle: { fontSize: 16, fontWeight: 600, marginBottom: 8 },
-	list: { listStyle: 'none', padding: 0, margin: 0 },
+	subtitle: {
+		fontSize: 15,
+		fontWeight: 600,
+		margin: '0 0 10px',
+		letterSpacing: 'var(--fonderie-tracking-display,-0.05em)',
+	},
+	list: {
+		listStyle: 'none',
+		padding: 0,
+		margin: 0,
+		background: 'var(--fonderie-surface,#fff)',
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		borderRadius: 'var(--fonderie-radius-lg,8px)',
+		overflow: 'hidden',
+	},
 	row: {
 		display: 'flex',
 		justifyContent: 'space-between',
 		alignItems: 'center',
-		padding: '8px 0',
+		gap: 12,
+		padding: '9px 16px',
 		borderBottom: '1px solid var(--fonderie-border-light,#f5f5f5)',
 		fontSize: 13,
 	},
 	rollbackButton: {
-		background: 'none',
+		display: 'inline-flex',
+		alignItems: 'center',
+		height: 28,
+		boxSizing: 'border-box',
+		background: 'var(--fonderie-surface,#fff)',
+		color: 'var(--fonderie-text,#171717)',
 		border: '1px solid var(--fonderie-border,#e0e0e0)',
-		borderRadius: 8,
-		padding: '4px 10px',
-		fontSize: 12,
+		borderRadius: 6,
+		padding: '0 10px',
+		fontSize: 12.5,
+		fontWeight: 500,
+		fontFamily: 'inherit',
 		cursor: 'pointer',
 	},
 };

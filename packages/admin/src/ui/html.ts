@@ -115,6 +115,27 @@ box-shadow:0 1px 2px rgba(0,0,0,.06);
 .theme-switch__option:focus-within{color:var(--fonderie-text)}
 .theme-switch__option svg{flex-shrink:0}
 .theme-switch__option span{line-height:1}
+
+/* ── Console chrome. Pseudo-selectors the inline-styled screens cannot carry.
+   Each one only refines: embedded without this shell, a screen loses hover
+   states and keeps working. ── */
+button{transition:background-color .12s,border-color .12s,color .12s,opacity .12s}
+button:disabled{opacity:.5;cursor:default}
+.fonderie-admin-main button:not(:disabled):hover{opacity:.82}
+.fonderie-admin-main button:not(:disabled):active{opacity:.7}
+.fonderie-admin-nav-item:hover{background:color-mix(in srgb,var(--fonderie-text) 5%,transparent)!important;color:var(--fonderie-text)!important}
+.fonderie-admin-nav-item[aria-current="page"]:hover{background:color-mix(in srgb,var(--fonderie-accent) 16%,transparent)!important}
+/* Tables and lists are framed cards; the frame is the last row's rule. */
+.fonderie-admin-main tbody tr:last-child>td{border-bottom:none!important}
+.fonderie-admin-main ul>li:last-child{border-bottom:none!important}
+.fonderie-admin-main tbody tr:hover>td{background:color-mix(in srgb,var(--fonderie-text) 2.5%,transparent)}
+/* Inputs carry their border inline, so focus is a ring, not a border change. */
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--fonderie-accent) 30%,transparent)}
+input::placeholder,textarea::placeholder{color:var(--fonderie-text-muted);opacity:.75}
+/* In the sidebar footer the switcher spans the column. */
+nav .theme-switch{display:flex;width:100%;box-sizing:border-box}
+nav .theme-switch__option{flex:1;justify-content:center;padding:5px 6px}
+@media (max-width:820px){.fonderie-admin-main>div{padding:20px 16px 48px!important}}
 `;
 
 // Applies a STORED theme before the first paint. Without it an operator who
@@ -130,7 +151,8 @@ box-shadow:0 1px 2px rgba(0,0,0,.06);
 // Degrades correctly: if localStorage throws, or a consumer's CSP blocks the
 // inline script, no attribute is set and the console follows the system — the
 // default either way.
-const BOOT = `(function(){try{var t=localStorage.getItem('fonderie.admin.theme');` +
+const BOOT =
+	`(function(){try{var t=localStorage.getItem('fonderie.admin.theme');` +
 	`if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}})()`;
 
 export const uiHtml = (scriptPath: string): string => `<!doctype html>
