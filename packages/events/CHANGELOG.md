@@ -1,5 +1,12 @@
 # @fonderie/events
 
+## 5.9.2
+
+### Patch Changes
+
+- Updated dependencies [cc51775]
+  - @fonderie/store@0.7.0
+
 ## 5.9.1
 
 ### Patch Changes
