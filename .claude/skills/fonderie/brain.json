@@ -277,7 +277,8 @@
         "AuthModule",
         "AUTH_CONFIG_KEYS",
         "MESSAGE_KEYS",
-        "DEFAULT_TEMPLATES"
+        "DEFAULT_TEMPLATES",
+        "LOCATION_TIMEOUT_MS"
       ],
       "subpaths": [
         "@fonderie/auth/types",
@@ -5121,6 +5122,9 @@
       "auth",
       "billing",
       "workspaces"
+    ],
+    "location_timeout_ms": [
+      "auth"
     ],
     "billingmodule": [
       "billing"

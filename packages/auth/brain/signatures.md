@@ -56,6 +56,7 @@ new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus | undef
   .install(app: IFonderieApp): void
 
 interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
+    location?: LocationResolver;
     secureCookies?: boolean;
     rateLimit?: IAuthRateLimitConfig | false;
     accessTokenDuration?: string;
@@ -139,6 +140,7 @@ interface ILoginEventDTO {
     failureReason: string | null;
     ipAddress: string | null;
     userAgent: string | null;
+    location: IRequestLocation | null;
     createdAt: string;
 }
 
@@ -152,9 +154,42 @@ interface ISessionDTO {
     current: boolean;
     ipAddress: string | null;
     userAgent: string | null;
+    location: IRequestLocation | null;
     createdAt: string;
     expiresAt: string;
 }
+
+function sanitizeLocation(input: unknown): IRequestLocation | null
+
+function resolveLocation(resolver: LocationResolver | undefined, req: ILocationRequest, timeoutMs?: number): Promise<IRequestLocation | null>
+
+const LOCATION_TIMEOUT_MS: 1500
+
+interface IRequestLocation {
+    country?: string | null;
+    countryName?: string | null;
+    subdivision?: string | null;
+    subdivisionName?: string | null;
+    city?: string | null;
+    postalCode?: string | null;
+    continent?: string | null;
+    timeZone?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    isp?: string | null;
+    org?: string | null;
+    asn?: string | null;
+    mobile?: boolean | null;
+    proxy?: boolean | null;
+    hosting?: boolean | null;
+}
+
+interface ILocationRequest {
+    ip: string | null;
+    headers: Headers;
+}
+
+type LocationResolver = (req: ILocationRequest) => IRequestLocation | null | undefined | Promise<IRequestLocation | null | undefined>;
 
 function validate(schema: IRequestSchema): Middleware
 

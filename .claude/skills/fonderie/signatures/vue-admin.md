@@ -176,6 +176,7 @@ interface ILoginEventDTO {
     failureReason: string | null;
     ipAddress: string | null;
     userAgent: string | null;
+    location: IRequestLocationDTO | null;
     createdAt: string;
 }
 
@@ -189,6 +190,7 @@ interface ISessionDTO {
     current: boolean;
     ipAddress: string | null;
     userAgent: string | null;
+    location: IRequestLocationDTO | null;
     createdAt: string;
     expiresAt: string;
 }
@@ -412,9 +414,9 @@ function useAdminUser(client: AuthAdminClient, by: { email?: Ref<string, string>
 
 function useAdminUsers(client: AuthAdminClient, query?: Omit<IAdminUsersQuery, "cursor">): { users: Ref<{ deletedAt: string | null; id: string; email: string; ... 16 more ...; updatedAt: string; }[], IAdminUserDTO[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 
-function useAdminUserSessions(client: AuthAdminClient, userId: Ref<string | null, string | null>): { sessions: Ref<{ id: string; current: boolean; ipAddress: string | null; userAgent: string | null; createdAt: string; expiresAt: string; }[], ISessionDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useAdminUserSessions(client: AuthAdminClient, userId: Ref<string | null, string | null>): { sessions: Ref<{ id: string; current: boolean; ipAddress: string | null; userAgent: string | null; location: { ...; } | null; createdAt: string; expiresAt: string; }[], ISessionDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useAdminLoginHistory(client: AuthAdminClient, userId: Ref<string | null, string | null>, query?: { limit?: number; }): { events: Ref<{ id: string; method: string; outcome: string; failureReason: string | null; ipAddress: string | null; userAgent: string | null; createdAt: string; }[], ILoginEventDTO[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
+function useAdminLoginHistory(client: AuthAdminClient, userId: Ref<string | null, string | null>, query?: { limit?: number; }): { events: Ref<{ id: string; method: string; outcome: string; failureReason: string | null; ipAddress: string | null; userAgent: string | null; location: { ...; } | null; createdAt: string; }[], ILoginEventDTO[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 
 function useAdminCatalog(client: BillingAdminClient): { catalog: Ref<{ configured: unknown[]; stored: { id: string; planId: string; name: string; description: string; tier: number; seats: number | null; ... 4 more ...; metadata: Record<...>; }[]; } | null, IAdminCatalog | ... 1 more ... | null>; ... 5 more ...; deletePlan: (planId: string) => Promise<...>; }
 

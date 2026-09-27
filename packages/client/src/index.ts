@@ -97,6 +97,7 @@ export type {
 	IAuditEventDTO,
 	IAuditPageResult,
 	ILoginEventDTO,
+	IRequestLocationDTO,
 	IAdminUserPageResult,
 	ILoginHistoryPageResult,
 	ISessionDTO,
@@ -224,4 +225,4 @@ export type {
 	IWorkspaceSettingsResult,
 	SubscriberType,
 } from './types';
-export { isMfaRequired } from './types';
+export { isMfaRequired, describeLocation } from './types';

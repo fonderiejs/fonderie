@@ -12,7 +12,7 @@ for hosts without edge geolocation.
 
 Every request that reaches a function on Vercel already carries
 `x-vercel-ip-country`, `x-vercel-ip-country-region`, `x-vercel-ip-city`,
-`x-vercel-ip-timezone`, `x-vercel-ip-latitude`/`-longitude` (all plans, set by
+`x-vercel-ip-postal-code`, `x-vercel-ip-timezone`, `x-vercel-ip-latitude`/`-longitude` (all plans, set by
 the edge from the connecting IP). Cloudflare sends `cf-ipcountry` on every plan
 and region/city/coordinates when its *visitor location headers* transform is
 on. Nothing to download, load or refresh.

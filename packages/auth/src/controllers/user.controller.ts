@@ -35,8 +35,8 @@ function isValidPhone(phone: unknown): phone is string {
 
 export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users = new UserModel(store);
-	const sessions = new SessionModel(store);
-	const loginEvents = new LoginEventModel(store);
+	const sessions = new SessionModel(store, config.location);
+	const loginEvents = new LoginEventModel(store, config.location);
 	const emailVerif = new EmailVerificationModel(store);
 	const phoneVerif = new PhoneVerificationModel(store);
 

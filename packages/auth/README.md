@@ -37,6 +37,37 @@ import { withSession, requireAuth } from '@fonderie/auth';
 Also exports `toUserDTO`, `normalizeEmail`, and the full type surface
 (`IUser`, `ISession`, `IMfaChallenge`, …).
 
+## Where did that request come from? (optional)
+
+Pass a `location` resolver and auth stamps a location on every event it
+records — each login attempt, each registration, and each new session:
+
+```ts
+import { geoFromHeaders } from '@fonderie/geo';
+
+new AuthModule(store, {
+  providers: ['email'],
+  jwtSecret: process.env.JWT_SECRET!,
+  // Vercel/Cloudflare edge headers — zero infrastructure. Trust comes from
+  // the deployment, never the request.
+  location: ({ headers }) =>
+    geoFromHeaders(headers, { trust: process.env.VERCEL ? 'vercel' : undefined }),
+});
+```
+
+Login history then includes `registration` rows alongside sign-ins, and both
+history events and active sessions carry `location: { country, subdivision,
+city, timeZone, … } | null` (plus `isp`/`asn`/`proxy`/`hosting` if your
+resolver knows them). Registration matters most when verification is not
+enforced: the account is live from that request, so it is the first record of
+where the user came from.
+
+Run your migrations: `018_login_event_location.sql` and
+`019_session_location.sql` add the columns. The resolver runs at most once per
+request; its output is sanitized and bounded (coordinates ~1 km); if it throws or takes over 1.5 s the row is written without a location
+and the request is unaffected. Country is reliable; region and city are
+approximate.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —

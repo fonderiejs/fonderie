@@ -20,6 +20,7 @@ export type {
 	IUpdateProfileInput,
 	IGetLoginHistoryInput,
 	ILoginEventDTO,
+	IRequestLocationDTO,
 	ISessionDTO,
 } from '@fonderie/client';
 export { FonderieApiError, isMfaRequired } from '@fonderie/client';

@@ -38,6 +38,7 @@ const SOURCES: Record<GeoHeaderSource, { [K in keyof HeaderMap]: string }> = {
 		country: 'x-vercel-ip-country',
 		subdivision: 'x-vercel-ip-country-region',
 		city: 'x-vercel-ip-city',
+		postalCode: 'x-vercel-ip-postal-code',
 		continent: 'x-vercel-ip-continent',
 		timeZone: 'x-vercel-ip-timezone',
 		latitude: 'x-vercel-ip-latitude',
@@ -47,6 +48,7 @@ const SOURCES: Record<GeoHeaderSource, { [K in keyof HeaderMap]: string }> = {
 		country: 'cf-ipcountry',
 		subdivision: 'cf-region-code',
 		city: 'cf-ipcity',
+		postalCode: 'cf-postal-code',
 		continent: 'cf-ipcontinent',
 		timeZone: 'cf-timezone',
 		latitude: 'cf-iplatitude',
@@ -58,6 +60,7 @@ interface HeaderMap {
 	country: string;
 	subdivision: string;
 	city: string;
+	postalCode: string;
 	continent: string;
 	timeZone: string;
 	latitude: string;
@@ -105,6 +108,13 @@ function text(v: string | null): string | null {
 	return t.length >= 1 && t.length <= 128 ? t : null;
 }
 
+/** Postal / ZIP code: letters, digits, space, hyphen; up to 12. */
+function postal(v: string | null): string | null {
+	if (!v) return null;
+	const t = v.trim();
+	return /^[A-Za-z0-9][A-Za-z0-9 -]{0,11}$/.test(t) ? t.toUpperCase() : null;
+}
+
 /** IANA zone name such as `America/Toronto`, or `UTC`. */
 function timeZone(v: string | null): string | null {
 	if (!v) return null;
@@ -142,6 +152,7 @@ export function geoFromHeaders(headers: HeadersLike, opts: GeoFromHeadersOptions
 			subdivision: region(read(headers, names.subdivision)),
 			subdivisionName: null,
 			city: text(read(headers, names.city)),
+			postalCode: postal(read(headers, names.postalCode)),
 			continent: code(read(headers, names.continent)),
 			timeZone: timeZone(read(headers, names.timeZone)),
 			latitude: coordinate(read(headers, names.latitude), 90),

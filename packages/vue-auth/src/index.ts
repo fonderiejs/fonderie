@@ -3,6 +3,7 @@ export type {
 	IChangePasswordInput,
 	IGetLoginHistoryInput,
 	ILoginEventDTO,
+	IRequestLocationDTO,
 	ILoginInput,
 	ILoginResult,
 	IMfaEnabledResult,

@@ -18,6 +18,16 @@ export type {
 	ILoginHistoryPageDTO,
 	ISessionDTO,
 } from './dtos/login-activity';
+export {
+	sanitizeLocation,
+	resolveLocation,
+	LOCATION_TIMEOUT_MS,
+} from './services/request-location';
+export type {
+	IRequestLocation,
+	ILocationRequest,
+	LocationResolver,
+} from './services/request-location';
 
 // Request validation — schemas are the enforced contract for every
 // body-taking route; exported for docs generation and typed clients.

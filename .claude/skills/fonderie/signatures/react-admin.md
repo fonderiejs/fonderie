@@ -176,6 +176,7 @@ interface ILoginEventDTO {
     failureReason: string | null;
     ipAddress: string | null;
     userAgent: string | null;
+    location: IRequestLocationDTO | null;
     createdAt: string;
 }
 
@@ -189,6 +190,7 @@ interface ISessionDTO {
     current: boolean;
     ipAddress: string | null;
     userAgent: string | null;
+    location: IRequestLocationDTO | null;
     createdAt: string;
     expiresAt: string;
 }

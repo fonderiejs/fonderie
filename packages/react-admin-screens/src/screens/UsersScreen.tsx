@@ -1,4 +1,4 @@
-import type { AuthAdminClient } from '@fonderie/client';
+import { type AuthAdminClient, describeLocation } from '@fonderie/client';
 import {
 	useAdminLoginHistory,
 	useAdminUser,
@@ -225,6 +225,9 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 							{sessions.sessions.map((s) => (
 								<li key={s.id} style={styles.row}>
 									<span style={styles.mono}>{s.ipAddress ?? '—'}</span>{' '}
+									{describeLocation(s.location) ? (
+										<span style={styles.muted}>{describeLocation(s.location)} </span>
+									) : null}
 									<span style={styles.muted}>{s.userAgent ?? ''}</span>{' '}
 									<span style={styles.muted}>since {new Date(s.createdAt).toLocaleString()}</span>
 								</li>
@@ -241,6 +244,13 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 								<li key={e.id} style={styles.row}>
 									<span style={e.outcome === 'success' ? styles.ok : styles.bad}>{e.outcome}</span>{' '}
 									<span style={styles.muted}>{e.method}</span>{' '}
+									<span style={styles.mono}>{e.ipAddress ?? '—'}</span>{' '}
+									{describeLocation(e.location) ? (
+										<span style={styles.muted}>{describeLocation(e.location)}</span>
+									) : null}
+									{e.location?.proxy || e.location?.hosting ? (
+										<span style={styles.bad}> {e.location.proxy ? 'proxy/VPN' : 'hosting'}</span>
+									) : null}{' '}
 									<span style={styles.muted}>{new Date(e.createdAt).toLocaleString()}</span>
 								</li>
 							))}

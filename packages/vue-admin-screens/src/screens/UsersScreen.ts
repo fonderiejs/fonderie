@@ -1,4 +1,4 @@
-import type { AuthAdminClient } from '@fonderie/client';
+import { type AuthAdminClient, describeLocation } from '@fonderie/client';
 import {
 	useAdminLoginHistory,
 	useAdminUser,
@@ -179,6 +179,8 @@ export const UsersScreen = defineComponent({
 											h('li', { key: s.id, style: styles.row }, [
 												h('span', { style: styles.mono }, s.ipAddress ?? '—'),
 												' ',
+												h('span', { style: styles.muted }, describeLocation(s.location) ?? ''),
+												' ',
 												h('span', { style: styles.muted }, s.userAgent ?? ''),
 												' ',
 												h(
@@ -204,6 +206,13 @@ export const UsersScreen = defineComponent({
 												),
 												' ',
 												h('span', { style: styles.muted }, e.method),
+												' ',
+												h('span', { style: styles.mono }, e.ipAddress ?? '—'),
+												' ',
+												h('span', { style: styles.muted }, describeLocation(e.location) ?? ''),
+												e.location?.proxy || e.location?.hosting
+													? h('span', { style: styles.bad }, e.location.proxy ? ' proxy/VPN' : ' hosting')
+													: '',
 												' ',
 												h('span', { style: styles.muted }, new Date(e.createdAt).toLocaleString()),
 											]),
