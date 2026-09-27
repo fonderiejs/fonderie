@@ -752,6 +752,7 @@ export interface IRequestLocationDTO {
 	timeZone?: string;
 	latitude?: number;
 	longitude?: number;
+	accuracyRadius?: number; // km — how approximate the point is
 	isp?: string;
 	org?: string;
 	asn?: string;

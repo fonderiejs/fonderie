@@ -21,7 +21,6 @@ export type {
 export {
 	sanitizeLocation,
 	resolveLocation,
-	LOCATION_TIMEOUT_MS,
 } from './services/request-location';
 export type {
 	IRequestLocation,

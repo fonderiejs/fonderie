@@ -35,6 +35,7 @@ const GOOGLE_EXAMPLE = {
 	timeZone: 'America/Los_Angeles',
 	latitude: 37.4225,
 	longitude: -122.085,
+	accuracyRadius: 20.4,
 	isp: 'Google LLC',
 	org: 'Google LLC',
 	asn: 'as15169',
@@ -57,6 +58,7 @@ test('sanitizeLocation: normalises codes, rounds coordinates to ~1 km, keeps boo
 		timeZone: 'America/Los_Angeles',
 		latitude: 37.42,
 		longitude: -122.08,
+		accuracyRadius: 20,
 		isp: 'Google LLC',
 		org: 'Google LLC',
 		asn: 'AS15169',
@@ -73,6 +75,7 @@ test('sanitizeLocation: malformed or oversized fields are dropped, not stored', 
 			city: 'x'.repeat(129),
 			postalCode: '<94043>',
 			latitude: 123, // out of range
+			accuracyRadius: -5,
 			asn: 'five',
 			proxy: 'no', // not a boolean
 			timeZone: '<script>',
