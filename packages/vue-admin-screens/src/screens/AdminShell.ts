@@ -67,7 +67,7 @@ const NAV: Array<{
 		group: 'Money',
 		items: [
 			{ page: 'catalog', label: 'Catalog', needs: 'billing' },
-			{ page: 'subscriber', label: 'Subscriber', needs: 'billing' },
+			{ page: 'subscriber', label: 'Subscriptions', needs: 'billing' },
 		],
 	},
 	{ group: 'Settings', items: [{ page: 'settings', label: 'Config & secrets', needs: 'config' }] },
@@ -154,6 +154,8 @@ export const AdminShell = defineComponent({
 		const own = ref<AdminPage>('attention');
 		const current = computed(() => props.page ?? own.value);
 		const editing = ref<Editing>(null);
+		// A user opened from Subscriptions: their billing lives on the Users page.
+		const openUser = ref<string | undefined>(undefined);
 		const go = (p: AdminPage) => {
 			editing.value = null;
 			emit('navigate', p);
@@ -201,7 +203,17 @@ export const AdminShell = defineComponent({
 						: missing('Pass a BillingAdminClient to see the catalog here.');
 				case 'subscriber':
 					return props.billingClient
-						? h(SubscriberScreen, { client: props.billingClient })
+						? h(SubscriberScreen, {
+								client: props.billingClient,
+								...(props.authClient
+									? {
+											onOpenUser: (id: string) => {
+												openUser.value = id;
+												go('users');
+											},
+										}
+									: {}),
+							})
 						: missing('Pass a BillingAdminClient to look up subscribers here.');
 				case 'audit':
 					return props.auditClient
@@ -209,7 +221,12 @@ export const AdminShell = defineComponent({
 						: missing('Pass an AuditAdminClient to see the audit trail here.');
 				case 'users':
 					return props.authClient
-						? h(UsersScreen, { client: props.authClient })
+						? h(UsersScreen, {
+								key: openUser.value ?? 'list',
+								client: props.authClient,
+								...(props.billingClient ? { billingClient: props.billingClient } : {}),
+								...(openUser.value ? { openUserId: openUser.value } : {}),
+							})
 						: missing('Pass an AuthAdminClient to look up users here.');
 				case 'settings': {
 					const cc = props.configClient;
@@ -349,7 +366,10 @@ export const AdminShell = defineComponent({
 											class: 'fonderie-admin-nav-item',
 											style: { ...styles.navItem, ...(active ? styles.navItemActive : {}) },
 											'aria-current': active ? 'page' : undefined,
-											onClick: () => go(i.page),
+											onClick: () => {
+												openUser.value = undefined;
+												go(i.page);
+											},
 										},
 										[icon(ICON[i.page], 16, active ? styles.navIconActive : undefined), i.label],
 									);

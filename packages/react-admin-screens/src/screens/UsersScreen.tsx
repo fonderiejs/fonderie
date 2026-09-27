@@ -1,4 +1,4 @@
-import { type AuthAdminClient, describeLocation } from '@fonderie/client';
+import { type AuthAdminClient, type BillingAdminClient, describeLocation } from '@fonderie/client';
 import {
 	useAdminLoginHistory,
 	useAdminUser,
@@ -6,21 +6,36 @@ import {
 	useAdminUsers,
 } from '@fonderie/react-admin';
 import { useState } from 'react';
+import { statusTone, useSubscriptionIndex } from '../billing';
 import { styles } from '../styles';
 import { Empty, Icon, PageHeader, Pill } from '../ui';
+import { SubscriberBilling } from './SubscriberBilling';
 
 export interface IUsersScreenProps {
 	client: AuthAdminClient;
 	pageSize?: number;
+	// Given ⇒ a Plan column, and each user's plan, credits and grant form on
+	// their page. Everyone has a wallet; no subscription means the free tier.
+	billingClient?: BillingAdminClient | undefined;
+	// Open this user on arrival (e.g. from the Subscriptions list).
+	openUserId?: string | undefined;
 }
 
 // Who is signed up, and why can't this one log in. Lists on arrival — an
 // operator who must know an address before they can see anything cannot find
 // the account they are being asked about. Picking a row, or an exact email,
 // opens the account: live sessions, recent sign-ins, suspend and sign-out.
-export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
+export function UsersScreen({
+	client,
+	pageSize = 50,
+	billingClient,
+	openUserId,
+}: IUsersScreenProps) {
 	const [input, setInput] = useState('');
-	const [selected, setSelected] = useState<{ id?: string; email?: string } | null>(null);
+	const [selected, setSelected] = useState<{ id?: string; email?: string } | null>(
+		openUserId ? { id: openUserId } : null,
+	);
+	const plans = useSubscriptionIndex(billingClient);
 
 	const list = useAdminUsers(client, { limit: pageSize });
 	const { user, isLoading, error, suspend, unsuspend, revokeSessions } = useAdminUser(
@@ -102,6 +117,7 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 								<tr>
 									<th style={styles.th}>Email</th>
 									<th style={styles.th}>Name</th>
+									{billingClient ? <th style={styles.th}>Plan</th> : null}
 									<th style={styles.th}>Created</th>
 									<th style={styles.th}>Status</th>
 								</tr>
@@ -123,6 +139,24 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 												<span style={styles.muted}>—</span>
 											)}
 										</td>
+										{billingClient ? (
+											<td style={styles.td}>
+												{(() => {
+													const sub = plans?.get(`user/${u.id}`);
+													if (!plans) return <span style={styles.muted}>…</span>;
+													if (!sub || sub.status === 'canceled')
+														return <span style={styles.muted}>free</span>;
+													return (
+														<>
+															<strong>{sub.plan}</strong>{' '}
+															{sub.status !== 'active' ? (
+																<Pill tone={statusTone(sub.status)}>{sub.status}</Pill>
+															) : null}
+														</>
+													);
+												})()}
+											</td>
+										) : null}
 										<td style={styles.td}>{new Date(u.createdAt).toLocaleDateString()}</td>
 										<td style={styles.td}>
 											{u.suspended ? <Pill tone="warn">suspended</Pill> : null}
@@ -223,6 +257,16 @@ export function UsersScreen({ client, pageSize = 50 }: IUsersScreenProps) {
 							Sign out everywhere
 						</button>
 					</div>
+
+					{billingClient ? (
+						<>
+							<h2 style={styles.subtitle}>Plan &amp; credits</h2>
+							<SubscriberBilling
+								client={billingClient}
+								subscriber={{ type: 'user', id: user.id }}
+							/>
+						</>
+					) : null}
 
 					<h2 style={styles.subtitle}>Live sessions</h2>
 					{sessions.sessions.length === 0 ? (

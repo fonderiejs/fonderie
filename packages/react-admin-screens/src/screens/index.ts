@@ -26,3 +26,5 @@ export type { IAuditScreenProps } from './AuditScreen';
 export { AuditScreen } from './AuditScreen';
 export type { IOperatorsScreenProps } from './OperatorsScreen';
 export { OperatorsScreen } from './OperatorsScreen';
+export type { ISubscriberBillingProps } from './SubscriberBilling';
+export { SubscriberBilling } from './SubscriberBilling';

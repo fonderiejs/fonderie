@@ -12,4 +12,5 @@ export { AdminLogScreen } from './AdminLogScreen';
 export { UsersScreen } from './UsersScreen';
 export { CatalogScreen } from './CatalogScreen';
 export { SubscriberScreen } from './SubscriberScreen';
+export { SubscriberBilling } from './SubscriberBilling';
 export { AuditScreen } from './AuditScreen';
