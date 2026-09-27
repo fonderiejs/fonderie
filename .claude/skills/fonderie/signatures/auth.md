@@ -163,8 +163,6 @@ function sanitizeLocation(input: unknown): IRequestLocation | null
 
 function resolveLocation(resolver: LocationResolver | undefined, req: ILocationRequest, timeoutMs?: number): Promise<IRequestLocation | null>
 
-const LOCATION_TIMEOUT_MS: 1500
-
 interface IRequestLocation {
     country?: string | null;
     countryName?: string | null;
@@ -176,6 +174,7 @@ interface IRequestLocation {
     timeZone?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    accuracyRadius?: number | null;
     isp?: string | null;
     org?: string | null;
     asn?: string | null;

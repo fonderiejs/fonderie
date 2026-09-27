@@ -26,7 +26,7 @@ Auth imports no geo code: on Vercel/Cloudflare pass
 self-hosted table or an IP-intelligence API fits the same contract and may add
 ISP/ASN/proxy/hosting. Output is treated as untrusted: type-checked and
 bounded, coordinates rounded to ~1 km, re-sanitized on read;
-a resolver that throws or exceeds 1.5 s leaves the row without a location.
+a resolver that throws or exceeds 500 ms leaves the row without a location.
 
 Client: `IRequestLocationDTO`, `location` on `ILoginEventDTO` and
 `ISessionDTO`, and `describeLocation(loc, countryName?)` ("Mountain View, CA, US");

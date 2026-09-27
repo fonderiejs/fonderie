@@ -703,6 +703,7 @@ interface IRequestLocationDTO {
     timeZone?: string;
     latitude?: number;
     longitude?: number;
+    accuracyRadius?: number;
     isp?: string;
     org?: string;
     asn?: string;

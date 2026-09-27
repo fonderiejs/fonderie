@@ -25,6 +25,9 @@ export interface IRequestLocation {
 	timeZone?: string | null; // IANA name
 	latitude?: number | null;
 	longitude?: number | null;
+	/** How far off the point may be, in kilometres (MaxMind's accuracy_radius).
+	 * Lets a UI say "near Mountain View (±20 km)" instead of implying precision. */
+	accuracyRadius?: number | null;
 	/** Network facts — only resolvers backed by an IP-intelligence API know these. */
 	isp?: string | null;
 	org?: string | null;
@@ -45,8 +48,16 @@ export type LocationResolver = (
 	req: ILocationRequest,
 ) => IRequestLocation | null | undefined | Promise<IRequestLocation | null | undefined>;
 
-/** How long a resolver may take before the row is written without a location. */
-export const LOCATION_TIMEOUT_MS = 1500;
+// How long auth waits for the resolver before writing the row without a
+// location. Internal, deliberately not exported. It is zero-cost for in-process
+// resolvers (edge headers return in microseconds) and exists for the ones that
+// are not: @fonderie/geo's PostgresGeoProvider does a DB query that can hang
+// on an exhausted pool, and an app may choose a hosted IP-intelligence API for
+// richer data (ISP, ASN, proxy/VPN, accuracy radius). A legitimate lookup
+// answers in a few to ~150 ms; the session write that triggers resolution is
+// on the login path, so the cap bounds the worst-case delay a slow provider
+// can add to a sign-in.
+const LOCATION_TIMEOUT_MS = 500;
 
 const TEXT_MAX = 128;
 
@@ -70,6 +81,13 @@ function coord(v: unknown, limit: number): number | null {
 	return Math.round(v * 100) / 100;
 }
 
+// Kilometres, a positive whole number. MaxMind's values run 1–1000; anything
+// beyond the planet's half-circumference is not a radius.
+function radius(v: unknown): number | null {
+	if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0 || v > 20_000) return null;
+	return Math.round(v);
+}
+
 /** Keep only well-formed, bounded fields. Returns null when nothing survives. */
 export function sanitizeLocation(input: unknown): IRequestLocation | null {
 	if (!input || typeof input !== 'object') return null;
@@ -85,6 +103,7 @@ export function sanitizeLocation(input: unknown): IRequestLocation | null {
 		timeZone: str(i['timeZone'], /^(UTC|[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+)$/),
 		latitude: coord(i['latitude'], 90),
 		longitude: coord(i['longitude'], 180),
+		accuracyRadius: radius(i['accuracyRadius']),
 		isp: str(i['isp']),
 		org: str(i['org']),
 		asn: upperCode(i['asn'], /^AS\d{1,10}$/i),

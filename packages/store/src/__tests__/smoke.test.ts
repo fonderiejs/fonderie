@@ -240,6 +240,38 @@ test('MigrationRunner: takes the advisory lock and rechecks inside it', async ()
 	);
 });
 
+test('MigrationRunner: creates its bookkeeping table under the advisory lock, inside a transaction', async () => {
+	const { mkdtemp } = await import('node:fs/promises');
+	const { tmpdir } = await import('node:os');
+	const { join: pjoin } = await import('node:path');
+	const dir = await mkdtemp(pjoin(tmpdir(), 'fonderie-mig-'));
+
+	const log: string[] = [];
+	let depth = 0;
+	const store = {
+		query: async (sql: string) => {
+			log.push(`${depth > 0 ? 'tx' : 'top'}:${sql.trim().split(/\s+/).slice(0, 5).join(' ')}`);
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => {
+			depth += 1;
+			try {
+				return await fn(store);
+			} finally {
+				depth -= 1;
+			}
+		},
+	} as unknown as IStoreAdapter;
+
+	await new MigrationRunner(store, dir).run();
+
+	const lock = log.findIndex((l) => l.includes('pg_advisory_xact_lock'));
+	const create = log.findIndex((l) => l.includes('CREATE TABLE IF NOT EXISTS'));
+	assert.ok(create >= 0, 'bookkeeping table is created');
+	assert.ok(lock >= 0 && lock < create, 'the lock is taken BEFORE the create');
+	assert.ok(log[lock]!.startsWith('tx:') && log[create]!.startsWith('tx:'), 'both run in one transaction');
+});
+
 // ── Security: production TLS gate covers the config-object form ─────
 
 test('assertProductionDbConfig: throws on ssl:false object config in production', async () => {

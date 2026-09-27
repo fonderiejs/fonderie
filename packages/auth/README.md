@@ -64,7 +64,7 @@ where the user came from.
 
 Run your migrations: `018_login_event_location.sql` and
 `019_session_location.sql` add the columns. The resolver runs at most once per
-request; its output is sanitized and bounded (coordinates ~1 km); if it throws or takes over 1.5 s the row is written without a location
+request; its output is sanitized and bounded (coordinates ~1 km); if it throws or takes over 500 ms the row is written without a location
 and the request is unaffected. Country is reliable; region and city are
 approximate.
 
