@@ -807,7 +807,9 @@
         "WorkspacesClient",
         "CONFIG_KEY_PATTERN",
         "CONFIG_VALUE_TYPES",
-        "ConfigClient"
+        "ConfigClient",
+        "ADMIN_LOCALES",
+        "DEFAULT_ADMIN_LOCALE"
       ],
       "subpaths": [],
       "tables": [],
@@ -5368,6 +5370,12 @@
       "client"
     ],
     "configclient": [
+      "client"
+    ],
+    "admin_locales": [
+      "client"
+    ],
+    "default_admin_locale": [
       "client"
     ],
     "configmodule": [

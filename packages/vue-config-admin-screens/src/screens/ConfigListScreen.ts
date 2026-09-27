@@ -1,11 +1,24 @@
 import type { ConfigAdminClient, IConfigEntry, ISecretEntry } from '@fonderie/client';
-import { configValueType, formatConfigValue } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type AdminMessageKey,
+	type AdminMessageParams,
+	configValueType,
+	createAdminT,
+	formatConfigValue,
+} from '@fonderie/client';
 import { useConfigEntries, useRevealSecret, useSecrets } from '@fonderie/vue-config-admin';
 import type { CSSProperties, PropType } from 'vue';
 import { computed, defineComponent, h, onMounted, ref } from 'vue';
 import { styles } from '../styles';
 
-const TYPE_BADGE = { string: 'text', number: 'number', boolean: 'on/off', json: 'json' } as const;
+// Value-type badges, in the console's language.
+const TYPE_BADGE_KEY = {
+	string: 'config.type.text',
+	number: 'config.type.number',
+	boolean: 'config.type.onOff',
+	json: 'config.type.json',
+} as const satisfies Record<string, AdminMessageKey>;
 
 // One line of the value for the list: long text and JSON are cut, not wrapped.
 function preview(value: unknown): string {
@@ -95,6 +108,8 @@ export const ConfigListScreen = defineComponent({
 		 * what a browser receives.
 		 */
 		publicConfigUrl: { type: String, default: undefined },
+		/** The console's language. Default English. */
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
 	},
 	emits: {
 		// The row's environment comes too: the same key can exist per environment.
@@ -105,6 +120,8 @@ export const ConfigListScreen = defineComponent({
 		'create-secret': (_context: IConfigCreateContext) => true,
 	},
 	setup(props, { emit }) {
+		const t = (key: AdminMessageKey, params?: AdminMessageParams) =>
+			createAdminT(props.locale)(key, params);
 		const {
 			entries,
 			isLoading: isLoadingConfig,
@@ -172,12 +189,12 @@ export const ConfigListScreen = defineComponent({
 						isPublic
 							? h(
 									'span',
-									{ style: local.publicBadge, title: 'Served to frontends by GET /config/public' },
-									'public',
+									{ style: local.publicBadge, title: t('config.list.publicTitle') },
+									t('config.list.publicBadge'),
 								)
 							: null,
 						h('span', { style: styles.valuePreview }, preview(entry.value)),
-						h('span', { style: styles.badge }, TYPE_BADGE[configValueType(entry.value)]),
+						h('span', { style: styles.badge }, t(TYPE_BADGE_KEY[configValueType(entry.value)])),
 						h('span', { style: styles.env }, entry.environment),
 					],
 				),
@@ -208,7 +225,7 @@ export const ConfigListScreen = defineComponent({
 						style: styles.revealButton,
 						onClick: () => handleReveal(secret.key, env),
 					},
-					'Reveal',
+					t('config.reveal'),
 				),
 			]);
 		}
@@ -218,7 +235,7 @@ export const ConfigListScreen = defineComponent({
 			const nPublic = pv ? Object.keys(pv).length : 0;
 			return h('div', { style: styles.listContainer }, [
 				h('div', { style: { ...styles.heading, marginTop: '0' } }, [
-					h('h1', { style: styles.headingTitle }, 'Config'),
+					h('h1', { style: styles.headingTitle }, t('config.list.title')),
 					props.allowCreate
 						? h(
 								'button',
@@ -227,19 +244,19 @@ export const ConfigListScreen = defineComponent({
 									style: styles.newButton,
 									onClick: () => emit('create-config', createContext()),
 								},
-								'New entry',
+								t('config.list.newEntry'),
 							)
 						: null,
 				]),
 				h(
 					'p',
 					{ style: styles.hint },
-					'Feature flags and runtime settings — text, numbers, on/off or JSON. Read by the app without a deploy.',
+					t('config.list.hint'),
 				),
 				envs.value.length > 1
 					? h(
 							'fieldset',
-							{ style: local.envBar, 'aria-label': 'Environment' },
+							{ style: local.envBar, 'aria-label': t('config.environment') },
 							[null, ...envs.value].map((e) =>
 								h(
 									'button',
@@ -252,13 +269,13 @@ export const ConfigListScreen = defineComponent({
 											envFilter.value = e;
 										},
 									},
-									e ?? 'All environments',
+									e ?? t('common.allEnvironments'),
 								),
 							),
 						)
 					: null,
 				isLoadingConfig.value
-					? h('p', { style: styles.status }, 'Loading…')
+					? h('p', { style: styles.status }, t('common.loading'))
 					: configError.value
 						? h('p', { style: styles.error, role: 'alert' }, configError.value.explanation)
 						: shownEntries.value.length === 0
@@ -266,8 +283,10 @@ export const ConfigListScreen = defineComponent({
 									'p',
 									{ style: styles.empty },
 									envFilter.value
-										? `No config in ${envFilter.value}. Entries in "all" still apply there.`
-										: `No config entries yet.${props.allowCreate ? ' Create one to toggle a feature or tune a setting without redeploying.' : ''}`,
+										? t('config.list.emptyInEnv', { env: envFilter.value })
+										: props.allowCreate
+											? `${t('config.list.empty')} ${t('config.list.emptyCta')}`
+											: t('config.list.empty'),
 								)
 							: h('ul', { style: styles.list }, shownEntries.value.map(renderConfigRow)),
 
@@ -276,19 +295,21 @@ export const ConfigListScreen = defineComponent({
 							h(
 								'summary',
 								{ style: { cursor: 'pointer', fontWeight: 600, fontSize: '13.5px' } },
-								`What frontends receive (${nPublic} public ${nPublic === 1 ? 'key' : 'keys'})`,
+								nPublic === 1
+									? t('config.list.publicSummaryOne')
+									: t('config.list.publicSummary', { n: nPublic }),
 							),
-							h('p', { style: { ...styles.hint, margin: '8px 0' } }, [
-								'Exactly the body of ',
-								h('code', 'GET /config/public'),
-								' — unauthenticated, so anyone can read it. Only keys the app lists as public appear.',
-							]),
+							h(
+								'p',
+								{ style: { ...styles.hint, margin: '8px 0' } },
+								t('config.list.publicHint', { route: 'GET /config/public' }),
+							),
 							h('pre', { style: local.publicPre }, JSON.stringify(pv, null, 2)),
 						])
 					: null,
 
 				h('div', { style: styles.heading }, [
-					h('h2', { style: styles.headingTitle }, 'Secrets'),
+					h('h2', { style: styles.headingTitle }, t('config.list.secretsTitle')),
 					props.allowCreate
 						? h(
 								'button',
@@ -297,20 +318,22 @@ export const ConfigListScreen = defineComponent({
 									style: styles.newButton,
 									onClick: () => emit('create-secret', createContext()),
 								},
-								'New secret',
+								t('config.list.newSecret'),
 							)
 						: null,
 				]),
-				h('p', { style: styles.hint }, 'Encrypted at rest; values are hidden until revealed.'),
+				h('p', { style: styles.hint }, t('config.list.secretsHint')),
 				isLoadingSecrets.value
-					? h('p', { style: styles.status }, 'Loading…')
+					? h('p', { style: styles.status }, t('common.loading'))
 					: secretsError.value
 						? h('p', { style: styles.error, role: 'alert' }, secretsError.value.explanation)
 						: shownSecrets.value.length === 0
 							? h(
 									'p',
 									{ style: styles.empty },
-									envFilter.value ? `No secrets in ${envFilter.value}.` : 'No secrets yet.',
+									envFilter.value
+										? t('config.list.secretsEmptyInEnv', { env: envFilter.value })
+										: t('config.list.secretsEmpty'),
 								)
 							: h('ul', { style: styles.list }, shownSecrets.value.map(renderSecretRow)),
 			]);

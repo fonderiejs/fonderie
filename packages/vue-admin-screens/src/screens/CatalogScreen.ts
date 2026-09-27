@@ -1,4 +1,4 @@
-import type { BillingAdminClient } from '@fonderie/client';
+import { type AdminLocale, type BillingAdminClient, createAdminT } from '@fonderie/client';
 import { useAdminCatalog } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
@@ -10,25 +10,32 @@ import { refreshButton, table, td } from './common';
 // database — side by side, so a divergence is visible. Report, do not repair.
 export const CatalogScreen = defineComponent({
 	name: 'FonderieCatalogScreen',
-	props: { client: { type: Object as PropType<BillingAdminClient>, required: true } },
+	props: {
+		client: { type: Object as PropType<BillingAdminClient>, required: true },
+		locale: { type: String as PropType<AdminLocale>, default: undefined },
+	},
 	setup(props) {
 		const { catalog, isLoading, error, refresh, deletePlan } = useAdminCatalog(props.client);
 		const money = (v: number | null | undefined) => (v == null ? '—' : (v / 100).toFixed(2));
 		return () => {
+			const t = createAdminT(props.locale);
 			const c = catalog.value;
 			return h('div', { style: styles.container }, [
-				pageHeader(
-					'Catalog',
-					'What you sell: plans as configured in code, and as stored in the database, side by side.',
-					[refreshButton('Refresh', isLoading.value, () => void refresh())],
-				),
+				pageHeader(t('catalog.title'), t('catalog.lead'), [
+					refreshButton(
+						t('common.refresh'),
+						isLoading.value,
+						() => void refresh(),
+						t('common.working'),
+					),
+				]),
 				error.value
 					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
 					: null,
-				isLoading.value && !c ? h('p', { style: styles.status }, 'Loading…') : null,
+				isLoading.value && !c ? h('p', { style: styles.status }, t('common.loading')) : null,
 				c
 					? [
-							h('h2', { style: { ...styles.subtitle, marginTop: 0 } }, 'Configured (code)'),
+							h('h2', { style: { ...styles.subtitle, marginTop: 0 } }, t('catalog.configured')),
 							h(
 								'pre',
 								{
@@ -43,15 +50,19 @@ export const CatalogScreen = defineComponent({
 								},
 								JSON.stringify(c.configured, null, 2),
 							),
-							h('h2', { style: styles.subtitle }, 'Stored (database)'),
+							h('h2', { style: styles.subtitle }, t('catalog.stored')),
 							c.stored.length === 0
-								? empty(
-										'No stored plans',
-										'Plans are configured in code; nothing has been written to the database.',
-										'catalog',
-									)
+								? empty(t('catalog.emptyTitle'), t('catalog.emptyBody'), 'catalog')
 								: table(
-										['Plan', 'Tier', 'Seats', 'Monthly', 'Yearly', 'Trial', ''],
+										[
+											t('catalog.col.plan'),
+											t('catalog.col.tier'),
+											t('catalog.col.seats'),
+											t('catalog.col.monthly'),
+											t('catalog.col.yearly'),
+											t('catalog.col.trial'),
+											'',
+										],
 										c.stored.map((p) =>
 											h('tr', { key: p.id }, [
 												td([
@@ -62,7 +73,7 @@ export const CatalogScreen = defineComponent({
 												td(p.seats == null ? '∞' : String(p.seats)),
 												td(`${money(p.pricing?.monthly)} ${p.pricing?.currency ?? ''}`),
 												td(money(p.pricing?.yearly)),
-												td(p.trialDays ? `${p.trialDays} d` : '—'),
+												td(p.trialDays ? t('catalog.trialDays', { n: p.trialDays }) : '—'),
 												td(
 													h(
 														'button',
@@ -70,11 +81,11 @@ export const CatalogScreen = defineComponent({
 															type: 'button',
 															style: styles.buttonDanger,
 															onClick: () => {
-																if (window.confirm(`Delete stored plan "${p.name}"?`))
+																if (window.confirm(t('catalog.deleteConfirm', { name: p.name })))
 																	void deletePlan(p.id).catch(() => {});
 															},
 														},
-														'Delete',
+														t('common.delete'),
 													),
 												),
 											]),

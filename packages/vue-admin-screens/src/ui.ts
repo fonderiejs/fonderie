@@ -68,10 +68,15 @@ export function empty(title: VNodeChild, body?: VNodeChild, iconName: IconName =
 	]);
 }
 
-export function refreshButton(onClick: () => void, busy: boolean, label = 'Refresh'): VNode {
+export function refreshButton(
+	onClick: () => void,
+	busy: boolean,
+	label = 'Refresh',
+	busyLabel = 'Working…',
+): VNode {
 	return h('button', { type: 'button', style: styles.button, onClick, disabled: busy }, [
 		icon('refresh', 14),
-		busy ? 'Working…' : label,
+		busy ? busyLabel : label,
 	]);
 }
 

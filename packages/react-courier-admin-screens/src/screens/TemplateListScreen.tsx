@@ -1,4 +1,9 @@
-import type { CourierAdminClient, ITemplateEntry } from '@fonderie/client';
+import {
+	type AdminLocale,
+	type CourierAdminClient,
+	type ITemplateEntry,
+	createAdminT,
+} from '@fonderie/client';
 import { useTemplates } from '@fonderie/react-courier-admin';
 import type { CSSProperties } from 'react';
 
@@ -8,13 +13,17 @@ export interface ITemplateListScreenProps {
 	onSelectTemplate?: (template: ITemplateEntry) => void;
 	/** Shows a "New template" button. Receives the locales in use, to suggest. */
 	onCreateTemplate?: (context: { locales: string[] }) => void;
+	/** The console's language. Default English. */
+	locale?: AdminLocale | undefined;
 }
 
 export function TemplateListScreen({
 	client,
 	onSelectTemplate,
 	onCreateTemplate,
+	locale,
 }: ITemplateListScreenProps) {
+	const t = createAdminT(locale);
 	const { templates, isLoading, error } = useTemplates(client);
 
 	return (
@@ -22,28 +31,26 @@ export function TemplateListScreen({
 			<div
 				style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
 			>
-				<h1 style={styles.title}>Templates</h1>
+				<h1 style={styles.title}>{t('templates.list.title')}</h1>
 				{onCreateTemplate ? (
 					<button
 						type="button"
 						onClick={() =>
 							onCreateTemplate({
 								locales: [
-									...new Set(templates.map((t) => t.locale).filter((l): l is string => !!l)),
+									...new Set(templates.map((row) => row.locale).filter((l): l is string => !!l)),
 								],
 							})
 						}
 						style={styles.newButton}
 					>
-						New template
+						{t('templates.list.newTemplate')}
 					</button>
 				) : null}
 			</div>
-			<p style={styles.hint}>
-				Every email the app sends. Open one to edit its copy and preview it live.
-			</p>
+			<p style={styles.hint}>{t('templates.list.hint')}</p>
 			{isLoading ? (
-				<p style={styles.status}>Loading templates…</p>
+				<p style={styles.status}>{t('templates.list.loading')}</p>
 			) : error ? (
 				<p style={styles.error} role="alert">
 					{error.explanation}
@@ -58,11 +65,13 @@ export function TemplateListScreen({
 								style={styles.rowButton}
 							>
 								<span style={styles.type}>{template.type}</span>
-								<span style={styles.locale}>{template.locale ?? 'default locale'}</span>
-								{template.system ? <span style={styles.builtIn}>built-in</span> : null}
+								<span style={styles.locale}>{template.locale ?? t('templates.defaultLocale')}</span>
+								{template.system ? (
+									<span style={styles.builtIn}>{t('templates.builtInBadge')}</span>
+								) : null}
 								<span style={template.active ? styles.active : styles.inactive}>
 									<span style={styles.dot} />
-									{template.active ? 'active' : 'inactive'}
+									{template.active ? t('common.status.active') : t('common.status.inactive')}
 								</span>
 							</button>
 						</li>

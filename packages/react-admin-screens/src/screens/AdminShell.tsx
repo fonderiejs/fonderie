@@ -1,10 +1,13 @@
-import type {
-	AdminClient,
-	AuditAdminClient,
-	AuthAdminClient,
-	BillingAdminClient,
-	ConfigAdminClient,
-	CourierAdminClient,
+import {
+	type AdminClient,
+	type AdminLocale,
+	type AdminMessageKey,
+	type AuditAdminClient,
+	type AuthAdminClient,
+	type BillingAdminClient,
+	type ConfigAdminClient,
+	type CourierAdminClient,
+	createAdminT,
 } from '@fonderie/client';
 import { ConfigEditorScreen, ConfigListScreen } from '@fonderie/react-config-admin-screens';
 import {
@@ -79,6 +82,9 @@ export interface IAdminShellProps {
 	// Where the app serves GET /config/public — marks public keys on the
 	// Config page and previews exactly what frontends receive.
 	publicConfigUrl?: string;
+	// The console's own language (the operator's choice, independent of the
+	// locales the app serves). Default English.
+	locale?: AdminLocale | undefined;
 }
 
 const ICON: Record<AdminPage, IconName> = {
@@ -116,41 +122,50 @@ function useNarrow(): boolean {
 }
 
 const NAV: Array<{
-	group: string;
+	group: AdminMessageKey;
 	items: Array<{
 		page: AdminPage;
-		label: string;
+		label: AdminMessageKey;
 		needs?: 'config' | 'courier' | 'auth' | 'billing' | 'audit' | 'operators';
 	}>;
 }> = [
-	{ group: 'Today', items: [{ page: 'attention', label: 'Attention' }] },
+	{ group: 'nav.groups.today', items: [{ page: 'attention', label: 'nav.items.attention' }] },
 	{
-		group: 'System',
+		group: 'nav.groups.system',
 		items: [
-			{ page: 'modules', label: 'Modules' },
-			{ page: 'environment', label: 'Environment' },
-			{ page: 'doctor', label: 'Doctor' },
-			{ page: 'routes', label: 'Routes' },
+			{ page: 'modules', label: 'nav.items.modules' },
+			{ page: 'environment', label: 'nav.items.environment' },
+			{ page: 'doctor', label: 'nav.items.doctor' },
+			{ page: 'routes', label: 'nav.items.routes' },
 		],
 	},
-	{ group: 'People', items: [{ page: 'users', label: 'Users', needs: 'auth' }] },
 	{
-		group: 'Money',
+		group: 'nav.groups.people',
+		items: [{ page: 'users', label: 'nav.items.users', needs: 'auth' }],
+	},
+	{
+		group: 'nav.groups.money',
 		items: [
-			{ page: 'catalog', label: 'Catalog', needs: 'billing' },
-			{ page: 'subscriber', label: 'Subscriptions', needs: 'billing' },
+			{ page: 'catalog', label: 'nav.items.catalog', needs: 'billing' },
+			{ page: 'subscriber', label: 'nav.items.subscriptions', needs: 'billing' },
 		],
 	},
-	{ group: 'Settings', items: [{ page: 'settings', label: 'Config & secrets', needs: 'config' }] },
-	{ group: 'Messaging', items: [{ page: 'templates', label: 'Templates', needs: 'courier' }] },
 	{
-		group: 'Activity',
+		group: 'nav.groups.settings',
+		items: [{ page: 'settings', label: 'nav.items.settings', needs: 'config' }],
+	},
+	{
+		group: 'nav.groups.messaging',
+		items: [{ page: 'templates', label: 'nav.items.templates', needs: 'courier' }],
+	},
+	{
+		group: 'nav.groups.activity',
 		items: [
-			{ page: 'audit', label: 'Audit', needs: 'audit' },
-			{ page: 'log', label: 'Admin log' },
-			{ page: 'operators', label: 'Operators', needs: 'operators' },
-			{ page: 'tokens', label: 'Tokens' },
-			{ page: 'migrations', label: 'Migrations' },
+			{ page: 'audit', label: 'nav.items.audit', needs: 'audit' },
+			{ page: 'log', label: 'nav.items.log' },
+			{ page: 'operators', label: 'nav.items.operators', needs: 'operators' },
+			{ page: 'tokens', label: 'nav.items.tokens' },
+			{ page: 'migrations', label: 'nav.items.migrations' },
 		],
 	},
 ];
@@ -171,7 +186,9 @@ export function AdminShell({
 	operators = false,
 	currentOperator,
 	publicConfigUrl,
+	locale,
 }: IAdminShellProps) {
+	const t = createAdminT(locale);
 	const narrow = useNarrow();
 	const [drawer, setDrawer] = useState(false);
 	const [own, setOwn] = useState<AdminPage>('attention');
@@ -204,38 +221,38 @@ export function AdminShell({
 	let body: React.ReactNode;
 	switch (current) {
 		case 'attention':
-			body = <AttentionScreen client={client} />;
+			body = <AttentionScreen client={client} locale={locale} />;
 			break;
 		case 'modules':
-			body = <ModulesScreen client={client} />;
+			body = <ModulesScreen client={client} locale={locale} />;
 			break;
 		case 'doctor':
-			body = <DoctorScreen client={client} />;
+			body = <DoctorScreen client={client} locale={locale} />;
 			break;
 		case 'environment':
-			body = <EnvironmentScreen client={client} />;
+			body = <EnvironmentScreen client={client} locale={locale} />;
 			break;
 		case 'routes':
-			body = <RoutesScreen client={client} />;
+			body = <RoutesScreen client={client} locale={locale} />;
 			break;
 		case 'tokens':
-			body = <TokensScreen client={client} />;
+			body = <TokensScreen client={client} locale={locale} />;
 			break;
 		case 'operators':
-			body = <OperatorsScreen client={client} me={currentOperator} />;
+			body = <OperatorsScreen client={client} me={currentOperator} locale={locale} />;
 			break;
 		case 'migrations':
-			body = <MigrationsScreen client={client} />;
+			body = <MigrationsScreen client={client} locale={locale} />;
 			break;
 		case 'log':
-			body = <AdminLogScreen client={client} />;
+			body = <AdminLogScreen client={client} locale={locale} />;
 			break;
 		case 'catalog':
 			body = billingClient ? (
-				<CatalogScreen client={billingClient} />
+				<CatalogScreen client={billingClient} locale={locale} />
 			) : (
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
-					Pass a BillingAdminClient to see the catalog here.
+					{t('shell.missingClient', { client: 'BillingAdminClient' })}
 				</p>
 			);
 			break;
@@ -243,6 +260,7 @@ export function AdminShell({
 			body = billingClient ? (
 				<SubscriberScreen
 					client={billingClient}
+					locale={locale}
 					{...(authClient
 						? {
 								onOpenUser: (id: string) => {
@@ -254,16 +272,16 @@ export function AdminShell({
 				/>
 			) : (
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
-					Pass a BillingAdminClient to look up subscribers here.
+					{t('shell.missingClient', { client: 'BillingAdminClient' })}
 				</p>
 			);
 			break;
 		case 'audit':
 			body = auditClient ? (
-				<AuditScreen client={auditClient} />
+				<AuditScreen client={auditClient} locale={locale} />
 			) : (
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
-					Pass an AuditAdminClient to see the audit trail here.
+					{t('shell.missingClient', { client: 'AuditAdminClient' })}
 				</p>
 			);
 			break;
@@ -274,24 +292,25 @@ export function AdminShell({
 					client={authClient}
 					billingClient={billingClient}
 					openUserId={openUser}
+					locale={locale}
 				/>
 			) : (
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
-					Pass an AuthAdminClient to look up users here.
+					{t('shell.missingClient', { client: 'AuthAdminClient' })}
 				</p>
 			);
 			break;
 		case 'settings':
 			body = !configClient ? (
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
-					Pass a ConfigAdminClient to manage config and secrets here.
+					{t('shell.missingClient', { client: 'ConfigAdminClient' })}
 				</p>
 			) : editing && (editing.kind === 'config' || editing.kind === 'secret') ? (
 				<>
 					<div style={{ padding: '24px 40px 0' }}>
 						<button type="button" style={styles.buttonGhost} onClick={() => setEditing(null)}>
 							<Icon name="back" size={14} />
-							Config &amp; secrets
+							{t('nav.items.settings')}
 						</button>
 					</div>
 					<ConfigEditorScreen
@@ -307,11 +326,13 @@ export function AdminShell({
 						{...(editing.environments ? { environments: editing.environments } : {})}
 						onSaved={() => setEditing(null)}
 						onDeleted={() => setEditing(null)}
+						locale={locale}
 					/>
 				</>
 			) : (
 				<ConfigListScreen
 					client={configClient}
+					locale={locale}
 					{...(environment !== undefined ? { environment } : {})}
 					{...(publicConfigUrl ? { publicConfigUrl } : {})}
 					onSelectConfig={(key, env) => setEditing({ kind: 'config', key, environment: env })}
@@ -338,18 +359,19 @@ export function AdminShell({
 		case 'templates':
 			body = !courierClient ? (
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
-					Pass a CourierAdminClient to manage templates here.
+					{t('shell.missingClient', { client: 'CourierAdminClient' })}
 				</p>
 			) : editing?.kind === 'template-new' ? (
 				<>
 					<div style={{ padding: '24px 40px 0' }}>
 						<button type="button" style={styles.buttonGhost} onClick={() => setEditing(null)}>
 							<Icon name="back" size={14} />
-							Templates
+							{t('nav.items.templates')}
 						</button>
 					</div>
 					<TemplateCreateScreen
 						client={courierClient}
+						locale={locale}
 						{...(editing.type ? { type: editing.type } : {})}
 						{...(editing.locales ? { locales: editing.locales } : {})}
 						onCreated={(c) =>
@@ -362,7 +384,7 @@ export function AdminShell({
 					<div style={{ padding: '24px 40px 0' }}>
 						<button type="button" style={styles.buttonGhost} onClick={() => setEditing(null)}>
 							<Icon name="back" size={14} />
-							Templates
+							{t('nav.items.templates')}
 						</button>
 					</div>
 					<TemplateEditorScreen
@@ -374,17 +396,19 @@ export function AdminShell({
 						onSaved={() => setEditing(null)}
 						onDeleted={() => setEditing(null)}
 						onAddLocale={(type) => setEditing({ kind: 'template-new', type })}
+						uiLocale={locale}
 					/>
 				</>
 			) : (
 				<TemplateListScreen
 					client={courierClient}
-					onSelectTemplate={(t) =>
+					locale={locale}
+					onSelectTemplate={(tpl) =>
 						setEditing({
 							kind: 'template',
-							type: t.type,
-							locale: t.locale ?? null,
-							system: t.system === true,
+							type: tpl.type,
+							locale: tpl.locale ?? null,
+							system: tpl.system === true,
 						})
 					}
 					onCreateTemplate={(c) => setEditing({ kind: 'template-new', locales: c.locales })}
@@ -424,7 +448,7 @@ export function AdminShell({
 				<button
 					type="button"
 					style={styles.buttonGhost}
-					aria-label="Close menu"
+					aria-label={t('shell.closeMenu')}
 					onClick={() => setDrawer(false)}
 				>
 					<Icon name="close" />
@@ -441,7 +465,7 @@ export function AdminShell({
 					? { width: 280, maxWidth: '85vw', boxShadow: '0 10px 40px rgba(0,0,0,.25)' }
 					: {}),
 			}}
-			aria-label="Admin"
+			aria-label={t('shell.navLabel')}
 		>
 			{brand}
 			<div style={styles.navScroll}>
@@ -450,7 +474,7 @@ export function AdminShell({
 					if (items.length === 0) return null;
 					return (
 						<div key={g.group}>
-							<div style={styles.navGroup}>{g.group}</div>
+							<div style={styles.navGroup}>{t(g.group)}</div>
 							{items.map((i) => {
 								const active = current === i.page;
 								return (
@@ -467,7 +491,7 @@ export function AdminShell({
 										}}
 									>
 										<Icon name={ICON[i.page]} style={active ? styles.navIconActive : undefined} />
-										{i.label}
+										{t(i.label)}
 									</button>
 								);
 							})}
@@ -479,7 +503,8 @@ export function AdminShell({
 		</nav>
 	);
 
-	const title = NAV.flatMap((g) => g.items).find((i) => i.page === current)?.label ?? '';
+	const titleKey = NAV.flatMap((g) => g.items).find((i) => i.page === current)?.label;
+	const title = titleKey ? t(titleKey) : '';
 
 	return (
 		<div style={{ ...styles.shell, ...(narrow ? { flexDirection: 'column' } : {}) }}>
@@ -489,7 +514,7 @@ export function AdminShell({
 						<button
 							type="button"
 							style={styles.buttonGhost}
-							aria-label="Open menu"
+							aria-label={t('shell.openMenu')}
 							aria-expanded={drawer}
 							onClick={() => setDrawer(true)}
 						>
