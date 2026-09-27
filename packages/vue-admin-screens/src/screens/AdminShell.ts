@@ -7,7 +7,11 @@ import type {
 	CourierAdminClient,
 } from '@fonderie/client';
 import { ConfigEditorScreen, ConfigListScreen } from '@fonderie/vue-config-admin-screens';
-import { TemplateEditorScreen, TemplateListScreen } from '@fonderie/vue-courier-admin-screens';
+import {
+	TemplateCreateScreen,
+	TemplateEditorScreen,
+	TemplateListScreen,
+} from '@fonderie/vue-courier-admin-screens';
 import type { PropType, VNode } from 'vue';
 import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { IconName } from '../icons';
@@ -106,9 +110,12 @@ const ICON: Record<AdminPage, IconName> = {
 // JS rather than a media query so it also works embedded, with no stylesheet.
 const NARROW = '(max-width: 820px)';
 
+// What is open, and exactly which row: the same key exists per environment
+// and the same template per locale — dropping either opened the wrong row.
 type Editing =
-	| { kind: 'config' | 'secret'; key: string }
-	| { kind: 'template'; type: string }
+	| { kind: 'config' | 'secret'; key: string; environment?: string; environments?: string[] }
+	| { kind: 'template'; type: string; locale: string | null; system: boolean }
+	| { kind: 'template-new'; type?: string; locales?: string[] }
 	| null;
 
 export const AdminShell = defineComponent({
@@ -139,6 +146,9 @@ export const AdminShell = defineComponent({
 		operators: { type: Boolean, default: false },
 		// The signed-in operator's email, when a person (not a token) is signed in.
 		currentOperator: { type: String, default: undefined },
+		// Where the app serves GET /config/public — marks public keys on the
+		// Config page and previews exactly what frontends receive.
+		publicConfigUrl: { type: String, default: undefined },
 	},
 	// `footer` slot: pinned to the bottom of the sidebar — session controls
 	// (theme, sign out). The React shell takes the same thing as a `footer` prop.
@@ -232,44 +242,90 @@ export const AdminShell = defineComponent({
 					const cc = props.configClient;
 					if (!cc) return missing('Pass a ConfigAdminClient to manage config and secrets here.');
 					const e = editing.value;
-					if (e && e.kind !== 'template')
+					if (e && (e.kind === 'config' || e.kind === 'secret')) {
+						const env = e.environment ?? props.environment;
 						return [
 							back('Config & secrets'),
 							h(ConfigEditorScreen, {
+								key: `${e.kind}:${e.key}:${e.environment ?? ''}`,
 								client: cc,
 								kind: e.kind,
 								configKey: e.key,
-								...(props.environment !== undefined ? { environment: props.environment } : {}),
+								...(env !== undefined ? { environment: env } : {}),
+								...(e.environments ? { environments: e.environments } : {}),
 								onSaved: () => (editing.value = null),
+								onDeleted: () => (editing.value = null),
 							}),
 						];
+					}
+					type Ctx = { environments: string[]; environment: string | null };
+					const create = (kind: 'config' | 'secret') => (c: Ctx) =>
+						(editing.value = {
+							kind,
+							key: '',
+							environments: c.environments,
+							...(c.environment ? { environment: c.environment } : {}),
+						});
 					return h(ConfigListScreen, {
 						client: cc,
 						...(props.environment !== undefined ? { environment: props.environment } : {}),
-						'onSelect-config': (key: string) => (editing.value = { kind: 'config', key }),
-						'onSelect-secret': (key: string) => (editing.value = { kind: 'secret', key }),
+						...(props.publicConfigUrl ? { publicConfigUrl: props.publicConfigUrl } : {}),
+						'onSelect-config': (key: string, environment: string) =>
+							(editing.value = { kind: 'config', key, environment }),
+						'onSelect-secret': (key: string, environment: string) =>
+							(editing.value = { kind: 'secret', key, environment }),
 						allowCreate: true,
-						'onCreate-config': () => (editing.value = { kind: 'config', key: '' }),
-						'onCreate-secret': () => (editing.value = { kind: 'secret', key: '' }),
+						'onCreate-config': create('config'),
+						'onCreate-secret': create('secret'),
 					});
 				}
 				case 'templates': {
 					const kc = props.courierClient;
 					if (!kc) return missing('Pass a CourierAdminClient to manage templates here.');
 					const e = editing.value;
+					if (e?.kind === 'template-new')
+						return [
+							back('Templates'),
+							h(TemplateCreateScreen, {
+								client: kc,
+								...(e.type ? { type: e.type } : {}),
+								...(e.locales ? { locales: e.locales } : {}),
+								onCreated: (c: { type: string; locale: string | null }) =>
+									(editing.value = {
+										kind: 'template',
+										type: c.type,
+										locale: c.locale,
+										system: false,
+									}),
+							}),
+						];
 					if (e?.kind === 'template')
 						return [
 							back('Templates'),
 							h(TemplateEditorScreen, {
+								key: `${e.type}:${e.locale ?? ''}`,
 								client: kc,
 								type: e.type,
+								locale: e.locale,
+								system: e.system,
+								allowAddLocale: true,
 								onSaved: () => (editing.value = null),
+								onDeleted: () => (editing.value = null),
+								'onAdd-locale': (type: string) => (editing.value = { kind: 'template-new', type }),
 							}),
 						];
 					return h(TemplateListScreen, {
 						client: kc,
-						'onSelect-template': (t: { type: string }) =>
-							(editing.value = { kind: 'template', type: t.type }),
+						allowCreate: true,
+						'onSelect-template': (t: { type: string; locale: string | null; system?: boolean }) =>
+							(editing.value = {
+								kind: 'template',
+								type: t.type,
+								locale: t.locale ?? null,
+								system: t.system === true,
+							}),
+						'onCreate-template': (c: { locales: string[] }) =>
+							(editing.value = { kind: 'template-new', locales: c.locales }),
 					});
 				}
 			}

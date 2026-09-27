@@ -104,7 +104,19 @@ export async function versionedWrite<T>(
 			if (!row) throw new Error(`Failed to read ${r.table} entry`);
 			return row;
 		}
-		const version = (currentVersion ?? 0) + 1;
+		// A key that was deleted and is now written again has no live row, but its
+		// revisions remain — history outlives the row. Continue after them, or the
+		// new version 1 collides with the old revision 1 (a unique-key failure,
+		// which surfaced as a 500 the first time a console offered Delete).
+		let base = currentVersion;
+		if (base === null) {
+			const [prior] = await tx.query<{ v: number | null }>(
+				`SELECT max(version) AS v FROM ${r.revisions} WHERE ${keyMatch(r)}`,
+				[opts.key, opts.scope],
+			);
+			base = prior?.v ?? 0;
+		}
+		const version = Number(base) + 1;
 		const writeVals = [opts.key, opts.scope, ...contentVals, ...metaVals, version, opts.actor];
 
 		let row: T | undefined;

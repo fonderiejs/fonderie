@@ -4,15 +4,41 @@ import type { CSSProperties } from 'react';
 
 export interface ITemplateListScreenProps {
 	client: CourierAdminClient;
+	/** Receives the whole row — type AND locale, and whether it is built-in. */
 	onSelectTemplate?: (template: ITemplateEntry) => void;
+	/** Shows a "New template" button. Receives the locales in use, to suggest. */
+	onCreateTemplate?: (context: { locales: string[] }) => void;
 }
 
-export function TemplateListScreen({ client, onSelectTemplate }: ITemplateListScreenProps) {
+export function TemplateListScreen({
+	client,
+	onSelectTemplate,
+	onCreateTemplate,
+}: ITemplateListScreenProps) {
 	const { templates, isLoading, error } = useTemplates(client);
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Templates</h1>
+			<div
+				style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+			>
+				<h1 style={styles.title}>Templates</h1>
+				{onCreateTemplate ? (
+					<button
+						type="button"
+						onClick={() =>
+							onCreateTemplate({
+								locales: [
+									...new Set(templates.map((t) => t.locale).filter((l): l is string => !!l)),
+								],
+							})
+						}
+						style={styles.newButton}
+					>
+						New template
+					</button>
+				) : null}
+			</div>
 			<p style={styles.hint}>
 				Every email the app sends. Open one to edit its copy and preview it live.
 			</p>
@@ -33,6 +59,7 @@ export function TemplateListScreen({ client, onSelectTemplate }: ITemplateListSc
 							>
 								<span style={styles.type}>{template.type}</span>
 								<span style={styles.locale}>{template.locale ?? 'default locale'}</span>
+								{template.system ? <span style={styles.builtIn}>built-in</span> : null}
 								<span style={template.active ? styles.active : styles.inactive}>
 									<span style={styles.dot} />
 									{template.active ? 'active' : 'inactive'}
@@ -106,6 +133,29 @@ const styles: Record<string, CSSProperties> = {
 	},
 	locale: { fontSize: 12.5, color: 'var(--fonderie-text-muted,#5c5c5c)' },
 	dot: { width: 6, height: 6, borderRadius: 999, background: 'currentColor' },
+	builtIn: {
+		fontSize: 11,
+		fontWeight: 500,
+		padding: '1px 7px',
+		borderRadius: 999,
+		border: '1px solid var(--fonderie-border,#e0e0e0)',
+		color: 'var(--fonderie-text-muted,#5c5c5c)',
+	},
+	newButton: {
+		display: 'inline-flex',
+		alignItems: 'center',
+		height: 32,
+		boxSizing: 'border-box',
+		borderRadius: 6,
+		padding: '0 12px',
+		fontSize: 13,
+		fontWeight: 500,
+		fontFamily: 'inherit',
+		cursor: 'pointer',
+		backgroundColor: 'var(--fonderie-text,#171717)',
+		color: 'var(--fonderie-surface,#fff)',
+		border: '1px solid var(--fonderie-text,#171717)',
+	},
 	active: {
 		...pill,
 		color: 'var(--fonderie-accent-strong,#009767)',

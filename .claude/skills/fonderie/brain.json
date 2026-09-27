@@ -998,12 +998,12 @@
         {
           "method": "GET",
           "path": "/admin/templates",
-          "mw": "async () => { return setApiResponse(HTTP.OK, 'TEMPLATES_LISTED', 'Templates', await listTemplateEntries(store)); }"
+          "mw": "async () => { const rows = await listTemplateEntries(store); // `system` tells a console which rows it must not offer to delete. return setApiResponse( HTTP.OK, 'TEMPLATES_LISTED', 'Templates', rows.map((r) => ({ ...r, system: isSystemTemplate(r.type, r.locale, systemTypes) })), ); }"
         },
         {
           "method": "DELETE",
           "path": "/admin/templates/:type",
-          "mw": "async (ctx) => { const ok = await deleteTemplate(typeOf(ctx), localeOf(ctx), store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such template'); }"
+          "mw": "async (ctx) => { if (isSystemTemplate(typeOf(ctx), localeOf(ctx), systemTypes)) { return setApiResponse( HTTP.CONFLICT, 'SYSTEM_TEMPLATE', 'This is a built-in email. Edit it or roll it back to an earlier version; it cannot be deleted.', ); } const ok = await deleteTemplate(typeOf(ctx), localeOf(ctx), store); return setApiResponse(ok ? HTTP.OK : HTTP.NOT_FOUND, ok ? 'DELETED' : 'NOT_FOUND', ok ? 'Deleted' : 'No such template'); }"
         },
         {
           "method": "GET",
@@ -1778,6 +1778,7 @@
         "react-courier-admin"
       ],
       "exports": [
+        "TemplateCreateScreen",
         "TemplateEditorScreen",
         "TemplateListScreen"
       ],
@@ -2618,6 +2619,7 @@
         "vue-courier-admin"
       ],
       "exports": [
+        "TemplateCreateScreen",
         "TemplateEditorScreen",
         "TemplateListScreen"
       ],
@@ -5890,6 +5892,10 @@
     "usetemplaterevisions": [
       "react-courier-admin",
       "vue-courier-admin"
+    ],
+    "templatecreatescreen": [
+      "react-courier-admin-screens",
+      "vue-courier-admin-screens"
     ],
     "templateeditorscreen": [
       "react-courier-admin-screens",

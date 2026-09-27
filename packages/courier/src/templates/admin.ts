@@ -7,6 +7,22 @@ import { versionedWrite, versionedRollback } from '@fonderie/store';
 // The resolver reads the current row unchanged; this adds edit + history +
 // rollback + optimistic concurrency on top.
 
+// The built-in emails seeded by migration 002 — default-locale rows the
+// product relies on. Keep in sync with 002_seed_templates.sql (a test parses
+// the SQL and fails when they drift).
+export const SEEDED_TEMPLATE_TYPES: readonly string[] = [
+	'email-verification',
+	'password-reset',
+	'workspace-invitation',
+	'email-changed',
+	'email-registration',
+	'phone-otp',
+	'mfa-enabled',
+	'mfa-disabled',
+	'mfa-backup-codes-regenerated',
+	'phone-changed',
+];
+
 export interface ITemplateEntry {
 	type: string;
 	locale: string | null;

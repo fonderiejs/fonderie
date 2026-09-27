@@ -7,7 +7,11 @@ import type {
 	CourierAdminClient,
 } from '@fonderie/client';
 import { ConfigEditorScreen, ConfigListScreen } from '@fonderie/react-config-admin-screens';
-import { TemplateEditorScreen, TemplateListScreen } from '@fonderie/react-courier-admin-screens';
+import {
+	TemplateCreateScreen,
+	TemplateEditorScreen,
+	TemplateListScreen,
+} from '@fonderie/react-courier-admin-screens';
 import { type ReactNode, useEffect, useState } from 'react';
 import type { IconName } from '../icons';
 import { styles } from '../styles';
@@ -72,6 +76,9 @@ export interface IAdminShellProps {
 	operators?: boolean;
 	// The signed-in operator's email, when a person (not a token) is signed in.
 	currentOperator?: string;
+	// Where the app serves GET /config/public — marks public keys on the
+	// Config page and previews exactly what frontends receive.
+	publicConfigUrl?: string;
 }
 
 const ICON: Record<AdminPage, IconName> = {
@@ -163,6 +170,7 @@ export function AdminShell({
 	footer,
 	operators = false,
 	currentOperator,
+	publicConfigUrl,
 }: IAdminShellProps) {
 	const narrow = useNarrow();
 	const [drawer, setDrawer] = useState(false);
@@ -175,8 +183,13 @@ export function AdminShell({
 		if (page === undefined) setOwn(p);
 		setDrawer(false);
 	};
+	// What is open, and exactly which row: the same key exists per environment
+	// and the same template per locale — dropping either opened the wrong row.
 	const [editing, setEditing] = useState<
-		{ kind: 'config' | 'secret'; key: string } | { kind: 'template'; type: string } | null
+		| { kind: 'config' | 'secret'; key: string; environment?: string; environments?: string[] }
+		| { kind: 'template'; type: string; locale: string | null; system: boolean }
+		| { kind: 'template-new'; type?: string; locales?: string[] }
+		| null
 	>(null);
 
 	const has = {
@@ -273,7 +286,7 @@ export function AdminShell({
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
 					Pass a ConfigAdminClient to manage config and secrets here.
 				</p>
-			) : editing && editing.kind !== 'template' ? (
+			) : editing && (editing.kind === 'config' || editing.kind === 'secret') ? (
 				<>
 					<div style={{ padding: '24px 40px 0' }}>
 						<button type="button" style={styles.buttonGhost} onClick={() => setEditing(null)}>
@@ -282,21 +295,43 @@ export function AdminShell({
 						</button>
 					</div>
 					<ConfigEditorScreen
+						key={`${editing.kind}:${editing.key}:${editing.environment ?? ''}`}
 						client={configClient}
 						kind={editing.kind}
 						configKey={editing.key}
-						{...(environment !== undefined ? { environment } : {})}
+						{...(editing.environment !== undefined
+							? { environment: editing.environment }
+							: environment !== undefined
+								? { environment }
+								: {})}
+						{...(editing.environments ? { environments: editing.environments } : {})}
 						onSaved={() => setEditing(null)}
+						onDeleted={() => setEditing(null)}
 					/>
 				</>
 			) : (
 				<ConfigListScreen
 					client={configClient}
 					{...(environment !== undefined ? { environment } : {})}
-					onSelectConfig={(key) => setEditing({ kind: 'config', key })}
-					onSelectSecret={(key) => setEditing({ kind: 'secret', key })}
-					onCreateConfig={() => setEditing({ kind: 'config', key: '' })}
-					onCreateSecret={() => setEditing({ kind: 'secret', key: '' })}
+					{...(publicConfigUrl ? { publicConfigUrl } : {})}
+					onSelectConfig={(key, env) => setEditing({ kind: 'config', key, environment: env })}
+					onSelectSecret={(key, env) => setEditing({ kind: 'secret', key, environment: env })}
+					onCreateConfig={(c) =>
+						setEditing({
+							kind: 'config',
+							key: '',
+							environments: c.environments,
+							...(c.environment ? { environment: c.environment } : {}),
+						})
+					}
+					onCreateSecret={(c) =>
+						setEditing({
+							kind: 'secret',
+							key: '',
+							environments: c.environments,
+							...(c.environment ? { environment: c.environment } : {}),
+						})
+					}
 				/>
 			);
 			break;
@@ -305,6 +340,23 @@ export function AdminShell({
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
 					Pass a CourierAdminClient to manage templates here.
 				</p>
+			) : editing?.kind === 'template-new' ? (
+				<>
+					<div style={{ padding: '24px 40px 0' }}>
+						<button type="button" style={styles.buttonGhost} onClick={() => setEditing(null)}>
+							<Icon name="back" size={14} />
+							Templates
+						</button>
+					</div>
+					<TemplateCreateScreen
+						client={courierClient}
+						{...(editing.type ? { type: editing.type } : {})}
+						{...(editing.locales ? { locales: editing.locales } : {})}
+						onCreated={(c) =>
+							setEditing({ kind: 'template', type: c.type, locale: c.locale, system: false })
+						}
+					/>
+				</>
 			) : editing?.kind === 'template' ? (
 				<>
 					<div style={{ padding: '24px 40px 0' }}>
@@ -314,15 +366,28 @@ export function AdminShell({
 						</button>
 					</div>
 					<TemplateEditorScreen
+						key={`${editing.type}:${editing.locale ?? ''}`}
 						client={courierClient}
 						type={editing.type}
+						locale={editing.locale}
+						system={editing.system}
 						onSaved={() => setEditing(null)}
+						onDeleted={() => setEditing(null)}
+						onAddLocale={(type) => setEditing({ kind: 'template-new', type })}
 					/>
 				</>
 			) : (
 				<TemplateListScreen
 					client={courierClient}
-					onSelectTemplate={(t) => setEditing({ kind: 'template', type: t.type })}
+					onSelectTemplate={(t) =>
+						setEditing({
+							kind: 'template',
+							type: t.type,
+							locale: t.locale ?? null,
+							system: t.system === true,
+						})
+					}
+					onCreateTemplate={(c) => setEditing({ kind: 'template-new', locales: c.locales })}
 				/>
 			);
 			break;

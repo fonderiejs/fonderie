@@ -9,7 +9,7 @@ type AdminPage = 'attention' | 'modules' | 'doctor' | 'environment' | 'routes' |
 
 component AdminLogScreen(props: { client, pageSize })
 
-component AdminShell(props: { client, configClient, courierClient, authClient, billingClient, auditClient, environment, page, appName, envLabel, operators, currentOperator }) — emits: navigate
+component AdminShell(props: { client, configClient, courierClient, authClient, billingClient, auditClient, environment, page, appName, envLabel, operators, currentOperator, publicConfigUrl }) — emits: navigate
 
 component AttentionScreen(props: { client })
 

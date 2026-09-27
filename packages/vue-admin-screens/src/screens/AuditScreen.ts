@@ -15,7 +15,7 @@ export const AuditScreen = defineComponent({
 		pageSize: { type: Number, default: 50 },
 	},
 	setup(props) {
-		const draft = ref({ workspaceId: '', type: '', actorId: '' });
+		const draft = ref({ workspaceId: '', type: '', actorId: '', from: '', to: '' });
 		const query = ref<Omit<IAdminAuditQuery, 'cursor'>>({ limit: props.pageSize });
 		const { events, hasMore, isLoading, error, refresh, loadMore } = useAdminAudit(
 			props.client,
@@ -48,6 +48,9 @@ export const AuditScreen = defineComponent({
 								...(d.workspaceId.trim() ? { workspaceId: d.workspaceId.trim() } : {}),
 								...(d.type.trim() ? { type: d.type.trim() } : {}),
 								...(d.actorId.trim() ? { actorId: d.actorId.trim() } : {}),
+								// Dates are whole days in the operator's time zone: "to" includes that day.
+								...(d.from ? { from: new Date(`${d.from}T00:00:00`) } : {}),
+								...(d.to ? { to: new Date(`${d.to}T23:59:59.999`) } : {}),
 							};
 						},
 					},
@@ -55,6 +58,17 @@ export const AuditScreen = defineComponent({
 						field('workspaceId', 'workspace id (all if empty)'),
 						field('type', 'event type'),
 						field('actorId', 'actor id'),
+						...(['from', 'to'] as const).map((k) =>
+							h('input', {
+								type: 'date',
+								value: draft.value[k],
+								onInput: (e: Event) =>
+									(draft.value = { ...draft.value, [k]: (e.target as HTMLInputElement).value }),
+								style: styles.input,
+								'aria-label': k === 'from' ? 'From date' : 'To date',
+								title: k === 'from' ? 'From (inclusive)' : 'To (inclusive)',
+							}),
+						),
 						h(
 							'button',
 							{ type: 'submit', style: styles.buttonPrimary, disabled: isLoading.value },
