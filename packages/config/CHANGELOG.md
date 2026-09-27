@@ -1,5 +1,12 @@
 # @fonderie/config
 
+## 6.2.2
+
+### Patch Changes
+
+- Updated dependencies [cc51775]
+  - @fonderie/store@0.7.0
+
 ## 6.2.1
 
 ### Patch Changes
