@@ -1224,6 +1224,7 @@
         "@fonderie/geo/migrations"
       ],
       "tables": [
+        "geo_asn_blocks",
         "geo_blocks",
         "geo_names"
       ],

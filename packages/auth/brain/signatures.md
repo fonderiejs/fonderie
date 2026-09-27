@@ -175,6 +175,7 @@ interface IRequestLocation {
     latitude?: number | null;
     longitude?: number | null;
     accuracyRadius?: number | null;
+    geonameId?: number | null;
     isp?: string | null;
     org?: string | null;
     asn?: string | null;
