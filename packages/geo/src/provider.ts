@@ -14,6 +14,50 @@ const V4_MAPPED = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i;
 // is an "unknown/invalid IP" (expected → quiet null); anything else is a real
 // fault we must NOT hide behind null.
 const PG_INVALID_TEXT = '22P02';
+// 42P01 = undefined_table: the ASN table's migration (003) has not run yet.
+// City lookups must keep working through that window (code routinely goes live
+// ahead of migrations), so the provider falls back to a City-only query and
+// says so once.
+const PG_UNDEFINED_TABLE = '42P01';
+let warnedNoAsnTable = false;
+
+interface LookupRow {
+	country_iso: string | null;
+	country_name: string | null;
+	subdivision_iso: string | null;
+	subdivision_name: string | null;
+	city_name: string | null;
+	continent_code: string | null;
+	time_zone: string | null;
+	postal_code: string | null;
+	latitude: number | null;
+	longitude: number | null;
+	accuracy_radius: number | null;
+	asn?: number | string | null;
+	organization?: string | null;
+}
+
+// Most-specific City block for the address.
+const CITY_LATERAL = `SELECT n.country_iso, n.country_name, n.subdivision_iso, n.subdivision_name,
+		        n.city_name, n.continent_code, n.time_zone,
+		        b.postal_code, b.latitude, b.longitude, b.accuracy_radius
+		 FROM geo_blocks b
+		 LEFT JOIN geo_names n ON n.geoname_id = b.geoname_id
+		 WHERE b.network >>= q.ip
+		 ORDER BY masklen(b.network) DESC
+		 LIMIT 1`;
+
+// One round trip: the City block and the ASN block are independent
+// containment lookups on the same address. Always returns exactly one row.
+const LOOKUP_WITH_ASN = `SELECT c.*, a.asn, a.organization
+	 FROM (SELECT $1::inet AS ip) q
+	 LEFT JOIN LATERAL (${CITY_LATERAL}) c ON true
+	 LEFT JOIN LATERAL (
+		 SELECT asn, organization FROM geo_asn_blocks
+		 WHERE network >>= q.ip ORDER BY masklen(network) DESC LIMIT 1
+	 ) a ON true`;
+
+const LOOKUP_CITY_ONLY = `SELECT c.* FROM (SELECT $1::inet AS ip) q LEFT JOIN LATERAL (${CITY_LATERAL}) c ON true`;
 
 function normalizeIp(ip: string): string {
 	const m = V4_MAPPED.exec(ip);
@@ -36,32 +80,9 @@ export class PostgresGeoProvider implements IGeoProvider {
 		if (!raw || raw.length > 45 || !LOOKS_LIKE_IP.test(raw)) return null;
 		const addr = normalizeIp(raw); // ::ffff:1.2.3.4 → 1.2.3.4, so it matches IPv4 blocks
 		try {
-			const rows = await this.store.query<{
-				country_iso: string | null;
-				country_name: string | null;
-				subdivision_iso: string | null;
-				subdivision_name: string | null;
-				city_name: string | null;
-				continent_code: string | null;
-				time_zone: string | null;
-				postal_code: string | null;
-				latitude: number | null;
-				longitude: number | null;
-				accuracy_radius: number | null;
-			}>(
-				`SELECT n.country_iso, n.country_name, n.subdivision_iso, n.subdivision_name,
-				        n.city_name, n.continent_code, n.time_zone,
-				        b.postal_code, b.latitude, b.longitude, b.accuracy_radius
-				 FROM geo_blocks b
-				 LEFT JOIN geo_names n ON n.geoname_id = b.geoname_id
-				 WHERE b.network >>= $1::inet
-				 ORDER BY masklen(b.network) DESC
-				 LIMIT 1`,
-				[addr],
-			);
-			const r = rows[0];
+			const r = await this.query(addr);
 			if (!r) return null;
-			return {
+			const loc: GeoLocation = {
 				country: r.country_iso ?? null,
 				countryName: r.country_name ?? null,
 				subdivision: r.subdivision_iso ?? null,
@@ -73,7 +94,11 @@ export class PostgresGeoProvider implements IGeoProvider {
 				longitude: r.longitude != null ? Number(r.longitude) : null,
 				postalCode: r.postal_code ?? null,
 				accuracyRadius: r.accuracy_radius != null ? Number(r.accuracy_radius) : null,
+				asn: r.asn != null && r.asn !== '' ? `AS${r.asn}` : null,
+				org: r.organization ?? null,
 			};
+			// Both lookups missed (the address is in neither dataset) → unknown.
+			return Object.values(loc).some((v) => v !== null) ? loc : null;
 		} catch (err) {
 			// A bad ::inet cast means the input wasn't a real IP → quiet null (expected).
 			// Anything else (connection drop, a latent query bug) is a real fault: we
@@ -86,4 +111,25 @@ export class PostgresGeoProvider implements IGeoProvider {
 			return null;
 		}
 	}
+
+	private async query(addr: string): Promise<LookupRow | undefined> {
+		try {
+			return (await this.store.query<LookupRow>(LOOKUP_WITH_ASN, [addr]))[0];
+		} catch (err) {
+			if ((err as { code?: string })?.code !== PG_UNDEFINED_TABLE) throw err;
+			if (!warnedNoAsnTable) {
+				warnedNoAsnTable = true;
+				console.warn(
+					'@fonderie/geo: geo_asn_blocks is missing — run migrations (003_geo_asn.sql). ' +
+						'Serving City data without ASN until then.',
+				);
+			}
+			return (await this.store.query<LookupRow>(LOOKUP_CITY_ONLY, [addr]))[0];
+		}
+	}
+}
+
+/** Test seam: the missing-table warning fires once per process by design. */
+export function __resetAsnWarningForTests(): void {
+	warnedNoAsnTable = false;
 }

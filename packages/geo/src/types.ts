@@ -14,6 +14,12 @@ export interface GeoLocation {
 	latitude: number | null;
 	longitude: number | null;
 	accuracyRadius: number | null;
+	/** Autonomous system, e.g. "AS15169" — from MaxMind's GeoLite2 ASN database. */
+	asn: string | null;
+	/** The organization that operates that network, e.g. "Google LLC" (the ISP or
+	 * hosting company). Same field names as @fonderie/auth's location, so a
+	 * GeoLocation can be handed to auth as-is. */
+	org: string | null;
 }
 
 /** The swap seam: the default resolves against the self-hosted Postgres table,

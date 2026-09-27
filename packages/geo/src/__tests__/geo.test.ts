@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseCsvLine, parseBlocksCsv, parseLocationsCsv } from '../ingest.js';
-import { PostgresGeoProvider } from '../provider.js';
+import { parseCsvLine, parseBlocksCsv, parseLocationsCsv, parseAsnCsv, ingestAsnBlocks } from '../ingest.js';
+import { PostgresGeoProvider, __resetAsnWarningForTests } from '../provider.js';
 import type { Queryable } from '../types.js';
 
 // ── CSV parsing ───────────────────────────────────────────────────
@@ -76,6 +76,7 @@ test('lookup: a hit maps DB columns to GeoLocation', async () => {
 		subdivision: 'WA', subdivisionName: 'Washington',
 		city: 'Seattle', postalCode: '98101', continent: 'NA', timeZone: 'America/Los_Angeles',
 		latitude: 47.6062, longitude: -122.3321, accuracyRadius: 20,
+		asn: null, org: null, // no ASN block in this row
 	});
 });
 
@@ -159,4 +160,83 @@ test('ingestBlocks: placeholders match the column list (postal_code included)', 
 	assert.equal(placeholders, 2 * columns, 'one placeholder per column per row');
 	assert.equal(params.length, placeholders);
 	assert.equal(params[2], '98101');
+});
+
+// ── ASN (GeoLite2 ASN database) ──────────────────────────────────
+
+test('parseAsnCsv: maps network / number / organization; skips rows without a number', () => {
+	const rows = parseAsnCsv(
+		'network,autonomous_system_number,autonomous_system_organization\n' +
+			'64.233.160.0/19,15169,"Google LLC"\n' +
+			'2001:4860::/32,15169,Google LLC\n' +
+			'198.51.100.0/24,,Nobody\n' +
+			'\n',
+	);
+	assert.equal(rows.length, 2);
+	assert.deepEqual(rows[0], { network: '64.233.160.0/19', asn: 15169, organization: 'Google LLC' });
+	assert.equal(rows[1]?.network, '2001:4860::/32');
+});
+
+test('ingestAsnBlocks: three columns, three placeholders per row', async () => {
+	const seen: { sql: string; params: unknown[] }[] = [];
+	const store = { query: async (sql: string, params?: unknown[]) => { seen.push({ sql, params: params ?? [] }); return []; } };
+	await ingestAsnBlocks(store, [
+		{ network: '64.233.160.0/19', asn: 15169, organization: 'Google LLC' },
+		{ network: '2001:4860::/32', asn: 15169, organization: null },
+	]);
+	const { sql, params } = seen[0]!;
+	assert.match(sql, /INSERT INTO geo_asn_blocks \(network, asn, organization\)/);
+	assert.equal((sql.match(/\$\d+/g) ?? []).length, 6);
+	assert.deepEqual(params, ['64.233.160.0/19', 15169, 'Google LLC', '2001:4860::/32', 15169, null]);
+});
+
+test('lookup: one query returns City and ASN together; asn is rendered "AS…"', async () => {
+	const sqls: string[] = [];
+	const store: Queryable = {
+		async query<T>(sql: string): Promise<T[]> {
+			sqls.push(sql);
+			return [{ country_iso: 'US', city_name: 'Mountain View', asn: '15169', organization: 'Google LLC' }] as T[];
+		},
+	};
+	const r = await new PostgresGeoProvider(store).lookup('64.233.178.102');
+	assert.equal(sqls.length, 1, 'a single round trip');
+	assert.match(sqls[0]!, /geo_asn_blocks/);
+	assert.equal(r?.asn, 'AS15169');
+	assert.equal(r?.org, 'Google LLC');
+	assert.equal(r?.city, 'Mountain View');
+});
+
+test('lookup: an ASN hit with no City block still returns the network facts', async () => {
+	const r = await new PostgresGeoProvider(fakeStore({ asn: 15169, organization: 'Google LLC' })).lookup('64.233.178.102');
+	assert.equal(r?.asn, 'AS15169');
+	assert.equal(r?.country, null);
+});
+
+test('lookup: an all-null row (address in neither dataset) is null, not an empty location', async () => {
+	const r = await new PostgresGeoProvider(fakeStore({ country_iso: null, asn: null, organization: null })).lookup('203.0.113.7');
+	assert.equal(r, null);
+});
+
+test('lookup: before migration 003, City keeps working and the gap is announced once', async () => {
+	__resetAsnWarningForTests();
+	const warned: unknown[] = [];
+	const orig = console.warn;
+	console.warn = (...a: unknown[]) => { warned.push(a); };
+	try {
+		const store: Queryable = {
+			async query<T>(sql: string): Promise<T[]> {
+				if (sql.includes('geo_asn_blocks')) throw Object.assign(new Error('relation "geo_asn_blocks" does not exist'), { code: '42P01' });
+				return [{ country_iso: 'US', city_name: 'Mountain View' }] as T[];
+			},
+		};
+		const p = new PostgresGeoProvider(store);
+		const a = await p.lookup('64.233.178.102');
+		const b = await p.lookup('64.233.178.102');
+		assert.equal(a?.city, 'Mountain View');
+		assert.equal(a?.asn, null);
+		assert.equal(b?.city, 'Mountain View');
+		assert.equal(warned.length, 1, 'warned once, not per lookup');
+	} finally {
+		console.warn = orig;
+	}
 });

@@ -25,6 +25,12 @@ export interface BlockRow {
 	accuracyRadius: number | null;
 }
 
+export interface AsnRow {
+	network: string;
+	asn: number;
+	organization: string | null;
+}
+
 export interface NameRow {
 	geonameId: number;
 	continentCode: string | null;
@@ -108,6 +114,20 @@ export function nameRowFromLine(line: string): NameRow | null {
 	};
 }
 
+// GeoLite2 ASN blocks: network, autonomous_system_number,
+// autonomous_system_organization. A row with no number carries nothing useful.
+export function asnRowFromLine(line: string): AsnRow | null {
+	const c = parseCsvLine(line);
+	const asn = num(c[1]);
+	if (!c[0] || asn == null || asn <= 0 || !Number.isInteger(asn)) return null;
+	const org = c[2]?.trim();
+	return { network: c[0], asn, organization: org && org.length <= 256 ? org : null };
+}
+
+export function parseAsnCsv(text: string): AsnRow[] {
+	return text.split(/\r?\n/).slice(1).map(asnRowFromLine).filter((r): r is AsnRow => r !== null);
+}
+
 /** Parse a whole Blocks CSV string (header skipped). For tests / small inputs;
  * loadMaxMindCity streams the real multi-hundred-MB files instead. */
 export function parseBlocksCsv(text: string): BlockRow[] {
@@ -161,6 +181,15 @@ export function ingestBlocks(store: Queryable, rows: BlockRow[]): Promise<number
 	return insertChunked(store, rows, 6, BLOCKS_HEAD, BLOCKS_CONFLICT, blockParams);
 }
 
+const ASN_HEAD = 'INSERT INTO geo_asn_blocks (network, asn, organization)';
+const ASN_CONFLICT = 'ON CONFLICT (network) DO UPDATE SET asn = EXCLUDED.asn, organization = EXCLUDED.organization';
+const asnParams = (r: AsnRow) => [r.network, r.asn, r.organization];
+
+/** Upsert ASN block rows (idempotent on `network`). */
+export function ingestAsnBlocks(store: Queryable, rows: AsnRow[]): Promise<number> {
+	return insertChunked(store, rows, 3, ASN_HEAD, ASN_CONFLICT, asnParams);
+}
+
 /** Stream a CSV file line-by-line (header skipped), batching mapped rows — so a
  * multi-hundred-MB MaxMind file never lands in memory as one string. */
 async function streamInto<T>(path: string, map: (line: string) => T | null, sink: (batch: T[]) => Promise<unknown>): Promise<number> {
@@ -198,5 +227,25 @@ export async function loadMaxMindCity(
 			if (p) blocks += await streamInto(p, blockRowFromLine, (b) => ingestBlocks(tx, b));
 		}
 		return { names, blocks };
+	});
+}
+
+/**
+ * Full reload from MaxMind's GeoLite2 ASN CSV files (free, separate download
+ * from City) — which network operator an address belongs to. Same guarantees
+ * as loadMaxMindCity: one transaction, streamed. Run it against a DIRECT
+ * connection, off the request path.
+ */
+export async function loadMaxMindAsn(
+	store: TxStore,
+	files: { blocksV4Path?: string; blocksV6Path?: string },
+): Promise<{ blocks: number }> {
+	return store.transaction(async (tx) => {
+		await tx.query('TRUNCATE geo_asn_blocks');
+		let blocks = 0;
+		for (const p of [files.blocksV4Path, files.blocksV6Path]) {
+			if (p) blocks += await streamInto(p, asnRowFromLine, (b) => ingestAsnBlocks(tx, b));
+		}
+		return { blocks };
 	});
 }
