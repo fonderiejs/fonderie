@@ -9,6 +9,15 @@ downloading tarballs.
 
 ## Database tables (after all migrations)
 
+### `geo_asn_blocks`
+
+```sql
+network                  CIDR NOT NULL
+asn                      BIGINT NOT NULL
+organization             TEXT
+-- UNIQUE INDEX uq_geo_asn_blocks_network (network)
+```
+
 ### `geo_blocks`
 
 ```sql
@@ -17,6 +26,7 @@ geoname_id               BIGINT
 latitude                 DOUBLE PRECISION
 longitude                DOUBLE PRECISION
 accuracy_radius          INTEGER
+postal_code              TEXT
 -- INDEX idx_geo_blocks_geoname (geoname_id)
 -- UNIQUE INDEX uq_geo_blocks_network (network)
 ```

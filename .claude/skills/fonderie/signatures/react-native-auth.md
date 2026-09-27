@@ -167,6 +167,7 @@ interface IRequestLocationDTO {
     latitude?: number;
     longitude?: number;
     accuracyRadius?: number;
+    geonameId?: number;
     isp?: string;
     org?: string;
     asn?: string;

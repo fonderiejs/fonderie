@@ -28,6 +28,10 @@ export interface IRequestLocation {
 	/** How far off the point may be, in kilometres (MaxMind's accuracy_radius).
 	 * Lets a UI say "near Mountain View (±20 km)" instead of implying precision. */
 	accuracyRadius?: number | null;
+	/** A stable, language-neutral place key (MaxMind/GeoNames id). Lets a reader
+	 * see the stored place in their own language later, and lets an app map it
+	 * to its own regions. Names above are a snapshot; this is the reference. */
+	geonameId?: number | null;
 	/** Network facts — only resolvers backed by an IP-intelligence API know these. */
 	isp?: string | null;
 	org?: string | null;
@@ -88,6 +92,12 @@ function radius(v: unknown): number | null {
 	return Math.round(v);
 }
 
+// GeoNames ids are positive integers well inside 2^31.
+function placeId(v: unknown): number | null {
+	const n = typeof v === 'string' && /^\d{1,10}$/.test(v) ? Number(v) : v;
+	return typeof n === 'number' && Number.isInteger(n) && n > 0 && n <= 2_147_483_647 ? n : null;
+}
+
 /** Keep only well-formed, bounded fields. Returns null when nothing survives. */
 export function sanitizeLocation(input: unknown): IRequestLocation | null {
 	if (!input || typeof input !== 'object') return null;
@@ -104,6 +114,7 @@ export function sanitizeLocation(input: unknown): IRequestLocation | null {
 		latitude: coord(i['latitude'], 90),
 		longitude: coord(i['longitude'], 180),
 		accuracyRadius: radius(i['accuracyRadius']),
+		geonameId: placeId(i['geonameId']),
 		isp: str(i['isp']),
 		org: str(i['org']),
 		asn: upperCode(i['asn'], /^AS\d{1,10}$/i),

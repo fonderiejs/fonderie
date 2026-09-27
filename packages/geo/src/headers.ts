@@ -158,6 +158,9 @@ export function geoFromHeaders(headers: HeadersLike, opts: GeoFromHeadersOptions
 			latitude: coordinate(read(headers, names.latitude), 90),
 			longitude: coordinate(read(headers, names.longitude), 180),
 			accuracyRadius: null,
+			geonameId: null, // the platforms send names, not a place key
+			asn: null, // the platforms send no network data
+			org: null,
 		};
 		// A source that set nothing usable is not the platform we are behind
 		// (or it knew nothing); try the next trusted source rather than return

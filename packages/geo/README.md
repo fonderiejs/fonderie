@@ -71,6 +71,31 @@ address wins, over a GiST `inet_ops` index (core Postgres, no extension).
 Invalid input resolves to `null`, never an error. Budget several hundred
 megabytes of table for the City dataset, and a monthly reload.
 
+### Network operator (ASN) — optional, also free
+
+MaxMind's **GeoLite2 ASN** database (a separate free download) says which
+network an address belongs to: `asn: 'AS15169'`, `org: 'Google LLC'` — the ISP,
+mobile carrier or hosting company. Load it next to City and the same `lookup()`
+returns both, in one query:
+
+```ts
+import { loadMaxMindAsn } from '@fonderie/geo';
+
+await loadMaxMindAsn(store, {
+  blocksV4Path: 'GeoLite2-ASN-Blocks-IPv4.csv',
+  blocksV6Path: 'GeoLite2-ASN-Blocks-IPv6.csv',
+}); // same rules as the City load: one transaction, direct connection
+
+const loc = await geo.lookup('64.233.178.102');
+// → { country: 'US', city: 'Mountain View', …, asn: 'AS15169', org: 'Google LLC' }
+```
+
+The field names match `@fonderie/auth`'s location, so a `GeoLocation` can be
+returned from auth's `location` resolver as-is. Platform headers carry no
+network data, so `geoFromHeaders` always returns `asn: null, org: null`; to
+get both on Vercel, combine the two sources in your resolver. If the ASN table's
+migration has not run yet, lookups keep returning City data and log one warning.
+
 `IGeoProvider` is the swap seam: a hosted source (MaxMind API, ipinfo, …) plugs
 in behind the same interface, the way `billing` swaps payment providers.
 
