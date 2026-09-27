@@ -1,8 +1,4 @@
-import type {
-	AdminClient,
-	IAdminMigrationModule,
-	IAdminMigrationsReport,
-} from '@fonderie/client';
+import type { AdminClient, IAdminMigrationModule, IAdminMigrationsReport } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { ref } from 'vue';
 

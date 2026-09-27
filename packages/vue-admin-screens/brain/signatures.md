@@ -5,11 +5,11 @@
 ## @fonderie/vue-admin-screens
 
 ```ts
-type AdminPage = 'attention' | 'modules' | 'doctor' | 'environment' | 'routes' | 'migrations' | 'tokens' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
+type AdminPage = 'attention' | 'modules' | 'doctor' | 'environment' | 'routes' | 'migrations' | 'tokens' | 'operators' | 'log' | 'settings' | 'templates' | 'users' | 'catalog' | 'subscriber' | 'audit';
 
 component AdminLogScreen(props: { client, pageSize })
 
-component AdminShell(props: { client, configClient, courierClient, authClient, billingClient, auditClient, environment, page, appName, envLabel }) — emits: navigate
+component AdminShell(props: { client, configClient, courierClient, authClient, billingClient, auditClient, environment, page, appName, envLabel, operators, currentOperator }) — emits: navigate
 
 component AttentionScreen(props: { client })
 
@@ -22,6 +22,8 @@ component ModulesScreen(props: { client })
 component RoutesScreen(props: { client })
 
 component TokensScreen(props: { client })
+
+component OperatorsScreen(props: { client, me })
 
 component MigrationsScreen(props: { client })
 

@@ -577,6 +577,75 @@ export interface IAdminIssuedToken extends IAdminTokenRecord {
 	token: string;
 }
 
+// ── operators: people who sign in to the admin console ──────────────────
+
+// What the API ever says about an operator — never a hash, secret or code.
+export interface IAdminOperator {
+	id: string;
+	email: string;
+	name: string | null;
+	scopes: AdminScope[];
+	// false until they have scanned the QR code and confirmed a code.
+	enrolled: boolean;
+	backupCodesLeft: number;
+	locked: boolean;
+	createdBy: string;
+	createdAt: string;
+	lastLoginAt: string | null;
+	disabledAt: string | null;
+}
+
+// A pending single-use link: an invite, or a recovery for a locked-out operator.
+export interface IAdminOperatorLink {
+	id: string;
+	kind: 'invite' | 'recovery';
+	email: string;
+	scopes: AdminScope[];
+	createdBy: string;
+	createdAt: string;
+	expiresAt: string;
+}
+
+export interface IAdminOperatorsReport {
+	operators: IAdminOperator[];
+	links: IAdminOperatorLink[];
+}
+
+// Returned once: the link to hand to the person. `url` points at the console
+// with the token in the hash, so it never reaches a server log.
+export interface IAdminCreatedLink {
+	id: string;
+	email: string;
+	scopes?: AdminScope[];
+	expiresAt: string;
+	token: string;
+	url: string;
+}
+
+export type AdminSessionState = 'signed-out' | 'needs-2fa' | 'needs-enrollment' | 'signed-in';
+
+export interface IAdminSession {
+	state: AdminSessionState;
+	operator: IAdminOperator | null;
+	// true only while no operator exists yet: the root token can claim the console.
+	claimable?: boolean;
+	stepUpFresh?: boolean;
+	// Present once, right after enrollment. Show them; they are never shown again.
+	backupCodes?: string[];
+	// After signing in with a backup code: how many remain.
+	backupCodesLeft?: number;
+}
+
+export interface IAdminEnrollment {
+	secret: string;
+	// otpauth:// — render as a QR code.
+	uri: string;
+	account: string;
+	issuer: string;
+}
+
+export type IAdminSecondFactor = { code: string } | { backupCode: string };
+
 export interface IAdminLogEntry {
 	id: string;
 	at: string;
@@ -772,7 +841,9 @@ export function describeLocation(
 	countryName?: (code: string) => string | undefined,
 ): string | null {
 	if (!loc) return null;
-	const country = loc.country ? (countryName?.(loc.country) ?? loc.country) : (loc.countryName ?? undefined);
+	const country = loc.country
+		? (countryName?.(loc.country) ?? loc.country)
+		: (loc.countryName ?? undefined);
 	const parts = [loc.city, loc.subdivision ?? loc.subdivisionName, country].filter(
 		(p): p is string => typeof p === 'string' && p.length > 0,
 	);

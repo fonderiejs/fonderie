@@ -264,6 +264,18 @@ await (async () => {
   try { await cli(['admin', 'nope']); } catch (e) { unknown = e.code; }
   if (unknown !== 2) fail(`admin <unknown page> should exit 2, got ${unknown}`);
 
+  // operators: invite / recover print a full link; disable goes through PUT
+  const inv = await cli(['admin', 'operator', 'invite', 'grace@example.com', '--level', 'owner']);
+  if (find('POST', '/_admin/access/operators/invites')?.body?.scopes?.join() !== 'read,write,secrets') fail('admin operator invite: --level owner should send all scopes');
+  if (!/single use/.test(inv.stdout)) fail('admin operator invite: should print the link and its warning');
+  await cli(['admin', 'operator', 'recover', 'op-1']);
+  if (!find('POST', '/_admin/access/operators/op-1/recovery')) fail('admin operator recover <id>: wrong path');
+  await cli(['admin', 'operator', 'disable', 'op-1']);
+  if (find('PUT', '/_admin/access/operators/op-1')?.body?.disabled !== true) fail('admin operator disable: wrong body');
+  let badLevel = 0;
+  try { await cli(['admin', 'operator', 'invite', 'x@example.com', '--level', 'god']); } catch (e) { badLevel = e.code; }
+  if (badLevel !== 2) fail(`admin operator invite --level god should exit 2, got ${badLevel}`);
+
   // 409 conflict → exit 2 (reload + retry)
   let code = 0;
   try { await cli(['config', 'set', 'conflict', 'x']); } catch (e) { code = e.code; }

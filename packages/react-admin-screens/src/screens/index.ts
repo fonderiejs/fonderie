@@ -24,3 +24,5 @@ export type { ISubscriberScreenProps } from './SubscriberScreen';
 export { SubscriberScreen } from './SubscriberScreen';
 export type { IAuditScreenProps } from './AuditScreen';
 export { AuditScreen } from './AuditScreen';
+export type { IOperatorsScreenProps } from './OperatorsScreen';
+export { OperatorsScreen } from './OperatorsScreen';
