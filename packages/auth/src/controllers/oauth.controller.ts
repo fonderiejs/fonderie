@@ -156,8 +156,8 @@ export function __resetAppleKeysForTests(): void {
 
 export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
 	const users = new UserModel(store);
-	const sessions = new SessionModel(store);
-	const loginEvents = new LoginEventModel(store);
+	const sessions = new SessionModel(store, config.location);
+	const loginEvents = new LoginEventModel(store, config.location);
 	const consumedTokens = new ConsumedTokenModel(store);
 
 	/**

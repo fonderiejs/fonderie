@@ -737,6 +737,46 @@ export interface IAuditPageResult {
 // Session-authenticated; the caller's own history + sessions (shares the
 // AuthClient token). Login history is append-only; sessions are the live list.
 
+/** Where an auth event (login attempt, registration, session) came from. Present only when the server configures a
+ * location resolver; every field is optional. Country is reliable; region and
+ * city are approximate; network fields appear only with an IP-intelligence
+ * provider. */
+export interface IRequestLocationDTO {
+	country?: string; // ISO-3166-1 alpha-2
+	countryName?: string;
+	subdivision?: string; // ISO-3166-2 region part
+	subdivisionName?: string;
+	city?: string;
+	postalCode?: string; // ZIP / postal code, approximate — not shown by describeLocation
+	continent?: string;
+	timeZone?: string;
+	latitude?: number;
+	longitude?: number;
+	isp?: string;
+	org?: string;
+	asn?: string;
+	mobile?: boolean;
+	proxy?: boolean;
+	hosting?: boolean;
+}
+
+/**
+ * One short line for a login location: "Mountain View, CA, US" — most specific first,
+ * skipping what is unknown. Pass a country-name formatter to localise the
+ * country (e.g. Intl.DisplayNames). null when nothing is known.
+ */
+export function describeLocation(
+	loc: IRequestLocationDTO | null | undefined,
+	countryName?: (code: string) => string | undefined,
+): string | null {
+	if (!loc) return null;
+	const country = loc.country ? (countryName?.(loc.country) ?? loc.country) : (loc.countryName ?? undefined);
+	const parts = [loc.city, loc.subdivision ?? loc.subdivisionName, country].filter(
+		(p): p is string => typeof p === 'string' && p.length > 0,
+	);
+	return parts.length > 0 ? parts.join(', ') : null;
+}
+
 export interface ILoginEventDTO {
 	id: string;
 	method: string;
@@ -744,6 +784,8 @@ export interface ILoginEventDTO {
 	failureReason: string | null;
 	ipAddress: string | null;
 	userAgent: string | null;
+	/** null when the server has no location resolver, or it knew nothing. */
+	location: IRequestLocationDTO | null;
 	createdAt: string;
 }
 
@@ -762,6 +804,8 @@ export interface ISessionDTO {
 	current: boolean;
 	ipAddress: string | null;
 	userAgent: string | null;
+	/** Where the session was opened from; null without a server-side resolver. */
+	location: IRequestLocationDTO | null;
 	createdAt: string;
 	expiresAt: string;
 }

@@ -1,11 +1,20 @@
 import type { IStoreAdapter } from '@fonderie/store';
 import { background } from '@fonderie/core';
 
+import {
+	type IRequestLocation,
+	type LocationResolver,
+	resolveLocation,
+} from '../services/request-location';
+
 // One row per login ATTEMPT — success or failure — across every method.
 // Append-only: rows survive logout/expiry (unlike fonderie_sessions, which is
 // the live-session list and the single source of truth for Active Sessions).
 // user_id is nullable so unknown-email attempts still record.
-export type LoginMethod = 'password' | 'phone' | 'mfa' | 'oauth-google' | 'oauth-apple';
+// 'registration' marks the sign-up request itself: with verification not
+// enforced the account is live from that moment, so it is the first — sometimes
+// only — record of where the user came from.
+export type LoginMethod = 'password' | 'phone' | 'mfa' | 'oauth-google' | 'oauth-apple' | 'registration';
 export type LoginOutcome = 'success' | 'failed';
 
 export interface ILoginEventInput {
@@ -16,16 +25,26 @@ export interface ILoginEventInput {
 	failureReason?: string | null;
 	ipAddress: string | null;
 	userAgent: string | null;
+	/** Request headers, handed to the location resolver. Not stored. */
+	headers?: Headers;
 }
 
 export class LoginEventModel {
-	constructor(private store: IStoreAdapter) {}
+	// `locate` is IAuthConfig.location. Absent ⇒ rows carry no location,
+	// exactly as before.
+	constructor(
+		private store: IStoreAdapter,
+		private locate?: LocationResolver,
+	) {}
 
 	async record(e: ILoginEventInput): Promise<void> {
+		const location = this.locate
+			? await resolveLocation(this.locate, { ip: e.ipAddress, headers: e.headers ?? new Headers() })
+			: null;
 		await this.store.query(
 			`INSERT INTO fonderie_login_events
-			   (user_id, email_attempted, method, outcome, failure_reason, ip_address, user_agent)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			   (user_id, email_attempted, method, outcome, failure_reason, ip_address, user_agent, location)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 			[
 				e.userId,
 				e.emailAttempted ?? null,
@@ -34,6 +53,7 @@ export class LoginEventModel {
 				e.failureReason ?? null,
 				e.ipAddress,
 				e.userAgent,
+				location ? JSON.stringify(location) : null,
 			],
 		);
 	}
@@ -76,7 +96,7 @@ export class LoginEventModel {
 		params.push(limit + 1);
 		const rows = await this.store.query<ILoginEventRow>(
 			`SELECT id, method, outcome, failure_reason AS "failureReason",
-			        ip_address AS "ipAddress", user_agent AS "userAgent",
+			        ip_address AS "ipAddress", user_agent AS "userAgent", location,
 			        created_at AS "createdAt", created_at::text AS "createdAtRaw"
 			 FROM   fonderie_login_events
 			 WHERE  ${where.join(' AND ')}
@@ -106,6 +126,7 @@ export interface ILoginEventRow {
 	failureReason: string | null;
 	ipAddress: string | null;
 	userAgent: string | null;
+	location: IRequestLocation | null;
 	createdAt: Date;
 	// created_at::text — full microsecond precision for the keyset cursor
 	// (node-pg parses timestamptz into a millisecond Date, which would make the

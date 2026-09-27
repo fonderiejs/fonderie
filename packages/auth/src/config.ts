@@ -1,3 +1,4 @@
+import type { LocationResolver } from './services/request-location';
 import type { IAuthRateLimitConfig } from './services/rate-limit';
 export const DEFAULT_VERIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 export const DEFAULT_SESSION_DURATION = '7d';
@@ -91,6 +92,16 @@ export const EVENT_KEYS = {
 export type AuthEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
+	// Optional resolver: where is this request from? Auth calls it when it
+	// records an auth event — every login attempt, every registration, and every
+	// new session — and stores the result on that row (country / region / city
+	// / time zone, plus network facts if the resolver knows them). Called at
+	// most once per request. Absent ⇒ no location, exactly as before. The result
+	// is sanitized and bounded; a resolver that throws or takes longer than
+	// 1.5 s leaves the row without a location and never fails the request.
+	// On Vercel/Cloudflare: ({ headers }) => geoFromHeaders(headers, { trust })
+	// from @fonderie/geo — zero infrastructure.
+	location?: LocationResolver;
 	// Adds the Secure attribute to auth cookies. Defaults to
 	// NODE_ENV === 'production'; set explicitly when that heuristic is wrong.
 	secureCookies?: boolean;

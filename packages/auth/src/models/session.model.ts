@@ -1,9 +1,14 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IRequestMeta } from '../services/request-meta';
+import { type IRequestLocation, type LocationResolver, resolveLocation } from '../services/request-location';
 
 export class SessionModel {
-	constructor(private store: IStoreAdapter) {}
+	// `locate` is IAuthConfig.location. Absent ⇒ sessions carry no location.
+	constructor(
+		private store: IStoreAdapter,
+		private locate?: LocationResolver,
+	) {}
 
 	async create(
 		userId: string,
@@ -12,11 +17,23 @@ export class SessionModel {
 		sid?: string,
 		meta?: IRequestMeta,
 	): Promise<void> {
+		const location =
+			this.locate && meta?.headers
+				? await resolveLocation(this.locate, { ip: meta.ipAddress, headers: meta.headers })
+				: null;
 		await this.store.query(
-			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid, user_agent, ip_address)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid, user_agent, ip_address, location)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (token) DO NOTHING`,
-			[userId, token, expiresAt, sid ?? null, meta?.userAgent ?? null, meta?.ipAddress ?? null],
+			[
+				userId,
+				token,
+				expiresAt,
+				sid ?? null,
+				meta?.userAgent ?? null,
+				meta?.ipAddress ?? null,
+				location ? JSON.stringify(location) : null,
+			],
 		);
 	}
 
@@ -63,6 +80,7 @@ export class SessionModel {
 			sid: string | null;
 			userAgent: string | null;
 			ipAddress: string | null;
+			location: IRequestLocation | null;
 			createdAt: Date;
 			expiresAt: Date;
 		}>
@@ -71,6 +89,7 @@ export class SessionModel {
 			`SELECT id, sid,
 			        user_agent AS "userAgent",
 			        ip_address AS "ipAddress",
+			        location,
 			        created_at AS "createdAt",
 			        expires_at AS "expiresAt"
 			 FROM fonderie_sessions

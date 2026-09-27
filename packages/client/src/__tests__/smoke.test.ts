@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 
-import { FonderieApiError, FonderieClient, createMemoryCache } from '../index';
+import { FonderieApiError, FonderieClient, createMemoryCache, describeLocation as describeLoc } from '../index';
 
 // ── fetch stub ───────────────────────────────────────────────────────────────
 type Handler = (
@@ -564,4 +564,14 @@ test('isMfaRequired discriminates MFA-required from full login results', async (
 		}),
 		false,
 	);
+});
+
+// ── describeLocation ────────────────────────────────────────
+
+test('describeLocation: most specific first, skips unknowns, localises country, null when empty', () => {
+	assert.equal(describeLoc({ city: 'Mountain View', subdivision: 'CA', country: 'US' }), 'Mountain View, CA, US');
+	assert.equal(describeLoc({ country: 'US' }, (c) => (c === 'US' ? 'United States' : undefined)), 'United States');
+	assert.equal(describeLoc({ city: 'Mountain View', countryName: 'United States' }), 'Mountain View, United States');
+	assert.equal(describeLoc({}), null);
+	assert.equal(describeLoc(null), null);
 });

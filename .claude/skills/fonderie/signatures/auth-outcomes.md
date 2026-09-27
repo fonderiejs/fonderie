@@ -38,6 +38,7 @@ failure_reason           TEXT
 ip_address               TEXT
 user_agent               TEXT
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+location                 JSONB
 ```
 
 ### `fonderie_mfa_backup_codes`
@@ -93,6 +94,7 @@ ip_address               TEXT
 expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 sid                      UUID
+location                 JSONB
 -- INDEX idx_fonderie_sessions_expires_at (expires_at)
 -- INDEX idx_fonderie_sessions_sid (sid)
 ```

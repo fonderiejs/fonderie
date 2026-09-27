@@ -68,6 +68,7 @@ interface GeoLocation {
     subdivision: string | null;
     subdivisionName: string | null;
     city: string | null;
+    postalCode: string | null;
     continent: string | null;
     timeZone: string | null;
     latitude: number | null;

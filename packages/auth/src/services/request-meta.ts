@@ -8,6 +8,8 @@ import type { IFonderieContext } from '@fonderie/core';
 export interface IRequestMeta {
 	ipAddress: string | null;
 	userAgent: string | null;
+	/** The request's headers, for the optional location resolver. Never stored. */
+	headers?: Headers;
 }
 
 // Cap the stored UA: real ones are <300 chars; anything longer is noise or abuse.
@@ -57,6 +59,7 @@ export function requestMeta(ctx: IFonderieContext): IRequestMeta {
 	const meta: IRequestMeta = {
 		ipAddress: typeof ip === 'string' && ip.length > 0 ? ip : null,
 		userAgent: ua && ua.length > 0 ? ua.slice(0, UA_MAX) : null,
+		headers: ctx.request.headers,
 	};
 	if (meta.ipAddress === null && meta.userAgent === null) warnIfIdentityless(ctx);
 	return meta;
