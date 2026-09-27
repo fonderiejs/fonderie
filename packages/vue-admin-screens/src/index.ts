@@ -13,5 +13,6 @@ export {
 	UsersScreen,
 	CatalogScreen,
 	SubscriberScreen,
+	SubscriberBilling,
 	AuditScreen,
 } from './screens';

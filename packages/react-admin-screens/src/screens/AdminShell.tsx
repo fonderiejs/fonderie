@@ -131,7 +131,7 @@ const NAV: Array<{
 		group: 'Money',
 		items: [
 			{ page: 'catalog', label: 'Catalog', needs: 'billing' },
-			{ page: 'subscriber', label: 'Subscriber', needs: 'billing' },
+			{ page: 'subscriber', label: 'Subscriptions', needs: 'billing' },
 		],
 	},
 	{ group: 'Settings', items: [{ page: 'settings', label: 'Config & secrets', needs: 'config' }] },
@@ -167,6 +167,8 @@ export function AdminShell({
 	const narrow = useNarrow();
 	const [drawer, setDrawer] = useState(false);
 	const [own, setOwn] = useState<AdminPage>('attention');
+	// A user opened from Subscriptions: their billing lives on the Users page.
+	const [openUser, setOpenUser] = useState<string | undefined>(undefined);
 	const current = page ?? own;
 	const go = (p: AdminPage) => {
 		if (onNavigate) onNavigate(p);
@@ -226,7 +228,17 @@ export function AdminShell({
 			break;
 		case 'subscriber':
 			body = billingClient ? (
-				<SubscriberScreen client={billingClient} />
+				<SubscriberScreen
+					client={billingClient}
+					{...(authClient
+						? {
+								onOpenUser: (id: string) => {
+									setOpenUser(id);
+									go('users');
+								},
+							}
+						: {})}
+				/>
 			) : (
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
 					Pass a BillingAdminClient to look up subscribers here.
@@ -244,7 +256,12 @@ export function AdminShell({
 			break;
 		case 'users':
 			body = authClient ? (
-				<UsersScreen client={authClient} />
+				<UsersScreen
+					key={openUser ?? 'list'}
+					client={authClient}
+					billingClient={billingClient}
+					openUserId={openUser}
+				/>
 			) : (
 				<p style={{ ...styles.status, padding: '32px 40px' }}>
 					Pass an AuthAdminClient to look up users here.
@@ -380,6 +397,7 @@ export function AdminShell({
 										aria-current={active ? 'page' : undefined}
 										onClick={() => {
 											setEditing(null);
+											setOpenUser(undefined);
 											go(i.page);
 										}}
 									>
