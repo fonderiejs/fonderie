@@ -6,3 +6,6 @@ export {
 	useFonderieClient,
 	useFonderieSubClient,
 } from './provider';
+export type { ConfigClient, IRemoteConfigState } from '@fonderie/client';
+export { useFlag, useRemoteConfig } from './composables';
+export type { IUseRemoteConfigOptions, IUseRemoteConfigReturn } from './composables';

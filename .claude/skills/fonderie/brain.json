@@ -726,7 +726,8 @@
         "WebhooksClient",
         "WorkspacesClient",
         "CONFIG_KEY_PATTERN",
-        "CONFIG_VALUE_TYPES"
+        "CONFIG_VALUE_TYPES",
+        "ConfigClient"
       ],
       "subpaths": [],
       "tables": [],
@@ -761,7 +762,7 @@
         "fonderie_secret_revisions",
         "fonderie_secrets"
       ],
-      "routeCount": 13,
+      "routeCount": 14,
       "routes": [
         {
           "method": "GET",
@@ -827,6 +828,11 @@
           "method": "POST",
           "path": "/admin/secrets/:key/rollback",
           "mw": "async (ctx) => { const b = body(ctx); const toVersion = Number(b['toVersion']); if (!Number.isInteger(toVersion)) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID', 'body.toVersion (int) is required'); } const row = await rollbackSecret( rollbackOpts(ctx, b, toVersion), store, ); return setApiResponse(HTTP.OK, 'ROLLED_BACK', `Rolled back to v${toVersion}`, row); }"
+        },
+        {
+          "method": "GET",
+          "path": "/config/public",
+          "mw": "publicConfigHandler(this.manager, this.options.publicKeys)"
         }
       ],
       "secures": [],
@@ -1371,7 +1377,9 @@
       "exports": [
         "FonderieProvider",
         "useFonderieClient",
-        "useFonderieSubClient"
+        "useFonderieSubClient",
+        "useFlag",
+        "useRemoteConfig"
       ],
       "subpaths": [],
       "tables": [],
@@ -2205,7 +2213,9 @@
         "FONDERIE_INJECTION_KEY",
         "FonderiePlugin",
         "useFonderieClient",
-        "useFonderieSubClient"
+        "useFonderieSubClient",
+        "useFlag",
+        "useRemoteConfig"
       ],
       "subpaths": [],
       "tables": [],
@@ -5260,6 +5270,9 @@
     "config_value_types": [
       "client"
     ],
+    "configclient": [
+      "client"
+    ],
     "configmodule": [
       "config"
     ],
@@ -5417,6 +5430,14 @@
       "vue"
     ],
     "usefonderiesubclient": [
+      "react",
+      "vue"
+    ],
+    "useflag": [
+      "react",
+      "vue"
+    ],
+    "useremoteconfig": [
       "react",
       "vue"
     ],
@@ -6698,6 +6719,19 @@
     }
   },
   "recipes": {
+    "frontend-feature-flag": {
+      "when": "show/hide a screen or feature from a flag switched in the admin, without a deploy; remote config read by the frontend",
+      "packages": [
+        "config",
+        "client",
+        "react",
+        "vue"
+      ],
+      "invariants": [
+        "config-public-keys-allowlist"
+      ],
+      "note": "list the key in ConfigModule publicKeys (optionally key → default), create it in /_admin Config & secrets, read it with useFlag(key, SAFE_fallback) from @fonderie/react (also React Native) or @fonderie/vue; backend reads with getConfig(ctx, key, fallback)"
+    },
     "geo-country-signal": {
       "when": "know the requester's country — gate a trial/promo by market, show a sign-in location",
       "packages": [
@@ -7353,6 +7387,7 @@
     }
   },
   "invariants": {
+    "config-public-keys-allowlist": "Only keys listed in ConfigModule `publicKeys` are readable by frontends (GET /config/public, unauthenticated). Never list anything a stranger should not see; secrets are never readable there. Pass the SAFE fallback to useFlag (feature off) — it renders before the first load and when loading fails.",
     "geo-trust-from-env": "geoFromHeaders believes a platform's headers only for the source named in `trust`. Derive trust from the deployment environment (process.env.VERCEL ? 'vercel' : undefined), NEVER from the request — a client can send x-vercel-ip-country to a server that is not behind Vercel. Treat a null location as unknown, not suspicious. Gate on country only; region and city are display-grade.",
     "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
     "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",

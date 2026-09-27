@@ -34,7 +34,7 @@ const ALLOW = new Map([
 
 // Hook/composable sources to scan for references.
 const hookDirs = readdirSync(join(root, 'packages'))
-	.filter((p) => /^(react|vue)-/.test(p))
+	.filter((p) => /^(react|vue)(-|$)/.test(p)) // incl. the base @fonderie/react + @fonderie/vue (remote config hooks)
 	.map((p) => {
 		for (const sub of ['src/hooks', 'src/composables']) {
 			const d = join(root, 'packages', p, sub);

@@ -1,4 +1,5 @@
 import type { ISecretEncryptor } from './crypto';
+import type { PublicConfigKeys } from './public';
 
 export interface IConfigOptions {
 	// How often to poll the DB for changes (ms)
@@ -28,4 +29,11 @@ export interface IConfigOptions {
 	// At-rest encryptor for secrets (see `createAesGcmEncryptor`). Defaults to
 	// `noopEncryptor` (masked but plaintext at rest).
 	secretEncryptor?: ISecretEncryptor;
+
+	// Keys a frontend may read through the unauthenticated GET /config/public —
+	// feature flags a screen renders on, settings a signed-out page needs. A
+	// list, or a record of key → value to report while the key is unset.
+	// Default: none (the route answers an empty object). Never list anything a
+	// stranger should not see; secrets are never readable through this route.
+	publicKeys?: PublicConfigKeys;
 }

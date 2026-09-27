@@ -235,3 +235,5 @@ export {
 	formatConfigValue,
 } from './config-value';
 export type { CastResult, ConfigValueType } from './config-value';
+export { ConfigClient } from './modules/config';
+export type { IRemoteConfigState } from './modules/config';

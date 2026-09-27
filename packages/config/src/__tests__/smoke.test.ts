@@ -406,26 +406,37 @@ test('admin: PUT config saves (200); stale ifVersion → 409', async () => {
 	assert.equal(conflict.status, 409);
 });
 
-test('ConfigModule: registers admin routes only when adminToken is set', async () => {
+test('ConfigModule: registers admin routes only when adminToken is set; the public route always', async () => {
 	const { ConfigModule } = await import('../module');
 	const added: string[] = [];
 	const app = {
 		use: () => {},
 		addRoute: (m: string, p: string) => added.push(`${m} ${p}`),
 	} as unknown as Parameters<InstanceType<typeof ConfigModule>['install']>[0];
-
-	const mod = new ConfigModule(makeStore(), { adminToken: 'sekret' });
-	await mod.install(app);
-	assert.ok(added.some((r) => r === 'GET /admin/config'), 'admin routes registered with token');
-	assert.ok(added.some((r) => r === 'POST /admin/secrets/:key/reveal'));
-	mod.manager.stop(); // release the poll interval so the test process can exit
-
 	const added2: string[] = [];
 	const app2 = { use: () => {}, addRoute: (m: string, p: string) => added2.push(`${m} ${p}`) } as unknown as typeof app;
+
+	const mod = new ConfigModule(makeStore(), { adminToken: 'sekret' });
 	const mod2 = new ConfigModule(makeStore(), {});
-	await mod2.install(app2);
-	assert.equal(added2.length, 0, 'no admin routes without a token');
-	mod2.manager.stop();
+	// Stop both managers even when an assertion throws: a live poll interval
+	// otherwise keeps the test process alive and the run hangs instead of failing.
+	try {
+		await mod.install(app);
+		assert.ok(added.some((r) => r === 'GET /admin/config'), 'admin routes registered with token');
+		assert.ok(added.some((r) => r === 'POST /admin/secrets/:key/reveal'));
+		assert.ok(added.includes('GET /config/public'), 'public route registered');
+
+		await mod2.install(app2);
+		assert.deepEqual(
+			added2.filter((r) => r.includes('/admin')),
+			[],
+			'no admin routes without a token',
+		);
+		assert.deepEqual(added2, ['GET /config/public'], 'only the public route');
+	} finally {
+		mod.manager.stop();
+		mod2.manager.stop();
+	}
 });
 
 // ── coverage: rollback / revisions / reveal / delete ─────────────

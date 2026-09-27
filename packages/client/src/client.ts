@@ -5,6 +5,7 @@ import { AuthClient } from './modules/auth';
 import { BillingClient } from './modules/billing';
 import { CustomersClient } from './modules/customers';
 import { MediaClient } from './modules/media';
+import { ConfigClient } from './modules/config';
 import { WebhooksClient } from './modules/webhooks';
 import { WorkspacesClient } from './modules/workspaces';
 import { TokenStore } from './token-store';
@@ -51,6 +52,8 @@ export class FonderieClient {
 	readonly webhooks: WebhooksClient;
 	readonly customers: CustomersClient;
 	readonly media: MediaClient;
+	/** Public remote config: flags and settings the server exposes to frontends. */
+	readonly config: ConfigClient;
 
 	private http: HttpClient;
 	private tokens: TokenStore;
@@ -78,6 +81,7 @@ export class FonderieClient {
 		// Media is per-user (ownership via ownerType/ownerId in the body), so no
 		// setWorkspaceId wiring below — just the shared http + token store.
 		this.media = new MediaClient(this.http, this.tokens);
+		this.config = new ConfigClient(this.http, this.tokens);
 		// Route through the setter so the constructor option scopes the
 		// workspace-aware modules exactly like a later setWorkspaceId() call.
 		if (opts.workspaceId !== undefined) this.setWorkspaceId(opts.workspaceId);
