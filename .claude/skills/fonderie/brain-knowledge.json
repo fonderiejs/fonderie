@@ -123,6 +123,7 @@
     "vue-customers-screens.screens": { "description": "pre-built Vue screens (CustomersListScreen, CustomerDetailScreen) built on vue-customers' composables via Vue's h() render API, emitting select-customer / navigate-list", "package": "vue-customers-screens", "recipe": "vue-customers-screens-wiring" }
   },
   "recipes": {
+    "frontend-feature-flag": { "when": "show/hide a screen or feature from a flag switched in the admin, without a deploy; remote config read by the frontend", "packages": ["config", "client", "react", "vue"], "invariants": ["config-public-keys-allowlist"], "note": "list the key in ConfigModule publicKeys (optionally key → default), create it in /_admin Config & secrets, read it with useFlag(key, SAFE_fallback) from @fonderie/react (also React Native) or @fonderie/vue; backend reads with getConfig(ctx, key, fallback)" },
     "geo-country-signal": { "when": "know the requester's country — gate a trial/promo by market, show a sign-in location", "packages": ["geo", "risk", "core"], "invariants": ["geo-trust-from-env"], "note": "on Vercel/Cloudflare use geoFromHeaders(req.headers, { trust }); feed loc.country into a @fonderie/risk attribute (e.g. outsideMarket) rather than deciding in the route; PostgresGeoProvider + MaxMind only for hosts without edge geolocation" },
     "basic-auth": { "when": "sign up + log in with email/password", "packages": ["auth", "core", "events", "store"], "invariants": ["jwt-secret-from-env", "rate-limit-default-on"] },
     "oauth": { "when": "social login (Google/GitHub)", "packages": ["auth", "config", "core", "store"], "invariants": ["jwt-secret-from-env"] },
@@ -180,6 +181,7 @@
     "vue-customers-screens-wiring": { "when": "managing customers/CRM records in a Vue 3 app with pre-built UI, not just the composables", "packages": ["client", "vue-customers", "vue-customers-screens"], "invariants": ["frontend-client-injection", "frontend-shared-token", "frontend-workspace-scoping"] }
   },
   "invariants": {
+    "config-public-keys-allowlist": "Only keys listed in ConfigModule `publicKeys` are readable by frontends (GET /config/public, unauthenticated). Never list anything a stranger should not see; secrets are never readable there. Pass the SAFE fallback to useFlag (feature off) — it renders before the first load and when loading fails.",
     "geo-trust-from-env": "geoFromHeaders believes a platform's headers only for the source named in `trust`. Derive trust from the deployment environment (process.env.VERCEL ? 'vercel' : undefined), NEVER from the request — a client can send x-vercel-ip-country to a server that is not behind Vercel. Treat a null location as unknown, not suspicious. Gate on country only; region and city are display-grade.",
     "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
     "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
