@@ -231,9 +231,11 @@ export {
 	CONFIG_VALUE_TYPES,
 	castConfigValue,
 	configKeyProblem,
+	configValueLabel,
 	configValueType,
 	formatConfigValue,
+	inferConfigValue,
 } from './config-value';
-export type { CastResult, ConfigValueType } from './config-value';
+export type { CastResult, ConfigValueType, IInferredConfigValue } from './config-value';
 export { ConfigClient } from './modules/config';
 export type { IRemoteConfigState } from './modules/config';

@@ -1,11 +1,12 @@
 import {
 	type ConfigAdminClient,
 	type ConfigValueType,
-	CONFIG_VALUE_TYPES,
 	castConfigValue,
 	configKeyProblem,
+	configValueLabel,
 	configValueType,
 	formatConfigValue,
+	inferConfigValue,
 } from '@fonderie/client';
 import {
 	FonderieApiError,
@@ -41,6 +42,13 @@ export function ConfigEditorScreen({
 	const [newKey, setNewKey] = useState('');
 	const key = isNew ? newKey.trim() : configKey;
 	const [valueType, setValueType] = useState<ConfigValueType>('string');
+	// Free-form mode: creating, or deliberately changing an entry's type. The
+	// type is inferred from what is typed; ambiguous input ("true", "42") can
+	// be kept as text with one click. Editing an existing entry otherwise locks
+	// the type to what is stored, so a flag cannot silently turn into text.
+	const [changingType, setChangingType] = useState(false);
+	const [asText, setAsText] = useState(false);
+	const freeForm = isNew || changingType;
 	const [inputError, setInputError] = useState<string | null>(null);
 
 	const configEntry = useConfigEntry(client, isSecret || isNew ? '' : configKey, environment);
@@ -58,6 +66,7 @@ export function ConfigEditorScreen({
 	const revisions = isSecret ? secretRevisions : configRevisions;
 
 	const [value, setValue] = useState('');
+	const inferred = inferConfigValue(value);
 	const [description, setDescription] = useState('');
 	const [revealedValue, setRevealedValue] = useState<string | null>(null);
 	// The list hooks' isLoading/error track their list fetches (and are shared
@@ -96,9 +105,13 @@ export function ConfigEditorScreen({
 		}
 		let typed: unknown = value;
 		if (!isSecret) {
-			const cast = castConfigValue(valueType, value);
-			if (!cast.ok) return setInputError(cast.error);
-			typed = cast.value;
+			if (freeForm) {
+				typed = asText ? value : inferred.value;
+			} else {
+				const cast = castConfigValue(valueType, value);
+				if (!cast.ok) return setInputError(cast.error);
+				typed = cast.value;
+			}
 		}
 		setIsSaving(true);
 		try {
@@ -109,6 +122,9 @@ export function ConfigEditorScreen({
 			} else {
 				const opts: Parameters<typeof configEntries.saveEntry>[1] = { value: typed };
 				if (description) opts.description = description;
+				// Only an explicit "Change type" may change an existing key's shape;
+				// the server refuses it otherwise (409 CONFIG_TYPE_CHANGE).
+				if (changingType) opts.allowTypeChange = true;
 				await configEntries.saveEntry(key, opts);
 			}
 			// The list hooks refresh their own lists; this screen renders the
@@ -143,7 +159,7 @@ export function ConfigEditorScreen({
 		<div style={styles.container}>
 			<h1 style={styles.title}>{isNew ? (isSecret ? 'New secret' : 'New config entry') : configKey}</h1>
 			<p style={styles.meta}>
-				{environment ?? 'all'}
+				Environment: {environment ?? 'all'}
 				{!isNew && <> · v{isSecret ? secretEntry.secret?.version : configEntry.entry?.version}</>}
 			</p>
 
@@ -180,38 +196,38 @@ export function ConfigEditorScreen({
 					</>
 				)}
 
-				{!isSecret && (
-					<>
-						<label style={styles.label} htmlFor="config-type">
-							Type
-						</label>
-						<select
-							id="config-type"
-							style={styles.input}
-							value={valueType}
-							onChange={(event) => {
-								const next = event.target.value as ConfigValueType;
-								// Carry the value across when it still makes sense
-								// (e.g. "true" → On/off); otherwise start clean.
-								const cast = castConfigValue(next, value);
-								setValue(cast.ok ? formatConfigValue(cast.value, next) : next === 'boolean' ? 'false' : '');
-								setValueType(next);
-								setInputError(null);
-							}}
-						>
-							{CONFIG_VALUE_TYPES.map((t) => (
-								<option key={t} value={t}>
-									{TYPE_LABEL[t]}
-								</option>
-							))}
-						</select>
-					</>
-				)}
-
 				<label style={styles.label} htmlFor="config-value">
 					{isSecret ? (isNew ? 'Value' : 'New value') : 'Value'}
 				</label>
-				{!isSecret && valueType === 'boolean' ? (
+				{!isSecret && freeForm ? (
+					<>
+						{/* One field for every shape: text, a number, true/false, or JSON
+						    for an object or a list of objects. */}
+						<textarea
+							id="config-value"
+							style={styles.textarea}
+							value={value}
+							onChange={(event) => {
+								setValue(event.target.value);
+								setAsText(false);
+							}}
+							rows={/^\s*[[{]/.test(value) || value.includes('\n') ? 8 : 2}
+							placeholder={'true · 42 · Scheduled maintenance tonight · {"ids": ["m1", "m2"]}'}
+							spellCheck={false}
+						/>
+						<div style={styles.detected}>
+							<span>
+								Detected: <strong>{asText ? 'Text' : inferred.label}</strong>
+							</span>
+							{inferred.ambiguous && (
+								<label style={styles.inline}>
+									<input type="checkbox" checked={asText} onChange={(event) => setAsText(event.target.checked)} />
+									Save as text instead
+								</label>
+							)}
+						</div>
+					</>
+				) : !isSecret && valueType === 'boolean' ? (
 					<label style={styles.toggle}>
 						<input
 							id="config-value"
@@ -242,6 +258,28 @@ export function ConfigEditorScreen({
 						spellCheck={false}
 						required
 					/>
+				)}
+				{!isSecret && !freeForm && configEntry.entry && (
+					<div style={styles.detected}>
+						<span>
+							Type: <strong>{configValueLabel(configEntry.entry.value)}</strong>
+						</span>
+						<button
+							type="button"
+							style={styles.linkButton}
+							onClick={() => {
+								setChangingType(true);
+								setAsText(false);
+							}}
+						>
+							Change type…
+						</button>
+					</div>
+				)}
+				{changingType && (
+					<p style={styles.warning}>
+						Changing the type changes what every screen reading this key receives. Check the code that reads it first.
+					</p>
 				)}
 				{inputError && (
 					<p style={styles.error} role="alert">
@@ -296,14 +334,11 @@ export function ConfigEditorScreen({
 	);
 }
 
-const TYPE_LABEL: Record<ConfigValueType, string> = {
-	string: 'Text',
-	number: 'Number',
-	boolean: 'On / off',
-	json: 'JSON (list or object)',
-};
-
 const styles: Record<string, CSSProperties> = {
+	detected: { display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: 'var(--fonderie-text-muted,#5c5c5c)', marginTop: 6 },
+	inline: { display: 'flex', alignItems: 'center', gap: 6 },
+	linkButton: { background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--fonderie-link,#0b6)', cursor: 'pointer', textDecoration: 'underline' },
+	warning: { fontSize: 13, color: 'var(--fonderie-warning,#a15c00)', marginTop: 6 },
 	toggle: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, padding: '6px 0' },
 	container: { padding: 24, maxWidth: 640 },
 	title: { fontSize: 24, fontWeight: 700 },

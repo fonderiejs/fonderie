@@ -610,7 +610,7 @@ test('admin PUT: body.active reaches the write instead of being forced true', as
 	};
 	const put = pick(buildAdminRoutes(store, 'sekret'), 'PUT', '/admin/config/:key');
 	const res = await put(
-		adminCtx({ token: 'sekret', params: { key: 'k' }, body: { value: 1, active: false } }),
+		adminCtx({ token: 'sekret', params: { key: 'k' }, body: { value: false, active: false } }),
 		noNext,
 	);
 	assert.equal(res.status, 200);

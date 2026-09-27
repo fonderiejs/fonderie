@@ -67,3 +67,59 @@ export function configKeyProblem(key: string): string | null {
 		? null
 		: 'Start with a letter; use letters, digits, ".", "_" or "-" (max 128).';
 }
+
+export interface IInferredConfigValue {
+	type: ConfigValueType;
+	value: unknown;
+	/** Human label for the detected shape: Text, Number, On/off, Object, List. */
+	label: string;
+	/**
+	 * True when the input could equally be meant as text — "true", "42". The
+	 * editor offers "save as text instead" for exactly these, and never needs
+	 * to ask about anything else.
+	 */
+	ambiguous: boolean;
+}
+
+// A number only when writing it back gives the same characters: "42" and
+// "-2.5" qualify; "1.10" (a version), "0123" (a postal code), "1e3" and
+// 12345678901234567890 (an ID past float precision) do not — they stay text
+// rather than being silently rewritten.
+const PLAIN_NUMBER = /^-?(0|[1-9]\d*)(\.\d+)?$/;
+
+/** Human label for a stored value's shape. */
+export function configValueLabel(value: unknown): string {
+	if (typeof value === 'string') return 'Text';
+	if (typeof value === 'number') return 'Number';
+	if (typeof value === 'boolean') return 'On/off';
+	if (Array.isArray(value)) return 'List';
+	if (value === null) return 'Empty';
+	return 'Object';
+}
+
+/**
+ * Work out what an operator typed, without asking. Objects and lists (JSON
+ * starting with { or [), on/off (true/false), plain numbers, and text for
+ * everything else — including anything that merely resembles a number.
+ */
+export function inferConfigValue(raw: string): IInferredConfigValue {
+	const t = raw.trim();
+	if (t === 'true' || t === 'false') {
+		return { type: 'boolean', value: t === 'true', label: 'On/off', ambiguous: true };
+	}
+	if (PLAIN_NUMBER.test(t)) {
+		const n = Number(t);
+		if (Number.isFinite(n) && String(n) === t) return { type: 'number', value: n, label: 'Number', ambiguous: true };
+	}
+	if (t.startsWith('{') || t.startsWith('[')) {
+		try {
+			const parsed: unknown = JSON.parse(t);
+			if (parsed !== null && typeof parsed === 'object') {
+				return { type: 'json', value: parsed, label: Array.isArray(parsed) ? 'List' : 'Object', ambiguous: false };
+			}
+		} catch {
+			// not valid JSON — it is text that happens to start with a bracket
+		}
+	}
+	return { type: 'string', value: raw, label: 'Text', ambiguous: false };
+}

@@ -87,4 +87,8 @@ export const styles: Record<string, CSSProperties> = {
 	valuePreview: { flex: '1', margin: '0 12px', fontSize: '13px', color: 'var(--fonderie-text,#171717)', fontFamily: 'var(--fonderie-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
 	badge: { fontSize: '11px', padding: '2px 6px', borderRadius: '6px', border: '1px solid var(--fonderie-border,#e0e0e0)', color: 'var(--fonderie-text-muted,#5c5c5c)', marginRight: '12px' },
 	toggle: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', padding: '6px 0' },
+	detected: { display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px', color: 'var(--fonderie-text-muted,#5c5c5c)', marginTop: '6px' },
+	inline: { display: 'flex', alignItems: 'center', gap: '6px' },
+	linkButton: { background: 'none', border: 'none', padding: '0', fontSize: '13px', color: 'var(--fonderie-link,#0b6)', cursor: 'pointer', textDecoration: 'underline' },
+	warning: { fontSize: '13px', color: 'var(--fonderie-warning,#a15c00)', marginTop: '6px' },
 };

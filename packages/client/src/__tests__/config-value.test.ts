@@ -52,3 +52,40 @@ test('configKeyProblem: both naming styles pass; junk is explained', () => {
 	assert.ok(configKeyProblem('1st'));
 	assert.ok(configKeyProblem('has space'));
 });
+
+import { configValueLabel, inferConfigValue } from '../index';
+
+test('inferConfigValue: obvious shapes need no question', () => {
+	assert.deepEqual(inferConfigValue('{"a":1}'), { type: 'json', value: { a: 1 }, label: 'Object', ambiguous: false });
+	const list = inferConfigValue('[{"id":"m1"},{"id":"m2"}]');
+	assert.equal(list.label, 'List');
+	assert.deepEqual(list.value, [{ id: 'm1' }, { id: 'm2' }]);
+	assert.deepEqual(inferConfigValue('Scheduled maintenance at 10pm'), {
+		type: 'string',
+		value: 'Scheduled maintenance at 10pm',
+		label: 'Text',
+		ambiguous: false,
+	});
+});
+
+test('inferConfigValue: true/false and plain numbers are detected but flagged ambiguous', () => {
+	assert.deepEqual(inferConfigValue('true'), { type: 'boolean', value: true, label: 'On/off', ambiguous: true });
+	assert.deepEqual(inferConfigValue(' 42 '), { type: 'number', value: 42, label: 'Number', ambiguous: true });
+	assert.equal(inferConfigValue('-2.5').value, -2.5);
+});
+
+test('inferConfigValue: things that only LOOK like numbers stay text — nothing is silently rewritten', () => {
+	for (const t of ['1.10', '0123', '1e3', '12345678901234567890', 'True', 'null', '{broken', '']) {
+		const r = inferConfigValue(t);
+		assert.equal(r.type, 'string', t);
+		assert.equal(r.value, t, `${t} kept verbatim`);
+	}
+});
+
+test('configValueLabel names every stored shape', () => {
+	assert.equal(configValueLabel('x'), 'Text');
+	assert.equal(configValueLabel(1), 'Number');
+	assert.equal(configValueLabel(true), 'On/off');
+	assert.equal(configValueLabel([1]), 'List');
+	assert.equal(configValueLabel({}), 'Object');
+});

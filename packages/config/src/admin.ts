@@ -6,6 +6,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { ISecretEncryptor } from './crypto';
 import { noopEncryptor } from './crypto';
 import {
+	ConfigTypeChangeError,
 	listConfigEntries,
 	getConfigEntry,
 	setConfigEntry,
@@ -160,11 +161,19 @@ function adminRouteTable(store: IStoreAdapter, encryptor?: ISecretEncryptor): Ro
 			}
 			try {
 				const row = await setConfigEntry(
-					{ key: keyOf(ctx), value: b['value'], ...writeOpts(ctx, b) },
+					{
+						key: keyOf(ctx),
+						value: b['value'],
+						...writeOpts(ctx, b),
+						...(b['allowTypeChange'] === true ? { allowTypeChange: true } : {}),
+					},
 					store,
 				);
 				return setApiResponse(HTTP.OK, 'CONFIG_SET', 'Config entry saved', withParsedValue(row));
 			} catch (err) {
+				if (err instanceof ConfigTypeChangeError) {
+					return setApiResponse(HTTP.CONFLICT, 'CONFIG_TYPE_CHANGE', err.message, { from: err.from, to: err.to });
+				}
 				return conflictOr(err);
 			}
 		}],

@@ -409,8 +409,23 @@ const VERBS = {
 };
 
 // config `value` is parsed (so `set flag true` stores a boolean); secrets stay raw strings.
-function parseValue(raw) {
-  try { return JSON.parse(raw); } catch { return raw; }
+// Same rules as the admin UI (@fonderie/client inferConfigValue): objects and
+// lists as JSON, true/false as on/off, a number only when writing it back gives
+// the same characters — so "1.10", "0123", "1e3" and long IDs stay text instead
+// of being silently rewritten (JSON.parse turned "1.10" into 1.1). --text forces
+// text for the ambiguous cases ("true", "42").
+function parseValue(raw, { asText = false } = {}) {
+  if (asText) return raw;
+  const t = raw.trim();
+  if (t === 'true' || t === 'false') return t === 'true';
+  if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(t) && String(Number(t)) === t) return Number(t);
+  if (t.startsWith('{') || t.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(t);
+      if (parsed !== null && typeof parsed === 'object') return parsed;
+    } catch { /* text that starts with a bracket */ }
+  }
+  return raw;
 }
 
 // Per-resource scope/value shape. config & secret scope by environment and carry
@@ -442,7 +457,10 @@ async function resourceCmd(resource, base) {
   if (spec.needsValue) {
     const raw = argv[3];
     if (raw === undefined) { console.error(`usage: fonderie ${resource} set <key> <value>`); process.exit(1); }
-    body = { [shape.valueKey]: shape.rawValue ? String(raw) : parseValue(raw) };
+    body = { [shape.valueKey]: shape.rawValue ? String(raw) : parseValue(raw, { asText: argv.includes('--text') }) };
+    // The server refuses to change an existing key's type (on/off → text…)
+    // unless asked; this is the explicit ask.
+    if (resource === 'config' && argv.includes('--allow-type-change')) body.allowTypeChange = true;
     if (scope) body[shape.scopeParam] = scope;
     if (resource === 'template') {
       const subject = arg('--subject', undefined);
