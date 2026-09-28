@@ -4,7 +4,7 @@
 
 ## @fonderie/workspaces
 
-Subpath exports: `@fonderie/workspaces/types`, `@fonderie/workspaces/middleware`, `@fonderie/workspaces/migrations`
+Subpath exports: `@fonderie/workspaces/types`, `@fonderie/workspaces/middleware`, `@fonderie/workspaces/migrations`, `@fonderie/workspaces/env.json`
 
 ```ts
 new WorkspacesModule(store: IStoreAdapter, config?: IWorkspacesConfig, bus?: EventBus | undefined): WorkspacesModule

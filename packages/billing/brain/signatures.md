@@ -4,7 +4,7 @@
 
 ## @fonderie/billing
 
-Subpath exports: `@fonderie/billing/types`, `@fonderie/billing/middleware`, `@fonderie/billing/migrations`
+Subpath exports: `@fonderie/billing/types`, `@fonderie/billing/middleware`, `@fonderie/billing/migrations`, `@fonderie/billing/env.json`
 
 ```ts
 new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus | undefined): BillingModule

@@ -89,6 +89,9 @@ jobs:
       # Console-reason guard — every finding reason a brick emits has a sentence in
       # the console dictionary, and every sentence is still emitted.
       - run: npm run check:reasons
+      # Env-declaration guard — every brick's env.json names each process.env it
+      # reads, and every variable it calls direct is really read.
+      - run: npm run check:env-declarations
       # NODE_OPTIONS names whatever keeps a test process alive after its suite
       # has finished — the failure where every suite reports green, turbo never
       # summarises, and the job idles to its timeout. Absolute path because

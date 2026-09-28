@@ -4,7 +4,7 @@
 
 ## @fonderie/risk
 
-Subpath exports: `@fonderie/risk/migrations`
+Subpath exports: `@fonderie/risk/migrations`, `@fonderie/risk/env.json`
 
 ```ts
 new RiskEngine(store: Queryable, opts: RiskEngineOptions): RiskEngine

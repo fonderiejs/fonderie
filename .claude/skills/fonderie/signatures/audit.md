@@ -4,6 +4,8 @@
 
 ## @fonderie/audit
 
+Subpath exports: `@fonderie/audit/env.json`
+
 ```ts
 new AuditModule(store: IStoreAdapter): AuditModule
   .name: "@fonderie/audit"

@@ -4,6 +4,8 @@
 
 ## @fonderie/adapter-koa
 
+Subpath exports: `@fonderie/adapter-koa/env.json`
+
 ```ts
 function koaContextToWeb(ctx: KoaContext, maxBytes?: number): Promise<Request>
 

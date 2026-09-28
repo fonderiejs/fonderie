@@ -4,7 +4,7 @@
 
 ## @fonderie/auth
 
-Subpath exports: `@fonderie/auth/types`, `@fonderie/auth/middleware`, `@fonderie/auth/migrations`
+Subpath exports: `@fonderie/auth/types`, `@fonderie/auth/middleware`, `@fonderie/auth/migrations`, `@fonderie/auth/env.json`
 
 ```ts
 interface IUser {

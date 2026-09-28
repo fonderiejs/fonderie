@@ -4,7 +4,7 @@
 
 ## @fonderie/config
 
-Subpath exports: `@fonderie/config/types`, `@fonderie/config/middleware`, `@fonderie/config/migrations`
+Subpath exports: `@fonderie/config/types`, `@fonderie/config/middleware`, `@fonderie/config/migrations`, `@fonderie/config/env.json`
 
 ```ts
 new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule

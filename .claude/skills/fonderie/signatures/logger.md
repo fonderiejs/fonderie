@@ -4,6 +4,8 @@
 
 ## @fonderie/logger
 
+Subpath exports: `@fonderie/logger/env.json`
+
 ```ts
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
