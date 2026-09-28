@@ -12,6 +12,7 @@ import {
 	mergeDotEnv,
 	parseEnvFile,
 	renderExample,
+	isBrick,
 	resolveBricks,
 	resolveEnv,
 	scanEnvReads,
@@ -335,4 +336,14 @@ test('fonderie env generate against the REAL bricks of this repo', () => {
 	const ex = readFileSync(join(root, '.env.example'), 'utf8');
 	assert.ok(!/STRIPE_SECRET_KEY/.test(ex), 'billing is an optional adapter peer the app did not install');
 	assert.match(ex, /^DATABASE_URL=postgres:\/\/localhost:5432\/app$/m);
+});
+
+test('the CLI and frontend packages are not bricks: not walked, not reported as undeclared', () => {
+	const bricks = standard({ cli: { decl: undefined }, 'react-auth': { pkg: { dependencies: { '@fonderie/client': '*' } }, decl: undefined }, client: { decl: undefined } });
+	const root = project({ app: { '@fonderie/cli': '*', '@fonderie/react-auth': '*', '@fonderie/store': '*' }, bricks });
+	const r = resolveEnv(root);
+	assert.deepEqual(r.undeclared, []);
+	assert.deepEqual(r.bricks.sort(), ['@fonderie/core', '@fonderie/store']);
+	for (const n of ['cli', 'client', 'react', 'react-auth', 'vue-billing-screens', 'create-fonderie-app']) assert.equal(isBrick(`@fonderie/${n}`), false, n);
+	for (const n of ['core', 'auth', 'adapter-hono', 'rate-limit']) assert.equal(isBrick(`@fonderie/${n}`), true, n);
 });
