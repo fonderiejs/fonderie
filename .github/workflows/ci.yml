@@ -92,6 +92,11 @@ jobs:
       # Env-declaration guard — every brick's env.json names each process.env it
       # reads, and every variable it calls direct is really read.
       - run: npm run check:env-declarations
+      # Lockfile guard — `changeset version` bumps package.json files but not the
+      # lockfile, so workspace versions in package-lock.json drifted for weeks
+      # and every local `npm install` rewrote it. The version script now syncs it;
+      # this fails the PR that lets it drift again.
+      - run: npm run check:lockfile
       # NODE_OPTIONS names whatever keeps a test process alive after its suite
       # has finished — the failure where every suite reports green, turbo never
       # summarises, and the job idles to its timeout. Absolute path because
