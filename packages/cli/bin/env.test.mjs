@@ -219,6 +219,8 @@ const genBricks = () =>
 					v('PASSWORD_RESET_URL', { kind: 'url' }),
 					v('GOOGLE_CLIENT_ID', { required: 'feature', feature: 'google' }),
 					v('APPLE_REDIRECT_URI', { kind: 'url', deprecatedNames: ['APPLE_CALLBACK_URL'], dev: 'http://localhost/cb' }),
+					// Shaped like the real declaration: the renamed variable is a feature var.
+					v('GOOGLE_REDIRECT_URI', { required: 'feature', feature: 'google', kind: 'url', deprecatedNames: ['GOOGLE_CALLBACK_URL'] }),
 				],
 				features: { google: { description: 'Sign in with Google' } },
 			},
@@ -255,7 +257,7 @@ test('renderExample: one line per variable, the right ones commented, platform n
 
 test('mergeDotEnv: keeps values and comments, generates, defaults, renames, lists what is left', () => {
 	const r = resolveEnv(project({ app: { '@fonderie/auth': '*', '@fonderie/billing': '*' }, bricks: genBricks() }));
-	const before = '# mine\nDATABASE_URL=postgres://me@db/x\nAPPLE_CALLBACK_URL=https://old.example/cb\n';
+	const before = '# mine\nDATABASE_URL=postgres://me@db/x\nAPPLE_CALLBACK_URL=https://old.example/cb\nGOOGLE_CALLBACK_URL=https://old.example/g\n';
 	const m = mergeDotEnv(before, r, { generate: FIXED });
 	const env = parseEnvFile(m.text);
 	assert.ok(m.text.startsWith(before), 'existing content untouched');
@@ -263,7 +265,8 @@ test('mergeDotEnv: keeps values and comments, generates, defaults, renames, list
 	assert.equal(env.get('JWT_SECRET'), 'b'.repeat(44));
 	assert.equal(env.get('NODE_ENV'), 'development');
 	assert.equal(env.get('APPLE_REDIRECT_URI'), 'https://old.example/cb', 'deprecated value carried over');
-	assert.deepEqual(m.renamed, ['APPLE_CALLBACK_URL → APPLE_REDIRECT_URI']);
+	assert.equal(env.get('GOOGLE_REDIRECT_URI'), 'https://old.example/g', 'carried over even though google is a feature');
+	assert.deepEqual(m.renamed.sort(), ['APPLE_CALLBACK_URL → APPLE_REDIRECT_URI', 'GOOGLE_CALLBACK_URL → GOOGLE_REDIRECT_URI']);
 	assert.deepEqual(m.mustSupply, ['STRIPE_SECRET_KEY']);
 	assert.ok(!env.has('GOOGLE_CLIENT_ID') && !env.has('PASSWORD_RESET_URL') && !env.has('VERCEL'));
 	const again = mergeDotEnv(m.text, r, { generate: FIXED });

@@ -331,12 +331,17 @@ export function mergeDotEnv(existingText, resolved, { generate = GENERATORS } = 
 	const added = [];
 	const report = { generated: [], defaulted: [], renamed: [], mustSupply: [] };
 	for (const e of resolved.entries) {
-		if (e.source === 'platform' || e.required === 'feature' || have.has(e.name)) continue;
+		if (e.source === 'platform' || have.has(e.name)) continue;
+		// Before the feature skip: a set deprecated name means its feature is in
+		// use — and today every deprecated name belongs to a feature (OAuth).
 		const old = (e.deprecatedNames ?? []).find((n) => have.has(n) && have.get(n) !== '');
 		if (old) {
 			added.push(`${e.name}=${have.get(old)}`);
 			report.renamed.push(`${old} → ${e.name}`);
-		} else if (e.generate) {
+			continue;
+		}
+		if (e.required === 'feature') continue;
+		if (e.generate) {
 			added.push(`${e.name}=${generate[e.generate]()}`);
 			report.generated.push(e.name);
 		} else if (e.dev != null) {
