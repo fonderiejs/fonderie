@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/workspaces",
-	"version": "6.1.1",
+	"version": "6.1.2",
 	"fonderie": {
 		"stability": "stable"
 	},
@@ -97,6 +97,6 @@
 	},
 	"dependencies": {
 		"zod": "^4.6.5",
-		"@fonderie/rate-limit": "^4.0.25"
+		"@fonderie/rate-limit": "^4.0.26"
 	}
 }
