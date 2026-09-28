@@ -4,16 +4,16 @@
     "adapter-express": "5.3.10",
     "adapter-hono": "6.2.10",
     "adapter-koa": "5.3.10",
-    "admin": "1.7.0",
+    "admin": "1.7.1",
     "audit": "5.2.8",
     "auth": "7.14.0",
-    "billing": "10.3.0",
-    "client": "1.14.0",
-    "config": "6.5.0",
+    "billing": "10.4.0",
+    "client": "1.14.1",
+    "config": "6.5.1",
     "core": "0.23.1",
     "courier": "7.13.0",
     "customers": "6.2.19",
-    "events": "5.10.0",
+    "events": "5.11.0",
     "geo": "0.5.3",
     "logger": "0.3.3",
     "media": "0.2.22",
@@ -52,7 +52,7 @@
     "react-webhooks-screens": "0.3.1",
     "react-workspaces": "0.6.1",
     "react-workspaces-screens": "0.4.1",
-    "risk": "0.2.17",
+    "risk": "0.3.0",
     "storage": "0.1.21",
     "store": "0.7.1",
     "vue": "0.3.0",
@@ -143,7 +143,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "1.7.0",
+      "version": "1.7.1",
       "stability": "experimental",
       "requires": [
         "core",
@@ -576,7 +576,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "10.3.0",
+      "version": "10.4.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -785,7 +785,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "1.14.0",
+      "version": "1.14.1",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -820,7 +820,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "6.5.0",
+      "version": "6.5.1",
       "stability": "stable",
       "requires": [
         "core",
@@ -1292,7 +1292,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.10.0",
+      "version": "5.11.0",
       "stability": "maturing",
       "requires": [
         "core",
@@ -2239,7 +2239,7 @@
       "hasOutcomes": false
     },
     "risk": {
-      "version": "0.2.17",
+      "version": "0.3.0",
       "stability": "experimental",
       "requires": [
         "core",
