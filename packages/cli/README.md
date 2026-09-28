@@ -36,6 +36,20 @@ at equal completion and quality** (harness kept in our private research reposito
   against the installed packages; it is *not* a token/turn saving (an
   auth-session pilot found the wiring isn't the turn bottleneck; the notes
   live in the private research repository).
+- **`fonderie env generate [--project <dir>]`** — write `.env.example` from the
+  `env.json` every installed `@fonderie/*` brick ships (plus the app's own
+  `fonderie.env.json`), and create or complete `.env`. It follows each brick's
+  dependencies and required peers, so the list is exactly what your installed
+  versions declare — never a table in this CLI.
+  - `.env.example` is rewritten in full and deterministic, so diffs are real
+    changes.
+  - `.env` keeps every value already there. It generates the secrets that have
+    a recipe (`crypto.randomBytes`), fills local defaults, carries a deprecated
+    name's value over to the new name, and lists what only you can supply
+    (Stripe keys, OAuth credentials).
+  - It refuses to write `.env` in a git repository that does not ignore it.
+  - `--example-only` skips `.env`.
+  - `--check` exits 1 when `.env.example` is out of date, for CI.
 
 
 ### Config values

@@ -395,9 +395,12 @@ Drift the check finds in today's files (required only):
    object is listed in `OPAQUE` with what it reads; all bricks resolve together
    without conflict. The gate proves its scanner on a probe before scanning.
 4. ✅ **Declarations** for all 22 backend bricks (11 declare `vars: []`).
-5. **`fonderie env generate`**, then point `fonderie add` at it, regenerate
-   every example's and the starter's `.env.example` (and push the starter
-   template repo).
+5. ✅ **`fonderie env generate`** (`--example-only`, `--check`, refuses an
+   untracked-unsafe `.env`); `fonderie add` now writes `.env.example` through it
+   and its hardcoded env table is gone. **5b (after the declarations publish):**
+   bump the examples and the starter onto releases that ship `env.json`,
+   regenerate their `.env.example`, push the `template-starter` repo, and run
+   `fonderie env generate --check` on them in CI.
 6. **`fonderie env check`**, run in CI against the examples.
 7. **Console:** `/_admin/environment` reads the declarations; `env` option deprecated.
 8. **Brain:** one concept (`environment`) generated from the declarations, so
