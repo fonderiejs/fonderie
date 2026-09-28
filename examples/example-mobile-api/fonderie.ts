@@ -45,6 +45,9 @@ export const fonderie = new FonderieApp(config)
 		// locally: listing plans and reading the subscription both come from the
 		// database. You only need a real key to open a checkout session.
 		provider: new StripeProvider(process.env['STRIPE_SECRET_KEY'] ?? 'sk_test_placeholder'),
+		// Verifies POST /billing/webhook. Unset, that endpoint answers 500 and the
+		// app never hears about renewals or cancellations (readiness warns).
+		webhookSecret: process.env['STRIPE_WEBHOOK_SECRET'],
 		successUrl: process.env['BILLING_SUCCESS_URL'] ?? 'saasstarter://settings/billing',
 		cancelUrl:  process.env['BILLING_CANCEL_URL']  ?? 'saasstarter://settings/billing',
 		// Seeded into the database on boot, so GET /plans returns these immediately.

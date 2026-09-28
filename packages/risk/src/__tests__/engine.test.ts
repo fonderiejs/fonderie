@@ -12,7 +12,7 @@ import {
 import { hashValue, ipBucket, normalizeForKind, resolvePepper } from '../hashing.js';
 import type { RuleSet } from '../types.js';
 
-const PEPPER = 'test-pepper-not-a-placeholder-1234567890';
+const PEPPER = 'aaaa-bbbb-cccc-dddd-eeee-ffff-gggg-hhhh';
 
 // ── pure scoring / tiers ──────────────────────────────────────────
 
@@ -86,6 +86,12 @@ test('resolvePepper: dev fallback out of prod; throws in prod; rejects placehold
 		process.env.NODE_ENV = 'production';
 		assert.throws(() => resolvePepper(), /required in production/);
 		assert.throws(() => resolvePepper('too-short'), /required in production/);
+		// Long enough, but a placeholder by core's shared rule — the old private
+		// 3-word denylist let this through.
+		assert.throws(
+			() => resolvePepper('change-me-in-production-min-32-chars-long'),
+			/required in production/,
+		);
 		assert.equal(resolvePepper(PEPPER), PEPPER); // a real one is fine in prod
 	} finally {
 		process.env.NODE_ENV = orig;

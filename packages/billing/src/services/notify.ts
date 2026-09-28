@@ -91,6 +91,35 @@ export function collectBillingReadinessProblems(
 		}
 	}
 
+	// A missing webhook secret used to surface only as a 500 on the first
+	// delivery from Stripe — subscriptions and pack purchases then never sync.
+	// Only when money moves: a free-only setup receives no billing webhooks.
+	if (billingPaymentsEnabled(config)) {
+		if (!config.webhookSecret) {
+			problems.push({
+				module: '@fonderie/billing',
+				severity: 'warning',
+				message:
+					'config.webhookSecret is not set — POST /billing/webhook answers 500 and ' +
+					'subscription changes from the provider are never applied. Set it from ' +
+					'STRIPE_WEBHOOK_SECRET (the StripeProvider constructor argument is not used).',
+				domain: 'billing',
+				reason: 'WEBHOOK_SECRET_MISSING',
+			});
+		}
+		if (config.wallet && !config.wallet.webhookSecret) {
+			problems.push({
+				module: '@fonderie/billing',
+				severity: 'warning',
+				message:
+					'config.wallet.webhookSecret is not set — POST /billing/webhook/payment answers 500 ' +
+					'and credit-pack purchases are never credited. Set it from STRIPE_WALLET_WEBHOOK_SECRET.',
+				domain: 'billing',
+				reason: 'WALLET_WEBHOOK_SECRET_MISSING',
+			});
+		}
+	}
+
 	// Auto-recharge misconfig degrades silently (the top-up just never fires,
 	// and a subscriber hits zero unexpectedly), so surface it — a warning, since
 	// the low-balance notice still informs and nothing unsafe happens.
