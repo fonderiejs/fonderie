@@ -114,6 +114,8 @@ export type {
 	AdminRouteGuard,
 	IAdminAttention,
 	IAdminAttentionItem,
+	IAdminFinding,
+	IAdminReason,
 	IAdminCheckResult,
 	IAdminEnvironmentReport,
 	IAdminDoctorReport,
@@ -267,6 +269,7 @@ export {
 	detectAdminLocale,
 	formatAdminDate,
 	isAdminLocale,
+	localizeReason,
 } from './admin-i18n';
 export type {
 	AdminLocale,
@@ -275,4 +278,5 @@ export type {
 	AdminMessageParams,
 	AdminMessages,
 	AdminT,
+	IReasonLike,
 } from './admin-i18n';

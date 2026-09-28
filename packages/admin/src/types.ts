@@ -91,10 +91,29 @@ export interface IAdminManifest {
 	routes: IRouteEntry[];
 }
 
-export interface IAdminCheckResult extends IAdminCheckReport {
+// What the doctor route returns per check. `findings` stays English strings —
+// what logs, crons and older consoles already read — and `details` carries the
+// same findings in order, each with its code/params and resolved severity, so
+// a console can render them in the operator's language.
+export interface IAdminCheckResult extends Omit<IAdminCheckReport, 'findings' | 'skipped'> {
 	name: string;
 	module: string;
 	durationMs: number;
+	findings: string[];
+	details: IAdminFinding[];
+	/** English, as before. */
+	skipped?: string;
+	/** The same, with its reason, when the check gave one. */
+	skippedDetail?: IAdminFinding;
+}
+
+/** A finding as the console receives it: severity resolved, reason optional. */
+export interface IAdminFinding {
+	message: string;
+	reason?: string;
+	domain?: string;
+	metadata?: Readonly<Record<string, string | number>>;
+	severity: 'error' | 'advice';
 }
 
 export interface IAdminDoctorReport {
@@ -106,7 +125,11 @@ export interface IAdminDoctorReport {
 export interface IAdminAttentionItem {
 	source: string;
 	severity: 'error' | 'advice';
+	/** English, always present — the fallback when domain + reason is unknown. */
 	message: string;
+	reason?: string;
+	domain?: string;
+	metadata?: Readonly<Record<string, string | number>>;
 }
 
 export interface IAdminAttention {

@@ -91,3 +91,40 @@ test('the shared locale maps are frozen: an embedding app cannot rename a langua
 	for (const l of ADMIN_LOCALES)
 		assert.ok(adminLocaleNames[l] && adminLocaleTags[l], `${l} has a name and a tag`);
 });
+
+test('localizeReason: translated by domain + reason, metadata interpolated, enum values translated, English fallback', async () => {
+	const { localizeReason } = await import('../index');
+	const priceMissing = {
+		message: 'plan:starter:yearly: price price_1X not found at the provider',
+		domain: 'billing',
+		reason: 'PRICE_NOT_FOUND',
+		metadata: { ref: 'plan:starter:yearly', price: 'price_1X' },
+	};
+	assert.equal(
+		localizeReason(priceMissing, 'fr'),
+		'plan:starter:yearly : le prix price_1X n’existe pas chez le prestataire de paiement.',
+	);
+	assert.equal(
+		localizeReason(priceMissing, 'es'),
+		'plan:starter:yearly: el precio price_1X no existe en el proveedor de pagos.',
+	);
+	// An enum-like value is itself translated — no English left in the sentence.
+	const drift = {
+		message: 'x',
+		domain: 'billing',
+		reason: 'SUBSCRIPTION_MISSING_AT_PROVIDER',
+		metadata: {
+			subscriber: 'workspace:w1',
+			subscription: 'sub_1',
+			status: 'active',
+			impact: 'OVER_GRANTING',
+		},
+	};
+	assert.match(localizeReason(drift, 'fr'), /l’accès est accordé sans paiement\.$/);
+	// Unknown reason (a newer brick, an app's own check) or no reason: the English message.
+	assert.equal(
+		localizeReason({ message: 'app said so', domain: 'billing', reason: 'SOMETHING_NEW' }, 'fr'),
+		'app said so',
+	);
+	assert.equal(localizeReason({ message: 'plain sentence' }, 'fr'), 'plain sentence');
+});

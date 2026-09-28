@@ -86,6 +86,9 @@ jobs:
       # Notification-template coverage guard — every module that defines
       # customer-notification MESSAGE_KEYS must ship default templates for them.
       - run: npm run check:template-coverage
+      # Console-reason guard — every finding reason a brick emits has a sentence in
+      # the console dictionary, and every sentence is still emitted.
+      - run: npm run check:reasons
       # NODE_OPTIONS names whatever keeps a test process alive after its suite
       # has finished — the failure where every suite reports green, turbo never
       # summarises, and the job idles to its timeout. Absolute path because

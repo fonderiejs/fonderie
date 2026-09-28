@@ -13,10 +13,9 @@ interface IAdminAttention {
     items: IAdminAttentionItem[];
 }
 
-interface IAdminAttentionItem {
+interface IAdminAttentionItem extends IAdminReason {
     source: string;
     severity: 'error' | 'advice';
-    message: string;
 }
 
 interface IAdminCheckResult {
@@ -24,7 +23,9 @@ interface IAdminCheckResult {
     module: string;
     ok: boolean;
     findings: string[];
+    details?: IAdminFinding[];
     skipped?: string;
+    skippedDetail?: IAdminFinding;
     durationMs: number;
 }
 
@@ -103,10 +104,9 @@ interface IAdminReadiness {
     problems: IAdminReadinessProblem[];
 }
 
-interface IAdminReadinessProblem {
+interface IAdminReadinessProblem extends IAdminReason {
     module: string;
     severity: 'error' | 'warning';
-    message: string;
 }
 
 interface IAdminRouteEntry {
@@ -471,17 +471,17 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
-function useAttention(client: AdminClient): { attention: Ref<{ generatedAt: string; ok: boolean; items: { source: string; severity: "error" | "advice"; message: string; }[]; } | null, IAdminAttention | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useAttention(client: AdminClient): { attention: Ref<{ generatedAt: string; ok: boolean; items: { source: string; severity: "error" | "advice"; message: string; reason?: string; domain?: string; metadata?: Record<...>; }[]; } | null, IAdminAttention | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useManifest(client: AdminClient): { manifest: Ref<{ generatedAt: string; env: string; admin: { version: string; log: boolean; host: string[] | null; }; modules: { name: string; version: string | null; readiness: { ...; }; describesAdmin: boolean; }[]; readiness: { ...; }; routes: { ...; }[]; } | null, IAdminManifest | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useDoctor(client: AdminClient): { report: Ref<{ generatedAt: string; ok: boolean; checks: { name: string; module: string; ok: boolean; findings: string[]; skipped?: string; durationMs: number; }[]; } | null, IAdminDoctorReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useDoctor(client: AdminClient): { report: Ref<{ generatedAt: string; ok: boolean; checks: { name: string; module: string; ok: boolean; findings: string[]; details?: { severity: "error" | "advice"; message: string; reason?: string; domain?: string; metadata?: Record<...>; }[]; skipped?: string; skippedDetail?: { ...; }; durationMs: number; }[]; } | null, IAdminDoctorReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useAdminEnvironment(client: AdminClient): { report: Ref<{ generatedAt: string; readiness: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; modules: { ...; }[]; env: { ...; }[]; } | null, IAdminEnvironmentReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
+function useAdminEnvironment(client: AdminClient): { report: Ref<{ generatedAt: string; readiness: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; reason?: string; domain?: string; metadata?: Record<...>; }[]; }; modules: { ...; }[]; env: { ...; }[]; } | null, IAdminEnvironmentReport | ... 1 more ... | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
 function useAdminRoutes(client: AdminClient): { report: Ref<{ generatedAt: string; routes: { method: string; path: string; module?: string; guard: AdminRouteGuard; }[]; } | null, IAdminRoutesReport | { ...; } | null>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 
-function useAdminTokens(client: AdminClient): { report: Ref<{ generatedAt: string; admin: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; }[]; }; legacy: { module: string; set: boolean; }[]; issued: { ...; }[] | null; } | null, IAdminTokensReport | ... 1 more ... | null>; ... 4 more ...; revoke: (id: string) => Promise<...>; }
+function useAdminTokens(client: AdminClient): { report: Ref<{ generatedAt: string; admin: { ok: boolean; problems: { module: string; severity: "error" | "warning"; message: string; reason?: string; domain?: string; metadata?: Record<...>; }[]; }; legacy: { ...; }[]; issued: { ...; }[] | null; } | null, IAdminTokensReport | ... 1 more ... | null>; ... 4 more ...; revoke: (id: string) => Promise<...>; }
 
 function useAdminSession(client: AdminClient): { session: Ref<{ state: AdminSessionState; operator: { id: string; email: string; name: string | null; scopes: AdminScope[]; ... 6 more ...; disabledAt: string | null; } | null; claimable?: boolean; stepUpFresh?: boolean; backupCodes?: string[]; backupCodesLeft?: number; } | null, IAdminSession | ... 1 more ... | null>; ... 11 more ...; redeemLink: (input: { ...; }) => Promise<...>; }
 

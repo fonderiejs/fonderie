@@ -152,6 +152,9 @@ describe('EventBus — memory transport', () => {
 
 // ── EventsModule ──────────────────────────────────────────────────────────
 
+const skippedText = (s: string | { message: string } | undefined): string =>
+	typeof s === 'string' ? s : (s?.message ?? '');
+
 test('EventsModule: accepts a custom IEventTransport (MemoryTransport as test stand-in)', () => {
 	const mod = new EventsModule({ transport: new MemoryTransport() });
 	assert.equal(mod.name, '@fonderie/events');
@@ -608,7 +611,7 @@ test('describeAdmin: the outbox check exists only for the pg transport, and is q
 	// integrity without a key is skipped, and says why
 	const integ = await pg.checks![0]!.run();
 	assert.equal(integ.ok, true);
-	assert.match(integ.skipped ?? '', /no integrityKey/);
+	assert.match(skippedText(integ.skipped), /no integrityKey/);
 	// with a key but before start(): skipped as "transport not started", never a throw
 	const keyed = new EventsModule({
 		transport: {
@@ -617,7 +620,7 @@ test('describeAdmin: the outbox check exists only for the pg transport, and is q
 			integrityKey: 'k'.repeat(48),
 		},
 	}).describeAdmin();
-	assert.match((await keyed.checks![0]!.run()).skipped ?? '', /not started/);
+	assert.match(skippedText((await keyed.checks![0]!.run()).skipped), /not started/);
 	// No store until start(): nothing dead, nothing pending.
 	assert.deepEqual(await pg.checks![1]!.run(), { ok: true, findings: [] });
 	// A ready-made keyed transport is not reported as unkeyed (it was: the check
@@ -628,5 +631,5 @@ test('describeAdmin: the outbox check exists only for the pg transport, and is q
 			integrityKey: 'k'.repeat(48),
 		}),
 	}).describeAdmin();
-	assert.match((await handed.checks![0]!.run()).skipped ?? '', /not started/);
+	assert.match(skippedText((await handed.checks![0]!.run()).skipped), /not started/);
 });

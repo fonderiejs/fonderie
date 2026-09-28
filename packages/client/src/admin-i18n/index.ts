@@ -83,6 +83,39 @@ export function createAdminT(locale: AdminLocale | undefined = DEFAULT_ADMIN_LOC
 }
 export type AdminT = ReturnType<typeof createAdminT>;
 
+/** What the server sends: an English message, optionally with a reason (AIP-193 style). */
+export interface IReasonLike {
+	message: string;
+	reason?: string | undefined;
+	domain?: string | undefined;
+	metadata?: Readonly<Record<string, string | number>> | undefined;
+}
+
+/**
+ * A server message in the console's language. Looks up
+ * reasons.<domain>.<REASON>, interpolates the metadata — translating enum-like
+ * values through reasons.values.<key>.<VALUE> — and falls back to the English
+ * `message` when this console has no sentence for that reason (a newer brick,
+ * or an app's own check). Never renders a bare key.
+ */
+export function localizeReason(
+	item: IReasonLike,
+	locale: AdminLocale | undefined = DEFAULT_ADMIN_LOCALE,
+): string {
+	if (!item.reason || !item.domain) return item.message;
+	const dict = (dictionaries[locale] ?? dictionaries[DEFAULT_ADMIN_LOCALE])
+		.reasons as unknown as Record<string, Record<string, unknown>>;
+	const text = dict[item.domain]?.[item.reason];
+	if (typeof text !== 'string') return item.message;
+	const values = dict['values'] as unknown as Record<string, Record<string, string>> | undefined;
+	const meta = item.metadata ?? {};
+	return text.replace(/\{(\w+)\}/g, (m, name: string) => {
+		if (!(name in meta)) return m;
+		const raw = String(meta[name]);
+		return values?.[name]?.[raw] ?? raw;
+	});
+}
+
 /** Dates in the console's language: 'date', 'datetime' or 'time'. */
 export function formatAdminDate(
 	value: string | number | Date,

@@ -513,10 +513,20 @@ export interface ITemplateRevision {
 // Admin-token authenticated — see AdminClient. Shapes mirror @fonderie/admin's
 // pages; the client owns its copies, like every other section here.
 
-export interface IAdminReadinessProblem {
+// A machine-readable cause, in the shape of Google's AIP-193 ErrorInfo:
+// `reason` (UPPER_SNAKE, stable) unique within `domain` (the brick), with the
+// raw values in `metadata`. `message` next to it is the English fallback.
+// localizeReason() renders it in the console's language.
+export interface IAdminReason {
+	message: string;
+	reason?: string;
+	domain?: string;
+	metadata?: Record<string, string | number>;
+}
+
+export interface IAdminReadinessProblem extends IAdminReason {
 	module: string;
 	severity: 'error' | 'warning';
-	message: string;
 }
 
 export interface IAdminReadiness {
@@ -547,12 +557,20 @@ export interface IAdminManifest {
 	routes: IAdminRouteEntry[];
 }
 
+export interface IAdminFinding extends IAdminReason {
+	severity: 'error' | 'advice';
+}
+
 export interface IAdminCheckResult {
 	name: string;
 	module: string;
 	ok: boolean;
+	/** English, one per finding — what logs and older consoles read. */
 	findings: string[];
+	/** The same findings in order, with reason and resolved severity. Servers before @fonderie/admin 1.7 omit it. */
+	details?: IAdminFinding[];
 	skipped?: string;
+	skippedDetail?: IAdminFinding;
 	durationMs: number;
 }
 
@@ -562,10 +580,9 @@ export interface IAdminDoctorReport {
 	checks: IAdminCheckResult[];
 }
 
-export interface IAdminAttentionItem {
+export interface IAdminAttentionItem extends IAdminReason {
 	source: string;
 	severity: 'error' | 'advice';
-	message: string;
 }
 
 export interface IAdminAttention {

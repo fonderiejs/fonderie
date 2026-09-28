@@ -3,6 +3,7 @@ import {
 	type AdminLocale,
 	createAdminT,
 	formatAdminDate,
+	localizeReason,
 } from '@fonderie/client';
 import { useAttention, useManifest } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
@@ -114,7 +115,7 @@ export const AttentionScreen = defineComponent({
 													h('span', { style: styles.mono }, item.source),
 												],
 											),
-											h('div', { style: { lineHeight: 1.55 } }, item.message),
+											h('div', { style: { lineHeight: 1.55 } }, localizeReason(item, props.locale)),
 										]),
 									],
 								),

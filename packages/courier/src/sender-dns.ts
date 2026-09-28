@@ -1,10 +1,13 @@
-import type { IAdminCheck } from '@fonderie/core';
+import type { IAdminCheck, IFinding } from '@fonderie/core';
 import { resolveTxt as nodeResolveTxt } from 'node:dns/promises';
 
 /** A TXT lookup, injectable so the check can be tested without a network. */
 export type ResolveTxt = (hostname: string) => Promise<string[][]>;
 
 export interface ISenderDnsRecord {
+	/** Why this record is a problem or advice — see IFinding. */
+	reason?: string;
+	metadata?: Record<string, string | number>;
 	kind: 'spf' | 'dmarc' | 'dkim';
 	present: boolean;
 	/**
@@ -43,7 +46,11 @@ export function senderDomain(from: string): string | null {
 	const address = (angle?.[1] ?? from).trim();
 	const at = address.lastIndexOf('@');
 	if (at < 1 || at === address.length - 1) return null;
-	const domain = address.slice(at + 1).trim().toLowerCase().replace(/\.$/, '');
+	const domain = address
+		.slice(at + 1)
+		.trim()
+		.toLowerCase()
+		.replace(/\.$/, '');
 	return domain.includes('.') ? domain : null;
 }
 
@@ -116,6 +123,8 @@ export async function checkSenderDns(
 			foundAt: domain,
 			value: spfAll.join(' | '),
 			problem: `${spfAll.length} v=spf1 records on ${spfDomain} — RFC 7208 makes that a permerror, which receivers treat as having NO SPF`,
+			reason: 'SPF_MULTIPLE',
+			metadata: { count: spfAll.length, domain: spfDomain },
 		});
 	} else {
 		records.push({ kind: 'spf', present: true, foundAt: spfDomain, value: spfAll[0]! });
@@ -137,6 +146,8 @@ export async function checkSenderDns(
 		kind: 'dmarc',
 		present: false,
 		problem: `no _dmarc record for ${domain} or any parent — without DMARC, SPF and DKIM results carry no policy and receivers apply their own judgement`,
+		reason: 'DMARC_MISSING',
+		metadata: { domain },
 	};
 	const labels = domain.split('.');
 	for (let i = 0; i + 2 <= labels.length; i++) {
@@ -151,6 +162,8 @@ export async function checkSenderDns(
 			// saying once, not worth failing over.
 			if (/[;\s]p=none\b/i.test(found)) {
 				dmarc.advice = `DMARC at ${at} is p=none — monitoring only, so a forged sender is still delivered. Deliberate while collecting rua reports; move to quarantine or reject once they look clean.`;
+				dmarc.reason = 'DMARC_MONITORING_ONLY';
+				dmarc.metadata = { domain: at };
 			}
 			break;
 		}
@@ -178,6 +191,8 @@ export async function checkSenderDns(
 							kind: 'dkim',
 							present: false,
 							problem: `no DKIM key at ${host} — mail signed with selector '${selector}' cannot be verified`,
+							reason: 'DKIM_KEY_MISSING',
+							metadata: { host, selector },
 						},
 			);
 		}
@@ -197,17 +212,23 @@ export async function checkSenderDns(
 				`no v=spf1 on ${spfDomain}, which is expected when the provider owns the Return-Path ` +
 				'(SPF is checked against the envelope sender, not From). DMARC passes on the aligned ' +
 				'DKIM key found below. Pass `returnPathDomain` to verify SPF where it actually applies.';
+			spf.reason = 'SPF_ABSENT_DKIM_ALIGNS';
+			spf.metadata = { domain: spfDomain };
 		} else if (dkimChecked) {
 			// Checked for DKIM and found none: nothing can align, DMARC fails.
 			spf.problem =
 				`no v=spf1 on ${spfDomain} AND no DKIM key — neither can align, so DMARC cannot pass ` +
 				'and receivers will treat this mail as unauthenticated';
+			spf.reason = 'SPF_AND_DKIM_MISSING';
+			spf.metadata = { domain: spfDomain };
 		} else {
 			// No selector supplied, so DKIM is unknown. Absence of a check is not
 			// evidence of a problem — say what is missing instead of guessing.
 			spf.advice =
 				`no v=spf1 on ${spfDomain}. That is fine if the provider owns the Return-Path and DKIM ` +
 				'is published — pass `dkimSelectors` so this can tell the difference instead of guessing.';
+			spf.reason = 'SPF_ABSENT_DKIM_UNKNOWN';
+			spf.metadata = { domain: spfDomain };
 		}
 	}
 
@@ -215,15 +236,53 @@ export async function checkSenderDns(
 	return { domain, records, ok: records.every((r) => !r.problem) };
 }
 
-/** One line per problem, for a log. Empty when the domain is set up correctly. */
-export function describeSenderDnsProblems(report: ISenderDnsReport): string[] {
-	if (report.error) return [`sender DNS check failed: ${report.error}`];
+/**
+ * Problems and advice as findings (see IFinding): each carries its reason for a
+ * console to translate, and advice is marked advice — a passing-by-advice line
+ * inside a failing check was being shown as an error.
+ */
+export function senderDnsFindings(report: ISenderDnsReport): IFinding[] {
+	if (report.error)
+		return [
+			{
+				message: `sender DNS check failed: ${report.error}`,
+				domain: 'courier',
+				reason: 'SENDER_DNS_CHECK_FAILED',
+				metadata: { detail: report.error },
+			},
+		];
+	const reasonOf = (r: ISenderDnsRecord) =>
+		r.reason ? { domain: 'courier', reason: r.reason } : {};
+	const metaOf = (r: ISenderDnsRecord) => (r.metadata ? { metadata: r.metadata } : {});
 	// Problems first: if a reader stops after one line, it should be the one that
 	// means mail is failing, not the one that means it could be tightened.
 	return [
-		...report.records.filter((r) => r.problem).map((r) => `${r.kind.toUpperCase()}: ${r.problem}`),
-		...report.records.filter((r) => r.advice).map((r) => `${r.kind.toUpperCase()} (advice): ${r.advice}`),
+		...report.records
+			.filter((r) => r.problem)
+			.map(
+				(r): IFinding => ({
+					message: `${r.kind.toUpperCase()}: ${r.problem}`,
+					...reasonOf(r),
+					...metaOf(r),
+					severity: 'error',
+				}),
+			),
+		...report.records
+			.filter((r) => r.advice)
+			.map(
+				(r): IFinding => ({
+					message: `${r.kind.toUpperCase()} (advice): ${r.advice}`,
+					...reasonOf(r),
+					...metaOf(r),
+					severity: 'advice',
+				}),
+			),
 	];
+}
+
+/** One line per problem, for a log. Empty when the domain is set up correctly. */
+export function describeSenderDnsProblems(report: ISenderDnsReport): string[] {
+	return senderDnsFindings(report).map((f) => f.message);
 }
 
 // The doctor check over a configured email channel. `resolveTxt` is for tests.
@@ -234,8 +293,11 @@ export function senderDnsCheck(
 	return {
 		name: 'courier.sender-dns',
 		run: async () => {
-			const report = await checkSenderDns(email.from, { ...(email.senderDns ?? {}), ...(resolveTxt ? { resolveTxt } : {}) });
-			return { ok: report.ok, findings: describeSenderDnsProblems(report) };
+			const report = await checkSenderDns(email.from, {
+				...(email.senderDns ?? {}),
+				...(resolveTxt ? { resolveTxt } : {}),
+			});
+			return { ok: report.ok, findings: senderDnsFindings(report) };
 		},
 	};
 }

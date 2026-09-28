@@ -1,6 +1,11 @@
-import type { IAdminCheck, IAdminCheckReport, IFonderieApp } from '@fonderie/core';
+import type { IAdminCheck, IAdminCheckReport, IFinding, IFonderieApp } from '@fonderie/core';
 
-import type { IAdminAttention, IAdminCheckResult, IAdminDoctorReport } from './types';
+import type {
+	IAdminAttention,
+	IAdminCheckResult,
+	IAdminDoctorReport,
+	IAdminFinding,
+} from './types';
 
 export interface INamedCheck extends IAdminCheck {
 	module: string;
@@ -32,7 +37,18 @@ async function runOne(check: INamedCheck, timeoutMs: number): Promise<IAdminChec
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	const timeout = new Promise<IAdminCheckReport>((resolve) => {
 		timer = setTimeout(
-			() => resolve({ ok: false, findings: [`timed out after ${timeoutMs} ms`] }),
+			() =>
+				resolve({
+					ok: false,
+					findings: [
+						{
+							message: `timed out after ${timeoutMs} ms`,
+							domain: 'admin',
+							reason: 'CHECK_TIMED_OUT',
+							metadata: { ms: timeoutMs },
+						},
+					],
+				}),
 			timeoutMs,
 		);
 	});
@@ -40,14 +56,54 @@ async function runOne(check: INamedCheck, timeoutMs: number): Promise<IAdminChec
 	try {
 		report = await Promise.race([check.run(), timeout]);
 	} catch (err) {
+		const detail = err instanceof Error ? err.message : String(err);
 		report = {
 			ok: false,
-			findings: [`check threw: ${err instanceof Error ? err.message : String(err)}`],
+			findings: [
+				{
+					message: `check threw: ${detail}`,
+					domain: 'admin',
+					reason: 'CHECK_THREW',
+					metadata: { detail },
+				},
+			],
 		};
 	} finally {
 		if (timer) clearTimeout(timer);
 	}
-	return { name: check.name, module: check.module, ...report, durationMs: Date.now() - started };
+	const details = normalizeFindings(report);
+	return {
+		name: check.name,
+		module: check.module,
+		ok: report.ok,
+		...(report.skipped
+			? typeof report.skipped === 'string'
+				? { skipped: report.skipped }
+				: { skipped: report.skipped.message, skippedDetail: toDetail(report.skipped, 'advice') }
+			: {}),
+		findings: details.map((d) => d.message),
+		details,
+		durationMs: Date.now() - started,
+	};
+}
+
+// A plain string is an untranslatable English finding; an object may carry a
+// code. Severity defaults to the check's own verdict: a failing check's
+// findings are errors, a passing check's are advice — unless the finding says.
+export function normalizeFindings(report: IAdminCheckReport): IAdminFinding[] {
+	const fallback = report.ok ? 'advice' : 'error';
+	return report.findings.map((f) => toDetail(f, fallback));
+}
+
+function toDetail(f: string | IFinding, fallback: 'error' | 'advice'): IAdminFinding {
+	if (typeof f === 'string') return { message: f, severity: fallback };
+	return {
+		message: f.message,
+		...(f.reason ? { reason: f.reason } : {}),
+		...(f.domain ? { domain: f.domain } : {}),
+		...(f.metadata ? { metadata: f.metadata } : {}),
+		severity: f.severity ?? fallback,
+	};
 }
 
 export async function runDoctor(
@@ -67,14 +123,24 @@ export function attention(app: IFonderieApp, doctor: IAdminDoctorReport): IAdmin
 			source: p.module,
 			severity: p.severity === 'error' ? 'error' : 'advice',
 			message: p.message,
+			...(p.reason ? { reason: p.reason } : {}),
+			...(p.domain ? { domain: p.domain } : {}),
+			...(p.metadata ? { metadata: p.metadata } : {}),
 		});
 	}
 	for (const c of doctor.checks) {
 		if (c.skipped) continue;
-		const severity = c.ok ? 'advice' : 'error';
-		if (!c.ok && c.findings.length === 0)
-			items.push({ source: c.name, severity, message: 'failed' });
-		for (const f of c.findings) items.push({ source: c.name, severity, message: f });
+		if (!c.ok && c.details.length === 0)
+			items.push({
+				source: c.name,
+				severity: 'error',
+				message: 'failed',
+				domain: 'admin',
+				reason: 'CHECK_FAILED',
+			});
+		// Each finding keeps its own severity: an advice line inside a failing
+		// check is still advice (it used to be shown as an error).
+		for (const d of c.details) items.push({ source: c.name, ...d });
 	}
 	return { generatedAt: doctor.generatedAt, ok: !items.some((i) => i.severity === 'error'), items };
 }

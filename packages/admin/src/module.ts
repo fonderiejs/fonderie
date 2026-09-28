@@ -440,6 +440,8 @@ export class AdminModule implements IFonderieModule {
 				module: this.name,
 				severity: 'error',
 				message: 'operatorKey must be 64 hex characters (`openssl rand -hex 32`)',
+				domain: 'admin',
+				reason: 'OPERATOR_KEY_INVALID',
 			});
 		}
 		// No key is a supported setup, not a problem: authenticator secrets are

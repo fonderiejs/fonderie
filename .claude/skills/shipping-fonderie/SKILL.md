@@ -22,7 +22,7 @@ tells you hours later. Run each one and check `$?`:
 ```bash
 for g in lint:ci audit:ship typecheck audit:validation check:evidence \
          check:hook-coverage check:hook-parity check:routes \
-         check:template-coverage brain:test brain:project-test; do
+         check:template-coverage check:reasons brain:test brain:project-test; do
   npm run "$g" >/dev/null 2>&1 && echo "  PASS $g" || echo "  FAIL $g"
 done
 ```
@@ -47,6 +47,7 @@ npm run check:hook-coverage
 npm run check:hook-parity
 npm run check:routes
 npm run check:template-coverage
+npm run check:reasons
 npm test
 ```
 

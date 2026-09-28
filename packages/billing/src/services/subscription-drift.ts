@@ -1,3 +1,4 @@
+import type { IFinding } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { IBillingProvider } from '../providers/types';
 
@@ -221,19 +222,42 @@ export async function checkSubscriptionDrift(
 }
 
 /** One line per drifted subscription, worst impact first. */
-export function describeSubscriptionDrift(report: ISubscriptionDriftReport): string[] {
+export function subscriptionDriftFindings(report: ISubscriptionDriftReport): IFinding[] {
 	if (report.unsupported) return [];
-	if (report.error) return [`subscription drift check failed: ${report.error}`];
+	if (report.error)
+		return [
+			{
+				message: `subscription drift check failed: ${report.error}`,
+				domain: 'billing',
+				reason: 'DRIFT_CHECK_FAILED',
+				metadata: { detail: report.error },
+			},
+		];
 
 	// under-granting first: a paying customer locked out is happening to someone
 	// right now, while over-granting leaks money quietly and nobody is waiting.
 	const order = { 'under-granting': 0, 'over-granting': 1, metadata: 2 } as const;
-	const lines = [...report.drifted]
+	const out: IFinding[] = [...report.drifted]
 		.sort((a, b) => order[a.impact] - order[b.impact])
-		.map((d) => {
+		.map((d): IFinding => {
 			const who = `${d.subscriberType}:${d.subscriberId}`;
+			// A metadata-only difference grants nothing wrong: advice, not an error.
+			const severity = d.impact === 'metadata' ? ('advice' as const) : undefined;
+			// Enum-like values travel UPPER_SNAKE so a console can translate them.
+			const impact = d.impact.toUpperCase().replace(/-/g, '_');
 			if (!d.theirs) {
-				return `${who} (${d.providerSubscriptionId}): we hold status '${d.ours.status}' but the provider has NO such subscription [${d.impact}]`;
+				return {
+					message: `${who} (${d.providerSubscriptionId}): we hold status '${d.ours.status}' but the provider has NO such subscription [${d.impact}]`,
+					domain: 'billing',
+					reason: 'SUBSCRIPTION_MISSING_AT_PROVIDER',
+					metadata: {
+						subscriber: who,
+						subscription: d.providerSubscriptionId,
+						status: String(d.ours.status),
+						impact,
+					},
+					...(severity ? { severity } : {}),
+				};
 			}
 			const diffs = d.fields
 				.map(
@@ -241,9 +265,33 @@ export function describeSubscriptionDrift(report: ISubscriptionDriftReport): str
 						`${f} ours=${String(d.ours[f as keyof typeof d.ours])} theirs=${String(d.theirs![f as keyof typeof d.theirs])}`,
 				)
 				.join(', ');
-			return `${who} (${d.providerSubscriptionId}): ${diffs} [${d.impact}]`;
+			return {
+				message: `${who} (${d.providerSubscriptionId}): ${diffs} [${d.impact}]`,
+				domain: 'billing',
+				reason: 'SUBSCRIPTION_FIELDS_DIFFER',
+				metadata: {
+					subscriber: who,
+					subscription: d.providerSubscriptionId,
+					fields: d.fields.join(', '),
+					ours: d.fields.map((f) => String(d.ours[f as keyof typeof d.ours])).join(', '),
+					theirs: d.fields.map((f) => String(d.theirs![f as keyof typeof d.theirs])).join(', '),
+					impact,
+				},
+				...(severity ? { severity } : {}),
+			};
 		});
 
-	if (report.truncated) lines.push(`NOTE: ${report.truncated.note}`);
-	return lines;
+	if (report.truncated)
+		out.push({
+			message: `NOTE: ${report.truncated.note}`,
+			domain: 'billing',
+			reason: 'DRIFT_TRUNCATED',
+			metadata: { note: report.truncated.note },
+			severity: 'advice',
+		});
+	return out;
+}
+
+export function describeSubscriptionDrift(report: ISubscriptionDriftReport): string[] {
+	return subscriptionDriftFindings(report).map((f) => f.message);
 }

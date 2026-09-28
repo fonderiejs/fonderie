@@ -1,4 +1,4 @@
-import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT, localizeReason } from '@fonderie/client';
 import { useAdminEnvironment } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
@@ -108,7 +108,7 @@ export const EnvironmentScreen = defineComponent({
 															: 'var(--fonderie-text-muted,#5c5c5c)',
 												},
 											},
-											p.message,
+											localizeReason(p, props.locale),
 										),
 									),
 								]),

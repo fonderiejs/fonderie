@@ -18,6 +18,7 @@ export type {
 	IFonderieContext,
 	ICourierMessage,
 	IDefaultTemplate,
+	IFinding,
 	IDefaultTemplateCopy,
 	IFonderieContextMeta,
 	IHandleInit,

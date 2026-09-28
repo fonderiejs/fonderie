@@ -1,4 +1,9 @@
-import type { IAdminDescription, IFonderieModule, IFonderieApp, IReadinessProblem } from '@fonderie/core';
+import type {
+	IAdminDescription,
+	IFonderieModule,
+	IFonderieApp,
+	IReadinessProblem,
+} from '@fonderie/core';
 import { validateAdminToken } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -30,7 +35,11 @@ export class ConfigModule implements IFonderieModule {
 		// The frontend's read path: only the keys the app listed in
 		// `publicKeys`. Always registered so a client never has to tell "no
 		// public config" apart from "no route" — it gets {} either way.
-		app.addRoute('GET', '/config/public', publicConfigHandler(this.manager, this.options.publicKeys));
+		app.addRoute(
+			'GET',
+			'/config/public',
+			publicConfigHandler(this.manager, this.options.publicKeys),
+		);
 
 		// Admin HTTP surface — only when a bootstrap token is configured
 		// (no token, no exposed admin routes: fail-closed).
@@ -89,6 +98,8 @@ export class ConfigModule implements IFonderieModule {
 					'request (503 SECRETS_DISABLED) rather than handling plaintext. Pass ' +
 					'secretEncryptor: createAesGcmEncryptor(key) to enable it; config entries ' +
 					'are unaffected.',
+				domain: 'config',
+				reason: 'NO_SECRET_ENCRYPTOR',
 			});
 		}
 

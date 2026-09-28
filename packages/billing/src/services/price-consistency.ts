@@ -1,3 +1,4 @@
+import type { IFinding } from '@fonderie/core';
 import type { IBillingConfig } from '../config';
 import type { IBillingProvider } from '../providers/types';
 
@@ -147,17 +148,47 @@ export async function checkPriceConsistency(
 }
 
 /** One line per problem, for a log. Empty when everything agrees. */
-export function describePriceProblems(report: IPriceConsistencyReport): string[] {
+// Coded findings (IFinding): the console renders them in the operator's
+// language; `message` is the English sentence logs keep.
+export function priceFindings(report: IPriceConsistencyReport): IFinding[] {
 	if (report.unsupported) return [];
-	if (report.error) return [`price check failed: ${report.error}`];
+	if (report.error)
+		return [
+			{
+				message: `price check failed: ${report.error}`,
+				domain: 'billing',
+				reason: 'PRICE_CHECK_FAILED',
+				metadata: { detail: report.error },
+			},
+		];
 	return report.entries
 		.filter((e) => e.problem !== null)
-		.map((e) => {
-			if (e.problem === 'missing') return `${e.ref}: price ${e.priceId} not found at the provider`;
+		.map((e): IFinding => {
+			if (e.problem === 'missing')
+				return {
+					message: `${e.ref}: price ${e.priceId} not found at the provider`,
+					domain: 'billing',
+					reason: 'PRICE_NOT_FOUND',
+					metadata: { ref: e.ref, price: e.priceId },
+				};
 			if (e.problem === 'inactive')
-				return `${e.ref}: price ${e.priceId} is INACTIVE at the provider`;
+				return {
+					message: `${e.ref}: price ${e.priceId} is INACTIVE at the provider`,
+					domain: 'billing',
+					reason: 'PRICE_INACTIVE',
+					metadata: { ref: e.ref, price: e.priceId },
+				};
 			const d = `${e.declared.amount} ${e.declared.currency || '(no currency)'}`;
 			const a = `${e.actual?.amount} ${e.actual?.currency}`;
-			return `${e.ref}: catalog says ${d}, provider charges ${a} — the saved-card and auto-recharge paths use the catalog, hosted checkout uses the provider`;
+			return {
+				message: `${e.ref}: catalog says ${d}, provider charges ${a} — the saved-card and auto-recharge paths use the catalog, hosted checkout uses the provider`,
+				domain: 'billing',
+				reason: 'PRICE_MISMATCH',
+				metadata: { ref: e.ref, declared: d, actual: a },
+			};
 		});
+}
+
+export function describePriceProblems(report: IPriceConsistencyReport): string[] {
+	return priceFindings(report).map((f) => f.message);
 }

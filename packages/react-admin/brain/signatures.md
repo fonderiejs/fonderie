@@ -13,10 +13,9 @@ interface IAdminAttention {
     items: IAdminAttentionItem[];
 }
 
-interface IAdminAttentionItem {
+interface IAdminAttentionItem extends IAdminReason {
     source: string;
     severity: 'error' | 'advice';
-    message: string;
 }
 
 interface IAdminCheckResult {
@@ -24,7 +23,9 @@ interface IAdminCheckResult {
     module: string;
     ok: boolean;
     findings: string[];
+    details?: IAdminFinding[];
     skipped?: string;
+    skippedDetail?: IAdminFinding;
     durationMs: number;
 }
 
@@ -103,10 +104,9 @@ interface IAdminReadiness {
     problems: IAdminReadinessProblem[];
 }
 
-interface IAdminReadinessProblem {
+interface IAdminReadinessProblem extends IAdminReason {
     module: string;
     severity: 'error' | 'warning';
-    message: string;
 }
 
 interface IAdminRouteEntry {

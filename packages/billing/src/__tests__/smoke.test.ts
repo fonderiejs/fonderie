@@ -3002,9 +3002,22 @@ test('describeBillingAdminChecks: three checks; unsupported ⇒ skipped; webhook
 		['billing.price-consistency', 'billing.subscription-drift', 'billing.webhook-registration'],
 	);
 	const [prices, drift, hooks] = await Promise.all(bare.map((c) => c.run()));
-	assert.equal(prices?.skipped, 'the provider cannot be asked');
-	assert.equal(drift?.skipped, 'the provider cannot be asked');
-	assert.equal(hooks?.skipped, 'config.publicUrl is not set');
+	// Skip reasons are findings too, so the console can translate them.
+	assert.deepEqual(prices?.skipped, {
+		message: 'the provider cannot be asked',
+		domain: 'billing',
+		reason: 'PROVIDER_CANNOT_BE_ASKED',
+	});
+	assert.deepEqual(drift?.skipped, {
+		message: 'the provider cannot be asked',
+		domain: 'billing',
+		reason: 'PROVIDER_CANNOT_BE_ASKED',
+	});
+	assert.deepEqual(hooks?.skipped, {
+		message: 'config.publicUrl is not set',
+		domain: 'billing',
+		reason: 'PUBLIC_URL_NOT_SET',
+	});
 	assert.ok([prices, drift, hooks].every((r) => r?.ok));
 
 	// With publicUrl and a provider that answers, the registration check reports.
@@ -3020,11 +3033,20 @@ test('describeBillingAdminChecks: three checks; unsupported ⇒ skipped; webhook
 	});
 	const reg = await wired.find((c) => c.name === 'billing.webhook-registration')!.run();
 	assert.equal(reg.ok, false);
+	const text = (f: (typeof reg.findings)[number]) => (typeof f === 'string' ? f : f.message);
 	assert.ok(
-		reg.findings.some((f) => f.startsWith('https://api.x/v1/billing/webhook: NOT REGISTERED')),
+		reg.findings.some((f) =>
+			text(f).startsWith('https://api.x/v1/billing/webhook: NOT REGISTERED'),
+		),
 	);
+	// Coded, so the console can render it in the operator's language.
+	const notRegistered = reg.findings.find(
+		(f) => typeof f !== 'string' && f.domain === 'billing' && f.reason === 'WEBHOOK_NOT_REGISTERED',
+	);
+	assert.ok(notRegistered && typeof notRegistered !== 'string');
+	assert.deepEqual(notRegistered.metadata, { url: 'https://api.x/v1/billing/webhook' });
 	assert.ok(
-		!reg.findings.some((f) => f.includes('/billing/webhook/payment')),
+		!reg.findings.some((f) => text(f).includes('/billing/webhook/payment')),
 		'no wallet ⇒ no payment endpoint',
 	);
 });
@@ -3097,10 +3119,7 @@ test('subscriber list: a page, a cursor that round-trips, and strict limit/curso
 		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
 			if (sql.includes('fonderie_subscriptions')) {
 				captured = { sql, params };
-				return [
-					row(UUID_1, { createdAtRaw: '2026-09-01 00:00:00.123456+00' }),
-					row(UUID_2),
-				] as T[];
+				return [row(UUID_1, { createdAtRaw: '2026-09-01 00:00:00.123456+00' }), row(UUID_2)] as T[];
 			}
 			return [] as T[];
 		},
@@ -3144,9 +3163,7 @@ test('subscriber list: a page, a cursor that round-trips, and strict limit/curso
 	// Billing clamps strictly where auth and audit clamp silently — keep the
 	// local convention.
 	for (const bad of ['0', '101', 'abc']) {
-		const r = await app.handle(
-			new Request(`http://localhost/_admin/subscriptions?limit=${bad}`),
-		);
+		const r = await app.handle(new Request(`http://localhost/_admin/subscriptions?limit=${bad}`));
 		assert.equal(r.status, 422, `limit=${bad}`);
 	}
 	assert.equal(

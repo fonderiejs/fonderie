@@ -18,12 +18,17 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 			module: MODULE,
 			severity: 'error',
 			message: `jwtSecret must be at least ${MIN_SECRET_LENGTH} characters (got ${secret.length})`,
+			domain: 'auth',
+			reason: 'JWT_SECRET_TOO_SHORT',
+			metadata: { min: MIN_SECRET_LENGTH, got: secret.length },
 		});
 	} else if (secretProblem === 'placeholder') {
 		problems.push({
 			module: MODULE,
 			severity: 'error',
 			message: 'jwtSecret looks like a placeholder or dev-default value',
+			domain: 'auth',
+			reason: 'JWT_SECRET_PLACEHOLDER',
 		});
 	}
 
@@ -33,7 +38,10 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 		problems.push({
 			module: MODULE,
 			severity: process.env['NODE_ENV'] === 'production' ? 'error' : 'warning',
-			message: 'secureCookies is false — auth cookies may be sent over non-HTTPS connections in production',
+			message:
+				'secureCookies is false — auth cookies may be sent over non-HTTPS connections in production',
+			domain: 'auth',
+			reason: 'INSECURE_COOKIES',
 		});
 	}
 
@@ -47,12 +55,16 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 				module: MODULE,
 				severity: 'error',
 				message: 'google OAuth is configured but clientId, clientSecret, or redirectUri is missing',
+				domain: 'auth',
+				reason: 'GOOGLE_INCOMPLETE',
 			});
 		} else if (PLACEHOLDER_SECRET.test(clientSecret)) {
 			problems.push({
 				module: MODULE,
 				severity: 'error',
 				message: 'google.clientSecret looks like a placeholder or dev-default value',
+				domain: 'auth',
+				reason: 'GOOGLE_SECRET_PLACEHOLDER',
 			});
 		}
 	}
@@ -67,13 +79,19 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 			problems.push({
 				module: MODULE,
 				severity: 'error',
-				message: 'apple OAuth is configured but clientId, teamId, keyId, privateKey, or redirectUri is missing',
+				message:
+					'apple OAuth is configured but clientId, teamId, keyId, privateKey, or redirectUri is missing',
+				domain: 'auth',
+				reason: 'APPLE_INCOMPLETE',
 			});
 		} else if (!/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(a.privateKey)) {
 			problems.push({
 				module: MODULE,
 				severity: 'error',
-				message: 'apple.privateKey does not look like a PEM .p8 key (expected `-----BEGIN PRIVATE KEY-----`)',
+				message:
+					'apple.privateKey does not look like a PEM .p8 key (expected `-----BEGIN PRIVATE KEY-----`)',
+				domain: 'auth',
+				reason: 'APPLE_KEY_NOT_PEM',
 			});
 		}
 		// nativeClientIds is the audience allow-list for POST /auth/apple/native —
@@ -84,7 +102,10 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 			problems.push({
 				module: MODULE,
 				severity: 'error',
-				message: 'apple.nativeClientIds must be exact bundle ids — empty or wildcard entries would accept identity tokens minted for other apps',
+				message:
+					'apple.nativeClientIds must be exact bundle ids — empty or wildcard entries would accept identity tokens minted for other apps',
+				domain: 'auth',
+				reason: 'APPLE_NATIVE_IDS_INVALID',
 			});
 		}
 	}
@@ -96,7 +117,10 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 		problems.push({
 			module: MODULE,
 			severity: process.env['NODE_ENV'] === 'production' ? 'error' : 'warning',
-			message: 'mfa is enabled without mfaSecretKey — TOTP secrets are stored plaintext at rest; set a 32-byte key (openssl rand -hex 32)',
+			message:
+				'mfa is enabled without mfaSecretKey — TOTP secrets are stored plaintext at rest; set a 32-byte key (openssl rand -hex 32)',
+			domain: 'auth',
+			reason: 'MFA_KEY_MISSING',
 		});
 	}
 
@@ -107,6 +131,8 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 			module: MODULE,
 			severity: 'error',
 			message: 'mfaSecretKey must be 64 hex characters (32 bytes, e.g. `openssl rand -hex 32`)',
+			domain: 'auth',
+			reason: 'MFA_KEY_INVALID',
 		});
 	}
 

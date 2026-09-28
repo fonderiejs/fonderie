@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { IRequestSchema } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
+import type { IAdminCheck } from '@fonderie/core';
 import { classifyMigration, InternalMigrationRunner } from '@fonderie/store';
 
 import type { IAdminMigrationModule, IAdminMigrationsReport, IMigrationSet } from './types';
@@ -169,5 +170,45 @@ export async function applyModuleMigrations(
 		ok: true,
 		reason: 'MIGRATIONS_APPLIED',
 		module: now ?? { name: module, pending: [], blockedBy: null, appliable: false },
+	};
+}
+
+/**
+ * The doctor check every app with external migrations needs: is any module in
+ * the app's declared sequence behind? Code goes live ahead of the schema on
+ * every serverless target, and the symptom never mentions migrations.
+ *
+ * Pass the SAME list the migrate script applies. Findings are coded
+ * (`admin.migrations_pending`), so the console renders them in the operator's
+ * language. A database it cannot read is a failed check, not "all pending".
+ */
+export function migrationsCheck(
+	store: IStoreAdapter,
+	sets: ReadonlyArray<IMigrationSet>,
+	name = 'app.migrations',
+): IAdminCheck {
+	return {
+		name,
+		run: async () => {
+			// pending() swallows its own read failure and returns every file, so
+			// reach the database first: "unreachable" must not read as "behind".
+			await store.query('SELECT 1');
+			const per = await Promise.all(
+				sets.map(async ([module, dir]) => ({
+					module,
+					files: await new InternalMigrationRunner(store, dir).pending(),
+				})),
+			);
+			const behind = per.filter((x) => x.files.length > 0);
+			return {
+				ok: behind.length === 0,
+				findings: behind.map((x) => ({
+					message: `${x.module}: ${x.files.length} migration(s) not applied — ${x.files.join(', ')}`,
+					domain: 'admin',
+					reason: 'MIGRATIONS_PENDING',
+					metadata: { module: x.module, count: x.files.length, files: x.files.join(', ') },
+				})),
+			};
+		},
 	};
 }
