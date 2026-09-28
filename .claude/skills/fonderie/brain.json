@@ -13,7 +13,7 @@
     "core": "0.22.0",
     "courier": "7.12.0",
     "customers": "6.2.18",
-    "events": "5.9.3",
+    "events": "5.9.4",
     "geo": "0.5.2",
     "logger": "0.3.3",
     "media": "0.2.21",
@@ -1292,7 +1292,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.9.3",
+      "version": "5.9.4",
       "stability": "maturing",
       "requires": [
         "core",
