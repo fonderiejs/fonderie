@@ -4,7 +4,7 @@
 
 ## @fonderie/geo
 
-Subpath exports: `@fonderie/geo/migrations`
+Subpath exports: `@fonderie/geo/migrations`, `@fonderie/geo/env.json`
 
 ```ts
 function geoFromHeaders(headers: HeadersLike, opts: GeoFromHeadersOptions): GeoLocation | null

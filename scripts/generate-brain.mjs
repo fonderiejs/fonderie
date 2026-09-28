@@ -112,10 +112,11 @@ function extractPackages() {
     }
 
     // subpath exports (from the signatures doc header)
-    // [a-z0-9-] on the LAST segment: '@fonderie/storage/s3' has a digit, and an
-    // [a-z-] class dropped it without a word.
+    // [a-z0-9.-] on the LAST segment: '@fonderie/storage/s3' has a digit and
+    // '@fonderie/<brick>/env.json' a dot — each narrower class dropped one
+    // without a word (brain:completeness caught both).
     const sig = read(join(sigDir, `${name}.md`));
-    const subpaths = [...sig.matchAll(/`(@fonderie\/[a-z-]+\/[a-z0-9-]+)`/g)].map((m) => m[1]);
+    const subpaths = [...sig.matchAll(/`(@fonderie\/[a-z-]+\/[a-z0-9.-]+)`/g)].map((m) => m[1]);
 
     out[name] = {
       version: j.version,

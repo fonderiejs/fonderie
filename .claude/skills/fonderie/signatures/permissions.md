@@ -4,7 +4,7 @@
 
 ## @fonderie/permissions
 
-Subpath exports: `@fonderie/permissions/config`, `@fonderie/permissions/types`, `@fonderie/permissions/middleware`, `@fonderie/permissions/migrations`
+Subpath exports: `@fonderie/permissions/config`, `@fonderie/permissions/types`, `@fonderie/permissions/middleware`, `@fonderie/permissions/migrations`, `@fonderie/permissions/env.json`
 
 ```ts
 type Operation = 'create' | 'read' | 'update' | 'delete';

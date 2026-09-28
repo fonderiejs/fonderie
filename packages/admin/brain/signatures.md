@@ -4,7 +4,7 @@
 
 ## @fonderie/admin
 
-Subpath exports: `@fonderie/admin/migrations`
+Subpath exports: `@fonderie/admin/migrations`, `@fonderie/admin/env.json`
 
 ```ts
 new AdminModule(options?: IAdminOptions): AdminModule

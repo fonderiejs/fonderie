@@ -4,7 +4,7 @@
 
 ## @fonderie/webhooks
 
-Subpath exports: `@fonderie/webhooks/migrations`
+Subpath exports: `@fonderie/webhooks/migrations`, `@fonderie/webhooks/env.json`
 
 ```ts
 new WebhooksModule(store: IStoreAdapter, config?: IWebhooksConfig, bus?: EventBus | undefined): WebhooksModule

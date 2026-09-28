@@ -46,7 +46,8 @@
 			"types": "./dist/response.d.ts",
 			"import": "./dist/response.js",
 			"require": "./dist/response.cjs"
-		}
+		},
+		"./env.json": "./env.json"
 	},
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
@@ -73,7 +74,8 @@
 		"dist",
 		"brain",
 		"LICENSE",
-		"README.md"
+		"README.md",
+		"env.json"
 	],
 	"repository": {
 		"type": "git",
