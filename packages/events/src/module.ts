@@ -7,7 +7,6 @@ import type {
 
 import { EventBus } from './bus';
 import { PGTransport } from './transports/pg';
-import { verifyEventChain } from './integrity';
 import type { IEventTransport } from './transports/types';
 
 export type EventTransportConfig =
@@ -73,8 +72,11 @@ export class EventsModule implements IFonderieModule {
 	describeAdmin(): IAdminDescription {
 		const t = this.transport;
 		if (!(t instanceof PGTransport)) return {};
-		const cfg = this.config.transport;
-		const key = 'type' in cfg && cfg.type === 'pg' ? cfg.integrityKey : undefined;
+		// The key lives on the transport, however it was built: from a
+		// `{ type: 'pg' }` config or handed over ready-made. Reading it from the
+		// config alone reported "no integrityKey" for every app that passes its
+		// own PGTransport, whatever that transport was signing with.
+		const signed = t.hasIntegrityKey();
 		return {
 			checks: [
 				// The audit trail is tamper-evident only with a key; a tampered row
@@ -82,15 +84,14 @@ export class EventsModule implements IFonderieModule {
 				{
 					name: 'events.integrity',
 					run: async () => {
-						if (!key)
+						if (!signed)
 							return {
 								ok: true,
 								findings: [],
 								skipped: 'no integrityKey — the event log is not tamper-evident',
 							};
-						const store = t.storeForIntegrity();
-						if (!store) return { ok: true, findings: [], skipped: 'transport not started' };
-						const r = await verifyEventChain(store, key);
+						const r = await t.verifyIntegrity();
+						if (!r) return { ok: true, findings: [], skipped: 'transport not started' };
 						const findings = r.tampered.map(
 							(id) => `event ${id}: stored HMAC does not match — tampered`,
 						);
@@ -140,8 +141,8 @@ export class EventsModule implements IFonderieModule {
 	// append-only but not tamper-evident, so a compromised DB write could alter
 	// history undetectably — a finding worth surfacing (not fatal).
 	checkReadiness(): IReadinessProblem[] {
-		const t = this.config.transport;
-		if ('type' in t && t.type === 'pg' && !t.integrityKey) {
+		const t = this.transport;
+		if (t instanceof PGTransport && !t.hasIntegrityKey()) {
 			return [
 				{
 					module: this.name,
