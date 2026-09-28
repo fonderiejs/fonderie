@@ -166,7 +166,12 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 describe('event integrity HMAC', () => {
 	const key = 'k'.repeat(48);
-	const ev = { id: 'e1', type: 'fonderie.user.registered', payload: { userId: 'u1', b: 2, a: 1 }, meta: { id: 'e1', requestId: 'r1' } };
+	const ev = {
+		id: 'e1',
+		type: 'fonderie.user.registered',
+		payload: { userId: 'u1', b: 2, a: 1 },
+		meta: { id: 'e1', requestId: 'r1' },
+	};
 
 	it('canonicalize is order-independent', () => {
 		assert.equal(canonicalize({ a: 1, b: 2 }), canonicalize({ b: 2, a: 1 }));
@@ -205,13 +210,36 @@ describe('event integrity HMAC', () => {
 
 describe('EventsModule.checkReadiness', () => {
 	it('warns when pg transport has no integrityKey', () => {
-		const mod = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x' } });
+		const mod = new EventsModule({
+			transport: { type: 'pg', connectionUrl: 'postgres://localhost/x' },
+		});
 		const problems = mod.checkReadiness();
 		assert.ok(problems.some((p) => p.severity === 'warning' && /integrityKey/.test(p.message)));
 	});
 	it('clean when integrityKey is set', () => {
-		const mod = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x', integrityKey: 'k'.repeat(48) } });
+		const mod = new EventsModule({
+			transport: {
+				type: 'pg',
+				connectionUrl: 'postgres://localhost/x',
+				integrityKey: 'k'.repeat(48),
+			},
+		});
 		assert.deepEqual(mod.checkReadiness(), []);
+	});
+	// Apps that keep a handle on the transport pass an instance, not a config.
+	// The key is the transport's either way.
+	it('reads the key from a ready-made PGTransport, not only a { type: pg } config', () => {
+		const bare = new EventsModule({
+			transport: new PGTransport({ connectionUrl: 'postgres://localhost/x' }),
+		});
+		assert.ok(bare.checkReadiness().some((p) => /integrityKey/.test(p.message)));
+		const keyed = new EventsModule({
+			transport: new PGTransport({
+				connectionUrl: 'postgres://localhost/x',
+				integrityKey: 'k'.repeat(48),
+			}),
+		});
+		assert.deepEqual(keyed.checkReadiness(), []);
 	});
 });
 
@@ -252,16 +280,20 @@ describe('startIntegrityCheck (B4)', () => {
 	it('fires onTamper when a row fails verification, and stops cleanly', async () => {
 		const good = chmac(key, { id: 'e1', type: 't', payload: {}, meta: {} });
 		const store: IStore3 = {
-			query: async <T = unknown>() => ([
-				{ id: 'e1', type: 't', payload: {}, meta: {}, hmac: good },
-				{ id: 'e2', type: 't', payload: {}, meta: {}, hmac: 'deadbeef' },
-			] as unknown as T[]),
+			query: async <T = unknown>() =>
+				[
+					{ id: 'e1', type: 't', payload: {}, meta: {}, hmac: good },
+					{ id: 'e2', type: 't', payload: {}, meta: {}, hmac: 'deadbeef' },
+				] as unknown as T[],
 			transaction: async (fn) => fn(store),
 		};
 		const tamper = new Promise<string[]>((resolve) => {
 			const h = startIntegrityCheck(store, key, {
 				intervalMs: 1_000_000,
-				onTamper: (r) => { resolve(r.tampered); h.stop(); },
+				onTamper: (r) => {
+					resolve(r.tampered);
+					h.stop();
+				},
 			});
 		});
 		assert.deepEqual(await tamper, ['e2']);
@@ -271,11 +303,18 @@ describe('startIntegrityCheck (B4)', () => {
 describe('startEventRetention (C1)', () => {
 	it('runs purge immediately and reports the count', async () => {
 		const store: IStore3 = {
-			query: async <T = unknown>() => ([{ id: 'a' }, { id: 'b' }] as unknown as T[]),
+			query: async <T = unknown>() => [{ id: 'a' }, { id: 'b' }] as unknown as T[],
 			transaction: async (fn) => fn(store),
 		};
 		const purged = new Promise<number>((resolve) => {
-			const h = startEventRetention(store, { olderThanDays: 90, intervalMs: 1_000_000, onPurge: (n) => { resolve(n); h.stop(); } });
+			const h = startEventRetention(store, {
+				olderThanDays: 90,
+				intervalMs: 1_000_000,
+				onPurge: (n) => {
+					resolve(n);
+					h.stop();
+				},
+			});
 		});
 		assert.equal(await purged, 2);
 	});
@@ -290,7 +329,9 @@ describe('startEventRetention (C1)', () => {
 test('EventBus.drain(): a transport with nothing durable is a harmless no-op', async () => {
 	const bus = new EventBus(new MemoryTransport());
 	let delivered = 0;
-	bus.on('x.y', async () => { delivered += 1; });
+	bus.on('x.y', async () => {
+		delivered += 1;
+	});
 	await bus.emit('x.y', {});
 	// MemoryTransport delivers inline and implements no drain — calling it must
 	// neither throw nor double-deliver.
@@ -305,7 +346,9 @@ test('EventBus.drain(): forwards the bound to the transport', async () => {
 		subscribe: () => {},
 		start: async () => {},
 		stop: async () => {},
-		drain: async (o?: { maxMs?: number }) => { calls.push(o); },
+		drain: async (o?: { maxMs?: number }) => {
+			calls.push(o);
+		},
 	};
 	const bus = new EventBus(transport as never);
 	await bus.drain({ maxMs: 1234 });
@@ -425,12 +468,20 @@ test('PGTransport: drain() never blanket-resets in-flight rows', async () => {
 	const blanketReset = store.queries.find(
 		(q) => /SET\s+status\s*=\s*'failed'/i.test(q) && /WHERE\s+status\s*=\s*'processing'/i.test(q),
 	);
-	assert.equal(blanketReset, undefined, 'drain() must not reclaim by resetting every processing row');
+	assert.equal(
+		blanketReset,
+		undefined,
+		'drain() must not reclaim by resetting every processing row',
+	);
 
 	// It must still reclaim abandoned work — by age, under the row lock.
 	const claim = store.queries.find((q) => /SET status = 'processing'/.test(q));
 	assert.ok(claim, 'drain() should claim rows');
-	assert.match(claim, /claimed_at\s*<\s*now\(\)/, 'reclaim must be bounded by a visibility timeout');
+	assert.match(
+		claim,
+		/claimed_at\s*<\s*now\(\)/,
+		'reclaim must be bounded by a visibility timeout',
+	);
 	assert.match(claim, /FOR UPDATE SKIP LOCKED/, 'the reclaim must be exclusive');
 });
 
@@ -455,7 +506,9 @@ test('PGTransport: every column the transport reads is one the migrations create
 		.join('\n');
 
 	const declared = new Set<string>();
-	const createBlock = /CREATE TABLE IF NOT EXISTS fonderie_event_consumers \(([\s\S]*?)\n\);/.exec(sql);
+	const createBlock = /CREATE TABLE IF NOT EXISTS fonderie_event_consumers \(([\s\S]*?)\n\);/.exec(
+		sql,
+	);
 	assert.ok(createBlock, 'expected a fonderie_event_consumers table definition');
 	for (const line of (createBlock[1] ?? '').split('\n')) {
 		const col = /^\s+(\w+)\s+(UUID|TEXT|INT|TIMESTAMPTZ|BOOLEAN|JSONB)/.exec(line);
@@ -545,15 +598,35 @@ test('EventsModule: every declarative pg option is forwarded to the transport', 
 test('describeAdmin: the outbox check exists only for the pg transport, and is quiet before start', async () => {
 	const { EventsModule } = await import('../module');
 	assert.deepEqual(new EventsModule({ transport: new MemoryTransport() }).describeAdmin(), {});
-	const pg = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x' } }).describeAdmin();
-	assert.deepEqual(pg.checks?.map((c) => c.name), ['events.integrity', 'events.outbox']);
+	const pg = new EventsModule({
+		transport: { type: 'pg', connectionUrl: 'postgres://localhost/x' },
+	}).describeAdmin();
+	assert.deepEqual(
+		pg.checks?.map((c) => c.name),
+		['events.integrity', 'events.outbox'],
+	);
 	// integrity without a key is skipped, and says why
 	const integ = await pg.checks![0]!.run();
 	assert.equal(integ.ok, true);
 	assert.match(integ.skipped ?? '', /no integrityKey/);
 	// with a key but before start(): skipped as "transport not started", never a throw
-	const keyed = new EventsModule({ transport: { type: 'pg', connectionUrl: 'postgres://localhost/x', integrityKey: 'k'.repeat(48) } }).describeAdmin();
+	const keyed = new EventsModule({
+		transport: {
+			type: 'pg',
+			connectionUrl: 'postgres://localhost/x',
+			integrityKey: 'k'.repeat(48),
+		},
+	}).describeAdmin();
 	assert.match((await keyed.checks![0]!.run()).skipped ?? '', /not started/);
 	// No store until start(): nothing dead, nothing pending.
 	assert.deepEqual(await pg.checks![1]!.run(), { ok: true, findings: [] });
+	// A ready-made keyed transport is not reported as unkeyed (it was: the check
+	// read the key from the config object only).
+	const handed = new EventsModule({
+		transport: new PGTransport({
+			connectionUrl: 'postgres://localhost/x',
+			integrityKey: 'k'.repeat(48),
+		}),
+	}).describeAdmin();
+	assert.match((await handed.checks![0]!.run()).skipped ?? '', /not started/);
 });
