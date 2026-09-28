@@ -2,10 +2,21 @@
 // declaration validation, and the process.env source scanner.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
-import { resolveEnv, resolveBricks, validateDeclaration, scanEnvReads, blankCommentsAndStrings } from './env.mjs';
+import {
+	blankCommentsAndStrings,
+	mergeDotEnv,
+	parseEnvFile,
+	renderExample,
+	resolveBricks,
+	resolveEnv,
+	scanEnvReads,
+	validateDeclaration,
+} from './env.mjs';
 
 const v = (name, extra = {}) => ({
 	name,
@@ -193,4 +204,135 @@ test('blankCommentsAndStrings keeps offsets and newlines', () => {
 	assert.equal(out.length, src.length);
 	assert.equal(out.split('\n').length, src.split('\n').length);
 	assert.ok(!/[cxyq]/.test(out));
+});
+
+// ── generation ───────────────────────────────────────────────────────────────
+
+
+const genBricks = () =>
+	standard({
+		auth: {
+			pkg: { dependencies: { '@fonderie/store': '*' } },
+			decl: {
+				vars: [
+					v('JWT_SECRET', { required: 'always', secret: true, kind: 'secret32', generate: 'base64-32' }),
+					v('PASSWORD_RESET_URL', { kind: 'url' }),
+					v('GOOGLE_CLIENT_ID', { required: 'feature', feature: 'google' }),
+					v('APPLE_REDIRECT_URI', { kind: 'url', deprecatedNames: ['APPLE_CALLBACK_URL'], dev: 'http://localhost/cb' }),
+					// Shaped like the real declaration: the renamed variable is a feature var.
+					v('GOOGLE_REDIRECT_URI', { required: 'feature', feature: 'google', kind: 'url', deprecatedNames: ['GOOGLE_CALLBACK_URL'] }),
+				],
+				features: { google: { description: 'Sign in with Google' } },
+			},
+		},
+		core: {
+			decl: {
+				vars: [
+					v('NODE_ENV', { source: 'direct', required: 'production', kind: 'enum:development|test|production', dev: 'development' }),
+					v('VERCEL', { source: 'platform' }),
+				],
+			},
+		},
+	});
+const FIXED = { 'hex-32': () => 'h'.repeat(64), 'base64-32': () => 'b'.repeat(44) };
+
+test('renderExample: one line per variable, the right ones commented, platform never written', () => {
+	const r = resolveEnv(project({ app: { '@fonderie/auth': '*', '@fonderie/billing': '*' }, bricks: genBricks() }));
+	const ex = renderExample(r);
+	assert.match(ex, /^JWT_SECRET=$/m, 'required secret: empty, uncommented');
+	assert.match(ex, /^# PASSWORD_RESET_URL=$/m, 'optional without a value: commented');
+	assert.match(ex, /^# GOOGLE_CLIENT_ID=$/m, 'feature: commented');
+	assert.match(ex, /^NODE_ENV=development$/m, 'dev value shown');
+	assert.match(ex, /^DATABASE_URL=$/m);
+	assert.ok(!/VERCEL=/.test(ex), 'platform variables are never written');
+	assert.match(ex, /Formerly APPLE_CALLBACK_URL/);
+	assert.match(ex, /generate: openssl rand -base64 32/);
+	assert.match(ex, /── Sign in with Google — @fonderie\/auth/);
+	for (const e of r.entries.filter((x) => x.source !== 'platform')) {
+		assert.equal(ex.match(new RegExp(`^(# )?${e.name}=`, 'gm'))?.length, 1, `${e.name} listed once`);
+	}
+	assert.ok(ex.indexOf('@fonderie/core') < ex.indexOf('@fonderie/auth'), 'core first');
+	assert.equal(renderExample(r), ex, 'deterministic');
+});
+
+test('mergeDotEnv: keeps values and comments, generates, defaults, renames, lists what is left', () => {
+	const r = resolveEnv(project({ app: { '@fonderie/auth': '*', '@fonderie/billing': '*' }, bricks: genBricks() }));
+	const before = '# mine\nDATABASE_URL=postgres://me@db/x\nAPPLE_CALLBACK_URL=https://old.example/cb\nGOOGLE_CALLBACK_URL=https://old.example/g\n';
+	const m = mergeDotEnv(before, r, { generate: FIXED });
+	const env = parseEnvFile(m.text);
+	assert.ok(m.text.startsWith(before), 'existing content untouched');
+	assert.equal(env.get('DATABASE_URL'), 'postgres://me@db/x');
+	assert.equal(env.get('JWT_SECRET'), 'b'.repeat(44));
+	assert.equal(env.get('NODE_ENV'), 'development');
+	assert.equal(env.get('APPLE_REDIRECT_URI'), 'https://old.example/cb', 'deprecated value carried over');
+	assert.equal(env.get('GOOGLE_REDIRECT_URI'), 'https://old.example/g', 'carried over even though google is a feature');
+	assert.deepEqual(m.renamed.sort(), ['APPLE_CALLBACK_URL → APPLE_REDIRECT_URI', 'GOOGLE_CALLBACK_URL → GOOGLE_REDIRECT_URI']);
+	assert.deepEqual(m.mustSupply, ['STRIPE_SECRET_KEY']);
+	assert.ok(!env.has('GOOGLE_CLIENT_ID') && !env.has('PASSWORD_RESET_URL') && !env.has('VERCEL'));
+	const again = mergeDotEnv(m.text, r, { generate: FIXED });
+	assert.equal(again.text, m.text, 'second run changes nothing');
+	assert.deepEqual(again.mustSupply, ['STRIPE_SECRET_KEY'], 'an empty required value is still reported');
+});
+
+test('mergeDotEnv: real randomness — two projects never share a generated secret', () => {
+	const r = resolveEnv(project({ app: { '@fonderie/auth': '*' }, bricks: genBricks() }));
+	const a = parseEnvFile(mergeDotEnv('', r).text).get('JWT_SECRET');
+	const b = parseEnvFile(mergeDotEnv('', r).text).get('JWT_SECRET');
+	assert.equal(Buffer.from(a, 'base64').length, 32);
+	assert.notEqual(a, b);
+});
+
+// ── the command ──────────────────────────────────────────────────────────────
+
+const bin = join(dirname(fileURLToPath(import.meta.url)), 'fonderie.mjs');
+const cli = (cwd, ...args) => spawnSync('node', [bin, 'env', ...args, '--project', cwd], { encoding: 'utf8' });
+
+test('fonderie env generate: writes both files, --check passes, then catches drift', () => {
+	const root = project({ app: { '@fonderie/auth': '*', '@fonderie/billing': '*' }, bricks: genBricks() });
+	const r = cli(root, 'generate');
+	assert.equal(r.status, 0, r.stderr);
+	assert.match(r.stdout, /Still yours to fill in .env[\s\S]*STRIPE_SECRET_KEY/);
+	assert.ok(existsSync(join(root, '.env')) && existsSync(join(root, '.env.example')));
+	assert.equal(cli(root, 'generate', '--check').status, 0);
+	writeFileSync(join(root, '.env.example'), 'DATABASE_URL=\n');
+	const drift = cli(root, 'generate', '--check');
+	assert.equal(drift.status, 1);
+	assert.match(drift.stderr, /out of date/);
+});
+
+test('fonderie env generate: refuses to write secrets into a .env git would track', () => {
+	const root = project({ app: { '@fonderie/auth': '*' }, bricks: genBricks() });
+	execFileSync('git', ['init', '-q'], { cwd: root });
+	const r = cli(root, 'generate');
+	assert.equal(r.status, 1);
+	assert.match(r.stderr, /not gitignored/);
+	assert.ok(!existsSync(join(root, '.env')) && !existsSync(join(root, '.env.example')), 'nothing written');
+	writeFileSync(join(root, '.gitignore'), '.env\n');
+	assert.equal(cli(root, 'generate').status, 0);
+	assert.ok(existsSync(join(root, '.env')));
+});
+
+test('fonderie env generate against the REAL bricks of this repo', () => {
+	const packages = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+	const root = mkdtempSync(join(tmpdir(), 'fonderie-env-real-'));
+	mkdirSync(join(root, 'node_modules', '@fonderie'), { recursive: true });
+	for (const p of ['core', 'store', 'events', 'auth', 'rate-limit', 'adapter-express', 'workspaces', 'permissions', 'billing']) {
+		symlinkSync(join(packages, p), join(root, 'node_modules', '@fonderie', p), 'dir');
+	}
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ dependencies: { '@fonderie/adapter-express': '*', '@fonderie/auth': '*', '@fonderie/store': '*' } }));
+	const r = cli(root, 'generate');
+	assert.equal(r.status, 0, r.stderr);
+	const env = parseEnvFile(readFileSync(join(root, '.env'), 'utf8'));
+	assert.equal(Buffer.from(env.get('JWT_SECRET'), 'base64').length, 32);
+	// events is an optional peer of auth: not installed here, so not asked for.
+	assert.ok(!env.has('EVENTS_INTEGRITY_KEY'));
+	// Installing it (as `fonderie add auth` does) brings its key, generated.
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ dependencies: { '@fonderie/adapter-express': '*', '@fonderie/auth': '*', '@fonderie/events': '*' } }));
+	assert.equal(cli(root, 'generate').status, 0);
+	const env2 = parseEnvFile(readFileSync(join(root, '.env'), 'utf8'));
+	assert.match(env2.get('EVENTS_INTEGRITY_KEY'), /^[0-9a-f]{64}$/);
+	assert.equal(env2.get('JWT_SECRET'), env.get('JWT_SECRET'), 'existing secret kept on re-run');
+	const ex = readFileSync(join(root, '.env.example'), 'utf8');
+	assert.ok(!/STRIPE_SECRET_KEY/.test(ex), 'billing is an optional adapter peer the app did not install');
+	assert.match(ex, /^DATABASE_URL=postgres:\/\/localhost:5432\/app$/m);
 });

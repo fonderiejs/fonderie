@@ -21,6 +21,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createManifestCommands } from './manifest.mjs';
+import { mergeDotEnv, renderExample, resolveEnv } from './env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, '..');
@@ -197,7 +198,7 @@ function doInit() {
 // so it did NOT cut turns (62 vs a 61–81 baseline). Kept as a DX feature, not
 // sold as an efficiency edge.
 //
-// Per-module wiring spec: import + construction + migrations + env. Deterministic
+// Per-module wiring spec: import + construction + migrations. Deterministic
 // and version-matched — the installed package ships the real API these lines call.
 const MODULE_SPECS = {
   // `order` = construction/registration priority. Lower first. auth depends on
@@ -207,8 +208,7 @@ const MODULE_SPECS = {
   events: { pkg: 'events', order: 2, import: `import { EventsModule } from '${SCOPE}/events';\nimport { getMigrationsPath as evtMig } from '${SCOPE}/events/migrations';`,
             varName: 'events', ctor: `const events = new EventsModule({ transport: { type: 'pg', connectionUrl: config.db.url } });`, migrations: 'evtMig()' },
   auth:   { pkg: 'auth',   order: 3, import: `import { AuthModule } from '${SCOPE}/auth';\nimport { getMigrationsPath as authMig } from '${SCOPE}/auth/migrations';`,
-            varName: 'auth', ctor: `const auth = new AuthModule(store, {\n  jwtSecret: process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',\n  appName: 'App',\n  providers: ['email'],\n  requireVerification: false,\n}, events.bus);`, migrations: 'authMig()',
-            env: { JWT_SECRET: 'dev-secret-min-32-chars-long-here' } },
+            varName: 'auth', ctor: `const auth = new AuthModule(store, {\n  jwtSecret: process.env['JWT_SECRET'] ?? 'dev-secret-min-32-chars-long-here',\n  appName: 'App',\n  providers: ['email'],\n  requireVerification: false,\n}, events.bus);`, migrations: 'authMig()' },
 };
 
 function doAdd() {
@@ -270,13 +270,10 @@ function doAdd() {
   writeFileSync(compPath, lines.join('\n'));
   console.log(`✓ wrote src/fonderie.ts — composes ${registrable.map((s) => s.varName).join(' + ')} on FonderieApp.`);
 
-  // 3) env template (deterministic, from the spec + recipe invariants)
-  const envAdds = { DATABASE_URL: 'postgres://localhost/app', ...Object.assign({}, ...specs.map((s) => s.env || {})) };
-  const envPath = join(projectDir, '.env.example');
-  const existingEnv = existsSync(envPath) ? readFileSync(envPath, 'utf8') : '';
-  let envOut = existingEnv;
-  for (const [k, v] of Object.entries(envAdds)) if (!new RegExp(`^${k}=`, 'm').test(envOut)) envOut += `${envOut && !envOut.endsWith('\n') ? '\n' : ''}${k}=${v}\n`;
-  if (envOut !== existingEnv) { writeFileSync(envPath, envOut); console.log(`✓ .env.example — added ${Object.keys(envAdds).join(', ')}`); }
+  // 3) env — generated from the env.json of every brick just installed, so the
+  // list is whatever those versions declare (not a table in this CLI).
+  const env = generateEnv(projectDir, { exampleOnly: true });
+  console.log(`✓ .env.example — ${env.count} variables from ${env.bricks} bricks (run \`fonderie env generate\` to create .env)`);
 
   // 4) the ONE app-specific line the agent still owns — printed, not guessed
   console.log(`\nDone. Two lines left for your app entry (e.g. src/index.ts):`);
@@ -285,6 +282,83 @@ function doAdd() {
   console.log(`  then wrap your express app:  const app = mount(express(), fonderie);`);
   for (const inv of recipe.invariants || []) if (K.invariants[inv]) console.log(`  ⚠ ${K.invariants[inv]}`);
   console.log(`\nMigrations run automatically on boot (InternalMigrationRunner above). Set DATABASE_URL and start the app.`);
+}
+
+// ── fonderie env generate ──────────────────────────────────────────────────
+// Writes .env.example from the env.json of every installed @fonderie brick
+// (plus the app's fonderie.env.json) and completes .env: keeps every existing
+// value, generates secrets, fills dev defaults, lists what only a human knows.
+// --check: exit 1 when .env.example is not what would be generated (CI).
+function gitIgnores(projectDir, file) {
+  const r = spawnSync('git', ['check-ignore', '-q', file], { cwd: projectDir });
+  if (r.status === 0) return true;
+  if (r.status === 1) return false;
+  return null; // not a git repository (or no git): nothing to protect against
+}
+
+function generateEnv(projectDir, { exampleOnly = false, check = false, force = false } = {}) {
+  const resolved = resolveEnv(projectDir);
+  if (resolved.missing.length) {
+    throw new Error(`not installed: ${resolved.missing.join(', ')} — run npm install first`);
+  }
+  for (const b of resolved.undeclared) {
+    console.warn(`  ⚠ ${b} ships no env.json (older release?) — its variables are not listed; upgrade it`);
+  }
+  const example = renderExample(resolved);
+  const examplePath = join(projectDir, '.env.example');
+  const current = existsSync(examplePath) ? readFileSync(examplePath, 'utf8') : null;
+  const count = resolved.entries.filter((e) => e.source !== 'platform').length;
+  const summary = { count, bricks: resolved.bricks.length, changed: current !== example, resolved };
+  if (check) return summary;
+  // Refuse before writing anything: generated secrets must never land in a tracked file.
+  if (!exampleOnly && !force && gitIgnores(projectDir, '.env') === false) {
+    throw new Error('.env is not gitignored here — add it to .gitignore before secrets are written to it (or pass --force)');
+  }
+  if (summary.changed) writeFileSync(examplePath, example);
+  if (exampleOnly) return summary;
+
+  const dotPath = join(projectDir, '.env');
+  const merged = mergeDotEnv(existsSync(dotPath) ? readFileSync(dotPath, 'utf8') : '', resolved);
+  if (!existsSync(dotPath) || merged.text !== readFileSync(dotPath, 'utf8')) writeFileSync(dotPath, merged.text);
+  return { ...summary, dotenv: merged };
+}
+
+function doEnv() {
+  const sub = argv[1];
+  const projectDir = arg('--project', process.cwd());
+  if (sub !== 'generate') {
+    console.error('usage: fonderie env generate [--project <dir>] [--example-only] [--check] [--force]');
+    process.exit(2);
+  }
+  const check = argv.includes('--check');
+  let r;
+  try {
+    r = generateEnv(projectDir, { check, exampleOnly: argv.includes('--example-only'), force: argv.includes('--force') });
+  } catch (err) {
+    console.error(`fonderie env generate: ${err.message}`);
+    process.exit(1);
+  }
+  if (check) {
+    if (r.changed) {
+      console.error(`.env.example is out of date with the installed bricks (${r.count} variables, ${r.bricks} bricks) — run \`fonderie env generate --example-only\``);
+      process.exit(1);
+    }
+    console.log(`✓ .env.example matches the ${r.count} variables ${r.bricks} installed bricks declare`);
+    return;
+  }
+  console.log(`✓ .env.example — ${r.count} variables from ${r.bricks} bricks${r.changed ? '' : ' (unchanged)'}`);
+  const d = r.dotenv;
+  if (!d) return;
+  if (d.generated.length) console.log(`✓ .env — generated ${d.generated.join(', ')}`);
+  if (d.defaulted.length) console.log(`✓ .env — local defaults for ${d.defaulted.join(', ')}`);
+  if (d.renamed.length) console.log(`✓ .env — copied deprecated names: ${d.renamed.join(', ')} (remove the old lines when every deploy is updated)`);
+  if (d.mustSupply.length) {
+    console.log('\nStill yours to fill in .env (and in each deployment):');
+    for (const n of [...new Set(d.mustSupply)]) {
+      const e = r.resolved.entries.find((x) => x.name === n);
+      console.log(`  ${n} — ${e?.description ?? ''}`);
+    }
+  }
 }
 
 // ── fonderie config|secret <verb> — manage a live deployment over the admin API ─
@@ -573,6 +647,7 @@ if (cmd === 'query') doQuery();
 else if (cmd === 'skill') doSkill();
 else if (cmd === 'add') doAdd();
 else if (cmd === 'init') doInit();
+else if (cmd === 'env') doEnv();
 else if (cmd === 'config') resourceCmd('config').catch(exitOnAdminError);
 else if (cmd === 'secret') resourceCmd('secret').catch(exitOnAdminError);
 else if (cmd === 'template') resourceCmd('template').catch(exitOnAdminError);
@@ -583,6 +658,8 @@ else {
 
   fonderie init [--project <dir>]                  set up the lazy skill + keep it fresh (postinstall)
   fonderie add <capability> [--project <dir>]      deterministically wire a brick: install + compose + migrate + env
+  fonderie env generate [--project <dir>]          write .env.example from the installed bricks' env.json, complete .env
+      --example-only (skip .env) · --check (exit 1 if .env.example is out of date — CI) · --force (write .env even if not gitignored)
   fonderie skill [--out <dir>] [--project <dir>]   write the lazy skill (router + bodies)
   fonderie query <concept>                         what to install for a capability
   fonderie query --concepts                        list every capability
