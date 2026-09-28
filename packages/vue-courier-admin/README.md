@@ -1,8 +1,11 @@
 # @fonderie/vue-courier-admin
 
-Vue 3 composables for the Fonderie courier admin API — `useTemplates`,
-`useTemplate`, `useSaveTemplate`, `useDeleteTemplate`, and
-`useTemplateRevisions` (list + rollback). Thin bindings over
+Vue 3 composables for the Fonderie courier admin API — `useTemplates`
+(list, plus `saveTemplate`/`removeTemplate`), `useTemplate`,
+`useTemplatePreview`, `useTemplateRevisions` (list + rollback),
+`useTemplateCatalog` (every email and language, built-in copy included),
+`useBuiltInTemplate` (the shipped default for one type), and
+`useTemplateResolution` (which template a send would actually use). Thin bindings over
 [`@fonderie/client`](https://github.com/fonderiejs/fonderie/tree/main/packages/client)'s
 `CourierAdminClient`: reactive `ref`s for loading/error/data state and the
 request itself, nothing else. Bring your own UI.
@@ -18,20 +21,24 @@ npm install @fonderie/vue-courier-admin
 ```vue
 <script setup>
 import { CourierAdminClient } from '@fonderie/client';
-import { useTemplates, useSaveTemplate } from '@fonderie/vue-courier-admin';
+import { useTemplates } from '@fonderie/vue-courier-admin';
 
 const admin = new CourierAdminClient({
   baseUrl: 'https://api.example.com/v1',
   adminToken: import.meta.env.VITE_FONDERIE_ADMIN_TOKEN,
 });
 
-const { templates } = useTemplates(admin);
-const { saveTemplate } = useSaveTemplate(admin);
+// Saving and deleting come from useTemplates; both refresh the list.
+const { templates, saveTemplate, removeTemplate } = useTemplates(admin);
 </script>
 
 <template>
   <ul>
-    <li v-for="t in templates" :key="t.type">{{ t.type }}</li>
+    <li v-for="t in templates" :key="t.type">
+      {{ t.type }}
+      <button @click="saveTemplate(t.type, { text: 'Hello!' })">Save</button>
+      <button @click="removeTemplate(t.type)">Revert to default</button>
+    </li>
   </ul>
 </template>
 ```

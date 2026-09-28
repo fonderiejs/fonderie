@@ -26,7 +26,7 @@ Built-in middlewares (CORS, request logging, auth guards, body parsing) live
 under their own entry point so the root barrel stays lean:
 
 ```ts
-import { cors, requireAuth } from '@fonderie/core/middlewares';
+import { withCors, requireAuth } from '@fonderie/core/middlewares';
 ```
 
 Also exported: `compose` for middleware composition, `HTTP`/`setApiResponse`

@@ -1,8 +1,11 @@
 # @fonderie/react-courier-admin
 
-React hooks for the Fonderie courier admin API — `useTemplates`,
-`useTemplate`, `useSaveTemplate`, `useDeleteTemplate`, and
-`useTemplateRevisions` (list + rollback). Thin bindings over
+React hooks for the Fonderie courier admin API — `useTemplates` (list,
+plus `saveTemplate`/`removeTemplate`), `useTemplate`, `useTemplatePreview`,
+`useTemplateRevisions` (list + rollback), `useTemplateCatalog` (every email
+and language, built-in copy included), `useBuiltInTemplate` (the shipped
+default for one type), and `useTemplateResolution` (which template a send
+would actually use). Thin bindings over
 [`@fonderie/client`](https://github.com/fonderiejs/fonderie/tree/main/packages/client)'s
 `CourierAdminClient`: loading/error state and the request itself, nothing
 else. Bring your own UI.
@@ -17,7 +20,7 @@ npm install @fonderie/react-courier-admin
 
 ```tsx
 import { CourierAdminClient } from '@fonderie/client';
-import { useTemplates, useSaveTemplate } from '@fonderie/react-courier-admin';
+import { useTemplates } from '@fonderie/react-courier-admin';
 
 const admin = new CourierAdminClient({
   baseUrl: 'https://api.example.com/v1',
@@ -30,11 +33,17 @@ function TemplateList() {
 }
 
 function EditTemplate({ type }: { type: string }) {
-  const { saveTemplate, isLoading } = useSaveTemplate(admin);
+  // Saving and deleting come from useTemplates; both refresh the list.
+  const { saveTemplate, removeTemplate, isLoading } = useTemplates(admin);
   return (
-    <button onClick={() => saveTemplate(type, { text: 'Hi {{name}}' })} disabled={isLoading}>
-      Save
-    </button>
+    <>
+      <button onClick={() => saveTemplate(type, { text: 'Hi {{name}}' })} disabled={isLoading}>
+        Save
+      </button>
+      <button onClick={() => removeTemplate(type)} disabled={isLoading}>
+        Revert to default
+      </button>
+    </>
   );
 }
 ```
