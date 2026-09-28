@@ -1,3 +1,4 @@
+import type { IFinding } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { IBillingProvider, IWebhookRegistration } from '../providers/types';
 import { PAYMENT_WEBHOOK_EVENTS, SUBSCRIPTION_WEBHOOK_EVENTS } from '../webhook-events';
@@ -136,23 +137,44 @@ export async function checkWebhookRegistration(
  * Mirrors `describePriceProblems` so an app logs both the same way, and covers
  * the version difference that `ok` deliberately leaves alone.
  */
-export function describeWebhookProblems(report: IWebhookRegistrationReport): string[] {
+export function webhookFindings(report: IWebhookRegistrationReport): IFinding[] {
 	if (report.unsupported) return [];
-	if (report.error) return [`webhook check failed: ${report.error}`];
+	if (report.error)
+		return [
+			{
+				message: `webhook check failed: ${report.error}`,
+				domain: 'billing',
+				reason: 'WEBHOOK_CHECK_FAILED',
+				metadata: { detail: report.error },
+			},
+		];
 
-	const lines: string[] = [];
+	const out: IFinding[] = [];
 	for (const e of report.endpoints) {
 		if (!e.registered) {
-			lines.push(`${e.url}: NOT REGISTERED — every event we handle here will never arrive`);
+			out.push({
+				message: `${e.url}: NOT REGISTERED — every event we handle here will never arrive`,
+				domain: 'billing',
+				reason: 'WEBHOOK_NOT_REGISTERED',
+				metadata: { url: e.url },
+			});
 			continue;
 		}
 		if (e.status === 'disabled') {
-			lines.push(`${e.url}: endpoint is DISABLED at the provider — it sends nothing`);
+			out.push({
+				message: `${e.url}: endpoint is DISABLED at the provider — it sends nothing`,
+				domain: 'billing',
+				reason: 'WEBHOOK_DISABLED',
+				metadata: { url: e.url },
+			});
 		}
 		if (e.missing.length > 0) {
-			lines.push(
-				`${e.url}: not registered for ${e.missing.join(', ')} — those handlers can never run`,
-			);
+			out.push({
+				message: `${e.url}: not registered for ${e.missing.join(', ')} — those handlers can never run`,
+				domain: 'billing',
+				reason: 'WEBHOOK_EVENTS_MISSING',
+				metadata: { url: e.url, events: e.missing.join(', ') },
+			});
 		}
 		if (e.apiVersionMismatch) {
 			// Deliberately does NOT say data is being lost. Invoice payloads have
@@ -165,17 +187,29 @@ export function describeWebhookProblems(report: IWebhookRegistrationReport): str
 			// It also names the remedy, because the obvious one does not exist: a
 			// provider fixes an endpoint's version when the endpoint is CREATED and
 			// refuses to change it afterwards.
-			lines.push(
-				`${e.url}: renders payloads as ${e.apiVersion}, this client reads them as ` +
+			out.push({
+				message:
+					`${e.url}: renders payloads as ${e.apiVersion}, this client reads them as ` +
 					`${report.expectedApiVersion}. Invoice payloads are read version-tolerantly, so ` +
 					'this is drift to close rather than data being lost. An endpoint’s version cannot ' +
 					'be changed after it is created — either recreate it pinned to the client’s ' +
 					'version (new signing secret), or move the client pin forward and re-verify the ' +
 					'payload shapes.',
-			);
+				domain: 'billing',
+				reason: 'WEBHOOK_API_VERSION',
+				metadata: {
+					url: e.url,
+					endpointVersion: String(e.apiVersion),
+					clientVersion: String(report.expectedApiVersion),
+				},
+			});
 		}
 	}
-	return lines;
+	return out;
+}
+
+export function describeWebhookProblems(report: IWebhookRegistrationReport): string[] {
+	return webhookFindings(report).map((f) => f.message);
 }
 
 /** Compare ignoring a trailing slash, which providers and configs disagree on. */

@@ -240,6 +240,8 @@ function senderDnsCheck(email: { from: string; senderDns?: { dkimSelectors?: str
 function senderDomain(from: string): string | null
 
 interface ISenderDnsRecord {
+    reason?: string;
+    metadata?: Record<string, string | number>;
     kind: 'spf' | 'dmarc' | 'dkim';
     present: boolean;
     foundAt?: string;

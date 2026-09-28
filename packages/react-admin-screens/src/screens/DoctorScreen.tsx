@@ -1,4 +1,4 @@
-import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT, localizeReason } from '@fonderie/client';
 import { useDoctor } from '@fonderie/react-admin';
 import { styles } from '../styles';
 import { PageHeader, Pill, RefreshButton } from '../ui';
@@ -73,23 +73,30 @@ export function DoctorScreen({ client, locale }: IDoctorScreenProps) {
 										<span style={styles.muted}>{c.module}</span>
 									</div>
 									{c.skipped ? (
-										<div style={{ ...styles.muted, marginTop: 4 }}>{c.skipped}</div>
-									) : null}
-									{c.findings.map((f) => (
-										<div
-											key={f}
-											style={{
-												marginTop: 4,
-												fontSize: 13,
-												lineHeight: 1.55,
-												color: c.ok
-													? 'var(--fonderie-text,#171717)'
-													: 'var(--fonderie-danger,#e00)',
-											}}
-										>
-											{f}
+										<div style={{ ...styles.muted, marginTop: 4 }}>
+											{localizeReason(c.skippedDetail ?? { message: c.skipped }, locale)}
 										</div>
-									))}
+									) : null}
+									{c.findings.map((f, i) => {
+										// `details` runs parallel to `findings`; an older server sends only the strings.
+										const detail = c.details?.[i];
+										const error = detail ? detail.severity === 'error' : !c.ok;
+										return (
+											<div
+												key={f}
+												style={{
+													marginTop: 4,
+													fontSize: 13,
+													lineHeight: 1.55,
+													color: error
+														? 'var(--fonderie-danger,#e00)'
+														: 'var(--fonderie-text,#171717)',
+												}}
+											>
+												{localizeReason(detail ?? { message: f }, locale)}
+											</div>
+										);
+									})}
 								</td>
 								<td
 									style={{

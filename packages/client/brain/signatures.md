@@ -798,10 +798,20 @@ interface IAdminAttention {
     items: IAdminAttentionItem[];
 }
 
-interface IAdminAttentionItem {
+interface IAdminAttentionItem extends IAdminReason {
     source: string;
     severity: 'error' | 'advice';
+}
+
+interface IAdminFinding extends IAdminReason {
+    severity: 'error' | 'advice';
+}
+
+interface IAdminReason {
     message: string;
+    reason?: string;
+    domain?: string;
+    metadata?: Record<string, string | number>;
 }
 
 interface IAdminCheckResult {
@@ -809,7 +819,9 @@ interface IAdminCheckResult {
     module: string;
     ok: boolean;
     findings: string[];
+    details?: IAdminFinding[];
     skipped?: string;
+    skippedDetail?: IAdminFinding;
     durationMs: number;
 }
 
@@ -876,10 +888,9 @@ interface IAdminReadiness {
     problems: IAdminReadinessProblem[];
 }
 
-interface IAdminReadinessProblem {
+interface IAdminReadinessProblem extends IAdminReason {
     module: string;
     severity: 'error' | 'warning';
-    message: string;
 }
 
 interface IAdminRouteEntry {
@@ -1800,6 +1811,8 @@ function formatAdminDate(value: string | number | Date, locale?: "en" | "fr" | "
 
 function isAdminLocale(value: unknown): value is "en" | "fr" | "es"
 
+function localizeReason(item: IReasonLike, locale?: "en" | "fr" | "es" | undefined): string
+
 type AdminLocale = (typeof ADMIN_LOCALES)[number];
 
 type LocaleMap<T> = Readonly<Record<AdminLocale, T>>;
@@ -1811,4 +1824,11 @@ type AdminMessageParams = Record<string, string | number>;
 type AdminMessages = typeof en;
 
 type AdminT = ReturnType<typeof createAdminT>;
+
+interface IReasonLike {
+    message: string;
+    reason?: string | undefined;
+    domain?: string | undefined;
+    metadata?: Readonly<Record<string, string | number>> | undefined;
+}
 ```

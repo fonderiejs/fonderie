@@ -29,6 +29,8 @@ function collectChecks(app: IFonderieApp, own: IAdminCheck[]): INamedCheck[]
 
 function attention(app: IFonderieApp, doctor: IAdminDoctorReport): IAdminAttention
 
+function normalizeFindings(report: IAdminCheckReport): IAdminFinding[]
+
 function adminLog(store: IStoreAdapter, route: string, module: string): Middleware
 
 function readAdminLog(store: IStoreAdapter, opts?: { limit?: number; before?: string; }): Promise<IAdminLogPage>
@@ -49,6 +51,8 @@ function applyModuleMigrations(store: IStoreAdapter, sets: readonly IMigrationSe
 
 const applyMigrationsSchema: IRequestSchema
 
+function migrationsCheck(store: IStoreAdapter, sets: readonly IMigrationSet[], name?: string): IAdminCheck
+
 function requireAdminScope(bootstrap: string, store: IStoreAdapter | undefined, needed: AdminScope | "root", opts?: { stepUp?: boolean; operators?: boolean; }): Middleware
 
 function scopeFor(method: string, path: string): AdminScope
@@ -64,6 +68,14 @@ function listTokens(store: IStoreAdapter): Promise<IAdminTokenRecord[]>
 function hashToken(token: string): string
 
 const SCOPES: readonly AdminScope[]
+
+interface IAdminFinding {
+    message: string;
+    reason?: string;
+    domain?: string;
+    metadata?: Readonly<Record<string, string | number>>;
+    severity: 'error' | 'advice';
+}
 
 interface IAdminOptions {
     adminToken?: string;
@@ -99,10 +111,14 @@ interface IAdminModuleEntry {
     describesAdmin: boolean;
 }
 
-interface IAdminCheckResult extends IAdminCheckReport {
+interface IAdminCheckResult extends Omit<IAdminCheckReport, 'findings' | 'skipped'> {
     name: string;
     module: string;
     durationMs: number;
+    findings: string[];
+    details: IAdminFinding[];
+    skipped?: string;
+    skippedDetail?: IAdminFinding;
 }
 
 interface IAdminDoctorReport {
@@ -121,6 +137,9 @@ interface IAdminAttentionItem {
     source: string;
     severity: 'error' | 'advice';
     message: string;
+    reason?: string;
+    domain?: string;
+    metadata?: Readonly<Record<string, string | number>>;
 }
 
 interface IAdminLogEntry {

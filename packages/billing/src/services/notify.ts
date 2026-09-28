@@ -85,6 +85,8 @@ export function collectBillingReadinessProblems(
 					'pass an EventBus to BillingModule and set config.resolveRecipient so ' +
 					'purchase receipts, refund notices, and failed-payment alerts can be ' +
 					'delivered (consumer-protection/tax records; SOC 2 Processing Integrity).',
+				domain: 'billing',
+				reason: 'NOTIFICATIONS_UNWIRED',
 			});
 		}
 	}
@@ -104,6 +106,9 @@ export function collectBillingReadinessProblems(
 				message:
 					`plan '${plan.name}' enables wallet auto-recharge but provider ` +
 					`'${config.provider.name}' does not implement chargeOffSession — auto-recharge will never fire.`,
+				domain: 'billing',
+				reason: 'AUTO_RECHARGE_UNSUPPORTED',
+				metadata: { plan: plan.name, provider: config.provider.name },
 			});
 		}
 		if (!packIds.has(auto.packId)) {
@@ -113,6 +118,9 @@ export function collectBillingReadinessProblems(
 				message:
 					`plan '${plan.name}' auto-recharge references unknown credit pack '${auto.packId}' — ` +
 					'auto-recharge will never fire. Add it to config.wallet.creditPacks.',
+				domain: 'billing',
+				reason: 'AUTO_RECHARGE_UNKNOWN_PACK',
+				metadata: { plan: plan.name, pack: auto.packId },
 			});
 		}
 	}
@@ -129,6 +137,9 @@ export function collectBillingReadinessProblems(
 					message:
 						`plan '${plan.name}' configures a wallet allowance but config.wallet is not set — ` +
 						'the wallet subsystem is off, so grants/allowance are inert. Set config.wallet to enable it.',
+					domain: 'billing',
+					reason: 'ALLOWANCE_WITHOUT_WALLET',
+					metadata: { plan: plan.name },
 				});
 			}
 		}
@@ -145,6 +156,9 @@ export function collectBillingReadinessProblems(
 				message:
 					`plan '${plan.name}' has a negative grantRollover cap (${rollover.cap}) — ` +
 					"use { cap: >= 0 }, 'none', or 'full'.",
+				domain: 'billing',
+				reason: 'NEGATIVE_ROLLOVER_CAP',
+				metadata: { plan: plan.name, cap: String(rollover.cap) },
 			});
 		}
 	}
