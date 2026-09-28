@@ -1,4 +1,4 @@
-import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT, localizeReason } from '@fonderie/client';
 import { useAdminEnvironment } from '@fonderie/react-admin';
 import { styles } from '../styles';
 import { PageHeader, Pill } from '../ui';
@@ -107,7 +107,7 @@ export function EnvironmentScreen({ client, locale }: IEnvironmentScreenProps) {
 													: 'var(--fonderie-text-muted,#5c5c5c)',
 										}}
 									>
-										{p.message}
+										{localizeReason(p, locale)}
 									</div>
 								))}
 							</li>

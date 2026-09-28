@@ -1,9 +1,14 @@
 export { AdminModule, ADMIN_VERSION, DEFAULT_ADMIN_PATH, DEFAULT_CHECK_TIMEOUT_MS } from './module';
 export { buildManifest } from './manifest';
-export { runDoctor, collectChecks, attention } from './doctor';
+export { runDoctor, collectChecks, attention, normalizeFindings } from './doctor';
 export { adminLog, readAdminLog, DEFAULT_ACTOR, MAX_PAGE } from './log';
 export { environmentReport, routesReport, tokensReport } from './pages';
-export { migrationsReport, applyModuleMigrations, applyMigrationsSchema } from './migrate';
+export {
+	migrationsReport,
+	applyModuleMigrations,
+	applyMigrationsSchema,
+	migrationsCheck,
+} from './migrate';
 export {
 	requireAdminScope,
 	scopeFor,
@@ -15,6 +20,7 @@ export {
 	SCOPES,
 } from './tokens';
 export type {
+	IAdminFinding,
 	IAdminOptions,
 	IAdminManifest,
 	IAdminModuleEntry,

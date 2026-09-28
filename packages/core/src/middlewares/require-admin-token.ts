@@ -39,6 +39,9 @@ export function validateAdminToken(
 				module: opts.module,
 				severity: 'error',
 				message: `adminToken must be at least ${MIN_SECRET_LENGTH} characters (got ${token.length})`,
+				domain: 'core',
+				reason: 'ADMIN_TOKEN_TOO_SHORT',
+				metadata: { min: MIN_SECRET_LENGTH, got: token.length },
 			},
 		];
 	}
@@ -48,6 +51,8 @@ export function validateAdminToken(
 				module: opts.module,
 				severity: 'error',
 				message: 'adminToken looks like a placeholder or dev-default value',
+				domain: 'core',
+				reason: 'ADMIN_TOKEN_PLACEHOLDER',
 			},
 		];
 	}

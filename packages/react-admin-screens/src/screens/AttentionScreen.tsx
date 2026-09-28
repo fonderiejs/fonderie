@@ -3,6 +3,7 @@ import {
 	type AdminLocale,
 	createAdminT,
 	formatAdminDate,
+	localizeReason,
 } from '@fonderie/client';
 import { useAttention, useManifest } from '@fonderie/react-admin';
 import { styles } from '../styles';
@@ -121,7 +122,7 @@ export function AttentionScreen({ client, locale }: IAttentionScreenProps) {
 									</Pill>
 									<span style={styles.mono}>{item.source}</span>
 								</div>
-								<div style={{ lineHeight: 1.55 }}>{item.message}</div>
+								<div style={{ lineHeight: 1.55 }}>{localizeReason(item, locale)}</div>
 							</div>
 						</li>
 					))}

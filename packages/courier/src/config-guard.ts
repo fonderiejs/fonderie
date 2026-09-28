@@ -35,6 +35,9 @@ export function collectCourierConfigProblems(
 			`${types.length} message type(s) route to the '${channel}' channel but ` +
 			`no '${channel}' provider is registered — these will be silently dropped: ` +
 			`${types.join(', ')}. Configure \`config.${channel}\` (or register a channel).`,
+		domain: 'courier',
+		reason: 'CHANNEL_WITHOUT_PROVIDER',
+		metadata: { count: types.length, channel, types: types.join(', ') },
 	}));
 
 	// The INVERSE gap, and the quieter one: a message type whose CONTENT is
@@ -68,9 +71,12 @@ export function collectCourierConfigProblems(
 			message:
 				`${unrouted.length} message type(s) ship a default template but are routed to no ` +
 				`channel, so they are published and never delivered: ${unrouted.join(', ')}. ` +
-				'Add them to `config.channels` — deriving it from the package\'s MESSAGE_KEYS ' +
+				"Add them to `config.channels` — deriving it from the package's MESSAGE_KEYS " +
 				'rather than listing types by hand keeps it from drifting again. If one is ' +
 				'deliberately not sent, map it to an empty list to say so.',
+			domain: 'courier',
+			reason: 'TEMPLATES_UNROUTED',
+			metadata: { count: unrouted.length, types: unrouted.join(', ') },
 		});
 	}
 

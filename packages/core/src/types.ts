@@ -158,6 +158,10 @@ export interface IReadinessProblem {
 	module: string;
 	severity: 'error' | 'warning';
 	message: string;
+	/** Machine-readable cause (see IFinding). `message` stays the English fallback. */
+	reason?: string;
+	domain?: string;
+	metadata?: Readonly<Record<string, string | number>>;
 }
 
 export interface IReadinessReport {
@@ -186,12 +190,35 @@ export interface IAdminRoute {
 	handlers: Middleware[];
 }
 
+// One thing a check (or a readiness guard) found, in the shape of Google's
+// AIP-193 ErrorInfo — the same `reason` field every API response already
+// carries:
+//   reason   — UPPER_SNAKE, stable, unique within its domain: a contract.
+//              Never renamed; a changed meaning gets a new reason.
+//   domain   — the brick that emits it ('billing', 'auth', …). domain + reason
+//              is the unique key a console, a CLI or an alert keys on.
+//   metadata — the raw values the sentence mentions. Values, never English:
+//              enum-like values are UPPER_SNAKE so they can be translated too.
+//   message  — the English sentence: what logs keep, and the fallback when a
+//              console has no translation for domain + reason.
+// `severity` overrides the check-level default — a failing check can still
+// carry advice lines, and they should not be shown as errors.
+export interface IFinding {
+	message: string;
+	reason?: string;
+	domain?: string;
+	metadata?: Readonly<Record<string, string | number>>;
+	severity?: 'error' | 'advice';
+}
+
 // One reconciliation check's answer. `ok` is false only for a hard failure;
 // findings that leave `ok` true are advice. `skipped` says why it could not run.
+// A finding may be a plain sentence (English, untranslatable) or an IFinding.
 export interface IAdminCheckReport {
 	ok: boolean;
-	findings: string[];
-	skipped?: string;
+	findings: Array<string | IFinding>;
+	/** Why the check could not run — a sentence, or a finding so it can be translated. */
+	skipped?: string | IFinding;
 }
 
 // A check the module offers the doctor. `run` reads the other side of a copy

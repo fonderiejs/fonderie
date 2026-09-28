@@ -14,8 +14,8 @@ interface IAdminCheck {
 
 interface IAdminCheckReport {
     ok: boolean;
-    findings: string[];
-    skipped?: string;
+    findings: Array<string | IFinding>;
+    skipped?: string | IFinding;
 }
 
 interface IAdminDescription {
@@ -136,6 +136,14 @@ interface IDefaultTemplate {
     locales?: Readonly<Record<string, IDefaultTemplateCopy>>;
 }
 
+interface IFinding {
+    message: string;
+    reason?: string;
+    domain?: string;
+    metadata?: Readonly<Record<string, string | number>>;
+    severity?: 'error' | 'advice';
+}
+
 interface IDefaultTemplateCopy {
     subject?: string;
     text: string;
@@ -161,6 +169,9 @@ interface IReadinessProblem {
     module: string;
     severity: 'error' | 'warning';
     message: string;
+    reason?: string;
+    domain?: string;
+    metadata?: Readonly<Record<string, string | number>>;
 }
 
 interface IReadinessReport {

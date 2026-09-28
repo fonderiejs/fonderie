@@ -1,4 +1,4 @@
-import { type AdminClient, type AdminLocale, createAdminT } from '@fonderie/client';
+import { type AdminClient, type AdminLocale, createAdminT, localizeReason } from '@fonderie/client';
 import { useDoctor } from '@fonderie/vue-admin';
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
@@ -51,10 +51,17 @@ export const DoctorScreen = defineComponent({
 										h('span', { style: styles.muted }, c.module),
 									]),
 									c.skipped
-										? h('div', { style: { ...styles.muted, marginTop: '4px' } }, c.skipped)
+										? h(
+												'div',
+												{ style: { ...styles.muted, marginTop: '4px' } },
+												localizeReason(c.skippedDetail ?? { message: c.skipped }, props.locale),
+											)
 										: null,
-									...c.findings.map((f) =>
-										h(
+									...c.findings.map((f, i) => {
+										// `details` runs parallel to `findings`; an older server sends only the strings.
+										const detail = c.details?.[i];
+										const error = detail ? detail.severity === 'error' : !c.ok;
+										return h(
 											'div',
 											{
 												key: f,
@@ -62,14 +69,14 @@ export const DoctorScreen = defineComponent({
 													marginTop: '4px',
 													fontSize: '13px',
 													lineHeight: 1.55,
-													color: c.ok
-														? 'var(--fonderie-text,#171717)'
-														: 'var(--fonderie-danger,#e00)',
+													color: error
+														? 'var(--fonderie-danger,#e00)'
+														: 'var(--fonderie-text,#171717)',
 												},
 											},
-											f,
-										),
-									),
+											localizeReason(detail ?? { message: f }, props.locale),
+										);
+									}),
 								]),
 								td(`${c.durationMs} ms`, {
 									...styles.muted,

@@ -1,10 +1,10 @@
-import type { IAdminCheck, IAdminCheckReport } from '@fonderie/core';
+import type { IAdminCheck, IAdminCheckReport, IFinding } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IBillingConfig } from './config';
-import { checkPriceConsistency, describePriceProblems } from './services/price-consistency';
-import { checkWebhookRegistration, describeWebhookProblems } from './services/provider-health';
-import { checkSubscriptionDrift, describeSubscriptionDrift } from './services/subscription-drift';
+import { checkPriceConsistency, priceFindings } from './services/price-consistency';
+import { checkWebhookRegistration, webhookFindings } from './services/provider-health';
+import { checkSubscriptionDrift, subscriptionDriftFindings } from './services/subscription-drift';
 
 interface IReportLike {
 	ok: boolean;
@@ -13,10 +13,18 @@ interface IReportLike {
 
 function toReport<R extends IReportLike>(
 	report: R,
-	describe: (r: R) => string[],
+	describe: (r: R) => IFinding[],
 ): IAdminCheckReport {
 	if (report.unsupported)
-		return { ok: true, findings: [], skipped: 'the provider cannot be asked' };
+		return {
+			ok: true,
+			findings: [],
+			skipped: {
+				message: 'the provider cannot be asked',
+				domain: 'billing',
+				reason: 'PROVIDER_CANNOT_BE_ASKED',
+			},
+		};
 	return { ok: report.ok, findings: describe(report) };
 }
 
@@ -30,13 +38,12 @@ export function describeBillingAdminChecks(
 	const checks: IAdminCheck[] = [
 		{
 			name: 'billing.price-consistency',
-			run: async () =>
-				toReport(await checkPriceConsistency(provider, config), describePriceProblems),
+			run: async () => toReport(await checkPriceConsistency(provider, config), priceFindings),
 		},
 		{
 			name: 'billing.subscription-drift',
 			run: async () =>
-				toReport(await checkSubscriptionDrift(provider, store), describeSubscriptionDrift),
+				toReport(await checkSubscriptionDrift(provider, store), subscriptionDriftFindings),
 		},
 	];
 	// A full URL compared against the provider's, not a route the router deals
@@ -45,12 +52,21 @@ export function describeBillingAdminChecks(
 	checks.push({
 		name: 'billing.webhook-registration',
 		run: async () => {
-			if (!base) return { ok: true, findings: [], skipped: 'config.publicUrl is not set' };
+			if (!base)
+				return {
+					ok: true,
+					findings: [],
+					skipped: {
+						message: 'config.publicUrl is not set',
+						domain: 'billing',
+						reason: 'PUBLIC_URL_NOT_SET',
+					},
+				};
 			const urls = {
 				subscriptionUrl: `${base}/billing/webhook`,
 				...(config.wallet ? { paymentUrl: `${base}/billing/webhook/payment` } : {}),
 			};
-			return toReport(await checkWebhookRegistration(provider, urls), describeWebhookProblems);
+			return toReport(await checkWebhookRegistration(provider, urls), webhookFindings);
 		},
 	});
 	return checks;

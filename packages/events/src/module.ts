@@ -1,4 +1,5 @@
 import type {
+	IFinding,
 	IAdminDescription,
 	IFonderieModule,
 	IFonderieApp,
@@ -88,17 +89,37 @@ export class EventsModule implements IFonderieModule {
 							return {
 								ok: true,
 								findings: [],
-								skipped: 'no integrityKey — the event log is not tamper-evident',
+								skipped: {
+									message: 'no integrityKey — the event log is not tamper-evident',
+									domain: 'events',
+									reason: 'NO_INTEGRITY_KEY',
+								},
 							};
 						const r = await t.verifyIntegrity();
-						if (!r) return { ok: true, findings: [], skipped: 'transport not started' };
-						const findings = r.tampered.map(
-							(id) => `event ${id}: stored HMAC does not match — tampered`,
-						);
+						if (!r)
+							return {
+								ok: true,
+								findings: [],
+								skipped: {
+									message: 'transport not started',
+									domain: 'events',
+									reason: 'TRANSPORT_NOT_STARTED',
+								},
+							};
+						const findings: IFinding[] = r.tampered.map((id) => ({
+							message: `event ${id}: stored HMAC does not match — tampered`,
+							domain: 'events',
+							reason: 'EVENT_TAMPERED',
+							metadata: { event: id },
+						}));
 						if (r.unprotected > 0)
-							findings.push(
-								`${r.unprotected} row(s) carry no HMAC (published before integrity was enabled)`,
-							);
+							findings.push({
+								message: `${r.unprotected} row(s) carry no HMAC (published before integrity was enabled)`,
+								domain: 'events',
+								reason: 'EVENTS_UNSIGNED',
+								metadata: { count: r.unprotected },
+								severity: 'advice',
+							});
 						return { ok: r.ok, findings };
 					},
 				},
@@ -106,13 +127,23 @@ export class EventsModule implements IFonderieModule {
 					name: 'events.outbox',
 					run: async () => {
 						const [dead, pending] = await Promise.all([t.deadLetters(10), t.pendingByConsumer()]);
-						const findings = dead.map(
-							(d) =>
-								`${d.type} (${d.consumer}): ${d.lastError ?? 'no error recorded'} — dead, will never be delivered`,
-						);
+						// The provider's error text is kept as data: it is whatever the
+						// failing handler threw, not a sentence this module can translate.
+						const findings: IFinding[] = dead.map((d) => ({
+							message: `${d.type} (${d.consumer}): ${d.lastError ?? 'no error recorded'} — dead, will never be delivered`,
+							domain: 'events',
+							reason: 'EVENT_DEAD',
+							metadata: { type: d.type, consumer: d.consumer, error: d.lastError ?? '' },
+						}));
 						for (const p of pending) {
 							if (p.oldestMinutes >= STALE_BACKLOG_MINUTES) {
-								findings.push(`${p.consumer}: ${p.waiting} waiting, oldest ${p.oldestMinutes} min`);
+								findings.push({
+									message: `${p.consumer}: ${p.waiting} waiting, oldest ${p.oldestMinutes} min`,
+									domain: 'events',
+									reason: 'BACKLOG_STALE',
+									metadata: { consumer: p.consumer, waiting: p.waiting, minutes: p.oldestMinutes },
+									severity: 'advice',
+								});
 							}
 						}
 						return { ok: dead.length === 0, findings };
@@ -149,6 +180,8 @@ export class EventsModule implements IFonderieModule {
 					severity: 'warning',
 					message:
 						'no integrityKey — the event/audit log is not tamper-evident; set one to enable per-event HMACs',
+					domain: 'events',
+					reason: 'NO_INTEGRITY_KEY',
 				},
 			];
 		}

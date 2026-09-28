@@ -29,6 +29,7 @@
     "check:hook-coverage": "node scripts/check-hook-coverage.mjs",
     "check:routes": "node scripts/check-client-routes.mjs",
     "check:template-coverage": "node scripts/check-template-coverage.mjs",
+    "check:reasons": "node scripts/check-reasons.mjs",
     "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer",
     "check:hook-parity": "node scripts/check-hook-parity.mjs",
     "brain:completeness": "node scripts/brain-completeness.test.mjs",
