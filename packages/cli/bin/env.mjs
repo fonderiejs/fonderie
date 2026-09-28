@@ -81,6 +81,16 @@ export function findPackageDir(pkg, fromDir) {
 const fonderieNames = (obj) => Object.keys(obj ?? {}).filter((n) => n.startsWith('@fonderie/'));
 
 /**
+ * Frontend SDKs and tooling are not bricks: nothing an app configures at
+ * deploy time, so they ship no env.json and are neither walked nor reported.
+ * One rule, shared with the check:env-declarations gate.
+ */
+export function isBrick(name) {
+	const short = name.replace(/^@fonderie\//, '');
+	return !/^(react|vue)(-|$)/.test(short) && !['client', 'cli', 'create-fonderie-app'].includes(short);
+}
+
+/**
  * The bricks an app pulls in. Follows each brick's `dependencies` and its
  * REQUIRED peers; an optional peer only when the app installs it itself —
  * otherwise every adapter (optional peers: billing, workspaces, permissions)
@@ -88,7 +98,7 @@ const fonderieNames = (obj) => Object.keys(obj ?? {}).filter((n) => n.startsWith
  */
 export function resolveBricks(appRoot) {
 	const appPkg = readJson(join(appRoot, 'package.json'));
-	const direct = fonderieNames({ ...appPkg.dependencies, ...appPkg.devDependencies });
+	const direct = fonderieNames({ ...appPkg.dependencies, ...appPkg.devDependencies }).filter(isBrick);
 	const installed = new Set(direct);
 	const bricks = new Map(); // name → { dir, via }
 	const missing = [];
@@ -102,7 +112,7 @@ export function resolveBricks(appRoot) {
 		const next = [
 			...fonderieNames(pj.dependencies),
 			...fonderieNames(pj.peerDependencies).filter((n) => !optional[n]?.optional || installed.has(n)),
-		];
+		].filter(isBrick);
 		for (const n of next) walk(n, name, dir);
 	};
 	for (const d of direct) walk(d, 'app', appRoot);

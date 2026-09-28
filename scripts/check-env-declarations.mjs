@@ -21,14 +21,11 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveEnv, scanEnvReads, validateDeclaration } from '../packages/cli/bin/env.mjs';
+import { isBrick, resolveEnv, scanEnvReads, validateDeclaration } from '../packages/cli/bin/env.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const packagesDir = join(root, 'packages');
 
-// Frontend SDKs and tooling are not bricks an app configures at deploy time.
-const NOT_A_BRICK = (name) =>
-	/^(react|vue)(-|$)/.test(name) || ['client', 'cli', 'create-fonderie-app'].includes(name);
 
 // Inlined by tsup at build time (tsup.base.ts), never read at runtime.
 const BUILD_TIME = new Set(['FONDERIE_PKG_VERSION']);
@@ -94,7 +91,7 @@ let fileCount = 0;
 let readCount = 0;
 const usedOpaque = new Set();
 const bricks = readdirSync(packagesDir)
-	.filter((d) => existsSync(join(packagesDir, d, 'package.json')) && !NOT_A_BRICK(d))
+	.filter((d) => existsSync(join(packagesDir, d, 'package.json')) && isBrick(d))
 	.sort();
 
 for (const brick of bricks) {
