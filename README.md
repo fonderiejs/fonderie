@@ -82,6 +82,7 @@ deploy-ready apps for Hono, Express, and Koa.
 
 | Package | What it is |
 |---|---|
+| [`@fonderie/admin`](packages/admin) | The operator's surface — one reserved path (`/_admin`) behind one admin token: installed bricks, versions, readiness, exposed routes |
 | [`@fonderie/adapter-express`](packages/adapter-express) | Express adapter for fonderiejs |
 | [`@fonderie/adapter-hono`](packages/adapter-hono) | Hono adapter for fonderiejs |
 | [`@fonderie/adapter-koa`](packages/adapter-koa) | Koa adapter for fonderiejs |
@@ -89,15 +90,21 @@ deploy-ready apps for Hono, Express, and Koa.
 | [`@fonderie/auth`](packages/auth) | Drop-in auth for SaaS |
 | [`@fonderie/billing`](packages/billing) | SaaS billing in one module |
 | [`@fonderie/client`](packages/client) | Isomorphic TypeScript client for Fonderie-powered APIs |
+| [`@fonderie/cli`](packages/cli) | The Fonderie CLI — `fonderie skill` writes a lazy agent skill; `fonderie query` answers what to install for a capability |
 | [`@fonderie/config`](packages/config) | DB-backed feature flags and remote config |
 | [`@fonderie/core`](packages/core) | Framework core |
 | [`@fonderie/courier`](packages/courier) | Transactional messaging for SaaS |
+| [`@fonderie/create-fonderie-app`](packages/create-fonderie-app) | Zero-prompt scaffold — `npx create-fonderie-app my-saas` gives a TypeScript Express backend pre-wired with Fonderie |
 | [`@fonderie/customers`](packages/customers) | Workspace-scoped customer records |
 | [`@fonderie/events`](packages/events) | Event bus for @fonderiejs |
+| [`@fonderie/geo`](packages/geo) | Self-hosted IP → location on Postgres inet/GiST (IPv4 + IPv6), no external API |
 | [`@fonderie/logger`](packages/logger) | Structured logger with pluggable transports, child loggers, and a request-logging middleware |
+| [`@fonderie/media`](packages/media) | Provider-abstracted asset storage — upload, store and serve user-owned images (avatars, logos) |
 | [`@fonderie/permissions`](packages/permissions) | Role-based access control for SaaS |
 | [`@fonderie/rate-limit`](packages/rate-limit) | Distributed token-bucket rate limiting (memory/Postgres/Redis) |
+| [`@fonderie/risk`](packages/risk) | Signal → meaning → decision engine for trial, login, registration and promo abuse — decides, never enforces |
 | [`@fonderie/store`](packages/store) | Database abstraction layer |
+| [`@fonderie/storage`](packages/storage) | Content-agnostic object storage on Postgres, disk, or S3-compatible backends behind one interface |
 | [`@fonderie/webhooks`](packages/webhooks) | Outgoing webhook engine |
 | [`@fonderie/workspaces`](packages/workspaces) | Multi-tenant team layer |
 
@@ -115,6 +122,7 @@ and ship today.
 
 | Package | What it is |
 |---|---|
+| [`@fonderie/react`](packages/react) | Shared React context — provide one FonderieClient at the root, resolve it from any `@fonderie/react-*` hook |
 | [`@fonderie/react-auth`](packages/react-auth) | React hooks for Fonderie auth — thin bindings over @fonderie/client |
 | [`@fonderie/react-auth-screens`](packages/react-auth-screens) | Pre-built React auth screens — login, register, forgot password |
 | [`@fonderie/react-billing`](packages/react-billing) | React hooks for Fonderie billing |
@@ -127,10 +135,13 @@ and ship today.
 | [`@fonderie/react-audit-screens`](packages/react-audit-screens) | Pre-built React audit screen — filterable, cursor-paginated event list |
 | [`@fonderie/react-webhooks`](packages/react-webhooks) | React hooks for outgoing webhooks |
 | [`@fonderie/react-webhooks-screens`](packages/react-webhooks-screens) | Pre-built React webhooks screens — endpoint list, delivery history |
+| [`@fonderie/react-media`](packages/react-media) | React hooks for Fonderie media — image/avatar upload |
 | [`@fonderie/react-config-admin`](packages/react-config-admin) | React hooks for the config admin API (feature flags/remote config + secrets) |
 | [`@fonderie/react-config-admin-screens`](packages/react-config-admin-screens) | Pre-built React config-admin screens — editor with revision history and rollback |
 | [`@fonderie/react-courier-admin`](packages/react-courier-admin) | React hooks for the courier admin API (email/SMS/push templates) |
 | [`@fonderie/react-courier-admin-screens`](packages/react-courier-admin-screens) | Pre-built React courier-admin screens — template editor with revisions and rollback |
+| [`@fonderie/react-admin`](packages/react-admin) | React hooks over `@fonderie/admin` — attention, manifest, doctor, config, routes, tokens, admin log |
+| [`@fonderie/react-admin-screens`](packages/react-admin-screens) | The React admin shell — seven operator pages plus the config and template screens under one admin token |
 
 ### React Native
 
@@ -148,11 +159,13 @@ and ship today.
 | [`@fonderie/react-native-audit-screens`](packages/react-native-audit-screens) | Pre-built React Native audit screen — filterable, cursor-paginated event list |
 | [`@fonderie/react-native-webhooks`](packages/react-native-webhooks) | React Native hooks for outgoing webhooks |
 | [`@fonderie/react-native-webhooks-screens`](packages/react-native-webhooks-screens) | Pre-built React Native webhooks screens — endpoint list, delivery history |
+| [`@fonderie/react-native-media`](packages/react-native-media) | React Native media hooks — re-exports `@fonderie/react-media` |
 
 ### Vue
 
 | Package | What it is |
 |---|---|
+| [`@fonderie/vue`](packages/vue) | Shared Vue 3 provide/inject — provide one FonderieClient at the root, resolve it from any `@fonderie/vue-*` composable |
 | [`@fonderie/vue-auth`](packages/vue-auth) | Vue composables for Fonderie auth — thin bindings over @fonderie/client |
 | [`@fonderie/vue-auth-screens`](packages/vue-auth-screens) | Pre-built Vue auth screens — login, register, forgot password |
 | [`@fonderie/vue-billing`](packages/vue-billing) | Vue 3 composables for Fonderie billing |
@@ -165,10 +178,13 @@ and ship today.
 | [`@fonderie/vue-audit-screens`](packages/vue-audit-screens) | Pre-built Vue audit screen — filterable, cursor-paginated event list |
 | [`@fonderie/vue-webhooks`](packages/vue-webhooks) | Vue 3 composables for outgoing webhooks |
 | [`@fonderie/vue-webhooks-screens`](packages/vue-webhooks-screens) | Pre-built Vue webhooks screens — endpoint list, delivery history |
+| [`@fonderie/vue-media`](packages/vue-media) | Vue 3 composables for Fonderie media — image/avatar upload |
 | [`@fonderie/vue-config-admin`](packages/vue-config-admin) | Vue 3 composables for the config admin API (feature flags/remote config + secrets) |
 | [`@fonderie/vue-config-admin-screens`](packages/vue-config-admin-screens) | Pre-built Vue config-admin screens — editor with revision history and rollback |
 | [`@fonderie/vue-courier-admin`](packages/vue-courier-admin) | Vue 3 composables for the courier admin API (email/SMS/push templates) |
 | [`@fonderie/vue-courier-admin-screens`](packages/vue-courier-admin-screens) | Pre-built Vue courier-admin screens — template editor with revisions and rollback |
+| [`@fonderie/vue-admin`](packages/vue-admin) | Vue 3 composables over `@fonderie/admin` — attention, manifest, doctor, config, routes, tokens, admin log |
+| [`@fonderie/vue-admin-screens`](packages/vue-admin-screens) | The Vue admin shell — seven operator pages plus the config and template screens under one admin token |
 
 ## Secure by construction
 
@@ -247,9 +263,10 @@ merge that PR  ──▶  automated npm publish
   levels). A change under `packages/` without a changeset builds, passes and
   merges — and never ships.
 - **CI** (`.github/workflows/ci.yml`) runs on every PR and on pushes to
-  `main`: lint, audit, typecheck, tests (including the real Postgres + Redis
-  suites for `@fonderie/rate-limit`, `@fonderie/billing` and
-  `@fonderie/events`), the brain and signature freshness gates, and the
+  `main`: lint, audit, typecheck, tests (including the real Postgres suites
+  for `@fonderie/admin`, `@fonderie/billing`, `@fonderie/courier`,
+  `@fonderie/events` and `@fonderie/rate-limit`, which also runs against a
+  real Redis), the brain and signature freshness gates, and the
   coverage audits.
 - **Release** (`.github/workflows/release.yml`) runs **only on push to
   `main`**. It opens a "Version Packages" PR consuming pending changesets;
