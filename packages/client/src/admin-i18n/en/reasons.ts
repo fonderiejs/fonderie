@@ -61,6 +61,10 @@ const reasons = {
 			'Plan {plan} grants a balance allowance, but the wallet is off — the allowance does nothing.',
 		NEGATIVE_ROLLOVER_CAP:
 			'Plan {plan} has a negative rollover cap ({cap}) — use 0 or more, none, or full.',
+		WEBHOOK_SECRET_MISSING:
+			"The subscription webhook secret is not set — Stripe's calls to /billing/webhook fail and renewals and cancellations are never applied.",
+		WALLET_WEBHOOK_SECRET_MISSING:
+			"The wallet webhook secret is not set — Stripe's calls to /billing/webhook/payment fail and credit-pack purchases are never credited.",
 		PROVIDER_CANNOT_BE_ASKED: 'The payment provider cannot answer this check.',
 		PUBLIC_URL_NOT_SET: 'The public API URL is not set, so webhook endpoints cannot be checked.',
 	},
@@ -94,6 +98,8 @@ const reasons = {
 	},
 	events: {
 		NO_INTEGRITY_KEY: 'No integrity key — the event log is not tamper-evident.',
+		WEAK_INTEGRITY_KEY:
+			'The integrity key is too short or looks like a placeholder — event signatures could be forged. Generate one with openssl rand -hex 32.',
 		TRANSPORT_NOT_STARTED: 'The event transport has not started yet.',
 		EVENT_TAMPERED: 'Event {event} no longer matches its signature — it was changed.',
 		EVENTS_UNSIGNED: '{count} event(s) predate signing and cannot be verified.',

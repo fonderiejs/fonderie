@@ -88,11 +88,11 @@ new AdminModule({
 });
 ```
 
-## `GET /_admin/config`, `/_admin/routes`, `/_admin/access/tokens`
+## `GET /_admin/environment`, `/_admin/routes`, `/_admin/access/tokens`
 
-- **config** — readiness problems per module, and the presence (never the
-  value) of each environment variable the deployment reads. Bricks never
-  read `process.env` — config is injected — so the app names them:
+- **environment** — readiness problems per module, and the presence (never the
+  value) of each environment variable the deployment reads. Most bricks take
+  their values as options, so the env name is the app's choice — the app lists them:
   `new AdminModule({ adminToken, env: ['DATABASE_URL', 'STRIPE_SECRET_KEY'] })`.
 - **routes** — every route in the table with a guard class: `admin` (behind
   this token), `probe` (core's `/healthz` `/readyz` `/metrics`), `app`
