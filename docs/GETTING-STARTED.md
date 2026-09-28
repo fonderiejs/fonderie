@@ -54,7 +54,7 @@ import { BillingModule, StripeProvider } from '@fonderie/billing';
 import { PermissionsModule } from '@fonderie/permissions';
 
 // …
-  .register(new BillingModule(store, { provider: new StripeProvider(secretKey), plans, successUrl, cancelUrl }))
+  .register(new BillingModule(store, { provider: new StripeProvider(secretKey), webhookSecret: process.env.STRIPE_WEBHOOK_SECRET, plans, successUrl, cancelUrl }))
   .register(new PermissionsModule(store))
 ```
 

@@ -62,7 +62,7 @@ const store = new PGAdapter(process.env.DATABASE_URL!);
 const app = await new FonderieApp(defineConfig({ basePath: '/v1', db: { url: process.env.DATABASE_URL! } }))
   .register(new AuthModule(store, { providers: ['email'], appName: 'my-api', jwtSecret: process.env.JWT_SECRET! }))
   .register(new WorkspacesModule(store))
-  .register(new BillingModule(store, { provider: new StripeProvider(secretKey), plans: [...], successUrl, cancelUrl }))
+  .register(new BillingModule(store, { provider: new StripeProvider(secretKey), webhookSecret: process.env.STRIPE_WEBHOOK_SECRET, plans: [...], successUrl, cancelUrl }))
   .boot();
 
 app.listen(3000, { name: 'my-api' });

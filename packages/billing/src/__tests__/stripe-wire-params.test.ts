@@ -54,3 +54,15 @@ test('the pinned API version is the one these parameters belong to', () => {
 	// parameter have to move together; either alone is broken.
 	assert.match(STRIPE_API_VERSION, /\.dahlia$/, 'pin and wire parameters have drifted apart');
 });
+
+// The webhook secret positional argument was never used; options may now be the
+// second argument. Both forms must land the same options.
+test('StripeProvider: options as 2nd argument, and the legacy (key, secret, options) form', async () => {
+	const { StripeProvider, SUPPORTED_PAYMENT_OPTIONS } = await import('../providers/stripe');
+	const opts = { setupPaymentMethodTypes: [SUPPORTED_PAYMENT_OPTIONS.CARD, SUPPORTED_PAYMENT_OPTIONS.LINK] };
+	const optionsOf = (p: unknown) => (p as { options: unknown }).options;
+	assert.deepEqual(optionsOf(new StripeProvider('sk_test_x', opts)), opts);
+	assert.deepEqual(optionsOf(new StripeProvider('sk_test_x', 'whsec_ignored', opts)), opts);
+	assert.deepEqual(optionsOf(new StripeProvider('sk_test_x', undefined, opts)), opts);
+	assert.deepEqual(optionsOf(new StripeProvider('sk_test_x')), {});
+});

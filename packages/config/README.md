@@ -64,7 +64,10 @@ is the single decrypt path.
 ```ts
 import { setSecret, revealSecret, createAesGcmEncryptor } from '@fonderie/config';
 
-const enc = createAesGcmEncryptor(process.env.SECRET_KEY); // 32-byte hex, or omit for masked-only
+// CONFIG_SECRET_KEY: 64 hex chars (`openssl rand -hex 32`). createAesGcmEncryptor
+// throws on anything else, including unset — to run without secrets, pass no
+// encryptor at all (the HTTP secrets surface then answers 503 SECRETS_DISABLED).
+const enc = createAesGcmEncryptor(process.env.CONFIG_SECRET_KEY!);
 await setSecret({ key: 'stripe.key', value: 'sk_live_…', actor: 'ada' }, store, enc);
 const value = await revealSecret('stripe.key', 'all', store, enc);
 ```

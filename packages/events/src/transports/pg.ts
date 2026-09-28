@@ -1,5 +1,6 @@
 import pg from 'pg';
 
+import { secretStrengthProblem } from '@fonderie/core';
 import { PGAdapter } from '@fonderie/store';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { IEventTransport } from './types';
@@ -262,6 +263,11 @@ export class PGTransport implements IEventTransport {
 	// For the doctor's integrity check; null before start().
 	storeForIntegrity(): IStoreAdapter | null {
 		return this.store ?? null;
+	}
+
+	/** Core's shared secret-strength verdict on the key; null when strong or unset. */
+	integrityKeyProblem(): 'too-short' | 'placeholder' | null {
+		return this.hasIntegrityKey() ? secretStrengthProblem(this.integrityKey as string) : null;
 	}
 
 	/** Whether this transport signs what it publishes (an integrityKey is set). */

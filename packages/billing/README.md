@@ -22,6 +22,9 @@ const store = new PGAdapter(process.env.DATABASE_URL!);
 const app = await new FonderieApp(defineConfig({ db: { url: process.env.DATABASE_URL! } }))
   .register(new BillingModule(store, {
     provider: new StripeProvider(process.env.STRIPE_SECRET_KEY!),
+    // Verifies POST /billing/webhook. Without it the endpoint answers 500 and
+    // subscription changes never sync (readiness: WEBHOOK_SECRET_MISSING).
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     plans: [/* IBillingPlan[] — see "Plans" below */],
     successUrl: 'https://app.example.com/billing/success',
     cancelUrl: 'https://app.example.com/billing/cancel',
@@ -51,7 +54,7 @@ new BillingModule(store, {
   successUrl, cancelUrl, webhookSecret,
   wallet: {
     currency: 'USD',
-    webhookSecret: process.env.STRIPE_PAYMENT_WEBHOOK_SECRET, // separate endpoint
+    webhookSecret: process.env.STRIPE_WALLET_WEBHOOK_SECRET, // separate endpoint, separate secret
     creditPacks: [{ id: 'small', name: 'Small pack', credits: 5000n, priceAmount: 499n }],
   },
   plans: [{
@@ -112,9 +115,9 @@ defaulting to card only:
 import { StripeProvider, SUPPORTED_PAYMENT_OPTIONS } from '@fonderie/billing';
 
 // default — card only: displayable ("Visa •••• 4242"), off-session-chargeable, on-page
-new StripeProvider(secretKey, webhookSecret);
+new StripeProvider(secretKey);
 // equivalent explicit form, and how to broaden it:
-new StripeProvider(secretKey, webhookSecret, {
+new StripeProvider(secretKey, {
   setupPaymentMethodTypes: [SUPPORTED_PAYMENT_OPTIONS.CARD],
 });
 ```

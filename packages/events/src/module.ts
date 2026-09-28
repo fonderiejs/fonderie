@@ -173,7 +173,8 @@ export class EventsModule implements IFonderieModule {
 	// history undetectably — a finding worth surfacing (not fatal).
 	checkReadiness(): IReadinessProblem[] {
 		const t = this.transport;
-		if (t instanceof PGTransport && !t.hasIntegrityKey()) {
+		if (!(t instanceof PGTransport)) return [];
+		if (!t.hasIntegrityKey()) {
 			return [
 				{
 					module: this.name,
@@ -182,6 +183,24 @@ export class EventsModule implements IFonderieModule {
 						'no integrityKey — the event/audit log is not tamper-evident; set one to enable per-event HMACs',
 					domain: 'events',
 					reason: 'NO_INTEGRITY_KEY',
+				},
+			];
+		}
+		// Any non-empty key used to pass; a guessable one makes the HMACs forgeable,
+		// so hold it to the same bar as every other Fonderie secret.
+		const weak = t.integrityKeyProblem();
+		if (weak) {
+			return [
+				{
+					module: this.name,
+					severity: 'warning',
+					message:
+						weak === 'too-short'
+							? 'integrityKey is shorter than 32 characters — event HMACs are guessable; generate one with `openssl rand -hex 32`'
+							: 'integrityKey looks like a placeholder — event HMACs are forgeable; generate one with `openssl rand -hex 32`',
+					domain: 'events',
+					reason: 'WEAK_INTEGRITY_KEY',
+					metadata: { problem: weak },
 				},
 			];
 		}

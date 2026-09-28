@@ -2,18 +2,19 @@
 // it touches the store, and IPs are bucketed so per-address rotation can't
 // evade velocity. Nothing here is ever exported to analytics.
 import { createHash } from 'node:crypto';
-
-const PLACEHOLDER_PEPPERS = new Set(['change-me', 'dev-pepper', 'change-me-long-random-string']);
+import { secretStrengthProblem } from '@fonderie/core';
 
 /** Resolve the pepper: a caller-supplied value wins; otherwise fall back to a
  * dev pepper OUTSIDE production and throw INSIDE it (a leaked store must not be
  * dictionary-attackable). */
 export function resolvePepper(supplied?: string): string {
 	const p = supplied ?? process.env.RISK_PEPPER;
-	if (p && p.length >= 32 && !PLACEHOLDER_PEPPERS.has(p)) return p;
+	// The same bar as every other Fonderie secret (core's shared rule), not a
+	// private denylist: a pepper `fonderie env check` accepts must boot here.
+	if (p && secretStrengthProblem(p) === null) return p;
 	if (process.env.NODE_ENV === 'production') {
 		throw new Error(
-			'@fonderie/risk: a unique pepper of >=32 chars is required in production ' +
+			'@fonderie/risk: a unique pepper of >=32 chars with no placeholder words is required in production ' +
 				'(pass RiskEngine({ pepper }) or set RISK_PEPPER) — without it the hashed ' +
 				'risk_events store is dictionary-attackable offline.',
 		);

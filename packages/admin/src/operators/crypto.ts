@@ -178,8 +178,9 @@ export function passwordProblem(password: unknown): string | null {
 
 // ── TOTP secret at rest ────────────────────────────────────────────────────
 // A TOTP secret must stay reversible, so it is encrypted, not hashed, with the
-// app's operatorKey (64 hex). Without a key it is stored as-is and readiness
-// says so. Same `v1:iv:tag:data` shape as @fonderie/auth's MFA cipher.
+// app's operatorKey (64 hex). Without a key it is stored as-is; readiness flags
+// only a malformed key, not a missing one (see AdminModule.checkReadiness).
+// Same `v1:iv:tag:data` shape as @fonderie/auth's MFA cipher.
 
 const PREFIX = 'op.v1:';
 

@@ -59,6 +59,10 @@ const reasons: typeof en = {
 			'La formule {plan} accorde un solde, mais le portefeuille est désactivé — ce solde n’a aucun effet.',
 		NEGATIVE_ROLLOVER_CAP:
 			'La formule {plan} a un plafond de report négatif ({cap}) — utilisez 0 ou plus, none ou full.',
+		WEBHOOK_SECRET_MISSING:
+			'Le secret du webhook d’abonnement n’est pas défini — les appels de Stripe à /billing/webhook échouent et les renouvellements et résiliations ne sont jamais appliqués.',
+		WALLET_WEBHOOK_SECRET_MISSING:
+			'Le secret du webhook du portefeuille n’est pas défini — les appels de Stripe à /billing/webhook/payment échouent et les achats de packs de crédits ne sont jamais crédités.',
 		PROVIDER_CANNOT_BE_ASKED:
 			'Le prestataire de paiement ne peut pas répondre à cette vérification.',
 		PUBLIC_URL_NOT_SET:
@@ -98,6 +102,8 @@ const reasons: typeof en = {
 	events: {
 		NO_INTEGRITY_KEY:
 			'Aucune clé d’intégrité — le journal des événements n’est pas protégé contre la falsification.',
+		WEAK_INTEGRITY_KEY:
+			'La clé d’intégrité est trop courte ou ressemble à une valeur d’exemple — les signatures des événements pourraient être falsifiées. Générez-en une avec openssl rand -hex 32.',
 		TRANSPORT_NOT_STARTED: 'Le transport des événements n’a pas encore démarré.',
 		EVENT_TAMPERED: 'L’événement {event} ne correspond plus à sa signature — il a été modifié.',
 		EVENTS_UNSIGNED: '{count} événement(s) antérieurs à la signature ne peuvent pas être vérifiés.',

@@ -440,11 +440,27 @@ export class StripeProvider implements IBillingProvider {
 	readonly name = 'stripe';
 	readonly apiVersion = STRIPE_API_VERSION;
 
+	private options: IStripeProviderOptions;
+
+	/**
+	 * `new StripeProvider(secretKey)` or `new StripeProvider(secretKey, options)`.
+	 *
+	 * The legacy `(secretKey, webhookSecret, options)` form still compiles, but
+	 * the webhook secret there was never used: signatures are verified with
+	 * `config.webhookSecret` (subscriptions) and `config.wallet.webhookSecret`
+	 * (pack purchases) on BillingModule. That form is removed in the next major.
+	 */
+	constructor(secretKey: string, options?: IStripeProviderOptions);
+	/** @deprecated The webhook secret is ignored — set `config.webhookSecret` on BillingModule. */
+	constructor(secretKey: string, webhookSecret: string | undefined, options?: IStripeProviderOptions);
 	constructor(
 		private secretKey: string,
-		private webhookSecret?: string,
-		private options: IStripeProviderOptions = {},
-	) {}
+		secretOrOptions?: string | IStripeProviderOptions,
+		options: IStripeProviderOptions = {},
+	) {
+		this.options =
+			typeof secretOrOptions === 'object' && secretOrOptions !== null ? secretOrOptions : options;
+	}
 
 	private async client(): Promise<any> {
 		return getClient(this.secretKey);

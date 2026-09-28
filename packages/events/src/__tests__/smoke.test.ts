@@ -244,6 +244,19 @@ describe('EventsModule.checkReadiness', () => {
 		});
 		assert.deepEqual(keyed.checkReadiness(), []);
 	});
+	it('warns on a short or placeholder integrityKey (any non-empty key used to pass)', () => {
+		const withKey = (integrityKey: string) =>
+			new EventsModule({
+				transport: { type: 'pg', connectionUrl: 'postgres://localhost/x', integrityKey },
+			}).checkReadiness();
+		const short = withKey('k');
+		assert.equal(short.length, 1);
+		assert.equal(short[0]?.reason, 'WEAK_INTEGRITY_KEY');
+		assert.deepEqual(short[0]?.metadata, { problem: 'too-short' });
+		assert.deepEqual(withKey('change-me-please-this-is-long-enough-now')[0]?.metadata, {
+			problem: 'placeholder',
+		});
+	});
 });
 
 // ── Retention / disposal ───────────────────────────────────────────────

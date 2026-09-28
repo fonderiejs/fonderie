@@ -15,7 +15,8 @@ new BillingModule(store: IStoreAdapter, config: IBillingConfig, bus?: EventBus |
   .describeAdmin(): IAdminDescription
   .checkReadiness(): IReadinessProblem[]
 
-new StripeProvider(secretKey: string, webhookSecret?: string | undefined, options?: IStripeProviderOptions): StripeProvider
+new StripeProvider(secretKey: string, options?: IStripeProviderOptions | undefined): StripeProvider
+new StripeProvider(secretKey: string, webhookSecret: string | undefined, options?: IStripeProviderOptions | undefined): StripeProvider
   .name: "stripe"
   .apiVersion: "2026-08-26.dahlia"
   .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>

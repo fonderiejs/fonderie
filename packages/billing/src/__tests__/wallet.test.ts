@@ -2626,6 +2626,15 @@ test('withBilling: no low-balance signal when the plan sets no threshold', async
 
 // ── production readiness: a receipt path is mandatory when taking money ──
 
+// Both webhook secrets set — the other readiness checks assume a fully wired
+// setup, so the fixtures that mean "clean" carry them.
+const withWebhookSecrets = (c: IBillingConfig): IBillingConfig =>
+	({
+		...c,
+		webhookSecret: 'whsec_aaaa',
+		...(c.wallet ? { wallet: { ...c.wallet, webhookSecret: 'whsec_bbbb' } } : {}),
+	}) as IBillingConfig;
+
 test('collectBillingReadinessProblems: silent when no payments are enabled', async () => {
 	const { collectBillingReadinessProblems } = await import('../services/notify');
 	const noPay = {
@@ -2640,23 +2649,23 @@ test('collectBillingReadinessProblems: silent when no payments are enabled', asy
 
 test('collectBillingReadinessProblems: clean when payments + bus + resolver are all wired', async () => {
 	const { collectBillingReadinessProblems } = await import('../services/notify');
-	const config = {
+	const config = withWebhookSecrets({
 		...walletConfig(),
 		resolveRecipient: () => ({ email: 'a@b.com' }),
-	} as IBillingConfig;
+	} as IBillingConfig);
 	assert.deepEqual(collectBillingReadinessProblems(config, true), []);
 });
 
 test('collectBillingReadinessProblems: flags a missing bus or resolver when payments are enabled', async () => {
 	const { collectBillingReadinessProblems } = await import('../services/notify');
 	// Wallet enables payments; a paid plan does too.
-	const walletOnly = walletConfig();
-	const paidPlan = {
+	const walletOnly = withWebhookSecrets(walletConfig());
+	const paidPlan = withWebhookSecrets({
 		provider: {},
 		plans: [{ name: 'pro', monthly: { priceId: 'price_x' } }],
 		successUrl: 'x',
 		cancelUrl: 'y',
-	} as IBillingConfig;
+	} as IBillingConfig);
 
 	// No bus.
 	assert.equal(collectBillingReadinessProblems(walletOnly, false).length, 1);
@@ -2691,7 +2700,8 @@ test('collectBillingReadinessProblems: a negative rollover cap errors in product
 		successUrl: 'x',
 		cancelUrl: 'y',
 		resolveRecipient: () => ({ email: 'a@b.com' }),
-		wallet: { currency: 'USD' },
+		webhookSecret: 'whsec_aaaa',
+		wallet: { currency: 'USD', webhookSecret: 'whsec_bbbb' },
 		plans: [
 			{
 				name: 'pro',
@@ -2731,7 +2741,7 @@ test('collectBillingReadinessProblems: error in production, warning elsewhere', 
 test('BillingModule.checkReadiness: surfaces the missing receipt path (no bus)', async () => {
 	const { BillingModule } = await import('../module');
 	const store = walletEmulator();
-	const mod = new BillingModule(store, walletConfig());
+	const mod = new BillingModule(store, withWebhookSecrets(walletConfig()));
 	const problems = mod.checkReadiness();
 	assert.equal(problems.length, 1);
 	assert.equal(problems[0]!.module, '@fonderie/billing');
@@ -2741,10 +2751,10 @@ test('BillingModule.checkReadiness: clean with a bus + resolver wired', async ()
 	const { BillingModule } = await import('../module');
 	const { EventBus, MemoryTransport } = await import('@fonderie/events');
 	const store = walletEmulator();
-	const config = {
+	const config = withWebhookSecrets({
 		...walletConfig(),
 		resolveRecipient: () => ({ email: 'a@b.com' }),
-	} as IBillingConfig;
+	} as IBillingConfig);
 	const mod = new BillingModule(store, config, new EventBus(new MemoryTransport()));
 	assert.deepEqual(mod.checkReadiness(), []);
 });
@@ -3356,11 +3366,25 @@ test('readiness: auto-recharge referencing an unknown pack is flagged', async ()
 
 test('readiness: correctly-wired auto-recharge adds no problems', async () => {
 	const { collectBillingReadinessProblems } = await import('../services/notify');
-	const config = {
+	const config = withWebhookSecrets({
 		...autoRechargeConfig(),
 		resolveRecipient: () => ({ email: 'a@b.com' }),
-	} as IBillingConfig;
+	} as IBillingConfig);
 	assert.equal(collectBillingReadinessProblems(config, true).length, 0);
+});
+
+test('readiness: a missing webhook secret is flagged only when money moves', async () => {
+	const { collectBillingReadinessProblems } = await import('../services/notify');
+	const reasons = (c: IBillingConfig) =>
+		collectBillingReadinessProblems(c, true).map((p) => p.reason);
+	const wired = { ...walletConfig(), resolveRecipient: () => ({ email: 'a@b.com' }) } as IBillingConfig;
+	// Neither secret: both endpoints would 500.
+	assert.deepEqual(reasons(wired).sort(), ['WALLET_WEBHOOK_SECRET_MISSING', 'WEBHOOK_SECRET_MISSING']);
+	// The subscription secret does not stand in for the wallet one.
+	assert.deepEqual(reasons({ ...wired, webhookSecret: 'whsec_aaaa' }), ['WALLET_WEBHOOK_SECRET_MISSING']);
+	// Free-only: no billing webhooks arrive, nothing to flag.
+	const freeOnly = { provider: {}, plans: [{ name: 'free' }], successUrl: 'x', cancelUrl: 'y' } as IBillingConfig;
+	assert.deepEqual(reasons(freeOnly), []);
 });
 
 test('auto-recharge: a refund of an auto-recharge charge claws back the full credits (amountPaid recorded)', async () => {

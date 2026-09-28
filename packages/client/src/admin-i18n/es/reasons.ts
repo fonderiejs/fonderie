@@ -58,6 +58,10 @@ const reasons: typeof en = {
 			'El plan {plan} concede un saldo, pero el monedero está desactivado — ese saldo no tiene efecto.',
 		NEGATIVE_ROLLOVER_CAP:
 			'El plan {plan} tiene un tope de acumulación negativo ({cap}) — usa 0 o más, none o full.',
+		WEBHOOK_SECRET_MISSING:
+			'El secreto del webhook de suscripciones no está definido — las llamadas de Stripe a /billing/webhook fallan y las renovaciones y cancelaciones nunca se aplican.',
+		WALLET_WEBHOOK_SECRET_MISSING:
+			'El secreto del webhook del monedero no está definido — las llamadas de Stripe a /billing/webhook/payment fallan y las compras de paquetes de créditos nunca se abonan.',
 		PROVIDER_CANNOT_BE_ASKED: 'El proveedor de pagos no puede responder a esta comprobación.',
 		PUBLIC_URL_NOT_SET:
 			'La URL pública de la API no está definida, así que no se pueden comprobar los endpoints de webhook.',
@@ -96,6 +100,8 @@ const reasons: typeof en = {
 	events: {
 		NO_INTEGRITY_KEY:
 			'No hay clave de integridad — el registro de eventos no está protegido contra manipulaciones.',
+		WEAK_INTEGRITY_KEY:
+			'La clave de integridad es demasiado corta o parece un valor de ejemplo — las firmas de los eventos podrían falsificarse. Genera una con openssl rand -hex 32.',
 		TRANSPORT_NOT_STARTED: 'El transporte de eventos aún no se ha iniciado.',
 		EVENT_TAMPERED: 'El evento {event} ya no coincide con su firma — fue modificado.',
 		EVENTS_UNSIGNED: '{count} evento(s) anteriores a la firma no se pueden verificar.',
