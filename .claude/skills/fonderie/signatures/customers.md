@@ -4,7 +4,7 @@
 
 ## @fonderie/customers
 
-Subpath exports: `@fonderie/customers/types`, `@fonderie/customers/migrations`
+Subpath exports: `@fonderie/customers/types`, `@fonderie/customers/migrations`, `@fonderie/customers/env.json`
 
 ```ts
 type CustomersEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];

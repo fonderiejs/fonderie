@@ -4,7 +4,7 @@
 
 ## @fonderie/events
 
-Subpath exports: `@fonderie/events/migrations`
+Subpath exports: `@fonderie/events/migrations`, `@fonderie/events/env.json`
 
 ```ts
 new EventBus(transport: IEventTransport): EventBus

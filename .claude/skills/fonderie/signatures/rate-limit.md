@@ -4,7 +4,7 @@
 
 ## @fonderie/rate-limit
 
-Subpath exports: `@fonderie/rate-limit/migrations`
+Subpath exports: `@fonderie/rate-limit/migrations`, `@fonderie/rate-limit/env.json`
 
 ```ts
 interface IRateLimitRule {

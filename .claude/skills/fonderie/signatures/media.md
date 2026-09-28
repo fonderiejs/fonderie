@@ -4,7 +4,7 @@
 
 ## @fonderie/media
 
-Subpath exports: `@fonderie/media/migrations`
+Subpath exports: `@fonderie/media/migrations`, `@fonderie/media/env.json`
 
 ```ts
 new MediaModule(store: IStoreAdapter, config: IMediaConfig): MediaModule

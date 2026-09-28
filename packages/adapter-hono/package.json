@@ -21,7 +21,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
-		}
+		},
+		"./env.json": "./env.json"
 	},
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
@@ -71,7 +72,8 @@
 		"dist",
 		"brain",
 		"LICENSE",
-		"README.md"
+		"README.md",
+		"env.json"
 	],
 	"repository": {
 		"type": "git",

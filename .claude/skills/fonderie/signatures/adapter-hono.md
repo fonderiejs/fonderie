@@ -4,6 +4,8 @@
 
 ## @fonderie/adapter-hono
 
+Subpath exports: `@fonderie/adapter-hono/env.json`
+
 ```ts
 function bridge(fonderie: FonderieApp, options?: IBridgeOptions): MiddlewareHandler
 

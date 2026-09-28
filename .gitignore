@@ -27,27 +27,12 @@ PLAN-*.md
 **/.env
 **/.env.local
 
-# Local scripts (tracked exceptions re-included below)
+# Local scripts. Every .mjs under the root scripts/ is repo tooling and is
+# tracked; per-file re-includes made each NEW gate silently miss its commit
+# (CI then failed with "Cannot find module" — three times). Local helpers
+# (.sh and the like) stay ignored.
 **/scripts/*
-!scripts/generate-signatures.mjs
-!scripts/audit-validation.mjs
-!scripts/check-hook-coverage.mjs
-!scripts/check-hook-parity.mjs
-!scripts/check-template-coverage.mjs
-!scripts/generate-outcomes.mjs
-!scripts/dump-handles.mjs
-!scripts/generate-brain.mjs
-!scripts/brain-query.mjs
-!scripts/brain-lib.mjs
-!scripts/brain-serve.mjs
-!scripts/brain-serve.test.mjs
-!scripts/brain-completeness.test.mjs
-!scripts/brain-hook.mjs
-!scripts/generate-project-brain.mjs
-!scripts/project-brain.test.mjs
-!scripts/brain-fragment.mjs
-!scripts/brain-r3.test.mjs
-!scripts/generate-skill.mjs
+!scripts/*.mjs
 
 # Editor / tool state — but ship .claude/skills, it's part of the product
 .claude/*

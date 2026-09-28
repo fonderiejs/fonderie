@@ -4,7 +4,7 @@
 
 ## @fonderie/core
 
-Subpath exports: `@fonderie/core/config`, `@fonderie/core/types`, `@fonderie/core/middlewares`, `@fonderie/core/parser`, `@fonderie/core/response`
+Subpath exports: `@fonderie/core/config`, `@fonderie/core/types`, `@fonderie/core/middlewares`, `@fonderie/core/parser`, `@fonderie/core/response`, `@fonderie/core/env.json`
 
 ```ts
 interface IAdminCheck {

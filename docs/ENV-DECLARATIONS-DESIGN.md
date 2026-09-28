@@ -53,28 +53,40 @@ the admin module imports the same file at runtime.
 
 ```jsonc
 {
-  "$schema": "https://fonderie.dev/schema/env.v1.json",
-  "brick": "@fonderie/auth",
+  "$comment": "…what reads this file…",
+  "brick": "@fonderie/auth",            // must equal package.json "name"
   "vars": [
     {
       "name": "JWT_SECRET",
-      "source": "option",              // option | direct | platform
-      "feeds": "AuthModule.jwtSecret", // option path, or the file that reads it
-      "required": "always",            // always | production | when-feature | never
+      "source": "option",               // direct | option | platform
+      "required": "always",             // always | production | feature | never
       "secret": true,
-      "kind": "secret32",              // see kinds below
-      "generate": "base64-32",         // how the generator fills it; null = human supplies
-      "dev": null,                     // value for a generated local .env, if not generated
-      "default": null,                 // what the brick does when unset (documentation)
-      "description": "Signs session JWTs. ≥32 chars, no placeholder words.",
-      "enforcedBy": "readiness:JWT_SECRET_TOO_SHORT"
+      "kind": "secret32",               // see kinds below
+      "feeds": "jwtSecret",             // the option it feeds, or what reads it
+      "generate": "base64-32",          // CLI fills it; exclusive with "dev"
+      "enforcedBy": "readiness:JWT_SECRET_TOO_SHORT|JWT_SECRET_PLACEHOLDER (error in production)",
+      "description": "Signs session tokens. At least 32 characters, no placeholder words."
+    },
+    {
+      "name": "GOOGLE_REDIRECT_URI",
+      "source": "option", "required": "feature", "feature": "google",
+      "secret": false, "kind": "url", "feeds": "google.redirectUri",
+      "deprecatedNames": ["GOOGLE_CALLBACK_URL"],
+      "description": "Callback URL registered with Google, ending in /auth/oauth/google/callback."
     }
   ],
   "features": {
-    "google": { "description": "Sign in with Google", "all": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI"] }
+    "google": { "description": "Sign in with Google — all or none (readiness GOOGLE_INCOMPLETE)" }
   }
 }
 ```
+
+The shipped files are canonical: `packages/<brick>/env.json`. The rules are
+enforced by `validateDeclaration` in `packages/cli/bin/env.mjs` — a `feature`
+var names a described feature, a described feature has vars, only secrets are
+generated, `generate` and `dev` are exclusive, platform variables are never
+written. `dev` is allowed on a secret (a local `DATABASE_URL` is useful); a
+generated one is fresh per project instead.
 
 **`source`** separates three kinds of variable that must be treated differently:
 
@@ -222,6 +234,10 @@ in-repo starter. The cloned `template-starter` repo is regenerated in build step
 ---
 
 ## 6. Draft declarations, per brick
+
+> Superseded by the shipped `packages/*/env.json` (build step 3). Kept as the
+> audit-time draft; where they differ, the files win — e.g. `EVENTS_INTEGRITY_KEY`
+> is `secret32`, `PORT` is core's, retention and `CRON_SECRET` are app-owned.
 
 `R` = required: **A** always, **P** production only, **F** when its feature is
 used, **–** optional. `S` = secret. `G` = generate recipe.
@@ -372,11 +388,13 @@ Drift the check finds in today's files (required only):
 1. **Settle §4's names** (two decisions marked there).
 2. **Fix the findings a declaration depends on:** E1–E4, E7, E11–E13, E20.
    The remaining findings are independent.
-3. **Schema + `resolveEnv`** in `@fonderie/cli`, with a gate `check:env-declarations`:
-   every backend brick has an `env.json`; every `process.env.X` in a brick's
-   `src/` appears in its declaration as `direct` or `platform` (negative-tested
-   with a fixture brick that reads an undeclared variable).
-4. **Write the declarations** from §6 — one changeset, patch per brick.
+3. ✅ **Schema + `resolveEnv`** in `@fonderie/cli` (`bin/env.mjs`), with the gate
+   `check:env-declarations`: every backend brick ships a valid, exported
+   `env.json`; every `process.env` read in its `src/` is declared `direct` or
+   `platform`; every `direct` variable is really read; code passing the whole
+   object is listed in `OPAQUE` with what it reads; all bricks resolve together
+   without conflict. The gate proves its scanner on a probe before scanning.
+4. ✅ **Declarations** for all 22 backend bricks (11 declare `vars: []`).
 5. **`fonderie env generate`**, then point `fonderie add` at it, regenerate
    every example's and the starter's `.env.example` (and push the starter
    template repo).

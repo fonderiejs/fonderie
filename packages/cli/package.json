@@ -26,7 +26,7 @@
 		"node": ">=20"
 	},
 	"scripts": {
-		"test": "node bin/fonderie.test.mjs"
+		"test": "node bin/fonderie.test.mjs && node --test bin/env.test.mjs"
 	},
 	"publishConfig": {
 		"access": "public"

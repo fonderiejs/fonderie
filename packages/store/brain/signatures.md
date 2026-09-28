@@ -4,7 +4,7 @@
 
 ## @fonderie/store
 
-Subpath exports: `@fonderie/store/sql`, `@fonderie/store/types`, `@fonderie/store/migrations`
+Subpath exports: `@fonderie/store/sql`, `@fonderie/store/types`, `@fonderie/store/migrations`, `@fonderie/store/env.json`
 
 ```ts
 function sql(strings: TemplateStringsArray, ...values: unknown[]): ISqlQuery

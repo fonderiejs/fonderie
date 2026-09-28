@@ -4,7 +4,7 @@
 
 ## @fonderie/storage
 
-Subpath exports: `@fonderie/storage/s3`, `@fonderie/storage/migrations`
+Subpath exports: `@fonderie/storage/s3`, `@fonderie/storage/migrations`, `@fonderie/storage/env.json`
 
 ```ts
 interface IStorageProvider {

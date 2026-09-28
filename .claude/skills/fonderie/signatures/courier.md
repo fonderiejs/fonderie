@@ -4,7 +4,7 @@
 
 ## @fonderie/courier
 
-Subpath exports: `@fonderie/courier/types`, `@fonderie/courier/migrations`
+Subpath exports: `@fonderie/courier/types`, `@fonderie/courier/migrations`, `@fonderie/courier/env.json`
 
 ```ts
 new CourierModule(config: ICourierConfig, store?: IStoreAdapter | undefined, bus?: EventBus | undefined): CourierModule
