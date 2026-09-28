@@ -1,5 +1,11 @@
 # @fonderie/cli
 
+## 0.14.1
+
+### Patch Changes
+
+- 67c5077: `fonderie env generate` no longer warns "ships no env.json … upgrade it" about `@fonderie/cli` itself or about frontend packages (`client`, `react-*`, `vue-*`) installed in the same project. They are not bricks and have no deploy-time variables. The brick rule is now one exported `isBrick()`, shared with the `check:env-declarations` gate.
+
 ## 0.14.0
 
 ### Minor Changes
