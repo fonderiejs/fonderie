@@ -1,5 +1,11 @@
 # @fonderie/client
 
+## 1.14.1
+
+### Patch Changes
+
+- 8dd41f4: Console dictionaries (en/fr/es) gain the sentences for billing's `WEBHOOK_SECRET_MISSING` and `WALLET_WEBHOOK_SECRET_MISSING` and events' `WEAK_INTEGRITY_KEY`.
+
 ## 1.14.0
 
 ### Minor Changes
