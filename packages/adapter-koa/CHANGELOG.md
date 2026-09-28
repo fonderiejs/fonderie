@@ -1,5 +1,12 @@
 # @fonderie/adapter-koa
 
+## 5.3.10
+
+### Patch Changes
+
+- Updated dependencies [4a4541f]
+  - @fonderie/core@0.23.0
+
 ## 5.3.9
 
 ### Patch Changes
