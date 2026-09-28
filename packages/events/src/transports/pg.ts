@@ -5,7 +5,8 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { IEventTransport } from './types';
 import type { IEventMeta, IEventHandler, IEventRecord } from '../types';
 import { matchesPattern } from './pattern';
-import { computeEventHmac } from '../integrity';
+import { computeEventHmac, verifyEventChain } from '../integrity';
+import type { IIntegrityReport } from '../integrity';
 import { explainListenFailure } from '../diagnose';
 
 export interface IConsumerBacklog {
@@ -263,6 +264,21 @@ export class PGTransport implements IEventTransport {
 		return this.store ?? null;
 	}
 
+	/** Whether this transport signs what it publishes (an integrityKey is set). */
+	hasIntegrityKey(): boolean {
+		return this.integrityKey !== undefined && this.integrityKey !== '';
+	}
+
+	/**
+	 * Re-verify every signed row with this transport's own key — so a module
+	 * handed a ready-made transport can audit it without the key ever leaving
+	 * the transport. Null when there is no key or the transport has not started.
+	 */
+	async verifyIntegrity(): Promise<IIntegrityReport | null> {
+		if (!this.hasIntegrityKey() || !this.store) return null;
+		return verifyEventChain(this.store, this.integrityKey as string);
+	}
+
 	async deadLetters(limit = 50): Promise<IDeadLetter[]> {
 		if (!this.store) return [];
 		return this.store.query<IDeadLetter>(
@@ -371,7 +387,9 @@ export class PGTransport implements IEventTransport {
 			[consumer, this.maxRetries, this.batchSize, this.claimTimeoutMs / 1000],
 		);
 
-		await Promise.all(claimed.map((row) => this.processConsumerEvent(store, consumer, row.event_id)));
+		await Promise.all(
+			claimed.map((row) => this.processConsumerEvent(store, consumer, row.event_id)),
+		);
 		return claimed.length;
 	}
 

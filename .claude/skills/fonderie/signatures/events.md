@@ -51,6 +51,8 @@ new PGTransport(config: IPGTransportConfig): PGTransport
   .stop(): Promise<void>
   .drain(options?: { maxMs?: number; }): Promise<void>
   .storeForIntegrity(): IStoreAdapter | null
+  .hasIntegrityKey(): boolean
+  .verifyIntegrity(): Promise<IIntegrityReport | null>
   .deadLetters(limit?: number): Promise<IDeadLetter[]>
   .pendingByConsumer(): Promise<IConsumerBacklog[]>
   .pendingCount(): Promise<number>
