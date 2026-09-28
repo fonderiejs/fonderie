@@ -174,7 +174,7 @@
       "recipe": "vue-workspaces-screens-wiring"
     },
     "react-courier-admin.templates": {
-      "description": "React hooks for courier's email/SMS/push template admin API — useTemplates, useTemplate, useSaveTemplate, useDeleteTemplate, useTemplateRevisions (list + rollback). Admin-token authenticated via a standalone CourierAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "description": "React hooks for courier's email/SMS/push template admin API — useTemplates (list + saveTemplate/removeTemplate), useTemplate, useTemplatePreview, useTemplateRevisions (list + rollback), useTemplateCatalog, useBuiltInTemplate, useTemplateResolution. Admin-token authenticated via a standalone CourierAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
       "package": "react-courier-admin",
       "recipe": "react-courier-admin-wiring"
     },
@@ -184,7 +184,7 @@
       "recipe": "react-courier-admin-screens-wiring"
     },
     "vue-courier-admin.composables": {
-      "description": "Vue composables for courier's email/SMS/push template admin API — useTemplates, useTemplate, useSaveTemplate, useDeleteTemplate, useTemplateRevisions (list + rollback). Admin-token authenticated via a standalone CourierAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "description": "Vue composables for courier's email/SMS/push template admin API — useTemplates (list + saveTemplate/removeTemplate), useTemplate, useTemplatePreview, useTemplateRevisions (list + rollback), useTemplateCatalog, useBuiltInTemplate, useTemplateResolution. Admin-token authenticated via a standalone CourierAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
       "package": "vue-courier-admin",
       "recipe": "vue-courier-admin-wiring"
     },

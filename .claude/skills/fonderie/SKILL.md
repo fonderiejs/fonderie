@@ -108,12 +108,12 @@ are already handled inside the hook — don't re-implement either in app code.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| React auth hooks | `@fonderie/react-auth` | `useLogin`, `useRegister`, `useSession`, `useLogout`, `useForgotPassword`, `useResetPassword`, `useVerifyEmail` |
-| React pre-built auth screens | `@fonderie/react-auth-screens` | `LoginScreen`, `RegisterScreen`, `ForgotPasswordScreen` built on the hooks above |
-| React Native auth hooks | `@fonderie/react-native-auth` | Same hooks as `react-auth`, token persisted to `AsyncStorage` |
-| React Native pre-built auth screens | `@fonderie/react-native-auth-screens` | Same three screens, React Native components |
+| React auth hooks | `@fonderie/react-auth` | `useLogin`, `useRegister`, `useSession`, `useLogout`, `useForgotPassword`, `useResetPassword`, `useVerifyEmail`, MFA (`useMfaLogin`, `useMfaSetup`), OAuth (`useAuthProviders`, `useUnlinkOauth`), account (`useProfile`, `useChangePassword`, `useAccountData`), and security history (`useSessions`, `useLoginHistory`) |
+| React pre-built auth screens | `@fonderie/react-auth-screens` | `LoginScreen`, `RegisterScreen`, `ForgotPasswordScreen`, `ResetPasswordScreen`, `VerifyEmailScreen`, `MfaChallengeScreen` built on the hooks above |
+| React Native auth hooks | `@fonderie/react-native-auth` | Same hooks as `react-auth` (plus `useAppleSignIn` for native Sign in with Apple), token persisted to `AsyncStorage` |
+| React Native pre-built auth screens | `@fonderie/react-native-auth-screens` | Same six screens, React Native components |
 | Vue 3 auth composables | `@fonderie/vue-auth` | Same shape as the React hooks, as Vue composables |
-| Vue 3 pre-built auth screens | `@fonderie/vue-auth-screens` | Same three screens, as Vue components |
+| Vue 3 pre-built auth screens | `@fonderie/vue-auth-screens` | Same six screens, as Vue components |
 
 Billing follows the same pattern (`client.billing` instead of `client.auth`).
 `client.auth` and `client.billing` share one token internally — signing in
@@ -136,11 +136,11 @@ header, same fallback behavior billing's `setWorkspaceId` uses.
 | Need | Don't write it — use | Gives you |
 |---|---|---|
 | React workspaces hooks | `@fonderie/react-workspaces` | `useWorkspaces` (list + `createWorkspace`/`acceptInvitation` methods), `useWorkspace`, `useWorkspaceProfile`, `useMembers` (`removeMember` method), `useInvitations`, `useWorkspaceSettings`, plus role management — `useRoles` (`updateRole` method), `useRole`, `useRolePermissions(roleId)` (`setRolePermissions` method), `useMemberRoles` (`@fonderie/permissions` has no HTTP API; role CRUD lives here) |
-| React pre-built workspaces screens | `@fonderie/react-workspaces-screens` | `TeamMembersScreen`, `InviteMembersScreen` built on the hooks above |
+| React pre-built workspaces screens | `@fonderie/react-workspaces-screens` | `TeamMembersScreen`, `InviteMembersScreen`, `AcceptInvitationScreen` built on the hooks above |
 | React Native workspaces hooks | `@fonderie/react-native-workspaces` | Re-exports `react-workspaces` as-is — no platform-specific storage, unlike auth |
-| React Native pre-built workspaces screens | `@fonderie/react-native-workspaces-screens` | Same two screens, React Native components |
+| React Native pre-built workspaces screens | `@fonderie/react-native-workspaces-screens` | Same three screens, React Native components |
 | Vue 3 workspaces composables | `@fonderie/vue-workspaces` | Same shape as the React hooks, as Vue composables |
-| Vue 3 pre-built workspaces screens | `@fonderie/vue-workspaces-screens` | Same two screens, as Vue components |
+| Vue 3 pre-built workspaces screens | `@fonderie/vue-workspaces-screens` | Same three screens, as Vue components |
 
 Audit follows the same session-authenticated pattern (`client.audit`,
 shared token, `setWorkspaceId`) — but it's read-only: `@fonderie/audit` has
@@ -196,10 +196,10 @@ admin-dashboard surface, not a phone screen.
 
 | Need | Don't write it — use | Gives you |
 |---|---|---|
-| React courier template-admin hooks | `@fonderie/react-courier-admin` | `useTemplates` (list; `setTemplate`/`deleteTemplate` methods), `useTemplate`, `useTemplatePreview`, `useTemplateRevisions` (list + rollback) |
-| React pre-built template-admin screens | `@fonderie/react-courier-admin-screens` | `TemplateListScreen`, `TemplateEditorScreen` (edit form + revision history + rollback) |
+| React courier template-admin hooks | `@fonderie/react-courier-admin` | `useTemplates` (list; `saveTemplate`/`removeTemplate` methods), `useTemplate`, `useTemplatePreview`, `useTemplateRevisions` (list + rollback), `useTemplateCatalog` (every type and language, built-in copy included), `useBuiltInTemplate` (the shipped default for one type), `useTemplateResolution` (which template a send would use) |
+| React pre-built template-admin screens | `@fonderie/react-courier-admin-screens` | `TemplateListScreen`, `TemplateCreateScreen`, `TemplateEditorScreen` (edit form + revision history + rollback) |
 | Vue 3 courier template-admin composables | `@fonderie/vue-courier-admin` | Same shape as the React hooks, as Vue composables |
-| Vue 3 pre-built template-admin screens | `@fonderie/vue-courier-admin-screens` | Same two screens, as Vue components |
+| Vue 3 pre-built template-admin screens | `@fonderie/vue-courier-admin-screens` | Same three screens, as Vue components |
 
 Config's admin surface follows the same pattern as courier's — a standalone
 `ConfigAdminClient` with its own `{ baseUrl, adminToken }`, not a
