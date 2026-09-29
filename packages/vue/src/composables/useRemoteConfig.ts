@@ -8,6 +8,11 @@ import { useFonderieSubClient } from '../provider';
 export interface IUseRemoteConfigOptions {
 	/** Re-load every N ms while the component is alive (e.g. 300_000). Default: load once. */
 	refreshMs?: number;
+	/**
+	 * Re-load when the server pushes a change (@fonderie/sse), while alive.
+	 * Additive: without a stream it does nothing and refreshMs keeps working.
+	 */
+	watch?: boolean;
 }
 
 export interface IUseRemoteConfigReturn {
@@ -35,10 +40,13 @@ export function useRemoteConfig(options: IUseRemoteConfigOptions = {}, client?: 
 	const timer =
 		options.refreshMs && options.refreshMs > 0 ? setInterval(() => void config.load(), options.refreshMs) : undefined;
 
+	const stopWatch = options.watch ? config.watch() : undefined;
+
 	if (getCurrentScope()) {
 		onScopeDispose(() => {
 			unsubscribe();
 			if (timer) clearInterval(timer);
+			stopWatch?.();
 		});
 	}
 
@@ -52,8 +60,11 @@ export function useRemoteConfig(options: IUseRemoteConfigOptions = {}, client?: 
 }
 
 // One flag or setting, as a computed ref. `fallback` renders before the first
-// load, when loading failed, or when the key is not exposed — pass the SAFE
-// value (feature off). `key` may be a ref or getter.
+// load, when loading failed, or when the key is not exposed. For a sub-feature
+// pass the SAFE value (off); for a whole SCREEN fall back to showing it and
+// seed saved values with client.config.hydrate() — a screen must never be
+// unavailable for lack of signal (docs/REALTIME-DESIGN.md §4.7). `key` may be
+// a ref or getter.
 //
 //   const showJobs = useFlag('ENABLE_JOB_LISTING', false);
 export function useFlag<T>(key: MaybeRefOrGetter<string>, fallback: T, client?: ConfigClient): ComputedRef<T> {

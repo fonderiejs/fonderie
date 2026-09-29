@@ -6,6 +6,11 @@ import { useFonderieSubClient } from '../provider';
 export interface IUseRemoteConfigOptions {
 	/** Re-load every N ms while mounted (e.g. 300_000). Default: load once. */
 	refreshMs?: number;
+	/**
+	 * Re-load when the server pushes a change (@fonderie/sse), while mounted.
+	 * Additive: without a stream it does nothing and refreshMs keeps working.
+	 */
+	watch?: boolean;
 }
 
 export interface IUseRemoteConfigReturn extends IRemoteConfigState {
@@ -37,14 +42,20 @@ export function useRemoteConfig(options: IUseRemoteConfigOptions = {}, client?: 
 		return () => clearInterval(timer);
 	}, [config, refreshMs]);
 
+	const { watch } = options;
+	useEffect(() => (watch ? config.watch() : undefined), [config, watch]);
+
 	const refresh = useCallback(() => config.load(), [config]);
 	return { ...state, refresh };
 }
 
 // One flag or setting. `fallback` is what renders before the first load, when
-// loading failed, or when the server does not expose the key — so pass the
-// SAFE value (feature off), never the optimistic one: a screen that appears and
-// then vanishes is worse than one that appears a moment late.
+// loading failed, or when the server does not expose the key.
+//   - A sub-feature (a button, a banner): pass the SAFE value (off) — it is
+//     better to appear a moment late than to appear and vanish.
+//   - A whole SCREEN: fall back to showing it, and seed saved values with
+//     client.config.hydrate() — a screen must never be unavailable because
+//     there is no signal (docs/REALTIME-DESIGN.md §4.7).
 //
 //   const showJobs = useFlag('ENABLE_JOB_LISTING', false);
 export function useFlag<T>(key: string, fallback: T, client?: ConfigClient): T {

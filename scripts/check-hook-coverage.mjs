@@ -17,6 +17,8 @@ const modulesDir = join(root, 'packages/client/src/modules');
 const ALLOW = new Map([
 	// Internal plumbing: hooks receive tokens/scoping via the shared stores.
 	['AuthClient.setAccessToken', 'internal token plumbing (hooks call it, not wrap it)'],
+	['SseClient.pause', 'app lifecycle, not UI state — called from the app\'s AppState/visibility handler'],
+	['SseClient.resume', 'app lifecycle, not UI state — called from the app\'s AppState/visibility handler'],
 	['BillingClient.setAccessToken', 'redundant setter; shared TokenStore'],
 	['WorkspacesClient.setAccessToken', 'redundant setter; shared TokenStore'],
 	['CustomersClient.setAccessToken', 'redundant setter; shared TokenStore'],

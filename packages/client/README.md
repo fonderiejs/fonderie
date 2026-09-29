@@ -36,6 +36,26 @@ Pairs with any API built on
 [@fonderie/core](https://github.com/fonderiejs/fonderie/tree/main/packages/core);
 the types stay in lockstep because both sides live in the same monorepo.
 
+## Realtime and offline
+
+```ts
+// Server-Sent Events from @fonderie/sse — one shared connection per client.
+const stop = client.sse.subscribe(['fonderie.customer.*'], (e) => refetch(e.data.customerId), {
+  onReset: refetchAll, // (re)connected: events may have been missed
+});
+
+// Remote config: seed from what you saved on the device BEFORE the first
+// render, then keep it fresh from the server's push.
+client.config.hydrate(savedValues);   // cold start with no signal still decides
+const unwatch = client.config.watch(); // re-loads on 'fonderie.config.changed'
+```
+
+`client.sse.status` is `'unavailable'` when the runtime cannot stream (React
+Native's default fetch — pass Expo's as `new FonderieClient({ sse: { fetch } })`)
+or the server has no `@fonderie/sse`; nothing breaks, polling carries on. Call
+`client.sse.pause()` / `resume()` when the app leaves and returns to the
+foreground.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
