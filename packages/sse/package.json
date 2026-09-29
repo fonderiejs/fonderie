@@ -1,0 +1,83 @@
+{
+	"name": "@fonderie/sse",
+	"version": "0.0.0",
+	"fonderie": { "stability": "experimental" },
+	"description": "Server-Sent Events delivery to frontends — clients subscribe to all or individual events, each brick's event catalog decides who may receive what (default deny), and fan-out works across instances. Push is additive: apps never wait on it.",
+	"keywords": [
+		"fonderiejs",
+		"sse",
+		"realtime",
+		"server-sent-events",
+		"events",
+		"push",
+		"saas",
+		"typescript"
+	],
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./pg": {
+			"types": "./dist/pg.d.ts",
+			"import": "./dist/pg.js",
+			"require": "./dist/pg.cjs"
+		},
+		"./env.json": "./env.json"
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "tsx --test src/__tests__/*.test.ts",
+		"lint": "biome lint src",
+		"format": "biome format --write src",
+		"check": "biome check --write src"
+	},
+	"peerDependencies": {
+		"@fonderie/core": "^0.25.0",
+		"pg": "^8.0.0"
+	},
+	"peerDependenciesMeta": {
+		"pg": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@fonderie/core": "../core",
+		"@types/node": "^26.6.1",
+		"@types/pg": "^8.21.0",
+		"pg": "^8.23.0",
+		"tsup": "^8.5.1",
+		"tsx": "^4.23.13",
+		"typescript": "^6.0.3"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist",
+		"brain",
+		"LICENSE",
+		"README.md",
+		"env.json"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fonderiejs/fonderie.git",
+		"directory": "packages/sse"
+	},
+	"homepage": "https://github.com/fonderiejs/fonderie/tree/main/packages/sse#readme",
+	"bugs": {
+		"url": "https://github.com/fonderiejs/fonderie/issues"
+	}
+}
