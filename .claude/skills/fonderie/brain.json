@@ -53,6 +53,7 @@
     "react-workspaces": "0.6.1",
     "react-workspaces-screens": "0.4.1",
     "risk": "0.3.3",
+    "sse": "0.0.0",
     "storage": "0.1.24",
     "store": "0.7.2",
     "vue": "0.3.0",
@@ -2287,6 +2288,28 @@
       "hasSignature": true,
       "hasOutcomes": true
     },
+    "sse": {
+      "version": "0.0.0",
+      "stability": "experimental",
+      "requires": [
+        "core"
+      ],
+      "dependsOn": [],
+      "exports": [
+        "SseModule",
+        "InProcessBroadcaster"
+      ],
+      "subpaths": [
+        "@fonderie/sse/pg",
+        "@fonderie/sse/env.json"
+      ],
+      "tables": [],
+      "routeCount": 0,
+      "routes": [],
+      "secures": [],
+      "hasSignature": true,
+      "hasOutcomes": false
+    },
     "storage": {
       "version": "0.1.24",
       "stability": "experimental",
@@ -3654,6 +3677,11 @@
       "type": "requires"
     },
     {
+      "from": "sse",
+      "to": "core",
+      "type": "requires"
+    },
+    {
       "from": "storage",
       "to": "core",
       "type": "requires"
@@ -4061,6 +4089,9 @@
     ],
     "risk": [
       "risk"
+    ],
+    "sse": [
+      "sse"
     ],
     "storage": [
       "storage"
@@ -6113,6 +6144,12 @@
     ],
     "trial_start_ruleset": [
       "risk"
+    ],
+    "ssemodule": [
+      "sse"
+    ],
+    "inprocessbroadcaster": [
+      "sse"
     ],
     "migrationrunner": [
       "store"

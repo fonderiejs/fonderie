@@ -31,6 +31,7 @@
     "check:template-coverage": "node scripts/check-template-coverage.mjs",
     "check:reasons": "node scripts/check-reasons.mjs",
     "check:env-declarations": "node scripts/check-env-declarations.mjs",
+    "check:ci-env": "node scripts/check-ci-env.mjs",
     "check:lockfile": "npm install --package-lock-only --ignore-scripts --no-audit --no-fund && git diff --exit-code package-lock.json",
     "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer",
     "check:hook-parity": "node scripts/check-hook-parity.mjs",
