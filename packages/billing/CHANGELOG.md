@@ -1,5 +1,12 @@
 # @fonderie/billing
 
+## 10.4.2
+
+### Patch Changes
+
+- Updated dependencies [0ea79cd]
+  - @fonderie/core@0.24.0
+
 ## 10.4.1
 
 ### Patch Changes
