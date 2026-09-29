@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/sse",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"fonderie": { "stability": "experimental" },
 	"description": "Server-Sent Events delivery to frontends — clients subscribe to all or individual events, each brick's event catalog decides who may receive what (default deny), and fan-out works across instances. Push is additive: apps never wait on it.",
 	"keywords": [
