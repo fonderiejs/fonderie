@@ -7,7 +7,7 @@
 Subpath exports: `@fonderie/adapter-koa/env.json`
 
 ```ts
-function koaContextToWeb(ctx: KoaContext, maxBytes?: number): Promise<Request>
+function koaContextToWeb(ctx: KoaContext, maxBytes?: number, signal?: AbortSignal | undefined): Promise<Request>
 
 function webResponseToKoa(webRes: Response, ctx: KoaContext): Promise<void>
 
@@ -42,6 +42,7 @@ interface KoaContext {
         set(key: string, value: string | string[]): void;
     };
     req: IncomingMessage;
+    res?: ServerResponse;
     state: Record<string, unknown>;
 }
 

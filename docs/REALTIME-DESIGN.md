@@ -1,6 +1,6 @@
 # Realtime delivery to frontends — design
 
-**Status:** problem statement + audit + proposed architecture (2026-09-29). Nothing built.
+**Status:** architecture agreed (2026-09-29); build started — step 1 (transport).
 
 ---
 
@@ -389,27 +389,46 @@ client.config.watch();   // subscribes to fonderie.config.changed → load()
 - React: `useRealtime(topics, handler)`; `useRemoteConfig` calls `watch()`
   when the server advertises the stream.
 
+### 4.7 Offline first — push is additive, never a precondition
+
+A realtime stream only makes a local snapshot fresher while online. Nothing
+may wait for it, or for any network call, to render: a phone restarted in a
+dead zone must open every screen its last-known config allowed. Rules every
+consumer of this design follows:
+
+- Decisions are made on the first frame from local state: this session's
+  values → values saved on the device from the last session → a default that
+  shows the feature.
+- The network (poll or stream) only refreshes that state in the background,
+  and each successful answer is saved for the next offline start.
+- A stream that is down, blocked or slow changes nothing but freshness.
+
+The client step (§6.5) therefore ships `client.config.hydrate(values)` — seed
+the snapshot from whatever the app persisted, before the first render — next
+to `watch()`. (The first consumer app implements this today with a persisted
+store slice; the SDK makes it the default path.)
+
 ---
 
-## 5. Open questions (for the reviewer)
+## 5. Decisions (were open questions; defaults taken 2026-09-29)
 
-1. **Audience set** — are `public / workspace / user / manager` enough, or do
-   we need permission-key audiences (`can('read', 'invoices')`) in v1?
-2. **Payload policy** — invalidation-only (proposed), or allow the catalog to
-   project small data (e.g. a job's new status) to save a round trip?
-3. **Lifetime bound** — 15 min between re-authorizations acceptable, or
-   tighter (5 min) at the cost of more reconnects?
-4. **Standalone process vs same app** — ship `runRealtime()` in v1 or only
-   "deploy the app on a long-running host"?
-5. **Scope in meta** — lift `{ workspaceId, userId }` into `IEventMeta` at emit
-   time (cleaner, touches every brick) or keep resolving from payload via the
-   catalog (no brick changes)? The dependency budget favours the catalog.
+1. **Audience set** — `public / workspace / user` built in; anything finer is
+   the app-supplied `(ctx, scope) => boolean` hook. No permission-key audiences
+   in v1.
+2. **Payload policy** — invalidation-only. The catalog's `project` returns ids
+   and scope, never domain data.
+3. **Lifetime bound** — 15 min, never past the token's `exp`.
+4. **Hosting** — v1 documents "the same app on a long-running host";
+   `runRealtime()` only if a consumer needs it.
+5. **Scope** — resolved from the payload through the catalog (no brick
+   changes), per the dependency budget.
 
 ## 6. Build order
 
-1. **Transport:** `sseResponse()` in core; streaming + abort in `listen()`,
+1. ✅ **Transport:** `sseResponse()` in core; streaming + abort in `listen()`,
    Express, Koa; signal survives the body parser. Tests: a stream sends bytes
-   before it ends, and a client disconnect runs cleanup — on all four.
+   before it ends, and a client disconnect runs cleanup — on all four (Hono
+   already streamed; now pinned). Non-stream responses unchanged.
 2. **Catalog:** `IEventCatalogEntry` + optional `describeEvents?()` in core;
    escaped topic matcher in events (fixes R4); first entries: config, customers.
 3. **Config:** declare `fonderie.config.changed` from its NOTIFY channel; NOTIFY
@@ -419,8 +438,10 @@ client.config.watch();   // subscribes to fonderie.config.changed → load()
    lifetime bound. Negative tests: an uncatalogued event never reaches a
    stream; a workspace event never reaches a non-member; a connection closes
    at its lifetime.
-5. **Client + hooks:** `client.realtime`, `config.watch()`, `useRealtime`, RN
-   foreground handling, polling fallback.
+5. **Client + hooks:** `client.realtime`, `config.watch()`,
+   `config.hydrate()` (offline first, §4.7), `useRealtime`, `pause()`/`resume()`,
+   polling fallback; `useFlag` docs stop recommending "off" as the fallback for
+   gating a whole screen.
 6. **Consumer app:** drop `LIVE_SCREENS` and check-before-render; deploy one
    stream host.
 7. **Later:** webhooks' event picker from the catalog; APNs/FCM wake-ups for
