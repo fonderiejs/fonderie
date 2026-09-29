@@ -1,5 +1,13 @@
 # @fonderie/workspaces
 
+## 6.1.3
+
+### Patch Changes
+
+- Updated dependencies [0ea79cd]
+  - @fonderie/core@0.24.0
+  - @fonderie/rate-limit@4.0.27
+
 ## 6.1.2
 
 ### Patch Changes
