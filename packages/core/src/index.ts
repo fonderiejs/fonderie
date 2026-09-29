@@ -63,6 +63,11 @@ export { constantTimeEqual } from './crypto';
 export { MIN_SECRET_LENGTH, PLACEHOLDER_SECRET, secretStrengthProblem } from './secret-strength';
 export { encodeKeysetCursor, decodeKeysetCursor } from './keyset-cursor';
 
+// Server-Sent Events + streaming Web Responses to Node (listen, adapters)
+export type { ISseEvent, ISseOptions, ISseStream } from './sse';
+export { SSE_CONTENT_TYPE, formatSseEvent, isEventStream, sseResponse } from './sse';
+export { abortOnDisconnect, pipeWebBody, writeWebHead, writeWebResponse } from './node-response';
+
 // Response helpers
 export type { IApiError, HttpStatus } from './response';
 export { HTTP, setApiResponse } from './response';

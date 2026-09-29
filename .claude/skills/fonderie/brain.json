@@ -948,6 +948,7 @@
         "SHIPPED_TEMPLATE_LANGUAGES",
         "MIN_SECRET_LENGTH",
         "PLACEHOLDER_SECRET",
+        "SSE_CONTENT_TYPE",
         "HTTP",
         "MetricsRegistry"
       ],
@@ -5469,6 +5470,9 @@
       "core"
     ],
     "placeholder_secret": [
+      "core"
+    ],
+    "sse_content_type": [
       "core"
     ],
     "http": [

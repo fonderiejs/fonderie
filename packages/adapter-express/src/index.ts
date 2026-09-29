@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RequestHandler } from 'express';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { background } from '@fonderie/core';
+import { abortOnDisconnect, background, writeWebResponse } from '@fonderie/core';
 import {
 	requireAuth as _requireAuth,
 	resolveClientIp,
@@ -63,6 +63,9 @@ const isPayloadTooLarge = (err: unknown): boolean =>
 export async function expressRequestToWeb(
 	req: ExpressRequest,
 	maxBytes = DEFAULT_MAX_BODY_BYTES,
+	// Aborts when the client disconnects (abortOnDisconnect(res)), so a
+	// streaming handler such as sseResponse() can clean up.
+	signal?: AbortSignal,
 ): Promise<Request> {
 	const encrypted = (req.socket as { encrypted?: boolean }).encrypted;
 	const protocol = encrypted ? 'https' : 'http';
@@ -88,20 +91,14 @@ export async function expressRequestToWeb(
 	}
 	const body = hasBody ? await readStream(req, maxBytes) : null;
 
-	return new Request(url, { method, headers, body });
+	return new Request(url, { method, headers, body, ...(signal ? { signal } : {}) });
 }
 
+// Core's writer: Set-Cookie forwarded as a list, binary-safe buffered bodies,
+// and text/event-stream bodies STREAMED (with backpressure) instead of
+// buffered — an endless SSE body would otherwise never send a byte.
 export async function webResponseToExpress(webRes: Response, res: ExpressResponse): Promise<void> {
-	res.statusCode = webRes.status;
-	// Set-Cookie is special: a response may carry SEVERAL, and `forEach` +
-	// `setHeader` would overwrite all but the last (and coalescing them into one
-	// comma-joined header is invalid). Forward the full list via getSetCookie().
-	const setCookies = webRes.headers.getSetCookie?.() ?? [];
-	if (setCookies.length) res.setHeader('Set-Cookie', setCookies);
-	webRes.headers.forEach((value, key) => {
-		if (key.toLowerCase() !== 'set-cookie') res.setHeader(key, value);
-	});
-	res.end(Buffer.from(await webRes.arrayBuffer()));
+	await writeWebResponse(webRes, res);
 }
 
 function readStream(req: IncomingMessage, maxBytes: number): Promise<ArrayBuffer> {
@@ -142,7 +139,7 @@ export function bridge(fonderie: FonderieApp, options?: { maxBodyBytes?: number 
 	const maxBytes = options?.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
 	return async (req: ExpressRequest, res: ExpressResponse, next: ExpressNext) => {
 		try {
-			const webReq = await expressRequestToWeb(req, maxBytes);
+			const webReq = await expressRequestToWeb(req, maxBytes, abortOnDisconnect(res));
 			// No clone(): teeing a request and fully reading one branch while the
 			// other sits unread stalls past the stream's high-water mark — so a
 			// legal multi-MiB body would hang here. buildContext consumes the
@@ -317,7 +314,7 @@ export function mount<T extends ExpressApp>(
 	const infraHandler = async (req: ExpressRequest, res: ExpressResponse) => {
 		// bridge() (below) already read + capped the body and cached the request;
 		// the fallback only runs if it somehow didn't, so apply the same cap.
-		const webReq = (req as any)._fonterieReq as Request ?? await expressRequestToWeb(req, maxBytes);
+		const webReq = (req as any)._fonterieReq as Request ?? await expressRequestToWeb(req, maxBytes, abortOnDisconnect(res));
 		// Hand over what only the adapter can observe — the socket-derived
 		// client IP. handle() builds a fresh context, so without this seed every
 		// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).

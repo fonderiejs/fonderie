@@ -7,7 +7,7 @@
 Subpath exports: `@fonderie/adapter-express/env.json`
 
 ```ts
-function expressRequestToWeb(req: ExpressRequest, maxBytes?: number): Promise<Request>
+function expressRequestToWeb(req: ExpressRequest, maxBytes?: number, signal?: AbortSignal | undefined): Promise<Request>
 
 function webResponseToExpress(webRes: Response, res: ExpressResponse): Promise<void>
 

@@ -43,6 +43,28 @@ friends — implement `IFonderieModule` and register their routes, migrations,
 and event handlers against this core. Pick the modules your product needs;
 skip the rest.
 
+## Streaming (Server-Sent Events)
+
+`sseResponse()` returns a `text/event-stream` Web Response. Core's `listen()`
+and the Express, Koa and Hono adapters stream it (other responses stay
+buffered), and abort `ctx.request.signal` when the client disconnects — so the
+cleanup you return always runs.
+
+```ts
+import { sseResponse } from '@fonderie/core';
+
+app.addRoute('GET', '/stream', requireAuth, async (ctx) =>
+  sseResponse(ctx.request.signal, (stream) => {
+    const off = hub.subscribe((e) => stream.send({ id: e.id, event: e.type, data: e }));
+    return off; // runs on disconnect, close, or maxLifetimeMs
+  }, { maxLifetimeMs: 15 * 60_000 }),
+);
+```
+
+Heartbeat comments (25 s) keep proxies from closing idle streams; `retry:`
+tells clients how long to wait before reconnecting. A stream needs a
+long-running host — a serverless function is cut at its time limit.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
