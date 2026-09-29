@@ -1,12 +1,11 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { Readable } from 'node:stream';
 import type Koa                from 'koa';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KoaMiddleware<S = any, C = any> = Koa.Middleware<S, C>;
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { abortOnDisconnect, background, isEventStream } from '@fonderie/core';
+import { abortOnDisconnect, background, isEventStream, pipeWebBody, writeWebHead } from '@fonderie/core';
 import {
 	requireAuth as _requireAuth,
 	resolveClientIp,
@@ -58,6 +57,7 @@ export interface KoaContext {
 	};
 	req: IncomingMessage;
 	res?: ServerResponse;
+	respond?: boolean;
 	state: Record<string, unknown>;
 }
 
@@ -165,11 +165,14 @@ export async function webResponseToKoa(webRes: Response, ctx: KoaContext): Promi
 	webRes.headers.forEach((value, key) => {
 		if (key.toLowerCase() !== 'set-cookie') ctx.response.set(key, value);
 	});
-	// text/event-stream is STREAMED: Koa pipes a Node Readable and destroys it
-	// when the client leaves, which cancels the Web stream (sseResponse cleanup).
+	// text/event-stream is STREAMED by core's writer on the raw response, not
+	// by Koa: Koa's own pipe reports a client leaving as ERR_STREAM_PREMATURE_CLOSE
+	// on every disconnect — normal for a stream, so it would only be log noise.
 	// Awaiting arrayBuffer() on an endless body would never send a byte.
-	if (webRes.body && isEventStream(webRes)) {
-		ctx.response.body = Readable.fromWeb(webRes.body as import('node:stream/web').ReadableStream<Uint8Array>);
+	if (webRes.body && isEventStream(webRes) && ctx.res) {
+		ctx.respond = false;
+		writeWebHead(webRes, ctx.res);
+		await pipeWebBody(webRes.body, ctx.res);
 		return;
 	}
 	// Buffer, not text(): .text() UTF-8-decodes the body, corrupting any binary

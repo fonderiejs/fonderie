@@ -35,7 +35,7 @@ const until = async (cond: () => boolean, ms = 2000) => {
 };
 
 async function start() {
-	const state: { stream?: ISseStream; cleaned: number } = { cleaned: 0 };
+	const state: { stream?: ISseStream; cleaned: number; errors: string[] } = { cleaned: 0, errors: [] };
 	const fonderie = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
 	fonderie.addRoute('GET', '/stream', async (ctx) =>
 		sseResponse(ctx.request.signal, (s) => {
@@ -45,7 +45,10 @@ async function start() {
 	);
 	fonderie.addRoute('GET', '/json', async () => Response.json({ ok: true }));
 	await fonderie.boot();
-	const app = mount(new Koa(), fonderie);
+	const koa = new Koa();
+	// Koa reports stream errors on the app; a client leaving must not be one.
+	koa.on('error', (err: Error) => { state.errors.push(err.message); });
+	const app = mount(koa, fonderie);
 	const server = await new Promise<import('node:http').Server>((resolve) => {
 		const s = app.listen(0, () => resolve(s));
 	});
@@ -89,6 +92,8 @@ test('koa: a client disconnect reaches the handler and runs the stream cleanup',
 		await readUntil(res.body!.getReader(), 'retry:');
 		ac.abort();
 		await until(() => srv.state.cleaned === 1);
+		await new Promise((r) => setTimeout(r, 50));
+		assert.deepEqual(srv.state.errors, [], 'a client disconnect is not an application error (no ERR_STREAM_PREMATURE_CLOSE)');
 	} finally {
 		await srv.close();
 	}
