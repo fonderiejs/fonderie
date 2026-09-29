@@ -1,4 +1,5 @@
 import type { HttpClient } from '../http';
+import type { SseClient } from './sse';
 import type { TokenStore } from '../token-store';
 import type { IApiResponse } from '../types';
 
@@ -26,10 +27,47 @@ export class ConfigClient {
 	private listeners = new Set<Listener>();
 	private inFlight: Promise<IRemoteConfigState> | null = null;
 
+	private watchers = 0;
+	private stopWatch: (() => void) | undefined;
+
 	constructor(
 		private http: HttpClient,
 		private tokens: TokenStore,
+		private sse?: SseClient,
 	) {}
+
+	// Seed the snapshot from values the app saved on the device, BEFORE the
+	// first render — a cold start with no signal then decides from last-known
+	// config instead of defaults. Ignored once a load succeeded this session
+	// (a fresher answer always wins). Save what you pass here from subscribe()
+	// whenever loadedAt changes. docs/REALTIME-DESIGN.md §4.7.
+	hydrate(values: Readonly<Record<string, unknown>>): void {
+		if (this.state.loadedAt) return;
+		this.set({ values: { ...values } });
+	}
+
+	// Keep the snapshot fresh from the server's push (@fonderie/sse): re-read on
+	// 'fonderie.config.changed', and on every (re)connect since changes may
+	// have been missed. Reference-counted — call the returned stop() when done.
+	// Additive: without a stream (no streaming fetch, older server, offline) it
+	// does nothing, and polling (useRemoteConfig refreshMs) carries on.
+	watch(): () => void {
+		if (!this.sse) return () => {};
+		if (this.watchers++ === 0) {
+			this.stopWatch = this.sse.subscribe(['fonderie.config.changed'], () => void this.load(), {
+				onReset: () => void this.load(),
+			});
+		}
+		let stopped = false;
+		return () => {
+			if (stopped) return;
+			stopped = true;
+			if (--this.watchers === 0) {
+				this.stopWatch?.();
+				this.stopWatch = undefined;
+			}
+		};
+	}
 
 	// GET /config/public — fetch the public values into the shared snapshot.
 	// Concurrent calls share one request. A failure keeps the previous values
