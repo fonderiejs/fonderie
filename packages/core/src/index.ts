@@ -63,6 +63,10 @@ export { constantTimeEqual } from './crypto';
 export { MIN_SECRET_LENGTH, PLACEHOLDER_SECRET, secretStrengthProblem } from './secret-strength';
 export { encodeKeysetCursor, decodeKeysetCursor } from './keyset-cursor';
 
+// Event catalog — which events a client may receive (realtime delivery)
+export type { EventAudience, IEventCatalogEntry, IEventCatalogEntryWithModule, IEventScope } from './event-catalog';
+export { isValidTopicFilter, matchesTopic, mergeEventCatalogs, validateEventCatalogEntry } from './event-catalog';
+
 // Server-Sent Events + streaming Web Responses to Node (listen, adapters)
 export type { ISseEvent, ISseOptions, ISseStream } from './sse';
 export { SSE_CONTENT_TYPE, formatSseEvent, isEventStream, sseResponse } from './sse';
