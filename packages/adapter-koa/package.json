@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/adapter-koa",
-	"version": "5.4.0",
+	"version": "5.4.1",
 	"fonderie": { "stability": "stable" },
 	"description": "Koa adapter for fonderiejs \u2014 bridge(), adapt(), mount() to use fonderie middleware in native Koa routes.",
 	"keywords": [
