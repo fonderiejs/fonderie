@@ -43,6 +43,7 @@ interface KoaContext {
     };
     req: IncomingMessage;
     res?: ServerResponse;
+    respond?: boolean;
     state: Record<string, unknown>;
 }
 
