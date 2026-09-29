@@ -19,6 +19,8 @@ interface IWebhooksConfig {
     maxAttempts?: number;
     retryDelays?: number[];
     retryInterval?: number;
+    management?: IWorkspacesConfig['management'];
+    managerRoles?: IWorkspacesConfig['managerRoles'];
 }
 
 interface IWebhookEndpoint {

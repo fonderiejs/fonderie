@@ -8,6 +8,9 @@ import type { IEventMeta } from '@fonderie/events';
 import { WebhookDispatcher } from '../dispatcher';
 import { DeliveryModel } from '../models/delivery.model';
 import { WebhooksModule } from '../module';
+import { compose } from '@fonderie/core';
+import { buildWebhookRoutes } from '../routes';
+import type { IWebhooksConfig } from '../config';
 import { signPayload } from '../signing';
 import {
 	assertPublicHttpUrl,
@@ -663,4 +666,87 @@ test('WebhooksModule: retry() is reachable, so a scheduled ping can drive it', a
 	assert.equal(typeof mod.retry, 'function');
 	await mod.retry(); // must not throw
 	mod.stop();        // must clear the interval, which was never cleared before
+});
+
+// ── Routes: workspace context + manager gate ─────────────────────────────────
+// These run each route's REAL middleware chain (requireAuth → withWorkspace →
+// requireManager → handler) against a store that answers by SQL shape. Before,
+// no route mounted withWorkspace, so ctx.workspace was always null and every
+// route answered 422 MISSING_WORKSPACE; and no route checked a role, so any
+// member could have managed endpoints and read their signing secret.
+
+
+const OWNER = 'owner-1';
+function routeStore({ members = [OWNER], managers = [] as string[] } = {}) {
+	const endpointQueries: unknown[][] = [];
+	const store = {
+		query: async <T>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			if (/FROM fonderie_workspaces WHERE id = \$1/.test(sql)) {
+				return (params[0] === 'ws-1' ? [{ id: 'ws-1', ownerId: OWNER, name: 'Acme' }] : []) as T[];
+			}
+			if (/SELECT 1 AS ok/.test(sql)) return (managers.includes(params[0] as string) ? [{ ok: 1 }] : []) as T[];
+			if (/FROM fonderie_role_user_workspaces ruw/.test(sql)) {
+				return (members.includes(params[0] as string) ? [{ userId: params[0], workspaceId: params[1] }] : []) as T[];
+			}
+			if (/fonderie_webhook_endpoints/.test(sql)) {
+				endpointQueries.push(params);
+				return [] as T[];
+			}
+			return [] as T[];
+		},
+		transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(store),
+	};
+	return { store, endpointQueries };
+}
+
+async function call(method: string, path: string, userId: string, store: unknown, config: IWebhooksConfig = {}) {
+	const route = buildWebhookRoutes(store as never, config).find(([m, p]) => m === method && p === path)!;
+	const ctx = {
+		request: new Request(`https://api.example${path}`, { method, headers: { 'x-workspace-id': 'ws-1' } }),
+		meta: { params: {} },
+		user: { id: userId, email: `${userId}@acme.example` },
+		workspace: null,
+		tenant: null,
+	};
+	const res = await compose(route.slice(2) as never)(ctx as never, async () => new Response(null, { status: 599 }));
+	const body = res.status === 204 ? null : ((await res.json().catch(() => null)) as { reason?: string } | null);
+	return { status: res.status, reason: body?.reason };
+}
+
+test('routes: the owner can list endpoints — the workspace is resolved (was 422 MISSING_WORKSPACE)', async () => {
+	const { store, endpointQueries } = routeStore();
+	const r = await call('GET', '/webhooks', OWNER, store);
+	assert.equal(r.status, 200, `got ${r.status} ${r.reason}`);
+	assert.ok(endpointQueries.some((p) => p.includes('ws-1')), 'endpoints are read for the resolved workspace');
+});
+
+test('routes: a manager-role holder may manage endpoints', async () => {
+	const { store } = routeStore({ members: [OWNER, 'mgr-1'], managers: ['mgr-1'] });
+	assert.equal((await call('GET', '/webhooks', 'mgr-1', store)).status, 200);
+});
+
+test('routes: a plain member gets 403 MANAGER_REQUIRED on every route', async () => {
+	const { store, endpointQueries } = routeStore({ members: [OWNER, 'member-1'] });
+	for (const [method, path] of [
+		['POST', '/webhooks'], ['GET', '/webhooks'], ['GET', '/webhooks/:endpointId'],
+		['PATCH', '/webhooks/:endpointId'], ['DELETE', '/webhooks/:endpointId'],
+		['GET', '/webhooks/:endpointId/deliveries'], ['POST', '/webhooks/:endpointId/test'],
+	] as const) {
+		const r = await call(method, path, 'member-1', store);
+		assert.equal(r.status, 403, `${method} ${path} → ${r.status}`);
+		assert.equal(r.reason, 'MANAGER_REQUIRED', `${method} ${path}`);
+	}
+	assert.equal(endpointQueries.length, 0, 'a refused member never reaches the endpoint table (no secret generated)');
+});
+
+test('routes: a non-member is refused before any endpoint query', async () => {
+	const { store, endpointQueries } = routeStore({ members: [OWNER] });
+	const r = await call('GET', '/webhooks', 'stranger-1', store);
+	assert.equal(r.status, 403);
+	assert.equal(endpointQueries.length, 0);
+});
+
+test("routes: management 'any-member' opens management to every member", async () => {
+	const { store } = routeStore({ members: [OWNER, 'member-1'] });
+	assert.equal((await call('GET', '/webhooks', 'member-1', store, { management: 'any-member' })).status, 200);
 });
