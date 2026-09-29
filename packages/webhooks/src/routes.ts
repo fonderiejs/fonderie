@@ -2,6 +2,7 @@ import type { Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import { requireAuth, validate } from '@fonderie/core/middlewares';
 import { withBody } from '@fonderie/core/middlewares';
+import { requireManager, withWorkspace } from '@fonderie/workspaces';
 
 import { createEndpointSchema, updateEndpointSchema } from './schemas';
 import type { IStoreAdapter } from '@fonderie/store';
@@ -17,11 +18,26 @@ import { assertPublicHttpUrl, pinnedTransport, SsrfError } from './ssrf';
 type Route = [string, string, ...Middleware[]];
 
 export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig = {}): Route[] {
+	// Every route needs the caller's workspace (endpoints are owned by one) —
+	// withWorkspace resolves it from X-Workspace-ID (or the personal workspace)
+	// and verifies membership. Without it ctx.workspace was always null and
+	// every route answered 422 MISSING_WORKSPACE.
+	const ws = withWorkspace(store);
+	// Webhooks are integration settings: an endpoint receives every event of
+	// the workspace and its secret signs them. Owner or manager roles only,
+	// with the same knobs as @fonderie/workspaces (management: 'any-member'
+	// restores open access for flat teams).
+	const manager = requireManager(store, {
+		...(config.management ? { management: config.management } : {}),
+		...(config.managerRoles ? { managerRoles: config.managerRoles } : {}),
+	});
 	return [
 		[
 			'POST',
 			'/webhooks',
 			requireAuth,
+			ws,
+			manager,
 			validate(createEndpointSchema),
 			withBody,
 			async (ctx) => {
@@ -66,6 +82,8 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			'GET',
 			'/webhooks',
 			requireAuth,
+			ws,
+			manager,
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(
@@ -85,6 +103,8 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			'GET',
 			'/webhooks/:endpointId',
 			requireAuth,
+			ws,
+			manager,
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(
@@ -111,6 +131,8 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			'PATCH',
 			'/webhooks/:endpointId',
 			requireAuth,
+			ws,
+			manager,
 			validate(updateEndpointSchema),
 			withBody,
 			async (ctx) => {
@@ -157,6 +179,8 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			'DELETE',
 			'/webhooks/:endpointId',
 			requireAuth,
+			ws,
+			manager,
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(
@@ -178,6 +202,8 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			'GET',
 			'/webhooks/:endpointId/deliveries',
 			requireAuth,
+			ws,
+			manager,
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(
@@ -202,6 +228,8 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			'POST',
 			'/webhooks/:endpointId/test',
 			requireAuth,
+			ws,
+			manager,
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(
