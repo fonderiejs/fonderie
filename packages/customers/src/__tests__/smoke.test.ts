@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import type { IStoreAdapter } from '@fonderie/store';
 import { EVENT_KEYS } from '../config';
+import { validateEventCatalogEntry } from '@fonderie/core';
 import { toCustomerDTO } from '../dtos/customer';
 import { CustomersModule } from '../module';
 import type { ICustomer } from '../types';
@@ -561,4 +562,19 @@ test('CustomerLabelModel.findOrCreate: creates a workspace-private label for a c
 	const label = await new CustomerLabelModel(store).findOrCreate('email', 'Onboarding', 'ws-1');
 	assert.equal((label as any).id, 'ws-label');
 	assert.deepEqual(insertParams, ['email', 'onboarding', 'ws-1'], 'insert is workspace-scoped + lowercased');
+});
+
+// ── describeEvents: what clients may learn about customers ──────────────────
+
+test('CustomersModule.describeEvents: every customer event, workspace-scoped, ids only', () => {
+	const stub = { query: async () => [], transaction: async (fn: (t: unknown) => unknown) => fn(stub) };
+	const entries = new CustomersModule(stub as never).describeEvents();
+	assert.deepEqual(entries.map((e) => e.type).sort(), Object.values(EVENT_KEYS).sort(), 'one entry per EVENT_KEY');
+	for (const e of entries) {
+		assert.deepEqual(validateEventCatalogEntry(e, '@fonderie/customers'), [], e.type);
+		assert.equal(e.audience, 'workspace');
+		const payload = { customerId: 'c1', workspaceId: 'w1', email: 'private@acme.example', name: 'Ada' };
+		assert.deepEqual(e.scope!(payload), { workspaceId: 'w1' });
+		assert.deepEqual(e.project!(payload), { customerId: 'c1', workspaceId: 'w1' }, 'no personal data reaches a client');
+	}
 });

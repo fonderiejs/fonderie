@@ -2,6 +2,7 @@ import { networkInterfaces } from 'node:os';
 import { createServer, type Server } from 'node:http';
 
 import { abortOnDisconnect, writeWebResponse } from './node-response';
+import { mergeEventCatalogs, type IEventCatalogEntryWithModule } from './event-catalog';
 
 import type {
 	Middleware,
@@ -280,6 +281,15 @@ export class FonderieApp implements IFonderieApp {
 			if (module?.describeAdmin) out.push({ module: name, description: module.describeAdmin() });
 		}
 		return out;
+	}
+
+	eventCatalog(): IEventCatalogEntryWithModule[] {
+		return mergeEventCatalogs(
+			[...this.modules.keys()].sort().flatMap((name) => {
+				const module = this.modules.get(name);
+				return module?.describeEvents ? [{ name, entries: module.describeEvents() }] : [];
+			}),
+		);
 	}
 
 	async boot(): Promise<this> {

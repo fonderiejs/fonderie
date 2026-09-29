@@ -1,3 +1,4 @@
+import type { IEventCatalogEntry, IEventCatalogEntryWithModule } from './event-catalog';
 import type { ILocaleSettings } from './locale';
 
 // ── Identity contracts ───────────────────────────────────────────
@@ -145,6 +146,10 @@ export interface IFonderieApp {
 	securityReport(): ISecurityReport;
 	// Every registered module's admin description, for modules that give one.
 	adminDescriptions(): IAdminDescriptionEntry[];
+	// Every registered module's client-deliverable events, merged and validated
+	// (throws on an invalid entry or a type declared twice). Optional so
+	// hand-rolled test doubles still satisfy the interface.
+	eventCatalog?(): IEventCatalogEntryWithModule[];
 	// The app's validated locales. Optional so hand-rolled test doubles still
 	// satisfy the interface; a module reads `app.locales ?? defineLocales()`.
 	readonly locales?: ILocaleSettings;
@@ -266,6 +271,10 @@ export interface IFonderieModule {
 	// Optional: what this module offers the admin surface. Read before any
 	// install() runs, so derive it from constructor state only.
 	describeAdmin?(): IAdminDescription;
+	// Optional: which of this module's events a CLIENT may receive (realtime
+	// delivery). Default deny — an event without an entry is never delivered.
+	// See event-catalog.ts. Derive from constructor state only.
+	describeEvents?(): IEventCatalogEntry[];
 }
 
 // ── Cross-module vocabulary ───────────────────────────────────────

@@ -167,9 +167,16 @@ export async function deleteConfigEntry(
 	environment: string,
 	store: IStoreAdapter,
 ): Promise<boolean> {
-	const rows = await store.query<{ key: string }>(
-		`DELETE FROM fonderie_config WHERE key = $1 AND environment = $2 RETURNING key`,
-		[key, environment],
-	);
-	return rows.length > 0;
+	// Same signal as a write (R3): without it, other instances — and realtime
+	// streams — only learned of a delete on the next poll. Sent inside the
+	// transaction so it fires at commit, and only if a row was deleted.
+	return store.transaction(async (tx) => {
+		const rows = await tx.query<{ key: string }>(
+			`DELETE FROM fonderie_config WHERE key = $1 AND environment = $2 RETURNING key`,
+			[key, environment],
+		);
+		if (rows.length === 0) return false;
+		await tx.query(`SELECT pg_notify('${CONFIG_TABLE.channel}', $1)`, [environment]);
+		return true;
+	});
 }
