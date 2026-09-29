@@ -311,6 +311,42 @@ function encodeKeysetCursor(createdAt: string, id: string): string
 
 function decodeKeysetCursor(cursor: string): { createdAt: string; id: string; } | null
 
+interface ISseEvent {
+    id?: string;
+    event?: string;
+    data: unknown;
+}
+
+interface ISseOptions {
+    heartbeatMs?: number;
+    retryMs?: number;
+    headers?: Record<string, string>;
+    maxLifetimeMs?: number;
+}
+
+interface ISseStream {
+    send(event: ISseEvent): void;
+    comment(text: string): void;
+    close(): void;
+    readonly closed: boolean;
+}
+
+const SSE_CONTENT_TYPE: "text/event-stream"
+
+function formatSseEvent(event: ISseEvent): string
+
+function isEventStream(response: Response): boolean
+
+function sseResponse(signal: AbortSignal | undefined, onOpen: (stream: ISseStream) => Cleanup, options?: ISseOptions): Response
+
+function abortOnDisconnect(res: ServerResponse<IncomingMessage> | undefined): AbortSignal | undefined
+
+function pipeWebBody(body: ReadableStream<Uint8Array<ArrayBufferLike>>, res: ServerResponse<IncomingMessage>): Promise<...>
+
+function writeWebHead(webRes: Response, res: ServerResponse<IncomingMessage>): void
+
+function writeWebResponse(webRes: Response, res: ServerResponse<IncomingMessage>): Promise<void>
+
 interface IApiError {
     reason: string;
     explanation: string;

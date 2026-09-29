@@ -1,11 +1,12 @@
-import type { IncomingMessage } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { Readable } from 'node:stream';
 import type Koa                from 'koa';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KoaMiddleware<S = any, C = any> = Koa.Middleware<S, C>;
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { background } from '@fonderie/core';
+import { abortOnDisconnect, background, isEventStream } from '@fonderie/core';
 import {
 	requireAuth as _requireAuth,
 	resolveClientIp,
@@ -56,6 +57,7 @@ export interface KoaContext {
 		set(key: string, value: string | string[]): void;
 	};
 	req: IncomingMessage;
+	res?: ServerResponse;
 	state: Record<string, unknown>;
 }
 
@@ -103,6 +105,9 @@ function readStreamCapped(req: IncomingMessage, maxBytes: number): Promise<Buffe
 export async function koaContextToWeb(
 	ctx: KoaContext,
 	maxBytes: number = DEFAULT_MAX_BODY_BYTES,
+	// Aborts when the client disconnects (abortOnDisconnect(ctx.res)), so a
+	// streaming handler such as sseResponse() can clean up.
+	signal?: AbortSignal,
 ): Promise<Request> {
 	const encrypted = (ctx.req.socket as { encrypted?: boolean }).encrypted;
 	const protocol = encrypted ? 'https' : 'http';
@@ -147,6 +152,7 @@ export async function koaContextToWeb(
 		// Cast: a Uint8Array<ArrayBufferLike> is a valid BodyInit at runtime,
 		// but the lib's BodyInit union is narrower than our body variable's type.
 		body: body as BodyInit | null,
+		...(signal ? { signal } : {}),
 	});
 }
 
@@ -159,6 +165,13 @@ export async function webResponseToKoa(webRes: Response, ctx: KoaContext): Promi
 	webRes.headers.forEach((value, key) => {
 		if (key.toLowerCase() !== 'set-cookie') ctx.response.set(key, value);
 	});
+	// text/event-stream is STREAMED: Koa pipes a Node Readable and destroys it
+	// when the client leaves, which cancels the Web stream (sseResponse cleanup).
+	// Awaiting arrayBuffer() on an endless body would never send a byte.
+	if (webRes.body && isEventStream(webRes)) {
+		ctx.response.body = Readable.fromWeb(webRes.body as import('node:stream/web').ReadableStream<Uint8Array>);
+		return;
+	}
 	// Buffer, not text(): .text() UTF-8-decodes the body, corrupting any binary
 	// response (a @fonderie/media image, an invoice PDF, gzip). arrayBuffer →
 	// Buffer is byte-faithful, matching the express/core-listen adapters.
@@ -179,7 +192,7 @@ export function bridge(fonderie: FonderieApp, options: { maxBodyBytes?: number }
 	return async (ctx, next) => {
 		let webReq: Request;
 		try {
-			webReq = await koaContextToWeb(ctx as unknown as KoaContext, maxBytes);
+			webReq = await koaContextToWeb(ctx as unknown as KoaContext, maxBytes, abortOnDisconnect((ctx as unknown as KoaContext).res));
 		} catch (err) {
 			if (isPayloadTooLarge(err)) {
 				ctx.response.status = 413;
@@ -329,7 +342,7 @@ export function mount(app: Koa, fonderie: FonderieApp, options: { maxBodyBytes?:
 	app.use(async (ctx, next) => {
 		let webReq: Request;
 		try {
-			webReq = await koaContextToWeb(ctx as unknown as KoaContext, maxBytes);
+			webReq = await koaContextToWeb(ctx as unknown as KoaContext, maxBytes, abortOnDisconnect((ctx as unknown as KoaContext).res));
 		} catch (err) {
 			if (isPayloadTooLarge(err)) {
 				ctx.response.status = 413;

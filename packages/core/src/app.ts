@@ -1,6 +1,8 @@
 import { networkInterfaces } from 'node:os';
 import { createServer, type Server } from 'node:http';
 
+import { abortOnDisconnect, writeWebResponse } from './node-response';
+
 import type {
 	Middleware,
 	IAdminDescriptionEntry,
@@ -162,23 +164,19 @@ export class FonderieApp implements IFonderieApp {
 					return;
 				}
 
+				// Aborts when the client disconnects, so a streaming handler
+				// (sseResponse) can clean up.
+				const signal = abortOnDisconnect(res);
 				const request = new Request(url, {
 					method,
 					headers,
 					body: hasBody && body.length > 0 ? new Uint8Array(body) : null,
+					...(signal ? { signal } : {}),
 				});
 
 				const response = await this.handle(request);
-
-				res.statusCode = response.status;
-				// Set-Cookie must be forwarded as a LIST — forEach + setHeader would
-				// overwrite all but the last cookie. getSetCookie() returns each intact.
-				const setCookies = response.headers.getSetCookie?.() ?? [];
-				if (setCookies.length) res.setHeader('Set-Cookie', setCookies);
-				response.headers.forEach((v, k) => {
-					if (k.toLowerCase() !== 'set-cookie') res.setHeader(k, v);
-				});
-				res.end(Buffer.from(await response.arrayBuffer()));
+				// Streams text/event-stream; buffers everything else (unchanged).
+				await writeWebResponse(response, res);
 			} catch (err) {
 				// Malformed/hostile request (TRACE, absolute-form target, bad
 				// headers): answer 400 and keep the process alive.

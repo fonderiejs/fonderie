@@ -98,6 +98,8 @@ export function bodyParser(maxBytes: number = DEFAULT_MAX_BODY_BYTES): Middlewar
 						// Cast: a Uint8Array is a valid BodyInit at runtime; the lib's
 						// BodyInit union is narrower than Uint8Array<ArrayBufferLike>.
 						body: bytes.length > 0 ? (bytes as unknown as BodyInit) : null,
+						// Keep the transport's disconnect signal (see abortOnDisconnect).
+						signal: ctx.request.signal,
 					});
 				}
 				const text = bytes ? new TextDecoder().decode(bytes) : '';
