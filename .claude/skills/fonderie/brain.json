@@ -3,7 +3,7 @@
   "sdkVersions": {
     "adapter-express": "5.4.0",
     "adapter-hono": "6.2.12",
-    "adapter-koa": "5.4.0",
+    "adapter-koa": "5.4.1",
     "admin": "1.7.3",
     "audit": "5.2.10",
     "auth": "7.14.2",
@@ -126,7 +126,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.4.0",
+      "version": "5.4.1",
       "stability": "stable",
       "requires": [
         "core",
