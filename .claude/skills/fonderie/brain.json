@@ -820,6 +820,7 @@
         "CONFIG_KEY_PATTERN",
         "CONFIG_VALUE_TYPES",
         "ConfigClient",
+        "SseClient",
         "ADMIN_LOCALES",
         "DEFAULT_ADMIN_LOCALE"
       ],
@@ -1504,7 +1505,9 @@
         "useFonderieClient",
         "useFonderieSubClient",
         "useFlag",
-        "useRemoteConfig"
+        "useRemoteConfig",
+        "useSse",
+        "useSseStatus"
       ],
       "subpaths": [],
       "tables": [],
@@ -2373,7 +2376,9 @@
         "useFonderieClient",
         "useFonderieSubClient",
         "useFlag",
-        "useRemoteConfig"
+        "useRemoteConfig",
+        "useSse",
+        "useSseStatus"
       ],
       "subpaths": [],
       "tables": [],
@@ -5461,6 +5466,9 @@
     "configclient": [
       "client"
     ],
+    "sseclient": [
+      "client"
+    ],
     "admin_locales": [
       "client"
     ],
@@ -5647,6 +5655,14 @@
       "vue"
     ],
     "useremoteconfig": [
+      "react",
+      "vue"
+    ],
+    "usesse": [
+      "react",
+      "vue"
+    ],
+    "usessestatus": [
       "react",
       "vue"
     ],

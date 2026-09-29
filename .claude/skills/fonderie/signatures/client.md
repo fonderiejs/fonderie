@@ -17,6 +17,9 @@ interface IFonderieClientOptions {
     workspaceId?: string;
     cache?: ICache;
     auth?: IClientAuthConfig;
+    sse?: {
+        fetch?: FetchLike;
+    };
 }
 
 interface IRequestConfig {
@@ -50,6 +53,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .customers: CustomersClient
   .media: MediaClient
   .config: ConfigClient
+  .sse: SseClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -1782,11 +1786,51 @@ interface IInferredConfigValue {
     ambiguous: boolean;
 }
 
-new ConfigClient(http: HttpClient, tokens: TokenStore): ConfigClient
+new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefined): ConfigClient
+  .hydrate(values: Readonly<Record<string, unknown>>): void
+  .watch(): () => void
   .load(): Promise<IRemoteConfigState>
   .get<T>(key: string, fallback: T): T
   .snapshot(): IRemoteConfigState
   .subscribe(listener: Listener): () => void
+
+new SseClient(deps: ISseClientDeps): SseClient
+  .status: SseStatus
+  .onStatus(listener: (status: SseStatus) => void): () => void
+  .subscribe(topics: string[], onEvent: (event: ISseClientEvent) => void, options?: ISseSubscribeOptions): () => void
+  .pause(): void
+  .resume(): void
+
+type FetchLike = (url: string, init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    signal?: AbortSignal;
+}) => Promise<{
+    ok: boolean;
+    status: number;
+    body?: {
+        getReader(): {
+            read(): Promise<{
+                done: boolean;
+                value?: Uint8Array;
+            }>;
+            cancel(): Promise<void>;
+        };
+    } | null;
+}>;
+
+interface ISseClientEvent {
+    id?: string;
+    type: string;
+    data: Record<string, unknown>;
+    at?: string;
+}
+
+interface ISseSubscribeOptions {
+    onReset?: () => void;
+}
+
+type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
 interface IRemoteConfigState {
     values: Readonly<Record<string, unknown>>;

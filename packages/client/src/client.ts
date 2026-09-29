@@ -6,6 +6,7 @@ import { BillingClient } from './modules/billing';
 import { CustomersClient } from './modules/customers';
 import { MediaClient } from './modules/media';
 import { ConfigClient } from './modules/config';
+import { SseClient, type FetchLike } from './modules/sse';
 import { WebhooksClient } from './modules/webhooks';
 import { WorkspacesClient } from './modules/workspaces';
 import { TokenStore } from './token-store';
@@ -28,6 +29,11 @@ export interface IFonderieClientOptions {
 	cache?: ICache;
 	// Opt-in reactive renew.
 	auth?: IClientAuthConfig;
+	// Server-Sent Events (@fonderie/sse). `fetch` must return a readable body
+	// stream: browsers' does; in React Native pass Expo's `fetch` from
+	// 'expo/fetch' (the default RN fetch cannot stream — the client then
+	// reports 'unavailable' and apps keep polling).
+	sse?: { fetch?: FetchLike };
 }
 
 // Per-call options for the generic transport.
@@ -54,6 +60,8 @@ export class FonderieClient {
 	readonly media: MediaClient;
 	/** Public remote config: flags and settings the server exposes to frontends. */
 	readonly config: ConfigClient;
+	/** Server-Sent Events: subscribe to all or individual events, one shared connection. */
+	readonly sse: SseClient;
 
 	private http: HttpClient;
 	private tokens: TokenStore;
@@ -81,7 +89,14 @@ export class FonderieClient {
 		// Media is per-user (ownership via ownerType/ownerId in the body), so no
 		// setWorkspaceId wiring below — just the shared http + token store.
 		this.media = new MediaClient(this.http, this.tokens);
-		this.config = new ConfigClient(this.http, this.tokens);
+		this.sse = new SseClient({
+			absolute: (path) => this.http.absolute(path),
+			tokens: this.tokens,
+			getWorkspaceId: () => this.workspaceId,
+			refresh: opts.auth ? () => this.doRefresh() : undefined,
+			fetch: opts.sse?.fetch,
+		});
+		this.config = new ConfigClient(this.http, this.tokens, this.sse);
 		// Route through the setter so the constructor option scopes the
 		// workspace-aware modules exactly like a later setWorkspaceId() call.
 		if (opts.workspaceId !== undefined) this.setWorkspaceId(opts.workspaceId);

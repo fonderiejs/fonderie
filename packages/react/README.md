@@ -40,5 +40,18 @@ const { login } = useLogin(otherClient.auth);
   by the `@fonderie/react-*` hook packages: explicit argument wins, otherwise
   select from the context client, otherwise throw a `hookName`-prefixed error.
 
+- `useRemoteConfig({ refreshMs?, watch? })` — the public remote config
+  (`GET /config/public`), one snapshot shared by every component. `watch: true`
+  re-loads when the server pushes a change (`@fonderie/sse`).
+- `useFlag(key, fallback)` — one value. For a sub-feature pass the safe
+  fallback (off); to gate a whole **screen**, fall back to showing it and seed
+  saved values with `client.config.hydrate()` so no screen depends on signal.
+- `useSse(topics, onEvent, { onReset })` — Server-Sent Events from
+  `@fonderie/sse` (`'*'`, exact types, `prefix.*`), one connection shared by
+  all components. Events are invalidations: refetch what changed. Additive —
+  never gate rendering on it.
+
 React Native apps use this same package — it is plain React context with no
-DOM dependency.
+DOM dependency. For streaming, construct the client with Expo's fetch:
+`new FonderieClient({ baseUrl, sse: { fetch } })` (`import { fetch } from 'expo/fetch'`),
+and call `client.sse.pause()` / `resume()` from `AppState` changes.

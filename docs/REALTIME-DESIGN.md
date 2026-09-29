@@ -439,7 +439,7 @@ store slice; the SDK makes it the default path.)
    lifetime bound. Negative tests: an uncatalogued event never reaches a
    stream; a workspace event never reaches a non-member; a connection closes
    at its lifetime.
-5. **Client + hooks:** `client.realtime`, `config.watch()`,
+5. ✅ **Client + hooks:** `client.sse` (shipped name; was `client.realtime`), `config.watch()`,
    `config.hydrate()` (offline first, §4.7), `useRealtime`, `pause()`/`resume()`,
    polling fallback; `useFlag` docs stop recommending "off" as the fallback for
    gating a whole screen.
