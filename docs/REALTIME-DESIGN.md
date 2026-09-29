@@ -158,8 +158,8 @@ writing.
 
 | # | Where | Finding |
 |---|---|---|
-| R1 | webhooks | No route mounts `withWorkspace`, yet every handler requires `ctx.workspace` → 422 `MISSING_WORKSPACE` unless the app mounts it globally; route tests only collect routes (`webhooks/src/routes.ts`, `__tests__/smoke.test.ts:661`) |
-| R2 | webhooks | No role/permission check: any workspace member can create, edit, delete endpoints and read the secret returned on create |
+| R1 ✅ fixed (webhooks 6.0.0) | webhooks | No route mounts `withWorkspace`, yet every handler requires `ctx.workspace` → 422 `MISSING_WORKSPACE` unless the app mounts it globally; route tests only collect routes (`webhooks/src/routes.ts`, `__tests__/smoke.test.ts:661`) |
+| R2 ✅ fixed (webhooks 6.0.0) | webhooks | No role/permission check: any workspace member can create, edit, delete endpoints and read the secret returned on create |
 | R3 | config | `deleteConfigEntry` sends no NOTIFY — a delete reaches other instances only on the poll |
 | R4 | events | `matchesPattern` leaves regex metacharacters live |
 | R5 | auth | `fonderie.user.email_verified` and `.password_changed` are declared in `EVENT_KEYS` but never emitted |

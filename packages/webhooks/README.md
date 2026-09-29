@@ -6,7 +6,7 @@ out to them, and track every delivery attempt with retries and status.
 ## Install
 
 ```sh
-npm install @fonderie/webhooks
+npm install @fonderie/webhooks @fonderie/workspaces
 ```
 
 ## Use
@@ -25,6 +25,22 @@ const app = await new FonderieApp(defineConfig({ db: { url: process.env.DATABASE
 
 ```ts
 import type { IWebhookEndpoint, IWebhookDelivery, DeliveryStatus } from '@fonderie/webhooks';
+```
+
+### Who can manage endpoints
+
+Endpoints belong to a workspace. Every `/webhooks` route resolves it from the
+`X-Workspace-ID` header (or the caller's personal workspace) and checks
+membership, then requires a **manager**: the workspace owner or a holder of a
+manager role (default `ADMIN`). An endpoint receives every event of its
+workspace and its secret signs them, so it is an integration setting, not a
+member preference. Plain members get `403 MANAGER_REQUIRED`.
+
+The knobs are the same as `@fonderie/workspaces`:
+
+```ts
+new WebhooksModule(store, { managerRoles: ['ADMIN', 'INTEGRATIONS'] });
+new WebhooksModule(store, { management: 'any-member' }); // flat teams: every member manages
 ```
 
 ## Why this exists
