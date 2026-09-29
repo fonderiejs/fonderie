@@ -103,6 +103,7 @@ deploy-ready apps for Hono, Express, and Koa.
 | [`@fonderie/permissions`](packages/permissions) | Role-based access control for SaaS |
 | [`@fonderie/rate-limit`](packages/rate-limit) | Distributed token-bucket rate limiting (memory/Postgres/Redis) |
 | [`@fonderie/risk`](packages/risk) | Signal → meaning → decision engine for trial, login, registration and promo abuse — decides, never enforces |
+| [`@fonderie/sse`](packages/sse) | Server-Sent Events delivery to frontends — clients subscribe to all or individual events, each brick's catalog decides who receives what |
 | [`@fonderie/store`](packages/store) | Database abstraction layer |
 | [`@fonderie/storage`](packages/storage) | Content-agnostic object storage on Postgres, disk, or S3-compatible backends behind one interface |
 | [`@fonderie/webhooks`](packages/webhooks) | Outgoing webhook engine |

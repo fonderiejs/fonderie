@@ -59,6 +59,7 @@ composition guide (rules, golden `buildFonderie()` example, routes), see
 - `@fonderie/react-workspaces` → [signatures/react-workspaces.md](signatures/react-workspaces.md)
 - `@fonderie/react-workspaces-screens` → [signatures/react-workspaces-screens.md](signatures/react-workspaces-screens.md)
 - `@fonderie/risk` → [signatures/risk.md](signatures/risk.md)
+- `@fonderie/sse` → [signatures/sse.md](signatures/sse.md)
 - `@fonderie/storage` → [signatures/storage.md](signatures/storage.md)
 - `@fonderie/store` → [signatures/store.md](signatures/store.md)
 - `@fonderie/vue` → [signatures/vue.md](signatures/vue.md)

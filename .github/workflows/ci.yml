@@ -51,6 +51,9 @@ jobs:
       # lookup is an ANY() array match with case-insensitive legacy rows, which
       # a mocked store only emulates.
       COURIER_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
+      # @fonderie/sse: PgBroadcaster fan-out across two LISTEN connections, and a
+      # brick's own NOTIFY (config changed) reaching a live stream.
+      SSE_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -97,6 +100,9 @@ jobs:
       # and every local `npm install` rewrote it. The version script now syncs it;
       # this fails the PR that lets it drift again.
       - run: npm run check:lockfile
+      # CI-env guard — a *_URL set above but not passed through turbo.json
+      # silently skips its gated tests (admin and courier did, for weeks).
+      - run: npm run check:ci-env
       # NODE_OPTIONS names whatever keeps a test process alive after its suite
       # has finished — the failure where every suite reports green, turbo never
       # summarises, and the job idles to its timeout. Absolute path because
