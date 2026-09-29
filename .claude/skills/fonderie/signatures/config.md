@@ -13,6 +13,7 @@ new ConfigModule(store: IStoreAdapter, options?: IConfigOptions): ConfigModule
   .manager: RemoteConfigManager
   .install(app: IFonderieApp): Promise<void>
   .stop(): void
+  .describeEvents(): IEventCatalogEntry<unknown>[]
   .describeAdmin(): IAdminDescription
   .checkReadiness(): IReadinessProblem[]
 

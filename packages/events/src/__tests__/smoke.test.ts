@@ -646,3 +646,21 @@ test('describeAdmin: the outbox check exists only for the pg transport, and is q
 	}).describeAdmin();
 	assert.match(skippedText((await handed.checks![0]!.run()).skipped), /not started/);
 });
+
+// ── matchesPattern: only '*' is special ─────────────────────────────────────
+
+describe('matchesPattern', () => {
+	it('keeps its wildcard semantics', () => {
+		assert.ok(matchesPattern('*', 'anything.at.all'));
+		assert.ok(matchesPattern('sport.*', 'sport.event.created'), '* spans dots');
+		assert.ok(matchesPattern('sport.event.created', 'sport.event.created'));
+		assert.ok(!matchesPattern('sport.*', 'sports.event'));
+	});
+	it('treats regex metacharacters literally (R4)', () => {
+		assert.ok(!matchesPattern('a+b', 'aab'), "'+' is not a quantifier");
+		assert.ok(matchesPattern('a+b', 'a+b'));
+		assert.ok(!matchesPattern('(x|y).done', 'x.done'), "'(|)' is not a group");
+		assert.ok(!matchesPattern('a.b', 'axb'), "'.' is not any-char");
+		assert.ok(!matchesPattern('[ab].c', 'a.c'), "'[]' is not a class");
+	});
+});

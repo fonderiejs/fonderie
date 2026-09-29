@@ -1,9 +1,4 @@
-import type {
-	IAdminDescription,
-	IFonderieModule,
-	IFonderieApp,
-	IReadinessProblem,
-} from '@fonderie/core';
+import type { IAdminDescription, IFonderieModule, IFonderieApp, IReadinessProblem, IEventCatalogEntry } from '@fonderie/core';
 import { validateAdminToken } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -65,6 +60,21 @@ export class ConfigModule implements IFonderieModule {
 	 */
 	stop(): void {
 		this.manager.stop();
+	}
+
+	// Clients may learn that public config changed (realtime delivery). The
+	// event says only which environment — never keys or values; the client
+	// re-reads GET /config/public, which applies publicKeys as always.
+	describeEvents(): IEventCatalogEntry[] {
+		return [
+			{
+				type: 'fonderie.config.changed',
+				description: 'Remote config changed — re-read GET /config/public',
+				audience: 'public',
+				source: { notify: 'fonderie_config_changed' },
+				project: (environment) => ({ environment: typeof environment === 'string' ? environment : '' }),
+			},
+		];
 	}
 
 	describeAdmin(): IAdminDescription {

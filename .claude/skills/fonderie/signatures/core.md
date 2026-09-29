@@ -97,6 +97,7 @@ interface IFonderieApp {
     checkProductionReadiness(): IReadinessReport;
     securityReport(): ISecurityReport;
     adminDescriptions(): IAdminDescriptionEntry[];
+    eventCatalog?(): IEventCatalogEntryWithModule[];
     readonly locales?: ILocaleSettings;
 }
 
@@ -108,6 +109,7 @@ interface IFonderieModule {
     checkReadiness?(): IReadinessProblem[];
     stop?(): void | Promise<void>;
     describeAdmin?(): IAdminDescription;
+    describeEvents?(): IEventCatalogEntry[];
 }
 
 interface IFonderieContext {
@@ -213,6 +215,7 @@ new FonderieApp(config: FonderieConfig): FonderieApp
   .securityReport(): ISecurityReport
   .shutdown(): Promise<void>
   .adminDescriptions(): IAdminDescriptionEntry[]
+  .eventCatalog(): IEventCatalogEntryWithModule[]
   .boot(): Promise<FonderieApp>
   .buildContext(request: Request): Promise<IFonderieContext>
   .use(middleware: Middleware): FonderieApp
@@ -310,6 +313,36 @@ function secretStrengthProblem(secret: string): "too-short" | "placeholder" | nu
 function encodeKeysetCursor(createdAt: string, id: string): string
 
 function decodeKeysetCursor(cursor: string): { createdAt: string; id: string; } | null
+
+type EventAudience = 'public' | 'workspace' | 'user' | ((ctx: IFonderieContext, scope: IEventScope) => boolean | Promise<boolean>);
+
+interface IEventCatalogEntry<P = unknown> {
+    type: string;
+    description: string;
+    audience: EventAudience;
+    source?: {
+        notify: string;
+    };
+    scope?: (payload: P) => IEventScope;
+    project?: (payload: P) => Record<string, unknown>;
+}
+
+interface IEventCatalogEntryWithModule extends IEventCatalogEntry {
+    module: string;
+}
+
+interface IEventScope {
+    workspaceId?: string;
+    userId?: string;
+}
+
+function isValidTopicFilter(filter: string): boolean
+
+function matchesTopic(filter: string, type: string): boolean
+
+function mergeEventCatalogs(modules: { name: string; entries: IEventCatalogEntry<unknown>[]; }[]): IEventCatalogEntryWithModule[]
+
+function validateEventCatalogEntry(entry: IEventCatalogEntry<unknown>, module: string): string[]
 
 interface ISseEvent {
     id?: string;

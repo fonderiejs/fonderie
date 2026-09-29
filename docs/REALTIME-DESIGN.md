@@ -160,8 +160,8 @@ writing.
 |---|---|---|
 | R1 ✅ fixed (webhooks 6.0.0) | webhooks | No route mounts `withWorkspace`, yet every handler requires `ctx.workspace` → 422 `MISSING_WORKSPACE` unless the app mounts it globally; route tests only collect routes (`webhooks/src/routes.ts`, `__tests__/smoke.test.ts:661`) |
 | R2 ✅ fixed (webhooks 6.0.0) | webhooks | No role/permission check: any workspace member can create, edit, delete endpoints and read the secret returned on create |
-| R3 | config | `deleteConfigEntry` sends no NOTIFY — a delete reaches other instances only on the poll |
-| R4 | events | `matchesPattern` leaves regex metacharacters live |
+| R3 ✅ fixed | config | `deleteConfigEntry` sends no NOTIFY — a delete reaches other instances only on the poll |
+| R4 ✅ fixed | events | `matchesPattern` leaves regex metacharacters live |
 | R5 | auth | `fonderie.user.email_verified` and `.password_changed` are declared in `EVENT_KEYS` but never emitted |
 
 ---
@@ -429,10 +429,11 @@ store slice; the SDK makes it the default path.)
    Express, Koa; signal survives the body parser. Tests: a stream sends bytes
    before it ends, and a client disconnect runs cleanup — on all four (Hono
    already streamed; now pinned). Non-stream responses unchanged.
-2. **Catalog:** `IEventCatalogEntry` + optional `describeEvents?()` in core;
-   escaped topic matcher in events (fixes R4); first entries: config, customers.
-3. **Config:** declare `fonderie.config.changed` from its NOTIFY channel; NOTIFY
-   on delete (fixes R3). No events dependency.
+2. ✅ **Catalog:** `IEventCatalogEntry` + optional `describeEvents?()` and
+   `app.eventCatalog()` in core, `matchesTopic` for client filters; escaped
+   matcher in events (fixes R4); first entries: config, customers.
+3. ✅ **Config:** declares `fonderie.config.changed` from its NOTIFY channel;
+   NOTIFY on delete (fixes R3). No events dependency.
 4. **`@fonderie/realtime`** (peer: core; optional peer: pg at `/pg` — a CI check
    fails on any other `@fonderie/*` import): broker, hub, `/realtime/stream`, `/realtime/topics`,
    lifetime bound. Negative tests: an uncatalogued event never reaches a

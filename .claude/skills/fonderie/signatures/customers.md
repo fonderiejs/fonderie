@@ -160,6 +160,7 @@ new CustomersModule(store: IStoreAdapter, config?: ICustomersConfig, bus?: Event
   .name: "@fonderie/customers"
   .version: string
   .deps: string[]
+  .describeEvents(): IEventCatalogEntry<unknown>[]
   .install(app: IFonderieApp): void
 
 type CustomerType = 'individual' | 'business';
