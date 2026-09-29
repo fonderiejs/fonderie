@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "Shared Vue 3 provide/inject for Fonderie — provide one FonderieClient at the root, resolve it from any @fonderie/vue-* composable.",
 	"keywords": [
 		"fonderiejs",
