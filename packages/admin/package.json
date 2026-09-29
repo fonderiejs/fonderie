@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/admin",
-	"version": "1.7.3",
+	"version": "1.7.4",
 	"fonderie": {
 		"stability": "experimental"
 	},
@@ -44,7 +44,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.24.0",
+		"@fonderie/core": "^0.25.0",
 		"@fonderie/store": "^0.7.0"
 	},
 	"peerDependenciesMeta": {
