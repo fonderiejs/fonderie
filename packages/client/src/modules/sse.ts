@@ -58,6 +58,22 @@ interface ISubscription {
 const MIN_BACKOFF = 1_000;
 const MAX_BACKOFF = 30_000;
 
+// The user a token stands for — a JWT's `sub` — so a refresh of the same
+// user's token is not mistaken for a new identity. Any other token (opaque, or
+// unreadable) stands for itself.
+function tokenSubject(token: string | undefined): string {
+	if (!token) return '';
+	const payload = token.split('.')[1];
+	if (!payload) return token;
+	try {
+		const json = typeof atob === 'function' ? atob(payload.replace(/-/g, '+').replace(/_/g, '/')) : '';
+		const sub = (JSON.parse(json) as { sub?: unknown }).sub;
+		return typeof sub === 'string' && sub ? `sub:${sub}` : token;
+	} catch {
+		return token;
+	}
+}
+
 /** Same rule as the server: '*', an exact type, or a 'prefix.*' segment prefix. */
 function matches(filter: string, type: string): boolean {
 	if (filter === '*') return true;
@@ -75,8 +91,33 @@ export class SseClient {
 	private timer: ReturnType<typeof setTimeout> | undefined;
 	private scheduled = false;
 	private _status: SseStatus = 'idle';
+	// Who the open stream was opened AS (user + workspace). The server decides
+	// what a stream may receive from that identity, once, when it opens.
+	private connectedIdentity = '';
 
-	constructor(private readonly deps: ISseClientDeps) {}
+	constructor(private readonly deps: ISseClientDeps) {
+		// Signing in, out, or as someone else must reopen the stream: a stream
+		// opened before sign-in stays anonymous — config still arrives, but
+		// every workspace or user event is withheld from it. A silent refresh
+		// for the same user changes the token, not the identity: no reconnect.
+		deps.tokens.onChange(() => this.identityChanged());
+	}
+
+	/**
+	 * Reopen the stream if the identity it was opened as has changed (user or
+	 * workspace). FonderieClient calls it on setWorkspaceId; token changes are
+	 * picked up by themselves.
+	 */
+	identityChanged(): void {
+		if (!this.controller || this.identity() === this.connectedIdentity) return;
+		this.disconnect();
+		this.retryMs = MIN_BACKOFF;
+		this.schedule();
+	}
+
+	private identity(): string {
+		return `${tokenSubject(this.deps.tokens.get())}|${this.deps.getWorkspaceId() ?? ''}`;
+	}
 
 	get status(): SseStatus {
 		return this._status;
@@ -163,6 +204,7 @@ export class SseClient {
 		const controller = new AbortController();
 		this.controller = controller;
 		this.connectedTopics = topics;
+		this.connectedIdentity = this.identity();
 		this.setStatus('connecting');
 		const headers: Record<string, string> = { accept: 'text/event-stream' };
 		const token = this.deps.tokens.get();
