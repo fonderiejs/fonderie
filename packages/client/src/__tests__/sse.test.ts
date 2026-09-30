@@ -223,3 +223,17 @@ test('config.hydrate(): seeds a cold start from saved values; a real answer wins
 		await srv.close();
 	}
 });
+
+test('sse.baseUrl: the stream can live on another host than the API', async () => {
+	const streamHost = await sseServer();
+	const client = new FonderieClient({ baseUrl: 'http://127.0.0.1:1/v1', accessToken: 't1', sse: { baseUrl: `${streamHost.url}/` } });
+	let resets = 0;
+	const stop = client.sse.subscribe(['*'], () => {}, { onReset: () => resets++ });
+	try {
+		await until(() => resets === 1);
+		assert.equal(streamHost.streams.length, 1, 'connected to the stream host, not the API');
+	} finally {
+		stop();
+		await streamHost.close();
+	}
+});

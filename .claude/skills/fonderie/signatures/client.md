@@ -19,6 +19,7 @@ interface IFonderieClientOptions {
     auth?: IClientAuthConfig;
     sse?: {
         fetch?: FetchLike;
+        baseUrl?: string;
     };
 }
 
