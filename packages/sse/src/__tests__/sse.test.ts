@@ -282,6 +282,27 @@ test('maxLifetimeMs ends the stream so the client reconnects through auth again'
 
 // ── dependency budget ────────────────────────────────────────────────────────
 
+// Found in production: a phone's saved token was signed with a rotated
+// secret. The auth chain could not verify it, so ctx.user stayed empty and the
+// stream opened ANONYMOUS with a 200 — public events only, and the client had
+// no signal to refresh. It must be a 401.
+test('credentials the auth chain could not verify get a 401, not a silent anonymous stream', async () => {
+	const srv = await start();
+	try {
+		const bad = await connect(`${srv.url}/sse/stream`, { authorization: 'Bearer aaaa.bbbb.cccc' });
+		assert.equal(bad.res.status, 401);
+		bad.close();
+		const good = await connect(`${srv.url}/sse/stream`, { authorization: 'Bearer aaaa.bbbb.cccc', 'x-test-user': 'u1' });
+		assert.equal(good.res.status, 200, 'verified credentials stream');
+		good.close();
+		const none = await connect(`${srv.url}/sse/stream`);
+		assert.equal(none.res.status, 200, 'no credentials at all: a legitimate anonymous stream');
+		none.close();
+	} finally {
+		await srv.close();
+	}
+});
+
 test('dependency budget: src imports no @fonderie/* package but core', () => {
 	const dir = fileURLToPath(new URL('..', import.meta.url));
 	const offenders: string[] = [];

@@ -124,6 +124,14 @@ export class SseModule implements IFonderieModule {
 	}
 
 	private async stream(ctx: IFonderieContext): Promise<Response> {
+		// Credentials the app's auth chain could not verify — expired, or signed
+		// with a rotated secret — must not quietly become an anonymous stream:
+		// it would get only public events, and the client would never learn its
+		// token is bad. A 401 lets the client refresh once and reconnect as the
+		// user (or sign out). No credentials at all is a legitimate anonymous stream.
+		if (!ctx.user && /^bearer\s+\S/i.test(ctx.request.headers.get('authorization') ?? '')) {
+			return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'The session is invalid or expired — refresh it and reconnect.');
+		}
 		const raw = new URL(ctx.request.url).searchParams.get('topics') ?? '*';
 		const filters = [...new Set(raw.split(',').map((t) => t.trim()).filter(Boolean))];
 		if (filters.length === 0) filters.push('*');
