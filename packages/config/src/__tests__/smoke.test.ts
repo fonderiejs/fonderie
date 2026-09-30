@@ -767,3 +767,25 @@ test('rotateSecretKey: running it twice refuses rather than double-encrypting', 
 	await assert.rejects(() => rotateSecretKey(rotationStore(secrets, []), oldKey, newKey), /rotation aborted/);
 	assert.equal(newKey.decrypt(secrets[0]!.value), 'v', 'the first rotation still stands');
 });
+
+test('RemoteConfigManager.reload(): reads the store now, and concurrent callers share one query', async () => {
+	let queries = 0;
+	let rows = [{ key: 'WITH_PROFILE_SCREEN', value: 'true', environment: 'all' }];
+	const store = {
+		query: async <T = unknown>(): Promise<T[]> => {
+			queries++;
+			await new Promise((r) => setTimeout(r, 5));
+			return rows as unknown as T[];
+		},
+	} as never;
+	const manager = new RemoteConfigManager(store, { ttl: 60_000 });
+	await manager.reload();
+	assert.equal(manager.get('WITH_PROFILE_SCREEN', null), true);
+	rows = [{ key: 'WITH_PROFILE_SCREEN', value: 'false', environment: 'all' }];
+	const before = queries;
+	await Promise.all([manager.reload(), manager.reload(), manager.reload()]);
+	assert.equal(queries - before, 1, 'three concurrent reloads, one query');
+	assert.equal(manager.get('WITH_PROFILE_SCREEN', null), false);
+	await manager.reload();
+	assert.equal(queries - before, 2, 'a later reload queries again');
+});

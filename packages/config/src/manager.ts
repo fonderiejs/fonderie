@@ -16,6 +16,7 @@ export class RemoteConfigManager {
 	private ttl: number;
 	private table: string;
 	private connectionUrl: string | undefined;
+	private reloading: Promise<void> | null = null;
 
 	constructor(
 		private store: IStoreAdapter,
@@ -78,6 +79,22 @@ export class RemoteConfigManager {
 		}
 		const value = this.snapshot.entries[key];
 		return value !== undefined ? (value as T) : fallback;
+	}
+
+	/**
+	 * Re-read the snapshot now; concurrent callers share one query. For reads
+	 * that must never be stale — GET /config/public, which a client re-reads the
+	 * moment it is told config changed. The TTL poll and LISTEN only bound how
+	 * stale the snapshot can get, and on serverless neither is reliable: an
+	 * instance is frozen between requests, and a transaction pooler accepts
+	 * LISTEN but never delivers the notifications. A failed read keeps the
+	 * previous snapshot (refresh() logs it).
+	 */
+	reload(): Promise<void> {
+		this.reloading ??= this.refresh().finally(() => {
+			this.reloading = null;
+		});
+		return this.reloading;
 	}
 
 	// Get all entries as a flat record
