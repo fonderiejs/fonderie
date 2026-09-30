@@ -6,73 +6,113 @@ import type { IApiResponse } from '../types';
 // ── Public remote config ─────────────────────────────────────────────────────
 // The frontend's read path for feature flags and runtime settings: only the
 // keys the server lists in ConfigModule's `publicKeys`. One snapshot per
-// FonderieClient, shared by every screen and hook that reads it — load it once
-// (typically right after sign-in, or at app start for signed-out flags), then
-// read synchronously anywhere.
+// FonderieClient, shared by every screen that reads it.
+//
+// Apps do not drive this directly: they read a key with useRemoteConfig(key,
+// fallback) or wrap a screen with withRemoteConfig (@fonderie/react, /vue).
+// Those bindings keep it LIVE — there is no polling and no opt-in:
+//   • the first reader opens the shared stream (@fonderie/sse) and loads;
+//   • 'fonderie.config.changed' re-reads; so does every (re)connect, since a
+//     change may have been missed while the stream was down;
+//   • the last reader closes the stream.
+// With `storage`, the last answer is kept on the device and restored before
+// the first render, so a cold start with no signal decides from last-known
+// values instead of fallbacks (docs/REALTIME-DESIGN.md §4.7).
 
 export interface IRemoteConfigState {
-	/** key → value, as last loaded. Empty until the first load succeeds. */
+	/** key → value: last loaded, or restored from storage. Empty until either. */
 	values: Readonly<Record<string, unknown>>;
-	/** When values were last loaded successfully; null before that. */
+	/** When values were last loaded from the server; null before that. */
 	loadedAt: Date | null;
 	isLoading: boolean;
 	/** The last load's failure, cleared by the next success. Values are kept. */
 	error: unknown;
 }
 
+/**
+ * Where the last answer is kept between launches. AsyncStorage and
+ * window.localStorage both fit as they are; sync or async.
+ */
+export interface IConfigStorage {
+	getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
+	setItem(key: string, value: string): void | Promise<void>;
+}
+
+/** Where the client reports problems. Default: console. */
+export interface IClientLog {
+	warn(message: string): void;
+}
+
+export interface IConfigClientOptions {
+	storage?: IConfigStorage | undefined;
+	log?: IClientLog | undefined;
+}
+
 type Listener = (state: IRemoteConfigState) => void;
+
+const STORAGE_KEY = 'fonderie.config.public';
 
 export class ConfigClient {
 	private state: IRemoteConfigState = { values: {}, loadedAt: null, isLoading: false, error: null };
 	private listeners = new Set<Listener>();
 	private inFlight: Promise<IRemoteConfigState> | null = null;
+	private readers = 0;
+	private stopStream: (() => void) | undefined;
+	private readonly warned = new Set<string>();
+	// Keys something has read, with their fallback — checked on every answer.
+	// A reader of a missing key never re-renders (its value did not change), so
+	// the check cannot wait for the next get().
+	private readonly asked = new Map<string, unknown>();
+	private readonly storage: IConfigStorage | undefined;
+	private readonly log: IClientLog;
 
-	private watchers = 0;
-	private stopWatch: (() => void) | undefined;
+	/**
+	 * Settles once values saved on the device have been restored (at once
+	 * without `storage`). Hold the first render on it — e.g. PersistGate's
+	 * onBeforeLift, or before hiding the splash — so it never shows fallbacks
+	 * for a moment. Never rejects: unreadable storage just means no restore.
+	 */
+	readonly ready: Promise<void>;
 
 	constructor(
 		private http: HttpClient,
 		private tokens: TokenStore,
 		private sse?: SseClient,
-	) {}
-
-	// Seed the snapshot from values the app saved on the device, BEFORE the
-	// first render — a cold start with no signal then decides from last-known
-	// config instead of defaults. Ignored once a load succeeded this session
-	// (a fresher answer always wins). Save what you pass here from subscribe()
-	// whenever loadedAt changes. docs/REALTIME-DESIGN.md §4.7.
-	hydrate(values: Readonly<Record<string, unknown>>): void {
-		if (this.state.loadedAt) return;
-		this.set({ values: { ...values } });
+		options: IConfigClientOptions = {},
+	) {
+		this.storage = options.storage;
+		this.log = options.log ?? console;
+		this.ready = this.restore();
 	}
 
-	// Keep the snapshot fresh from the server's push (@fonderie/sse): re-read on
-	// 'fonderie.config.changed', and on every (re)connect since changes may
-	// have been missed. Reference-counted — call the returned stop() when done.
-	// Additive: without a stream (no streaming fetch, older server, offline) it
-	// does nothing, and polling (useRemoteConfig refreshMs) carries on.
-	watch(): () => void {
-		if (!this.sse) return () => {};
-		if (this.watchers++ === 0) {
-			this.stopWatch = this.sse.subscribe(['fonderie.config.changed'], () => void this.load(), {
-				onReset: () => void this.load(),
-			});
+	/**
+	 * Keep the snapshot live while something reads it; returns the release.
+	 * Reference-counted: bindings call it per mounted reader. Apps use
+	 * useRemoteConfig / withRemoteConfig rather than calling this.
+	 */
+	retain(): () => void {
+		if (this.readers++ === 0) {
+			if (!this.state.loadedAt && !this.inFlight) void this.load();
+			if (this.sse) {
+				this.stopStream = this.sse.subscribe(['fonderie.config.changed'], () => void this.load(), {
+					onReset: () => void this.load(),
+				});
+			}
 		}
-		let stopped = false;
+		let released = false;
 		return () => {
-			if (stopped) return;
-			stopped = true;
-			if (--this.watchers === 0) {
-				this.stopWatch?.();
-				this.stopWatch = undefined;
+			if (released) return;
+			released = true;
+			if (--this.readers === 0) {
+				this.stopStream?.();
+				this.stopStream = undefined;
 			}
 		};
 	}
 
-	// GET /config/public — fetch the public values into the shared snapshot.
-	// Concurrent calls share one request. A failure keeps the previous values
-	// (a flag that was on does not flicker off because one refresh failed) and
-	// is reported in `error`; before any success, reads fall back to defaults.
+	// GET /config/public into the shared snapshot. Concurrent calls share one
+	// request. A failure keeps the previous values (a flag that was on does not
+	// flicker off because one refresh failed) and is reported in `error`.
 	load(): Promise<IRemoteConfigState> {
 		if (this.inFlight) return this.inFlight;
 		this.set({ isLoading: true });
@@ -85,7 +125,14 @@ export class ConfigClient {
 				token: this.tokens.get(),
 			})
 			.then(
-				(res) => this.set({ values: res.result?.values ?? {}, loadedAt: new Date(), isLoading: false, error: null }),
+				(res) => {
+					const values = res.result?.values ?? {};
+					const changed = !sameValues(values, this.state.values);
+					const next = this.set({ values, loadedAt: new Date(), isLoading: false, error: null });
+					if (changed) this.save(values);
+					for (const [key, fallback] of this.asked) if (!Object.hasOwn(values, key)) this.warnMissing(key, fallback);
+					return next;
+				},
 				(error: unknown) => this.set({ isLoading: false, error }),
 			)
 			.finally(() => {
@@ -94,24 +141,58 @@ export class ConfigClient {
 		return this.inFlight;
 	}
 
-	// One value, with the fallback used when the key is absent — before the
-	// first load, when it failed, or when the server does not expose the key.
-	// Pick the SAFE fallback (feature off), not the optimistic one.
+	/**
+	 * One value, or `fallback` when the key is absent: before any answer, or
+	 * when the server does not expose it. Pick the SAFE fallback. A key still
+	 * absent after the server answered is warned about once — usually a typo,
+	 * or a key missing from the server's `publicKeys`.
+	 */
 	get<T>(key: string, fallback: T): T {
-		return Object.hasOwn(this.state.values, key) ? (this.state.values[key] as T) : fallback;
+		if (!this.asked.has(key)) this.asked.set(key, fallback);
+		if (Object.hasOwn(this.state.values, key)) return this.state.values[key] as T;
+		if (this.state.loadedAt) this.warnMissing(key, fallback);
+		return fallback;
 	}
 
-	// The whole current state (values, loadedAt, isLoading, error).
+	private warnMissing(key: string, fallback: unknown): void {
+		if (this.warned.has(key)) return;
+		this.warned.add(key);
+		this.log.warn(
+			`[fonderie] remote config "${key}" is not a public key on the server — using the fallback (${JSON.stringify(fallback)}). ` +
+				'Check the spelling, or add it to ConfigModule publicKeys.',
+		);
+	}
+
+	/** The whole current state (values, loadedAt, isLoading, error). */
 	snapshot(): IRemoteConfigState {
 		return this.state;
 	}
 
-	// Called with the new state after every change; returns an unsubscribe.
+	/** Called with the new state after every change; returns an unsubscribe. */
 	subscribe(listener: Listener): () => void {
 		this.listeners.add(listener);
 		return () => {
 			this.listeners.delete(listener);
 		};
+	}
+
+	private async restore(): Promise<void> {
+		if (!this.storage) return;
+		try {
+			const raw = await this.storage.getItem(STORAGE_KEY);
+			if (!raw || this.state.loadedAt) return; // a live answer already won
+			const values = JSON.parse(raw) as unknown;
+			if (values && typeof values === 'object' && !Array.isArray(values)) this.set({ values: { ...(values as Record<string, unknown>) } });
+		} catch (err) {
+			this.log.warn(`[fonderie] could not restore saved remote config: ${(err as Error)?.message ?? String(err)}`);
+		}
+	}
+
+	private save(values: Readonly<Record<string, unknown>>): void {
+		if (!this.storage) return;
+		void Promise.resolve()
+			.then(() => this.storage?.setItem(STORAGE_KEY, JSON.stringify(values)))
+			.catch((err: unknown) => this.log.warn(`[fonderie] could not save remote config: ${(err as Error)?.message ?? String(err)}`));
 	}
 
 	private set(patch: Partial<IRemoteConfigState>): IRemoteConfigState {
@@ -121,4 +202,11 @@ export class ConfigClient {
 		for (const listener of this.listeners) listener(this.state);
 		return this.state;
 	}
+}
+
+// Public config values are JSON, so a key-by-key JSON compare is exact.
+function sameValues(a: Readonly<Record<string, unknown>>, b: Readonly<Record<string, unknown>>): boolean {
+	const keys = Object.keys(a);
+	if (keys.length !== Object.keys(b).length) return false;
+	return keys.every((k) => Object.hasOwn(b, k) && JSON.stringify(a[k]) === JSON.stringify(b[k]));
 }

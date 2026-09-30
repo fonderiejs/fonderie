@@ -1,77 +1,66 @@
-import type { ConfigClient, IRemoteConfigState } from '@fonderie/client';
-import type { ComputedRef, Ref } from 'vue';
-import { computed, getCurrentScope, onScopeDispose, shallowRef, toValue } from 'vue';
-import type { MaybeRefOrGetter } from 'vue';
+import type { ConfigClient } from '@fonderie/client';
+import type { Component, ComputedRef, MaybeRefOrGetter } from 'vue';
+import { computed, defineComponent, getCurrentScope, h, onScopeDispose, shallowRef, toValue } from 'vue';
 
 import { useFonderieSubClient } from '../provider';
 
-export interface IUseRemoteConfigOptions {
-	/** Re-load every N ms while the component is alive (e.g. 300_000). Default: load once. */
-	refreshMs?: number;
-	/**
-	 * Re-load when the server pushes a change (@fonderie/sse), while alive.
-	 * Additive: without a stream it does nothing and refreshMs keeps working.
-	 */
-	watch?: boolean;
-}
+// Remote config, read by key. ONE way to read it: this composable, or the
+// wrapper below for a whole screen. Always live — the first reader opens the
+// shared stream (@fonderie/sse) and loads; a change on the server updates
+// exactly the readers whose key changed; the last reader closes the stream.
+// There is no polling and nothing to opt into.
+//
+// Never waits on the network: the ref holds the current value at once — the
+// last answer, the one restored from the device (FonderieClient
+// `config.storage`), or `fallback`. Pick the SAFE fallback. A key the server
+// does not expose is warned about once (see the client's `log`). `key` may be
+// a ref or getter.
+//
+//   const message = useRemoteConfig('MAINTENANCE_MESSAGE', '');
 
-export interface IUseRemoteConfigReturn {
-	state: Readonly<Ref<IRemoteConfigState>>;
-	values: ComputedRef<Readonly<Record<string, unknown>>>;
-	isLoading: ComputedRef<boolean>;
-	error: ComputedRef<unknown>;
-	/** Re-fetch now — e.g. right after sign-in, when values may be per-user. */
-	refresh: () => Promise<IRemoteConfigState>;
-}
-
-// The app's public remote config (ConfigModule `publicKeys`), from ONE snapshot
-// shared by every component: the first composable loads it, the rest read the
-// same values and update together when they change.
-export function useRemoteConfig(options: IUseRemoteConfigOptions = {}, client?: ConfigClient): IUseRemoteConfigReturn {
+export function useRemoteConfig<T>(key: MaybeRefOrGetter<string>, fallback: T, client?: ConfigClient): ComputedRef<T> {
 	const config = useFonderieSubClient(client, (c) => c.config, 'useRemoteConfig');
-	const state = shallowRef(config.snapshot());
+	const snapshot = shallowRef(config.snapshot());
 	const unsubscribe = config.subscribe((next) => {
-		state.value = next;
+		snapshot.value = next;
 	});
-
-	const s = config.snapshot();
-	if (!s.loadedAt && !s.isLoading) void config.load();
-
-	const timer =
-		options.refreshMs && options.refreshMs > 0 ? setInterval(() => void config.load(), options.refreshMs) : undefined;
-
-	const stopWatch = options.watch ? config.watch() : undefined;
-
+	const release = config.retain();
 	if (getCurrentScope()) {
 		onScopeDispose(() => {
 			unsubscribe();
-			if (timer) clearInterval(timer);
-			stopWatch?.();
+			release();
 		});
 	}
-
-	return {
-		state,
-		values: computed(() => state.value.values),
-		isLoading: computed(() => state.value.isLoading),
-		error: computed(() => state.value.error),
-		refresh: () => config.load(),
-	};
+	// A computed only notifies when its value changes, so a change to another
+	// key does not update this reader.
+	return computed(() => {
+		void snapshot.value;
+		return config.get(toValue(key), fallback);
+	});
 }
 
-// One flag or setting, as a computed ref. `fallback` renders before the first
-// load, when loading failed, or when the key is not exposed. For a sub-feature
-// pass the SAFE value (off); for a whole SCREEN fall back to showing it and
-// seed saved values with client.config.hydrate() — a screen must never be
-// unavailable for lack of signal (docs/REALTIME-DESIGN.md §4.7). `key` may be
-// a ref or getter.
-//
-//   const showJobs = useFlag('ENABLE_JOB_LISTING', false);
-export function useFlag<T>(key: MaybeRefOrGetter<string>, fallback: T, client?: ConfigClient): ComputedRef<T> {
-	const config = useFonderieSubClient(client, (c) => c.config, 'useFlag');
-	const { state } = useRemoteConfig({}, config);
-	return computed(() => {
-		void state.value; // track the shared snapshot
-		return config.get(toValue(key), fallback);
+export interface IWithRemoteConfigOptions {
+	/** Rendered instead while the key is off — e.g. a "coming soon" screen. Default: nothing. */
+	off?: Component | null;
+	/** Used while the key has no value. Default false: an unknown switch stays off. */
+	fallback?: boolean;
+}
+
+/**
+ * Render `component` only while the boolean key `key` is on; otherwise `off`.
+ * Props, attrs and slots pass through. Live: flipping the key re-renders at once.
+ *
+ *   export default withRemoteConfig('WITH_JOBS_SCREEN', JobsScreen, { off: ComingSoon, fallback: true });
+ */
+export function withRemoteConfig(key: string, component: Component, options: IWithRemoteConfigOptions = {}): Component {
+	const { off = null, fallback = false } = options;
+	const inner = (component as { name?: string; __name?: string }).name ?? (component as { __name?: string }).__name ?? 'Component';
+	return defineComponent({
+		name: `WithRemoteConfig(${key}, ${inner})`,
+		inheritAttrs: false,
+		setup(_, { attrs, slots }) {
+			const on = useRemoteConfig<boolean>(key, fallback);
+			return () => (on.value ? h(component, attrs, slots) : off ? h(off, attrs, slots) : null);
+		},
 	});
 }

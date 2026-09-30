@@ -21,6 +21,10 @@ interface IFonderieClientOptions {
         fetch?: FetchLike;
         baseUrl?: string;
     };
+    config?: {
+        storage?: IConfigStorage;
+    };
+    log?: IClientLog;
 }
 
 interface IRequestConfig {
@@ -1787,9 +1791,9 @@ interface IInferredConfigValue {
     ambiguous: boolean;
 }
 
-new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefined): ConfigClient
-  .hydrate(values: Readonly<Record<string, unknown>>): void
-  .watch(): () => void
+new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefined, options?: IConfigClientOptions): ConfigClient
+  .ready: Promise<void>
+  .retain(): () => void
   .load(): Promise<IRemoteConfigState>
   .get<T>(key: string, fallback: T): T
   .snapshot(): IRemoteConfigState
@@ -1832,6 +1836,15 @@ interface ISseSubscribeOptions {
 }
 
 type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
+
+interface IClientLog {
+    warn(message: string): void;
+}
+
+interface IConfigStorage {
+    getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
+    setItem(key: string, value: string): void | Promise<void>;
+}
 
 interface IRemoteConfigState {
     values: Readonly<Record<string, unknown>>;

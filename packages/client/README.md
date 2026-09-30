@@ -43,16 +43,25 @@ the types stay in lockstep because both sides live in the same monorepo.
 const stop = client.sse.subscribe(['fonderie.customer.*'], (e) => refetch(e.data.customerId), {
   onReset: refetchAll, // (re)connected: events may have been missed
 });
+```
 
-// Remote config: seed from what you saved on the device BEFORE the first
-// render, then keep it fresh from the server's push.
-client.config.hydrate(savedValues);   // cold start with no signal still decides
-const unwatch = client.config.watch(); // re-loads on 'fonderie.config.changed'
+Remote config is read through `@fonderie/react` / `@fonderie/vue`
+(`useRemoteConfig(key, fallback)`, `withRemoteConfig`), which keep it live over
+the same stream. Give the client a `storage` so a cold start with no signal
+decides from the last answer, and hold the first render on `config.ready`:
+
+```ts
+const client = new FonderieClient({
+  baseUrl,
+  config: { storage: AsyncStorage },   // or window.localStorage
+  log: { warn: (m) => logger.warn(m) }, // default: console
+});
+await client.config.ready; // e.g. in PersistGate onBeforeLift, or before hiding the splash
 ```
 
 `client.sse.status` is `'unavailable'` when the runtime cannot stream (React
 Native's default fetch — pass Expo's as `new FonderieClient({ sse: { fetch } })`)
-or the server has no `@fonderie/sse`; nothing breaks, polling carries on. Call
+or the server has no `@fonderie/sse`; nothing breaks — values stay as last known and refresh on the next start. Call
 `client.sse.pause()` / `resume()` when the app leaves and returns to the
 foreground.
 
