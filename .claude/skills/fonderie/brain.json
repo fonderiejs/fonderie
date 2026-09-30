@@ -9,7 +9,7 @@
     "auth": "7.14.3",
     "billing": "10.4.3",
     "client": "2.0.0",
-    "config": "6.6.0",
+    "config": "6.6.1",
     "core": "0.25.0",
     "courier": "7.13.3",
     "customers": "6.3.0",
@@ -833,7 +833,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "6.6.0",
+      "version": "6.6.1",
       "stability": "stable",
       "requires": [
         "core",
