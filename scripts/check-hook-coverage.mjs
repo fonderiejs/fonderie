@@ -19,6 +19,7 @@ const ALLOW = new Map([
 	['AuthClient.setAccessToken', 'internal token plumbing (hooks call it, not wrap it)'],
 	['SseClient.pause', 'app lifecycle, not UI state — called from the app\'s AppState/visibility handler'],
 	['SseClient.resume', 'app lifecycle, not UI state — called from the app\'s AppState/visibility handler'],
+	['SseClient.identityChanged', 'client plumbing — FonderieClient calls it on setWorkspaceId and the token store triggers it on sign-in/out; apps never call it'],
 	['ConfigClient.load', 'engine of the live bindings — useRemoteConfig/withRemoteConfig load on first read and on every stream (re)connect or change; there is deliberately no manual refresh (docs/REALTIME-DESIGN.md §4.8)'],
 	['ConfigClient.retain', 'engine of the live bindings — the ref-count useRemoteConfig/withRemoteConfig take per mounted reader; apps never call it'],
 	['BillingClient.setAccessToken', 'redundant setter; shared TokenStore'],

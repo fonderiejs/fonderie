@@ -4,6 +4,7 @@
 // one session.
 export class TokenStore {
 	private token: string | undefined;
+	private readonly listeners = new Set<(token: string | undefined) => void>();
 
 	constructor(initial?: string) {
 		this.token = initial;
@@ -14,6 +15,16 @@ export class TokenStore {
 	}
 
 	set(token: string | undefined) {
+		if (token === this.token) return;
 		this.token = token;
+		for (const listener of this.listeners) listener(token);
+	}
+
+	/** Called after every change of the token; returns an unsubscribe. */
+	onChange(listener: (token: string | undefined) => void): () => void {
+		this.listeners.add(listener);
+		return () => {
+			this.listeners.delete(listener);
+		};
 	}
 }

@@ -277,3 +277,64 @@ test('isSwitchOn: the typed "off" spellings are off; anything else is on', async
 	for (const off of [false, 0, null, undefined, '', 'false', 'FALSE', ' off ', '0', 'no', 'No']) assert.equal(isSwitchOn(off), false, JSON.stringify(off));
 	for (const on of [true, 1, 'true', 'on', 'yes', 'beta', {}, []]) assert.equal(isSwitchOn(on), true, JSON.stringify(on));
 });
+
+// ── identity: the stream follows sign-in, sign-out, user and workspace ───────
+
+// JWT-shaped, built at runtime: only the `sub` claim matters here.
+const jwt = (sub: string, n: number) =>
+	['x', Buffer.from(JSON.stringify({ sub, n })).toString('base64url'), 'y'].join('.');
+
+test('a stream opened before sign-in reopens WITH the token once the user signs in (and without it on sign-out)', async () => {
+	const srv = await sseServer();
+	const client = new FonderieClient({ baseUrl: srv.url });
+	const stop = client.sse.subscribe(['*'], () => {});
+	try {
+		await until(() => srv.open().length === 1);
+		assert.equal(srv.streams[0]!.auth, undefined, 'anonymous at first');
+		client.setAccessToken(jwt('user-1', 1));
+		await until(() => srv.open().length === 1 && srv.open()[0]!.auth === `Bearer ${jwt('user-1', 1)}`);
+		assert.equal(srv.streams.length, 2);
+		client.setAccessToken(undefined);
+		await until(() => srv.open().length === 1 && srv.open()[0]!.auth === undefined);
+		assert.equal(srv.streams.length, 3);
+	} finally {
+		stop();
+		await srv.close();
+	}
+});
+
+test("a silent refresh of the same user's token does not reopen the stream; another user does", async () => {
+	const srv = await sseServer();
+	const client = new FonderieClient({ baseUrl: srv.url, accessToken: jwt('user-1', 1) });
+	const stop = client.sse.subscribe(['*'], () => {});
+	try {
+		await until(() => srv.open().length === 1);
+		client.setAccessToken(jwt('user-1', 2)); // refreshed: new token, same user
+		await new Promise((r) => setTimeout(r, 200));
+		assert.equal(srv.streams.length, 1, 'no reconnect for a refresh');
+		client.setAccessToken(jwt('user-2', 1)); // someone else signed in
+		await until(() => srv.streams.length === 2 && srv.open().length === 1);
+		assert.equal(srv.open()[0]!.auth, `Bearer ${jwt('user-2', 1)}`);
+	} finally {
+		stop();
+		await srv.close();
+	}
+});
+
+test('switching workspace reopens the stream in the new workspace; the same workspace does not', async () => {
+	const srv = await sseServer();
+	const client = new FonderieClient({ baseUrl: srv.url, accessToken: jwt('user-1', 1), workspaceId: 'w1' });
+	const stop = client.sse.subscribe(['*'], () => {});
+	try {
+		await until(() => srv.open().length === 1);
+		client.setWorkspaceId('w1');
+		await new Promise((r) => setTimeout(r, 200));
+		assert.equal(srv.streams.length, 1);
+		client.setWorkspaceId('w2');
+		await until(() => srv.streams.length === 2 && srv.open().length === 1);
+		assert.equal(srv.open()[0]!.workspace, 'w2');
+	} finally {
+		stop();
+		await srv.close();
+	}
+});
