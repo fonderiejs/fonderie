@@ -41,16 +41,20 @@ export function publicConfigValues(
 
 /**
  * GET /config/public — unauthenticated by design: a sign-in or marketing
- * screen may need a flag before anyone has signed in. Served from the
- * in-memory snapshot (no database round trip per request). `no-store`, so a
- * browser or CDN never serves a flag after it was switched off — and so the
- * route stays correct when values become per-user.
+ * screen may need a flag before anyone has signed in. Read FRESH on every
+ * request (one small query; concurrent requests share it): clients call this
+ * at start and the moment they are told config changed, so a snapshot even a
+ * few seconds old would hand them the value they were just told is gone — and
+ * with no further event, they would keep it. `no-store`, so a browser or CDN
+ * never serves a flag after it was switched off — and so the route stays
+ * correct when values become per-user.
  */
 export function publicConfigHandler(
-	manager: Pick<RemoteConfigManager, 'get'>,
+	manager: Pick<RemoteConfigManager, 'get'> & Partial<Pick<RemoteConfigManager, 'reload'>>,
 	publicKeys: PublicConfigKeys | undefined,
 ): Middleware {
 	return async () => {
+		await manager.reload?.();
 		const res = setApiResponse(HTTP.OK, 'PUBLIC_CONFIG_FETCHED', 'Public config retrieved.', {
 			values: publicConfigValues(manager, publicKeys),
 		} satisfies IPublicConfigResult);

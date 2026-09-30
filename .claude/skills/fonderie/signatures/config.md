@@ -23,6 +23,7 @@ new RemoteConfigManager(store: IStoreAdapter, options?: IConfigOptions): RemoteC
   .boot(): Promise<void>
   .stop(): void
   .get<T>(key: string, fallback: T): T
+  .reload(): Promise<void>
   .all(): Record<string, unknown>
   .refresh(): Promise<void>
   .isStale(): boolean
@@ -138,7 +139,7 @@ interface IConfigOptions {
     publicKeys?: PublicConfigKeys;
 }
 
-function publicConfigHandler(manager: Pick<RemoteConfigManager, "get">, publicKeys: PublicConfigKeys | undefined): Middleware
+function publicConfigHandler(manager: Pick<RemoteConfigManager, "get"> & Partial<Pick<RemoteConfigManager, "reload">>, publicKeys: PublicConfigKeys | undefined): Middleware
 
 function publicConfigValues(manager: Pick<RemoteConfigManager, "get">, publicKeys: PublicConfigKeys | undefined): Record<string, unknown>
 
