@@ -62,4 +62,13 @@ export interface ISseOptions {
 	maxConnectionsPerUser?: number;
 	/** Route prefix. Default '/sse'. */
 	path?: string;
+	/**
+	 * false: a PRODUCER only — subscribe to the bus and publish to the
+	 * broadcaster, but serve no streams and register no routes. Use it on a
+	 * serverless API while a long-running host serves the streams: the event
+	 * bus creates delivery rows only for subscriptions registered in the
+	 * process that PUBLISHES an event, so the API must subscribe too, or the
+	 * stream host never receives its events. Default true.
+	 */
+	streams?: boolean;
 }

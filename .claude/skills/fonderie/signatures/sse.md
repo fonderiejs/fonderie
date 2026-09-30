@@ -51,5 +51,6 @@ interface ISseOptions {
     maxTopicsPerConnection?: number;
     maxConnectionsPerUser?: number;
     path?: string;
+    streams?: boolean;
 }
 ```
