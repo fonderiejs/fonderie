@@ -1,9 +1,9 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import type { ConfigClient, IRemoteConfigState, SseClient } from '@fonderie/client';
+import type { SseClient } from '@fonderie/client';
 import { effectScope, ref } from 'vue';
 
-import { useRemoteConfig, useSse, useSseStatus } from '../composables';
+import { useSse, useSseStatus } from '../composables';
 
 function fakeSse() {
 	const calls: Array<{ topics: string[]; stopped: boolean }> = [];
@@ -38,31 +38,6 @@ test('useSse: a reactive topic list re-subscribes when it changes', async () => 
 	assert.deepEqual(calls.map((c) => c.topics), [['a.b'], ['a.b', 'c.*']]);
 	assert.equal(calls[0]!.stopped, true, 'the old subscription is released');
 	scope.stop();
-});
-
-test('useRemoteConfig({ watch: true }): watches while alive, releases on dispose', () => {
-	let watching = 0;
-	const state: IRemoteConfigState = { values: {}, loadedAt: new Date(), isLoading: false, error: null };
-	const config = {
-		snapshot: () => state,
-		subscribe: () => () => {},
-		load: async () => state,
-		watch: () => {
-			watching++;
-			return () => {
-				watching--;
-			};
-		},
-	} as unknown as ConfigClient;
-	const scope = effectScope();
-	scope.run(() => useRemoteConfig({ watch: true }, config));
-	assert.equal(watching, 1);
-	scope.stop();
-	assert.equal(watching, 0);
-	const quiet = effectScope();
-	quiet.run(() => useRemoteConfig({}, config));
-	assert.equal(watching, 0, 'no watch unless asked');
-	quiet.stop();
 });
 
 test('useSseStatus: follows the connection state, stops listening on dispose', () => {

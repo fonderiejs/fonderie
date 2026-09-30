@@ -186,54 +186,94 @@ test('pause() closes the stream and stops reconnecting; resume() reconnects with
 	}
 });
 
-// ── config: watch() and hydrate() ────────────────────────────────────────────
+// ── config: live by default, device storage, missing-key warning ────────────
 
-test('config.watch(): re-reads /config/public on connect and on every change — one subscription for many watchers', async () => {
+test('config.retain(): loads, then re-reads on connect and on every change — one stream for many readers', async () => {
 	const srv = await sseServer();
 	const client = new FonderieClient({ baseUrl: srv.url });
-	const stop1 = client.config.watch();
-	const stop2 = client.config.watch();
+	const release1 = client.config.retain();
+	const release2 = client.config.retain();
 	try {
-		await until(() => srv.configLoads >= 1 && srv.open().length === 1); // reset → load
+		await until(() => srv.configLoads >= 1 && srv.open().length === 1);
 		const before = srv.configLoads;
 		srv.send('fonderie.config.changed', { environment: 'production' });
 		await until(() => srv.configLoads === before + 1);
-		assert.equal(srv.open().length, 1, 'two watchers, one stream');
-		stop1();
+		assert.equal(srv.open().length, 1, 'two readers, one stream');
+		release1();
 		await new Promise((r) => setTimeout(r, 50));
-		assert.equal(srv.open().length, 1, 'still watched');
-		stop2();
+		assert.equal(srv.open().length, 1, 'still read');
+		release2();
 		await until(() => srv.open().length === 0);
 	} finally {
 		await srv.close();
 	}
 });
 
-test('config.hydrate(): seeds a cold start from saved values; a real answer wins; never overrides one', async () => {
-	const srv = await sseServer({ configValues: { WITH_JOBS_SCREEN: true } });
+test('config never polls: with the stream idle, no further requests', async () => {
+	const srv = await sseServer();
 	const client = new FonderieClient({ baseUrl: srv.url });
+	const release = client.config.retain();
 	try {
-		client.config.hydrate({ WITH_JOBS_SCREEN: false });
-		assert.equal(client.config.get('WITH_JOBS_SCREEN', true), false, 'saved value decides before any network');
+		await until(() => srv.open().length === 1 && srv.configLoads >= 1);
+		await new Promise((r) => setTimeout(r, 50));
+		const settled = srv.configLoads;
+		await new Promise((r) => setTimeout(r, 400));
+		assert.equal(srv.configLoads, settled);
+	} finally {
+		release();
+		await srv.close();
+	}
+});
+
+test('config storage: a cold start restores the saved answer before any network; a fresh answer replaces and is saved', async () => {
+	const saved = new Map<string, string>([['fonderie.config.public', JSON.stringify({ WITH_JOBS_SCREEN: false })]]);
+	const storage = { getItem: async (k: string) => saved.get(k) ?? null, setItem: async (k: string, v: string) => void saved.set(k, v) };
+	const srv = await sseServer({ configValues: { WITH_JOBS_SCREEN: true } });
+	const client = new FonderieClient({ baseUrl: srv.url, config: { storage } });
+	try {
+		await client.config.ready;
+		assert.equal(client.config.get('WITH_JOBS_SCREEN', true), false, 'saved value decides before the network');
+		assert.equal(srv.configLoads, 0);
 		await client.config.load();
-		assert.equal(client.config.get('WITH_JOBS_SCREEN', false), true, 'fresh answer replaces it');
-		client.config.hydrate({ WITH_JOBS_SCREEN: false });
-		assert.equal(client.config.get('WITH_JOBS_SCREEN', false), true, 'hydrate after a load is ignored');
+		assert.equal(client.config.get('WITH_JOBS_SCREEN', false), true);
+		await until(() => saved.get('fonderie.config.public') === JSON.stringify({ WITH_JOBS_SCREEN: true }));
 	} finally {
 		await srv.close();
 	}
 });
 
-test('sse.baseUrl: the stream can live on another host than the API', async () => {
-	const streamHost = await sseServer();
-	const client = new FonderieClient({ baseUrl: 'http://127.0.0.1:1/v1', accessToken: 't1', sse: { baseUrl: `${streamHost.url}/` } });
-	let resets = 0;
-	const stop = client.sse.subscribe(['*'], () => {}, { onReset: () => resets++ });
+test('config storage: unreadable storage never blocks — ready still settles, fallbacks apply', async () => {
+	const warnings: string[] = [];
+	const client = new FonderieClient({
+		baseUrl: 'http://unused',
+		config: { storage: { getItem: async () => { throw new Error('disk gone'); }, setItem: () => {} } },
+		log: { warn: (m) => warnings.push(m) },
+	});
+	await client.config.ready;
+	assert.equal(client.config.get('WITH_JOBS_SCREEN', true), true);
+	assert.match(warnings.join('\n'), /could not restore saved remote config: disk gone/);
+});
+
+test('config.get(): a key the server does not expose warns once, only after the server answered', async () => {
+	const srv = await sseServer({ configValues: { WITH_JOBS_SCREEN: true } });
+	const warnings: string[] = [];
+	const client = new FonderieClient({ baseUrl: srv.url, log: { warn: (m) => warnings.push(m) } });
 	try {
-		await until(() => resets === 1);
-		assert.equal(streamHost.streams.length, 1, 'connected to the stream host, not the API');
+		assert.equal(client.config.get('WITH_JOBZ_SCREEN', false), false);
+		assert.equal(warnings.length, 0, 'before any answer the key may simply not be loaded yet');
+		await client.config.load();
+		client.config.get('WITH_JOBZ_SCREEN', false);
+		client.config.get('WITH_JOBZ_SCREEN', false);
+		client.config.get('WITH_JOBS_SCREEN', false);
+		assert.equal(warnings.length, 1);
+		assert.match(warnings[0]!, /"WITH_JOBZ_SCREEN" is not a public key on the server/);
 	} finally {
-		stop();
-		await streamHost.close();
+		await srv.close();
 	}
+});
+
+test('isSwitchOn: the typed "off" spellings are off; anything else is on', async () => {
+	const { isSwitchOn } = await import('../modules/config');
+	for (const off of [false, 0, null, undefined, '', 'false', 'FALSE', ' off ', '0', 'no', 'No']) assert.equal(isSwitchOn(off), false, JSON.stringify(off));
+	for (const on of [true, 1, 'true', 'on', 'yes', 'beta', {}, []]) assert.equal(isSwitchOn(on), true, JSON.stringify(on));
 });

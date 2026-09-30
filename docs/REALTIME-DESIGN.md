@@ -149,7 +149,7 @@ writing.
   `res.json()` (`client/src/http.ts:126-158`); no streaming path, no
   `AbortSignal`, no injectable `fetch`. `ConfigClient.set()` → listeners
   (`client/src/modules/config.ts:72-85`) is exactly where pushed changes
-  should land: `useRemoteConfig`/`useFlag` would update with no hook change.
+  should land: `useRemoteConfig` would update with no hook change (since revised to one keyed read path, §4.8).
 - `examples/DEPLOYMENT.md` already says serverless functions are time-limited
   and frozen after responding, and that LISTEN needs a session connection
   (`:60, 151-174`) — so a stream endpoint is long-running-host work.
@@ -257,7 +257,7 @@ All three can be added later **inside** realtime without new edges.
                                  ▼
  CLIENT  @fonderie/client  client.realtime.subscribe(topics, onEvent)
          → client.config.watch(): on 'fonderie.config.changed' → config.load()
-         → useRemoteConfig / useFlag re-render (no hook change, no spinners)
+         → useRemoteConfig(key) / withRemoteConfig re-render (no spinners)
 ```
 
 Why this shape:
@@ -382,18 +382,21 @@ data: {"reason":"TOKEN_EXPIRING"}
 ### 4.6 Client
 
 ```ts
-const stop = client.realtime.subscribe(['fonderie.customer.*'], (e) => refetchCustomers());
-client.config.watch();   // subscribes to fonderie.config.changed → load()
+const stop = client.sse.subscribe(['fonderie.customer.*'], (e) => refetchCustomers());
+// Remote config has ONE read path, always live (revised 2026-09-30, §4.8):
+const message = useRemoteConfig('MAINTENANCE_MESSAGE', '');
+export default withRemoteConfig('WITH_JOBS_SCREEN', JobsScreen, { off: ComingSoon, fallback: true });
 ```
 
 - Transport is pluggable: `fetch` with a streaming body (Expo `expo/fetch`,
   browsers) by default; injectable for other runtimes.
 - Reconnect with backoff. `pause()` / `resume()` are called by the app from
   React Native's `AppState` (the SDK does not import react-native).
-- **Degrades to polling** when the stream is unavailable (404, host down,
-  older server) — today's behaviour, so nothing breaks.
-- React: `useRealtime(topics, handler)`; `useRemoteConfig` calls `watch()`
-  when the server advertises the stream.
+- When the stream is unavailable (404, host down, older server) nothing
+  breaks: values stay as last known and refresh on the next start. There is
+  no polling fallback (§4.8).
+- React / Vue: `useSse(topics, handler)`; `useRemoteConfig(key, fallback)` and
+  `withRemoteConfig` keep config live on their own.
 
 ### 4.7 Offline first — push is additive, never a precondition
 
@@ -409,10 +412,36 @@ consumer of this design follows:
   and each successful answer is saved for the next offline start.
 - A stream that is down, blocked or slow changes nothing but freshness.
 
-The client step (§6.5) therefore ships `client.config.hydrate(values)` — seed
-the snapshot from whatever the app persisted, before the first render — next
-to `watch()`. (The first consumer app implements this today with a persisted
-store slice; the SDK makes it the default path.)
+The client therefore keeps the last answer itself: `new FonderieClient({
+config: { storage } })` (AsyncStorage, localStorage) restores it before the
+first render — hold that render on `client.config.ready` — and saves every
+changed answer. Apps no longer persist config themselves.
+
+### 4.8 One read path, always live (revised 2026-09-30)
+
+The first cut shipped seven ways to read remote config: a whole-snapshot
+`useRemoteConfig({ refreshMs, watch })`, a keyed `useFlag` that loaded once and
+never updated, the imperative `client.config.watch()/hydrate()`, and — in the
+first consumer — a polling refresh hook, a screen HOC and a persisted store
+slice. Reactivity was opt-in everywhere, and the one keyed API was the one
+that never updated.
+
+Now there is one hook and one HOC, in `@fonderie/react` and `@fonderie/vue`:
+
+- `useRemoteConfig(key, fallback)` — subscribes to that key; re-renders only
+  when its value changes. The first mounted reader opens the shared stream
+  and loads; the last one closes it (`ConfigClient.retain()`, ref-counted).
+- `withRemoteConfig(key, Component, { off, fallback })` — a screen shown only
+  while a boolean key is on.
+- **No polling.** Missed changes are covered by the stream: every (re)connect
+  — network back, app foregrounded (`pause()/resume()`), the 15-minute
+  lifetime renewal — re-reads `/config/public`.
+- **A key the server does not expose warns once**, through the client's `log`
+  (default `console`): a typo, or a key missing from `publicKeys`. The check
+  runs on every answer for every key read so far, because a reader of a
+  missing key never re-renders (its value did not change).
+- Removed: `useFlag`, `refreshMs`, `watch`, `client.config.watch()` and
+  `hydrate()`.
 
 ---
 
@@ -445,11 +474,10 @@ store slice; the SDK makes it the default path.)
    lifetime bound. Negative tests: an uncatalogued event never reaches a
    stream; a workspace event never reaches a non-member; a connection closes
    at its lifetime.
-5. ✅ **Client + hooks:** `client.sse` (shipped name; was `client.realtime`), `config.watch()`,
-   `config.hydrate()` (offline first, §4.7), `useRealtime`, `pause()`/`resume()`,
-   polling fallback; `useFlag` docs stop recommending "off" as the fallback for
-   gating a whole screen.
-6. **Consumer app:** drop `LIVE_SCREENS` and check-before-render; deploy one
-   stream host.
+5. ✅ **Client + hooks:** `client.sse` (shipped name; was `client.realtime`), `pause()`/`resume()`,
+   `useSse`. Remote config revised to one live read path (§4.8): `useRemoteConfig(key, fallback)`,
+   `withRemoteConfig`, device `storage` + `ready` (§4.7), missing-key warning; no polling.
+6. ✅ **Consumer app:** screen switches through the HOC; stream host deployed
+   (serverless producer + long-running stream host, `streams: false`).
 7. **Later:** webhooks' event picker from the catalog; APNs/FCM wake-ups for
    backgrounded apps.

@@ -21,7 +21,7 @@ export function configValueKind(value: unknown): ConfigValueKind {
 
 // A save that would change an existing key's shape — on/off to text, a list to
 // an object. Frontends read these values with a fallback of the expected type
-// (useFlag('X', false)), so a silent change reads as a different setting: the
+// (useRemoteConfig('X', false)), so a silent change reads as a different setting: the
 // text "no" is truthy. Refused unless the caller says it means it.
 export class ConfigTypeChangeError extends Error {
 	constructor(

@@ -40,12 +40,22 @@ const { login } = useLogin(otherClient.auth);
   by the `@fonderie/react-*` hook packages: explicit argument wins, otherwise
   select from the context client, otherwise throw a `hookName`-prefixed error.
 
-- `useRemoteConfig({ refreshMs?, watch? })` — the public remote config
-  (`GET /config/public`), one snapshot shared by every component. `watch: true`
-  re-loads when the server pushes a change (`@fonderie/sse`).
-- `useFlag(key, fallback)` — one value. For a sub-feature pass the safe
-  fallback (off); to gate a whole **screen**, fall back to showing it and seed
-  saved values with `client.config.hydrate()` so no screen depends on signal.
+- `useRemoteConfig(key, fallback)` — one public remote-config value
+  (`ConfigModule` `publicKeys`). **Always live**: the first reader opens the
+  shared stream (`@fonderie/sse`), a change in the admin re-renders exactly the
+  components whose key changed, the last reader closes it. No polling, nothing
+  to opt into. Never waits: it returns the last answer, the value restored from
+  the device (`new FonderieClient({ config: { storage } })`), or `fallback`. A
+  key the server does not expose warns once.
+- `withRemoteConfig(key, Component, { off?, fallback? })` — render a screen
+  only while a boolean key is on, `off` (e.g. "coming soon") otherwise; flips
+  live. To gate a whole **screen**, pass `fallback: true` so no screen is
+  unavailable for lack of signal.
+
+```tsx
+const message = useRemoteConfig('MAINTENANCE_MESSAGE', '');
+export default withRemoteConfig('WITH_JOBS_SCREEN', JobsScreen, { off: ComingSoon, fallback: true });
+```
 - `useSse(topics, onEvent, { onReset })` — Server-Sent Events from
   `@fonderie/sse` (`'*'`, exact types, `prefix.*`), one connection shared by
   all components. Events are invalidations: refetch what changed. Additive —

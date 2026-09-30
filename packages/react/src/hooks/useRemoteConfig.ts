@@ -1,65 +1,65 @@
-import type { ConfigClient, IRemoteConfigState } from '@fonderie/client';
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { type ConfigClient, isSwitchOn } from '@fonderie/client';
+import { type ComponentType, createElement, useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { useFonderieSubClient } from '../provider';
 
-export interface IUseRemoteConfigOptions {
-	/** Re-load every N ms while mounted (e.g. 300_000). Default: load once. */
-	refreshMs?: number;
-	/**
-	 * Re-load when the server pushes a change (@fonderie/sse), while mounted.
-	 * Additive: without a stream it does nothing and refreshMs keeps working.
-	 */
-	watch?: boolean;
-}
-
-export interface IUseRemoteConfigReturn extends IRemoteConfigState {
-	/** Re-fetch now — e.g. right after sign-in, when values may be per-user. */
-	refresh: () => Promise<IRemoteConfigState>;
-}
-
-// The app's public remote config (ConfigModule `publicKeys`), from ONE snapshot
-// shared by every component: the first mounted hook loads it, the rest read
-// the same values and re-render together when they change. Works in React and
-// React Native alike — it touches no DOM API.
-export function useRemoteConfig(options: IUseRemoteConfigOptions = {}, client?: ConfigClient): IUseRemoteConfigReturn {
-	const config = useFonderieSubClient(client, (c) => c.config, 'useRemoteConfig');
-	const state = useSyncExternalStore(
-		useCallback((onChange: () => void) => config.subscribe(onChange), [config]),
-		() => config.snapshot(),
-		() => config.snapshot(),
-	);
-
-	useEffect(() => {
-		const s = config.snapshot();
-		if (!s.loadedAt && !s.isLoading) void config.load();
-	}, [config]);
-
-	const { refreshMs } = options;
-	useEffect(() => {
-		if (!refreshMs || refreshMs <= 0) return;
-		const timer = setInterval(() => void config.load(), refreshMs);
-		return () => clearInterval(timer);
-	}, [config, refreshMs]);
-
-	const { watch } = options;
-	useEffect(() => (watch ? config.watch() : undefined), [config, watch]);
-
-	const refresh = useCallback(() => config.load(), [config]);
-	return { ...state, refresh };
-}
-
-// One flag or setting. `fallback` is what renders before the first load, when
-// loading failed, or when the server does not expose the key.
-//   - A sub-feature (a button, a banner): pass the SAFE value (off) — it is
-//     better to appear a moment late than to appear and vanish.
-//   - A whole SCREEN: fall back to showing it, and seed saved values with
-//     client.config.hydrate() — a screen must never be unavailable because
-//     there is no signal (docs/REALTIME-DESIGN.md §4.7).
+// Remote config, read by key. ONE way to read it: this hook, or the HOC below
+// for a whole screen. Always live — the first mounted reader opens the shared
+// stream (@fonderie/sse) and loads; a change on the server re-renders exactly
+// the components whose key changed; the last reader closes the stream. There
+// is no polling and nothing to opt into.
 //
-//   const showJobs = useFlag('ENABLE_JOB_LISTING', false);
-export function useFlag<T>(key: string, fallback: T, client?: ConfigClient): T {
-	const config = useFonderieSubClient(client, (c) => c.config, 'useFlag');
-	useRemoteConfig({}, config);
-	return config.get(key, fallback);
+// Never waits on the network: it returns the current value at once — the last
+// answer, the one restored from the device (FonderieClient `config.storage`),
+// or `fallback`. Pick the SAFE fallback. A key the server does not expose is
+// warned about once (see the client's `log`).
+
+const MISSING = Symbol('missing');
+
+export function useRemoteConfig<T>(key: string, fallback: T, client?: ConfigClient): T {
+	const config = useFonderieSubClient(client, (c) => c.config, 'useRemoteConfig');
+	const value = useSyncExternalStore(
+		useCallback((onChange: () => void) => config.subscribe(onChange), [config]),
+		// Only this key's value decides a re-render, so a change elsewhere in the
+		// config does not re-render this component.
+		() => {
+			const values = config.snapshot().values;
+			return Object.hasOwn(values, key) ? values[key] : MISSING;
+		},
+		() => {
+			const values = config.snapshot().values;
+			return Object.hasOwn(values, key) ? values[key] : MISSING;
+		},
+	);
+	useEffect(() => config.retain(), [config]);
+	return value === MISSING ? config.get(key, fallback) : (value as T);
+}
+
+export interface IWithRemoteConfigOptions<P> {
+	/** Rendered instead while the key is off — e.g. a "coming soon" screen. Default: nothing. */
+	off?: ComponentType<P> | null;
+	/** Used while the key has no value. Default false: an unknown switch stays off. */
+	fallback?: boolean;
+}
+
+/**
+ * Render `Component` only while the switch `key` is on (isSwitchOn: false, 0,
+ * '', "false", "off", "0", "no" are off); otherwise `off`.
+ * Live like useRemoteConfig: flipping the key re-renders the screen at once.
+ *
+ *   export default withRemoteConfig('WITH_JOBS_SCREEN', JobsScreen, { off: ComingSoon, fallback: true });
+ */
+export function withRemoteConfig<P extends object>(
+	key: string,
+	Component: ComponentType<P>,
+	options: IWithRemoteConfigOptions<P> = {},
+): ComponentType<P> {
+	const { off = null, fallback = false } = options;
+	function WithRemoteConfig(props: P) {
+		const on = isSwitchOn(useRemoteConfig<unknown>(key, fallback));
+		if (on) return createElement(Component, props);
+		return off ? createElement(off, props) : null;
+	}
+	WithRemoteConfig.displayName = `withRemoteConfig(${key}, ${Component.displayName ?? Component.name ?? 'Component'})`;
+	return WithRemoteConfig;
 }

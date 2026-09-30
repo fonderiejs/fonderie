@@ -35,11 +35,13 @@ over injection — useful in tests and multi-client apps.
 - `useFonderieSubClient(explicit, select, composableName)` — resolution helper
   used by the `@fonderie/vue-*` composable packages: explicit argument wins,
   otherwise select from the injected client, otherwise throw a named error.
-- `useRemoteConfig({ refreshMs?, watch? })` — the public remote config, one
-  shared snapshot; `watch: true` re-loads on server push (`@fonderie/sse`).
-- `useFlag(key, fallback)` — one value as a computed ref. Safe fallback (off)
-  for a sub-feature; to gate a whole screen, fall back to showing it and seed
-  saved values with `client.config.hydrate()`.
+- `useRemoteConfig(key, fallback)` — one public remote-config value as a
+  computed ref. **Always live** (shared `@fonderie/sse` stream, no polling);
+  updates only when that key changes; never waits (last answer, device-restored
+  value, or `fallback`); a key the server does not expose warns once.
+- `withRemoteConfig(key, Component, { off?, fallback? })` — render a component
+  only while a boolean key is on, `off` otherwise; props, attrs and slots pass
+  through. For a whole screen pass `fallback: true`.
 - `useSse(topics, onEvent, { onReset })` — Server-Sent Events (`'*'`, exact
   types, `prefix.*`; `topics` may be a ref), one shared connection. Additive —
   never gate rendering on it.
