@@ -67,6 +67,7 @@ interface ISseClientEvent {
 }
 
 new SseClient(deps: ISseClientDeps): SseClient
+  .identityChanged(): void
   .status: SseStatus
   .onStatus(listener: (status: SseStatus) => void): () => void
   .subscribe(topics: string[], onEvent: (event: ISseClientEvent) => void, options?: ISseSubscribeOptions | undefined): () => void

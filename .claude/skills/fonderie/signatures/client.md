@@ -1802,6 +1802,7 @@ new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefin
 function isSwitchOn(value: unknown): boolean
 
 new SseClient(deps: ISseClientDeps): SseClient
+  .identityChanged(): void
   .status: SseStatus
   .onStatus(listener: (status: SseStatus) => void): () => void
   .subscribe(topics: string[], onEvent: (event: ISseClientEvent) => void, options?: ISseSubscribeOptions): () => void

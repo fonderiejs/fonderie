@@ -162,6 +162,8 @@ export class FonderieClient {
 		this.customers.setWorkspaceId(workspaceId);
 		this.audit.setWorkspaceId(workspaceId);
 		this.webhooks.setWorkspaceId(workspaceId);
+		// A stream is scoped to the workspace it was opened in.
+		this.sse?.identityChanged();
 	}
 
 	// ── Generic transport ──────────────────────────────────────────────────────
