@@ -33,7 +33,10 @@ export interface IFonderieClientOptions {
 	// stream: browsers' does; in React Native pass Expo's `fetch` from
 	// 'expo/fetch' (the default RN fetch cannot stream — the client then
 	// reports 'unavailable' and apps keep polling).
-	sse?: { fetch?: FetchLike };
+	// `baseUrl`: where the stream lives when it is not the API's origin — a
+	// serverless API cannot hold streams, so they are often served by a
+	// separate long-running host. Default: `baseUrl` above.
+	sse?: { fetch?: FetchLike; baseUrl?: string };
 }
 
 // Per-call options for the generic transport.
@@ -90,7 +93,7 @@ export class FonderieClient {
 		// setWorkspaceId wiring below — just the shared http + token store.
 		this.media = new MediaClient(this.http, this.tokens);
 		this.sse = new SseClient({
-			absolute: (path) => this.http.absolute(path),
+			absolute: (path) => (opts.sse?.baseUrl ? `${opts.sse.baseUrl.replace(/\/$/, '')}${path}` : this.http.absolute(path)),
 			tokens: this.tokens,
 			getWorkspaceId: () => this.workspaceId,
 			refresh: opts.auth ? () => this.doRefresh() : undefined,
