@@ -86,3 +86,21 @@ test("SseModule + PgBroadcaster: a brick's own NOTIFY (config changed) reaches a
 		});
 	}
 });
+
+test('PgBroadcaster({ listen: false }): a serverless producer publishes, a listening host receives', { skip }, async () => {
+	const producer = new PgBroadcaster({ connectionString: URL!, channel: 'fonderie_sse_test3', listen: false });
+	const host = new PgBroadcaster({ connectionString: URL!, channel: 'fonderie_sse_test3' });
+	await producer.start();
+	await host.start();
+	try {
+		const got: ISseMessage[] = [];
+		host.subscribe((m) => got.push(m));
+		await producer.publish({ id: 'e2', type: 'fonderie.customer.created', scope: { workspaceId: 'w1' }, data: { customerId: 'c2' }, at: new Date().toISOString() });
+		await until(() => got.length === 1);
+		assert.equal(got[0]!.data['customerId'], 'c2');
+		await assert.rejects(() => producer.listen('anything', () => {}), /publish-only/);
+	} finally {
+		await producer.stop();
+		await host.stop();
+	}
+});

@@ -75,6 +75,33 @@ VM) — a serverless function is cut at its time limit. Streams close after
 `maxLifetimeMs` (15 min) so each reconnect re-runs your auth chain; a
 `fonderie.stream.expiring` event arrives shortly before.
 
+### Serverless API + a stream host
+
+The API can stay serverless. Register SSE on **both**: the event bus creates
+delivery rows only for subscriptions registered in the process that publishes
+an event, so the API must subscribe too, or the stream host never hears its
+events.
+
+```ts
+// Serverless API — produces, serves nothing. NOTIFY works through a
+// transaction-mode pooler, so the usual DATABASE_URL is fine.
+new SseModule({
+  bus: events.bus,
+  streams: false,
+  broadcaster: new PgBroadcaster({ connectionString: process.env.DATABASE_URL!, listen: false }),
+});
+
+// Stream host (long-running) — same app, serves /sse/stream. LISTEN needs a
+// session-mode connection.
+new SseModule({
+  bus: events.bus,
+  broadcaster: new PgBroadcaster({ connectionString: process.env.SSE_DATABASE_URL! }),
+  middlewares: [withWorkspace(store)],
+});
+```
+
+Point clients at the host: `new FonderieClient({ baseUrl, sse: { baseUrl: 'https://stream.example.com/v1' } })`.
+
 ## License
 
 MIT

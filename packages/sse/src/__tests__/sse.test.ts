@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { FonderieApp, defineConfig, type IEventCatalogEntry, type IFonderieModule, type Middleware } from '@fonderie/core';
 
 import { SseModule } from '../module';
-import type { ISseBus } from '../types';
+import { InProcessBroadcaster } from '../broadcaster';
+import type { IBroadcaster, ISseBus, ISseMessage } from '../types';
 
 // ── fixtures ─────────────────────────────────────────────────────────────────
 
@@ -292,4 +293,52 @@ test('dependency budget: src imports no @fonderie/* package but core', () => {
 		}
 	}
 	assert.deepEqual(offenders, []);
+});
+
+// ── split deployment: serverless producer + long-running stream host ─────────
+
+
+test('streams: false — a producer registers no routes but still publishes its bus events', async () => {
+	const published: ISseMessage[] = [];
+	const broadcaster: IBroadcaster = { publish: (m) => void published.push(m), subscribe: () => () => {} };
+	const bus = fakeBus();
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	app.register(catalogModule);
+	app.register(new SseModule({ bus, broadcaster, streams: false }));
+	await app.boot();
+	assert.ok(!app.routes().some((r) => r.path.startsWith('/sse')), 'no stream routes on the producer');
+	await bus.emit('fonderie.customer.created', { customerId: 'c1', workspaceId: 'w1', email: 'x@acme.example' });
+	assert.equal(published.length, 1);
+	assert.deepEqual([published[0]!.type, published[0]!.data, published[0]!.scope], ['fonderie.customer.created', { customerId: 'c1' }, { workspaceId: 'w1' }]);
+});
+
+test('split topology: an event emitted on the producer reaches a client of the stream host', async () => {
+	const shared = new InProcessBroadcaster(); // stands in for PgBroadcaster between two hosts
+	// "Vercel": owns the bus, serves nothing.
+	const bus = fakeBus();
+	const producer = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	producer.register(catalogModule);
+	producer.register(new SseModule({ bus, broadcaster: shared, streams: false }));
+	await producer.boot();
+	// "Cloud Run": serves the streams, has no bus of its own.
+	const srv = await (async () => {
+		const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+		app.register(catalogModule);
+		const sse = new SseModule({ broadcaster: shared, middlewares: [testAuth], heartbeatMs: 0 });
+		app.register(sse);
+		await app.boot();
+		const server = app.listen(0, { quiet: true });
+		await new Promise((r) => (server.listening ? r(undefined) : server.once('listening', r)));
+		const { port } = server.address() as { port: number };
+		return { url: `http://127.0.0.1:${port}`, close: async () => { await sse.stop(); server.closeAllConnections(); server.close(); } };
+	})();
+	const c = await connect(`${srv.url}/sse/stream`, { 'x-test-user': 'u1', 'x-test-workspace': 'w1' });
+	try {
+		await until(() => c.events.length > 0);
+		await bus.emit('fonderie.customer.created', { customerId: 'c9', workspaceId: 'w1' });
+		await until(() => c.types().includes('fonderie.customer.created'));
+	} finally {
+		c.close();
+		await srv.close();
+	}
 });

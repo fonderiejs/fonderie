@@ -52,10 +52,14 @@ export class SseModule implements IFonderieModule {
 		this.hub = new Hub(this.catalog);
 
 		await this.broadcaster.start?.();
-		this.cleanups.push(this.broadcaster.subscribe((message) => void this.hub.deliver(message)));
+		const streams = this.options.streams !== false;
+		if (streams) this.cleanups.push(this.broadcaster.subscribe((message) => void this.hub.deliver(message)));
 
 		for (const entry of this.catalog.values()) {
 			if (entry.source) {
+				// NOTIFY-sourced events are heard where streams are served; a
+				// producer-only instance leaves them to the stream host.
+				if (!streams) continue;
 				if (!this.broadcaster.listen) {
 					console.warn(
 						`[sse] ${entry.type} is signalled on NOTIFY channel '${entry.source.notify}', ` +
@@ -77,6 +81,8 @@ export class SseModule implements IFonderieModule {
 				);
 			}
 		}
+
+		if (!streams) return; // producer only: no routes, nothing to serve
 
 		if (process.env['NODE_ENV'] === 'production' && this.broadcaster instanceof InProcessBroadcaster) {
 			console.warn(

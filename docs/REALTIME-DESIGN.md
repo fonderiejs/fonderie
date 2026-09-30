@@ -361,7 +361,13 @@ data: {"reason":"TOKEN_EXPIRING"}
 
 ### 4.5 Hosting
 
-- **Producers** can stay on serverless — they only emit to the bus, as today.
+- **Producers** can stay on serverless — but they must register SSE too, as
+  `SseModule({ streams: false })` with a publish-only
+  `PgBroadcaster({ listen: false })`. Found while wiring the first consumer:
+  the event bus creates delivery rows only for subscriptions registered in the
+  process that PUBLISHES, so a stream host that alone subscribes never
+  receives a serverless API's events. (NOTIFY-sourced events — config — were
+  unaffected.)
 - **Stream hosts** must be long-running: one small always-on container is
   enough to start (it holds connections in memory and one LISTEN on a
   **session-mode** connection). Several hosts scale horizontally because
