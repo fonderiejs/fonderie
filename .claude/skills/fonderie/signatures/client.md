@@ -1799,6 +1799,8 @@ new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefin
   .snapshot(): IRemoteConfigState
   .subscribe(listener: Listener): () => void
 
+function isSwitchOn(value: unknown): boolean
+
 new SseClient(deps: ISseClientDeps): SseClient
   .status: SseStatus
   .onStatus(listener: (status: SseStatus) => void): () => void

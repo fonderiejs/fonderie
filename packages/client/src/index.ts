@@ -258,7 +258,7 @@ export {
 	inferConfigValue,
 } from './config-value';
 export type { CastResult, ConfigValueType, IInferredConfigValue } from './config-value';
-export { ConfigClient } from './modules/config';
+export { ConfigClient, isSwitchOn } from './modules/config';
 export { SseClient } from './modules/sse';
 export type { FetchLike, ISseClientEvent, ISseSubscribeOptions, SseStatus } from './modules/sse';
 export type { IClientLog, IConfigStorage, IRemoteConfigState } from './modules/config';

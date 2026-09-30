@@ -1,4 +1,4 @@
-import type { ConfigClient } from '@fonderie/client';
+import { type ConfigClient, isSwitchOn } from '@fonderie/client';
 import { type ComponentType, createElement, useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { useFonderieSubClient } from '../provider';
@@ -43,7 +43,8 @@ export interface IWithRemoteConfigOptions<P> {
 }
 
 /**
- * Render `Component` only while the boolean key `key` is on; otherwise `off`.
+ * Render `Component` only while the switch `key` is on (isSwitchOn: false, 0,
+ * '', "false", "off", "0", "no" are off); otherwise `off`.
  * Live like useRemoteConfig: flipping the key re-renders the screen at once.
  *
  *   export default withRemoteConfig('WITH_JOBS_SCREEN', JobsScreen, { off: ComingSoon, fallback: true });
@@ -55,7 +56,7 @@ export function withRemoteConfig<P extends object>(
 ): ComponentType<P> {
 	const { off = null, fallback = false } = options;
 	function WithRemoteConfig(props: P) {
-		const on = useRemoteConfig<boolean>(key, fallback);
+		const on = isSwitchOn(useRemoteConfig<unknown>(key, fallback));
 		if (on) return createElement(Component, props);
 		return off ? createElement(off, props) : null;
 	}

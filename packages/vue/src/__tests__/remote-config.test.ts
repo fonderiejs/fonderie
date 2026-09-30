@@ -160,6 +160,10 @@ test('withRemoteConfig: the screen or `off`, props pass through, flips live', as
 	values = { WITH_JOBS_SCREEN: true };
 	pushChange();
 	await until(() => view.text() === 'jobs: today');
+	// The console stores what the operator typed: "False" is off, not a truthy string.
+	values = { WITH_JOBS_SCREEN: ' False ' };
+	pushChange();
+	await until(() => view.text() === 'soon: today');
 });
 
 test('withRemoteConfig: default fallback is off; restored storage decides the first render', async () => {

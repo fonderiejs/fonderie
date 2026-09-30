@@ -75,6 +75,8 @@ new SseClient(deps: ISseClientDeps): SseClient
 
 type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
+function isSwitchOn(value: unknown): boolean
+
 function useRemoteConfig<T>(key: MaybeRefOrGetter<string>, fallback: T, client?: ConfigClient | undefined): ComputedRef<T>
 
 function useSse(topics: MaybeRefOrGetter<string[]>, onEvent: (event: ISseClientEvent) => void, options?: IUseSseOptions, client?: SseClient | undefined): void

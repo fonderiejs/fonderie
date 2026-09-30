@@ -50,6 +50,18 @@ export interface IConfigClientOptions {
 
 type Listener = (state: IRemoteConfigState) => void;
 
+/**
+ * Whether a remote switch is on. The console stores what the operator typed,
+ * so the obvious "off" spellings count as off, not only the boolean: false, 0,
+ * null, '' and the strings false / off / 0 / no (any case, trimmed). Anything
+ * else is on. withRemoteConfig decides with this.
+ */
+export function isSwitchOn(value: unknown): boolean {
+	if (value === false || value === 0 || value === null || value === undefined) return false;
+	if (typeof value === 'string') return !['', 'false', 'off', '0', 'no'].includes(value.trim().toLowerCase());
+	return true;
+}
+
 const STORAGE_KEY = 'fonderie.config.public';
 
 export class ConfigClient {

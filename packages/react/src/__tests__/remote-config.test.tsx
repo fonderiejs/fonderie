@@ -160,6 +160,10 @@ test('withRemoteConfig: the screen, or `off`, and flips live when the operator s
 	values = { WITH_JOBS_SCREEN: true };
 	await act(async () => pushChange());
 	await until(() => view.text() === 'jobs: today');
+	// The console stores what the operator typed: "off" is off, not a truthy string.
+	values = { WITH_JOBS_SCREEN: 'off' };
+	await act(async () => pushChange());
+	await until(() => view.text() === 'soon: today');
 	view.unmount();
 });
 

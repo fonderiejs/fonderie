@@ -1,4 +1,4 @@
-import type { ConfigClient } from '@fonderie/client';
+import { type ConfigClient, isSwitchOn } from '@fonderie/client';
 import type { Component, ComputedRef, MaybeRefOrGetter } from 'vue';
 import { computed, defineComponent, getCurrentScope, h, onScopeDispose, shallowRef, toValue } from 'vue';
 
@@ -47,7 +47,8 @@ export interface IWithRemoteConfigOptions {
 }
 
 /**
- * Render `component` only while the boolean key `key` is on; otherwise `off`.
+ * Render `component` only while the switch `key` is on (isSwitchOn: false, 0,
+ * '', "false", "off", "0", "no" are off); otherwise `off`.
  * Props, attrs and slots pass through. Live: flipping the key re-renders at once.
  *
  *   export default withRemoteConfig('WITH_JOBS_SCREEN', JobsScreen, { off: ComingSoon, fallback: true });
@@ -59,8 +60,8 @@ export function withRemoteConfig(key: string, component: Component, options: IWi
 		name: `WithRemoteConfig(${key}, ${inner})`,
 		inheritAttrs: false,
 		setup(_, { attrs, slots }) {
-			const on = useRemoteConfig<boolean>(key, fallback);
-			return () => (on.value ? h(component, attrs, slots) : off ? h(off, attrs, slots) : null);
+			const value = useRemoteConfig<unknown>(key, fallback);
+			return () => (isSwitchOn(value.value) ? h(component, attrs, slots) : off ? h(off, attrs, slots) : null);
 		},
 	});
 }

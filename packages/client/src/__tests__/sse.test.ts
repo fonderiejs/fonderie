@@ -271,3 +271,9 @@ test('config.get(): a key the server does not expose warns once, only after the 
 		await srv.close();
 	}
 });
+
+test('isSwitchOn: the typed "off" spellings are off; anything else is on', async () => {
+	const { isSwitchOn } = await import('../modules/config');
+	for (const off of [false, 0, null, undefined, '', 'false', 'FALSE', ' off ', '0', 'no', 'No']) assert.equal(isSwitchOn(off), false, JSON.stringify(off));
+	for (const on of [true, 1, 'true', 'on', 'yes', 'beta', {}, []]) assert.equal(isSwitchOn(on), true, JSON.stringify(on));
+});
