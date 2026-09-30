@@ -35,13 +35,22 @@ function useFonderieClient(): FonderieClient
 
 function useFonderieSubClient<T>(explicit: T | undefined, select: (client: FonderieClient) => T, composableName: string): T
 
-new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefined): ConfigClient
-  .hydrate(values: Readonly<Record<string, unknown>>): void
-  .watch(): () => void
+new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefined, options?: IConfigClientOptions | undefined): ConfigClient
+  .ready: Promise<void>
+  .retain(): () => void
   .load(): Promise<IRemoteConfigState>
   .get<T>(key: string, fallback: T): T
   .snapshot(): IRemoteConfigState
   .subscribe(listener: Listener): () => void
+
+interface IClientLog {
+    warn(message: string): void;
+}
+
+interface IConfigStorage {
+    getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
+    setItem(key: string, value: string): void | Promise<void>;
+}
 
 interface IRemoteConfigState {
     values: Readonly<Record<string, unknown>>;
@@ -66,28 +75,22 @@ new SseClient(deps: ISseClientDeps): SseClient
 
 type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
-function useFlag<T>(key: MaybeRefOrGetter<string>, fallback: T, client?: ConfigClient | undefined): ComputedRef<T>
+function isSwitchOn(value: unknown): boolean
 
-function useRemoteConfig(options?: IUseRemoteConfigOptions, client?: ConfigClient | undefined): IUseRemoteConfigReturn
+function useRemoteConfig<T>(key: MaybeRefOrGetter<string>, fallback: T, client?: ConfigClient | undefined): ComputedRef<T>
 
 function useSse(topics: MaybeRefOrGetter<string[]>, onEvent: (event: ISseClientEvent) => void, options?: IUseSseOptions, client?: SseClient | undefined): void
 
 function useSseStatus(client?: SseClient | undefined): Readonly<Ref<SseStatus, SseStatus>>
 
-interface IUseRemoteConfigOptions {
-    refreshMs?: number;
-    watch?: boolean;
-}
-
-interface IUseRemoteConfigReturn {
-    state: Readonly<Ref<IRemoteConfigState>>;
-    values: ComputedRef<Readonly<Record<string, unknown>>>;
-    isLoading: ComputedRef<boolean>;
-    error: ComputedRef<unknown>;
-    refresh: () => Promise<IRemoteConfigState>;
-}
+function withRemoteConfig(key: string, component: Component, options?: IWithRemoteConfigOptions): Component
 
 interface IUseSseOptions {
     onReset?: () => void;
+}
+
+interface IWithRemoteConfigOptions {
+    off?: Component | null;
+    fallback?: boolean;
 }
 ```

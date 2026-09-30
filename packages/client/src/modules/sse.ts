@@ -7,7 +7,7 @@
 //
 // Push is ADDITIVE: when the stream is unavailable (no streaming fetch, a
 // server without @fonderie/sse, offline) nothing breaks — callers keep their
-// polling and local snapshots. docs/REALTIME-DESIGN.md §4.7.
+// local snapshots, and every reconnect re-reads. docs/REALTIME-DESIGN.md §4.7.
 import type { TokenStore } from '../token-store';
 
 export type FetchLike = (url: string, init?: {
@@ -46,6 +46,7 @@ export interface ISseClientDeps {
 	getWorkspaceId: () => string | undefined;
 	refresh?: (() => Promise<string | undefined>) | undefined;
 	fetch?: FetchLike | undefined;
+	log?: { warn(message: string): void } | undefined;
 }
 
 interface ISubscription {
@@ -257,7 +258,7 @@ export class SseClient {
 	private unavailable(reason: string): void {
 		this.controller = undefined;
 		this.connectedTopics = '';
-		if (this._status !== 'unavailable') console.warn(`[fonderie] realtime stream unavailable (${reason}) — keeping polling`);
+		if (this._status !== 'unavailable') (this.deps.log ?? console).warn(`[fonderie] live updates unavailable (${reason}) — values refresh on the next start`);
 		this.setStatus('unavailable');
 	}
 

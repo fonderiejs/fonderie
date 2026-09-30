@@ -5,7 +5,7 @@ import { AuthClient } from './modules/auth';
 import { BillingClient } from './modules/billing';
 import { CustomersClient } from './modules/customers';
 import { MediaClient } from './modules/media';
-import { ConfigClient } from './modules/config';
+import { ConfigClient, type IClientLog, type IConfigStorage } from './modules/config';
 import { SseClient, type FetchLike } from './modules/sse';
 import { WebhooksClient } from './modules/webhooks';
 import { WorkspacesClient } from './modules/workspaces';
@@ -32,11 +32,18 @@ export interface IFonderieClientOptions {
 	// Server-Sent Events (@fonderie/sse). `fetch` must return a readable body
 	// stream: browsers' does; in React Native pass Expo's `fetch` from
 	// 'expo/fetch' (the default RN fetch cannot stream — the client then
-	// reports 'unavailable' and apps keep polling).
+	// reports 'unavailable', and remote config refreshes only on the next start).
 	// `baseUrl`: where the stream lives when it is not the API's origin — a
 	// serverless API cannot hold streams, so they are often served by a
 	// separate long-running host. Default: `baseUrl` above.
 	sse?: { fetch?: FetchLike; baseUrl?: string };
+	// Public remote config. `storage` keeps the last answer on the device so a
+	// cold start without signal decides from it (AsyncStorage, localStorage);
+	// hold the first render on `client.config.ready`.
+	config?: { storage?: IConfigStorage };
+	// Where the client reports problems (a missing config key, a stream it
+	// cannot open). Default: console.
+	log?: IClientLog;
 }
 
 // Per-call options for the generic transport.
@@ -98,8 +105,9 @@ export class FonderieClient {
 			getWorkspaceId: () => this.workspaceId,
 			refresh: opts.auth ? () => this.doRefresh() : undefined,
 			fetch: opts.sse?.fetch,
+			log: opts.log,
 		});
-		this.config = new ConfigClient(this.http, this.tokens, this.sse);
+		this.config = new ConfigClient(this.http, this.tokens, this.sse, { storage: opts.config?.storage, log: opts.log });
 		// Route through the setter so the constructor option scopes the
 		// workspace-aware modules exactly like a later setWorkspaceId() call.
 		if (opts.workspaceId !== undefined) this.setWorkspaceId(opts.workspaceId);
