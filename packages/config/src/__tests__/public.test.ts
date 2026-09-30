@@ -54,3 +54,30 @@ test('GET /config/public answers the envelope, with no-store', async () => {
 	assert.deepEqual(body.result, { values: { ENABLE_JOB_LISTING: true } });
 	assert.doesNotMatch(JSON.stringify(body), /INTERNAL_PRICING_RULES|server only/);
 });
+
+// The field bug: an operator switched a screen off; the app was told at once
+// and re-read — and a serverless instance answered from a snapshot cached up
+// to the TTL, handing back the old value. No further event came, so the app
+// kept it. The route must read fresh.
+test('GET /config/public reads fresh — a value changed since the last snapshot is served at once', async () => {
+	const db: Record<string, unknown> = { WITH_PROFILE_SCREEN: true };
+	let snapshot = { ...db };
+	let reloads = 0;
+	const m = {
+		get<T>(key: string, fallback: T): T {
+			return Object.hasOwn(snapshot, key) ? (snapshot[key] as T) : fallback;
+		},
+		async reload() {
+			reloads++;
+			await new Promise((r) => setTimeout(r, 5));
+			snapshot = { ...db };
+		},
+	};
+	const handler = publicConfigHandler(m, ['WITH_PROFILE_SCREEN']);
+	const read = async () =>
+		((await (await handler({} as never, async () => new Response())).json()) as { result: { values: Record<string, unknown> } }).result.values;
+	assert.deepEqual(await read(), { WITH_PROFILE_SCREEN: true });
+	db['WITH_PROFILE_SCREEN'] = false; // the operator's change, not yet in the snapshot
+	assert.deepEqual(await read(), { WITH_PROFILE_SCREEN: false });
+	assert.equal(reloads, 2);
+});
