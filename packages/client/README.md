@@ -56,6 +56,10 @@ or the server has no `@fonderie/sse`; nothing breaks, polling carries on. Call
 `client.sse.pause()` / `resume()` when the app leaves and returns to the
 foreground.
 
+A serverless API cannot hold streams: serve them from a long-running host and
+point the client there with `new FonderieClient({ baseUrl, sse: { baseUrl: 'https://stream.example.com' } })`
+— only `/sse/stream` goes to it.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —
