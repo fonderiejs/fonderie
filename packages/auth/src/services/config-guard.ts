@@ -32,6 +32,21 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 		});
 	}
 
+	// A previous secret still verifies tokens, so a weak one is as dangerous as
+	// a weak current secret.
+	(config.jwtPreviousSecrets ?? []).forEach((previous, index) => {
+		if (secretStrengthProblem(previous ?? '')) {
+			problems.push({
+				module: MODULE,
+				severity: 'error',
+				message: `jwtPreviousSecrets[${index}] is too short or a placeholder — it still verifies tokens`,
+				domain: 'auth',
+				reason: 'JWT_PREVIOUS_SECRET_WEAK',
+				metadata: { index },
+			});
+		}
+	});
+
 	// Explicitly disabling Secure cookies ships session cookies over plaintext —
 	// an error in production (fails the boot gate), a warning elsewhere.
 	if (config.secureCookies === false) {
