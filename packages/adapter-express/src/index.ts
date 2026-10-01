@@ -470,7 +470,7 @@ export function drainQueue(bus: IDrainable, options: IDrainQueueOptions = {}): R
 			// After the request's own background work: with a platform runner
 		// (waitUntil) its bus.emit may not have written the event yet, and a
 		// drain started now would find nothing — and the instance freezes.
-		void background(backgroundSettled().then(() => run()));
+		void background(backgroundSettled().then(() => run()), { settles: false });
 		});
 		next();
 	};

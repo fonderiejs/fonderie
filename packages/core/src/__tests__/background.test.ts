@@ -151,11 +151,46 @@ test('backgroundSettled waits for work handed off so far — not for work handed
 
 test('backgroundSettled is bounded: hung work cannot hold a drain forever', async () => {
 	setBackgroundRunner(() => {});
+	let release!: () => void;
 	try {
-		void background(new Promise(() => {}));
+		void background(new Promise<void>((r) => { release = r; }));
 		const t0 = Date.now();
 		await backgroundSettled(80);
 		assert.ok(Date.now() - t0 < 300);
+	} finally {
+		release(); // the set is module state: leave nothing for the next test
+		setBackgroundRunner(null);
+	}
+});
+
+test('hung work is forgotten after the timeout, so it cannot delay every later drain', async () => {
+	process.env['FONDERIE_BACKGROUND_TIMEOUT_MS'] = '60';
+	setBackgroundRunner(() => {});
+	try {
+		void background(new Promise(() => {}));
+		await new Promise((r) => setTimeout(r, 120));
+		const t0 = Date.now();
+		await backgroundSettled(1_000);
+		assert.ok(Date.now() - t0 < 200, 'a long-gone hung task still held the drain');
+	} finally {
+		setBackgroundRunner(null);
+		delete process.env['FONDERIE_BACKGROUND_TIMEOUT_MS'];
+	}
+});
+
+// Released as a regression: drains handed off through background() were
+// counted, so each response's drain waited for the PREVIOUS drain — N
+// responses ran N drains in a row instead of joining one.
+test('background(work, { settles: false }) is not waited for by backgroundSettled', async () => {
+	setBackgroundRunner(() => {});
+	try {
+		let release!: () => void;
+		const drain = new Promise<void>((r) => { release = r; });
+		void background(drain, { settles: false });
+		const t0 = Date.now();
+		await backgroundSettled(1_000);
+		assert.ok(Date.now() - t0 < 200, 'a drain must not wait for another drain');
+		release();
 	} finally {
 		setBackgroundRunner(null);
 	}

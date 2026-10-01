@@ -63,11 +63,27 @@ export function setBackgroundRunner(fn: ((work: Promise<unknown>) => void) | nul
  * "signup hangs". Rejections are swallowed either way — background work must
  * never fail the request that triggered it.
  */
-export async function background(work: Promise<unknown> | undefined): Promise<void> {
+export async function background(
+	work: Promise<unknown> | undefined,
+	options: { settles?: boolean } = {},
+): Promise<void> {
 	if (!work) return;
 	const settled = Promise.resolve(work).catch(() => undefined);
-	inFlight.add(settled);
-	void settled.finally(() => inFlight.delete(settled));
+	// `settles: false` keeps the work out of backgroundSettled(). A queue drain
+	// hands itself off this way: counted, every later response's drain would
+	// wait for the previous DRAIN, so N responses ran N drains one after
+	// another instead of joining one.
+	if (options.settles !== false) {
+		inFlight.add(settled);
+		// Forgotten after the timeout even if it never settles: hung work must
+		// not delay every later drain, nor stay in the set for the process's life.
+		const forget = setTimeout(() => inFlight.delete(settled), resolveTimeoutMs());
+		forget.unref?.();
+		void settled.finally(() => {
+			clearTimeout(forget);
+			inFlight.delete(settled);
+		});
+	}
 
 	if (runner) {
 		runner(settled);
