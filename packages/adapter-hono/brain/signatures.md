@@ -11,6 +11,8 @@ function bridge(fonderie: FonderieApp, options?: IBridgeOptions): MiddlewareHand
 
 function adapt(middleware: Middleware): MiddlewareHandler
 
+function withCache(options: false | IWithCacheOptions): MiddlewareHandler
+
 function withWorkspace(store: IStoreAdapter): MiddlewareHandler
 
 function requirePermission(operation: Operation, permissionKey: string): MiddlewareHandler
@@ -34,6 +36,11 @@ interface IBridgeOptions {
 }
 
 function requireAuth(c: Context<any, string, {}>, next: Next): Promise<void | Response>
+
+interface IWithCacheOptions {
+    maxAge: number;
+    scope?: 'private' | 'public';
+}
 
 interface IDrainable {
     drain(options?: {

@@ -12,6 +12,8 @@ export { withLogger } from './logger';
 export { notFoundMiddleware } from './not-found';
 export { withBody, bodyParser, DEFAULT_MAX_BODY_BYTES } from './body-parser';
 export { withSecurityHeaders } from './security-headers';
+export { withCache, cacheControlValue } from './cache';
+export type { IWithCacheOptions } from './cache';
 export type { SecurityHeadersOptions } from './security-headers';
 export { defaultErrorHandler } from './error-handler';
 export { requireAuth, requireAnyAuth } from './require-auth';

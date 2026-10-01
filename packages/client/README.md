@@ -36,6 +36,15 @@ Pairs with any API built on
 [@fonderie/core](https://github.com/fonderiejs/fonderie/tree/main/packages/core);
 the types stay in lockstep because both sides live in the same monorepo.
 
+## Response cache
+
+Pass a cache to reuse GET responses: `new FonderieClient({ baseUrl, cache: createMemoryCache() })`.
+Writes invalidate their resource. How long a response is kept is decided, in order, by:
+
+1. the call: `get(path, { cache: 60_000 })`, `{ cache: false }`, or `{ bust: true }` (refetch and store);
+2. the endpoint's `Cache-Control` (set with `withCache(...)` on the server): `no-store` → never kept, `max-age=N` → N seconds;
+3. the client's default TTL.
+
 ## Realtime and offline
 
 ```ts
