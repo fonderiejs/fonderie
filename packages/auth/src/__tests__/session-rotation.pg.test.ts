@@ -196,3 +196,48 @@ test('an undeclared client keeps the shared lifetime (today\'s behaviour)', { sk
 	const [row] = await store.query<{ client_kind: string | null }>(`SELECT client_kind FROM fonderie_sessions`);
 	assert.equal(row?.client_kind, null);
 });
+
+// ── Phase 5: live sign-out — every revocation path says WHICH sessions ─────
+const PASSWORD = 'Aa1!aaaa-bbbb-cccc';
+async function twoDevices(): Promise<{ email: string; a: string; b: string; sidA: string; sidB: string }> {
+	const email = `two-${++n}-${Date.now()}@rotation.acme.example`;
+	const reg = await fetch(`${base}/auth/register`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: PASSWORD }) });
+	const a = ((await reg.json()) as { result: { tokens: { access: string } } }).result.tokens.access;
+	const login = await fetch(`${base}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: PASSWORD }) });
+	const b = ((await login.json()) as { result: { tokens: { access: string } } }).result.tokens.access;
+	const sid = (t: string) => (JSON.parse(Buffer.from(t.split('.')[1]!, 'base64url').toString()) as { sid: string }).sid;
+	return { email, a, b, sidA: sid(a), sidB: sid(b) };
+}
+const revoked = () => emitted.filter((e) => e.type === 'fonderie.session.revoked').map((e) => e.payload);
+
+test('signing out ONE device names exactly that session', { skip }, async () => {
+	const d = await twoDevices();
+	const list = (await (await fetch(`${base}/auth/sessions`, { headers: { authorization: `Bearer ${d.a}` } })).json()) as { result: { sessions: Array<{ id: string; current: boolean }> } };
+	const other = list.result.sessions.find((s) => !s.current)!;
+	const res = await fetch(`${base}/auth/sessions/${other.id}`, { method: 'DELETE', headers: { authorization: `Bearer ${d.a}` } });
+	assert.equal(res.status, 200);
+	await new Promise((r) => setTimeout(r, 50));
+	assert.deepEqual(revoked().map((p) => ({ sids: p['sids'], reason: p['reason'] })), [{ sids: [d.sidB], reason: 'terminated' }]);
+});
+
+test('signing out all OTHER devices names them, and spares this one', { skip }, async () => {
+	const d = await twoDevices();
+	const res = await fetch(`${base}/auth/sessions/others`, { method: 'DELETE', headers: { authorization: `Bearer ${d.a}` } });
+	assert.equal(res.status, 200);
+	await new Promise((r) => setTimeout(r, 50));
+	const [ev] = revoked();
+	assert.deepEqual(ev?.['sids'], [d.sidB]);
+	assert.ok(!((ev?.['sids'] ?? []) as string[]).includes(d.sidA));
+});
+
+test('a password change revokes every session: sids null', { skip }, async () => {
+	const d = await twoDevices();
+	const res = await fetch(`${base}/users/password`, {
+		method: 'PUT',
+		headers: { authorization: `Bearer ${d.a}`, 'content-type': 'application/json' },
+		body: JSON.stringify({ currentPassword: PASSWORD, newPassword: 'Bb2!bbbb-cccc-dddd' }),
+	});
+	assert.equal(res.status, 200, await res.text());
+	await new Promise((r) => setTimeout(r, 50));
+	assert.deepEqual(revoked().map((p) => ({ sids: p['sids'], reason: p['reason'] })), [{ sids: null, reason: 'password-changed' }]);
+});

@@ -193,23 +193,33 @@ export class SessionModel {
 	// Terminate one session by row id, scoped to its owner (a user can never
 	// delete another user's session). Returns whether a row was removed.
 	async terminateById(userId: string, id: string): Promise<boolean> {
-		const rows = await this.store.query<{ id: string }>(
-			`DELETE FROM fonderie_sessions WHERE id = $1 AND user_id = $2 RETURNING id`,
+		return (await this.terminateByIdReturningSid(userId, id)) !== undefined;
+	}
+
+	/** Terminate one of the user's sessions; its sid (null if unbound), or undefined if none was removed. */
+	async terminateByIdReturningSid(userId: string, id: string): Promise<string | null | undefined> {
+		const rows = await this.store.query<{ sid: string | null }>(
+			`DELETE FROM fonderie_sessions WHERE id = $1 AND user_id = $2 RETURNING sid`,
 			[id, userId],
 		);
-		return rows.length > 0;
+		return rows.length ? (rows[0]?.sid ?? null) : undefined;
 	}
 
 	// Terminate all of a user's sessions except the current one (by sid).
 	// Returns the number of sessions removed.
 	async terminateOthers(userId: string, keepSid: string): Promise<number> {
-		const rows = await this.store.query<{ id: string }>(
+		return (await this.terminateOthersReturningSids(userId, keepSid)).length;
+	}
+
+	/** Terminate all of the user's sessions but `keepSid`; the sids removed. */
+	async terminateOthersReturningSids(userId: string, keepSid: string): Promise<Array<string | null>> {
+		const rows = await this.store.query<{ sid: string | null }>(
 			`DELETE FROM fonderie_sessions
 			 WHERE user_id = $1 AND (sid IS DISTINCT FROM $2)
-			 RETURNING id`,
+			 RETURNING sid`,
 			[userId, keepSid],
 		);
-		return rows.length;
+		return rows.map((r) => r.sid);
 	}
 
 	async exists(token: string): Promise<boolean> {

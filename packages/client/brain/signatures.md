@@ -26,6 +26,7 @@ interface IFonderieClientOptions {
     };
     log?: IClientLog;
     clientKind?: 'mobile' | 'desktop' | 'web';
+    liveSignOut?: boolean;
 }
 
 interface IRequestConfig {

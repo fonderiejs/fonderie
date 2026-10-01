@@ -1,6 +1,9 @@
 import type { IAdminRoute, IFonderieContext, Middleware } from '@fonderie/core';
 import { HTTP, encodeKeysetCursor, setApiResponse } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
+import type { EventBus } from '@fonderie/events';
+import { EVENT_KEYS, type ISessionRevokedEvent } from './config';
+import { background } from '@fonderie/core';
 
 import { decodeLoginCursor, toLoginHistoryPageDTO, toSessionDTO } from './dtos/login-activity';
 import { toUserDTO } from './dtos/user';
@@ -51,7 +54,7 @@ const NOT_FOUND = () => setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such use
 // Declared at the default admin path so the route table reads literally;
 // @fonderie/admin re-bases them under its prefix. There is no standalone
 // surface: these exist only through composition.
-function adminRouteTable(store: IStoreAdapter): Array<[string, string, Middleware]> {
+function adminRouteTable(store: IStoreAdapter, bus?: EventBus): Array<[string, string, Middleware]> {
 	const users = new UserModel(store);
 	const sessions = new SessionModel(store);
 	const events = new LoginEventModel(store);
@@ -135,6 +138,7 @@ function adminRouteTable(store: IStoreAdapter): Array<[string, string, Middlewar
 			async (ctx) => {
 				if (!(await users.findById(idOf(ctx)))) return NOT_FOUND();
 				await sessions.deleteByUser(idOf(ctx));
+				await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId: idOf(ctx), sids: null, reason: 'admin' } satisfies ISessionRevokedEvent));
 				return setApiResponse(HTTP.OK, 'SESSIONS_REVOKED', 'All sessions revoked');
 			},
 		],
@@ -170,8 +174,8 @@ function adminRouteTable(store: IStoreAdapter): Array<[string, string, Middlewar
 	];
 }
 
-export function describeAuthAdminRoutes(store: IStoreAdapter): IAdminRoute[] {
-	return adminRouteTable(store).map(([method, path, h]) => ({
+export function describeAuthAdminRoutes(store: IStoreAdapter, bus?: EventBus): IAdminRoute[] {
+	return adminRouteTable(store, bus).map(([method, path, h]) => ({
 		method,
 		path: path.slice(ADMIN_PREFIX.length),
 		handlers: [h],
