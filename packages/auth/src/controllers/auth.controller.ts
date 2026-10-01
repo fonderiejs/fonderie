@@ -7,7 +7,7 @@ import { NOTIFICATION_EVENT } from '@fonderie/events';
 import { setApiResponse, HTTP, background, canonicalLocale, defineLocales } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage, ILocaleSettings } from '@fonderie/core';
 
-import { EVENT_KEYS } from '../config';
+import { EVENT_KEYS, type ISessionRevokedEvent } from '../config';
 import { toUserDTO } from '../dtos/user';
 import type { IAuthConfig } from '../config';
 import { UserModel } from '../models/user.model';
@@ -457,7 +457,7 @@ export function authController(
 				if (found.kind === 'reused') {
 					await sessions.revokeById(found.row.id);
 					await background(
-						bus?.emit(EVENT_KEYS.sessionRevoked, { userId: found.row.userId, sessionId: found.row.id, reason: 'refresh-reuse' }),
+						bus?.emit(EVENT_KEYS.sessionRevoked, { userId: found.row.userId, sids: [found.row.sid], reason: 'refresh-reuse' } satisfies ISessionRevokedEvent),
 					);
 					return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
 				}

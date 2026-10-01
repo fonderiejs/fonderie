@@ -48,6 +48,11 @@ export interface IFonderieClientOptions {
 	// lifetimes (e.g. a phone stays signed in longer than a shared browser);
 	// the server records it on the session. Unset: the shared lifetimes.
 	clientKind?: 'mobile' | 'desktop' | 'web';
+	// Live sign-out: while signed in, listen for fonderie.session.revoked on the
+	// stream; when it names this device's session (or all of them), clear the
+	// tokens and call auth.onAuthError — "sign out this device" lands at once.
+	// On by default when `sse` is configured; false to turn it off.
+	liveSignOut?: boolean;
 }
 
 // Per-call options for the generic transport.
@@ -113,6 +118,23 @@ export class FonderieClient {
 			log: opts.log,
 		});
 		this.config = new ConfigClient(this.http, this.tokens, this.sse, { storage: opts.config?.storage, log: opts.log });
+
+		// Live sign-out (docs/SESSION-DESIGN.md, Phase 5): only when the app
+		// configured the stream — apps without @fonderie/sse see no change.
+		if (opts.sse && opts.liveSignOut !== false) {
+			let stop: (() => void) | undefined;
+			const follow = () => {
+				const signedIn = Boolean(this.tokens.get());
+				if (signedIn && !stop) {
+					stop = this.sse.subscribe(['fonderie.session.revoked'], (event) => this.sessionRevoked(event.data));
+				} else if (!signedIn && stop) {
+					stop();
+					stop = undefined;
+				}
+			};
+			this.tokens.onChange(follow);
+			follow();
+		}
 		// Route through the setter so the constructor option scopes the
 		// workspace-aware modules exactly like a later setWorkspaceId() call.
 		if (opts.workspaceId !== undefined) this.setWorkspaceId(opts.workspaceId);
@@ -120,6 +142,18 @@ export class FonderieClient {
 
 	// Single-flight refresh: POST /auth/refresh with the app-supplied refresh
 	// token, store the new access token, notify the app, return it for the retry.
+	// A revocation names sessions by their sid (or null = all of the user's).
+	// This device's sid is in its own access token.
+	private sessionRevoked(data: Record<string, unknown>): void {
+		const sids = data['sids'];
+		const mine = tokenSid(this.tokens.get());
+		const hit = sids === null || (Array.isArray(sids) && mine !== undefined && sids.includes(mine));
+		if (!hit) return;
+		this.tokens.set(undefined);
+		this.clearCache();
+		this.authConfig?.onAuthError?.();
+	}
+
 	private doRefresh(): Promise<string | undefined> {
 		if (this.refreshing) return this.refreshing;
 		this.refreshing = (async () => {
@@ -263,5 +297,18 @@ export class FonderieClient {
 			workspaceId: config?.workspaceId,
 			invalidate: config?.invalidate,
 		});
+	}
+}
+
+// The session id (`sid` claim) of an access token, or undefined.
+function tokenSid(token: string | undefined): string | undefined {
+	const payload = token?.split('.')[1];
+	if (!payload) return undefined;
+	try {
+		const json = typeof atob === 'function' ? atob(payload.replace(/-/g, '+').replace(/_/g, '/')) : '';
+		const sid = (JSON.parse(json) as { sid?: unknown }).sid;
+		return typeof sid === 'string' ? sid : undefined;
+	} catch {
+		return undefined;
 	}
 }
