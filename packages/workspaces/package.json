@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/workspaces",
-	"version": "6.1.5",
+	"version": "6.1.6",
 	"fonderie": {
 		"stability": "stable"
 	},
@@ -56,7 +56,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.26.0",
+		"@fonderie/core": "^0.27.0",
 		"@fonderie/events": "^5.0.0",
 		"@fonderie/store": "^0.7.0"
 	},
@@ -97,6 +97,6 @@
 	},
 	"dependencies": {
 		"zod": "^4.6.5",
-		"@fonderie/rate-limit": "^4.0.29"
+		"@fonderie/rate-limit": "^4.0.30"
 	}
 }

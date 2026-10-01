@@ -1,5 +1,12 @@
 # @fonderie/admin
 
+## 1.7.6
+
+### Patch Changes
+
+- Updated dependencies [d00281b]
+  - @fonderie/core@0.27.0
+
 ## 1.7.5
 
 ### Patch Changes

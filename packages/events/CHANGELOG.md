@@ -1,5 +1,12 @@
 # @fonderie/events
 
+## 5.11.5
+
+### Patch Changes
+
+- Updated dependencies [d00281b]
+  - @fonderie/core@0.27.0
+
 ## 5.11.4
 
 ### Patch Changes
