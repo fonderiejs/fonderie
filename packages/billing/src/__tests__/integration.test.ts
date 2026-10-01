@@ -334,15 +334,23 @@ test('PostgreSQL: concurrent periodic grants for one period apply exactly once',
 
 // ── Phase 5a: allowance (granted) vs purchased buckets ────────────────────────
 
-const OCT = startOfNextPeriod('month', new Date(Date.UTC(2026, 8, 15))); // 2026-10-01
-const NOV = startOfNextPeriod('month', new Date(Date.UTC(2026, 9, 15))); // 2026-11-01
+// Periods relative to NOW. These were fixed dates (a 2026-09 grant expiring
+// 2026-10-01), so on 1 October every allowance had already expired and the
+// suite failed for good. P1 is the current month, its grant expiring at the
+// start of P2 — always in the future.
+const monthKey = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+const P1 = monthKey(new Date());
+const OCT = startOfNextPeriod('month'); // start of P2
+const P2 = monthKey(OCT);
+const NOV = startOfNextPeriod('month', new Date(OCT.getTime() + 15 * 86_400_000)); // start of P3
+const P3 = monthKey(NOV);
 
 test('PostgreSQL: allowance-first debit — free credits spend before purchased', {
 	skip: PG_URL ? false : 'set BILLING_PG_URL to run',
 }, async () => {
 	const store = await connect();
 	try {
-		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: P1, expiresAt: OCT }, store);
 		await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
 		let bal = await getWalletBalance(SUB, store);
 		assert.equal(bal.balance, 150n);
@@ -374,12 +382,12 @@ test('PostgreSQL: expiry (none) burns the unspent allowance and leaves purchased
 }, async () => {
 	const store = await connect();
 	try {
-		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: P1, expiresAt: OCT }, store);
 		await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
 		await debitWallet({ ...SUB, amount: 12n, idempotencyKey: 'p5-d1' }, store); // granted 38
 
 		const res = await settleAllowance(
-			{ ...SUB, period: '2026-10', rollover: 'none', expiresAt: NOV },
+			{ ...SUB, period: P2, rollover: 'none', expiresAt: NOV },
 			store,
 		);
 		assert.equal(res.settled, true);
@@ -404,16 +412,16 @@ test('PostgreSQL: expiry (full and cap) rollover policies', {
 	const store = await connect();
 	try {
 		// full: entire remainder carries forward, no expiry row.
-		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: P1, expiresAt: OCT }, store);
 		await debitWallet({ ...SUB, amount: 12n, idempotencyKey: 'p5-d1' }, store); // granted 38
-		await settleAllowance({ ...SUB, period: '2026-10', rollover: 'full', expiresAt: NOV }, store);
+		await settleAllowance({ ...SUB, period: P2, rollover: 'full', expiresAt: NOV }, store);
 		let bal = await getWalletBalance(SUB, store);
 		assert.equal(bal.granted, 38n, 'full rollover keeps the whole remainder');
 		assert.equal(bal.balance, 38n);
 
 		// cap: carry up to the cap, expire the rest.
 		await settleAllowance(
-			{ ...SUB, period: '2026-11', rollover: { cap: 20n }, expiresAt: NOV },
+			{ ...SUB, period: P3, rollover: { cap: 20n }, expiresAt: NOV },
 			store,
 		);
 		bal = await getWalletBalance(SUB, store);
@@ -429,7 +437,7 @@ test('PostgreSQL: spend_purchased=false hard-stops at the allowance even with pu
 }, async () => {
 	const store = await connect();
 	try {
-		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: P1, expiresAt: OCT }, store);
 		await creditWallet({ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy' }, store);
 		await store.query(
 			`UPDATE fonderie_wallet_balances SET spend_purchased = false WHERE subscriber_id = $1`,
@@ -466,7 +474,7 @@ test('PostgreSQL: a refund claws back purchased ONLY — the allowance is untouc
 }, async () => {
 	const store = await connect();
 	try {
-		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: P1, expiresAt: OCT }, store);
 		await creditWallet(
 			{ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5-buy', providerTxId: 'pi_x' },
 			store,
@@ -495,7 +503,7 @@ test('PostgreSQL: overdraft eats purchased, never drives the allowance negative'
 }, async () => {
 	const store = await connect();
 	try {
-		await ensurePeriodicGrant({ ...SUB, amount: 30n, period: '2026-09', expiresAt: OCT }, store);
+		await ensurePeriodicGrant({ ...SUB, amount: 30n, period: P1, expiresAt: OCT }, store);
 		await debitWallet({ ...SUB, amount: 60n, overdraftLimit: 50n, idempotencyKey: 'p5-od' }, store);
 		const bal = await getWalletBalance(SUB, store);
 		assert.equal(bal.granted, 0n, 'granted floored at 0, never negative');
@@ -518,7 +526,7 @@ test('PostgreSQL: a legacy single-balance row is all purchased and never expires
 			[SUB.subscriberType, SUB.subscriberId, SUB.currency],
 		);
 		const res = await settleAllowance(
-			{ ...SUB, period: '2026-10', rollover: 'none', expiresAt: NOV },
+			{ ...SUB, period: P2, rollover: 'none', expiresAt: NOV },
 			store,
 		);
 		assert.equal(res.settled, false, 'never-granted balance has nothing to expire');
@@ -551,7 +559,7 @@ test('PostgreSQL: setSpendPurchased toggles the debit hard-stop end to end', {
 }, async () => {
 	const store = await connect();
 	try {
-		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: '2026-09', expiresAt: OCT }, store);
+		await ensurePeriodicGrant({ ...SUB, amount: 50n, period: P1, expiresAt: OCT }, store);
 		await creditWallet(
 			{ ...SUB, amount: 100n, type: 'purchase', idempotencyKey: 'p5b-buy' },
 			store,
