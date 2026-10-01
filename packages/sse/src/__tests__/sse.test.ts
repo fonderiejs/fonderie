@@ -363,3 +363,30 @@ test('split topology: an event emitted on the producer reaches a client of the s
 		await srv.close();
 	}
 });
+
+// Found in production (a serverless producer): the bus handler fired the
+// broadcaster's publish and returned at once; the function was frozen before
+// the NOTIFY left, while the bus had marked the delivery processed — the event
+// was lost with no error. The handler must not settle before the publish.
+test('a bus event is published BEFORE the bus handler settles — a serverless producer cannot lose it', async () => {
+	const bus = fakeBus();
+	let published = false;
+	const slow: IBroadcaster = {
+		publish: () => new Promise<void>((r) => setTimeout(() => { published = true; r(); }, 50)),
+		subscribe: () => () => {},
+	};
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	app.register(catalogModule).register(new SseModule({ bus, broadcaster: slow, streams: false }));
+	await app.boot();
+	await bus.emit('fonderie.customer.created', { customerId: 'c1', workspaceId: 'w1' });
+	assert.equal(published, true, 'emit settled only after the NOTIFY was sent');
+});
+
+test('a failed publish fails the bus handler, so the bus retries instead of marking it delivered', async () => {
+	const bus = fakeBus();
+	const failing: IBroadcaster = { publish: async () => { throw new Error('pooler down'); }, subscribe: () => () => {} };
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	app.register(catalogModule).register(new SseModule({ bus, broadcaster: failing, streams: false }));
+	await app.boot();
+	await assert.rejects(bus.emit('fonderie.customer.created', { customerId: 'c1', workspaceId: 'w1' }), /pooler down/);
+});

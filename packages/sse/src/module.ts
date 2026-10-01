@@ -68,12 +68,22 @@ export class SseModule implements IFonderieModule {
 					continue;
 				}
 				const stop = await this.broadcaster.listen(entry.source.notify, (payload) => {
-					this.publish(entry, payload, randomUUID(), new Date().toISOString());
+					// A long-running host: nothing freezes, so not awaited here.
+					void this.publish(entry, payload, randomUUID(), new Date().toISOString()).catch((err: unknown) =>
+						console.error('[sse] publish failed:', (err as Error)?.message),
+					);
 				});
 				this.cleanups.push(stop);
 			} else if (this.options.bus) {
 				// One consumer per type: the bus claims per consumer name, and the
 				// broadcaster (not the bus) does the fan-out to every host.
+				//
+				// AWAITED. On serverless the function is frozen once its
+				// after-response work settles: a fire-and-forget NOTIFY never left,
+				// while the bus had already marked the delivery processed — the
+				// event was lost with no error anywhere. Awaiting holds the drain
+				// open until the NOTIFY is sent, and a failure throws, so the bus
+				// retries instead of recording a delivery that did not happen.
 				this.options.bus.on(
 					entry.type,
 					(payload, meta) => this.publish(entry, payload, meta.id, meta.emittedAt ?? new Date().toISOString()),
@@ -181,7 +191,7 @@ export class SseModule implements IFonderieModule {
 		);
 	}
 
-	private publish(entry: IEventCatalogEntryWithModule, payload: unknown, id: string, at: string): void {
+	private async publish(entry: IEventCatalogEntryWithModule, payload: unknown, id: string, at: string): Promise<void> {
 		let message: ISseMessage;
 		try {
 			message = {
@@ -195,8 +205,6 @@ export class SseModule implements IFonderieModule {
 			console.error(`[sse] could not map ${entry.type}:`, (err as Error)?.message);
 			return;
 		}
-		void Promise.resolve(this.broadcaster.publish(message)).catch((err: unknown) =>
-			console.error('[sse] publish failed:', (err as Error)?.message),
-		);
+		await this.broadcaster.publish(message);
 	}
 }
