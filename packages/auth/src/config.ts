@@ -94,6 +94,9 @@ export const EVENT_KEYS = {
 	userPurged: 'fonderie.user.purged',
 	emailVerified: 'fonderie.user.email_verified',
 	passwordChanged: 'fonderie.user.password_changed',
+	// A session the server revoked — today: a refresh token reused after its
+	// grace (theft signal). { userId, sessionId, reason }.
+	sessionRevoked: 'fonderie.session.revoked',
 } as const;
 
 export type AuthEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
