@@ -135,11 +135,12 @@ export class ConfigClient {
 				// Sent when signed in, so per-user values can be served later
 				// without a client change; the route itself is public.
 				token: this.tokens.get(),
-				// Never from the response cache: a load happens BECAUSE the server
-				// said config changed (or the stream reconnected). A cached answer
-				// would hand back the old value the event just reported gone — the
-				// load time moves, the value never does.
-				cache: false,
+				// The event IS the invalidation: a load happens because the server
+				// said config changed (or the stream reconnected), so it skips any
+				// cached answer, fetches, and stores the fresh one. Readers never
+				// fetch — they read the snapshot. Without this, a response cache
+				// handed back the old value the event just reported gone.
+				bust: true,
 			})
 			.then(
 				(res) => {
