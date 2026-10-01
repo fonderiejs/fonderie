@@ -7,6 +7,7 @@
 ```ts
 new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .mfa: MfaClient
+  .hasAccessToken(): boolean
   .setAccessToken(token: string | undefined): void
   .providers(): Promise<IApiResponse<IAuthProvidersResult>>
   .unlinkOauth(provider: string): Promise<IApiResponse<null>>
@@ -199,6 +200,8 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .cause: unknown
 
 function isMfaRequired(result: ILoginResult | IMfaRequiredResult): result is IMfaRequiredResult
+
+function isSessionRefusal(err: unknown): err is FonderieApiError
 
 interface IUseForgotPasswordReturn {
     forgotPassword: (email: string) => Promise<void>;

@@ -20,7 +20,7 @@ export type {
 	IVerifyEmailResult,
 } from '@fonderie/client';
 
-export { FonderieApiError, isMfaRequired } from '@fonderie/client';
+export { FonderieApiError, isMfaRequired, isSessionRefusal } from '@fonderie/client';
 
 export type {
 	IUseAuthProvidersReturn,

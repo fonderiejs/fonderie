@@ -1,8 +1,8 @@
-export type { IClientAuthConfig, IFonderieClientOptions, IRequestConfig } from './client';
+export type { IAuthErrorInfo, IClientAuthConfig, IFonderieClientOptions, IRequestConfig, SessionState } from './client';
 export type { ICache, IMemoryCacheOptions } from './cache';
 export { createMemoryCache } from './cache';
 export { FonderieClient } from './client';
-export { FonderieApiError } from './http';
+export { FonderieApiError, isSessionRefusal } from './http';
 export type { IListAuditEventsInput } from './modules/audit';
 export { AuditClient } from './modules/audit';
 export type {

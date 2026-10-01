@@ -1,4 +1,4 @@
-import type { AuthClient, IUserDTO } from '@fonderie/client';
+import { isSessionRefusal, type AuthClient, type IUserDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useEffect, useState } from 'react';
 import { clearToken, readToken } from '../storage';
@@ -23,11 +23,18 @@ export function useSession(client?: AuthClient): IUseSessionReturn {
 			const { result } = await auth.getUser();
 			setUser(result.user);
 			setIsAuthenticated(true);
-		} catch {
-			setUser(null);
-			setIsAuthenticated(false);
-			auth.setAccessToken(undefined);
-			await clearToken();
+		} catch (err) {
+			// Only the server refusing the session signs out. Offline, a 5xx or a
+			// rate limit keeps it: the user stays signed in and the next refresh
+			// tries again (docs/SESSION-DESIGN.md, Phase 4).
+			if (isSessionRefusal(err)) {
+				setUser(null);
+				setIsAuthenticated(false);
+				auth.setAccessToken(undefined);
+				await clearToken();
+			} else {
+				setIsAuthenticated(auth.hasAccessToken());
+			}
 		} finally {
 			setIsLoading(false);
 		}
