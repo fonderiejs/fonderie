@@ -5,7 +5,7 @@ import type Koa                from 'koa';
 type KoaMiddleware<S = any, C = any> = Koa.Middleware<S, C>;
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { abortOnDisconnect, background, isEventStream, pipeWebBody, writeWebHead } from '@fonderie/core';
+import { abortOnDisconnect, background, backgroundSettled, isEventStream, pipeWebBody, writeWebHead } from '@fonderie/core';
 import {
 	requireAuth as _requireAuth,
 	resolveClientIp,
@@ -477,6 +477,9 @@ export function drainQueue(bus: IDrainable, options: IDrainQueueOptions = {}): K
 	const run = createDrainRunner(bus, options);
 	return async (_ctx, next) => {
 		await next();
-		void background(run());
+		// After the request's own background work: with a platform runner
+		// (waitUntil) its bus.emit may not have written the event yet, and a
+		// drain started now would find nothing — and the instance freezes.
+		void background(backgroundSettled().then(() => run()));
 	};
 }
