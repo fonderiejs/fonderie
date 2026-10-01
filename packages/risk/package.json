@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/risk",
-	"version": "0.3.4",
+	"version": "0.3.5",
 	"fonderie": { "stability": "experimental" },
 	"description": "Generic signal → meaning → decision engine — assess an action (trial start, login, registration, promo) against weak signals and a tunable ruleset, and return a graded verdict with reasons. Decides, never enforces: the app owns every side effect.",
 	"keywords": [
@@ -44,7 +44,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.26.0",
+		"@fonderie/core": "^0.27.0",
 		"@fonderie/store": "^0.7.0"
 	},
 	"devDependencies": {

@@ -1,5 +1,12 @@
 # @fonderie/permissions
 
+## 5.0.31
+
+### Patch Changes
+
+- Updated dependencies [d00281b]
+  - @fonderie/core@0.27.0
+
 ## 5.0.30
 
 ### Patch Changes
