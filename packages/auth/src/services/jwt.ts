@@ -84,8 +84,11 @@ export function issueTokenPair(
 	config: IAuthConfig,
 	options: ITokenOptions,
 ): TokenPair {
-	const duration = config.sessionDuration ?? DEFAULT_SESSION_DURATION;
-	const accessDuration = config.accessTokenDuration ?? DEFAULT_ACCESS_TOKEN_DURATION;
+	// Lifetimes may come from an app's runtime resolver (console values). An
+	// unreadable one — e.g. the text "undefined" from String(undefined) — must
+	// fall back, not make jsonwebtoken throw on every sign-in and refresh.
+	const duration = validDuration(config.sessionDuration, DEFAULT_SESSION_DURATION, 'sessionDuration');
+	const accessDuration = validDuration(config.accessTokenDuration, DEFAULT_ACCESS_TOKEN_DURATION, 'accessTokenDuration');
 	// When the user last actually signed in (seconds): a refresh carries it, a
 	// sign-in sets it. Step-up ("re-authenticate for sensitive actions") reads it.
 	const authTime = options.authTime ?? Math.floor(Date.now() / 1000);
@@ -144,4 +147,16 @@ export function durationMs(value: string | undefined): number | null {
 	const unit = (m[2] ?? 's').toLowerCase();
 	const scale: Record<string, number> = { ms: 1, s: 1e3, m: 6e4, h: 36e5, d: 864e5, w: 6048e5, y: 31_557_6e5 };
 	return Number(m[1]) * (scale[unit] ?? 1e3);
+}
+
+const warnedDurations = new Set<string>();
+function validDuration(value: string | undefined, fallback: string, name: string): string {
+	if (value === undefined || value === null || value === '') return fallback;
+	if (durationMs(String(value)) !== null) return String(value);
+	const key = `${name}=${String(value)}`;
+	if (!warnedDurations.has(key)) {
+		warnedDurations.add(key);
+		console.warn(`[auth] ${name} ${JSON.stringify(value)} is not a duration (e.g. '90d', '1h') — using ${fallback}`);
+	}
+	return fallback;
 }

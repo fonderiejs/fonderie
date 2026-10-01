@@ -42,3 +42,24 @@ test('durationMs reads jsonwebtoken-style durations', () => {
 	assert.equal(durationMs(undefined), null);
 	assert.equal(durationMs('soon'), null);
 });
+
+// Found in production: an app resolver returned String(undefined) — the text
+// "undefined" — as sessionDuration; once refresh used the resolved config,
+// jsonwebtoken threw and every refresh answered 500.
+test('an unreadable lifetime from a resolver falls back to the default instead of throwing', () => {
+	const warn = console.warn;
+	const warnings: string[] = [];
+	console.warn = (m: string) => void warnings.push(m);
+	try {
+		const { accessToken, refreshToken } = issueTokenPair(
+			'u1',
+			{ jwtSecret: SECRET, sessionDuration: 'undefined', accessTokenDuration: 'soon' } as IAuthConfig,
+			{ loginMethod: 'email' },
+		);
+		assert.equal(claims(refreshToken).exp - claims(refreshToken).iat, 90 * 86400);
+		assert.equal(claims(accessToken).exp - claims(accessToken).iat, 3600);
+		assert.ok(warnings.some((w) => w.includes('sessionDuration "undefined" is not a duration')));
+	} finally {
+		console.warn = warn;
+	}
+});

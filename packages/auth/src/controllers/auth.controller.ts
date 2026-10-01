@@ -446,7 +446,7 @@ export function authController(
 			// Lifetimes as the console sets them now (idle timeout, absolute cap) —
 			// not the boot config: a refresh used to ignore console overrides.
 			const resolvedRefresh = { ...config, ...config.resolve?.(ctx) };
-			const maxAgeMs = durationMs(resolvedRefresh.sessionMaxAge);
+			const maxAgeMs = resolvedRefresh.sessionMaxAge ? durationMs(String(resolvedRefresh.sessionMaxAge)) : null;
 			let issued: { accessToken: string; refreshToken: string } | null = null;
 			for (let attempt = 0; attempt < 3 && !issued; attempt++) {
 				const found = await sessions.match(token);
