@@ -48,7 +48,7 @@ const CATALOG: IEventCatalogEntry[] = [
 		audience: (ctx) => ctx.user?.id === 'admin-1',
 	},
 ];
-const catalogModule: IFonderieModule = { name: '@test/bricks', install() {}, describeEvents: () => CATALOG };
+const catalogModule: IFonderieModule = { name: '@fonderie/test-bricks', install() {}, describeEvents: () => CATALOG };
 
 /** Stands in for the app's auth chain (session + withWorkspace): sets ctx.user / ctx.workspace. */
 const testAuth: Middleware = async (ctx, next) => {
@@ -222,15 +222,37 @@ test('topic filters: a connection only gets what it subscribed to', async () => 
 
 // ── the request side ─────────────────────────────────────────────────────────
 
-test('topic validation: malformed 400, unknown 400, signed-in-only topic anonymously 401', async () => {
+test('topic validation: malformed 400; signed in, unknown 400 with the topic list', async () => {
 	const srv = await start();
 	try {
 		const bad = await fetch(`${srv.url}/sse/stream?topics=${encodeURIComponent('fonderie.(a|b)')}`);
 		assert.equal(bad.status, 400);
-		const unknown = await fetch(`${srv.url}/sse/stream?topics=no.such.event`);
+		const unknown = await fetch(`${srv.url}/sse/stream?topics=no.such.event`, { headers: { 'x-test-user': 'u1' } });
 		assert.equal(unknown.status, 400);
-		const needsAuth = await fetch(`${srv.url}/sse/stream?topics=fonderie.customer.created`);
-		assert.equal(needsAuth.status, 401);
+		assert.ok(((await unknown.json()) as { details: { topics: string[] } }).details.topics.includes('fonderie.customer.created'));
+	} finally {
+		await srv.close();
+	}
+});
+
+// An anonymous probe must not learn which private events a deployment has:
+// a private topic and a nonexistent one get byte-identical answers.
+test('anonymous: a private topic and an unknown one are indistinguishable', async () => {
+	const srv = await start();
+	try {
+		const ask = async (topic: string) => {
+			const res = await fetch(`${srv.url}/sse/stream?topics=${encodeURIComponent(topic)}`);
+			const body = (await res.text()).replaceAll(topic, '<topic>');
+			return { status: res.status, body };
+		};
+		const priv = await ask('fonderie.customer.created');
+		const none = await ask('no.such.event');
+		const privPrefix = await ask('fonderie.customer.*');
+		const nonePrefix = await ask('no.such.*');
+		assert.equal(priv.status, 401);
+		assert.deepEqual(none, priv);
+		assert.deepEqual(nonePrefix, privPrefix);
+		assert.doesNotMatch(priv.body, /fonderie\.customer|test\.user|test\.admin/, 'no private type names in the answer');
 	} finally {
 		await srv.close();
 	}

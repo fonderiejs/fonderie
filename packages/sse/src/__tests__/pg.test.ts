@@ -41,7 +41,7 @@ test('PgBroadcaster: a message published on one instance reaches another', { ski
 test("SseModule + PgBroadcaster: a brick's own NOTIFY (config changed) reaches a live stream", { skip }, async () => {
 	// The config brick's catalog entry, as @fonderie/config declares it.
 	const configLike: IFonderieModule = {
-		name: '@test/config',
+		name: '@fonderie/test-config',
 		install() {},
 		describeEvents: () => [
 			{
