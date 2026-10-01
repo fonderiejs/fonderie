@@ -134,13 +134,18 @@ test('a session stored before hashing (raw token) still refreshes, and is hashed
 	assert.equal(row?.token, hashRefreshToken(r.tokens!.refresh));
 });
 
-test('migration 020 hashes raw tokens left in the table, and is safe to re-run', { skip }, async () => {
+// Deploy safety: the code still serving during a deploy looks sessions up by
+// the RAW token. The migration must leave those rows readable — it only adds
+// columns — and the new code hashes each on its next refresh.
+test('migration 020 leaves raw rows readable by the previous code, and is safe to re-run', { skip }, async () => {
 	const first = await signUp();
-	await store.query(`UPDATE fonderie_sessions SET token = $1`, [first.refresh]);
+	await store.query(`UPDATE fonderie_sessions SET token = $1`, [first.refresh]); // a session from before this release
 	const sql = readFileSync(join(getMigrationsPath(), '020_session_rotation.sql'), 'utf8');
 	await store.query(sql);
 	await store.query(sql);
-	const [row] = await rows();
-	assert.equal(row?.token, hashRefreshToken(first.refresh));
-	assert.equal((await refresh(first.refresh)).status, 200);
+	const [raw] = await store.query<{ id: string }>(`SELECT id FROM fonderie_sessions WHERE token = $1`, [first.refresh]);
+	assert.ok(raw, 'the previous code\'s lookup (token = raw) still finds the session');
+	const r = await refresh(first.refresh);
+	assert.equal(r.status, 200);
+	assert.equal((await rows())[0]?.token, hashRefreshToken(r.tokens!.refresh), 'hashed by its next refresh');
 });
