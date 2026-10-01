@@ -44,6 +44,10 @@ export interface IFonderieClientOptions {
 	// Where the client reports problems (a missing config key, a stream it
 	// cannot open). Default: console.
 	log?: IClientLog;
+	// The platform this app runs on. A sign-in then gets that platform's session
+	// lifetimes (e.g. a phone stays signed in longer than a shared browser);
+	// the server records it on the session. Unset: the shared lifetimes.
+	clientKind?: 'mobile' | 'desktop' | 'web';
 }
 
 // Per-call options for the generic transport.
@@ -86,6 +90,7 @@ export class FonderieClient {
 		this.cache = opts.cache;
 		this.authConfig = opts.auth;
 		this.http = new HttpClient(opts.baseUrl, {
+			clientKind: opts.clientKind,
 			cache: opts.cache,
 			defaultTtlMs: (opts.cache as { defaultTtlMs?: number } | undefined)?.defaultTtlMs,
 			refresh: opts.auth ? () => this.doRefresh() : undefined,

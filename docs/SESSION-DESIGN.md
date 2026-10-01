@@ -1,6 +1,6 @@
 # Sessions that behave like WhatsApp's — design and build order
 
-Status: Phases 1, 2 and 3a shipped in `@fonderie/auth`; 1b, 3b and 4–6 planned (2026-10-01).
+Status: Phases 1, 2, 3a and 3c shipped in `@fonderie/auth`; 1b, 3b and 4–6 planned (2026-10-01).
 
 ## 1. The problem
 
@@ -87,6 +87,16 @@ simply refused.
 default shortened (1 h). Both remain configurable, including from the
 console's auth config keys. Step-up: an `auth_time` claim and a
 `requireRecentAuth(minutes)` guard for password/email/MFA/account deletion.
+
+**Phase 3c — Lifetimes per platform.** ✅ The client declares its platform at
+sign-in (`X-Client-Kind: mobile | desktop | web`, `new FonderieClient({ clientKind })`);
+it is recorded on the session (`client_kind`) and used at every refresh, so a
+client cannot promote itself. Presets: mobile 90 d idle / 365 d cap, desktop
+30 d / 180 d, web 14 d / 90 d; undeclared clients keep the shared values.
+Order: console per platform (`auth.session.duration.web`) → console shared →
+code per platform (`sessionPolicies`) → code shared → preset → default.
+`readAuthRuntimeConfig` builds `resolve` safely (an unset key is absent,
+never the text "undefined").
 
 **Phase 4 — Client and app.** A session state in the client
 (`signedOut | active | offline | revoked`) that the hooks expose; a 401 after a

@@ -28,6 +28,7 @@ import {
 	refreshTokenExpiry,
 	durationMs,
 } from '../services/jwt';
+import { clientKindOf, configForClient } from '../services/session-policy';
 
 function normalizePhone(phone: string): string {
 	return phone.trim().replace(/[\s()\-\.]/g, '');
@@ -140,7 +141,7 @@ export function authController(
 						reqOpts,
 					));
 
-				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
+				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
 					loginMethod: 'email',
 				});
 				const registerMeta = requestMeta(ctx);
@@ -319,7 +320,7 @@ export function authController(
 					});
 				}
 
-				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
+				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
 					loginMethod: 'email',
 				});
 				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
@@ -443,10 +444,10 @@ export function authController(
 			// token stays valid for a short grace (a retry, or two racing requests);
 			// presented after it, it is a reuse — someone else holds an old copy —
 			// and the session is revoked. docs/SESSION-DESIGN.md, Phase 2.
-			// Lifetimes as the console sets them now (idle timeout, absolute cap) —
-			// not the boot config: a refresh used to ignore console overrides.
-			const resolvedRefresh = { ...config, ...config.resolve?.(ctx) };
-			const maxAgeMs = resolvedRefresh.sessionMaxAge ? durationMs(String(resolvedRefresh.sessionMaxAge)) : null;
+			// Lifetimes as the console sets them now — not the boot config — and for
+			// the platform the session was opened on (recorded at sign-in; the
+			// request's own header is ignored here, so it cannot promote itself).
+			const runtime = config.resolve?.(ctx);
 			let issued: { accessToken: string; refreshToken: string } | null = null;
 			for (let attempt = 0; attempt < 3 && !issued; attempt++) {
 				const found = await sessions.match(token);
@@ -460,6 +461,8 @@ export function authController(
 					);
 					return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
 				}
+				const resolvedRefresh = configForClient(config, runtime, found.row.clientKind);
+				const maxAgeMs = resolvedRefresh.sessionMaxAge ? durationMs(String(resolvedRefresh.sessionMaxAge)) : null;
 				// Absolute cap: however active, a session this old signs in again.
 				if (maxAgeMs !== null && Date.now() - found.row.createdAt.getTime() > maxAgeMs) {
 					await sessions.revokeById(found.row.id);
@@ -689,7 +692,7 @@ export function authController(
 				}
 				await phoneVerif.deleteByUser(ctx.user!.id);
 
-				const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, config, {
+				const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
 					loginMethod: 'phone',
 					phoneVerified: true,
 				});

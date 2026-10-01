@@ -1,5 +1,7 @@
 import type { IFonderieContext } from '@fonderie/core';
 
+import { type ClientKind, clientKindOf } from './session-policy';
+
 // The request metadata auth persists for security surfaces (session rows,
 // login events): effective client IP and raw user-agent. IP comes from
 // ctx.meta['clientIp'], which the adapters resolve with explicit proxy trust
@@ -10,6 +12,8 @@ export interface IRequestMeta {
 	userAgent: string | null;
 	/** The request's headers, for the optional location resolver. Never stored. */
 	headers?: Headers;
+	/** The platform the client declared at sign-in (X-Client-Kind), or null. */
+	clientKind?: ClientKind | null;
 }
 
 // Cap the stored UA: real ones are <300 chars; anything longer is noise or abuse.
@@ -60,6 +64,7 @@ export function requestMeta(ctx: IFonderieContext): IRequestMeta {
 		ipAddress: typeof ip === 'string' && ip.length > 0 ? ip : null,
 		userAgent: ua && ua.length > 0 ? ua.slice(0, UA_MAX) : null,
 		headers: ctx.request.headers,
+		clientKind: clientKindOf(ctx.request.headers),
 	};
 	if (meta.ipAddress === null && meta.userAgent === null) warnIfIdentityless(ctx);
 	return meta;

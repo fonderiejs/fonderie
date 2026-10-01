@@ -365,7 +365,9 @@
         "AuthModule",
         "AUTH_CONFIG_KEYS",
         "MESSAGE_KEYS",
-        "DEFAULT_TEMPLATES"
+        "DEFAULT_TEMPLATES",
+        "CLIENT_KINDS",
+        "SESSION_POLICY_PRESETS"
       ],
       "subpaths": [
         "@fonderie/auth/types",
@@ -5319,6 +5321,12 @@
       "auth",
       "billing",
       "workspaces"
+    ],
+    "client_kinds": [
+      "auth"
+    ],
+    "session_policy_presets": [
+      "auth"
     ],
     "billingmodule": [
       "billing"

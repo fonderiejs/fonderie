@@ -62,6 +62,8 @@ export interface ISessionDTO {
 	location: IRequestLocation | null;
 	createdAt: string;
 	expiresAt: string;
+	/** The platform declared at sign-in (mobile | desktop | web), or null. */
+	clientKind: string | null;
 }
 
 export function toSessionDTO(
@@ -71,6 +73,7 @@ export function toSessionDTO(
 		userAgent: string | null;
 		ipAddress: string | null;
 		location?: unknown;
+		clientKind?: string | null;
 		createdAt: Date;
 		expiresAt: Date;
 	},
@@ -82,6 +85,7 @@ export function toSessionDTO(
 		ipAddress: row.ipAddress,
 		userAgent: row.userAgent,
 		location: sanitizeLocation(row.location),
+		clientKind: row.clientKind ?? null,
 		createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
 		expiresAt: row.expiresAt instanceof Date ? row.expiresAt.toISOString() : String(row.expiresAt),
 	};

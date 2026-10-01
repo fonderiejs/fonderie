@@ -25,6 +25,7 @@ interface IFonderieClientOptions {
         storage?: IConfigStorage;
     };
     log?: IClientLog;
+    clientKind?: 'mobile' | 'desktop' | 'web';
 }
 
 interface IRequestConfig {

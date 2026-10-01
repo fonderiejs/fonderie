@@ -60,9 +60,13 @@ export interface IHttpDeps {
 	// token to retry with, or undefined to let the 401 surface. Callers should
 	// make this single-flight.
 	refresh?: (() => Promise<string | undefined>) | undefined;
+	// The platform this client runs on, sent as X-Client-Kind so a sign-in gets
+	// that platform's session lifetimes (mobile | desktop | web).
+	clientKind?: 'mobile' | 'desktop' | 'web' | undefined;
 }
 
 export class HttpClient {
+	private clientKind: 'mobile' | 'desktop' | 'web' | undefined;
 	private cache: ICache | undefined;
 	private defaultTtlMs: number;
 	private refresh: (() => Promise<string | undefined>) | undefined;
@@ -72,6 +76,7 @@ export class HttpClient {
 		deps: IHttpDeps = {},
 	) {
 		this.cache = deps.cache;
+		this.clientKind = deps.clientKind;
 		this.defaultTtlMs = deps.defaultTtlMs ?? 60_000;
 		this.refresh = deps.refresh;
 	}
@@ -138,6 +143,7 @@ export class HttpClient {
 		if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
 		if (opts.cookie) headers['Cookie'] = opts.cookie;
 		if (opts.workspaceId) headers['X-Workspace-ID'] = opts.workspaceId;
+		if (this.clientKind) headers['X-Client-Kind'] = this.clientKind;
 		Object.assign(headers, opts.headers ?? {});
 
 		const fetchInit: RequestInit = { method: opts.method, headers, credentials: 'include' };
