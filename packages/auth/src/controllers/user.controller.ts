@@ -9,7 +9,7 @@ import type { IAuthConfig } from '../config';
 import type { EventBus } from '@fonderie/events';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
 
-import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
+import { MESSAGE_KEYS, EVENT_KEYS, type ISessionRevokedEvent } from '../config';
 import { toUserDTO } from '../dtos/user';
 import {
 	toLoginHistoryPageDTO,
@@ -103,10 +103,12 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			if (!id) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Session not found');
 			}
-			const removed = await sessions.terminateById(ctx.user!.id, id);
-			if (!removed) {
+			const removed = await sessions.terminateByIdReturningSid(ctx.user!.id, id);
+			if (removed === undefined) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Session not found');
 			}
+			// The signed-out device learns it now, not on its next request.
+			await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId: ctx.user!.id, sids: [removed], reason: 'terminated' } satisfies ISessionRevokedEvent));
 			return setApiResponse(HTTP.OK, 'SESSION_TERMINATED', 'Session terminated.', { id });
 		},
 
@@ -121,7 +123,9 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					'Cannot terminate others without a current session context',
 				);
 			}
-			const count = await sessions.terminateOthers(ctx.user!.id, currentSid);
+			const sids = await sessions.terminateOthersReturningSids(ctx.user!.id, currentSid);
+			const count = sids.length;
+			if (count) await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId: ctx.user!.id, sids, reason: 'terminated' } satisfies ISessionRevokedEvent));
 			return setApiResponse(HTTP.OK, 'SESSIONS_TERMINATED', 'Other sessions terminated.', { count });
 		},
 
@@ -321,6 +325,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			// attacker (or the user's old device) may still hold. The client must
 			// re-authenticate after changing its password.
 			await sessions.deleteByUser(ctx.user!.id);
+			await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId: ctx.user!.id, sids: null, reason: 'password-changed' } satisfies ISessionRevokedEvent));
 
 			return setApiResponse(HTTP.OK, 'PASSWORD_CHANGED', 'Password updated successfully.');
 		},

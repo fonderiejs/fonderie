@@ -52,6 +52,7 @@ new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus | undef
   .name: "@fonderie/auth"
   .version: string
   .describeAdmin(): IAdminDescription
+  .describeEvents(): IEventCatalogEntry<unknown>[]
   .checkReadiness(): IReadinessProblem[]
   .install(app: IFonderieApp): void
 
@@ -267,7 +268,7 @@ interface IAdminUserDTO extends IUserDTO {
     createdAt: string;
 }
 
-function describeAuthAdminRoutes(store: IStoreAdapter): IAdminRoute[]
+function describeAuthAdminRoutes(store: IStoreAdapter, bus?: EventBus | undefined): IAdminRoute[]
 
 function toAdminUserDTO(user: IUser): IAdminUserDTO
 

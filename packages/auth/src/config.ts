@@ -112,8 +112,10 @@ export const EVENT_KEYS = {
 	userPurged: 'fonderie.user.purged',
 	emailVerified: 'fonderie.user.email_verified',
 	passwordChanged: 'fonderie.user.password_changed',
-	// A session the server revoked — today: a refresh token reused after its
-	// grace (theft signal). { userId, sessionId, reason }.
+	// Sessions the server revoked: { userId, sids (null = all), reason }. Reaches
+	// the user's devices live (@fonderie/sse) so a revoked device signs out at
+	// once. Reasons: 'terminated' (signed out from the devices list),
+	// 'password-changed', 'admin', 'refresh-reuse' (theft signal).
 	sessionRevoked: 'fonderie.session.revoked',
 } as const;
 
@@ -195,3 +197,11 @@ export type AuthRouteId =
 	| 'mfaSetup' | 'mfaVerify' | 'mfaDisable' | 'mfaBackupCodes';
 
 export type AuthRouteOverride = string | { method?: string; path?: string };
+
+/** Payload of fonderie.session.revoked. */
+export interface ISessionRevokedEvent {
+	userId: string;
+	/** The revoked sessions' sids; null = every session of the user. */
+	sids: Array<string | null> | null;
+	reason: 'terminated' | 'password-changed' | 'admin' | 'refresh-reuse';
+}

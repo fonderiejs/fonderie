@@ -406,7 +406,7 @@
         {
           "method": "DELETE",
           "path": "/_admin/users/:id/sessions",
-          "mw": "async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); await sessions.deleteByUser(idOf(ctx)); return setApiResponse(HTTP.OK, 'SESSIONS_REVOKED', 'All sessions revoked'); }"
+          "mw": "async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); await sessions.deleteByUser(idOf(ctx)); await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId: idOf(ctx), sids: null, reason: 'admin' } satisfies ISessionRevokedEvent)); return setApiResponse(HTTP.OK, 'SESSIONS_REVOKED', 'All sessions revoked'); }"
         },
         {
           "method": "GET",

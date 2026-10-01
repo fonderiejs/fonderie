@@ -1,6 +1,6 @@
 # Sessions that behave like WhatsApp's — design and build order
 
-Status: Phases 1, 2, 3a and 3c shipped in `@fonderie/auth`; 1b, 3b and 4–6 planned (2026-10-01).
+Status: Phases 1, 2, 3a, 3c and 5 shipped; 1b, 3b, 4 and 6 planned (2026-10-01).
 
 ## 1. The problem
 
@@ -106,7 +106,7 @@ first render), signs out once with a message on a definitive refusal, keeps
 one token store, clears Keychain tokens on the first launch after a reinstall
 (iOS), excludes SecureStore from Android Auto Backup.
 
-**Phase 5 — Live revocation.** `fonderie.session.revoked` in auth's event
+**Phase 5 — Live revocation.** ✅ Payload `{ userId, sids (null = all), reason }`, projected to the user as `{ sids, reason }`; emitted by terminate-one, terminate-others, password change, admin sign-out-everywhere and refresh reuse. The client listens while signed in when `sse` is configured (`liveSignOut: false` opts out) and signs out only if the event names its own `sid` or all sessions. `fonderie.session.revoked` in auth's event
 catalog (audience: the user); terminate-device, password change, reuse
 detection and suspension emit it; the client signs out within a second over
 the stream it already holds.

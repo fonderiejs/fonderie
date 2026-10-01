@@ -366,3 +366,55 @@ test('an event invalidates the cached config: the app keeps its response cache, 
 		await srv.close();
 	}
 });
+
+// ── live sign-out (Phase 5) ───────────────────────────────────────────────────
+
+const withSid = (sid: string) => ['x', Buffer.from(JSON.stringify({ sub: 'u1', sid })).toString('base64url'), 'y'].join('.');
+
+test('live sign-out: a revocation naming THIS device clears the tokens and calls onAuthError', async () => {
+	const srv = await sseServer();
+	let signedOut = 0;
+	const client = new FonderieClient({
+		baseUrl: srv.url,
+		accessToken: withSid('sid-me'),
+		sse: {},
+		auth: { getRefreshToken: () => undefined, onTokensChanged: () => {}, onAuthError: () => signedOut++ },
+	});
+	try {
+		await until(() => srv.open().length === 1 && srv.open()[0]!.topics.includes('fonderie.session.revoked'));
+		srv.send('fonderie.session.revoked', { sids: ['sid-other'], reason: 'terminated' });
+		await new Promise((r) => setTimeout(r, 100));
+		assert.equal(signedOut, 0, 'another device was signed out, not this one');
+		srv.send('fonderie.session.revoked', { sids: ['sid-other', 'sid-me'], reason: 'terminated' }, 'e2');
+		await until(() => signedOut === 1);
+		assert.equal((client as unknown as { tokens: { get(): string | undefined } }).tokens.get(), undefined, 'tokens cleared');
+		await until(() => srv.open().length === 0, 3000); // signed out: nothing left to listen to
+	} finally {
+		await srv.close();
+	}
+});
+
+test('live sign-out: sids null means every session — e.g. a password change', async () => {
+	const srv = await sseServer();
+	let signedOut = 0;
+	new FonderieClient({ baseUrl: srv.url, accessToken: withSid('sid-me'), sse: {}, auth: { getRefreshToken: () => undefined, onTokensChanged: () => {}, onAuthError: () => signedOut++ } });
+	try {
+		await until(() => srv.open().length === 1);
+		srv.send('fonderie.session.revoked', { sids: null, reason: 'password-changed' });
+		await until(() => signedOut === 1);
+	} finally {
+		await srv.close();
+	}
+});
+
+test('live sign-out is OFF without `sse` configured (apps without @fonderie/sse see no change), and when signed out', async () => {
+	const srv = await sseServer();
+	try {
+		new FonderieClient({ baseUrl: srv.url, accessToken: withSid('sid-me') });
+		new FonderieClient({ baseUrl: srv.url, sse: {} });
+		await new Promise((r) => setTimeout(r, 200));
+		assert.equal(srv.streams.length, 0);
+	} finally {
+		await srv.close();
+	}
+});
