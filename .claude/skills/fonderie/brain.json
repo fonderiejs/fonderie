@@ -8,7 +8,7 @@
     "audit": "5.2.14",
     "auth": "7.19.2",
     "billing": "10.4.6",
-    "client": "2.4.0",
+    "client": "2.5.0",
     "config": "6.6.4",
     "core": "0.28.0",
     "courier": "7.13.6",
@@ -19,12 +19,12 @@
     "media": "0.2.28",
     "permissions": "5.0.32",
     "rate-limit": "4.0.31",
-    "react": "0.5.0",
+    "react": "0.5.1",
     "react-admin": "1.2.0",
     "react-admin-screens": "1.7.0",
     "react-audit": "0.3.1",
     "react-audit-screens": "0.2.1",
-    "react-auth": "0.11.0",
+    "react-auth": "0.11.1",
     "react-auth-screens": "0.4.1",
     "react-billing": "0.9.1",
     "react-billing-screens": "0.3.2",
@@ -37,7 +37,7 @@
     "react-media": "0.1.0",
     "react-native-audit": "0.1.1",
     "react-native-audit-screens": "0.2.1",
-    "react-native-auth": "0.12.0",
+    "react-native-auth": "0.12.1",
     "react-native-auth-screens": "0.4.1",
     "react-native-billing": "0.2.3",
     "react-native-billing-screens": "0.3.2",
@@ -56,12 +56,12 @@
     "sse": "0.2.5",
     "storage": "0.1.27",
     "store": "0.7.2",
-    "vue": "0.5.0",
+    "vue": "0.5.1",
     "vue-admin": "1.2.0",
     "vue-admin-screens": "1.7.0",
     "vue-audit": "0.4.1",
     "vue-audit-screens": "0.2.1",
-    "vue-auth": "0.12.0",
+    "vue-auth": "0.12.1",
     "vue-auth-screens": "0.4.1",
     "vue-billing": "0.10.1",
     "vue-billing-screens": "0.3.2",
@@ -799,7 +799,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "2.4.0",
+      "version": "2.5.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -1497,7 +1497,7 @@
       "hasOutcomes": true
     },
     "react": {
-      "version": "0.5.0",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1633,7 +1633,7 @@
       "hasOutcomes": false
     },
     "react-auth": {
-      "version": "0.11.0",
+      "version": "0.11.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1949,7 +1949,7 @@
       "hasOutcomes": false
     },
     "react-native-auth": {
-      "version": "0.12.0",
+      "version": "0.12.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2366,7 +2366,7 @@
       "hasOutcomes": false
     },
     "vue": {
-      "version": "0.5.0",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2503,7 +2503,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.12.0",
+      "version": "0.12.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
