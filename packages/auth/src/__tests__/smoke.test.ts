@@ -314,6 +314,14 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 			)
 				return (opts.userById != null ? [opts.userById] : []) as unknown as T[];
 
+			// Refresh rotation (Phase 2): the presented token matches the session's
+			// current token; the in-place rotation succeeds.
+			if (sql.includes('fonderie_sessions') && sql.includes('SELECT id, user_id, sid, token') && !sql.includes('previous_token_hash'))
+				return (opts.sessionExists ? [{ id: 'sess-1', user_id: 'user-1', sid: 'sid-1', token: 'stored-hash' }] : []) as unknown as T[];
+			if (sql.includes('fonderie_sessions') && sql.includes('previous_token_hash = $1'))
+				return [] as unknown as T[];
+			if (sql.includes('UPDATE fonderie_sessions') && sql.includes('RETURNING id'))
+				return (opts.sessionExists ? [{ id: 'sess-1' }] : []) as unknown as T[];
 			if (sql.includes('fonderie_sessions') && sql.includes('SELECT id'))
 				return (opts.sessionExists ? [{ id: 'sess-1' }] : []) as unknown as T[];
 

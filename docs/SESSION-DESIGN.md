@@ -1,6 +1,6 @@
 # Sessions that behave like WhatsApp's — design and build order
 
-Status: Phase 1 shipped in `@fonderie/auth` (key ring); Phases 2–6 planned (2026-10-01).
+Status: Phases 1 and 2 shipped in `@fonderie/auth`; 1b and 3–6 planned (2026-10-01).
 
 ## 1. The problem
 
@@ -67,12 +67,20 @@ themselves after the longest session lifetime; every instance shares the ring
 through the database. Phase 1's env secrets stay supported for apps that
 prefer them. Removes rotation chores from app deploy tooling.
 
-**Phase 2 — Session store hardening (server).** Refresh tokens hashed at rest
+**Phase 2 — Session store hardening (server).** ✅ Refresh tokens hashed at rest
 (SHA-256; migration hashes existing rows). One row per device, kept across
 rotations (update the hash, `last_used_at`; `id` stable). Keep the previous
 token's hash with a short grace (30 s) so two racing refreshes both succeed;
 a reuse *after* the grace revokes the session (theft signal) and emits
-`fonderie.session.revoked` (reason `reuse`).
+`fonderie.session.revoked` (reason `refresh-reuse`). Shipped notes: the
+hash lives in the existing `token` column (lookups accept a legacy raw value,
+so code and migration may land in either order for reads; the new columns
+must exist before the code — migrate first); the session id is kept across
+rotations (a device), so every token carries a `jti` — without it two tokens
+issued in the same second were byte-identical; a rotation from the previous
+token within the grace is authorised by its hash and deadline, so racing
+retries never starve. One generation back is tracked: an older token is
+simply refused.
 
 **Phase 3 — Long-lived sliding sessions (server).** Session idle timeout
 (default 90 d since last use) plus an optional absolute cap; access token

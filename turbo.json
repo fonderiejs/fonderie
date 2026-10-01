@@ -18,7 +18,7 @@
       // check:ci-env fails when ci.yml sets a variable missing here — ADMIN_PG_URL
       // and COURIER_PG_URL were set in CI but not listed, so their suites
       // silently reported SKIP for weeks.
-      "env": ["RATE_LIMIT_PG_URL", "RATE_LIMIT_REDIS_URL", "BILLING_PG_URL", "EVENTS_PG_URL", "ADMIN_PG_URL", "COURIER_PG_URL", "SSE_PG_URL"]
+      "env": ["RATE_LIMIT_PG_URL", "RATE_LIMIT_REDIS_URL", "BILLING_PG_URL", "EVENTS_PG_URL", "ADMIN_PG_URL", "COURIER_PG_URL", "SSE_PG_URL", "AUTH_PG_URL"]
     },
     "typecheck": {
       "dependsOn": ["^build"]

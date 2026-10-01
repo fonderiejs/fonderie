@@ -34,6 +34,9 @@ export interface IRefreshPayload {
 export interface ITokenOptions {
 	loginMethod: 'email' | 'phone' | 'google' | 'apple';
 	phoneVerified?: boolean;
+	// Keep an existing session id (a refresh rotates the same device session);
+	// absent ⇒ a new session.
+	sid?: string;
 }
 
 // ── Key ring ──────────────────────────────────────────────────────────────
@@ -78,18 +81,21 @@ export function issueTokenPair(
 	const accessDuration = config.accessTokenDuration ?? '24h';
 	const loginMethod = options.loginMethod;
 	const phoneVerified = options.phoneVerified ?? false;
-	const sid = randomUUID();
+	const sid = options.sid ?? randomUUID();
 
 	const accessToken = jwt.sign(
 		{ sub: userId, type: 'access', loginMethod, phoneVerified, sid } satisfies IAccessPayload,
 		config.jwtSecret,
-		{ expiresIn: accessDuration, keyid: keyIdOf(config.jwtSecret) } as SignOptions,
+		// jwtid: every token is unique. With the session id kept across rotations,
+		// two tokens issued in the same second would otherwise be byte-identical —
+		// and a rotated-away token indistinguishable from the live one.
+		{ expiresIn: accessDuration, keyid: keyIdOf(config.jwtSecret), jwtid: randomUUID() } as SignOptions,
 	);
 
 	const refreshToken = jwt.sign(
 		{ sub: userId, type: 'refresh', loginMethod, phoneVerified, sid } satisfies IRefreshPayload,
 		config.jwtSecret,
-		{ expiresIn: duration, keyid: keyIdOf(config.jwtSecret) } as SignOptions,
+		{ expiresIn: duration, keyid: keyIdOf(config.jwtSecret), jwtid: randomUUID() } as SignOptions,
 	);
 
 	return { accessToken, refreshToken, sid };

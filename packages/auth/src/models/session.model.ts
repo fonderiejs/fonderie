@@ -1,7 +1,34 @@
+import { createHash } from 'node:crypto';
+
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IRequestMeta } from '../services/request-meta';
 import { type IRequestLocation, type LocationResolver, resolveLocation } from '../services/request-location';
+
+// What `fonderie_sessions.token` holds: the SHA-256 of the refresh token, so a
+// database dump contains no working refresh token. Lookups also accept the raw
+// value, for rows written before migration 020 hashed them.
+export function hashRefreshToken(token: string): string {
+	return createHash('sha256').update(token).digest('hex');
+}
+
+/** How long a just-rotated refresh token stays valid: a retry or a race. */
+export const REFRESH_GRACE_MS = 30_000;
+
+export interface ISessionRow {
+	id: string;
+	userId: string;
+	sid: string | null;
+	/** What the stored `token` column holds now (a hash, or a legacy raw token). */
+	stored: string;
+}
+
+/** How a presented refresh token relates to the sessions table. */
+export type RefreshMatch =
+	| { kind: 'current'; row: ISessionRow }
+	| { kind: 'grace'; row: ISessionRow }
+	| { kind: 'reused'; row: ISessionRow }
+	| { kind: 'unknown' };
 
 export class SessionModel {
 	// `locate` is IAuthConfig.location. Absent ⇒ sessions carry no location.
@@ -22,12 +49,12 @@ export class SessionModel {
 				? await resolveLocation(this.locate, { ip: meta.ipAddress, headers: meta.headers })
 				: null;
 		await this.store.query(
-			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid, user_agent, ip_address, location)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid, user_agent, ip_address, location, last_used_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, now())
 			ON CONFLICT (token) DO NOTHING`,
 			[
 				userId,
-				token,
+				hashRefreshToken(token),
 				expiresAt,
 				sid ?? null,
 				meta?.userAgent ?? null,
@@ -38,7 +65,64 @@ export class SessionModel {
 	}
 
 	async delete(token: string): Promise<void> {
-		await this.store.query(`DELETE FROM fonderie_sessions WHERE token = $1`, [token]);
+		await this.store.query(`DELETE FROM fonderie_sessions WHERE token IN ($1, $2)`, [hashRefreshToken(token), token]);
+	}
+
+	/**
+	 * Where a presented refresh token stands: the session's current token, its
+	 * previous one within the grace (a retry or race), its previous one AFTER
+	 * the grace (reuse — a theft signal), or nothing known.
+	 */
+	async match(token: string): Promise<RefreshMatch> {
+		const hash = hashRefreshToken(token);
+		const [current] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string }>(
+			`SELECT id, user_id, sid, token FROM fonderie_sessions WHERE token IN ($1, $2) AND expires_at > now() LIMIT 1`,
+			[hash, token],
+		);
+		if (current) return { kind: 'current', row: toRow(current) };
+		const [previous] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string; in_grace: boolean }>(
+			`SELECT id, user_id, sid, token, (previous_valid_until > now()) AS in_grace
+			   FROM fonderie_sessions WHERE previous_token_hash = $1 AND expires_at > now() LIMIT 1`,
+			[hash],
+		);
+		if (!previous) return { kind: 'unknown' };
+		return { kind: previous.in_grace ? 'grace' : 'reused', row: toRow(previous) };
+	}
+
+	/**
+	 * Rotate a session in place to a new refresh token: same row, same device.
+	 * From the CURRENT token it is optimistic — only if the stored token is
+	 * still the one matched; a concurrent rotation makes it return false and the
+	 * caller re-matches (and now finds the token as the previous one). The old
+	 * token becomes the previous, valid for the grace. From the PREVIOUS token
+	 * (within the grace) it is authorised by that hash and deadline alone, so
+	 * racing retries never starve; the previous and its deadline are kept.
+	 */
+	async rotate(
+		row: ISessionRow,
+		presented: string,
+		next: { token: string; expiresAt: Date },
+		from: 'current' | 'grace',
+	): Promise<boolean> {
+		const rows = await this.store.query<{ id: string }>(
+			`UPDATE fonderie_sessions
+			    SET previous_token_hash  = CASE WHEN $5 THEN $6 ELSE previous_token_hash END,
+			        previous_valid_until = CASE WHEN $5 THEN now() + ($7 || ' milliseconds')::interval ELSE previous_valid_until END,
+			        token        = $3,
+			        expires_at   = $4,
+			        last_used_at = now()
+			  WHERE id = $1
+			    AND CASE WHEN $5 THEN token = $2
+			             ELSE previous_token_hash = $6 AND previous_valid_until > now() END
+			RETURNING id`,
+			[row.id, row.stored, hashRefreshToken(next.token), next.expiresAt, from === 'current', hashRefreshToken(presented), String(REFRESH_GRACE_MS)],
+		);
+		return rows.length === 1;
+	}
+
+	/** Revoke one session by its row id (any user) — reuse detection, admin. */
+	async revokeById(id: string): Promise<void> {
+		await this.store.query(`DELETE FROM fonderie_sessions WHERE id = $1`, [id]);
 	}
 
 	// Delete the session an access token is bound to (by its sid claim). Lets
@@ -123,8 +207,8 @@ export class SessionModel {
 
 	async exists(token: string): Promise<boolean> {
 		const rows = await this.store.query<{ id: string }>(
-			`SELECT id FROM fonderie_sessions WHERE token = $1 AND expires_at > now()`,
-			[token],
+			`SELECT id FROM fonderie_sessions WHERE token IN ($1, $2) AND expires_at > now()`,
+			[hashRefreshToken(token), token],
 		);
 		return rows.length > 0;
 	}
@@ -137,4 +221,8 @@ export class SessionModel {
 		);
 		return rows.length > 0;
 	}
+}
+
+function toRow(r: { id: string; user_id: string; sid: string | null; token: string }): ISessionRow {
+	return { id: r.id, userId: r.user_id, sid: r.sid, stored: r.token };
 }

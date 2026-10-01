@@ -438,26 +438,40 @@ export function authController(
 				return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Invalid refresh token');
 			}
 
-			const valid = await sessions.exists(token);
-			if (!valid) {
-				return setApiResponse(
-					HTTP.UNAUTHORIZED,
-					'TOKEN_REFRESH_FAILED',
-					'Session expired or already revoked',
-				);
+			// The session is a device: a refresh rotates the same row. The previous
+			// token stays valid for a short grace (a retry, or two racing requests);
+			// presented after it, it is a reuse — someone else holds an old copy —
+			// and the session is revoked. docs/SESSION-DESIGN.md, Phase 2.
+			let issued: { accessToken: string; refreshToken: string } | null = null;
+			for (let attempt = 0; attempt < 3 && !issued; attempt++) {
+				const found = await sessions.match(token);
+				if (found.kind === 'unknown') {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
+				}
+				if (found.kind === 'reused') {
+					await sessions.revokeById(found.row.id);
+					await background(
+						bus?.emit(EVENT_KEYS.sessionRevoked, { userId: found.row.userId, sessionId: found.row.id, reason: 'refresh-reuse' }),
+					);
+					return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
+				}
+				const user = await users.findById(found.row.userId);
+				if (!user || user.suspended || user.deletedAt || user.id !== payload.sub) {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
+				}
+				const pair = issueTokenPair(user.id, config, {
+					loginMethod: payload.loginMethod ?? 'email',
+					phoneVerified: payload.phoneVerified ?? false,
+					...(found.row.sid ? { sid: found.row.sid } : {}),
+				});
+				// Lost a race to a concurrent rotation of the same session: match again.
+				const next = { token: pair.refreshToken, expiresAt: refreshTokenExpiry(pair.refreshToken) };
+				if (await sessions.rotate(found.row, token, next, found.kind)) issued = pair;
 			}
-
-			const user = await users.findById(payload.sub);
-			if (!user || user.suspended || user.deletedAt) {
-				return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
+			if (!issued) {
+				return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
 			}
-
-			await sessions.delete(token);
-			const { accessToken, refreshToken, sid } = issueTokenPair(user.id, config, {
-				loginMethod: payload.loginMethod ?? 'email',
-				phoneVerified: payload.phoneVerified ?? false,
-			});
-			await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, requestMeta(ctx));
+			const { accessToken, refreshToken } = issued;
 
 			return Response.json(
 				{

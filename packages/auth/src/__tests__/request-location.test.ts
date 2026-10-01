@@ -240,7 +240,7 @@ test('SessionModel.create: stores the resolved location; Active Sessions DTO exp
 		userAgent: 'UA',
 		headers: new Headers(),
 	});
-	assert.match(calls[0]!.sql, /user_agent, ip_address, location\)/);
+	assert.match(calls[0]!.sql, /user_agent, ip_address, location, last_used_at\)/);
 	assert.equal(JSON.parse(calls[0]!.params[6] as string).city, 'Mountain View');
 	const dto = toSessionDTO(
 		{
