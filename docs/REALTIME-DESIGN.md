@@ -305,6 +305,33 @@ describeEvents(): IEventCatalogEntry[] {
 **Default deny:** an event without a catalog entry is never streamed.
 `fonderie.notification.send` (PINs, OTPs, reset tokens) simply has no entry.
 
+**An app's own events.** An app registers a small module that declares its
+events and emits them on the same bus. They get the same default deny,
+audiences and projection as a brick's:
+
+```ts
+app.register({
+  name: 'acme',
+  install() {},
+  describeEvents: () => [{
+    type: 'acme.job.assigned',                      // the app's own prefix
+    description: 'A job was assigned to you',
+    audience: 'user',
+    scope: (p) => ({ userId: p.assigneeId }),
+    project: (p) => ({ jobId: p.jobId }),           // ids only
+  }],
+});
+await events.bus.emit('acme.job.assigned', { jobId, assigneeId });
+```
+
+**`fonderie.*` is reserved** for the bricks (modules named `@fonderie/*`).
+Boot refuses an app module that declares a `fonderie.*` type: it would collide
+the day a brick ships that name. Two modules declaring the same type also fail
+boot. Both checks run in every app, not only those that install realtime
+delivery. Don't **emit** a brick's event from app code: on the bus it can't be
+told apart from the brick's own, so emitting `fonderie.notification.send`
+sends that email and `fonderie.customer.created` fires webhooks.
+
 Subscribing:
 
 ```
@@ -315,8 +342,11 @@ GET /realtime/stream?topics=fonderie.customer.*,fonderie.billing.subscription.*
 
 - Omitted or `*` = all catalog topics the connection is entitled to.
 - Exact names or a trailing `.*` prefix. Matched with **escaped** input and
-  segment semantics; unknown topics → `400` with the list of valid ones
-  (`GET /realtime/topics` returns the catalog the caller may subscribe to).
+  segment semantics. For a signed-in caller, an unknown topic gets `400` with
+  the list of valid ones (`GET /realtime/topics` returns the catalog the caller
+  may subscribe to). An anonymous caller gets one identical `401` for a private
+  topic and a nonexistent one, so probing can't list a deployment's private
+  event names.
 - A subscription is per connection (no stored state); change it by
   reconnecting. Limits: max topics per connection, max connections per user.
 

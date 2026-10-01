@@ -66,7 +66,7 @@ export { encodeKeysetCursor, decodeKeysetCursor } from './keyset-cursor';
 
 // Event catalog — which events a client may receive (realtime delivery)
 export type { EventAudience, IEventCatalogEntry, IEventCatalogEntryWithModule, IEventScope } from './event-catalog';
-export { isValidTopicFilter, matchesTopic, mergeEventCatalogs, validateEventCatalogEntry } from './event-catalog';
+export { isValidTopicFilter, matchesTopic, mergeEventCatalogs, RESERVED_EVENT_PREFIX, validateEventCatalogEntry } from './event-catalog';
 
 // Server-Sent Events + streaming Web Responses to Node (listen, adapters)
 export type { ISseEvent, ISseOptions, ISseStream } from './sse';

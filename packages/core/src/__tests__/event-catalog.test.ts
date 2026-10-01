@@ -15,9 +15,9 @@ const ok: IEventCatalogEntry<{ customerId: string; workspaceId: string; email: s
 };
 
 test('validateEventCatalogEntry: a correct entry has no problems', () => {
-	assert.deepEqual(validateEventCatalogEntry(ok as IEventCatalogEntry, 'm'), []);
+	assert.deepEqual(validateEventCatalogEntry(ok as IEventCatalogEntry, '@fonderie/customers'), []);
 	assert.deepEqual(
-		validateEventCatalogEntry({ type: 'fonderie.config.changed', description: 'Public config changed', audience: 'public', source: { notify: 'fonderie_config_changed' } }, 'm'),
+		validateEventCatalogEntry({ type: 'fonderie.config.changed', description: 'Public config changed', audience: 'public', source: { notify: 'fonderie_config_changed' } }, '@fonderie/config'),
 		[],
 	);
 });
@@ -39,21 +39,21 @@ test('validateEventCatalogEntry: each rule fires', () => {
 
 test('mergeEventCatalogs: a type declared by two modules throws, naming both', () => {
 	assert.throws(
-		() => mergeEventCatalogs([{ name: 'a', entries: [ok as IEventCatalogEntry] }, { name: 'b', entries: [ok as IEventCatalogEntry] }]),
-		/'fonderie\.customer\.created' is declared by both a and b/,
+		() => mergeEventCatalogs([{ name: '@fonderie/a', entries: [ok as IEventCatalogEntry] }, { name: '@fonderie/b', entries: [ok as IEventCatalogEntry] }]),
+		/'fonderie\.customer\.created' is declared by both @fonderie\/a and @fonderie\/b/,
 	);
 });
 
 test('app.eventCatalog(): merges registered modules, sorted, tagged with their module', async () => {
 	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
 	const mod = (name: string, entries: IEventCatalogEntry[]): IFonderieModule => ({ name, install() {}, describeEvents: () => entries });
-	app.register(mod('@x/customers', [ok as IEventCatalogEntry]));
-	app.register(mod('@x/config', [{ type: 'fonderie.config.changed', description: 'Public config changed', audience: 'public' }]));
+	app.register(mod('@fonderie/customers', [ok as IEventCatalogEntry]));
+	app.register(mod('@fonderie/config', [{ type: 'fonderie.config.changed', description: 'Public config changed', audience: 'public' }]));
 	app.register({ name: '@x/silent', install() {} }); // declares nothing: contributes nothing
 	const catalog = app.eventCatalog();
 	assert.deepEqual(catalog.map((e) => [e.type, e.module]), [
-		['fonderie.config.changed', '@x/config'],
-		['fonderie.customer.created', '@x/customers'],
+		['fonderie.config.changed', '@fonderie/config'],
+		['fonderie.customer.created', '@fonderie/customers'],
 	]);
 });
 
@@ -77,4 +77,33 @@ test('matchesTopic: *, exact, and segment prefix — nothing else', () => {
 test('isValidTopicFilter: rejects anything that is not *, a type or prefix.*', () => {
 	for (const f of ['*', 'fonderie.customer.created', 'fonderie.customer.*', 'fonderie.*']) assert.ok(isValidTopicFilter(f), f);
 	for (const f of ['', '.*', 'fonderie.(a|b)', 'fonderie.*.created', 'Fonderie.X', 'a b']) assert.ok(!isValidTopicFilter(f), f);
+});
+
+test("'fonderie.*' is reserved for @fonderie bricks: an app module declaring it is refused, with its own-prefix fix", () => {
+	const problems = validateEventCatalogEntry({ ...ok, type: 'fonderie.job.assigned' } as IEventCatalogEntry, 'acme');
+	assert.equal(problems.length, 1);
+	assert.match(problems[0]!, /reserved for @fonderie bricks/);
+	assert.match(problems[0]!, /'app\.job\.assigned'/);
+	// Look-alike names are not bricks.
+	assert.equal(validateEventCatalogEntry(ok as IEventCatalogEntry, 'fonderie-customers').length, 1);
+	assert.equal(validateEventCatalogEntry(ok as IEventCatalogEntry, '@fonderie-community/x').length, 1);
+	// The app's own prefix is fine, and so is a brick declaring its own event.
+	assert.deepEqual(validateEventCatalogEntry({ ...ok, type: 'acme.job.assigned' } as IEventCatalogEntry, 'acme'), []);
+	assert.deepEqual(validateEventCatalogEntry(ok as IEventCatalogEntry, '@fonderie/customers'), []);
+});
+
+test('boot() validates the event catalog for every app, not only those that install realtime delivery', async () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	let installed = false;
+	app.register({ name: 'acme', install() { installed = true; }, describeEvents: () => [{ ...ok, type: 'fonderie.job.assigned' } as IEventCatalogEntry] });
+	await assert.rejects(() => app.boot(), /reserved for @fonderie bricks/);
+	assert.equal(installed, false, 'refused before any module installs');
+});
+
+test('boot() refuses two modules declaring the same type', async () => {
+	const app = new FonderieApp(defineConfig({ db: { url: 'postgres://localhost/test' } }));
+	const entry = { ...ok, type: 'acme.job.assigned' } as IEventCatalogEntry;
+	app.register({ name: 'acme-jobs', install() {}, describeEvents: () => [entry] });
+	app.register({ name: 'acme-dispatch', install() {}, describeEvents: () => [entry] });
+	await assert.rejects(() => app.boot(), /declared by both acme-dispatch and acme-jobs/);
 });

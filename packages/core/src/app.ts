@@ -296,6 +296,10 @@ export class FonderieApp implements IFonderieApp {
 		// Fail closed before any side effects (transports, listeners): a
 		// production deploy with an error-severity readiness problem must not boot.
 		this.enforceProductionReadiness();
+		// The event catalog is read only by realtime delivery, so without this a
+		// collision or a reserved-name entry would surface only in apps that
+		// install it — and only after an upgrade. Validate it for every app.
+		this.eventCatalog();
 		for (const module of topoSort([...this.modules.values()])) {
 			this.installing = module.name;
 			try {

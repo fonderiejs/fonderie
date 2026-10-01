@@ -952,6 +952,7 @@
         "SHIPPED_TEMPLATE_LANGUAGES",
         "MIN_SECRET_LENGTH",
         "PLACEHOLDER_SECRET",
+        "RESERVED_EVENT_PREFIX",
         "SSE_CONTENT_TYPE",
         "HTTP",
         "MetricsRegistry"
@@ -5515,6 +5516,9 @@
       "core"
     ],
     "placeholder_secret": [
+      "core"
+    ],
+    "reserved_event_prefix": [
       "core"
     ],
     "sse_content_type": [
