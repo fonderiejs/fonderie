@@ -154,13 +154,15 @@ export class SseModule implements IFonderieModule {
 				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_PARAMETER', `Invalid topic '${filter}': use '*', an event type, or 'prefix.*'.`);
 			}
 			if (!visible.some((e) => matchesTopic(filter, e.type))) {
-				// Either unknown, or not visible to an anonymous caller.
-				const known = [...this.catalog.values()].some((e) => matchesTopic(filter, e.type));
-				return known && !ctx.user
-					? setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', `Topic '${filter}' requires a signed-in user.`)
-					: setApiResponse(HTTP.BAD_REQUEST, 'INVALID_PARAMETER', `Unknown topic '${filter}'.`, {
+				// Anonymous: ONE answer whether the topic is private or does not
+				// exist. Distinguishing them would let anyone list a deployment's
+				// private event names by probing. A signed-in caller already sees
+				// every type through GET /topics, so it gets the helpful answer.
+				return ctx.user
+					? setApiResponse(HTTP.BAD_REQUEST, 'INVALID_PARAMETER', `Unknown topic '${filter}'.`, {
 							topics: visible.map((e) => e.type),
-						});
+						})
+					: setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', `Topic '${filter}' is not available without signing in.`);
 			}
 		}
 		if (ctx.user && this.hub.countForUser(ctx.user.id) >= this.options.maxConnectionsPerUser) {

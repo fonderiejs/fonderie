@@ -52,6 +52,16 @@ export interface IEventCatalogEntryWithModule extends IEventCatalogEntry {
 }
 
 const EVENT_TYPE = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/;
+
+/**
+ * Event types under this prefix belong to Fonderie's own bricks (modules named
+ * '@fonderie/*'). An app declares its events under its own prefix
+ * ('acme.job.assigned'): a 'fonderie.*' type declared by app code would collide
+ * the day a brick ships that name — and app code emitting a brick's event on
+ * the bus is indistinguishable from the brick to every consumer.
+ */
+export const RESERVED_EVENT_PREFIX = 'fonderie.';
+const BRICK_MODULE = /^@fonderie\//;
 const CHANNEL = /^[a-z_][a-z0-9_]*$/;
 
 /** Problems with one entry, as strings; [] when valid. */
@@ -59,7 +69,10 @@ export function validateEventCatalogEntry(entry: IEventCatalogEntry, module: str
 	const at = `${module}: event '${entry?.type ?? '?'}'`;
 	const out: string[] = [];
 	if (typeof entry?.type !== 'string' || !EVENT_TYPE.test(entry.type)) {
-		out.push(`${at}: type must be dotted lowercase (e.g. 'fonderie.customer.created')`);
+		out.push(`${at}: type must be dotted lowercase (e.g. 'acme.job.assigned')`);
+	} else if (entry.type.startsWith(RESERVED_EVENT_PREFIX) && !BRICK_MODULE.test(module)) {
+		const suggested = entry.type.slice(RESERVED_EVENT_PREFIX.length);
+		out.push(`${at}: '${RESERVED_EVENT_PREFIX}*' is reserved for @fonderie bricks — declare it under your app's own prefix (e.g. 'app.${suggested}')`);
 	}
 	if (typeof entry?.description !== 'string' || entry.description.trim().length < 8) {
 		out.push(`${at}: description is required`);

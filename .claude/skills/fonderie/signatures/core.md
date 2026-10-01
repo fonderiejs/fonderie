@@ -344,6 +344,8 @@ function matchesTopic(filter: string, type: string): boolean
 
 function mergeEventCatalogs(modules: { name: string; entries: IEventCatalogEntry<unknown>[]; }[]): IEventCatalogEntryWithModule[]
 
+const RESERVED_EVENT_PREFIX: "fonderie."
+
 function validateEventCatalogEntry(entry: IEventCatalogEntry<unknown>, module: string): string[]
 
 interface ISseEvent {
