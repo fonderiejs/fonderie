@@ -98,6 +98,7 @@ location                 JSONB
 previous_token_hash      TEXT
 previous_valid_until     TIMESTAMPTZ
 last_used_at             TIMESTAMPTZ
+client_kind              TEXT
 -- INDEX idx_fonderie_sessions_expires_at (expires_at)
 -- INDEX idx_fonderie_sessions_sid (sid)
 ```

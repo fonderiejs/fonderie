@@ -58,3 +58,16 @@ export { buildAuthIpLimiter, buildAuthAccountLimiter } from './services/rate-lim
 export type { IAuthRateLimitConfig, AuthLimitedRoute } from './services/rate-limit';
 export type { IAdminUserDTO } from './admin';
 export { describeAuthAdminRoutes, toAdminUserDTO, toAdminUserPageDTO } from './admin';
+
+// Session lifetimes per platform (X-Client-Kind: mobile | desktop | web) —
+// docs/SESSION-DESIGN.md, Phase 3c. readAuthRuntimeConfig is the safe way to
+// build a `resolve` from the app's config store.
+export {
+	CLIENT_KINDS,
+	SESSION_POLICY_PRESETS,
+	clientKindOf,
+	configForClient,
+	readAuthRuntimeConfig,
+	sessionPolicyConfigKeys,
+} from './services/session-policy';
+export type { ClientKind, ISessionPolicy } from './services/session-policy';

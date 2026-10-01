@@ -100,6 +100,18 @@ test('ttlFromCacheControl: no-store / no-cache → 0, max-age=N → N s, otherwi
 	assert.equal(ttlFromCacheControl(null), undefined);
 });
 
+test('clientKind: every request declares the platform (X-Client-Kind), for its session lifetimes', async () => {
+	let seen: string | undefined;
+	handler = (_u, init) => {
+		seen = (init.headers as Record<string, string>)['X-Client-Kind'];
+		return { status: 200, body: { reason: 'OK', explanation: '', result: {} } };
+	};
+	await new FonderieClient({ baseUrl: 'http://x', clientKind: 'mobile' }).get('/me');
+	assert.equal(seen, 'mobile');
+	await new FonderieClient({ baseUrl: 'http://x' }).get('/me');
+	assert.equal(seen, undefined, 'undeclared by default');
+});
+
 test('no cache configured → every GET hits the network', async () => {
 	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
 	const c = new FonderieClient({ baseUrl: 'http://x' });

@@ -93,6 +93,7 @@ interface IAuthSecrets {
 interface IAuthRuntimeConfig {
     sessionDuration?: string;
     sessionMaxAge?: string;
+    sessionPolicies?: Partial<Record<ClientKind, ISessionPolicy>>;
     verificationCooldown?: number;
     mfa?: boolean;
     requireVerification?: boolean;
@@ -103,7 +104,7 @@ interface IDataExportContributor {
     collect: (userId: string) => Promise<unknown> | unknown;
 }
 
-const AUTH_CONFIG_KEYS: Record<keyof IAuthRuntimeConfig, string>
+const AUTH_CONFIG_KEYS: Record<Exclude<keyof IAuthRuntimeConfig, 'sessionPolicies'>, string>
 
 const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly passwordRevoked: "password-revoked"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; }
 
@@ -159,6 +160,7 @@ interface ISessionDTO {
     location: IRequestLocation | null;
     createdAt: string;
     expiresAt: string;
+    clientKind: string | null;
 }
 
 function sanitizeLocation(input: unknown): IRequestLocation | null
@@ -270,4 +272,24 @@ function describeAuthAdminRoutes(store: IStoreAdapter): IAdminRoute[]
 function toAdminUserDTO(user: IUser): IAdminUserDTO
 
 function toAdminUserPageDTO(page: IUserPage): IAdminUserPageDTO
+
+const CLIENT_KINDS: readonly ["mobile", "desktop", "web"]
+
+const SESSION_POLICY_PRESETS: Readonly<Record<ClientKind, ISessionPolicy>>
+
+function clientKindOf(headers: Headers): "mobile" | "desktop" | "web" | null
+
+function configForClient(config: IAuthConfig, runtime: Partial<IAuthRuntimeConfig> | undefined, kind: "mobile" | "desktop" | "web" | null): IAuthConfig
+
+function readAuthRuntimeConfig(read: (key: string) => unknown): Partial<IAuthRuntimeConfig>
+
+function sessionPolicyConfigKeys(kind: "mobile" | "desktop" | "web"): Record<keyof ISessionPolicy, string>
+
+type ClientKind = (typeof CLIENT_KINDS)[number];
+
+interface ISessionPolicy {
+    sessionDuration?: string;
+    sessionMaxAge?: string;
+    accessTokenDuration?: string;
+}
 ```

@@ -1,5 +1,6 @@
 import type { LocationResolver } from './services/request-location';
 import type { IAuthRateLimitConfig } from './services/rate-limit';
+import type { ClientKind, ISessionPolicy } from './services/session-policy';
 export const DEFAULT_VERIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 // How long a device stays signed in WITHOUT being used (sliding: every refresh
 // extends it). Messaging apps effectively never sign an idle device out;
@@ -57,13 +58,18 @@ export interface IAuthRuntimeConfig {
 	// Optional absolute cap: a session this old ends at its next refresh, however
 	// active — the user signs in again (e.g. '365d'). Unset: no cap.
 	sessionMaxAge?: string;
+	// Lifetimes per platform (X-Client-Kind at sign-in: mobile | desktop | web),
+	// over the shared values above. Presets apply when nothing is set — see
+	// services/session-policy.ts for the full order.
+	sessionPolicies?: Partial<Record<ClientKind, ISessionPolicy>>;
 	verificationCooldown?: number;
 	mfa?: boolean;
 	requireVerification?: boolean;
 }
 
 // Type-checked: adding/renaming a field in IAuthRuntimeConfig breaks this at compile time
-export const AUTH_CONFIG_KEYS: Record<keyof IAuthRuntimeConfig, string> = {
+// Per-platform keys: sessionPolicyConfigKeys(kind). readAuthRuntimeConfig reads them all.
+export const AUTH_CONFIG_KEYS: Record<Exclude<keyof IAuthRuntimeConfig, 'sessionPolicies'>, string> = {
 	sessionDuration:     'auth.session.duration',
 	sessionMaxAge:       'auth.session.max_age',
 	verificationCooldown: 'auth.verification.cooldown',
