@@ -338,3 +338,31 @@ test('switching workspace reopens the stream in the new workspace; the same work
 		await srv.close();
 	}
 });
+
+// Found on a phone: the event arrived, the client re-read /config/public — and
+// the app's response cache (createMemoryCache) answered with the OLD value.
+// The load time moved, the value never did. Every other test ran uncached.
+test('an event invalidates the cached config: the app keeps its response cache, and a pushed change replaces the cached answer', async () => {
+	const { createMemoryCache } = await import('../index');
+	const values: Record<string, unknown> = { WITH_PROFILE_SCREEN: true };
+	const srv = await sseServer({ configValues: values });
+	const client = new FonderieClient({ baseUrl: srv.url, cache: createMemoryCache() });
+	const release = client.config.retain();
+	try {
+		await until(() => client.config.get('WITH_PROFILE_SCREEN', null) === true && srv.open().length === 1);
+		values['WITH_PROFILE_SCREEN'] = false;
+		srv.send('fonderie.config.changed', {});
+		await until(() => client.config.get('WITH_PROFILE_SCREEN', null) === false);
+		values['WITH_PROFILE_SCREEN'] = true;
+		srv.send('fonderie.config.changed', {});
+		await until(() => client.config.get('WITH_PROFILE_SCREEN', null) === true);
+		// …and the fresh answer was stored: a plain cached read now returns it.
+		const loads = srv.configLoads;
+		const cached = await client.request<{ values: Record<string, unknown> }>({ method: 'GET', path: '/config/public' });
+		assert.equal(cached.result.values['WITH_PROFILE_SCREEN'], true);
+		assert.equal(srv.configLoads, loads, 'served from the cache, no upstream fetch');
+	} finally {
+		release();
+		await srv.close();
+	}
+});
