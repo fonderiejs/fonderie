@@ -15,6 +15,8 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .media: MediaClient
   .config: ConfigClient
   .sse: SseClient
+  .session: SessionState
+  .onSessionChange(listener: (state: SessionState) => void): () => void
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -44,6 +46,11 @@ new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefin
   .snapshot(): IRemoteConfigState
   .subscribe(listener: Listener): () => void
 
+interface IAuthErrorInfo {
+    reason: 'revoked' | 'expired' | 'no-refresh-token';
+    detail?: string;
+}
+
 interface IClientLog {
     warn(message: string): void;
 }
@@ -66,6 +73,8 @@ interface ISseClientEvent {
     data: Record<string, unknown>;
     at?: string;
 }
+
+type SessionState = 'signedOut' | 'active' | 'offline' | 'revoked';
 
 new SseClient(deps: ISseClientDeps): SseClient
   .identityChanged(): void

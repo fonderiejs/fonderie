@@ -1,4 +1,4 @@
-import type { AuthClient, IUserDTO } from '@fonderie/client';
+import { isSessionRefusal, type AuthClient, type IUserDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
 import { onMounted, ref } from 'vue';
@@ -24,11 +24,18 @@ export function useSession(client?: AuthClient): IUseSessionReturn {
 			const { result } = await auth.getUser({ bust: opts?.force });
 			user.value = result.user;
 			isAuthenticated.value = true;
-		} catch {
-			user.value = null;
-			isAuthenticated.value = false;
-			auth.setAccessToken(undefined);
-			clearToken();
+		} catch (err) {
+			// Only the server refusing the session signs out. Offline, a 5xx or a
+			// rate limit keeps it: the user stays signed in and the next refresh
+			// tries again (docs/SESSION-DESIGN.md, Phase 4).
+			if (isSessionRefusal(err)) {
+				user.value = null;
+				isAuthenticated.value = false;
+				auth.setAccessToken(undefined);
+				clearToken();
+			} else {
+				isAuthenticated.value = auth.hasAccessToken();
+			}
 		} finally {
 			isLoading.value = false;
 		}
