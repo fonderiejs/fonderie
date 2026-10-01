@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/media",
-	"version": "0.2.27",
+	"version": "0.2.28",
 	"fonderie": {
 		"stability": "experimental"
 	},
@@ -44,7 +44,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.27.0",
+		"@fonderie/core": "^0.28.0",
 		"@fonderie/store": "^0.7.0",
 		"@fonderie/storage": "^0.1.0"
 	},
