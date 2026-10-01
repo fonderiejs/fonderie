@@ -60,6 +60,46 @@ test('caches GETs and dedupes; writes invalidate the resource', async () => {
 	assert.equal(calls.filter((x) => x.path.endsWith('/jobs') && x.method === 'GET').length, 2);
 });
 
+// ── the server's Cache-Control decides (unless the call says otherwise) ─────
+const gets = (path: string) => calls.filter((x) => x.method === 'GET' && x.path.endsWith(path)).length;
+
+test('Cache-Control: no-store from the endpoint → the client never caches it', async () => {
+	handler = () => ({ status: 200, headers: { 'cache-control': 'no-store' }, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x', cache: createMemoryCache() });
+	await c.get('/live');
+	await c.get('/live');
+	assert.equal(gets('/live'), 2);
+});
+
+test('Cache-Control: max-age → cached for that long, then fetched again', async () => {
+	handler = () => ({ status: 200, headers: { 'cache-control': 'private, max-age=1' }, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x', cache: createMemoryCache() });
+	await c.get('/catalog');
+	await c.get('/catalog');
+	assert.equal(gets('/catalog'), 1, 'within max-age: from the cache');
+	await new Promise((r) => setTimeout(r, 1100));
+	await c.get('/catalog');
+	assert.equal(gets('/catalog'), 2, 'after max-age: fetched again');
+});
+
+test('an explicit per-call cache option wins over the endpoint\'s Cache-Control', async () => {
+	handler = () => ({ status: 200, headers: { 'cache-control': 'no-store' }, body: { reason: 'OK', explanation: '', result: {} } });
+	const c = new FonderieClient({ baseUrl: 'http://x', cache: createMemoryCache() });
+	await c.get('/forced', { cache: 60_000 });
+	await c.get('/forced', { cache: 60_000 });
+	assert.equal(gets('/forced'), 1);
+});
+
+test('ttlFromCacheControl: no-store / no-cache → 0, max-age=N → N s, otherwise undefined', async () => {
+	const { ttlFromCacheControl } = await import('../http');
+	assert.equal(ttlFromCacheControl('no-store'), 0);
+	assert.equal(ttlFromCacheControl('private, no-cache'), 0);
+	assert.equal(ttlFromCacheControl('public, max-age=300'), 300_000);
+	assert.equal(ttlFromCacheControl('Max-Age=5'), 5000);
+	assert.equal(ttlFromCacheControl('must-revalidate'), undefined);
+	assert.equal(ttlFromCacheControl(null), undefined);
+});
+
 test('no cache configured → every GET hits the network', async () => {
 	handler = () => ({ status: 200, body: { reason: 'OK', explanation: '', result: {} } });
 	const c = new FonderieClient({ baseUrl: 'http://x' });
