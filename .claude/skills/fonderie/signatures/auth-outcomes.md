@@ -95,6 +95,9 @@ expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 sid                      UUID
 location                 JSONB
+previous_token_hash      TEXT
+previous_valid_until     TIMESTAMPTZ
+last_used_at             TIMESTAMPTZ
 -- INDEX idx_fonderie_sessions_expires_at (expires_at)
 -- INDEX idx_fonderie_sessions_sid (sid)
 ```
