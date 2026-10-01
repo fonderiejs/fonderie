@@ -68,6 +68,26 @@ request; its output is sanitized and bounded (coordinates ~1 km); if it throws o
 and the request is unaffected. Country is reliable; region and city are
 approximate.
 
+## Rotating the signing secret (nobody is signed out)
+
+Every token carries the key id of the secret that signed it, and tokens are
+verified against the current secret **and** any previous ones:
+
+```ts
+new AuthModule(store, {
+  jwtSecret: process.env.JWT_SECRET!,                                   // signs new tokens
+  jwtPreviousSecrets: process.env.JWT_PREVIOUS_SECRETS?.split(',') ?? [], // still verify
+});
+```
+
+1. Put the current secret in `JWT_PREVIOUS_SECRETS` and a new one in `JWT_SECRET`; deploy.
+2. Signed-in users keep working; their next refresh gets tokens signed with the new key.
+3. After the longest session lifetime (`sessionDuration`), remove the old secret from
+   `JWT_PREVIOUS_SECRETS` and deploy again.
+
+A weak previous secret fails readiness like a weak current one: it still verifies tokens.
+See `docs/SESSION-DESIGN.md` for the session roadmap.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —

@@ -16,6 +16,7 @@ const reasons = {
 	auth: {
 		JWT_SECRET_TOO_SHORT: 'jwtSecret must be at least {min} characters (it has {got}).',
 		JWT_SECRET_PLACEHOLDER: 'jwtSecret looks like a placeholder or development value.',
+		JWT_PREVIOUS_SECRET_WEAK: 'jwtPreviousSecrets[{index}] is too short or a placeholder — it still verifies tokens.',
 		INSECURE_COOKIES:
 			'secureCookies is off — sign-in cookies may travel over plain HTTP in production.',
 		GOOGLE_INCOMPLETE:

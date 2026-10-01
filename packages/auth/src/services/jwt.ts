@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import type { IAuthConfig } from '../config';
@@ -36,6 +36,21 @@ export interface ITokenOptions {
 	phoneVerified?: boolean;
 }
 
+// ── Key ring ──────────────────────────────────────────────────────────────
+// Tokens are signed with the CURRENT secret and carry its key id (`kid`).
+// Verification picks the secret by kid among [jwtSecret, ...jwtPreviousSecrets],
+// so rotating the secret signs nobody out: move the old one to
+// jwtPreviousSecrets, deploy, and drop it once the longest-lived token signed
+// with it has expired. The kid is derived from the secret — stable, no extra
+// config, and a truncated hash reveals nothing usable.
+export function keyIdOf(secret: string): string {
+	return createHash('sha256').update(secret).digest('hex').slice(0, 16);
+}
+
+function keyRing(config: IAuthConfig): string[] {
+	return [config.jwtSecret, ...(config.jwtPreviousSecrets ?? [])].filter((s): s is string => typeof s === 'string' && s.length > 0);
+}
+
 export function issueMfaPendingToken(
 	userId: string,
 	config: IAuthConfig,
@@ -50,7 +65,7 @@ export function issueMfaPendingToken(
 			mfaPending: true,
 		} satisfies IAccessPayload,
 		config.jwtSecret,
-		{ expiresIn: '5m' },
+		{ expiresIn: '5m', keyid: keyIdOf(config.jwtSecret) },
 	);
 }
 
@@ -68,13 +83,13 @@ export function issueTokenPair(
 	const accessToken = jwt.sign(
 		{ sub: userId, type: 'access', loginMethod, phoneVerified, sid } satisfies IAccessPayload,
 		config.jwtSecret,
-		{ expiresIn: accessDuration } as SignOptions,
+		{ expiresIn: accessDuration, keyid: keyIdOf(config.jwtSecret) } as SignOptions,
 	);
 
 	const refreshToken = jwt.sign(
 		{ sub: userId, type: 'refresh', loginMethod, phoneVerified, sid } satisfies IRefreshPayload,
 		config.jwtSecret,
-		{ expiresIn: duration } as SignOptions,
+		{ expiresIn: duration, keyid: keyIdOf(config.jwtSecret) } as SignOptions,
 	);
 
 	return { accessToken, refreshToken, sid };
@@ -91,9 +106,17 @@ export function verifyToken(
 	token: string,
 	config: IAuthConfig,
 ): IAccessPayload | IRefreshPayload | null {
-	try {
-		return jwt.verify(token, config.jwtSecret) as IAccessPayload | IRefreshPayload;
-	} catch {
-		return null;
+	const ring = keyRing(config);
+	const kid = (jwt.decode(token, { complete: true }) as { header?: { kid?: unknown } } | null)?.header?.kid;
+	// A kid names exactly one secret; a token without one (signed before key
+	// ids) is tried against each. An unknown kid verifies against nothing.
+	const candidates = typeof kid === 'string' ? ring.filter((s) => keyIdOf(s) === kid) : ring;
+	for (const secret of candidates) {
+		try {
+			return jwt.verify(token, secret) as IAccessPayload | IRefreshPayload;
+		} catch {
+			// wrong key, bad signature or expired — try the next candidate
+		}
 	}
+	return null;
 }

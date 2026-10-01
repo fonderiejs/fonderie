@@ -6,6 +6,11 @@ export const DEFAULT_SESSION_DURATION = '7d';
 // Boot-time only — never resolvable at runtime
 export interface IAuthSecrets {
 	jwtSecret: string;
+	// Previous signing secrets, still accepted for VERIFYING tokens while they
+	// age out — so rotating jwtSecret signs nobody out. Rotation: move the old
+	// secret here, set the new jwtSecret, deploy; remove it after the longest
+	// session lifetime. Tokens carry a key id, so each is checked against one key.
+	jwtPreviousSecrets?: string[];
 	// Optional 32-byte key (64 hex chars, e.g. `openssl rand -hex 32`) that
 	// encrypts TOTP secrets at rest (AES-256-GCM). Unset → secrets are stored
 	// plaintext (backward-compatible). Set it in production; losing it makes

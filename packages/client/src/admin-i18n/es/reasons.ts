@@ -12,6 +12,7 @@ const reasons: typeof en = {
 	auth: {
 		JWT_SECRET_TOO_SHORT: 'jwtSecret debe tener al menos {min} caracteres (tiene {got}).',
 		JWT_SECRET_PLACEHOLDER: 'jwtSecret parece un valor de ejemplo o de desarrollo.',
+		JWT_PREVIOUS_SECRET_WEAK: 'jwtPreviousSecrets[{index}] es demasiado corto o parece un valor de ejemplo — todavía verifica tokens.',
 		INSECURE_COOKIES:
 			'secureCookies está desactivado — las cookies de inicio de sesión pueden viajar por HTTP sin cifrar en producción.',
 		GOOGLE_INCOMPLETE:
