@@ -5,10 +5,15 @@
 ## @fonderie/client
 
 ```ts
+interface IAuthErrorInfo {
+    reason: 'revoked' | 'expired' | 'no-refresh-token';
+    detail?: string;
+}
+
 interface IClientAuthConfig {
     getRefreshToken?: () => string | undefined;
     onTokensChanged?: (tokens: ITokens) => void;
-    onAuthError?: () => void;
+    onAuthError?: (info: IAuthErrorInfo) => void;
 }
 
 interface IFonderieClientOptions {
@@ -37,6 +42,8 @@ interface IRequestConfig {
     invalidate?: string[];
 }
 
+type SessionState = 'signedOut' | 'active' | 'offline' | 'revoked';
+
 interface ICache {
     get<T>(key: string): T | undefined;
     set<T>(key: string, value: T, ttlMs: number): void;
@@ -61,6 +68,8 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .media: MediaClient
   .config: ConfigClient
   .sse: SseClient
+  .session: SessionState
+  .onSessionChange(listener: (state: SessionState) => void): () => void
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -81,6 +90,8 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .message: string
   .stack: string
   .cause: unknown
+
+function isSessionRefusal(err: unknown): err is FonderieApiError
 
 interface IListAuditEventsInput {
     type?: string;
@@ -154,6 +165,7 @@ interface IUpdateProfileInput {
 
 new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .mfa: MfaClient
+  .hasAccessToken(): boolean
   .setAccessToken(token: string | undefined): void
   .providers(): Promise<IApiResponse<IAuthProvidersResult>>
   .unlinkOauth(provider: string): Promise<IApiResponse<null>>

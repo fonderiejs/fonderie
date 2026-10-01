@@ -161,6 +161,11 @@ export class AuthClient {
 		this.mfa = new MfaClient(http, () => this.tokens.get());
 	}
 
+	/** Whether this client holds an access token (signed in, as far as the device knows). */
+	hasAccessToken(): boolean {
+		return Boolean(this.tokens.get());
+	}
+
 	setAccessToken(token: string | undefined) {
 		this.tokens.set(token);
 		// Signing out (token → undefined) also drops the shared response cache,

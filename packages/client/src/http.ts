@@ -53,6 +53,15 @@ export interface IRequestOptions {
 	invalidate?: string[] | undefined;
 }
 
+/**
+ * Whether an error is the server refusing the session (400/401/403 from the
+ * auth endpoints) — the only failure that should sign a user out. A network
+ * error, a 5xx or a rate limit says nothing about the session: keep it.
+ */
+export function isSessionRefusal(err: unknown): err is FonderieApiError {
+	return err instanceof FonderieApiError && (err.status === 400 || err.status === 401 || err.status === 403);
+}
+
 export interface IHttpDeps {
 	cache?: ICache | undefined;
 	defaultTtlMs?: number | undefined;
@@ -63,6 +72,10 @@ export interface IHttpDeps {
 	// The platform this client runs on, sent as X-Client-Kind so a sign-in gets
 	// that platform's session lifetimes (mobile | desktop | web).
 	clientKind?: 'mobile' | 'desktop' | 'web' | undefined;
+	// Whether the server answered: true for any response (an error status
+	// included), false when the request never reached it (network down, DNS,
+	// connection refused). Drives the client's 'offline' session state.
+	onReachability?: ((reachable: boolean) => void) | undefined;
 }
 
 export class HttpClient {
@@ -70,6 +83,7 @@ export class HttpClient {
 	private cache: ICache | undefined;
 	private defaultTtlMs: number;
 	private refresh: (() => Promise<string | undefined>) | undefined;
+	private onReachability: ((reachable: boolean) => void) | undefined;
 
 	constructor(
 		private baseUrl: string,
@@ -79,6 +93,7 @@ export class HttpClient {
 		this.clientKind = deps.clientKind;
 		this.defaultTtlMs = deps.defaultTtlMs ?? 60_000;
 		this.refresh = deps.refresh;
+		this.onReachability = deps.onReachability;
 	}
 
 	// Absolute URL for a path on this client's origin — for endpoints a browser
@@ -149,7 +164,14 @@ export class HttpClient {
 		const fetchInit: RequestInit = { method: opts.method, headers, credentials: 'include' };
 		if (opts.body !== undefined) fetchInit.body = JSON.stringify(opts.body);
 
-		const res = await fetch(`${this.baseUrl}${opts.path}`, fetchInit);
+		let res: Response;
+		try {
+			res = await fetch(`${this.baseUrl}${opts.path}`, fetchInit);
+		} catch (err) {
+			this.onReachability?.(false);
+			throw err;
+		}
+		this.onReachability?.(true);
 		// The server echoes the id back; prefer it (an intermediary could rewrite
 		// the one we sent), else fall back to what we generated.
 		const rid = res.headers.get('x-request-id') ?? requestId;

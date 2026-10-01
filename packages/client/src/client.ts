@@ -1,5 +1,5 @@
 import type { ICache } from './cache';
-import { HttpClient } from './http';
+import { FonderieApiError, HttpClient, isSessionRefusal } from './http';
 import { AuditClient } from './modules/audit';
 import { AuthClient } from './modules/auth';
 import { BillingClient } from './modules/billing';
@@ -18,7 +18,34 @@ import type { IApiResponse, ITokens } from './types';
 export interface IClientAuthConfig {
 	getRefreshToken?: () => string | undefined;
 	onTokensChanged?: (tokens: ITokens) => void;
-	onAuthError?: () => void;
+	/**
+	 * The session is over, definitively: sign the user out (once) and say why.
+	 * Never called for a network failure — the client keeps the session and
+	 * reports 'offline' instead, so a phone in a tunnel stays signed in.
+	 */
+	onAuthError?: (info: IAuthErrorInfo) => void;
+}
+
+/**
+ * Where a session stands, as far as this device knows:
+ *   signedOut  no session on this device
+ *   active     signed in, and the server is answering
+ *   offline    signed in, but the server cannot be reached — keep the user in
+ *   revoked    the server refused the session (signed out elsewhere, expired,
+ *              theft detected); the app signs out once, with a message
+ */
+export type SessionState = 'signedOut' | 'active' | 'offline' | 'revoked';
+
+export interface IAuthErrorInfo {
+	/**
+	 * 'revoked'          the server announced it live (another device, a password
+	 *                    change, an operator); `detail` is its reason
+	 * 'expired'          the refresh was refused (expired, revoked while away,
+	 *                    reuse detected); `detail` is the server's reason code
+	 * 'no-refresh-token' a request was refused and there is nothing to renew with
+	 */
+	reason: 'revoked' | 'expired' | 'no-refresh-token';
+	detail?: string;
 }
 
 export interface IFonderieClientOptions {
@@ -88,9 +115,18 @@ export class FonderieClient {
 	private cache: ICache | undefined;
 	private authConfig: IClientAuthConfig | undefined;
 	private refreshing: Promise<string | undefined> | null = null;
+	private _session: SessionState;
+	private readonly sessionListeners = new Set<(state: SessionState) => void>();
 
 	constructor(opts: IFonderieClientOptions) {
 		this.tokens = new TokenStore(opts.accessToken);
+		this._session = opts.accessToken ? 'active' : 'signedOut';
+		// A token appearing (sign-in, restore) makes the session active; one
+		// disappearing without a reason (setAccessToken(undefined)) is a sign-out.
+		this.tokens.onChange(() => {
+			if (this.tokens.get()) this.setSession('active');
+			else if (this._session !== 'revoked') this.setSession('signedOut');
+		});
 		this.workspaceId = opts.workspaceId;
 		this.cache = opts.cache;
 		this.authConfig = opts.auth;
@@ -99,6 +135,10 @@ export class FonderieClient {
 			cache: opts.cache,
 			defaultTtlMs: (opts.cache as { defaultTtlMs?: number } | undefined)?.defaultTtlMs,
 			refresh: opts.auth ? () => this.doRefresh() : undefined,
+			onReachability: (reachable) => {
+				if (!this.tokens.get()) return;
+				this.setSession(reachable ? 'active' : 'offline');
+			},
 		});
 		this.auth = new AuthClient(this.http, this.tokens);
 		this.billing = new BillingClient(this.http, this.tokens);
@@ -149,9 +189,42 @@ export class FonderieClient {
 		const mine = tokenSid(this.tokens.get());
 		const hit = sids === null || (Array.isArray(sids) && mine !== undefined && sids.includes(mine));
 		if (!hit) return;
+		const reason = typeof data['reason'] === 'string' ? data['reason'] : undefined;
+		this.endSession({ reason: 'revoked', ...(reason ? { detail: reason } : {}) });
+	}
+
+	/** Where this device's session stands. */
+	get session(): SessionState {
+		return this._session;
+	}
+
+	/** Called on every change of `session`. Returns an unsubscribe function. */
+	onSessionChange(listener: (state: SessionState) => void): () => void {
+		this.sessionListeners.add(listener);
+		return () => {
+			this.sessionListeners.delete(listener);
+		};
+	}
+
+	private setSession(state: SessionState): void {
+		if (state === this._session) return;
+		this._session = state;
+		for (const listener of this.sessionListeners) {
+			try {
+				listener(state);
+			} catch {
+				// a listener's bug must not break the client
+			}
+		}
+	}
+
+	// A definitive end: state first, so a listener reading `session` during
+	// onAuthError already sees 'revoked'.
+	private endSession(info: IAuthErrorInfo): void {
+		this.setSession('revoked');
 		this.tokens.set(undefined);
 		this.clearCache();
-		this.authConfig?.onAuthError?.();
+		this.authConfig?.onAuthError?.(info);
 	}
 
 	private doRefresh(): Promise<string | undefined> {
@@ -159,18 +232,26 @@ export class FonderieClient {
 		this.refreshing = (async () => {
 			const refreshToken = this.authConfig?.getRefreshToken?.();
 			if (!refreshToken) {
-				this.authConfig?.onAuthError?.();
+				this.endSession({ reason: 'no-refresh-token' });
 				return undefined;
 			}
 			try {
 				const { result } = await this.auth.refreshTokens(refreshToken);
 				const tokens = (result as unknown as { tokens: ITokens }).tokens;
 				this.tokens.set(tokens.access);
+				this.setSession('active');
 				this.authConfig?.onTokensChanged?.(tokens);
 				return tokens.access;
-			} catch {
-				this.tokens.set(undefined);
-				this.authConfig?.onAuthError?.();
+			} catch (err) {
+				// Only the server saying no ends the session. A network failure,
+				// a 5xx or a rate limit is not an answer about the session: keep
+				// it, report 'offline' (or stay active), and let the next request
+				// try again. Signing out here signed phones out in tunnels.
+				if (isSessionRefusal(err)) {
+					this.endSession({ reason: 'expired', ...(err.reason ? { detail: err.reason } : {}) });
+				} else if (!(err instanceof FonderieApiError)) {
+					this.setSession('offline');
+				}
 				return undefined;
 			} finally {
 				this.refreshing = null;

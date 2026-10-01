@@ -374,11 +374,12 @@ const withSid = (sid: string) => ['x', Buffer.from(JSON.stringify({ sub: 'u1', s
 test('live sign-out: a revocation naming THIS device clears the tokens and calls onAuthError', async () => {
 	const srv = await sseServer();
 	let signedOut = 0;
+	let info: unknown;
 	const client = new FonderieClient({
 		baseUrl: srv.url,
 		accessToken: withSid('sid-me'),
 		sse: {},
-		auth: { getRefreshToken: () => undefined, onTokensChanged: () => {}, onAuthError: () => signedOut++ },
+		auth: { getRefreshToken: () => undefined, onTokensChanged: () => {}, onAuthError: (i) => { signedOut++; info = i; } },
 	});
 	try {
 		await until(() => srv.open().length === 1 && srv.open()[0]!.topics.includes('fonderie.session.revoked'));
@@ -388,6 +389,8 @@ test('live sign-out: a revocation naming THIS device clears the tokens and calls
 		srv.send('fonderie.session.revoked', { sids: ['sid-other', 'sid-me'], reason: 'terminated' }, 'e2');
 		await until(() => signedOut === 1);
 		assert.equal((client as unknown as { tokens: { get(): string | undefined } }).tokens.get(), undefined, 'tokens cleared');
+		assert.equal(client.session, 'revoked');
+		assert.deepEqual(info, { reason: 'revoked', detail: 'terminated' });
 		await until(() => srv.open().length === 0, 3000); // signed out: nothing left to listen to
 	} finally {
 		await srv.close();

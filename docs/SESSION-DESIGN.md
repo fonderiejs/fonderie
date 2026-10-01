@@ -1,6 +1,6 @@
 # Sessions that behave like WhatsApp's — design and build order
 
-Status: Phases 1, 2, 3a, 3c and 5 shipped; 1b, 3b, 4 and 6 planned (2026-10-01).
+Status: Phases 1, 2, 3a, 3c and 5 shipped; 4 in progress (SDK done, app next); 1b, 3b and 6 planned (2026-10-01).
 
 ## 1. The problem
 
@@ -26,8 +26,9 @@ signed in while it was not:
 | Devices | `GET /auth/sessions`, terminate one / others — exists | revocation reaches the phone only on its next request |
 | Sensitive actions | password etc. behind the normal session | no "recently authenticated" requirement (step-up) |
 | App: signed-in state | `!!user.id` from the persisted profile (AsyncStorage) | UI says signed in regardless of the session |
-| App: token storage | SecureStore (Keychain / Keystore) — **twice** (redux `tokens` + react-native-auth) | two copies can drift |
-| App: platform | default SecureStore options | iOS Keychain survives uninstall; Android Auto Backup can restore undecryptable data |
+| App: token storage | redux `tokens` in SecureStore (Keychain / Keystore), plus react-native-auth's access-token copy in **AsyncStorage** (plaintext) | two copies can drift; one is not encrypted |
+| App: platform | default SecureStore options | iOS Keychain survives uninstall. (Android: the expo-secure-store plugin already excludes SecureStore from Auto Backup — corrected 2026-10-01.) |
+| SDK: refresh failure | any failure — network, 5xx, refusal — cleared the token and called `onAuthError()` | a phone offline at the wrong moment was signed out |
 
 ## 3. Target
 
@@ -98,7 +99,13 @@ code per platform (`sessionPolicies`) → code shared → preset → default.
 `readAuthRuntimeConfig` builds `resolve` safely (an unset key is absent,
 never the text "undefined").
 
-**Phase 4 — Client and app.** A session state in the client
+**Phase 4 — Client and app.** SDK ✅ (client 2.5): `client.session`
+(`signedOut | active | offline | revoked`) and `onSessionChange`; only a
+400/401/403 from the refresh ends a session — a network failure, a 5xx or a
+rate limit keeps it and reports `offline`; `onAuthError(info)` says why
+(`revoked` live with the server's reason, `expired`, `no-refresh-token`);
+`isSessionRefusal(err)` for app code; `useSession` (React, React Native, Vue)
+no longer signs out on a network error. App: next. Original plan: A session state in the client
 (`signedOut | active | offline | revoked`) that the hooks expose; a 401 after a
 failed refresh is *definitive*, a network error is not. The app derives
 "signed in" from it, validates in the background at start (never blocking the
