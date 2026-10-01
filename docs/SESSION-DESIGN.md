@@ -1,6 +1,6 @@
 # Sessions that behave like WhatsApp's — design and build order
 
-Status: Phases 1 and 2 shipped in `@fonderie/auth`; 1b and 3–6 planned (2026-10-01).
+Status: Phases 1, 2 and 3a shipped in `@fonderie/auth`; 1b, 3b and 4–6 planned (2026-10-01).
 
 ## 1. The problem
 
@@ -82,7 +82,7 @@ token within the grace is authorised by its hash and deadline, so racing
 retries never starve. One generation back is tracked: an older token is
 simply refused.
 
-**Phase 3 — Long-lived sliding sessions (server).** Session idle timeout
+**Phase 3 — Long-lived sliding sessions (server).** ✅ 3a (lifetimes, `auth_time`); 3b (step-up) planned with Phase 4/6, because it changes how sensitive routes answer and needs client support. Session idle timeout
 (default 90 d since last use) plus an optional absolute cap; access token
 default shortened (1 h). Both remain configurable, including from the
 console's auth config keys. Step-up: an `auth_time` claim and a

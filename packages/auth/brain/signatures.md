@@ -92,6 +92,7 @@ interface IAuthSecrets {
 
 interface IAuthRuntimeConfig {
     sessionDuration?: string;
+    sessionMaxAge?: string;
     verificationCooldown?: number;
     mfa?: boolean;
     requireVerification?: boolean;

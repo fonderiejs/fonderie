@@ -1,7 +1,14 @@
 import type { LocationResolver } from './services/request-location';
 import type { IAuthRateLimitConfig } from './services/rate-limit';
 export const DEFAULT_VERIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
-export const DEFAULT_SESSION_DURATION = '7d';
+// How long a device stays signed in WITHOUT being used (sliding: every refresh
+// extends it). Messaging apps effectively never sign an idle device out;
+// security comes from revocation (logged-in devices, reuse detection), not
+// from expiry. Was 7d. docs/SESSION-DESIGN.md, Phase 3.
+export const DEFAULT_SESSION_DURATION = '90d';
+// Access tokens are refreshed silently, so they can be short: a stolen one is
+// useful for at most this long even while its session lives. Was 24h.
+export const DEFAULT_ACCESS_TOKEN_DURATION = '1h';
 
 // Boot-time only — never resolvable at runtime
 export interface IAuthSecrets {
@@ -45,7 +52,11 @@ export interface IAuthSecrets {
 
 // Behavioral — safe to expose to admin dashboard
 export interface IAuthRuntimeConfig {
+	// Idle timeout: a session unused this long ends (sliding). Default 90d.
 	sessionDuration?: string;
+	// Optional absolute cap: a session this old ends at its next refresh, however
+	// active — the user signs in again (e.g. '365d'). Unset: no cap.
+	sessionMaxAge?: string;
 	verificationCooldown?: number;
 	mfa?: boolean;
 	requireVerification?: boolean;
@@ -54,6 +65,7 @@ export interface IAuthRuntimeConfig {
 // Type-checked: adding/renaming a field in IAuthRuntimeConfig breaks this at compile time
 export const AUTH_CONFIG_KEYS: Record<keyof IAuthRuntimeConfig, string> = {
 	sessionDuration:     'auth.session.duration',
+	sessionMaxAge:       'auth.session.max_age',
 	verificationCooldown: 'auth.verification.cooldown',
 	mfa:                 'auth.mfa.enabled',
 	requireVerification: 'auth.verification.required',
@@ -122,7 +134,7 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	// Inject a store (e.g. RedisStore) for high-throughput deployments,
 	// override individual rules, or set false to disable entirely.
 	rateLimit?: IAuthRateLimitConfig | false;
-	// Access-token lifetime (jsonwebtoken duration string). Default '24h'.
+	// Access-token lifetime (jsonwebtoken duration string). Default '1h'.
 	// Access tokens are session-bound and die on logout / rotation /
 	// password change regardless of this value; shorten it to bound the
 	// window of a stolen token whose session is still alive.
