@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "Shared React context for Fonderie — provide one FonderieClient at the root, resolve it from any @fonderie/react-* hook.",
 	"keywords": [
 		"fonderiejs",
