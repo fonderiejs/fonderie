@@ -135,6 +135,11 @@ export class ConfigClient {
 				// Sent when signed in, so per-user values can be served later
 				// without a client change; the route itself is public.
 				token: this.tokens.get(),
+				// Never from the response cache: a load happens BECAUSE the server
+				// said config changed (or the stream reconnected). A cached answer
+				// would hand back the old value the event just reported gone — the
+				// load time moves, the value never does.
+				cache: false,
 			})
 			.then(
 				(res) => {

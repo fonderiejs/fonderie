@@ -338,3 +338,26 @@ test('switching workspace reopens the stream in the new workspace; the same work
 		await srv.close();
 	}
 });
+
+// Found on a phone: the event arrived, the client re-read /config/public — and
+// the app's response cache (createMemoryCache) answered with the OLD value.
+// The load time moved, the value never did. Every other test ran uncached.
+test('config re-reads bypass the response cache: a pushed change is picked up when the app caches GETs', async () => {
+	const { createMemoryCache } = await import('../index');
+	const values: Record<string, unknown> = { WITH_PROFILE_SCREEN: true };
+	const srv = await sseServer({ configValues: values });
+	const client = new FonderieClient({ baseUrl: srv.url, cache: createMemoryCache() });
+	const release = client.config.retain();
+	try {
+		await until(() => client.config.get('WITH_PROFILE_SCREEN', null) === true && srv.open().length === 1);
+		values['WITH_PROFILE_SCREEN'] = false;
+		srv.send('fonderie.config.changed', {});
+		await until(() => client.config.get('WITH_PROFILE_SCREEN', null) === false);
+		values['WITH_PROFILE_SCREEN'] = true;
+		srv.send('fonderie.config.changed', {});
+		await until(() => client.config.get('WITH_PROFILE_SCREEN', null) === true);
+	} finally {
+		release();
+		await srv.close();
+	}
+});
