@@ -32,7 +32,7 @@ before(async () => {
 	await new InternalMigrationRunner(store, getMigrationsPath()).run();
 	const bus = { emit: async (type: string, payload: Record<string, unknown>) => void emitted.push({ type, payload }), on() {}, subscribe() {} };
 	const app = new FonderieApp(defineConfig({ db: { url: PG_URL } })).register(
-		new AuthModule(store, { jwtSecret: 'k'.repeat(20) + 'm'.repeat(20), providers: ['email'], rateLimit: false } as never, bus as never),
+		new AuthModule(store, { jwtSecret: 'k'.repeat(20) + 'm'.repeat(20), providers: ['email'], rateLimit: false, sessionMaxAge: '365d' } as never, bus as never),
 	);
 	await app.boot();
 	const s = app.listen(0, { quiet: true }) as unknown as typeof server & { address(): { port: number }; listening: boolean; once(e: string, f: () => void): void };
@@ -148,4 +148,28 @@ test('migration 020 leaves raw rows readable by the previous code, and is safe t
 	const r = await refresh(first.refresh);
 	assert.equal(r.status, 200);
 	assert.equal((await rows())[0]?.token, hashRefreshToken(r.tokens!.refresh), 'hashed by its next refresh');
+});
+
+// ── Phase 3: lifetimes ─────────────────────────────────────────────────────
+const claim = (t: string) => JSON.parse(Buffer.from(t.split('.')[1]!, 'base64url').toString()) as { auth_time?: number };
+
+test('a refresh carries auth_time (when the user last SIGNED IN), and slides the idle timeout to 90 days out', { skip }, async () => {
+	const first = await signUp();
+	await store.query(`UPDATE fonderie_sessions SET expires_at = now() + interval '1 day'`); // nearly idle
+	// Over a second later: a freshly minted auth_time would differ — the same
+	// second would make a regression look like a pass.
+	await new Promise((r) => setTimeout(r, 1100));
+	const r = await refresh(first.refresh);
+	assert.equal(r.status, 200);
+	assert.equal(claim(r.tokens!.access).auth_time, claim(first.access).auth_time, 'a refresh is not a sign-in');
+	const [row] = await store.query<{ days: number }>(`SELECT EXTRACT(EPOCH FROM (expires_at - now())) / 86400 AS days FROM fonderie_sessions`);
+	assert.ok(Number(row?.days) > 89, `extended to ~90 days, got ${row?.days}`);
+});
+
+test('a session past the absolute cap (sessionMaxAge) is refused at refresh and revoked, however active', { skip }, async () => {
+	const first = await signUp();
+	await store.query(`UPDATE fonderie_sessions SET created_at = now() - interval '400 days'`);
+	const r = await refresh(first.refresh);
+	assert.equal(r.status, 401);
+	assert.equal((await rows()).length, 0);
 });

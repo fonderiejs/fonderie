@@ -21,6 +21,8 @@ export interface ISessionRow {
 	sid: string | null;
 	/** What the stored `token` column holds now (a hash, or a legacy raw token). */
 	stored: string;
+	/** When the device signed in — the start of the absolute cap. */
+	createdAt: Date;
 }
 
 /** How a presented refresh token relates to the sessions table. */
@@ -75,13 +77,13 @@ export class SessionModel {
 	 */
 	async match(token: string): Promise<RefreshMatch> {
 		const hash = hashRefreshToken(token);
-		const [current] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string }>(
-			`SELECT id, user_id, sid, token FROM fonderie_sessions WHERE token IN ($1, $2) AND expires_at > now() LIMIT 1`,
+		const [current] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string; created_at: Date }>(
+			`SELECT id, user_id, sid, token, created_at FROM fonderie_sessions WHERE token IN ($1, $2) AND expires_at > now() LIMIT 1`,
 			[hash, token],
 		);
 		if (current) return { kind: 'current', row: toRow(current) };
-		const [previous] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string; in_grace: boolean }>(
-			`SELECT id, user_id, sid, token, (previous_valid_until > now()) AS in_grace
+		const [previous] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string; created_at: Date; in_grace: boolean }>(
+			`SELECT id, user_id, sid, token, created_at, (previous_valid_until > now()) AS in_grace
 			   FROM fonderie_sessions WHERE previous_token_hash = $1 AND expires_at > now() LIMIT 1`,
 			[hash],
 		);
@@ -223,6 +225,6 @@ export class SessionModel {
 	}
 }
 
-function toRow(r: { id: string; user_id: string; sid: string | null; token: string }): ISessionRow {
-	return { id: r.id, userId: r.user_id, sid: r.sid, stored: r.token };
+function toRow(r: { id: string; user_id: string; sid: string | null; token: string; created_at?: Date }): ISessionRow {
+	return { id: r.id, userId: r.user_id, sid: r.sid, stored: r.token, createdAt: r.created_at ? new Date(r.created_at) : new Date() };
 }

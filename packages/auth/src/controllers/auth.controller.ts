@@ -26,6 +26,7 @@ import {
 	issueMfaPendingToken,
 	verifyToken,
 	refreshTokenExpiry,
+	durationMs,
 } from '../services/jwt';
 
 function normalizePhone(phone: string): string {
@@ -442,6 +443,10 @@ export function authController(
 			// token stays valid for a short grace (a retry, or two racing requests);
 			// presented after it, it is a reuse — someone else holds an old copy —
 			// and the session is revoked. docs/SESSION-DESIGN.md, Phase 2.
+			// Lifetimes as the console sets them now (idle timeout, absolute cap) —
+			// not the boot config: a refresh used to ignore console overrides.
+			const resolvedRefresh = { ...config, ...config.resolve?.(ctx) };
+			const maxAgeMs = durationMs(resolvedRefresh.sessionMaxAge);
 			let issued: { accessToken: string; refreshToken: string } | null = null;
 			for (let attempt = 0; attempt < 3 && !issued; attempt++) {
 				const found = await sessions.match(token);
@@ -455,14 +460,21 @@ export function authController(
 					);
 					return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session expired or already revoked');
 				}
+				// Absolute cap: however active, a session this old signs in again.
+				if (maxAgeMs !== null && Date.now() - found.row.createdAt.getTime() > maxAgeMs) {
+					await sessions.revokeById(found.row.id);
+					return setApiResponse(HTTP.UNAUTHORIZED, 'TOKEN_REFRESH_FAILED', 'Session reached its maximum age — sign in again');
+				}
 				const user = await users.findById(found.row.userId);
 				if (!user || user.suspended || user.deletedAt || user.id !== payload.sub) {
 					return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 				}
-				const pair = issueTokenPair(user.id, config, {
+				const pair = issueTokenPair(user.id, resolvedRefresh, {
 					loginMethod: payload.loginMethod ?? 'email',
 					phoneVerified: payload.phoneVerified ?? false,
 					...(found.row.sid ? { sid: found.row.sid } : {}),
+					// A refresh is not a sign-in: keep when the user last signed in.
+					...(typeof payload.auth_time === 'number' ? { authTime: payload.auth_time } : {}),
 				});
 				// Lost a race to a concurrent rotation of the same session: match again.
 				const next = { token: pair.refreshToken, expiresAt: refreshTokenExpiry(pair.refreshToken) };

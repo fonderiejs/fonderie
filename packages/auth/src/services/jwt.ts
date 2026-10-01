@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
-import type { IAuthConfig } from '../config';
+import { DEFAULT_ACCESS_TOKEN_DURATION, DEFAULT_SESSION_DURATION, type IAuthConfig } from '../config';
 
 export interface TokenPair {
 	accessToken: string;
@@ -21,6 +21,9 @@ export interface IAccessPayload {
 	// Absent only on legacy tokens issued before session binding and on
 	// short-lived mfaPending tokens (no session exists yet at that point).
 	sid?: string;
+	// When the user last actually signed in (seconds). Absent on tokens issued
+	// before Phase 3.
+	auth_time?: number;
 }
 
 export interface IRefreshPayload {
@@ -29,6 +32,7 @@ export interface IRefreshPayload {
 	loginMethod: 'email' | 'phone' | 'google' | 'apple';
 	phoneVerified: boolean;
 	sid?: string;
+	auth_time?: number;
 }
 
 export interface ITokenOptions {
@@ -37,6 +41,9 @@ export interface ITokenOptions {
 	// Keep an existing session id (a refresh rotates the same device session);
 	// absent ⇒ a new session.
 	sid?: string;
+	// The original sign-in time (seconds since epoch) to carry through a
+	// refresh; absent ⇒ now (this IS a sign-in).
+	authTime?: number;
 }
 
 // ── Key ring ──────────────────────────────────────────────────────────────
@@ -77,14 +84,17 @@ export function issueTokenPair(
 	config: IAuthConfig,
 	options: ITokenOptions,
 ): TokenPair {
-	const duration = config.sessionDuration ?? '7d';
-	const accessDuration = config.accessTokenDuration ?? '24h';
+	const duration = config.sessionDuration ?? DEFAULT_SESSION_DURATION;
+	const accessDuration = config.accessTokenDuration ?? DEFAULT_ACCESS_TOKEN_DURATION;
+	// When the user last actually signed in (seconds): a refresh carries it, a
+	// sign-in sets it. Step-up ("re-authenticate for sensitive actions") reads it.
+	const authTime = options.authTime ?? Math.floor(Date.now() / 1000);
 	const loginMethod = options.loginMethod;
 	const phoneVerified = options.phoneVerified ?? false;
 	const sid = options.sid ?? randomUUID();
 
 	const accessToken = jwt.sign(
-		{ sub: userId, type: 'access', loginMethod, phoneVerified, sid } satisfies IAccessPayload,
+		{ sub: userId, type: 'access', loginMethod, phoneVerified, sid, auth_time: authTime } satisfies IAccessPayload,
 		config.jwtSecret,
 		// jwtid: every token is unique. With the session id kept across rotations,
 		// two tokens issued in the same second would otherwise be byte-identical —
@@ -93,7 +103,7 @@ export function issueTokenPair(
 	);
 
 	const refreshToken = jwt.sign(
-		{ sub: userId, type: 'refresh', loginMethod, phoneVerified, sid } satisfies IRefreshPayload,
+		{ sub: userId, type: 'refresh', loginMethod, phoneVerified, sid, auth_time: authTime } satisfies IRefreshPayload,
 		config.jwtSecret,
 		{ expiresIn: duration, keyid: keyIdOf(config.jwtSecret), jwtid: randomUUID() } as SignOptions,
 	);
@@ -125,4 +135,13 @@ export function verifyToken(
 		}
 	}
 	return null;
+}
+
+/** A jsonwebtoken-style duration ('90d', '12h', '30m', '45s', '2w', '1y') in ms; null if unreadable. */
+export function durationMs(value: string | undefined): number | null {
+	const m = /^\s*(\d+)\s*(ms|s|m|h|d|w|y)?\s*$/i.exec(value ?? '');
+	if (!m) return null;
+	const unit = (m[2] ?? 's').toLowerCase();
+	const scale: Record<string, number> = { ms: 1, s: 1e3, m: 6e4, h: 36e5, d: 864e5, w: 6048e5, y: 31_557_6e5 };
+	return Number(m[1]) * (scale[unit] ?? 1e3);
 }
