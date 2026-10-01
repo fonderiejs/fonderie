@@ -53,7 +53,7 @@
     "react-workspaces": "0.6.1",
     "react-workspaces-screens": "0.4.1",
     "risk": "0.3.4",
-    "sse": "0.2.2",
+    "sse": "0.2.3",
     "storage": "0.1.25",
     "store": "0.7.2",
     "vue": "0.5.0",
@@ -2293,7 +2293,7 @@
       "hasOutcomes": true
     },
     "sse": {
-      "version": "0.2.2",
+      "version": "0.2.3",
       "stability": "experimental",
       "requires": [
         "core"
