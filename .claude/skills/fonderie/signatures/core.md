@@ -196,6 +196,8 @@ const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly U
 
 function background(work: Promise<unknown> | undefined): Promise<void>
 
+function backgroundSettled(timeoutMs?: number): Promise<void>
+
 function installPlatformBackgroundRunner(): Promise<boolean>
 
 function setBackgroundRunner(fn: ((work: Promise<unknown>) => void) | null): void

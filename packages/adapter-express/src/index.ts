@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { RequestHandler } from 'express';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { abortOnDisconnect, background, writeWebResponse } from '@fonderie/core';
+import { abortOnDisconnect, background, backgroundSettled, writeWebResponse } from '@fonderie/core';
 import {
 	requireAuth as _requireAuth,
 	resolveClientIp,
@@ -467,7 +467,10 @@ export function drainQueue(bus: IDrainable, options: IDrainQueueOptions = {}): R
 	const run = createDrainRunner(bus, options);
 	return (_req, res, next) => {
 		res.on('finish', () => {
-			void background(run());
+			// After the request's own background work: with a platform runner
+		// (waitUntil) its bus.emit may not have written the event yet, and a
+		// drain started now would find nothing — and the instance freezes.
+		void background(backgroundSettled().then(() => run()));
 		});
 		next();
 	};
