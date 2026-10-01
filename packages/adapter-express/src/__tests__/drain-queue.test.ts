@@ -94,3 +94,29 @@ test('drainQueue: concurrent responses share ONE drain', async () => {
 		await server.close();
 	}
 });
+
+// Deterministic form of the test above. On CI the 8 "concurrent" requests
+// arrived one by one, and each response's drain waited for the PREVIOUS drain
+// (it was counted as background work), so they ran in a row: 8 drains.
+test('drainQueue: a response during a running drain joins it, sequential requests included', async () => {
+	let calls = 0;
+	const app = express();
+	app.use(drainQueue({
+		drain: async () => {
+			calls += 1;
+			await new Promise((r) => setTimeout(r, 200));
+		},
+	}));
+	app.get('/', (_req, res) => res.json({ ok: true }));
+
+	const server = await listen(app);
+	try {
+		for (let i = 0; i < 3; i++) await fetch(server.url).then((r) => r.text());
+		// Long enough for chained drains to show (3 × 200 ms), and for any drain
+		// a previous test left running to finish first.
+		await new Promise((r) => setTimeout(r, 1_200));
+		assert.equal(calls, 1, `3 responses inside one drain should start 1 drain (started ${calls})`);
+	} finally {
+		await server.close();
+	}
+});

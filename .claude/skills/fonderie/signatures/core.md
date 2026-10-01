@@ -194,7 +194,7 @@ interface ISecurityReport {
 
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
-function background(work: Promise<unknown> | undefined): Promise<void>
+function background(work: Promise<unknown> | undefined, options?: { settles?: boolean; }): Promise<void>
 
 function backgroundSettled(timeoutMs?: number): Promise<void>
 
