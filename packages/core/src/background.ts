@@ -46,6 +46,10 @@ function resolveTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
 // once at boot; when present it wins over both modes.
 let runner: ((work: Promise<unknown>) => void) | null = null;
 
+// Work handed off and not yet settled — so a drain can wait for what the
+// request just emitted (see backgroundSettled).
+const inFlight = new Set<Promise<unknown>>();
+
 export function setBackgroundRunner(fn: ((work: Promise<unknown>) => void) | null): void {
 	runner = fn;
 }
@@ -62,6 +66,8 @@ export function setBackgroundRunner(fn: ((work: Promise<unknown>) => void) | nul
 export async function background(work: Promise<unknown> | undefined): Promise<void> {
 	if (!work) return;
 	const settled = Promise.resolve(work).catch(() => undefined);
+	inFlight.add(settled);
+	void settled.finally(() => inFlight.delete(settled));
 
 	if (runner) {
 		runner(settled);
@@ -117,4 +123,27 @@ export async function installPlatformBackgroundRunner(): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+/**
+ * Resolves once the background work handed off SO FAR has settled (bounded by
+ * FONDERIE_BACKGROUND_TIMEOUT_MS). A queue drain run after a response must wait
+ * for it: with a platform runner (Vercel's waitUntil) background() returns at
+ * once, so the request's own `bus.emit` may not have written its event yet —
+ * the drain found nothing, the instance froze, and the event sat pending until
+ * some later request drained it. Work handed off after the call is not
+ * included, so a drain registered afterwards never waits on itself.
+ */
+export function backgroundSettled(timeoutMs: number = resolveTimeoutMs()): Promise<void> {
+	const snapshot = [...inFlight];
+	if (snapshot.length === 0) return Promise.resolve();
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	return Promise.race([
+		Promise.all(snapshot).then(() => undefined),
+		new Promise<void>((resolve) => {
+			timer = setTimeout(resolve, timeoutMs);
+		}),
+	]).finally(() => {
+		if (timer) clearTimeout(timer);
+	});
 }

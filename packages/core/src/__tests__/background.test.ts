@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
 	background,
+	backgroundSettled,
 	isServerlessRuntime,
 	resolveBackgroundMode,
 	setBackgroundRunner,
@@ -123,5 +124,39 @@ test('a platform runner (waitUntil) takes over and does not delay the response',
 	} finally {
 		setBackgroundRunner(null);
 		delete process.env['FONDERIE_BACKGROUND_TASKS'];
+	}
+});
+
+// Found in production: with a platform runner, background(emit) returns at
+// once, so a drain started right after the response found nothing — the event
+// was written a moment later and sat pending until another request drained it.
+test('backgroundSettled waits for work handed off so far — not for work handed off later', async () => {
+	const handed: Promise<unknown>[] = [];
+	setBackgroundRunner((w) => handed.push(w));
+	try {
+		let emitted = false;
+		await background(new Promise<void>((r) => setTimeout(() => { emitted = true; r(); }, 40)));
+		assert.equal(emitted, false, 'handed off, not awaited');
+		const settled = backgroundSettled();
+		void background(new Promise<void>((r) => setTimeout(r, 400))); // later work: not waited for
+		const t0 = Date.now();
+		await settled;
+		assert.equal(emitted, true, 'the earlier work finished first');
+		assert.ok(Date.now() - t0 < 300, 'did not wait for the later work');
+		await Promise.all(handed);
+	} finally {
+		setBackgroundRunner(null);
+	}
+});
+
+test('backgroundSettled is bounded: hung work cannot hold a drain forever', async () => {
+	setBackgroundRunner(() => {});
+	try {
+		void background(new Promise(() => {}));
+		const t0 = Date.now();
+		await backgroundSettled(80);
+		assert.ok(Date.now() - t0 < 300);
+	} finally {
+		setBackgroundRunner(null);
 	}
 });

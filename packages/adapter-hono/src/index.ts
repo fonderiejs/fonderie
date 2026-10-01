@@ -2,7 +2,7 @@ import type { Context, MiddlewareHandler } from 'hono';
 import type { Hono } from 'hono';
 
 import type { FonderieApp, IFonderieContext, Middleware } from '@fonderie/core';
-import { background } from '@fonderie/core';
+import { background, backgroundSettled } from '@fonderie/core';
 import {
 	requireAuth as _requireAuth,
 	resolveClientIp,
@@ -346,6 +346,9 @@ export function drainQueue(bus: IDrainable, options: IDrainQueueOptions = {}): M
 	const run = createDrainRunner(bus, options);
 	return async (_c, next) => {
 		await next();
-		void background(run());
+		// After the request's own background work: with a platform runner
+		// (waitUntil) its bus.emit may not have written the event yet, and a
+		// drain started now would find nothing — and the instance freezes.
+		void background(backgroundSettled().then(() => run()));
 	};
 }

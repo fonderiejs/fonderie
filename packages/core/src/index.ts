@@ -30,6 +30,7 @@ export type {
 export { OPERATIONS } from './constants';
 export {
 	background,
+	backgroundSettled,
 	installPlatformBackgroundRunner,
 	setBackgroundRunner,
 	isServerlessRuntime,
