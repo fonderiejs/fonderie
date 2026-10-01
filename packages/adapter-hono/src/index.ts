@@ -8,7 +8,9 @@ import {
 	resolveClientIp,
 	resolveCorsOptions,
 	corsHeadersFor,
+	cacheControlValue,
 	type CorsOptions,
+	type IWithCacheOptions,
 } from '@fonderie/core/middlewares';
 // Optional peers: type-only imports (erased at runtime). The guard factories
 // below load them lazily so installing this adapter never requires
@@ -151,6 +153,22 @@ export function adapt(middleware: Middleware): MiddlewareHandler {
 //   hono.get('/jobs', requireAuth, withWorkspace(store), ...)
 
 export const requireAuth: MiddlewareHandler = adapt(_requireAuth);
+
+// How long clients may cache this route's response — a standard
+// Cache-Control header, honoured by @fonderie/client, browsers and CDNs.
+// Native (not adapt()): it edits the handler's response, which adapt() cannot.
+// A Cache-Control the handler set itself is kept.
+//
+//   v1.get('/catalog', requireAuth, withCache({ maxAge: 300 }), handler)
+//   v1.get('/live', withCache(false), handler)          // never cached
+export function withCache(options: IWithCacheOptions | false): MiddlewareHandler {
+	const value = cacheControlValue(options);
+	return async (c, next) => {
+		await next();
+		if (!c.res.headers.has('cache-control')) c.header('Cache-Control', value);
+	};
+}
+export type { IWithCacheOptions };
 
 // The three guards below wrap OPTIONAL peers, so the peer is imported lazily
 // on first request — not at module load. MiddlewareHandler is async either

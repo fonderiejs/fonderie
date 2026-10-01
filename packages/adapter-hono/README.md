@@ -38,6 +38,18 @@ The guards `withWorkspace`, `requirePermission`, and `requireFeature` load
 their peer package lazily on first request — install `@fonderie/workspaces`,
 `@fonderie/permissions`, or `@fonderie/billing` only if you use the matching
 guard. For custom Fonderie middleware, wrap it with `adapt()`.
+
+How long clients may cache a route is the route's call, as a standard
+`Cache-Control` header that `@fonderie/client`, browsers and CDNs honour:
+
+```ts
+hono.get('/catalog', requireAuth, withCache({ maxAge: 300 }), handler); // private, 5 min
+hono.get('/prices', withCache({ maxAge: 60, scope: 'public' }), handler); // CDNs too
+hono.get('/live', withCache(false), handler);                            // never cached
+```
+
+A `Cache-Control` the handler sets itself is kept. `withCache` is native (it
+edits the handler's response, which `adapt()` cannot).
 `ContextVariableMap` is augmented so `c.get('_fonderie')` is fully typed;
 `FonderieVariables` is exported for typing your `Hono` instance.
 

@@ -45,6 +45,9 @@ export interface IRequestOptions {
 	//   cache: false   → skip the cache for this GET
 	//   bust: true     → ignore any cached value and refresh it
 	//   invalidate     → extra key fragments to evict after a successful write
+	// Without a per-call `cache`, the response's Cache-Control decides — the
+	// endpoint knows how volatile its data is (no-store → not cached,
+	// max-age=N → N seconds) — and only then the client's default TTL.
 	cache?: number | false | undefined;
 	bust?: boolean | undefined;
 	invalidate?: string[] | undefined;
@@ -98,10 +101,10 @@ export class HttpClient {
 				const hit = cache.get<T>(key);
 				if (hit !== undefined) return hit;
 			}
-			const ttl = typeof opts.cache === 'number' ? opts.cache : this.defaultTtlMs;
 			return cache.dedupe(key, async () => {
-				const data = await this.exec<T>(opts);
-				cache.set(key, data, ttl);
+				const { data, cacheControl } = await this.execWithMeta<T>(opts);
+				const ttl = typeof opts.cache === 'number' ? opts.cache : ttlFromCacheControl(cacheControl) ?? this.defaultTtlMs;
+				if (ttl > 0) cache.set(key, data, ttl);
 				return data;
 			});
 		}
@@ -118,7 +121,11 @@ export class HttpClient {
 		return data;
 	}
 
-	private async exec<T>(opts: IRequestOptions, retried = false): Promise<T> {
+	private async exec<T>(opts: IRequestOptions): Promise<T> {
+		return (await this.execWithMeta<T>(opts)).data;
+	}
+
+	private async execWithMeta<T>(opts: IRequestOptions, retried = false): Promise<{ data: T; cacheControl: string | null }> {
 		// Start a W3C trace: the trace id doubles as the quotable correlation id
 		// (sent as X-Request-ID and surfaced on FonderieApiError.requestId).
 		const traceId = randHex(16);
@@ -145,14 +152,14 @@ export class HttpClient {
 		// avoid recursing through the refresh/login endpoints themselves).
 		if (res.status === 401 && this.refresh && !retried && !opts.path.startsWith('/auth/')) {
 			const newToken = await this.refresh();
-			if (newToken) return this.exec<T>({ ...opts, token: newToken }, true);
+			if (newToken) return this.execWithMeta<T>({ ...opts, token: newToken }, true);
 		}
 
 		// 204 No Content (e.g. some DELETE routes) has no body to parse.
 		if (res.status === 204) {
 			if (!res.ok)
 				throw new FonderieApiError('unknown', res.statusText, res.status, undefined, rid);
-			return undefined as T;
+			return { data: undefined as T, cacheControl: res.headers.get('cache-control') };
 		}
 
 		const data = (await res.json()) as T | IApiError;
@@ -162,6 +169,23 @@ export class HttpClient {
 			throw new FonderieApiError(err.reason, err.explanation, res.status, err.details, rid);
 		}
 
-		return data as T;
+		return { data: data as T, cacheControl: res.headers.get('cache-control') };
 	}
+}
+
+/**
+ * How long a response may be reused, from its Cache-Control: 0 for no-store /
+ * no-cache (never reuse), max-age=N → N seconds, undefined when the header says
+ * nothing about it (the client's default applies).
+ */
+export function ttlFromCacheControl(header: string | null | undefined): number | undefined {
+	if (!header) return undefined;
+	const directives = header.toLowerCase().split(',').map((d) => d.trim());
+	if (directives.some((d) => d === 'no-store' || d === 'no-cache')) return 0;
+	const maxAge = directives.find((d) => d.startsWith('max-age='));
+	if (maxAge) {
+		const seconds = Number(maxAge.slice('max-age='.length));
+		if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+	}
+	return undefined;
 }
