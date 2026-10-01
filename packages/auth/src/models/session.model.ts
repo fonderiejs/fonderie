@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IRequestMeta } from '../services/request-meta';
+import { CLIENT_KINDS, type ClientKind } from '../services/session-policy';
 import { type IRequestLocation, type LocationResolver, resolveLocation } from '../services/request-location';
 
 // What `fonderie_sessions.token` holds: the SHA-256 of the refresh token, so a
@@ -23,6 +24,8 @@ export interface ISessionRow {
 	stored: string;
 	/** When the device signed in — the start of the absolute cap. */
 	createdAt: Date;
+	/** The platform declared at sign-in — its lifetimes apply at every refresh. */
+	clientKind: ClientKind | null;
 }
 
 /** How a presented refresh token relates to the sessions table. */
@@ -51,8 +54,8 @@ export class SessionModel {
 				? await resolveLocation(this.locate, { ip: meta.ipAddress, headers: meta.headers })
 				: null;
 		await this.store.query(
-			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid, user_agent, ip_address, location, last_used_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid, user_agent, ip_address, location, last_used_at, client_kind)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $8)
 			ON CONFLICT (token) DO NOTHING`,
 			[
 				userId,
@@ -62,6 +65,7 @@ export class SessionModel {
 				meta?.userAgent ?? null,
 				meta?.ipAddress ?? null,
 				location ? JSON.stringify(location) : null,
+				meta?.clientKind ?? null,
 			],
 		);
 	}
@@ -77,13 +81,13 @@ export class SessionModel {
 	 */
 	async match(token: string): Promise<RefreshMatch> {
 		const hash = hashRefreshToken(token);
-		const [current] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string; created_at: Date }>(
-			`SELECT id, user_id, sid, token, created_at FROM fonderie_sessions WHERE token IN ($1, $2) AND expires_at > now() LIMIT 1`,
+		const [current] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string; created_at: Date; client_kind: string | null }>(
+			`SELECT id, user_id, sid, token, created_at, client_kind FROM fonderie_sessions WHERE token IN ($1, $2) AND expires_at > now() LIMIT 1`,
 			[hash, token],
 		);
 		if (current) return { kind: 'current', row: toRow(current) };
-		const [previous] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string; created_at: Date; in_grace: boolean }>(
-			`SELECT id, user_id, sid, token, created_at, (previous_valid_until > now()) AS in_grace
+		const [previous] = await this.store.query<{ id: string; user_id: string; sid: string | null; token: string; created_at: Date; client_kind: string | null; in_grace: boolean }>(
+			`SELECT id, user_id, sid, token, created_at, client_kind, (previous_valid_until > now()) AS in_grace
 			   FROM fonderie_sessions WHERE previous_token_hash = $1 AND expires_at > now() LIMIT 1`,
 			[hash],
 		);
@@ -167,12 +171,13 @@ export class SessionModel {
 			userAgent: string | null;
 			ipAddress: string | null;
 			location: IRequestLocation | null;
+			clientKind: string | null;
 			createdAt: Date;
 			expiresAt: Date;
 		}>
 	> {
 		return this.store.query(
-			`SELECT id, sid,
+			`SELECT id, sid, client_kind AS "clientKind",
 			        user_agent AS "userAgent",
 			        ip_address AS "ipAddress",
 			        location,
@@ -225,6 +230,7 @@ export class SessionModel {
 	}
 }
 
-function toRow(r: { id: string; user_id: string; sid: string | null; token: string; created_at?: Date }): ISessionRow {
-	return { id: r.id, userId: r.user_id, sid: r.sid, stored: r.token, createdAt: r.created_at ? new Date(r.created_at) : new Date() };
+function toRow(r: { id: string; user_id: string; sid: string | null; token: string; created_at?: Date; client_kind?: string | null }): ISessionRow {
+	const kind = (CLIENT_KINDS as readonly string[]).includes(r.client_kind ?? '') ? (r.client_kind as ClientKind) : null;
+	return { id: r.id, userId: r.user_id, sid: r.sid, stored: r.token, createdAt: r.created_at ? new Date(r.created_at) : new Date(), clientKind: kind };
 }

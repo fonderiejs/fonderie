@@ -10,6 +10,7 @@ import { NOTIFICATION_EVENT } from '@fonderie/events';
 import type { IAuthConfig } from '../config';
 import { MESSAGE_KEYS } from '../config';
 import { issueTokenPair, refreshTokenExpiry } from '../services/jwt';
+import { clientKindOf, configForClient } from '../services/session-policy';
 import {
 	generateTotpSecret,
 	generateTotpUri,
@@ -160,7 +161,7 @@ export function mfaController(
 				}
 			}
 
-			const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, config, {
+			const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
 				loginMethod: ctx.user!.loginMethod,
 				phoneVerified: ctx.user!.phoneVerified,
 			});

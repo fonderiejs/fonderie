@@ -138,13 +138,20 @@ test('SessionModel.create: INSERT includes user_agent + ip_address columns and v
 		userAgent: 'UA',
 	});
 	assert.match(calls[0]!.sql, /INSERT INTO fonderie_sessions .*user_agent, ip_address/s);
-	assert.deepEqual(calls[0]!.params.slice(4), ['UA', '203.0.113.7', null]); // no resolver → no location
+	assert.deepEqual(calls[0]!.params.slice(4), ['UA', '203.0.113.7', null, null]); // no resolver → no location; no platform declared
+});
+
+test('SessionModel.create: records the platform declared at sign-in', async () => {
+	const { store, calls } = capturingStore();
+	await new SessionModel(store).create('u1', 'tok', new Date('2026-01-01Z'), 'sid-1', { ipAddress: null, userAgent: null, clientKind: 'web' });
+	assert.match(calls[0]!.sql, /client_kind\)/);
+	assert.equal(calls[0]!.params[7], 'web');
 });
 
 test('SessionModel.create: nulls when no meta passed (back-compat)', async () => {
 	const { store, calls } = capturingStore();
 	await new SessionModel(store).create('u1', 'tok', new Date('2026-01-01Z'), 'sid-1');
-	assert.deepEqual(calls[0]!.params.slice(4), [null, null, null]);
+	assert.deepEqual(calls[0]!.params.slice(4), [null, null, null, null]);
 });
 
 // ── Controller: failed login records a 'failed' event ────────────

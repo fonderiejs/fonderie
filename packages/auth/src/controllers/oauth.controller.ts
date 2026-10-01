@@ -11,6 +11,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { IAuthConfig } from '../config';
 import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { issueTokenPair, refreshTokenExpiry } from '../services/jwt';
+import { clientKindOf, configForClient } from '../services/session-policy';
 import { toUserDTO } from '../dtos/user';
 import { UserModel } from '../models/user.model';
 import { SessionModel } from '../models/session.model';
@@ -294,7 +295,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 
 		await announceOAuthUpsert(ctx, upserted, 'apple', fullUser);
 
-		const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, config, { loginMethod: 'apple' });
+		const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), { loginMethod: 'apple' });
 		await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
 		await loginEvents.recordSafe({
 			userId: upserted.id,
@@ -486,7 +487,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 
 			await announceOAuthUpsert(ctx, upserted, 'google', fullUser);
 
-			const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, config, {
+			const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
 				loginMethod: 'google',
 			});
 			await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);

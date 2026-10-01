@@ -32,7 +32,7 @@ before(async () => {
 	await new InternalMigrationRunner(store, getMigrationsPath()).run();
 	const bus = { emit: async (type: string, payload: Record<string, unknown>) => void emitted.push({ type, payload }), on() {}, subscribe() {} };
 	const app = new FonderieApp(defineConfig({ db: { url: PG_URL } })).register(
-		new AuthModule(store, { jwtSecret: 'k'.repeat(20) + 'm'.repeat(20), providers: ['email'], rateLimit: false, sessionMaxAge: '365d' } as never, bus as never),
+		new AuthModule(store, { jwtSecret: 'k'.repeat(20) + 'm'.repeat(20), providers: ['email'], rateLimit: false, } as never, bus as never),
 	);
 	await app.boot();
 	const s = app.listen(0, { quiet: true }) as unknown as typeof server & { address(): { port: number }; listening: boolean; once(e: string, f: () => void): void };
@@ -56,20 +56,20 @@ beforeEach(async () => {
 });
 
 let n = 0;
-async function signUp(): Promise<{ access: string; refresh: string }> {
+async function signUp(clientKind?: string): Promise<{ access: string; refresh: string }> {
 	const res = await fetch(`${base}/auth/register`, {
 		method: 'POST',
-		headers: { 'content-type': 'application/json' },
+		headers: { 'content-type': 'application/json', ...(clientKind ? { 'x-client-kind': clientKind } : {}) },
 		body: JSON.stringify({ email: `u${++n}-${Date.now()}@rotation.acme.example`, password: 'Aa1!aaaa-bbbb-cccc' }),
 	});
 	const body = (await res.json()) as { result: { tokens: { access: string; refresh: string } } };
 	assert.equal(res.status, 201, JSON.stringify(body));
 	return body.result.tokens;
 }
-async function refresh(token: string): Promise<{ status: number; tokens?: { access: string; refresh: string } }> {
+async function refresh(token: string, clientKind?: string): Promise<{ status: number; tokens?: { access: string; refresh: string } }> {
 	const res = await fetch(`${base}/auth/refresh`, {
 		method: 'POST',
-		headers: { 'content-type': 'application/json' },
+		headers: { 'content-type': 'application/json', ...(clientKind ? { 'x-client-kind': clientKind } : {}) },
 		body: JSON.stringify({ refreshToken: token }),
 	});
 	const body = (await res.json()) as { result?: { tokens?: { access: string; refresh: string } } };
@@ -167,9 +167,32 @@ test('a refresh carries auth_time (when the user last SIGNED IN), and slides the
 });
 
 test('a session past the absolute cap (sessionMaxAge) is refused at refresh and revoked, however active', { skip }, async () => {
-	const first = await signUp();
+	const first = await signUp('mobile'); // mobile preset: 365 d cap
 	await store.query(`UPDATE fonderie_sessions SET created_at = now() - interval '400 days'`);
 	const r = await refresh(first.refresh);
 	assert.equal(r.status, 401);
 	assert.equal((await rows()).length, 0);
+});
+
+// ── Phase 3c: lifetimes per platform ───────────────────────────────────────
+const lifetimeDays = (t: string) => {
+	const c = JSON.parse(Buffer.from(t.split('.')[1]!, 'base64url').toString()) as { iat: number; exp: number };
+	return (c.exp - c.iat) / 86400;
+};
+
+test('a web sign-in gets the web lifetime, recorded on the session; a refresh cannot promote it', { skip }, async () => {
+	const web = await signUp('web');
+	assert.equal(lifetimeDays(web.refresh), 14);
+	const [row] = await store.query<{ client_kind: string }>(`SELECT client_kind FROM fonderie_sessions`);
+	assert.equal(row?.client_kind, 'web');
+	const r = await refresh(web.refresh, 'mobile'); // claims to be a phone now
+	assert.equal(r.status, 200);
+	assert.equal(lifetimeDays(r.tokens!.refresh), 14, 'still the web lifetime');
+});
+
+test('an undeclared client keeps the shared lifetime (today\'s behaviour)', { skip }, async () => {
+	const plain = await signUp();
+	assert.equal(lifetimeDays(plain.refresh), 90);
+	const [row] = await store.query<{ client_kind: string | null }>(`SELECT client_kind FROM fonderie_sessions`);
+	assert.equal(row?.client_kind, null);
 });
