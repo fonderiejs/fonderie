@@ -33,8 +33,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/react-webhooks": "*"
+		"@fonderie/client": "^2.5.0",
+		"@fonderie/react-webhooks": "^0.4.1"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

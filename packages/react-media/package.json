@@ -37,8 +37,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/react": "*"
+		"@fonderie/client": "^2.5.0",
+		"@fonderie/react": "^0.5.1"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"
