@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-customers-screens",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "Pre-built Vue customers screens for Fonderie — customer list, customer detail (contact info, notes, tags).",
 	"keywords": [
 		"fonderiejs",
@@ -35,8 +35,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^2.5.0",
-		"@fonderie/vue-customers": "^0.5.2"
+		"@fonderie/client": "^3.0.0",
+		"@fonderie/vue-customers": "^0.5.3"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"

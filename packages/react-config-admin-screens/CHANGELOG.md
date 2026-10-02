@@ -1,5 +1,13 @@
 # @fonderie/react-config-admin-screens
 
+## 0.8.2
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-config-admin@0.3.4
+
 ## 0.8.1
 
 ### Patch Changes

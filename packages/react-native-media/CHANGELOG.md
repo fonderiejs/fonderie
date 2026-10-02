@@ -1,5 +1,13 @@
 # @fonderie/react-native-media
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-media@0.2.2
+
 ## 0.1.2
 
 ### Patch Changes

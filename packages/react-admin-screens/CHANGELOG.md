@@ -1,5 +1,15 @@
 # @fonderie/react-admin-screens
 
+## 1.7.2
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-admin@1.2.2
+  - @fonderie/react-config-admin-screens@0.8.2
+  - @fonderie/react-courier-admin-screens@0.11.2
+
 ## 1.7.1
 
 ### Patch Changes

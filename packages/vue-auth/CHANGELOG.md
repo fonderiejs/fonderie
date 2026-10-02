@@ -1,5 +1,13 @@
 # @fonderie/vue-auth
 
+## 0.12.3
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/vue@0.5.3
+
 ## 0.12.2
 
 ### Patch Changes

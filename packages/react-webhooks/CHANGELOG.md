@@ -1,5 +1,13 @@
 # @fonderie/react-webhooks
 
+## 0.4.3
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react@0.5.3
+
 ## 0.4.2
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @fonderie/react-native-audit
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-audit@0.3.3
+
 ## 0.1.2
 
 ### Patch Changes

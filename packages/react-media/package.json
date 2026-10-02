@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-media",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "React hooks for Fonderie media — image/avatar upload over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
@@ -37,8 +37,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^2.5.0",
-		"@fonderie/react": "^0.5.2"
+		"@fonderie/client": "^3.0.0",
+		"@fonderie/react": "^0.5.3"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

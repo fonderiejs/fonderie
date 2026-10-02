@@ -1,5 +1,13 @@
 # @fonderie/react-courier-admin-screens
 
+## 0.11.2
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-courier-admin@0.5.3
+
 ## 0.11.1
 
 ### Patch Changes

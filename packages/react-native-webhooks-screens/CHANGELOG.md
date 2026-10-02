@@ -1,5 +1,13 @@
 # @fonderie/react-native-webhooks-screens
 
+## 0.3.3
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-native-webhooks@0.1.3
+
 ## 0.3.2
 
 ### Patch Changes
