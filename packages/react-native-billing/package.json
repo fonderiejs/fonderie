@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-billing",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"description": "React Native billing hooks for Fonderie — re-exports @fonderie/react-billing (no platform-specific code: no storage, no DOM/RN APIs).",
 	"keywords": [
 		"fonderiejs",
@@ -35,7 +35,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/react-billing": "^0.9.1"
+		"@fonderie/react-billing": "^0.9.2"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

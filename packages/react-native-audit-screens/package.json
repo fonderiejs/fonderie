@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-audit-screens",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Pre-built React Native screen for Fonderie's audit log — filterable, cursor-paginated event list.",
 	"keywords": [
 		"fonderiejs",
@@ -36,7 +36,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/react-native-audit": "^0.1.1"
+		"@fonderie/react-native-audit": "^0.1.2"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0",

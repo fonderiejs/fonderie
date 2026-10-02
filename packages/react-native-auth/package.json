@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-auth",
-	"version": "0.12.1",
+	"version": "0.12.2",
 	"description": "React Native hooks for Fonderie auth — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
@@ -35,7 +35,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/react": "^0.5.1"
+		"@fonderie/react": "^0.5.2"
 	},
 	"peerDependencies": {
 		"@react-native-async-storage/async-storage": ">=1.18.0",
