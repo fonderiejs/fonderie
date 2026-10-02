@@ -11,7 +11,10 @@ import { generateTotpSecret, generateTotpCode, generateBackupCodes } from '../se
 import { hashPassword, verifyPassword, verifyPasswordForLogin } from '../services/password';
 import { authController } from '../controllers/auth.controller';
 import { mfaController } from '../controllers/mfa.controller';
-import { oauthController } from '../controllers/oauth.controller';
+import { generateKeyPairSync } from 'node:crypto';
+import jwt from 'jsonwebtoken';
+
+import { __resetAppleKeysForTests, oauthController } from '../controllers/oauth.controller';
 import { userController } from '../controllers/user.controller';
 
 const config: IAuthConfig = {
@@ -3059,7 +3062,18 @@ test('collectAuthConfigProblems: incomplete google config is an error', async ()
 		jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
 		google: { clientId: '', clientSecret: 'aRealLookingSecretValue123456', redirectUri: '' },
 	});
-	assert.ok(problems.some((p) => p.severity === 'error' && /clientId, clientSecret, or redirectUri/.test(p.message)));
+	assert.ok(problems.some((p) => p.severity === 'error' && p.reason === 'GOOGLE_INCOMPLETE'));
+});
+
+test('collectAuthConfigProblems: Google is complete as web (secret + redirect) OR native (client ids)', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const google = (g: Record<string, unknown>) =>
+		collectAuthConfigProblems({ ...config, jwtSecret: 'aaaa-bbbb-cccc-dddd-eeee-ffff-gggg-hhhh', google: g as never })
+			.filter((p) => p.reason === 'GOOGLE_INCOMPLETE').length;
+	assert.equal(google({ clientId: 'web.apps.googleusercontent.com', nativeClientIds: ['android.apps.googleusercontent.com'] }), 0, 'native only');
+	assert.equal(google({ clientId: 'web.apps.googleusercontent.com', clientSecret: 'aRealLookingSecretValue123456', redirectUri: 'https://api.acme.example/auth/google/callback' }), 0, 'web only');
+	assert.equal(google({ clientId: 'web.apps.googleusercontent.com' }), 1, 'neither flow configured');
+	assert.equal(google({ clientId: 'web.apps.googleusercontent.com', clientSecret: 'aRealLookingSecretValue123456', nativeClientIds: ['x'] }), 1, 'half of the web pair');
 });
 
 test('collectAuthConfigProblems: mfa on without mfaSecretKey warns (plaintext at rest)', async () => {
@@ -3363,4 +3377,154 @@ test('/auth/providers: discloses nothing beyond the provider names', async () =>
 	for (const leak of ['secret-id', 'secret-value', 'https://x/cb']) {
 		assert.ok(!body.includes(leak), `must not disclose ${leak}`);
 	}
+});
+
+// ── OAuth sign-in passes the same gates as a password (2026-10) ───────────
+// A linked Google/Apple account used to skip MFA entirely: the callback issued
+// a full token pair even when the account had a second factor.
+
+const OAUTH_MFA_USER: IUser = { ...BASE_USER, mfaEnabled: true };
+
+test('googleCallback: an account with MFA gets MFA_REQUIRED + a pending token, not a session', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const ctrl = makeOauth({ insertedId: 'user-1', userById: OAUTH_MFA_USER });
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'MFA_REQUIRED');
+	assert.equal(body.result.tokens, undefined, 'no session before the second factor');
+	assert.ok(!response.headers.get('set-cookie')?.includes('access_token='), 'no auth cookie either');
+	const pending = verifyToken(body.result.mfaToken, config) as any;
+	assert.equal(pending?.mfaPending, true);
+	assert.equal(pending?.loginMethod, 'google', 'the completed session stays a Google one');
+});
+
+test('googleCallback: a suspended account opens no session', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const ctrl = makeOauth({ insertedId: 'user-1', userById: { ...BASE_USER, suspended: true } });
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 403);
+	assert.equal(((await response.json()) as any).reason, 'ACCOUNT_SUSPENDED');
+});
+
+test('mfa/verify guard: a pending Google/Apple sign-in may finish; a full OAuth session still may not manage MFA', async () => {
+	const { requireEmailLoginUnlessSigningIn } = await import('../middlewares/require-email-login');
+	const pass = async () => Response.json({ ok: true });
+	for (const loginMethod of ['google', 'apple'] as const) {
+		const pending = await requireEmailLoginUnlessSigningIn(makeCtx({ user: { ...BASE_USER, loginMethod, mfaPending: true } as any }), pass);
+		assert.equal(pending.status, 200, `${loginMethod} pending sign-in completes`);
+		const session = await requireEmailLoginUnlessSigningIn(makeCtx({ user: { ...BASE_USER, loginMethod } as any }), pass);
+		assert.equal(session.status, 403, `${loginMethod} session cannot enable MFA`);
+	}
+});
+
+// ── Native Google sign-in ─────────────────────────────────────────────────
+
+const NATIVE_GOOGLE_CONFIG: IAuthConfig = {
+	...config,
+	providers: ['email', 'google'],
+	google: { clientId: 'web-client.apps.googleusercontent.com', nativeClientIds: ['web-client.apps.googleusercontent.com', 'ios-client.apps.googleusercontent.com'] },
+};
+
+// makeStore plus the single-use table: the first INSERT of a hash wins.
+function withConsumedTokens(base: IStoreAdapter): IStoreAdapter {
+	const seen = new Set<string>();
+	return {
+		...base,
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('INSERT INTO fonderie_consumed_tokens')) {
+				const hash = String(params?.[0]);
+				if (seen.has(hash)) return [] as T[];
+				seen.add(hash);
+				return [{ token_hash: hash }] as unknown as T[];
+			}
+			return base.query<T>(sql, params as never);
+		},
+	} as IStoreAdapter;
+}
+
+function googleSigner() {
+	const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+	const kid = `g-${Math.random().toString(36).slice(2)}`;
+	const jwk = { ...(publicKey.export({ format: 'jwk' }) as object), kid, alg: 'RS256', use: 'sig' };
+	const sign = (claims: object, audience = 'web-client.apps.googleusercontent.com', issuer = 'https://accounts.google.com') =>
+		jwt.sign(claims, privateKey, { algorithm: 'RS256', keyid: kid, audience, issuer, expiresIn: '5m' });
+	return { jwk, sign };
+}
+
+const nativeCtx = (idToken: string) => makeCtx({ body: { idToken } } as any);
+
+test('googleNative: a valid Google ID token signs in (same envelope as the web flow)', async () => {
+	__resetAppleKeysForTests();
+	const g = googleSigner();
+	const fetchMock = mockFetch({ keys: [g.jwk] });
+	const ctrl = oauthController(withConsumedTokens(makeStore({ insertedId: 'user-1', userById: BASE_USER })), NATIVE_GOOGLE_CONFIG);
+	const response = await ctrl.googleNative(nativeCtx(g.sign({ email: 'jane@example.com', email_verified: true, sub: 'g-1' })));
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'GOOGLE_AUTH_SUCCESS');
+	assert.equal((verifyToken(body.result.tokens.access, config) as any)?.loginMethod, 'google');
+});
+
+test('googleNative: rejects another app\'s token, a forgery, an unverified email, and a replay', async () => {
+	__resetAppleKeysForTests();
+	const g = googleSigner();
+	const forger = googleSigner();
+	const fetchMock = mockFetch({ keys: [g.jwk] });
+	const ctrl = oauthController(withConsumedTokens(makeStore({ insertedId: 'user-1', userById: BASE_USER })), NATIVE_GOOGLE_CONFIG);
+	const reason = async (token: string) => {
+		const r = await ctrl.googleNative(nativeCtx(token));
+		return `${r.status} ${((await r.json()) as any).reason}`;
+	};
+	const claims = { email: 'jane@example.com', email_verified: true, sub: 'g-1' };
+	assert.equal(await reason(g.sign(claims, 'someone-elses-client.apps.googleusercontent.com')), '401 GOOGLE_AUTH_FAILED', 'wrong audience');
+	assert.equal(await reason(g.sign(claims, undefined, 'https://appleid.apple.com')), '401 GOOGLE_AUTH_FAILED', 'wrong issuer');
+	// Signed by a key Google does not publish, under the published kid.
+	const forged = jwt.sign(claims, generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey, {
+		algorithm: 'RS256', keyid: (g.jwk as any).kid, audience: 'web-client.apps.googleusercontent.com', issuer: 'https://accounts.google.com', expiresIn: '5m',
+	});
+	assert.equal(await reason(forged), '401 GOOGLE_AUTH_FAILED', 'forged signature');
+	assert.equal(await reason(forger.sign(claims)), '401 GOOGLE_AUTH_FAILED', 'unknown key');
+	assert.equal(await reason(g.sign({ ...claims, email_verified: false })), '400 GOOGLE_AUTH_FAILED', 'unverified email cannot link');
+	const once = g.sign(claims, 'ios-client.apps.googleusercontent.com', 'accounts.google.com');
+	assert.equal(await reason(once), '200 GOOGLE_AUTH_SUCCESS', 'iOS client id + bare issuer accepted');
+	assert.equal(await reason(once), '401 GOOGLE_AUTH_FAILED', 'replay refused');
+	fetchMock.mock.restore();
+});
+
+test('googleNative: an account with MFA must present its second factor', async () => {
+	__resetAppleKeysForTests();
+	const g = googleSigner();
+	const fetchMock = mockFetch({ keys: [g.jwk] });
+	const ctrl = oauthController(withConsumedTokens(makeStore({ insertedId: 'user-1', userById: OAUTH_MFA_USER })), NATIVE_GOOGLE_CONFIG);
+	const response = await ctrl.googleNative(nativeCtx(g.sign({ email: 'jane@example.com', email_verified: true, sub: 'g-1' })));
+	fetchMock.mock.restore();
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'MFA_REQUIRED');
+	assert.equal(body.result.tokens, undefined);
+});
+
+test('googleNative: 501 without native client ids; the web flow 501s without its secret', async () => {
+	const webOnly = oauthController(makeStore(), GOOGLE_CONFIG);
+	assert.equal((await webOnly.googleNative(nativeCtx('a.b.c'))).status, 501);
+	const nativeOnly = oauthController(makeStore(), NATIVE_GOOGLE_CONFIG);
+	assert.equal((await nativeOnly.googleInit(makeCtx())).status, 501);
+});
+
+test('buildAuthRoutes: google registers POST /auth/google/native with ipLimit + validate', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const routes = buildAuthRoutes(stub, NATIVE_GOOGLE_CONFIG);
+	const native = routes.find(([m, p]) => m === 'POST' && p === '/auth/google/native');
+	assert.ok(native);
+	assert.equal(native!.slice(2).length, 3);
+});
+
+test('collectAuthConfigProblems: wildcard Google native client ids are an error', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const bad = collectAuthConfigProblems({ ...NATIVE_GOOGLE_CONFIG, jwtSecret: 'aaaa-bbbb-cccc-dddd-eeee-ffff-gggg-hhhh', google: { clientId: 'w', nativeClientIds: ['*'] } });
+	assert.ok(bad.some((p) => p.reason === 'GOOGLE_NATIVE_IDS_INVALID'));
 });

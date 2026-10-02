@@ -25,9 +25,17 @@ export interface IAuthSecrets {
 	// existing MFA secrets unrecoverable (users must re-enroll).
 	mfaSecretKey?: string;
 	google?: {
+		// The web (OAuth client) id: the `aud` of the web redirect flow.
 		clientId: string;
-		clientSecret: string;
-		redirectUri: string;
+		// Web redirect flow only (GET /auth/google + /auth/google/callback).
+		// A native-only setup leaves them out.
+		clientSecret?: string;
+		redirectUri?: string;
+		// Client ids whose NATIVE ID tokens POST /auth/google/native accepts —
+		// the Android, iOS and web client ids of the app's Google project (the
+		// Android SDK mints tokens with aud = the web client id the app passes
+		// as serverClientId; iOS with its own client id).
+		nativeClientIds?: string[];
 	};
 	// Sign in with Apple. Unlike Google, Apple's client secret is not a static
 	// string — it's a short-lived ES256 JWT minted from a .p8 key at token

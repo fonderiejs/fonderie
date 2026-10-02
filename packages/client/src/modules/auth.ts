@@ -59,6 +59,14 @@ export interface IAppleNativeInput {
 	nonce?: string;
 }
 
+// Native Sign in with Google: the app obtains an `idToken` from the Google
+// SDK (e.g. @react-native-google-signin/google-signin) and hands it here — the
+// client only relays it to POST /auth/google/native.
+export interface IGoogleNativeInput {
+	idToken: string;
+	nonce?: string;
+}
+
 export interface IResetPasswordInput {
 	// The 6-digit code emailed by forgotPassword. Matches @fonderie/auth's
 	// resetPasswordSchema ({ pin, password }); the route is POST /auth/email/reset.
@@ -222,13 +230,24 @@ export class AuthClient {
 		});
 	}
 
-	// Complete a native Sign in with Apple. Returns the same token/user envelope
-	// as login (no MFA branch — OAuth completions don't gate on MFA). Requires
-	// the API to enable the provider (`providers: ['apple']` + apple config).
+	// Complete a native Sign in with Apple. Answers like login: a token/user
+	// envelope, or — when the account has MFA — `{ mfaToken }` to finish with
+	// mfa.verifyLogin (check with isMfaRequired). Requires the API to enable
+	// the provider (`providers: ['apple']` + apple config).
 	appleNative(input: IAppleNativeInput) {
-		return this.http.request<IApiResponse<ILoginResult>>({
+		return this.http.request<IApiResponse<ILoginResult | IMfaRequiredResult>>({
 			method: 'POST',
 			path: '/auth/apple/native',
+			body: input,
+		});
+	}
+
+	// Complete a native Sign in with Google. Same answers as appleNative.
+	// Requires the API to enable the provider with `google.nativeClientIds`.
+	googleNative(input: IGoogleNativeInput) {
+		return this.http.request<IApiResponse<ILoginResult | IMfaRequiredResult>>({
+			method: 'POST',
+			path: '/auth/google/native',
 			body: input,
 		});
 	}

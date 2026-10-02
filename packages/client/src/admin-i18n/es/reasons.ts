@@ -16,13 +16,15 @@ const reasons: typeof en = {
 		INSECURE_COOKIES:
 			'secureCookies está desactivado — las cookies de inicio de sesión pueden viajar por HTTP sin cifrar en producción.',
 		GOOGLE_INCOMPLETE:
-			'El inicio de sesión con Google está configurado, pero falta el ID de cliente, el secreto de cliente o la URI de redirección.',
+			'El inicio de sesión con Google está configurado pero incompleto: indica el ID de cliente y, además, el secreto de cliente y la URI de redirección (web) o los ID de cliente nativos (app).',
 		GOOGLE_SECRET_PLACEHOLDER:
 			'El secreto de cliente de Google parece un valor de ejemplo o de desarrollo.',
 		APPLE_INCOMPLETE:
 			'Iniciar sesión con Apple está configurado, pero falta el ID de cliente, el ID de equipo, el ID de clave, la clave privada o la URI de redirección.',
 		APPLE_KEY_NOT_PEM:
 			'La clave privada de Apple no es una clave PEM .p8 (se esperaba -----BEGIN PRIVATE KEY-----).',
+		GOOGLE_NATIVE_IDS_INVALID:
+			'Los ID de cliente nativos de Google deben ser ID de cliente exactos — una entrada vacía o comodín aceptaría tokens emitidos para otras apps.',
 		APPLE_NATIVE_IDS_INVALID:
 			'Los ID de cliente nativos de Apple deben ser identificadores de bundle exactos — una entrada vacía o comodín aceptaría tokens emitidos para otras apps.',
 		MFA_KEY_MISSING:
