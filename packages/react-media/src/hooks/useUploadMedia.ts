@@ -3,13 +3,13 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
-import { blobToBase64 } from '../lib/blobToBase64';
+import { type MediaInput, toBase64 } from '../lib/mediaInput';
 
 export interface IUseUploadMediaReturn {
 	// Encode the file and POST it to /media; resolves to the stored asset (its id
 	// + monomorphic /media/:id url). Extra fields (purpose, ownerType, ownerId)
 	// default server-side to a self-owned 'avatar' when omitted.
-	upload: (file: Blob, opts?: Omit<IUploadMediaInput, 'dataBase64'>) => Promise<IMediaAssetDTO>;
+	upload: (file: MediaInput, opts?: Omit<IUploadMediaInput, 'dataBase64'>) => Promise<IMediaAssetDTO>;
 	isUploading: boolean;
 	error: FonderieApiError | null;
 }
@@ -22,11 +22,11 @@ export function useUploadMedia(client?: MediaClient): IUseUploadMediaReturn {
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
 	const upload = useCallback(
-		async (file: Blob, opts?: Omit<IUploadMediaInput, 'dataBase64'>) => {
+		async (file: MediaInput, opts?: Omit<IUploadMediaInput, 'dataBase64'>) => {
 			setIsUploading(true);
 			setError(null);
 			try {
-				const dataBase64 = await blobToBase64(file);
+				const dataBase64 = await toBase64(file);
 				const { result } = await media.upload({ dataBase64, ...opts });
 				return result.asset;
 			} catch (err) {

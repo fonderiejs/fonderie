@@ -6,3 +6,4 @@ export type {
 	IUseUploadMediaReturn,
 } from './composables';
 export { useDeleteMedia, useUploadAvatar, useUploadMedia } from './composables';
+export type { MediaInput } from './lib/mediaInput';
