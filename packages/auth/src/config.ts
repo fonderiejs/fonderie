@@ -203,5 +203,5 @@ export interface ISessionRevokedEvent {
 	userId: string;
 	/** The revoked sessions' sids; null = every session of the user. */
 	sids: Array<string | null> | null;
-	reason: 'terminated' | 'password-changed' | 'admin' | 'refresh-reuse';
+	reason: 'terminated' | 'password-changed' | 'admin' | 'refresh-reuse' | 'account-deleted';
 }

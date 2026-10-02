@@ -2358,10 +2358,28 @@ test('deleteMe: emits user.deleted with correct userId', async () => {
 	const bus = makeBus();
 	const ctrl = userController(makeStore(), config, bus as any);
 	await ctrl.deleteMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
-	assert.equal(bus.emitted.length, 1);
 	assert.equal(bus.emitted[0]?.type, EVENT_KEYS.userDeleted);
 	const p = bus.emitted[0]?.payload as any;
 	assert.equal(p.userId, 'user-1');
+});
+
+// The user's other devices used to stay signed in until their next request
+// failed. Deleting the account ends every session and says so live.
+test('deleteMe: ends every session and announces it (sids null, account-deleted)', async () => {
+	const bus = makeBus();
+	const seenSql: string[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			seenSql.push(sql);
+			return [] as unknown as T[];
+		},
+	} as IStoreAdapter;
+	const ctrl = userController(store, config, bus as any);
+	const res = await ctrl.deleteMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(res.status, 200);
+	assert.ok(seenSql.some((q) => /DELETE FROM fonderie_sessions WHERE user_id = \$1/.test(q)), 'sessions deleted');
+	const ev = bus.emitted.find((e) => e.type === EVENT_KEYS.sessionRevoked);
+	assert.deepEqual(ev?.payload, { userId: 'user-1', sids: null, reason: 'account-deleted' });
 });
 
 test('changePassword: revokes all of the user sessions', async () => {

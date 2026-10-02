@@ -381,6 +381,10 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
 			const userId = ctx.user!.id;
 			await users.softDelete(userId);
+			// End every session now, as a password change does. Without this the
+			// user's other devices stayed signed in until their next request
+			// failed — and were never told why.
+			await sessions.deleteByUser(userId);
 
 			const reqId = ctx.meta['requestId'] as string | undefined;
 			await background(bus
@@ -389,6 +393,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					{ userId },
 					reqId !== undefined ? { requestId: reqId } : undefined,
 				));
+			await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId, sids: null, reason: 'account-deleted' } satisfies ISessionRevokedEvent));
 
 			return Response.json(
 				{ reason: 'ACCOUNT_DELETED', explanation: 'Account successfully deleted.' },
