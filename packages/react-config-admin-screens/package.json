@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-config-admin-screens",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"description": "Pre-built React screens for the Fonderie config admin API — config/secret list, config editor with revision history and rollback.",
 	"keywords": [
 		"fonderiejs",
@@ -38,7 +38,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/react-config-admin": "^0.3.2"
+		"@fonderie/react-config-admin": "^0.3.3"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

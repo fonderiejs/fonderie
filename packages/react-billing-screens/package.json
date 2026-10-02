@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-billing-screens",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"description": "Pre-built React billing screens for Fonderie — pricing table, subscription management.",
 	"keywords": [
 		"fonderiejs",
@@ -36,7 +36,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/react-billing": "^0.9.1"
+		"@fonderie/react-billing": "^0.9.2"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

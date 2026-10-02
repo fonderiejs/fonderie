@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-audit-screens",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Pre-built Vue screen for Fonderie's audit log — filterable, cursor-paginated event list.",
 	"keywords": [
 		"fonderiejs",
@@ -36,7 +36,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/vue-audit": "^0.4.1"
+		"@fonderie/vue-audit": "^0.4.2"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"

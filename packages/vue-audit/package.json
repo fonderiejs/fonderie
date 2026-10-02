@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-audit",
-	"version": "0.4.1",
+	"version": "0.4.2",
 	"description": "Vue 3 composables for Fonderie's audit log — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
@@ -36,7 +36,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/vue": "^0.5.1"
+		"@fonderie/vue": "^0.5.2"
 	},
 	"peerDependencies": {
 		"vue": ">=3.3.0"
