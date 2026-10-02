@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue",
-	"version": "0.5.2",
+	"version": "0.5.3",
 	"description": "Shared Vue 3 provide/inject for Fonderie — provide one FonderieClient at the root, resolve it from any @fonderie/vue-* composable.",
 	"keywords": [
 		"fonderiejs",
@@ -34,7 +34,7 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^2.5.0"
+		"@fonderie/client": "^3.0.0"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"

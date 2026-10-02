@@ -1,5 +1,13 @@
 # @fonderie/vue-billing-screens
 
+## 0.3.4
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/vue-billing@0.10.3
+
 ## 0.3.3
 
 ### Patch Changes

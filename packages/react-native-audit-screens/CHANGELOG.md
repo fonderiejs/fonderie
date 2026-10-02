@@ -1,5 +1,13 @@
 # @fonderie/react-native-audit-screens
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-native-audit@0.1.3
+
 ## 0.2.2
 
 ### Patch Changes

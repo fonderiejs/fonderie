@@ -1,5 +1,12 @@
 # @fonderie/vue-admin
 
+## 1.2.2
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+
 ## 1.2.1
 
 ### Patch Changes
