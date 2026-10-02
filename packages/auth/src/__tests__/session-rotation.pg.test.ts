@@ -241,3 +241,13 @@ test('a password change revokes every session: sids null', { skip }, async () =>
 	await new Promise((r) => setTimeout(r, 50));
 	assert.deepEqual(revoked().map((p) => ({ sids: p['sids'], reason: p['reason'] })), [{ sids: null, reason: 'password-changed' }]);
 });
+
+test('deleting the account revokes every session: sids null, account-deleted', { skip }, async () => {
+	const d = await twoDevices();
+	const res = await fetch(`${base}/users`, { method: 'DELETE', headers: { authorization: `Bearer ${d.a}` } });
+	assert.equal(res.status, 200, await res.text());
+	await new Promise((r) => setTimeout(r, 50));
+	assert.deepEqual(revoked().map((p) => ({ sids: p['sids'], reason: p['reason'] })), [{ sids: null, reason: 'account-deleted' }]);
+	const left = await store.query<{ n: string }>(`SELECT count(*)::text AS n FROM fonderie_sessions s JOIN fonderie_users u ON u.id = s.user_id WHERE u.email = $1`, [d.email]);
+	assert.equal(left[0]?.n, '0', 'no session survives');
+});
