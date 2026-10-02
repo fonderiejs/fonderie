@@ -103,6 +103,7 @@ jobs:
       # and every local `npm install` rewrote it. The version script now syncs it;
       # this fails the PR that lets it drift again.
       - run: npm run check:lockfile
+      - run: npm run check:internal-ranges
       # CI-env guard — a *_URL set above but not passed through turbo.json
       # silently skips its gated tests (admin and courier did, for weeks).
       - run: npm run check:ci-env

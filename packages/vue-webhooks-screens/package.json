@@ -34,8 +34,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/vue-webhooks": "*"
+		"@fonderie/client": "^2.5.0",
+		"@fonderie/vue-webhooks": "^0.5.1"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"
