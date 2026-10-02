@@ -6,7 +6,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import { DEFAULT_ALLOWED_TYPES, DEFAULT_MAX_BYTES, type IMediaConfig } from './config';
 import { MediaAssetModel } from './models/asset.model';
 import { toMediaAssetDTO } from './dtos/media';
-import { decodeBase64, sniffImageType } from './services/image';
+import { decodeBase64, describeRejectedImage, sniffImageType } from './services/image';
 
 type Route = [string, string, ...Middleware[]];
 
@@ -77,10 +77,14 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 
 				const contentType = sniffImageType(bytes);
 				if (!contentType || !allowed.includes(contentType)) {
+					// Say what arrived, not only what is allowed: a HEIC photo and
+					// a double-encoded JPEG fail the same way and are fixed
+					// differently.
+					const why = describeRejectedImage(bytes);
 					return setApiResponse(
 						HTTP.UNPROCESSABLE,
 						'ASSET_UNSUPPORTED',
-						`Unsupported image type. Allowed: ${allowed.join(', ')}.`,
+						`Unsupported image type.${why ? ` ${why}` : ''} Allowed: ${allowed.join(', ')}.`,
 					);
 				}
 

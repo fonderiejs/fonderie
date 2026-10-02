@@ -6,3 +6,4 @@ export type {
 	IUseUploadMediaReturn,
 } from './hooks';
 export { useDeleteMedia, useUploadAvatar, useUploadMedia } from './hooks';
+export type { MediaInput } from './lib/mediaInput';

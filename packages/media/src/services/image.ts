@@ -62,5 +62,30 @@ export function sniffImageType(bytes: Uint8Array): string | null {
 	) {
 		return 'image/webp';
 	}
+	// HEIC/HEIF and AVIF: an ISO-BMFF "ftyp" box (bytes 4-7) whose brand
+	// (bytes 8-11) names the format. Recognised so a rejection can say what it
+	// was — phones save photos as HEIC — and so a deployment can opt in.
+	if (b.length >= 12 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) {
+		const brand = String.fromCharCode(b[8]!, b[9]!, b[10]!, b[11]!);
+		if (brand === 'avif' || brand === 'avis') return 'image/avif';
+		if (['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1'].includes(brand)) return 'image/heic';
+	}
+	return null;
+}
+
+/**
+ * Why bytes that are not an accepted image were sent, in words a developer
+ * can act on: the format it is, or the encoding mistake it looks like. Null
+ * when nothing more specific than "not an image" can be said.
+ */
+export function describeRejectedImage(bytes: Uint8Array): string | null {
+	const type = sniffImageType(bytes);
+	if (type === 'image/heic') return 'This is a HEIC/HEIF photo (what phones save by default) — convert it to JPEG before uploading.';
+	if (type === 'image/avif') return 'This is an AVIF image — convert it to JPEG, PNG or WebP before uploading.';
+	if (type) return `This is ${type}.`;
+	const head = String.fromCharCode(...bytes.subarray(0, 16));
+	if (head.startsWith('data:')) return 'The payload is a data: URL — send only the base64 after the comma.';
+	// The base64 of a PNG/JPEG/GIF/WebP signature: the image was encoded twice.
+	if (/^(iVBORw0KGgo|\/9j\/|R0lGOD|UklGR)/.test(head)) return 'The image was base64-encoded twice — decode it once before sending.';
 	return null;
 }
