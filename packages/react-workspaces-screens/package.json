@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-workspaces-screens",
-	"version": "0.4.1",
+	"version": "0.4.2",
 	"description": "Pre-built React workspaces screens for Fonderie — team members, invitations.",
 	"keywords": [
 		"fonderiejs",
@@ -36,7 +36,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/react-workspaces": "^0.6.1"
+		"@fonderie/react-workspaces": "^0.6.2"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

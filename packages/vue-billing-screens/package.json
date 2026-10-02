@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-billing-screens",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"description": "Pre-built Vue billing screens for Fonderie — pricing table, subscription management.",
 	"keywords": [
 		"fonderiejs",
@@ -36,7 +36,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/vue-billing": "^0.10.1"
+		"@fonderie/vue-billing": "^0.10.2"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"

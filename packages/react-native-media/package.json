@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-media",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "React Native media hooks for Fonderie — re-exports @fonderie/react-media (no platform-specific code: FileReader/Blob exist on both).",
 	"keywords": [
 		"fonderiejs",
@@ -37,7 +37,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^2.5.0",
-		"@fonderie/react-media": "^0.2.0"
+		"@fonderie/react-media": "^0.2.1"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"
