@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-admin-screens",
-	"version": "1.7.1",
+	"version": "1.7.2",
 	"fonderie": {
 		"stability": "experimental"
 	},
@@ -38,10 +38,10 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^2.5.0",
-		"@fonderie/vue-admin": "^1.2.1",
-		"@fonderie/vue-config-admin-screens": "^0.8.1",
-		"@fonderie/vue-courier-admin-screens": "^0.11.1"
+		"@fonderie/client": "^3.0.0",
+		"@fonderie/vue-admin": "^1.2.2",
+		"@fonderie/vue-config-admin-screens": "^0.8.2",
+		"@fonderie/vue-courier-admin-screens": "^0.11.2"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"

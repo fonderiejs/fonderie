@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-courier-admin",
-	"version": "0.5.2",
+	"version": "0.5.3",
 	"description": "React hooks for the Fonderie courier admin API (email/SMS/push template management) — thin bindings over @fonderie/client's CourierAdminClient.",
 	"keywords": [
 		"fonderiejs",
@@ -35,7 +35,7 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^2.5.0"
+		"@fonderie/client": "^3.0.0"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

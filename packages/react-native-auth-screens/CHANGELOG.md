@@ -1,5 +1,13 @@
 # @fonderie/react-native-auth-screens
 
+## 0.4.3
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-native-auth@0.13.0
+
 ## 0.4.2
 
 ### Patch Changes

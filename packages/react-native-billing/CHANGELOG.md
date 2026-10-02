@@ -1,5 +1,13 @@
 # @fonderie/react-native-billing
 
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-billing@0.9.3
+
 ## 0.2.4
 
 ### Patch Changes
