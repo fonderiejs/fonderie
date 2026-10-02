@@ -1,33 +1,34 @@
-import type { AuthClient, IAppleNativeInput, ILoginResult, IMfaRequiredResult } from '@fonderie/client';
+import type { AuthClient, IGoogleNativeInput, ILoginResult, IMfaRequiredResult } from '@fonderie/client';
 import { FonderieApiError, isMfaRequired } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 import { persistToken } from '../storage';
 
-export interface IUseAppleSignInReturn {
-	// Complete a native Sign in with Apple. The app gets the `identityToken` from
-	// the native Apple sheet (e.g. expo-apple-authentication) and passes it here;
-	// on success the session token is stored exactly like a password login.
+export interface IUseGoogleSignInReturn {
+	// Complete a native Sign in with Google. The app gets the `idToken` from the
+	// Google SDK (e.g. @react-native-google-signin/google-signin, configured with
+	// the API's web client id as webClientId) and passes it here; on success the
+	// session token is stored exactly like a password login.
 	// An account with MFA answers `{ mfaToken }` instead (check isMfaRequired)
 	// — finish with useMfaLogin, as after a password.
-	signIn: (input: IAppleNativeInput) => Promise<ILoginResult | IMfaRequiredResult>;
+	signIn: (input: IGoogleNativeInput) => Promise<ILoginResult | IMfaRequiredResult>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 	data: ILoginResult | null;
 }
 
-export function useAppleSignIn(client?: AuthClient): IUseAppleSignInReturn {
-	const auth = useFonderieSubClient(client, (c) => c.auth, 'useAppleSignIn');
+export function useGoogleSignIn(client?: AuthClient): IUseGoogleSignInReturn {
+	const auth = useFonderieSubClient(client, (c) => c.auth, 'useGoogleSignIn');
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<FonderieApiError | null>(null);
 	const [data, setData] = useState<ILoginResult | null>(null);
 
 	const signIn = useCallback(
-		async (input: IAppleNativeInput) => {
+		async (input: IGoogleNativeInput) => {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const { result } = await auth.appleNative(input);
+				const { result } = await auth.googleNative(input);
 				if (isMfaRequired(result)) return result; // no session until the second factor
 				auth.setAccessToken(result.tokens.access);
 				await persistToken(result.tokens.access);

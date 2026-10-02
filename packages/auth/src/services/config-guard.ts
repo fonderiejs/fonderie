@@ -64,22 +64,41 @@ export function collectAuthConfigProblems(config: IAuthConfig): IReadinessProble
 	// bearer credential to Google — a placeholder or blank value is as unsafe as
 	// a weak jwtSecret, so it's a boot-blocking error in production.
 	if (config.google) {
+		// Two ways to use Google, each complete on its own: the web redirect
+		// flow (clientSecret + redirectUri) and native sign-in (nativeClientIds).
+		// Half of the web pair is a mistake either way.
 		const clientSecret = config.google.clientSecret ?? '';
-		if (!clientSecret || !config.google.clientId || !config.google.redirectUri) {
+		const web = Boolean(clientSecret || config.google.redirectUri);
+		const webComplete = Boolean(clientSecret && config.google.redirectUri);
+		const native = (config.google.nativeClientIds ?? []).filter(Boolean).length > 0;
+		if (!config.google.clientId || (web && !webComplete) || (!webComplete && !native)) {
 			problems.push({
 				module: MODULE,
 				severity: 'error',
-				message: 'google OAuth is configured but clientId, clientSecret, or redirectUri is missing',
+				message:
+					'google OAuth is configured but incomplete: set clientId, and clientSecret + redirectUri (web sign-in) and/or nativeClientIds (app sign-in)',
 				domain: 'auth',
 				reason: 'GOOGLE_INCOMPLETE',
 			});
-		} else if (PLACEHOLDER_SECRET.test(clientSecret)) {
+		} else if (clientSecret && PLACEHOLDER_SECRET.test(clientSecret)) {
 			problems.push({
 				module: MODULE,
 				severity: 'error',
 				message: 'google.clientSecret looks like a placeholder or dev-default value',
 				domain: 'auth',
 				reason: 'GOOGLE_SECRET_PLACEHOLDER',
+			});
+		}
+		// The audience allow-list for POST /auth/google/native: an empty or
+		// wildcard entry would accept ID tokens minted for other Google apps.
+		if (config.google.nativeClientIds?.some((id) => !id || id.trim() === '' || id.includes('*'))) {
+			problems.push({
+				module: MODULE,
+				severity: 'error',
+				message:
+					'google.nativeClientIds must be exact client ids — empty or wildcard entries would accept ID tokens minted for other apps',
+				domain: 'auth',
+				reason: 'GOOGLE_NATIVE_IDS_INVALID',
 			});
 		}
 	}
