@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-media",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Vue 3 composables for Fonderie media — image/avatar upload over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
