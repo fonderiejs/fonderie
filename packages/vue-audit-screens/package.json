@@ -35,8 +35,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/vue-audit": "*"
+		"@fonderie/client": "^2.5.0",
+		"@fonderie/vue-audit": "^0.4.1"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"

@@ -35,8 +35,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/vue-billing": "*"
+		"@fonderie/client": "^2.5.0",
+		"@fonderie/vue-billing": "^0.10.1"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"
