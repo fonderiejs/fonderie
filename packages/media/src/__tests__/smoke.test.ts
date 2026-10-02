@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { decodeBase64, sniffImageType } from '../services/image';
+import { decodeBase64, describeRejectedImage, sniffImageType } from '../services/image';
 import { LocalFsProvider } from '@fonderie/storage';
 import { MediaModule } from '../module';
 import { buildMediaRoutes } from '../routes';
@@ -144,4 +144,47 @@ test('MediaModule advertises its name and auth dependency', () => {
 	const mod = new MediaModule({} as never, { provider: new LocalFsProvider('/tmp/x') });
 	assert.equal(mod.name, '@fonderie/media');
 	assert.deepEqual(mod.deps, ['@fonderie/auth']);
+});
+
+// ISO-BMFF header: size, "ftyp", brand.
+const ftyp = (brand: string) => new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, ...Buffer.from(brand), 0, 0, 0, 0]);
+
+test('sniffImageType names HEIC/HEIF and AVIF (phones save photos as HEIC)', () => {
+	for (const brand of ['heic', 'heix', 'mif1']) assert.equal(sniffImageType(ftyp(brand)), 'image/heic', brand);
+	assert.equal(sniffImageType(ftyp('avif')), 'image/avif');
+	assert.equal(sniffImageType(ftyp('isom')), null, 'an MP4 is not an image');
+});
+
+test('a rejected upload says what arrived, not only what is allowed', async () => {
+	const { provider, calls } = fakeProvider();
+	const handler = uploadHandler({ provider } as IMediaConfig, {});
+	const explain = async (bytes: Uint8Array) => {
+		const res = await handler(ctx({ dataBase64: Buffer.from(bytes).toString('base64') }));
+		assert.equal(res.status, 422);
+		const body = (await res.json()) as { reason: string; explanation: string };
+		assert.equal(body.reason, 'ASSET_UNSUPPORTED');
+		return body.explanation;
+	};
+	assert.match(await explain(ftyp('heic')), /HEIC\/HEIF photo .* convert it to JPEG/);
+	// A JPEG whose base64 was base64-encoded again.
+	const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1]);
+	assert.match(await explain(Buffer.from(Buffer.from(jpeg).toString('base64'))), /base64-encoded twice/);
+	// Nothing recognisable: the message stays the generic one.
+	assert.equal(await explain(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])), 'Unsupported image type. Allowed: image/png, image/jpeg, image/webp, image/gif.');
+	assert.equal(calls.put, 0);
+});
+
+test('describeRejectedImage: an encoded data: URL is named', () => {
+	assert.match(describeRejectedImage(Buffer.from('data:image/png;base64,iVBOR'))!, /data: URL/);
+	assert.equal(describeRejectedImage(new Uint8Array([9, 9, 9])), null);
+});
+
+test('a deployment can opt into HEIC (now that it is recognised)', async () => {
+	const { provider, calls } = fakeProvider();
+	// The metadata insert fails on purpose: reaching storage at all is the proof
+	// the bytes passed the type check.
+	const store = { query: async () => { throw new Error('stop after the type check'); } };
+	const handler = uploadHandler({ provider, allowedTypes: ['image/heic'] } as IMediaConfig, store);
+	await handler(ctx({ dataBase64: Buffer.from(ftyp('heic')).toString('base64') })).catch(() => undefined);
+	assert.equal(calls.put, 1);
 });
