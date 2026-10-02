@@ -1,6 +1,6 @@
 # Sessions that behave like WhatsApp's — design and build order
 
-Status: Phases 1, 2, 3a, 3c and 5 shipped; 4 in progress (SDK done, app next); 1b, 3b and 6 planned (2026-10-01).
+Status: Phases 1, 2, 3a, 3c, 4 and 5 shipped; 1b, 3b and 6 planned (2026-10-01).
 
 ## 1. The problem
 
@@ -105,7 +105,16 @@ never the text "undefined").
 rate limit keeps it and reports `offline`; `onAuthError(info)` says why
 (`revoked` live with the server's reason, `expired`, `no-refresh-token`);
 `isSessionRefusal(err)` for app code; `useSession` (React, React Native, Vue)
-no longer signs out on a network error. App: next. Original plan: A session state in the client
+no longer signs out on a network error. App ✅ (the reference app): signed in =
+a profile **and** a refresh token; a server-ended session signs out once with
+a message; Keychain tokens from a previous install are dropped on a fresh
+install's first launch (detected by AsyncStorage having no saved state — so
+app updates keep their session); the plaintext AsyncStorage token copy is no
+longer kept in sync. Found on the way: every sign-in path stored the server's
+plain-string tokens where the store expected `{ token, expires }`, leaving no
+readable refresh token — users were signed out after the first access-token
+expiry or cold start. Apps should normalise the sign-in payload in one place.
+Original plan: A session state in the client
 (`signedOut | active | offline | revoked`) that the hooks expose; a 401 after a
 failed refresh is *definitive*, a network error is not. The app derives
 "signed in" from it, validates in the background at start (never blocking the
