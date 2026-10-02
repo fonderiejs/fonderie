@@ -16,13 +16,15 @@ const reasons: typeof en = {
 		INSECURE_COOKIES:
 			'secureCookies est désactivé — les cookies de connexion peuvent circuler en HTTP non chiffré en production.',
 		GOOGLE_INCOMPLETE:
-			'La connexion Google est configurée, mais l’ID client, le secret client ou l’URI de redirection manque.',
+			'La connexion Google est configurée mais incomplète : indiquez l’ID client, plus le secret client et l’URI de redirection (connexion web) et/ou les ID clients natifs (connexion dans l’app).',
 		GOOGLE_SECRET_PLACEHOLDER:
 			'Le secret client Google ressemble à une valeur d’exemple ou de développement.',
 		APPLE_INCOMPLETE:
 			'Se connecter avec Apple est configuré, mais l’ID client, l’ID d’équipe, l’ID de clé, la clé privée ou l’URI de redirection manque.',
 		APPLE_KEY_NOT_PEM:
 			'La clé privée Apple n’est pas une clé PEM .p8 (attendu : -----BEGIN PRIVATE KEY-----).',
+		GOOGLE_NATIVE_IDS_INVALID:
+			'Les ID clients natifs Google doivent être des ID clients exacts — une entrée vide ou générique accepterait des jetons émis pour d’autres applications.',
 		APPLE_NATIVE_IDS_INVALID:
 			'Les ID clients natifs Apple doivent être des identifiants de bundle exacts — une entrée vide ou générique accepterait des jetons émis pour d’autres applications.',
 		MFA_KEY_MISSING:

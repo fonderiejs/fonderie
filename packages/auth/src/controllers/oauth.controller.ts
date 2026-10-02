@@ -1,4 +1,4 @@
-import { randomBytes, createPublicKey, createHash, type KeyObject } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 
 import { tokenPairCookies, cookieHeaders } from '../services/cookies';
@@ -10,7 +10,8 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IAuthConfig } from '../config';
 import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
-import { issueTokenPair, refreshTokenExpiry } from '../services/jwt';
+import { issueMfaPendingToken, issueTokenPair, refreshTokenExpiry } from '../services/jwt';
+import { createJwksSource } from '../services/jwks';
 import { clientKindOf, configForClient } from '../services/session-policy';
 import { toUserDTO } from '../dtos/user';
 import { UserModel } from '../models/user.model';
@@ -57,58 +58,9 @@ export function mintAppleClientSecret(apple: AppleConfig): string {
 	);
 }
 
-// Apple's signing keys, cached for an hour. Module-level cache is safe: the keys
-// are public. Hardened against unknown-kid abuse: an attacker fully controls the
-// (unverified) kid on POST /auth/apple/native, and a naive "refetch on unknown
-// kid" turns every forged token into an outbound call to Apple. So refetches are
-// (a) single-flighted — concurrent callers share one fetch, (b) rate-limited to
-// at most one attempt per minute regardless of how many unknown kids arrive, and
-// (c) bounded by a request timeout so a slow/hung Apple never ties up handlers.
-interface AppleJwk { kid: string; kty: string; n: string; e: string; alg: string; use?: string }
-let appleKeyCache: { keys: AppleJwk[]; fetchedAt: number } | null = null;
-let appleKeyInflight: Promise<void> | null = null;
-let appleKeyLastAttempt = 0;
-const APPLE_KEYS_TTL_MS = 60 * 60 * 1000;
-const APPLE_KEYS_MIN_REFETCH_MS = 60 * 1000;
-const APPLE_KEYS_FETCH_TIMEOUT_MS = 5000;
-
-function refreshAppleKeys(): Promise<void> {
-	// Single-flight: one in-flight fetch is shared by all concurrent callers.
-	if (appleKeyInflight) return appleKeyInflight;
-	appleKeyLastAttempt = Date.now();
-	appleKeyInflight = (async () => {
-		try {
-			const res = await fetch(APPLE_KEYS_URL, { signal: AbortSignal.timeout(APPLE_KEYS_FETCH_TIMEOUT_MS) });
-			const data = (await res.json()) as { keys?: AppleJwk[] };
-			if (Array.isArray(data.keys)) appleKeyCache = { keys: data.keys, fetchedAt: Date.now() };
-		} catch {
-			// Keep any stale cache rather than failing outright.
-		} finally {
-			appleKeyInflight = null;
-		}
-	})();
-	return appleKeyInflight;
-}
-
-async function getApplePublicKey(kid: string): Promise<KeyObject | null> {
-	const find = () => appleKeyCache?.keys.find((k) => k.kid === kid) ?? null;
-	const cacheFresh = () => !!appleKeyCache && Date.now() - appleKeyCache.fetchedAt < APPLE_KEYS_TTL_MS;
-
-	let jwk = find();
-	// Refetch only when the kid is missing or the cache is stale — AND not more
-	// than once per minute, so a flood of attacker-chosen kids can trigger at
-	// most one outbound fetch per minute, never one per request.
-	if ((!jwk || !cacheFresh()) && Date.now() - appleKeyLastAttempt >= APPLE_KEYS_MIN_REFETCH_MS) {
-		await refreshAppleKeys();
-		jwk = find();
-	}
-	if (!jwk) return null;
-	try {
-		return createPublicKey({ key: jwk as unknown as JsonWebKey, format: 'jwk' });
-	} catch {
-		return null;
-	}
-}
+// Apple's signing keys (cached, hardened against unknown-kid floods — see
+// services/jwks.ts).
+const appleKeys = createJwksSource(APPLE_KEYS_URL);
 
 // Verify an Apple id_token: signature against the JWKS (by kid), issuer, and
 // audience (Services ID for web; allow-listed bundle ids for native). exp is
@@ -122,7 +74,7 @@ export async function verifyAppleIdToken(
 	if (!decoded || typeof decoded === 'string') return null;
 	const kid = decoded.header.kid;
 	if (!kid) return null;
-	const key = await getApplePublicKey(kid);
+	const key = await appleKeys.getKey(kid);
 	if (!key) return null;
 	try {
 		const payload = jwt.verify(idToken, key, {
@@ -147,12 +99,55 @@ export async function verifyAppleIdToken(
 const appleEmailVerified = (c: AppleClaims): boolean =>
 	c.email_verified === true || c.email_verified === 'true';
 
+// ── Sign in with Google (native) ─────────────────────────────────────────────
+// The app's Google SDK hands it an ID token; it never came from our own TLS
+// exchange with Google (unlike the web callback's code exchange), so its
+// signature is verified against Google's published keys, its audience against
+// the allow-listed client ids, and it is redeemed once.
+const GOOGLE_KEYS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'] as const;
+const googleKeys = createJwksSource(GOOGLE_KEYS_URL);
+
+interface GoogleClaims {
+	email?: string;
+	sub?: string;
+	email_verified?: boolean | string;
+	nonce?: string;
+	exp?: number;
+}
+
+export async function verifyGoogleIdToken(
+	idToken: string,
+	opts: { audiences: string[]; nonce?: string | undefined },
+): Promise<GoogleClaims | null> {
+	if (opts.audiences.length === 0) return null;
+	const decoded = jwt.decode(idToken, { complete: true });
+	if (!decoded || typeof decoded === 'string') return null;
+	const kid = decoded.header.kid;
+	if (!kid) return null;
+	const key = await googleKeys.getKey(kid);
+	if (!key) return null;
+	try {
+		const payload = jwt.verify(idToken, key, {
+			algorithms: ['RS256'],
+			issuer: [...GOOGLE_ISSUERS] as [string, ...string[]],
+			audience: opts.audiences as [string, ...string[]],
+		}) as GoogleClaims;
+		if (opts.nonce !== undefined && payload.nonce !== opts.nonce) return null;
+		return payload;
+	} catch {
+		return null;
+	}
+}
+
+const googleEmailVerified = (c: GoogleClaims): boolean =>
+	c.email_verified === true || c.email_verified === 'true';
+
 // Test-only: reset the module-level JWKS cache/rate-limit state so each test can
 // exercise a fresh fetch. Never called in production code paths.
 export function __resetAppleKeysForTests(): void {
-	appleKeyCache = null;
-	appleKeyInflight = null;
-	appleKeyLastAttempt = 0;
+	appleKeys.reset();
+	googleKeys.reset();
 }
 
 export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus) {
@@ -253,62 +248,91 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 		}
 	};
 
-	// Shared tail for both Apple flows (web callback + native token): given
-	// verified claims, upsert the account by email, open a session, record the
-	// login event, and return the same token/user envelope the Google flow does.
-	const completeAppleLogin = async (
+	// Shared tail of every OAuth sign-in (Apple web + native, Google web +
+	// native): given verified claims, upsert the account by email, then either
+	// ask for the second factor or open a session — the same outcomes as a
+	// password sign-in.
+	const PROVIDER = {
+		apple: { label: 'Apple', failed: 'APPLE_AUTH_FAILED', success: 'APPLE_AUTH_SUCCESS' },
+		google: { label: 'Google', failed: 'GOOGLE_AUTH_FAILED', success: 'GOOGLE_AUTH_SUCCESS' },
+	} as const;
+
+	const completeOAuthLogin = async (
 		ctx: IFonderieContext,
+		provider: 'apple' | 'google',
 		claims: { email?: string | undefined; sub?: string | undefined; emailVerified: boolean },
+		// The web flows' one-time CSRF cookie, cleared once the flow completes.
+		clearCookies: string[] = [],
 	): Promise<Response> => {
+		const p = PROVIDER[provider];
+		const method = provider === 'apple' ? 'oauth-apple' : 'oauth-google';
 		const meta = requestMeta(ctx);
 		if (!claims.email) {
-			return setApiResponse(HTTP.BAD_REQUEST, 'APPLE_AUTH_FAILED', 'No email in Apple identity token');
+			return setApiResponse(HTTP.BAD_REQUEST, p.failed, `No email in ${p.label} identity token`);
 		}
 		// Linking is BY EMAIL — an unverified address would let its holder take
-		// over an account registered with it. Apple verifies both real and
-		// private-relay addresses; require it.
+		// over an account registered with it.
 		if (!claims.emailVerified) {
-			return setApiResponse(HTTP.BAD_REQUEST, 'APPLE_AUTH_FAILED', 'Apple account email is not verified');
+			return setApiResponse(HTTP.BAD_REQUEST, p.failed, `${p.label} account email is not verified`);
 		}
 		const normalizedEmail = normalizeEmailSafe(claims.email);
 		if (!normalizedEmail) {
-			return setApiResponse(HTTP.BAD_REQUEST, 'APPLE_AUTH_FAILED', 'Invalid email in Apple identity token');
+			return setApiResponse(HTTP.BAD_REQUEST, p.failed, `Invalid email in ${p.label} identity token`);
 		}
 
-		const upserted = await users.upsertByProvider(normalizedEmail, 'apple', claims.sub ?? '');
+		const upserted = await users.upsertByProvider(normalizedEmail, provider, claims.sub ?? '');
 		if (!upserted) {
 			await loginEvents.recordSafe({
 				userId: null,
 				emailAttempted: normalizedEmail,
-				method: 'oauth-apple',
+				method,
 				outcome: 'failed',
 				failureReason: 'provider_upsert_failed',
 				...meta,
 			});
-			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Apple login failed');
+			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', `${p.label} login failed`);
 		}
 
 		const fullUser = await users.findById(upserted.id);
 		if (!fullUser) {
-			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Apple login failed');
+			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', `${p.label} login failed`);
 		}
 
-		await announceOAuthUpsert(ctx, upserted, 'apple', fullUser);
+		await announceOAuthUpsert(ctx, upserted, provider, fullUser);
 
-		const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), { loginMethod: 'apple' });
+		// The same gates a password sign-in passes. A suspended account opens
+		// no session; an account with a second factor must present it — signing
+		// in with a linked Google/Apple account used to skip it entirely.
+		if (fullUser.suspended) {
+			return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+		}
+		if (fullUser.mfaEnabled) {
+			// The completed login is recorded on mfa/verify, as for a password.
+			const mfaToken = issueMfaPendingToken(upserted.id, config, provider);
+			return Response.json(
+				{
+					reason: 'MFA_REQUIRED',
+					explanation: 'Multi-factor authentication required',
+					result: { mfaToken },
+				},
+				{ status: 200, headers: cookieHeaders(clearCookies) },
+			);
+		}
+
+		const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), { loginMethod: provider });
 		await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
 		await loginEvents.recordSafe({
 			userId: upserted.id,
 			emailAttempted: normalizedEmail,
-			method: 'oauth-apple',
+			method,
 			outcome: 'success',
 			...meta,
 		});
 
 		return Response.json(
 			{
-				reason: 'APPLE_AUTH_SUCCESS',
-				explanation: 'Apple authentication successful.',
+				reason: p.success,
+				explanation: `${p.label} authentication successful.`,
 				result: {
 					tokens: { access: accessToken, refresh: refreshToken },
 					user: toUserDTO(fullUser),
@@ -316,19 +340,18 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 			},
 			{
 				status: 200,
-				headers: cookieHeaders([
-					...tokenPairCookies(accessToken, refreshToken, config),
-					// One-time value — clear the (SameSite=None) state cookie.
-					'oauth_state=; HttpOnly; SameSite=None; Secure; Path=/; Max-Age=0',
-				]),
+				headers: cookieHeaders([...tokenPairCookies(accessToken, refreshToken, config), ...clearCookies]),
 			},
 		);
 	};
 
+	const APPLE_STATE_CLEAR = 'oauth_state=; HttpOnly; SameSite=None; Secure; Path=/; Max-Age=0';
+	const GOOGLE_STATE_CLEAR = 'oauth_state=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0';
+
 	return {
 		googleInit: async (_ctx: IFonderieContext): Promise<Response> => {
 			const google = config.google;
-			if (!google) {
+			if (!google || !google.clientSecret || !google.redirectUri) {
 				return setApiResponse(
 					HTTP.NOT_IMPLEMENTED,
 					'NOT_CONFIGURED',
@@ -373,7 +396,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 
 		googleCallback: async (ctx: IFonderieContext): Promise<Response> => {
 			const google = config.google;
-			if (!google) {
+			if (!google || !google.clientSecret || !google.redirectUri) {
 				return setApiResponse(
 					HTTP.NOT_IMPLEMENTED,
 					'NOT_CONFIGURED',
@@ -460,63 +483,11 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 				);
 			}
 
-			const normalizedEmail = normalizeEmailSafe(payload.email);
-			if (!normalizedEmail) {
-				return setApiResponse(HTTP.BAD_REQUEST, 'GOOGLE_AUTH_FAILED', 'Invalid email in OAuth response');
-			}
-
-			const meta = requestMeta(ctx);
-
-			const upserted = await users.upsertByProvider(normalizedEmail, 'google', payload.sub ?? '');
-			if (!upserted) {
-				await loginEvents.recordSafe({
-					userId: null,
-					emailAttempted: normalizedEmail,
-					method: 'oauth-google',
-					outcome: 'failed',
-					failureReason: 'provider_upsert_failed',
-					...meta,
-				});
-				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
-			}
-
-			const fullUser = await users.findById(upserted.id);
-			if (!fullUser) {
-				return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'OAuth login failed');
-			}
-
-			await announceOAuthUpsert(ctx, upserted, 'google', fullUser);
-
-			const { accessToken, refreshToken, sid } = issueTokenPair(upserted.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
-				loginMethod: 'google',
-			});
-			await sessions.create(upserted.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
-			await loginEvents.recordSafe({
-				userId: upserted.id,
-				emailAttempted: normalizedEmail,
-				method: 'oauth-google',
-				outcome: 'success',
-				...meta,
-			});
-
-			return Response.json(
-				{
-					reason: 'GOOGLE_AUTH_SUCCESS',
-					explanation: 'Google authentication successful.',
-					result: {
-						tokens: { access: accessToken, refresh: refreshToken },
-						user: toUserDTO(fullUser),
-					},
-				},
-				{
-					status: 200,
-					headers: cookieHeaders([
-						...tokenPairCookies(accessToken, refreshToken, config),
-						// One-time value — clear it once the flow completes.
-						'oauth_state=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0',
-					]),
-				},
-			);
+			return completeOAuthLogin(ctx, 'google', {
+				email: payload.email,
+				sub: payload.sub,
+				emailVerified: payload.email_verified === true,
+			}, [GOOGLE_STATE_CLEAR]);
 		},
 
 		appleInit: async (_ctx: IFonderieContext): Promise<Response> => {
@@ -614,11 +585,11 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 			if (!claims) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'APPLE_AUTH_FAILED', 'Invalid Apple identity token');
 			}
-			return completeAppleLogin(ctx, {
+			return completeOAuthLogin(ctx, 'apple', {
 				email: claims.email,
 				sub: claims.sub,
 				emailVerified: appleEmailVerified(claims),
-			});
+			}, [APPLE_STATE_CLEAR]);
 		},
 
 		appleNative: async (ctx: IFonderieContext): Promise<Response> => {
@@ -680,10 +651,60 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 			}
 			consumedTokens.sweepExpiredSafe();
 
-			return completeAppleLogin(ctx, {
+			return completeOAuthLogin(ctx, 'apple', {
 				email: claims.email,
 				sub: claims.sub,
 				emailVerified: appleEmailVerified(claims),
+			}, [APPLE_STATE_CLEAR]);
+		},
+
+		// Sign in with Google from a native app: the Google SDK's ID token,
+		// verified here (signature, issuer, audience, expiry), redeemed once.
+		googleNative: async (ctx: IFonderieContext): Promise<Response> => {
+			const audiences = config.google?.nativeClientIds ?? [];
+			if (!config.google || audiences.length === 0) {
+				return setApiResponse(HTTP.NOT_IMPLEMENTED, 'NOT_CONFIGURED', 'Native Google sign-in not configured');
+			}
+			const body = ctx.meta['body'] as { idToken?: string; nonce?: string } | undefined;
+			const idToken = body?.idToken;
+			if (!idToken) {
+				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_PARAMETER', 'Missing idToken');
+			}
+
+			const claims = await verifyGoogleIdToken(idToken, { audiences, nonce: body?.nonce });
+			if (!claims) {
+				await loginEvents.recordSafe({
+					userId: null,
+					emailAttempted: null,
+					method: 'oauth-google',
+					outcome: 'failed',
+					failureReason: 'invalid_identity_token',
+					...requestMeta(ctx),
+				});
+				return setApiResponse(HTTP.UNAUTHORIZED, 'GOOGLE_AUTH_FAILED', 'Invalid Google ID token');
+			}
+
+			// Single-use: Google does not one-time an ID token for us, so a
+			// captured one could otherwise be replayed until it expires.
+			const tokenHash = createHash('sha256').update(idToken).digest('hex');
+			const expMs = typeof claims.exp === 'number' ? claims.exp * 1000 : Date.now() + 5 * 60 * 1000;
+			if (!(await consumedTokens.consumeOnce(tokenHash, new Date(expMs)))) {
+				await loginEvents.recordSafe({
+					userId: null,
+					emailAttempted: claims.email ?? null,
+					method: 'oauth-google',
+					outcome: 'failed',
+					failureReason: 'token_replayed',
+					...requestMeta(ctx),
+				});
+				return setApiResponse(HTTP.UNAUTHORIZED, 'GOOGLE_AUTH_FAILED', 'This Google ID token has already been used');
+			}
+			consumedTokens.sweepExpiredSafe();
+
+			return completeOAuthLogin(ctx, 'google', {
+				email: claims.email,
+				sub: claims.sub,
+				emailVerified: googleEmailVerified(claims),
 			});
 		},
 	};

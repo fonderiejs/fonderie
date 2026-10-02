@@ -47,6 +47,14 @@ export const appleNativeSchema = z.object({
 	nonce: z.string().max(256).optional(),
 });
 
+// Native Sign in with Google: the app posts the ID token the Google SDK gave it.
+export const googleNativeSchema = z.object({
+	idToken: z.string().min(1).max(8192),
+	// Optional nonce the app passed to the Google SDK; checked against the
+	// token's `nonce` claim (binds the token to this request).
+	nonce: z.string().max(256).optional(),
+});
+
 // refreshToken may come from the body or the refresh_token cookie.
 export const refreshSchema = z.object({ refreshToken: z.string().min(1).optional() });
 

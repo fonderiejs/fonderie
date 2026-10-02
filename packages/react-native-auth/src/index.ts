@@ -1,6 +1,7 @@
 export type {
 	AuthClient,
 	IAppleNativeInput,
+	IGoogleNativeInput,
 	ILoginInput,
 	ILoginResult,
 	IMfaRequiredResult,
@@ -28,6 +29,7 @@ export type {
 	IUseForgotPasswordReturn,
 	IUseLoginReturn,
 	IUseAppleSignInReturn,
+	IUseGoogleSignInReturn,
 	IUseLogoutReturn,
 	IUseAccountDataReturn,
 	IUseChangePasswordReturn,
@@ -47,6 +49,7 @@ export {
 	useForgotPassword,
 	useLogin,
 	useAppleSignIn,
+	useGoogleSignIn,
 	useLogout,
 	useAccountData,
 	useChangePassword,

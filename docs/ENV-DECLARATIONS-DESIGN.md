@@ -72,7 +72,7 @@ the admin module imports the same file at runtime.
       "source": "option", "required": "feature", "feature": "google",
       "secret": false, "kind": "url", "feeds": "google.redirectUri",
       "deprecatedNames": ["GOOGLE_CALLBACK_URL"],
-      "description": "Callback URL registered with Google, ending in /auth/oauth/google/callback."
+      "description": "Callback URL registered with Google, ending in /auth/google/callback."
     }
   ],
   "features": {

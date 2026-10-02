@@ -1,5 +1,5 @@
-import type { AuthClient, IAppleNativeInput, ILoginResult } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { AuthClient, IAppleNativeInput, ILoginResult, IMfaRequiredResult } from '@fonderie/client';
+import { FonderieApiError, isMfaRequired } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 import { persistToken } from '../storage';
@@ -8,7 +8,9 @@ export interface IUseAppleSignInReturn {
 	// Complete a native Sign in with Apple. The app gets the `identityToken` from
 	// the native Apple sheet (e.g. expo-apple-authentication) and passes it here;
 	// on success the session token is stored exactly like a password login.
-	signIn: (input: IAppleNativeInput) => Promise<ILoginResult>;
+	// An account with MFA answers `{ mfaToken }` instead (check isMfaRequired)
+	// — finish with useMfaLogin, as after a password.
+	signIn: (input: IAppleNativeInput) => Promise<ILoginResult | IMfaRequiredResult>;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 	data: ILoginResult | null;
@@ -26,6 +28,7 @@ export function useAppleSignIn(client?: AuthClient): IUseAppleSignInReturn {
 			setError(null);
 			try {
 				const { result } = await auth.appleNative(input);
+				if (isMfaRequired(result)) return result; // no session until the second factor
 				auth.setAccessToken(result.tokens.access);
 				await persistToken(result.tokens.access);
 				setData(result);

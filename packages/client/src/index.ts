@@ -7,6 +7,7 @@ export type { IListAuditEventsInput } from './modules/audit';
 export { AuditClient } from './modules/audit';
 export type {
 	IAppleNativeInput,
+	IGoogleNativeInput,
 	IChangePasswordInput,
 	IGetLoginHistoryInput,
 	ILoginInput,

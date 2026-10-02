@@ -386,7 +386,7 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 38,
+      "routeCount": 39,
       "routes": [
         {
           "method": "GET",
@@ -460,6 +460,11 @@
         },
         {
           "method": "POST",
+          "path": "/auth/google/native",
+          "mw": "ipLimit('login') → validate(googleNativeSchema) → oauth.googleNative"
+        },
+        {
+          "method": "POST",
           "path": "/auth/login",
           "mw": "ipLimit('login') → validate(loginSchema) → acctLimit('login') → auth.login"
         },
@@ -491,7 +496,7 @@
         {
           "method": "POST",
           "path": "/auth/mfa/verify",
-          "mw": "ipLimit('mfaVerify') → requireAnyAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.verify"
+          "mw": "ipLimit('mfaVerify') → requireAnyAuth → requireEmailLoginUnlessSigningIn → requireVerified → validate(mfaTokenSchema) → mfa.verify"
         },
         {
           "method": "DELETE",
@@ -1961,6 +1966,7 @@
         "useForgotPassword",
         "useLogin",
         "useAppleSignIn",
+        "useGoogleSignIn",
         "useLogout",
         "useAccountData",
         "useChangePassword",
@@ -6103,6 +6109,9 @@
       "vue-media"
     ],
     "useapplesignin": [
+      "react-native-auth"
+    ],
+    "usegooglesignin": [
       "react-native-auth"
     ],
     "webhookdetailscreen": [

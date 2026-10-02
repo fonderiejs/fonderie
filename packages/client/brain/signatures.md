@@ -112,6 +112,11 @@ interface IAppleNativeInput {
     nonce?: string;
 }
 
+interface IGoogleNativeInput {
+    idToken: string;
+    nonce?: string;
+}
+
 interface IChangePasswordInput {
     currentPassword: string;
     newPassword: string;
@@ -171,7 +176,8 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .unlinkOauth(provider: string): Promise<IApiResponse<null>>
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
   .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
-  .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult>>
+  .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
+  .googleNative(input: IGoogleNativeInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>

@@ -156,13 +156,14 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | POST | `/auth/email/reset` | `ipLimit('reset') → validate(resetPasswordSchema) → auth.resetPassword` |
 | GET | `/auth/google` | `oauth.googleInit` |
 | GET | `/auth/google/callback` | `ipLimit('login') → oauth.googleCallback` |
+| POST | `/auth/google/native` | `ipLimit('login') → validate(googleNativeSchema) → oauth.googleNative` |
 | POST | `/auth/login` | `ipLimit('login') → validate(loginSchema) → acctLimit('login') → auth.login` |
 | GET | `/auth/login-history` | `requireAuth → user.loginHistory` |
 | POST | `/auth/logout` | `requireAuth → validate(refreshSchema) → auth.logout` |
 | POST | `/auth/mfa/backup-codes` | `requireAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.regenerateBackupCodes` |
 | POST | `/auth/mfa/disable` | `requireAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.disable` |
 | POST | `/auth/mfa/setup` | `requireAuth → requireEmailLogin → requireVerified → mfa.setup` |
-| POST | `/auth/mfa/verify` | `ipLimit('mfaVerify') → requireAnyAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.verify` |
+| POST | `/auth/mfa/verify` | `ipLimit('mfaVerify') → requireAnyAuth → requireEmailLoginUnlessSigningIn → requireVerified → validate(mfaTokenSchema) → mfa.verify` |
 | DELETE | `/auth/oauth/:provider` | `requireAuth → user.unlinkOauth` |
 | GET | `/auth/providers` | `async () => setApiResponse(HTTP.OK, 'AUTH_PROVIDERS', 'Sign-in methods available here', { providers: [...config.providers], })` |
 | POST | `/auth/refresh` | `validate(refreshSchema) → auth.refresh` |

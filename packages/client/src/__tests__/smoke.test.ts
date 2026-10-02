@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 
-import { FonderieApiError, FonderieClient, createMemoryCache, describeLocation as describeLoc } from '../index';
+import { FonderieApiError, FonderieClient, createMemoryCache, describeLocation as describeLoc, isMfaRequired } from '../index';
 
 // ── fetch stub ───────────────────────────────────────────────────────────────
 type Handler = (
@@ -203,8 +203,21 @@ test('auth.appleNative posts the identityToken to /auth/apple/native and returns
 	const call = calls.find((x) => x.path.endsWith('/auth/apple/native'));
 	assert.equal(call?.method, 'POST');
 	assert.deepEqual(call?.body, { identityToken: 'id.tok.en', nonce: 'n1' });
+	if (isMfaRequired(result)) throw new Error('a session was expected, not a second-factor challenge');
 	assert.equal(result.tokens.access, 'a');
 	assert.equal(result.user.id, 'u1');
+});
+
+test('auth.googleNative: POSTs the ID token to /auth/google/native', async () => {
+	handler = () => ({
+		status: 200,
+		body: { reason: 'GOOGLE_AUTH_SUCCESS', explanation: '', result: { tokens: { access: 'a', refresh: 'r' }, user: { id: 'u1' } } },
+	});
+	const c = new FonderieClient({ baseUrl: 'http://x' });
+	await c.auth.googleNative({ idToken: 'google.id.token' });
+	const call = calls.find((x) => x.path.endsWith('/auth/google/native'));
+	assert.equal(call?.method, 'POST');
+	assert.deepEqual(call?.body, { idToken: 'google.id.token' });
 });
 
 // ── workspace scoping ────────────────────────────────────────────────────────

@@ -64,7 +64,7 @@ function keyRing(config: IAuthConfig): string[] {
 export function issueMfaPendingToken(
 	userId: string,
 	config: IAuthConfig,
-	loginMethod: 'email' | 'phone',
+	loginMethod: 'email' | 'phone' | 'google' | 'apple',
 ): string {
 	return jwt.sign(
 		{

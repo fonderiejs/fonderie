@@ -5,7 +5,7 @@ import type { EventBus } from '@fonderie/events';
 import type { IAuthConfig, AuthRouteId } from './config';
 
 import { requireAuth, requireAnyAuth, requireVerified } from '@fonderie/core/middlewares';
-import { requireEmailLogin } from './middlewares/require-email-login';
+import { requireEmailLogin, requireEmailLoginUnlessSigningIn } from './middlewares/require-email-login';
 import { validate } from './middlewares/validate';
 import { buildAuthIpLimiter, buildAuthAccountLimiter } from './services/rate-limit';
 import {
@@ -22,6 +22,7 @@ import {
 	forgotPasswordSchema,
 	updatePreferencesSchema,
 	appleNativeSchema,
+	googleNativeSchema,
 } from './schemas';
 
 import { mfaController } from './controllers/mfa.controller';
@@ -137,7 +138,7 @@ export function buildAuthRoutes(
 		R('mfaSetup', 'POST', '/auth/mfa/setup', requireAuth, requireEmailLogin, requireVerified, mfa.setup),
 		// /auth/mfa/verify accepts both mfaPending tokens (TOTP/backup-code login)
 		// and full tokens (setup confirmation), so requireAnyAuth is used here.
-		R('mfaVerify', 'POST', '/auth/mfa/verify', ipLimit('mfaVerify'), requireAnyAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.verify),
+		R('mfaVerify', 'POST', '/auth/mfa/verify', ipLimit('mfaVerify'), requireAnyAuth, requireEmailLoginUnlessSigningIn, requireVerified, validate(mfaTokenSchema), mfa.verify),
 		R('mfaDisable', 'POST', '/auth/mfa/disable', requireAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.disable),
 		R('mfaBackupCodes', 'POST', '/auth/mfa/backup-codes', requireAuth, requireEmailLogin, requireVerified, validate(mfaTokenSchema), mfa.regenerateBackupCodes),
 	];
@@ -148,6 +149,8 @@ export function buildAuthRoutes(
 			// ipLimit: an unauthenticated caller can otherwise force one outbound
 			// token-exchange to Google per request (the state check doesn't gate it).
 			['GET', '/auth/google/callback', ipLimit('login'), oauth.googleCallback],
+			// Native (Android/iOS) flow: the app posts the Google SDK's ID token.
+			['POST', '/auth/google/native', ipLimit('login'), validate(googleNativeSchema), oauth.googleNative],
 		);
 	}
 
