@@ -8,12 +8,12 @@
     "audit": "5.2.14",
     "auth": "7.21.0",
     "billing": "10.5.1",
-    "client": "3.1.0",
+    "client": "3.1.1",
     "config": "6.6.4",
     "core": "0.28.1",
     "courier": "7.13.6",
     "customers": "6.3.3",
-    "events": "5.11.6",
+    "events": "5.12.0",
     "geo": "0.5.9",
     "logger": "0.3.5",
     "media": "0.3.0",
@@ -805,7 +805,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.1.0",
+      "version": "3.1.1",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -1319,7 +1319,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.11.6",
+      "version": "5.12.0",
       "stability": "maturing",
       "requires": [
         "core",
