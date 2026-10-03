@@ -99,3 +99,30 @@ test('a failing first fetch is not retried in a loop', async () => {
 	assert.equal(screen.frames.at(-1)!.isLoading, false, 'the error shows instead of an endless spinner');
 	screen.unmount();
 });
+
+test('cold start with a saved snapshot: data on the first frame, then refreshed behind it', async () => {
+	const part = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
+	const token = `${part({ alg: 'none' })}.${part({ sub: 'u-cold' })}.sig`;
+	const saved = new Map<string, string>([
+		[
+			'fonderie.queries.v1',
+			JSON.stringify({ v: 1, owner: 'u-cold', savedAt: Date.now(), entries: [['k-cold', { plan: 'starter' }, Date.now() - 60_000]] }),
+		],
+	]);
+	const client = new FonderieClient({
+		baseUrl: 'http://localhost',
+		accessToken: token,
+		queries: { persist: { storage: { getItem: async (k: string) => saved.get(k) ?? null, setItem: async (k: string, v: string) => void saved.set(k, v) } } },
+	});
+	await client.queries.hydrated; // an app holds its splash screen on this
+	let calls = 0;
+	const screen = await mount(client, 'k-cold', async () => {
+		calls++;
+		return { plan: 'pro' };
+	});
+	assert.deepEqual(screen.frames[0], { data: { plan: 'starter' }, isLoading: false, isFetching: false }, 'the saved data, at once');
+	assert.equal(screen.frames.some((f) => f.isLoading), false, 'never a spinner');
+	assert.equal(calls, 1, 'a cold start refreshes what it restored');
+	assert.deepEqual(screen.frames.at(-1)!.data, { plan: 'pro' });
+	screen.unmount();
+});
