@@ -1,7 +1,6 @@
-import type { IWorkspaceDTO } from '@fonderie/client';
-import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IWorkspaceDTO } from '@fonderie/client';
+import { WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery } from '@fonderie/react';
 
 export interface IUseWorkspaceReturn {
 	workspace: IWorkspaceDTO | null;
@@ -27,31 +26,12 @@ export function useWorkspace(
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
 	const workspaceId = firstIsClient ? (maybeId as string) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useWorkspace');
-	const [workspace, setWorkspace] = useState<IWorkspaceDTO | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await workspaces.getWorkspace(workspaceId, { bust: opts?.force });
-				setWorkspace(result.workspace);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[workspaces, workspaceId],
+	// Keyed by the id asked for, not the selected workspace.
+	const q = useScopedQuery(
+		workspaces,
+		`/workspaces/${encodeURIComponent(workspaceId)}`,
+		async (bust) => (await workspaces.getWorkspace(workspaceId, { bust })).result.workspace,
+		{ perWorkspace: false },
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { workspace, isLoading, error, refresh };
+	return { workspace: q.data ?? null, isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

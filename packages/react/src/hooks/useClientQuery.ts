@@ -24,8 +24,12 @@ export interface IClientQueryResult<T> {
 	isLoading: boolean;
 	/** A request is in flight — a refresh behind data shown. Not a reason for a spinner. */
 	isFetching: boolean;
-	/** Fetch now (pull-to-refresh, after a write). Resolves with the data held after it. */
-	refresh: () => Promise<T | undefined>;
+	/**
+	 * Fetch now (pull-to-refresh, after a write) — always, whatever the
+	 * staleness. `force` is handed to the fetcher (the HTTP cache's `bust`).
+	 * Resolves with the data held after it.
+	 */
+	refresh: (opts?: { force?: boolean }) => Promise<T | undefined>;
 }
 
 const EMPTY: IQueryEntry = Object.freeze({ data: undefined, error: null, updatedAt: 0, isFetching: false });
@@ -35,8 +39,9 @@ const noop = () => {};
  * @param source  the FonderieClient or sub-client the hook reads through
  * @param key     the query key — include everything the answer depends on
  *                (path, workspace, params); null = nothing to read
- * @param fetcher performs the request; `force` is true for an explicit refresh
- *                (pass it on as the HTTP cache's `bust`)
+ * @param fetcher performs the request; `force` is what refresh() was asked
+ *                (pass it on as the HTTP cache's `bust`) — false for reads
+ *                the store starts itself
  */
 export function useClientQuery<T>(
 	source: object,
@@ -69,10 +74,13 @@ export function useClientQuery<T>(
 		});
 	}, [enabled, key, store, entry.updatedAt, opts.staleMs]);
 
-	const refresh = useCallback(async () => {
-		if (!key) return undefined;
-		return store.fetch(key, () => fetcherRef.current({ force: true }), { force: true });
-	}, [store, key]);
+	const refresh = useCallback(
+		async (o?: { force?: boolean }) => {
+			if (!key) return undefined;
+			return store.fetch(key, () => fetcherRef.current({ force: o?.force === true }), { force: true });
+		},
+		[store, key],
+	);
 
 	const nothingToShow = entry.data === undefined;
 	return {

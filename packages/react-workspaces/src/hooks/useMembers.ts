@@ -1,7 +1,6 @@
-import type { IMemberDTO, WorkspacesClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IMemberDTO, WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
 
 export interface IUseMembersReturn {
 	members: IMemberDTO[];
@@ -11,49 +10,19 @@ export interface IUseMembersReturn {
 	removeMember: (userId: string) => Promise<void>;
 }
 
+const NONE: IMemberDTO[] = [];
+
+// The selected workspace's members — re-read on a workspace switch.
 export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useMembers');
-	const [members, setMembers] = useState<IMemberDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await workspaces.listMembers({ bust: opts?.force });
-				setMembers(result.members);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[workspaces],
-	);
-
+	const q = useScopedQuery(workspaces, '/workspaces/members', async (bust) => (await workspaces.listMembers({ bust })).result.members);
+	const w = useWrite(q.refresh);
 	const removeMember = useCallback(
-		async (userId: string) => {
-			setError(null);
-			try {
+		(userId: string) =>
+			w.run(async () => {
 				await workspaces.removeMember(userId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[workspaces, refresh],
+			}),
+		[workspaces, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { members, isLoading, error, refresh, removeMember };
+	return { members: q.data ?? NONE, isLoading: q.isLoading, error: w.error ?? q.error, refresh: q.refresh, removeMember };
 }
