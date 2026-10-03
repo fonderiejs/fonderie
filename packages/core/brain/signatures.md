@@ -160,6 +160,7 @@ interface IFonderieContextMeta {
     userId?: string;
     userWorkspaceRoles?: string[];
     message?: ICourierMessage;
+    bridged?: Readonly<IFonderieContextMeta>;
     [key: string]: unknown;
 }
 

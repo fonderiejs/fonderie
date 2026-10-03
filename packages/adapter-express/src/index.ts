@@ -334,7 +334,13 @@ export function mount<T extends ExpressApp>(
 		// client IP. handle() builds a fresh context, so without this seed every
 		// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).
 		const clientIp = req._fonderie?.meta.clientIp;
-		const webRes = await fonderie.handle(webReq, clientIp ? { meta: { clientIp } } : undefined);
+		// bridged: the bridge pass's meta, so per-request side effects
+		// (billing's request counter) are not repeated inside handle().
+		const bridged = req._fonderie?.meta;
+		const webRes = await fonderie.handle(
+			webReq,
+			bridged ? { meta: { ...(clientIp ? { clientIp } : {}), bridged } } : undefined,
+		);
 		await webResponseToExpress(webRes, res);
 	};
 
