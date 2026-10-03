@@ -1,12 +1,14 @@
 import type {
 	BillingClient,
+	FonderieApiError,
 	ICreatePlanInput,
 	IPlanDTO,
 	IUpdatePlanInput,
 } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+
+import { toApiError, useBillingQuery } from './workspace';
 
 export interface IUsePlansReturn {
 	plans: IPlanDTO[];
@@ -18,85 +20,61 @@ export interface IUsePlansReturn {
 	deletePlan: (planId: string) => Promise<void>;
 }
 
+const NO_PLANS: IPlanDTO[] = [];
+
 export function usePlans(client?: BillingClient): IUsePlansReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePlans');
-	const [plans, setPlans] = useState<IPlanDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await billing.listPlans({ bust: opts?.force });
-				setPlans(result.plans);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[billing],
+	// The catalog is the same for every subscriber: not keyed by workspace.
+	const q = useBillingQuery<IPlanDTO[]>(
+		billing,
+		'/plans',
+		async (bust) => (await billing.listPlans({ bust })).result.plans,
+		{ perWorkspace: false },
 	);
+	const [writeError, setWriteError] = useState<FonderieApiError | null>(null);
+	const refresh = q.refresh;
 
 	// These writes are not auth-gated by @fonderie/billing —
 	// gate the UI that calls them behind your own admin check before shipping it.
+	const write = useCallback(
+		async <R,>(run: () => Promise<R>): Promise<R> => {
+			setWriteError(null);
+			try {
+				const out = await run();
+				await refresh();
+				return out;
+			} catch (err) {
+				const apiError = toApiError(err);
+				setWriteError(apiError);
+				throw apiError;
+			}
+		},
+		[refresh],
+	);
 	const createPlan = useCallback(
-		async (input: ICreatePlanInput) => {
-			setError(null);
-			try {
-				const { result } = await billing.createPlan(input);
-				await refresh();
-				return result.plan;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[billing, refresh],
+		(input: ICreatePlanInput) => write(async () => (await billing.createPlan(input)).result.plan),
+		[billing, write],
 	);
-
 	const updatePlan = useCallback(
-		async (planId: string, input: IUpdatePlanInput) => {
-			setError(null);
-			try {
-				const { result } = await billing.updatePlan(planId, input);
-				await refresh();
-				return result.plan;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[billing, refresh],
+		(planId: string, input: IUpdatePlanInput) =>
+			write(async () => (await billing.updatePlan(planId, input)).result.plan),
+		[billing, write],
 	);
-
 	const deletePlan = useCallback(
-		async (planId: string) => {
-			setError(null);
-			try {
+		(planId: string) =>
+			write(async () => {
 				await billing.deletePlan(planId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[billing, refresh],
+			}),
+		[billing, write],
 	);
 
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { plans, isLoading, error, refresh, createPlan, updatePlan, deletePlan };
+	return {
+		plans: q.data ?? NO_PLANS,
+		isLoading: q.isLoading,
+		error: writeError ?? q.error,
+		refresh,
+		createPlan,
+		updatePlan,
+		deletePlan,
+	};
 }

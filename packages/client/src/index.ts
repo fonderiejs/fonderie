@@ -283,3 +283,7 @@ export type {
 	AdminT,
 	IReasonLike,
 } from './admin-i18n';
+
+// The screens' shared read model (client.queries).
+export { QueryStore, queryStoreFor, deepEqual } from './query-store';
+export type { IQueryEntry, IQueryFetchOptions, IQueryStoreOptions } from './query-store';

@@ -15,6 +15,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .media: MediaClient
   .config: ConfigClient
   .sse: SseClient
+  .queries: QueryStore
   .session: SessionState
   .onSessionChange(listener: (state: SessionState) => void): () => void
   .setAccessToken(token: string | undefined): void
@@ -96,6 +97,8 @@ type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
 function isSwitchOn(value: unknown): boolean
 
+function useClientQuery<T>(source: object, key: () => string | null, fetcher: (ctx: { force: boolean; }) => Promise<T>, opts?: IUseClientQueryOptions): IClientQueryResult<T>
+
 function useRemoteConfig<T>(key: MaybeRefOrGetter<string>, fallback: T, client?: ConfigClient | undefined): ComputedRef<T>
 
 function useSse(topics: MaybeRefOrGetter<string[]>, onEvent: (event: ISseClientEvent) => void, options?: IUseSseOptions, client?: SseClient | undefined): void
@@ -103,6 +106,18 @@ function useSse(topics: MaybeRefOrGetter<string[]>, onEvent: (event: ISseClientE
 function useSseStatus(client?: SseClient | undefined): Readonly<Ref<SseStatus, SseStatus>>
 
 function withRemoteConfig(key: string, component: Component, options?: IWithRemoteConfigOptions): Component
+
+interface IClientQueryResult<T> {
+    data: ComputedRef<T | undefined>;
+    error: ComputedRef<unknown>;
+    isLoading: ComputedRef<boolean>;
+    isFetching: ComputedRef<boolean>;
+    refresh: () => Promise<T | undefined>;
+}
+
+interface IUseClientQueryOptions {
+    staleMs?: number;
+}
 
 interface IUseSseOptions {
     onReset?: () => void;

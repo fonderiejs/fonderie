@@ -1,4 +1,5 @@
 import type { ICache } from './cache';
+import { QueryStore, registerQueryStore, type IQueryStoreOptions } from './query-store';
 import { FonderieApiError, HttpClient, isSessionRefusal } from './http';
 import { AuditClient } from './modules/audit';
 import { AuthClient } from './modules/auth';
@@ -54,6 +55,10 @@ export interface IFonderieClientOptions {
 	workspaceId?: string;
 	// Opt-in response cache (see createMemoryCache). Omit for no caching.
 	cache?: ICache;
+	// The screens' read model (client.queries): how long a fetched answer
+	// counts as current before showing a screen again refetches it in the
+	// background. Default 5 minutes.
+	queries?: IQueryStoreOptions;
 	// Opt-in reactive renew.
 	auth?: IClientAuthConfig;
 	// Server-Sent Events (@fonderie/sse). `fetch` must return a readable body
@@ -113,6 +118,12 @@ export class FonderieClient {
 	private tokens: TokenStore;
 	private workspaceId: string | undefined;
 	private cache: ICache | undefined;
+	/**
+	 * What every screen reads through: fetched answers shown at once, refreshed
+	 * in the background, never replaced by a spinner (see query-store.ts). The
+	 * frontend hook packages use it; apps rarely touch it directly.
+	 */
+	readonly queries: QueryStore;
 	private authConfig: IClientAuthConfig | undefined;
 	private refreshing: Promise<string | undefined> | null = null;
 	private _session: SessionState;
@@ -126,10 +137,16 @@ export class FonderieClient {
 		// disappearing without a reason (setAccessToken(undefined)) is a sign-out.
 		this.tokens.onChange(() => {
 			if (this.tokens.get()) this.setSession('active');
-			else if (this._session !== 'revoked') this.setSession('signedOut');
+			else {
+				// Whatever ended the session (sign-out, revocation), nothing the
+				// screens held for it may show to whoever signs in next.
+				this.queries?.clear();
+				if (this._session !== 'revoked') this.setSession('signedOut');
+			}
 		});
 		this.workspaceId = opts.workspaceId;
 		this.cache = opts.cache;
+		this.queries = new QueryStore(opts.queries);
 		this.authConfig = opts.auth;
 		this.http = new HttpClient(opts.baseUrl, {
 			clientKind: opts.clientKind,
@@ -139,6 +156,9 @@ export class FonderieClient {
 			onReachability: (reachable) => {
 				if (!this.tokens.get()) return;
 				this.setSession(reachable ? 'active' : 'offline');
+			},
+			onWrite: (fragments) => {
+				for (const fragment of fragments) this.queries.invalidate(fragment);
 			},
 		});
 		this.auth = new AuthClient(this.http, this.tokens);
@@ -159,6 +179,11 @@ export class FonderieClient {
 			log: opts.log,
 		});
 		this.config = new ConfigClient(this.http, this.tokens, this.sse, { storage: opts.config?.storage, log: opts.log });
+		// Hooks receive the client or one of its sub-clients: each reads the
+		// same store.
+		for (const owner of [this, this.auth, this.billing, this.workspaces, this.audit, this.webhooks, this.customers, this.media, this.config]) {
+			registerQueryStore(owner, this.queries);
+		}
 
 		// Live sign-out (docs/SESSION-DESIGN.md, Phase 5): only when the app
 		// configured the stream — apps without @fonderie/sse see no change.
@@ -269,9 +294,11 @@ export class FonderieClient {
 		if (!token) this.clearCache();
 	}
 
-	// Drop all cached responses (e.g. on switching accounts).
+	// Drop all cached responses (e.g. on switching accounts) — and everything
+	// the screens hold, so no session's data survives into the next.
 	clearCache(): void {
 		this.cache?.clear();
+		this.queries.clear();
 	}
 
 	// Default X-Workspace-ID for the generic transport, also propagated to the

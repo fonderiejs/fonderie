@@ -76,6 +76,10 @@ export interface IHttpDeps {
 	// included), false when the request never reached it (network down, DNS,
 	// connection refused). Drives the client's 'offline' session state.
 	onReachability?: ((reachable: boolean) => void) | undefined;
+	// Called after every successful write with the key fragments it affects
+	// (`/<resource>` plus any explicit `invalidate`) — whether or not a
+	// response cache is configured. Drives the query store's invalidation.
+	onWrite?: ((fragments: string[]) => void) | undefined;
 }
 
 export class HttpClient {
@@ -84,6 +88,7 @@ export class HttpClient {
 	private defaultTtlMs: number;
 	private refresh: (() => Promise<string | undefined>) | undefined;
 	private onReachability: ((reachable: boolean) => void) | undefined;
+	private onWrite: ((fragments: string[]) => void) | undefined;
 
 	constructor(
 		private baseUrl: string,
@@ -94,6 +99,7 @@ export class HttpClient {
 		this.defaultTtlMs = deps.defaultTtlMs ?? 60_000;
 		this.refresh = deps.refresh;
 		this.onReachability = deps.onReachability;
+		this.onWrite = deps.onWrite;
 	}
 
 	// Absolute URL for a path on this client's origin — for endpoints a browser
@@ -132,10 +138,11 @@ export class HttpClient {
 		const data = await this.exec<T>(opts);
 
 		// ── Write path: bust the reads this mutation affects ────────────────────
-		if (cache && method !== 'GET') {
+		if (method !== 'GET') {
 			const resource = opts.path.split('?')[0]?.split('/').filter(Boolean)[0];
-			if (resource) cache.invalidate(`/${resource}`);
-			for (const fragment of opts.invalidate ?? []) cache.invalidate(fragment);
+			const fragments = [...(resource ? [`/${resource}`] : []), ...(opts.invalidate ?? [])];
+			if (cache) for (const fragment of fragments) cache.invalidate(fragment);
+			this.onWrite?.(fragments);
 		}
 
 		return data;

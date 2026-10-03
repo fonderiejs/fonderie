@@ -21,6 +21,7 @@ interface IFonderieClientOptions {
     accessToken?: string;
     workspaceId?: string;
     cache?: ICache;
+    queries?: IQueryStoreOptions;
     auth?: IClientAuthConfig;
     sse?: {
         fetch?: FetchLike;
@@ -68,6 +69,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .media: MediaClient
   .config: ConfigClient
   .sse: SseClient
+  .queries: QueryStore
   .session: SessionState
   .onSessionChange(listener: (state: SessionState) => void): () => void
   .setAccessToken(token: string | undefined): void
@@ -1922,5 +1924,35 @@ interface IReasonLike {
     reason?: string | undefined;
     domain?: string | undefined;
     metadata?: Readonly<Record<string, string | number>> | undefined;
+}
+
+new QueryStore(opts?: IQueryStoreOptions): QueryStore
+  .staleMs: number
+  .peek<T>(key: string): IQueryEntry<T>
+  .isStale(key: string, staleMs?: number): boolean
+  .subscribe(key: string, listener: Listener): () => void
+  .fetch<T>(key: string, fetcher: () => Promise<T>, opts?: IQueryFetchOptions): Promise<T | undefined>
+  .set<T>(key: string, data: T): void
+  .invalidate(fragment: string): void
+  .clear(): void
+
+function queryStoreFor(owner: object): QueryStore
+
+function deepEqual(a: unknown, b: unknown): boolean
+
+interface IQueryEntry<T = unknown> {
+    readonly data: T | undefined;
+    readonly error: unknown;
+    readonly updatedAt: number;
+    readonly isFetching: boolean;
+}
+
+interface IQueryFetchOptions {
+    force?: boolean;
+    staleMs?: number;
+}
+
+interface IQueryStoreOptions {
+    staleMs?: number;
 }
 ```
