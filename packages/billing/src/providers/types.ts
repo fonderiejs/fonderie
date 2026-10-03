@@ -370,7 +370,17 @@ export interface IBillingProvider {
 	// List the customer's invoices, newest first, for an in-app billing history
 	// that links out to the provider-hosted invoice. Optional; when absent, the
 	// invoices route answers 501.
-	listInvoices?(opts: { customerId: string; limit?: number }): Promise<INormalizedInvoiceSummary[]>;
+	/**
+	 * The customer's invoices (and one-time charges), newest first, at most
+	 * `limit`. `createdLte` (ISO-8601) bounds the page to rows created at or
+	 * before that instant — GET /billing/invoices pages with it. A provider that
+	 * ignores it still works: the route drops rows it already returned.
+	 */
+	listInvoices?(opts: {
+		customerId: string;
+		limit?: number;
+		createdLte?: string;
+	}): Promise<INormalizedInvoiceSummary[]>;
 
 	// Generate a hosted billing portal URL
 	createPortalSession(opts: { customerId: string; returnUrl: string }): Promise<{ url: string }>;

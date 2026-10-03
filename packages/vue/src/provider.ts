@@ -1,6 +1,6 @@
 import type { FonderieClient } from '@fonderie/client';
-import type { InjectionKey, Plugin } from 'vue';
-import { inject, provide } from 'vue';
+import type { InjectionKey, Plugin, Ref } from 'vue';
+import { getCurrentScope, inject, onScopeDispose, provide, readonly, shallowRef } from 'vue';
 
 export const FONDERIE_INJECTION_KEY: InjectionKey<FonderieClient> = Symbol('fonderie-client');
 
@@ -43,4 +43,40 @@ export function useFonderieSubClient<T>(
 		);
 	}
 	return select(contextClient);
+}
+
+/**
+ * Anything scoped to a workspace that says when it changes: the FonderieClient
+ * itself, or a workspace-scoped sub-client such as `client.billing`.
+ */
+export interface IWorkspaceScoped {
+	getWorkspaceId(): string | undefined;
+	onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void;
+}
+
+function isWorkspaceScoped(value: unknown): value is IWorkspaceScoped {
+	const v = value as Partial<IWorkspaceScoped> | null | undefined;
+	return typeof v?.getWorkspaceId === 'function' && typeof v?.onWorkspaceChange === 'function';
+}
+
+/**
+ * The current workspace id as a Ref that updates when it changes. Pass the
+ * sub-client a composable reads from (so an explicitly passed client is
+ * followed too); with no argument it follows the provided client. Composables
+ * that load per-workspace data watch it and re-read on a switch. A source that
+ * cannot report changes (an older client) reads as undefined and never
+ * changes — exactly the old behaviour. Call inside setup().
+ */
+export function useWorkspaceId(source?: unknown): Readonly<Ref<string | undefined>> {
+	const contextClient = inject(FONDERIE_INJECTION_KEY, null);
+	const scoped = source ?? contextClient;
+	const target = isWorkspaceScoped(scoped) ? scoped : null;
+	const id = shallowRef<string | undefined>(target?.getWorkspaceId());
+	if (target) {
+		const off = target.onWorkspaceChange((next) => {
+			id.value = next;
+		});
+		if (getCurrentScope()) onScopeDispose(off);
+	}
+	return readonly(id);
 }

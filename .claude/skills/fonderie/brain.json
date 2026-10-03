@@ -637,6 +637,7 @@
         "fonderie_plans",
         "fonderie_subscription_trials",
         "fonderie_subscriptions",
+        "fonderie_usage_counters",
         "fonderie_usage_records",
         "fonderie_wallet_balances",
         "fonderie_wallet_customers",
@@ -1512,6 +1513,7 @@
         "FonderieProvider",
         "useFonderieClient",
         "useFonderieSubClient",
+        "useWorkspaceId",
         "useRemoteConfig",
         "useSse",
         "useSseStatus"
@@ -2383,6 +2385,7 @@
         "FonderiePlugin",
         "useFonderieClient",
         "useFonderieSubClient",
+        "useWorkspaceId",
         "useRemoteConfig",
         "useSse",
         "useSseStatus"
@@ -5663,6 +5666,10 @@
       "vue"
     ],
     "usefonderiesubclient": [
+      "react",
+      "vue"
+    ],
+    "useworkspaceid": [
       "react",
       "vue"
     ],

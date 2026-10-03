@@ -6,7 +6,7 @@ import type { IBillingConfig } from '../config';
 import type { IPlan } from '../types';
 import type { IPlanDTO } from '../dtos/billing';
 import { PlanModel } from '../models/plan.model';
-import { toPlanDTO } from '../dtos/billing';
+import { applyConfigPolicy, toPlanDTO } from '../dtos/billing';
 import { PriceCache } from '../services/price-cache';
 import { toSafeNumber } from '../utils';
 
@@ -48,13 +48,28 @@ async function hydratePricing(
 export function planController(store: IStoreAdapter, config: IBillingConfig, cache: PriceCache) {
 	const plans = new PlanModel(store);
 	const hydrate = config.pricing?.hydration === true;
+	const configPlan = (name: string) => config.plans.find((p) => p.name === name);
 
 	return {
 		async list(_ctx: IFonderieContext): Promise<Response> {
 			const list = await plans.list();
-			const dtos = list.map(toPlanDTO);
+			const dtos = list.map((p) => applyConfigPolicy(toPlanDTO(p), configPlan(p.name)));
 			if (hydrate) {
 				await Promise.all(dtos.map((dto, i) => hydratePricing(dto, list[i]!, config, cache)));
+				// An unpriced plan (free) has nothing to hydrate, so it kept the DTO's
+				// 'USD' default beside paid plans hydrated to the provider's currency
+				// (e.g. "USD 0" next to "CAD 9"). When every priced plan agrees on one
+				// currency, the free plan shows it too.
+				const priced = list
+					.map((p, i) => (p.monthlyPriceId || p.yearlyPriceId ? dtos[i]! : null))
+					.filter((d): d is IPlanDTO => d !== null && !d.pricingStale);
+				const currencies = new Set(priced.map((d) => d.pricing.currency));
+				if (currencies.size === 1) {
+					const [currency] = currencies;
+					list.forEach((p, i) => {
+						if (!p.monthlyPriceId && !p.yearlyPriceId) dtos[i]!.pricing.currency = currency!;
+					});
+				}
 			}
 			return setApiResponse(HTTP.OK, 'PLAN_LIST', `Retrieved ${list.length} workspace plans`, {
 				plans: dtos,
@@ -69,7 +84,7 @@ export function planController(store: IStoreAdapter, config: IBillingConfig, cac
 			const plan = await plans.findById(id);
 			if (!plan) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Plan not found');
 
-			const dto = toPlanDTO(plan);
+			const dto = applyConfigPolicy(toPlanDTO(plan), configPlan(plan.name));
 			if (hydrate) await hydratePricing(dto, plan, config, cache);
 
 			return setApiResponse(HTTP.OK, 'PLAN_FETCHED', 'Plan retrieved successfully.', {

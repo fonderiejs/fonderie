@@ -45,7 +45,7 @@ export function buildBillingRoutes(
 	const subscription = subscriptionController(store, config);
 	const checkout = checkoutController(store, config);
 	const account = accountController(store, config);
-	const usage = usageController(store);
+	const usage = usageController(store, config);
 	const webhook = webhookController(store, config, priceCache, bus);
 
 	// RBAC (M1): money-mutating routes are MANAGER actions for workspace

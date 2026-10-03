@@ -424,3 +424,35 @@ test('bridge: parser 413 short-circuit is sent, not swallowed', async () => {
 	assert.ok(!nextCalled, 'pipeline answered; next must not run');
 	assert.equal((res as any).statusCode, 413);
 });
+
+// Regression: node-server hosts swap globalThis.Response after @fonderie/core
+// loaded, so core's short-circuit is not `instanceof` the global. It must still
+// be answered — the check is by shape, not identity.
+test('bridge: parser 413 is sent even under a foreign globalThis.Response', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 64 * 1024 }),
+	);
+	await fonderie.boot();
+
+	const req = makeIncomingMessage({
+		method: 'POST',
+		url: '/echo',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ pad: 'x'.repeat(128 * 1024) }),
+	});
+	const res = makeServerResponse();
+	let nextCalled = false;
+	const Original = globalThis.Response;
+	class SwappedResponse extends Original {}
+	(globalThis as { Response: typeof Response }).Response = SwappedResponse;
+	try {
+		await bridge(fonderie, { maxBodyBytes: 1024 * 1024 })(req, res as never, () => {
+			nextCalled = true;
+		});
+	} finally {
+		(globalThis as { Response: typeof Response }).Response = Original;
+	}
+	assert.ok(!nextCalled, 'pipeline answered; next must not run');
+	assert.equal((res as any).statusCode, 413);
+});

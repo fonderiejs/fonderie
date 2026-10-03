@@ -86,6 +86,19 @@ CONSTRAINT               fonderie_subscriptions_subscriber_unique UNIQUE (subscr
 provider_event_at        TIMESTAMPTZ
 ```
 
+### `fonderie_usage_counters`
+
+```sql
+subscriber_type          TEXT NOT NULL
+subscriber_id            TEXT NOT NULL
+metric                   TEXT NOT NULL
+window_ms                BIGINT NOT NULL
+window_start             TIMESTAMPTZ NOT NULL
+quantity                 BIGINT NOT NULL DEFAULT 0
+expires_at               TIMESTAMPTZ
+-- PRIMARY KEY (subscriber_type, subscriber_id, metric, window_ms, window_start)
+```
+
 ### `fonderie_usage_records`
 
 ```sql

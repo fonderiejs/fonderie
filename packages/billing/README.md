@@ -41,6 +41,38 @@ import { requirePlan, requireFeature, hasFeature, getPlanLimit } from '@fonderie
 `StripeProvider` handles checkout and webhook events; usage counters run
 on `MemoryCounterBackend` or `DBCounterBackend`.
 
+Features, limits and seats follow **payment**: a subscription that is
+`incomplete`, `unpaid`, `paused`, or `past_due` beyond the dunning grace gets
+the free plan (`plans[0]`) until it pays. `GET /plans` reports each plan's
+`seats` and `features` from its configured `policy`.
+
+### Usage limits on serverless
+
+Windowed limits (`policy: { 'api-calls': { limit, window: '1d' } }`) count
+every authenticated request. The default `'memory'` backend counts per
+process — on serverless each instance counts alone, so set
+`rateLimit: { backend: 'db' }`. It keeps one row per subscriber, metric and
+window (a `'1d'` window resets at 00:00 UTC, as `resetsAt` says), updated by
+one atomic upsert. Purge ended windows from your cron:
+
+```ts
+import { purgeUsageCounters } from '@fonderie/billing';
+
+await purgeUsageCounters(store); // returns the number of rows removed
+```
+
+### Trials with workspace billing
+
+A plan's `trialDays` is granted once per subscriber. When workspaces are the
+subscriber, every new workspace is a new subscriber — set
+`trialScope: 'owner'` so a workspace gets no trial when any workspace with the
+same owner already had one. A checkout can decline the trial for a paid start
+with `POST /billing/checkout { plan, skipTrial: true }`.
+
+With workspace billing, the frontend billing hooks re-read when the client's
+workspace changes (`client.setWorkspaceId(...)`), so an open billing screen
+never shows the previous workspace's subscription.
+
 ## Stored-value wallet (opt-in)
 
 Setting `wallet` on the billing config turns on a ledger-backed credit
