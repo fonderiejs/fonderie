@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-customers",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "React Native hooks for Fonderie's customers module — re-exports @fonderie/react-customers (no platform-specific code: no storage, no DOM/RN APIs).",
 	"keywords": [
 		"fonderiejs",
@@ -34,8 +34,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^3.0.0",
-		"@fonderie/react-customers": "^0.4.3"
+		"@fonderie/client": "^3.4.0",
+		"@fonderie/react-customers": "^0.5.0"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

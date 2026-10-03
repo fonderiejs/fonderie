@@ -1,5 +1,13 @@
 # @fonderie/vue-media
 
+## 0.2.6
+
+### Patch Changes
+
+- Updated dependencies [90963c4]
+  - @fonderie/client@3.4.0
+  - @fonderie/vue@0.9.0
+
 ## 0.2.5
 
 ### Patch Changes

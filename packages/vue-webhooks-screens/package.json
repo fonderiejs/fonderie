@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-webhooks-screens",
-	"version": "0.3.3",
+	"version": "0.3.4",
 	"description": "Pre-built Vue screens for Fonderie's outgoing webhooks — endpoint list, endpoint detail with delivery history.",
 	"keywords": [
 		"fonderiejs",
@@ -34,8 +34,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^3.0.0",
-		"@fonderie/vue-webhooks": "^0.5.3"
+		"@fonderie/client": "^3.4.0",
+		"@fonderie/vue-webhooks": "^0.6.0"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"

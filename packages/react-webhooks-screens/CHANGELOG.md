@@ -1,5 +1,13 @@
 # @fonderie/react-webhooks-screens
 
+## 0.3.4
+
+### Patch Changes
+
+- Updated dependencies [90963c4]
+  - @fonderie/client@3.4.0
+  - @fonderie/react-webhooks@0.5.0
+
 ## 0.3.3
 
 ### Patch Changes
