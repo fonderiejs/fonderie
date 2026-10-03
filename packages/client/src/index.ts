@@ -286,4 +286,4 @@ export type {
 
 // The screens' shared read model (client.queries).
 export { QueryStore, queryStoreFor, queryParams, deepEqual } from './query-store';
-export type { IQueryEntry, IQueryFetchOptions, IQueryStoreOptions } from './query-store';
+export type { IQueryEntry, IQueryFetchOptions, IQueryPersistOptions, IQueryStorage, IQueryStoreOptions } from './query-store';

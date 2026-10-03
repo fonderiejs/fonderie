@@ -21,7 +21,7 @@ interface IFonderieClientOptions {
     accessToken?: string;
     workspaceId?: string;
     cache?: ICache;
-    queries?: IQueryStoreOptions;
+    queries?: Omit<IQueryStoreOptions, 'owner'>;
     auth?: IClientAuthConfig;
     sse?: {
         fetch?: FetchLike;
@@ -1936,6 +1936,8 @@ interface IReasonLike {
 
 new QueryStore(opts?: IQueryStoreOptions): QueryStore
   .staleMs: number
+  .hydrated: Promise<void>
+  .hydrate(): Promise<void>
   .peek<T>(key: string): IQueryEntry<T>
   .isStale(key: string, staleMs?: number): boolean
   .subscribe(key: string, listener: Listener): () => void
@@ -1962,7 +1964,22 @@ interface IQueryFetchOptions {
     staleMs?: number;
 }
 
+interface IQueryPersistOptions {
+    storage: IQueryStorage;
+    filter?: (queryKey: string) => boolean;
+    key?: string;
+    maxEntries?: number;
+    maxAgeMs?: number;
+}
+
+interface IQueryStorage {
+    getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
+    setItem(key: string, value: string): void | Promise<void>;
+}
+
 interface IQueryStoreOptions {
     staleMs?: number;
+    persist?: IQueryPersistOptions;
+    owner?: () => string | undefined;
 }
 ```

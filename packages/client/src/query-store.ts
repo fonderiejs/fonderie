@@ -43,6 +43,24 @@ export interface IQueryFetchOptions {
 	staleMs?: number;
 }
 
+/** Where the store keeps its snapshot on the device — AsyncStorage, localStorage, or any getItem/setItem pair. */
+export interface IQueryStorage {
+	getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
+	setItem(key: string, value: string): void | Promise<void>;
+}
+
+export interface IQueryPersistOptions {
+	storage: IQueryStorage;
+	/** Which reads to keep on the device (default: all). Keys start with `GET /<path>`. */
+	filter?: (queryKey: string) => boolean;
+	/** Storage key (default 'fonderie.queries.v1'). */
+	key?: string;
+	/** Keep at most this many entries, the most recently confirmed first (default 200). */
+	maxEntries?: number;
+	/** Drop entries older than this on load (ms, default 7 days). */
+	maxAgeMs?: number;
+}
+
 export interface IQueryStoreOptions {
 	/**
 	 * How long a fetched answer counts as current (ms). Within it, showing a
@@ -50,6 +68,26 @@ export interface IQueryStoreOptions {
 	 * means "only when asked" (pull-to-refresh, a write, a workspace switch).
 	 */
 	staleMs?: number;
+	/**
+	 * Keep answers on the device, so a cold start opens screens on their last
+	 * data (then refreshes it behind what is shown). Opt-in: the snapshot
+	 * holds whatever the screens showed — choose with `filter` what may sit on
+	 * the device. FonderieClient ties it to the signed-in user (see `owner`).
+	 */
+	persist?: IQueryPersistOptions;
+	/**
+	 * Who the data belongs to (the signed-in user). A snapshot is only loaded
+	 * for the owner that saved it, and nothing is saved without one — so one
+	 * account's data never opens on another's screens.
+	 */
+	owner?: () => string | undefined;
+}
+
+interface ISnapshot {
+	v: 1;
+	owner: string;
+	savedAt: number;
+	entries: Array<[key: string, data: unknown, updatedAt: number]>;
 }
 
 type Listener = () => void;
@@ -73,8 +111,66 @@ export class QueryStore {
 	// the previous session's answer into the next session's store.
 	private generation = 0;
 
+	private readonly persist: IQueryPersistOptions | undefined;
+	private readonly owner: () => string | undefined;
+	private saveTimer: ReturnType<typeof setTimeout> | undefined;
+	private hydratedFor: string | undefined;
+	private hydrating: Promise<void> = Promise.resolve();
+
 	constructor(opts: IQueryStoreOptions = {}) {
 		this.staleMs = opts.staleMs ?? 5 * 60_000;
+		this.persist = opts.persist;
+		this.owner = opts.owner ?? (() => undefined);
+	}
+
+	/**
+	 * Resolves once the device snapshot (if any) has been loaded for the
+	 * current owner. An app can hold its splash screen on it; hooks need not —
+	 * hydrated entries reach mounted screens as they land.
+	 */
+	get hydrated(): Promise<void> {
+		return this.hydrating;
+	}
+
+	/**
+	 * Load the device snapshot for the current owner. Idempotent per owner;
+	 * FonderieClient calls it at start-up and when a session begins. Loaded
+	 * entries never replace an answer fetched meanwhile, and come back as
+	 * UNCONFIRMED (updatedAt 0): shown at once on a cold start, and refreshed
+	 * behind what is shown the first time a screen asks for them.
+	 */
+	hydrate(): Promise<void> {
+		const persist = this.persist;
+		const owner = this.owner();
+		if (!persist || !owner || this.hydratedFor === owner) return this.hydrating;
+		this.hydratedFor = owner;
+		const generation = this.generation;
+		this.hydrating = (async () => {
+			let raw: string | null | undefined;
+			try {
+				raw = await persist.storage.getItem(persist.key ?? 'fonderie.queries.v1');
+			} catch {
+				return; // an unreadable store is an empty one
+			}
+			if (!raw || generation !== this.generation) return;
+			let snap: ISnapshot;
+			try {
+				snap = JSON.parse(raw) as ISnapshot;
+			} catch {
+				return;
+			}
+			if (snap?.v !== 1 || snap.owner !== owner || !Array.isArray(snap.entries)) return;
+			const oldest = Date.now() - (persist.maxAgeMs ?? 7 * 24 * 60 * 60_000);
+			for (const [key, data, updatedAt] of snap.entries) {
+				const current = this.entries.get(key);
+				if (typeof key !== 'string' || data === undefined || current?.data !== undefined) continue;
+				// Age by when the server last confirmed it (or, never re-confirmed
+				// since a previous load, when the snapshot was saved).
+				if ((updatedAt || snap.savedAt) < oldest) continue;
+				this.write(key, { data, error: null, updatedAt: 0, isFetching: current?.isFetching ?? false }, false);
+			}
+		})();
+		return this.hydrating;
 	}
 
 	/** The entry for `key` right now — synchronous; a stable object until it changes. */
@@ -174,6 +270,19 @@ export class QueryStore {
 	/** Forget everything (sign-out, account switch). Screens fall back to loading. */
 	clear(): void {
 		this.generation++;
+		this.hydratedFor = undefined;
+		if (this.saveTimer) {
+			clearTimeout(this.saveTimer);
+			this.saveTimer = undefined;
+		}
+		// Wipe the device copy too: no session's data survives its end.
+		if (this.persist) {
+			try {
+				void Promise.resolve(this.persist.storage.setItem(this.persist.key ?? 'fonderie.queries.v1', '')).catch(() => {});
+			} catch {
+				// storage unavailable — nothing was saved there either
+			}
+		}
 		const keys = [...this.entries.keys()];
 		this.entries.clear();
 		this.inflight.clear();
@@ -181,9 +290,41 @@ export class QueryStore {
 		for (const key of keys) this.notify(key);
 	}
 
-	private write(key: string, entry: IQueryEntry): void {
+	private write(key: string, entry: IQueryEntry, save = true): void {
+		const prev = this.entries.get(key);
 		this.entries.set(key, Object.freeze(entry));
 		this.notify(key);
+		// Only a change of what would be saved schedules a save — not a fetch
+		// starting or failing.
+		if (save && this.persist && (prev?.data !== entry.data || prev?.updatedAt !== entry.updatedAt)) this.scheduleSave();
+	}
+
+	private scheduleSave(): void {
+		if (this.saveTimer) return;
+		this.saveTimer = setTimeout(() => {
+			this.saveTimer = undefined;
+			void this.save();
+		}, 250);
+		// Never keep a process (a test, a server) alive for a save.
+		(this.saveTimer as { unref?: () => void }).unref?.();
+	}
+
+	private async save(): Promise<void> {
+		const persist = this.persist;
+		const owner = this.owner();
+		if (!persist || !owner) return;
+		const keep = persist.filter ?? (() => true);
+		const entries = [...this.entries]
+			.filter(([key, e]) => e.data !== undefined && keep(key))
+			.sort(([, a], [, b]) => b.updatedAt - a.updatedAt)
+			.slice(0, persist.maxEntries ?? 200)
+			.map(([key, e]): [string, unknown, number] => [key, e.data, e.updatedAt]);
+		const snap: ISnapshot = { v: 1, owner, savedAt: Date.now(), entries };
+		try {
+			await persist.storage.setItem(persist.key ?? 'fonderie.queries.v1', JSON.stringify(snap));
+		} catch {
+			// A full or unavailable store costs the next cold start, nothing else.
+		}
 	}
 
 	private notify(key: string): void {
