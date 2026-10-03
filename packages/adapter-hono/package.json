@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/adapter-hono",
-	"version": "6.3.3",
+	"version": "6.3.4",
 	"fonderie": { "stability": "stable" },
 	"description": "Hono adapter for fonderiejs \u2014 bridge(), adapt(), mount() to use fonderie middleware in native Hono routes.",
 	"keywords": [

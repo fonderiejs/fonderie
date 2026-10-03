@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.4.5",
-    "adapter-hono": "6.3.3",
-    "adapter-koa": "5.4.6",
+    "adapter-express": "5.4.6",
+    "adapter-hono": "6.3.4",
+    "adapter-koa": "5.4.7",
     "admin": "1.7.7",
     "audit": "5.2.14",
     "auth": "7.21.0",
-    "billing": "10.5.0",
+    "billing": "10.5.1",
     "client": "3.1.0",
     "config": "6.6.4",
-    "core": "0.28.0",
+    "core": "0.28.1",
     "courier": "7.13.6",
     "customers": "6.3.3",
     "events": "5.11.6",
@@ -81,7 +81,7 @@
   },
   "packages": {
     "adapter-express": {
-      "version": "5.4.5",
+      "version": "5.4.6",
       "stability": "stable",
       "requires": [
         "core",
@@ -104,7 +104,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "6.3.3",
+      "version": "6.3.4",
       "stability": "stable",
       "requires": [
         "core",
@@ -127,7 +127,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.4.6",
+      "version": "5.4.7",
       "stability": "stable",
       "requires": [
         "core",
@@ -594,7 +594,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "10.5.0",
+      "version": "10.5.1",
       "stability": "stable",
       "requires": [
         "core",
@@ -945,7 +945,7 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.28.0",
+      "version": "0.28.1",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
