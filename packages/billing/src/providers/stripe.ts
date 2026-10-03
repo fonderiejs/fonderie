@@ -73,9 +73,9 @@ interface IStripeChargeRaw {
 	status?: string | null;
 	paid?: boolean | null;
 	receipt_url?: string | null;
-	// The invoice this charge settles, if any. One-time payments (credit-pack
-	// purchases, whether hosted checkout or an in-app PaymentIntent) have none —
-	// that's how we tell them apart from subscription-invoice charges.
+	// The invoice this charge settles — present only on API versions before
+	// basil (2025-03-31); a dahlia Charge has no such field. Never rely on its
+	// absence to mean "not an invoice payment": see listInvoices.
 	invoice?: string | { id: string } | null;
 	refunds?: { data?: Array<{ id: string; amount?: number | null; reason?: string | null }> } | null;
 	metadata?: Record<string, string> | null;
@@ -427,8 +427,10 @@ export type SupportedPaymentOption =
 	(typeof SUPPORTED_PAYMENT_OPTIONS)[keyof typeof SUPPORTED_PAYMENT_OPTIONS];
 
 export interface IStripeProviderOptions {
-	// Payment method types the in-app card-save SetupIntent (`createSetupIntent`)
-	// offers. Defaults to `[SUPPORTED_PAYMENT_OPTIONS.CARD]` — a concrete,
+	// Payment method types every Stripe page this provider opens offers: the
+	// in-app card-save SetupIntent (`createSetupIntent`) AND hosted Checkout
+	// (subscriptions and credit packs) — one list, so whatever a customer pays
+	// with is something the billing screen can show. Defaults to `[SUPPORTED_PAYMENT_OPTIONS.CARD]` — a concrete,
 	// displayable, off-session-chargeable card that stays on-page. Broaden it (e.g.
 	// `[SUPPORTED_PAYMENT_OPTIONS.CARD, SUPPORTED_PAYMENT_OPTIONS.LINK]`) to offer
 	// wallets, accepting that non-card methods won't render as a card on file. This
@@ -439,6 +441,13 @@ export interface IStripeProviderOptions {
 export class StripeProvider implements IBillingProvider {
 	readonly name = 'stripe';
 	readonly apiVersion = STRIPE_API_VERSION;
+
+	// The payment methods every Stripe page this provider opens may offer:
+	// in-app card entry AND hosted Checkout. One list, so a method customers can
+	// pay with is always one the billing screen can show as the method on file.
+	private paymentMethodTypes(): SupportedPaymentOption[] {
+		return this.options.setupPaymentMethodTypes ?? [SUPPORTED_PAYMENT_OPTIONS.CARD];
+	}
 
 	private options: IStripeProviderOptions;
 
@@ -500,6 +509,12 @@ export class StripeProvider implements IBillingProvider {
 				customer: opts.customerId,
 				mode: 'subscription',
 				line_items: [{ price: opts.priceId, quantity: 1 }],
+				// The same methods in-app entry offers (default card only). Left to
+				// Stripe's dynamic methods, Checkout also offers Link and Klarna — a
+				// subscription paid with Link saves a type:'link' method with no card
+				// object, and the billing screen then reports "no card on file" for a
+				// customer who just paid.
+				allowed_payment_method_types: this.paymentMethodTypes(),
 				success_url: opts.successUrl,
 				cancel_url: opts.cancelUrl,
 				subscription_data: {
@@ -546,6 +561,8 @@ export class StripeProvider implements IBillingProvider {
 			customer: opts.customerId,
 			mode: 'payment',
 			line_items: [lineItem],
+			// Same methods as in-app entry (see createCheckoutSession).
+			allowed_payment_method_types: this.paymentMethodTypes(),
 			success_url: opts.successUrl,
 			cancel_url: opts.cancelUrl,
 			metadata: opts.metadata,
@@ -996,9 +1013,7 @@ export class StripeProvider implements IBillingProvider {
 		const si = await stripe.setupIntents.create({
 			customer: opts.customerId,
 			usage: 'off_session',
-			allowed_payment_method_types: this.options.setupPaymentMethodTypes ?? [
-				SUPPORTED_PAYMENT_OPTIONS.CARD,
-			],
+			allowed_payment_method_types: this.paymentMethodTypes(),
 		});
 		return { clientSecret: si.client_secret ?? '', setupIntentId: si.id };
 	}
@@ -1081,14 +1096,24 @@ export class StripeProvider implements IBillingProvider {
 
 		// One-time payments (credit-pack purchases) never become Stripe invoices —
 		// they are bare charges. Surface them too so the buyer has a record of the
-		// money they paid, linkable to Stripe's hosted receipt. Exclude charges that
-		// settle a subscription invoice (already listed above) and any that didn't
-		// capture, so this is a clean union with no double-counting.
+		// money they paid, linkable to Stripe's hosted receipt.
+		//
+		// Only OUR pack charges: every pack payment carries metadata.packId (set
+		// on the PaymentIntent, which Stripe copies to its charge). This used to
+		// exclude "charges that settle an invoice" with `!c.invoice` — but since
+		// the basil API version a Charge has no `invoice` field at all, so every
+		// subscription payment was listed twice: once as its invoice, once as an
+		// unnumbered "paid" charge. Identify packs positively instead.
 		const chargeRes = await stripe.charges
 			.list({ customer: opts.customerId, limit, ...created })
 			.catch(() => null);
 		const oneTime: INormalizedInvoiceSummary[] = ((chargeRes?.data ?? []) as IStripeChargeRaw[])
-			.filter((c) => !c.invoice && (c.paid === true || c.status === 'succeeded'))
+			.filter(
+				(c) =>
+					!c.invoice &&
+					typeof c.metadata?.['packId'] === 'string' &&
+					(c.paid === true || c.status === 'succeeded'),
+			)
 			.map((c) => ({
 				id: c.id,
 				number: null, // charges carry no invoice number
