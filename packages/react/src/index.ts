@@ -8,6 +8,7 @@ export {
 } from './provider';
 export type { ConfigClient, IAuthErrorInfo, IClientLog, IConfigStorage, IRemoteConfigState, ISseClientEvent, SessionState, SseClient, SseStatus } from '@fonderie/client';
 export { isSwitchOn } from '@fonderie/client';
-export { useRemoteConfig, useSse, useSseStatus, withRemoteConfig } from './hooks';
+export { useClientQuery, useRemoteConfig, useSse, useSseStatus, withRemoteConfig } from './hooks';
+export type { IClientQueryResult, IUseClientQueryOptions } from './hooks';
 export type { IUseSseOptions } from './hooks';
 export type { IWithRemoteConfigOptions } from './hooks';

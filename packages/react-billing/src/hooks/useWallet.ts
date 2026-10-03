@@ -1,13 +1,12 @@
-import type { BillingClient, IWalletDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { BillingClient, FonderieApiError, IWalletDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
 
-import { useLatestRequest, useWorkspaceSwitch } from './workspace';
+import { useBillingQuery } from './workspace';
 
 export interface IUseWalletReturn {
 	// The balance snapshot. Money fields are digit strings (server bigint →
-	// string); null until the first read resolves or after a failed read.
+	// string); null until the first read resolves. A failed refresh keeps the
+	// last balance shown and reports the error alongside it.
 	wallet: IWalletDTO | null;
 	isLoading: boolean;
 	error: FonderieApiError | null;
@@ -18,44 +17,10 @@ export interface IUseWalletReturn {
 // it reflects the periodic grant withBilling applies on every authed request.
 export function useWallet(client?: BillingClient): IUseWalletReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useWallet');
-	const [wallet, setWallet] = useState<IWalletDTO | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	// Workspace billing: a switch clears what was shown and re-reads.
-	const workspaceId = useWorkspaceSwitch(billing, () => {
-		setWallet(null);
-		setError(null);
-		setIsLoading(true);
-	});
-	const beginRequest = useLatestRequest();
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			const isLatest = beginRequest();
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await billing.getWallet({ bust: opts?.force });
-				if (!isLatest()) return;
-				setWallet(result.wallet);
-			} catch (err) {
-				if (!isLatest()) return;
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				setWallet(null);
-			} finally {
-				if (isLatest()) setIsLoading(false);
-			}
-		},
-		[billing, beginRequest],
+	const q = useBillingQuery<IWalletDTO>(
+		billing,
+		'/billing/wallet',
+		async (bust) => (await billing.getWallet({ bust })).result.wallet,
 	);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: workspaceId re-runs the read on a workspace switch
-	useEffect(() => {
-		void refresh();
-	}, [refresh, workspaceId]);
-
-	return { wallet, isLoading, error, refresh };
+	return { wallet: q.data ?? null, isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

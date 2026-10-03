@@ -830,7 +830,8 @@
         "ConfigClient",
         "SseClient",
         "ADMIN_LOCALES",
-        "DEFAULT_ADMIN_LOCALE"
+        "DEFAULT_ADMIN_LOCALE",
+        "QueryStore"
       ],
       "subpaths": [],
       "tables": [],
@@ -1514,6 +1515,7 @@
         "useFonderieClient",
         "useFonderieSubClient",
         "useWorkspaceId",
+        "useClientQuery",
         "useRemoteConfig",
         "useSse",
         "useSseStatus"
@@ -2386,6 +2388,7 @@
         "useFonderieClient",
         "useFonderieSubClient",
         "useWorkspaceId",
+        "useClientQuery",
         "useRemoteConfig",
         "useSse",
         "useSseStatus"
@@ -5491,6 +5494,9 @@
     "default_admin_locale": [
       "client"
     ],
+    "querystore": [
+      "client"
+    ],
     "configmodule": [
       "config"
     ],
@@ -5670,6 +5676,10 @@
       "vue"
     ],
     "useworkspaceid": [
+      "react",
+      "vue"
+    ],
+    "useclientquery": [
       "react",
       "vue"
     ],
