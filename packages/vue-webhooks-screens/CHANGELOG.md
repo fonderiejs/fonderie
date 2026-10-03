@@ -1,5 +1,13 @@
 # @fonderie/vue-webhooks-screens
 
+## 0.3.4
+
+### Patch Changes
+
+- Updated dependencies [90963c4]
+  - @fonderie/client@3.4.0
+  - @fonderie/vue-webhooks@0.6.0
+
 ## 0.3.3
 
 ### Patch Changes
