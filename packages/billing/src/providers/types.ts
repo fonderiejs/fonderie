@@ -138,7 +138,16 @@ export interface IResolvedPrice {
 // The customer's card on file. Display fields (never the full number) plus
 // one non-display field: `fingerprint`, a server-side abuse signal.
 export interface INormalizedCard {
-	brand: string; // 'visa' | 'mastercard' | 'amex' | …
+	/**
+	 * What kind of method this is. 'card' carries brand/last4/expiry. 'link'
+	 * (Stripe Link, a saved wallet) has no card details — brand is 'link',
+	 * last4 '' and expiry 0 — and carries the Link account's `email` instead.
+	 * Absent = 'card' (providers predating the field).
+	 */
+	type?: 'card' | 'link';
+	/** The Link account's email, for type 'link'; null otherwise. */
+	email?: string | null;
+	brand: string; // 'visa' | 'mastercard' | 'amex' | 'link' | …
 	last4: string;
 	expMonth: number;
 	expYear: number;

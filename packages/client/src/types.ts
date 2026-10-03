@@ -299,10 +299,18 @@ export interface ISubscriptionChangeResult {
 // nor the server-side card `fingerprint`, which billing deliberately keeps
 // off the wire (it correlates identity across accounts).
 export interface IPaymentMethodDTO {
+	/**
+	 * 'card' (brand/last4/expiry) or 'link' (Stripe Link: no card details —
+	 * show `email` instead, e.g. "Link · ana@acme.example"). Absent from servers
+	 * that predate it: treat as 'card'.
+	 */
+	type?: 'card' | 'link';
 	brand: string;
 	last4: string;
 	expMonth: number;
 	expYear: number;
+	/** The Link account's email, for type 'link'. */
+	email?: string | null;
 }
 
 export interface IPaymentMethodResult {

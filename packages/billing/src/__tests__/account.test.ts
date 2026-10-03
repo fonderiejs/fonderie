@@ -77,9 +77,10 @@ test('accountController.getPaymentMethod: returns the card DTO, resolving the wa
 	assert.deepEqual(seen, { customerId: 'cus_1', paymentMethodId: 'pm_1' });
 });
 
-// The mapper-level guard: EXACTLY the four display keys, whatever the
-// normalized card carries. Route-level absence checks cover single routes;
-// this one covers every present and future caller of the DTO.
+// The mapper-level guard: EXACTLY the display keys (type, brand, last4,
+// expiry, and the Link email), whatever the normalized method carries.
+// Route-level absence checks cover single routes; this one covers every
+// present and future caller of the DTO.
 test('toPaymentMethodDTO: exactly the display fields — never the fingerprint', () => {
 	const dto = toPaymentMethodDTO({
 		brand: 'visa',
@@ -88,7 +89,8 @@ test('toPaymentMethodDTO: exactly the display fields — never the fingerprint',
 		expYear: 2030,
 		fingerprint: 'fp_abc',
 	});
-	assert.deepEqual(dto, { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030 });
+	assert.deepEqual(dto, { type: 'card', brand: 'visa', last4: '4242', expMonth: 12, expYear: 2030, email: null });
+	assert.equal('fingerprint' in dto, false);
 });
 
 test('accountController.getPaymentMethod: null when no customer is on file', async () => {

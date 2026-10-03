@@ -413,6 +413,8 @@ interface INormalizedInvoiceSummary {
 }
 
 interface INormalizedCard {
+    type?: 'card' | 'link';
+    email?: string | null;
     brand: string;
     last4: string;
     expMonth: number;
@@ -614,10 +616,12 @@ interface IWalletTransactionDTO {
 }
 
 interface IPaymentMethodDTO {
+    type: 'card' | 'link';
     brand: string;
     last4: string;
     expMonth: number;
     expYear: number;
+    email: string | null;
 }
 
 interface IInvoiceDTO {

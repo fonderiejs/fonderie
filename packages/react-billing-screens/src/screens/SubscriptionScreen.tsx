@@ -116,7 +116,10 @@ export function SubscriptionScreen({
 								{removeError.explanation}
 							</p>
 						)}
-						{paymentMethod ? (
+						{paymentMethod?.type === 'link' ? (
+							// Stripe Link: no card details — the Link account is what pays.
+							<p style={styles.cardLine}>Link{paymentMethod.email ? ` · ${paymentMethod.email}` : ''}</p>
+						) : paymentMethod ? (
 							<p style={styles.cardLine}>
 								{brand} •••• {paymentMethod.last4} · expires {paymentMethod.expMonth}/
 								{paymentMethod.expYear}
