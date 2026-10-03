@@ -242,13 +242,14 @@ export function paymentWebhookController(
 			// Deliberately NOT falling back to the subscription webhook's secret:
 			// per-endpoint secrets exist so a delivery captured for one endpoint
 			// can never replay validly against the other.
-			const event = await readWebhookEvent(
+			const read = await readWebhookEvent(
 				ctx,
 				config.wallet?.webhookSecret,
 				config.provider,
 				'Payment webhook secret not configured — set wallet.webhookSecret',
 			);
-			if (event instanceof Response) return event;
+			if (!read.ok) return read.response;
+			const event = read.event;
 			warnOnUnconsumedEvent(event.type, 'POST /billing/webhook/payment', PAYMENT_WEBHOOK_EVENTS);
 
 			// Refund/chargeback events carry no event.payment and would otherwise

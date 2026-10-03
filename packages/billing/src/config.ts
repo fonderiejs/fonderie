@@ -259,6 +259,15 @@ export interface IBillingConfig {
 	 */
 	management?: 'owner-or-admin' | 'any-member';
 	/**
+	 * Who a plan's free trial is "once per". Default 'subscriber': once per
+	 * user or per workspace. 'owner': a WORKSPACE subscriber gets no trial when
+	 * any workspace with the same owner has already had one — per-workspace
+	 * billing otherwise hands one person a trial for every workspace they
+	 * create. Needs the workspaces brick (reads fonderie_workspaces.owner_id).
+	 * User subscribers are unaffected.
+	 */
+	trialScope?: 'subscriber' | 'owner';
+	/**
 	 * System-role NAMES that count as billing managers (default ['ADMIN']).
 	 * Matched only against is_system roles — GUEST is also a system role and
 	 * must not manage money; a member-created local 'ADMIN' grants nothing.

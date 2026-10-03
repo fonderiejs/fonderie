@@ -3,6 +3,8 @@ import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
 import { onMounted, ref } from 'vue';
 
+import { latestRequest, onWorkspaceSwitch } from './workspace';
+
 export interface IUseWalletPreferencesReturn {
 	// Per-subscriber toggle: when false, a debit stops at the free allowance and
 	// never draws down purchased credits. null until the first read resolves; a
@@ -20,23 +22,35 @@ export function useWalletPreferences(client?: BillingClient): IUseWalletPreferen
 	const isLoading = ref(true);
 	const error = ref<FonderieApiError | null>(null);
 
+	const beginRequest = latestRequest();
+
 	async function refresh(opts?: { force?: boolean }) {
+		const isLatest = beginRequest();
 		isLoading.value = true;
 		error.value = null;
 		try {
 			const { result } = await billing.getWallet({ bust: opts?.force });
+			if (!isLatest()) return;
 			// The DTO omits spendPurchased when no balance row exists; surface the
 			// server default (spend_purchased DEFAULT true) rather than null.
 			spendPurchased.value = result.wallet.spendPurchased ?? true;
 		} catch (err) {
+			if (!isLatest()) return;
 			const apiError =
 				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
 			error.value = apiError;
 		} finally {
-			isLoading.value = false;
+			if (isLatest()) isLoading.value = false;
 		}
 	}
 
+	// Workspace billing: a switch clears what was shown and re-reads.
+	onWorkspaceSwitch(billing, () => {
+		spendPurchased.value = null;
+		error.value = null;
+		isLoading.value = true;
+		void refresh();
+	});
 	onMounted(() => void refresh());
 
 	async function setSpendPurchased(next: boolean) {

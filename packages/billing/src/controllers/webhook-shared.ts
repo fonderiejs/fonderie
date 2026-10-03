@@ -68,15 +68,28 @@ export function __resetUnconsumedWarningsForTests(): void {
 
 // Shared verification front half of both webhook endpoints: secret presence,
 // signature-header extraction, payload read, and provider signature check.
-// Returns the normalized event, or the error Response to send as-is.
+//
+// Returns a DISCRIMINATED result, never "an event or a Response". The callers
+// used to tell the two apart with `instanceof Response` — which is false when a
+// host swaps globalThis.Response after @fonderie/core captured its own (the
+// node-server hosts do exactly that). The refusal then passed as an event and
+// the route answered 200 {"received":true} to an unsigned or unverifiable
+// delivery. A tag cannot be fooled by which realm built the object.
+export type WebhookEventResult =
+	| { ok: true; event: IBillingEvent }
+	| { ok: false; response: Response };
+
 export async function readWebhookEvent(
 	ctx: IFonderieContext,
 	secret: string | undefined,
 	provider: IBillingProvider,
 	missingSecretMessage: string,
-): Promise<IBillingEvent | Response> {
+): Promise<WebhookEventResult> {
 	if (!secret) {
-		return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', missingSecretMessage);
+		return {
+			ok: false,
+			response: setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', missingSecretMessage),
+		};
 	}
 
 	const signature =
@@ -84,13 +97,19 @@ export async function readWebhookEvent(
 		ctx.request.headers.get('paypal-auth-algo') ??
 		'';
 	if (!signature) {
-		return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Missing webhook signature');
+		return {
+			ok: false,
+			response: setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Missing webhook signature'),
+		};
 	}
 
 	const payload = await ctx.request.text();
 	try {
-		return await provider.constructEvent({ payload, signature, secret });
+		return { ok: true, event: await provider.constructEvent({ payload, signature, secret }) };
 	} catch {
-		return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Invalid webhook signature');
+		return {
+			ok: false,
+			response: setApiResponse(HTTP.BAD_REQUEST, 'INVALID_REQUEST', 'Invalid webhook signature'),
+		};
 	}
 }

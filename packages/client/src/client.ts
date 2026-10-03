@@ -117,6 +117,7 @@ export class FonderieClient {
 	private refreshing: Promise<string | undefined> | null = null;
 	private _session: SessionState;
 	private readonly sessionListeners = new Set<(state: SessionState) => void>();
+	private readonly workspaceListeners = new Set<(workspaceId: string | undefined) => void>();
 
 	constructor(opts: IFonderieClientOptions) {
 		this.tokens = new TokenStore(opts.accessToken);
@@ -276,6 +277,7 @@ export class FonderieClient {
 	// Default X-Workspace-ID for the generic transport, also propagated to the
 	// workspace-scoped modules so one call configures the whole client.
 	setWorkspaceId(workspaceId: string | undefined): void {
+		const changed = workspaceId !== this.workspaceId;
 		this.workspaceId = workspaceId;
 		this.billing.setWorkspaceId(workspaceId);
 		this.workspaces.setWorkspaceId(workspaceId);
@@ -284,6 +286,31 @@ export class FonderieClient {
 		this.webhooks.setWorkspaceId(workspaceId);
 		// A stream is scoped to the workspace it was opened in.
 		this.sse?.identityChanged();
+		if (!changed) return;
+		for (const listener of this.workspaceListeners) {
+			try {
+				listener(workspaceId);
+			} catch {
+				// A listener's failure must not stop the others.
+			}
+		}
+	}
+
+	/** The workspace requests are scoped to (X-Workspace-ID), if any. */
+	getWorkspaceId(): string | undefined {
+		return this.workspaceId;
+	}
+
+	/**
+	 * Called whenever setWorkspaceId changes the workspace, so per-workspace
+	 * data on screen (a subscription, members, invoices) can re-read. Returns
+	 * an unsubscribe function.
+	 */
+	onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void {
+		this.workspaceListeners.add(listener);
+		return () => {
+			this.workspaceListeners.delete(listener);
+		};
 	}
 
 	// ── Generic transport ──────────────────────────────────────────────────────

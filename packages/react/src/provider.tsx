@@ -1,6 +1,6 @@
 import type { FonderieClient } from '@fonderie/client';
 import type { ReactNode } from 'react';
-import { createContext, createElement, useContext } from 'react';
+import { createContext, createElement, useCallback, useContext, useSyncExternalStore } from 'react';
 
 const FonderieContext = createContext<FonderieClient | null>(null);
 
@@ -39,4 +39,41 @@ export function useFonderieSubClient<T>(
 		);
 	}
 	return select(contextClient);
+}
+
+/**
+ * Anything scoped to a workspace that says when it changes: the FonderieClient
+ * itself, or a workspace-scoped sub-client such as `client.billing`.
+ */
+export interface IWorkspaceScoped {
+	getWorkspaceId(): string | undefined;
+	onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void;
+}
+
+const noop = () => {};
+
+function isWorkspaceScoped(value: unknown): value is IWorkspaceScoped {
+	const v = value as Partial<IWorkspaceScoped> | null | undefined;
+	return typeof v?.getWorkspaceId === 'function' && typeof v?.onWorkspaceChange === 'function';
+}
+
+/**
+ * The current workspace id, re-rendering when it changes. Pass the sub-client a
+ * hook reads from (so an explicitly passed client is followed too); with no
+ * argument it follows the <FonderieProvider> client. Hooks that load
+ * per-workspace data put this in their load effect's dependencies, so switching
+ * workspace re-reads instead of showing the previous workspace's data. A source
+ * that cannot report changes (an older client) reads as undefined — the hook
+ * then never re-reads on a switch, exactly as before.
+ */
+export function useWorkspaceId(source?: unknown): string | undefined {
+	const contextClient = useContext(FonderieContext);
+	const scoped = source ?? contextClient;
+	const target = isWorkspaceScoped(scoped) ? scoped : null;
+	const subscribe = useCallback(
+		(onChange: () => void) => (target ? target.onWorkspaceChange(onChange) : noop),
+		[target],
+	);
+	const read = useCallback(() => target?.getWorkspaceId(), [target]);
+	return useSyncExternalStore(subscribe, read, read);
 }
