@@ -8,6 +8,8 @@
 new AuditClient(http: HttpClient, tokens: TokenStore): AuditClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listEvents(input?: IListAuditEventsInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<IAuditPageResult>>
 
 new FonderieApiError(reason: string, explanation: string, status: number, details?: unknown, requestId?: string | undefined): FonderieApiError

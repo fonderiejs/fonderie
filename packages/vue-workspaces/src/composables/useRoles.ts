@@ -1,8 +1,7 @@
-import type { ICreateRoleInput, IRoleDTO, IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import type { FonderieApiError, IRoleDTO, ICreateRoleInput, IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { Ref } from 'vue';
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
 
 export interface IUseRolesReturn {
 	roles: Ref<IRoleDTO[]>;
@@ -14,69 +13,23 @@ export interface IUseRolesReturn {
 	removeRole: (roleId: string) => Promise<void>;
 }
 
+const NONE: IRoleDTO[] = [];
+
+// The selected workspace's roles — re-read on a workspace switch.
 export function useRoles(client?: WorkspacesClient): IUseRolesReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRoles');
-	const roles = ref<IRoleDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await workspaces.listRoles({ bust: opts?.force });
-			roles.value = result.roles;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function createRole(input: ICreateRoleInput) {
-		error.value = null;
-		try {
-			const { result } = await workspaces.createRole(input);
-			await refresh();
-			return result.role;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function removeRole(roleId: string) {
-		error.value = null;
-		try {
-			await workspaces.removeRole(roleId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-
-	async function updateRole(roleId: string, input: IUpdateRoleInput) {
-		error.value = null;
-		try {
-			const { result } = await workspaces.updateRole(roleId, input);
-			await refresh();
-			return result.role;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	return { roles, isLoading, error, refresh, updateRole, createRole, removeRole };
+	const q = useScopedQuery(workspaces, '/workspaces/roles', async (bust) => (await workspaces.listRoles({ bust })).result.roles);
+	const w = useWrite(() => q.refresh());
+	return {
+		roles: computed(() => q.data.value ?? NONE),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		updateRole: (roleId, input) => w.run(async () => (await workspaces.updateRole(roleId, input)).result.role),
+		createRole: (input) => w.run(async () => (await workspaces.createRole(input)).result.role),
+		removeRole: (roleId) =>
+			w.run(async () => {
+				await workspaces.removeRole(roleId);
+			}),
+	};
 }

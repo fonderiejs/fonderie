@@ -1,12 +1,7 @@
-import type {
-	IUpdateSettingsInput,
-	IWorkspaceSettingsDTO,
-	WorkspacesClient,
-} from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import type { FonderieApiError, IUpdateSettingsInput, IWorkspaceSettingsDTO, WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { Ref } from 'vue';
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
 
 export interface IUseWorkspaceSettingsReturn {
 	settings: Ref<IWorkspaceSettingsDTO | null>;
@@ -16,41 +11,20 @@ export interface IUseWorkspaceSettingsReturn {
 	updateSettings: (input: IUpdateSettingsInput) => Promise<void>;
 }
 
+// The selected workspace's settings — re-read on a workspace switch.
 export function useWorkspaceSettings(client?: WorkspacesClient): IUseWorkspaceSettingsReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceSettings');
-	const settings = ref<IWorkspaceSettingsDTO | null>(null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await workspaces.getSettings({ bust: opts?.force });
-			settings.value = result.settings;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function updateSettings(input: IUpdateSettingsInput) {
-		error.value = null;
-		try {
-			const { result } = await workspaces.updateSettings(input);
-			settings.value = result.settings;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-
-	return { settings, isLoading, error, refresh, updateSettings };
+	const q = useScopedQuery(workspaces, '/workspaces/settings', async (bust) => (await workspaces.getSettings({ bust })).result.settings);
+	const w = useWrite();
+	return {
+		settings: computed(() => q.data.value ?? null),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		// The update returns the new settings: every screen adopts them.
+		updateSettings: (input) =>
+			w.run(async () => {
+				q.adopt((await workspaces.updateSettings(input)).result.settings);
+			}),
+	};
 }

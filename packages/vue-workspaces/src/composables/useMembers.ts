@@ -1,8 +1,7 @@
-import type { IMemberDTO, WorkspacesClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import type { FonderieApiError, IMemberDTO, WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { Ref } from 'vue';
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
 
 export interface IUseMembersReturn {
 	members: Ref<IMemberDTO[]>;
@@ -12,41 +11,21 @@ export interface IUseMembersReturn {
 	removeMember: (userId: string) => Promise<void>;
 }
 
+const NONE: IMemberDTO[] = [];
+
+// The selected workspace's members — re-read on a workspace switch.
 export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useMembers');
-	const members = ref<IMemberDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await workspaces.listMembers({ bust: opts?.force });
-			members.value = result.members;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	onMounted(() => void refresh());
-
-	async function removeMember(userId: string) {
-		error.value = null;
-		try {
-			await workspaces.removeMember(userId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	return { members, isLoading, error, refresh, removeMember };
+	const q = useScopedQuery(workspaces, '/workspaces/members', async (bust) => (await workspaces.listMembers({ bust })).result.members);
+	const w = useWrite(() => q.refresh());
+	return {
+		members: computed(() => q.data.value ?? NONE),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		removeMember: (userId) =>
+			w.run(async () => {
+				await workspaces.removeMember(userId);
+			}),
+	};
 }

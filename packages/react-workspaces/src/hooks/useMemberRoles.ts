@@ -1,7 +1,7 @@
-import type { IRoleDTO } from '@fonderie/client';
-import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IRoleDTO } from '@fonderie/client';
+import { WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
 
 export interface IUseMemberRolesReturn {
 	roles: IRoleDTO[];
@@ -11,6 +11,8 @@ export interface IUseMemberRolesReturn {
 	addRole: (roleId: string) => Promise<void>;
 	removeRole: (roleId: string) => Promise<void>;
 }
+
+const NONE: IRoleDTO[] = [];
 
 export function useMemberRoles(userId: string): IUseMemberRolesReturn;
 export function useMemberRoles(
@@ -25,63 +27,25 @@ export function useMemberRoles(
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
 	const userId = firstIsClient ? (maybeId as string) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useMemberRoles');
-	const [roles, setRoles] = useState<IRoleDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await workspaces.getMemberRoles(userId, { bust: opts?.force });
-				setRoles(result.roles);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[workspaces, userId],
+	const q = useScopedQuery(
+		workspaces,
+		`/workspaces/members/${encodeURIComponent(userId)}/roles`,
+		async (bust) => (await workspaces.getMemberRoles(userId, { bust })).result.roles,
 	);
-
+	const w = useWrite(q.refresh);
 	const addRole = useCallback(
-		async (roleId: string) => {
-			setError(null);
-			try {
+		(roleId: string) =>
+			w.run(async () => {
 				await workspaces.addMemberRole(userId, roleId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[workspaces, userId, refresh],
+			}),
+		[workspaces, userId, w.run],
 	);
-
 	const removeRole = useCallback(
-		async (roleId: string) => {
-			setError(null);
-			try {
+		(roleId: string) =>
+			w.run(async () => {
 				await workspaces.removeMemberRole(userId, roleId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[workspaces, userId, refresh],
+			}),
+		[workspaces, userId, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { roles, isLoading, error, refresh, addRole, removeRole };
+	return { roles: q.data ?? NONE, isLoading: q.isLoading, error: w.error ?? q.error, refresh: q.refresh, addRole, removeRole };
 }

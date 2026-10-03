@@ -1,8 +1,8 @@
-import type { IWorkspaceDTO } from '@fonderie/client';
-import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import type { FonderieApiError, IWorkspaceDTO } from '@fonderie/client';
+import { WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseWorkspaceReturn {
 	workspace: Ref<IWorkspaceDTO | null>;
@@ -12,8 +12,8 @@ export interface IUseWorkspaceReturn {
 }
 
 // Read composable for an explicit workspace id (admin/cross-workspace
-// lookups). Current-workspace mutations live in useWorkspaceProfile - they act
-// on the client's workspace scope, not on this id.
+// lookups) — keyed by that id, not the selected workspace. Mutations on the
+// CURRENT workspace live in useWorkspaceProfile.
 export function useWorkspace(id: MaybeRefOrGetter<string>): IUseWorkspaceReturn;
 export function useWorkspace(
 	client: WorkspacesClient | undefined,
@@ -27,30 +27,17 @@ export function useWorkspace(
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
 	const id = firstIsClient ? (maybeId as MaybeRefOrGetter<string>) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useWorkspace');
-	const workspace = ref<IWorkspaceDTO | null>(null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await workspaces.getWorkspace(toValue(id), { bust: opts?.force });
-			workspace.value = result.workspace;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(id),
-		() => void refresh(),
+	// The key follows the id: a new id reads that entry.
+	const q = useScopedQuery(
+		workspaces,
+		() => `/workspaces/${encodeURIComponent(toValue(id))}`,
+		async (bust) => (await workspaces.getWorkspace(toValue(id), { bust })).result.workspace,
+		{ perWorkspace: false },
 	);
-
-	return { workspace, isLoading, error, refresh };
+	return {
+		workspace: computed(() => q.data.value ?? null),
+		isLoading: q.isLoading,
+		error: q.error,
+		refresh: q.refresh,
+	};
 }

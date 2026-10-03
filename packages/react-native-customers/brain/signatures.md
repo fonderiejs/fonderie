@@ -14,6 +14,8 @@ type CustomerType = 'individual' | 'business';
 new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listCustomers(input?: IListCustomersInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerListResult>>
   .createCustomer(input?: ICreateCustomerInput | undefined): Promise<IApiResponse<ICustomerResult>>
   .getCustomer(customerId: string, input?: IGetCustomerInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>

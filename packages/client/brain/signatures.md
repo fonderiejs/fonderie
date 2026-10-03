@@ -109,6 +109,8 @@ interface IListAuditEventsInput {
 new AuditClient(http: HttpClient, tokens: TokenStore): AuditClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listEvents(input?: IListAuditEventsInput, opts?: IReadOptions | undefined): Promise<IApiResponse<IAuditPageResult>>
 
 interface IAppleNativeInput {
@@ -550,6 +552,8 @@ type IUpdateCustomerInput = Omit<ICreateCustomerInput, 'referralCode' | 'referre
 new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listCustomers(input?: IListCustomersInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerListResult>>
   .createCustomer(input?: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .getCustomer(customerId: string, input?: IGetCustomerInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
@@ -614,6 +618,8 @@ interface IUpdateWebhookEndpointInput {
 new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listEndpoints(opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointListResult>>
   .createEndpoint(input: ICreateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointCreatedDTO>>
   .getEndpoint(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointDTO>>
@@ -691,6 +697,8 @@ interface IUpdateWorkspaceInput {
 new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listWorkspaces(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceListResult>>
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>

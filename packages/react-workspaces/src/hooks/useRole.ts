@@ -1,7 +1,6 @@
-import type { IRoleDTO } from '@fonderie/client';
-import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IRoleDTO } from '@fonderie/client';
+import { WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery } from '@fonderie/react';
 
 export interface IUseRoleReturn {
 	role: IRoleDTO | null;
@@ -11,7 +10,8 @@ export interface IUseRoleReturn {
 }
 
 // Read hook for a single role. Writes live where their lists refresh:
-// useRoles (create/update/remove) and useRolePermissions (permission set).
+// useRoles (create/update/remove) and useRolePermissions (permission set) —
+// and any of them marks this read stale too (same /workspaces resource).
 export function useRole(roleId: string): IUseRoleReturn;
 export function useRole(client: WorkspacesClient | undefined, roleId: string): IUseRoleReturn;
 export function useRole(
@@ -22,31 +22,10 @@ export function useRole(
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
 	const roleId = firstIsClient ? (maybeId as string) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useRole');
-	const [role, setRole] = useState<IRoleDTO | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await workspaces.getRole(roleId, { bust: opts?.force });
-				setRole(result.role);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[workspaces, roleId],
+	const q = useScopedQuery(
+		workspaces,
+		`/workspaces/roles/${encodeURIComponent(roleId)}`,
+		async (bust) => (await workspaces.getRole(roleId, { bust })).result.role,
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { role, isLoading, error, refresh };
+	return { role: q.data ?? null, isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

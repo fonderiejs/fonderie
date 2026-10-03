@@ -97,22 +97,45 @@ type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
 function isSwitchOn(value: unknown): boolean
 
+function toApiError(err: unknown): FonderieApiError
+
 function useClientQuery<T>(source: object, key: () => string | null, fetcher: (ctx: { force: boolean; }) => Promise<T>, opts?: IUseClientQueryOptions): IClientQueryResult<T>
 
 function useRemoteConfig<T>(key: MaybeRefOrGetter<string>, fallback: T, client?: ConfigClient | undefined): ComputedRef<T>
+
+function useScopedQuery<T>(source: object, path: string | (() => string), read: (bust: boolean) => Promise<T>, opts?: IScopedQueryOptions<T>): IScopedQuery<T>
 
 function useSse(topics: MaybeRefOrGetter<string[]>, onEvent: (event: ISseClientEvent) => void, options?: IUseSseOptions, client?: SseClient | undefined): void
 
 function useSseStatus(client?: SseClient | undefined): Readonly<Ref<SseStatus, SseStatus>>
 
+function useWrite(after?: (() => Promise<void>) | undefined): { error: Ref<FonderieApiError | null, FonderieApiError | null>; run: <R>(write: () => Promise<...>) => Promise<...>; }
+
 function withRemoteConfig(key: string, component: Component, options?: IWithRemoteConfigOptions): Component
+
+interface IScopedQuery<T> {
+    data: ComputedRef<T | undefined>;
+    isLoading: ComputedRef<boolean>;
+    error: ComputedRef<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    adopt: (data: T) => void;
+}
+
+interface IScopedQueryOptions<T> {
+    normal?: (err: FonderieApiError) => T | undefined;
+    perWorkspace?: boolean;
+}
 
 interface IClientQueryResult<T> {
     data: ComputedRef<T | undefined>;
     error: ComputedRef<unknown>;
     isLoading: ComputedRef<boolean>;
     isFetching: ComputedRef<boolean>;
-    refresh: () => Promise<T | undefined>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<T | undefined>;
 }
 
 interface IUseClientQueryOptions {

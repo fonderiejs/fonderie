@@ -1517,8 +1517,10 @@
         "useWorkspaceId",
         "useClientQuery",
         "useRemoteConfig",
+        "useScopedQuery",
         "useSse",
-        "useSseStatus"
+        "useSseStatus",
+        "useWrite"
       ],
       "subpaths": [],
       "tables": [],
@@ -2390,8 +2392,10 @@
         "useWorkspaceId",
         "useClientQuery",
         "useRemoteConfig",
+        "useScopedQuery",
         "useSse",
-        "useSseStatus"
+        "useSseStatus",
+        "useWrite"
       ],
       "subpaths": [],
       "tables": [],
@@ -5687,11 +5691,19 @@
       "react",
       "vue"
     ],
+    "usescopedquery": [
+      "react",
+      "vue"
+    ],
     "usesse": [
       "react",
       "vue"
     ],
     "usessestatus": [
+      "react",
+      "vue"
+    ],
+    "usewrite": [
       "react",
       "vue"
     ],
