@@ -1,8 +1,8 @@
 import type { IAddRelationshipInput, ICustomerRelationshipDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import { CustomersClient, type FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseCustomerRelationshipsReturn {
 	relationships: Ref<ICustomerRelationshipDTO[]>;
@@ -32,84 +32,27 @@ export function useCustomerRelationships(
 		? (maybeCustomerId as MaybeRefOrGetter<string>)
 		: clientOrCustomerId;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerRelationships');
-	const relationships = ref<ICustomerRelationshipDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		if (!toValue(customerId)) {
-			isLoading.value = false;
-			return;
-		}
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await customers.listRelationships(toValue(customerId), {
-				bust: opts?.force,
-			});
-			relationships.value = result.relationships;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function addRelationship(input: IAddRelationshipInput) {
-		error.value = null;
-		try {
-			const { result } = await customers.addRelationship(toValue(customerId), input);
-			await refresh();
-			return result.relationship;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function setPrimaryRelationship(relatedId: string) {
-		error.value = null;
-		try {
-			await customers.setPrimaryRelationship(toValue(customerId), relatedId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function removeRelationship(relatedId: string) {
-		error.value = null;
-		try {
-			await customers.removeRelationship(toValue(customerId), relatedId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(customerId),
-		() => void refresh(),
+	// The key follows the id; an empty id reads nothing (not loading).
+	const q = useScopedQuery(
+		customers,
+		() => `/customers/${encodeURIComponent(toValue(customerId))}/relationships`,
+		async (bust) => (await customers.listRelationships(toValue(customerId), { bust })).result.relationships,
+		{ enabled: () => !!toValue(customerId) },
 	);
-
+	const w = useWrite(() => q.refresh());
 	return {
-		relationships,
-		isLoading,
-		error,
-		refresh,
-		addRelationship,
-		setPrimaryRelationship,
-		removeRelationship,
+		relationships: computed(() => q.data.value ?? []),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		addRelationship: (input) => w.run(async () => (await customers.addRelationship(toValue(customerId), input)).result.relationship),
+		setPrimaryRelationship: (relatedId) =>
+			w.run(async () => {
+				await customers.setPrimaryRelationship(toValue(customerId), relatedId);
+			}),
+		removeRelationship: (relatedId) =>
+			w.run(async () => {
+				await customers.removeRelationship(toValue(customerId), relatedId);
+			}),
 	};
 }

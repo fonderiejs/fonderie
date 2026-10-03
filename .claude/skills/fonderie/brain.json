@@ -1516,6 +1516,7 @@
         "useFonderieSubClient",
         "useWorkspaceId",
         "useClientQuery",
+        "usePagedQuery",
         "useRemoteConfig",
         "useScopedQuery",
         "useSse",
@@ -2391,6 +2392,7 @@
         "useFonderieSubClient",
         "useWorkspaceId",
         "useClientQuery",
+        "usePagedQuery",
         "useRemoteConfig",
         "useScopedQuery",
         "useSse",
@@ -5684,6 +5686,10 @@
       "vue"
     ],
     "useclientquery": [
+      "react",
+      "vue"
+    ],
+    "usepagedquery": [
       "react",
       "vue"
     ],
