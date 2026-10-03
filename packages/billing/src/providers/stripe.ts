@@ -121,6 +121,10 @@ interface IStripeInvoiceRaw {
 }
 
 // A PaymentMethod's card block (display fields + the stable card fingerprint).
+interface IStripeLinkRaw {
+	email?: string | null;
+}
+
 interface IStripeCardRaw {
 	brand: string;
 	last4: string;
@@ -948,16 +952,34 @@ export class StripeProvider implements IBillingProvider {
 		paymentMethodId?: string | null;
 	}): Promise<INormalizedCard | null> {
 		const stripe = await this.client();
-		const toCard = (pm: { card?: IStripeCardRaw } | null): INormalizedCard | null =>
+		// A card, or a Stripe Link method — which has no card details but IS the
+		// method the subscription is charged with. Reporting only cards showed
+		// "no card on file" to a customer who had just paid with Link.
+		const toCard = (
+			pm: { type?: string; card?: IStripeCardRaw; link?: IStripeLinkRaw } | null,
+		): INormalizedCard | null =>
 			pm?.card
 				? {
+						type: 'card',
 						brand: pm.card.brand,
 						last4: pm.card.last4,
 						expMonth: pm.card.exp_month,
 						expYear: pm.card.exp_year,
 						fingerprint: pm.card.fingerprint ?? null,
+						email: null,
 					}
-				: null;
+				: pm?.type === 'link'
+					? {
+							type: 'link',
+							brand: 'link',
+							last4: '',
+							expMonth: 0,
+							expYear: 0,
+							// No card number, so nothing to fingerprint: a missing signal.
+							fingerprint: null,
+							email: pm.link?.email ?? null,
+						}
+					: null;
 		try {
 			if (opts.paymentMethodId) {
 				const pm = await stripe.paymentMethods.retrieve(opts.paymentMethodId).catch(() => null);
@@ -981,10 +1003,16 @@ export class StripeProvider implements IBillingProvider {
 				const card = toCard(pm);
 				if (card) return card;
 			}
-			const list = await stripe.paymentMethods
+			const cards = await stripe.paymentMethods
 				.list({ customer: opts.customerId, type: 'card', limit: 1 })
 				.catch(() => null);
-			return toCard(list?.data?.[0] ?? null);
+			const card = toCard(cards?.data?.[0] ?? null);
+			if (card) return card;
+			// No default and no card: a saved Link method is still what pays.
+			const links = await stripe.paymentMethods
+				.list({ customer: opts.customerId, type: 'link', limit: 1 })
+				.catch(() => null);
+			return toCard(links?.data?.[0] ?? null);
 		} catch {
 			return null;
 		}

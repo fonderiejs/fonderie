@@ -1408,10 +1408,12 @@ interface IMfaSetupResult {
 }
 
 interface IPaymentMethodDTO {
+    type?: 'card' | 'link';
     brand: string;
     last4: string;
     expMonth: number;
     expYear: number;
+    email?: string | null;
 }
 
 interface IPaymentMethodResult {

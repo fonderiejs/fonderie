@@ -185,14 +185,25 @@ export function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransa
 // across accounts, so it is a server-side-only signal (INormalizedCard) that
 // must not reach clients.
 export interface IPaymentMethodDTO {
+	/** 'card' (brand/last4/expiry) or 'link' (Stripe Link: no card details, an `email`). */
+	type: 'card' | 'link';
 	brand: string;
 	last4: string;
 	expMonth: number;
 	expYear: number;
+	/** The Link account's email, for type 'link'; null for a card. */
+	email: string | null;
 }
 
 export function toPaymentMethodDTO(card: INormalizedCard): IPaymentMethodDTO {
-	return { brand: card.brand, last4: card.last4, expMonth: card.expMonth, expYear: card.expYear };
+	return {
+		type: card.type ?? 'card',
+		brand: card.brand,
+		last4: card.last4,
+		expMonth: card.expMonth,
+		expYear: card.expYear,
+		email: card.email ?? null,
+	};
 }
 
 // One invoice for an in-app history list; `hostedInvoiceUrl`/`invoicePdf` link
