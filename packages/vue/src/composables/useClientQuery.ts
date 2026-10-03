@@ -23,8 +23,8 @@ export interface IClientQueryResult<T> {
 	isLoading: ComputedRef<boolean>;
 	/** A request is in flight — a refresh behind data shown. */
 	isFetching: ComputedRef<boolean>;
-	/** Fetch now (pull-to-refresh, after a write). */
-	refresh: () => Promise<T | undefined>;
+	/** Fetch now, whatever the staleness; `force` is handed to the fetcher (HTTP cache `bust`). */
+	refresh: (opts?: { force?: boolean }) => Promise<T | undefined>;
 }
 
 const EMPTY: IQueryEntry = Object.freeze({ data: undefined, error: null, updatedAt: 0, isFetching: false });
@@ -57,8 +57,8 @@ export function useClientQuery<T>(
 		});
 	}
 
-	const load = (k: string, force: boolean) =>
-		store.fetch(k, () => fetcher({ force }), {
+	const load = (k: string, force: boolean, bust = force) =>
+		store.fetch(k, () => fetcher({ force: bust }), {
 			force,
 			...(opts.staleMs !== undefined ? { staleMs: opts.staleMs } : {}),
 		});
@@ -101,6 +101,6 @@ export function useClientQuery<T>(
 				(entry.value.isFetching || entry.value.error == null),
 		),
 		isFetching: computed(() => entry.value.isFetching),
-		refresh: async () => (current ? load(current, true) : undefined),
+		refresh: async (o?: { force?: boolean }) => (current ? load(current, true, o?.force === true) : undefined),
 	};
 }

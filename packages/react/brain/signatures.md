@@ -98,22 +98,47 @@ type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
 function isSwitchOn(value: unknown): boolean
 
+function toApiError(err: unknown): FonderieApiError
+
 function useClientQuery<T>(source: object, key: string | null, fetcher: (ctx: { force: boolean; }) => Promise<T>, opts?: IUseClientQueryOptions): IClientQueryResult<T>
 
 function useRemoteConfig<T>(key: string, fallback: T, client?: ConfigClient | undefined): T
+
+function useScopedQuery<T>(source: object, path: string, read: (bust: boolean) => Promise<T>, opts?: IScopedQueryOptions<T>): IScopedQuery<T>
 
 function useSse(topics: string[], onEvent: (event: ISseClientEvent) => void, options?: IUseSseOptions, client?: SseClient | undefined): void
 
 function useSseStatus(client?: SseClient | undefined): SseStatus
 
+function useWrite(after?: (() => Promise<void>) | undefined): { error: FonderieApiError | null; run: <R>(write: () => Promise<R>) => Promise<R>; }
+
 function withRemoteConfig<P extends object>(key: string, Component: ComponentType<P>, options?: IWithRemoteConfigOptions<P>): ComponentType<P>
+
+interface IScopedQuery<T> {
+    data: T | undefined;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    adopt: (data: T) => void;
+    key: string;
+}
+
+interface IScopedQueryOptions<T> {
+    normal?: (err: FonderieApiError) => T | undefined;
+    perWorkspace?: boolean;
+    enabled?: boolean;
+}
 
 interface IClientQueryResult<T> {
     data: T | undefined;
     error: unknown;
     isLoading: boolean;
     isFetching: boolean;
-    refresh: () => Promise<T | undefined>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<T | undefined>;
 }
 
 interface IUseClientQueryOptions {
