@@ -101,6 +101,13 @@ export interface IFonderieContextMeta {
 	userId?: string;
 	userWorkspaceRoles?: string[];
 	message?: ICourierMessage;
+	// Set by an adapter's mount() on the context handle() builds for a request
+	// its bridge() already ran the global middleware for: that first pass's
+	// meta. The global stack runs again inside handle(), so a middleware whose
+	// work is a per-request side effect — counting a request against a limit,
+	// above all — finds its own first-pass result here and reuses it instead of
+	// doing it twice. Read-only by convention; absent outside that second pass.
+	bridged?: Readonly<IFonderieContextMeta>;
 	[key: string]: unknown;
 }
 

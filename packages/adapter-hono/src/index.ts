@@ -260,8 +260,14 @@ export function mount(hono: Hono, fonderie: FonderieApp): Hono {
 		// Hand over what only the adapter can observe — the socket-derived
 		// client IP. handle() builds a fresh context, so without this seed every
 		// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).
+		// And the bridge pass's meta, so a middleware with a per-request side
+		// effect (billing's request counter) reuses its first-pass result
+		// instead of counting the request again.
 		const clientIp = ctx?.meta.clientIp;
-		return fonderie.handle(ctx?.request ?? c.req.raw, clientIp ? { meta: { clientIp } } : undefined);
+		return fonderie.handle(
+			ctx?.request ?? c.req.raw,
+			ctx ? { meta: { ...(clientIp ? { clientIp } : {}), bridged: ctx.meta } } : undefined,
+		);
 	});
 	return hono;
 }
