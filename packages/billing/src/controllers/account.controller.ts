@@ -10,6 +10,7 @@ import {
 	upsertWalletCustomer,
 } from '../services/wallet-customers';
 import { toPaymentMethodDTO, toInvoiceDTO } from '../dtos/billing';
+import { decodeInvoiceCursor, pageInvoices } from '../services/invoice-cursor';
 import { resolveSubscriber } from '../utils';
 import type { SubscriberType } from '../types';
 
@@ -163,19 +164,47 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 					'Provider does not support invoice listing',
 				);
 			}
+			const params = new URL(ctx.request.url).searchParams;
+			const rawLimit = params.get('limit');
+			const limit = rawLimit !== null ? Number.parseInt(rawLimit, 10) : 20;
+			if (Number.isNaN(limit) || limit < 1 || limit > 100) {
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'INVALID_PARAMETER',
+					'limit must be an integer between 1 and 100',
+				);
+			}
+			const rawCursor = params.get('cursor');
+			const cursor = rawCursor !== null ? decodeInvoiceCursor(rawCursor) : null;
+			if (rawCursor !== null && cursor === null) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Malformed cursor');
+			}
+
 			const customerIds = await resolveCustomerIds(ctx);
 			if (customerIds.length === 0) {
-				return setApiResponse(HTTP.OK, 'INVOICES', 'No invoices.', { invoices: [] });
+				return setApiResponse(HTTP.OK, 'INVOICES', 'No invoices.', {
+					invoices: [],
+					nextCursor: null,
+				});
 			}
 			// Union invoices across all the subscriber's customers (wallet + subscription),
 			// dedupe by id, newest first — so pack and subscription invoices show together.
+			// Each source is asked for one row more than the page, at or before the
+			// cursor, so the union knows whether a next page exists. (This used to
+			// return the newest 20 and silently drop everything older.)
 			const perCustomer = await Promise.all(
-				customerIds.map((customerId) => config.provider.listInvoices!({ customerId })),
+				customerIds.map((customerId) =>
+					config.provider.listInvoices!({
+						customerId,
+						limit: limit + 1,
+						...(cursor ? { createdLte: cursor.created } : {}),
+					}),
+				),
 			);
-			const byId = new Map(perCustomer.flat().map((inv) => [inv.id, inv]));
-			const invoices = [...byId.values()].sort((a, b) => b.created.localeCompare(a.created));
-			return setApiResponse(HTTP.OK, 'INVOICES', `Retrieved ${invoices.length} invoices`, {
-				invoices: invoices.map(toInvoiceDTO),
+			const page = pageInvoices(perCustomer, limit, cursor);
+			return setApiResponse(HTTP.OK, 'INVOICES', `Retrieved ${page.invoices.length} invoices`, {
+				invoices: page.invoices.map(toInvoiceDTO),
+				nextCursor: page.nextCursor,
 			});
 		},
 

@@ -1051,12 +1051,19 @@ export class StripeProvider implements IBillingProvider {
 	async listInvoices(opts: {
 		customerId: string;
 		limit?: number;
+		createdLte?: string;
 	}): Promise<INormalizedInvoiceSummary[]> {
 		const stripe = await this.client();
-		const limit = opts.limit ?? 20;
+		const limit = Math.min(opts.limit ?? 20, 100);
+		// Page bound (Stripe's `created` is in seconds; `lte` keeps rows sharing
+		// the cursor's second — the route drops the ones it already returned).
+		const created =
+			opts.createdLte !== undefined
+				? { created: { lte: Math.floor(Date.parse(opts.createdLte) / 1000) } }
+				: {};
 
 		// Subscription invoices (renewals) — the classic invoice with a number + PDF.
-		const invoiceRes = await stripe.invoices.list({ customer: opts.customerId, limit });
+		const invoiceRes = await stripe.invoices.list({ customer: opts.customerId, limit, ...created });
 		const invoices: INormalizedInvoiceSummary[] = (invoiceRes.data as IStripeInvoiceRaw[]).map(
 			(inv) => ({
 				id: inv.id,
@@ -1078,7 +1085,7 @@ export class StripeProvider implements IBillingProvider {
 		// settle a subscription invoice (already listed above) and any that didn't
 		// capture, so this is a clean union with no double-counting.
 		const chargeRes = await stripe.charges
-			.list({ customer: opts.customerId, limit })
+			.list({ customer: opts.customerId, limit, ...created })
 			.catch(() => null);
 		const oneTime: INormalizedInvoiceSummary[] = ((chargeRes?.data ?? []) as IStripeChargeRaw[])
 			.filter((c) => !c.invoice && (c.paid === true || c.status === 'succeeded'))

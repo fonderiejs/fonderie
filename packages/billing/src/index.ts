@@ -47,7 +47,7 @@ export type {
 } from './config';
 
 // Backends
-export { MemoryCounterBackend, DBCounterBackend } from './backends';
+export { MemoryCounterBackend, DBCounterBackend, purgeUsageCounters, counterWindow } from './backends';
 export type { ICounterBackend } from './backends';
 
 export {

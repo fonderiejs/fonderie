@@ -27,6 +27,9 @@ import type {
 export interface ICheckoutInput {
 	plan: string;
 	interval?: 'month' | 'year';
+	// Decline the plan's free trial: a paid checkout from day one. Typically the
+	// retry after a server refused the trial (e.g. 409 TRIAL_NOT_AVAILABLE).
+	skipTrial?: boolean;
 	// Optional idempotency key — a retried checkout with the same key dedupes to
 	// one session (and one subscription) server-side. Generate once per attempt.
 	idempotencyKey?: string;
@@ -63,6 +66,7 @@ export type IUpdatePlanInput = Partial<ICreatePlanInput>;
 
 export class BillingClient {
 	private workspaceId: string | undefined;
+	private readonly workspaceListeners = new Set<(workspaceId: string | undefined) => void>();
 
 	constructor(
 		private http: HttpClient,
@@ -77,7 +81,31 @@ export class BillingClient {
 	// falling back to the session user otherwise — see @fonderie/billing's
 	// resolveSubscriber. Call with undefined to bill the signed-in user directly.
 	setWorkspaceId(workspaceId: string | undefined) {
+		const changed = workspaceId !== this.workspaceId;
 		this.workspaceId = workspaceId;
+		if (!changed) return;
+		for (const listener of this.workspaceListeners) {
+			try {
+				listener(workspaceId);
+			} catch {
+				// A listener's failure must not stop the others.
+			}
+		}
+	}
+
+	// The workspace this client bills (X-Workspace-ID), or undefined = the user.
+	getWorkspaceId(): string | undefined {
+		return this.workspaceId;
+	}
+
+	// Called whenever setWorkspaceId changes the workspace. Billing data is per
+	// subscriber, so a screen holding a subscription, card or invoices must
+	// re-read when the user switches workspace. Returns an unsubscribe function.
+	onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void {
+		this.workspaceListeners.add(listener);
+		return () => {
+			this.workspaceListeners.delete(listener);
+		};
 	}
 
 	// ── Plans — public read-only ────────────────────────────────────────────────
@@ -327,10 +355,16 @@ export class BillingClient {
 
 	// The customer's invoices, newest first — each links out to the hosted
 	// invoice / PDF. 501 when the provider can't list them.
-	listInvoices(opts?: IReadOptions) {
+	// Newest first, `limit` per page (default 20, max 100); pass the previous
+	// page's `nextCursor` as `cursor` for the next, older page.
+	listInvoices(opts?: IReadOptions & { cursor?: string; limit?: number }) {
+		const params = new URLSearchParams();
+		if (opts?.cursor) params.set('cursor', opts.cursor);
+		if (opts?.limit !== undefined) params.set('limit', String(opts.limit));
+		const qs = params.toString();
 		return this.http.request<IApiResponse<IInvoicesResult>>({
 			method: 'GET',
-			path: '/billing/invoices',
+			path: `/billing/invoices${qs ? '?' + qs : ''}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,

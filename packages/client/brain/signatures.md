@@ -73,6 +73,8 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .request<T = unknown>(opts: { method: string; path: string; body?: unknown; token?: string | undefined; workspaceId?: string | undefined; cache?: number | false | undefined; bust?: boolean | undefined; invalidate?: string[] | undefined; }): Promise<...>
   .get<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
@@ -200,6 +202,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
 interface ICheckoutInput {
     plan: string;
     interval?: 'month' | 'year';
+    skipTrial?: boolean;
     idempotencyKey?: string;
 }
 
@@ -231,6 +234,8 @@ interface IWalletPreferencesInput {
 new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listPlans(opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanListResult>>
   .getPlan(planId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanResult>>
   .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
@@ -252,7 +257,7 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setupPaymentMethod(): Promise<IApiResponse<ISetupIntentResult>>
   .savePaymentMethod(input: ISavePaymentMethodInput): Promise<IApiResponse<IPaymentMethodResult>>
   .removePaymentMethod(): Promise<IApiResponse<IPaymentMethodResult>>
-  .listInvoices(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvoicesResult>>
+  .listInvoices(opts?: (IReadOptions & { cursor?: string; limit?: number; }) | undefined): Promise<IApiResponse<IInvoicesResult>>
 
 interface IConfigAdminClientOptions {
     baseUrl: string;
@@ -1334,6 +1339,7 @@ interface IInvoiceDTO {
 
 interface IInvoicesResult {
     invoices: IInvoiceDTO[];
+    nextCursor?: string | null;
 }
 
 interface ILoginResult {
@@ -1595,8 +1601,13 @@ interface ITokens {
 
 interface IUsageResult {
     metric: string;
+    kind?: 'counter' | 'records';
     total: number;
     since: string;
+    limit?: number | null;
+    status?: 'ok' | 'warning' | 'over_limit' | 'blocked' | null;
+    window?: string | null;
+    resetsAt?: string | null;
 }
 
 interface IUserDTO {

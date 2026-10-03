@@ -20,12 +20,19 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .request<T = unknown>(opts: { method: string; path: string; body?: unknown; token?: string | undefined; workspaceId?: string | undefined; cache?: number | false | undefined; bust?: boolean | undefined; invalidate?: string[] | undefined; }): Promise<...>
   .get<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .put<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .patch<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .delete<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
+
+interface IWorkspaceScoped {
+    getWorkspaceId(): string | undefined;
+    onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void;
+}
 
 const FONDERIE_INJECTION_KEY: InjectionKey<FonderieClient>
 
@@ -36,6 +43,8 @@ function provideFonderie(client: FonderieClient): void
 function useFonderieClient(): FonderieClient
 
 function useFonderieSubClient<T>(explicit: T | undefined, select: (client: FonderieClient) => T, composableName: string): T
+
+function useWorkspaceId(source?: unknown): Readonly<Ref<string | undefined, string | undefined>>
 
 new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefined, options?: IConfigClientOptions | undefined): ConfigClient
   .ready: Promise<void>

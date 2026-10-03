@@ -20,6 +20,21 @@ import {
 import type { withWorkspace as _withWorkspace } from '@fonderie/workspaces';
 import type { requirePermission as _requirePermission } from '@fonderie/permissions';
 
+// A Response from ANY realm. `instanceof Response` is false when a host swaps
+// globalThis.Response after @fonderie/core captured its own (node-server hosts
+// do), so a short-circuit built by core would be ignored and the request would
+// carry on as if nothing had refused it. Check the shape, not the identity.
+function isResponse(value: unknown): value is Response {
+	if (value instanceof Response) return true;
+	if (typeof value !== 'object' || value === null) return false;
+	const r = value as { status?: unknown; headers?: { get?: unknown }; arrayBuffer?: unknown };
+	return (
+		typeof r.status === 'number' &&
+		typeof r.headers?.get === 'function' &&
+		typeof r.arrayBuffer === 'function'
+	);
+}
+
 export { OPERATIONS } from '@fonderie/core';
 
 async function loadOptionalPeer<T>(load: () => Promise<T>, pkg: string, api: string): Promise<T> {
@@ -211,7 +226,7 @@ export function bridge(fonderie: FonderieApp, options: { maxBodyBytes?: number }
 		// A global middleware short-circuited (e.g. the parser's 413) — send
 		// that response instead of swallowing it.
 		const early = fCtx.meta['pipelineResponse'];
-		if (early instanceof Response) {
+		if (isResponse(early)) {
 			await webResponseToKoa(early, ctx as unknown as KoaContext);
 			return;
 		}
@@ -358,7 +373,7 @@ export function mount(app: Koa, fonderie: FonderieApp, options: { maxBodyBytes?:
 		// which the fonderie fallback below hands to handle().
 		const fCtx = await fonderie.buildContext(webReq);
 		const early = fCtx.meta['pipelineResponse'];
-		if (early instanceof Response) {
+		if (isResponse(early)) {
 			await webResponseToKoa(early, ctx as unknown as KoaContext);
 			return;
 		}

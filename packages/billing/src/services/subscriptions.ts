@@ -235,3 +235,24 @@ export async function hasConsumedTrial(
 	);
 	return rows.length > 0;
 }
+
+// Whether ANY workspace owned by the same owner as `workspaceId` has consumed a
+// free trial (the workspace itself included). Backs `trialScope: 'owner'`: with
+// per-workspace billing, the per-subscriber ledger alone lets one person farm a
+// trial per new workspace they create. Needs the workspaces brick's table; a
+// workspace it cannot find matches nothing (the per-subscriber check still runs).
+export async function hasOwnerConsumedTrial(
+	workspaceId: string,
+	store: IStoreAdapter,
+): Promise<boolean> {
+	const rows = await store.query<{ one: number }>(
+		`SELECT 1 AS one
+		   FROM fonderie_subscription_trials t
+		   JOIN fonderie_workspaces w  ON w.id = t.subscriber_id
+		   JOIN fonderie_workspaces me ON me.owner_id = w.owner_id
+		  WHERE t.subscriber_type = 'workspace' AND me.id = $1
+		  LIMIT 1`,
+		[workspaceId],
+	);
+	return rows.length > 0;
+}

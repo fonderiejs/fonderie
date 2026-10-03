@@ -29,6 +29,8 @@ const ALLOW = new Map([
 	['WebhooksClient.setAccessToken', 'redundant setter; shared TokenStore'],
 	['MediaClient.setAccessToken', 'redundant setter; shared TokenStore'],
 	['BillingClient.setWorkspaceId', 'propagated by FonderieClient.setWorkspaceId'],
+	['BillingClient.getWorkspaceId', 'read by useWorkspaceId (@fonderie/react, @fonderie/vue), which every per-workspace billing hook calls internally'],
+	['BillingClient.onWorkspaceChange', 'subscribed by useWorkspaceId (@fonderie/react, @fonderie/vue), which every per-workspace billing hook calls internally'],
 	['WorkspacesClient.setWorkspaceId', 'propagated by FonderieClient.setWorkspaceId'],
 	['CustomersClient.setWorkspaceId', 'propagated by FonderieClient.setWorkspaceId'],
 	['AuditClient.setWorkspaceId', 'propagated by FonderieClient.setWorkspaceId'],

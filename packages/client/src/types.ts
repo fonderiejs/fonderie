@@ -202,8 +202,21 @@ export interface IPortalUrlResult {
 
 export interface IUsageResult {
 	metric: string;
+	// 'counter' = a windowed plan limit (e.g. 'api-calls' per day) read from the
+	// live counter; 'records' = the sum of POST /billing/usage records this
+	// month. Absent from servers that predate it (records).
+	kind?: 'counter' | 'records';
+	// Used in the current window ('counter'), or recorded this month ('records').
 	total: number;
+	// Start of what `total` covers (the window, or the month).
 	since: string;
+	// The plan's advertised limit for this metric; null = unlimited or none.
+	limit?: number | null;
+	// 'counter' only: where `total` stands against the limit.
+	status?: 'ok' | 'warning' | 'over_limit' | 'blocked' | null;
+	// 'counter' only: the window, e.g. '1d', and when it resets (ISO-8601).
+	window?: string | null;
+	resetsAt?: string | null;
 }
 
 // Wallet balance snapshot. Money fields are digit strings (server bigint →
@@ -325,6 +338,9 @@ export interface IInvoiceDTO {
 
 export interface IInvoicesResult {
 	invoices: IInvoiceDTO[];
+	// Opaque cursor for the next (older) page, or null when there is none.
+	// Absent from servers that predate invoice pagination.
+	nextCursor?: string | null;
 }
 
 // ── Workspaces ───────────────────────────────────────────────────────────────
@@ -348,6 +364,13 @@ export interface IWorkspaceDTO {
 	phone: string;
 	businessType: string;
 	address: IWorkspaceAddressDTO;
+	/**
+	 * @deprecated Not the workspace's billing plan. Set to 'free' when the
+	 * workspace is created and never maintained — nothing writes it when the
+	 * workspace subscribes, upgrades or cancels. Read the subscription from
+	 * @fonderie/billing instead (GET /billing/subscription with the
+	 * X-Workspace-ID header; `useSubscription()` in the frontend packages).
+	 */
 	plan: string;
 	ownerId: string;
 	isPersonal: boolean;

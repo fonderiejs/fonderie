@@ -21,6 +21,13 @@ export interface IWorkspaceDTO {
 	phone: string;
 	businessType: string;
 	address: IWorkspaceAddressDTO;
+	/**
+	 * @deprecated Not the workspace's billing plan. Set to 'free' when the
+	 * workspace is created and never maintained — nothing writes it when the
+	 * workspace subscribes, upgrades or cancels. Read the subscription from
+	 * @fonderie/billing instead (GET /billing/subscription with the
+	 * X-Workspace-ID header; `useSubscription()` in the frontend packages).
+	 */
 	plan: string;
 	ownerId: string;
 	isPersonal: boolean;

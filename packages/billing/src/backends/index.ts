@@ -11,4 +11,4 @@ export function createBackend(config: RateLimitBackendConfig | undefined, store:
 
 export type { ICounterBackend } from './types';
 export { MemoryCounterBackend } from './memory';
-export { DBCounterBackend } from './db';
+export { DBCounterBackend, purgeUsageCounters, counterWindow } from './db';

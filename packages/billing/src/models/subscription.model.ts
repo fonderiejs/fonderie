@@ -4,6 +4,7 @@ import type { ISubscription, SubscriberType } from '../types';
 import {
 	getSubscription,
 	hasConsumedTrial,
+	hasOwnerConsumedTrial,
 	markTrialConsumed,
 	upsertSubscription,
 } from '../services/subscriptions';
@@ -21,6 +22,10 @@ export class SubscriptionModel {
 
 	hasConsumedTrial(subscriberType: SubscriberType, subscriberId: string): Promise<boolean> {
 		return hasConsumedTrial(subscriberType, subscriberId, this.store);
+	}
+
+	hasOwnerConsumedTrial(workspaceId: string): Promise<boolean> {
+		return hasOwnerConsumedTrial(workspaceId, this.store);
 	}
 
 	markTrialConsumed(subscriberType: SubscriberType, subscriberId: string): Promise<void> {

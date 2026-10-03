@@ -19,6 +19,21 @@ import {
 import type { withWorkspace as _withWorkspace } from '@fonderie/workspaces';
 import type { requirePermission as _requirePermission } from '@fonderie/permissions';
 
+// A Response from ANY realm. `instanceof Response` is false when a host swaps
+// globalThis.Response after @fonderie/core captured its own (node-server hosts
+// do), so a short-circuit built by core would be ignored and the request would
+// carry on as if nothing had refused it. Check the shape, not the identity.
+function isResponse(value: unknown): value is Response {
+	if (value instanceof Response) return true;
+	if (typeof value !== 'object' || value === null) return false;
+	const r = value as { status?: unknown; headers?: { get?: unknown }; arrayBuffer?: unknown };
+	return (
+		typeof r.status === 'number' &&
+		typeof r.headers?.get === 'function' &&
+		typeof r.arrayBuffer === 'function'
+	);
+}
+
 export { OPERATIONS } from '@fonderie/core';
 
 async function loadOptionalPeer<T>(load: () => Promise<T>, pkg: string, api: string): Promise<T> {
@@ -87,7 +102,7 @@ export function bridge(fonderie: FonderieApp, options: IBridgeOptions = {}): Mid
 		// body parser's 413) — that response must reach the client, not be
 		// swallowed by context-building.
 		const early = ctx.meta['pipelineResponse'];
-		if (early instanceof Response) return early;
+		if (isResponse(early)) return early;
 		// buildContext CONSUMED c.req.raw's body (no clone — a tee stalls on
 		// large bodies). Core's parser re-materialized ctx.request from the
 		// buffered bytes; point Hono's request at it so the app's OWN native

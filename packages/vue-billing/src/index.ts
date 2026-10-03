@@ -11,6 +11,7 @@ export type {
 	ISubscriptionChangeResult,
 	ISubscriptionDTO,
 	IUpdatePlanInput,
+	IUsageResult,
 	IWalletCheckoutInput,
 	IWalletDTO,
 	IWalletPurchaseInput,

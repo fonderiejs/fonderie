@@ -68,8 +68,14 @@ export interface IWalletContext {
 
 export interface IBillingContext {
 	subscriber: { type: SubscriberType; id: string };
+	// The plan whose features and limits apply right now: the subscribed plan
+	// while it is paid for (active, trialing, or past_due within the dunning
+	// grace), otherwise the free plan (config.plans[0]).
 	plan: string;
-	active: boolean; // subscription is active or trialing
+	// The plan the subscription row names, paid for or not. Equal to `plan`
+	// unless the subscription has stopped paying.
+	subscribedPlan?: string;
+	active: boolean; // subscription is active, trialing, or within dunning grace
 	statuses: Record<string, IPolicyStatus>;
 	wallet?: IWalletContext;
 }

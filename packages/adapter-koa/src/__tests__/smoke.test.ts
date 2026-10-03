@@ -331,3 +331,34 @@ test('koaContextToWeb: does not hang when the request stream was already ended',
 	]);
 	assert.equal(webReq.body, null);
 });
+
+// Regression: node-server hosts swap globalThis.Response after @fonderie/core
+// loaded, so core's short-circuit is not `instanceof` the global. It must still
+// be answered — the check is by shape, not identity.
+test('bridge: parser 413 is sent even under a foreign globalThis.Response', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 64 * 1024 }),
+	);
+	await fonderie.boot();
+
+	const ctx = makeKoaCtx({
+		method: 'POST',
+		url: '/echo',
+		headers: { 'content-type': 'application/json' },
+		rawBody: JSON.stringify({ pad: 'x'.repeat(128 * 1024) }),
+	});
+	let nextCalled = false;
+	const Original = globalThis.Response;
+	class SwappedResponse extends Original {}
+	(globalThis as { Response: typeof Response }).Response = SwappedResponse;
+	try {
+		await bridge(fonderie, { maxBodyBytes: 1024 * 1024 })(ctx as any, async () => {
+			nextCalled = true;
+		});
+	} finally {
+		(globalThis as { Response: typeof Response }).Response = Original;
+	}
+	assert.ok(!nextCalled, 'pipeline answered; next must not run');
+	assert.equal(ctx.response.status, 413);
+});

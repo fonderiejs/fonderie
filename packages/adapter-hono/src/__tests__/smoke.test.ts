@@ -261,3 +261,33 @@ test('bridge: native c.req.text() also works post-bridge', async () => {
 	});
 	assert.equal(await res.text(), '{"a":1}');
 });
+
+// Regression: node-server hosts swap globalThis.Response after @fonderie/core
+// loaded, so core's short-circuit is not `instanceof` the global. It must still
+// be answered — the check is by shape, not identity.
+test('bridge + mount: a pipeline short-circuit is answered under a foreign globalThis.Response', async () => {
+	const { FonderieApp, defineConfig } = await import('@fonderie/core');
+	const fonderie = new FonderieApp(
+		defineConfig({ db: { url: 'postgres://localhost/test' }, maxBodyBytes: 1024 }),
+	);
+	fonderie.addRoute('POST', '/echo', async () => Response.json({ ok: true }));
+	await fonderie.boot();
+
+	const app = new Hono();
+	app.use('*', bridge(fonderie));
+	mount(app, fonderie);
+
+	const Original = globalThis.Response;
+	class SwappedResponse extends Original {}
+	(globalThis as { Response: typeof Response }).Response = SwappedResponse;
+	try {
+		const res = await app.request('/echo', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pad: 'x'.repeat(8192) }),
+		});
+		assert.equal(res.status, 413);
+	} finally {
+		(globalThis as { Response: typeof Response }).Response = Original;
+	}
+});
