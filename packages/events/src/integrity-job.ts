@@ -15,6 +15,9 @@ export interface IIntegrityCheckOptions {
 	// Called only when the log failed verification. Defaults to a loud
 	// console.error naming the tampered rows — override to page/alert.
 	onTamper?: (report: IIntegrityReport) => void;
+	// Keys the log was signed with before a rotation — verify-only, so rows
+	// signed before the rotation are not reported as tampered.
+	retiredKeys?: readonly string[];
 }
 
 export interface IIntegrityCheckHandle {
@@ -35,7 +38,7 @@ export function startIntegrityCheck(
 	const run = async (): Promise<void> => {
 		if (stopped) return;
 		try {
-			const report = await verifyEventChain(store, key);
+			const report = await verifyEventChain(store, key, options.retiredKeys);
 			options.onResult?.(report);
 			if (!report.ok) onTamper(report);
 		} catch (err) {
