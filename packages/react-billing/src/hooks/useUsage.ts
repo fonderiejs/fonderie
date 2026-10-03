@@ -1,9 +1,9 @@
 import type { IRecordUsageInput, IUsageResult } from '@fonderie/client';
-import { BillingClient, FonderieApiError } from '@fonderie/client';
+import { BillingClient, type FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
-import { useLatestRequest, useWorkspaceSwitch } from './workspace';
+import { toApiError, useBillingQuery } from './workspace';
 
 export interface IUseUsageReturn {
 	// Used in the current window for a windowed plan limit (e.g. 'api-calls'),
@@ -28,59 +28,34 @@ export function useUsage(
 	const explicit = firstIsClient ? (clientOrMetric as BillingClient | undefined) : undefined;
 	const metric = firstIsClient ? (maybeMetric as string) : clientOrMetric;
 	const billing = useFonderieSubClient(explicit, (c) => c.billing, 'useUsage');
-	const [usage, setUsage] = useState<IUsageResult | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	// Workspace billing: a switch clears what was shown and re-reads.
-	const workspaceId = useWorkspaceSwitch(billing, () => {
-		setUsage(null);
-		setError(null);
-		setIsLoading(true);
-	});
-	const beginRequest = useLatestRequest();
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			const isLatest = beginRequest();
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await billing.getUsage(metric, { bust: opts?.force });
-				if (!isLatest()) return;
-				setUsage(result);
-			} catch (err) {
-				if (!isLatest()) return;
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				if (isLatest()) setIsLoading(false);
-			}
-		},
-		[billing, metric, beginRequest],
+	const q = useBillingQuery<IUsageResult>(
+		billing,
+		`/billing/usage/${encodeURIComponent(metric)}`,
+		async (bust) => (await billing.getUsage(metric, { bust })).result,
 	);
+	const [writeError, setWriteError] = useState<FonderieApiError | null>(null);
 
 	const recordUsage = useCallback(
 		async (input: IRecordUsageInput) => {
-			setError(null);
+			setWriteError(null);
 			try {
 				await billing.recordUsage(input);
-				await refresh();
+				await q.refresh();
 			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
+				const apiError = toApiError(err);
+				setWriteError(apiError);
 				throw apiError;
 			}
 		},
-		[billing, refresh],
+		[billing, q.refresh],
 	);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: workspaceId re-runs the read on a workspace switch
-	useEffect(() => {
-		void refresh();
-	}, [refresh, workspaceId]);
-
-	return { total: usage?.total ?? null, usage, isLoading, error, refresh, recordUsage };
+	return {
+		total: q.data?.total ?? null,
+		usage: q.data ?? null,
+		isLoading: q.isLoading,
+		error: writeError ?? q.error,
+		refresh: q.refresh,
+		recordUsage,
+	};
 }

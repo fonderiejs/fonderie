@@ -1,7 +1,8 @@
 import type { IPlanDTO } from '@fonderie/client';
-import { BillingClient, FonderieApiError } from '@fonderie/client';
+import { BillingClient, type FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+
+import { useBillingQuery } from './workspace';
 
 export interface IUsePlanReturn {
 	plan: IPlanDTO | null;
@@ -20,31 +21,12 @@ export function usePlan(
 	const explicit = firstIsClient ? (clientOrPlanId as BillingClient | undefined) : undefined;
 	const planId = firstIsClient ? (maybePlanId as string) : clientOrPlanId;
 	const billing = useFonderieSubClient(explicit, (c) => c.billing, 'usePlan');
-	const [plan, setPlan] = useState<IPlanDTO | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await billing.getPlan(planId, { bust: opts?.force });
-				setPlan(result.plan);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[billing, planId],
+	// The catalog is the same for every subscriber: not keyed by workspace.
+	const q = useBillingQuery<IPlanDTO>(
+		billing,
+		`/plans/${encodeURIComponent(planId)}`,
+		async (bust) => (await billing.getPlan(planId, { bust })).result.plan,
+		{ perWorkspace: false },
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { plan, isLoading, error, refresh };
+	return { plan: q.data ?? null, isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

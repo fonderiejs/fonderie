@@ -15,6 +15,7 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .media: MediaClient
   .config: ConfigClient
   .sse: SseClient
+  .queries: QueryStore
   .session: SessionState
   .onSessionChange(listener: (state: SessionState) => void): () => void
   .setAccessToken(token: string | undefined): void
@@ -97,6 +98,8 @@ type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
 function isSwitchOn(value: unknown): boolean
 
+function useClientQuery<T>(source: object, key: string | null, fetcher: (ctx: { force: boolean; }) => Promise<T>, opts?: IUseClientQueryOptions): IClientQueryResult<T>
+
 function useRemoteConfig<T>(key: string, fallback: T, client?: ConfigClient | undefined): T
 
 function useSse(topics: string[], onEvent: (event: ISseClientEvent) => void, options?: IUseSseOptions, client?: SseClient | undefined): void
@@ -104,6 +107,19 @@ function useSse(topics: string[], onEvent: (event: ISseClientEvent) => void, opt
 function useSseStatus(client?: SseClient | undefined): SseStatus
 
 function withRemoteConfig<P extends object>(key: string, Component: ComponentType<P>, options?: IWithRemoteConfigOptions<P>): ComponentType<P>
+
+interface IClientQueryResult<T> {
+    data: T | undefined;
+    error: unknown;
+    isLoading: boolean;
+    isFetching: boolean;
+    refresh: () => Promise<T | undefined>;
+}
+
+interface IUseClientQueryOptions {
+    staleMs?: number;
+    enabled?: boolean;
+}
 
 interface IUseSseOptions {
     onReset?: () => void;

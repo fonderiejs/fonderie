@@ -1,8 +1,10 @@
 import type { IPlanDTO } from '@fonderie/client';
-import { BillingClient, FonderieApiError } from '@fonderie/client';
+import { BillingClient, type FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
+
+import { useBillingQuery } from './workspace';
 
 export interface IUsePlanReturn {
 	plan: Ref<IPlanDTO | null>;
@@ -24,30 +26,12 @@ export function usePlan(
 	const explicit = firstIsClient ? (clientOrPlanId as BillingClient | undefined) : undefined;
 	const planId = firstIsClient ? (maybePlanId as MaybeRefOrGetter<string>) : clientOrPlanId;
 	const billing = useFonderieSubClient(explicit, (c) => c.billing, 'usePlan');
-	const plan = ref<IPlanDTO | null>(null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await billing.getPlan(toValue(planId), { bust: opts?.force });
-			plan.value = result.plan;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(planId),
-		() => void refresh(),
+	// The catalog is the same for every subscriber: not keyed by workspace.
+	const q = useBillingQuery<IPlanDTO>(
+		billing,
+		() => `/plans/${encodeURIComponent(toValue(planId))}`,
+		async (bust) => (await billing.getPlan(toValue(planId), { bust })).result.plan,
+		{ perWorkspace: false },
 	);
-
-	return { plan, isLoading, error, refresh };
+	return { plan: computed(() => q.data.value ?? null), isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

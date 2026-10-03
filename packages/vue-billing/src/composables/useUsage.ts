@@ -1,10 +1,10 @@
 import type { IRecordUsageInput, IUsageResult } from '@fonderie/client';
-import { BillingClient, FonderieApiError } from '@fonderie/client';
+import { BillingClient, type FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue';
-import { computed, onMounted, ref, toValue, watch } from 'vue';
+import { computed, ref, toValue } from 'vue';
 
-import { latestRequest, onWorkspaceSwitch } from './workspace';
+import { toApiError, useBillingQuery } from './workspace';
 
 export interface IUseUsageReturn {
 	// Used in the current window for a windowed plan limit (e.g. 'api-calls'),
@@ -32,56 +32,33 @@ export function useUsage(
 	const explicit = firstIsClient ? (clientOrMetric as BillingClient | undefined) : undefined;
 	const metric = firstIsClient ? (maybeMetric as MaybeRefOrGetter<string>) : clientOrMetric;
 	const billing = useFonderieSubClient(explicit, (c) => c.billing, 'useUsage');
-	const usage = ref<IUsageResult | null>(null);
-	const total = computed(() => usage.value?.total ?? null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	const beginRequest = latestRequest();
-
-	async function refresh(opts?: { force?: boolean }) {
-		const isLatest = beginRequest();
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await billing.getUsage(toValue(metric), { bust: opts?.force });
-			if (!isLatest()) return;
-			usage.value = result;
-		} catch (err) {
-			if (!isLatest()) return;
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			if (isLatest()) isLoading.value = false;
-		}
-	}
-
-	// Workspace billing: a switch clears what was shown and re-reads.
-	onWorkspaceSwitch(billing, () => {
-		usage.value = null;
-		error.value = null;
-		isLoading.value = true;
-		void refresh();
-	});
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(metric),
-		() => void refresh(),
+	// The key follows the metric: changing it reads that metric's entry.
+	const q = useBillingQuery<IUsageResult>(
+		billing,
+		() => `/billing/usage/${encodeURIComponent(toValue(metric))}`,
+		async (bust) => (await billing.getUsage(toValue(metric), { bust })).result,
 	);
+	const writeError = ref<FonderieApiError | null>(null);
 
 	async function recordUsage(input: IRecordUsageInput) {
-		error.value = null;
+		writeError.value = null;
 		try {
 			await billing.recordUsage(input);
-			await refresh();
+			await q.refresh();
 		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
+			const apiError = toApiError(err);
+			writeError.value = apiError;
 			throw apiError;
 		}
 	}
 
-	return { total, usage, isLoading, error, refresh, recordUsage };
+	const usage = computed(() => q.data.value ?? null);
+	return {
+		total: computed(() => usage.value?.total ?? null),
+		usage,
+		isLoading: q.isLoading,
+		error: computed(() => writeError.value ?? q.error.value),
+		refresh: q.refresh,
+		recordUsage,
+	};
 }

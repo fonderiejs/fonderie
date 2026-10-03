@@ -1,14 +1,13 @@
-import type { BillingClient, IInvoiceDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { BillingClient, FonderieApiError, IInvoiceDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { useLatestRequest, useWorkspaceSwitch } from './workspace';
+import { toApiError, useBillingQuery } from './workspace';
 
 export interface IUseInvoicesReturn {
 	// Invoices newest first; each links out via hostedInvoiceUrl/invoicePdf.
 	invoices: IInvoiceDTO[];
-	// Opaque cursor for the next (older) page, or null when there is none.
+	// Opaque cursor for the next page, or null when there is none.
 	nextCursor: string | null;
 	hasMore: boolean;
 	isLoading: boolean;
@@ -19,83 +18,76 @@ export interface IUseInvoicesReturn {
 	loadMore: () => Promise<void>;
 }
 
+interface IPage {
+	rows: IInvoiceDTO[];
+	nextCursor: string | null;
+}
+
+const NONE: IInvoiceDTO[] = [];
+const NO_INVOICES: IPage = Object.freeze({ rows: NONE, nextCursor: null }) as IPage;
 // The subscriber's invoice history, for a billing page. Reads GET
 // /billing/invoices, newest first, cursor-paginated: `loadMore` appends.
 export function useInvoices(client?: BillingClient): IUseInvoicesReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useInvoices');
-	const [invoices, setInvoices] = useState<IInvoiceDTO[]>([]);
-	const [nextCursor, setNextCursor] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	// Workspace billing: a switch clears what was shown and re-reads.
-	const workspaceId = useWorkspaceSwitch(billing, () => {
-		setInvoices([]);
-		setNextCursor(null);
-		setError(null);
-		setIsLoading(true);
-	});
-	const beginRequest = useLatestRequest();
-	const currentWorkspace = useRef(workspaceId);
-	currentWorkspace.current = workspaceId;
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			const isLatest = beginRequest();
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await billing.listInvoices({ bust: opts?.force });
-				if (!isLatest()) return;
-				setInvoices(result.invoices);
-				setNextCursor(result.nextCursor ?? null);
-			} catch (err) {
-				if (!isLatest()) return;
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				// 501 = the provider can't list invoices — a normal "no invoices" state.
-				if (apiError.status !== 501) setError(apiError);
-				setInvoices([]);
-				setNextCursor(null);
-			} finally {
-				if (isLatest()) setIsLoading(false);
-			}
+	// The first page is the shared, cached read: shown at once on every visit,
+	// refreshed behind what is shown.
+	const q = useBillingQuery<IPage>(
+		billing,
+		'/billing/invoices',
+		async (bust) => {
+			const { result } = await billing.listInvoices({ bust });
+			return { rows: result.invoices, nextCursor: result.nextCursor ?? null };
 		},
-		[billing, beginRequest],
+		// 501 = the provider can't list invoices — a normal "no invoices" state.
+		{ normal: (err) => (err.status === 501 ? NO_INVOICES : undefined) },
 	);
 
+	// Pages appended by loadMore belong to THIS screen, and to the exact first
+	// page they extend: a refresh that returns the same first page keeps the
+	// same object (and so the extra pages); a different one (new rows, another
+	// workspace) re-anchors the list instead of mixing the two.
+	const [more, setMore] = useState<{ base: IPage; rows: IInvoiceDTO[]; cursor: string | null } | null>(null);
+	const [pageError, setPageError] = useState<FonderieApiError | null>(null);
+	const first = q.data;
+	const firstRef = useRef(first);
+	firstRef.current = first;
+	const extra = more && more.base === first ? more : null;
+
+	const rows = useMemo(
+		() => (first ? (extra ? [...first.rows, ...extra.rows] : first.rows) : NONE),
+		[first, extra],
+	);
+	const nextCursor = extra ? extra.cursor : (first?.nextCursor ?? null);
+
 	const loadMore = useCallback(async () => {
-		if (!nextCursor) return;
-		// A page of the previous workspace's invoices must not be appended to
-		// the new workspace's list.
-		const startedFor = currentWorkspace.current;
-		setError(null);
+		const base = firstRef.current;
+		if (!base || !nextCursor) return;
+		setPageError(null);
 		try {
 			const { result } = await billing.listInvoices({ cursor: nextCursor });
-			if (currentWorkspace.current !== startedFor) return;
-			setInvoices((prev) => [...prev, ...result.invoices]);
-			setNextCursor(result.nextCursor ?? null);
+			// The list moved on (refresh with new rows, workspace switch): this
+			// page belongs to a list no longer shown.
+			if (firstRef.current !== base) return;
+			setMore((prev) => ({
+				base,
+				rows: [...(prev && prev.base === base ? prev.rows : []), ...result.invoices],
+				cursor: result.nextCursor ?? null,
+			}));
 		} catch (err) {
-			if (currentWorkspace.current !== startedFor) return;
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
+			if (firstRef.current !== base) return;
+			const apiError = toApiError(err);
+			setPageError(apiError);
 			throw apiError;
 		}
 	}, [billing, nextCursor]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: workspaceId re-runs the read on a workspace switch
-	useEffect(() => {
-		void refresh();
-	}, [refresh, workspaceId]);
-
 	return {
-		invoices,
+		invoices: rows,
 		nextCursor,
 		hasMore: nextCursor !== null,
-		isLoading,
-		error,
-		refresh,
+		isLoading: q.isLoading,
+		error: pageError ?? q.error,
+		refresh: q.refresh,
 		loadMore,
 	};
 }

@@ -10,5 +10,6 @@ export {
 } from './provider';
 export type { ConfigClient, IAuthErrorInfo, IClientLog, IConfigStorage, IRemoteConfigState, ISseClientEvent, SessionState, SseClient, SseStatus } from '@fonderie/client';
 export { isSwitchOn } from '@fonderie/client';
-export { useRemoteConfig, useSse, useSseStatus, withRemoteConfig } from './composables';
+export { useClientQuery, useRemoteConfig, useSse, useSseStatus, withRemoteConfig } from './composables';
+export type { IClientQueryResult, IUseClientQueryOptions } from './composables';
 export type { IUseSseOptions, IWithRemoteConfigOptions } from './composables';
