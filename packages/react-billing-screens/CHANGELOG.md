@@ -1,5 +1,13 @@
 # @fonderie/react-billing-screens
 
+## 0.3.6
+
+### Patch Changes
+
+- Updated dependencies [157004a]
+  - @fonderie/client@3.2.0
+  - @fonderie/react-billing@0.11.0
+
 ## 0.3.5
 
 ### Patch Changes
