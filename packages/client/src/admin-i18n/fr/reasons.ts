@@ -110,6 +110,7 @@ const reasons: typeof en = {
 		TRANSPORT_NOT_STARTED: 'Le transport des événements n’a pas encore démarré.',
 		EVENT_TAMPERED: 'L’événement {event} ne correspond plus à sa signature — il a été modifié.',
 		EVENTS_UNSIGNED: '{count} événement(s) antérieurs à la signature ne peuvent pas être vérifiés.',
+		EVENTS_RETIRED_KEY: '{count} événement(s) signés avec une clé retirée, avant sa rotation — authentiques.',
 		EVENT_DEAD: '{type} ({consumer}) a échoué à chaque tentative et ne sera jamais livré : {error}',
 		BACKLOG_STALE: '{consumer} : {waiting} en attente, le plus ancien depuis {minutes} min.',
 	},

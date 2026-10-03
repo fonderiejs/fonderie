@@ -19,6 +19,7 @@ attempts                 INT NOT NULL DEFAULT 0
 error                    TEXT
 processed_at             TIMESTAMPTZ
 claimed_at               TIMESTAMPTZ
+CONSTRAINT               fonderie_event_consumers_status_check CHECK (status IN ('pending', 'processing', 'processed', 'failed', 'dead', 'dismissed'))
 -- PRIMARY KEY (event_id, consumer)
 ```
 

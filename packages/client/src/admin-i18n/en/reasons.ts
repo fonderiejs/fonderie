@@ -106,6 +106,7 @@ const reasons = {
 		TRANSPORT_NOT_STARTED: 'The event transport has not started yet.',
 		EVENT_TAMPERED: 'Event {event} no longer matches its signature — it was changed.',
 		EVENTS_UNSIGNED: '{count} event(s) predate signing and cannot be verified.',
+		EVENTS_RETIRED_KEY: '{count} event(s) were signed with a retired key, before it was rotated — authentic.',
 		EVENT_DEAD: '{type} ({consumer}) failed every retry and will never be delivered: {error}',
 		BACKLOG_STALE: '{consumer}: {waiting} waiting, the oldest for {minutes} min.',
 	},

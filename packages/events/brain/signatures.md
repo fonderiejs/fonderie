@@ -36,6 +36,7 @@ type EventTransportConfig = {
     consume?: boolean;
     claimTimeoutMs?: number;
     integrityKey?: string;
+    retiredIntegrityKeys?: string[];
 } | IEventTransport;
 
 new MemoryTransport(): MemoryTransport
@@ -55,6 +56,8 @@ new PGTransport(config: IPGTransportConfig): PGTransport
   .hasIntegrityKey(): boolean
   .verifyIntegrity(): Promise<IIntegrityReport | null>
   .deadLetters(limit?: number): Promise<IDeadLetter[]>
+  .retryDead(eventId: string, consumer: string): Promise<boolean>
+  .dismissDead(eventId: string, consumer: string): Promise<boolean>
   .pendingByConsumer(): Promise<IConsumerBacklog[]>
   .pendingCount(): Promise<number>
 
@@ -97,6 +100,7 @@ interface IPGTransportConfig {
     consume?: boolean;
     claimTimeoutMs?: number;
     integrityKey?: string;
+    retiredIntegrityKeys?: string[];
 }
 
 interface IDeadLetter {
@@ -118,7 +122,7 @@ function matchesPattern(pattern: string, eventType: string): boolean
 
 function computeEventHmac(key: string, event: IHashableEvent): string
 
-function verifyEventChain(store: IStoreAdapter, key: string): Promise<IIntegrityReport>
+function verifyEventChain(store: IStoreAdapter, key: string, retiredKeys?: readonly string[]): Promise<IIntegrityReport>
 
 function canonicalize(value: unknown): string
 
@@ -128,6 +132,7 @@ interface IIntegrityCheckOptions {
     intervalMs?: number;
     onResult?: (report: IIntegrityReport) => void;
     onTamper?: (report: IIntegrityReport) => void;
+    retiredKeys?: readonly string[];
 }
 
 interface IIntegrityCheckHandle {
@@ -145,6 +150,7 @@ interface IIntegrityReport {
     ok: boolean;
     checked: number;
     unprotected: number;
+    retiredKey: number;
     tampered: string[];
 }
 
@@ -182,7 +188,7 @@ interface IEventRecord {
 interface IConsumerRecord {
     eventId: string;
     consumer: string;
-    status: 'pending' | 'processing' | 'processed' | 'failed' | 'dead';
+    status: 'pending' | 'processing' | 'processed' | 'failed' | 'dead' | 'dismissed';
     attempts: number;
     error: string | null;
     processedAt: Date | null;
