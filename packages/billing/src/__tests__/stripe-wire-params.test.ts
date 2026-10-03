@@ -36,16 +36,19 @@ test('never sends payment_method_types — Dahlia 400s on it', () => {
 	);
 });
 
-test('restricts setup-intent methods explicitly, rather than not at all', () => {
+test('restricts payment methods explicitly on EVERY page it opens, rather than not at all', () => {
 	// Dropping the parameter entirely also "fixes" the 400 — and silently opens
-	// card entry to wallet methods like Link, whose confirmed PM is type:'link'
-	// with no `card` object and so cannot be shown as a card on file. The
-	// restriction is the point; assert it is still there.
+	// the page to wallet methods like Link, whose PM is type:'link' with no
+	// `card` object and so cannot be shown as a card on file. That is exactly
+	// what hosted Checkout did (it never had the restriction): a subscriber who
+	// paid with Link saw "no card on file". SetupIntent + subscription Checkout
+	// + pack Checkout must all carry the one configured list.
+	const restricted = SRC.match(/allowed_payment_method_types:\s*this\.paymentMethodTypes\(\)/g) ?? [];
+	assert.equal(restricted.length, 3, `expected 3 restricted Stripe pages, found ${restricted.length}`);
 	assert.match(
 		SRC,
-		/allowed_payment_method_types:\s*this\.options\.setupPaymentMethodTypes/,
-		'the SetupIntent no longer restricts payment method types to the configured ' +
-			'list — wallet methods can now be saved as unusable "cards on file"',
+		/paymentMethodTypes\(\)[^{]*\{\s*return this\.options\.setupPaymentMethodTypes \?\? \[SUPPORTED_PAYMENT_OPTIONS\.CARD\]/,
+		'the shared list must come from setupPaymentMethodTypes, default card only',
 	);
 });
 
