@@ -1,5 +1,33 @@
 # @fonderie/billing
 
+## 10.5.0
+
+### Minor Changes
+
+- 87f6e1d: **The `'db'` rate-limit backend is fit for per-request counters.** It used to insert one `fonderie_usage_records` row per request and sum the whole window on every request, with nothing ever deleting a row — a 100k/day limit meant summing up to 100k rows per request, forever growing. `'memory'` is no alternative on serverless, where each instance counts alone and resets on every cold start.
+  
+  Windowed counters now live in a new table, `fonderie_usage_counters` (migration `015_usage_counters.sql` — run your migrations): one row per subscriber, metric and window, updated by a single atomic upsert that returns the new total, so concurrent requests never lose a count. Windows are the fixed, epoch-aligned periods `resetsAt` already advertised (a `'1d'` limit resets at 00:00 UTC). Ended windows are dead weight: call the new `purgeUsageCounters(store)` from a cron (the backend also purges opportunistically, at most every 10 minutes per process). `counterWindow(windowMs)` is exported for tests and tooling.
+  
+  Counts held under the old scheme are not carried over — each counter starts at zero in the current window after the upgrade. `recordUsage` / `getUsage` (`POST`/`GET /billing/usage`) are unchanged and still use `fonderie_usage_records`.
+- 87f6e1d: **A subscription that isn't paying no longer unlocks its plan.** A checkout that was never paid (`incomplete`), an `unpaid` or `paused` subscription, or one `past_due` beyond the dunning grace still names its paid plan — and `withBilling` used to hand out that plan's features, limits and seats anyway. Entitlements now follow payment: such a subscriber gets the free plan (`config.plans[0]`), exactly like a subscriber with no subscription, and gets the paid plan back the moment it pays. `IBillingContext.plan` is the plan in force; the new `IBillingContext.subscribedPlan` is the plan the subscription names.
+  
+  **A workspace's limit notices go to the workspace owner.** A `limit-warning` / `limit-reached` notice for a workspace subscriber used to go to whichever member's request crossed the line. With `config.resolveRecipient` and an event bus wired (as production readiness already requires), it now goes to the subscriber's resolved contact — the owner — like every other billing notice.
+- 87f6e1d: **The invoice list no longer stops at 20.** `GET /billing/invoices` returned the newest 20 invoices and silently dropped everything older. It now pages newest first by keyset (`?limit=` 1–100, default 20; `?cursor=`) and answers `nextCursor`. `client.billing.listInvoices({ cursor, limit })`; `useInvoices()` gains `nextCursor`, `hasMore` and `loadMore()` (React and Vue), like `useWalletTransactions`. Providers receive an optional `createdLte` bound; one that ignores it still never repeats a row.
+  
+  **A usage screen can show the rate limit.** `GET /billing/usage/:metric` only summed usage records, so a windowed plan limit such as `'api-calls': { limit, window: '1d' }` — a counter, not records — always read 0. For such a metric it now answers from the live counter: `kind: 'counter'`, `total` used in the current window, `limit`, `status` (`ok` | `warning` | `over_limit` | `blocked`), `window`, `since` and `resetsAt`. Other metrics keep the records sum (`kind: 'records'`) and also report the plan's `limit`. `useUsage()` returns the whole reading as `usage` alongside `total` (React and Vue); `IUsageResult` is re-exported by the hook packages.
+- 87f6e1d: **`GET /plans` says what each plan includes.** A plan configured with `policy: { seats: { limit: 5 }, analytics: { enabled: true }, … }` was served as `seats: null, features: []` — the stored row's columns are only written by the plan-admin routes — so a pricing page had nothing to show but a name and a price. The DTO now fills `seats` and `features` (name, enabled, limit) from the configured policy when the row carries none; an operator's explicit values still win.
+  
+  With `pricing.hydration`, the free plan also adopts the currency every priced plan shares, instead of showing `USD` next to plans hydrated to `CAD`.
+- 87f6e1d: **One free trial per owner, not per workspace.** With per-workspace billing every new workspace is a new subscriber, so the per-subscriber trial ledger let one person start a fresh trial in every workspace they created. New `config.trialScope: 'owner'` (default `'subscriber'`, today's behaviour): a workspace gets no trial when any workspace with the same owner has already had one. Needs the workspaces brick.
+  
+  **Checkout can decline the trial.** `POST /billing/checkout` accepts `skipTrial: true` (`ICheckoutInput.skipTrial` in `@fonderie/client`) for a paid checkout from day one — the retry an app offers after refusing a trial. It declines the trial for that checkout only; it never consumes it.
+
+### Patch Changes
+
+- 87f6e1d: **Billing webhooks refuse unverifiable deliveries on every host.** Node-server hosts (local, Docker, Cloud Run) replace `globalThis.Response` after `@fonderie/core` has loaded, so the webhook routes' `instanceof Response` check missed core's own refusal. A delivery with no webhook secret configured, no signature, or an invalid signature was then treated as a verified event and answered `200 {"received":true}` instead of 500/400. The signature check now returns a tagged result that no host can confuse; the same request served in-process was never affected.
+  
+  The adapters had the same hazard for pipeline short-circuits (a parser 413, a guard's refusal): they now recognise a Response by its shape, not its global identity, so the refusal is sent instead of the request carrying on.
+
 ## 10.4.6
 
 ### Patch Changes

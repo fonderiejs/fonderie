@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/adapter-express",
-	"version": "5.4.4",
+	"version": "5.4.5",
 	"fonderie": { "stability": "stable" },
 	"description": "Express adapter for fonderiejs \u2014 bridge(), adapt(), mount() to use fonderie middleware in native Express routes.",
 	"keywords": [
