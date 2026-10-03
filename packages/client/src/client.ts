@@ -55,10 +55,12 @@ export interface IFonderieClientOptions {
 	workspaceId?: string;
 	// Opt-in response cache (see createMemoryCache). Omit for no caching.
 	cache?: ICache;
-	// The screens' read model (client.queries): how long a fetched answer
-	// counts as current before showing a screen again refetches it in the
-	// background. Default 5 minutes.
-	queries?: IQueryStoreOptions;
+	// The screens' read model (client.queries): `staleMs` — how long a fetched
+	// answer counts as current before showing a screen again refetches it in
+	// the background (default 5 minutes); `persist` — keep answers on the
+	// device so a cold start opens screens on their last data. The snapshot is
+	// tied to the signed-in user and wiped when the session ends.
+	queries?: Omit<IQueryStoreOptions, 'owner'>;
 	// Opt-in reactive renew.
 	auth?: IClientAuthConfig;
 	// Server-Sent Events (@fonderie/sse). `fetch` must return a readable body
@@ -136,8 +138,10 @@ export class FonderieClient {
 		// A token appearing (sign-in, restore) makes the session active; one
 		// disappearing without a reason (setAccessToken(undefined)) is a sign-out.
 		this.tokens.onChange(() => {
-			if (this.tokens.get()) this.setSession('active');
-			else {
+			if (this.tokens.get()) {
+				this.setSession('active');
+				this.followOwner();
+			} else {
 				// Whatever ended the session (sign-out, revocation), nothing the
 				// screens held for it may show to whoever signs in next.
 				this.queries?.clear();
@@ -146,7 +150,8 @@ export class FonderieClient {
 		});
 		this.workspaceId = opts.workspaceId;
 		this.cache = opts.cache;
-		this.queries = new QueryStore(opts.queries);
+		this.queries = new QueryStore({ ...opts.queries, owner: () => tokenSubject(this.tokens.get()) });
+		this.followOwner();
 		this.authConfig = opts.auth;
 		this.http = new HttpClient(opts.baseUrl, {
 			clientKind: opts.clientKind,
@@ -292,6 +297,19 @@ export class FonderieClient {
 	setAccessToken(token: string | undefined): void {
 		this.tokens.set(token);
 		if (!token) this.clearCache();
+	}
+
+	// The user the screens' data belongs to. A token for someone else (another
+	// account signed in without a sign-out in between) wipes what the previous
+	// one saw before anything is shown; the same user (a token refresh) keeps
+	// it. Then the device snapshot, if any, is loaded for that user.
+	private owner: string | undefined;
+	private followOwner(): void {
+		if (!this.queries) return;
+		const sub = tokenSubject(this.tokens.get());
+		if (this.owner !== undefined && sub !== this.owner) this.queries.clear();
+		this.owner = sub;
+		if (sub) void this.queries.hydrate();
 	}
 
 	// Drop all cached responses (e.g. on switching accounts) — and everything
@@ -443,6 +461,26 @@ function tokenSid(token: string | undefined): string | undefined {
 		const json = typeof atob === 'function' ? atob(payload.replace(/-/g, '+').replace(/_/g, '/')) : '';
 		const sid = (JSON.parse(json) as { sid?: unknown }).sid;
 		return typeof sid === 'string' ? sid : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+// The `sub` claim of a JWT access token — who the data on screen belongs to.
+// Decoded, not verified: it only tells sessions apart for the local store;
+// the server is what checks the token. Undefined when there is none or it is
+// not a readable JWT (then nothing is persisted).
+function tokenSubject(token: string | undefined): string | undefined {
+	const payload = token?.split('.')[1];
+	if (!payload) return undefined;
+	try {
+		const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=');
+		const json =
+			typeof atob === 'function'
+				? atob(b64)
+				: (globalThis as { Buffer?: { from(s: string, e: string): { toString(e: string): string } } }).Buffer?.from(b64, 'base64').toString('binary');
+		const sub = json ? (JSON.parse(json) as { sub?: unknown }).sub : undefined;
+		return typeof sub === 'string' && sub ? sub : undefined;
 	} catch {
 		return undefined;
 	}
