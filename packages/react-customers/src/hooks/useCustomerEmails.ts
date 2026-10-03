@@ -1,7 +1,7 @@
-import type { IAddEmailInput, ICustomerEmailDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IAddEmailInput, ICustomerEmailDTO } from '@fonderie/client';
+import { CustomersClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
 
 export interface IUseCustomerEmailsReturn {
 	emails: ICustomerEmailDTO[];
@@ -14,6 +14,10 @@ export interface IUseCustomerEmailsReturn {
 	removeEmail: (emailId: string) => Promise<void>;
 }
 
+const NONE: ICustomerEmailDTO[] = [];
+
+// One customer's emails: shown at once when seen before, refreshed behind
+// what is shown; any write under /customers marks it stale everywhere.
 export function useCustomerEmails(customerId: string): IUseCustomerEmailsReturn;
 export function useCustomerEmails(
 	client: CustomersClient | undefined,
@@ -27,106 +31,45 @@ export function useCustomerEmails(
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
 	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerEmails');
-	const [emails, setEmails] = useState<ICustomerEmailDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(async (opts?: { force?: boolean }) => {
-		if (!customerId) {
-			setIsLoading(false);
-			return;
-		}
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await customers.listEmails(customerId, { bust: opts?.force });
-			setEmails(result.emails);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [customers, customerId]);
-
+	const q = useScopedQuery(
+		customers,
+		`/customers/${encodeURIComponent(customerId ?? '')}/emails`,
+		async (bust) => (await customers.listEmails(customerId, { bust })).result.emails,
+		// Nothing to read until there is a customer.
+		{ enabled: !!customerId },
+	);
+	const w = useWrite(q.refresh);
 	const addEmail = useCallback(
-		async (input: IAddEmailInput) => {
-			setError(null);
-			try {
-				const { result } = await customers.addEmail(customerId, input);
-				await refresh();
-				return result.email;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+		(input: IAddEmailInput) =>
+			w.run(async () => (await customers.addEmail(customerId, input)).result.email),
+		[customers, customerId, w.run],
 	);
-
 	const updateEmailLabel = useCallback(
-		async (emailId: string, label: string) => {
-			setError(null);
-			try {
+		(emailId: string, label: string) =>
+			w.run(async () => {
 				await customers.updateEmailLabel(customerId, emailId, label);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
 	const setPrimaryEmail = useCallback(
-		async (emailId: string) => {
-			setError(null);
-			try {
+		(emailId: string) =>
+			w.run(async () => {
 				await customers.setPrimaryEmail(customerId, emailId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
 	const removeEmail = useCallback(
-		async (emailId: string) => {
-			setError(null);
-			try {
+		(emailId: string) =>
+			w.run(async () => {
 				await customers.removeEmail(customerId, emailId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
 	return {
-		emails,
-		isLoading,
-		error,
-		refresh,
-		addEmail,
-		updateEmailLabel,
-		setPrimaryEmail,
-		removeEmail,
+		emails: q.data ?? NONE,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		addEmail, updateEmailLabel, setPrimaryEmail, removeEmail,
 	};
 }

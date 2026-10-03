@@ -5,10 +5,10 @@ import type {
 	IWebhookEndpointDTO,
 	WebhooksClient,
 } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import type { FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { Ref } from 'vue';
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
 
 export interface IUseWebhookEndpointsReturn {
 	endpoints: Ref<IWebhookEndpointDTO[]>;
@@ -22,70 +22,22 @@ export interface IUseWebhookEndpointsReturn {
 
 export function useWebhookEndpoints(client?: WebhooksClient): IUseWebhookEndpointsReturn {
 	const webhooks = useFonderieSubClient(client, (c) => c.webhooks, 'useWebhookEndpoints');
-	const endpoints = ref<IWebhookEndpointDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await webhooks.listEndpoints({ bust: opts?.force });
-			endpoints.value = result.endpoints;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function createEndpoint(input: ICreateWebhookEndpointInput) {
-		error.value = null;
-		try {
-			const { result } = await webhooks.createEndpoint(input);
-			await refresh();
-			return result;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function removeEndpoint(endpointId: string) {
-		error.value = null;
-		try {
-			await webhooks.deleteEndpoint(endpointId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	// Test-sends to one endpoint from the list — a test delivery doesn't change
-	// the endpoints list, so unlike the other writes there's nothing to refresh.
-	// For a per-endpoint view, useWebhookDeliveries(endpointId).testEndpoint also
+	const q = useScopedQuery(webhooks, '/webhooks', async (bust) => (await webhooks.listEndpoints({ bust })).result.endpoints);
+	const w = useWrite(() => q.refresh());
+	// Test-sends don't change the endpoints list: nothing to re-read after one.
+	// For a per-endpoint view, useWebhookDeliveries(endpointId).testEndpoint
 	// re-reads that endpoint's delivery log after the send.
-	async function testEndpoint(endpointId: string) {
-		error.value = null;
-		try {
-			const { result } = await webhooks.testEndpoint(endpointId);
-			return result;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-
-	return { endpoints, isLoading, error, refresh, createEndpoint, removeEndpoint, testEndpoint };
+	const test = useWrite();
+	return {
+		endpoints: computed(() => q.data.value ?? []),
+		isLoading: q.isLoading,
+		error: computed(() => test.error.value ?? w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		createEndpoint: (input) => w.run(async () => (await webhooks.createEndpoint(input)).result),
+		removeEndpoint: (endpointId) =>
+			w.run(async () => {
+				await webhooks.deleteEndpoint(endpointId);
+			}),
+		testEndpoint: (endpointId) => test.run(async () => (await webhooks.testEndpoint(endpointId)).result),
+	};
 }
