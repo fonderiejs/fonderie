@@ -61,6 +61,9 @@ export interface IIntegrityReport {
 	checked: number;
 	// Rows with no HMAC (published before integrity was enabled) — skipped.
 	unprotected: number;
+	// Rows that verified only under a RETIRED key: signed before the key was
+	// rotated. Authentic — counted, never reported as tampered.
+	retiredKey: number;
 	// Ids of rows whose stored HMAC did not match a fresh computation.
 	tampered: string[];
 }
@@ -75,12 +78,28 @@ interface IRawEventRow {
 
 // Walk the whole event log and re-verify every HMAC-carrying row. Intended for a
 // scheduled integrity job or an on-demand audit endpoint.
-export async function verifyEventChain(store: IStoreAdapter, key: string): Promise<IIntegrityReport> {
+//
+// `retiredKeys` are keys this log was signed with before a rotation. They are
+// for VERIFYING only (nothing is ever signed with one): without them, rotating
+// the key makes every earlier row read as tampered, and re-signing history with
+// the new key would defeat the point of a tamper-evident log.
+export async function verifyEventChain(
+	store: IStoreAdapter,
+	key: string,
+	retiredKeys: readonly string[] = [],
+): Promise<IIntegrityReport> {
 	const rows = await store.query<IRawEventRow>(
 		`SELECT id, type, payload, meta, hmac FROM fonderie_events ORDER BY created_at, id`,
 	);
 
-	const report: IIntegrityReport = { ok: true, checked: 0, unprotected: 0, tampered: [] };
+	const report: IIntegrityReport = {
+		ok: true,
+		checked: 0,
+		unprotected: 0,
+		retiredKey: 0,
+		tampered: [],
+	};
+	const retired = retiredKeys.filter((k) => k !== '' && k !== key);
 
 	for (const row of rows) {
 		if (row.hmac === null) {
@@ -88,11 +107,13 @@ export async function verifyEventChain(store: IStoreAdapter, key: string): Promi
 			continue;
 		}
 		report.checked += 1;
-		const expected = computeEventHmac(key, row);
-		if (!constantTimeEqual(expected, row.hmac)) {
-			report.ok = false;
-			report.tampered.push(row.id);
+		if (constantTimeEqual(computeEventHmac(key, row), row.hmac)) continue;
+		if (retired.some((k) => constantTimeEqual(computeEventHmac(k, row), row.hmac as string))) {
+			report.retiredKey += 1;
+			continue;
 		}
+		report.ok = false;
+		report.tampered.push(row.id);
 	}
 
 	return report;
