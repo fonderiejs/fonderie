@@ -72,13 +72,16 @@ export const SubscriptionScreen = defineComponent({
 				removeError.value
 					? h('p', { style: styles.error, role: 'alert' }, removeError.value.explanation)
 					: null,
-				pm
-					? h(
-							'p',
-							{ style: styles.cardLine },
-							`${brand} •••• ${pm.last4} · expires ${pm.expMonth}/${pm.expYear}`,
-						)
-					: h('p', { style: styles.status }, 'No card on file.'),
+				pm?.type === 'link'
+					? // Stripe Link: no card details — the Link account is what pays.
+						h('p', { style: styles.cardLine }, `Link${pm.email ? ` · ${pm.email}` : ''}`)
+					: pm
+						? h(
+								'p',
+								{ style: styles.cardLine },
+								`${brand} •••• ${pm.last4} · expires ${pm.expMonth}/${pm.expYear}`,
+							)
+						: h('p', { style: styles.status }, 'No card on file.'),
 				h('div', { style: styles.buttonRow }, [
 					h(
 						'button',
