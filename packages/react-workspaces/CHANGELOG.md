@@ -1,5 +1,13 @@
 # @fonderie/react-workspaces
 
+## 0.6.5
+
+### Patch Changes
+
+- Updated dependencies [157004a]
+  - @fonderie/client@3.2.0
+  - @fonderie/react@0.7.0
+
 ## 0.6.4
 
 ### Patch Changes

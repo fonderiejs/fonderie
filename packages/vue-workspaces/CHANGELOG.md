@@ -1,5 +1,13 @@
 # @fonderie/vue-workspaces
 
+## 0.7.5
+
+### Patch Changes
+
+- Updated dependencies [157004a]
+  - @fonderie/client@3.2.0
+  - @fonderie/vue@0.7.0
+
 ## 0.7.4
 
 ### Patch Changes
