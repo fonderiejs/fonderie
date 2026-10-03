@@ -1,5 +1,13 @@
 # @fonderie/react-native-auth
 
+## 0.13.3
+
+### Patch Changes
+
+- Updated dependencies [ab62ea4]
+  - @fonderie/client@3.3.0
+  - @fonderie/react@0.8.0
+
 ## 0.13.2
 
 ### Patch Changes
