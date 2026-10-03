@@ -1946,6 +1946,8 @@ new QueryStore(opts?: IQueryStoreOptions): QueryStore
 
 function queryStoreFor(owner: object): QueryStore
 
+function queryParams(params: object | undefined): string
+
 function deepEqual(a: unknown, b: unknown): boolean
 
 interface IQueryEntry<T = unknown> {

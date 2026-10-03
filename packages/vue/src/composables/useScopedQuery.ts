@@ -1,6 +1,6 @@
 import { FonderieApiError, queryStoreFor } from '@fonderie/client';
 import type { ComputedRef, Ref } from 'vue';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 
 import { useWorkspaceId } from '../provider';
 import { useClientQuery } from './useClientQuery';
@@ -15,6 +15,8 @@ export interface IScopedQueryOptions<T> {
 	normal?: (err: FonderieApiError) => T | undefined;
 	/** false for reads that do not depend on the selected workspace. */
 	perWorkspace?: boolean;
+	/** false (or a getter returning false) → do not read yet, e.g. a required id is still empty. */
+	enabled?: boolean | (() => boolean);
 }
 
 export interface IScopedQuery<T> {
@@ -44,8 +46,9 @@ export function useScopedQuery<T>(
 ): IScopedQuery<T> {
 	// Only per-workspace reads follow the scope: a catalog never asks.
 	const workspaceId = opts.perWorkspace === false ? null : useWorkspaceId(source);
+	const isEnabled = () => (typeof opts.enabled === 'function' ? opts.enabled() : opts.enabled !== false);
 	const keyOf = () => `GET ${typeof path === 'function' ? path() : path}::ws=${workspaceId?.value ?? ''}`;
-	const q = useClientQuery<T>(source, keyOf, async ({ force }) => {
+	const q = useClientQuery<T>(source, () => (isEnabled() ? keyOf() : null), async ({ force }) => {
 		try {
 			return await read(force);
 		} catch (err) {
@@ -89,4 +92,95 @@ export function useWrite(after?: () => Promise<void>): {
 		}
 	}
 	return { error, run };
+}
+
+// ── Paginated reads ─────────────────────────────────────────────────────────
+
+/** One page as a paged read returns it. `next` is null on the last page. */
+export interface IPage<Row, Cursor> {
+	rows: Row[];
+	next: Cursor | null;
+	/** Total matching rows server-side, when the API reports one. */
+	total?: number;
+}
+
+export interface IPagedQuery<Row> {
+	rows: ComputedRef<Row[]>;
+	total: ComputedRef<number | undefined>;
+	hasMore: ComputedRef<boolean>;
+	isLoading: ComputedRef<boolean>;
+	isLoadingMore: Ref<boolean>;
+	error: ComputedRef<FonderieApiError | null>;
+	/** Re-read the FIRST page (pages appended stay only if it is unchanged). */
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	/** Append the next page. No-op on the last page or while one loads; rethrows a failure. */
+	loadMore: () => Promise<void>;
+}
+
+const NO_ROWS: never[] = [];
+
+/**
+ * A cursor- or offset-paginated list — the Vue twin of @fonderie/react's
+ * usePagedQuery. The FIRST page is the shared, cached read; pages appended by
+ * loadMore belong to the exact first page they extend (an unchanged refresh
+ * keeps them, a changed first page re-anchors the list).
+ */
+export function usePagedQuery<Row, Cursor>(
+	source: object,
+	path: string | (() => string),
+	readFirst: (bust: boolean) => Promise<IPage<Row, Cursor>>,
+	readMore: (next: Cursor) => Promise<IPage<Row, Cursor>>,
+	opts: IScopedQueryOptions<IPage<Row, Cursor>> & {
+		/** Whether loadMore rethrows a failed page (default true); false = only report it on `error`. */
+		rethrowLoadMore?: boolean;
+	} = {},
+): IPagedQuery<Row> {
+	const { rethrowLoadMore, ...scoped } = opts;
+	const q = useScopedQuery(source, path, readFirst, scoped);
+	const more = shallowRef<{ base: IPage<Row, Cursor>; rows: Row[]; next: Cursor | null; total?: number } | null>(null);
+	const isLoadingMore = ref(false);
+	const pageError = ref<FonderieApiError | null>(null);
+	const extra = computed(() => (more.value && more.value.base === q.data.value ? more.value : null));
+	const next = computed(() => (extra.value ? extra.value.next : (q.data.value?.next ?? null)));
+
+	async function loadMore() {
+		const base = q.data.value;
+		const cursor = next.value;
+		if (!base || cursor === null || isLoadingMore.value) return;
+		isLoadingMore.value = true;
+		pageError.value = null;
+		try {
+			const page = await readMore(cursor);
+			if (q.data.value !== base) return;
+			const prev = more.value && more.value.base === base ? more.value.rows : [];
+			more.value = {
+				base,
+				rows: [...prev, ...page.rows],
+				next: page.next,
+				...(page.total !== undefined ? { total: page.total } : {}),
+			};
+		} catch (err) {
+			if (q.data.value !== base) return;
+			const apiError = toApiError(err);
+			pageError.value = apiError;
+			if (rethrowLoadMore !== false) throw apiError;
+		} finally {
+			isLoadingMore.value = false;
+		}
+	}
+
+	return {
+		rows: computed(() => {
+			const first = q.data.value;
+			if (!first) return NO_ROWS as Row[];
+			return extra.value ? [...first.rows, ...extra.value.rows] : first.rows;
+		}),
+		total: computed(() => extra.value?.total ?? q.data.value?.total),
+		hasMore: computed(() => next.value !== null),
+		isLoading: q.isLoading,
+		isLoadingMore,
+		error: computed(() => pageError.value ?? q.error.value),
+		refresh: q.refresh,
+		loadMore,
+	};
 }

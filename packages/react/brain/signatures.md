@@ -102,6 +102,8 @@ function toApiError(err: unknown): FonderieApiError
 
 function useClientQuery<T>(source: object, key: string | null, fetcher: (ctx: { force: boolean; }) => Promise<T>, opts?: IUseClientQueryOptions): IClientQueryResult<T>
 
+function usePagedQuery<Row, Cursor>(source: object, path: string, readFirst: (bust: boolean) => Promise<IPage<Row, Cursor>>, readMore: (next: Cursor) => Promise<IPage<Row, Cursor>>, opts?: IScopedQueryOptions<...> & { ...; }): IPagedQuery<...>
+
 function useRemoteConfig<T>(key: string, fallback: T, client?: ConfigClient | undefined): T
 
 function useScopedQuery<T>(source: object, path: string, read: (bust: boolean) => Promise<T>, opts?: IScopedQueryOptions<T>): IScopedQuery<T>
@@ -113,6 +115,25 @@ function useSseStatus(client?: SseClient | undefined): SseStatus
 function useWrite(after?: (() => Promise<void>) | undefined): { error: FonderieApiError | null; run: <R>(write: () => Promise<R>) => Promise<R>; }
 
 function withRemoteConfig<P extends object>(key: string, Component: ComponentType<P>, options?: IWithRemoteConfigOptions<P>): ComponentType<P>
+
+interface IPage<Row, Cursor> {
+    rows: Row[];
+    next: Cursor | null;
+    total?: number;
+}
+
+interface IPagedQuery<Row> {
+    rows: Row[];
+    total: number | undefined;
+    hasMore: boolean;
+    isLoading: boolean;
+    isLoadingMore: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    loadMore: () => Promise<void>;
+}
 
 interface IScopedQuery<T> {
     data: T | undefined;

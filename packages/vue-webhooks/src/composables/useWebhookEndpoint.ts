@@ -1,8 +1,8 @@
 import type { IUpdateWebhookEndpointInput, IWebhookEndpointDTO } from '@fonderie/client';
-import { FonderieApiError, WebhooksClient } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import { type FonderieApiError, WebhooksClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseWebhookEndpointReturn {
 	endpoint: Ref<IWebhookEndpointDTO | null>;
@@ -28,47 +28,23 @@ export function useWebhookEndpoint(
 		? (maybeEndpointId as MaybeRefOrGetter<string>)
 		: clientOrEndpointId;
 	const webhooks = useFonderieSubClient(explicit, (c) => c.webhooks, 'useWebhookEndpoint');
-	const endpoint = ref<IWebhookEndpointDTO | null>(null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		if (!toValue(endpointId)) {
-			isLoading.value = false;
-			return;
-		}
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await webhooks.getEndpoint(toValue(endpointId), { bust: opts?.force });
-			endpoint.value = result;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function updateEndpoint(input: IUpdateWebhookEndpointInput) {
-		error.value = null;
-		try {
-			const { result } = await webhooks.updateEndpoint(toValue(endpointId), input);
-			endpoint.value = result;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(endpointId),
-		() => void refresh(),
+	// The key follows the endpoint; an empty id reads nothing (not loading).
+	const q = useScopedQuery(
+		webhooks,
+		() => `/webhooks/${encodeURIComponent(toValue(endpointId))}`,
+		async (bust) => (await webhooks.getEndpoint(toValue(endpointId), { bust })).result,
+		{ enabled: () => !!toValue(endpointId) },
 	);
-
-	return { endpoint, isLoading, error, refresh, updateEndpoint };
+	const w = useWrite();
+	return {
+		endpoint: computed(() => q.data.value ?? null),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		// The update returns the endpoint: every screen showing it adopts it.
+		updateEndpoint: (input) =>
+			w.run(async () => {
+				q.adopt((await webhooks.updateEndpoint(toValue(endpointId), input)).result);
+			}),
+	};
 }

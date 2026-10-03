@@ -1,8 +1,8 @@
 import type { CustomerLabelType, ICustomerLabelDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import { CustomersClient, type FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseCustomerLabelsReturn {
 	labels: Ref<ICustomerLabelDTO[]>;
@@ -31,43 +31,21 @@ export function useCustomerLabels(
 	const explicit = firstIsClient ? (clientOrType as CustomersClient | undefined) : undefined;
 	const type = firstIsClient ? (maybeType as MaybeRefOrGetter<CustomerLabelType>) : clientOrType;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerLabels');
-	const labels = ref<ICustomerLabelDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await customers.listLabels(toValue(type), { bust: opts?.force });
-			labels.value = result.labels;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function removeLabel(labelId: string) {
-		error.value = null;
-		try {
-			await customers.removeLabel(labelId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(type),
-		() => void refresh(),
+	// The key follows the type: another type reads that vocabulary's entry.
+	const q = useScopedQuery(
+		customers,
+		() => `/customers/labels?type=${encodeURIComponent(toValue(type))}`,
+		async (bust) => (await customers.listLabels(toValue(type), { bust })).result.labels,
 	);
-
-	return { labels, isLoading, error, refresh, removeLabel };
+	const w = useWrite(() => q.refresh());
+	return {
+		labels: computed(() => q.data.value ?? []),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		removeLabel: (labelId) =>
+			w.run(async () => {
+				await customers.removeLabel(labelId);
+			}),
+	};
 }

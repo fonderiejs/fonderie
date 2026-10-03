@@ -3,10 +3,10 @@ import type {
 	ICustomerDetailDTO,
 	IUpdateCustomerInput,
 } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import { CustomersClient, type FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseCustomerReturn {
 	customer: Ref<ICustomerDetailDTO | ICustomerDetailD2DTO | null>;
@@ -43,51 +43,22 @@ export function useCustomer(
 		: (customerIdOrDepth as MaybeRefOrGetter<1 | 2> | undefined);
 	const resolveDepth = () => toValue(depth) ?? 2;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomer');
-	const customer = ref<ICustomerDetailDTO | ICustomerDetailD2DTO | null>(null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		if (!toValue(customerId)) {
-			isLoading.value = false;
-			return;
-		}
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await customers.getCustomer(
-				toValue(customerId),
-				{ depth: resolveDepth() },
-				{ bust: opts?.force },
-			);
-			customer.value = result;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function updateCustomer(input: IUpdateCustomerInput) {
-		error.value = null;
-		try {
-			await customers.updateCustomer(toValue(customerId), input);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => [toValue(customerId), toValue(depth)] as const,
-		() => void refresh(),
+	// The key follows the id and depth; an empty id reads nothing (not loading).
+	const q = useScopedQuery(
+		customers,
+		() => `/customers/${encodeURIComponent(toValue(customerId))}${resolveDepth() === 1 ? '?depth=1' : ''}`,
+		async (bust) => (await customers.getCustomer(toValue(customerId), { depth: resolveDepth() }, { bust })).result,
+		{ enabled: () => !!toValue(customerId) },
 	);
-
-	return { customer, isLoading, error, refresh, updateCustomer };
+	const w = useWrite(() => q.refresh());
+	return {
+		customer: computed(() => q.data.value ?? null),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		updateCustomer: (input) =>
+			w.run(async () => {
+				await customers.updateCustomer(toValue(customerId), input);
+			}),
+	};
 }

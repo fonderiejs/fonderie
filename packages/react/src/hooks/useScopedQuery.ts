@@ -1,5 +1,5 @@
 import { FonderieApiError, queryStoreFor } from '@fonderie/client';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { useWorkspaceId } from '../provider';
 import { useClientQuery } from './useClientQuery';
@@ -112,4 +112,114 @@ export function useWrite(after?: () => Promise<void>): {
 		[after],
 	);
 	return { error, run };
+}
+
+// ── Paginated reads ─────────────────────────────────────────────────────────
+
+/** One page as a paged read returns it. `next` is null on the last page. */
+export interface IPage<Row, Cursor> {
+	rows: Row[];
+	next: Cursor | null;
+	/** Total matching rows server-side, when the API reports one. */
+	total?: number;
+}
+
+export interface IPagedQuery<Row> {
+	/** The first page and every page loadMore appended, in order. */
+	rows: Row[];
+	/** Total matching rows, when the API reports one (else undefined). */
+	total: number | undefined;
+	hasMore: boolean;
+	/** Nothing to show yet — never true while a refresh runs behind data. */
+	isLoading: boolean;
+	/** A loadMore is in flight. */
+	isLoadingMore: boolean;
+	error: FonderieApiError | null;
+	/** Re-read the FIRST page (pages appended stay only if it is unchanged). */
+	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	/** Append the next page. No-op on the last page or while one loads; rethrows a failure. */
+	loadMore: () => Promise<void>;
+}
+
+const NO_ROWS: never[] = [];
+
+/**
+ * A cursor- or offset-paginated list. The FIRST page is the shared, cached
+ * read (useScopedQuery): shown at once on every visit, refreshed behind what
+ * is shown. Pages appended by loadMore belong to this screen and to the exact
+ * first page they extend: a refresh returning the same first page keeps the
+ * same object — and so the appended pages; a different one (new rows, another
+ * workspace, other filters) re-anchors the list instead of mixing the two.
+ */
+export function usePagedQuery<Row, Cursor>(
+	source: object,
+	path: string,
+	readFirst: (bust: boolean) => Promise<IPage<Row, Cursor>>,
+	readMore: (next: Cursor) => Promise<IPage<Row, Cursor>>,
+	opts: IScopedQueryOptions<IPage<Row, Cursor>> & {
+		/**
+		 * Whether loadMore rethrows a failed page (default true — the caller can
+		 * toast it). false = only report it on `error`, for hooks whose
+		 * loadMore never threw (a list's onEndReached calls it fire-and-forget).
+		 */
+		rethrowLoadMore?: boolean;
+	} = {},
+): IPagedQuery<Row> {
+	const { rethrowLoadMore, ...scoped } = opts;
+	const rethrow = rethrowLoadMore !== false;
+	const q = useScopedQuery(source, path, readFirst, scoped);
+	const first = q.data;
+	const [more, setMore] = useState<{ base: IPage<Row, Cursor>; rows: Row[]; next: Cursor | null; total?: number } | null>(null);
+	const [isLoadingMore, setIsLoadingMore] = useState(false);
+	const [pageError, setPageError] = useState<FonderieApiError | null>(null);
+	const firstRef = useRef(first);
+	firstRef.current = first;
+	const busy = useRef(false);
+
+	const extra = more && more.base === first ? more : null;
+	const rows = useMemo(
+		() => (first ? (extra ? [...first.rows, ...extra.rows] : first.rows) : (NO_ROWS as Row[])),
+		[first, extra],
+	);
+	const next = extra ? extra.next : (first?.next ?? null);
+	const total = extra?.total ?? first?.total;
+
+	const loadMore = useCallback(async () => {
+		const base = firstRef.current;
+		if (!base || next === null || busy.current) return;
+		busy.current = true;
+		setIsLoadingMore(true);
+		setPageError(null);
+		try {
+			const page = await readMore(next);
+			// The list moved on (refresh with new rows, switch, new filters):
+			// this page belongs to a list no longer shown.
+			if (firstRef.current !== base) return;
+			setMore((prev) => ({
+				base,
+				rows: [...(prev && prev.base === base ? prev.rows : []), ...page.rows],
+				next: page.next,
+				...(page.total !== undefined ? { total: page.total } : {}),
+			}));
+		} catch (err) {
+			if (firstRef.current !== base) return;
+			const apiError = toApiError(err);
+			setPageError(apiError);
+			if (rethrow) throw apiError;
+		} finally {
+			busy.current = false;
+			setIsLoadingMore(false);
+		}
+	}, [next, readMore, rethrow]);
+
+	return {
+		rows,
+		total,
+		hasMore: next !== null,
+		isLoading: q.isLoading,
+		isLoadingMore,
+		error: pageError ?? q.error,
+		refresh: q.refresh,
+		loadMore,
+	};
 }

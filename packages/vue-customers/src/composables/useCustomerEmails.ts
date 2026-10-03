@@ -1,8 +1,8 @@
 import type { IAddEmailInput, ICustomerEmailDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import { CustomersClient, type FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseCustomerEmailsReturn {
 	emails: Ref<ICustomerEmailDTO[]>;
@@ -31,96 +31,31 @@ export function useCustomerEmails(
 		? (maybeCustomerId as MaybeRefOrGetter<string>)
 		: clientOrCustomerId;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerEmails');
-	const emails = ref<ICustomerEmailDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		if (!toValue(customerId)) {
-			isLoading.value = false;
-			return;
-		}
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await customers.listEmails(toValue(customerId), { bust: opts?.force });
-			emails.value = result.emails;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function addEmail(input: IAddEmailInput) {
-		error.value = null;
-		try {
-			const { result } = await customers.addEmail(toValue(customerId), input);
-			await refresh();
-			return result.email;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function updateEmailLabel(emailId: string, label: string) {
-		error.value = null;
-		try {
-			await customers.updateEmailLabel(toValue(customerId), emailId, label);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function setPrimaryEmail(emailId: string) {
-		error.value = null;
-		try {
-			await customers.setPrimaryEmail(toValue(customerId), emailId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function removeEmail(emailId: string) {
-		error.value = null;
-		try {
-			await customers.removeEmail(toValue(customerId), emailId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(customerId),
-		() => void refresh(),
+	// The key follows the id; an empty id reads nothing (not loading).
+	const q = useScopedQuery(
+		customers,
+		() => `/customers/${encodeURIComponent(toValue(customerId))}/emails`,
+		async (bust) => (await customers.listEmails(toValue(customerId), { bust })).result.emails,
+		{ enabled: () => !!toValue(customerId) },
 	);
-
+	const w = useWrite(() => q.refresh());
 	return {
-		emails,
-		isLoading,
-		error,
-		refresh,
-		addEmail,
-		updateEmailLabel,
-		setPrimaryEmail,
-		removeEmail,
+		emails: computed(() => q.data.value ?? []),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		addEmail: (input) => w.run(async () => (await customers.addEmail(toValue(customerId), input)).result.email),
+		updateEmailLabel: (emailId, label) =>
+			w.run(async () => {
+				await customers.updateEmailLabel(toValue(customerId), emailId, label);
+			}),
+		setPrimaryEmail: (emailId) =>
+			w.run(async () => {
+				await customers.setPrimaryEmail(toValue(customerId), emailId);
+			}),
+		removeEmail: (emailId) =>
+			w.run(async () => {
+				await customers.removeEmail(toValue(customerId), emailId);
+			}),
 	};
 }

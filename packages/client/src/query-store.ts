@@ -214,6 +214,22 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 	);
 }
 
+/**
+ * A query key fragment for a filter/params object: the same filters give the
+ * same key whatever their property order, so `{ search, limit }` and
+ * `{ limit, search }` read one entry — in React and Vue alike. Undefined
+ * values are dropped (an omitted filter and an undefined one are the same
+ * read); Dates key by their ISO time.
+ */
+export function queryParams(params: object | undefined): string {
+	if (!params) return '';
+	const entries = Object.entries(params)
+		.filter(([, v]) => v !== undefined)
+		.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+		.map(([k, v]) => [k, v instanceof Date ? v.toISOString() : v]);
+	return entries.length ? `?${JSON.stringify(Object.fromEntries(entries))}` : '';
+}
+
 // Which store a client — or one of its sub-clients (client.billing, …) —
 // reads through. Hooks receive whichever object the app handed them; this maps
 // each to its FonderieClient's one store without every sub-client class

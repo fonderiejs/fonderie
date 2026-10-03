@@ -1,8 +1,8 @@
 import type { IAddAddressInput, ICustomerAddressDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import { CustomersClient, type FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseCustomerAddressesReturn {
 	addresses: Ref<ICustomerAddressDTO[]>;
@@ -33,96 +33,31 @@ export function useCustomerAddresses(
 		? (maybeCustomerId as MaybeRefOrGetter<string>)
 		: clientOrCustomerId;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerAddresses');
-	const addresses = ref<ICustomerAddressDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		if (!toValue(customerId)) {
-			isLoading.value = false;
-			return;
-		}
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await customers.listAddresses(toValue(customerId), { bust: opts?.force });
-			addresses.value = result.addresses;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function addAddress(input: IAddAddressInput) {
-		error.value = null;
-		try {
-			const { result } = await customers.addAddress(toValue(customerId), input);
-			await refresh();
-			return result.address;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function updateAddressLabel(addrId: string, label: string) {
-		error.value = null;
-		try {
-			await customers.updateAddressLabel(toValue(customerId), addrId, label);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function setPrimaryAddress(addrId: string) {
-		error.value = null;
-		try {
-			await customers.setPrimaryAddress(toValue(customerId), addrId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function removeAddress(addrId: string) {
-		error.value = null;
-		try {
-			await customers.removeAddress(toValue(customerId), addrId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(customerId),
-		() => void refresh(),
+	// The key follows the id; an empty id reads nothing (not loading).
+	const q = useScopedQuery(
+		customers,
+		() => `/customers/${encodeURIComponent(toValue(customerId))}/addresses`,
+		async (bust) => (await customers.listAddresses(toValue(customerId), { bust })).result.addresses,
+		{ enabled: () => !!toValue(customerId) },
 	);
-
+	const w = useWrite(() => q.refresh());
 	return {
-		addresses,
-		isLoading,
-		error,
-		refresh,
-		addAddress,
-		updateAddressLabel,
-		setPrimaryAddress,
-		removeAddress,
+		addresses: computed(() => q.data.value ?? []),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		addAddress: (input) => w.run(async () => (await customers.addAddress(toValue(customerId), input)).result.address),
+		updateAddressLabel: (addrId, label) =>
+			w.run(async () => {
+				await customers.updateAddressLabel(toValue(customerId), addrId, label);
+			}),
+		setPrimaryAddress: (addrId) =>
+			w.run(async () => {
+				await customers.setPrimaryAddress(toValue(customerId), addrId);
+			}),
+		removeAddress: (addrId) =>
+			w.run(async () => {
+				await customers.removeAddress(toValue(customerId), addrId);
+			}),
 	};
 }
