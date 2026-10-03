@@ -389,7 +389,11 @@ export function mount(app: Koa, fonderie: FonderieApp, options: { maxBodyBytes?:
 			// client IP. handle() builds a fresh context, so without this seed every
 			// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).
 			const seedIp = fCtx.meta.clientIp;
-			const webRes = await fonderie.handle(fCtx.request, seedIp ? { meta: { clientIp: seedIp } } : undefined);
+			// bridged: this pass's meta, so per-request side effects (billing's
+			// request counter) are not repeated inside handle().
+			const webRes = await fonderie.handle(fCtx.request, {
+				meta: { ...(seedIp ? { clientIp: seedIp } : {}), bridged: fCtx.meta },
+			});
 			await webResponseToKoa(webRes, ctx as unknown as KoaContext);
 		}
 	});

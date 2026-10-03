@@ -5,6 +5,7 @@ import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from '../config';
 import type { ICounterBackend } from '../backends/types';
+import type { IBillingContext } from '../types';
 import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { getSubscription, isWithinDunningGrace } from '../services/subscriptions';
 import { isWorkspaceMember } from '../services/membership';
@@ -55,6 +56,23 @@ export function withBilling(
 			if (!(await isWorkspaceMember(ctx.user.id, subscriber.id, store))) {
 				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Not a member of this workspace');
 			}
+		}
+
+		// The adapter's bridge already ran this middleware for this very request
+		// (see IFonderieContextMeta.bridged): its counters are incremented, its
+		// grant and notices are done. Running again would count every
+		// fonderie-routed request twice — halving every windowed plan limit.
+		// Reuse that context when it is for the same subscriber.
+		const bridged = (ctx.meta['bridged'] as Record<string, unknown> | undefined)?.['billing'] as
+			| IBillingContext
+			| undefined;
+		if (
+			bridged &&
+			bridged.subscriber.type === subscriber.type &&
+			bridged.subscriber.id === subscriber.id
+		) {
+			ctx.meta['billing'] = bridged;
+			return next();
 		}
 
 		// Resolve subscription → plan name (fall back to first plan = free)
@@ -246,12 +264,11 @@ export function withBilling(
 				phone: null,
 				deviceToken: null,
 			};
-			// A workspace's limits belong to the workspace, so its notices go to
-			// whoever resolveRecipient names (the owner), not to whichever member
-			// happened to make the request that crossed the line. Without a
-			// resolver + bus, fall back to the requester (the pre-workspace path).
-			const toSubscriber =
-				subscriber.type === 'workspace' && !!bus && typeof config.resolveRecipient === 'function';
+			// Limit notices go out on the bus, to whoever resolveRecipient names
+			// for the subscriber — for a workspace, the owner, not whichever member
+			// made the request that crossed the line. Without a resolver + bus they
+			// are left on ctx.meta.messages for the app to send itself.
+			const toSubscriber = !!bus && typeof config.resolveRecipient === 'function';
 
 			for (const [key, status] of Object.entries(billingCtx.statuses)) {
 				if (status.type !== 'counter' || status.limit === null) continue;
