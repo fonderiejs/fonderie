@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-billing",
-	"version": "0.11.3",
+	"version": "0.11.4",
 	"description": "React hooks for Fonderie billing — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
@@ -35,8 +35,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^3.11.0",
-		"@fonderie/react": "^0.10.0"
+		"@fonderie/client": "^3.12.0",
+		"@fonderie/react": "^0.11.0"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"
