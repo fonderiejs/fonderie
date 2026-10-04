@@ -2,9 +2,11 @@ import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
 	IReadOptions,
+	IAcceptInvitationInput,
 	IAcceptInvitationResult,
 	IApiResponse,
 	IInvitationListResult,
+	IInvitationResult,
 	IInviteResult,
 	IMemberListResult,
 	IRoleListResult,
@@ -148,6 +150,18 @@ export class WorkspacesClient {
 			method: 'GET',
 			path: `/workspaces/${encodeURIComponent(id)}`,
 			token: this.tokens.get(),
+			bust: opts?.bust,
+		});
+	}
+
+	// The workspace this client is scoped to (the selected one, or the personal
+	// workspace when none is selected).
+	getCurrentWorkspace(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IWorkspaceResult>>({
+			method: 'GET',
+			path: '/workspaces/current',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
 			bust: opts?.bust,
 		});
 	}
@@ -302,6 +316,47 @@ export class WorkspacesClient {
 		});
 	}
 
+	// Owner only: make a member a manager, or take it back.
+	setManager(userId: string) {
+		return this.http.request<IApiResponse<void>>({
+			method: 'POST',
+			path: `/workspaces/members/${encodeURIComponent(userId)}/manager`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	unsetManager(userId: string) {
+		return this.http.request<IApiResponse<void>>({
+			method: 'DELETE',
+			path: `/workspaces/members/${encodeURIComponent(userId)}/manager`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Owner only: hand the workspace to another member (the previous owner stays
+	// as a manager).
+	transferOwnership(userId: string) {
+		return this.http.request<IApiResponse<void>>({
+			method: 'POST',
+			path: '/workspaces/transfer-ownership',
+			body: { userId },
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Leave the selected workspace. The owner must transfer ownership first.
+	leaveWorkspace() {
+		return this.http.request<IApiResponse<void>>({
+			method: 'POST',
+			path: '/workspaces/leave',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
 	// ── Invitations ──────────────────────────────────────────────────────────────
 
 	listInvitations(opts?: IReadOptions) {
@@ -333,11 +388,24 @@ export class WorkspacesClient {
 		});
 	}
 
-	acceptInvitation(pin: string) {
+	resendInvitation(inviteId: string) {
+		return this.http.request<IApiResponse<IInvitationResult>>({
+			method: 'POST',
+			path: `/workspaces/invitations/${encodeURIComponent(inviteId)}/resend`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Accept with the link's token ({ token }) or the 6-digit PIN from the email
+	// ({ pin }, or a bare string). The PIN only redeems an invitation addressed
+	// to the signed-in account's email; the token works for any account.
+	acceptInvitation(code: string | IAcceptInvitationInput) {
+		const body = typeof code === 'string' ? { pin: code } : code;
 		return this.http.request<IApiResponse<IAcceptInvitationResult>>({
 			method: 'POST',
 			path: '/workspaces/invitations/accept',
-			body: { pin },
+			body,
 			token: this.tokens.get(),
 		});
 	}

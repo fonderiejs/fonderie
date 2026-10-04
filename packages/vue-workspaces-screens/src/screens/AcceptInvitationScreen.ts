@@ -8,7 +8,7 @@ export const AcceptInvitationScreen = defineComponent({
 	name: 'FonderieAcceptInvitationScreen',
 	props: {
 		client: { type: Object as PropType<WorkspacesClient>, required: false },
-		// The invitation pin/token from the invite email.
+		// The token from the invitation link (…/invite/<token>) — not the PIN.
 		token: { type: String, required: true },
 	},
 	emits: {
@@ -28,7 +28,7 @@ export const AcceptInvitationScreen = defineComponent({
 			acceptError.value = null;
 			try {
 				// acceptInvitation resolves to the joined workspace's id.
-				const workspaceId = await acceptInvitation(props.token);
+				const workspaceId = await acceptInvitation({ token: props.token });
 				accepted.value = true;
 				emit('accepted', workspaceId);
 			} catch (err) {

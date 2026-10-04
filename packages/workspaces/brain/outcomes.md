@@ -87,12 +87,17 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | PUT | `/workspaces` | `requireAuth → wsCtx → manager → validate(updateWorkspaceSchema) → workspace.update` |
 | GET | `/workspaces/:id` | `requireAuth → wsCtx → workspace.get` |
 | POST | `/workspaces/archive` | `requireAuth → wsCtx → manager → workspace.archive` |
+| GET | `/workspaces/current` | `requireAuth → wsCtx → workspace.get` |
 | GET | `/workspaces/invitations` | `requireAuth → wsCtx → invitation.list` |
 | POST | `/workspaces/invitations` | `requireAuth → wsCtx → manager → validate(createInvitationsSchema) → invitation.invite` |
 | DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → invitation.cancel` |
+| POST | `/workspaces/invitations/:inviteId/resend` | `requireAuth → wsCtx → manager → invitation.resend` |
 | POST | `/workspaces/invitations/accept` | `acceptLimit → requireAuth → validate(acceptInvitationSchema) → invitation.accept` |
+| POST | `/workspaces/leave` | `requireAuth → wsCtx → member.leave` |
 | GET | `/workspaces/members` | `requireAuth → wsCtx → member.list` |
 | DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → manager → member.remove` |
+| DELETE | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → member.unsetManager` |
+| POST | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → member.setManager` |
 | GET | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → member.getUserRoles` |
 | POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → member.addRole` |
 | DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → manager → member.removeRole` |
@@ -106,3 +111,4 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → role.setPermissions` |
 | GET | `/workspaces/settings` | `requireAuth → wsCtx → workspace.getSettings` |
 | PUT | `/workspaces/settings` | `requireAuth → wsCtx → manager → validate(updateSettingsSchema) → workspace.updateSettings` |
+| POST | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → validate(transferOwnershipSchema) → member.transferOwnership` |

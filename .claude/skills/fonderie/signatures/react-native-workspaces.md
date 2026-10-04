@@ -16,6 +16,12 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .stack: string
   .cause: unknown
 
+type IAcceptInvitationInput = {
+    token: string;
+} | {
+    pin: string;
+};
+
 interface ICreateRoleInput {
     name: string;
     description?: string;
@@ -36,6 +42,7 @@ interface IInvitationDTO {
     status: string;
     expiresAt: string;
     createdAt: string;
+    isExpired: boolean;
 }
 
 interface IInviteEntry {
@@ -54,6 +61,15 @@ interface IMemberDTO {
     firstName: string;
     lastName: string;
     profileImageUrl: string;
+    roles: IMemberRoleDTO[];
+    isOwner: boolean;
+    isManager: boolean;
+}
+
+interface IMemberRoleDTO {
+    id: string;
+    name: string;
+    isSystem: boolean;
 }
 
 interface IRoleDTO {
@@ -156,6 +172,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .listWorkspaces(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceListResult>>
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
+  .getCurrentWorkspace(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
   .restoreWorkspace(): Promise<IApiResponse<undefined>>
@@ -171,12 +188,26 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getMemberRoles(userId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
+  .setManager(userId: string): Promise<IApiResponse<void>>
+  .unsetManager(userId: string): Promise<IApiResponse<void>>
+  .transferOwnership(userId: string): Promise<IApiResponse<void>>
+  .leaveWorkspace(): Promise<IApiResponse<void>>
   .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
-  .acceptInvitation(pin: string): Promise<IApiResponse<IAcceptInvitationResult>>
+  .resendInvitation(inviteId: string): Promise<IApiResponse<IInvitationResult>>
+  .acceptInvitation(code: string | IAcceptInvitationInput): Promise<IApiResponse<IAcceptInvitationResult>>
   .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
+
+interface IUseCurrentWorkspaceReturn {
+    workspace: IWorkspaceDTO | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
 
 interface IUseInvitationsReturn {
     invitations: IInvitationDTO[];
@@ -187,6 +218,7 @@ interface IUseInvitationsReturn {
     }) => Promise<void>;
     invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
     cancelInvitation: (inviteId: string) => Promise<void>;
+    resendInvitation: (inviteId: string) => Promise<void>;
 }
 
 interface IUseMemberRolesReturn {
@@ -208,6 +240,9 @@ interface IUseMembersReturn {
         force?: boolean;
     }) => Promise<void>;
     removeMember: (userId: string) => Promise<void>;
+    setManager: (userId: string) => Promise<void>;
+    unsetManager: (userId: string) => Promise<void>;
+    transferOwnership: (userId: string) => Promise<void>;
 }
 
 interface IUseRolePermissionsReturn {
@@ -276,8 +311,11 @@ interface IUseWorkspacesReturn {
         force?: boolean;
     }) => Promise<void>;
     createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
-    acceptInvitation: (pin: string) => Promise<string>;
+    acceptInvitation: (code: string | IAcceptInvitationInput) => Promise<string>;
+    leaveWorkspace: () => Promise<void>;
 }
+
+function useCurrentWorkspace(client?: WorkspacesClient | undefined): IUseCurrentWorkspaceReturn
 
 function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsReturn
 

@@ -9,6 +9,12 @@ export interface IUseMembersReturn {
 	error: Ref<FonderieApiError | null>;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	removeMember: (userId: string) => Promise<void>;
+	/** Owner only: make a member a manager. */
+	setManager: (userId: string) => Promise<void>;
+	/** Owner only: a manager goes back to their other roles. */
+	unsetManager: (userId: string) => Promise<void>;
+	/** Owner only: hand the workspace to a member; you stay as a manager. */
+	transferOwnership: (userId: string) => Promise<void>;
 }
 
 const NONE: IMemberDTO[] = [];
@@ -26,6 +32,18 @@ export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
 		removeMember: (userId) =>
 			w.run(async () => {
 				await workspaces.removeMember(userId);
+			}),
+		setManager: (userId) =>
+			w.run(async () => {
+				await workspaces.setManager(userId);
+			}),
+		unsetManager: (userId) =>
+			w.run(async () => {
+				await workspaces.unsetManager(userId);
+			}),
+		transferOwnership: (userId) =>
+			w.run(async () => {
+				await workspaces.transferOwnership(userId);
 			}),
 	};
 }

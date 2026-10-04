@@ -411,6 +411,18 @@ export interface IMemberDTO {
 	firstName: string;
 	lastName: string;
 	profileImageUrl: string;
+	/** Every role this person holds here, earliest first. */
+	roles: IMemberRoleDTO[];
+	/** The workspace owner. */
+	isOwner: boolean;
+	/** The owner, or a holder of a manager role — may manage the team. */
+	isManager: boolean;
+}
+
+export interface IMemberRoleDTO {
+	id: string;
+	name: string;
+	isSystem: boolean;
 }
 
 export interface IInvitationDTO {
@@ -422,6 +434,8 @@ export interface IInvitationDTO {
 	status: string;
 	expiresAt: string;
 	createdAt: string;
+	/** Past its expiry: still listed so a manager can resend it, but no longer acceptable. */
+	isExpired: boolean;
 }
 
 export interface IWorkspaceSettingsDTO {
@@ -459,6 +473,12 @@ export interface IInvitationListResult {
 export interface IInviteResult {
 	invitations: Array<{ invitationId: string; email: string }>;
 }
+
+export interface IInvitationResult {
+	invitation: IInvitationDTO;
+}
+
+export type IAcceptInvitationInput = { token: string } | { pin: string };
 
 export interface IAcceptInvitationResult {
 	workspaceId: string;

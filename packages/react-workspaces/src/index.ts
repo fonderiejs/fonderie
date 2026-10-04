@@ -1,9 +1,11 @@
 export type {
 	ICreateRoleInput,
 	ICreateWorkspaceInput,
+	IAcceptInvitationInput,
 	IInvitationDTO,
 	IInviteEntry,
 	IMemberDTO,
+	IMemberRoleDTO,
 	IRoleDTO,
 	IRolePermission,
 	IRolePermissionInput,
@@ -17,6 +19,7 @@ export type {
 } from '@fonderie/client';
 export { FonderieApiError } from '@fonderie/client';
 export type {
+	IUseCurrentWorkspaceReturn,
 	IUseInvitationsReturn,
 	IUseMemberRolesReturn,
 	IUseMembersReturn,
@@ -29,6 +32,7 @@ export type {
 	IUseWorkspacesReturn,
 } from './hooks';
 export {
+	useCurrentWorkspace,
 	useInvitations,
 	useMemberRoles,
 	useMembers,

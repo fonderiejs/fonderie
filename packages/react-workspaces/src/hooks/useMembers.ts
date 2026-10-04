@@ -8,6 +8,12 @@ export interface IUseMembersReturn {
 	error: FonderieApiError | null;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	removeMember: (userId: string) => Promise<void>;
+	/** Owner only: make a member a manager. */
+	setManager: (userId: string) => Promise<void>;
+	/** Owner only: a manager goes back to their other roles. */
+	unsetManager: (userId: string) => Promise<void>;
+	/** Owner only: hand the workspace to a member; you stay as a manager. */
+	transferOwnership: (userId: string) => Promise<void>;
 }
 
 const NONE: IMemberDTO[] = [];
@@ -24,5 +30,35 @@ export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
 			}),
 		[workspaces, w.run],
 	);
-	return { members: q.data ?? NONE, isLoading: q.isLoading, error: w.error ?? q.error, refresh: q.refresh, removeMember };
+	const setManager = useCallback(
+		(userId: string) =>
+			w.run(async () => {
+				await workspaces.setManager(userId);
+			}),
+		[workspaces, w.run],
+	);
+	const unsetManager = useCallback(
+		(userId: string) =>
+			w.run(async () => {
+				await workspaces.unsetManager(userId);
+			}),
+		[workspaces, w.run],
+	);
+	const transferOwnership = useCallback(
+		(userId: string) =>
+			w.run(async () => {
+				await workspaces.transferOwnership(userId);
+			}),
+		[workspaces, w.run],
+	);
+	return {
+		members: q.data ?? NONE,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		removeMember,
+		setManager,
+		unsetManager,
+		transferOwnership,
+	};
 }
