@@ -1,5 +1,13 @@
 # @fonderie/vue-webhooks
 
+## 0.6.2
+
+### Patch Changes
+
+- Updated dependencies [2686f16]
+  - @fonderie/client@3.12.0
+  - @fonderie/vue@0.11.0
+
 ## 0.6.1
 
 ### Patch Changes
