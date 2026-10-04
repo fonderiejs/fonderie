@@ -1,5 +1,13 @@
 # @fonderie/react-auth
 
+## 0.11.8
+
+### Patch Changes
+
+- Updated dependencies [09e227e]
+  - @fonderie/client@3.11.0
+  - @fonderie/react@0.10.0
+
 ## 0.11.7
 
 ### Patch Changes

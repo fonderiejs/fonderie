@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-customers-screens",
-	"version": "0.2.3",
+	"version": "0.3.0",
 	"description": "Pre-built React Native customers screens for Fonderie — customer list, customer detail (contact info, notes, tags).",
 	"keywords": [
 		"fonderiejs",
@@ -35,8 +35,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^3.0.0",
-		"@fonderie/react": "^0.9.1",
+		"@fonderie/client": "^3.11.0",
+		"@fonderie/react": "^0.10.0",
 		"@fonderie/react-native-customers": "^0.1.3"
 	},
 	"peerDependencies": {

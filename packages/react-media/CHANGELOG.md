@@ -1,5 +1,13 @@
 # @fonderie/react-media
 
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies [09e227e]
+  - @fonderie/client@3.11.0
+  - @fonderie/react@0.10.0
+
 ## 0.2.6
 
 ### Patch Changes
