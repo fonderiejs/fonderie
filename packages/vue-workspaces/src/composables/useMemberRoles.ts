@@ -33,6 +33,8 @@ export function useMemberRoles(
 		workspaces,
 		() => `/workspaces/members/${encodeURIComponent(toValue(userId))}/roles`,
 		async (bust) => (await workspaces.getMemberRoles(toValue(userId), { bust })).result.roles,
+		// No id yet (a screen still resolving it): wait, don't request '/…/'.
+		{ enabled: () => !!toValue(userId) },
 	);
 	const w = useWrite(() => q.refresh());
 	return {

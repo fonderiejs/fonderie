@@ -28,6 +28,7 @@ export {
 	deleteRole,
 	setRolePermissions,
 } from './roles';
+export type { IRoleDeleteResult } from './roles';
 export {
 	createInvitation,
 	listInvitations,

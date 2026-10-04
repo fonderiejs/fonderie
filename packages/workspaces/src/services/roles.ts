@@ -100,16 +100,67 @@ export async function updateRole(
 	return row ?? null;
 }
 
+export interface IRoleDeleteResult {
+	/** People who held the role. */
+	membersAffected: number;
+	/** Of those, the ones it was the only role of — now on the default role. */
+	movedToDefaultRole: number;
+}
+
+/**
+ * Delete a workspace's custom role, with everything hanging off it, in one
+ * transaction. An assignment IS a membership, so deleting the assignments of a
+ * person whose only role this was would silently remove them from the team;
+ * they move to the default (system GUEST) role instead. Before this, only the
+ * role row went: assignments and grants were left pointing at nothing.
+ * Null when there is no such custom role here.
+ */
 export async function deleteRole(
 	id: string,
 	workspaceId: string,
 	store: IStoreAdapter,
-): Promise<void> {
-	await store.query(
-		`DELETE FROM fonderie_roles
-		 WHERE id = $1 AND workspace_id = $2 AND is_system = false`,
-		[id, workspaceId],
-	);
+): Promise<IRoleDeleteResult | null> {
+	return store.transaction(async (tx) => {
+		const [role] = await tx.query<{ id: string }>(
+			`SELECT id FROM fonderie_roles
+			 WHERE id = $1 AND workspace_id = $2 AND is_system = false
+			 FOR UPDATE`,
+			[id, workspaceId],
+		);
+		if (!role) return null;
+
+		const holders = await tx.query<{ userId: string; others: string }>(
+			`SELECT ruw.user_id AS "userId",
+			        (SELECT COUNT(*) FROM fonderie_role_user_workspaces o
+			          WHERE o.user_id = ruw.user_id AND o.workspace_id = ruw.workspace_id
+			            AND o.role_id <> ruw.role_id AND o.removed = false) AS others
+			 FROM fonderie_role_user_workspaces ruw
+			 WHERE ruw.role_id = $1 AND ruw.workspace_id = $2 AND ruw.removed = false`,
+			[id, workspaceId],
+		);
+		const soleHolders = holders.filter((h) => Number(h.others) === 0).map((h) => h.userId);
+
+		if (soleHolders.length > 0) {
+			const [guest] = await tx.query<{ id: string }>(
+				`SELECT id FROM fonderie_roles
+				 WHERE name = 'GUEST' AND workspace_id IS NULL AND is_system = true
+				 LIMIT 1`,
+			);
+			if (!guest) throw new Error('System GUEST role not seeded — run the workspaces migrations');
+			await tx.query(
+				`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
+				 SELECT u, $2, $3, true FROM unnest($1::uuid[]) AS u
+				 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE SET removed = false`,
+				[soleHolders, workspaceId, guest.id],
+			);
+		}
+
+		await tx.query(`DELETE FROM fonderie_role_user_workspaces WHERE role_id = $1 AND workspace_id = $2`, [id, workspaceId]);
+		await tx.query(`DELETE FROM fonderie_role_permissions WHERE role_id = $1 AND workspace_id = $2`, [id, workspaceId]);
+		await tx.query(`DELETE FROM fonderie_roles WHERE id = $1`, [id]);
+
+		return { membersAffected: holders.length, movedToDefaultRole: soleHolders.length };
+	});
 }
 
 export async function setRolePermissions(

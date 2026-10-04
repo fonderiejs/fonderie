@@ -31,7 +31,7 @@ export function useWorkspace(
 		workspaces,
 		`/workspaces/${encodeURIComponent(workspaceId)}`,
 		async (bust) => (await workspaces.getWorkspace(workspaceId, { bust })).result.workspace,
-		{ perWorkspace: false },
+		{ perWorkspace: false, enabled: !!workspaceId },
 	);
 	return { workspace: q.data ?? null, isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

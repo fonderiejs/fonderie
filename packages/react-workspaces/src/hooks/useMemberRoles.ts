@@ -31,6 +31,8 @@ export function useMemberRoles(
 		workspaces,
 		`/workspaces/members/${encodeURIComponent(userId)}/roles`,
 		async (bust) => (await workspaces.getMemberRoles(userId, { bust })).result.roles,
+		// No id yet (a screen still resolving it): wait, don't request '/…/'.
+		{ enabled: !!userId },
 	);
 	const w = useWrite(q.refresh);
 	const addRole = useCallback(
