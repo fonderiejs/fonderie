@@ -61,6 +61,8 @@ export function buildCustomerRoutes(
 		['DELETE', '/customers/:customerId', requireAuth, wsCtx, customer.delete],
 		['POST', '/customers/:customerId/blacklist', requireAuth, wsCtx, validate(blacklistSchema), customer.blacklist],
 		['POST', '/customers/:customerId/unblacklist', requireAuth, wsCtx, customer.unblacklist],
+		['POST', '/customers/:customerId/archive', requireAuth, wsCtx, customer.archive],
+		['POST', '/customers/:customerId/unarchive', requireAuth, wsCtx, customer.unarchive],
 
 		// ── Emails ───────────────────────────────────────────────────────
 		['GET', '/customers/:customerId/emails', requireAuth, wsCtx, email.list],

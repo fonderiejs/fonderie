@@ -42,6 +42,11 @@
 			"import": "./dist/parser.js",
 			"require": "./dist/parser.cjs"
 		},
+		"./region": {
+			"types": "./dist/region.d.ts",
+			"import": "./dist/region.js",
+			"require": "./dist/region.cjs"
+		},
 		"./response": {
 			"types": "./dist/response.d.ts",
 			"import": "./dist/response.js",

@@ -25,7 +25,15 @@ export interface ICustomerDTO {
 	lastName: string;
 	companyName: string;
 	avatarUrl: string;
+	/** Preferred language (BCP 47), e.g. 'fr-CA', 'zh-Hant'. */
 	locale: string;
+	/**
+	 * The name to show, in the order the customer's language writes it:
+	 * family name first, no space, for Chinese, Japanese and Korean ('王小明');
+	 * given name first otherwise ('Marie Tremblay'). A business shows its
+	 * company name.
+	 */
+	displayName: string;
 	referenceCode: string;
 	referralCode: string;
 	referredBy: string | null;
@@ -33,6 +41,8 @@ export interface ICustomerDTO {
 	createdBy: string;
 	createdAt: string;
 	updatedAt: string;
+	/** Archived: hidden from lists and pickers, kept on documents. */
+	archived: { status: boolean; at: string | null };
 }
 
 export interface ICustomerRelationshipDTO {
@@ -57,7 +67,13 @@ export interface ICustomerShallowDTO extends ICustomerDTO {
 // createdAt/updatedAt — `relationshipCreatedAt` is when the relationship
 // itself was created (what ICustomerRelationshipDTO.createdAt means).
 export type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+	/** The RELATED customer's id — same name as in ICustomerRelationshipDTO. */
+	relatedId: string;
+	/** The relationship record's id. */
+	relationshipId: string;
+	/** @deprecated The relationship record's id, not a customer's — read `relationshipId`. */
 	id: string;
+	/** @deprecated The related customer's id — read `relatedId`. */
 	customerId: string;
 	relationship: string;
 	isPrimary: boolean;
@@ -140,6 +156,18 @@ export interface ICustomerLabelDTO {
 
 const VALID_SEX: CustomerSex[] = ['UNKNOWN', 'MALE', 'FEMALE'];
 
+const FAMILY_NAME_FIRST = new Set(['zh', 'ja', 'ko']);
+
+export function displayNameOf(c: Pick<ICustomer, 'type' | 'firstName' | 'lastName' | 'companyName' | 'locale' | 'referenceCode'>): string {
+	const first = c.firstName?.trim() ?? '';
+	const last = c.lastName?.trim() ?? '';
+	const company = c.companyName?.trim() ?? '';
+	if (c.type === 'business' && company) return company;
+	const lang = (c.locale ?? '').split('-')[0]!.toLowerCase();
+	const person = FAMILY_NAME_FIRST.has(lang) ? `${last}${first}` : [first, last].filter(Boolean).join(' ');
+	return person || company || (c.referenceCode ?? '');
+}
+
 export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 	return {
 		id: stringOrEmpty(c.id),
@@ -150,10 +178,12 @@ export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 		companyName: stringOrEmpty(c.companyName),
 		avatarUrl: stringOrEmpty(c.avatarUrl),
 		locale: stringOrEmpty(c.locale),
+		displayName: displayNameOf(c),
 		referenceCode: stringOrEmpty(c.referenceCode),
 		referralCode: stringOrEmpty(c.referralCode),
 		referredBy: c.referredBy ?? null,
 		blacklisted: { status: booleanOrFalse(c.isBlacklisted), reason: c.blacklistReason ?? null },
+		archived: { status: booleanOrFalse(c.isArchived), at: c.archivedAt ? dateOrEmpty(c.archivedAt) : null },
 		createdBy: stringOrEmpty(c.createdBy),
 		createdAt: dateOrEmpty(c.createdAt),
 		updatedAt: dateOrEmpty(c.updatedAt),
@@ -184,6 +214,8 @@ export function toCustomerShallowDTO(c: ICustomerShallow): ICustomerShallowDTO {
 export function toCustomerRelationshipExpandedDTO(r: ICustomerRelationshipExpanded): ICustomerRelationshipExpandedDTO {
 	const { id: customerId, ...customerFields } = toCustomerShallowDTO(r.customer);
 	return {
+		relatedId: customerId,
+		relationshipId: stringOrEmpty(r.id),
 		id: stringOrEmpty(r.id),
 		customerId,
 		relationship: stringOrEmpty(r.relationship),
@@ -208,6 +240,8 @@ export function toCustomerDetailDTO(c: ICustomerDetail): ICustomerDetailDTO {
 export function toCustomerRelationshipExpandedD2DTO(r: ICustomerRelationshipExpandedD2): ICustomerRelationshipExpandedD2DTO {
 	const { id: customerId, ...customerFields } = toCustomerShallowDTO(r.customer);
 	return {
+		relatedId: customerId,
+		relationshipId: stringOrEmpty(r.id),
 		id: stringOrEmpty(r.id),
 		customerId,
 		relationship: stringOrEmpty(r.relationship),

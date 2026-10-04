@@ -578,3 +578,23 @@ test('CustomersModule.describeEvents: every customer event, workspace-scoped, id
 		assert.deepEqual(e.project!(payload), { customerId: 'c1', workspaceId: 'w1' }, 'no personal data reaches a client');
 	}
 });
+
+test('customer.delete: 409 CUSTOMER_IN_USE when the app says something still references the customer', async () => {
+	const { customerController } = await import('../controllers/customer.controller');
+	const id = '11111111-1111-4111-8111-111111111111';
+	const writes: string[] = [];
+	const store = {
+		query: async (sql: string) => {
+			if (/^\s*DELETE/i.test(sql)) writes.push(sql);
+			return sql.includes('FROM fonderie_customers') ? [{ id, workspaceId: 'ws-1' }] : [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	const asked: string[] = [];
+	const ctrl = customerController(store, { isInUse: async (customerId) => (asked.push(customerId), true) });
+	const res = await ctrl.delete(makeCtx({ workspaceId: 'ws-1', params: { customerId: id } }));
+	assert.equal(res.status, 409);
+	assert.equal(((await res.json()) as { reason: string }).reason, 'CUSTOMER_IN_USE');
+	assert.deepEqual(asked, [id]);
+	assert.deepEqual(writes, [], 'nothing was deleted');
+});

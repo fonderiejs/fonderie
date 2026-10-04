@@ -62,18 +62,17 @@ export class CustomerRelationshipModel {
 		});
 	}
 
-	async setPrimary(customerId: string, relatedId: string): Promise<void> {
-		await this.store.transaction(async (tx) => {
-			await tx.query(
-				`UPDATE fonderie_customer_relationships SET is_primary = false WHERE customer_id = $1`,
-				[customerId],
-			);
-			await tx.query(
-				`UPDATE fonderie_customer_relationships
-				 SET is_primary = true
-				 WHERE customer_id = $1 AND related_id = $2`,
+	/** Make this relationship the primary one. False — and nothing changed — when it does not exist. */
+	async setPrimary(customerId: string, relatedId: string): Promise<boolean> {
+		return this.store.transaction(async (tx) => {
+			const [target] = await tx.query<{ one: number }>(
+				`SELECT 1 AS one FROM fonderie_customer_relationships WHERE customer_id = $1 AND related_id = $2 FOR UPDATE`,
 				[customerId, relatedId],
 			);
+			if (!target) return false;
+			await tx.query(`UPDATE fonderie_customer_relationships SET is_primary = false WHERE customer_id = $1 AND is_primary`, [customerId]);
+			await tx.query(`UPDATE fonderie_customer_relationships SET is_primary = true WHERE customer_id = $1 AND related_id = $2`, [customerId, relatedId]);
+			return true;
 		});
 	}
 

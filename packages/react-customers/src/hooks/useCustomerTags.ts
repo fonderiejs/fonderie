@@ -3,6 +3,8 @@ import { CustomersClient } from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
 import { useCallback } from 'react';
 
+import type { ICustomerSectionOptions } from './section-options';
+
 export interface IUseCustomerTagsReturn {
 	tags: string[];
 	isLoading: boolean;
@@ -16,25 +18,28 @@ const NONE: string[] = [];
 
 // One customer's tags: shown at once when seen before, refreshed behind
 // what is shown; any write under /customers marks it stale everywhere.
-export function useCustomerTags(customerId: string): IUseCustomerTagsReturn;
+export function useCustomerTags(customerId: string, opts?: ICustomerSectionOptions): IUseCustomerTagsReturn;
 export function useCustomerTags(
 	client: CustomersClient | undefined,
 	customerId: string,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerTagsReturn;
 export function useCustomerTags(
 	clientOrId: CustomersClient | string | undefined,
-	maybeId?: string,
+	maybeIdOrOpts?: string | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerTagsReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customerId = firstIsClient ? (maybeIdOrOpts as string) : clientOrId;
+	const read = ((firstIsClient ? maybeOpts : maybeIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerTags');
 	const q = useScopedQuery(
 		customers,
 		`/customers/${encodeURIComponent(customerId ?? '')}/tags`,
 		async (bust) => (await customers.listTags(customerId, { bust })).result.tags,
 		// Nothing to read until there is a customer.
-		{ enabled: !!customerId },
+		{ enabled: !!customerId && read },
 	);
 	const w = useWrite(q.refresh);
 	const addTag = useCallback(

@@ -3,6 +3,8 @@ import { CustomersClient } from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
 import { useCallback } from 'react';
 
+import type { ICustomerSectionOptions } from './section-options';
+
 export interface IUseCustomerPhonesReturn {
 	phones: ICustomerPhoneDTO[];
 	isLoading: boolean;
@@ -18,25 +20,28 @@ const NONE: ICustomerPhoneDTO[] = [];
 
 // One customer's phones: shown at once when seen before, refreshed behind
 // what is shown; any write under /customers marks it stale everywhere.
-export function useCustomerPhones(customerId: string): IUseCustomerPhonesReturn;
+export function useCustomerPhones(customerId: string, opts?: ICustomerSectionOptions): IUseCustomerPhonesReturn;
 export function useCustomerPhones(
 	client: CustomersClient | undefined,
 	customerId: string,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerPhonesReturn;
 export function useCustomerPhones(
 	clientOrId: CustomersClient | string | undefined,
-	maybeId?: string,
+	maybeIdOrOpts?: string | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerPhonesReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customerId = firstIsClient ? (maybeIdOrOpts as string) : clientOrId;
+	const read = ((firstIsClient ? maybeOpts : maybeIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerPhones');
 	const q = useScopedQuery(
 		customers,
 		`/customers/${encodeURIComponent(customerId ?? '')}/phones`,
 		async (bust) => (await customers.listPhones(customerId, { bust })).result.phones,
 		// Nothing to read until there is a customer.
-		{ enabled: !!customerId },
+		{ enabled: !!customerId && read },
 	);
 	const w = useWrite(q.refresh);
 	const addPhone = useCallback(

@@ -74,12 +74,15 @@ export function useClientQuery<T>(
 		});
 	}, [enabled, key, store, entry.updatedAt, opts.staleMs]);
 
+	// A disabled query refreshes nothing: a write made through a hook that was
+	// told not to read (no id yet, or { read: false }) must not fetch the list
+	// it was told to leave alone.
 	const refresh = useCallback(
 		async (o?: { force?: boolean }) => {
-			if (!key) return undefined;
+			if (!enabled || !key) return undefined;
 			return store.fetch(key, () => fetcherRef.current({ force: o?.force === true }), { force: true });
 		},
-		[store, key],
+		[store, key, enabled],
 	);
 
 	const nothingToShow = entry.data === undefined;

@@ -27,6 +27,7 @@ export type {
 	IUpdateCustomerInput,
 } from '@fonderie/client';
 export { FonderieApiError } from '@fonderie/client';
+export type { ICustomerSectionOptions } from './hooks/section-options';
 export type {
 	IUseCustomerAddressesReturn,
 	IUseCustomerEmailsReturn,

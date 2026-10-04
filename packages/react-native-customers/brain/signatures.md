@@ -22,6 +22,8 @@ new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .updateCustomer(customerId: string, input: IUpdateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput | undefined): Promise<IApiResponse<undefined>>
+  .archiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
+  .unarchiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
   .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .listEmails(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerEmailListResult>>
   .addEmail(customerId: string, input: IAddEmailInput): Promise<IApiResponse<ICustomerEmailResult>>
@@ -137,12 +139,17 @@ interface ICustomerDTO {
     companyName: string;
     avatarUrl: string;
     locale: string;
+    displayName: string;
     referenceCode: string;
     referralCode: string;
     referredBy: string | null;
     blacklisted: {
         status: boolean;
         reason: string | null;
+    };
+    archived: {
+        status: boolean;
+        at: string | null;
     };
     createdBy: string;
     createdAt: string;
@@ -208,6 +215,8 @@ type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {
 };
 
 type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+    relatedId: string;
+    relationshipId: string;
     id: string;
     customerId: string;
     relationship: string;
@@ -230,11 +239,16 @@ interface IGetCustomerInput {
 interface IListCustomersInput {
     search?: string;
     blacklisted?: boolean;
+    archived?: boolean | 'all';
     limit?: number;
     offset?: number;
 }
 
 type IUpdateCustomerInput = Omit<ICreateCustomerInput, 'referralCode' | 'referredByCode'>;
+
+interface ICustomerSectionOptions {
+    read?: boolean;
+}
 
 interface IUseCustomerAddressesReturn {
     addresses: ICustomerAddressDTO[];
@@ -317,6 +331,9 @@ interface IUseCustomerReturn {
         force?: boolean;
     }) => Promise<void>;
     updateCustomer: (input: IUpdateCustomerInput) => Promise<void>;
+    deleteCustomer: () => Promise<void>;
+    archiveCustomer: () => Promise<void>;
+    unarchiveCustomer: () => Promise<void>;
 }
 
 interface IUseCustomerTagsReturn {
@@ -344,23 +361,25 @@ interface IUseCustomersReturn {
     deleteCustomer: (customerId: string) => Promise<void>;
     blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;
     unblacklistCustomer: (customerId: string) => Promise<void>;
+    archiveCustomer: (customerId: string) => Promise<void>;
+    unarchiveCustomer: (customerId: string) => Promise<void>;
 }
 
 function useCustomer(customerId: string, depth?: 1 | 2 | undefined): IUseCustomerReturn
 
-function useCustomerAddresses(customerId: string): IUseCustomerAddressesReturn
+function useCustomerAddresses(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerAddressesReturn
 
-function useCustomerEmails(customerId: string): IUseCustomerEmailsReturn
+function useCustomerEmails(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerEmailsReturn
 
 function useCustomerLabels(type: CustomerLabelType): IUseCustomerLabelsReturn
 
-function useCustomerNotes(customerId: string): IUseCustomerNotesReturn
+function useCustomerNotes(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerNotesReturn
 
-function useCustomerPhones(customerId: string): IUseCustomerPhonesReturn
+function useCustomerPhones(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerPhonesReturn
 
-function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn
+function useCustomerRelationships(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerRelationshipsReturn
 
-function useCustomerTags(customerId: string): IUseCustomerTagsReturn
+function useCustomerTags(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerTagsReturn
 
 function useCustomers(params?: IListCustomersInput | undefined): IUseCustomersReturn
 ```

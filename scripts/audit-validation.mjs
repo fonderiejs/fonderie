@@ -32,6 +32,8 @@ const EXEMPT = new Map([
 	['POST /workspaces/archive', 'no body read — workspace from ctx'],
 	['POST /workspaces/restore', 'no body read'],
 	['POST /customers/:customerId/unblacklist', 'no body read'],
+	['POST /customers/:customerId/archive', 'no body read'],
+	['POST /customers/:customerId/unarchive', 'no body read'],
 	['PUT /customers/:customerId/emails/:emailId/primary', 'params only'],
 	['PUT /customers/:customerId/phones/:phoneId/primary', 'params only'],
 	['PUT /customers/:customerId/addresses/:addrId/primary', 'params only'],

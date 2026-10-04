@@ -46,6 +46,12 @@ interface IWorkspace {
     phone: string | null;
     businessType: string | null;
     address: IWorkspaceAddress | null;
+    legalName: string | null;
+    email: string | null;
+    website: string | null;
+    logoUrl: string | null;
+    taxRegistrations: ITaxRegistration[] | null;
+    languages: string[] | null;
     plan: string;
     ownerId: string;
     isPersonal: boolean;
@@ -110,6 +116,12 @@ interface IWorkspaceDTO {
     phone: string;
     businessType: string;
     address: IWorkspaceAddressDTO;
+    legalName: string;
+    email: string;
+    website: string;
+    logoUrl: string;
+    taxRegistrations: ITaxRegistrationDTO[];
+    languages: string[];
     plan: string;
     ownerId: string;
     isPersonal: boolean;
@@ -175,13 +187,15 @@ function toInvitationDTO(inv: IInvitation): IInvitationDTO
 
 function toSettingsDTO(s: IWorkspaceSettings): IWorkspaceSettingsDTO
 
+function getWorkspaceSettings(id: string, store: IStoreAdapter): Promise<IWorkspaceSettings>
+
 function withWorkspace(store: IStoreAdapter): Middleware
 
 function requireWorkspace(ctx: IFonderieContext, next: () => Promise<Response>): Promise<Response>
 
 function requireManager(store: IStoreAdapter, config: IWorkspacesConfig): Middleware
 
-namespace schemas — exports: acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, transferOwnershipSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
+namespace schemas — exports: BUSINESS_TYPES, acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, transferOwnershipSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
 
 function importWorkspace(store: IStoreAdapter, ws: IImportWorkspace): Promise<{ id: string; }>
 

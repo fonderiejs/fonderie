@@ -543,6 +543,7 @@ interface IGetCustomerInput {
 interface IListCustomersInput {
     search?: string;
     blacklisted?: boolean;
+    archived?: boolean | 'all';
     limit?: number;
     offset?: number;
 }
@@ -560,6 +561,8 @@ new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .updateCustomer(customerId: string, input: IUpdateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput): Promise<IApiResponse<undefined>>
+  .archiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
+  .unarchiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
   .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .listEmails(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerEmailListResult>>
   .addEmail(customerId: string, input: IAddEmailInput): Promise<IApiResponse<ICustomerEmailResult>>
@@ -692,6 +695,18 @@ interface IUpdateWorkspaceInput {
         zip?: string;
         country?: string;
     } | null;
+    legalName?: string | null;
+    email?: string | null;
+    website?: string | null;
+    logoUrl?: string | null;
+    taxRegistrations?: Array<{
+        country: string;
+        type: string;
+        number: string;
+        region?: string | null;
+        label?: string | null;
+    }>;
+    languages?: string[];
 }
 
 new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
@@ -1204,12 +1219,17 @@ interface ICustomerDTO {
     companyName: string;
     avatarUrl: string;
     locale: string;
+    displayName: string;
     referenceCode: string;
     referralCode: string;
     referredBy: string | null;
     blacklisted: {
         status: boolean;
         reason: string | null;
+    };
+    archived: {
+        status: boolean;
+        at: string | null;
     };
     createdBy: string;
     createdAt: string;
@@ -1295,6 +1315,8 @@ type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {
 };
 
 type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+    relatedId: string;
+    relationshipId: string;
     id: string;
     customerId: string;
     relationship: string;
@@ -1819,6 +1841,12 @@ interface IWorkspaceDTO {
     phone: string;
     businessType: string;
     address: IWorkspaceAddressDTO;
+    legalName: string;
+    email: string;
+    website: string;
+    logoUrl: string;
+    taxRegistrations: ITaxRegistrationDTO[];
+    languages: string[];
     plan: string;
     ownerId: string;
     isPersonal: boolean;
@@ -1827,6 +1855,14 @@ interface IWorkspaceDTO {
     archivedBy: string;
     createdAt: string;
     updatedAt: string;
+}
+
+interface ITaxRegistrationDTO {
+    country: string;
+    type: string;
+    number: string;
+    region: string;
+    label: string;
 }
 
 interface IWorkspaceListResult {

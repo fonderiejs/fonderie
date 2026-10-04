@@ -11,6 +11,14 @@ export interface IWorkspaceAddress {
 	country?: string;
 }
 
+export interface ITaxRegistration {
+	country: string;
+	type: string;
+	number: string;
+	region?: string | null;
+	label?: string | null;
+}
+
 export interface IWorkspace {
 	id: string;
 	name: string;
@@ -21,6 +29,12 @@ export interface IWorkspace {
 	phone: string | null;
 	businessType: string | null;
 	address: IWorkspaceAddress | null;
+	legalName: string | null;
+	email: string | null;
+	website: string | null;
+	logoUrl: string | null;
+	taxRegistrations: ITaxRegistration[] | null;
+	languages: string[] | null;
 	/**
 	 * @deprecated Not the workspace's billing plan. Set to 'free' when the
 	 * workspace is created and never maintained — nothing writes it when the

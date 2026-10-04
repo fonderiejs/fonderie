@@ -29,4 +29,12 @@ export type ICustomersConfig = {
 	 * needs `update`. Unset: any workspace member may do anything, as before.
 	 */
 	permission?: string;
+	/**
+	 * Does something of the APP's still reference this customer (a job, a
+	 * quote, an invoice)? Then delete is refused with 409 CUSTOMER_IN_USE and the
+	 * customer can be archived instead. Database foreign keys onto
+	 * fonderie_customers are caught the same way without this; use it when the
+	 * references are not foreign keys.
+	 */
+	isInUse?: (customerId: string, workspaceId: string) => Promise<boolean>;
 };

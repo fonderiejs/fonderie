@@ -9,6 +9,7 @@ export default defineConfig({
 		'src/types.ts',
 		'src/parser.ts',
 		'src/response.ts',
+		'src/region.ts',
 		'src/middlewares/index.ts',
 	],
 })

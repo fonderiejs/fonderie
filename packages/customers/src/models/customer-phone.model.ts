@@ -61,16 +61,21 @@ export class CustomerPhoneModel {
 		return row;
 	}
 
-	async setPrimary(phoneId: string, customerId: string): Promise<void> {
-		await this.store.transaction(async (tx) => {
-			await tx.query(
-				`UPDATE fonderie_customer_phones SET is_primary = false WHERE customer_id = $1`,
-				[customerId],
-			);
-			await tx.query(
-				`UPDATE fonderie_customer_phones SET is_primary = true WHERE id = $1 AND customer_id = $2`,
+	/**
+	 * Make this one the primary. False — and nothing changed — when it is not
+	 * this customer's: clearing first and then matching nothing used to leave
+	 * the customer with no primary at all.
+	 */
+	async setPrimary(phoneId: string, customerId: string): Promise<boolean> {
+		return this.store.transaction(async (tx) => {
+			const [target] = await tx.query<{ one: number }>(
+				`SELECT 1 AS one FROM fonderie_customer_phones WHERE id = $1 AND customer_id = $2 FOR UPDATE`,
 				[phoneId, customerId],
 			);
+			if (!target) return false;
+			await tx.query(`UPDATE fonderie_customer_phones SET is_primary = false WHERE customer_id = $1 AND is_primary`, [customerId]);
+			await tx.query(`UPDATE fonderie_customer_phones SET is_primary = true WHERE id = $1 AND customer_id = $2`, [phoneId, customerId]);
+			return true;
 		});
 	}
 

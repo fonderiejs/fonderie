@@ -3,6 +3,8 @@ import { CustomersClient } from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
 import { useCallback } from 'react';
 
+import type { ICustomerSectionOptions } from './section-options';
+
 export interface IUseCustomerAddressesReturn {
 	addresses: ICustomerAddressDTO[];
 	isLoading: boolean;
@@ -18,25 +20,28 @@ const NONE: ICustomerAddressDTO[] = [];
 
 // One customer's addresses: shown at once when seen before, refreshed behind
 // what is shown; any write under /customers marks it stale everywhere.
-export function useCustomerAddresses(customerId: string): IUseCustomerAddressesReturn;
+export function useCustomerAddresses(customerId: string, opts?: ICustomerSectionOptions): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
 	client: CustomersClient | undefined,
 	customerId: string,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
 	clientOrId: CustomersClient | string | undefined,
-	maybeId?: string,
+	maybeIdOrOpts?: string | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerAddressesReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customerId = firstIsClient ? (maybeIdOrOpts as string) : clientOrId;
+	const read = ((firstIsClient ? maybeOpts : maybeIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerAddresses');
 	const q = useScopedQuery(
 		customers,
 		`/customers/${encodeURIComponent(customerId ?? '')}/addresses`,
 		async (bust) => (await customers.listAddresses(customerId, { bust })).result.addresses,
 		// Nothing to read until there is a customer.
-		{ enabled: !!customerId },
+		{ enabled: !!customerId && read },
 	);
 	const w = useWrite(q.refresh);
 	const addAddress = useCallback(

@@ -17,6 +17,9 @@ export interface IUseCustomersReturn {
 	deleteCustomer: (customerId: string) => Promise<void>;
 	blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;
 	unblacklistCustomer: (customerId: string) => Promise<void>;
+	/** Hide from lists and pickers, keep on documents — what to offer when delete answers 409 CUSTOMER_IN_USE. */
+	archiveCustomer: (customerId: string) => Promise<void>;
+	unarchiveCustomer: (customerId: string) => Promise<void>;
 }
 
 export function useCustomers(params?: IListCustomersInput): IUseCustomersReturn;
@@ -88,6 +91,21 @@ export function useCustomers(
 		[client, w.run],
 	);
 
+	const archiveCustomer = useCallback(
+		(customerId: string) =>
+			w.run(async () => {
+				await client.archiveCustomer(customerId);
+			}),
+		[client, w.run],
+	);
+	const unarchiveCustomer = useCallback(
+		(customerId: string) =>
+			w.run(async () => {
+				await client.unarchiveCustomer(customerId);
+			}),
+		[client, w.run],
+	);
+
 	return {
 		customers: q.rows,
 		// Busy covers "nothing yet" AND a page append, as before: a list UI
@@ -102,5 +120,7 @@ export function useCustomers(
 		deleteCustomer,
 		blacklistCustomer,
 		unblacklistCustomer,
+		archiveCustomer,
+		unarchiveCustomer,
 	};
 }

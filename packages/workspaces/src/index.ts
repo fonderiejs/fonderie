@@ -27,6 +27,9 @@ export {
 	toInvitationDTO,
 	toSettingsDTO,
 } from './dtos/workspace';
+// The workspace's settings (locale, timezone, currency…) with defaults applied —
+// what another brick reads to default a customer's language or a document's currency.
+export { getWorkspaceSettings } from './services/workspaces';
 export { withWorkspace } from './middlewares/workspace-context';
 export { requireWorkspace } from './middlewares/require-workspace';
 export { requireManager } from './middlewares/require-manager';

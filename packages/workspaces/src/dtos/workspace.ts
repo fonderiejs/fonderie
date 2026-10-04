@@ -11,6 +11,17 @@ export interface IWorkspaceAddressDTO {
 	country: string;
 }
 
+export interface ITaxRegistrationDTO {
+	/** ISO 3166-1, e.g. 'CA'. */
+	country: string;
+	/** A key of that country's tax-ID rules, e.g. 'GST_HST', 'EIN'. */
+	type: string;
+	number: string;
+	/** ISO 3166-2, e.g. 'CA-QC'; '' when not regional. */
+	region: string;
+	label: string;
+}
+
 export interface IWorkspaceDTO {
 	id: string;
 	name: string;
@@ -21,6 +32,15 @@ export interface IWorkspaceDTO {
 	phone: string;
 	businessType: string;
 	address: IWorkspaceAddressDTO;
+	/** Registered name, when it differs from the display name. */
+	legalName: string;
+	email: string;
+	website: string;
+	logoUrl: string;
+	/** GST/HST, QST, PST, EIN, state sales-tax permits… — normalized. */
+	taxRegistrations: ITaxRegistrationDTO[];
+	/** The languages the business serves customers in (BCP 47), e.g. ['en-CA', 'fr-CA']. */
+	languages: string[];
 	/**
 	 * @deprecated Not the workspace's billing plan. Set to 'free' when the
 	 * workspace is created and never maintained — nothing writes it when the
@@ -121,6 +141,18 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 			zip: stringOrEmpty(addr.zip),
 			country: stringOrEmpty(addr.country),
 		},
+		legalName: stringOrEmpty(ws.legalName),
+		email: stringOrEmpty(ws.email),
+		website: stringOrEmpty(ws.website),
+		logoUrl: stringOrEmpty(ws.logoUrl),
+		taxRegistrations: (Array.isArray(ws.taxRegistrations) ? ws.taxRegistrations : []).map((r) => ({
+			country: stringOrEmpty(r.country),
+			type: stringOrEmpty(r.type),
+			number: stringOrEmpty(r.number),
+			region: stringOrEmpty(r.region),
+			label: stringOrEmpty(r.label),
+		})),
+		languages: Array.isArray(ws.languages) ? ws.languages.map(String) : [],
 		plan: stringOrEmpty(ws.plan),
 		ownerId: stringOrEmpty(ws.ownerId),
 		isPersonal: booleanOrFalse(ws.isPersonal),

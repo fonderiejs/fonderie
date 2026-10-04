@@ -68,6 +68,12 @@ motto                    TEXT
 phone                    TEXT
 business_type            TEXT
 address                  JSONB NOT NULL DEFAULT '{}'
+legal_name               TEXT
+email                    TEXT
+website                  TEXT
+logo_url                 TEXT
+tax_registrations        JSONB NOT NULL DEFAULT '[]'
+languages                TEXT[] NOT NULL DEFAULT '{}'
 ```
 
 Raw SQL ships in `node_modules/@fonderie/workspaces/dist/migrations/sql/` — read it there if you must; never download tarballs.

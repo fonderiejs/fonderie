@@ -2,16 +2,33 @@ import type { IFonderieContext } from '@fonderie/core';
 import { HTTP, setApiResponse, background } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
+import { getWorkspaceSettings } from '@fonderie/workspaces';
 
 import { DEFAULT_REFERENCE_CODE_PREFIX, EVENT_KEYS, type ICustomersConfig } from '../config';
 import { toCustomerDetailD2DTO, toCustomerDetailDTO, toCustomerDTO } from '../dtos/customer';
 import type { ICustomerDetailD2 } from '../types';
-import { CustomerModel } from '../models/customer.model';
+import { CustomerInUseError, CustomerModel } from '../models/customer.model';
 import { isUuid } from '../utils';
 
 export function customerController(store: IStoreAdapter, config: ICustomersConfig = {}, bus?: EventBus) {
 	const customers = new CustomerModel(store);
 	const prefix = (config.referenceCodePrefix ?? DEFAULT_REFERENCE_CODE_PREFIX).toUpperCase();
+
+	async function setArchived(ctx: IFonderieContext, archived: boolean): Promise<Response> {
+		const workspaceId = ctx.workspace?.id;
+		if (!workspaceId) return setApiResponse(HTTP.BAD_REQUEST, 'MISSING_WORKSPACE', 'Workspace context is required');
+		const id = (ctx.meta['params'] as Record<string, string> | undefined)?.['customerId'];
+		if (!isUuid(id)) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'customerId must be a valid UUID');
+		const ok = archived ? await customers.archive(id, workspaceId) : await customers.unarchive(id, workspaceId);
+		if (!ok) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
+		const customer = await customers.findById(id, workspaceId);
+		return setApiResponse(
+			HTTP.OK,
+			archived ? 'CUSTOMER_ARCHIVED' : 'CUSTOMER_UNARCHIVED',
+			archived ? 'Customer archived.' : 'Customer restored.',
+			{ customer: toCustomerDTO(customer!) },
+		);
+	}
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
@@ -26,7 +43,10 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			const query = ctx.request.url ? new URL(ctx.request.url).searchParams : null;
 			const search = query?.get('search') ?? undefined;
-			const archived = query?.get('blacklisted');
+			const blacklisted = query?.get('blacklisted');
+			// Archived customers are hidden unless asked for: ?archived=true for
+			// only them, ?archived=all for everyone.
+			const archivedParam = query?.get('archived');
 			const limit = Number(query?.get('limit') ?? 50);
 			const offset = Number(query?.get('offset') ?? 0);
 
@@ -40,9 +60,11 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				listOpts.search = search;
 			}
 
-			if (archived !== null && archived !== undefined) {
-				listOpts.blacklisted = archived === 'true' || archived === '1';
+			if (blacklisted !== null && blacklisted !== undefined) {
+				listOpts.blacklisted = blacklisted === 'true' || blacklisted === '1';
 			}
+			if (archivedParam === 'all') listOpts.archived = 'all';
+			else if (archivedParam === 'true' || archivedParam === '1') listOpts.archived = true;
 
 			const { limit: _limit, offset: _offset, ...countOpts } = listOpts;
 			const [list, total] = await Promise.all([
@@ -139,7 +161,8 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 					companyName: typeof companyName === 'string' ? companyName : null,
 
 					avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
-					locale: typeof locale === 'string' ? locale : 'en-US',
+					// No language given: the business's own (workspace settings).
+					locale: typeof locale === 'string' ? locale : (await getWorkspaceSettings(workspaceId, store)).locale,
 					// exactOptionalPropertyTypes: omit the key entirely when absent
 					...(typeof referenceCode === 'string' ? { referenceCode: referenceCode.toUpperCase() } : {}),
 					referenceCodePrefix: prefix,
@@ -270,7 +293,16 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
 			}
 
-			await customers.delete(id, workspaceId);
+			const inUse = 'Still on a job, quote or invoice — archive this customer instead.';
+			if (config.isInUse && (await config.isInUse(id, workspaceId))) {
+				return setApiResponse(HTTP.CONFLICT, 'CUSTOMER_IN_USE', inUse);
+			}
+			try {
+				await customers.delete(id, workspaceId);
+			} catch (err) {
+				if (err instanceof CustomerInUseError) return setApiResponse(HTTP.CONFLICT, 'CUSTOMER_IN_USE', inUse);
+				throw err;
+			}
 
 			await background(bus
 				?.emit(EVENT_KEYS.customerDeleted, {
@@ -279,6 +311,16 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				}));
 
 			return setApiResponse(HTTP.OK, 'CUSTOMER_DELETED', 'Customer deleted successfully.');
+		},
+
+		// Hide a customer from lists and pickers without losing them from the
+		// documents that name them. Reversible with unarchive.
+		async archive(ctx: IFonderieContext): Promise<Response> {
+			return setArchived(ctx, true);
+		},
+
+		async unarchive(ctx: IFonderieContext): Promise<Response> {
+			return setArchived(ctx, false);
 		},
 
 		async blacklist(ctx: IFonderieContext): Promise<Response> {

@@ -128,7 +128,9 @@ export function customerPhoneController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'phoneId must be a valid UUID');
 			}
 
-			await phones.setPrimary(phoneId, r.customer.id);
+			if (!(await phones.setPrimary(phoneId, r.customer.id))) {
+				return setApiResponse(HTTP.NOT_FOUND, 'PHONE_NOT_FOUND', 'Not found on this customer.');
+			}
 			return setApiResponse(HTTP.OK, 'PHONE_PRIMARY_SET', 'Primary phone updated successfully.');
 		},
 

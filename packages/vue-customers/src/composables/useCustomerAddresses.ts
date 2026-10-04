@@ -4,6 +4,8 @@ import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, toValue } from 'vue';
 
+import type { ICustomerSectionOptions } from './section-options';
+
 export interface IUseCustomerAddressesReturn {
 	addresses: Ref<ICustomerAddressDTO[]>;
 	isLoading: Ref<boolean>;
@@ -15,30 +17,31 @@ export interface IUseCustomerAddressesReturn {
 	removeAddress: (addrId: string) => Promise<void>;
 }
 
-export function useCustomerAddresses(
-	customerId: MaybeRefOrGetter<string>,
-): IUseCustomerAddressesReturn;
+export function useCustomerAddresses(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
 	client: CustomersClient | undefined,
 	customerId: MaybeRefOrGetter<string>,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
 	clientOrCustomerId: CustomersClient | MaybeRefOrGetter<string> | undefined,
-	maybeCustomerId?: MaybeRefOrGetter<string>,
+	maybeCustomerIdOrOpts?: MaybeRefOrGetter<string> | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerAddressesReturn {
 	const firstIsClient =
 		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
 	const customerId = firstIsClient
-		? (maybeCustomerId as MaybeRefOrGetter<string>)
+		? (maybeCustomerIdOrOpts as MaybeRefOrGetter<string>)
 		: clientOrCustomerId;
+	const read = ((firstIsClient ? maybeOpts : maybeCustomerIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerAddresses');
 	// The key follows the id; an empty id reads nothing (not loading).
 	const q = useScopedQuery(
 		customers,
 		() => `/customers/${encodeURIComponent(toValue(customerId))}/addresses`,
 		async (bust) => (await customers.listAddresses(toValue(customerId), { bust })).result.addresses,
-		{ enabled: () => !!toValue(customerId) },
+		{ enabled: () => read && !!toValue(customerId) },
 	);
 	const w = useWrite(() => q.refresh());
 	return {
