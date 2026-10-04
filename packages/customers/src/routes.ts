@@ -1,4 +1,5 @@
-import type { Middleware } from '@fonderie/core';
+import type { IFonderieContext, Middleware, Operation } from '@fonderie/core';
+import { setApiResponse, HTTP } from '@fonderie/core';
 import { requireAuth, validate } from '@fonderie/core/middlewares';
 
 import {
@@ -47,7 +48,7 @@ export function buildCustomerRoutes(
 	const relationship = customerRelationshipController(store);
 	const label = customerLabelController(store);
 
-	return [
+	const routes: RouteDefinition[] = [
 		// ── Labels ───────────────────────────────────────────────────────
 		['GET',    '/customers/labels',            requireAuth, wsCtx, label.list],
 		['DELETE', '/customers/labels/:labelId',   requireAuth, wsCtx, label.remove],
@@ -99,4 +100,41 @@ export function buildCustomerRoutes(
 		['PUT', '/customers/:customerId/relationships/:relatedId/primary', requireAuth, wsCtx, relationship.setPrimary],
 		['DELETE', '/customers/:customerId/relationships/:relatedId', requireAuth, wsCtx, relationship.remove],
 	];
+
+	if (!config.permission) return routes;
+	const key = config.permission;
+	// The guard goes right after the workspace context it checks against.
+	return routes.map(([method, path, ...mw]) => {
+		const at = mw.indexOf(wsCtx) + 1;
+		return [method, path, ...mw.slice(0, at), requireCustomerPermission(operationFor(method, path), key), ...mw.slice(at)];
+	});
+}
+
+// GET reads; POST /customers creates; DELETE /customers/:id deletes; every
+// other write changes a customer (or the workspace's labels) — update.
+export function operationFor(method: string, path: string): Operation {
+	if (method === 'GET') return 'read';
+	if (method === 'POST' && path === '/customers') return 'create';
+	if (method === 'DELETE' && path === '/customers/:customerId') return 'delete';
+	return 'update';
+}
+
+// @fonderie/permissions is not a dependency: its module puts its engine on
+// every request. Read by shape; absent while a permission is configured →
+// refuse (fail closed), exactly as requirePermission does.
+function requireCustomerPermission(operation: Operation, key: string): Middleware {
+	return async (ctx: IFonderieContext, next) => {
+		if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
+		const engine = ctx.meta['fonderie.permissions.engine'] as
+			| { can?: (u: string, op: Operation, k: string, ws: string) => Promise<boolean> }
+			| undefined;
+		if (typeof engine?.can !== 'function') {
+			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Permissions module not installed');
+		}
+		if (!ctx.workspace) return next(); // the controller answers 404
+		if (!(await engine.can(ctx.user.id, operation, key, ctx.workspace.id))) {
+			return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', `Permission denied: ${operation}:${key}`);
+		}
+		return next();
+	};
 }

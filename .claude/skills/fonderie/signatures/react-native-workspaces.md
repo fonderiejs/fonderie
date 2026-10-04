@@ -72,6 +72,20 @@ interface IMemberRoleDTO {
     isSystem: boolean;
 }
 
+interface IMyPermissionsResult {
+    isOwner: boolean;
+    isManager: boolean;
+    isSuper: boolean;
+    permissions: Record<string, Record<PermissionOperation, boolean>>;
+}
+
+interface IPermissionCatalogEntryDTO {
+    key: string;
+    operations: PermissionOperation[];
+    label: string;
+    description: string;
+}
+
 interface IRoleDTO {
     id: string;
     name: string;
@@ -79,6 +93,11 @@ interface IRoleDTO {
     active: boolean;
     description: string;
     workspaceId: string;
+}
+
+interface IRoleDeleteResult {
+    membersAffected: number;
+    movedToDefaultRole: number;
 }
 
 interface IRolePermission {
@@ -164,6 +183,8 @@ interface IWorkspaceSettingsDTO {
     timeFormat: string;
 }
 
+type PermissionOperation = 'create' | 'read' | 'update' | 'delete';
+
 new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -173,6 +194,8 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .getCurrentWorkspace(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
+  .getMyPermissions(opts?: IReadOptions | undefined): Promise<IApiResponse<IMyPermissionsResult>>
+  .getPermissionCatalog(opts?: IReadOptions | undefined): Promise<IApiResponse<IPermissionCatalogResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
   .restoreWorkspace(): Promise<IApiResponse<undefined>>
@@ -180,7 +203,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
   .getRole(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
-  .removeRole(roleId: string): Promise<IApiResponse<undefined>>
+  .removeRole(roleId: string): Promise<IApiResponse<IRoleDeleteResult>>
   .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
@@ -245,6 +268,28 @@ interface IUseMembersReturn {
     transferOwnership: (userId: string) => Promise<void>;
 }
 
+interface IUsePermissionCatalogReturn {
+    catalog: IPermissionCatalogEntryDTO[];
+    declared: boolean;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
+
+interface IUsePermissionsReturn {
+    can: (operation: PermissionOperation, resource: string) => boolean;
+    isOwner: boolean;
+    isManager: boolean;
+    permissions: IMyPermissionsResult['permissions'];
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
+
 interface IUseRolePermissionsReturn {
     permissions: IRolePermission[];
     isLoading: boolean;
@@ -273,7 +318,7 @@ interface IUseRolesReturn {
     }) => Promise<void>;
     createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
     updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
-    removeRole: (roleId: string) => Promise<void>;
+    removeRole: (roleId: string) => Promise<IRoleDeleteResult>;
 }
 
 interface IUseWorkspaceProfileReturn {
@@ -315,6 +360,8 @@ interface IUseWorkspacesReturn {
     leaveWorkspace: () => Promise<void>;
 }
 
+function useCan(operation: PermissionOperation, resource: string, client?: WorkspacesClient | undefined): boolean
+
 function useCurrentWorkspace(client?: WorkspacesClient | undefined): IUseCurrentWorkspaceReturn
 
 function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsReturn
@@ -322,6 +369,10 @@ function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsR
 function useMemberRoles(userId: string): IUseMemberRolesReturn
 
 function useMembers(client?: WorkspacesClient | undefined): IUseMembersReturn
+
+function usePermissionCatalog(client?: WorkspacesClient | undefined): IUsePermissionCatalogReturn
+
+function usePermissions(client?: WorkspacesClient | undefined): IUsePermissionsReturn
 
 function useRole(roleId: string): IUseRoleReturn
 
