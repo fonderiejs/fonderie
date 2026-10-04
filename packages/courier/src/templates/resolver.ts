@@ -1,4 +1,4 @@
-import { canonicalLocale, defineLocales, localeChain, localeLanguage } from '@fonderie/core';
+import { canonicalLocale, defineLocales, localeChain, localeCopyKeys } from '@fonderie/core';
 import type { IDefaultTemplateCopy, ILocaleSettings } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -173,7 +173,7 @@ export class DefaultTemplates {
 	getLocalized(type: string, locale: string): { copy: IDefaultTemplateCopy; locale: string } | undefined {
 		const all = this.map.get(type)?.locales;
 		if (!all) return undefined;
-		for (const key of [locale, localeLanguage(locale)]) {
+		for (const key of localeCopyKeys(locale)) {
 			const copy = all[key];
 			if (copy) return { copy, locale: key };
 		}

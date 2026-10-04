@@ -4,6 +4,8 @@ import { withTranslations } from '@fonderie/core';
 import { MESSAGE_KEYS, type AuthMessageKey } from './config';
 import { ES_TEMPLATES } from './templates.es';
 import { FR_TEMPLATES } from './templates.fr';
+import { ZH_HANS_TEMPLATES } from './templates.zh-Hans';
+import { ZH_HANT_TEMPLATES } from './templates.zh-Hant';
 
 // Built-in default copy for every @fonderie/auth notification, shipped so the
 // emails render out of the box — no per-app template authoring, and never the
@@ -184,10 +186,16 @@ If you did this, you're all set. If not, contact support right away.`,
 	},
 } satisfies Record<AuthMessageKey, IDefaultTemplate>;
 
-// The English above, with every email's French and Spanish attached. Courier
+// The English above, with every email's French, Spanish and Chinese (Simplified
+// and Traditional) attached. Courier
 // sends the one matching the recipient's language (an app's own saved version
 // still wins); anything else gets the English.
-export const DEFAULT_TEMPLATES = withTranslations(EN_TEMPLATES, { fr: FR_TEMPLATES, es: ES_TEMPLATES });
+export const DEFAULT_TEMPLATES = withTranslations(EN_TEMPLATES, {
+	fr: FR_TEMPLATES,
+	es: ES_TEMPLATES,
+	'zh-Hans': ZH_HANS_TEMPLATES,
+	'zh-Hant': ZH_HANT_TEMPLATES,
+});
 
 // Representative payloads for the coverage test: every {{var}} a default uses
 // must appear here. Security-notice keys carry no variables ({}). The

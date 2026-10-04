@@ -23,6 +23,7 @@ import {
 	parseWindowMs,
 	subscriberEventFields,
 	formatWalletAmount,
+	localizedAmounts,
 } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { maybeAutoRecharge } from '../services/auto-recharge';
@@ -216,6 +217,10 @@ export function withBilling(
 											planWallet.currency,
 											planWallet.precision ?? 2,
 										),
+										...localizedAmounts({
+											balanceDisplay: { amount: balance, currency: planWallet.currency, precision: planWallet.precision ?? 2 },
+											thresholdDisplay: { amount: planWallet.lowBalanceAt, currency: planWallet.currency, precision: planWallet.precision ?? 2 },
+										}),
 									},
 								}),
 							);

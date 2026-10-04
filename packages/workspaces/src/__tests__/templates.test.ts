@@ -64,7 +64,7 @@ test('workspaces: DEFAULT_TEMPLATES and SAMPLE_PAYLOADS cover exactly the live m
 	assert.deepEqual(new Set(Object.keys(SAMPLE_PAYLOADS)), keys, 'SAMPLE_PAYLOADS key set drift');
 });
 
-test('workspaces: every email ships in es and fr, with the same parts and variables as the English', () => {
+test('workspaces: every email ships in es, fr, zh-Hans and zh-Hant, with the same parts and variables as the English', () => {
 	assert.deepEqual(translationProblems(DEFAULT_TEMPLATES), []);
 	for (const [key, tmpl] of Object.entries(DEFAULT_TEMPLATES)) {
 		const sample = (SAMPLE_PAYLOADS as Record<string, Record<string, unknown>>)[key] ?? {};

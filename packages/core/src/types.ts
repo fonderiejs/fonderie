@@ -33,6 +33,21 @@ export interface IWorkspace {
 
 // ── Courier contract — lives in core because auth + workspaces emit
 // messages without importing @fonderie/courier.
+/**
+ * Values a message wants formatted in its READER's language, under the reserved
+ * data key `$format` (COURIER_FORMAT_KEY). Courier formats each one into the
+ * key of the same name once it knows the language — 19,99 $ for a fr-CA
+ * reader, $19.99 for en-CA. The sender still puts a plain-string version under
+ * that key: a courier that predates this ignores `$format` and shows it.
+ *
+ *   data: { amountPaidDisplay: '$19.99', $format: { amountPaidDisplay: { money: { amount: '1999', currency: 'CAD', precision: 2 } } } }
+ */
+export type ICourierFormatValue =
+	| { money: { amount: string; currency: string; precision: number } }
+	| { date: string; style?: 'short' | 'medium' | 'long' | 'full' };
+
+export const COURIER_FORMAT_KEY = '$format';
+
 export interface ICourierMessage {
 	type: string;
 	/**

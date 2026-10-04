@@ -177,7 +177,7 @@ test('buildReceiptData supplies every variable the receipt template uses', () =>
 // Every built-in email ships in each shipped language with the English's parts
 // and exactly its {{variables}} and {{#sections}} — a French receipt missing
 // {{amountPaidDisplay}} still sends.
-test('billing: every email ships in es and fr, with the same parts and variables as the English', () => {
+test('billing: every email ships in es, fr, zh-Hans and zh-Hant, with the same parts and variables as the English', () => {
 	assert.deepEqual(translationProblems(DEFAULT_TEMPLATES), []);
 	for (const [key, tmpl] of Object.entries(DEFAULT_TEMPLATES)) {
 		const sample = (SAMPLE_PAYLOADS as Record<string, Record<string, unknown>>)[key] ?? {};

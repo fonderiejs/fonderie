@@ -98,6 +98,7 @@ export class CourierModule implements IFonderieModule {
 		// market's fallback chain. The resolver follows them on every send.
 		this.locales = app.locales ?? defineLocales();
 		this.resolver.setLocales?.(this.locales);
+		this.dispatcher.setLocales(this.locales);
 
 		// Boot-time preflight: warn if any routed message type has no provider.
 		validateCourierConfig(this.config, this.dispatcher.channelNames());

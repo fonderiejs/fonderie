@@ -51,6 +51,37 @@ export function localeLanguage(tag: string): string {
 	return tag.split('-')[0]?.toLowerCase() ?? tag;
 }
 
+// Languages written in more than one script, where the script — not the region
+// — decides what a reader can read: Chinese (Simplified Hans / Traditional
+// Hant), Serbian (Cyrl/Latn), Uzbek, Azerbaijani, Punjabi, Mongolian.
+const MULTI_SCRIPT = new Set(['zh', 'sr', 'uz', 'az', 'pa', 'mn']);
+
+/**
+ * The language + script a tag is written in, for multi-script languages:
+ * 'zh-TW' / 'zh-HK' → 'zh-Hant', 'zh' / 'zh-CN' / 'zh-SG' → 'zh-Hans' (from
+ * CLDR likely-subtags via Intl.Locale#maximize — no region list kept here).
+ * Null for a single-script language ('fr-CA') or an invalid tag.
+ */
+export function localeScriptTag(tag: string): string | null {
+	const lang = localeLanguage(tag);
+	if (!MULTI_SCRIPT.has(lang)) return null;
+	try {
+		const script = new Intl.Locale(tag).maximize().script;
+		return script ? `${lang}-${script}` : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The keys to try, in order, for built-in copy written per language:
+ * 'zh-TW' → ['zh-TW', 'zh-Hant', 'zh'], 'fr-CA' → ['fr-CA', 'fr'].
+ */
+export function localeCopyKeys(tag: string): string[] {
+	const script = localeScriptTag(tag);
+	return [tag, ...(script ? [script] : []), localeLanguage(tag)].filter((t, i, all) => all.indexOf(t) === i);
+}
+
 /**
  * Validate and canonicalize. Throws naming the bad entry, so a mistake stops the
  * app at startup instead of quietly sending the wrong market's content.
@@ -95,8 +126,11 @@ export function defineLocales(config: ILocaleConfig = {}): ILocaleSettings {
 export function localeChain(requested: string | null | undefined, settings: ILocaleSettings): string[] {
 	const tag = canonicalLocale(requested);
 	if (!tag || tag === settings.default) return [];
-	const declared = settings.fallbacks[tag] ?? settings.fallbacks[localeLanguage(tag)] ?? [];
-	return [tag, ...declared].filter((t, i, all) => t !== settings.default && all.indexOf(t) === i);
+	const script = localeScriptTag(tag);
+	const declared = settings.fallbacks[tag] ?? (script ? settings.fallbacks[script] : undefined) ?? settings.fallbacks[localeLanguage(tag)] ?? [];
+	// A zh-TW reader can read what was saved as zh-Hant, never zh-Hans: the
+	// script comes right after the tag itself, before declared fallbacks.
+	return [tag, ...(script && script !== tag ? [script] : []), ...declared].filter((t, i, all) => t !== settings.default && all.indexOf(t) === i);
 }
 
 /**
@@ -119,8 +153,13 @@ export function withTranslations<K extends string>(
 	return out;
 }
 
-/** The languages every Fonderie module ships its built-in emails in, besides English. */
-export const SHIPPED_TEMPLATE_LANGUAGES: readonly string[] = Object.freeze(['es', 'fr']);
+/**
+ * The languages every Fonderie module ships its built-in emails in, besides
+ * English. Chinese ships in both scripts — Simplified and Traditional readers
+ * are both large in Canada and the US — and a reader's tag picks the script
+ * (localeCopyKeys): zh-TW / zh-HK get Traditional, zh / zh-CN Simplified.
+ */
+export const SHIPPED_TEMPLATE_LANGUAGES: readonly string[] = Object.freeze(['es', 'fr', 'zh-Hans', 'zh-Hant']);
 
 const TEMPLATE_VAR_RE = /\{\{#?\/?(\w+)\}\}/g;
 const varsOf = (part: string | undefined): string =>

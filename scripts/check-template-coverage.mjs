@@ -41,7 +41,8 @@ function tsFiles(dir) {
 // read from core so this gate and the runtime check can never disagree.
 const localeSrc = readFileSync(join(packagesDir, 'core', 'src', 'locale.ts'), 'utf8');
 const langMatch = localeSrc.match(/SHIPPED_TEMPLATE_LANGUAGES[^=]*=\s*Object\.freeze\(\[([^\]]*)\]\)/);
-const LANGUAGES = langMatch ? [...langMatch[1].matchAll(/'([a-z-]+)'/g)].map((m) => m[1]) : [];
+// Mixed case: 'zh-Hans' — a lower-case-only pattern silently skipped it.
+const LANGUAGES = langMatch ? [...langMatch[1].matchAll(/'([A-Za-z-]+)'/g)].map((m) => m[1]) : [];
 if (LANGUAGES.length === 0) {
 	// A gate that parsed nothing would pass everything.
 	console.error('check:template-coverage — could not read SHIPPED_TEMPLATE_LANGUAGES from packages/core/src/locale.ts');

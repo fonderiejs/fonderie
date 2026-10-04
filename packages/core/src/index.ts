@@ -28,6 +28,8 @@ export type {
 } from './types';
 
 export { OPERATIONS } from './constants';
+export { COURIER_FORMAT_KEY } from './types';
+export type { ICourierFormatValue } from './types';
 export {
 	background,
 	backgroundSettled,
@@ -48,6 +50,8 @@ export {
 	defineLocales,
 	localeChain,
 	localeLanguage,
+	localeCopyKeys,
+	localeScriptTag,
 	SHIPPED_TEMPLATE_LANGUAGES,
 	translationProblems,
 	withTranslations,

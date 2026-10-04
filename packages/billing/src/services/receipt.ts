@@ -1,4 +1,4 @@
-import { formatWalletAmount } from '../utils';
+import { formatWalletAmount, localizedAmounts } from '../utils';
 
 /**
  * The one place a purchase-receipt payload is built.
@@ -42,7 +42,7 @@ export function buildReceiptData(args: {
 	invoicePdf?: string | null | undefined;
 	providerTxId?: string | null | undefined;
 	source: string;
-}): Record<string, string> {
+}): Record<string, unknown> {
 	const {
 		packId,
 		packName,
@@ -78,6 +78,13 @@ export function buildReceiptData(args: {
 		amountPaid: amountPaid !== undefined && amountPaid !== null ? amountPaid.toString() : '',
 		paymentCurrency: paymentCurrency ?? '',
 		amountPaidDisplay,
+		...localizedAmounts({
+			creditsDisplay: { amount: credits, currency: creditCurrency, precision },
+			balanceAfterDisplay: { amount: balanceAfter, currency: creditCurrency, precision },
+			...(amountPaid !== undefined && amountPaid !== null
+				? { amountPaidDisplay: { amount: amountPaid, currency: paymentCurrency ?? creditCurrency, precision: 2 } }
+				: {}),
+		}),
 		invoiceNumber: invoiceNumber ?? '',
 		invoiceUrl: invoiceUrl ?? '',
 		invoicePdf: invoicePdf ?? '',
