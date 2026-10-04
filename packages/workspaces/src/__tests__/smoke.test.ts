@@ -48,7 +48,7 @@ function makeStore(
 			}
 
 			// createPersonalWorkspace: INSERT ... ON CONFLICT (owner_id) WHERE is_personal = true
-			if (sql.includes('INSERT INTO fonderie_workspaces') && sql.includes('ON CONFLICT')) {
+			if (sql.includes('INSERT INTO fonderie_workspaces') && sql.includes('ON CONFLICT (owner_id)')) {
 				if (!opts.personalWorkspace) return [] as T[];
 				return [opts.personalWorkspace] as T[];
 			}
