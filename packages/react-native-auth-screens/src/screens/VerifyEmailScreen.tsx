@@ -1,4 +1,5 @@
 import type { AuthClient, IVerifyEmailResult } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useVerifyEmail } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -13,10 +14,13 @@ import {
 export interface IVerifyEmailScreenProps {
 	client?: AuthClient;
 	onVerified?: (result: IVerifyEmailResult) => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function VerifyEmailScreen({ client, onVerified }: IVerifyEmailScreenProps) {
+export function VerifyEmailScreen({ client, onVerified, locale }: IVerifyEmailScreenProps) {
 	const { verifyEmail, resend, resent, isLoading, error } = useVerifyEmail(client);
+	const t = useUiT(client, locale);
 	const [code, setCode] = useState('');
 
 	const handleSubmit = async () => {
@@ -38,18 +42,18 @@ export function VerifyEmailScreen({ client, onVerified }: IVerifyEmailScreenProp
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Verify your email</Text>
-			<Text style={styles.body}>Enter the 6-digit code we sent to your email address.</Text>
+			<Text style={styles.title}>{t('auth.verify.title')}</Text>
+			<Text style={styles.body}>{t('auth.verify.lead')}</Text>
 
 			<TextInput
 				style={styles.input}
-				placeholder="6-digit code"
+				placeholder={t('auth.fields.code')}
 				value={code}
 				onChangeText={setCode}
 				autoCapitalize="none"
 				keyboardType="number-pad"
-				accessibilityLabel="Verification code input"
-				accessibilityHint="Enter the 6-digit code from your email"
+				accessibilityLabel={t('auth.verify.a11y.code')}
+				accessibilityHint={t('auth.verify.a11y.codeHint')}
 			/>
 
 			{error && (
@@ -62,22 +66,22 @@ export function VerifyEmailScreen({ client, onVerified }: IVerifyEmailScreenProp
 				onPress={handleSubmit}
 				disabled={isLoading}
 				style={styles.button}
-				accessibilityLabel="Verify button"
+				accessibilityLabel={t('auth.verify.a11y.submit')}
 				accessibilityRole="button"
 			>
 				{isLoading ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Verify</Text>
+					<Text style={styles.buttonText}>{t('auth.verify.submit')}</Text>
 				)}
 			</TouchableOpacity>
 
 			{resent ? (
-				<Text style={styles.sent}>A new verification email has been sent.</Text>
+				<Text style={styles.sent}>{t('auth.verify.resent')}</Text>
 			) : (
 				<TouchableOpacity onPress={handleResend} disabled={isLoading}>
 					<Text style={styles.link}>
-						Didn't get a code? <Text style={styles.linkBold}>Resend email</Text>
+						{t('auth.verify.noCode')} <Text style={styles.linkBold}>{t('auth.verify.resend')}</Text>
 					</Text>
 				</TouchableOpacity>
 			)}

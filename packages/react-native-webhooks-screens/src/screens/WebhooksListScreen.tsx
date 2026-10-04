@@ -1,4 +1,5 @@
 import type { IWebhookEndpointDTO, WebhooksClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useWebhookEndpoints } from '@fonderie/react-native-webhooks';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -6,9 +7,12 @@ import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'r
 export interface IWebhooksListScreenProps {
 	client?: WebhooksClient;
 	onSelectEndpoint?: (endpointId: string) => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListScreenProps) {
+export function WebhooksListScreen({ client, onSelectEndpoint, locale }: IWebhooksListScreenProps) {
+	const t = useUiT(client, locale);
 	const { endpoints, isLoading, error, createEndpoint, removeEndpoint, testEndpoint } =
 		useWebhookEndpoints(client);
 	const [isTesting, setIsTesting] = useState(false);
@@ -39,7 +43,12 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 		try {
 			const result = await testEndpoint(endpointId);
 			setTestResult(
-				`${endpointId}: ${result.ok ? 'OK' : `failed (${result.status ?? result.error})`}`,
+				result.ok
+					? t('webhooks.list.testOk', { endpoint: endpointId })
+					: t('webhooks.list.testFailed', {
+							endpoint: endpointId,
+							reason: String(result.status ?? result.error),
+						}),
 			);
 		} catch {
 			// Surfaced via `error` from useWebhookEndpoints.
@@ -54,10 +63,11 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 				onPress={() => onSelectEndpoint?.(endpoint.id)}
 				style={styles.rowButton}
 				accessibilityRole="button"
+				accessibilityLabel={t('webhooks.list.a11y.open', { url: endpoint.url })}
 			>
 				<Text style={styles.url}>{endpoint.url}</Text>
 				<Text style={endpoint.enabled ? styles.enabled : styles.disabled}>
-					{endpoint.enabled ? 'Enabled' : 'Disabled'}
+					{endpoint.enabled ? t('webhooks.enabled') : t('webhooks.disabled')}
 				</Text>
 			</TouchableOpacity>
 			<TouchableOpacity
@@ -65,39 +75,47 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 				onPress={() => handleTest(endpoint.id)}
 				style={styles.smallButton}
 				accessibilityRole="button"
+				accessibilityLabel={t('webhooks.list.a11y.test', { url: endpoint.url })}
 			>
-				<Text>Test</Text>
+				<Text>{t('webhooks.list.test')}</Text>
 			</TouchableOpacity>
 			<TouchableOpacity
 				onPress={() => removeEndpoint(endpoint.id)}
 				style={styles.smallButton}
 				accessibilityRole="button"
+				accessibilityLabel={t('webhooks.list.a11y.delete', { url: endpoint.url })}
 			>
-				<Text style={styles.deleteText}>Delete</Text>
+				<Text style={styles.deleteText}>{t('webhooks.list.delete')}</Text>
 			</TouchableOpacity>
 		</View>
 	);
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Webhooks</Text>
+			<Text style={styles.title}>{t('webhooks.list.title')}</Text>
 
 			{newSecret && (
-				<Text style={styles.secretBanner}>New endpoint secret (shown once): {newSecret}</Text>
+				<Text style={styles.secretBanner}>
+					{t('webhooks.list.newSecret')} {newSecret}
+				</Text>
 			)}
 			{testResult && <Text style={styles.status}>{testResult}</Text>}
 
 			<View style={styles.form}>
 				<TextInput
 					style={styles.input}
-					placeholder="https://example.com/webhook"
+					placeholder={t('webhooks.list.urlPlaceholder')}
+					accessibilityLabel={t('webhooks.list.a11y.url')}
+					accessibilityHint={t('webhooks.list.a11y.urlHint')}
 					value={url}
 					onChangeText={setUrl}
 					autoCapitalize="none"
 				/>
 				<TextInput
 					style={styles.input}
-					placeholder="event.type, event.other (optional)"
+					placeholder={t('webhooks.list.eventsPlaceholder')}
+					accessibilityLabel={t('webhooks.list.a11y.events')}
+					accessibilityHint={t('webhooks.list.a11y.eventsHint')}
 					value={events}
 					onChangeText={setEvents}
 					autoCapitalize="none"
@@ -106,8 +124,9 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 					onPress={handleCreate}
 					style={styles.createButton}
 					accessibilityRole="button"
+					accessibilityLabel={t('webhooks.list.a11y.add')}
 				>
-					<Text style={styles.createButtonText}>Add endpoint</Text>
+					<Text style={styles.createButtonText}>{t('webhooks.list.add')}</Text>
 				</TouchableOpacity>
 			</View>
 
@@ -118,7 +137,7 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 			)}
 
 			{isLoading ? (
-				<Text style={styles.status}>Loading…</Text>
+				<Text style={styles.status}>{t('webhooks.loading')}</Text>
 			) : (
 				<FlatList data={endpoints} keyExtractor={(e) => e.id} renderItem={renderEndpoint} />
 			)}

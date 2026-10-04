@@ -1,4 +1,6 @@
 import type { BillingClient, IPlanDTO } from '@fonderie/client';
+import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useCheckout, usePlans } from '@fonderie/react-native-billing';
 import { useState } from 'react';
 import {
@@ -14,13 +16,18 @@ import {
 export interface IPricingScreenProps {
 	client?: BillingClient;
 	onCheckoutStart?: (url: string) => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-function formatPrice(cents: number, currency: string): string {
-	return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
+// In the UI language (undefined = the runtime's default), never a hard-coded one.
+function formatPrice(cents: number, currency: string, locale: string | undefined): string {
+	return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
 }
 
-export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) {
+export function PricingScreen({ client, onCheckoutStart, locale }: IPricingScreenProps) {
+	const t = useUiT(client, locale);
+	const formatLocale = canonicalLocaleTag(locale) ?? uiLocaleFor(client)?.get();
 	const { plans, isLoading, error } = usePlans(client);
 	const { checkout, isLoading: isCheckingOut, error: checkoutError } = useCheckout(client);
 	const [interval, setInterval] = useState<'month' | 'year'>('month');
@@ -35,7 +42,7 @@ export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) 
 		}
 	};
 
-	if (isLoading) return <Text style={styles.status}>Loading plans…</Text>;
+	if (isLoading) return <Text style={styles.status}>{t('billing.pricing.loading')}</Text>;
 	if (error)
 		return (
 			<Text style={styles.error} accessibilityRole="alert">
@@ -51,8 +58,11 @@ export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) 
 				{formatPrice(
 					interval === 'year' ? plan.pricing.yearly : plan.pricing.monthly,
 					plan.pricing.currency,
+					formatLocale,
 				)}
-				<Text style={styles.priceInterval}>/{interval}</Text>
+				<Text style={styles.priceInterval}>
+					{interval === 'year' ? t('billing.pricing.perYear') : t('billing.pricing.perMonth')}
+				</Text>
 			</Text>
 			{plan.features
 				.filter((f) => f.enabled)
@@ -66,11 +76,16 @@ export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) 
 				onPress={() => handleChoose(plan.name)}
 				style={styles.button}
 				accessibilityRole="button"
+				accessibilityLabel={
+					isCheckingOut
+						? t('billing.pricing.redirecting')
+						: t('billing.pricing.choose', { plan: plan.name })
+				}
 			>
 				{isCheckingOut ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Choose {plan.name}</Text>
+					<Text style={styles.buttonText}>{t('billing.pricing.choose', { plan: plan.name })}</Text>
 				)}
 			</TouchableOpacity>
 		</View>
@@ -81,18 +96,22 @@ export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) 
 			<View style={styles.toggle}>
 				<TouchableOpacity
 					onPress={() => setInterval('month')}
+					accessibilityRole="button"
+					accessibilityState={{ selected: interval === 'month' }}
 					style={interval === 'month' ? styles.toggleActive : styles.toggleButton}
 				>
 					<Text style={interval === 'month' ? styles.toggleActiveText : styles.toggleButtonText}>
-						Monthly
+						{t('billing.pricing.monthly')}
 					</Text>
 				</TouchableOpacity>
 				<TouchableOpacity
 					onPress={() => setInterval('year')}
+					accessibilityRole="button"
+					accessibilityState={{ selected: interval === 'year' }}
 					style={interval === 'year' ? styles.toggleActive : styles.toggleButton}
 				>
 					<Text style={interval === 'year' ? styles.toggleActiveText : styles.toggleButtonText}>
-						Yearly
+						{t('billing.pricing.yearly')}
 					</Text>
 				</TouchableOpacity>
 			</View>

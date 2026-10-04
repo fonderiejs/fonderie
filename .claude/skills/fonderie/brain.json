@@ -831,7 +831,10 @@
         "SseClient",
         "ADMIN_LOCALES",
         "DEFAULT_ADMIN_LOCALE",
-        "QueryStore"
+        "QueryStore",
+        "UI_DICTIONARIES",
+        "UI_LANGUAGES",
+        "UiLocale"
       ],
       "subpaths": [],
       "tables": [],
@@ -1527,6 +1530,8 @@
         "useFonderieClient",
         "useFonderieSubClient",
         "useWorkspaceId",
+        "useUiLocale",
+        "useUiT",
         "useClientQuery",
         "usePagedQuery",
         "useRemoteConfig",
@@ -1643,6 +1648,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-audit"
       ],
       "exports": [
@@ -1698,6 +1704,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-auth"
       ],
       "exports": [
@@ -1759,6 +1766,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-billing"
       ],
       "exports": [
@@ -1900,6 +1908,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-customers"
       ],
       "exports": [
@@ -1959,6 +1968,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-audit"
       ],
       "exports": [
@@ -2016,6 +2026,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-auth"
       ],
       "exports": [
@@ -2057,6 +2068,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-billing"
       ],
       "exports": [
@@ -2094,6 +2106,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-customers"
       ],
       "exports": [
@@ -2148,6 +2161,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-webhooks"
       ],
       "exports": [
@@ -2185,6 +2199,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-workspaces"
       ],
       "exports": [
@@ -2228,6 +2243,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-webhooks"
       ],
       "exports": [
@@ -2281,6 +2297,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-workspaces"
       ],
       "exports": [
@@ -2407,6 +2424,8 @@
         "useFonderieClient",
         "useFonderieSubClient",
         "useWorkspaceId",
+        "useUiLocale",
+        "useUiT",
         "useClientQuery",
         "usePagedQuery",
         "useRemoteConfig",
@@ -2523,6 +2542,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-audit"
       ],
       "exports": [
@@ -2578,6 +2598,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-auth"
       ],
       "exports": [
@@ -2639,6 +2660,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-billing"
       ],
       "exports": [
@@ -2780,6 +2802,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-customers"
       ],
       "exports": [
@@ -2844,6 +2867,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-webhooks"
       ],
       "exports": [
@@ -2897,6 +2921,7 @@
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-workspaces"
       ],
       "exports": [
@@ -3477,6 +3502,11 @@
     },
     {
       "from": "react-audit-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-audit-screens",
       "to": "react-audit",
       "type": "depends-on"
     },
@@ -3497,6 +3527,11 @@
     },
     {
       "from": "react-auth-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-auth-screens",
       "to": "react-auth",
       "type": "depends-on"
     },
@@ -3513,6 +3548,11 @@
     {
       "from": "react-billing-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-billing-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3567,6 +3607,11 @@
     },
     {
       "from": "react-customers-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-customers-screens",
       "to": "react-customers",
       "type": "depends-on"
     },
@@ -3597,6 +3642,11 @@
     },
     {
       "from": "react-native-audit-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-audit-screens",
       "to": "react-native-audit",
       "type": "depends-on"
     },
@@ -3613,6 +3663,11 @@
     {
       "from": "react-native-auth-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-auth-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3637,6 +3692,11 @@
     },
     {
       "from": "react-native-billing-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-billing-screens",
       "to": "react-native-billing",
       "type": "depends-on"
     },
@@ -3653,6 +3713,11 @@
     {
       "from": "react-native-customers-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-customers-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3687,6 +3752,11 @@
     },
     {
       "from": "react-native-webhooks-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-webhooks-screens",
       "to": "react-native-webhooks",
       "type": "depends-on"
     },
@@ -3703,6 +3773,11 @@
     {
       "from": "react-native-workspaces-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-workspaces-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3727,6 +3802,11 @@
     },
     {
       "from": "react-webhooks-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-webhooks-screens",
       "to": "react-webhooks",
       "type": "depends-on"
     },
@@ -3743,6 +3823,11 @@
     {
       "from": "react-workspaces-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-workspaces-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3822,6 +3907,11 @@
     },
     {
       "from": "vue-audit-screens",
+      "to": "vue",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-audit-screens",
       "to": "vue-audit",
       "type": "depends-on"
     },
@@ -3842,6 +3932,11 @@
     },
     {
       "from": "vue-auth-screens",
+      "to": "vue",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-auth-screens",
       "to": "vue-auth",
       "type": "depends-on"
     },
@@ -3858,6 +3953,11 @@
     {
       "from": "vue-billing-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-billing-screens",
+      "to": "vue",
       "type": "depends-on"
     },
     {
@@ -3912,6 +4012,11 @@
     },
     {
       "from": "vue-customers-screens",
+      "to": "vue",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-customers-screens",
       "to": "vue-customers",
       "type": "depends-on"
     },
@@ -3942,6 +4047,11 @@
     },
     {
       "from": "vue-webhooks-screens",
+      "to": "vue",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-webhooks-screens",
       "to": "vue-webhooks",
       "type": "depends-on"
     },
@@ -3958,6 +4068,11 @@
     {
       "from": "vue-workspaces-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-workspaces-screens",
+      "to": "vue",
       "type": "depends-on"
     },
     {
@@ -5563,6 +5678,15 @@
     "querystore": [
       "client"
     ],
+    "ui_dictionaries": [
+      "client"
+    ],
+    "ui_languages": [
+      "client"
+    ],
+    "uilocale": [
+      "client"
+    ],
     "configmodule": [
       "config"
     ],
@@ -5745,6 +5869,14 @@
       "vue"
     ],
     "useworkspaceid": [
+      "react",
+      "vue"
+    ],
+    "useuilocale": [
+      "react",
+      "vue"
+    ],
+    "useuit": [
       "react",
       "vue"
     ],

@@ -1,4 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useForgotPassword } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -13,10 +14,17 @@ import {
 export interface IForgotPasswordScreenProps {
 	client?: AuthClient;
 	onNavigateToLogin?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPasswordScreenProps) {
+export function ForgotPasswordScreen({
+	client,
+	onNavigateToLogin,
+	locale,
+}: IForgotPasswordScreenProps) {
 	const { forgotPassword, isLoading, error, sent } = useForgotPassword(client);
+	const t = useUiT(client, locale);
 	const [email, setEmail] = useState('');
 
 	const handleSubmit = async () => {
@@ -30,12 +38,10 @@ export function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPassw
 	if (sent) {
 		return (
 			<View style={styles.container}>
-				<Text style={styles.title}>Check your email</Text>
-				<Text style={styles.body}>
-					If an account exists for {email}, we've sent instructions to reset your password.
-				</Text>
+				<Text style={styles.title}>{t('auth.forgot.sentTitle')}</Text>
+				<Text style={styles.body}>{t('auth.forgot.sentBody', { email })}</Text>
 				<TouchableOpacity onPress={onNavigateToLogin}>
-					<Text style={styles.link}>Back to sign in</Text>
+					<Text style={styles.link}>{t('auth.backToSignIn')}</Text>
 				</TouchableOpacity>
 			</View>
 		);
@@ -43,19 +49,17 @@ export function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPassw
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Reset your password</Text>
-			<Text style={styles.body}>
-				Enter your email and we'll send you a link to reset your password.
-			</Text>
+			<Text style={styles.title}>{t('auth.forgot.title')}</Text>
+			<Text style={styles.body}>{t('auth.forgot.lead')}</Text>
 
 			<TextInput
 				style={styles.input}
-				placeholder="Email"
+				placeholder={t('auth.fields.email')}
 				value={email}
 				onChangeText={setEmail}
 				autoCapitalize="none"
 				keyboardType="email-address"
-				accessibilityLabel="Email input"
+				accessibilityLabel={t('auth.forgot.a11y.email')}
 			/>
 
 			{error && (
@@ -68,18 +72,18 @@ export function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPassw
 				onPress={handleSubmit}
 				disabled={isLoading}
 				style={styles.button}
-				accessibilityLabel="Send reset link button"
+				accessibilityLabel={t('auth.forgot.a11y.submit')}
 				accessibilityRole="button"
 			>
 				{isLoading ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Send reset link</Text>
+					<Text style={styles.buttonText}>{t('auth.forgot.submit')}</Text>
 				)}
 			</TouchableOpacity>
 
 			<TouchableOpacity onPress={onNavigateToLogin}>
-				<Text style={styles.link}>Back to sign in</Text>
+				<Text style={styles.link}>{t('auth.backToSignIn')}</Text>
 			</TouchableOpacity>
 		</View>
 	);

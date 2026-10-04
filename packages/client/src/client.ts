@@ -1,4 +1,5 @@
 import type { ICache } from './cache';
+import { registerUiLocale, UiLocale } from './ui-locale';
 import { QueryStore, registerQueryStore, type IQueryStoreOptions } from './query-store';
 import { FonderieApiError, HttpClient, isSessionRefusal } from './http';
 import { AuditClient } from './modules/audit';
@@ -53,6 +54,12 @@ export interface IFonderieClientOptions {
 	baseUrl: string;
 	accessToken?: string;
 	workspaceId?: string;
+	/**
+	 * The UI language (BCP 47, e.g. 'fr-CA', 'zh-Hant'): what the prebuilt
+	 * screens are written in and what requests send as Accept-Language.
+	 * Default: the device's language. Change it later with setLocale().
+	 */
+	locale?: string;
 	// Opt-in response cache (see createMemoryCache). Omit for no caching.
 	cache?: ICache;
 	// The screens' read model (client.queries): `staleMs` — how long a fetched
@@ -119,6 +126,7 @@ export class FonderieClient {
 	private http: HttpClient;
 	private tokens: TokenStore;
 	private workspaceId: string | undefined;
+	private readonly uiLocale: UiLocale;
 	private cache: ICache | undefined;
 	/**
 	 * What every screen reads through: fetched answers shown at once, refreshed
@@ -149,12 +157,14 @@ export class FonderieClient {
 			}
 		});
 		this.workspaceId = opts.workspaceId;
+		this.uiLocale = new UiLocale(opts.locale);
 		this.cache = opts.cache;
 		this.queries = new QueryStore({ ...opts.queries, owner: () => tokenSubject(this.tokens.get()) });
 		this.followOwner();
 		this.authConfig = opts.auth;
 		this.http = new HttpClient(opts.baseUrl, {
 			clientKind: opts.clientKind,
+			getLocale: () => this.uiLocale.get(),
 			cache: opts.cache,
 			defaultTtlMs: (opts.cache as { defaultTtlMs?: number } | undefined)?.defaultTtlMs,
 			refresh: opts.auth ? () => this.doRefresh() : undefined,
@@ -188,6 +198,7 @@ export class FonderieClient {
 		// same store.
 		for (const owner of [this, this.auth, this.billing, this.workspaces, this.audit, this.webhooks, this.customers, this.media, this.config]) {
 			registerQueryStore(owner, this.queries);
+			registerUiLocale(owner, this.uiLocale);
 		}
 
 		// Live sign-out (docs/SESSION-DESIGN.md, Phase 5): only when the app
@@ -339,6 +350,24 @@ export class FonderieClient {
 				// A listener's failure must not stop the others.
 			}
 		}
+	}
+
+	/**
+	 * The UI language: what the prebuilt screens are written in, and the
+	 * Accept-Language every request carries. Screens on screen follow a change.
+	 */
+	setLocale(tag: string): void {
+		this.uiLocale.set(tag);
+	}
+
+	/** The UI language (canonical BCP 47). */
+	getLocale(): string {
+		return this.uiLocale.get();
+	}
+
+	/** Called when setLocale changes the language. Returns an unsubscribe function. */
+	onLocaleChange(listener: (tag: string) => void): () => void {
+		return this.uiLocale.on(listener);
 	}
 
 	/** The workspace requests are scoped to (X-Workspace-ID), if any. */

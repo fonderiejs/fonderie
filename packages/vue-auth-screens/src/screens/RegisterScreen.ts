@@ -1,4 +1,6 @@
 import type { AuthClient, IRegisterResult } from '@fonderie/client';
+import { uiLocaleFor } from '@fonderie/client';
+import { useFonderieSubClient, useUiT } from '@fonderie/vue';
 import { useRegister } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -11,6 +13,8 @@ export const RegisterScreen = defineComponent({
 	name: 'FonderieRegisterScreen',
 	props: {
 		client: { type: Object as PropType<AuthClient>, required: false },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 	},
 	emits: {
 		'register-success': (_result: IRegisterResult) => true,
@@ -18,6 +22,9 @@ export const RegisterScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const { register, isLoading, error } = useRegister(props.client);
+		const t = useUiT(props.client, () => props.locale);
+		// The new account's language: this screen's, else the client's UI language.
+		const authClient = useFonderieSubClient(props.client, (c) => c.auth, 'RegisterScreen');
 		const email = ref('');
 		const password = ref('');
 		const firstName = ref('');
@@ -34,19 +41,21 @@ export const RegisterScreen = defineComponent({
 			event.preventDefault();
 			validationError.value = null;
 			if (!EMAIL_PATTERN.test(email.value)) {
-				validationError.value = 'Enter a valid email address.';
+				validationError.value = t('auth.register.invalidEmail');
 				return;
 			}
 			if (password.value.length < MIN_PASSWORD_LENGTH) {
-				validationError.value = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+				validationError.value = t('auth.register.passwordTooShort', { min: MIN_PASSWORD_LENGTH });
 				return;
 			}
+			const signUpLocale = props.locale ?? uiLocaleFor(authClient)?.get();
 			try {
 				const result = await register({
 					email: email.value,
 					password: password.value,
 					firstName: firstName.value,
 					lastName: lastName.value,
+					...(signUpLocale ? { locale: signUpLocale } : {}),
 				});
 				emit('register-success', result);
 			} catch {
@@ -56,11 +65,11 @@ export const RegisterScreen = defineComponent({
 
 		return () =>
 			h('form', { style: styles.container, onSubmit: handleSubmit }, [
-				h('h1', { style: styles.title }, 'Create Account'),
+				h('h1', { style: styles.title }, t('auth.register.title')),
 				h('input', {
 					style: styles.input,
 					type: 'text',
-					placeholder: 'First name',
+					placeholder: t('auth.fields.firstName'),
 					value: firstName.value,
 					autocomplete: 'given-name',
 					onInput: bind(firstName),
@@ -68,7 +77,7 @@ export const RegisterScreen = defineComponent({
 				h('input', {
 					style: styles.input,
 					type: 'text',
-					placeholder: 'Last name',
+					placeholder: t('auth.fields.lastName'),
 					value: lastName.value,
 					autocomplete: 'family-name',
 					onInput: bind(lastName),
@@ -76,7 +85,7 @@ export const RegisterScreen = defineComponent({
 				h('input', {
 					style: styles.input,
 					type: 'email',
-					placeholder: 'Email',
+					placeholder: t('auth.fields.email'),
 					value: email.value,
 					required: true,
 					autocomplete: 'email',
@@ -85,7 +94,7 @@ export const RegisterScreen = defineComponent({
 				h('input', {
 					style: styles.input,
 					type: 'password',
-					placeholder: 'Password',
+					placeholder: t('auth.fields.password'),
 					value: password.value,
 					required: true,
 					minlength: MIN_PASSWORD_LENGTH,
@@ -102,12 +111,12 @@ export const RegisterScreen = defineComponent({
 				h(
 					'button',
 					{ type: 'submit', disabled: isLoading.value, style: styles.button },
-					isLoading.value ? 'Creating account…' : 'Create Account',
+					isLoading.value ? t('auth.register.submitting') : t('auth.register.submit'),
 				),
 				h(
 					'button',
 					{ type: 'button', style: styles.link, onClick: () => emit('navigate-login') },
-					'Already have an account? Sign in',
+					`${t('auth.register.haveAccount')} ${t('auth.register.signIn')}`,
 				),
 			]);
 	},

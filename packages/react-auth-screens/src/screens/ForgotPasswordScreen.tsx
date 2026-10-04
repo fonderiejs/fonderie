@@ -1,4 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useForgotPassword } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -6,10 +7,17 @@ import { useState } from 'react';
 export interface IForgotPasswordScreenProps {
 	client?: AuthClient;
 	onNavigateToLogin?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPasswordScreenProps) {
+export function ForgotPasswordScreen({
+	client,
+	onNavigateToLogin,
+	locale,
+}: IForgotPasswordScreenProps) {
 	const { forgotPassword, isLoading, error, sent } = useForgotPassword(client);
+	const t = useUiT(client, locale);
 	const [email, setEmail] = useState('');
 
 	const handleSubmit = async (event: FormEvent) => {
@@ -24,12 +32,10 @@ export function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPassw
 	if (sent) {
 		return (
 			<div style={styles.container}>
-				<h1 style={styles.title}>Check your email</h1>
-				<p style={styles.body}>
-					If an account exists for {email}, we've sent instructions to reset your password.
-				</p>
+				<h1 style={styles.title}>{t('auth.forgot.sentTitle')}</h1>
+				<p style={styles.body}>{t('auth.forgot.sentBody', { email })}</p>
 				<button type="button" onClick={onNavigateToLogin} style={styles.link}>
-					Back to sign in
+					{t('auth.backToSignIn')}
 				</button>
 			</div>
 		);
@@ -37,13 +43,13 @@ export function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPassw
 
 	return (
 		<form style={styles.container} onSubmit={handleSubmit}>
-			<h1 style={styles.title}>Reset your password</h1>
-			<p style={styles.body}>Enter your email and we'll send you a link to reset your password.</p>
+			<h1 style={styles.title}>{t('auth.forgot.title')}</h1>
+			<p style={styles.body}>{t('auth.forgot.lead')}</p>
 
 			<input
 				style={styles.input}
 				type="email"
-				placeholder="Email"
+				placeholder={t('auth.fields.email')}
 				value={email}
 				onChange={(event) => setEmail(event.target.value)}
 				autoComplete="email"
@@ -57,11 +63,11 @@ export function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPassw
 			)}
 
 			<button type="submit" disabled={isLoading} style={styles.button}>
-				{isLoading ? 'Sending…' : 'Send reset link'}
+				{isLoading ? t('auth.forgot.submitting') : t('auth.forgot.submit')}
 			</button>
 
 			<button type="button" onClick={onNavigateToLogin} style={styles.link}>
-				Back to sign in
+				{t('auth.backToSignIn')}
 			</button>
 		</form>
 	);

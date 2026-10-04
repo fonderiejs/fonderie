@@ -10,22 +10,25 @@ interface IAcceptInvitationScreenProps {
     token: string;
     onAccepted?: (workspaceId: string) => void;
     onNavigateBack?: () => void;
+    locale?: string;
 }
 
 interface IInviteMembersScreenProps {
     client?: WorkspacesClient;
     onNavigateToMembers?: () => void;
+    locale?: string;
 }
 
 interface ITeamMembersScreenProps {
     client?: WorkspacesClient;
     currentUserId: string;
     onNavigateToInvite?: () => void;
+    locale?: string;
 }
 
-function AcceptInvitationScreen({ client, token, onAccepted, onNavigateBack, }: IAcceptInvitationScreenProps): Element
+function AcceptInvitationScreen({ client, token, onAccepted, onNavigateBack, locale, }: IAcceptInvitationScreenProps): Element
 
-function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMembersScreenProps): Element
+function InviteMembersScreen({ client, onNavigateToMembers, locale, }: IInviteMembersScreenProps): Element
 
-function TeamMembersScreen({ client, currentUserId, onNavigateToInvite, }: ITeamMembersScreenProps): Element
+function TeamMembersScreen({ client, currentUserId, onNavigateToInvite, locale, }: ITeamMembersScreenProps): Element
 ```
