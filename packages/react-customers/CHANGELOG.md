@@ -1,5 +1,13 @@
 # @fonderie/react-customers
 
+## 0.6.1
+
+### Patch Changes
+
+- Updated dependencies [09e227e]
+  - @fonderie/client@3.11.0
+  - @fonderie/react@0.10.0
+
 ## 0.6.0
 
 ### Minor Changes
