@@ -52,7 +52,7 @@ export type WorkspaceRouteId =
 	| 'archive' | 'restore' | 'getSettings' | 'updateSettings'
 	| 'listMembers' | 'removeMember' | 'getMemberRoles' | 'addMemberRole' | 'removeMemberRole'
 	| 'listInvitations' | 'invite' | 'cancelInvitation' | 'resendInvitation' | 'acceptInvitation'
-	| 'getCurrentWorkspace' | 'leaveWorkspace' | 'transferOwnership' | 'setManager' | 'unsetManager'
+	| 'getCurrentWorkspace' | 'getMyPermissions' | 'getPermissionCatalog' | 'leaveWorkspace' | 'transferOwnership' | 'setManager' | 'unsetManager'
 	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions';
 
 export type WorkspaceRouteOverride = string | { method?: string; path?: string };

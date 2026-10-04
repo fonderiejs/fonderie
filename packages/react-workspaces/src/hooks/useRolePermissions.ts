@@ -32,6 +32,8 @@ export function useRolePermissions(
 		workspaces,
 		`/workspaces/roles/${encodeURIComponent(roleId)}/permissions`,
 		async (bust) => (await workspaces.getRolePermissions(roleId, { bust })).result.permissions,
+		// No id yet (a screen still resolving it): wait, don't request '/…/'.
+		{ enabled: !!roleId },
 	);
 	const w = useWrite(q.refresh);
 	const setRolePermissions = useCallback(

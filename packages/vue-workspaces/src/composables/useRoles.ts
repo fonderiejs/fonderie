@@ -1,4 +1,4 @@
-import type { FonderieApiError, IRoleDTO, ICreateRoleInput, IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
+import type { FonderieApiError, IRoleDTO, IRoleDeleteResult, ICreateRoleInput, IUpdateRoleInput, WorkspacesClient } from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
@@ -10,7 +10,8 @@ export interface IUseRolesReturn {
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
 	createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
-	removeRole: (roleId: string) => Promise<void>;
+	/** Resolves with how many members held it, and how many moved to the default role. */
+	removeRole: (roleId: string) => Promise<IRoleDeleteResult>;
 }
 
 const NONE: IRoleDTO[] = [];
@@ -27,9 +28,6 @@ export function useRoles(client?: WorkspacesClient): IUseRolesReturn {
 		refresh: q.refresh,
 		updateRole: (roleId, input) => w.run(async () => (await workspaces.updateRole(roleId, input)).result.role),
 		createRole: (input) => w.run(async () => (await workspaces.createRole(input)).result.role),
-		removeRole: (roleId) =>
-			w.run(async () => {
-				await workspaces.removeRole(roleId);
-			}),
+		removeRole: (roleId) => w.run(async () => (await workspaces.removeRole(roleId)).result),
 	};
 }

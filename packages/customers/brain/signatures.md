@@ -11,6 +11,7 @@ type CustomersEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 type ICustomersConfig = {
     referenceCodePrefix?: string;
+    permission?: string;
 };
 
 const EVENT_KEYS: { readonly customerCreated: "fonderie.customer.created"; readonly customerUpdated: "fonderie.customer.updated"; readonly customerDeleted: "fonderie.customer.deleted"; readonly customerBlacklisted: "fonderie.customer.blacklisted"; readonly customerUnblacklisted: "fonderie.customer.unblacklisted"; }

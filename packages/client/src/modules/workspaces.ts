@@ -7,6 +7,9 @@ import type {
 	IApiResponse,
 	IInvitationListResult,
 	IInvitationResult,
+	IMyPermissionsResult,
+	IPermissionCatalogResult,
+	IRoleDeleteResult,
 	IInviteResult,
 	IMemberListResult,
 	IRoleListResult,
@@ -166,6 +169,29 @@ export class WorkspacesClient {
 		});
 	}
 
+	// What the signed-in member may do in the selected workspace — the one read
+	// a client gates its UI on (usePermissions / useCan).
+	getMyPermissions(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IMyPermissionsResult>>({
+			method: 'GET',
+			path: '/workspaces/current/permissions',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	// The resources the app checks — a role editor's switch grid.
+	getPermissionCatalog(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IPermissionCatalogResult>>({
+			method: 'GET',
+			path: '/workspaces/permissions/catalog',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
 	updateWorkspace(input: IUpdateWorkspaceInput) {
 		return this.http.request<IApiResponse<IWorkspaceResult>>({
 			method: 'PUT',
@@ -237,8 +263,10 @@ export class WorkspacesClient {
 		});
 	}
 
+	// Resolves with how many members held the role and how many of them moved
+	// to the default role (it was their only one) — say so before confirming.
 	removeRole(roleId: string) {
-		return this.http.request<IApiResponse<undefined>>({
+		return this.http.request<IApiResponse<IRoleDeleteResult>>({
 			method: 'DELETE',
 			path: `/workspaces/roles/${encodeURIComponent(roleId)}`,
 			token: this.tokens.get(),

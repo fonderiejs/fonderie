@@ -703,6 +703,8 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .getCurrentWorkspace(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
+  .getMyPermissions(opts?: IReadOptions | undefined): Promise<IApiResponse<IMyPermissionsResult>>
+  .getPermissionCatalog(opts?: IReadOptions | undefined): Promise<IApiResponse<IPermissionCatalogResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
   .restoreWorkspace(): Promise<IApiResponse<undefined>>
@@ -710,7 +712,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
   .getRole(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
-  .removeRole(roleId: string): Promise<IApiResponse<undefined>>
+  .removeRole(roleId: string): Promise<IApiResponse<IRoleDeleteResult>>
   .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
@@ -1411,6 +1413,32 @@ interface IMemberRoleDTO {
 interface IInvitationResult {
     invitation: IInvitationDTO;
 }
+
+interface IMyPermissionsResult {
+    isOwner: boolean;
+    isManager: boolean;
+    isSuper: boolean;
+    permissions: Record<string, Record<PermissionOperation, boolean>>;
+}
+
+interface IPermissionCatalogEntryDTO {
+    key: string;
+    operations: PermissionOperation[];
+    label: string;
+    description: string;
+}
+
+interface IPermissionCatalogResult {
+    catalog: IPermissionCatalogEntryDTO[];
+    declared: boolean;
+}
+
+interface IRoleDeleteResult {
+    membersAffected: number;
+    movedToDefaultRole: number;
+}
+
+type PermissionOperation = 'create' | 'read' | 'update' | 'delete';
 
 interface IMemberListResult {
     members: IMemberDTO[];

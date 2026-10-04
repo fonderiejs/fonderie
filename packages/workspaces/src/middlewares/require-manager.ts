@@ -21,8 +21,38 @@ import type { IWorkspacesConfig } from '../config';
 // - config.management: 'any-member' restores the legacy behaviour for apps
 //   that deliberately run flat teams; config.managerRoles overrides the
 //   accepted system-role names.
+/**
+ * Is this user a manager of this workspace — its owner, or a holder of an
+ * active SYSTEM role named in managerRoles? The one definition shared by the
+ * route gate below and the effective-permissions read, so what a client is
+ * told and what the server enforces cannot drift.
+ */
+export async function isWorkspaceManager(
+	store: IStoreAdapter,
+	config: IWorkspacesConfig,
+	userId: string,
+	workspace: { id: string; ownerId?: string },
+): Promise<boolean> {
+	if (config.management === 'any-member') return true;
+	if (workspace.ownerId && workspace.ownerId === userId) return true;
+	const [row] = await store.query<{ ok: number }>(
+		`SELECT 1 AS ok
+		 FROM fonderie_role_user_workspaces ruw
+		 JOIN fonderie_roles r ON r.id = ruw.role_id
+		 WHERE ruw.user_id      = $1
+		   AND ruw.workspace_id = $2
+		   AND ruw.removed      = false
+		   AND ruw.suspended    = false
+		   AND r.is_system    = true
+		   AND r.active       = true
+		   AND r.name         = ANY($3)
+		 LIMIT 1`,
+		[userId, workspace.id, config.managerRoles ?? ['ADMIN']],
+	);
+	return !!row;
+}
+
 export function requireManager(store: IStoreAdapter, config: IWorkspacesConfig): Middleware {
-	const managerRoles = config.managerRoles ?? ['ADMIN'];
 	return async (ctx, next) => {
 		if (config.management === 'any-member') return next();
 
@@ -31,24 +61,7 @@ export function requireManager(store: IStoreAdapter, config: IWorkspacesConfig):
 		}
 		if (!ctx.workspace) return next();
 
-		const ownerId = (ctx.workspace as { ownerId?: string }).ownerId;
-		if (ownerId && ownerId === ctx.user.id) return next();
-
-		const [row] = await store.query<{ ok: number }>(
-			`SELECT 1 AS ok
-			 FROM fonderie_role_user_workspaces ruw
-			 JOIN fonderie_roles r ON r.id = ruw.role_id
-			 WHERE ruw.user_id      = $1
-			   AND ruw.workspace_id = $2
-			   AND ruw.removed      = false
-			   AND ruw.suspended    = false
-			   AND r.is_system    = true
-			   AND r.active       = true
-			   AND r.name         = ANY($3)
-			 LIMIT 1`,
-			[ctx.user.id, ctx.workspace.id, managerRoles],
-		);
-		if (!row) {
+		if (!(await isWorkspaceManager(store, config, ctx.user.id, ctx.workspace as { id: string; ownerId?: string }))) {
 			return setApiResponse(
 				HTTP.FORBIDDEN,
 				'MANAGER_REQUIRED',

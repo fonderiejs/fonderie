@@ -4,6 +4,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import { RoleModel } from '../models/role.model';
 import { toRoleDTO } from '../dtos/workspace';
+import { permissionsEngine } from '../permissions-engine';
 
 export function roleController(store: IStoreAdapter) {
 	const roles = new RoleModel(store);
@@ -125,9 +126,12 @@ export function roleController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
 			}
 
-			await roles.delete(roleId, ctx.workspace.id);
+			const result = await roles.delete(roleId, ctx.workspace.id);
+			if (!result) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found');
 
-			return setApiResponse(HTTP.OK, 'ROLE_DELETED', 'Role deleted successfully.');
+			// Members who held it lose it; anyone for whom it was the ONLY role
+			// stays on the team with the default role instead of vanishing.
+			return setApiResponse(HTTP.OK, 'ROLE_DELETED', 'Role deleted successfully.', result);
 		},
 
 		async getPermissions(ctx: IFonderieContext): Promise<Response> {
@@ -193,6 +197,34 @@ export function roleController(store: IStoreAdapter) {
 					};
 				})
 				.filter((p) => p.permissionKey.length > 0);
+
+			// With a catalog declared, a role can only grant what the server
+			// checks: a key nothing guards, or an operation the resource does not
+			// have, would show an owner a restriction that restricts nothing.
+			const engine = permissionsEngine(ctx);
+			if (engine?.catalog) {
+				for (const p of normalized) {
+					if (!engine.isKnown(p.permissionKey)) {
+						return setApiResponse(
+							HTTP.UNPROCESSABLE,
+							'UNKNOWN_PERMISSION',
+							`'${p.permissionKey}' is not a permission this app checks`,
+						);
+					}
+					const ops = engine.operationsOf(p.permissionKey);
+					const asked = (['create', 'read', 'update', 'delete'] as const).filter(
+						(op) => p[`can${op[0]!.toUpperCase()}${op.slice(1)}` as 'canCreate'],
+					);
+					const unsupported = asked.find((op) => !ops.includes(op));
+					if (unsupported) {
+						return setApiResponse(
+							HTTP.UNPROCESSABLE,
+							'UNSUPPORTED_OPERATION',
+							`'${p.permissionKey}' has no '${unsupported}' operation`,
+						);
+					}
+				}
+			}
 
 			await roles.setPermissions(roleId, ctx.workspace.id, normalized);
 

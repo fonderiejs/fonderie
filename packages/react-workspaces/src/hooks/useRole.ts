@@ -26,6 +26,8 @@ export function useRole(
 		workspaces,
 		`/workspaces/roles/${encodeURIComponent(roleId)}`,
 		async (bust) => (await workspaces.getRole(roleId, { bust })).result.role,
+		// No id yet (a screen still resolving it): wait, don't request '/…/'.
+		{ enabled: !!roleId },
 	);
 	return { role: q.data ?? null, isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

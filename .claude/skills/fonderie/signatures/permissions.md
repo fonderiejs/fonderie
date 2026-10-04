@@ -37,6 +37,18 @@ interface IRoleWithPermissions extends IRole {
     permissions: IPermission[];
 }
 
+interface IPermissionCatalogEntry {
+    key: string;
+    operations?: Operation[];
+    label?: string;
+    description?: string;
+}
+
+interface IEffectivePermissions {
+    isSuper: boolean;
+    permissions: Record<string, Record<Operation, boolean>>;
+}
+
 new PermissionsModule(store: IStoreAdapter, config?: IPermissionsConfig): PermissionsModule
   .engine: PermissionsEngine
   .name: "@fonderie/permissions"
@@ -45,6 +57,10 @@ new PermissionsModule(store: IStoreAdapter, config?: IPermissionsConfig): Permis
   .install(app: IFonderieApp): void
 
 new PermissionsEngine(store: IStoreAdapter, config?: IPermissionsConfig): PermissionsEngine
+  .catalog: readonly IPermissionCatalogEntry[] | null
+  .isKnown(permissionKey: string): boolean
+  .operationsOf(permissionKey: string): Operation[]
+  .effective(userId: string, workspaceId: string): Promise<IEffectivePermissions | null>
   .getMembership(userId: string, workspaceId: string): Promise<IMembership | null>
   .can(userId: string, operation: Operation, permissionKey: string, workspaceId: string): Promise<boolean>
   .assert(userId: string, operation: Operation, permissionKey: string, workspaceId: string): Promise<void>
@@ -61,6 +77,8 @@ new PermissionDeniedError(operation: string, permissionKey: string): PermissionD
 interface IPermissionsConfig {
     wildcards?: boolean;
     superRole?: string;
+    catalog?: IPermissionCatalogEntry[];
+    systemGrants?: Record<string, Record<string, Operation[]>>;
 }
 
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }

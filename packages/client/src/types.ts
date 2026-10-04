@@ -474,6 +474,39 @@ export interface IInviteResult {
 	invitations: Array<{ invitationId: string; email: string }>;
 }
 
+export type PermissionOperation = 'create' | 'read' | 'update' | 'delete';
+
+/** What the signed-in member may do in the current workspace. */
+export interface IMyPermissionsResult {
+	isOwner: boolean;
+	/** The owner or a manager: may run the team (members, invitations, roles, settings). */
+	isManager: boolean;
+	/** Holds the super role: every resource, every operation. */
+	isSuper: boolean;
+	/** Per resource, per operation. A missing resource or operation is not allowed. */
+	permissions: Record<string, Record<PermissionOperation, boolean>>;
+}
+
+export interface IPermissionCatalogEntryDTO {
+	key: string;
+	operations: PermissionOperation[];
+	label: string;
+	description: string;
+}
+
+export interface IPermissionCatalogResult {
+	catalog: IPermissionCatalogEntryDTO[];
+	/** False when the app declared no catalog (the list is then empty). */
+	declared: boolean;
+}
+
+export interface IRoleDeleteResult {
+	/** People who held the role. */
+	membersAffected: number;
+	/** Of those, the ones it was the only role of — now on the default role. */
+	movedToDefaultRole: number;
+}
+
 export interface IInvitationResult {
 	invitation: IInvitationDTO;
 }

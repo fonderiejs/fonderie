@@ -99,3 +99,29 @@ export async function hasAnyRole(
 
 	return row?.exists ?? false;
 }
+
+/**
+ * The SYSTEM roles (shared across workspaces) the user holds here — the ones
+ * whose rights come from config (systemGrants). System only, for the same
+ * reason as hasRole: a member-created local role named 'GUEST' must not pick
+ * up the system GUEST's rights.
+ */
+export async function listSystemRoleNames(
+	userId: string,
+	workspaceId: string,
+	store: IStoreAdapter,
+): Promise<string[]> {
+	const rows = await store.query<{ name: string }>(
+		`SELECT DISTINCT r.name
+		 FROM fonderie_role_user_workspaces ruw
+		 JOIN fonderie_roles r ON r.id = ruw.role_id
+		 WHERE ruw.user_id      = $1
+		   AND ruw.workspace_id = $2
+		   AND r.is_system    = true
+		   AND r.active       = true
+		   AND ruw.removed    = false
+		   AND ruw.suspended  = false`,
+		[userId, workspaceId],
+	);
+	return rows.map((r) => r.name);
+}

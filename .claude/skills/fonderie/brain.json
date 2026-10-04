@@ -2244,6 +2244,9 @@
         "useInvitations",
         "useMemberRoles",
         "useMembers",
+        "useCan",
+        "usePermissionCatalog",
+        "usePermissions",
         "useRole",
         "useRolePermissions",
         "useRoles",
@@ -2857,6 +2860,9 @@
         "useInvitations",
         "useMemberRoles",
         "useMembers",
+        "useCan",
+        "usePermissionCatalog",
+        "usePermissions",
         "useRole",
         "useRolePermissions",
         "useRoles",
@@ -2990,7 +2996,7 @@
         "fonderie_workspace_invitations",
         "fonderie_workspaces"
       ],
-      "routeCount": 30,
+      "routeCount": 32,
       "routes": [
         {
           "method": "GET",
@@ -3021,6 +3027,11 @@
           "method": "GET",
           "path": "/workspaces/current",
           "mw": "requireAuth → wsCtx → workspace.get"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/current/permissions",
+          "mw": "requireAuth → wsCtx → access.mine"
         },
         {
           "method": "GET",
@@ -3086,6 +3097,11 @@
           "method": "DELETE",
           "path": "/workspaces/members/:userId/roles/:roleId",
           "mw": "requireAuth → wsCtx → manager → member.removeRole"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/permissions/catalog",
+          "mw": "requireAuth → wsCtx → access.catalog"
         },
         {
           "method": "POST",
@@ -6215,6 +6231,18 @@
       "vue-webhooks"
     ],
     "usecurrentworkspace": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usecan": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usepermissioncatalog": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usepermissions": [
       "react-workspaces",
       "vue-workspaces"
     ],

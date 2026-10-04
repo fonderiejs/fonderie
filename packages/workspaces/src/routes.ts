@@ -26,6 +26,7 @@ import { workspaceController } from './controllers/workspace.controller';
 import { memberController } from './controllers/member.controller';
 import { roleController } from './controllers/role.controller';
 import { invitationController } from './controllers/invitation.controller';
+import { accessController } from './controllers/access.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]];
 
@@ -55,6 +56,7 @@ export function buildWorkspaceRoutes(
 	const owner = requireOwner();
 	const member = memberController(store, config);
 	const role = roleController(store);
+	const access = accessController(store, config);
 	const invitation = invitationController(store, ttl, bus, config.invitationUrl ? { invitationUrl: config.invitationUrl } : {});
 
 	// Apply an optional per-route method/path override (config.routes) keyed by a
@@ -109,6 +111,10 @@ export function buildWorkspaceRoutes(
 		// ── The workspace this request is scoped to (X-Workspace-ID, or the
 		// personal workspace). Before /workspaces/:id so 'current' is not an id.
 		R('getCurrentWorkspace', 'GET', '/workspaces/current', requireAuth, wsCtx, workspace.get),
+		// What the signed-in member may do here (useCan), and the resources the
+		// app checks (the role editor's grid).
+		R('getMyPermissions', 'GET', '/workspaces/current/permissions', requireAuth, wsCtx, access.mine),
+		R('getPermissionCatalog', 'GET', '/workspaces/permissions/catalog', requireAuth, wsCtx, access.catalog),
 
 		// ── Path-based lookup by ID (admin / cross-workspace use)
 		R('getWorkspace', 'GET', '/workspaces/:id', requireAuth, wsCtx, workspace.get),

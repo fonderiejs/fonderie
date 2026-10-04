@@ -33,6 +33,8 @@ export function useRolePermissions(
 		workspaces,
 		() => `/workspaces/roles/${encodeURIComponent(toValue(roleId))}/permissions`,
 		async (bust) => (await workspaces.getRolePermissions(toValue(roleId), { bust })).result.permissions,
+		// No id yet (a screen still resolving it): wait, don't request '/…/'.
+		{ enabled: () => !!toValue(roleId) },
 	);
 	const w = useWrite(() => q.refresh());
 	return {

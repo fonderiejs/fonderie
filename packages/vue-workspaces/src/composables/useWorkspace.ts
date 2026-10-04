@@ -32,7 +32,7 @@ export function useWorkspace(
 		workspaces,
 		() => `/workspaces/${encodeURIComponent(toValue(id))}`,
 		async (bust) => (await workspaces.getWorkspace(toValue(id), { bust })).result.workspace,
-		{ perWorkspace: false },
+		{ perWorkspace: false, enabled: () => !!toValue(id) },
 	);
 	return {
 		workspace: computed(() => q.data.value ?? null),

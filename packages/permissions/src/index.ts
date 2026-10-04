@@ -5,6 +5,8 @@ export type {
 	IPermission,
 	IMembership,
 	IRoleWithPermissions,
+	IPermissionCatalogEntry,
+	IEffectivePermissions,
 } from './types';
 export { PermissionsModule } from './module';
 export { PermissionsEngine, PermissionDeniedError } from './engine';

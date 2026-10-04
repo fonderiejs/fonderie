@@ -88,6 +88,7 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | GET | `/workspaces/:id` | `requireAuth → wsCtx → workspace.get` |
 | POST | `/workspaces/archive` | `requireAuth → wsCtx → manager → workspace.archive` |
 | GET | `/workspaces/current` | `requireAuth → wsCtx → workspace.get` |
+| GET | `/workspaces/current/permissions` | `requireAuth → wsCtx → access.mine` |
 | GET | `/workspaces/invitations` | `requireAuth → wsCtx → invitation.list` |
 | POST | `/workspaces/invitations` | `requireAuth → wsCtx → manager → validate(createInvitationsSchema) → invitation.invite` |
 | DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → invitation.cancel` |
@@ -101,6 +102,7 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | GET | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → member.getUserRoles` |
 | POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → member.addRole` |
 | DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → manager → member.removeRole` |
+| GET | `/workspaces/permissions/catalog` | `requireAuth → wsCtx → access.catalog` |
 | POST | `/workspaces/restore` | `requireAuth → wsCtx → manager → workspace.restore` |
 | GET | `/workspaces/roles` | `requireAuth → wsCtx → role.list` |
 | POST | `/workspaces/roles` | `requireAuth → wsCtx → manager → validate(createRoleSchema) → role.create` |

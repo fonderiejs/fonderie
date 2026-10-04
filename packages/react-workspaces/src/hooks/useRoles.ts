@@ -1,6 +1,7 @@
 import type {
 	FonderieApiError,
 	ICreateRoleInput,
+	IRoleDeleteResult,
 	IRoleDTO,
 	IUpdateRoleInput,
 	WorkspacesClient,
@@ -15,7 +16,8 @@ export interface IUseRolesReturn {
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
 	updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
-	removeRole: (roleId: string) => Promise<void>;
+	/** Resolves with how many members held it, and how many moved to the default role. */
+	removeRole: (roleId: string) => Promise<IRoleDeleteResult>;
 }
 
 const NONE: IRoleDTO[] = [];
@@ -34,10 +36,7 @@ export function useRoles(client?: WorkspacesClient): IUseRolesReturn {
 		[workspaces, w.run],
 	);
 	const removeRole = useCallback(
-		(roleId: string) =>
-			w.run(async () => {
-				await workspaces.removeRole(roleId);
-			}),
+		(roleId: string) => w.run(async () => (await workspaces.removeRole(roleId)).result),
 		[workspaces, w.run],
 	);
 	return { roles: q.data ?? NONE, isLoading: q.isLoading, error: w.error ?? q.error, refresh: q.refresh, createRole, updateRole, removeRole };

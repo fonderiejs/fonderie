@@ -1,5 +1,6 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
+import type { IRoleDeleteResult } from '../services/roles';
 import type { IRole } from '../types';
 import {
 	createRole,
@@ -39,7 +40,7 @@ export class RoleModel {
 		return updateRole(id, workspaceId, opts, this.store);
 	}
 
-	delete(id: string, workspaceId: string): Promise<void> {
+	delete(id: string, workspaceId: string): Promise<IRoleDeleteResult | null> {
 		return deleteRole(id, workspaceId, this.store);
 	}
 
