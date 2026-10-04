@@ -68,7 +68,7 @@ test('auth: DEFAULT_TEMPLATES and SAMPLE_PAYLOADS cover exactly the live message
 
 // Every built-in email ships in each shipped language with the English's parts
 // and exactly its {{variables}} — a French reset without {{pin}} still sends.
-test('auth: every email ships in es and fr, with the same parts and variables as the English', () => {
+test('auth: every email ships in es, fr, zh-Hans and zh-Hant, with the same parts and variables as the English', () => {
 	assert.deepEqual(translationProblems(DEFAULT_TEMPLATES), []);
 	for (const [key, tmpl] of Object.entries(DEFAULT_TEMPLATES)) {
 		const sample = (SAMPLE_PAYLOADS as Record<string, Record<string, unknown>>)[key] ?? {};

@@ -1,4 +1,5 @@
-import type { IFonderieContext } from '@fonderie/core';
+import type { IFonderieContext, ICourierFormatValue } from '@fonderie/core';
+import { COURIER_FORMAT_KEY } from '@fonderie/core';
 
 import type { SubscriberType } from './types';
 
@@ -70,6 +71,22 @@ export function formatWalletAmount(amount: bigint, currency: string, precision =
 	} catch {
 		return precision > 0 ? major.toFixed(precision) : major.toString();
 	}
+}
+
+/**
+ * The raw amounts behind `*Display` strings, under core's reserved `$format`
+ * key, so courier re-formats them in the READER's language (19,99 $ for fr-CA)
+ * instead of the fixed en-US string formatWalletAmount produces. Spread into a
+ * notice's data next to the strings, which an older courier still shows.
+ */
+export function localizedAmounts(
+	fields: Record<string, { amount: bigint; currency: string; precision: number }>,
+): { [COURIER_FORMAT_KEY]: Record<string, ICourierFormatValue> } {
+	const out: Record<string, ICourierFormatValue> = {};
+	for (const [key, f] of Object.entries(fields)) {
+		out[key] = { money: { amount: f.amount.toString(), currency: normalizeCurrency(f.currency), precision: f.precision } };
+	}
+	return { [COURIER_FORMAT_KEY]: out };
 }
 
 // One canonical form for wallet currency codes. Balances are keyed by the

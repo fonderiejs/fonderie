@@ -25,6 +25,7 @@ function handleMailgunDelivery(req: Request, store: IStoreAdapter, signingKey?: 
 function handleMailtrapDelivery(req: Request, store: IStoreAdapter): Promise<Response>
 
 new Dispatcher(config: ICourierConfig, resolver: ITemplateResolver, store?: IStoreAdapter | undefined): Dispatcher
+  .setLocales(locales: ILocaleSettings): void
   .registerChannel(channel: ICourierChannel): Dispatcher
   .channelNames(): string[]
   .dispatch(message: ICourierMessage): Promise<void>
