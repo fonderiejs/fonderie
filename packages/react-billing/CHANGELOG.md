@@ -1,5 +1,13 @@
 # @fonderie/react-billing
 
+## 0.11.4
+
+### Patch Changes
+
+- Updated dependencies [2686f16]
+  - @fonderie/client@3.12.0
+  - @fonderie/react@0.11.0
+
 ## 0.11.3
 
 ### Patch Changes

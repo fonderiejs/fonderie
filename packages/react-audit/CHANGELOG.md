@@ -1,5 +1,13 @@
 # @fonderie/react-audit
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [2686f16]
+  - @fonderie/client@3.12.0
+  - @fonderie/react@0.11.0
+
 ## 0.4.1
 
 ### Patch Changes
