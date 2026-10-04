@@ -1,5 +1,5 @@
 import type { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useWorkspaces } from '@fonderie/react-workspaces';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -25,6 +25,7 @@ export function AcceptInvitationScreen({
 	// isLoading/error track that fetch, so the accept action keeps local state.
 	const { acceptInvitation } = useWorkspaces(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [accepted, setAccepted] = useState(false);
 	const [isAccepting, setIsAccepting] = useState(false);
 	const [acceptError, setAcceptError] = useState<FonderieApiError | null>(null);
@@ -61,7 +62,7 @@ export function AcceptInvitationScreen({
 
 			{acceptError && (
 				<p style={styles.error} role="alert">
-					{acceptError.explanation}
+					{errorText(acceptError)}
 				</p>
 			)}
 

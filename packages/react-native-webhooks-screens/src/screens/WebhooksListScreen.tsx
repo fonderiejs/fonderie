@@ -1,5 +1,5 @@
 import type { IWebhookEndpointDTO, WebhooksClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useWebhookEndpoints } from '@fonderie/react-native-webhooks';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -13,6 +13,7 @@ export interface IWebhooksListScreenProps {
 
 export function WebhooksListScreen({ client, onSelectEndpoint, locale }: IWebhooksListScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const { endpoints, isLoading, error, createEndpoint, removeEndpoint, testEndpoint } =
 		useWebhookEndpoints(client);
 	const [isTesting, setIsTesting] = useState(false);
@@ -132,7 +133,7 @@ export function WebhooksListScreen({ client, onSelectEndpoint, locale }: IWebhoo
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 

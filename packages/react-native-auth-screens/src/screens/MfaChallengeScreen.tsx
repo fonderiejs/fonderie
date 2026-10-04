@@ -1,5 +1,5 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useMfaLogin } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -30,6 +30,7 @@ export function MfaChallengeScreen({
 }: IMfaChallengeScreenProps) {
 	const { verifyLogin, isLoading, error } = useMfaLogin(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [code, setCode] = useState('');
 
 	const handleSubmit = async () => {
@@ -59,7 +60,7 @@ export function MfaChallengeScreen({
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 

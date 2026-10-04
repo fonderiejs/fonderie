@@ -1,6 +1,6 @@
 import type { AuditClient, IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
 import { uiLocaleFor } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useAuditEvents } from '@fonderie/react-native-audit';
 import { useState } from 'react';
 import {
@@ -21,6 +21,7 @@ export interface IAuditLogScreenProps {
 
 export function AuditLogScreen({ client, locale }: IAuditLogScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const dateLocale = locale ?? uiLocaleFor(client)?.get();
 	const [type, setType] = useState('');
 	const [actorId, setActorId] = useState('');
@@ -93,7 +94,7 @@ export function AuditLogScreen({ client, locale }: IAuditLogScreenProps) {
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 

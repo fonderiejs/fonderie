@@ -5,7 +5,7 @@ import type {
 	WorkspacesClient,
 } from '@fonderie/client';
 import { formatPersonName } from '@fonderie/client';
-import { useUiLocale, useUiT } from '@fonderie/vue';
+import { useUiError, useUiLocale, useUiT } from '@fonderie/vue';
 import { useMembers } from '@fonderie/vue-workspaces';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -25,6 +25,7 @@ export const TeamMembersScreen = defineComponent({
 	setup(props, { emit }) {
 		const { members, isLoading, error, removeMember } = useMembers(props.client);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const uiLocale = useUiLocale(props.client, () => props.locale);
 		// The member's name in the order the UI language writes it; their email when
 		// they have no name; the id only as a last resort.
@@ -81,7 +82,7 @@ export const TeamMembersScreen = defineComponent({
 			// A failed removal also lands in the composable's shared `error`; it's
 			// surfaced inline via `removeError` below, so don't let it replace the list.
 			if (error.value && !removeError.value)
-				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
+				return h('p', { style: styles.error, role: 'alert' }, errorText(error.value));
 
 			return h('div', { style: styles.container }, [
 				h('div', { style: styles.header }, [
@@ -93,7 +94,7 @@ export const TeamMembersScreen = defineComponent({
 					),
 				]),
 				removeError.value
-					? h('p', { style: styles.error, role: 'alert' }, removeError.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(removeError.value))
 					: null,
 				h('ul', { style: styles.list }, members.value.map(renderRow)),
 			]);

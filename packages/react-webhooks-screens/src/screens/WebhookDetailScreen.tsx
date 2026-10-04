@@ -1,5 +1,5 @@
 import type { WebhooksClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useWebhookDeliveries, useWebhookEndpoint } from '@fonderie/react-webhooks';
 import type { CSSProperties, FormEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -19,6 +19,7 @@ export function WebhookDetailScreen({
 	locale,
 }: IWebhookDetailScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const { endpoint, isLoading, error, updateEndpoint } = useWebhookEndpoint(client, endpointId);
 	const { deliveries, isLoading: isLoadingDeliveries } = useWebhookDeliveries(client, endpointId);
 
@@ -58,7 +59,7 @@ export function WebhookDetailScreen({
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 

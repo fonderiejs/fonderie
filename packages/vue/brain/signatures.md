@@ -50,6 +50,8 @@ function useFonderieSubClient<T>(explicit: T | undefined, select: (client: Fonde
 
 function useWorkspaceId(source?: unknown): Readonly<Ref<string | undefined, string | undefined>>
 
+function useUiError(source?: object | undefined, locale?: MaybeRefOrGetter<string | undefined>): (error: IApiErrorLike | null | undefined) => string
+
 function useUiLocale(source?: object | undefined, locale?: MaybeRefOrGetter<string | undefined>): Readonly<Ref<string, string>>
 
 function useUiT(source?: object | undefined, locale?: MaybeRefOrGetter<string | undefined>): UiT

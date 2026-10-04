@@ -1,6 +1,6 @@
 import type { FonderieApiError, IMemberDTO, UiMessageKey, WorkspacesClient } from '@fonderie/client';
 import { formatPersonName } from '@fonderie/client';
-import { useUiLocale, useUiT } from '@fonderie/react';
+import { useUiError, useUiLocale, useUiT } from '@fonderie/react';
 import { useMembers } from '@fonderie/react-workspaces';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -21,6 +21,7 @@ export function TeamMembersScreen({
 }: ITeamMembersScreenProps) {
 	const { members, isLoading, error, removeMember } = useMembers(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const uiLocale = useUiLocale(client, locale);
 	// The member's name in the order the UI language writes it; their email when
 	// they have no name; the id only as a last resort.
@@ -55,7 +56,7 @@ export function TeamMembersScreen({
 	if (error && !removeError)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 
@@ -70,7 +71,7 @@ export function TeamMembersScreen({
 
 			{removeError && (
 				<p style={styles.error} role="alert">
-					{removeError.explanation}
+					{errorText(removeError)}
 				</p>
 			)}
 

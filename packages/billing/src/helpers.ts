@@ -148,6 +148,7 @@ export function requireFeature(key: string): Middleware {
 					HTTP.PAYMENT_REQUIRED,
 					'FEATURE_UNAVAILABLE',
 					`Feature '${key}' is not available on your current plan`,
+					{ feature: key },
 				),
 			);
 		}

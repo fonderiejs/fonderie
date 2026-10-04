@@ -1,6 +1,6 @@
 import type { AuditClient, IListAuditEventsInput } from '@fonderie/client';
 import { uiLocaleFor } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useAuditEvents } from '@fonderie/react-audit';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ export interface IAuditLogScreenProps {
 
 export function AuditLogScreen({ client, locale }: IAuditLogScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const dateLocale = locale ?? uiLocaleFor(client)?.get();
 	const [type, setType] = useState('');
 	const [actorId, setActorId] = useState('');
@@ -58,7 +59,7 @@ export function AuditLogScreen({ client, locale }: IAuditLogScreenProps) {
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 

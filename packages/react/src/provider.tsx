@@ -1,5 +1,5 @@
-import type { FonderieClient, UiT } from '@fonderie/client';
-import { createUiT, detectDeviceLocale, uiLocaleFor } from '@fonderie/client';
+import type { FonderieClient, IApiErrorLike, UiT } from '@fonderie/client';
+import { createUiT, detectDeviceLocale, localizeApiError, uiLocaleFor } from '@fonderie/client';
 import type { ReactNode } from 'react';
 import { createContext, createElement, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
 
@@ -105,4 +105,15 @@ export function useUiLocale(source?: object, locale?: string): string {
 	const subscribe = useCallback((onChange: () => void) => (src ? src.on(onChange) : NO_SUBSCRIBE()), [src]);
 	const tag = useSyncExternalStore(subscribe, () => src?.get() ?? DEVICE_LOCALE, () => src?.get() ?? DEVICE_LOCALE);
 	return locale ?? tag;
+}
+
+/**
+ * A refused request as text in the app's UI language — what a screen shows
+ * instead of the server's English `explanation` (see localizeApiError).
+ *
+ *   const errorText = useUiError(client);  {error && <p>{errorText(error)}</p>}
+ */
+export function useUiError(source?: object, locale?: string): (error: IApiErrorLike | null | undefined) => string {
+	const tag = useUiLocale(source, locale);
+	return useCallback((error: IApiErrorLike | null | undefined) => localizeApiError(error, tag), [tag]);
 }

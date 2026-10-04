@@ -1,5 +1,5 @@
 import type { AuthClient, IVerifyEmailResult } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useVerifyEmail } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -18,6 +18,7 @@ export const VerifyEmailScreen = defineComponent({
 	setup(props, { emit }) {
 		const { verifyEmail, resend, resent, isLoading, error } = useVerifyEmail(props.client);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const code = ref('');
 
 		async function handleSubmit(event: Event) {
@@ -55,7 +56,7 @@ export const VerifyEmailScreen = defineComponent({
 					},
 				}),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h(
 					'button',

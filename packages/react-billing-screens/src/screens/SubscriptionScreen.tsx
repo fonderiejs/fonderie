@@ -1,6 +1,6 @@
 import type { BillingClient, UiMessageKey, UiT } from '@fonderie/client';
 import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import {
 	useBillingPortal,
 	usePaymentMethod,
@@ -37,6 +37,7 @@ export function SubscriptionScreen({
 	locale,
 }: ISubscriptionScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const formatLocale = canonicalLocaleTag(locale) ?? uiLocaleFor(client)?.get();
 	const { subscription, isLoading, error } = useSubscription(client);
 	const { openPortal, isLoading: isOpeningPortal, error: portalError } = useBillingPortal(client);
@@ -71,7 +72,7 @@ export function SubscriptionScreen({
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 
@@ -112,7 +113,7 @@ export function SubscriptionScreen({
 
 			{portalError && (
 				<p style={styles.error} role="alert">
-					{portalError.explanation}
+					{errorText(portalError)}
 				</p>
 			)}
 
@@ -128,12 +129,12 @@ export function SubscriptionScreen({
 					<>
 						{cardError && (
 							<p style={styles.error} role="alert">
-								{cardError.explanation}
+								{errorText(cardError)}
 							</p>
 						)}
 						{removeError && (
 							<p style={styles.error} role="alert">
-								{removeError.explanation}
+								{errorText(removeError)}
 							</p>
 						)}
 						{paymentMethod?.type === 'link' ? (

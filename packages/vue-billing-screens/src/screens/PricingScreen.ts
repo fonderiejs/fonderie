@@ -1,6 +1,6 @@
 import type { BillingClient, IPlanDTO } from '@fonderie/client';
 import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useCheckout, usePlans } from '@fonderie/vue-billing';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -26,6 +26,7 @@ export const PricingScreen = defineComponent({
 		const { checkout, isLoading: isCheckingOut, error: checkoutError } = useCheckout(props.client);
 		const interval = ref<'month' | 'year'>('month');
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		// Read at render: t() re-renders on a language change, so this follows it.
 		const formatLocale = () => canonicalLocaleTag(props.locale) ?? uiLocaleFor(props.client)?.get();
 
@@ -78,7 +79,7 @@ export const PricingScreen = defineComponent({
 		return () => {
 			if (isLoading.value) return h('p', { style: styles.status }, t('billing.pricing.loading'));
 			if (error.value)
-				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
+				return h('p', { style: styles.error, role: 'alert' }, errorText(error.value));
 
 			return h('div', { style: styles.container }, [
 				h('div', { style: styles.toggle }, [
@@ -106,7 +107,7 @@ export const PricingScreen = defineComponent({
 					),
 				]),
 				checkoutError.value
-					? h('p', { style: styles.error, role: 'alert' }, checkoutError.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(checkoutError.value))
 					: null,
 				h('div', { style: styles.grid }, plans.value.map(renderPlanCard)),
 			]);

@@ -1,6 +1,6 @@
 import type { AuditClient, IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
 import { uiLocaleFor } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useAuditEvents } from '@fonderie/vue-audit';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -72,6 +72,7 @@ export const AuditLogScreen = defineComponent({
 	},
 	setup(props) {
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const type = ref('');
 		const actorId = ref('');
 		const expanded = ref<string | null>(null);
@@ -142,7 +143,7 @@ export const AuditLogScreen = defineComponent({
 					h('button', { type: 'submit', style: styles.filterButton }, t('audit.log.filter')),
 				]),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				isLoading.value
 					? h('p', { style: styles.status }, t('audit.log.loading'))

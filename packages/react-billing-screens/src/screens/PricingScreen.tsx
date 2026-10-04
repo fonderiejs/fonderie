@@ -1,6 +1,6 @@
 import type { BillingClient } from '@fonderie/client';
 import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useCheckout, usePlans } from '@fonderie/react-billing';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -19,6 +19,7 @@ function formatPrice(cents: number, currency: string, locale: string | undefined
 
 export function PricingScreen({ client, onCheckoutStart, locale }: IPricingScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const formatLocale = canonicalLocaleTag(locale) ?? uiLocaleFor(client)?.get();
 	const { plans, isLoading, error } = usePlans(client);
 	const { checkout, isLoading: isCheckingOut, error: checkoutError } = useCheckout(client);
@@ -38,7 +39,7 @@ export function PricingScreen({ client, onCheckoutStart, locale }: IPricingScree
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 
@@ -63,7 +64,7 @@ export function PricingScreen({ client, onCheckoutStart, locale }: IPricingScree
 
 			{checkoutError && (
 				<p style={styles.error} role="alert">
-					{checkoutError.explanation}
+					{errorText(checkoutError)}
 				</p>
 			)}
 

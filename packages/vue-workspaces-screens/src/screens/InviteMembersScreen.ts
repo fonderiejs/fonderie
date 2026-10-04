@@ -1,5 +1,5 @@
 import type { IInvitationDTO, UiMessageKey, WorkspacesClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useInvitations } from '@fonderie/vue-workspaces';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -20,6 +20,7 @@ export const InviteMembersScreen = defineComponent({
 			props.client,
 		);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		// A status Fonderie does not know shows as sent by the server.
 		const statusLabel = (status: string) => {
 			const key = `workspaces.invitationStatus.${status}` as UiMessageKey;
@@ -83,7 +84,7 @@ export const InviteMembersScreen = defineComponent({
 					),
 				]),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h('h2', { style: styles.subtitle }, t('workspaces.invite.pending')),
 				isLoading.value

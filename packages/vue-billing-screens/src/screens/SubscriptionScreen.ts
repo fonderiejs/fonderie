@@ -1,6 +1,6 @@
 import type { BillingClient, UiMessageKey, UiT } from '@fonderie/client';
 import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import {
 	useBillingPortal,
 	usePaymentMethod,
@@ -36,6 +36,7 @@ export const SubscriptionScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		// Read at render: t() re-renders on a language change, so this follows it.
 		const formatLocale = () => canonicalLocaleTag(props.locale) ?? uiLocaleFor(props.client)?.get();
 		const { subscription, isLoading, error } = useSubscription(props.client);
@@ -85,10 +86,10 @@ export const SubscriptionScreen = defineComponent({
 			const brand = pm ? pm.brand.charAt(0).toUpperCase() + pm.brand.slice(1) : '';
 			return [
 				cardError.value
-					? h('p', { style: styles.error, role: 'alert' }, cardError.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(cardError.value))
 					: null,
 				removeError.value
-					? h('p', { style: styles.error, role: 'alert' }, removeError.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(removeError.value))
 					: null,
 				pm?.type === 'link'
 					? // Stripe Link: no card details — the Link account is what pays.
@@ -143,7 +144,7 @@ export const SubscriptionScreen = defineComponent({
 			if (isLoading.value)
 				return h('p', { style: styles.status }, t('billing.subscription.loading'));
 			if (error.value)
-				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
+				return h('p', { style: styles.error, role: 'alert' }, errorText(error.value));
 
 			if (!subscription.value) {
 				return h('div', { style: styles.container }, [
@@ -180,7 +181,7 @@ export const SubscriptionScreen = defineComponent({
 						)
 					: null,
 				portalError.value
-					? h('p', { style: styles.error, role: 'alert' }, portalError.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(portalError.value))
 					: null,
 				h(
 					'button',

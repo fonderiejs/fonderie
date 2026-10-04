@@ -1,6 +1,6 @@
 import type { AuthClient, IRegisterResult } from '@fonderie/client';
 import { uiLocaleFor } from '@fonderie/client';
-import { useFonderieSubClient, useUiT } from '@fonderie/react';
+import { useFonderieSubClient, useUiError, useUiT } from '@fonderie/react';
 import { useRegister } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -24,6 +24,7 @@ export function RegisterScreen({
 }: IRegisterScreenProps) {
 	const { register, isLoading, error } = useRegister(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	// The new account's language: this screen's, else the client's UI language.
 	const authClient = useFonderieSubClient(client, (c) => c.auth, 'RegisterScreen');
 	const [email, setEmail] = useState('');
@@ -103,7 +104,7 @@ export function RegisterScreen({
 
 			{(validationError || error) && (
 				<p style={styles.error} role="alert">
-					{validationError ?? error?.explanation}
+					{validationError ?? errorText(error)}
 				</p>
 			)}
 
