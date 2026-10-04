@@ -1,5 +1,5 @@
 import type { WebhooksClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useWebhookEndpoints } from '@fonderie/react-webhooks';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ export interface IWebhooksListScreenProps {
 
 export function WebhooksListScreen({ client, onSelectEndpoint, locale }: IWebhooksListScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const { endpoints, isLoading, error, createEndpoint, removeEndpoint, testEndpoint } =
 		useWebhookEndpoints(client);
 	const [isTesting, setIsTesting] = useState(false);
@@ -92,7 +93,7 @@ export function WebhooksListScreen({ client, onSelectEndpoint, locale }: IWebhoo
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 

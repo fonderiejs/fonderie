@@ -1,5 +1,5 @@
 import type { IWebhookDeliveryDTO, WebhooksClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useWebhookDeliveries, useWebhookEndpoint } from '@fonderie/react-native-webhooks';
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -19,6 +19,7 @@ export function WebhookDetailScreen({
 	locale,
 }: IWebhookDetailScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const { endpoint, isLoading, error, updateEndpoint } = useWebhookEndpoint(client, endpointId);
 	const { deliveries, isLoading: isLoadingDeliveries } = useWebhookDeliveries(client, endpointId);
 
@@ -71,7 +72,7 @@ export function WebhookDetailScreen({
 	if (error)
 		return (
 			<Text style={styles.error} accessibilityRole="alert">
-				{error.explanation}
+				{errorText(error)}
 			</Text>
 		);
 

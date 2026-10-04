@@ -1,5 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useForgotPassword } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -18,6 +18,7 @@ export function ForgotPasswordScreen({
 }: IForgotPasswordScreenProps) {
 	const { forgotPassword, isLoading, error, sent } = useForgotPassword(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [email, setEmail] = useState('');
 
 	const handleSubmit = async (event: FormEvent) => {
@@ -58,7 +59,7 @@ export function ForgotPasswordScreen({
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 

@@ -1,5 +1,5 @@
 import type { IWebhookEndpointDTO, WebhooksClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useWebhookEndpoints } from '@fonderie/vue-webhooks';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -17,6 +17,7 @@ export const WebhooksListScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const { endpoints, isLoading, error, createEndpoint, removeEndpoint, testEndpoint } =
 			useWebhookEndpoints(props.client);
 		const isTesting = ref(false);
@@ -135,7 +136,7 @@ export const WebhooksListScreen = defineComponent({
 					h('button', { type: 'submit', style: styles.createButton }, t('webhooks.list.add')),
 				]),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				isLoading.value
 					? h('p', { style: styles.status }, t('webhooks.loading'))

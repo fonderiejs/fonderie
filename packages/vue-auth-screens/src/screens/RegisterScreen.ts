@@ -1,6 +1,6 @@
 import type { AuthClient, IRegisterResult } from '@fonderie/client';
 import { uiLocaleFor } from '@fonderie/client';
-import { useFonderieSubClient, useUiT } from '@fonderie/vue';
+import { useFonderieSubClient, useUiError, useUiT } from '@fonderie/vue';
 import { useRegister } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -23,6 +23,7 @@ export const RegisterScreen = defineComponent({
 	setup(props, { emit }) {
 		const { register, isLoading, error } = useRegister(props.client);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		// The new account's language: this screen's, else the client's UI language.
 		const authClient = useFonderieSubClient(props.client, (c) => c.auth, 'RegisterScreen');
 		const email = ref('');
@@ -105,7 +106,7 @@ export const RegisterScreen = defineComponent({
 					? h(
 							'p',
 							{ style: styles.error, role: 'alert' },
-							validationError.value ?? error.value?.explanation,
+							validationError.value ?? errorText(error.value),
 						)
 					: null,
 				h(

@@ -1,5 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useForgotPassword } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -25,6 +25,7 @@ export function ForgotPasswordScreen({
 }: IForgotPasswordScreenProps) {
 	const { forgotPassword, isLoading, error, sent } = useForgotPassword(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [email, setEmail] = useState('');
 
 	const handleSubmit = async () => {
@@ -64,7 +65,7 @@ export function ForgotPasswordScreen({
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 

@@ -1,5 +1,5 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useMfaLogin } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -21,6 +21,7 @@ export const MfaChallengeScreen = defineComponent({
 	setup(props, { emit }) {
 		const { verifyLogin, isLoading, error } = useMfaLogin(props.client);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const code = ref('');
 
 		async function handleSubmit(event: Event) {
@@ -50,7 +51,7 @@ export const MfaChallengeScreen = defineComponent({
 					},
 				}),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h(
 					'button',

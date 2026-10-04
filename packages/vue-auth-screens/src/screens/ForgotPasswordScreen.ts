@@ -1,5 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useForgotPassword } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -18,6 +18,7 @@ export const ForgotPasswordScreen = defineComponent({
 	setup(props, { emit }) {
 		const { forgotPassword, isLoading, error, sent } = useForgotPassword(props.client);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const email = ref('');
 
 		async function handleSubmit(event: Event) {
@@ -57,7 +58,7 @@ export const ForgotPasswordScreen = defineComponent({
 					},
 				}),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h(
 					'button',

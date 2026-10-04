@@ -1,5 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useResetPassword } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -21,6 +21,7 @@ export const ResetPasswordScreen = defineComponent({
 	setup(props, { emit }) {
 		const { resetPassword, isLoading, error, done } = useResetPassword(props.client);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const pin = ref(props.initialPin ?? '');
 		const password = ref('');
 		const confirmPassword = ref('');
@@ -95,7 +96,7 @@ export const ResetPasswordScreen = defineComponent({
 					? h('p', { style: styles.error, role: 'alert' }, t('auth.reset.mismatch'))
 					: null,
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h(
 					'button',

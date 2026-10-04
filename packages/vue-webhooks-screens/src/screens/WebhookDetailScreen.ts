@@ -1,5 +1,5 @@
 import type { IWebhookDeliveryDTO, WebhooksClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useWebhookDeliveries, useWebhookEndpoint } from '@fonderie/vue-webhooks';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref, watch } from 'vue';
@@ -18,6 +18,7 @@ export const WebhookDetailScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const statusLabel = (status: string) =>
 			status === 'pending' || status === 'delivered' || status === 'failed'
 				? t(`webhooks.status.${status}`)
@@ -80,7 +81,7 @@ export const WebhookDetailScreen = defineComponent({
 		return () => {
 			if (isLoading.value) return h('p', { style: styles.status }, t('webhooks.loading'));
 			if (error.value)
-				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
+				return h('p', { style: styles.error, role: 'alert' }, errorText(error.value));
 
 			return h('div', { style: styles.container }, [
 				h('h1', { style: styles.title }, t('webhooks.detail.title')),

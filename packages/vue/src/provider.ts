@@ -1,5 +1,5 @@
-import type { FonderieClient, UiT } from '@fonderie/client';
-import { createUiT, detectDeviceLocale, uiLocaleFor } from '@fonderie/client';
+import type { FonderieClient, IApiErrorLike, UiT } from '@fonderie/client';
+import { createUiT, detectDeviceLocale, localizeApiError, uiLocaleFor } from '@fonderie/client';
 import type { InjectionKey, MaybeRefOrGetter, Plugin, Ref } from 'vue';
 import { computed, getCurrentScope, inject, onScopeDispose, provide, readonly, shallowRef, toValue } from 'vue';
 
@@ -115,4 +115,15 @@ export function useUiLocale(source?: object, locale?: MaybeRefOrGetter<string | 
 		if (getCurrentScope()) onScopeDispose(off);
 	}
 	return computed(() => toValue(locale) ?? tag.value);
+}
+
+/**
+ * A refused request as text in the app's UI language — what a screen shows
+ * instead of the server's English `explanation` (see localizeApiError). Reads
+ * reactive state, so a render calling it follows a language change. Call
+ * inside setup().
+ */
+export function useUiError(source?: object, locale?: MaybeRefOrGetter<string | undefined>): (error: IApiErrorLike | null | undefined) => string {
+	const tag = useUiLocale(source, locale);
+	return (error) => localizeApiError(error, tag.value);
 }

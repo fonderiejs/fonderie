@@ -1,5 +1,5 @@
 import type { CustomersClient, ICustomerDTO } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useCustomers } from '@fonderie/react-native-customers';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -17,6 +17,7 @@ export function CustomersListScreen({
 	locale,
 }: ICustomersListScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [search, setSearch] = useState('');
 	const { customers, isLoading, error, createCustomer } = useCustomers(
 		client,
@@ -96,7 +97,7 @@ export function CustomersListScreen({
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 
