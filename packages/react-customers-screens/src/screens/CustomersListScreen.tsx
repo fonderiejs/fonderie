@@ -1,5 +1,5 @@
 import type { CustomersClient, ICustomerDTO } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useCustomers } from '@fonderie/react-customers';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -17,6 +17,7 @@ export function CustomersListScreen({
 	locale,
 }: ICustomersListScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [search, setSearch] = useState('');
 	const { customers, isLoading, error, createCustomer, refresh } = useCustomers(
 		client,
@@ -82,7 +83,7 @@ export function CustomersListScreen({
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 

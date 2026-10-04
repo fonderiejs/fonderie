@@ -4,7 +4,7 @@ import type {
 	ICustomerNoteDTO,
 	ICustomerPhoneDTO,
 } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import {
 	useCustomer,
 	useCustomerEmails,
@@ -29,6 +29,7 @@ export const CustomerDetailScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const customerBound = useCustomer(props.client, props.customerId, 1);
 		const emailsBound = useCustomerEmails(props.client, props.customerId);
 		const phonesBound = useCustomerPhones(props.client, props.customerId);
@@ -194,7 +195,7 @@ export const CustomerDetailScreen = defineComponent({
 				return h(
 					'p',
 					{ style: styles.error, role: 'alert' },
-					customerBound.error.value.explanation,
+					errorText(customerBound.error.value),
 				);
 
 			return h('div', { style: styles.container }, [

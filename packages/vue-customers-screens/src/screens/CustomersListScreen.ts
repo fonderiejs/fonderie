@@ -1,5 +1,5 @@
 import type { CustomersClient, ICustomerDTO, IListCustomersInput } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useCustomers } from '@fonderie/vue-customers';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -17,6 +17,7 @@ export const CustomersListScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const search = ref('');
 		const firstName = ref('');
 		const lastName = ref('');
@@ -117,7 +118,7 @@ export const CustomersListScreen = defineComponent({
 					h('button', { type: 'submit', style: styles.createButton }, t('customers.list.create')),
 				]),
 				bound.error.value
-					? h('p', { style: styles.error, role: 'alert' }, bound.error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(bound.error.value))
 					: null,
 				bound.isLoading.value
 					? h('p', { style: styles.status }, t('customers.loading'))

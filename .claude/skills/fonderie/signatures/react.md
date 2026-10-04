@@ -51,6 +51,8 @@ function useFonderieSubClient<T>(explicit: T | undefined, select: (client: Fonde
 
 function useWorkspaceId(source?: unknown): string | undefined
 
+function useUiError(source?: object | undefined, locale?: string | undefined): (error: IApiErrorLike | null | undefined) => string
+
 function useUiLocale(source?: object | undefined, locale?: string | undefined): string
 
 function useUiT(source?: object | undefined, locale?: string | undefined): UiT

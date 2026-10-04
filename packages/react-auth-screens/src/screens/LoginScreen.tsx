@@ -1,6 +1,6 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
 import { isMfaRequired } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useLogin } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -26,6 +26,7 @@ export function LoginScreen({
 }: ILoginScreenProps) {
 	const { login, isLoading, error } = useLogin(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
@@ -77,7 +78,7 @@ export function LoginScreen({
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 

@@ -1,5 +1,5 @@
 import type { AuthClient, IVerifyEmailResult } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useVerifyEmail } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -14,6 +14,7 @@ export interface IVerifyEmailScreenProps {
 export function VerifyEmailScreen({ client, onVerified, locale }: IVerifyEmailScreenProps) {
 	const { verifyEmail, resend, resent, isLoading, error } = useVerifyEmail(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [code, setCode] = useState('');
 
 	const handleSubmit = async (event: FormEvent) => {
@@ -56,7 +57,7 @@ export function VerifyEmailScreen({ client, onVerified, locale }: IVerifyEmailSc
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 

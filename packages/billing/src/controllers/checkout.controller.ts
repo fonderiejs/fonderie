@@ -151,6 +151,8 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 						HTTP.UNPROCESSABLE,
 						'PLAN_UNCHANGED',
 						`Already on ${planName} (${interval}); nothing to change.`,
+						// Values for a client that writes the message in its own language.
+						{ plan: planName, interval },
 					);
 				}
 				if (current.status === 'past_due' || current.status === 'unpaid') {

@@ -51,6 +51,8 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 						HTTP.UNPROCESSABLE,
 						'ASSET_TOO_LARGE',
 						`Image exceeds the ${maxBytes}-byte limit.`,
+						// Values for a client that writes the message in its own language.
+						{ maxBytes, maxMegabytes: Math.round((maxBytes / 1_048_576) * 10) / 10 },
 					);
 				}
 
@@ -72,6 +74,8 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 						HTTP.UNPROCESSABLE,
 						'ASSET_TOO_LARGE',
 						`Image exceeds the ${maxBytes}-byte limit.`,
+						// Values for a client that writes the message in its own language.
+						{ maxBytes, maxMegabytes: Math.round((maxBytes / 1_048_576) * 10) / 10 },
 					);
 				}
 
@@ -85,6 +89,7 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 						HTTP.UNPROCESSABLE,
 						'ASSET_UNSUPPORTED',
 						`Unsupported image type.${why ? ` ${why}` : ''} Allowed: ${allowed.join(', ')}.`,
+						{ allowed: allowed.map((t) => t.replace('image/', '').toUpperCase()).join(', ') },
 					);
 				}
 

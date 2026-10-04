@@ -1,5 +1,5 @@
 import type { UiMessageKey, WorkspacesClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useInvitations } from '@fonderie/react-workspaces';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -18,6 +18,7 @@ export function InviteMembersScreen({
 }: IInviteMembersScreenProps) {
 	const { invitations, isLoading, error, invite, cancelInvitation } = useInvitations(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	// A status Fonderie does not know shows as sent by the server.
 	const statusLabel = (status: string) => {
 		const key = `workspaces.invitationStatus.${status}` as UiMessageKey;
@@ -61,7 +62,7 @@ export function InviteMembersScreen({
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 

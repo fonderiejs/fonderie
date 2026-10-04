@@ -5,6 +5,7 @@ export {
 	useFonderieClient,
 	useFonderieSubClient,
 	useWorkspaceId,
+	useUiError,
 	useUiLocale,
 	useUiT,
 } from './provider';

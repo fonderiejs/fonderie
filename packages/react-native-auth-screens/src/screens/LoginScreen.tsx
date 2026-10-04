@@ -1,6 +1,6 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
 import { isMfaRequired } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useLogin } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -33,6 +33,7 @@ export function LoginScreen({
 }: ILoginScreenProps) {
 	const { login, isLoading, error } = useLogin(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
@@ -76,7 +77,7 @@ export function LoginScreen({
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 

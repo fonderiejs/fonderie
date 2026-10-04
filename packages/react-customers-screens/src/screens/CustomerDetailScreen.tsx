@@ -1,5 +1,5 @@
 import type { CustomersClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import {
 	useCustomer,
 	useCustomerEmails,
@@ -25,6 +25,7 @@ export function CustomerDetailScreen({
 	locale,
 }: ICustomerDetailScreenProps) {
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const { customer, isLoading, error, updateCustomer } = useCustomer(client, customerId, 1);
 	const { emails, addEmail, setPrimaryEmail, removeEmail } = useCustomerEmails(client, customerId);
 	const { phones, addPhone, setPrimaryPhone, removePhone } = useCustomerPhones(client, customerId);
@@ -99,7 +100,7 @@ export function CustomerDetailScreen({
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 

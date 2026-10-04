@@ -299,6 +299,6 @@ export type { IQueryEntry, IQueryFetchOptions, IQueryPersistOptions, IQueryStora
 
 // The prebuilt screens' words in en / fr / es / zh-Hans / zh-Hant, and the UI
 // language every client carries (setLocale / getLocale / onLocaleChange).
-export { UI_DICTIONARIES, UI_LANGUAGES, canonicalLocaleTag, createUiT, formatPersonName, resolveUiLanguage } from './ui-i18n';
-export type { UiLanguage, UiMessageKey, UiMessageParams, UiMessages, UiT } from './ui-i18n';
+export { UI_DICTIONARIES, UI_LANGUAGES, canonicalLocaleTag, createUiT, formatPersonName, localizeApiError, resolveUiLanguage } from './ui-i18n';
+export type { IApiErrorLike, UiLanguage, UiMessageKey, UiMessageParams, UiMessages, UiT } from './ui-i18n';
 export { UiLocale, detectDeviceLocale, uiLocaleFor } from './ui-locale';

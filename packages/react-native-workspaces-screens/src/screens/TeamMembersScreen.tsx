@@ -1,6 +1,6 @@
 import type { FonderieApiError, IMemberDTO, UiMessageKey, WorkspacesClient } from '@fonderie/client';
 import { formatPersonName } from '@fonderie/client';
-import { useUiLocale, useUiT } from '@fonderie/react';
+import { useUiError, useUiLocale, useUiT } from '@fonderie/react';
 import { useMembers } from '@fonderie/react-native-workspaces';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -21,6 +21,7 @@ export function TeamMembersScreen({
 }: ITeamMembersScreenProps) {
 	const { members, isLoading, error, removeMember } = useMembers(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const uiLocale = useUiLocale(client, locale);
 	// The member's name in the order the UI language writes it; their email when
 	// they have no name; the id only as a last resort.
@@ -55,7 +56,7 @@ export function TeamMembersScreen({
 	if (error && !removeError)
 		return (
 			<Text style={styles.error} accessibilityRole="alert">
-				{error.explanation}
+				{errorText(error)}
 			</Text>
 		);
 
@@ -96,7 +97,7 @@ export function TeamMembersScreen({
 
 			{removeError && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{removeError.explanation}
+					{errorText(removeError)}
 				</Text>
 			)}
 

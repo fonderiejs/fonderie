@@ -1,6 +1,6 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
 import { isMfaRequired } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useLogin } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -22,6 +22,7 @@ export const LoginScreen = defineComponent({
 	setup(props, { emit }) {
 		const { login, isLoading, error } = useLogin(props.client);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const email = ref('');
 		const password = ref('');
 
@@ -65,7 +66,7 @@ export const LoginScreen = defineComponent({
 					},
 				}),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h(
 					'button',

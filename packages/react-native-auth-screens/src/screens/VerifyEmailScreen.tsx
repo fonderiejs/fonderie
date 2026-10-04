@@ -1,5 +1,5 @@
 import type { AuthClient, IVerifyEmailResult } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useVerifyEmail } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -21,6 +21,7 @@ export interface IVerifyEmailScreenProps {
 export function VerifyEmailScreen({ client, onVerified, locale }: IVerifyEmailScreenProps) {
 	const { verifyEmail, resend, resent, isLoading, error } = useVerifyEmail(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [code, setCode] = useState('');
 
 	const handleSubmit = async () => {
@@ -58,7 +59,7 @@ export function VerifyEmailScreen({ client, onVerified, locale }: IVerifyEmailSc
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 

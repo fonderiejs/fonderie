@@ -1,5 +1,5 @@
 import type { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/vue';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useWorkspaces } from '@fonderie/vue-workspaces';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -23,6 +23,7 @@ export const AcceptInvitationScreen = defineComponent({
 		// isLoading/error track that fetch, so the accept action keeps local state.
 		const { acceptInvitation } = useWorkspaces(props.client);
 		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const accepted = ref(false);
 		const isAccepting = ref(false);
 		const acceptError = ref<FonderieApiError | null>(null);
@@ -59,7 +60,7 @@ export const AcceptInvitationScreen = defineComponent({
 				h('h1', { style: [styles.title, { marginBottom: '12px' }] }, t('workspaces.accept.title')),
 				h('p', { style: styles.body }, t('workspaces.accept.body')),
 				acceptError.value
-					? h('p', { style: styles.error, role: 'alert' }, acceptError.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(acceptError.value))
 					: null,
 				h(
 					'button',

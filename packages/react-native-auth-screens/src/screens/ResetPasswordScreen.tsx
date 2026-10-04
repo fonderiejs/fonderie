@@ -1,5 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
-import { useUiT } from '@fonderie/react';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useResetPassword } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -30,6 +30,7 @@ export function ResetPasswordScreen({
 }: IResetPasswordScreenProps) {
 	const { resetPassword, isLoading, error, done } = useResetPassword(client);
 	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [pin, setPin] = useState(initialPin ?? '');
 	const [password, setPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
@@ -110,7 +111,7 @@ export function ResetPasswordScreen({
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 
