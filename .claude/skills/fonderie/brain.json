@@ -4,11 +4,11 @@
     "adapter-express": "5.4.9",
     "adapter-hono": "6.3.7",
     "adapter-koa": "5.4.10",
-    "admin": "1.7.10",
+    "admin": "1.7.11",
     "audit": "5.2.17",
     "auth": "7.22.0",
     "billing": "10.8.0",
-    "client": "3.9.0",
+    "client": "3.10.0",
     "config": "6.6.7",
     "core": "0.31.0",
     "courier": "7.15.0",
@@ -150,7 +150,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "1.7.10",
+      "version": "1.7.11",
       "stability": "experimental",
       "requires": [
         "core",
@@ -805,7 +805,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.9.0",
+      "version": "3.10.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
