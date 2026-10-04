@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-workspaces",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "React Native workspaces hooks for Fonderie — re-exports @fonderie/react-workspaces (no platform-specific code: no storage, no DOM/RN APIs).",
 	"keywords": [
 		"fonderiejs",
@@ -34,8 +34,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^3.7.0",
-		"@fonderie/react-workspaces": "^0.8.0"
+		"@fonderie/client": "^3.8.0",
+		"@fonderie/react-workspaces": "^0.9.0"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"
