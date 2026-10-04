@@ -1989,7 +1989,7 @@ interface IRemoteConfigState {
     error: unknown;
 }
 
-const ADMIN_LOCALES: readonly ["en", "fr", "es"]
+const ADMIN_LOCALES: readonly ["en", "fr", "es", "zh-Hans", "zh-Hant"]
 
 const DEFAULT_ADMIN_LOCALE: AdminLocale
 
@@ -1997,15 +1997,15 @@ const adminLocaleNames: LocaleMap<string>
 
 const adminLocaleTags: LocaleMap<string>
 
-function createAdminT(locale?: "en" | "fr" | "es" | undefined): (key: AdminMessageKey, params?: AdminMessageParams | undefined) => string
+function createAdminT(locale?: "en" | "fr" | "es" | "zh-Hans" | "zh-Hant" | undefined): (key: AdminMessageKey, params?: AdminMessageParams | undefined) => string
 
-function detectAdminLocale(languages?: readonly string[]): "en" | "fr" | "es"
+function detectAdminLocale(languages?: readonly string[]): "en" | "fr" | "es" | "zh-Hans" | "zh-Hant"
 
-function formatAdminDate(value: string | number | Date, locale?: "en" | "fr" | "es" | undefined, style?: "date" | "datetime" | "time"): string
+function formatAdminDate(value: string | number | Date, locale?: "en" | "fr" | "es" | "zh-Hans" | "zh-Hant" | undefined, style?: "date" | "datetime" | "time"): string
 
-function isAdminLocale(value: unknown): value is "en" | "fr" | "es"
+function isAdminLocale(value: unknown): value is "en" | "fr" | "es" | "zh-Hans" | "zh-Hant"
 
-function localizeReason(item: IReasonLike, locale?: "en" | "fr" | "es" | undefined): string
+function localizeReason(item: IReasonLike, locale?: "en" | "fr" | "es" | "zh-Hans" | "zh-Hant" | undefined): string
 
 type AdminLocale = (typeof ADMIN_LOCALES)[number];
 
