@@ -1,5 +1,13 @@
 # @fonderie/vue-customers
 
+## 0.7.1
+
+### Patch Changes
+
+- Updated dependencies [09e227e]
+  - @fonderie/client@3.11.0
+  - @fonderie/vue@0.10.0
+
 ## 0.7.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-auth-screens",
-	"version": "0.4.3",
+	"version": "0.5.0",
 	"description": "Pre-built Vue auth screens for Fonderie — login, register, forgot password.",
 	"keywords": [
 		"fonderiejs",
@@ -35,9 +35,9 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^3.0.0",
-		"@fonderie/vue": "^0.9.0",
-		"@fonderie/vue-auth": "^0.12.3"
+		"@fonderie/client": "^3.11.0",
+		"@fonderie/vue": "^0.10.0",
+		"@fonderie/vue-auth": "^0.12.8"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"
