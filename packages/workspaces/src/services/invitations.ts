@@ -45,6 +45,9 @@ export async function createInvitation(
 	const token = generateToken();
 	const pin = generatePin();
 	const expiresAt = new Date(Date.now() + parseTtl(opts.ttl ?? '7d'));
+	// Addresses are stored lower-case: one pending invitation per address
+	// (idx_fwi_one_pending), and the PIN lookup compares case-insensitively.
+	const email = opts.email.trim().toLowerCase();
 
 	const [invitation] = await store.query<IInvitation>(
 		`INSERT INTO fonderie_workspace_invitations
@@ -52,17 +55,18 @@ export async function createInvitation(
 		 VALUES ($1, $2, $3, $4, $5, $6)
 		 ON CONFLICT DO NOTHING
 		 RETURNING ${SELECT_INV}`,
-		[opts.workspaceId, opts.email, opts.roleId, token, pin, expiresAt],
+		[opts.workspaceId, email, opts.roleId, token, pin, expiresAt],
 	);
 
 	if (!invitation) {
-		// Already pending — update it
+		// Already pending for this address — refresh it (new codes, new expiry,
+		// the role of the latest invite) instead of stacking a second one.
 		const [updated] = await store.query<IInvitation>(
 			`UPDATE fonderie_workspace_invitations
 			 SET token = $4, pin = $5, expires_at = $6, role_id = $3, status = 'PENDING'
-			 WHERE workspace_id = $1 AND email = $2 AND status = 'PENDING'
+			 WHERE workspace_id = $1 AND lower(email) = $2 AND status = 'PENDING'
 			 RETURNING ${SELECT_INV}`,
-			[opts.workspaceId, opts.email, opts.roleId, token, pin, expiresAt],
+			[opts.workspaceId, email, opts.roleId, token, pin, expiresAt],
 		);
 		if (!updated) throw new Error('Failed to create invitation');
 		return updated;
@@ -82,6 +86,28 @@ export async function listInvitations(
 		 ORDER BY created_at DESC`,
 		[workspaceId],
 	);
+}
+
+/**
+ * Send a pending invitation again: new token and PIN (the previous ones stop
+ * working — the email they were in may be the reason for resending), a fresh
+ * expiry. Null when there is no pending invitation with that id here.
+ */
+export async function resendInvitation(
+	invitationId: string,
+	workspaceId: string,
+	ttl: string,
+	store: IStoreAdapter,
+): Promise<IInvitation | null> {
+	const expiresAt = new Date(Date.now() + parseTtl(ttl));
+	const [row] = await store.query<IInvitation>(
+		`UPDATE fonderie_workspace_invitations
+		 SET token = $3, pin = $4, expires_at = $5
+		 WHERE id = $1 AND workspace_id = $2 AND status = 'PENDING'
+		 RETURNING ${SELECT_INV}`,
+		[invitationId, workspaceId, generateToken(), generatePin(), expiresAt],
+	);
+	return row ?? null;
 }
 
 export async function cancelInvitation(
@@ -121,6 +147,32 @@ async function assertRoleAssignable(
 	if (rows.length === 0) throw new Error('Invitation role is no longer assignable');
 }
 
+// Single use: the status flip is conditional and runs first, so of two
+// concurrent accepts of one invitation (a forwarded link, a double tap) exactly
+// one claims it and grants the role; the other is refused.
+async function redeem(
+	inv: { id: string; workspaceId: string; roleId: string },
+	userId: string,
+	store: IStoreAdapter,
+): Promise<void> {
+	await store.transaction(async (tx) => {
+		const claimed = await tx.query<{ id: string }>(
+			`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED'
+			 WHERE id = $1 AND status = 'PENDING'
+			 RETURNING id`,
+			[inv.id],
+		);
+		if (claimed.length === 0) throw new Error('Invitation already used');
+		await tx.query(
+			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
+			 VALUES ($1, $2, $3, true)
+			 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
+			 SET confirmed = true, removed = false`,
+			[userId, inv.workspaceId, inv.roleId],
+		);
+	});
+}
+
 export async function acceptInvitationByPin(
 	opts: { pin: string; userId: string; email: string },
 	store: IStoreAdapter,
@@ -146,20 +198,7 @@ export async function acceptInvitationByPin(
 	if (new Date() > new Date(inv.expiresAt)) throw new Error('Invitation expired');
 	await assertRoleAssignable(inv.roleId, inv.workspaceId, store);
 
-	await store.transaction(async (tx) => {
-		await Promise.all([
-			tx.query(
-				`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
-				 VALUES ($1, $2, $3, true)
-				 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
-				 SET confirmed = true, removed = false`,
-				[opts.userId, inv.workspaceId, inv.roleId],
-			),
-			tx.query(`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED' WHERE id = $1`, [
-				inv.id,
-			]),
-		]);
-	});
+	await redeem(inv, opts.userId, store);
 
 	return { workspaceId: inv.workspaceId, roleId: inv.roleId };
 }
@@ -185,20 +224,7 @@ export async function acceptInvitationByToken(
 	if (new Date() > new Date(inv.expiresAt)) throw new Error('Invitation expired');
 	await assertRoleAssignable(inv.roleId, inv.workspaceId, store);
 
-	await store.transaction(async (tx) => {
-		await Promise.all([
-			tx.query(
-				`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
-				 VALUES ($1, $2, $3, true)
-				 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
-				 SET confirmed = true, removed = false`,
-				[userId, inv.workspaceId, inv.roleId],
-			),
-			tx.query(`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED' WHERE id = $1`, [
-				inv.id,
-			]),
-		]);
-	});
+	await redeem(inv, userId, store);
 
 	return { workspaceId: inv.workspaceId, roleId: inv.roleId };
 }

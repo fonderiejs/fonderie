@@ -67,6 +67,18 @@ export interface IMemberDTO {
 	firstName: string;
 	lastName: string;
 	profileImageUrl: string;
+	/** Every role this person holds here, earliest first. */
+	roles: IMemberRoleDTO[];
+	/** The workspace owner. */
+	isOwner: boolean;
+	/** The owner, or a holder of a manager role — may manage the team. */
+	isManager: boolean;
+}
+
+export interface IMemberRoleDTO {
+	id: string;
+	name: string;
+	isSystem: boolean;
 }
 
 export interface IInvitationDTO {
@@ -78,6 +90,8 @@ export interface IInvitationDTO {
 	status: string;
 	expiresAt: string;
 	createdAt: string;
+	/** Past its expiry: still listed so a manager can resend it, but no longer acceptable. */
+	isExpired: boolean;
 }
 
 export interface IWorkspaceSettingsDTO {
@@ -141,6 +155,11 @@ export function toMemberDTO(m: IMember): IMemberDTO {
 		firstName: stringOrEmpty(m.firstName),
 		lastName: stringOrEmpty(m.lastName),
 		profileImageUrl: stringOrEmpty(m.profileImageUrl),
+		roles: Array.isArray(m.roles)
+			? m.roles.map((r) => ({ id: stringOrEmpty(r.id), name: stringOrEmpty(r.name), isSystem: booleanOrFalse(r.isSystem) }))
+			: m.roleId ? [{ id: stringOrEmpty(m.roleId), name: stringOrEmpty(m.roleName), isSystem: false }] : [],
+		isOwner: booleanOrFalse(m.isOwner),
+		isManager: booleanOrFalse(m.isManager),
 	};
 }
 
@@ -158,6 +177,7 @@ export function toInvitationDTO(inv: IInvitation): IInvitationDTO {
 		status: stringOrEmpty(inv.status),
 		expiresAt: dateOrEmpty(inv.expiresAt),
 		createdAt: dateOrEmpty(inv.createdAt),
+		isExpired: !!inv.expiresAt && new Date(inv.expiresAt).getTime() <= Date.now(),
 	};
 }
 
