@@ -1,5 +1,12 @@
 # @fonderie/rate-limit
 
+## 4.0.32
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+
 ## 4.0.31
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @fonderie/billing
 
+## 10.6.1
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+
 ## 10.6.0
 
 ### Minor Changes
