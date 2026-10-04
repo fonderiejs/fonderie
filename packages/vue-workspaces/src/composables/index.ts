@@ -1,3 +1,5 @@
+export type { IUseCurrentWorkspaceReturn } from './useCurrentWorkspace';
+export { useCurrentWorkspace } from './useCurrentWorkspace';
 export type { IUseInvitationsReturn } from './useInvitations';
 export { useInvitations } from './useInvitations';
 export type { IUseMemberRolesReturn } from './useMemberRoles';

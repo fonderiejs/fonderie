@@ -5,7 +5,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 
 export interface IAcceptInvitationScreenProps {
 	client?: WorkspacesClient;
-	// The invitation pin/token from the invite email.
+	// The token from the invitation link (…/invite/<token>) — not the PIN.
 	token: string;
 	onAccepted?: (workspaceId: string) => void;
 	onNavigateBack?: () => void;
@@ -29,7 +29,7 @@ export function AcceptInvitationScreen({
 		setAcceptError(null);
 		try {
 			// acceptInvitation resolves to the joined workspace's id.
-			const workspaceId = await acceptInvitation(token);
+			const workspaceId = await acceptInvitation({ token });
 			setAccepted(true);
 			onAccepted?.(workspaceId);
 		} catch (err) {

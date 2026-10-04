@@ -1,4 +1,10 @@
-import type { FonderieApiError, ICreateWorkspaceInput, IWorkspaceDTO, WorkspacesClient } from '@fonderie/client';
+import type {
+	FonderieApiError,
+	IAcceptInvitationInput,
+	ICreateWorkspaceInput,
+	IWorkspaceDTO,
+	WorkspacesClient,
+} from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
 import { useCallback } from 'react';
 
@@ -9,7 +15,13 @@ export interface IUseWorkspacesReturn {
 	error: FonderieApiError | null;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
-	acceptInvitation: (pin: string) => Promise<string>;
+	/** Join with the link's `{ token }` or the email's PIN (`{ pin }` or a bare string); resolves to the workspace id. */
+	acceptInvitation: (code: string | IAcceptInvitationInput) => Promise<string>;
+	/**
+	 * Leave the SELECTED workspace (the owner must transfer ownership first).
+	 * The list refreshes; switch the app to another workspace afterwards.
+	 */
+	leaveWorkspace: () => Promise<void>;
 }
 
 const NONE: IWorkspaceDTO[] = [];
@@ -30,7 +42,15 @@ export function useWorkspaces(client?: WorkspacesClient): IUseWorkspacesReturn {
 		[resolved, w.run],
 	);
 	const acceptInvitation = useCallback(
-		(pin: string) => w.run(async () => (await resolved.acceptInvitation(pin)).result.workspaceId),
+		(code: string | IAcceptInvitationInput) =>
+			w.run(async () => (await resolved.acceptInvitation(code)).result.workspaceId),
+		[resolved, w.run],
+	);
+	const leaveWorkspace = useCallback(
+		() =>
+			w.run(async () => {
+				await resolved.leaveWorkspace();
+			}),
 		[resolved, w.run],
 	);
 	return {
@@ -40,5 +60,6 @@ export function useWorkspaces(client?: WorkspacesClient): IUseWorkspacesReturn {
 		refresh: q.refresh,
 		createWorkspace,
 		acceptInvitation,
+		leaveWorkspace,
 	};
 }

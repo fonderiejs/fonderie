@@ -239,7 +239,12 @@ export async function updateWorkspaceSettings(
 ): Promise<IWorkspaceSettings> {
 	await store.query(
 		`UPDATE fonderie_workspaces
-		 SET settings   = settings || jsonb_build_object('settings', $2::jsonb),
+		 -- Merge into the nested object: '||' at the top level replaced the
+		 -- whole 'settings' key, so saving one setting erased the others.
+		 SET settings   = jsonb_set(
+		                    settings, '{settings}',
+		                    COALESCE(settings->'settings', '{}'::jsonb) || $2::jsonb
+		                  ),
 		     updated_at = now()
 		 WHERE id = $1`,
 		[id, JSON.stringify(settings)],
