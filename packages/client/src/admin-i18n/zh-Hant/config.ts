@@ -1,0 +1,75 @@
+import type en from '../en/config';
+
+const config: typeof en = {
+	environment: '環境',
+	reveal: '顯示',
+	type: {
+		text: '文字',
+		number: '數字',
+		onOff: '開/關',
+		json: 'JSON',
+	},
+	shape: {
+		text: '文字',
+		number: '數字',
+		onOff: '開/關',
+		list: '清單',
+		object: '物件',
+		empty: '空白',
+	},
+	list: {
+		title: '設定',
+		newEntry: '新增項目',
+		hint: '功能旗標與執行階段設定：文字、數字、開/關或 JSON。應用程式無需重新部署即可讀取。',
+		empty: '尚無設定項目。',
+		emptyCta: '建立一個項目，即可在不重新部署的情況下切換功能或調整設定。',
+		emptyInEnv: '{env} 中沒有設定。「all」中的項目在此仍然適用。',
+		publicBadge: '公開',
+		publicTitle: '透過 GET /config/public 提供給前端',
+		publicSummary: '前端收到的內容（{n} 個公開鍵）',
+		publicSummaryOne: '前端收到的內容（1 個公開鍵）',
+		publicHint:
+			'即 {route} 的回應內容，無需驗證，任何人皆可讀取。只會顯示應用程式列為公開的鍵。',
+		secretsTitle: '機密',
+		newSecret: '新增機密',
+		secretsHint: '靜態加密儲存；數值在顯示前皆為隱藏。',
+		secretsEmpty: '尚無機密。',
+		secretsEmptyInEnv: '{env} 中沒有機密。',
+	},
+	editor: {
+		newEntry: '新增設定項目',
+		newSecret: '新增機密',
+		environmentLabel: '環境：',
+		key: '鍵',
+		environmentHint:
+			'「all」由所有環境共用；指定名稱的環境（production、staging…）會在該環境覆寫它。',
+		value: '值',
+		newValue: '新值',
+		valuePlaceholder: 'true · 42 · 今晚排定維護 · {"ids": ["m1", "m2"]}',
+		detected: '偵測到：',
+		saveAsText: '改以文字儲存',
+		on: '開（true）',
+		off: '關（false）',
+		type: '類型：',
+		changeType: '變更類型…',
+		changeTypeWarning:
+			'變更類型會改變所有讀取此鍵的畫面所收到的內容。請先檢查讀取它的程式碼。',
+		description: '說明',
+		conflict:
+			'自您開啟後，已有人變更此項目。請重新載入以查看其變更，再重新編輯。',
+		confirmDelete: '要刪除「{key}」嗎？所有讀取它的地方將改用其預設值。',
+		confirmDeleteIn: '要從 {env} 刪除「{key}」嗎？所有讀取它的地方將改用其預設值。',
+		history: '歷程記錄',
+		unknownActor: '不明',
+		rollBack: '還原',
+	},
+	errors: {
+		keyRequired: '請輸入鍵。',
+		keyPattern: '須以字母開頭；可使用字母、數字、「.」、「_」或「-」（最多 128 個字元）。',
+		exists: '「{key}」已存在於 {env}，請從清單開啟以編輯。',
+		number: '請輸入數字。',
+		boolean: '請使用 true 或 false。',
+		json: '不是有效的 JSON：{detail}',
+	},
+};
+export default config;
