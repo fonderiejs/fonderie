@@ -76,6 +76,8 @@ test('translationProblems: missing language, missing part, and a dropped variabl
 			locales: {
 				fr: { subject: 'Réinitialiser', text: 'Code {{pin}}', html: '<p>{{pin}}</p>{{#link}}<a>aller</a>{{/link}}' },
 				es: { subject: 'Restablecer', text: 'Código {{pin}}', html: '<p>{{pin}}</p>{{#link}}<a>ir</a>{{/link}}' },
+				'zh-Hans': { subject: '重置', text: '验证码 {{pin}}', html: '<p>{{pin}}</p>{{#link}}<a>前往</a>{{/link}}' },
+				'zh-Hant': { subject: '重設', text: '驗證碼 {{pin}}', html: '<p>{{pin}}</p>{{#link}}<a>前往</a>{{/link}}' },
 			},
 		},
 	};
@@ -93,5 +95,20 @@ test('translationProblems: missing language, missing part, and a dropped variabl
 		'reset (fr): html differs in presence',
 		'reset (fr): text variables [] ≠ English [pin]',
 		'reset (fr): html variables [] ≠ English [pin]',
+		'reset: no zh-Hans copy',
+		'reset: no zh-Hant copy',
 	]);
+});
+
+test('a Chinese reader gets the script they read, from any tag', async () => {
+	const { localeCopyKeys, localeScriptTag, localeChain, defineLocales } = await import('../locale');
+	for (const [tag, script] of [['zh', 'zh-Hans'], ['zh-CN', 'zh-Hans'], ['zh-SG', 'zh-Hans'], ['zh-TW', 'zh-Hant'], ['zh-HK', 'zh-Hant'], ['zh-MO', 'zh-Hant'], ['zh-Hant', 'zh-Hant'], ['zh-Hans-HK', 'zh-Hans']] as const) {
+		assert.equal(localeScriptTag(tag), script, tag);
+	}
+	assert.equal(localeScriptTag('fr-CA'), null, 'single-script languages are left alone');
+	assert.deepEqual(localeCopyKeys('zh-TW'), ['zh-TW', 'zh-Hant', 'zh']);
+	assert.deepEqual(localeCopyKeys('fr-CA'), ['fr-CA', 'fr']);
+	// A saved zh-Hant template reaches a zh-HK reader — never a zh-Hans one.
+	assert.deepEqual(localeChain('zh-HK', defineLocales()), ['zh-HK', 'zh-Hant']);
+	assert.deepEqual(localeChain('fr-CA', defineLocales()), ['fr-CA']);
 });

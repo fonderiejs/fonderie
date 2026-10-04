@@ -1,6 +1,10 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
+import type { ILocaleSettings } from '@fonderie/core';
+import { defineLocales } from '@fonderie/core';
+
 import type { ICourierConfig } from './config';
+import { applyFormats } from './format';
 import type { ICourierMessage, ICourierChannel, ITemplateResolver } from './types';
 import {
 	insertMessageLog,
@@ -25,6 +29,13 @@ export class Dispatcher {
 		private resolver: ITemplateResolver,
 		private store?: IStoreAdapter,
 	) {}
+
+	private locales: ILocaleSettings = defineLocales();
+
+	/** The app's locales — the default language when a message names none. */
+	setLocales(locales: ILocaleSettings): void {
+		this.locales = locales;
+	}
 
 	registerChannel(channel: ICourierChannel): this {
 		this.channels.set(channel.name, channel);
@@ -72,7 +83,7 @@ export class Dispatcher {
 		// The configured product name is available to EVERY template without each
 		// call site remembering to pass it. Spread first so a message that supplies
 		// its own brandName still wins (a multi-tenant app may brand per workspace).
-		const data = this.config.brandName
+		const withBrand = this.config.brandName
 			? { brandName: this.config.brandName, ...message.data }
 			: message.data;
 		// Whose language: the sender's explicit choice, else the recipient's own
@@ -80,6 +91,9 @@ export class Dispatcher {
 		// Senders without a session (billing webhooks, invitations) used to pass
 		// nothing, so a French-speaking customer got their receipt in English.
 		const locale = message.locale ?? (await this.accountLocale(message)) ?? message.fallbackLocale;
+		// Amounts and dates the sender marked under $format, in that same
+		// language: 19,99 $ for fr-CA, $19.99 for en-CA — not one fixed locale.
+		const data = applyFormats(withBrand, locale ?? this.locales.default);
 		const template = await this.resolver.resolve(message.type, data, locale);
 
 		await Promise.allSettled(

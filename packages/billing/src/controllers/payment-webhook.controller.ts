@@ -9,7 +9,7 @@ import type { SubscriberType } from '../types';
 import type { INormalizedPaymentFailure, INormalizedReversal } from '../providers/types';
 import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
-import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
+import { normalizeCurrency, subscriberEventFields, formatWalletAmount, localizedAmounts } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { buildReceiptData } from '../services/receipt';
 import { upsertWalletCustomer } from '../services/wallet-customers';
@@ -179,6 +179,10 @@ export function paymentWebhookController(
 						sub.currency,
 						config.wallet?.precision ?? 2,
 					),
+					...localizedAmounts({
+						creditsDisplay: { amount: result.reversed, currency: sub.currency, precision: config.wallet?.precision ?? 2 },
+						balanceAfterDisplay: { amount: result.balance, currency: sub.currency, precision: config.wallet?.precision ?? 2 },
+					}),
 					kind: reversal.kind,
 					refundAmount: reversal.amount?.toString() ?? null,
 					refundCurrency: reversal.currency,

@@ -4,6 +4,8 @@ import { withTranslations } from '@fonderie/core';
 import { MESSAGE_KEYS, type WorkspacesMessageKey } from './config';
 import { ES_TEMPLATES } from './templates.es';
 import { FR_TEMPLATES } from './templates.fr';
+import { ZH_HANS_TEMPLATES } from './templates.zh-Hans';
+import { ZH_HANT_TEMPLATES } from './templates.zh-Hant';
 
 // Built-in default copy for @fonderie/workspaces notifications, shipped so the
 // email renders out of the box (never the raw-JSON fallback). `html` is a BODY
@@ -36,9 +38,15 @@ Enter this code on the invitation screen to join the team.`,
 	},
 } satisfies Record<WorkspacesMessageKey, IDefaultTemplate>;
 
-// The English above, with French and Spanish attached. Courier sends the one
+// The English above, with French, Spanish and Chinese (Simplified and
+// Traditional) attached. Courier sends the one
 // matching the recipient's language; anything else gets the English.
-export const DEFAULT_TEMPLATES = withTranslations(EN_TEMPLATES, { fr: FR_TEMPLATES, es: ES_TEMPLATES });
+export const DEFAULT_TEMPLATES = withTranslations(EN_TEMPLATES, {
+	fr: FR_TEMPLATES,
+	es: ES_TEMPLATES,
+	'zh-Hans': ZH_HANS_TEMPLATES,
+	'zh-Hant': ZH_HANT_TEMPLATES,
+});
 
 // Representative payloads for the coverage test — the full emitted payload
 // (token is passed but unused by the copy: it travels inside acceptUrl).

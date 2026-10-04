@@ -952,6 +952,7 @@
       "dependsOn": [],
       "exports": [
         "OPERATIONS",
+        "COURIER_FORMAT_KEY",
         "FonderieApp",
         "DEFAULT_MAX_BODY_BYTES",
         "DEFAULT_SYSTEM_LOCALE",
@@ -5576,6 +5577,9 @@
     ],
     "configtypechangeerror": [
       "config"
+    ],
+    "courier_format_key": [
+      "core"
     ],
     "fonderieapp": [
       "core"

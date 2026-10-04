@@ -196,6 +196,19 @@ interface ISecurityReport {
 
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
 
+const COURIER_FORMAT_KEY: "$format"
+
+type ICourierFormatValue = {
+    money: {
+        amount: string;
+        currency: string;
+        precision: number;
+    };
+} | {
+    date: string;
+    style?: 'short' | 'medium' | 'long' | 'full';
+};
+
 function background(work: Promise<unknown> | undefined, options?: { settles?: boolean; }): Promise<void>
 
 function backgroundSettled(timeoutMs?: number): Promise<void>
@@ -253,6 +266,10 @@ function defineLocales(config?: ILocaleConfig): ILocaleSettings
 function localeChain(requested: string | null | undefined, settings: ILocaleSettings): string[]
 
 function localeLanguage(tag: string): string
+
+function localeCopyKeys(tag: string): string[]
+
+function localeScriptTag(tag: string): string | null
 
 const SHIPPED_TEMPLATE_LANGUAGES: readonly string[]
 
