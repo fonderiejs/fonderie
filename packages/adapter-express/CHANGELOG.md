@@ -1,5 +1,12 @@
 # @fonderie/adapter-express
 
+## 5.4.8
+
+### Patch Changes
+
+- Updated dependencies [7ec4d32]
+  - @fonderie/core@0.30.0
+
 ## 5.4.7
 
 ### Patch Changes

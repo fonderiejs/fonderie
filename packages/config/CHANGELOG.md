@@ -1,5 +1,12 @@
 # @fonderie/config
 
+## 6.6.6
+
+### Patch Changes
+
+- Updated dependencies [7ec4d32]
+  - @fonderie/core@0.30.0
+
 ## 6.6.5
 
 ### Patch Changes
