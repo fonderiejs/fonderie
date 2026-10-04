@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { ITaxRegistration, IWorkspace, IWorkspaceAddress, IWorkspaceSettings } from '../types';
@@ -91,22 +93,30 @@ export async function createWorkspace(
 	},
 	store: IStoreAdapter,
 ): Promise<IWorkspace> {
-	const [workspace] = await store.query<IWorkspace>(
-		`INSERT INTO fonderie_workspaces (name, slug, owner_id, type, description, plan)
-		 VALUES ($1, $2, $3, $4, $5, $6)
-		 RETURNING ${SELECT_WS}`,
-		[
-			opts.name,
-			opts.slug,
-			opts.ownerId,
-			opts.type ?? 'ORGANIZATION',
-			opts.description ?? null,
-			opts.plan ?? 'free',
-		],
-	);
-
-	if (!workspace) throw new Error('Failed to create workspace');
-	return workspace;
+	// Slugs are unique among live workspaces, but names are not: two
+	// businesses called "Acme Plumbing", or two whose name has no Latin letters
+	// (水管公司 slugs to ''), must both be able to sign up. A taken slug gets a
+	// short random suffix instead of failing the request with a 500.
+	const base = opts.slug || 'workspace';
+	for (let attempt = 0; attempt < 6; attempt++) {
+		const slug = attempt === 0 ? base : `${base}-${randomBytes(3).toString('hex')}`;
+		const [workspace] = await store.query<IWorkspace>(
+			`INSERT INTO fonderie_workspaces (name, slug, owner_id, type, description, plan)
+			 VALUES ($1, $2, $3, $4, $5, $6)
+			 ON CONFLICT (slug) WHERE archived_at IS NULL DO NOTHING
+			 RETURNING ${SELECT_WS}`,
+			[
+				opts.name,
+				slug,
+				opts.ownerId,
+				opts.type ?? 'ORGANIZATION',
+				opts.description ?? null,
+				opts.plan ?? 'free',
+			],
+		);
+		if (workspace) return workspace;
+	}
+	throw new Error('Failed to create workspace: no free slug');
 }
 
 // Returns the new workspace, or null if the personal workspace already exists (idempotent).

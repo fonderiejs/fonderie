@@ -157,3 +157,17 @@ test('settings: language tag, currency and time zone are checked', { skip }, asy
 		assert.equal((await call(token, 'PUT', '/workspaces/settings', bad, ws)).status, 422, JSON.stringify(bad));
 	}
 });
+
+test('two businesses with the same name both get a workspace, each with its own slug', { skip }, async () => {
+	const slugs: string[] = [];
+	for (const name of ['Acme Plumbing', 'Acme Plumbing', '水管公司', '水管公司']) {
+		const { token } = await owner();
+		const w = await call(token, 'POST', '/workspaces', { name });
+		assert.equal(w.status, 201, `${name}: ${JSON.stringify(w)}`);
+		assert.equal(w.result['workspace'].name, name);
+		slugs.push(w.result['workspace'].slug as string);
+	}
+	assert.match(slugs[0]!, /^acme-plumbing(-[0-9a-f]{6})?$/);
+	assert.match(slugs[2]!, /^workspace(-[0-9a-f]{6})?$/);
+	assert.equal(new Set(slugs).size, 4, slugs.join(', '));
+});
