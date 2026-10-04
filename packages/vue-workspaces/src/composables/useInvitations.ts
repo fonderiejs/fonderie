@@ -10,6 +10,8 @@ export interface IUseInvitationsReturn {
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
 	cancelInvitation: (inviteId: string) => Promise<void>;
+	/** Send again with a new link and PIN (the old ones stop working) and a fresh expiry. */
+	resendInvitation: (inviteId: string) => Promise<void>;
 }
 
 const NONE: IInvitationDTO[] = [];
@@ -31,6 +33,10 @@ export function useInvitations(client?: WorkspacesClient): IUseInvitationsReturn
 		cancelInvitation: (inviteId) =>
 			w.run(async () => {
 				await workspaces.cancelInvitation(inviteId);
+			}),
+		resendInvitation: (inviteId) =>
+			w.run(async () => {
+				await workspaces.resendInvitation(inviteId);
 			}),
 	};
 }

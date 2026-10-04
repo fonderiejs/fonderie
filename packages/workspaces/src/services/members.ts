@@ -35,18 +35,182 @@ export async function getMember(
 	return row ?? null;
 }
 
-export async function listMembers(workspaceId: string, store: IStoreAdapter): Promise<IMember[]> {
+/**
+ * One row per PERSON, with every role they hold in `roles` (earliest first).
+ *
+ * Memberships are stored one row per (user, role), so a plain join returns a
+ * person once per role — duplicate list entries, and a "the member's role"
+ * that depends on which row came first. Grouping here means no client ever has
+ * to. `roleId` / `roleName` stay populated (the earliest role) for callers
+ * written against the one-row-per-role shape.
+ *
+ * `managerRoles` are the system-role names that count as managers — the same
+ * list requireManager enforces (default ['ADMIN']).
+ */
+export async function listMembers(
+	workspaceId: string,
+	store: IStoreAdapter,
+	managerRoles: string[] = ['ADMIN'],
+): Promise<IMember[]> {
 	return store.query<IMember>(
-		`SELECT ${SELECT_MEMBER}
+		`SELECT
+		   ruw.user_id                                   AS "userId",
+		   ruw.workspace_id                              AS "workspaceId",
+		   (array_agg(ruw.role_id ORDER BY ruw.created_at, r.name))[1] AS "roleId",
+		   (array_agg(r.name ORDER BY ruw.created_at, r.name))[1]      AS "roleName",
+		   bool_or(ruw.confirmed)                        AS "confirmed",
+		   min(ruw.created_at)                           AS "createdAt",
+		   u.first_name                                  AS "firstName",
+		   u.last_name                                   AS "lastName",
+		   u.email                                       AS "email",
+		   u.profile_image_url                           AS "profileImageUrl",
+		   COALESCE(
+		     json_agg(json_build_object('id', r.id, 'name', r.name, 'isSystem', r.is_system)
+		              ORDER BY ruw.created_at, r.name)
+		       FILTER (WHERE r.id IS NOT NULL),
+		     '[]'::json
+		   )                                             AS "roles",
+		   (w.owner_id = ruw.user_id)                    AS "isOwner",
+		   (w.owner_id = ruw.user_id
+		     OR bool_or(r.is_system AND r.active AND r.name = ANY($2)))  AS "isManager"
 		 FROM fonderie_role_user_workspaces ruw
+		 JOIN fonderie_workspaces w ON w.id = ruw.workspace_id
 		 LEFT JOIN fonderie_roles r ON r.id = ruw.role_id
 		 LEFT JOIN fonderie_users u ON u.id = ruw.user_id
 		 WHERE ruw.workspace_id = $1
 		   AND ruw.removed      = false
 		   AND ruw.suspended    = false
-		 ORDER BY ruw.created_at ASC`,
+		 GROUP BY ruw.user_id, ruw.workspace_id, w.owner_id,
+		          u.first_name, u.last_name, u.email, u.profile_image_url
+		 ORDER BY min(ruw.created_at) ASC`,
+		[workspaceId, managerRoles],
+	);
+}
+
+/**
+ * Seats a workspace occupies against a plan's limit: each PERSON once (a
+ * member with three roles is one seat), the owner never (the owner is the
+ * subscriber, not a seat), plus every pending, unexpired invitation to someone
+ * who is not already a member — an invitation reserves its seat, so a team
+ * cannot invite past its limit across several requests and have every invite
+ * accepted.
+ */
+export async function countOccupiedSeats(workspaceId: string, store: IStoreAdapter): Promise<number> {
+	const [row] = await store.query<{ seats: string }>(
+		`WITH members AS (
+		   SELECT DISTINCT ruw.user_id, lower(u.email) AS email
+		   FROM fonderie_role_user_workspaces ruw
+		   JOIN fonderie_workspaces w ON w.id = ruw.workspace_id
+		   LEFT JOIN fonderie_users u ON u.id = ruw.user_id
+		   WHERE ruw.workspace_id = $1
+		     AND ruw.removed      = false
+		     AND ruw.suspended    = false
+		     AND (w.is_personal OR ruw.user_id <> w.owner_id)
+		 ), owner AS (
+		   SELECT lower(u.email) AS email
+		   FROM fonderie_workspaces w JOIN fonderie_users u ON u.id = w.owner_id
+		   WHERE w.id = $1
+		 )
+		 SELECT (SELECT COUNT(*) FROM members)
+		      + (SELECT COUNT(DISTINCT lower(i.email))
+		         FROM fonderie_workspace_invitations i
+		         WHERE i.workspace_id = $1
+		           AND i.status       = 'PENDING'
+		           AND i.expires_at   > now()
+		           AND lower(i.email) NOT IN (SELECT email FROM members WHERE email IS NOT NULL)
+		           AND lower(i.email) NOT IN (SELECT email FROM owner WHERE email IS NOT NULL)
+		        ) AS seats`,
 		[workspaceId],
 	);
+	return parseInt(row?.seats ?? '0', 10);
+}
+
+/**
+ * Grant or revoke a manager system role for an existing member. Only the
+ * owner may call this (the route guards it): managers run the team, so making
+ * one is an ownership decision. Returns false when the user is not a member.
+ */
+export async function setManager(
+	userId: string,
+	workspaceId: string,
+	manager: boolean,
+	store: IStoreAdapter,
+	managerRole = 'ADMIN',
+): Promise<boolean> {
+	if (!(await getMember(userId, workspaceId, store))) return false;
+	if (manager) {
+		await store.query(
+			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
+			 SELECT $1, $2, r.id, true
+			 FROM fonderie_roles r
+			 WHERE r.name = $3 AND r.is_system = true AND r.workspace_id IS NULL
+			 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
+			 SET confirmed = true, removed = false, suspended = false`,
+			[userId, workspaceId, managerRole],
+		);
+		return true;
+	}
+	// Revoking must not leave the person with no role at all (they would drop
+	// out of the member list while still being a member): keep them on the
+	// least-privilege default when the manager role was their only one.
+	await store.transaction(async (tx) => {
+		await tx.query(
+			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
+			 SELECT $1, $2, g.id, true
+			 FROM fonderie_roles g
+			 WHERE g.name = 'GUEST' AND g.is_system = true AND g.workspace_id IS NULL
+			   AND NOT EXISTS (
+			     SELECT 1 FROM fonderie_role_user_workspaces o
+			     JOIN fonderie_roles r ON r.id = o.role_id
+			     WHERE o.user_id = $1 AND o.workspace_id = $2 AND o.removed = false
+			       AND NOT (r.is_system AND r.name = $3)
+			   )
+			 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE SET removed = false`,
+			[userId, workspaceId, managerRole],
+		);
+		await tx.query(
+			`DELETE FROM fonderie_role_user_workspaces ruw
+			 USING fonderie_roles r
+			 WHERE r.id = ruw.role_id
+			   AND ruw.user_id = $1 AND ruw.workspace_id = $2
+			   AND r.is_system = true AND r.name = $3`,
+			[userId, workspaceId, managerRole],
+		);
+	});
+	return true;
+}
+
+/**
+ * Hand the workspace to another member. The new owner must already be a
+ * member; the previous owner stays, as a manager, so the hand-over never locks
+ * them out of a team they still work in. Returns false when the target is not
+ * a member.
+ */
+export async function transferOwnership(
+	workspaceId: string,
+	fromUserId: string,
+	toUserId: string,
+	store: IStoreAdapter,
+	managerRole = 'ADMIN',
+): Promise<boolean> {
+	if (!(await getMember(toUserId, workspaceId, store))) return false;
+	await store.transaction(async (tx) => {
+		await tx.query(
+			`UPDATE fonderie_workspaces SET owner_id = $2, updated_at = now()
+			 WHERE id = $1 AND owner_id = $3`,
+			[workspaceId, toUserId, fromUserId],
+		);
+		await tx.query(
+			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
+			 SELECT $1, $2, r.id, true
+			 FROM fonderie_roles r
+			 WHERE r.name = $3 AND r.is_system = true AND r.workspace_id IS NULL
+			 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
+			 SET confirmed = true, removed = false, suspended = false`,
+			[fromUserId, workspaceId, managerRole],
+		);
+	});
+	return true;
 }
 
 export async function addMember(

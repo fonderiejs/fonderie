@@ -9,6 +9,8 @@ export interface IUseInvitationsReturn {
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
 	cancelInvitation: (inviteId: string) => Promise<void>;
+	/** Send again with a new link and PIN (the old ones stop working) and a fresh expiry. */
+	resendInvitation: (inviteId: string) => Promise<void>;
 }
 
 const NONE: IInvitationDTO[] = [];
@@ -36,5 +38,20 @@ export function useInvitations(client?: WorkspacesClient): IUseInvitationsReturn
 			}),
 		[workspaces, w.run],
 	);
-	return { invitations: q.data ?? NONE, isLoading: q.isLoading, error: w.error ?? q.error, refresh: q.refresh, invite, cancelInvitation };
+	const resendInvitation = useCallback(
+		(inviteId: string) =>
+			w.run(async () => {
+				await workspaces.resendInvitation(inviteId);
+			}),
+		[workspaces, w.run],
+	);
+	return {
+		invitations: q.data ?? NONE,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		invite,
+		cancelInvitation,
+		resendInvitation,
+	};
 }

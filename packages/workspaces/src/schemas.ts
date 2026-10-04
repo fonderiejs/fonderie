@@ -49,6 +49,8 @@ export const updateSettingsSchema = z
 	})
 	.refine((o) => Object.values(o).some((v) => v !== undefined), 'No settings provided');
 
+export const transferOwnershipSchema = z.object({ userId: z.string().min(1, 'userId is required') });
+
 export const addMemberRoleSchema = z.object({ roleId: z.string().min(1, 'roleId is required') });
 
 const inviteEntry = z.object({

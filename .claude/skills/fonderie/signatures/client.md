@@ -702,6 +702,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .listWorkspaces(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceListResult>>
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
+  .getCurrentWorkspace(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
   .restoreWorkspace(): Promise<IApiResponse<undefined>>
@@ -717,10 +718,15 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getMemberRoles(userId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
+  .setManager(userId: string): Promise<IApiResponse<void>>
+  .unsetManager(userId: string): Promise<IApiResponse<void>>
+  .transferOwnership(userId: string): Promise<IApiResponse<void>>
+  .leaveWorkspace(): Promise<IApiResponse<void>>
   .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
-  .acceptInvitation(pin: string): Promise<IApiResponse<IAcceptInvitationResult>>
+  .resendInvitation(inviteId: string): Promise<IApiResponse<IInvitationResult>>
+  .acceptInvitation(code: string | IAcceptInvitationInput): Promise<IApiResponse<IAcceptInvitationResult>>
   .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
@@ -729,6 +735,12 @@ type CustomerLabelType = 'phone' | 'email' | 'address';
 type CustomerSex = 'UNKNOWN' | 'MALE' | 'FEMALE';
 
 type CustomerType = 'individual' | 'business';
+
+type IAcceptInvitationInput = {
+    token: string;
+} | {
+    pin: string;
+};
 
 interface IAcceptInvitationResult {
     workspaceId: string;
@@ -1321,6 +1333,7 @@ interface IInvitationDTO {
     status: string;
     expiresAt: string;
     createdAt: string;
+    isExpired: boolean;
 }
 
 interface IInvitationListResult {
@@ -1384,6 +1397,19 @@ interface IMemberDTO {
     firstName: string;
     lastName: string;
     profileImageUrl: string;
+    roles: IMemberRoleDTO[];
+    isOwner: boolean;
+    isManager: boolean;
+}
+
+interface IMemberRoleDTO {
+    id: string;
+    name: string;
+    isSystem: boolean;
+}
+
+interface IInvitationResult {
+    invitation: IInvitationDTO;
 }
 
 interface IMemberListResult {

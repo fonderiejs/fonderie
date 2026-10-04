@@ -5,6 +5,7 @@ import {
 	createInvitation,
 	listInvitations,
 	cancelInvitation,
+	resendInvitation,
 	acceptInvitationByPin,
 	acceptInvitationByToken,
 } from '../services/invitations';
@@ -18,6 +19,10 @@ export class InvitationModel {
 
 	list(workspaceId: string): Promise<IInvitation[]> {
 		return listInvitations(workspaceId, this.store);
+	}
+
+	resend(invitationId: string, workspaceId: string, ttl: string): Promise<IInvitation | null> {
+		return resendInvitation(invitationId, workspaceId, ttl, this.store);
 	}
 
 	cancel(invitationId: string, workspaceId: string): Promise<void> {

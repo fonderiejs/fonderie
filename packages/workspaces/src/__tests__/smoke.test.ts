@@ -915,7 +915,12 @@ test('addRoleToMember: returns false when the role is not assignable (no row ins
 
 test('member.addRole: 422 INVALID_ROLE when the role is a system/foreign role', async () => {
 	const { memberController } = await import('../controllers/member.controller');
-	const { store } = captureStore([]);
+	// user-2 IS a member (the membership read answers); the guarded role
+	// insert matches nothing because the role is not assignable.
+	const store = {
+		query: async (sql: string) => (/LIMIT 1/.test(sql) ? [{ userId: 'user-2', workspaceId: 'ws-1' }] : []),
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
 	const ctrl = memberController(store);
 	const res = await ctrl.addRole(
 		makeCtx({
@@ -1025,6 +1030,8 @@ test('invitation.accept: token path admits accounts without an email', async () 
 			if (sql.includes('FROM fonderie_roles') && sql.includes("name = 'GUEST'")) {
 				return [{ id: 'r-1' }];
 			}
+			// the single-use claim wins
+			if (sql.includes("SET status = 'ACCEPTED'")) return [{ id: 'inv-1' }];
 			return [];
 		},
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),

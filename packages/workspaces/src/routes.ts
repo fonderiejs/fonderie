@@ -8,6 +8,7 @@ import {
 	createRoleSchema,
 	updateRoleSchema,
 	addMemberRoleSchema,
+	transferOwnershipSchema,
 	updateSettingsSchema,
 	createWorkspaceSchema,
 	updateWorkspaceSchema,
@@ -19,6 +20,7 @@ import {
 import type { IWorkspacesConfig, WorkspaceRouteId } from './config';
 import { withWorkspace } from './middlewares/workspace-context';
 import { requireManager } from './middlewares/require-manager';
+import { requireOwner } from './middlewares/require-owner';
 
 import { workspaceController } from './controllers/workspace.controller';
 import { memberController } from './controllers/member.controller';
@@ -50,9 +52,10 @@ export function buildWorkspaceRoutes(
 	});
 
 	const workspace = workspaceController(store, config);
-	const member = memberController(store);
+	const owner = requireOwner();
+	const member = memberController(store, config);
 	const role = roleController(store);
-	const invitation = invitationController(store, ttl, bus);
+	const invitation = invitationController(store, ttl, bus, config.invitationUrl ? { invitationUrl: config.invitationUrl } : {});
 
 	// Apply an optional per-route method/path override (config.routes) keyed by a
 	// stable id, so an app can match an existing frontend's contract without a shim.
@@ -74,11 +77,18 @@ export function buildWorkspaceRoutes(
 		R('getMemberRoles', 'GET', '/workspaces/members/:userId/roles', requireAuth, wsCtx, member.getUserRoles),
 		R('addMemberRole', 'POST', '/workspaces/members/:userId/roles', requireAuth, wsCtx, manager, validate(addMemberRoleSchema), member.addRole),
 		R('removeMemberRole', 'DELETE', '/workspaces/members/:userId/roles/:roleId', requireAuth, wsCtx, manager, member.removeRole),
+		// Ownership decisions — the owner alone (requireOwner), not any manager.
+		R('setManager', 'POST', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, member.setManager),
+		R('unsetManager', 'DELETE', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, member.unsetManager),
+		R('transferOwnership', 'POST', '/workspaces/transfer-ownership', requireAuth, wsCtx, owner, validate(transferOwnershipSchema), member.transferOwnership),
+		// Any member, for themselves.
+		R('leaveWorkspace', 'POST', '/workspaces/leave', requireAuth, wsCtx, member.leave),
 
 		// ── Invitations
 		R('listInvitations', 'GET', '/workspaces/invitations', requireAuth, wsCtx, invitation.list),
 		R('invite', 'POST', '/workspaces/invitations', requireAuth, wsCtx, manager, validate(createInvitationsSchema), invitation.invite),
 		R('cancelInvitation', 'DELETE', '/workspaces/invitations/:inviteId', requireAuth, wsCtx, manager, invitation.cancel),
+		R('resendInvitation', 'POST', '/workspaces/invitations/:inviteId/resend', requireAuth, wsCtx, manager, invitation.resend),
 		R('acceptInvitation', 'POST', '/workspaces/invitations/accept', acceptLimit, requireAuth, validate(acceptInvitationSchema), invitation.accept),
 
 		// ── Roles
@@ -95,6 +105,10 @@ export function buildWorkspaceRoutes(
 		R('restore', 'POST', '/workspaces/restore', requireAuth, wsCtx, manager, workspace.restore),
 		R('getSettings', 'GET', '/workspaces/settings', requireAuth, wsCtx, workspace.getSettings),
 		R('updateSettings', 'PUT', '/workspaces/settings', requireAuth, wsCtx, manager, validate(updateSettingsSchema), workspace.updateSettings),
+
+		// ── The workspace this request is scoped to (X-Workspace-ID, or the
+		// personal workspace). Before /workspaces/:id so 'current' is not an id.
+		R('getCurrentWorkspace', 'GET', '/workspaces/current', requireAuth, wsCtx, workspace.get),
 
 		// ── Path-based lookup by ID (admin / cross-workspace use)
 		R('getWorkspace', 'GET', '/workspaces/:id', requireAuth, wsCtx, workspace.get),

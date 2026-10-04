@@ -17,6 +17,7 @@ interface IWorkspacesConfig {
     invitationTtl?: string;
     management?: 'owner-or-admin' | 'any-member';
     managerRoles?: string[];
+    invitationUrl?: string;
     personalWorkspace?: boolean;
     routes?: Partial<Record<WorkspaceRouteId, WorkspaceRouteOverride>>;
 }
@@ -74,6 +75,9 @@ interface IMember {
     lastName: string | null;
     email: string | null;
     profileImageUrl: string | null;
+    roles?: IMemberRole[];
+    isOwner?: boolean;
+    isManager?: boolean;
 }
 
 interface IInvitation {
@@ -136,6 +140,9 @@ interface IMemberDTO {
     firstName: string;
     lastName: string;
     profileImageUrl: string;
+    roles: IMemberRoleDTO[];
+    isOwner: boolean;
+    isManager: boolean;
 }
 
 interface IInvitationDTO {
@@ -147,6 +154,7 @@ interface IInvitationDTO {
     status: string;
     expiresAt: string;
     createdAt: string;
+    isExpired: boolean;
 }
 
 interface IWorkspaceSettingsDTO {
@@ -173,7 +181,7 @@ function requireWorkspace(ctx: IFonderieContext, next: () => Promise<Response>):
 
 function requireManager(store: IStoreAdapter, config: IWorkspacesConfig): Middleware
 
-namespace schemas — exports: acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
+namespace schemas — exports: acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, transferOwnershipSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
 
 function importWorkspace(store: IStoreAdapter, ws: IImportWorkspace): Promise<{ id: string; }>
 

@@ -48,10 +48,16 @@ after(async () => {
 	await store.end?.();
 });
 
+// CI runs every package's database tests at once against ONE database, so this
+// suite touches only its own users' sessions: deleting or reading the whole
+// table logged out the workspaces suite's users mid-test (401s), and another
+// suite's sessions would land in these rows.
+const MINE = `user_id IN (SELECT id FROM fonderie_users WHERE email LIKE '%@rotation.acme.example')`;
+
 beforeEach(async () => {
 	if (!PG_URL) return;
 	emitted.length = 0;
-	await store.query(`DELETE FROM fonderie_sessions`);
+	await store.query(`DELETE FROM fonderie_sessions WHERE ${MINE}`);
 	await store.query(`DELETE FROM fonderie_users WHERE email LIKE '%@rotation.acme.example'`);
 });
 
@@ -75,7 +81,7 @@ async function refresh(token: string, clientKind?: string): Promise<{ status: nu
 	const body = (await res.json()) as { result?: { tokens?: { access: string; refresh: string } } };
 	return { status: res.status, ...(body.result?.tokens ? { tokens: body.result.tokens } : {}) };
 }
-const rows = () => store.query<{ id: string; token: string; sid: string; previous_token_hash: string | null }>(`SELECT id, token, sid, previous_token_hash FROM fonderie_sessions`);
+const rows = () => store.query<{ id: string; token: string; sid: string; previous_token_hash: string | null }>(`SELECT id, token, sid, previous_token_hash FROM fonderie_sessions WHERE ${MINE}`);
 
 test('the database holds the HASH of the refresh token, never the token', { skip }, async () => {
 	const { refresh: token } = await signUp();
@@ -109,7 +115,7 @@ test('within the grace, the previous token still refreshes (a retry or a race)',
 test('the previous token AFTER the grace is a reuse: the session is revoked, and the event emitted', { skip }, async () => {
 	const first = await signUp();
 	const second = await refresh(first.refresh);
-	await store.query(`UPDATE fonderie_sessions SET previous_valid_until = now() - interval '1 second'`);
+	await store.query(`UPDATE fonderie_sessions SET previous_valid_until = now() - interval '1 second' WHERE ${MINE}`);
 	const stolen = await refresh(first.refresh);
 	assert.equal(stolen.status, 401);
 	assert.equal((await rows()).length, 0, 'session revoked');
@@ -127,7 +133,7 @@ test('concurrent refreshes with one token all succeed and leave ONE row', { skip
 
 test('a session stored before hashing (raw token) still refreshes, and is hashed by the rotation', { skip }, async () => {
 	const first = await signUp();
-	await store.query(`UPDATE fonderie_sessions SET token = $1`, [first.refresh]); // as written before migration 020
+	await store.query(`UPDATE fonderie_sessions SET token = $1 WHERE ${MINE}`, [first.refresh]); // as written before migration 020
 	const r = await refresh(first.refresh);
 	assert.equal(r.status, 200);
 	const [row] = await rows();
@@ -139,7 +145,7 @@ test('a session stored before hashing (raw token) still refreshes, and is hashed
 // columns — and the new code hashes each on its next refresh.
 test('migration 020 leaves raw rows readable by the previous code, and is safe to re-run', { skip }, async () => {
 	const first = await signUp();
-	await store.query(`UPDATE fonderie_sessions SET token = $1`, [first.refresh]); // a session from before this release
+	await store.query(`UPDATE fonderie_sessions SET token = $1 WHERE ${MINE}`, [first.refresh]); // a session from before this release
 	const sql = readFileSync(join(getMigrationsPath(), '020_session_rotation.sql'), 'utf8');
 	await store.query(sql);
 	await store.query(sql);
@@ -155,20 +161,20 @@ const claim = (t: string) => JSON.parse(Buffer.from(t.split('.')[1]!, 'base64url
 
 test('a refresh carries auth_time (when the user last SIGNED IN), and slides the idle timeout to 90 days out', { skip }, async () => {
 	const first = await signUp();
-	await store.query(`UPDATE fonderie_sessions SET expires_at = now() + interval '1 day'`); // nearly idle
+	await store.query(`UPDATE fonderie_sessions SET expires_at = now() + interval '1 day' WHERE ${MINE}`); // nearly idle
 	// Over a second later: a freshly minted auth_time would differ — the same
 	// second would make a regression look like a pass.
 	await new Promise((r) => setTimeout(r, 1100));
 	const r = await refresh(first.refresh);
 	assert.equal(r.status, 200);
 	assert.equal(claim(r.tokens!.access).auth_time, claim(first.access).auth_time, 'a refresh is not a sign-in');
-	const [row] = await store.query<{ days: number }>(`SELECT EXTRACT(EPOCH FROM (expires_at - now())) / 86400 AS days FROM fonderie_sessions`);
+	const [row] = await store.query<{ days: number }>(`SELECT EXTRACT(EPOCH FROM (expires_at - now())) / 86400 AS days FROM fonderie_sessions WHERE ${MINE}`);
 	assert.ok(Number(row?.days) > 89, `extended to ~90 days, got ${row?.days}`);
 });
 
 test('a session past the absolute cap (sessionMaxAge) is refused at refresh and revoked, however active', { skip }, async () => {
 	const first = await signUp('mobile'); // mobile preset: 365 d cap
-	await store.query(`UPDATE fonderie_sessions SET created_at = now() - interval '400 days'`);
+	await store.query(`UPDATE fonderie_sessions SET created_at = now() - interval '400 days' WHERE ${MINE}`);
 	const r = await refresh(first.refresh);
 	assert.equal(r.status, 401);
 	assert.equal((await rows()).length, 0);
@@ -183,7 +189,7 @@ const lifetimeDays = (t: string) => {
 test('a web sign-in gets the web lifetime, recorded on the session; a refresh cannot promote it', { skip }, async () => {
 	const web = await signUp('web');
 	assert.equal(lifetimeDays(web.refresh), 14);
-	const [row] = await store.query<{ client_kind: string }>(`SELECT client_kind FROM fonderie_sessions`);
+	const [row] = await store.query<{ client_kind: string }>(`SELECT client_kind FROM fonderie_sessions WHERE ${MINE}`);
 	assert.equal(row?.client_kind, 'web');
 	const r = await refresh(web.refresh, 'mobile'); // claims to be a phone now
 	assert.equal(r.status, 200);
@@ -193,7 +199,7 @@ test('a web sign-in gets the web lifetime, recorded on the session; a refresh ca
 test('an undeclared client keeps the shared lifetime (today\'s behaviour)', { skip }, async () => {
 	const plain = await signUp();
 	assert.equal(lifetimeDays(plain.refresh), 90);
-	const [row] = await store.query<{ client_kind: string | null }>(`SELECT client_kind FROM fonderie_sessions`);
+	const [row] = await store.query<{ client_kind: string | null }>(`SELECT client_kind FROM fonderie_sessions WHERE ${MINE}`);
 	assert.equal(row?.client_kind, null);
 });
 

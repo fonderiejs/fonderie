@@ -64,6 +64,13 @@ resolved_locale          TEXT
 
 Raw SQL ships in `node_modules/@fonderie/courier/dist/migrations/sql/` — read it there if you must; never download tarballs.
 
+## Seeded rows (behavioral contract)
+
+```sql
+INSERT INTO fonderie_courier_template_revisions (type, locale, subject, html, text, version, actor) VALUES ('workspace-invitation', NULL, old_row.subject, old_row.html, old_row.text, 1, 'fonderie:seed') ON CONFLICT DO NOTHING;
+INSERT INTO fonderie_courier_template_revisions (type, locale, subject, html, text, version, actor) VALUES ('workspace-invitation', NULL, new_subject, new_html, new_text, 2, 'fonderie:migration') ON CONFLICT DO NOTHING;
+```
+
 ## HTTP routes registered
 
 | Method | Path | Middleware chain (auth / validation / handler) |
@@ -88,3 +95,11 @@ Raw SQL ships in `node_modules/@fonderie/courier/dist/migrations/sql/` — read 
 - `END IF`
 - `END`
 - `$fn$ LANGUAGE plpgsql`
+- `new_subject text := 'You''ve been invited to join {{workspaceName}}'`
+- `new_html text := '<h1>You&rsquo;ve been invited</h1>`
+- `new_text text := 'You''ve been invited`
+- `old_row fonderie_courier_templates%ROWTYPE`
+- `BEGIN`
+- `IF NOT FOUND THEN`
+- `END IF`
+- `END`

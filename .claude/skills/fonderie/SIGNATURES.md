@@ -107,4 +107,4 @@ instead of excavating `dist/` or tarballs.**
 - `@fonderie/risk` (1 tables, 0 routes) → [signatures/risk-outcomes.md](signatures/risk-outcomes.md)
 - `@fonderie/storage` (1 tables, 0 routes) → [signatures/storage-outcomes.md](signatures/storage-outcomes.md)
 - `@fonderie/webhooks` (2 tables, 7 routes) → [signatures/webhooks-outcomes.md](signatures/webhooks-outcomes.md)
-- `@fonderie/workspaces` (4 tables, 24 routes) → [signatures/workspaces-outcomes.md](signatures/workspaces-outcomes.md)
+- `@fonderie/workspaces` (4 tables, 30 routes) → [signatures/workspaces-outcomes.md](signatures/workspaces-outcomes.md)

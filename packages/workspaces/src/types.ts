@@ -57,6 +57,18 @@ export interface IMember {
 	lastName: string | null;
 	email: string | null;
 	profileImageUrl: string | null;
+	/** Every role this person holds here, earliest first (listMembers only). */
+	roles?: IMemberRole[];
+	/** The workspace owner (listMembers only). */
+	isOwner?: boolean;
+	/** The owner, or a holder of a manager system role (listMembers only). */
+	isManager?: boolean;
+}
+
+export interface IMemberRole {
+	id: string;
+	name: string;
+	isSystem: boolean;
 }
 
 export interface IInvitation {
