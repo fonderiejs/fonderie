@@ -30,6 +30,8 @@ import { WorkspaceScope } from '../workspace-scope';
 export interface IListCustomersInput {
 	search?: string;
 	blacklisted?: boolean;
+	/** false (default): active customers only; true: archived only; 'all': both. */
+	archived?: boolean | 'all';
 	limit?: number;
 	offset?: number;
 }
@@ -137,6 +139,7 @@ export class CustomersClient {
 		const params = new URLSearchParams();
 		if (input.search !== undefined) params.set('search', input.search);
 		if (input.blacklisted !== undefined) params.set('blacklisted', String(input.blacklisted));
+		if (input.archived !== undefined) params.set('archived', String(input.archived));
 		if (input.limit !== undefined) params.set('limit', String(input.limit));
 		if (input.offset !== undefined) params.set('offset', String(input.offset));
 		const qs = params.toString();
@@ -197,6 +200,26 @@ export class CustomersClient {
 			method: 'POST',
 			path: `/customers/${encodeURIComponent(customerId)}/blacklist`,
 			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Hide a customer from lists and pickers, kept on the documents that name
+	// them — what to do when delete answers 409 CUSTOMER_IN_USE.
+	archiveCustomer(customerId: string) {
+		return this.http.request<IApiResponse<ICustomerResult>>({
+			method: 'POST',
+			path: `/customers/${encodeURIComponent(customerId)}/archive`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	unarchiveCustomer(customerId: string) {
+		return this.http.request<IApiResponse<ICustomerResult>>({
+			method: 'POST',
+			path: `/customers/${encodeURIComponent(customerId)}/unarchive`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

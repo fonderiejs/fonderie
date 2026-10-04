@@ -362,6 +362,18 @@ export interface IWorkspaceAddressDTO {
 	country: string;
 }
 
+export interface ITaxRegistrationDTO {
+	/** ISO 3166-1, e.g. 'CA'. */
+	country: string;
+	/** A key of that country's tax-ID rules, e.g. 'GST_HST', 'QST', 'EIN'. */
+	type: string;
+	number: string;
+	/** ISO 3166-2, e.g. 'CA-QC'; '' when not regional. */
+	region: string;
+	/** Shown on documents instead of the type, e.g. 'TPS/TVH'. */
+	label: string;
+}
+
 export interface IWorkspaceDTO {
 	id: string;
 	name: string;
@@ -372,6 +384,15 @@ export interface IWorkspaceDTO {
 	phone: string;
 	businessType: string;
 	address: IWorkspaceAddressDTO;
+	/** Registered name, when it differs from the display name. */
+	legalName: string;
+	email: string;
+	website: string;
+	logoUrl: string;
+	/** GST/HST, QST, PST, EIN, state sales-tax permits… — normalized by country rules. */
+	taxRegistrations: ITaxRegistrationDTO[];
+	/** The languages the business serves customers in (BCP 47), e.g. ['en-CA', 'fr-CA', 'zh-Hant']. */
+	languages: string[];
 	/**
 	 * @deprecated Not the workspace's billing plan. Set to 'free' when the
 	 * workspace is created and never maintained — nothing writes it when the
@@ -1117,11 +1138,20 @@ export interface ICustomerDTO {
 	lastName: string;
 	companyName: string;
 	avatarUrl: string;
+	/** Preferred language (BCP 47), e.g. 'fr-CA', 'zh-Hant'. Defaults to the business's. */
 	locale: string;
+	/**
+	 * The name to show, in the order the customer's language writes it: family
+	 * name first for Chinese, Japanese, Korean ('王小明'); given name first
+	 * otherwise. A business shows its company name.
+	 */
+	displayName: string;
 	referenceCode: string;
 	referralCode: string;
 	referredBy: string | null;
 	blacklisted: { status: boolean; reason: string | null };
+	/** Archived: hidden from lists and pickers, kept on documents. */
+	archived: { status: boolean; at: string | null };
 	createdBy: string;
 	createdAt: string;
 	updatedAt: string;
@@ -1186,7 +1216,13 @@ export interface ICustomerRelationshipDTO {
 // same level. `id` is the relationship record id; `customerId` is the
 // related customer's id — matches @fonderie/customers' own flattening.
 export type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+	/** The RELATED customer's id — same name as in ICustomerRelationshipDTO. */
+	relatedId: string;
+	/** The relationship record's id. */
+	relationshipId: string;
+	/** @deprecated The relationship record's id, not a customer's — read `relationshipId`. */
 	id: string;
+	/** @deprecated The related customer's id — read `relatedId`. */
 	customerId: string;
 	relationship: string;
 	isPrimary: boolean;

@@ -42,6 +42,15 @@ export interface IUpdateWorkspaceInput {
 		zip?: string;
 		country?: string;
 	} | null;
+	legalName?: string | null;
+	email?: string | null;
+	website?: string | null;
+	/** The logo's URL — typically what client.media returned for the upload. */
+	logoUrl?: string | null;
+	/** Replaces the list. Each is checked against its country's rules (422 names the field). */
+	taxRegistrations?: Array<{ country: string; type: string; number: string; region?: string | null; label?: string | null }>;
+	/** The languages the business serves customers in, e.g. ['en-CA', 'fr-CA']. */
+	languages?: string[];
 }
 
 export interface IInviteEntry {

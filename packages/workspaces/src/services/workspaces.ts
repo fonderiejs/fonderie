@@ -1,6 +1,6 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { IWorkspace, IWorkspaceAddress, IWorkspaceSettings } from '../types';
+import type { ITaxRegistration, IWorkspace, IWorkspaceAddress, IWorkspaceSettings } from '../types';
 
 const SELECT_WS = `
 	id,
@@ -12,6 +12,12 @@ const SELECT_WS = `
 	phone,
 	business_type AS "businessType",
 	address,
+	legal_name AS "legalName",
+	email,
+	website,
+	logo_url AS "logoUrl",
+	tax_registrations AS "taxRegistrations",
+	languages,
 	plan,
 	owner_id    AS "ownerId",
 	is_personal AS "isPersonal",
@@ -31,6 +37,12 @@ const SELECT_WS_W = `
 	w.phone,
 	w.business_type AS "businessType",
 	w.address,
+	w.legal_name AS "legalName",
+	w.email,
+	w.website,
+	w.logo_url AS "logoUrl",
+	w.tax_registrations AS "taxRegistrations",
+	w.languages,
 	w.plan,
 	w.owner_id    AS "ownerId",
 	w.is_personal AS "isPersonal",
@@ -135,6 +147,12 @@ export async function updateWorkspace(
 		phone?: string | null;
 		businessType?: string | null;
 		address?: IWorkspaceAddress | null;
+		legalName?: string | null;
+		email?: string | null;
+		website?: string | null;
+		logoUrl?: string | null;
+		taxRegistrations?: ITaxRegistration[];
+		languages?: string[];
 	},
 	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
@@ -168,6 +186,20 @@ export async function updateWorkspace(
 	if (opts.address !== undefined) {
 		params.push(JSON.stringify(opts.address ?? {}));
 		sets.push(`address = $${params.length}::jsonb`);
+	}
+	for (const [key, col] of [['legalName', 'legal_name'], ['email', 'email'], ['website', 'website'], ['logoUrl', 'logo_url']] as const) {
+		if (opts[key] !== undefined) {
+			params.push(opts[key]);
+			sets.push(`${col} = $${params.length}`);
+		}
+	}
+	if (opts.taxRegistrations !== undefined) {
+		params.push(JSON.stringify(opts.taxRegistrations));
+		sets.push(`tax_registrations = $${params.length}::jsonb`);
+	}
+	if (opts.languages !== undefined) {
+		params.push(opts.languages);
+		sets.push(`languages = $${params.length}::text[]`);
 	}
 
 	const [row] = await store.query<IWorkspace>(

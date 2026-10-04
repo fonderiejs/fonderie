@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { canonicalLocale } from '@fonderie/core';
+import { regions } from '@fonderie/core/region';
+
 // Request schemas — the validation contract for every body-taking customers
 // route. Wired via @fonderie/core's validate(); same pattern as
 // @fonderie/auth. Exported for docs generation and typed clients.
@@ -18,7 +21,19 @@ const customerFields = {
 	lastName: z.string().max(100).nullable().optional(),
 	companyName: z.string().max(200).nullable().optional(),
 	avatarUrl: z.string().trim().pipe(z.url()).nullable().optional(),
-	locale: z.string().max(35).nullable().optional(),
+	// The customer's preferred language — what anything sent to them is written
+	// in. Stored canonical ('fr-ca' → 'fr-CA', 'zh-hant' → 'zh-Hant'). Absent
+	// on create: the business's own language.
+	locale: z
+		.string()
+		.max(35)
+		.transform((v, ctx) => {
+			const c = canonicalLocale(v);
+			if (!c) ctx.addIssue({ code: 'custom', message: `'${v}' is not a language tag (e.g. en-CA, fr-CA, es-US, zh-Hans, zh-Hant)` });
+			return c ?? v;
+		})
+		.nullable()
+		.optional(),
 	referenceCode: z.string().max(100).nullable().optional(),
 };
 
@@ -58,11 +73,25 @@ const addressFields = {
 	line2: z.string().max(200).nullable().optional(),
 	unit: z.string().max(50).nullable().optional(),
 	zipPostalCode: z.string().max(20).nullable().optional(),
-	countryIso: z.string().max(3).nullable().optional(),
-	subdivision1Iso: z.string().max(10).nullable().optional(),
+	countryIso: z.string().max(60).nullable().optional(),
+	subdivision1Iso: z.string().max(60).nullable().optional(),
 	subdivision2Iso: z.string().max(10).nullable().optional(),
 };
-export const addAddressSchema = z.object(addressFields);
+// Checked and normalized by the address's country rules (@fonderie/core/region):
+// 'Canada' → 'CA', 'Québec' → 'QC', 'h2x1y4' → 'H2X 1Y4'. A country without a
+// registered pack is stored as given.
+export const addAddressSchema = z.object(addressFields).transform((a, ctx) => {
+	const r = regions.checkAddress({ country: a.countryIso ?? null, subdivision: a.subdivision1Iso ?? null, postalCode: a.zipPostalCode ?? null });
+	for (const p of r.problems) {
+		ctx.addIssue({ code: 'custom', path: [p.field === 'subdivision' ? 'subdivision1Iso' : p.field === 'postalCode' ? 'zipPostalCode' : 'countryIso'], message: p.message });
+	}
+	return {
+		...a,
+		...(r.country ? { countryIso: r.country } : {}),
+		...(r.subdivision ? { subdivision1Iso: r.subdivision } : {}),
+		...(r.postalCode ? { zipPostalCode: r.postalCode } : {}),
+	};
+});
 export const updateAddressSchema = z.object({
 	label: z.string().trim().min(1, 'label is required').max(100),
 });

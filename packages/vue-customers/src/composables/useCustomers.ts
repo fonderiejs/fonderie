@@ -18,6 +18,9 @@ export interface IUseCustomersReturn {
 	deleteCustomer: (customerId: string) => Promise<void>;
 	blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;
 	unblacklistCustomer: (customerId: string) => Promise<void>;
+	/** Hide from lists and pickers, keep on documents — what to offer when delete answers 409 CUSTOMER_IN_USE. */
+	archiveCustomer: (customerId: string) => Promise<void>;
+	unarchiveCustomer: (customerId: string) => Promise<void>;
 }
 
 export function useCustomers(
@@ -84,6 +87,14 @@ export function useCustomers(
 		unblacklistCustomer: (customerId) =>
 			w.run(async () => {
 				await customersClient.unblacklistCustomer(customerId);
+			}),
+		archiveCustomer: (customerId) =>
+			w.run(async () => {
+				await customersClient.archiveCustomer(customerId);
+			}),
+		unarchiveCustomer: (customerId) =>
+			w.run(async () => {
+				await customersClient.unarchiveCustomer(customerId);
 			}),
 	};
 }

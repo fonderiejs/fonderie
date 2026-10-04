@@ -249,6 +249,7 @@ export type {
 	IWebhookEndpointListResult,
 	IWorkspaceAddressDTO,
 	IWorkspaceDTO,
+	ITaxRegistrationDTO,
 	IWorkspaceListResult,
 	IWorkspaceResult,
 	IWorkspaceSettingsDTO,

@@ -144,6 +144,18 @@ interface IUpdateWorkspaceInput {
         zip?: string;
         country?: string;
     } | null;
+    legalName?: string | null;
+    email?: string | null;
+    website?: string | null;
+    logoUrl?: string | null;
+    taxRegistrations?: Array<{
+        country: string;
+        type: string;
+        number: string;
+        region?: string | null;
+        label?: string | null;
+    }>;
+    languages?: string[];
 }
 
 interface IWorkspaceAddressDTO {
@@ -165,6 +177,12 @@ interface IWorkspaceDTO {
     phone: string;
     businessType: string;
     address: IWorkspaceAddressDTO;
+    legalName: string;
+    email: string;
+    website: string;
+    logoUrl: string;
+    taxRegistrations: ITaxRegistrationDTO[];
+    languages: string[];
     plan: string;
     ownerId: string;
     isPersonal: boolean;

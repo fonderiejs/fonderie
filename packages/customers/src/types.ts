@@ -24,6 +24,8 @@ export interface ICustomer {
 	referredBy: string | null;
 	isBlacklisted: boolean;
 	blacklistReason: string | null;
+	isArchived?: boolean;
+	archivedAt?: string | null;
 	createdBy: string | null;
 	createdAt: string;
 	updatedAt: string;

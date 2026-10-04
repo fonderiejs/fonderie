@@ -90,7 +90,9 @@ export function customerRelationshipController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'relatedId must be a valid UUID');
 			}
 
-			await relationships.setPrimary(r.customer.id, relatedId);
+			if (!(await relationships.setPrimary(r.customer.id, relatedId))) {
+				return setApiResponse(HTTP.NOT_FOUND, 'RELATIONSHIP_NOT_FOUND', 'Not found on this customer.');
+			}
 			return setApiResponse(HTTP.OK, 'RELATIONSHIP_PRIMARY_SET', 'Primary relationship updated successfully.');
 		},
 
