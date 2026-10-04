@@ -218,6 +218,14 @@ export interface IBillingRecipient {
 	email?: string | null;
 	phone?: string | null;
 	deviceToken?: string | null;
+	/**
+	 * The language to write receipts and notices in, when the app knows it.
+	 * Absent: courier uses the language of the account the address belongs to,
+	 * then `fallbackLocale`, then the system default.
+	 */
+	locale?: string | null;
+	/** Used when neither `locale` nor the recipient's account says — e.g. the workspace's language. */
+	fallbackLocale?: string | null;
 }
 
 export type ResolveRecipient = (

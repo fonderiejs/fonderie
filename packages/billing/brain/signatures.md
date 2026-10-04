@@ -187,6 +187,8 @@ interface IBillingRecipient {
     email?: string | null;
     phone?: string | null;
     deviceToken?: string | null;
+    locale?: string | null;
+    fallbackLocale?: string | null;
 }
 
 type ResolveRecipient = (subscriberType: SubscriberType, subscriberId: string) => IBillingRecipient | null | Promise<IBillingRecipient | null>;

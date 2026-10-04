@@ -4,7 +4,7 @@
 	"fonderie": {
 		"stability": "stable"
 	},
-	"description": "Multi-tenant team layer \u2014 create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
+	"description": "Multi-tenant team layer — create workspaces, manage members, define custom roles, handle token-based invitations, and scope any route to a specific workspace.",
 	"keywords": [
 		"fonderiejs",
 		"workspaces",

@@ -5,6 +5,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
 
+import { getWorkspaceSettings } from '../services/workspaces';
 import { MESSAGE_KEYS } from '../config';
 import { InvitationModel } from '../models/invitation.model';
 import { MemberModel } from '../models/member.model';
@@ -60,14 +61,18 @@ export function invitationController(
 		ctx: IFonderieContext,
 		invitation: { email: string; token: string; pin: string | null },
 	) => {
-		const who = await inviteContext(store, ctx.workspace!.id, ctx.user?.id);
-		// No `locale`: the invitee may not have an account yet, so their
-		// language is unknown at invite time — fall to the neutral default
-		// template rather than guess (e.g. the inviter's locale), which keeps
-		// legal/jurisdictional copy from bleeding across regions.
+		const [who, settings] = await Promise.all([
+			inviteContext(store, ctx.workspace!.id, ctx.user?.id),
+			getWorkspaceSettings(ctx.workspace!.id, store),
+		]);
+		// No `locale`: the invitee's own account decides when they have one
+		// (courier looks it up by address). Someone without an account yet gets
+		// the business's language — a Quebec business invites in French — not
+		// the system default.
 		await background(bus
 			?.emit(NOTIFICATION_EVENT, {
 				type: MESSAGE_KEYS.workspaceInvitation,
+				fallbackLocale: settings.locale,
 				recipient: { email: invitation.email, phone: null, deviceToken: null },
 				data: {
 					token: invitation.token,

@@ -66,6 +66,7 @@
 		}
 	},
 	"devDependencies": {
+		"@fonderie/auth": "*",
 		"@fonderie/core": "../core",
 		"@fonderie/events": "../events",
 		"@fonderie/store": "../store",
