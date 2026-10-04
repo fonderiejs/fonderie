@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/vue-workspaces-screens",
-	"version": "0.4.5",
+	"version": "0.4.6",
 	"description": "Pre-built Vue workspaces screens for Fonderie — team members, invitations.",
 	"keywords": [
 		"fonderiejs",
@@ -35,8 +35,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "^3.7.0",
-		"@fonderie/vue-workspaces": "^0.9.0"
+		"@fonderie/client": "^3.8.0",
+		"@fonderie/vue-workspaces": "^0.10.0"
 	},
 	"peerDependencies": {
 		"vue": ">=3.0.0"
