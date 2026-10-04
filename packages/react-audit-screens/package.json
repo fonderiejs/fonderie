@@ -36,6 +36,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^3.4.0",
+		"@fonderie/react": "^0.9.1",
 		"@fonderie/react-audit": "^0.4.0"
 	},
 	"peerDependencies": {

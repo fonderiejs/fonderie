@@ -1,4 +1,5 @@
 import type { FonderieApiError, WorkspacesClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useWorkspaces } from '@fonderie/react-native-workspaces';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -9,6 +10,8 @@ export interface IAcceptInvitationScreenProps {
 	token: string;
 	onAccepted?: (workspaceId: string) => void;
 	onNavigateBack?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function AcceptInvitationScreen({
@@ -16,10 +19,12 @@ export function AcceptInvitationScreen({
 	token,
 	onAccepted,
 	onNavigateBack,
+	locale,
 }: IAcceptInvitationScreenProps) {
 	// Note: mounting useWorkspaces also fetches the workspace list; its shared
 	// isLoading/error track that fetch, so the accept action keeps local state.
 	const { acceptInvitation } = useWorkspaces(client);
+	const t = useUiT(client, locale);
 	const [accepted, setAccepted] = useState(false);
 	const [isAccepting, setIsAccepting] = useState(false);
 	const [acceptError, setAcceptError] = useState<FonderieApiError | null>(null);
@@ -43,18 +48,16 @@ export function AcceptInvitationScreen({
 	if (accepted) {
 		return (
 			<View style={styles.container}>
-				<Text style={styles.title}>Invitation accepted</Text>
-				<Text style={styles.body}>You've joined the workspace.</Text>
+				<Text style={styles.title}>{t('workspaces.accept.acceptedTitle')}</Text>
+				<Text style={styles.body}>{t('workspaces.accept.acceptedBody')}</Text>
 			</View>
 		);
 	}
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Workspace invitation</Text>
-			<Text style={styles.body}>
-				You've been invited to join a workspace. Accept the invitation to become a member.
-			</Text>
+			<Text style={styles.title}>{t('workspaces.accept.title')}</Text>
+			<Text style={styles.body}>{t('workspaces.accept.body')}</Text>
 
 			{acceptError && (
 				<Text style={styles.error} accessibilityRole="alert">
@@ -66,18 +69,19 @@ export function AcceptInvitationScreen({
 				onPress={handleAccept}
 				disabled={isAccepting}
 				style={styles.button}
-				accessibilityLabel="Accept invitation button"
+				accessibilityLabel={t('workspaces.accept.a11y.submit')}
+				accessibilityState={{ disabled: isAccepting, busy: isAccepting }}
 				accessibilityRole="button"
 			>
 				{isAccepting ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Accept invitation</Text>
+					<Text style={styles.buttonText}>{t('workspaces.accept.submit')}</Text>
 				)}
 			</TouchableOpacity>
 
-			<TouchableOpacity onPress={onNavigateBack}>
-				<Text style={styles.link}>Not now</Text>
+			<TouchableOpacity onPress={onNavigateBack} accessibilityRole="button">
+				<Text style={styles.link}>{t('workspaces.accept.notNow')}</Text>
 			</TouchableOpacity>
 		</View>
 	);

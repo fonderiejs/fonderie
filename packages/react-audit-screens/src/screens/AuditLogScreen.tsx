@@ -1,13 +1,19 @@
 import type { AuditClient, IListAuditEventsInput } from '@fonderie/client';
+import { uiLocaleFor } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useAuditEvents } from '@fonderie/react-audit';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
 
 export interface IAuditLogScreenProps {
 	client?: AuditClient;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function AuditLogScreen({ client }: IAuditLogScreenProps) {
+export function AuditLogScreen({ client, locale }: IAuditLogScreenProps) {
+	const t = useUiT(client, locale);
+	const dateLocale = locale ?? uiLocaleFor(client)?.get();
 	const [type, setType] = useState('');
 	const [actorId, setActorId] = useState('');
 	const [expanded, setExpanded] = useState<string | null>(null);
@@ -28,23 +34,25 @@ export function AuditLogScreen({ client }: IAuditLogScreenProps) {
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Audit log</h1>
+			<h1 style={styles.title}>{t('audit.log.title')}</h1>
 
 			<form style={styles.form} onSubmit={handleFilterSubmit}>
 				<input
 					style={styles.input}
-					placeholder="Event type"
+					placeholder={t('audit.log.eventType')}
+					aria-label={t('audit.log.eventType')}
 					value={type}
 					onChange={(event) => setType(event.target.value)}
 				/>
 				<input
 					style={styles.input}
-					placeholder="Actor ID"
+					placeholder={t('audit.log.actorId')}
+					aria-label={t('audit.log.actorId')}
 					value={actorId}
 					onChange={(event) => setActorId(event.target.value)}
 				/>
 				<button type="submit" style={styles.filterButton}>
-					Filter
+					{t('audit.log.filter')}
 				</button>
 			</form>
 
@@ -55,7 +63,7 @@ export function AuditLogScreen({ client }: IAuditLogScreenProps) {
 			)}
 
 			{isLoading ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('audit.log.loading')}</p>
 			) : (
 				<ul style={styles.list}>
 					{events.map((event) => (
@@ -67,7 +75,8 @@ export function AuditLogScreen({ client }: IAuditLogScreenProps) {
 							>
 								<span style={styles.type}>{event.type}</span>
 								<span style={styles.meta}>
-									{event.actorId ?? 'system'} · {new Date(event.createdAt).toLocaleString()}
+									{event.actorId ?? t('audit.log.system')} ·{' '}
+									{new Date(event.createdAt).toLocaleString(dateLocale)}
 								</span>
 							</button>
 							{expanded === event.id && (
@@ -85,7 +94,7 @@ export function AuditLogScreen({ client }: IAuditLogScreenProps) {
 					onClick={loadMore}
 					style={styles.loadMoreButton}
 				>
-					{isLoadingMore ? 'Loading…' : 'Load more'}
+					{isLoadingMore ? t('audit.log.loading') : t('audit.log.loadMore')}
 				</button>
 			)}
 		</div>

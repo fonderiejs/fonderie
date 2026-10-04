@@ -9,14 +9,16 @@ interface IWebhookDetailScreenProps {
     client?: WebhooksClient;
     endpointId: string;
     onNavigateToList?: () => void;
+    locale?: string;
 }
 
 interface IWebhooksListScreenProps {
     client?: WebhooksClient;
     onSelectEndpoint?: (endpointId: string) => void;
+    locale?: string;
 }
 
-function WebhookDetailScreen({ client, endpointId, onNavigateToList, }: IWebhookDetailScreenProps): Element
+function WebhookDetailScreen({ client, endpointId, onNavigateToList, locale, }: IWebhookDetailScreenProps): Element
 
-function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListScreenProps): Element
+function WebhooksListScreen({ client, onSelectEndpoint, locale }: IWebhooksListScreenProps): Element
 ```

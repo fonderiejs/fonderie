@@ -1,4 +1,5 @@
 import type { WebhooksClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useWebhookDeliveries, useWebhookEndpoint } from '@fonderie/react-webhooks';
 import type { CSSProperties, FormEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -7,13 +8,17 @@ export interface IWebhookDetailScreenProps {
 	client?: WebhooksClient;
 	endpointId: string;
 	onNavigateToList?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function WebhookDetailScreen({
 	client,
 	endpointId,
 	onNavigateToList,
+	locale,
 }: IWebhookDetailScreenProps) {
+	const t = useUiT(client, locale);
 	const { endpoint, isLoading, error, updateEndpoint } = useWebhookEndpoint(client, endpointId);
 	const { deliveries, isLoading: isLoadingDeliveries } = useWebhookDeliveries(client, endpointId);
 
@@ -44,7 +49,12 @@ export function WebhookDetailScreen({
 		}
 	};
 
-	if (isLoading) return <p style={styles.status}>Loading…</p>;
+	const statusLabel = (status: string) =>
+		status === 'pending' || status === 'delivered' || status === 'failed'
+			? t(`webhooks.status.${status}`)
+			: status;
+
+	if (isLoading) return <p style={styles.status}>{t('webhooks.loading')}</p>;
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
@@ -54,11 +64,11 @@ export function WebhookDetailScreen({
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Webhook endpoint</h1>
+			<h1 style={styles.title}>{t('webhooks.detail.title')}</h1>
 
 			<form style={styles.form} onSubmit={handleSubmit}>
 				<label style={styles.label} htmlFor="webhook-url">
-					URL
+					{t('webhooks.detail.url')}
 				</label>
 				<input
 					id="webhook-url"
@@ -69,7 +79,7 @@ export function WebhookDetailScreen({
 				/>
 
 				<label style={styles.label} htmlFor="webhook-events">
-					Events (comma-separated)
+					{t('webhooks.detail.events')}
 				</label>
 				<input
 					id="webhook-events"
@@ -84,24 +94,30 @@ export function WebhookDetailScreen({
 						checked={enabled}
 						onChange={(event) => setEnabled(event.target.checked)}
 					/>
-					Enabled
+					{t('webhooks.enabled')}
 				</label>
 
 				<button type="submit" style={styles.button}>
-					Save
+					{t('webhooks.detail.save')}
 				</button>
 			</form>
 
-			<h2 style={styles.subtitle}>Deliveries</h2>
+			<h2 style={styles.subtitle}>{t('webhooks.detail.deliveries')}</h2>
 			{isLoadingDeliveries ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('webhooks.loading')}</p>
 			) : (
 				<ul style={styles.list}>
 					{deliveries.map((delivery) => (
 						<li key={delivery.id} style={styles.row}>
 							<span style={styles.eventType}>{delivery.eventType}</span>
 							<span style={styles.meta}>
-								{delivery.status} · {delivery.attempts} attempt{delivery.attempts === 1 ? '' : 's'}
+								{statusLabel(delivery.status)} ·{' '}
+								{t(
+									delivery.attempts === 1
+										? 'webhooks.detail.attemptsOne'
+										: 'webhooks.detail.attemptsOther',
+									{ count: delivery.attempts },
+								)}
 								{delivery.responseStatus !== null ? ` · HTTP ${delivery.responseStatus}` : ''}
 							</span>
 						</li>
@@ -110,7 +126,7 @@ export function WebhookDetailScreen({
 			)}
 
 			<button type="button" onClick={onNavigateToList} style={styles.link}>
-				Back to webhooks
+				{t('webhooks.detail.back')}
 			</button>
 		</div>
 	);

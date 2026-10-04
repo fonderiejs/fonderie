@@ -1,4 +1,5 @@
 import type { AuthClient, IVerifyEmailResult } from '@fonderie/client';
+import { useUiT } from '@fonderie/vue';
 import { useVerifyEmail } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -8,12 +9,15 @@ export const VerifyEmailScreen = defineComponent({
 	name: 'FonderieVerifyEmailScreen',
 	props: {
 		client: { type: Object as PropType<AuthClient>, required: false },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 	},
 	emits: {
 		verified: (_result: IVerifyEmailResult) => true,
 	},
 	setup(props, { emit }) {
 		const { verifyEmail, resend, resent, isLoading, error } = useVerifyEmail(props.client);
+		const t = useUiT(props.client, () => props.locale);
 		const code = ref('');
 
 		async function handleSubmit(event: Event) {
@@ -36,13 +40,13 @@ export const VerifyEmailScreen = defineComponent({
 
 		return () =>
 			h('form', { style: styles.container, onSubmit: handleSubmit }, [
-				h('h1', { style: [styles.title, { marginBottom: '12px' }] }, 'Verify your email'),
-				h('p', { style: styles.body }, 'Enter the 6-digit code we sent to your email address.'),
+				h('h1', { style: [styles.title, { marginBottom: '12px' }] }, t('auth.verify.title')),
+				h('p', { style: styles.body }, t('auth.verify.lead')),
 				h('input', {
 					style: styles.input,
 					type: 'text',
 					inputmode: 'numeric',
-					placeholder: '6-digit code',
+					placeholder: t('auth.fields.code'),
 					value: code.value,
 					required: true,
 					autocomplete: 'one-time-code',
@@ -56,10 +60,10 @@ export const VerifyEmailScreen = defineComponent({
 				h(
 					'button',
 					{ type: 'submit', disabled: isLoading.value, style: styles.button },
-					isLoading.value ? 'Verifying…' : 'Verify',
+					isLoading.value ? t('auth.verify.submitting') : t('auth.verify.submit'),
 				),
 				resent.value
-					? h('p', { style: styles.sent }, 'A new verification email has been sent.')
+					? h('p', { style: styles.sent }, t('auth.verify.resent'))
 					: h(
 							'button',
 							{
@@ -68,7 +72,7 @@ export const VerifyEmailScreen = defineComponent({
 								style: styles.link,
 								onClick: handleResend,
 							},
-							"Didn't get a code? Resend email",
+							`${t('auth.verify.noCode')} ${t('auth.verify.resend')}`,
 						),
 			]);
 	},

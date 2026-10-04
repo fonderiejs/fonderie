@@ -1,4 +1,5 @@
 import type { WebhooksClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useWebhookEndpoints } from '@fonderie/react-webhooks';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -6,9 +7,12 @@ import { useState } from 'react';
 export interface IWebhooksListScreenProps {
 	client?: WebhooksClient;
 	onSelectEndpoint?: (endpointId: string) => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListScreenProps) {
+export function WebhooksListScreen({ client, onSelectEndpoint, locale }: IWebhooksListScreenProps) {
+	const t = useUiT(client, locale);
 	const { endpoints, isLoading, error, createEndpoint, removeEndpoint, testEndpoint } =
 		useWebhookEndpoints(client);
 	const [isTesting, setIsTesting] = useState(false);
@@ -40,7 +44,12 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 		try {
 			const result = await testEndpoint(endpointId);
 			setTestResult(
-				`${endpointId}: ${result.ok ? 'OK' : `failed (${result.status ?? result.error})`}`,
+				result.ok
+					? t('webhooks.list.testOk', { endpoint: endpointId })
+					: t('webhooks.list.testFailed', {
+							endpoint: endpointId,
+							reason: String(result.status ?? result.error),
+						}),
 			);
 		} catch {
 			// Surfaced via `error` from useWebhookEndpoints.
@@ -51,11 +60,11 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Webhooks</h1>
+			<h1 style={styles.title}>{t('webhooks.list.title')}</h1>
 
 			{newSecret && (
 				<p style={styles.secretBanner}>
-					New endpoint secret (shown once): <code>{newSecret}</code>
+					{t('webhooks.list.newSecret')} <code>{newSecret}</code>
 				</p>
 			)}
 			{testResult && <p style={styles.status}>{testResult}</p>}
@@ -63,19 +72,21 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 			<form style={styles.form} onSubmit={handleCreate}>
 				<input
 					style={styles.input}
-					placeholder="https://example.com/webhook"
+					placeholder={t('webhooks.list.urlPlaceholder')}
+					aria-label={t('webhooks.list.a11y.url')}
 					value={url}
 					onChange={(event) => setUrl(event.target.value)}
 					required
 				/>
 				<input
 					style={styles.input}
-					placeholder="event.type, event.other (optional)"
+					placeholder={t('webhooks.list.eventsPlaceholder')}
+					aria-label={t('webhooks.list.a11y.events')}
 					value={events}
 					onChange={(event) => setEvents(event.target.value)}
 				/>
 				<button type="submit" style={styles.createButton}>
-					Add endpoint
+					{t('webhooks.list.add')}
 				</button>
 			</form>
 
@@ -86,7 +97,7 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 			)}
 
 			{isLoading ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('webhooks.loading')}</p>
 			) : (
 				<ul style={styles.list}>
 					{endpoints.map((endpoint) => (
@@ -98,7 +109,7 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 							>
 								<span style={styles.url}>{endpoint.url}</span>
 								<span style={endpoint.enabled ? styles.enabled : styles.disabled}>
-									{endpoint.enabled ? 'Enabled' : 'Disabled'}
+									{endpoint.enabled ? t('webhooks.enabled') : t('webhooks.disabled')}
 								</span>
 							</button>
 							<button
@@ -106,15 +117,17 @@ export function WebhooksListScreen({ client, onSelectEndpoint }: IWebhooksListSc
 								disabled={isTesting}
 								onClick={() => handleTest(endpoint.id)}
 								style={styles.smallButton}
+								aria-label={t('webhooks.list.a11y.test', { url: endpoint.url })}
 							>
-								Test
+								{t('webhooks.list.test')}
 							</button>
 							<button
 								type="button"
 								onClick={() => removeEndpoint(endpoint.id)}
 								style={styles.deleteButton}
+								aria-label={t('webhooks.list.a11y.delete', { url: endpoint.url })}
 							>
-								Delete
+								{t('webhooks.list.delete')}
 							</button>
 						</li>
 					))}

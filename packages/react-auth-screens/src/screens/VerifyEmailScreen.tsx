@@ -1,4 +1,5 @@
 import type { AuthClient, IVerifyEmailResult } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useVerifyEmail } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -6,10 +7,13 @@ import { useState } from 'react';
 export interface IVerifyEmailScreenProps {
 	client?: AuthClient;
 	onVerified?: (result: IVerifyEmailResult) => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function VerifyEmailScreen({ client, onVerified }: IVerifyEmailScreenProps) {
+export function VerifyEmailScreen({ client, onVerified, locale }: IVerifyEmailScreenProps) {
 	const { verifyEmail, resend, resent, isLoading, error } = useVerifyEmail(client);
+	const t = useUiT(client, locale);
 	const [code, setCode] = useState('');
 
 	const handleSubmit = async (event: FormEvent) => {
@@ -32,18 +36,18 @@ export function VerifyEmailScreen({ client, onVerified }: IVerifyEmailScreenProp
 
 	return (
 		<form style={styles.container} onSubmit={handleSubmit}>
-			<h1 style={styles.title}>Verify your email</h1>
-			<p style={styles.body}>Enter the 6-digit code we sent to your email address.</p>
+			<h1 style={styles.title}>{t('auth.verify.title')}</h1>
+			<p style={styles.body}>{t('auth.verify.lead')}</p>
 
 			<label htmlFor="fonderie-verify-email-code" style={styles.visuallyHidden}>
-				Verification code
+				{t('auth.verify.codeLabel')}
 			</label>
 			<input
 				id="fonderie-verify-email-code"
 				style={styles.input}
 				type="text"
 				inputMode="numeric"
-				placeholder="6-digit code"
+				placeholder={t('auth.fields.code')}
 				value={code}
 				onChange={(event) => setCode(event.target.value)}
 				autoComplete="one-time-code"
@@ -57,14 +61,14 @@ export function VerifyEmailScreen({ client, onVerified }: IVerifyEmailScreenProp
 			)}
 
 			<button type="submit" disabled={isLoading} style={styles.button}>
-				{isLoading ? 'Verifying…' : 'Verify'}
+				{isLoading ? t('auth.verify.submitting') : t('auth.verify.submit')}
 			</button>
 
 			{resent ? (
-				<p style={styles.sent}>A new verification email has been sent.</p>
+				<p style={styles.sent}>{t('auth.verify.resent')}</p>
 			) : (
 				<button type="button" disabled={isLoading} onClick={handleResend} style={styles.link}>
-					Didn't get a code? <strong>Resend email</strong>
+					{t('auth.verify.noCode')} <strong>{t('auth.verify.resend')}</strong>
 				</button>
 			)}
 		</form>
