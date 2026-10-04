@@ -12,8 +12,10 @@ import {
 import en from '../admin-i18n/en';
 import es from '../admin-i18n/es';
 import fr from '../admin-i18n/fr';
+import zhHans from '../admin-i18n/zh-Hans';
+import zhHant from '../admin-i18n/zh-Hant';
 
-// The compiler guarantees fr/es have the same KEYS as en. It cannot see two
+// The compiler guarantees fr/es/zh-Hans/zh-Hant have the same KEYS as en. It cannot see two
 // mistakes a translator makes: an empty string, and a dropped or renamed
 // {placeholder} — which renders "{n} users" or loses the number entirely.
 
@@ -40,6 +42,8 @@ test('every locale has a non-empty string for every key, with the same {placehol
 	for (const [name, dict] of [
 		['fr', fr],
 		['es', es],
+		['zh-Hans', zhHans],
+		['zh-Hant', zhHant],
 	] as const) {
 		const got = new Map(leaves(dict as unknown as Tree));
 		for (const [key, text] of base) {
@@ -58,6 +62,11 @@ test('every locale has a non-empty string for every key, with the same {placehol
 test('createAdminT: translates, interpolates, and renders an unknown key as itself', () => {
 	assert.equal(createAdminT('fr')('common.save'), 'Enregistrer');
 	assert.equal(createAdminT('es')('common.save'), 'Guardar');
+	assert.notEqual(createAdminT('zh-Hans')('common.save'), 'Save');
+	// Traditional is its own text, not the Simplified copy under another name.
+	const hans = new Map(leaves(zhHans as unknown as Tree));
+	const differing = leaves(zhHant as unknown as Tree).filter(([k, v]) => hans.get(k) !== v).length;
+	assert.ok(differing > hans.size / 2, `${differing} of ${hans.size} strings differ between zh-Hans and zh-Hant`);
 	assert.equal(createAdminT()('common.save'), 'Save');
 	const t = createAdminT('en');
 	assert.equal(t('nope.missing' as never), 'nope.missing');
@@ -68,7 +77,10 @@ test('detectAdminLocale: first supported browser language, else English', () => 
 	assert.equal(detectAdminLocale(['de-DE', 'es-MX']), 'es');
 	assert.equal(detectAdminLocale(['de-DE']), 'en');
 	assert.equal(detectAdminLocale([]), 'en');
-	assert.deepEqual([...ADMIN_LOCALES], ['en', 'fr', 'es']);
+	assert.deepEqual([...ADMIN_LOCALES], ['en', 'fr', 'es', 'zh-Hans', 'zh-Hant']);
+	// Chinese by script, whatever the region tag says.
+	for (const tag of ['zh-TW', 'zh-HK', 'zh-MO', 'zh-Hant', 'zh-Hant-CA']) assert.equal(detectAdminLocale([tag]), 'zh-Hant', tag);
+	for (const tag of ['zh', 'zh-CN', 'zh-SG', 'zh-Hans', 'zh-Hans-US']) assert.equal(detectAdminLocale([tag]), 'zh-Hans', tag);
 });
 
 test('formatAdminDate: dates follow the console language', () => {

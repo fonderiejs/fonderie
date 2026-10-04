@@ -1,16 +1,18 @@
 import en from './en';
 import es from './es';
 import fr from './fr';
+import zhHans from './zh-Hans';
+import zhHant from './zh-Hant';
 
 // The admin console's own language — the OPERATOR's preference, independent
 // of the locales the app serves its customers. A founder in France can run
 // the console in French while every customer email stays English.
 //
 // English is canonical: its shape defines the key space, and fr/es are typed
-// against it, so a missing or extra key is a compile error (the pattern the
+// against it (so are zh-Hans and zh-Hant), so a missing or extra key is a compile error (the pattern the
 // reference app uses for its own UI).
 
-export const ADMIN_LOCALES = ['en', 'fr', 'es'] as const;
+export const ADMIN_LOCALES = ['en', 'fr', 'es', 'zh-Hans', 'zh-Hant'] as const;
 export type AdminLocale = (typeof ADMIN_LOCALES)[number];
 export const DEFAULT_ADMIN_LOCALE: AdminLocale = 'en';
 
@@ -26,6 +28,8 @@ export const adminLocaleNames: LocaleMap<string> = Object.freeze({
 	en: 'English',
 	fr: 'Français',
 	es: 'Español',
+	'zh-Hans': '简体中文',
+	'zh-Hant': '繁體中文',
 });
 
 /** BCP 47 tags for Intl (dates, numbers). */
@@ -33,15 +37,30 @@ export const adminLocaleTags: LocaleMap<string> = Object.freeze({
 	en: 'en-US',
 	fr: 'fr-FR',
 	es: 'es-ES',
+	'zh-Hans': 'zh-Hans',
+	'zh-Hant': 'zh-Hant',
 });
 
 export const isAdminLocale = (value: unknown): value is AdminLocale =>
 	(ADMIN_LOCALES as readonly unknown[]).includes(value);
 
-/** The first supported language in a browser's preference list, else English. */
+/**
+ * The first supported language in a browser's preference list, else English.
+ * Chinese goes by script: zh-TW / zh-HK / zh-MO → Traditional, zh / zh-CN /
+ * zh-SG → Simplified (CLDR likely subtags, via Intl.Locale#maximize).
+ */
 export function detectAdminLocale(languages: readonly string[] = []): AdminLocale {
 	for (const tag of languages) {
 		const base = tag.toLowerCase().split('-')[0];
+		if (base === 'zh') {
+			let script: string | undefined;
+			try {
+				script = new Intl.Locale(tag).maximize().script;
+			} catch {
+				script = undefined;
+			}
+			return script === 'Hant' ? 'zh-Hant' : 'zh-Hans';
+		}
 		if (isAdminLocale(base)) return base;
 	}
 	return DEFAULT_ADMIN_LOCALE;
@@ -59,7 +78,7 @@ type MessagePath<T> = {
 export type AdminMessageKey = MessagePath<AdminMessages>;
 export type AdminMessageParams = Record<string, string | number>;
 
-const dictionaries: LocaleMap<AdminMessages> = { en, fr, es };
+const dictionaries: LocaleMap<AdminMessages> = { en, fr, es, 'zh-Hans': zhHans, 'zh-Hant': zhHant };
 
 /**
  * A translator for one locale: t('users.title'), t('users.count', { n: 3 }).

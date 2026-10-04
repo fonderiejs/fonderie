@@ -1,0 +1,53 @@
+import type en from '../en/users';
+
+const users: typeof en = {
+	title: '使用者',
+	lead: '所有已註冊的使用者。開啟帳戶即可查看其工作階段、登入記錄，以及停權與登出控制項。',
+	emailPlaceholder: '電子郵件地址',
+	emailLabel: '電子郵件',
+	allUsers: '所有使用者',
+	whichAccounts: '帳戶範圍',
+	activeAccounts: '啟用中',
+	deletedAccounts: '已刪除',
+	noUserWithEmail: '找不到使用此電子郵件的使用者。',
+	missingIdPrefix: '找不到此 ID 的帳戶：',
+	missingIdBody: '此帳戶已被刪除，或從未存在於此。其帳單記錄仍會保留。',
+	planCredits: '方案與點數',
+	emptyTitle: '尚無使用者',
+	emptyBody: '新註冊的使用者會即時顯示於此。',
+	col: {
+		email: '電子郵件',
+		name: '名稱',
+		plan: '方案',
+		created: '建立時間',
+		status: '狀態',
+	},
+	field: {
+		id: 'ID',
+		email: '電子郵件',
+		verified: '已驗證',
+		mfa: 'MFA',
+		provider: '登入方式',
+		lastLogin: '上次登入',
+		created: '建立時間',
+	},
+	passwordProvider: '密碼',
+	noPasswordSet: '未設定密碼',
+	deletedOn: '已於 {date} 刪除。',
+	deletedBody:
+		'此帳戶無法登入，並會在保留期清除作業執行時被抹除。其帳單記錄仍會保留。',
+	suspend: '停權',
+	unsuspend: '解除停權',
+	signOutEverywhere: '從所有裝置登出',
+	liveSessions: '目前的工作階段',
+	since: '自 {date} 起',
+	recentSignIns: '最近登入',
+	noneRecorded: '無記錄。',
+	outcome: {
+		success: '成功',
+		failure: '失敗',
+	},
+	proxyVpn: '代理伺服器/VPN',
+	hosting: '主機代管',
+};
+export default users;
