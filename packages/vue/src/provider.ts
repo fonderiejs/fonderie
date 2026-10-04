@@ -1,6 +1,7 @@
-import type { FonderieClient } from '@fonderie/client';
-import type { InjectionKey, Plugin, Ref } from 'vue';
-import { getCurrentScope, inject, onScopeDispose, provide, readonly, shallowRef } from 'vue';
+import type { FonderieClient, UiT } from '@fonderie/client';
+import { createUiT, detectDeviceLocale, uiLocaleFor } from '@fonderie/client';
+import type { InjectionKey, MaybeRefOrGetter, Plugin, Ref } from 'vue';
+import { computed, getCurrentScope, inject, onScopeDispose, provide, readonly, shallowRef, toValue } from 'vue';
 
 export const FONDERIE_INJECTION_KEY: InjectionKey<FonderieClient> = Symbol('fonderie-client');
 
@@ -79,4 +80,39 @@ export function useWorkspaceId(source?: unknown): Readonly<Ref<string | undefine
 		if (getCurrentScope()) onScopeDispose(off);
 	}
 	return readonly(id);
+}
+
+const DEVICE_LOCALE = detectDeviceLocale();
+
+/**
+ * The prebuilt screens' translator, in the app's UI language: the language of
+ * the client a screen was handed (`source`, any sub-client works), else of the
+ * provided client, else the device's. Follows client.setLocale() live — a
+ * render that calls t() re-renders when the language changes. `locale`
+ * overrides it for one screen. Call inside setup().
+ *
+ *   const t = useUiT(props.client);  h('h1', t('auth.login.title'))
+ */
+export function useUiT(source?: object, locale?: MaybeRefOrGetter<string | undefined>): UiT {
+	const tag = useUiLocale(source, locale);
+	const t = computed(() => createUiT(tag.value));
+	return (key, params) => t.value(key, params);
+}
+
+/**
+ * The app's UI language as a BCP 47 tag ('fr-CA', 'zh-Hant'…), found the same
+ * way as useUiT and kept current — for formatting dates, amounts and names the
+ * way it writes them. Call inside setup().
+ */
+export function useUiLocale(source?: object, locale?: MaybeRefOrGetter<string | undefined>): Readonly<Ref<string>> {
+	const contextClient = inject(FONDERIE_INJECTION_KEY, null);
+	const src = uiLocaleFor(source) ?? uiLocaleFor(contextClient ?? undefined);
+	const tag = shallowRef(src?.get() ?? DEVICE_LOCALE);
+	if (src) {
+		const off = src.on((next) => {
+			tag.value = next;
+		});
+		if (getCurrentScope()) onScopeDispose(off);
+	}
+	return computed(() => toValue(locale) ?? tag.value);
 }

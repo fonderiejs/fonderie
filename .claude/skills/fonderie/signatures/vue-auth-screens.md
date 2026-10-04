@@ -5,15 +5,15 @@
 ## @fonderie/vue-auth-screens
 
 ```ts
-component ForgotPasswordScreen(props: { client }) — emits: navigate-login
+component ForgotPasswordScreen(props: { client, locale }) — emits: navigate-login
 
-component LoginScreen(props: { client }) — emits: login-success, mfa-required, navigate-register, navigate-forgot-password
+component LoginScreen(props: { client, locale }) — emits: login-success, mfa-required, navigate-register, navigate-forgot-password
 
-component MfaChallengeScreen(props: { client, mfaToken }) — emits: login-success, navigate-login
+component MfaChallengeScreen(props: { client, locale, mfaToken }) — emits: login-success, navigate-login
 
-component RegisterScreen(props: { client }) — emits: register-success, navigate-login
+component RegisterScreen(props: { client, locale }) — emits: register-success, navigate-login
 
-component ResetPasswordScreen(props: { client, initialPin }) — emits: reset-success, navigate-login
+component ResetPasswordScreen(props: { client, locale, initialPin }) — emits: reset-success, navigate-login
 
-component VerifyEmailScreen(props: { client }) — emits: verified
+component VerifyEmailScreen(props: { client, locale }) — emits: verified
 ```

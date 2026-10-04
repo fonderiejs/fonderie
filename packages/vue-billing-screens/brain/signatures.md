@@ -5,7 +5,7 @@
 ## @fonderie/vue-billing-screens
 
 ```ts
-component PricingScreen(props: { client }) — emits: checkout-start
+component PricingScreen(props: { client, locale }) — emits: checkout-start
 
-component SubscriptionScreen(props: { client }) — emits: manage-billing, navigate-pricing, add-payment-method
+component SubscriptionScreen(props: { client, locale }) — emits: manage-billing, navigate-pricing, add-payment-method
 ```

@@ -35,6 +35,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^3.4.0",
+		"@fonderie/react": "^0.9.1",
 		"@fonderie/react-webhooks": "^0.5.0"
 	},
 	"peerDependencies": {

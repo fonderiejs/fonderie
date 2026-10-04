@@ -5,5 +5,5 @@
 ## @fonderie/vue-audit-screens
 
 ```ts
-component AuditLogScreen(props: { client })
+component AuditLogScreen(props: { client, locale })
 ```

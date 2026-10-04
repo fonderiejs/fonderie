@@ -1,4 +1,5 @@
-import type { IInvitationDTO, WorkspacesClient } from '@fonderie/client';
+import type { IInvitationDTO, UiMessageKey, WorkspacesClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useInvitations } from '@fonderie/react-native-workspaces';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -6,10 +7,23 @@ import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'r
 export interface IInviteMembersScreenProps {
 	client?: WorkspacesClient;
 	onNavigateToMembers?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMembersScreenProps) {
+export function InviteMembersScreen({
+	client,
+	onNavigateToMembers,
+	locale,
+}: IInviteMembersScreenProps) {
 	const { invitations, isLoading, error, invite, cancelInvitation } = useInvitations(client);
+	const t = useUiT(client, locale);
+	// A status Fonderie does not know shows as sent by the server.
+	const statusLabel = (status: string) => {
+		const key = `workspaces.invitationStatus.${status}` as UiMessageKey;
+		const text = t(key);
+		return text === key ? status : text;
+	};
 	const [email, setEmail] = useState('');
 	const [isInviting, setIsInviting] = useState(false);
 
@@ -29,26 +43,29 @@ export function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMemb
 		<View style={styles.row}>
 			<View>
 				<Text style={styles.email}>{inv.email}</Text>
-				<Text style={styles.meta}>{inv.status}</Text>
+				<Text style={styles.meta}>{statusLabel(inv.status)}</Text>
 			</View>
 			<TouchableOpacity
 				onPress={() => cancelInvitation(inv.id)}
 				style={styles.cancelButton}
 				accessibilityRole="button"
+				accessibilityLabel={t('workspaces.invite.a11y.cancel', { email: inv.email })}
 			>
-				<Text style={styles.cancelButtonText}>Cancel</Text>
+				<Text style={styles.cancelButtonText}>{t('workspaces.invite.cancel')}</Text>
 			</TouchableOpacity>
 		</View>
 	);
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Invite members</Text>
+			<Text style={styles.title}>{t('workspaces.invite.title')}</Text>
 
 			<View style={styles.form}>
 				<TextInput
 					style={styles.input}
-					placeholder="Email address"
+					placeholder={t('workspaces.invite.email')}
+					accessibilityLabel={t('workspaces.invite.a11y.email')}
+					accessibilityHint={t('workspaces.invite.a11y.emailHint')}
 					value={email}
 					onChangeText={setEmail}
 					autoCapitalize="none"
@@ -59,8 +76,12 @@ export function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMemb
 					onPress={handleSubmit}
 					style={styles.button}
 					accessibilityRole="button"
+					accessibilityLabel={t('workspaces.invite.a11y.submit')}
+					accessibilityState={{ disabled: isInviting, busy: isInviting }}
 				>
-					<Text style={styles.buttonText}>{isInviting ? 'Sending…' : 'Send'}</Text>
+					<Text style={styles.buttonText}>
+						{isInviting ? t('workspaces.invite.submitting') : t('workspaces.invite.submitShort')}
+					</Text>
 				</TouchableOpacity>
 			</View>
 
@@ -70,15 +91,19 @@ export function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMemb
 				</Text>
 			)}
 
-			<Text style={styles.subtitle}>Pending invitations</Text>
+			<Text style={styles.subtitle}>{t('workspaces.invite.pending')}</Text>
 			{isLoading ? (
-				<Text style={styles.status}>Loading…</Text>
+				<Text style={styles.status}>{t('workspaces.invite.loading')}</Text>
 			) : (
 				<FlatList data={invitations} keyExtractor={(inv) => inv.id} renderItem={renderInvitation} />
 			)}
 
-			<TouchableOpacity onPress={onNavigateToMembers} style={styles.link}>
-				<Text style={styles.linkText}>Back to team</Text>
+			<TouchableOpacity
+				onPress={onNavigateToMembers}
+				style={styles.link}
+				accessibilityRole="button"
+			>
+				<Text style={styles.linkText}>{t('workspaces.invite.backToTeam')}</Text>
 			</TouchableOpacity>
 		</View>
 	);

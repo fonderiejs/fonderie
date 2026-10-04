@@ -1,0 +1,110 @@
+import type en from './en';
+
+// Written for Traditional readers (帳戶, 電子郵件, 驗證器), not converted
+// character by character from the Simplified copy.
+const auth: typeof en = {
+	fields: {
+		email: '電子郵件',
+		password: '密碼',
+		firstName: '名字',
+		lastName: '姓氏',
+		code: '6 位數驗證碼',
+	},
+	backToSignIn: '返回登入',
+	login: {
+		title: '登入',
+		submit: '登入',
+		submitting: '正在登入…',
+		forgotPassword: '忘記密碼？',
+		noAccount: '還沒有帳戶嗎？',
+		signUp: '註冊',
+		a11y: {
+			email: '電子郵件輸入欄',
+			emailHint: '輸入您的電子郵件地址',
+			password: '密碼輸入欄',
+			passwordHint: '輸入您的密碼',
+			submit: '登入按鈕',
+		},
+	},
+	register: {
+		title: '建立帳戶',
+		submit: '建立帳戶',
+		submitting: '正在建立帳戶…',
+		haveAccount: '已經有帳戶了嗎？',
+		signIn: '登入',
+		invalidEmail: '請輸入有效的電子郵件地址。',
+		passwordTooShort: '密碼長度至少需要 {min} 個字元。',
+		passwordRule: '至少 {min} 個字元',
+		a11y: {
+			firstName: '名字輸入欄',
+			lastName: '姓氏輸入欄',
+			email: '電子郵件輸入欄',
+			password: '密碼輸入欄',
+			submit: '建立帳戶按鈕',
+		},
+	},
+	forgot: {
+		title: '重設您的密碼',
+		lead: '輸入您的電子郵件，我們會寄送重設密碼的連結給您。',
+		submit: '寄送重設連結',
+		submitting: '正在寄送…',
+		sentTitle: '請查看您的電子郵件',
+		sentBody: '如果 {email} 有對應的帳戶，我們已寄出重設密碼的說明。',
+		a11y: {
+			email: '電子郵件輸入欄',
+			submit: '寄送重設連結按鈕',
+		},
+	},
+	reset: {
+		title: '設定新密碼',
+		lead: '輸入電子郵件中的 6 位數驗證碼和您的新密碼。',
+		codeLabel: '重設驗證碼',
+		newPassword: '新密碼',
+		confirmPassword: '確認新密碼',
+		mismatch: '兩次輸入的密碼不相符。',
+		submit: '重設密碼',
+		submitting: '正在重設…',
+		doneTitle: '密碼已更新',
+		doneBody: '您的密碼已重設。請使用新密碼登入。',
+		goToSignIn: '前往登入',
+		a11y: {
+			code: '重設驗證碼輸入欄',
+			codeHint: '輸入電子郵件中的 6 位數驗證碼',
+			newPassword: '新密碼輸入欄',
+			newPasswordHint: '輸入您的新密碼',
+			confirm: '確認新密碼輸入欄',
+			confirmHint: '再次輸入您的新密碼',
+			submit: '重設密碼按鈕',
+			goToSignIn: '前往登入按鈕',
+		},
+	},
+	verify: {
+		title: '驗證您的電子郵件',
+		lead: '輸入我們寄到您電子郵件的 6 位數驗證碼。',
+		codeLabel: '驗證碼',
+		submit: '驗證',
+		submitting: '正在驗證…',
+		noCode: '沒有收到驗證碼嗎？',
+		resend: '重新寄送郵件',
+		resent: '已寄出新的驗證郵件。',
+		a11y: {
+			code: '驗證碼輸入欄',
+			codeHint: '輸入電子郵件中的 6 位數驗證碼',
+			submit: '驗證按鈕',
+		},
+	},
+	mfa: {
+		title: '雙重驗證',
+		lead: '輸入驗證器應用程式中的 6 位數驗證碼。',
+		codeLabel: '身分驗證碼',
+		submit: '驗證',
+		submitting: '正在驗證…',
+		a11y: {
+			code: '驗證碼輸入欄',
+			codeHint: '輸入驗證器應用程式中的 6 位數驗證碼',
+			submit: '驗證按鈕',
+		},
+	},
+};
+
+export default auth;

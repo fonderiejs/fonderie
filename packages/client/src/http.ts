@@ -72,6 +72,8 @@ export interface IHttpDeps {
 	// The platform this client runs on, sent as X-Client-Kind so a sign-in gets
 	// that platform's session lifetimes (mobile | desktop | web).
 	clientKind?: 'mobile' | 'desktop' | 'web' | undefined;
+	// The UI language, sent as Accept-Language on every request.
+	getLocale?: (() => string) | undefined;
 	// Whether the server answered: true for any response (an error status
 	// included), false when the request never reached it (network down, DNS,
 	// connection refused). Drives the client's 'offline' session state.
@@ -84,6 +86,7 @@ export interface IHttpDeps {
 
 export class HttpClient {
 	private clientKind: 'mobile' | 'desktop' | 'web' | undefined;
+	private getLocale: (() => string) | undefined;
 	private cache: ICache | undefined;
 	private defaultTtlMs: number;
 	private refresh: (() => Promise<string | undefined>) | undefined;
@@ -96,6 +99,7 @@ export class HttpClient {
 	) {
 		this.cache = deps.cache;
 		this.clientKind = deps.clientKind;
+		this.getLocale = deps.getLocale;
 		this.defaultTtlMs = deps.defaultTtlMs ?? 60_000;
 		this.refresh = deps.refresh;
 		this.onReachability = deps.onReachability;
@@ -166,6 +170,9 @@ export class HttpClient {
 		if (opts.cookie) headers['Cookie'] = opts.cookie;
 		if (opts.workspaceId) headers['X-Workspace-ID'] = opts.workspaceId;
 		if (this.clientKind) headers['X-Client-Kind'] = this.clientKind;
+		// The UI language — a CORS-safelisted header, so no preflight is added.
+		const locale = this.getLocale?.();
+		if (locale) headers['Accept-Language'] = locale;
 		Object.assign(headers, opts.headers ?? {});
 
 		const fetchInit: RequestInit = { method: opts.method, headers, credentials: 'include' };

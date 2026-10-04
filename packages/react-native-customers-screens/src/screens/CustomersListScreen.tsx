@@ -1,4 +1,5 @@
 import type { CustomersClient, ICustomerDTO } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useCustomers } from '@fonderie/react-native-customers';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -6,9 +7,16 @@ import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'r
 export interface ICustomersListScreenProps {
 	client?: CustomersClient;
 	onSelectCustomer?: (customerId: string) => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function CustomersListScreen({ client, onSelectCustomer }: ICustomersListScreenProps) {
+export function CustomersListScreen({
+	client,
+	onSelectCustomer,
+	locale,
+}: ICustomersListScreenProps) {
+	const t = useUiT(client, locale);
 	const [search, setSearch] = useState('');
 	const { customers, isLoading, error, createCustomer } = useCustomers(
 		client,
@@ -30,27 +38,32 @@ export function CustomersListScreen({ client, onSelectCustomer }: ICustomersList
 		}
 	};
 
-	const displayName = (c: ICustomerDTO) =>
-		c.companyName || [c.firstName, c.lastName].filter(Boolean).join(' ') || c.id;
+	// The server writes the name in the order the customer's language uses.
+	const displayName = (c: ICustomerDTO) => c.displayName || c.id;
 
 	const renderCustomer = ({ item: customer }: { item: ICustomerDTO }) => (
 		<TouchableOpacity
 			onPress={() => onSelectCustomer?.(customer.id)}
 			style={styles.row}
 			accessibilityRole="button"
+			accessibilityLabel={t('customers.list.a11y.openCustomer', { name: displayName(customer) })}
+			accessibilityHint={t('customers.list.a11y.openCustomerHint')}
 		>
 			<Text style={styles.name}>{displayName(customer)}</Text>
-			{customer.blacklisted.status && <Text style={styles.blacklisted}>Blacklisted</Text>}
+			{customer.blacklisted.status && (
+				<Text style={styles.blacklisted}>{t('customers.list.blacklisted')}</Text>
+			)}
 		</TouchableOpacity>
 	);
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Customers</Text>
+			<Text style={styles.title}>{t('customers.list.title')}</Text>
 
 			<TextInput
 				style={styles.input}
-				placeholder="Search customers…"
+				placeholder={t('customers.list.searchPlaceholder')}
+				accessibilityLabel={t('customers.list.a11y.search')}
 				value={search}
 				onChangeText={setSearch}
 				autoCapitalize="none"
@@ -59,13 +72,15 @@ export function CustomersListScreen({ client, onSelectCustomer }: ICustomersList
 			<View style={styles.form}>
 				<TextInput
 					style={styles.input}
-					placeholder="First name"
+					placeholder={t('customers.fields.firstName')}
+					accessibilityLabel={t('customers.list.a11y.firstName')}
 					value={firstName}
 					onChangeText={setFirstName}
 				/>
 				<TextInput
 					style={styles.input}
-					placeholder="Last name"
+					placeholder={t('customers.fields.lastName')}
+					accessibilityLabel={t('customers.list.a11y.lastName')}
 					value={lastName}
 					onChangeText={setLastName}
 				/>
@@ -73,8 +88,9 @@ export function CustomersListScreen({ client, onSelectCustomer }: ICustomersList
 					onPress={handleCreate}
 					style={styles.createButton}
 					accessibilityRole="button"
+					accessibilityLabel={t('customers.list.a11y.create')}
 				>
-					<Text style={styles.createButtonText}>Add customer</Text>
+					<Text style={styles.createButtonText}>{t('customers.list.create')}</Text>
 				</TouchableOpacity>
 			</View>
 
@@ -85,7 +101,7 @@ export function CustomersListScreen({ client, onSelectCustomer }: ICustomersList
 			)}
 
 			{isLoading ? (
-				<Text style={styles.status}>Loading…</Text>
+				<Text style={styles.status}>{t('customers.loading')}</Text>
 			) : (
 				<FlatList data={customers} keyExtractor={(c) => c.id} renderItem={renderCustomer} />
 			)}

@@ -1,4 +1,6 @@
 import type { AuditClient, IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
+import { uiLocaleFor } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useAuditEvents } from '@fonderie/react-native-audit';
 import { useState } from 'react';
 import {
@@ -13,9 +15,13 @@ import {
 
 export interface IAuditLogScreenProps {
 	client?: AuditClient;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function AuditLogScreen({ client }: IAuditLogScreenProps) {
+export function AuditLogScreen({ client, locale }: IAuditLogScreenProps) {
+	const t = useUiT(client, locale);
+	const dateLocale = locale ?? uiLocaleFor(client)?.get();
 	const [type, setType] = useState('');
 	const [actorId, setActorId] = useState('');
 	const [expanded, setExpanded] = useState<string | null>(null);
@@ -29,38 +35,49 @@ export function AuditLogScreen({ client }: IAuditLogScreenProps) {
 		filters,
 	);
 
-	const renderEvent = ({ item: event }: { item: IAuditEventDTO }) => (
-		<View style={styles.row}>
-			<TouchableOpacity
-				onPress={() => setExpanded(expanded === event.id ? null : event.id)}
-				style={styles.rowButton}
-				accessibilityRole="button"
-			>
-				<Text style={styles.type}>{event.type}</Text>
-				<Text style={styles.meta}>
-					{event.actorId ?? 'system'} · {new Date(event.createdAt).toLocaleString()}
-				</Text>
-			</TouchableOpacity>
-			{expanded === event.id && (
-				<Text style={styles.payload}>{JSON.stringify(event.payload, null, 2)}</Text>
-			)}
-		</View>
-	);
+	const renderEvent = ({ item: event }: { item: IAuditEventDTO }) => {
+		const actor = event.actorId ?? t('audit.log.system');
+		const date = new Date(event.createdAt).toLocaleString(dateLocale);
+		return (
+			<View style={styles.row}>
+				<TouchableOpacity
+					onPress={() => setExpanded(expanded === event.id ? null : event.id)}
+					style={styles.rowButton}
+					accessibilityRole="button"
+					accessibilityLabel={t('audit.log.a11y.event', { type: event.type, actor, date })}
+					accessibilityHint={t('audit.log.a11y.eventHint')}
+					accessibilityState={{ expanded: expanded === event.id }}
+				>
+					<Text style={styles.type}>{event.type}</Text>
+					<Text style={styles.meta}>
+						{actor} · {date}
+					</Text>
+				</TouchableOpacity>
+				{expanded === event.id && (
+					<Text style={styles.payload}>{JSON.stringify(event.payload, null, 2)}</Text>
+				)}
+			</View>
+		);
+	};
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Audit log</Text>
+			<Text style={styles.title}>{t('audit.log.title')}</Text>
 
 			<View style={styles.form}>
 				<TextInput
 					style={styles.input}
-					placeholder="Event type"
+					placeholder={t('audit.log.eventType')}
+					accessibilityLabel={t('audit.log.a11y.eventType')}
+					accessibilityHint={t('audit.log.a11y.eventTypeHint')}
 					value={type}
 					onChangeText={setType}
 				/>
 				<TextInput
 					style={styles.input}
-					placeholder="Actor ID"
+					placeholder={t('audit.log.actorId')}
+					accessibilityLabel={t('audit.log.a11y.actorId')}
+					accessibilityHint={t('audit.log.a11y.actorIdHint')}
 					value={actorId}
 					onChangeText={setActorId}
 				/>
@@ -68,8 +85,9 @@ export function AuditLogScreen({ client }: IAuditLogScreenProps) {
 					onPress={() => refresh()}
 					style={styles.filterButton}
 					accessibilityRole="button"
+					accessibilityLabel={t('audit.log.a11y.filter')}
 				>
-					<Text style={styles.filterButtonText}>Filter</Text>
+					<Text style={styles.filterButtonText}>{t('audit.log.filter')}</Text>
 				</TouchableOpacity>
 			</View>
 
@@ -80,7 +98,7 @@ export function AuditLogScreen({ client }: IAuditLogScreenProps) {
 			)}
 
 			{isLoading ? (
-				<Text style={styles.status}>Loading…</Text>
+				<Text style={styles.status}>{t('audit.log.loading')}</Text>
 			) : (
 				<FlatList data={events} keyExtractor={(e) => e.id} renderItem={renderEvent} />
 			)}
@@ -91,8 +109,12 @@ export function AuditLogScreen({ client }: IAuditLogScreenProps) {
 					onPress={loadMore}
 					style={styles.loadMoreButton}
 					accessibilityRole="button"
+					accessibilityLabel={
+						isLoadingMore ? t('audit.log.a11y.loadingMore') : t('audit.log.a11y.loadMore')
+					}
+					accessibilityState={{ busy: isLoadingMore, disabled: isLoadingMore }}
 				>
-					{isLoadingMore ? <ActivityIndicator /> : <Text>Load more</Text>}
+					{isLoadingMore ? <ActivityIndicator /> : <Text>{t('audit.log.loadMore')}</Text>}
 				</TouchableOpacity>
 			)}
 		</View>

@@ -35,6 +35,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^3.4.0",
+		"@fonderie/vue": "^0.9.0",
 		"@fonderie/vue-webhooks": "^0.6.0"
 	},
 	"peerDependencies": {

@@ -1,0 +1,110 @@
+// The prebuilt auth screens' words (React, React Native and Vue share them).
+// English is canonical: the other languages are typed against this shape, so
+// a missing or extra key is a compile error. `{name}` placeholders are
+// interpolated; a11y.* are screen-reader labels and hints (React Native).
+const auth = {
+	fields: {
+		email: 'Email',
+		password: 'Password',
+		firstName: 'First name',
+		lastName: 'Last name',
+		code: '6-digit code',
+	},
+	backToSignIn: 'Back to sign in',
+	login: {
+		title: 'Sign In',
+		submit: 'Sign In',
+		submitting: 'Signing in…',
+		forgotPassword: 'Forgot password?',
+		noAccount: "Don't have an account?",
+		signUp: 'Sign up',
+		a11y: {
+			email: 'Email input',
+			emailHint: 'Enter your email address',
+			password: 'Password input',
+			passwordHint: 'Enter your password',
+			submit: 'Sign in button',
+		},
+	},
+	register: {
+		title: 'Create Account',
+		submit: 'Create Account',
+		submitting: 'Creating account…',
+		haveAccount: 'Already have an account?',
+		signIn: 'Sign in',
+		invalidEmail: 'Enter a valid email address.',
+		passwordTooShort: 'Password must be at least {min} characters.',
+		passwordRule: 'At least {min} characters',
+		a11y: {
+			firstName: 'First name input',
+			lastName: 'Last name input',
+			email: 'Email input',
+			password: 'Password input',
+			submit: 'Create account button',
+		},
+	},
+	forgot: {
+		title: 'Reset your password',
+		lead: "Enter your email and we'll send you a link to reset your password.",
+		submit: 'Send reset link',
+		submitting: 'Sending…',
+		sentTitle: 'Check your email',
+		sentBody: "If an account exists for {email}, we've sent instructions to reset your password.",
+		a11y: {
+			email: 'Email input',
+			submit: 'Send reset link button',
+		},
+	},
+	reset: {
+		title: 'Choose a new password',
+		lead: 'Enter the 6-digit code from your email and your new password.',
+		codeLabel: 'Reset code',
+		newPassword: 'New password',
+		confirmPassword: 'Confirm new password',
+		mismatch: 'Passwords do not match.',
+		submit: 'Reset password',
+		submitting: 'Resetting…',
+		doneTitle: 'Password updated',
+		doneBody: 'Your password has been reset. Sign in with your new password.',
+		goToSignIn: 'Go to sign in',
+		a11y: {
+			code: 'Reset code input',
+			codeHint: 'Enter the 6-digit code from your email',
+			newPassword: 'New password input',
+			newPasswordHint: 'Enter your new password',
+			confirm: 'Confirm new password input',
+			confirmHint: 'Enter your new password again',
+			submit: 'Reset password button',
+			goToSignIn: 'Go to sign in button',
+		},
+	},
+	verify: {
+		title: 'Verify your email',
+		lead: 'Enter the 6-digit code we sent to your email address.',
+		codeLabel: 'Verification code',
+		submit: 'Verify',
+		submitting: 'Verifying…',
+		noCode: "Didn't get a code?",
+		resend: 'Resend email',
+		resent: 'A new verification email has been sent.',
+		a11y: {
+			code: 'Verification code input',
+			codeHint: 'Enter the 6-digit code from your email',
+			submit: 'Verify button',
+		},
+	},
+	mfa: {
+		title: 'Two-factor authentication',
+		lead: 'Enter the 6-digit code from your authenticator app.',
+		codeLabel: 'Authentication code',
+		submit: 'Verify',
+		submitting: 'Verifying…',
+		a11y: {
+			code: 'Authentication code input',
+			codeHint: 'Enter the 6-digit code from your authenticator app',
+			submit: 'Verify button',
+		},
+	},
+};
+
+export default auth;

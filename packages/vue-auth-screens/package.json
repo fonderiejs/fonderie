@@ -29,12 +29,14 @@
 		"build": "tsup",
 		"dev": "tsup --watch",
 		"typecheck": "tsc --noEmit",
+		"test": "tsx --test src/__tests__/*.test.ts",
 		"lint": "biome lint src",
 		"format": "biome format --write src",
 		"check": "biome check --write src"
 	},
 	"dependencies": {
 		"@fonderie/client": "^3.0.0",
+		"@fonderie/vue": "^0.9.0",
 		"@fonderie/vue-auth": "^0.12.3"
 	},
 	"peerDependencies": {
@@ -43,6 +45,7 @@
 	"devDependencies": {
 		"@types/node": "^26.6.3",
 		"tsup": "^8.5.1",
+		"tsx": "^4.23.15",
 		"typescript": "^6.0.3",
 		"vue": "^3.5.43"
 	},

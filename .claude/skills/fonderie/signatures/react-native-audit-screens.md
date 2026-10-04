@@ -7,7 +7,8 @@
 ```ts
 interface IAuditLogScreenProps {
     client?: AuditClient;
+    locale?: string;
 }
 
-function AuditLogScreen({ client }: IAuditLogScreenProps): Element
+function AuditLogScreen({ client, locale }: IAuditLogScreenProps): Element
 ```

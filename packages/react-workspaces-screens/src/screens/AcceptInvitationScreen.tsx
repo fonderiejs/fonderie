@@ -1,4 +1,5 @@
 import type { FonderieApiError, WorkspacesClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useWorkspaces } from '@fonderie/react-workspaces';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -9,6 +10,8 @@ export interface IAcceptInvitationScreenProps {
 	token: string;
 	onAccepted?: (workspaceId: string) => void;
 	onNavigateBack?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function AcceptInvitationScreen({
@@ -16,10 +19,12 @@ export function AcceptInvitationScreen({
 	token,
 	onAccepted,
 	onNavigateBack,
+	locale,
 }: IAcceptInvitationScreenProps) {
 	// Note: mounting useWorkspaces also fetches the workspace list; its shared
 	// isLoading/error track that fetch, so the accept action keeps local state.
 	const { acceptInvitation } = useWorkspaces(client);
+	const t = useUiT(client, locale);
 	const [accepted, setAccepted] = useState(false);
 	const [isAccepting, setIsAccepting] = useState(false);
 	const [acceptError, setAcceptError] = useState<FonderieApiError | null>(null);
@@ -43,18 +48,16 @@ export function AcceptInvitationScreen({
 	if (accepted) {
 		return (
 			<div style={styles.container}>
-				<h1 style={styles.title}>Invitation accepted</h1>
-				<p style={styles.body}>You've joined the workspace.</p>
+				<h1 style={styles.title}>{t('workspaces.accept.acceptedTitle')}</h1>
+				<p style={styles.body}>{t('workspaces.accept.acceptedBody')}</p>
 			</div>
 		);
 	}
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Workspace invitation</h1>
-			<p style={styles.body}>
-				You've been invited to join a workspace. Accept the invitation to become a member.
-			</p>
+			<h1 style={styles.title}>{t('workspaces.accept.title')}</h1>
+			<p style={styles.body}>{t('workspaces.accept.body')}</p>
 
 			{acceptError && (
 				<p style={styles.error} role="alert">
@@ -63,11 +66,11 @@ export function AcceptInvitationScreen({
 			)}
 
 			<button type="button" disabled={isAccepting} onClick={handleAccept} style={styles.button}>
-				{isAccepting ? 'Accepting…' : 'Accept invitation'}
+				{isAccepting ? t('workspaces.accept.submitting') : t('workspaces.accept.submit')}
 			</button>
 
 			<button type="button" onClick={onNavigateBack} style={styles.link}>
-				Not now
+				{t('workspaces.accept.notNow')}
 			</button>
 		</div>
 	);

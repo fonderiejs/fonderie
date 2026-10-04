@@ -1,4 +1,6 @@
-import type { BillingClient } from '@fonderie/client';
+import type { BillingClient, UiMessageKey, UiT } from '@fonderie/client';
+import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import {
 	useBillingPortal,
 	usePaymentMethod,
@@ -6,6 +8,13 @@ import {
 	useSubscription,
 } from '@fonderie/react-native-billing';
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+// A server-reported state ('past_due') in words; an unknown one shown as-is.
+function statusLabel(t: UiT, status: string): string {
+	const key = `billing.status.${status}` as UiMessageKey;
+	const word = t(key);
+	return word === key ? status : word;
+}
 
 export interface ISubscriptionScreenProps {
 	client?: BillingClient;
@@ -16,6 +25,8 @@ export interface ISubscriptionScreenProps {
 	// receives a portal URL. useSetupPaymentMethod/useSavePaymentMethod live
 	// there; this provider-agnostic screen only shows + removes the card.
 	onAddPaymentMethod?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function SubscriptionScreen({
@@ -23,7 +34,10 @@ export function SubscriptionScreen({
 	onManageBilling,
 	onNavigateToPricing,
 	onAddPaymentMethod,
+	locale,
 }: ISubscriptionScreenProps) {
+	const t = useUiT(client, locale);
+	const formatLocale = canonicalLocaleTag(locale) ?? uiLocaleFor(client)?.get();
 	const { subscription, isLoading, error } = useSubscription(client);
 	const { openPortal, isLoading: isOpeningPortal, error: portalError } = useBillingPortal(client);
 	const {
@@ -53,7 +67,7 @@ export function SubscriptionScreen({
 		}
 	};
 
-	if (isLoading) return <Text style={styles.status}>Loading subscription…</Text>;
+	if (isLoading) return <Text style={styles.status}>{t('billing.subscription.loading')}</Text>;
 	if (error)
 		return (
 			<Text style={styles.error} accessibilityRole="alert">
@@ -64,13 +78,13 @@ export function SubscriptionScreen({
 	if (!subscription) {
 		return (
 			<View style={styles.container}>
-				<Text style={styles.status}>You don't have an active subscription.</Text>
+				<Text style={styles.status}>{t('billing.subscription.none')}</Text>
 				<TouchableOpacity
 					onPress={onNavigateToPricing}
 					style={styles.button}
 					accessibilityRole="button"
 				>
-					<Text style={styles.buttonText}>View plans</Text>
+					<Text style={styles.buttonText}>{t('billing.subscription.viewPlans')}</Text>
 				</TouchableOpacity>
 			</View>
 		);
@@ -82,15 +96,21 @@ export function SubscriptionScreen({
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Your subscription</Text>
+			<Text style={styles.title}>{t('billing.subscription.title')}</Text>
 			<Text style={styles.plan}>{subscription.plan}</Text>
 			<Text style={styles.status}>
-				Status: {subscription.status}
-				{subscription.cancelAtPeriodEnd ? ' (cancels at period end)' : ''}
+				{t(
+					subscription.cancelAtPeriodEnd
+						? 'billing.subscription.statusLineCanceling'
+						: 'billing.subscription.statusLine',
+					{ status: statusLabel(t, subscription.status) },
+				)}
 			</Text>
 			{subscription.currentPeriodEnd && (
 				<Text style={styles.status}>
-					Renews {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+					{t(subscription.cancelAtPeriodEnd ? 'billing.subscription.ends' : 'billing.subscription.renews', {
+						date: new Date(subscription.currentPeriodEnd).toLocaleDateString(formatLocale),
+					})}
 				</Text>
 			)}
 
@@ -105,18 +125,21 @@ export function SubscriptionScreen({
 				onPress={handleManage}
 				style={styles.button}
 				accessibilityRole="button"
+				accessibilityLabel={
+					isOpeningPortal ? t('billing.subscription.opening') : t('billing.subscription.manage')
+				}
 			>
 				{isOpeningPortal ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Manage billing</Text>
+					<Text style={styles.buttonText}>{t('billing.subscription.manage')}</Text>
 				)}
 			</TouchableOpacity>
 
 			<View style={styles.section}>
-				<Text style={styles.sectionTitle}>Payment method</Text>
+				<Text style={styles.sectionTitle}>{t('billing.paymentMethod.title')}</Text>
 				{isLoadingCard && !paymentMethod ? (
-					<Text style={styles.status}>Loading payment method…</Text>
+					<Text style={styles.status}>{t('billing.paymentMethod.loading')}</Text>
 				) : (
 					<>
 						{cardError && (
@@ -129,13 +152,25 @@ export function SubscriptionScreen({
 								{removeError.explanation}
 							</Text>
 						)}
-						{paymentMethod ? (
+						{paymentMethod?.type === 'link' ? (
+							// Stripe Link: no card details — the Link account is what pays.
+							// Without this branch a Link payer saw an empty card line.
 							<Text style={styles.cardLine}>
-								{brand} •••• {paymentMethod.last4} · expires {paymentMethod.expMonth}/
-								{paymentMethod.expYear}
+								{paymentMethod.email
+									? t('billing.paymentMethod.linkWithEmail', { email: paymentMethod.email })
+									: t('billing.paymentMethod.link')}
+							</Text>
+						) : paymentMethod ? (
+							<Text style={styles.cardLine}>
+								{t('billing.paymentMethod.card', {
+									brand,
+									last4: paymentMethod.last4,
+									month: paymentMethod.expMonth,
+									year: paymentMethod.expYear,
+								})}
 							</Text>
 						) : (
-							<Text style={styles.status}>No card on file.</Text>
+							<Text style={styles.status}>{t('billing.paymentMethod.none')}</Text>
 						)}
 						<View style={styles.buttonRow}>
 							<TouchableOpacity
@@ -144,7 +179,9 @@ export function SubscriptionScreen({
 								accessibilityRole="button"
 							>
 								<Text style={styles.secondaryButtonText}>
-									{paymentMethod ? 'Update card' : 'Add card'}
+									{paymentMethod
+										? t('billing.paymentMethod.update')
+										: t('billing.paymentMethod.add')}
 								</Text>
 							</TouchableOpacity>
 							{paymentMethod && (
@@ -153,11 +190,16 @@ export function SubscriptionScreen({
 									onPress={handleRemove}
 									style={styles.dangerButton}
 									accessibilityRole="button"
+									accessibilityLabel={
+										isRemoving
+											? t('billing.paymentMethod.removing')
+											: t('billing.paymentMethod.remove')
+									}
 								>
 									{isRemoving ? (
 										<ActivityIndicator color="#e11d48" />
 									) : (
-										<Text style={styles.dangerButtonText}>Remove</Text>
+										<Text style={styles.dangerButtonText}>{t('billing.paymentMethod.remove')}</Text>
 									)}
 								</TouchableOpacity>
 							)}

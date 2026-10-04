@@ -1,4 +1,5 @@
 import type { IWebhookDeliveryDTO, WebhooksClient } from '@fonderie/client';
+import { useUiT } from '@fonderie/react';
 import { useWebhookDeliveries, useWebhookEndpoint } from '@fonderie/react-native-webhooks';
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -7,13 +8,17 @@ export interface IWebhookDetailScreenProps {
 	client?: WebhooksClient;
 	endpointId: string;
 	onNavigateToList?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function WebhookDetailScreen({
 	client,
 	endpointId,
 	onNavigateToList,
+	locale,
 }: IWebhookDetailScreenProps) {
+	const t = useUiT(client, locale);
 	const { endpoint, isLoading, error, updateEndpoint } = useWebhookEndpoint(client, endpointId);
 	const { deliveries, isLoading: isLoadingDeliveries } = useWebhookDeliveries(client, endpointId);
 
@@ -43,17 +48,26 @@ export function WebhookDetailScreen({
 		}
 	};
 
+	const statusLabel = (status: string) =>
+		status === 'pending' || status === 'delivered' || status === 'failed'
+			? t(`webhooks.status.${status}`)
+			: status;
+
 	const renderDelivery = ({ item: delivery }: { item: IWebhookDeliveryDTO }) => (
 		<View style={styles.row}>
 			<Text style={styles.eventType}>{delivery.eventType}</Text>
 			<Text style={styles.meta}>
-				{delivery.status} · {delivery.attempts} attempt{delivery.attempts === 1 ? '' : 's'}
+				{statusLabel(delivery.status)} ·{' '}
+				{t(
+					delivery.attempts === 1 ? 'webhooks.detail.attemptsOne' : 'webhooks.detail.attemptsOther',
+					{ count: delivery.attempts },
+				)}
 				{delivery.responseStatus !== null ? ` · HTTP ${delivery.responseStatus}` : ''}
 			</Text>
 		</View>
 	);
 
-	if (isLoading) return <Text style={styles.status}>Loading…</Text>;
+	if (isLoading) return <Text style={styles.status}>{t('webhooks.loading')}</Text>;
 	if (error)
 		return (
 			<Text style={styles.error} accessibilityRole="alert">
@@ -63,13 +77,21 @@ export function WebhookDetailScreen({
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Webhook endpoint</Text>
+			<Text style={styles.title}>{t('webhooks.detail.title')}</Text>
 
 			<View style={styles.form}>
-				<TextInput style={styles.input} value={url} onChangeText={setUrl} autoCapitalize="none" />
 				<TextInput
 					style={styles.input}
-					placeholder="events, comma separated"
+					placeholder={t('webhooks.detail.url')}
+					accessibilityLabel={t('webhooks.detail.a11y.url')}
+					value={url}
+					onChangeText={setUrl}
+					autoCapitalize="none"
+				/>
+				<TextInput
+					style={styles.input}
+					placeholder={t('webhooks.detail.events')}
+					accessibilityLabel={t('webhooks.detail.a11y.events')}
 					value={events}
 					onChangeText={setEvents}
 					autoCapitalize="none"
@@ -79,23 +101,31 @@ export function WebhookDetailScreen({
 					style={styles.checkboxRow}
 					accessibilityRole="switch"
 					accessibilityState={{ checked: enabled }}
+					accessibilityLabel={t('webhooks.detail.a11y.enabled')}
 				>
-					<Text>{enabled ? '☑' : '☐'} Enabled</Text>
+					<Text>
+						{enabled ? '☑' : '☐'} {t('webhooks.enabled')}
+					</Text>
 				</TouchableOpacity>
-				<TouchableOpacity onPress={handleSubmit} style={styles.button} accessibilityRole="button">
-					<Text style={styles.buttonText}>Save</Text>
+				<TouchableOpacity
+					onPress={handleSubmit}
+					style={styles.button}
+					accessibilityRole="button"
+					accessibilityLabel={t('webhooks.detail.a11y.save')}
+				>
+					<Text style={styles.buttonText}>{t('webhooks.detail.save')}</Text>
 				</TouchableOpacity>
 			</View>
 
-			<Text style={styles.subtitle}>Deliveries</Text>
+			<Text style={styles.subtitle}>{t('webhooks.detail.deliveries')}</Text>
 			{isLoadingDeliveries ? (
-				<Text style={styles.status}>Loading…</Text>
+				<Text style={styles.status}>{t('webhooks.loading')}</Text>
 			) : (
 				<FlatList data={deliveries} keyExtractor={(d) => d.id} renderItem={renderDelivery} />
 			)}
 
 			<TouchableOpacity onPress={onNavigateToList} style={styles.link}>
-				<Text style={styles.linkText}>Back to webhooks</Text>
+				<Text style={styles.linkText}>{t('webhooks.detail.back')}</Text>
 			</TouchableOpacity>
 		</View>
 	);

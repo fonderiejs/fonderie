@@ -1,6 +1,7 @@
-import type { FonderieClient } from '@fonderie/client';
+import type { FonderieClient, UiT } from '@fonderie/client';
+import { createUiT, detectDeviceLocale, uiLocaleFor } from '@fonderie/client';
 import type { ReactNode } from 'react';
-import { createContext, createElement, useCallback, useContext, useSyncExternalStore } from 'react';
+import { createContext, createElement, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
 
 const FonderieContext = createContext<FonderieClient | null>(null);
 
@@ -76,4 +77,32 @@ export function useWorkspaceId(source?: unknown): string | undefined {
 	);
 	const read = useCallback(() => target?.getWorkspaceId(), [target]);
 	return useSyncExternalStore(subscribe, read, read);
+}
+
+const DEVICE_LOCALE = detectDeviceLocale();
+const NO_SUBSCRIBE = () => () => {};
+
+/**
+ * The prebuilt screens' translator, in the app's UI language: the language of
+ * the client a screen was handed (`source`, any sub-client works), else of the
+ * <FonderieProvider> client, else the device's. Follows client.setLocale()
+ * live. `locale` overrides it for one screen.
+ *
+ *   const t = useUiT(client);  t('auth.login.title')
+ */
+export function useUiT(source?: object, locale?: string): UiT {
+	const tag = useUiLocale(source, locale);
+	return useMemo(() => createUiT(tag), [tag]);
+}
+
+/**
+ * The app's UI language as a BCP 47 tag ('fr-CA', 'zh-Hant'…), found the same
+ * way as useUiT — for formatting dates, amounts and names the way it writes them.
+ */
+export function useUiLocale(source?: object, locale?: string): string {
+	const contextClient = useContext(FonderieContext);
+	const src = uiLocaleFor(source) ?? uiLocaleFor(contextClient ?? undefined);
+	const subscribe = useCallback((onChange: () => void) => (src ? src.on(onChange) : NO_SUBSCRIBE()), [src]);
+	const tag = useSyncExternalStore(subscribe, () => src?.get() ?? DEVICE_LOCALE, () => src?.get() ?? DEVICE_LOCALE);
+	return locale ?? tag;
 }

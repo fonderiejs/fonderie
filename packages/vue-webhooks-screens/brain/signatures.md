@@ -5,7 +5,7 @@
 ## @fonderie/vue-webhooks-screens
 
 ```ts
-component WebhookDetailScreen(props: { client, endpointId }) — emits: navigate-list
+component WebhookDetailScreen(props: { client, endpointId, locale }) — emits: navigate-list
 
-component WebhooksListScreen(props: { client }) — emits: select-endpoint
+component WebhooksListScreen(props: { client, locale }) — emits: select-endpoint
 ```

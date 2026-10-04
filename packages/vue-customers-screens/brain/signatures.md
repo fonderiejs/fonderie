@@ -5,7 +5,7 @@
 ## @fonderie/vue-customers-screens
 
 ```ts
-component CustomerDetailScreen(props: { client, customerId }) — emits: navigate-list
+component CustomerDetailScreen(props: { client, customerId, locale }) — emits: navigate-list
 
-component CustomersListScreen(props: { client }) — emits: select-customer
+component CustomersListScreen(props: { client, locale }) — emits: select-customer
 ```

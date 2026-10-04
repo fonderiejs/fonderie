@@ -21,6 +21,9 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .setLocale(tag: string): void
+  .getLocale(): string
+  .onLocaleChange(listener: (tag: string) => void): () => void
   .getWorkspaceId(): string | undefined
   .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .request<T = unknown>(opts: { method: string; path: string; body?: unknown; token?: string | undefined; workspaceId?: string | undefined; cache?: number | false | undefined; bust?: boolean | undefined; invalidate?: string[] | undefined; }): Promise<...>
@@ -47,6 +50,10 @@ function useFonderieClient(): FonderieClient
 function useFonderieSubClient<T>(explicit: T | undefined, select: (client: FonderieClient) => T, hookName: string): T
 
 function useWorkspaceId(source?: unknown): string | undefined
+
+function useUiLocale(source?: object | undefined, locale?: string | undefined): string
+
+function useUiT(source?: object | undefined, locale?: string | undefined): UiT
 
 new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefined, options?: IConfigClientOptions | undefined): ConfigClient
   .ready: Promise<void>
@@ -97,6 +104,10 @@ new SseClient(deps: ISseClientDeps): SseClient
 type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
 function isSwitchOn(value: unknown): boolean
+
+type UiMessageKey = MessagePath<UiMessages>;
+
+type UiT = (key: UiMessageKey, params?: UiMessageParams) => string;
 
 function toApiError(err: unknown): FonderieApiError
 

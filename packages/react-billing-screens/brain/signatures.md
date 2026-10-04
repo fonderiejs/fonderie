@@ -8,6 +8,7 @@
 interface IPricingScreenProps {
     client?: BillingClient;
     onCheckoutStart?: (url: string) => void;
+    locale?: string;
 }
 
 interface ISubscriptionScreenProps {
@@ -15,9 +16,10 @@ interface ISubscriptionScreenProps {
     onManageBilling?: (url: string) => void;
     onNavigateToPricing?: () => void;
     onAddPaymentMethod?: () => void;
+    locale?: string;
 }
 
-function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps): Element
+function PricingScreen({ client, onCheckoutStart, locale }: IPricingScreenProps): Element
 
-function SubscriptionScreen({ client, onManageBilling, onNavigateToPricing, onAddPaymentMethod, }: ISubscriptionScreenProps): Element
+function SubscriptionScreen({ client, onManageBilling, onNavigateToPricing, onAddPaymentMethod, locale, }: ISubscriptionScreenProps): Element
 ```

@@ -9,14 +9,16 @@ interface ICustomerDetailScreenProps {
     client?: CustomersClient;
     customerId: string;
     onNavigateToList?: () => void;
+    locale?: string;
 }
 
 interface ICustomersListScreenProps {
     client?: CustomersClient;
     onSelectCustomer?: (customerId: string) => void;
+    locale?: string;
 }
 
-function CustomerDetailScreen({ client, customerId, onNavigateToList, }: ICustomerDetailScreenProps): Element
+function CustomerDetailScreen({ client, customerId, onNavigateToList, locale, }: ICustomerDetailScreenProps): Element
 
-function CustomersListScreen({ client, onSelectCustomer }: ICustomersListScreenProps): Element
+function CustomersListScreen({ client, onSelectCustomer, locale, }: ICustomersListScreenProps): Element
 ```
