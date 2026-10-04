@@ -101,6 +101,12 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 					Parameters<typeof workspaces.update>[1]
 				>['address'] & (object | null);
 
+			for (const key of ['legalName', 'email', 'website', 'logoUrl'] as const) {
+				if (body?.[key] !== undefined) opts[key] = typeof body[key] === 'string' ? (body[key] as string) : null;
+			}
+			if (Array.isArray(body?.['taxRegistrations'])) opts.taxRegistrations = body['taxRegistrations'] as NonNullable<typeof opts.taxRegistrations>;
+			if (Array.isArray(body?.['languages'])) opts.languages = body['languages'] as string[];
+
 			const workspace = await workspaces.update(ctx.workspace.id, opts);
 			if (!workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 

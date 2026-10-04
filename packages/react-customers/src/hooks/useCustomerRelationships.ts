@@ -3,6 +3,8 @@ import { CustomersClient } from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
 import { useCallback } from 'react';
 
+import type { ICustomerSectionOptions } from './section-options';
+
 export interface IUseCustomerRelationshipsReturn {
 	relationships: ICustomerRelationshipDTO[];
 	isLoading: boolean;
@@ -17,25 +19,28 @@ const NONE: ICustomerRelationshipDTO[] = [];
 
 // One customer's relationships: shown at once when seen before, refreshed behind
 // what is shown; any write under /customers marks it stale everywhere.
-export function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn;
+export function useCustomerRelationships(customerId: string, opts?: ICustomerSectionOptions): IUseCustomerRelationshipsReturn;
 export function useCustomerRelationships(
 	client: CustomersClient | undefined,
 	customerId: string,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerRelationshipsReturn;
 export function useCustomerRelationships(
 	clientOrId: CustomersClient | string | undefined,
-	maybeId?: string,
+	maybeIdOrOpts?: string | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerRelationshipsReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customerId = firstIsClient ? (maybeIdOrOpts as string) : clientOrId;
+	const read = ((firstIsClient ? maybeOpts : maybeIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerRelationships');
 	const q = useScopedQuery(
 		customers,
 		`/customers/${encodeURIComponent(customerId ?? '')}/relationships`,
 		async (bust) => (await customers.listRelationships(customerId, { bust })).result.relationships,
 		// Nothing to read until there is a customer.
-		{ enabled: !!customerId },
+		{ enabled: !!customerId && read },
 	);
 	const w = useWrite(q.refresh);
 	const addRelationship = useCallback(

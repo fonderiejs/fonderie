@@ -4,6 +4,8 @@ import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import { computed, toValue } from 'vue';
 
+import type { ICustomerSectionOptions } from './section-options';
+
 export interface IUseCustomerPhonesReturn {
 	phones: Ref<ICustomerPhoneDTO[]>;
 	isLoading: Ref<boolean>;
@@ -15,28 +17,31 @@ export interface IUseCustomerPhonesReturn {
 	removePhone: (phoneId: string) => Promise<void>;
 }
 
-export function useCustomerPhones(customerId: MaybeRefOrGetter<string>): IUseCustomerPhonesReturn;
+export function useCustomerPhones(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions): IUseCustomerPhonesReturn;
 export function useCustomerPhones(
 	client: CustomersClient | undefined,
 	customerId: MaybeRefOrGetter<string>,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerPhonesReturn;
 export function useCustomerPhones(
 	clientOrCustomerId: CustomersClient | MaybeRefOrGetter<string> | undefined,
-	maybeCustomerId?: MaybeRefOrGetter<string>,
+	maybeCustomerIdOrOpts?: MaybeRefOrGetter<string> | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerPhonesReturn {
 	const firstIsClient =
 		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
 	const customerId = firstIsClient
-		? (maybeCustomerId as MaybeRefOrGetter<string>)
+		? (maybeCustomerIdOrOpts as MaybeRefOrGetter<string>)
 		: clientOrCustomerId;
+	const read = ((firstIsClient ? maybeOpts : maybeCustomerIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerPhones');
 	// The key follows the id; an empty id reads nothing (not loading).
 	const q = useScopedQuery(
 		customers,
 		() => `/customers/${encodeURIComponent(toValue(customerId))}/phones`,
 		async (bust) => (await customers.listPhones(toValue(customerId), { bust })).result.phones,
-		{ enabled: () => !!toValue(customerId) },
+		{ enabled: () => read && !!toValue(customerId) },
 	);
 	const w = useWrite(() => q.refresh());
 	return {

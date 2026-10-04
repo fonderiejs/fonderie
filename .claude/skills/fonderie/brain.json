@@ -969,6 +969,7 @@
         "@fonderie/core/types",
         "@fonderie/core/middlewares",
         "@fonderie/core/parser",
+        "@fonderie/core/region",
         "@fonderie/core/response",
         "@fonderie/core/env.json"
       ],
@@ -1134,7 +1135,7 @@
         "fonderie_customer_tags",
         "fonderie_customers"
       ],
-      "routeCount": 35,
+      "routeCount": 37,
       "routes": [
         {
           "method": "GET",
@@ -1185,6 +1186,11 @@
           "method": "PUT",
           "path": "/customers/:customerId/addresses/:addrId/primary",
           "mw": "requireAuth → wsCtx → address.setPrimary"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/archive",
+          "mw": "requireAuth → wsCtx → customer.archive"
         },
         {
           "method": "POST",
@@ -1295,6 +1301,11 @@
           "method": "DELETE",
           "path": "/customers/:customerId/tags/:tag",
           "mw": "requireAuth → wsCtx → tag.remove"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/unarchive",
+          "mw": "requireAuth → wsCtx → customer.unarchive"
         },
         {
           "method": "POST",

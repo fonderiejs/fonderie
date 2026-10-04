@@ -128,7 +128,9 @@ export function customerEmailController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'emailId must be a valid UUID');
 			}
 
-			await emails.setPrimary(emailId, r.customer.id);
+			if (!(await emails.setPrimary(emailId, r.customer.id))) {
+				return setApiResponse(HTTP.NOT_FOUND, 'EMAIL_NOT_FOUND', 'Not found on this customer.');
+			}
 			return setApiResponse(HTTP.OK, 'EMAIL_PRIMARY_SET', 'Primary email updated successfully.');
 		},
 

@@ -14,6 +14,10 @@ export interface IUseCustomerReturn {
 	error: Ref<FonderieApiError | null>;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateCustomer: (input: IUpdateCustomerInput) => Promise<void>;
+	/** Refused with 409 CUSTOMER_IN_USE while a job, quote or invoice references the customer — archive instead. */
+	deleteCustomer: () => Promise<void>;
+	archiveCustomer: () => Promise<void>;
+	unarchiveCustomer: () => Promise<void>;
 }
 
 // depth 2 (default) nests relationships one level deeper than depth 1 — see
@@ -59,6 +63,18 @@ export function useCustomer(
 		updateCustomer: (input) =>
 			w.run(async () => {
 				await customers.updateCustomer(toValue(customerId), input);
+			}),
+		deleteCustomer: () =>
+			w.run(async () => {
+				await customers.deleteCustomer(toValue(customerId));
+			}),
+		archiveCustomer: () =>
+			w.run(async () => {
+				await customers.archiveCustomer(toValue(customerId));
+			}),
+		unarchiveCustomer: () =>
+			w.run(async () => {
+				await customers.unarchiveCustomer(toValue(customerId));
 			}),
 	};
 }

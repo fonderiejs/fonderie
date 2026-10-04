@@ -28,6 +28,7 @@ export type {
 } from '@fonderie/client';
 
 export { FonderieApiError } from '@fonderie/client';
+export type { ICustomerSectionOptions } from './composables/section-options';
 export type {
 	IUseCustomerAddressesReturn,
 	IUseCustomerEmailsReturn,
