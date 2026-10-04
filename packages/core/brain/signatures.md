@@ -123,6 +123,7 @@ interface IFonderieContext {
 interface ICourierMessage {
     type: string;
     locale?: string;
+    fallbackLocale?: string;
     recipient: {
         email: string | null;
         phone: string | null;

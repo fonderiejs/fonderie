@@ -292,3 +292,12 @@ test('updating one setting keeps the others', { skip }, async () => {
 	assert.equal(s['locale'], 'fr-CA');
 	assert.equal(s['timezone'], 'America/Toronto');
 });
+
+test("an invitation is written in the business's language for someone without an account", { skip }, async () => {
+	const { owner, ws } = await team();
+	assert.equal((await call(owner.token, 'PUT', '/workspaces/settings', { locale: 'fr-CA' }, ws)).status, 200);
+	await call(owner.token, 'POST', '/workspaces/invitations', { email: `nouveau-${n}@${DOMAIN}` }, ws);
+	const m = [...emitted].reverse().find((e) => e.payload['type'] === MESSAGE_KEYS.workspaceInvitation);
+	assert.equal(m?.payload['fallbackLocale'], 'fr-CA');
+	assert.equal(m?.payload['locale'], undefined, "no explicit locale: the invitee's own account, when they have one, wins in courier");
+});

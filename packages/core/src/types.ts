@@ -35,7 +35,19 @@ export interface IWorkspace {
 // messages without importing @fonderie/courier.
 export interface ICourierMessage {
 	type: string;
+	/**
+	 * The language to write this message in, when the sender knows it (the
+	 * signed-in user's, a customer's preferred one). Absent: courier uses the
+	 * language of the account the recipient's address belongs to, then
+	 * `fallbackLocale`, then the system default.
+	 */
 	locale?: string;
+	/**
+	 * The language to use when neither `locale` nor the recipient's own account
+	 * says — typically the business's (workspace settings), for someone without
+	 * an account yet (an invitee). Never overrides the recipient's own choice.
+	 */
+	fallbackLocale?: string;
 	recipient: {
 		email: string | null;
 		phone: string | null;

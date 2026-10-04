@@ -40,6 +40,10 @@ export async function notifyBilling(
 		if (!recipient) return;
 		await bus.emit(NOTIFICATION_EVENT, {
 			type: opts.type,
+			// Receipts were always sent in the system default language: no
+			// session here, and nothing passed one. See ICourierMessage.locale.
+			...(recipient.locale ? { locale: recipient.locale } : {}),
+			...(recipient.fallbackLocale ? { fallbackLocale: recipient.fallbackLocale } : {}),
 			recipient: {
 				email: recipient.email ?? null,
 				phone: recipient.phone ?? null,

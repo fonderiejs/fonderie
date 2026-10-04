@@ -2403,6 +2403,26 @@ test('notifyBilling: no bus is a silent no-op (never throws)', async () => {
 	});
 });
 
+test("notifyBilling: the recipient's language reaches courier (receipts were always in the default language)", async () => {
+	const { notifyBilling } = await import('../services/notify');
+	const { bus, calls } = recordingBus();
+	const send = (recipient: Record<string, unknown>) =>
+		notifyBilling(bus, { ...walletConfig(), resolveRecipient: async () => recipient }, {
+			subscriberType: 'user',
+			subscriberId: USER.subscriberId,
+			type: 'billing.payment-receipt',
+			data: {},
+		});
+	await send({ email: 'marie@client.example', locale: 'fr-CA' });
+	await send({ email: 'ops@client.example', fallbackLocale: 'zh-Hant' });
+	await send({ email: 'plain@client.example' });
+	const sent = calls.map((c) => c.payload as Record<string, unknown>);
+	assert.equal(sent[0]!['locale'], 'fr-CA');
+	assert.equal(sent[1]!['locale'], undefined);
+	assert.equal(sent[1]!['fallbackLocale'], 'zh-Hant');
+	assert.equal('locale' in sent[2]! || 'fallbackLocale' in sent[2]!, false, "nothing given: courier asks the recipient's account");
+});
+
 test('notifyBilling: no resolveRecipient → nothing emitted', async () => {
 	const { notifyBilling } = await import('../services/notify');
 	const { bus, calls } = recordingBus();

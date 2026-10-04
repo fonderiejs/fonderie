@@ -73,6 +73,14 @@ export interface ICourierConfig {
 	 */
 	brandName?: string;
 
+	/**
+	 * When a message names no language, use the language of the account its
+	 * recipient's email or phone belongs to (@fonderie/auth's users, same
+	 * database). Default true. Set false when courier's database is not the
+	 * one holding the accounts, or to keep messages on the sender's choice only.
+	 */
+	recipientLocaleLookup?: boolean;
+
 	// When set, exposes Bearer-guarded template admin routes (/admin/templates/*)
 	// for versioned edit/history/rollback. Requires @fonderie/store (db templates).
 	adminToken?: string;
