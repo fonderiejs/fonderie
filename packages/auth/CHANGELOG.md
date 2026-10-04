@@ -1,5 +1,13 @@
 # @fonderie/auth
 
+## 7.21.1
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+  - @fonderie/rate-limit@4.0.32
+
 ## 7.21.0
 
 ### Minor Changes
