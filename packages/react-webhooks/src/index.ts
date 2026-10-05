@@ -12,9 +12,11 @@ export type {
 	IUseWebhookDeliveriesReturn,
 	IUseWebhookEndpointReturn,
 	IUseWebhookEndpointsReturn,
+	IUseDeletedWebhookEndpointsReturn,
 } from './hooks';
 export {
 	useWebhookDeliveries,
 	useWebhookEndpoint,
 	useWebhookEndpoints,
+	useDeletedWebhookEndpoints,
 } from './hooks';

@@ -211,6 +211,9 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getRole(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
   .removeRole(roleId: string): Promise<IApiResponse<IRoleDeleteResult>>
+  .listDeletedRoles(opts?: IReadOptions | undefined): Promise<IApiResponse<{ roles: IDeletedRoleDTO[]; }>>
+  .restoreRole(id: string): Promise<IApiResponse<IRestoredRoleResult>>
+  .purgeDeletedRole(id: string): Promise<undefined>
   .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
@@ -378,6 +381,17 @@ interface IUseWorkspacesReturn {
     leaveWorkspace: () => Promise<void>;
 }
 
+interface IUseDeletedRolesReturn {
+    roles: Ref<IDeletedRoleDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    restore: (id: string) => Promise<void>;
+    purge: (id: string) => Promise<void>;
+}
+
 function useCurrentWorkspace(client?: WorkspacesClient | undefined): IUseCurrentWorkspaceReturn
 
 function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsReturn
@@ -405,4 +419,6 @@ function useWorkspaceSettings(client?: WorkspacesClient | undefined): IUseWorksp
 function useWorkspace(id: MaybeRefOrGetter<string>): IUseWorkspaceReturn
 
 function useWorkspaces(client?: WorkspacesClient | undefined): IUseWorkspacesReturn
+
+function useDeletedRoles(client?: WorkspacesClient | undefined): IUseDeletedRolesReturn
 ```

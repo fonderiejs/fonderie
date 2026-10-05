@@ -48,3 +48,7 @@ export * as schemas from './schemas';
 // `accountDeletion.erasers`.
 export { accountEraser } from './eraser';
 export type { ICustomersAccountEraser, ICustomersErasureSubject } from './eraser';
+
+// The undo bin (docs/INSIDER-THREAT-DESIGN.md, Phase 3)
+export { CUSTOMER_BIN_RETENTION_DAYS, emptyCustomerBin, listCustomerBin, restoreCustomer } from './models/customer-bin';
+export type { IBinnedCustomer, RestoreCustomerOutcome } from './models/customer-bin';

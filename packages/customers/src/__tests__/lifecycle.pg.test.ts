@@ -198,3 +198,60 @@ test('a relationship names the related customer unambiguously', { skip }, async 
 	assert.notEqual(rel.relationshipId, child.id);
 	assert.equal(rel.firstName, 'Child');
 });
+
+// ── The undo bin (docs/INSIDER-THREAT-DESIGN.md, Phase 3) ───────────────────
+
+test('a deleted customer waits in the bin and comes back whole — same id, emails, phones, notes, tags, address, relationship', { skip }, async () => {
+	const o = await owner();
+	const friend = await create(o, { firstName: 'Friend', lastName: 'Kept' });
+	const c = await create(o, { firstName: 'Gone', lastName: 'ForNow' });
+	await call(o.token, 'POST', `/customers/${c.id}/emails`, { email: `gone-${n}@client.example`, isPrimary: true }, o.ws);
+	await call(o.token, 'POST', `/customers/${c.id}/phones`, { phone: '+15145550123' }, o.ws);
+	await call(o.token, 'POST', `/customers/${c.id}/notes`, { body: 'Gate code 1234' }, o.ws);
+	await call(o.token, 'POST', `/customers/${c.id}/tags`, { tag: 'vip' }, o.ws);
+	await call(o.token, 'POST', `/customers/${c.id}/addresses`, { line1: '1 rue Principale', countryIso: 'CA', subdivision1Iso: 'QC', zipPostalCode: 'G1R 4P3' }, o.ws);
+	await call(o.token, 'POST', `/customers/${c.id}/relationships`, { relatedId: friend.id, relationship: 'spouse' }, o.ws);
+	const before = (await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).result;
+
+	assert.equal((await call(o.token, 'DELETE', `/customers/${c.id}`, undefined, o.ws)).status, 200);
+	assert.equal((await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).status, 404, 'gone from the customers');
+	const bin = (await call(o.token, 'GET', '/customers/bin', undefined, o.ws)).result['customers'] as Array<Record<string, any>>;
+	assert.deepEqual(bin.map((b) => [b.id, b.firstName]), [[c.id, 'Gone']], 'in the bin');
+	assert.equal(Math.round((Date.parse(bin[0]!.purgeAt) - Date.parse(bin[0]!.deletedAt)) / 86_400_000), 30);
+
+	const r = await call(o.token, 'POST', `/customers/bin/${c.id}/restore`, undefined, o.ws);
+	assert.deepEqual([r.status, r.reason], [200, 'CUSTOMER_RESTORED'], JSON.stringify(r));
+	const after = (await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).result;
+	assert.deepEqual(after, before, 'everything came back exactly');
+	assert.deepEqual((await call(o.token, 'GET', '/customers/bin', undefined, o.ws)).result['customers'], [], 'and left the bin');
+	assert.equal((await call(o.token, 'POST', `/customers/bin/${c.id}/restore`, undefined, o.ws)).status, 404, 'restored once');
+});
+
+test('a refused delete leaves nothing in the bin; a restore whose reference code was taken changes nothing', { skip }, async () => {
+	const o = await owner();
+	const busy = await create(o, { firstName: 'On', lastName: 'AJob' });
+	await store.query('INSERT INTO test_app_jobs (customer_id) VALUES ($1)', [busy.id]);
+	assert.equal((await call(o.token, 'DELETE', `/customers/${busy.id}`, undefined, o.ws)).status, 409);
+	assert.deepEqual((await call(o.token, 'GET', '/customers/bin', undefined, o.ws)).result['customers'], []);
+	await store.query('DELETE FROM test_app_jobs WHERE customer_id = $1', [busy.id]);
+
+	// The reference code is the one thing unique across a workspace's customers.
+	const c = await create(o, { firstName: 'First', lastName: 'Twin' });
+	await call(o.token, 'DELETE', `/customers/${c.id}`, undefined, o.ws);
+	const taker = await create(o, { firstName: 'Second', lastName: 'Twin' });
+	const took = await call(o.token, 'PUT', `/customers/${taker.id}`, { referenceCode: c.referenceCode }, o.ws);
+	assert.equal(took.status, 200, JSON.stringify(took));
+	const r = await call(o.token, 'POST', `/customers/bin/${c.id}/restore`, undefined, o.ws);
+	assert.deepEqual([r.status, r.reason], [409, 'RESTORE_CONFLICT']);
+	assert.equal((await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).status, 404, 'nothing half-restored');
+	assert.equal(((await call(o.token, 'GET', '/customers/bin', undefined, o.ws)).result['customers'] as unknown[]).length, 1, 'still in the bin');
+
+	// The owner can empty it; after the retention the cron does.
+	assert.equal((await call(o.token, 'DELETE', `/customers/bin/${c.id}`, undefined, o.ws)).status, 204);
+	assert.deepEqual((await call(o.token, 'GET', '/customers/bin', undefined, o.ws)).result['customers'], []);
+	const { emptyCustomerBin } = await import('../models/customer-bin');
+	await call(o.token, 'DELETE', `/customers/${taker.id}`, undefined, o.ws);
+	await store.query(`UPDATE fonderie_customer_bin SET deleted_at = now() - interval '31 days' WHERE id = $1`, [taker.id]);
+	assert.ok((await emptyCustomerBin(store)) >= 1);
+	assert.equal((await store.query('SELECT 1 FROM fonderie_customer_bin WHERE id = $1', [taker.id])).length, 0, 'past the retention: gone');
+});

@@ -40,8 +40,8 @@ export class RoleModel {
 		return updateRole(id, workspaceId, opts, this.store);
 	}
 
-	delete(id: string, workspaceId: string): Promise<IRoleDeleteResult | null> {
-		return deleteRole(id, workspaceId, this.store);
+	delete(id: string, workspaceId: string, deletedBy: string | null = null): Promise<IRoleDeleteResult | null> {
+		return deleteRole(id, workspaceId, this.store, deletedBy);
 	}
 
 	setPermissions(

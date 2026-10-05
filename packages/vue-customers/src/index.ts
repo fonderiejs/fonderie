@@ -39,6 +39,7 @@ export type {
 	IUseCustomerReturn,
 	IUseCustomersReturn,
 	IUseCustomerTagsReturn,
+	IUseDeletedCustomersReturn,
 } from './composables';
 export {
 	useCustomer,
@@ -50,4 +51,5 @@ export {
 	useCustomerRelationships,
 	useCustomers,
 	useCustomerTags,
+	useDeletedCustomers,
 } from './composables';

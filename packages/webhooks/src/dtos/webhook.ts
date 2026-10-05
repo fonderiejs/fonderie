@@ -1,4 +1,4 @@
-import type { IWebhookEndpoint, IWebhookDelivery } from '../types';
+import type { IBinnedEndpoint, IWebhookEndpoint, IWebhookDelivery } from '../types';
 
 export interface IWebhookEndpointDTO {
 	id: string;
@@ -56,5 +56,26 @@ export function toDeliveryDTO(d: IWebhookDelivery): IWebhookDeliveryDTO {
 		nextAttemptAt: d.nextAttemptAt?.toISOString() ?? null,
 		deliveredAt: d.deliveredAt?.toISOString() ?? null,
 		createdAt: d.createdAt.toISOString(),
+	};
+}
+
+/** A deleted endpoint in the undo bin. */
+export interface IBinnedEndpointDTO {
+	id: string;
+	url: string;
+	events: string[];
+	deletedBy: string | null;
+	deletedAt: string;
+	purgeAt: string;
+}
+
+export function toBinnedEndpointDTO(e: IBinnedEndpoint): IBinnedEndpointDTO {
+	return {
+		id: e.id,
+		url: e.url,
+		events: e.events,
+		deletedBy: e.deletedBy,
+		deletedAt: new Date(e.deletedAt).toISOString(),
+		purgeAt: new Date(e.purgeAt).toISOString(),
 	};
 }

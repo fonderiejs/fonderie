@@ -69,8 +69,22 @@ new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
   .getEndpoint(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointDTO>>
   .updateEndpoint(endpointId: string, input: IUpdateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointDTO>>
   .deleteEndpoint(endpointId: string): Promise<undefined>
+  .listDeletedWebhookEndpoints(opts?: IReadOptions | undefined): Promise<IApiResponse<{ endpoints: IDeletedWebhookEndpointDTO[]; }>>
+  .restoreWebhookEndpoint(id: string): Promise<IApiResponse<IWebhookEndpointDTO>>
+  .purgeDeletedWebhookEndpoint(id: string): Promise<undefined>
   .listDeliveries(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookDeliveryListResult>>
   .testEndpoint(endpointId: string): Promise<IApiResponse<ITestWebhookResult>>
+
+interface IUseDeletedWebhookEndpointsReturn {
+    endpoints: IDeletedWebhookEndpointDTO[];
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    restore: (id: string) => Promise<void>;
+    purge: (id: string) => Promise<void>;
+}
 
 interface IUseWebhookDeliveriesReturn {
     deliveries: IWebhookDeliveryDTO[];
@@ -103,6 +117,8 @@ interface IUseWebhookEndpointsReturn {
     removeEndpoint: (endpointId: string) => Promise<void>;
     testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>;
 }
+
+function useDeletedWebhookEndpoints(client?: WebhooksClient | undefined): IUseDeletedWebhookEndpointsReturn
 
 function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn
 
