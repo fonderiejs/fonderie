@@ -20,6 +20,7 @@ import { LoginEventModel } from '../models/login-event.model';
 import { ConsumedTokenModel } from '../models/consumed-token.model';
 import { requestMeta } from '../services/request-meta';
 import { normalizeEmailSafe } from '../services/email';
+import { pendingDeletionResponse } from '../services/pending-deletion';
 
 // ── Sign in with Apple ───────────────────────────────────────────────────────
 // Apple differs from Google in three ways handled here: (1) the client secret
@@ -278,6 +279,26 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 		const normalizedEmail = normalizeEmailSafe(claims.email);
 		if (!normalizedEmail) {
 			return setApiResponse(HTTP.BAD_REQUEST, p.failed, `Invalid email in ${p.label} identity token`);
+		}
+
+		// An archived account must not be touched: upsertByProvider's ON CONFLICT
+		// (email) would rewrite its provider fields and then fail. The provider
+		// has proven the address, so tell its owner when it will be deleted.
+		const archived = await users.findArchivedByEmail(normalizedEmail);
+		if (archived?.deletedAt) {
+			await loginEvents.recordSafe({
+				userId: archived.id,
+				emailAttempted: normalizedEmail,
+				method,
+				outcome: 'failed',
+				failureReason: 'pending_deletion',
+				...meta,
+			});
+			// The web flow's one-time CSRF cookie is spent either way.
+			const res = pendingDeletionResponse(archived.deletedAt, config);
+			const headers = cookieHeaders(clearCookies);
+			headers.set('content-type', res.headers.get('content-type') ?? 'application/json');
+			return new Response(res.body, { status: res.status, headers });
 		}
 
 		const upserted = await users.upsertByProvider(normalizedEmail, provider, claims.sub ?? '');

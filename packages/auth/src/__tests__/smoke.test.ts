@@ -308,6 +308,11 @@ type AuthStoreOpts = {
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// The reset's one statement (password + spend code + end sessions):
+			// changes a LIVE account only.
+			if (sql.includes('WITH changed AS'))
+				return [{ id: 'user-1' }] as unknown as T[];
+
 			// INSERT is matched FIRST and deliberately: upsertByProvider reads the
 			// pre-insert row in a CTE, so its SQL also contains 'WHERE email = $1'
 			// and a lookup branch above would swallow it — returning no row and
@@ -3346,6 +3351,7 @@ test('resetPassword: revokes all of the user\'s sessions', async () => {
 			executed.push({ sql, params: params ?? [] });
 			if (sql.includes('fonderie_password_resets') && sql.includes('WHERE pin'))
 				return [{ user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) }] as unknown as T[];
+			if (sql.includes('WITH changed AS')) return [{ id: 'user-1' }] as unknown as T[];
 			return [] as unknown as T[];
 		},
 		transaction: async (fn) => fn(store),
@@ -3355,9 +3361,11 @@ test('resetPassword: revokes all of the user\'s sessions', async () => {
 		makeCtx({ body: { pin: '123456', password: 'new-password-123' } }),
 	);
 	assert.equal(response.status, 200);
-	const sessionDelete = executed.find((q) => q.sql.includes('DELETE FROM fonderie_sessions'));
-	assert.ok(sessionDelete, 'all sessions must be revoked on reset');
-	assert.deepEqual(sessionDelete!.params, ['user-1']);
+	// Password, reset code and sessions change in ONE statement (all or nothing).
+	const reset = executed.find((q) => q.sql.includes('DELETE FROM fonderie_sessions'));
+	assert.ok(reset, 'all sessions must be revoked on reset');
+	assert.match(reset!.sql, /UPDATE fonderie_users SET password_hash[\s\S]*DELETE FROM fonderie_password_resets[\s\S]*DELETE FROM fonderie_sessions/);
+	assert.equal(reset!.params[1], 'user-1');
 });
 
 // ── GET /auth/providers ───────────────────────────────────────────
