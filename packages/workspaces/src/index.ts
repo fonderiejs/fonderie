@@ -58,4 +58,4 @@ export type { IBinnedRole, RestoreRoleOutcome } from './services/roles';
 // The velocity brake (docs/INSIDER-THREAT-DESIGN.md, Phase 5): other bricks put it on their destructive routes.
 export { VELOCITY_BRAKE_DEFAULTS, releaseBrake, velocityBrake } from './middlewares/velocity-brake';
 export type { IVelocityBrakeOptions } from './middlewares/velocity-brake';
-
+export { OWNER_ALERT_EVENTS } from './config';

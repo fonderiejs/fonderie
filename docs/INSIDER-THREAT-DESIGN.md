@@ -1,6 +1,6 @@
 # Insider threat: a rogue manager or owner
 
-Status: all five phases shipped (2026-10-05).
+Status: all five phases shipped, plus Phase 6 (2026-10-05).
 
 ## 1. The scenario
 
@@ -102,10 +102,16 @@ suspending the manager role would have hidden them from the members list the
 owner releases them from. Built in workspaces rather than on @fonderie/risk —
 a count over one table needs no rules engine.
 
+**Phase 6 — The trail beyond the team.** ✅ webhooks and billing emit who
+changed an endpoint (host only, never path/query/secret) and who cancelled a
+plan; workspaces emails the owner when someone else adds a webhook or cancels
+the team's plan; `AuditModule(store, { permission })` limits who reads the
+trail (I1).
+
 ## 5. Decisions
 
 | # | Question | Decision |
 |---|---|---|
-| I1 | Who reads the trail? | Today any member can read `GET /audit` for their workspace. Phase 1 keeps that; restricting it to managers is a permission the app grants (`audit:read`), noted as a follow-up. |
+| I1 | Who reads the trail? | `AuditModule(store, { permission: 'audit' })` (Phase 6): reading needs `read` on it; unset keeps any-member reads. Apps should set it and grant it to managers. |
 | I2 | Archive by a manager | **Owner only.** Archiving locks every member out; it is the single most damaging call a manager had. Restore stays a manager action. |
 | I3 | Payload content | Ids only. The audit view resolves names at read time, so an erased person shows as an id, as the deletion design requires. |

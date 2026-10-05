@@ -39,7 +39,7 @@ export class WebhooksModule implements IFonderieModule {
 			dispatcher.retry().catch((err) => console.error('[webhooks] retry error:', err));
 		}, interval);
 
-		const routes = buildWebhookRoutes(this.store, this.config);
+		const routes = buildWebhookRoutes(this.store, this.config, this.bus);
 		for (const [method, path, ...handlers] of routes) {
 			app.addRoute(method, path, ...handlers);
 		}

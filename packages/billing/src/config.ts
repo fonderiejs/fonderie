@@ -360,6 +360,8 @@ export const EVENT_KEYS = {
 	subscriptionCreated: 'fonderie.billing.subscription.created',
 	subscriptionUpdated: 'fonderie.billing.subscription.updated',
 	subscriptionCanceled: 'fonderie.billing.subscription.canceled',
+	// Phase 6 (insider threat): someone asked to cancel — who, and whether it ends now.
+	subscriptionCancelRequested: 'fonderie.billing.subscription.cancel_requested',
 	subscriptionPastDue: 'fonderie.billing.subscription.past_due',
 	walletCredited: 'fonderie.billing.wallet.credited',
 	walletDebited: 'fonderie.billing.wallet.debited',

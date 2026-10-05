@@ -11,6 +11,9 @@ export const MESSAGE_KEYS = {
 	ownershipAccepted: 'workspace-ownership-accepted',
 	// Phase 5: the owner hears that someone was paused for deleting too fast.
 	managerPaused: 'workspace-manager-paused',
+	// Phase 6: the owner hears when someone else adds a webhook or cancels the plan.
+	webhookCreatedAlert: 'workspace-webhook-created-alert',
+	planCancelAlert: 'workspace-plan-cancel-alert',
 } as const;
 
 export type WorkspacesMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -51,6 +54,14 @@ export const EVENT_KEYS = {
 	roleRestored: 'fonderie.workspace.role.restored',
 	roleBinPurged: 'fonderie.workspace.role.bin.purged',
 	rolePermissionsSet: 'fonderie.workspace.role.permissions.set',
+} as const;
+
+// Events of OTHER bricks the owner is alerted to (Phase 6) — mirrored here so
+// workspaces depends on neither: @fonderie/webhooks WEBHOOK_EVENTS.endpointCreated
+// and @fonderie/billing EVENT_KEYS.subscriptionCancelRequested.
+export const OWNER_ALERT_EVENTS = {
+	webhookCreated: 'fonderie.webhook.endpoint.created',
+	planCancelRequested: 'fonderie.billing.subscription.cancel_requested',
 } as const;
 
 export type WorkspacesEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];

@@ -7,6 +7,8 @@ import { requireManager, withWorkspace } from '@fonderie/workspaces';
 
 import { createEndpointSchema, updateEndpointSchema } from './schemas';
 import { requireStepUp } from './middlewares/require-step-up';
+import { WEBHOOK_EVENTS, hostOf, webhookTrail } from './middlewares/trail';
+import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import { EndpointModel } from './models/endpoint.model';
@@ -19,7 +21,7 @@ import { assertPublicHttpUrl, pinnedTransport, SsrfError } from './ssrf';
 
 type Route = [string, string, ...Middleware[]];
 
-export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig = {}): Route[] {
+export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig = {}, bus?: EventBus): Route[] {
 	// Every route needs the caller's workspace (endpoints are owned by one) —
 	// withWorkspace resolves it from X-Workspace-ID (or the personal workspace)
 	// and verifies membership. Without it ctx.workspace was always null and
@@ -50,6 +52,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			stepUp,
 			validate(createEndpointSchema),
 			withBody,
+			webhookTrail(bus, WEBHOOK_EVENTS.endpointCreated, (_c, r) => ({ endpointId: r?.['id'] as string | undefined, host: hostOf(r?.['url']) })),
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(
@@ -130,6 +133,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			requireAuth,
 			ws,
 			manager,
+			webhookTrail(bus, WEBHOOK_EVENTS.endpointRestored, (c) => ({ endpointId: (c.meta['params'] as Record<string, string>)['endpointId'] })),
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required');
@@ -195,6 +199,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			validate(updateEndpointSchema),
 			stepUpOnUrl,
 			withBody,
+			webhookTrail(bus, WEBHOOK_EVENTS.endpointUpdated, (c) => ({ endpointId: (c.meta['params'] as Record<string, string>)['endpointId'], host: hostOf((c.meta['body'] as { url?: unknown } | undefined)?.url) })),
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(
@@ -246,6 +251,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			typeof workspaces.velocityBrake === 'function'
 				? workspaces.velocityBrake(store, 'webhook.delete', config.velocityBrake ?? {})
 				: ((_ctx, next) => next()) as Middleware,
+			webhookTrail(bus, WEBHOOK_EVENTS.endpointDeleted, (c) => ({ endpointId: (c.meta['params'] as Record<string, string>)['endpointId'] })),
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(

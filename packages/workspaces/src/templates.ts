@@ -69,6 +69,28 @@ You are still a member of {{workspaceName}}, but you can no longer manage the te
 
 If you did not expect this, contact the owner of the team.`,
 	},
+	[MESSAGE_KEYS.webhookCreatedAlert]: {
+		subject: '{{actorName}} added a webhook to {{workspaceName}}',
+		html: `<h1>A webhook was added</h1>
+<p><strong>{{actorName}}</strong> added a webhook to <strong>{{workspaceName}}</strong>. It sends every event of the workspace to <strong>{{host}}</strong>.</p>
+<p class="muted">If you don’t recognise this, delete it from the integrations settings and review who manages the team.</p>`,
+		text: `A webhook was added
+
+{{actorName}} added a webhook to {{workspaceName}}. It sends every event of the workspace to {{host}}.
+
+If you don’t recognise this, delete it from the integrations settings and review who manages the team.`,
+	},
+	[MESSAGE_KEYS.planCancelAlert]: {
+		subject: '{{actorName}} cancelled the plan of {{workspaceName}}',
+		html: `<h1>The plan was cancelled</h1>
+<p><strong>{{actorName}}</strong> cancelled the plan of <strong>{{workspaceName}}</strong>{{#immediately}}, effective immediately{{/immediately}}{{#atPeriodEnd}}; it ends at the end of the paid period{{/atPeriodEnd}}.</p>
+<p class="muted">If this wasn’t agreed, you can resume or choose a plan again from the billing settings.</p>`,
+		text: `The plan was cancelled
+
+{{actorName}} cancelled the plan of {{workspaceName}}{{#immediately}}, effective immediately{{/immediately}}{{#atPeriodEnd}}; it ends at the end of the paid period{{/atPeriodEnd}}.
+
+If this wasn’t agreed, you can resume or choose a plan again from the billing settings.`,
+	},
 	[MESSAGE_KEYS.managerPaused]: {
 		subject: '{{memberName}} was paused from deleting in {{workspaceName}}',
 		html: `<h1>Deleting was paused</h1>
@@ -127,6 +149,8 @@ export const SAMPLE_PAYLOADS: Record<WorkspacesMessageKey, Record<string, unknow
 	[MESSAGE_KEYS.memberRemoved]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester' },
 	[MESSAGE_KEYS.memberRemovedAlert]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester', memberName: 'Ana Tester' },
 	[MESSAGE_KEYS.managerRemoved]: { workspaceName: 'Acme Crew' },
+	[MESSAGE_KEYS.webhookCreatedAlert]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester', host: 'hooks.acme.example' },
+	[MESSAGE_KEYS.planCancelAlert]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester', immediately: 'yes', atPeriodEnd: '' },
 	[MESSAGE_KEYS.managerPaused]: { workspaceName: 'Acme Crew', memberName: 'Marco Tester', count: '10', minutes: '10' },
 	[MESSAGE_KEYS.ownershipOffered]: { workspaceName: 'Acme Crew', ownerName: 'Olivia Tester' },
 	[MESSAGE_KEYS.ownershipAccepted]: { workspaceName: 'Acme Crew', newOwnerName: 'Marco Tester' },
