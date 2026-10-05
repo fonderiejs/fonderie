@@ -70,6 +70,9 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     routes?: Partial<Record<AuthRouteId, AuthRouteOverride>>;
     legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>;
     dataExportContributors?: IDataExportContributor[];
+    accountDeletion?: {
+        gracePeriodDays?: number;
+    };
 }
 
 interface IAuthSecrets {

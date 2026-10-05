@@ -183,7 +183,19 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>;
 	// SAR export contributors from other modules (see IDataExportContributor).
 	dataExportContributors?: IDataExportContributor[];
+	// Account deletion (docs/ACCOUNT-DELETION-DESIGN.md). A deleted account is
+	// archived for `gracePeriodDays` (default 30 — inside GDPR's one-month
+	// answer, CCPA's 45 days) before the purge erases it; meanwhile signing in
+	// says when it will be deleted and that it can still be kept. Purge with
+	// the SAME number (purgeSoftDeletedUsers / startUserRetention olderThanDays).
+	accountDeletion?: { gracePeriodDays?: number };
 }
+
+/** The grace period an app configured, else the design default (30 days). */
+export const deletionGracePeriodDays = (config: Pick<IAuthConfig, 'accountDeletion'>): number => {
+	const days = config.accountDeletion?.gracePeriodDays;
+	return typeof days === 'number' && Number.isFinite(days) && days >= 0 ? days : 30;
+};
 
 // A module's contribution to the per-user data export (SAR). The app wires
 // these (e.g. from @fonderie/workspaces) so auth can aggregate data owned by

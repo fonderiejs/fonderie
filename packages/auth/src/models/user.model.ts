@@ -91,6 +91,29 @@ export class UserModel {
 		return row ?? null;
 	}
 
+	/**
+	 * An ARCHIVED (soft-deleted, not yet purged) account holding this address.
+	 * Only for telling its owner — after they prove it is theirs — that it is
+	 * scheduled for deletion, and for refusing to create a second account on
+	 * the address meanwhile. Never for signing in.
+	 */
+	async findArchivedByEmail(email: string): Promise<IUser | null> {
+		const [row] = await this.store.query<IUser>(
+			`SELECT ${USER_COLUMNS} FROM fonderie_users WHERE email = $1 AND deleted_at IS NOT NULL`,
+			[email],
+		);
+		return row ?? null;
+	}
+
+	/** As findArchivedByEmail, for a phone number. */
+	async findArchivedByPhone(phone: string): Promise<IUser | null> {
+		const [row] = await this.store.query<IUser>(
+			`SELECT ${USER_COLUMNS} FROM fonderie_users WHERE phone = $1 AND deleted_at IS NOT NULL`,
+			[phone],
+		);
+		return row ?? null;
+	}
+
 	async findByPhone(phone: string): Promise<IUser | null> {
 		const [row] = await this.store.query<IUser>(
 			`SELECT ${USER_COLUMNS} FROM fonderie_users WHERE phone = $1 AND deleted_at IS NULL`,

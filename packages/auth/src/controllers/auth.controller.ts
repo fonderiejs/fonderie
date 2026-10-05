@@ -17,6 +17,7 @@ import { LoginEventModel } from '../models/login-event.model';
 import { requestMeta } from '../services/request-meta';
 import { hashPassword, verifyPasswordForLogin } from '../services/password';
 import { normalizeEmailSafe } from '../services/email';
+import { archivedAddressResponse, pendingDeletionResponse } from '../services/pending-deletion';
 import { PasswordResetModel } from '../models/password-reset.model';
 import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
 import { EmailVerificationModel } from '../models/email-verification.model';
@@ -92,6 +93,10 @@ export function authController(
 				if (existing) {
 					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Email already registered');
 				}
+				// The address still belongs to an archived account until its purge:
+				// a second account here would be a 500 (unique email) and would
+				// strand the first. Point the person at keeping it instead.
+				if (await users.findArchivedByEmail(normalizedEmail)) return archivedAddressResponse();
 
 				const passwordHash = await hashPassword(password);
 				const row = await users.create(
@@ -183,6 +188,9 @@ export function authController(
 				if (existing) {
 					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Phone already registered');
 				}
+				// Before findOrCreateByPhone: its ON CONFLICT (phone) would rewrite the
+				// archived account's name and then fail.
+				if (await users.findArchivedByPhone(normalizePhone(phone))) return archivedAddressResponse();
 
 				const { id } = await users.findOrCreateByPhone(
 					normalizePhone(phone),
@@ -267,6 +275,24 @@ export function authController(
 				}
 
 				const user = await users.findByEmail(email);
+				if (!user) {
+					// An archived account says so — but only to someone who knows its
+					// password; a wrong one is the same 401 as an unknown address.
+					const archived = await users.findArchivedByEmail(email);
+					if (archived?.passwordHash && archived.deletedAt) {
+						const { valid } = await verifyPasswordForLogin(password, archived.passwordHash, config.legacyVerify);
+						await loginEvents.recordSafe({
+							userId: archived.id,
+							emailAttempted: email,
+							method: 'password',
+							outcome: 'failed',
+							failureReason: valid ? 'pending_deletion' : 'bad_password',
+							...meta,
+						});
+						if (valid) return pendingDeletionResponse(archived.deletedAt, config);
+						return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
+					}
+				}
 				if (!user || !user.passwordHash) {
 					await loginEvents.recordSafe({
 						userId: null,
@@ -608,18 +634,31 @@ export function authController(
 			}
 
 			const passwordHash = await hashPassword(password);
-			await store.transaction(async (tx) => {
-				await Promise.all([
-					tx.query(`UPDATE fonderie_users SET password_hash = $1 WHERE id = $2`, [
-						passwordHash,
-						row.userId,
-					]),
-					tx.query(`DELETE FROM fonderie_password_resets WHERE user_id = $1`, [row.userId]),
-					// Revoke every session: the reset exists because the account may
-					// be compromised — a stolen session must not survive it.
-					tx.query(`DELETE FROM fonderie_sessions WHERE user_id = $1`, [row.userId]),
-				]);
-			});
+			// One statement: set the password, spend the reset code, end every
+			// session (the reset exists because the account may be compromised — a
+			// stolen session must not survive it). `deleted_at IS NULL` in the same
+			// statement: a code issued before the account was deleted never changes
+			// the archived account — same answer as an invalid code, no oracle.
+			const [changed] = await store.query<{ id: string }>(
+				`WITH changed AS (
+				   UPDATE fonderie_users SET password_hash = $1, updated_at = now()
+				   WHERE id = $2 AND deleted_at IS NULL
+				   RETURNING id
+				 ), spent AS (
+				   DELETE FROM fonderie_password_resets WHERE user_id = $2
+				 ), revoked AS (
+				   DELETE FROM fonderie_sessions WHERE user_id IN (SELECT id FROM changed)
+				 )
+				 SELECT id FROM changed`,
+				[passwordHash, row.userId],
+			);
+			if (!changed) {
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'PASSWORD_RESET_FAILED',
+					'Invalid or expired reset credentials',
+				);
+			}
 
 			return setApiResponse(HTTP.OK, 'PASSWORD_RESET_SUCCESSFUL', 'Password reset successfully.');
 		},
