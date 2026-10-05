@@ -45,6 +45,7 @@ export type {
 	IUseSessionsReturn,
 	IUseAuthProvidersReturn,
 	IUseUnlinkOauthReturn,
+	IUseStepUpReturn,
 } from './hooks';
 export {
 	useForgotPassword,
@@ -66,6 +67,7 @@ export {
 	useVerifyEmail,
 	useLoginHistory,
 	useSessions,
+	useStepUp,
 } from './hooks';
 
 // Token persistence primitives — for wiring app-level flows (e.g. the

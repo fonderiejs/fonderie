@@ -93,7 +93,7 @@ instead of excavating `dist/` or tarballs.**
 
 - `@fonderie/admin` (5 tables, 26 routes) → [signatures/admin-outcomes.md](signatures/admin-outcomes.md)
 - `@fonderie/audit` (0 tables, 2 routes) → [signatures/audit-outcomes.md](signatures/audit-outcomes.md)
-- `@fonderie/auth` (11 tables, 48 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
+- `@fonderie/auth` (12 tables, 51 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
 - `@fonderie/billing` (12 tables, 30 routes) → [signatures/billing-outcomes.md](signatures/billing-outcomes.md)
 - `@fonderie/config` (4 tables, 14 routes) → [signatures/config-outcomes.md](signatures/config-outcomes.md)
 - `@fonderie/core` (0 tables, 3 routes) → [signatures/core-outcomes.md](signatures/core-outcomes.md)
@@ -107,4 +107,4 @@ instead of excavating `dist/` or tarballs.**
 - `@fonderie/risk` (1 tables, 0 routes) → [signatures/risk-outcomes.md](signatures/risk-outcomes.md)
 - `@fonderie/storage` (1 tables, 0 routes) → [signatures/storage-outcomes.md](signatures/storage-outcomes.md)
 - `@fonderie/webhooks` (3 tables, 10 routes) → [signatures/webhooks-outcomes.md](signatures/webhooks-outcomes.md)
-- `@fonderie/workspaces` (5 tables, 35 routes) → [signatures/workspaces-outcomes.md](signatures/workspaces-outcomes.md)
+- `@fonderie/workspaces` (6 tables, 39 routes) → [signatures/workspaces-outcomes.md](signatures/workspaces-outcomes.md)

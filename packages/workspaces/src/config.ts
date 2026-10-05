@@ -5,7 +5,10 @@ export const MESSAGE_KEYS = {
 	memberRemoved: 'workspace-member-removed',
 	memberRemovedAlert: 'workspace-member-removed-alert',
 	managerRemoved: 'workspace-manager-removed',
-	ownershipReceived: 'workspace-ownership-received',
+	// Handing a team over waits for the new owner (Phase 4): they are offered
+	// it, and the previous owner hears when they accept.
+	ownershipOffered: 'workspace-ownership-offered',
+	ownershipAccepted: 'workspace-ownership-accepted',
 } as const;
 
 export type WorkspacesMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -27,7 +30,12 @@ export const EVENT_KEYS = {
 	memberRoleRemoved: 'fonderie.workspace.member.role.removed',
 	managerSet: 'fonderie.workspace.manager.set',
 	managerUnset: 'fonderie.workspace.manager.unset',
+	// Phase 4: offered → accepted (transferred) | declined | withdrawn. On
+	// transferred the actor is the NEW owner and targetUserId the previous one.
+	ownershipOffered: 'fonderie.workspace.ownership.offered',
 	ownershipTransferred: 'fonderie.workspace.ownership.transferred',
+	ownershipDeclined: 'fonderie.workspace.ownership.declined',
+	ownershipWithdrawn: 'fonderie.workspace.ownership.withdrawn',
 	invitationCreated: 'fonderie.workspace.invitation.created',
 	invitationCancelled: 'fonderie.workspace.invitation.cancelled',
 	invitationResent: 'fonderie.workspace.invitation.resent',
@@ -58,6 +66,10 @@ export interface IWorkspacesConfig {
 	// the owner when a manager removes someone. Default true. Route these
 	// message keys in courier like the invitation.
 	teamNotices?: boolean;
+
+	// Handing the team over asks for a fresh proof it's the owner (POST
+	// /auth/step-up, @fonderie/auth 7.27+). Default true; false turns it off.
+	stepUp?: boolean;
 
 	// System-role NAMES that count as managers (default ['ADMIN']). Matched
 	// only against is_system roles — GUEST is also a system role and must not
@@ -100,6 +112,7 @@ export type WorkspaceRouteId =
 	| 'listMembers' | 'removeMember' | 'getMemberRoles' | 'addMemberRole' | 'removeMemberRole'
 	| 'listInvitations' | 'invite' | 'cancelInvitation' | 'resendInvitation' | 'acceptInvitation'
 	| 'getCurrentWorkspace' | 'getMyPermissions' | 'getPermissionCatalog' | 'leaveWorkspace' | 'transferOwnership' | 'setManager' | 'unsetManager'
+	| 'getOwnershipOffer' | 'acceptOwnership' | 'declineOwnership' | 'withdrawOwnershipOffer'
 	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions'
 	| 'listRoleBin' | 'restoreRole' | 'purgeRoleFromBin';
 

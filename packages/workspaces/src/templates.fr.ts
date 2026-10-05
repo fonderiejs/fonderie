@@ -56,17 +56,26 @@ Vous êtes toujours membre de {{workspaceName}}, mais vous ne pouvez plus gérer
 
 Si vous ne vous y attendiez pas, contactez le propriétaire de l’équipe.`,
 	},
-	[MESSAGE_KEYS.ownershipReceived]: {
-		subject: 'Vous êtes maintenant propriétaire de {{workspaceName}}',
-		html: `<h1>Vous êtes propriétaire d’une équipe</h1>
-<p>Vous êtes maintenant propriétaire de <strong>{{workspaceName}}</strong>.</p>
-{{#previousOwnerName}}<p>{{previousOwnerName}} vous l’a transférée.</p>{{/previousOwnerName}}
-<p class="muted">En tant que propriétaire, vous décidez qui gère l’équipe, et vous seul pouvez la transférer à nouveau.</p>`,
-		text: `Vous êtes propriétaire d’une équipe
+	[MESSAGE_KEYS.ownershipOffered]: {
+		subject: '{{ownerName}} souhaite vous nommer propriétaire de {{workspaceName}}',
+		html: `<h1>On vous propose une équipe</h1>
+<p><strong>{{ownerName}}</strong> souhaite vous nommer propriétaire de <strong>{{workspaceName}}</strong>.</p>
+<p class="muted">Ouvrez l’application pour accepter ou refuser. L’offre expire dans 7 jours. En tant que propriétaire, vous décideriez qui gère l’équipe.</p>`,
+		text: `On vous propose une équipe
 
-Vous êtes maintenant propriétaire de {{workspaceName}}.
-{{#previousOwnerName}}{{previousOwnerName}} vous l’a transférée.{{/previousOwnerName}}
+{{ownerName}} souhaite vous nommer propriétaire de {{workspaceName}}.
 
-En tant que propriétaire, vous décidez qui gère l’équipe, et vous seul pouvez la transférer à nouveau.`,
+Ouvrez l’application pour accepter ou refuser. L’offre expire dans 7 jours. En tant que propriétaire, vous décideriez qui gère l’équipe.`,
+	},
+	[MESSAGE_KEYS.ownershipAccepted]: {
+		subject: '{{newOwnerName}} est maintenant propriétaire de {{workspaceName}}',
+		html: `<h1>Votre équipe a un nouveau propriétaire</h1>
+<p><strong>{{newOwnerName}}</strong> a accepté et est maintenant propriétaire de <strong>{{workspaceName}}</strong>. Vous gérez toujours l’équipe.</p>
+<p class="muted">Si vous n’avez pas fait cette offre, contactez cette personne et votre support dès maintenant.</p>`,
+		text: `Votre équipe a un nouveau propriétaire
+
+{{newOwnerName}} a accepté et est maintenant propriétaire de {{workspaceName}}. Vous gérez toujours l’équipe.
+
+Si vous n’avez pas fait cette offre, contactez cette personne et votre support dès maintenant.`,
 	},
 } satisfies Record<WorkspacesMessageKey, IDefaultTemplateCopy>;

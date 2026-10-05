@@ -20,6 +20,7 @@ interface IWebhooksConfig {
     retryDelays?: number[];
     retryInterval?: number;
     management?: IWorkspacesConfig['management'];
+    stepUp?: boolean;
     managerRoles?: IWorkspacesConfig['managerRoles'];
 }
 

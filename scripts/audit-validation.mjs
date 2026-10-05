@@ -25,6 +25,8 @@ const EXEMPT = new Map([
 	['POST /workspaces/members/:userId/manager', 'no body — the member is the path param; owner-only grant'],
 	['POST /workspaces/leave', 'no body — the caller leaves the workspace in X-Workspace-ID'],
 	['POST /workspaces/invitations/:inviteId/resend', 'no body — the invitation is the path param; mints a new code'],
+	['POST /workspaces/transfer-ownership/accept', 'no body — the caller accepts the open offer of the workspace in X-Workspace-ID'],
+	['POST /workspaces/transfer-ownership/decline', 'no body — the caller declines the open offer of the workspace in X-Workspace-ID'],
 	['POST /billing/webhook', 'Stripe-shaped payload; signature-verified in handler'],
 	['POST /billing/webhook/payment', 'provider-shaped payload; signature-verified in handler'],
 	['POST /courier/delivery/sendgrid', 'provider webhook; signature-verified'],

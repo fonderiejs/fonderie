@@ -168,6 +168,15 @@ export const ZH_HANS_TEMPLATES = {
 如果是您本人移除的，无需任何操作。如果不是，请立即联系客服。`,
 	},
 
+	[MESSAGE_KEYS.stepUpCode]: {
+		subject: `你的确认码`,
+		html: `<h1>确认是你本人</h1>
+<p>你的账户请求进行一项重要更改（例如转让团队或立即终止套餐）。请使用此验证码确认是你本人：</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">此验证码将在 10 分钟后失效。如果不是你本人操作，请勿分享，并修改密码。</p>`,
+		text: `你的确认码：{{code}}。10 分钟后失效。不是你本人操作？请勿分享，并修改密码。`,
+	},
+
 	[MESSAGE_KEYS.accountDeletionCode]: {
 		subject: `确认删除您的账户`,
 		html: `<h1>确认删除账户</h1>

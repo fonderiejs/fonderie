@@ -69,18 +69,27 @@ You are still a member of {{workspaceName}}, but you can no longer manage the te
 
 If you did not expect this, contact the owner of the team.`,
 	},
-	[MESSAGE_KEYS.ownershipReceived]: {
-		subject: 'You are now the owner of {{workspaceName}}',
-		html: `<h1>You own a team now</h1>
-<p>You are now the owner of <strong>{{workspaceName}}</strong>.</p>
-{{#previousOwnerName}}<p>{{previousOwnerName}} handed it over to you.</p>{{/previousOwnerName}}
-<p class="muted">As the owner you decide who manages the team, and only you can hand it over again.</p>`,
-		text: `You own a team now
+	[MESSAGE_KEYS.ownershipOffered]: {
+		subject: '{{ownerName}} wants to make you the owner of {{workspaceName}}',
+		html: `<h1>You are offered a team</h1>
+<p><strong>{{ownerName}}</strong> wants to make you the owner of <strong>{{workspaceName}}</strong>.</p>
+<p class="muted">Open the app to accept or decline. The offer lapses in 7 days. As the owner you would decide who manages the team.</p>`,
+		text: `You are offered a team
 
-You are now the owner of {{workspaceName}}.
-{{#previousOwnerName}}{{previousOwnerName}} handed it over to you.{{/previousOwnerName}}
+{{ownerName}} wants to make you the owner of {{workspaceName}}.
 
-As the owner you decide who manages the team, and only you can hand it over again.`,
+Open the app to accept or decline. The offer lapses in 7 days. As the owner you would decide who manages the team.`,
+	},
+	[MESSAGE_KEYS.ownershipAccepted]: {
+		subject: '{{newOwnerName}} is now the owner of {{workspaceName}}',
+		html: `<h1>Your team has a new owner</h1>
+<p><strong>{{newOwnerName}}</strong> accepted, and is now the owner of <strong>{{workspaceName}}</strong>. You still manage the team.</p>
+<p class="muted">If you did not offer it, contact them and your support team now.</p>`,
+		text: `Your team has a new owner
+
+{{newOwnerName}} accepted, and is now the owner of {{workspaceName}}. You still manage the team.
+
+If you did not offer it, contact them and your support team now.`,
 	},
 } satisfies Record<WorkspacesMessageKey, IDefaultTemplate>;
 
@@ -107,5 +116,6 @@ export const SAMPLE_PAYLOADS: Record<WorkspacesMessageKey, Record<string, unknow
 	[MESSAGE_KEYS.memberRemoved]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester' },
 	[MESSAGE_KEYS.memberRemovedAlert]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester', memberName: 'Ana Tester' },
 	[MESSAGE_KEYS.managerRemoved]: { workspaceName: 'Acme Crew' },
-	[MESSAGE_KEYS.ownershipReceived]: { workspaceName: 'Acme Crew', previousOwnerName: 'Olivia Tester' },
+	[MESSAGE_KEYS.ownershipOffered]: { workspaceName: 'Acme Crew', ownerName: 'Olivia Tester' },
+	[MESSAGE_KEYS.ownershipAccepted]: { workspaceName: 'Acme Crew', newOwnerName: 'Marco Tester' },
 };

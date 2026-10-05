@@ -37,6 +37,7 @@ export type {
 	IUseWorkspaceReturn,
 	IUseWorkspacesReturn,
 	IUseDeletedRolesReturn,
+	IUseOwnershipOfferReturn,
 } from './hooks';
 export {
 	useCurrentWorkspace,
@@ -54,4 +55,5 @@ export {
 	useWorkspace,
 	useWorkspaces,
 	useDeletedRoles,
+	useOwnershipOffer,
 } from './hooks';

@@ -123,11 +123,11 @@ interface IDataExportContributor {
 
 const AUTH_CONFIG_KEYS: Record<Exclude<keyof IAuthRuntimeConfig, 'sessionPolicies'>, string>
 
-const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly passwordRevoked: "password-revoked"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; readonly accountDeletionCode: "account-deletion-code"; readonly accountDeletionScheduled: "account-deletion-scheduled"; readonly accountRestored: "account-restored"; readonly accountDeletionReminder: "account-deletion-reminder"; }
+const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly passwordRevoked: "password-revoked"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; readonly stepUpCode: "step-up-code"; readonly accountDeletionCode: "account-deletion-code"; readonly accountDeletionScheduled: "account-deletion-scheduled"; readonly accountRestored: "account-restored"; readonly accountDeletionReminder: "account-deletion-reminder"; }
 
 type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
 
-const DEFAULT_TEMPLATES: { "email-registration": IDefaultTemplate; "email-verification": IDefaultTemplate; "password-reset": IDefaultTemplate; "phone-otp": IDefaultTemplate; "mfa-enabled": IDefaultTemplate; "mfa-disabled": IDefaultTemplate; "mfa-backup-codes-regenerated": IDefaultTemplate; "email-changed": IDefaultTemplate; "phone-changed": IDefaultTemplate; "password-revoked": IDefaultTemplate; "oauth-registration": IDefaultTemplate; "oauth-linked": IDefaultTemplate; "oauth-unlinked": IDefaultTemplate; "account-deletion-code": IDefaultTemplate; "account-deletion-scheduled": IDefaultTemplate; "account-restored": IDefaultTemplate; "account-deletion-reminder": IDefaultTemplate; }
+const DEFAULT_TEMPLATES: { "email-registration": IDefaultTemplate; "email-verification": IDefaultTemplate; "password-reset": IDefaultTemplate; "phone-otp": IDefaultTemplate; "mfa-enabled": IDefaultTemplate; "mfa-disabled": IDefaultTemplate; "mfa-backup-codes-regenerated": IDefaultTemplate; "email-changed": IDefaultTemplate; "phone-changed": IDefaultTemplate; "password-revoked": IDefaultTemplate; "oauth-registration": IDefaultTemplate; "oauth-linked": IDefaultTemplate; "oauth-unlinked": IDefaultTemplate; "step-up-code": IDefaultTemplate; "account-deletion-code": IDefaultTemplate; "account-deletion-scheduled": IDefaultTemplate; "account-restored": IDefaultTemplate; "account-deletion-reminder": IDefaultTemplate; }
 
 interface IUserDTO {
     id: string;
@@ -214,7 +214,7 @@ type LocationResolver = (req: ILocationRequest) => IRequestLocation | null | und
 
 function validate(schema: IRequestSchema): Middleware
 
-namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, confirmDeletionSchema, deletionHoldSchema, forgotPasswordSchema, googleNativeSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, requestDeletionSchema, resetPasswordSchema, restoreAccountSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
+namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, confirmDeletionSchema, deletionHoldSchema, forgotPasswordSchema, googleNativeSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, requestDeletionSchema, resetPasswordSchema, restoreAccountSchema, stepUpCodeSchema, stepUpSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
 
 type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -353,4 +353,18 @@ interface ISessionPolicy {
     sessionMaxAge?: string;
     accessTokenDuration?: string;
 }
+
+const STEP_UP_HEADER: "x-step-up"
+
+const STEP_UP_TTL_SECONDS: number
+
+const STEP_UP_VERIFIER: "fonderie.auth.stepUp"
+
+function hasStepUp(ctx: IFonderieContext, config: IAuthConfig): boolean
+
+function issueStepUpToken(userId: string, method: StepUpMethod, config: Pick<IAuthConfig, "jwtSecret">): { token: string; expiresAt: string; }
+
+function stepUpMethods(user: { mfaEnabled?: boolean | null; hasPassword: boolean; email: string | null; phone: string | null; }): StepUpMethod[]
+
+type StepUpMethod = 'password' | 'mfa' | 'email' | 'sms';
 ```

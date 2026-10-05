@@ -101,6 +101,8 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
 
 function isSessionRefusal(err: unknown): err is FonderieApiError
 
+function isStepUpRequired(err: unknown): err is FonderieApiError
+
 interface IListAuditEventsInput {
     type?: string;
     actorId?: string;
@@ -236,6 +238,9 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
   .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
+  .stepUpMethods(): Promise<IApiResponse<IStepUpMethodsResult>>
+  .requestStepUpCode(channel: "email" | "sms"): Promise<IApiResponse<{ channel: "email" | "sms"; expiresInSeconds: number; }>>
+  .stepUp(proof: IStepUpProof): Promise<IApiResponse<IStepUpResult>>
   .requestAccountDeletion(input: IRequestAccountDeletionInput): Promise<IApiResponse<IRequestAccountDeletionResult>>
   .confirmAccountDeletion(input: IConfirmAccountDeletionInput): Promise<IApiResponse<IAccountDeletionResult>>
   .restoreAccount(input: IRestoreAccountInput): Promise<IApiResponse<ILoginResult>>
@@ -800,7 +805,11 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .setManager(userId: string): Promise<IApiResponse<void>>
   .unsetManager(userId: string): Promise<IApiResponse<void>>
-  .transferOwnership(userId: string): Promise<IApiResponse<void>>
+  .transferOwnership(userId: string): Promise<IApiResponse<{ offer: IOwnershipOfferDTO; }>>
+  .getOwnershipOffer(opts?: IReadOptions | undefined): Promise<IApiResponse<{ offer: IOwnershipOfferDTO | null; }>>
+  .acceptOwnership(): Promise<IApiResponse<{ previousOwnerId: string; }>>
+  .declineOwnership(): Promise<IApiResponse<undefined>>
+  .withdrawOwnershipOffer(): Promise<IApiResponse<undefined>>
   .leaveWorkspace(): Promise<IApiResponse<void>>
   .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
@@ -1236,6 +1245,32 @@ interface IDeletedRoleDTO {
 interface IRestoredRoleResult {
     role: IRoleDTO | null;
     reassigned: number;
+}
+
+type StepUpMethod = 'password' | 'mfa' | 'email' | 'sms';
+
+interface IOwnershipOfferDTO {
+    workspaceId: string;
+    fromUserId: string;
+    toUserId: string;
+    createdAt: string;
+    expiresAt: string;
+}
+
+interface IStepUpMethodsResult {
+    methods: StepUpMethod[];
+}
+
+interface IStepUpProof {
+    password?: string;
+    mfaCode?: string;
+    code?: string;
+}
+
+interface IStepUpResult {
+    stepUpToken: string;
+    expiresAt: string;
+    method: StepUpMethod;
 }
 
 interface IAdminCatalog {

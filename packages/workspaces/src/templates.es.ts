@@ -56,17 +56,26 @@ Sigues siendo miembro de {{workspaceName}}, pero ya no puedes gestionar el equip
 
 Si no lo esperabas, contacta con el propietario del equipo.`,
 	},
-	[MESSAGE_KEYS.ownershipReceived]: {
-		subject: 'Ahora eres el propietario de {{workspaceName}}',
-		html: `<h1>Ahora eres propietario de un equipo</h1>
-<p>Ahora eres el propietario de <strong>{{workspaceName}}</strong>.</p>
-{{#previousOwnerName}}<p>{{previousOwnerName}} te lo traspasó.</p>{{/previousOwnerName}}
-<p class="muted">Como propietario decides quién gestiona el equipo, y solo tú puedes volver a traspasarlo.</p>`,
-		text: `Ahora eres propietario de un equipo
+	[MESSAGE_KEYS.ownershipOffered]: {
+		subject: '{{ownerName}} quiere hacerte propietario de {{workspaceName}}',
+		html: `<h1>Te ofrecen un equipo</h1>
+<p><strong>{{ownerName}}</strong> quiere hacerte propietario de <strong>{{workspaceName}}</strong>.</p>
+<p class="muted">Abre la aplicación para aceptar o rechazar. La oferta caduca en 7 días. Como propietario decidirías quién gestiona el equipo.</p>`,
+		text: `Te ofrecen un equipo
 
-Ahora eres el propietario de {{workspaceName}}.
-{{#previousOwnerName}}{{previousOwnerName}} te lo traspasó.{{/previousOwnerName}}
+{{ownerName}} quiere hacerte propietario de {{workspaceName}}.
 
-Como propietario decides quién gestiona el equipo, y solo tú puedes volver a traspasarlo.`,
+Abre la aplicación para aceptar o rechazar. La oferta caduca en 7 días. Como propietario decidirías quién gestiona el equipo.`,
+	},
+	[MESSAGE_KEYS.ownershipAccepted]: {
+		subject: '{{newOwnerName}} es ahora el propietario de {{workspaceName}}',
+		html: `<h1>Tu equipo tiene un nuevo propietario</h1>
+<p><strong>{{newOwnerName}}</strong> aceptó y ahora es el propietario de <strong>{{workspaceName}}</strong>. Sigues gestionando el equipo.</p>
+<p class="muted">Si no hiciste esta oferta, contacta con esa persona y con tu equipo de soporte ahora.</p>`,
+		text: `Tu equipo tiene un nuevo propietario
+
+{{newOwnerName}} aceptó y ahora es el propietario de {{workspaceName}}. Sigues gestionando el equipo.
+
+Si no hiciste esta oferta, contacta con esa persona y con tu equipo de soporte ahora.`,
 	},
 } satisfies Record<WorkspacesMessageKey, IDefaultTemplateCopy>;
