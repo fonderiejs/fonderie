@@ -18,6 +18,7 @@ interface IWorkspacesConfig {
     management?: 'owner-or-admin' | 'any-member';
     managerRoles?: string[];
     invitationUrl?: string;
+    invitationAccountMatch?: 'email-when-present' | 'email' | 'any';
     personalWorkspace?: boolean;
     routes?: Partial<Record<WorkspaceRouteId, WorkspaceRouteOverride>>;
 }

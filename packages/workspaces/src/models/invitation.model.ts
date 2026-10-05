@@ -35,7 +35,11 @@ export class InvitationModel {
 		return acceptInvitationByPin(opts, this.store);
 	}
 
-	acceptByToken(token: string, userId: string): Promise<{ workspaceId: string; roleId: string }> {
-		return acceptInvitationByToken(token, userId, this.store);
+	acceptByToken(
+		token: string,
+		userId: string,
+		account: Parameters<typeof acceptInvitationByToken>[3] = {},
+	): Promise<{ workspaceId: string; roleId: string }> {
+		return acceptInvitationByToken(token, userId, this.store, account);
 	}
 }
