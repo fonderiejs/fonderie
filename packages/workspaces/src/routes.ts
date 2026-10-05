@@ -2,6 +2,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { Middleware } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
 import { requireAuth, validate } from '@fonderie/core/middlewares';
+import { HTTP, setApiResponse } from '@fonderie/core';
 import { byIp, rateLimit, StoreAdapterStore } from '@fonderie/rate-limit';
 
 import {
@@ -23,6 +24,7 @@ import { requireManager } from './middlewares/require-manager';
 import { requireOwner } from './middlewares/require-owner';
 import { inviteOf, roleOf, target, trail } from './middlewares/trail';
 import { requireStepUp } from './middlewares/require-step-up';
+import { releaseBrake, velocityBrake } from './middlewares/velocity-brake';
 
 import { workspaceController } from './controllers/workspace.controller';
 import { memberController } from './controllers/member.controller';
@@ -79,6 +81,8 @@ export function buildWorkspaceRoutes(
 	const T = (type: string, facts?: Parameters<typeof trail>[2], workspaceOf?: Parameters<typeof trail>[3]) =>
 		trail(bus, type, facts, workspaceOf);
 	const K = EVENT_KEYS;
+	// The velocity brake (Phase 5) on everything that destroys.
+	const brake = (kind: string) => velocityBrake(store, kind, config.velocityBrake ?? {}, bus);
 
 	return [
 		// ── Workspace creation + listing (no workspace context required)
@@ -87,11 +91,18 @@ export function buildWorkspaceRoutes(
 
 		// ── Members (workspace resolved from X-Workspace-ID header)
 		R('listMembers', 'GET', '/workspaces/members', requireAuth, wsCtx, member.list),
-		R('removeMember', 'DELETE', '/workspaces/members/:userId', requireAuth, wsCtx, manager, T(K.memberRemoved, target), member.remove),
+		R('removeMember', 'DELETE', '/workspaces/members/:userId', requireAuth, wsCtx, manager, brake('member.remove'), T(K.memberRemoved, target), member.remove),
 		R('getMemberRoles', 'GET', '/workspaces/members/:userId/roles', requireAuth, wsCtx, member.getUserRoles),
 		R('addMemberRole', 'POST', '/workspaces/members/:userId/roles', requireAuth, wsCtx, manager, validate(addMemberRoleSchema), T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })), member.addRole),
 		R('removeMemberRole', 'DELETE', '/workspaces/members/:userId/roles/:roleId', requireAuth, wsCtx, manager, T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })), member.removeRole),
 		// Ownership decisions — the owner alone (requireOwner), not any manager.
+		// The owner lets someone the velocity brake paused delete again.
+		R('releaseBrake', 'DELETE', '/workspaces/members/:userId/brake', requireAuth, wsCtx, owner, T(K.managerReleased, target), async (ctx) => {
+			const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? '';
+			return (await releaseBrake(store, ctx.workspace!.id, userId))
+				? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.')
+				: setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.');
+		}),
 		R('setManager', 'POST', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, T(K.managerSet, target), member.setManager),
 		R('unsetManager', 'DELETE', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, T(K.managerUnset, target), member.unsetManager),
 		// Handing the team over (Phase 4): the owner OFFERS, after confirming it's
@@ -107,7 +118,7 @@ export function buildWorkspaceRoutes(
 		// ── Invitations
 		R('listInvitations', 'GET', '/workspaces/invitations', requireAuth, wsCtx, invitation.list),
 		R('invite', 'POST', '/workspaces/invitations', requireAuth, wsCtx, manager, validate(createInvitationsSchema), T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })), invitation.invite),
-		R('cancelInvitation', 'DELETE', '/workspaces/invitations/:inviteId', requireAuth, wsCtx, manager, T(K.invitationCancelled, inviteOf), invitation.cancel),
+		R('cancelInvitation', 'DELETE', '/workspaces/invitations/:inviteId', requireAuth, wsCtx, manager, brake('invitation.cancel'), T(K.invitationCancelled, inviteOf), invitation.cancel),
 		R('resendInvitation', 'POST', '/workspaces/invitations/:inviteId/resend', requireAuth, wsCtx, manager, T(K.invitationResent, inviteOf), invitation.resend),
 		R('acceptInvitation', 'POST', '/workspaces/invitations/accept', acceptLimit, requireAuth, validate(acceptInvitationSchema), T(K.invitationAccepted, () => ({}), (r) => r?.['workspaceId'] as string | undefined), invitation.accept),
 
@@ -120,7 +131,7 @@ export function buildWorkspaceRoutes(
 		R('listRoles', 'GET', '/workspaces/roles', requireAuth, wsCtx, role.list),
 		R('getRole', 'GET', '/workspaces/roles/:roleId', requireAuth, wsCtx, role.get),
 		R('updateRole', 'PUT', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, validate(updateRoleSchema), T(K.roleUpdated, roleOf), role.update),
-		R('removeRole', 'DELETE', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, T(K.roleDeleted, roleOf), role.remove),
+		R('removeRole', 'DELETE', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, brake('role.delete'), T(K.roleDeleted, roleOf), role.remove),
 		R('getRolePermissions', 'GET', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, role.getPermissions),
 		R('setRolePermissions', 'POST', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, manager, validate(setRolePermissionsSchema), T(K.rolePermissionsSet, roleOf), role.setPermissions),
 

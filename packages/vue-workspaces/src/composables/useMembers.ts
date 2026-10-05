@@ -13,6 +13,8 @@ export interface IUseMembersReturn {
 	setManager: (userId: string) => Promise<void>;
 	/** Owner only: a manager goes back to their other roles. */
 	unsetManager: (userId: string) => Promise<void>;
+	/** Owner only: someone paused by the velocity brake may delete again. */
+	releaseBrake: (userId: string) => Promise<void>;
 	/** Owner only, after a step-up (useStepUp): OFFER the workspace to a member — it moves when they accept (useOwnershipOffer); you stay as a manager. */
 	transferOwnership: (userId: string) => Promise<void>;
 }
@@ -40,6 +42,10 @@ export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
 		unsetManager: (userId) =>
 			w.run(async () => {
 				await workspaces.unsetManager(userId);
+			}),
+		releaseBrake: (userId) =>
+			w.run(async () => {
+				await workspaces.releaseBrake(userId);
 			}),
 		transferOwnership: (userId) =>
 			w.run(async () => {

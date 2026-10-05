@@ -21,6 +21,10 @@ interface IWebhooksConfig {
     retryInterval?: number;
     management?: IWorkspacesConfig['management'];
     stepUp?: boolean;
+    velocityBrake?: {
+        limit?: number;
+        windowMinutes?: number;
+    } | false;
     managerRoles?: IWorkspacesConfig['managerRoles'];
 }
 

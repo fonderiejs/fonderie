@@ -77,6 +77,8 @@ export interface IMember {
 	isOwner?: boolean;
 	/** The owner, or a holder of a manager system role (listMembers only). */
 	isManager?: boolean;
+	/** Paused from deleting by the velocity brake, until the owner releases them. */
+	paused?: boolean;
 }
 
 export interface IMemberRole {

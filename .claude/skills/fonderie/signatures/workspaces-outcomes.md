@@ -44,6 +44,26 @@ description              TEXT
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
+### `fonderie_workspace_brakes`
+
+```sql
+workspace_id             UUID NOT NULL REFERENCES fonderie_workspaces(id) ON DELETE CASCADE
+user_id                  UUID NOT NULL
+actions                  INT NOT NULL
+braked_at                TIMESTAMPTZ NOT NULL DEFAULT now()
+-- PRIMARY KEY (workspace_id, user_id)
+```
+
+### `fonderie_workspace_destructive_actions`
+
+```sql
+id                       BIGSERIAL PRIMARY KEY
+workspace_id             UUID NOT NULL REFERENCES fonderie_workspaces(id) ON DELETE CASCADE
+actor_id                 UUID NOT NULL
+kind                     TEXT NOT NULL
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_workspace_invitations`
 
 ```sql
@@ -117,12 +137,13 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | GET | `/workspaces/current/permissions` | `requireAuth → wsCtx → access.mine` |
 | GET | `/workspaces/invitations` | `requireAuth → wsCtx → invitation.list` |
 | POST | `/workspaces/invitations` | `requireAuth → wsCtx → manager → validate(createInvitationsSchema) → T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })) → invitation.invite` |
-| DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → T(K.invitationCancelled, inviteOf) → invitation.cancel` |
+| DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → brake('invitation.cancel') → T(K.invitationCancelled, inviteOf) → invitation.cancel` |
 | POST | `/workspaces/invitations/:inviteId/resend` | `requireAuth → wsCtx → manager → T(K.invitationResent, inviteOf) → invitation.resend` |
 | POST | `/workspaces/invitations/accept` | `acceptLimit → requireAuth → validate(acceptInvitationSchema) → T(K.invitationAccepted, () => ({}), (r) => r?.['workspaceId'] as string | undefined) → invitation.accept` |
 | POST | `/workspaces/leave` | `requireAuth → wsCtx → T(K.memberLeft) → member.leave` |
 | GET | `/workspaces/members` | `requireAuth → wsCtx → member.list` |
-| DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → manager → T(K.memberRemoved, target) → member.remove` |
+| DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → manager → brake('member.remove') → T(K.memberRemoved, target) → member.remove` |
+| DELETE | `/workspaces/members/:userId/brake` | `requireAuth → wsCtx → owner → T(K.managerReleased, target) → async (ctx) => { const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? ''; return (await releaseBrake(store, ctx.workspace!.id, userId)) ? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.') : setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.'); }` |
 | DELETE | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → T(K.managerUnset, target) → member.unsetManager` |
 | POST | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → T(K.managerSet, target) → member.setManager` |
 | GET | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → member.getUserRoles` |
@@ -132,7 +153,7 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | POST | `/workspaces/restore` | `requireAuth → wsCtx → manager → T(K.workspaceRestored) → workspace.restore` |
 | GET | `/workspaces/roles` | `requireAuth → wsCtx → role.list` |
 | POST | `/workspaces/roles` | `requireAuth → wsCtx → manager → validate(createRoleSchema) → T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })) → role.create` |
-| DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → T(K.roleDeleted, roleOf) → role.remove` |
+| DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → brake('role.delete') → T(K.roleDeleted, roleOf) → role.remove` |
 | GET | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → role.get` |
 | PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → validate(updateRoleSchema) → T(K.roleUpdated, roleOf) → role.update` |
 | GET | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → role.getPermissions` |

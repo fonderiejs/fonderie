@@ -10,6 +10,9 @@ export interface IWebhooksConfig {
 	// Creating an endpoint (or pointing one at a new URL) asks for a fresh proof
 	// it's the person (POST /auth/step-up, @fonderie/auth 7.27+). Default true.
 	stepUp?: boolean;
+	// The velocity brake (@fonderie/workspaces, Phase 5): default 10 deletions
+	// in 10 minutes by someone other than the owner pauses them; false turns it off.
+	velocityBrake?: { limit?: number; windowMinutes?: number } | false;
 	// System-role names that count as managers (default ['ADMIN']).
 	managerRoles?: IWorkspacesConfig['managerRoles'];
 }

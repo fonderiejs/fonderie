@@ -56,6 +56,17 @@ Sigues siendo miembro de {{workspaceName}}, pero ya no puedes gestionar el equip
 
 Si no lo esperabas, contacta con el propietario del equipo.`,
 	},
+	[MESSAGE_KEYS.managerPaused]: {
+		subject: '{{memberName}} ya no puede eliminar nada en {{workspaceName}}',
+		html: `<h1>Eliminaciones pausadas</h1>
+<p><strong>{{memberName}}</strong> eliminó {{count}} elementos en {{minutes}} minutos en <strong>{{workspaceName}}</strong>, así que no podrá eliminar nada más hasta que lo revises.</p>
+<p class="muted">Revisa el registro de actividad y los elementos eliminados recientemente: todo se puede restaurar durante 30 días. Si era lo previsto, quita la pausa desde la pantalla Miembros.</p>`,
+		text: `Eliminaciones pausadas
+
+{{memberName}} eliminó {{count}} elementos en {{minutes}} minutos en {{workspaceName}}, así que no podrá eliminar nada más hasta que lo revises.
+
+Revisa el registro de actividad y los elementos eliminados recientemente: todo se puede restaurar durante 30 días. Si era lo previsto, quita la pausa desde la pantalla Miembros.`,
+	},
 	[MESSAGE_KEYS.ownershipOffered]: {
 		subject: '{{ownerName}} quiere hacerte propietario de {{workspaceName}}',
 		html: `<h1>Te ofrecen un equipo</h1>

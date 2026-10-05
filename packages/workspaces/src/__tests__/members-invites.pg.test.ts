@@ -41,7 +41,8 @@ before(async () => {
 	};
 	const app = new FonderieApp(defineConfig({ db: { url: PG_URL } }))
 		.register(new AuthModule(store, { jwtSecret: 'k'.repeat(20) + 'm'.repeat(20), providers: ['email'], rateLimit: false } as never, bus as never))
-		.register(new WorkspacesModule(store, { personalWorkspace: false, invitationUrl: 'https://app.acme.example/invite/{token}' }, bus as never));
+		// A low velocity-brake limit (3) so the Phase 5 test stays small; each test makes a fresh team.
+		.register(new WorkspacesModule(store, { personalWorkspace: false, invitationUrl: 'https://app.acme.example/invite/{token}', velocityBrake: { limit: 3, windowMinutes: 10 } }, bus as never));
 	await app.boot();
 	const s = app.listen(0, { quiet: true }) as unknown as typeof server & { address(): { port: number }; listening: boolean; once(e: string, f: () => void): void };
 	await new Promise<void>((r) => (s.listening ? r() : s.once('listening', r)));
@@ -725,3 +726,43 @@ test('a role whose name was taken meanwhile is not restored over it; the owner c
 	assert.equal((await call(owner.token, 'DELETE', `/workspaces/roles/bin/${role.id}`, undefined, ws)).status, 204);
 	assert.equal((await call(owner.token, 'POST', `/workspaces/roles/bin/${role.id}/restore`, undefined, ws)).status, 404);
 });
+
+// ── Insider threat, Phase 5: the velocity brake ─────────────────────────────
+
+test('a manager deleting too fast is paused from deleting — not from working — until the owner releases them; the owner is never braked', { skip }, async () => {
+	const { sendTeamNotice } = await import('../services/team-notices');
+	const { owner, ws } = await team();
+	const mgr = await join(owner, ws);
+	await call(owner.token, 'POST', `/workspaces/members/${mgr.id}/manager`, {}, ws);
+	const crew = [await join(owner, ws), await join(owner, ws), await join(owner, ws), await join(owner, ws)];
+
+	for (const p of crew.slice(0, 3)) assert.equal((await call(mgr.token, 'DELETE', `/workspaces/members/${p.id}`, undefined, ws)).status, 200);
+	const fourth = await call(mgr.token, 'DELETE', `/workspaces/members/${crew[3]!.id}`, undefined, ws);
+	assert.deepEqual([fourth.status, fourth.reason], [429, 'MANAGER_PAUSED'], JSON.stringify(fourth));
+	assert.ok((await members(owner, ws)).some((m) => m['userId'] === crew[3]!.id), 'the fourth was not removed');
+
+	const paused = trailOf('fonderie.workspace.manager.paused').filter((p) => p['workspaceId'] === ws);
+	assert.deepEqual(paused.map((p) => [p['targetUserId'], p['actions']]), [[mgr.id, 3]], 'one pause event, naming who and how many');
+	assert.equal((await members(owner, ws)).find((m) => m['userId'] === mgr.id)!['paused'], true, 'the owner sees who is paused');
+	const role = (await call(owner.token, 'POST', '/workspaces/roles', { name: `Temp ${n}` }, ws)).result['role'] as { id: string };
+	assert.equal((await call(mgr.token, 'DELETE', `/workspaces/roles/${role.id}`, undefined, ws)).reason, 'MANAGER_PAUSED', 'every kind of deleting stops');
+	assert.equal((await call(mgr.token, 'POST', '/workspaces/invitations', { email: `later-${n}@${DOMAIN}` }, ws)).status, 201, 'ordinary work goes on');
+
+	// The owner hears it.
+	const notices: Array<{ type: string; to: string; data: Record<string, string> }> = [];
+	const bus = { emit: async (_t: string, p: any) => void notices.push({ type: p.type, to: p.recipient.email, data: p.data }) };
+	for (const e of paused) await sendTeamNotice(store, bus, 'fonderie.workspace.manager.paused', e as never);
+	assert.deepEqual(notices.map((x) => [x.type, x.to, x.data['count']]), [['workspace-manager-paused', owner.email, '3']]);
+
+	// The owner is never braked.
+	const extra = [await join(owner, ws), await join(owner, ws), await join(owner, ws), await join(owner, ws)];
+	for (const p of extra) assert.equal((await call(owner.token, 'DELETE', `/workspaces/members/${p.id}`, undefined, ws)).status, 200);
+
+	// Released: deleting works again, the count starts over.
+	assert.equal((await call(mgr.token, 'DELETE', `/workspaces/members/${mgr.id}/brake`, undefined, ws)).status, 403, 'not their call');
+	assert.equal((await call(owner.token, 'DELETE', `/workspaces/members/${mgr.id}/brake`, undefined, ws)).status, 200);
+	assert.equal((await members(owner, ws)).find((m) => m['userId'] === mgr.id)!['paused'], false);
+	assert.equal((await call(mgr.token, 'DELETE', `/workspaces/members/${crew[3]!.id}`, undefined, ws)).status, 200);
+	assert.equal((await call(owner.token, 'DELETE', `/workspaces/members/${mgr.id}/brake`, undefined, ws)).status, 404, 'nothing to release');
+});
+

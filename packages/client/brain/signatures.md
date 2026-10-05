@@ -805,6 +805,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .setManager(userId: string): Promise<IApiResponse<void>>
   .unsetManager(userId: string): Promise<IApiResponse<void>>
+  .releaseBrake(userId: string): Promise<IApiResponse<undefined>>
   .transferOwnership(userId: string): Promise<IApiResponse<{ offer: IOwnershipOfferDTO; }>>
   .getOwnershipOffer(opts?: IReadOptions | undefined): Promise<IApiResponse<{ offer: IOwnershipOfferDTO | null; }>>
   .acceptOwnership(): Promise<IApiResponse<{ previousOwnerId: string; }>>
@@ -1596,6 +1597,7 @@ interface IMemberDTO {
     roles: IMemberRoleDTO[];
     isOwner: boolean;
     isManager: boolean;
+    paused?: boolean;
 }
 
 interface IMemberRoleDTO {

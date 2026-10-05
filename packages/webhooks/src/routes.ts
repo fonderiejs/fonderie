@@ -2,6 +2,7 @@ import type { Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import { requireAuth, validate } from '@fonderie/core/middlewares';
 import { withBody } from '@fonderie/core/middlewares';
+import * as workspaces from '@fonderie/workspaces';
 import { requireManager, withWorkspace } from '@fonderie/workspaces';
 
 import { createEndpointSchema, updateEndpointSchema } from './schemas';
@@ -240,6 +241,11 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			requireAuth,
 			ws,
 			manager,
+			// Deleting too many too fast pauses the person (insider threat, Phase 5).
+			// The velocity brake ships in @fonderie/workspaces 7.1; absent before.
+			typeof workspaces.velocityBrake === 'function'
+				? workspaces.velocityBrake(store, 'webhook.delete', config.velocityBrake ?? {})
+				: ((_ctx, next) => next()) as Middleware,
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(

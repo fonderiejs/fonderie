@@ -19,6 +19,12 @@ export const REFERRAL_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 export const REFERRAL_CODE_LENGTH = 8;
 
 export type ICustomersConfig = {
+	// The velocity brake (@fonderie/workspaces, insider threat Phase 5): someone
+	// other than the owner deleting `limit` customers (or other things) in
+	// `windowMinutes` is paused from deleting until the owner releases them.
+	// Default 10 in 10; false turns it off.
+	velocityBrake?: { limit?: number; windowMinutes?: number } | false;
+
 	/** Prefix used when auto-generating customer reference codes. Defaults to DEFAULT_REFERENCE_CODE_PREFIX. */
 	referenceCodePrefix?: string;
 	/**
