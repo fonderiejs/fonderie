@@ -1,5 +1,42 @@
 # @fonderie/workspaces
 
+## 6.7.1
+
+### Patch Changes
+
+- 52dfcdb: A deleted account is ARCHIVED for its grace period, and now behaves like it
+  (account-deletion design, Phase 1 — docs/ACCOUNT-DELETION-DESIGN.md).
+  
+  - **Signing in** to an archived account with the right password, or a verified
+    Google / Apple identity, answers `403 ACCOUNT_PENDING_DELETION` with
+    `details.requestedAt` and `details.deleteOn`, so an app can say when it will be
+    deleted. A wrong password is still the plain `401 INVALID_CREDENTIALS` — no
+    account-existence oracle. (Phone sign-in follows in Phase 2, with restore.)
+  - **Signing up** again with the address or phone of an archived account answers
+    `409 ACCOUNT_PENDING_DELETION` instead of a 500 — and no longer rewrites the
+    archived account (phone sign-up overwrote its name; Google / Apple sign-in
+    rewrote its provider fields, then failed).
+  - **Reset and verification codes** issued before the deletion stop working: they
+    are removed when the account is archived, and a reset never applies to an
+    archived account.
+  - New `accountDeletion.gracePeriodDays` (default 30) dates the deletion; purge
+    with the same number.
+  - **Workspaces:** a member whose account is deleted is no longer listed (name,
+    email, photo) or counted as a seat; restoring the account brings them back.
+- 7ec7033: **Security:** a manager could strip manager rights from every other manager —
+  and from the owner. `addMemberRole` refuses system roles, but
+  `DELETE /workspaces/members/:userId/roles/:roleId` did not: give the target any
+  custom role (so ADMIN is not their last), then delete their ADMIN row. Two
+  calls, no owner involved, nobody told. System roles (ADMIN, GUEST) are now
+  refused there with `403 SYSTEM_ROLE`; manager rights come off only through the
+  owner-only `DELETE /workspaces/members/:userId/manager`.
+  
+  The removal is also atomic now: the member's role rows are locked for the
+  check and the delete, so two removals racing on a two-role member can no longer
+  both pass "more than one role left" and leave them with none. Outcomes have
+  their own reasons: `ROLE_NOT_HELD` (404), `LAST_ROLE` (400), `SYSTEM_ROLE` (403),
+  translated in the client's error dictionaries.
+
 ## 6.7.0
 
 ### Minor Changes
