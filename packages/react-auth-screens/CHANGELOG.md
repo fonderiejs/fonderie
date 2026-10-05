@@ -1,5 +1,13 @@
 # @fonderie/react-auth-screens
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [33ac39a]
+  - @fonderie/client@3.15.0
+  - @fonderie/react-auth@0.12.0
+
 ## 0.5.1
 
 ### Patch Changes
