@@ -129,6 +129,19 @@ export async function deleteRole(
 		);
 		if (!role) return null;
 
+		// Lock every holder's membership (role row → membership rows, the same
+		// order everywhere) BEFORE counting their other roles: a concurrent
+		// removal of someone's other role could otherwise leave them, once this
+		// role goes too, with no role at all — silently off the team.
+		await tx.query(
+			`SELECT 1 FROM fonderie_role_user_workspaces
+			 WHERE workspace_id = $2 AND removed = false
+			   AND user_id IN (SELECT user_id FROM fonderie_role_user_workspaces WHERE role_id = $1 AND workspace_id = $2)
+			 ORDER BY user_id, role_id
+			 FOR UPDATE`,
+			[id, workspaceId],
+		);
+
 		const holders = await tx.query<{ userId: string; others: string }>(
 			`SELECT ruw.user_id AS "userId",
 			        (SELECT COUNT(*) FROM fonderie_role_user_workspaces o
@@ -175,32 +188,36 @@ export async function setRolePermissions(
 	}>,
 	store: IStoreAdapter,
 ): Promise<void> {
-	if (permissions.length === 0) {
-		await store.query(
-			`DELETE FROM fonderie_role_permissions WHERE role_id = $1 AND workspace_id = $2`,
-			[roleId, workspaceId],
-		);
-		return;
-	}
-
+	// A SET: the saved permissions become exactly these. The role row is locked
+	// first, so two saves run one after the other and the last wins — run side
+	// by side, neither DELETE saw the other's rows and the role ended up with
+	// the UNION of both (switches nobody chose). The rows go in one INSERT.
 	await store.transaction(async (tx) => {
+		await tx.query(`SELECT 1 FROM fonderie_roles WHERE id = $1 FOR UPDATE`, [roleId]);
 		await tx.query(
 			`DELETE FROM fonderie_role_permissions WHERE role_id = $1 AND workspace_id = $2`,
 			[roleId, workspaceId],
 		);
-
-		for (const p of permissions) {
-			await tx.query(
-				`INSERT INTO fonderie_role_permissions
-				   (role_id, workspace_id, permission_key, can_create, can_read, can_update, can_delete)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7)
-				 ON CONFLICT (role_id, permission_key)
-				 DO UPDATE SET
-				   can_create = $4, can_read = $5,
-				   can_update = $6, can_delete = $7`,
-				[roleId, workspaceId, p.permissionKey, p.canCreate, p.canRead, p.canUpdate, p.canDelete],
-			);
-		}
+		if (permissions.length === 0) return;
+		await tx.query(
+			`INSERT INTO fonderie_role_permissions
+			   (role_id, workspace_id, permission_key, can_create, can_read, can_update, can_delete)
+			 SELECT $1, $2, p.key, p.c, p.r, p.u, p.d
+			 FROM unnest($3::text[], $4::boolean[], $5::boolean[], $6::boolean[], $7::boolean[]) AS p(key, c, r, u, d)
+			 ON CONFLICT (role_id, permission_key)
+			 DO UPDATE SET
+			   can_create = EXCLUDED.can_create, can_read = EXCLUDED.can_read,
+			   can_update = EXCLUDED.can_update, can_delete = EXCLUDED.can_delete`,
+			[
+				roleId,
+				workspaceId,
+				permissions.map((p) => p.permissionKey),
+				permissions.map((p) => p.canCreate),
+				permissions.map((p) => p.canRead),
+				permissions.map((p) => p.canUpdate),
+				permissions.map((p) => p.canDelete),
+			],
+		);
 	});
 }
 

@@ -124,40 +124,6 @@ export function invitationController(
 				}
 			}
 
-			// Seat limit — enforced automatically when the billing module is
-			// registered (read from ctx.meta['billing']); fail-open when absent.
-			const seatLimit = seatLimitFromMeta(ctx);
-			if (seatLimit !== null) {
-				// Seats already taken (each person once, plus pending invitations),
-				// and how many of THIS request's addresses would take a new one — an
-				// address already pending or already a member does not.
-				const occupied = await members.countSeats(ctx.workspace.id);
-				const known = new Set(
-					(await store.query<{ email: string }>(
-						`SELECT lower(email) AS email FROM fonderie_workspace_invitations
-						 WHERE workspace_id = $1 AND status = 'PENDING' AND expires_at > now()
-						 UNION
-						 SELECT lower(u.email) FROM fonderie_role_user_workspaces ruw
-						 JOIN fonderie_users u ON u.id = ruw.user_id
-						 WHERE ruw.workspace_id = $1 AND ruw.removed = false AND u.email IS NOT NULL`,
-						[ctx.workspace.id],
-					)).map((r) => seatKey(r.email)),
-				);
-				// Keyed like accounts (normalizeEmail), so inviting 'ana+crew@' when
-				// 'ana@' is already a member takes no new seat.
-				const adding = new Set(
-					entries.map((e) => seatKey(String(e['email']))).filter((e) => !known.has(e)),
-				).size;
-				if (occupied + adding > seatLimit) {
-					return setApiResponse(
-						HTTP.PAYMENT_REQUIRED,
-						'SEAT_LIMIT_REACHED',
-						`Your plan allows ${seatLimit} seat${seatLimit === 1 ? '' : 's'}. Upgrade to invite more members.`,
-						{ limit: seatLimit },
-					);
-				}
-			}
-
 			// Resolve default role once for entries that omit roleId.
 			// Invitations must never default to a privileged role: fall back to
 			// the seeded system GUEST role (least privilege). Granting anything
@@ -204,21 +170,60 @@ export function invitationController(
 				}
 			}
 
-			const results = await Promise.all(
-				entries.map(async (entry) => {
-					const email = entry['email'] as string;
-					const resolvedRoleId = (entry['roleId'] as string | undefined) ?? defaultRoleId!;
-
-					const invitation = await invitations.create({
+			// The seat check and the inserts run in ONE transaction that first locks
+			// the workspace row: two managers inviting at once take turns, so both
+			// cannot read "one seat left" and both insert (the plan ended a seat over,
+			// N concurrent requests N-1 over). Emails go out after the commit.
+			const outcome = await store.transaction(async (tx) => {
+				await tx.query(`SELECT 1 FROM fonderie_workspaces WHERE id = $1 FOR UPDATE`, [ctx.workspace!.id]);
+				const seatLimit = seatLimitFromMeta(ctx);
+				if (seatLimit !== null) {
+					// Seats already taken (each person once, plus pending invitations),
+					// and how many of THIS request's addresses would take a new one — an
+					// address already pending or already a member does not.
+					const occupied = await new MemberModel(tx).countSeats(ctx.workspace!.id);
+					const known = new Set(
+						(await tx.query<{ email: string }>(
+							`SELECT lower(email) AS email FROM fonderie_workspace_invitations
+							 WHERE workspace_id = $1 AND status = 'PENDING' AND expires_at > now()
+							 UNION
+							 SELECT lower(u.email) FROM fonderie_role_user_workspaces ruw
+							 JOIN fonderie_users u ON u.id = ruw.user_id
+							 WHERE ruw.workspace_id = $1 AND ruw.removed = false AND u.email IS NOT NULL`,
+							[ctx.workspace!.id],
+						)).map((r) => seatKey(r.email)),
+					);
+					// Keyed like accounts (normalizeEmail), so inviting 'ana+crew@' when
+					// 'ana@' is already a member takes no new seat.
+					const adding = new Set(
+						entries.map((e) => seatKey(String(e['email']))).filter((e) => !known.has(e)),
+					).size;
+					if (occupied + adding > seatLimit) return { refused: seatLimit } as const;
+				}
+				const txInvitations = new InvitationModel(tx);
+				const created = [];
+				for (const entry of entries) {
+					created.push(await txInvitations.create({
 						workspaceId: ctx.workspace!.id,
-						email,
-						roleId: resolvedRoleId,
+						email: entry['email'] as string,
+						roleId: (entry['roleId'] as string | undefined) ?? defaultRoleId!,
 						ttl,
-					});
-
+					}));
+				}
+				return { created } as const;
+			});
+			if ('refused' in outcome) {
+				return setApiResponse(
+					HTTP.PAYMENT_REQUIRED,
+					'SEAT_LIMIT_REACHED',
+					`Your plan allows ${outcome.refused} seat${outcome.refused === 1 ? '' : 's'}. Upgrade to invite more members.`,
+					{ limit: outcome.refused },
+				);
+			}
+			const results = await Promise.all(
+				outcome.created.map(async (invitation) => {
 					await sendInvitationEmail(ctx, invitation);
-
-					return { invitationId: invitation.id, email };
+					return { invitationId: invitation.id, email: invitation.email };
 				}),
 			);
 

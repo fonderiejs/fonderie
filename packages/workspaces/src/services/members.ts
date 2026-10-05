@@ -131,6 +131,22 @@ export async function countOccupiedSeats(workspaceId: string, store: IStoreAdapt
 }
 
 /**
+ * Lock a member's live role rows for the rest of the transaction — the ONE
+ * lock every change to who-holds-what takes, so two changes to the same person
+ * run one after the other (removeRoleFromMember, setManager, addRole, remove,
+ * deleteRole). Empty: not a member. Lock order everywhere: workspace row, then
+ * membership rows — never the reverse, so these cannot deadlock.
+ */
+async function lockMembership(tx: IStoreAdapter, userId: string, workspaceId: string): Promise<Array<{ roleId: string }>> {
+	return tx.query<{ roleId: string }>(
+		`SELECT role_id AS "roleId" FROM fonderie_role_user_workspaces
+		 WHERE user_id = $1 AND workspace_id = $2 AND removed = false AND suspended = false
+		 FOR UPDATE`,
+		[userId, workspaceId],
+	);
+}
+
+/**
  * Grant or revoke a manager system role for an existing member. Only the
  * owner may call this (the route guards it): managers run the team, so making
  * one is an ownership decision. Returns false when the user is not a member.
@@ -142,23 +158,26 @@ export async function setManager(
 	store: IStoreAdapter,
 	managerRole = 'ADMIN',
 ): Promise<boolean> {
-	if (!(await getMember(userId, workspaceId, store))) return false;
-	if (manager) {
-		await store.query(
-			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
-			 SELECT $1, $2, r.id, true
-			 FROM fonderie_roles r
-			 WHERE r.name = $3 AND r.is_system = true AND r.workspace_id IS NULL
-			 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
-			 SET confirmed = true, removed = false, suspended = false`,
-			[userId, workspaceId, managerRole],
-		);
-		return true;
-	}
-	// Revoking must not leave the person with no role at all (they would drop
-	// out of the member list while still being a member): keep them on the
-	// least-privilege default when the manager role was their only one.
-	await store.transaction(async (tx) => {
+	return store.transaction(async (tx) => {
+		// Under the member's lock: a concurrent role removal cannot slip between
+		// "does a non-manager role remain?" and the delete (which left people
+		// with no role — silently off the team).
+		if ((await lockMembership(tx, userId, workspaceId)).length === 0) return false;
+		if (manager) {
+			await tx.query(
+				`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
+				 SELECT $1, $2, r.id, true
+				 FROM fonderie_roles r
+				 WHERE r.name = $3 AND r.is_system = true AND r.workspace_id IS NULL
+				 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
+				 SET confirmed = true, removed = false, suspended = false`,
+				[userId, workspaceId, managerRole],
+			);
+			return true;
+		}
+		// Revoking must not leave the person with no role at all (they would drop
+		// out of the member list while still being a member): keep them on the
+		// least-privilege default when the manager role was their only one.
 		await tx.query(
 			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
 			 SELECT $1, $2, g.id, true
@@ -181,8 +200,8 @@ export async function setManager(
 			   AND r.is_system = true AND r.name = $3`,
 			[userId, workspaceId, managerRole],
 		);
+		return true;
 	});
-	return true;
 }
 
 /**
@@ -198,13 +217,21 @@ export async function transferOwnership(
 	store: IStoreAdapter,
 	managerRole = 'ADMIN',
 ): Promise<boolean> {
-	if (!(await getMember(toUserId, workspaceId, store))) return false;
-	await store.transaction(async (tx) => {
-		await tx.query(
+	return store.transaction(async (tx) => {
+		// Workspace row first, then the new owner's membership: a concurrent
+		// removal of the new owner cannot land between the check and the
+		// hand-over (which left a workspace owned by a removed member).
+		await tx.query(`SELECT 1 FROM fonderie_workspaces WHERE id = $1 FOR UPDATE`, [workspaceId]);
+		if ((await lockMembership(tx, toUserId, workspaceId)).length === 0) return false;
+		// Only if the caller is STILL the owner: of two transfers racing, one
+		// applies and the other reports failure (both used to say "transferred").
+		const moved = await tx.query<{ id: string }>(
 			`UPDATE fonderie_workspaces SET owner_id = $2, updated_at = now()
-			 WHERE id = $1 AND owner_id = $3`,
+			 WHERE id = $1 AND owner_id = $3
+			 RETURNING id`,
 			[workspaceId, toUserId, fromUserId],
 		);
+		if (moved.length === 0) return false;
 		await tx.query(
 			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
 			 SELECT $1, $2, r.id, true
@@ -214,8 +241,8 @@ export async function transferOwnership(
 			 SET confirmed = true, removed = false, suspended = false`,
 			[fromUserId, workspaceId, managerRole],
 		);
+		return true;
 	});
-	return true;
 }
 
 export async function addMember(
@@ -231,18 +258,39 @@ export async function addMember(
 	);
 }
 
+export type RemoveMemberOutcome = 'removed' | 'owner' | 'not-member';
+
+/**
+ * Remove a person from the team. The owner check runs under the workspace
+ * row's lock — the same lock a transfer takes — so a member being made owner
+ * cannot be removed in the same instant (that left a workspace owned by a
+ * removed member). The owner is never removable: ownership moves by transfer.
+ */
 export async function removeMember(
 	userId: string,
 	workspaceId: string,
 	store: IStoreAdapter,
-): Promise<void> {
-	await store.query(
-		`UPDATE fonderie_role_user_workspaces
-		 SET removed = true
-		 WHERE user_id      = $1
-		   AND workspace_id = $2`,
-		[userId, workspaceId],
-	);
+): Promise<RemoveMemberOutcome> {
+	return store.transaction(async (tx) => {
+		const [ws] = await tx.query<{ ownerId: string }>(
+			`SELECT owner_id AS "ownerId" FROM fonderie_workspaces WHERE id = $1 FOR UPDATE`,
+			[workspaceId],
+		);
+		if (ws?.ownerId === userId) return 'owner';
+		// Wait for any in-flight change to this person's roles BEFORE the update:
+		// it is then a new statement that sees what they committed. Updating
+		// straight away, a role inserted by a concurrent assignment was not in
+		// the update's snapshot and stayed live — a removed person holding a role.
+		await lockMembership(tx, userId, workspaceId);
+		const rows = await tx.query<{ userId: string }>(
+			`UPDATE fonderie_role_user_workspaces
+			 SET removed = true
+			 WHERE user_id = $1 AND workspace_id = $2 AND removed = false
+			 RETURNING user_id AS "userId"`,
+			[userId, workspaceId],
+		);
+		return rows.length > 0 ? 'removed' : 'not-member';
+	});
 }
 
 export async function getUserRoles(
@@ -278,27 +326,35 @@ export async function getUserRoles(
  * Seeding of system/owner roles at workspace-creation / invitation time goes
  * through addMember(), not this path, so that flow is unaffected.
  */
+export type AddRoleOutcome = 'assigned' | 'not-member' | 'invalid-role';
+
 export async function addRoleToMember(
 	userId: string,
 	workspaceId: string,
 	roleId: string,
 	store: IStoreAdapter,
-): Promise<boolean> {
-	const rows = await store.query<{ user_id: string }>(
-		`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
-		 SELECT $1, $2, $3, true
-		 WHERE EXISTS (
-		   SELECT 1 FROM fonderie_roles r
-		   WHERE r.id = $3
-		     AND r.workspace_id = $2
-		     AND r.is_system = false
-		 )
-		 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
-		 SET confirmed = true, removed = false, suspended = false
-		 RETURNING user_id`,
-		[userId, workspaceId, roleId],
-	);
-	return rows.length > 0;
+): Promise<AddRoleOutcome> {
+	return store.transaction(async (tx) => {
+		// Assigning a role is not a way in: the person must STILL be a member at
+		// the moment of the insert — checked under their lock, so a removal in
+		// between cannot be undone by the ON CONFLICT … removed = false below.
+		if ((await lockMembership(tx, userId, workspaceId)).length === 0) return 'not-member';
+		const rows = await tx.query<{ user_id: string }>(
+			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
+			 SELECT $1, $2, $3, true
+			 WHERE EXISTS (
+			   SELECT 1 FROM fonderie_roles r
+			   WHERE r.id = $3
+			     AND r.workspace_id = $2
+			     AND r.is_system = false
+			 )
+			 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
+			 SET confirmed = true, removed = false, suspended = false
+			 RETURNING user_id`,
+			[userId, workspaceId, roleId],
+		);
+		return rows.length > 0 ? 'assigned' : 'invalid-role';
+	});
 }
 
 export type RemoveRoleOutcome = 'removed' | 'not-held' | 'system-role' | 'last-role';

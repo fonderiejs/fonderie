@@ -41,7 +41,7 @@ export class MemberModel {
 		return addMember(opts, this.store);
 	}
 
-	remove(userId: string, workspaceId: string): Promise<void> {
+	remove(userId: string, workspaceId: string): ReturnType<typeof removeMember> {
 		return removeMember(userId, workspaceId, this.store);
 	}
 
@@ -49,7 +49,7 @@ export class MemberModel {
 		return getUserRoles(userId, workspaceId, this.store);
 	}
 
-	addRole(userId: string, workspaceId: string, roleId: string): Promise<boolean> {
+	addRole(userId: string, workspaceId: string, roleId: string): ReturnType<typeof addRoleToMember> {
 		return addRoleToMember(userId, workspaceId, roleId, this.store);
 	}
 

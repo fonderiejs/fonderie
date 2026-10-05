@@ -905,7 +905,7 @@ test('addRoleToMember: guarded insert is scoped to a workspace-local, non-system
 	const { addRoleToMember } = await import('../services/members');
 	const { store, state } = captureStore([{ user_id: 'user-2' }]);
 	const assigned = await addRoleToMember('user-2', 'ws-1', 'r-local', store);
-	assert.equal(assigned, true);
+	assert.equal(assigned, 'assigned');
 	assert.match(state.sql, /WHERE EXISTS/i);
 	assert.match(state.sql, /is_system\s*=\s*false/i);
 	assert.match(state.sql, /workspace_id\s*=\s*\$2/i);
@@ -914,9 +914,15 @@ test('addRoleToMember: guarded insert is scoped to a workspace-local, non-system
 
 test('addRoleToMember: returns false when the role is not assignable (no row inserted)', async () => {
 	const { addRoleToMember } = await import('../services/members');
-	const { store } = captureStore([]); // EXISTS false → no RETURNING row
-	const assigned = await addRoleToMember('user-2', 'ws-1', 'role-system-admin', store);
-	assert.equal(assigned, false);
+	// A member (the lock finds their row), but EXISTS is false → no RETURNING row.
+	const store = {
+		query: async (sql: string) => (/FOR UPDATE/.test(sql) ? [{ roleId: 'r-guest' }] : []),
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	assert.equal(await addRoleToMember('user-2', 'ws-1', 'role-system-admin', store), 'invalid-role');
+	// …and someone who is not (or no longer) a member gets no role at all.
+	const { store: empty } = captureStore([]);
+	assert.equal(await addRoleToMember('user-2', 'ws-1', 'r-local', empty), 'not-member');
 });
 
 test('member.addRole: 422 INVALID_ROLE when the role is a system/foreign role', async () => {
@@ -924,7 +930,7 @@ test('member.addRole: 422 INVALID_ROLE when the role is a system/foreign role', 
 	// user-2 IS a member (the membership read answers); the guarded role
 	// insert matches nothing because the role is not assignable.
 	const store = {
-		query: async (sql: string) => (/LIMIT 1/.test(sql) ? [{ userId: 'user-2', workspaceId: 'ws-1' }] : []),
+		query: async (sql: string) => (/FOR UPDATE/.test(sql) ? [{ roleId: 'r-guest' }] : []),
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
 	} as unknown as IStoreAdapter;
 	const ctrl = memberController(store);
@@ -1075,7 +1081,9 @@ test('acceptInvitationByToken: refuses a role that is no longer assignable (syst
 		query: async (sql: string) => {
 			if (sql.includes('WHERE token = $1'))
 				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'sys-admin', status: 'PENDING', email: 'u1@example.com', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
-			return []; // role re-check finds nothing assignable
+			// The claim succeeds; the grant's assignability check matches nothing.
+			if (sql.includes("SET status = 'ACCEPTED'")) return [{ workspaceId: 'ws-1', roleId: 'sys-admin' }];
+			return [];
 		},
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
 	} as unknown as IStoreAdapter;
