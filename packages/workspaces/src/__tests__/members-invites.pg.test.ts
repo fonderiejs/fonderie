@@ -303,6 +303,17 @@ test('assigning a role never makes someone a member', { skip }, async () => {
 	assert.equal((await members(owner, ws)).some((x) => x['userId'] === stranger.id), false);
 });
 
+test('a member who deleted their account leaves the team list (no name, email or photo) until they restore it', { skip }, async () => {
+	const { owner, ws } = await team();
+	const m = await join(owner, ws);
+	const listed = async () => (await members(owner, ws)).some((x) => (x['userId'] ?? x['id']) === m.id);
+	assert.equal(await listed(), true);
+	await store.query(`UPDATE fonderie_users SET deleted_at = now() WHERE id = $1`, [m.id]);
+	assert.equal(await listed(), false, 'archived account hidden');
+	await store.query(`UPDATE fonderie_users SET deleted_at = NULL WHERE id = $1`, [m.id]);
+	assert.equal(await listed(), true, 'restored account back on the team');
+});
+
 test('only the owner makes or unmakes a manager', { skip }, async () => {
 	const { owner, ws } = await team();
 	const m = await join(owner, ws);

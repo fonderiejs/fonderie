@@ -80,6 +80,10 @@ export async function listMembers(
 		 WHERE ruw.workspace_id = $1
 		   AND ruw.removed      = false
 		   AND ruw.suspended    = false
+		   -- A deleted account (archived for its grace period, or already purged)
+		   -- is not on the team: no name / email / photo shown, no seat taken.
+		   -- Restoring the account brings the membership back.
+		   AND u.id IS NOT NULL AND u.deleted_at IS NULL
 		 GROUP BY ruw.user_id, ruw.workspace_id, w.owner_id,
 		          u.first_name, u.last_name, u.email, u.profile_image_url
 		 ORDER BY min(ruw.created_at) ASC`,
@@ -105,6 +109,7 @@ export async function countOccupiedSeats(workspaceId: string, store: IStoreAdapt
 		   WHERE ruw.workspace_id = $1
 		     AND ruw.removed      = false
 		     AND ruw.suspended    = false
+		     AND u.id IS NOT NULL AND u.deleted_at IS NULL
 		     AND (w.is_personal OR ruw.user_id <> w.owner_id)
 		 ), owner AS (
 		   SELECT lower(u.email) AS email
