@@ -105,6 +105,15 @@ export class UserModel {
 		return row ?? null;
 	}
 
+	/** An archived account by id (restore). */
+	async findArchivedById(id: string): Promise<IUser | null> {
+		const [row] = await this.store.query<IUser>(
+			`SELECT ${USER_COLUMNS} FROM fonderie_users WHERE id = $1 AND deleted_at IS NOT NULL`,
+			[id],
+		);
+		return row ?? null;
+	}
+
 	/** As findArchivedByEmail, for a phone number. */
 	async findArchivedByPhone(phone: string): Promise<IUser | null> {
 		const [row] = await this.store.query<IUser>(

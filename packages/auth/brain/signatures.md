@@ -70,9 +70,7 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     routes?: Partial<Record<AuthRouteId, AuthRouteOverride>>;
     legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>;
     dataExportContributors?: IDataExportContributor[];
-    accountDeletion?: {
-        gracePeriodDays?: number;
-    };
+    accountDeletion?: IAccountDeletionConfig;
 }
 
 interface IAuthSecrets {
@@ -111,11 +109,11 @@ interface IDataExportContributor {
 
 const AUTH_CONFIG_KEYS: Record<Exclude<keyof IAuthRuntimeConfig, 'sessionPolicies'>, string>
 
-const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly passwordRevoked: "password-revoked"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; }
+const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly passwordRevoked: "password-revoked"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; readonly accountDeletionCode: "account-deletion-code"; readonly accountDeletionScheduled: "account-deletion-scheduled"; readonly accountRestored: "account-restored"; }
 
 type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
 
-const DEFAULT_TEMPLATES: { "email-registration": IDefaultTemplate; "email-verification": IDefaultTemplate; "password-reset": IDefaultTemplate; "phone-otp": IDefaultTemplate; "mfa-enabled": IDefaultTemplate; "mfa-disabled": IDefaultTemplate; "mfa-backup-codes-regenerated": IDefaultTemplate; "email-changed": IDefaultTemplate; "phone-changed": IDefaultTemplate; "password-revoked": IDefaultTemplate; "oauth-registration": IDefaultTemplate; "oauth-linked": IDefaultTemplate; "oauth-unlinked": IDefaultTemplate; }
+const DEFAULT_TEMPLATES: { "email-registration": IDefaultTemplate; "email-verification": IDefaultTemplate; "password-reset": IDefaultTemplate; "phone-otp": IDefaultTemplate; "mfa-enabled": IDefaultTemplate; "mfa-disabled": IDefaultTemplate; "mfa-backup-codes-regenerated": IDefaultTemplate; "email-changed": IDefaultTemplate; "phone-changed": IDefaultTemplate; "password-revoked": IDefaultTemplate; "oauth-registration": IDefaultTemplate; "oauth-linked": IDefaultTemplate; "oauth-unlinked": IDefaultTemplate; "account-deletion-code": IDefaultTemplate; "account-deletion-scheduled": IDefaultTemplate; "account-restored": IDefaultTemplate; }
 
 interface IUserDTO {
     id: string;
@@ -202,7 +200,7 @@ type LocationResolver = (req: ILocationRequest) => IRequestLocation | null | und
 
 function validate(schema: IRequestSchema): Middleware
 
-namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, forgotPasswordSchema, googleNativeSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, resetPasswordSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
+namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, confirmDeletionSchema, forgotPasswordSchema, googleNativeSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, requestDeletionSchema, resetPasswordSchema, restoreAccountSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
 
 type RegisterInput = z.infer<typeof registerSchema>;
 

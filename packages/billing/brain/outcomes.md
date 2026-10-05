@@ -84,6 +84,7 @@ subscriber_type          TEXT NOT NULL
 subscriber_id            UUID NOT NULL
 CONSTRAINT               fonderie_subscriptions_subscriber_unique UNIQUE (subscriber_type, subscriber_id)
 provider_event_at        TIMESTAMPTZ
+ended_by_account_deletion BOOLEAN NOT NULL DEFAULT false
 ```
 
 ### `fonderie_usage_counters`

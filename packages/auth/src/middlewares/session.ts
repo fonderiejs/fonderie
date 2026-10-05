@@ -34,8 +34,16 @@ export function withSession(store: IStoreAdapter, config: IAuthConfig): Middlewa
 			return next();
 		}
 
-		const user = await users.findById(payload.sub);
-		if (!user || user.suspended || user.deletedAt) {
+		let user = await users.findById(payload.sub);
+		// One narrow exception: a PHONE sign-in to an ARCHIVED account. Its
+		// 5-minute pending token reaches /auth/verify like any phone sign-in, so
+		// the code the person types can prove the account is theirs — and verify
+		// then offers to keep it instead of opening a session. Only that token
+		// shape: an archived account never authenticates anything else.
+		if (!user && (payload as IAccessPayload).mfaPending && payload.loginMethod === 'phone') {
+			user = await users.findArchivedById(payload.sub);
+		}
+		if (!user || user.suspended || (user.deletedAt && !(payload as IAccessPayload).mfaPending)) {
 			return next();
 		}
 

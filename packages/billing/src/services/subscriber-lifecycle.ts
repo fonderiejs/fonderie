@@ -25,6 +25,7 @@ import { getSubscription } from './subscriptions';
 // dependency on @fonderie/auth, which emits them.
 export const USER_DELETED_EVENT = 'fonderie.user.deleted';
 export const USER_PURGED_EVENT = 'fonderie.user.purged';
+export const USER_RESTORED_EVENT = 'fonderie.user.restored';
 
 export type SubscriberDeletedPolicy = 'cancel' | 'cancel-at-period-end' | 'keep';
 
@@ -54,13 +55,18 @@ export async function handleSubscriberDeleted(
 	config: Pick<IBillingConfig, 'provider' | 'onSubscriberDeleted'>,
 	subscriber: ISubscriberRef,
 ): Promise<ISubscriberDeletedOutcome> {
-	const policy = config.onSubscriberDeleted ?? 'cancel';
+	// Default: end at the period's end — the deleted account can no longer use
+	// it, nothing more is charged, and restoring the account resumes it (D7).
+	const policy = config.onSubscriberDeleted ?? 'cancel-at-period-end';
 	const outcome: ISubscriberDeletedOutcome = { canceled: 'none', chargingDisarmed: false };
 	if (policy === 'keep') return outcome;
 
 	const current = await getSubscription(subscriber.type, subscriber.id, store);
 	const live = current && current.status !== 'canceled' && current.providerSubscriptionId;
-	if (live && typeof config.provider.cancelSubscription === 'function') {
+	// Already set to end by the person themselves: leave it, and never mark it
+	// as ours — restoring must not undo a cancellation they chose.
+	const alreadyEnding = policy === 'cancel-at-period-end' && current?.cancelAtPeriodEnd === true;
+	if (live && !alreadyEnding && typeof config.provider.cancelSubscription === 'function') {
 		const atPeriodEnd = policy === 'cancel-at-period-end';
 		try {
 			// The provider's webhook confirms the new state and owns the stored
@@ -74,6 +80,13 @@ export async function handleSubscriberDeleted(
 			if (!alreadyGone(err)) throw err;
 		}
 		outcome.canceled = atPeriodEnd ? 'at-period-end' : 'now';
+		if (atPeriodEnd) {
+			await store.query(
+				`UPDATE fonderie_subscriptions SET ended_by_account_deletion = true
+				 WHERE subscriber_type = $1 AND subscriber_id = $2`,
+				[subscriber.type, subscriber.id],
+			);
+		}
 	}
 
 	// Off-session charges are the other way money moves without the person:
@@ -89,6 +102,38 @@ export async function handleSubscriberDeleted(
 	);
 	outcome.chargingDisarmed = rows.length > 0;
 	return outcome;
+}
+
+/**
+ * The account was kept (fonderie.user.restored): resume a subscription that
+ * deletion set to end at the period's end — only that one, never a
+ * cancellation the person chose. Off-session charging stays off: the stored
+ * card was forgotten at deletion, so they add one again.
+ */
+export async function handleSubscriberRestored(
+	store: IStoreAdapter,
+	config: Pick<IBillingConfig, 'provider'>,
+	subscriber: ISubscriberRef,
+): Promise<{ resumed: boolean }> {
+	const [row] = await store.query<{ providerSubscriptionId: string | null; status: string; cancelAtPeriodEnd: boolean }>(
+		`SELECT provider_subscription_id AS "providerSubscriptionId", status, cancel_at_period_end AS "cancelAtPeriodEnd"
+		 FROM fonderie_subscriptions
+		 WHERE subscriber_type = $1 AND subscriber_id = $2 AND ended_by_account_deletion = true`,
+		[subscriber.type, subscriber.id],
+	);
+	if (!row) return { resumed: false };
+	let resumed = false;
+	if (row.status !== 'canceled' && row.cancelAtPeriodEnd && row.providerSubscriptionId && typeof config.provider.reactivateSubscription === 'function') {
+		// The provider's webhook confirms the new state, as for a customer reactivate.
+		await config.provider.reactivateSubscription({ subscriptionId: row.providerSubscriptionId });
+		resumed = true;
+	}
+	await store.query(
+		`UPDATE fonderie_subscriptions SET ended_by_account_deletion = false
+		 WHERE subscriber_type = $1 AND subscriber_id = $2`,
+		[subscriber.type, subscriber.id],
+	);
+	return { resumed };
 }
 
 export async function handleSubscriberPurged(

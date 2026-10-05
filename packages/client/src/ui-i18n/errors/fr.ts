@@ -21,6 +21,8 @@ const errors: typeof en = {
 		ACCOUNT_SUSPENDED: 'Ce compte est suspendu. Veuillez communiquer avec le soutien.',
 		ACCOUNT_PENDING_DELETION: 'Ce compte sera supprimé le {deleteOn}. Vous pouvez encore le conserver.',
 		'ACCOUNT_PENDING_DELETION:short': 'Un compte utilisant cette adresse est en cours de suppression. Connectez-vous pour le conserver, ou attendez sa suppression.',
+		OWNS_TEAM_WORKSPACE: 'Vous êtes propriétaire d’une équipe qui compte d’autres membres ({workspaces}). Transférez-en la propriété avant de supprimer votre compte.',
+		RESTORE_TOKEN_INVALID: 'Reconnectez-vous pour conserver votre compte.',
 		USER_ALREADY_EXISTS: 'Un compte existe déjà avec ce courriel.',
 		EMAIL_IN_USE: 'Ce courriel est déjà utilisé.',
 		PHONE_IN_USE: 'Ce numéro de téléphone est déjà utilisé.',

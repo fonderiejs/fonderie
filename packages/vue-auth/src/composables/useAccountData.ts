@@ -1,4 +1,10 @@
-import type { AuthClient } from '@fonderie/client';
+import type {
+	AuthClient,
+	IAccountDeletionResult,
+	IConfirmAccountDeletionInput,
+	IRequestAccountDeletionInput,
+	IRequestAccountDeletionResult,
+} from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
@@ -8,8 +14,14 @@ import { clearToken } from '../storage';
 export interface IUseAccountDataReturn {
 	// GET /users/export — the caller's own data as a portable bundle (SAR).
 	exportData: () => Promise<unknown>;
-	// Deletes the account, then tears the session down like a logout.
+	/** @deprecated No proof, no notice — use requestDeletion + confirmDeletion. */
 	deleteUser: () => Promise<void>;
+	// Deleting with proof: a code to the chosen channel ('email' | 'sms')…
+	requestDeletion: (input: IRequestAccountDeletionInput) => Promise<IRequestAccountDeletionResult>;
+	// …then the code (+ mfaCode when requested) closes the account and ends
+	// this session. It is permanently deleted on `deleteOn` unless kept by
+	// signing in again before then.
+	confirmDeletion: (input: IConfirmAccountDeletionInput) => Promise<IAccountDeletionResult>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
 }
@@ -49,5 +61,18 @@ export function useAccountData(client?: AuthClient): IUseAccountDataReturn {
 		});
 	}
 
-	return { exportData, deleteUser, isLoading, error };
+	function requestDeletion(input: IRequestAccountDeletionInput) {
+		return run(async () => (await auth.requestAccountDeletion(input)).result);
+	}
+
+	function confirmDeletion(input: IConfirmAccountDeletionInput) {
+		return run(async () => {
+			const { result } = await auth.confirmAccountDeletion(input);
+			auth.setAccessToken(undefined);
+			clearToken();
+			return result;
+		});
+	}
+
+	return { exportData, deleteUser, requestDeletion, confirmDeletion, isLoading, error };
 }

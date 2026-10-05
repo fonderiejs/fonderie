@@ -37,6 +37,36 @@ export interface IRegisterInput {
 	locale?: string;
 }
 
+// Account deletion (docs/ACCOUNT-DELETION-DESIGN.md): a code to the channel the
+// person picks, then confirm; signing in to the archived account offers to keep it.
+export interface IRequestAccountDeletionInput {
+	channel: 'email' | 'sms';
+}
+
+export interface IRequestAccountDeletionResult {
+	channel: 'email' | 'sms';
+	expiresInSeconds: number;
+	/** Two-factor is on: confirm with a code from the authenticator (or a backup code) too. */
+	mfaRequired: boolean;
+}
+
+export interface IConfirmAccountDeletionInput {
+	code: string;
+	mfaCode?: string;
+}
+
+export interface IAccountDeletionResult {
+	requestedAt: string;
+	/** When the account and its data are permanently deleted (ISO instant). */
+	deleteOn: string;
+}
+
+export interface IRestoreAccountInput {
+	/** From the ACCOUNT_PENDING_DELETION refusal — see pendingDeletionOf(). */
+	restoreToken: string;
+	mfaCode?: string;
+}
+
 export interface IGetLoginHistoryInput {
 	outcome?: 'success' | 'failed';
 	from?: Date;
@@ -375,11 +405,44 @@ export class AuthClient {
 		});
 	}
 
+	/** @deprecated Deletes with no proof and no notice — use requestAccountDeletion + confirmAccountDeletion. */
 	deleteUser() {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
 			path: '/users',
 			token: this.tokens.get(),
+		});
+	}
+
+	// POST /users/me/deletion — sends the confirmation code. 409 with the
+	// blocker's reason (e.g. OWNS_TEAM_WORKSPACE) when the account can't go yet.
+	requestAccountDeletion(input: IRequestAccountDeletionInput) {
+		return this.http.request<IApiResponse<IRequestAccountDeletionResult>>({
+			method: 'POST',
+			path: '/users/me/deletion',
+			body: input,
+			token: this.tokens.get(),
+		});
+	}
+
+	// POST /users/me/deletion/confirm — the code (+ second factor) closes the
+	// account at once; it is permanently deleted on `deleteOn` unless kept.
+	confirmAccountDeletion(input: IConfirmAccountDeletionInput) {
+		return this.http.request<IApiResponse<IAccountDeletionResult>>({
+			method: 'POST',
+			path: '/users/me/deletion/confirm',
+			body: input,
+			token: this.tokens.get(),
+		});
+	}
+
+	// POST /auth/account/restore — "Keep my account" after a sign-in answered
+	// ACCOUNT_PENDING_DELETION. Signs in like login.
+	restoreAccount(input: IRestoreAccountInput) {
+		return this.http.request<IApiResponse<ILoginResult>>({
+			method: 'POST',
+			path: '/auth/account/restore',
+			body: input,
 		});
 	}
 

@@ -69,6 +69,8 @@ export function mfaController(
 
 		// ── 2. Verify (setup confirm · TOTP login · backup code login) ──
 		verify: async (ctx: IFonderieContext): Promise<Response> => {
+			// The pending-token exception in withSession is for /auth/verify only.
+			if (ctx.user!.deletedAt) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
 			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 			const token = body?.['token'];
 			// Only the login-completion path (a pending MFA challenge) belongs in
@@ -137,7 +139,11 @@ export function mfaController(
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid backup code');
 				}
 
-				await backupCodes.consume(matched.id);
+				// Spent atomically: a concurrent request with the same code loses.
+				if (!(await backupCodes.consume(matched.id))) {
+					if (isLoginCompletion) await failedMfa();
+					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid backup code');
+				}
 			} else {
 				// ── TOTP login verification ───────────────────────────────────────────
 				if (!ctx.user!.mfaPending) {

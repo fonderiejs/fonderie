@@ -245,4 +245,6 @@ function deleteUserData(store: IStoreAdapter, userId: string): Promise<number>
 function exportUserData(store: IStoreAdapter, userId: string): Promise<unknown>
 
 function workspaceExportContributor(store: IStoreAdapter): { name: string; collect: (userId: string) => Promise<unknown>; }
+
+function accountDeletionBlocker(store: IStoreAdapter): (userId: string) => Promise<IAccountDeletionRefusal | null>
 ```

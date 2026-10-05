@@ -1,6 +1,7 @@
 import { setApiResponse, HTTP } from '@fonderie/core';
 
 import { deletionGracePeriodDays, type IAuthConfig } from '../config';
+import { issueRestoreToken } from './restore-token';
 
 // What an ARCHIVED account (deleted, inside its grace period) answers — the
 // account-deletion design (docs/ACCOUNT-DELETION-DESIGN.md), Phase 1.
@@ -17,13 +18,28 @@ export function deletionDate(deletedAt: Date, config: Pick<IAuthConfig, 'account
 	return new Date(deletedAt.getTime() + deletionGracePeriodDays(config) * 24 * 60 * 60 * 1000);
 }
 
-export function pendingDeletionResponse(deletedAt: Date, config: Pick<IAuthConfig, 'accountDeletion'>): Response {
-	const deleteOn = deletionDate(deletedAt, config);
+/**
+ * The answer to someone who just PROVED an archived account is theirs: when it
+ * will be deleted, and a short-lived `restoreToken` for "Keep my account"
+ * (POST /auth/account/restore). `mfaRequired` tells the screen to ask for the
+ * second factor before restoring.
+ */
+export function pendingDeletionResponse(
+	user: { id: string; deletedAt: Date; mfaEnabled?: boolean | null },
+	loginMethod: 'email' | 'phone' | 'google' | 'apple',
+	config: IAuthConfig,
+): Response {
+	const deleteOn = deletionDate(user.deletedAt, config);
 	return setApiResponse(
 		HTTP.FORBIDDEN,
 		'ACCOUNT_PENDING_DELETION',
 		`This account is scheduled for deletion on ${deleteOn.toISOString().slice(0, 10)}.`,
-		{ requestedAt: deletedAt.toISOString(), deleteOn: deleteOn.toISOString() },
+		{
+			requestedAt: user.deletedAt.toISOString(),
+			deleteOn: deleteOn.toISOString(),
+			restoreToken: issueRestoreToken(user.id, user.deletedAt, loginMethod, config),
+			mfaRequired: user.mfaEnabled === true,
+		},
 	);
 }
 

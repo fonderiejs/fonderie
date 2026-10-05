@@ -29,6 +29,9 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
   .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
+  .requestAccountDeletion(input: IRequestAccountDeletionInput): Promise<IApiResponse<IRequestAccountDeletionResult>>
+  .confirmAccountDeletion(input: IConfirmAccountDeletionInput): Promise<IApiResponse<IAccountDeletionResult>>
+  .restoreAccount(input: IRestoreAccountInput): Promise<IApiResponse<ILoginResult>>
   .getLoginHistory(input?: IGetLoginHistoryInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
   .listSessions(opts?: IReadOptions | undefined): Promise<IApiResponse<ISessionsResult>>
   .terminateSession(id: string): Promise<IApiResponse<{ id: string; }>>
@@ -247,6 +250,14 @@ interface IUseLogoutReturn {
 interface IUseAccountDataReturn {
     exportData: () => Promise<unknown>;
     deleteUser: () => Promise<void>;
+    requestDeletion: (input: IRequestAccountDeletionInput) => Promise<IRequestAccountDeletionResult>;
+    confirmDeletion: (input: IConfirmAccountDeletionInput) => Promise<IAccountDeletionResult>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
+interface IUseRestoreAccountReturn {
+    restore: (input: IRestoreAccountInput) => Promise<ILoginResult>;
     isLoading: boolean;
     error: FonderieApiError | null;
 }
@@ -367,6 +378,8 @@ function useGoogleSignIn(client?: AuthClient | undefined): IUseGoogleSignInRetur
 function useLogout(client?: AuthClient | undefined): IUseLogoutReturn
 
 function useAccountData(client?: AuthClient | undefined): IUseAccountDataReturn
+
+function useRestoreAccount(client?: AuthClient | undefined): IUseRestoreAccountReturn
 
 function useChangePassword(client?: AuthClient | undefined): IUseChangePasswordReturn
 

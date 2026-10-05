@@ -117,6 +117,13 @@ export const changePasswordSchema = z.object({
 // TOTP or backup code — verify/disable accept either; both are short strings.
 export const mfaTokenSchema = z.object({ token: z.string().trim().min(6).max(64) });
 
+// Account deletion (docs/ACCOUNT-DELETION-DESIGN.md). A second factor is a
+// 6-digit TOTP or an 8-character backup code.
+const secondFactor = z.string().trim().min(6).max(16).optional();
+export const requestDeletionSchema = z.object({ channel: z.enum(['email', 'sms']) });
+export const confirmDeletionSchema = z.object({ code: sixDigitPin, mfaCode: secondFactor });
+export const restoreAccountSchema = z.object({ restoreToken: z.string().min(20).max(4096), mfaCode: secondFactor });
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

@@ -15,7 +15,14 @@ export type {
 	IResetPasswordInput,
 	IUpdatePreferencesInput,
 	IUpdateProfileInput,
+	IRequestAccountDeletionInput,
+	IRequestAccountDeletionResult,
+	IConfirmAccountDeletionInput,
+	IAccountDeletionResult,
+	IRestoreAccountInput,
 } from './modules/auth';
+export { pendingDeletionOf } from './pending-deletion';
+export type { IPendingDeletion } from './pending-deletion';
 export { AuthClient } from './modules/auth';
 export type {
 	ICheckoutInput,

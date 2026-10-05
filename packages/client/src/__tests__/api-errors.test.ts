@@ -93,3 +93,17 @@ test('an archived account: the deletion date in the reader’s language; without
 		UI_DICTIONARIES['zh-Hant'].errors.reasons['ACCOUNT_PENDING_DELETION:short'],
 	);
 });
+
+test('pendingDeletionOf reads a sign-in refusal, and nothing else', async () => {
+	const { pendingDeletionOf } = await import('../index');
+	const { FonderieApiError } = await import('../http');
+	const refusal = new FonderieApiError('ACCOUNT_PENDING_DELETION', 'Scheduled', 403, {
+		requestedAt: '2026-10-04T12:00:00.000Z', deleteOn: '2026-11-03T12:00:00.000Z', restoreToken: 'r'.repeat(40), mfaRequired: true,
+	});
+	assert.deepEqual(pendingDeletionOf(refusal), {
+		requestedAt: '2026-10-04T12:00:00.000Z', deleteOn: '2026-11-03T12:00:00.000Z', restoreToken: 'r'.repeat(40), mfaRequired: true,
+	});
+	assert.equal(pendingDeletionOf(new FonderieApiError('ACCOUNT_PENDING_DELETION', 'Sign-up', 409)), null, 'the sign-up 409 has no schedule');
+	assert.equal(pendingDeletionOf(new FonderieApiError('INVALID_CREDENTIALS', 'no', 401)), null);
+	assert.equal(pendingDeletionOf(new Error('boom')), null);
+});

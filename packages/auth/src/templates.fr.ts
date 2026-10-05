@@ -175,4 +175,30 @@ pourrait se connecter à votre place.`,
 
 Si c'est bien vous, tout est en ordre. Sinon, contactez immédiatement le support.`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionCode]: {
+		subject: `Confirmez la suppression de votre compte`,
+		html: `<h1>Confirmer la suppression du compte</h1>
+<p>Utilisez ce code pour confirmer que vous souhaitez supprimer votre compte :</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">Ce code expire dans 15 minutes. Si vous n&rsquo;avez pas demandé la suppression de votre compte, ignorez ce message et changez votre mot de passe &mdash; votre compte reste tel quel.</p>`,
+		text: `Votre code pour confirmer la suppression de votre compte : {{code}}. Il expire dans 15 minutes. Ce n'est pas vous ? Ignorez ce message et changez votre mot de passe.`,
+	},
+
+	[MESSAGE_KEYS.accountDeletionScheduled]: {
+		subject: `Votre compte sera supprimé le {{deleteOn}}`,
+		html: `<h1>Votre compte sera supprimé</h1>
+<p>Nous avons bien reçu votre demande. Votre compte est fermé et sera supprimé définitivement le <strong>{{deleteOn}}</strong>.</p>
+<p>Vous avez changé d&rsquo;avis ? Connectez-vous avant cette date et choisissez <strong>Conserver mon compte</strong>.</p>
+<p class="muted">Si vous n&rsquo;êtes pas à l&rsquo;origine de cette demande, connectez-vous maintenant pour conserver votre compte et changez votre mot de passe.</p>`,
+		text: `Votre compte sera supprimé définitivement le {{deleteOn}}. Vous avez changé d'avis ? Connectez-vous avant cette date et choisissez Conserver mon compte.`,
+	},
+
+	[MESSAGE_KEYS.accountRestored]: {
+		subject: `Votre compte a été rétabli`,
+		html: `<h1>Bon retour</h1>
+<p>La suppression de votre compte a été annulée et votre compte est de nouveau actif.</p>
+<p class="muted">Si ce n&rsquo;est pas vous, changez votre mot de passe immédiatement.</p>`,
+		text: `La suppression de votre compte a été annulée ; votre compte est de nouveau actif. Ce n'est pas vous ? Changez votre mot de passe maintenant.`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplateCopy>;

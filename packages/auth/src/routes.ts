@@ -23,6 +23,9 @@ import {
 	updatePreferencesSchema,
 	appleNativeSchema,
 	googleNativeSchema,
+	requestDeletionSchema,
+	confirmDeletionSchema,
+	restoreAccountSchema,
 } from './schemas';
 
 import { mfaController } from './controllers/mfa.controller';
@@ -123,6 +126,11 @@ export function buildAuthRoutes(
 		R('unlinkOauth', 'DELETE', '/auth/oauth/:provider', requireAuth, user.unlinkOauth),
 
 		R('deleteMe', 'DELETE', '/users', requireAuth, verifyGate, user.deleteMe),
+		// Deleting with proof: a code to a chosen channel, then confirm. The
+		// account is archived until the purge; signing in offers to keep it.
+		R('requestDeletion', 'POST', '/users/me/deletion', requireAuth, verifyGate, validate(requestDeletionSchema), user.requestDeletion),
+		R('confirmDeletion', 'POST', '/users/me/deletion/confirm', ipLimit('verify'), requireAuth, verifyGate, validate(confirmDeletionSchema), user.confirmDeletion),
+		R('restoreAccount', 'POST', '/auth/account/restore', ipLimit('login'), validate(restoreAccountSchema), auth.restoreAccount),
 		R('exportMe', 'GET', '/users/export', requireAuth, user.exportMe),
 
 		// Security surfaces (Protected; the caller's own login history + sessions).

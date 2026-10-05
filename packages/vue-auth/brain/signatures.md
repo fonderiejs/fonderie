@@ -29,6 +29,9 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
   .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
+  .requestAccountDeletion(input: IRequestAccountDeletionInput): Promise<IApiResponse<IRequestAccountDeletionResult>>
+  .confirmAccountDeletion(input: IConfirmAccountDeletionInput): Promise<IApiResponse<IAccountDeletionResult>>
+  .restoreAccount(input: IRestoreAccountInput): Promise<IApiResponse<ILoginResult>>
   .getLoginHistory(input?: IGetLoginHistoryInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
   .listSessions(opts?: IReadOptions | undefined): Promise<IApiResponse<ISessionsResult>>
   .terminateSession(id: string): Promise<IApiResponse<{ id: string; }>>
@@ -218,6 +221,14 @@ interface IUseUnlinkOauthReturn {
 interface IUseAccountDataReturn {
     exportData: () => Promise<unknown>;
     deleteUser: () => Promise<void>;
+    requestDeletion: (input: IRequestAccountDeletionInput) => Promise<IRequestAccountDeletionResult>;
+    confirmDeletion: (input: IConfirmAccountDeletionInput) => Promise<IAccountDeletionResult>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+}
+
+interface IUseRestoreAccountReturn {
+    restore: (input: IRestoreAccountInput) => Promise<ILoginResult>;
     isLoading: Ref<boolean>;
     error: Ref<FonderieApiError | null>;
 }
@@ -341,6 +352,8 @@ function useAuthProviders(client?: AuthClient | undefined): IUseAuthProvidersRet
 function useUnlinkOauth(client?: AuthClient | undefined): IUseUnlinkOauthReturn
 
 function useAccountData(client?: AuthClient | undefined): IUseAccountDataReturn
+
+function useRestoreAccount(client?: AuthClient | undefined): IUseRestoreAccountReturn
 
 function useChangePassword(client?: AuthClient | undefined): IUseChangePasswordReturn
 

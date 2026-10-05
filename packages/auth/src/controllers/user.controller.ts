@@ -1,7 +1,7 @@
 import { clearedTokenCookies, cookieHeaders } from '../services/cookies';
 import { randomInt } from 'node:crypto';
 
-import { setApiResponse, HTTP, dateOrEmpty, background } from '@fonderie/core';
+import { setApiResponse, HTTP, dateOrEmpty, background, COURIER_FORMAT_KEY } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { IAuthConfig } from '../config';
@@ -24,6 +24,14 @@ import type { LoginOutcome } from '../models/login-event.model';
 import { EmailVerificationModel } from '../models/email-verification.model';
 import { PhoneVerificationModel } from '../models/phone-verification.model';
 import { normalizeEmailSafe } from '../services/email';
+import { AccountDeletionModel } from '../models/account-deletion.model';
+import { checkCooldown } from '../services/cooldown';
+import { deletionDate } from '../services/pending-deletion';
+import { verifySecondFactor } from '../services/second-factor';
+
+// The deletion code: short-lived (a decision taken now), one request a minute.
+const DELETION_CODE_TTL_MS = 15 * 60 * 1000;
+const DELETION_CODE_COOLDOWN_MS = 60 * 1000;
 
 function normalizePhone(phone: string): string {
 	return phone.trim().replace(/[\s()\-\.]/g, '');
@@ -39,6 +47,66 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 	const loginEvents = new LoginEventModel(store, config.location);
 	const emailVerif = new EmailVerificationModel(store);
 	const phoneVerif = new PhoneVerificationModel(store);
+	const deletions = new AccountDeletionModel(store);
+
+	const deletionBlocked = async (userId: string): Promise<Response | null> => {
+		for (const blocker of config.accountDeletion?.blockers ?? []) {
+			const refusal = await blocker(userId);
+			if (refusal) return setApiResponse(HTTP.CONFLICT, refusal.reason, refusal.explanation, refusal.details);
+		}
+		return null;
+	};
+
+	/**
+	 * Archive the account in ONE statement: deleted (restorable), the channel
+	 * later notices use, every session ended, and every one-time code that
+	 * could still act on it removed — a reset link or verification code issued
+	 * before must not work on the archived account. All or nothing.
+	 */
+	const archive = async (userId: string, channel: 'email' | 'sms' | null): Promise<Date> => {
+		const [row] = await store.query<{ deletedAt: Date }>(
+			`WITH archived AS (
+			   UPDATE fonderie_users
+			   SET deleted_at = now(), updated_at = now(), deletion_channel = $2, deletion_reminded_at = NULL
+			   WHERE id = $1 AND deleted_at IS NULL
+			   RETURNING id, deleted_at
+			 ), sessions_ended AS (
+			   DELETE FROM fonderie_sessions WHERE user_id = $1
+			 ), resets AS (
+			   DELETE FROM fonderie_password_resets WHERE user_id = $1
+			 ), emails AS (
+			   DELETE FROM fonderie_email_verifications WHERE user_id = $1
+			 ), phones AS (
+			   DELETE FROM fonderie_phone_verifications WHERE user_id = $1
+			 ), codes AS (
+			   DELETE FROM fonderie_account_deletion_codes WHERE user_id = $1
+			 )
+			 SELECT deleted_at AS "deletedAt" FROM archived`,
+			[userId, channel],
+		);
+		return row ? new Date(row.deletedAt) : new Date();
+	};
+
+	const announceArchived = async (ctx: IFonderieContext, deletedAt: Date): Promise<void> => {
+		const userId = ctx.user!.id;
+		const reqId = ctx.meta['requestId'] as string | undefined;
+		await background(bus?.emit(
+			EVENT_KEYS.userDeleted,
+			{ userId, deletedAt: deletedAt.toISOString(), deleteOn: deletionDate(deletedAt, config).toISOString() },
+			reqId !== undefined ? { requestId: reqId } : undefined,
+		));
+		await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId, sids: null, reason: 'account-deleted' } satisfies ISessionRevokedEvent));
+	};
+
+	const archivedResponse = (deletedAt: Date): Response =>
+		Response.json(
+			{
+				reason: 'ACCOUNT_DELETED',
+				explanation: 'Account closed. It will be permanently deleted on the date shown; sign in before then to keep it.',
+				result: { requestedAt: deletedAt.toISOString(), deleteOn: deletionDate(deletedAt, config).toISOString() },
+			},
+			{ status: 200, headers: cookieHeaders(clearedTokenCookies(config)) },
+		);
 
 	return {
 		me: async (ctx: IFonderieContext): Promise<Response> => {
@@ -378,41 +446,105 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			return setApiResponse(HTTP.OK, 'OAUTH_UNLINKED', 'Sign-in provider removed.');
 		},
 
+		// Legacy one-call deletion (no code). Kept so existing apps keep working;
+		// apps move to POST /users/me/deletion + /confirm (proof + notices).
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
-			const userId = ctx.user!.id;
-			await users.softDelete(userId);
-			// End every session now, as a password change does. Without this the
-			// user's other devices stayed signed in until their next request
-			// failed — and were never told why.
-			await sessions.deleteByUser(userId);
-			// …and every one-time code that could still act on the account. The
-			// ACCOUNT is archived (restorable); these are credentials, not data — a
-			// reset link or verification code issued before the deletion must not
-			// work on the archived account. One statement: one round trip, all or
-			// nothing.
-			await store.query(
-				`WITH resets AS (DELETE FROM fonderie_password_resets WHERE user_id = $1),
-				      emails AS (DELETE FROM fonderie_email_verifications WHERE user_id = $1)
-				 DELETE FROM fonderie_phone_verifications WHERE user_id = $1`,
-				[userId],
-			);
+			const deletedAt = await archive(ctx.user!.id, null);
+			await announceArchived(ctx, deletedAt);
+			return archivedResponse(deletedAt);
+		},
 
-			const reqId = ctx.meta['requestId'] as string | undefined;
-			await background(bus
-				?.emit(
-					EVENT_KEYS.userDeleted,
-					{ userId },
-					reqId !== undefined ? { requestId: reqId } : undefined,
-				));
-			await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId, sids: null, reason: 'account-deleted' } satisfies ISessionRevokedEvent));
+		/**
+		 * Step 1 of deleting an account: a 6-digit code to the channel the person
+		 * picks ('email' | 'sms' — an address on the account; receiving the code
+		 * proves they hold it). Refused while a blocker objects (e.g. they own a
+		 * team with other members — transfer it first).
+		 */
+		requestDeletion: async (ctx: IFonderieContext): Promise<Response> => {
+			const user = ctx.user!;
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const channel = body?.['channel'] === 'sms' ? 'sms' : body?.['channel'] === 'email' ? 'email' : null;
+			if (!channel) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', "channel must be 'email' or 'sms'");
+			}
+			const address = channel === 'email' ? user.email : user.phone;
+			if (!address) {
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					channel === 'email' ? 'NO_EMAIL_ON_ACCOUNT' : 'NO_PHONE_ON_ACCOUNT',
+					`There is no ${channel === 'email' ? 'email address' : 'phone number'} on this account to send the code to.`,
+				);
+			}
+			const refused = await deletionBlocked(user.id);
+			if (refused) return refused;
 
-			return Response.json(
-				{ reason: 'ACCOUNT_DELETED', explanation: 'Account successfully deleted.' },
-				{
-					status: 200,
-					headers: cookieHeaders(clearedTokenCookies(config)),
-				},
-			);
+			const remainingMs = checkCooldown(await deletions.lastSentAt(user.id), DELETION_CODE_COOLDOWN_MS);
+			if (remainingMs > 0) {
+				const retryAfter = Math.ceil(remainingMs / 1000);
+				return setApiResponse(HTTP.TOO_MANY_REQUESTS, 'VERIFICATION_COOLDOWN', `Wait ${retryAfter}s before requesting a new code.`, { retryAfter });
+			}
+
+			const code = randomInt(100000, 1000000).toString();
+			await deletions.saveCode(user.id, code, channel, new Date(Date.now() + DELETION_CODE_TTL_MS));
+			await background(bus?.emit(NOTIFICATION_EVENT, {
+				type: MESSAGE_KEYS.accountDeletionCode,
+				locale: user.locale,
+				data: { code },
+				recipient: channel === 'email'
+					? { email: address, phone: null, deviceToken: null }
+					: { email: null, phone: address, deviceToken: null },
+			} satisfies ICourierMessage));
+
+			return setApiResponse(HTTP.ACCEPTED, 'ACCOUNT_DELETION_CODE_SENT', 'A code to confirm the deletion was sent.', {
+				channel,
+				expiresInSeconds: DELETION_CODE_TTL_MS / 1000,
+				mfaRequired: user.mfaEnabled === true,
+			});
+		},
+
+		/**
+		 * Step 2: the code (and, with two-factor on, a second factor) archives the
+		 * account — closed at once, restorable at sign-in until the purge date.
+		 */
+		confirmDeletion: async (ctx: IFonderieContext): Promise<Response> => {
+			const user = ctx.user!;
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const code = typeof body?.['code'] === 'string' ? body['code'].trim() : '';
+			if (!/^\d{6}$/.test(code)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'code must be the 6-digit code that was sent');
+			}
+			// Re-check: something may have changed since the code was sent.
+			const refused = await deletionBlocked(user.id);
+			if (refused) return refused;
+			if (user.mfaEnabled && !(await verifySecondFactor(store, config, user.id, body?.['mfaCode']))) {
+				return setApiResponse(HTTP.UNAUTHORIZED, 'MFA_REQUIRED', 'Enter a code from your authenticator app (or a backup code) to confirm.');
+			}
+			const checked = await deletions.checkCode(user.id, code);
+			if (checked.result !== 'ok') {
+				return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED',
+					checked.result === 'exhausted' || checked.result === 'none' || checked.result === 'expired'
+						? 'This code can no longer be used. Request a new one.'
+						: 'That code is incorrect.');
+			}
+
+			const deletedAt = await archive(user.id, checked.channel ?? null);
+			await announceArchived(ctx, deletedAt);
+			const deleteOn = deletionDate(deletedAt, config);
+			const address = checked.channel === 'sms' ? user.phone : user.email;
+			if (address) {
+				await background(bus?.emit(NOTIFICATION_EVENT, {
+					type: MESSAGE_KEYS.accountDeletionScheduled,
+					locale: user.locale,
+					data: {
+						deleteOn: deleteOn.toISOString().slice(0, 10),
+						[COURIER_FORMAT_KEY]: { deleteOn: { date: deleteOn.toISOString(), style: 'long' } },
+					},
+					recipient: checked.channel === 'sms'
+						? { email: null, phone: address, deviceToken: null }
+						: { email: address, phone: null, deviceToken: null },
+				} satisfies ICourierMessage));
+			}
+			return archivedResponse(deletedAt);
 		},
 
 		// Subject Access Request — the authenticated user's own data as a portable
