@@ -1,5 +1,13 @@
 # @fonderie/react-native-webhooks
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [a299875]
+  - @fonderie/client@3.17.0
+  - @fonderie/react-webhooks@0.6.0
+
 ## 0.1.4
 
 ### Patch Changes
