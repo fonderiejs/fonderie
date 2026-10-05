@@ -193,4 +193,13 @@ export const ZH_HANS_TEMPLATES = {
 <p class="muted">如果不是您本人操作，请立即更改密码。</p>`,
 		text: `您的账户删除已取消，账户已重新启用。不是您本人操作？请立即更改密码。`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionReminder]: {
+		subject: `您的账户将于 {{deleteOn}} 删除`,
+		html: `<h1>您的账户即将被删除</h1>
+<p>按照您的申请，您的账户已关闭，并将于 <strong>{{deleteOn}}</strong> 永久删除。此后将无法恢复。</p>
+<p>改变主意了？请在此前登录并选择<strong>保留我的账户</strong>。</p>
+<p class="muted">如果您仍希望删除，无需任何操作。</p>`,
+		text: `提醒：您的账户将于 {{deleteOn}} 永久删除。改变主意了？请在此前登录并选择“保留我的账户”。`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplateCopy>;

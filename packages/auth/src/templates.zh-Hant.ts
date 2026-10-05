@@ -195,4 +195,13 @@ export const ZH_HANT_TEMPLATES = {
 <p class="muted">如果不是您本人操作，請立即更改密碼。</p>`,
 		text: `您的帳戶刪除已取消，帳戶已重新啟用。不是您本人操作？請立即更改密碼。`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionReminder]: {
+		subject: `您的帳戶將於 {{deleteOn}} 刪除`,
+		html: `<h1>您的帳戶即將被刪除</h1>
+<p>依照您的申請，您的帳戶已關閉，並將於 <strong>{{deleteOn}}</strong> 永久刪除。此後將無法復原。</p>
+<p>改變主意了？請在此前登入並選擇<strong>保留我的帳戶</strong>。</p>
+<p class="muted">如果您仍希望刪除，無需任何操作。</p>`,
+		text: `提醒：您的帳戶將於 {{deleteOn}} 永久刪除。改變主意了？請在此前登入並選擇「保留我的帳戶」。`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplateCopy>;

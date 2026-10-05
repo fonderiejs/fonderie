@@ -278,3 +278,98 @@ test('one backup code used twice at once: exactly one succeeds', { skip }, async
 	const outcomes = await Promise.all([1, 2, 3].map(() => verifySecondFactor(store, config, a.id, 'abcd2345')));
 	assert.equal(outcomes.filter(Boolean).length, 1, JSON.stringify(outcomes));
 });
+
+// ── Phase 3: the reminder, then the purge with every brick's eraser ──────────
+
+const SECRET = 'k'.repeat(20) + 'm'.repeat(20);
+// Move an archived account (and its history, so sign-up still comes before the
+// request) back in time.
+const daysAgo = async (id: string, days: number) => {
+	await store.query(`UPDATE fonderie_login_events SET created_at = created_at - make_interval(days => $2) WHERE user_id = $1`, [id, days]);
+	await store.query(`UPDATE fonderie_users SET deleted_at = deleted_at - make_interval(days => $2), deletion_reminded_at = NULL WHERE id = $1`, [id, days]);
+};
+
+async function archived(): Promise<{ id: string; email: string }> {
+	const a = await account();
+	await call('POST', '/users/me/deletion', { channel: 'email' }, a.token);
+	await call('POST', '/users/me/deletion/confirm', { code: sent('account-deletion-code', a.email)!.data['code'] }, a.token);
+	return { id: a.id, email: a.email };
+}
+
+test('a week before the date, ONE reminder on the chosen channel — not if they tried to sign in since', { skip }, async () => {
+	const { runAccountDeletionSchedule } = await import('../services/deletion-schedule');
+	const bus = { emit: async (type: string, payload: Record<string, unknown>) => void emitted.push({ type, payload }) };
+	const config = { jwtSecret: SECRET, accountDeletion: { gracePeriodDays: 30 } } as never;
+	const [quiet, tried, early] = [await archived(), await archived(), await archived()];
+	await daysAgo(quiet.id, 24);
+	await daysAgo(tried.id, 24);
+	await daysAgo(early.id, 10);
+	await call('POST', '/auth/login', { email: tried.email, password: PASSWORD }); // an attempt since the request
+	// Login events are written in the background after the response; wait for it.
+	for (let i = 0; i < 50; i++) {
+		const [r] = await store.query<{ n: number }>(
+			`SELECT COUNT(*)::int AS n FROM fonderie_login_events le JOIN fonderie_users u ON u.id = le.user_id WHERE u.id = $1 AND le.created_at > u.deleted_at`, [tried.id]);
+		if (r!.n > 0) break;
+		await new Promise((res) => setTimeout(res, 50));
+	}
+
+	await runAccountDeletionSchedule(store, config, bus);
+	const reminder = sent('account-deletion-reminder', quiet.email);
+	assert.ok(reminder, 'the quiet one is reminded');
+	assert.equal(reminder!.data['$format']?.deleteOn?.style, 'long');
+	assert.equal(sent('account-deletion-reminder', tried.email), undefined, 'whoever tried to sign in already knows');
+	assert.equal(sent('account-deletion-reminder', early.email), undefined, 'not yet due');
+
+	emitted.length = 0;
+	await runAccountDeletionSchedule(store, config, bus);
+	assert.equal(sent('account-deletion-reminder', quiet.email), undefined, 'once');
+});
+
+test('on the date the account is erased: erasers first, row gone, a receipt without personal data, purged announced', { skip }, async () => {
+	const { runAccountDeletionSchedule, erasureHash } = await import('../services/deletion-schedule');
+	const bus = { emit: async (type: string, payload: Record<string, unknown>) => void emitted.push({ type, payload }) };
+	const a = await archived();
+	// A sign-in attempt recorded against the address alone (no user id) — personal data outside the user row.
+	await store.query(`INSERT INTO fonderie_login_events (user_id, email_attempted, method, outcome) VALUES (NULL, $1, 'password', 'failed')`, [a.email]);
+	await daysAgo(a.id, 31);
+	const seen: string[] = [];
+	const config = { jwtSecret: SECRET, accountDeletion: { gracePeriodDays: 30, erasers: [{ name: 'test-brick', erase: async (s: { userId: string }) => { seen.push(s.userId); return { erased: 2 }; } }] } } as never;
+
+	await runAccountDeletionSchedule(store, config, bus);
+	assert.deepEqual(seen, [a.id], 'every brick erased first');
+	assert.equal((await store.query(`SELECT 1 FROM fonderie_users WHERE id = $1`, [a.id])).length, 0, 'the account row is gone');
+	assert.equal((await store.query(`SELECT 1 FROM fonderie_login_events WHERE email_attempted = $1`, [a.email])).length, 0, 'address-only sign-in attempts erased');
+	const [receipt] = await store.query<{ emailHash: string; outcomes: Array<{ brick: string; erased: number }>; requestedAt: Date }>(
+		`SELECT email_hash AS "emailHash", outcomes, requested_at AS "requestedAt" FROM fonderie_account_erasures WHERE user_id = $1`, [a.id],
+	);
+	assert.equal(receipt!.emailHash, erasureHash(SECRET, a.email), 'the address only as a keyed hash');
+	assert.ok(!JSON.stringify(receipt).includes(a.email), 'no personal data in the receipt');
+	assert.deepEqual(receipt!.outcomes.map((o) => o.brick), ['auth', 'test-brick']);
+	assert.ok(emitted.some((e) => e.type === 'fonderie.user.purged' && e.payload['userId'] === a.id));
+});
+
+test('if any brick fails to erase, the account stays archived and the next run retries', { skip }, async () => {
+	const { runAccountDeletionSchedule } = await import('../services/deletion-schedule');
+	const a = await archived();
+	await daysAgo(a.id, 31);
+	let fail = true;
+	const config = { jwtSecret: SECRET, accountDeletion: { gracePeriodDays: 30, erasers: [{ name: 'flaky', erase: async () => { if (fail) throw new Error('storage down'); return { erased: 0 }; } }] } } as never;
+	const first = await runAccountDeletionSchedule(store, config);
+	assert.ok(first.failed.some((f) => f.userId === a.id && f.eraser === 'flaky'));
+	assert.equal((await store.query(`SELECT 1 FROM fonderie_users WHERE id = $1`, [a.id])).length, 1, 'kept — nothing half-erased');
+	fail = false;
+	await runAccountDeletionSchedule(store, config);
+	assert.equal((await store.query(`SELECT 1 FROM fonderie_users WHERE id = $1`, [a.id])).length, 0, 'erased on the retry');
+});
+
+test('two schedulers at once erase each account exactly once', { skip }, async () => {
+	const { runAccountDeletionSchedule } = await import('../services/deletion-schedule');
+	const accounts = [await archived(), await archived(), await archived()];
+	for (const a of accounts) await daysAgo(a.id, 31);
+	const seen: string[] = [];
+	const config = { jwtSecret: SECRET, accountDeletion: { gracePeriodDays: 30, erasers: [{ name: 'count', erase: async (s: { userId: string }) => { seen.push(s.userId); return { erased: 0 }; } }] } } as never;
+	await Promise.all([runAccountDeletionSchedule(store, config), runAccountDeletionSchedule(store, config)]);
+	const mine = seen.filter((id) => accounts.some((a) => a.id === id));
+	assert.equal(mine.length, 3, `each of my 3 accounts erased once: ${mine.length}`);
+	assert.equal(new Set(mine).size, 3);
+});

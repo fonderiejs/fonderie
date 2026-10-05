@@ -210,6 +210,15 @@ If you did this, you're all set. If not, contact support right away.`,
 <p class="muted">If you didn&rsquo;t do this, change your password right away.</p>`,
 		text: `Your account deletion was cancelled; your account is active again. Didn't do this? Change your password now.`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionReminder]: {
+		subject: `Your account will be deleted on {{deleteOn}}`,
+		html: `<h1>Your account will be deleted soon</h1>
+<p>As you asked, your account is closed and will be permanently deleted on <strong>{{deleteOn}}</strong>. After that date it cannot be recovered.</p>
+<p>Changed your mind? Sign in before then and choose <strong>Keep my account</strong>.</p>
+<p class="muted">No action is needed if you still want it deleted.</p>`,
+		text: `Reminder: your account will be permanently deleted on {{deleteOn}}. Changed your mind? Sign in before then and choose Keep my account.`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplate>;
 
 // The English above, with every email's French, Spanish and Chinese (Simplified
@@ -248,4 +257,5 @@ export const SAMPLE_PAYLOADS: Record<AuthMessageKey, Record<string, unknown>> = 
 	[MESSAGE_KEYS.accountDeletionCode]: { code: '123456' },
 	[MESSAGE_KEYS.accountDeletionScheduled]: { deleteOn: 'November 3, 2026' },
 	[MESSAGE_KEYS.accountRestored]: {},
+	[MESSAGE_KEYS.accountDeletionReminder]: { deleteOn: 'November 3, 2026' },
 };
