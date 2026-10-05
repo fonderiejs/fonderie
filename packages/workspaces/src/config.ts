@@ -1,5 +1,11 @@
 export const MESSAGE_KEYS = {
 	workspaceInvitation: 'workspace-invitation',
+	// Told when the team changes around them (docs/INSIDER-THREAT-DESIGN.md,
+	// Phase 2): a rogue manager's work does not go unnoticed for days.
+	memberRemoved: 'workspace-member-removed',
+	memberRemovedAlert: 'workspace-member-removed-alert',
+	managerRemoved: 'workspace-manager-removed',
+	ownershipReceived: 'workspace-ownership-received',
 } as const;
 
 export type WorkspacesMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -44,6 +50,12 @@ export interface IWorkspacesConfig {
 	// 'any-member' restores the legacy behaviour where every member could
 	// manage the workspace. Reads are never gated by this.
 	management?: 'owner-or-admin' | 'any-member';
+
+	// Email the people a team change is about (docs/INSIDER-THREAT-DESIGN.md,
+	// Phase 2): whoever is removed or loses manager rights, the new owner, and
+	// the owner when a manager removes someone. Default true. Route these
+	// message keys in courier like the invitation.
+	teamNotices?: boolean;
 
 	// System-role NAMES that count as managers (default ['ADMIN']). Matched
 	// only against is_system roles — GUEST is also a system role and must not

@@ -1,6 +1,6 @@
 # Insider threat: a rogue manager or owner
 
-Status: Phase 1 in progress (2026-10-05).
+Status: Phases 1–2 shipped (2026-10-05); 3–5 planned.
 
 ## 1. The scenario
 
@@ -60,7 +60,7 @@ notice, and do everything a manager can.
 
 ## 4. Phases
 
-**Phase 1 — Trail + managers can't act on managers (workspaces).**
+**Phase 1 — Trail + managers can't act on managers (workspaces).** ✅ #647.
 - `fonderie.workspace.*` events after every successful team, role, invitation,
   settings and workspace change: `{ workspaceId, userId: <actor>, targetUserId?,
   roleId?, inviteId? }`. Ids only — never a name or an address — so the trail
@@ -69,9 +69,12 @@ notice, and do everything a manager can.
   (`403 MANAGER_PROTECTED`), checked under the workspace lock.
 - `POST /workspaces/archive` is owner-only.
 
-**Phase 2 — Tell people.** Templates (5 locales) for "you were removed from
-{workspace}", "you are no longer a manager of {workspace}", "you are now the
-owner of {workspace}", and an owner digest of high-impact actions.
+**Phase 2 — Tell people.** ✅ `workspace-member-removed`, `-member-removed-alert`
+(to the owner, when a manager removed someone), `-manager-removed`,
+`-ownership-received`; 5 locales; sent by a subscriber on the trail events
+(`teamNotices: false` turns it off). Still open: an owner digest of other
+high-impact actions (webhook created, plan cancelled, deletion bursts) — those
+live in other bricks and need their own trail first.
 
 **Phase 3 — Undo bin** for roles, customers, webhooks (soft delete + restore +
 retention purge).
