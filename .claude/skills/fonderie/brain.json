@@ -6,9 +6,9 @@
     "adapter-koa": "5.4.10",
     "admin": "1.7.11",
     "audit": "5.2.17",
-    "auth": "7.22.1",
+    "auth": "7.23.0",
     "billing": "10.8.1",
-    "client": "3.13.0",
+    "client": "3.13.1",
     "config": "6.6.7",
     "core": "0.31.0",
     "courier": "7.15.0",
@@ -77,7 +77,7 @@
     "vue-workspaces": "0.10.2",
     "vue-workspaces-screens": "0.5.1",
     "webhooks": "6.0.8",
-    "workspaces": "6.7.0"
+    "workspaces": "6.7.1"
   },
   "packages": {
     "adapter-express": {
@@ -351,7 +351,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.22.1",
+      "version": "7.23.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -805,7 +805,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.13.0",
+      "version": "3.13.1",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -3007,7 +3007,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "6.7.0",
+      "version": "6.7.1",
       "stability": "stable",
       "requires": [
         "core",
