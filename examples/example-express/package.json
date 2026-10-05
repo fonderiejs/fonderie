@@ -12,11 +12,11 @@
 	},
 	"dependencies": {
 		"express": "^4.21.2",
-		"@fonderie/adapter-express": "^5.2.0",
-		"@fonderie/auth": "^7.0.1",
-		"@fonderie/core": ">=0.10.0",
-		"@fonderie/events": "^5.2.1",
-		"@fonderie/store": ">=0.4.0"
+		"@fonderie/adapter-express": "^5.4.9",
+		"@fonderie/auth": "^7.23.0",
+		"@fonderie/core": ">=0.31.0",
+		"@fonderie/events": "^5.12.3",
+		"@fonderie/store": ">=0.7.2"
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.2",

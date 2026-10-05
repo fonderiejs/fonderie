@@ -318,9 +318,8 @@ export function buildStarterRouter(
 		id:          w.id,
 		name:        w.name,
 		slug:        w.slug,
-		// A workspace has no logo field, so this is always null. If you want
-		// organization logos, add a column and surface it here.
-		logoUrl:     null,
+		// The workspace business profile carries the logo (empty string = none).
+		logoUrl:     w.logoUrl || null,
 		planId:      w.plan || 'free',
 		trialEndsAt: null,
 		createdAt:   w.createdAt,
@@ -337,14 +336,15 @@ export function buildStarterRouter(
 	})
 
 	router.patch('/organization', ...scoped, async (c) => {
-		const patch = await c.req.json<{ name?: string; description?: string | null }>()
+		const patch = await c.req.json<{ name?: string; description?: string | null; logoUrl?: string | null }>()
 
 		// Forward only what the workspace API validates. It rejects a body with no
-		// recognised field, so an update carrying nothing else — a logo-only change,
-		// say — would fail rather than no-op.
+		// recognised field, so a body carrying nothing it knows must no-op here
+		// rather than fail.
 		const forwarded: Record<string, unknown> = {}
 		if (patch.name !== undefined) forwarded['name'] = patch.name
 		if (patch.description !== undefined) forwarded['description'] = patch.description
+		if (patch.logoUrl !== undefined) forwarded['logoUrl'] = patch.logoUrl
 
 		if (Object.keys(forwarded).length === 0) {
 			const current = await internal<IWorkspaceDTO>(
